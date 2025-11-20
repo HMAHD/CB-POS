@@ -1,0 +1,11 @@
+C:\Users\ACER\Documents\CB-POS\src\CB_POS.Domain\bin\Debug\net9.0\CB_POS.Domain.deps.json
+C:\Users\ACER\Documents\CB-POS\src\CB_POS.Domain\bin\Debug\net9.0\CB_POS.Domain.dll
+C:\Users\ACER\Documents\CB-POS\src\CB_POS.Domain\bin\Debug\net9.0\CB_POS.Domain.pdb
+C:\Users\ACER\Documents\CB-POS\src\CB_POS.Domain\obj\Debug\net9.0\CB_POS.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ACER\Documents\CB-POS\src\CB_POS.Domain\obj\Debug\net9.0\CB_POS.Domain.AssemblyInfoInputs.cache
+C:\Users\ACER\Documents\CB-POS\src\CB_POS.Domain\obj\Debug\net9.0\CB_POS.Domain.AssemblyInfo.cs
+C:\Users\ACER\Documents\CB-POS\src\CB_POS.Domain\obj\Debug\net9.0\CB_POS.Domain.csproj.CoreCompileInputs.cache
+C:\Users\ACER\Documents\CB-POS\src\CB_POS.Domain\obj\Debug\net9.0\CB_POS.Domain.dll
+C:\Users\ACER\Documents\CB-POS\src\CB_POS.Domain\obj\Debug\net9.0\refint\CB_POS.Domain.dll
+C:\Users\ACER\Documents\CB-POS\src\CB_POS.Domain\obj\Debug\net9.0\CB_POS.Domain.pdb
+C:\Users\ACER\Documents\CB-POS\src\CB_POS.Domain\obj\Debug\net9.0\ref\CB_POS.Domain.dll

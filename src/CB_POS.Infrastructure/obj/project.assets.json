@@ -1,0 +1,131 @@
+{
+  "version": 3,
+  "targets": {
+    "net9.0": {
+      "CB_POS.Application/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "CB_POS.Domain": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/CB_POS.Application.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/CB_POS.Application.dll": {}
+        }
+      },
+      "CB_POS.Domain/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "compile": {
+          "bin/placeholder/CB_POS.Domain.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/CB_POS.Domain.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "CB_POS.Application/1.0.0": {
+      "type": "project",
+      "path": "../CB_POS.Application/CB_POS.Application.csproj",
+      "msbuildProject": "../CB_POS.Application/CB_POS.Application.csproj"
+    },
+    "CB_POS.Domain/1.0.0": {
+      "type": "project",
+      "path": "../CB_POS.Domain/CB_POS.Domain.csproj",
+      "msbuildProject": "../CB_POS.Domain/CB_POS.Domain.csproj"
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net9.0": [
+      "CB_POS.Application >= 1.0.0",
+      "CB_POS.Domain >= 1.0.0"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\ACER\\.nuget\\packages\\": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "C:\\Users\\ACER\\Documents\\CB-POS\\src\\CB_POS.Infrastructure\\CB_POS.Infrastructure.csproj",
+      "projectName": "CB_POS.Infrastructure",
+      "projectPath": "C:\\Users\\ACER\\Documents\\CB-POS\\src\\CB_POS.Infrastructure\\CB_POS.Infrastructure.csproj",
+      "packagesPath": "C:\\Users\\ACER\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\ACER\\Documents\\CB-POS\\src\\CB_POS.Infrastructure\\obj\\",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "C:\\Users\\ACER\\AppData\\Roaming\\NuGet\\NuGet.Config"
+      ],
+      "originalTargetFrameworks": [
+        "net9.0"
+      ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "projectReferences": {
+            "C:\\Users\\ACER\\Documents\\CB-POS\\src\\CB_POS.Application\\CB_POS.Application.csproj": {
+              "projectPath": "C:\\Users\\ACER\\Documents\\CB-POS\\src\\CB_POS.Application\\CB_POS.Application.csproj"
+            },
+            "C:\\Users\\ACER\\Documents\\CB-POS\\src\\CB_POS.Domain\\CB_POS.Domain.csproj": {
+              "projectPath": "C:\\Users\\ACER\\Documents\\CB-POS\\src\\CB_POS.Domain\\CB_POS.Domain.csproj"
+            }
+          }
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "10.0.100"
+    },
+    "frameworks": {
+      "net9.0": {
+        "targetAlias": "net9.0",
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.AspNetCore.App.Ref",
+            "version": "[9.0.11, 9.0.11]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Ref",
+            "version": "[9.0.11, 9.0.11]"
+          },
+          {
+            "name": "Microsoft.WindowsDesktop.App.Ref",
+            "version": "[9.0.11, 9.0.11]"
+          }
+        ],
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.100/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

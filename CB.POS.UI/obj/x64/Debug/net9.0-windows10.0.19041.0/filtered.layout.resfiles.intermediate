@@ -1,6 +1,6 @@
-runtimes\win-arm64\native\WebView2Loader.dll
 runtimes\win-x64\native\WebView2Loader.dll
-runtimes\win-x86\native\WebView2Loader.dll
+Assets\logo_dark.png
+Assets\Logo_light.png
 App.xbf
 MainWindow.xbf
 Views\LoginView.xbf

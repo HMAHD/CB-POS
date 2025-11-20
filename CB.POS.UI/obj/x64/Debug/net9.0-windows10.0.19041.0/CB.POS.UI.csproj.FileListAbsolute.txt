@@ -394,3 +394,5 @@ C:\Users\ACER\Documents\CB-POS\CB.POS.UI\obj\x64\Debug\net9.0-windows10.0.19041.
 C:\Users\ACER\Documents\CB-POS\CB.POS.UI\obj\x64\Debug\net9.0-windows10.0.19041.0\qualifiers.txt
 C:\Users\ACER\Documents\CB-POS\CB.POS.UI\obj\x64\Debug\net9.0-windows10.0.19041.0\qualifiers.txt.intermediate
 C:\Users\ACER\Documents\CB-POS\CB.POS.UI\obj\x64\Debug\net9.0-windows10.0.19041.0\MultipleQualifiersPerDimensionFound.txt
+C:\Users\ACER\Documents\CB-POS\CB.POS.UI\bin\x64\Debug\net9.0-windows10.0.19041.0\Assets\logo_dark.png
+C:\Users\ACER\Documents\CB-POS\CB.POS.UI\bin\x64\Debug\net9.0-windows10.0.19041.0\Assets\Logo_light.png

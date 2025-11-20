@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CB.POS.Infrastructure.Data;
+using CB.POS.Core.Interfaces.Services;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 using System.Linq;
@@ -11,6 +12,7 @@ namespace CB.POS.UI.ViewModels;
 public partial class LoginViewModel : ObservableObject
 {
     private readonly PosDbContext _context;
+    private readonly IFocusService _focusService;
 
     [ObservableProperty]
     private string _pinInput = "";
@@ -18,9 +20,15 @@ public partial class LoginViewModel : ObservableObject
     [ObservableProperty]
     private string _errorMessage = "";
 
-    public LoginViewModel(PosDbContext context)
+    /// <summary>
+    /// Masked PIN display (shows dots instead of actual digits).
+    /// </summary>
+    public string MaskedPin => new string('●', PinInput.Length);
+
+    public LoginViewModel(PosDbContext context, IFocusService focusService)
     {
         _context = context;
+        _focusService = focusService;
     }
 
     [RelayCommand]
@@ -30,6 +38,7 @@ public partial class LoginViewModel : ObservableObject
         if (PinInput.Length < 6) // Limit PIN length
         {
             PinInput += number;
+            OnPropertyChanged(nameof(MaskedPin));
         }
     }
 
@@ -40,6 +49,7 @@ public partial class LoginViewModel : ObservableObject
         if (!string.IsNullOrEmpty(PinInput))
         {
             PinInput = PinInput.Substring(0, PinInput.Length - 1);
+            OnPropertyChanged(nameof(MaskedPin));
         }
     }
 
@@ -63,6 +73,7 @@ public partial class LoginViewModel : ObservableObject
         {
             ErrorMessage = "";
             PinInput = ""; // Clear for security
+            OnPropertyChanged(nameof(MaskedPin));
             
             // Navigate to Shell (Placeholder)
             var dialog = new ContentDialog
@@ -80,6 +91,10 @@ public partial class LoginViewModel : ObservableObject
         {
             ErrorMessage = "Invalid PIN. Please try again.";
             PinInput = "";
+            OnPropertyChanged(nameof(MaskedPin));
+            
+            // Return focus to PIN input
+            _focusService.ResetFocusToInput();
         }
     }
 }

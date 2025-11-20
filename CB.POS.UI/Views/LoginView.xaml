@@ -8,44 +8,119 @@
     mc:Ignorable="d"
     Background="Transparent">
 
+    <!-- Keyboard Accelerators (Global) -->
+    <Page.KeyboardAccelerators>
+        <KeyboardAccelerator Key="Number0" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="Number1" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="Number2" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="Number3" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="Number4" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="Number5" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="Number6" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="Number7" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="Number8" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="Number9" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="NumberPad0" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="NumberPad1" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="NumberPad2" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="NumberPad3" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="NumberPad4" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="NumberPad5" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="NumberPad6" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="NumberPad7" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="NumberPad8" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="NumberPad9" Invoked="OnNumberKey_Invoked" />
+        <KeyboardAccelerator Key="Back" Invoked="OnBackspace_Invoked" />
+        <KeyboardAccelerator Key="Enter" Invoked="OnEnter_Invoked" />
+        <KeyboardAccelerator Key="Execute" Invoked="OnEnter_Invoked" />
+    </Page.KeyboardAccelerators>
+
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="400" />
+            <ColumnDefinition Width="2*" />
+            <ColumnDefinition Width="3*" />
         </Grid.ColumnDefinitions>
 
         <!-- Left Side: Branding -->
-        <Grid Grid.Column="0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
-                <!-- Placeholder Logo -->
-                <FontIcon Glyph="&#xE71D;" FontSize="100" FontFamily="Segoe MDL2 Assets" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
-                <TextBlock Text="CB POS" FontSize="48" FontWeight="Bold" HorizontalAlignment="Center"/>
-                <TextBlock Text="Industrial Point of Sale" FontSize="20" Opacity="0.6" HorizontalAlignment="Center"/>
+        <Grid Grid.Column="0" Background="#1A1A1A">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Logo Centered -->
+            <Image Grid.Row="0" 
+                   Source="ms-appx:///Assets/Logo_light.png" 
+                   Stretch="Uniform"
+                   MaxWidth="300"
+                   MaxHeight="300"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Center"
+                   Margin="40" />
+
+            <!-- Professional Footer -->
+            <StackPanel Grid.Row="1" 
+                       Padding="40,20"
+                       Spacing="8">
+                <TextBlock x:Uid="Login_PoweredBy"
+                          Text="Powered by Ceybyte.com"
+                          FontSize="16"
+                          Foreground="#CCCCCC"
+                          HorizontalAlignment="Center"
+                          FontWeight="SemiBold" />
+                <TextBlock x:Uid="Login_Copyright"
+                          Text="© 2025 Ceybyte. All Rights Reserved."
+                          FontSize="12"
+                          Foreground="#888888"
+                          HorizontalAlignment="Center" />
             </StackPanel>
         </Grid>
 
-        <!-- Right Side: Login Numpad -->
-        <Grid Grid.Column="1" Padding="40" Background="{ThemeResource LayerFillColorDefaultBrush}">
-            <StackPanel VerticalAlignment="Center" Spacing="20">
+        <!-- Right Side: Interaction -->
+        <Grid Grid.Column="1" 
+              Padding="60" 
+              Background="{ThemeResource LayerFillColorDefaultBrush}">
+            <StackPanel VerticalAlignment="Center" 
+                       Spacing="32"
+                       MaxWidth="400">
                 
-                <TextBlock Text="Enter PIN" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                <!-- Title -->
+                <TextBlock x:Uid="Login_EnterPin"
+                          Text="Enter PIN"
+                          FontSize="28"
+                          FontWeight="SemiBold"
+                          HorizontalAlignment="Center"
+                          Margin="0,0,0,8" />
 
-                <!-- PIN Display -->
-                <PasswordBox Password="{x:Bind ViewModel.PinInput, Mode=OneWay}" 
-                             IsEnabled="False"
-                             HorizontalAlignment="Stretch" 
-                             HorizontalContentAlignment="Center"
-                             FontSize="32"/>
+                <!-- PIN Display (Masked) -->
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                       BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                       BorderThickness="2"
+                       CornerRadius="8"
+                       Padding="20,16"
+                       MinHeight="64">
+                    <TextBlock x:Name="PinInputBox"
+                              Text="{x:Bind ViewModel.MaskedPin, Mode=OneWay}"
+                              FontSize="36"
+                              FontWeight="Bold"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                </Border>
                 
                 <!-- Error Message -->
-                <TextBlock Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}" 
-                           Foreground="Red" 
-                           HorizontalAlignment="Center" 
-                           TextWrapping="Wrap"
-                           Height="20"/>
+                <TextBlock x:Uid="Login_ErrorMessage"
+                          Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                          Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                          HorizontalAlignment="Center"
+                          TextWrapping="Wrap"
+                          FontSize="14"
+                          MinHeight="20" />
 
-                <!-- Numpad -->
-                <Grid RowSpacing="10" ColumnSpacing="10">
+                <!-- Numpad Grid -->
+                <Grid RowSpacing="12" 
+                     ColumnSpacing="12"
+                     Margin="0,16,0,0">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -58,25 +133,136 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Row 1 -->
-                    <Button Content="1" Command="{x:Bind ViewModel.AppendNumberCommand}" CommandParameter="1" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
-                    <Button Grid.Column="1" Content="2" Command="{x:Bind ViewModel.AppendNumberCommand}" CommandParameter="2" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
-                    <Button Grid.Column="2" Content="3" Command="{x:Bind ViewModel.AppendNumberCommand}" CommandParameter="3" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
+                    <!-- Row 1: 1, 2, 3 -->
+                    <Button Content="1" 
+                           Command="{x:Bind ViewModel.AppendNumberCommand}" 
+                           CommandParameter="1" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
+                    <Button Grid.Column="1" 
+                           Content="2" 
+                           Command="{x:Bind ViewModel.AppendNumberCommand}" 
+                           CommandParameter="2" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
+                    <Button Grid.Column="2" 
+                           Content="3" 
+                           Command="{x:Bind ViewModel.AppendNumberCommand}" 
+                           CommandParameter="3" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
 
-                    <!-- Row 2 -->
-                    <Button Grid.Row="1" Content="4" Command="{x:Bind ViewModel.AppendNumberCommand}" CommandParameter="4" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
-                    <Button Grid.Row="1" Grid.Column="1" Content="5" Command="{x:Bind ViewModel.AppendNumberCommand}" CommandParameter="5" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
-                    <Button Grid.Row="1" Grid.Column="2" Content="6" Command="{x:Bind ViewModel.AppendNumberCommand}" CommandParameter="6" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
+                    <!-- Row 2: 4, 5, 6 -->
+                    <Button Grid.Row="1" 
+                           Content="4" 
+                           Command="{x:Bind ViewModel.AppendNumberCommand}" 
+                           CommandParameter="4" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
+                    <Button Grid.Row="1" 
+                           Grid.Column="1" 
+                           Content="5" 
+                           Command="{x:Bind ViewModel.AppendNumberCommand}" 
+                           CommandParameter="5" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
+                    <Button Grid.Row="1" 
+                           Grid.Column="2" 
+                           Content="6" 
+                           Command="{x:Bind ViewModel.AppendNumberCommand}" 
+                           CommandParameter="6" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
 
-                    <!-- Row 3 -->
-                    <Button Grid.Row="2" Content="7" Command="{x:Bind ViewModel.AppendNumberCommand}" CommandParameter="7" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
-                    <Button Grid.Row="2" Grid.Column="1" Content="8" Command="{x:Bind ViewModel.AppendNumberCommand}" CommandParameter="8" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
-                    <Button Grid.Row="2" Grid.Column="2" Content="9" Command="{x:Bind ViewModel.AppendNumberCommand}" CommandParameter="9" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
+                    <!-- Row 3: 7, 8, 9 -->
+                    <Button Grid.Row="2" 
+                           Content="7" 
+                           Command="{x:Bind ViewModel.AppendNumberCommand}" 
+                           CommandParameter="7" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
+                    <Button Grid.Row="2" 
+                           Grid.Column="1" 
+                           Content="8" 
+                           Command="{x:Bind ViewModel.AppendNumberCommand}" 
+                           CommandParameter="8" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
+                    <Button Grid.Row="2" 
+                           Grid.Column="2" 
+                           Content="9" 
+                           Command="{x:Bind ViewModel.AppendNumberCommand}" 
+                           CommandParameter="9" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
 
-                    <!-- Row 4 -->
-                    <Button Grid.Row="3" Content="⌫" Command="{x:Bind ViewModel.BackspaceCommand}" Style="{StaticResource DefaultButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
-                    <Button Grid.Row="3" Grid.Column="1" Content="0" Command="{x:Bind ViewModel.AppendNumberCommand}" CommandParameter="0" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
-                    <Button Grid.Row="3" Grid.Column="2" Content="⏎" Command="{x:Bind ViewModel.LoginCommand}" Style="{StaticResource AccentButtonStyle}" Background="{ThemeResource SystemFillColorSuccessBrush}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
+                    <!-- Row 4: Backspace, 0, Enter -->
+                    <Button Grid.Row="3" 
+                           Content="⌫" 
+                           Command="{x:Bind ViewModel.BackspaceCommand}" 
+                           Style="{StaticResource DefaultButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           CornerRadius="36" />
+                    <Button Grid.Row="3" 
+                           Grid.Column="1" 
+                           Content="0" 
+                           Command="{x:Bind ViewModel.AppendNumberCommand}" 
+                           CommandParameter="0" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
+                    <Button Grid.Row="3" 
+                           Grid.Column="2" 
+                           Content="⏎" 
+                           x:Uid="Login_EnterButton"
+                           Command="{x:Bind ViewModel.LoginCommand}" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           Background="{ThemeResource SystemFillColorSuccessBrush}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           CornerRadius="36" />
                 </Grid>
 
             </StackPanel>

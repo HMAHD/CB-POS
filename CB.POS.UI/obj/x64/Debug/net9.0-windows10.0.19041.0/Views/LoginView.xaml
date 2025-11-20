@@ -8,44 +8,119 @@
     mc:Ignorable="d"
     Background="Transparent">
 
+    <!-- Keyboard Accelerators (Global) -->
+    <Page.KeyboardAccelerators>
+        <KeyboardAccelerator x:ConnectionId='2' Key="Number0"                               />
+        <KeyboardAccelerator x:ConnectionId='3' Key="Number1"                               />
+        <KeyboardAccelerator x:ConnectionId='4' Key="Number2"                               />
+        <KeyboardAccelerator x:ConnectionId='5' Key="Number3"                               />
+        <KeyboardAccelerator x:ConnectionId='6' Key="Number4"                               />
+        <KeyboardAccelerator x:ConnectionId='7' Key="Number5"                               />
+        <KeyboardAccelerator x:ConnectionId='8' Key="Number6"                               />
+        <KeyboardAccelerator x:ConnectionId='9' Key="Number7"                               />
+        <KeyboardAccelerator x:ConnectionId='10' Key="Number8"                               />
+        <KeyboardAccelerator x:ConnectionId='11' Key="Number9"                               />
+        <KeyboardAccelerator x:ConnectionId='12' Key="NumberPad0"                               />
+        <KeyboardAccelerator x:ConnectionId='13' Key="NumberPad1"                               />
+        <KeyboardAccelerator x:ConnectionId='14' Key="NumberPad2"                               />
+        <KeyboardAccelerator x:ConnectionId='15' Key="NumberPad3"                               />
+        <KeyboardAccelerator x:ConnectionId='16' Key="NumberPad4"                               />
+        <KeyboardAccelerator x:ConnectionId='17' Key="NumberPad5"                               />
+        <KeyboardAccelerator x:ConnectionId='18' Key="NumberPad6"                               />
+        <KeyboardAccelerator x:ConnectionId='19' Key="NumberPad7"                               />
+        <KeyboardAccelerator x:ConnectionId='20' Key="NumberPad8"                               />
+        <KeyboardAccelerator x:ConnectionId='21' Key="NumberPad9"                               />
+        <KeyboardAccelerator x:ConnectionId='22' Key="Back"                               />
+        <KeyboardAccelerator x:ConnectionId='23' Key="Enter"                           />
+        <KeyboardAccelerator x:ConnectionId='24' Key="Execute"                           />
+    </Page.KeyboardAccelerators>
+
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="400" />
+            <ColumnDefinition Width="2*" />
+            <ColumnDefinition Width="3*" />
         </Grid.ColumnDefinitions>
 
         <!-- Left Side: Branding -->
-        <Grid Grid.Column="0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="20">
-                <!-- Placeholder Logo -->
-                <FontIcon Glyph="&#xE71D;" FontSize="100" FontFamily="Segoe MDL2 Assets" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
-                <TextBlock Text="CB POS" FontSize="48" FontWeight="Bold" HorizontalAlignment="Center"/>
-                <TextBlock Text="Industrial Point of Sale" FontSize="20" Opacity="0.6" HorizontalAlignment="Center"/>
+        <Grid Grid.Column="0" Background="#1A1A1A">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Logo Centered -->
+            <Image Grid.Row="0" 
+                   Source="ms-appx:///Assets/Logo_light.png" 
+                   Stretch="Uniform"
+                   MaxWidth="300"
+                   MaxHeight="300"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Center"
+                   Margin="40" />
+
+            <!-- Professional Footer -->
+            <StackPanel Grid.Row="1" 
+                       Padding="40,20"
+                       Spacing="8">
+                <TextBlock x:Uid="Login_PoweredBy"
+                          Text="Powered by Ceybyte.com"
+                          FontSize="16"
+                          Foreground="#CCCCCC"
+                          HorizontalAlignment="Center"
+                          FontWeight="SemiBold" />
+                <TextBlock x:Uid="Login_Copyright"
+                          Text="© 2025 Ceybyte. All Rights Reserved."
+                          FontSize="12"
+                          Foreground="#888888"
+                          HorizontalAlignment="Center" />
             </StackPanel>
         </Grid>
 
-        <!-- Right Side: Login Numpad -->
-        <Grid Grid.Column="1" Padding="40" Background="{ThemeResource LayerFillColorDefaultBrush}">
-            <StackPanel VerticalAlignment="Center" Spacing="20">
+        <!-- Right Side: Interaction -->
+        <Grid Grid.Column="1" 
+              Padding="60" 
+              Background="{ThemeResource LayerFillColorDefaultBrush}">
+            <StackPanel VerticalAlignment="Center" 
+                       Spacing="32"
+                       MaxWidth="400">
                 
-                <TextBlock Text="Enter PIN" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                <!-- Title -->
+                <TextBlock x:Uid="Login_EnterPin"
+                          Text="Enter PIN"
+                          FontSize="28"
+                          FontWeight="SemiBold"
+                          HorizontalAlignment="Center"
+                          Margin="0,0,0,8" />
 
-                <!-- PIN Display -->
-                <PasswordBox x:ConnectionId='2'                                                     
-                             IsEnabled="False"
-                             HorizontalAlignment="Stretch" 
-                             HorizontalContentAlignment="Center"
-                             FontSize="32"/>
+                <!-- PIN Display (Masked) -->
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                       BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                       BorderThickness="2"
+                       CornerRadius="8"
+                       Padding="20,16"
+                       MinHeight="64">
+                    <TextBlock x:ConnectionId='38' x:Name="PinInputBox"
+                                                                              
+                              FontSize="36"
+                              FontWeight="Bold"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                </Border>
                 
                 <!-- Error Message -->
-                <TextBlock x:ConnectionId='3'                                                     
-                           Foreground="Red" 
-                           HorizontalAlignment="Center" 
-                           TextWrapping="Wrap"
-                           Height="20"/>
+                <TextBlock x:ConnectionId='25' x:Uid="Login_ErrorMessage"
+                                                                             
+                          Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                          HorizontalAlignment="Center"
+                          TextWrapping="Wrap"
+                          FontSize="14"
+                          MinHeight="20" />
 
-                <!-- Numpad -->
-                <Grid RowSpacing="10" ColumnSpacing="10">
+                <!-- Numpad Grid -->
+                <Grid RowSpacing="12" 
+                     ColumnSpacing="12"
+                     Margin="0,16,0,0">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -58,25 +133,136 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Row 1 -->
-                    <Button x:ConnectionId='4' Content="1"                                                  CommandParameter="1" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
-                    <Button x:ConnectionId='5' Grid.Column="1" Content="2"                                                  CommandParameter="2" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
-                    <Button x:ConnectionId='6' Grid.Column="2" Content="3"                                                  CommandParameter="3" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
+                    <!-- Row 1: 1, 2, 3 -->
+                    <Button x:ConnectionId='26' Content="1" 
+                                                                            
+                           CommandParameter="1" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
+                    <Button x:ConnectionId='27' Grid.Column="1" 
+                           Content="2" 
+                                                                            
+                           CommandParameter="2" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
+                    <Button x:ConnectionId='28' Grid.Column="2" 
+                           Content="3" 
+                                                                            
+                           CommandParameter="3" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
 
-                    <!-- Row 2 -->
-                    <Button x:ConnectionId='7' Grid.Row="1" Content="4"                                                  CommandParameter="4" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
-                    <Button x:ConnectionId='8' Grid.Row="1" Grid.Column="1" Content="5"                                                  CommandParameter="5" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
-                    <Button x:ConnectionId='9' Grid.Row="1" Grid.Column="2" Content="6"                                                  CommandParameter="6" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
+                    <!-- Row 2: 4, 5, 6 -->
+                    <Button x:ConnectionId='29' Grid.Row="1" 
+                           Content="4" 
+                                                                            
+                           CommandParameter="4" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
+                    <Button x:ConnectionId='30' Grid.Row="1" 
+                           Grid.Column="1" 
+                           Content="5" 
+                                                                            
+                           CommandParameter="5" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
+                    <Button x:ConnectionId='31' Grid.Row="1" 
+                           Grid.Column="2" 
+                           Content="6" 
+                                                                            
+                           CommandParameter="6" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
 
-                    <!-- Row 3 -->
-                    <Button x:ConnectionId='10' Grid.Row="2" Content="7"                                                  CommandParameter="7" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
-                    <Button x:ConnectionId='11' Grid.Row="2" Grid.Column="1" Content="8"                                                  CommandParameter="8" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
-                    <Button x:ConnectionId='12' Grid.Row="2" Grid.Column="2" Content="9"                                                  CommandParameter="9" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
+                    <!-- Row 3: 7, 8, 9 -->
+                    <Button x:ConnectionId='32' Grid.Row="2" 
+                           Content="7" 
+                                                                            
+                           CommandParameter="7" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
+                    <Button x:ConnectionId='33' Grid.Row="2" 
+                           Grid.Column="1" 
+                           Content="8" 
+                                                                            
+                           CommandParameter="8" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
+                    <Button x:ConnectionId='34' Grid.Row="2" 
+                           Grid.Column="2" 
+                           Content="9" 
+                                                                            
+                           CommandParameter="9" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
 
-                    <!-- Row 4 -->
-                    <Button x:ConnectionId='13' Grid.Row="3" Content="⌫"                                               Style="{StaticResource DefaultButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
-                    <Button x:ConnectionId='14' Grid.Row="3" Grid.Column="1" Content="0"                                                  CommandParameter="0" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
-                    <Button x:ConnectionId='15' Grid.Row="3" Grid.Column="2" Content="⏎"                                           Style="{StaticResource AccentButtonStyle}" Background="{ThemeResource SystemFillColorSuccessBrush}" HorizontalAlignment="Stretch" Height="60" FontSize="24" CornerRadius="30"/>
+                    <!-- Row 4: Backspace, 0, Enter -->
+                    <Button x:ConnectionId='35' Grid.Row="3" 
+                           Content="⌫" 
+                                                                         
+                           Style="{StaticResource DefaultButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           CornerRadius="36" />
+                    <Button x:ConnectionId='36' Grid.Row="3" 
+                           Grid.Column="1" 
+                           Content="0" 
+                                                                            
+                           CommandParameter="0" 
+                           Style="{StaticResource AccentButtonStyle}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           CornerRadius="36" />
+                    <Button x:ConnectionId='37' Grid.Row="3" 
+                           Grid.Column="2" 
+                           Content="⏎" 
+                           x:Uid="Login_EnterButton"
+                                                                     
+                           Style="{StaticResource AccentButtonStyle}" 
+                           Background="{ThemeResource SystemFillColorSuccessBrush}" 
+                           HorizontalAlignment="Stretch" 
+                           Height="72" 
+                           FontSize="28"
+                           CornerRadius="36" />
                 </Grid>
 
             </StackPanel>

@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- Fix for Visual Studio 2025 Preview (v18.0) -->
+    <!-- WindowsAppSDK looks for v17.0 but VS 2025 uses v18.0 -->
+    <AppxPackageDir>C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Microsoft\VisualStudio\v18.0\AppxPackage\</AppxPackageDir>
+  </PropertyGroup>
+</Project>

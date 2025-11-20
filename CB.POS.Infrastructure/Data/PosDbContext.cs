@@ -1,3 +1,4 @@
+using CB.POS.Core.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace CB.POS.Infrastructure.Data;
@@ -15,6 +16,6 @@ public class PosDbContext : DbContext
             optionsBuilder.UseSqlite("Data Source=cbpos.db");
         }
     }
-}
 
-public DbSet<Employee> Employees { get; set; }
+    public DbSet<Employee> Employees { get; set; }
+}

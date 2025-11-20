@@ -36,6 +36,7 @@ public partial class App : Application
 
                 // 2. Database
                 services.AddDbContext<PosDbContext>();
+                services.AddScoped<DbInitializer>();
 
                 // 3. Services
                 services.AddSingleton<IFocusService, KeyboardFocusService>();

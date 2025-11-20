@@ -1,0 +1,13 @@
+C:\Users\ACER\Documents\CB-POS\CB.POS.Core\bin\Debug\net9.0\CB.POS.Core.deps.json
+C:\Users\ACER\Documents\CB-POS\CB.POS.Core\bin\Debug\net9.0\CB.POS.Core.dll
+C:\Users\ACER\Documents\CB-POS\CB.POS.Core\bin\Debug\net9.0\CB.POS.Core.pdb
+C:\Users\ACER\Documents\CB-POS\CB.POS.Core\obj\Debug\net9.0\CB.POS.Core.csproj.AssemblyReference.cache
+C:\Users\ACER\Documents\CB-POS\CB.POS.Core\obj\Debug\net9.0\CB.POS.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ACER\Documents\CB-POS\CB.POS.Core\obj\Debug\net9.0\CB.POS.Core.AssemblyInfoInputs.cache
+C:\Users\ACER\Documents\CB-POS\CB.POS.Core\obj\Debug\net9.0\CB.POS.Core.AssemblyInfo.cs
+C:\Users\ACER\Documents\CB-POS\CB.POS.Core\obj\Debug\net9.0\CB.POS.Core.csproj.CoreCompileInputs.cache
+C:\Users\ACER\Documents\CB-POS\CB.POS.Core\obj\Debug\net9.0\CB.POS.Core.sourcelink.json
+C:\Users\ACER\Documents\CB-POS\CB.POS.Core\obj\Debug\net9.0\CB.POS.Core.dll
+C:\Users\ACER\Documents\CB-POS\CB.POS.Core\obj\Debug\net9.0\refint\CB.POS.Core.dll
+C:\Users\ACER\Documents\CB-POS\CB.POS.Core\obj\Debug\net9.0\CB.POS.Core.pdb
+C:\Users\ACER\Documents\CB-POS\CB.POS.Core\obj\Debug\net9.0\ref\CB.POS.Core.dll

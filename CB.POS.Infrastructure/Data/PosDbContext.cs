@@ -16,3 +16,5 @@ public class PosDbContext : DbContext
         }
     }
 }
+
+public DbSet<Employee> Employees { get; set; }

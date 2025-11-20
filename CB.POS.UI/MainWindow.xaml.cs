@@ -8,5 +8,8 @@ public sealed partial class MainWindow : Window
     {
         this.InitializeComponent();
         Title = "CB POS";
+        
+        // Navigate to Login View
+        AppFrame.Navigate(typeof(Views.LoginView));
     }
 }

@@ -3,6 +3,8 @@ using System.IO;
 using CB.POS.Core.Interfaces.Services;
 using CB.POS.Infrastructure.Data;
 using CB.POS.UI.Services;
+using CB.POS.UI.ViewModels;
+using CB.POS.UI.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Xaml;
@@ -40,6 +42,8 @@ public partial class App : Application
 
                 // 4. Views & ViewModels
                 services.AddTransient<MainWindow>();
+                services.AddTransient<LoginViewModel>();
+                services.AddTransient<LoginView>();
                 
                 // Future: Register other ViewModels and Views here
                 // services.AddTransient<MainViewModel>();
@@ -68,6 +72,12 @@ public partial class App : Application
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
+        var host = this.Host; // Access your built host
+        using (var scope = host.Services.CreateScope())
+        {
+            var initializer = scope.ServiceProvider.GetRequiredService<DbInitializer>();
+            initializer.Initialize();
+        }
         await Host.StartAsync();
 
         // Resolve MainWindow from DI

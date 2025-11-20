@@ -1,39 +1,150 @@
-$dotnet = "C:\Program Files\dotnet\dotnet.exe"
+# CB POS Solution Scaffolding Script
+# Stack: .NET 9, WinUI 3, SQLite, Serilog, Clean Architecture
 
-# 1. Install WinUI 3 Templates
-Write-Host "Installing WinUI 3 Templates..."
-& $dotnet new install Microsoft.WindowsAppSDK.Templates
+Write-Host "🚀 Initializing CB POS (Industrial Grade)..." -ForegroundColor Cyan
 
-# 2. Create Solution
-Write-Host "Creating Solution..."
-& $dotnet new sln -n CB-POS
+# 1. Create Solution
+dotnet new sln -n "CB.POS"
 
-# 3. Create Projects
-Write-Host "Creating Projects..."
-New-Item -ItemType Directory -Force -Path src
+# 2. Create Projects (Clean Architecture)
+# Core: Entities, Interfaces, DTOs (No dependencies on UI or DB)
+dotnet new classlib -n "CB.POS.Core" -f net9.0
+# Infrastructure: Database, Printer implementations, External APIs
+dotnet new classlib -n "CB.POS.Infrastructure" -f net9.0
+# UI: The WinUI 3 Application
+dotnet new winui -n "CB.POS.UI" -f net9.0
 
-# Domain
-& $dotnet new classlib -n CB_POS.Domain -o src/CB_POS.Domain -f net10.0
+# 3. Define Project References
+# UI depends on Core and Infrastructure
+dotnet add "CB.POS.UI/CB.POS.UI.csproj" reference "CB.POS.Core/CB.POS.Core.csproj"
+dotnet add "CB.POS.UI/CB.POS.UI.csproj" reference "CB.POS.Infrastructure/CB.POS.Infrastructure.csproj"
+# Infrastructure depends on Core
+dotnet add "CB.POS.Infrastructure/CB.POS.Infrastructure.csproj" reference "CB.POS.Core/CB.POS.Core.csproj"
 
-# Application
-& $dotnet new classlib -n CB_POS.Application -o src/CB_POS.Application -f net10.0
-& $dotnet add src/CB_POS.Application/CB_POS.Application.csproj reference src/CB_POS.Domain/CB_POS.Domain.csproj
+# 4. Add Solution Folders & Link Projects
+dotnet sln "CB.POS.sln" add "CB.POS.Core/CB.POS.Core.csproj" --solution-folder "1. Core"
+dotnet sln "CB.POS.sln" add "CB.POS.Infrastructure/CB.POS.Infrastructure.csproj" --solution-folder "2. Infrastructure"
+dotnet sln "CB.POS.sln" add "CB.POS.UI/CB.POS.UI.csproj" --solution-folder "3. Presentation"
 
-# Infrastructure
-& $dotnet new classlib -n CB_POS.Infrastructure -o src/CB_POS.Infrastructure -f net10.0
-& $dotnet add src/CB_POS.Infrastructure/CB_POS.Infrastructure.csproj reference src/CB_POS.Application/CB_POS.Application.csproj
-& $dotnet add src/CB_POS.Infrastructure/CB_POS.Infrastructure.csproj reference src/CB_POS.Domain/CB_POS.Domain.csproj
+# 5. Create Industrial Folder Structure (Modular)
+$folders = @(
+    "CB.POS.Core/Entities",
+    "CB.POS.Core/Interfaces/Hardware",
+    "CB.POS.Core/Interfaces/Services",
+    "CB.POS.Core/Interfaces/Repositories",
+    "CB.POS.Core/Features/Sales",
+    "CB.POS.Core/Features/Inventory",
+    
+    "CB.POS.Infrastructure/Data",
+    "CB.POS.Infrastructure/Hardware/Printers",
+    "CB.POS.Infrastructure/Hardware/Scanners",
+    "CB.POS.Infrastructure/Services",
+    
+    "CB.POS.UI/Services",
+    "CB.POS.UI/ViewModels",
+    "CB.POS.UI/Views/Sales",
+    "CB.POS.UI/Views/Admin",
+    "CB.POS.UI/Strings/en-US",
+    "CB.POS.UI/Strings/si-LK",
+    "CB.POS.UI/Strings/ta-LK"
+)
 
-# Presentation (WinUI 3)
-& $dotnet new winui -n CB_POS.Presentation -o src/CB_POS.Presentation
-& $dotnet add src/CB_POS.Presentation/CB_POS.Presentation.csproj reference src/CB_POS.Application/CB_POS.Application.csproj
-& $dotnet add src/CB_POS.Presentation/CB_POS.Presentation.csproj reference src/CB_POS.Infrastructure/CB_POS.Infrastructure.csproj
+foreach ($folder in $folders) {
+    New-Item -ItemType Directory -Path $folder -Force | Out-Null
+}
 
-# 4. Add to Solution
-Write-Host "Adding projects to solution..."
-& $dotnet sln CB-POS.sln add src/CB_POS.Domain/CB_POS.Domain.csproj
-& $dotnet sln CB-POS.sln add src/CB_POS.Application/CB_POS.Application.csproj
-& $dotnet sln CB-POS.sln add src/CB_POS.Infrastructure/CB_POS.Infrastructure.csproj
-& $dotnet sln CB-POS.sln add src/CB_POS.Presentation/CB_POS.Presentation.csproj
+# 6. Install Critical NuGets (The "Industrial" Stack)
+Write-Host "📦 Installing Industrial Grade Packages..." -ForegroundColor Yellow
 
-Write-Host "Setup Complete!"
+# Core: MVVM Toolkit (Standard for WinUI)
+dotnet add "CB.POS.Core/CB.POS.Core.csproj" package CommunityToolkit.Mvvm
+
+# Infrastructure: EF Core SQLite, Serilog (Logging), ESCPOS (Printing)
+dotnet add "CB.POS.Infrastructure/CB.POS.Infrastructure.csproj" package Microsoft.EntityFrameworkCore.Sqlite
+dotnet add "CB.POS.Infrastructure/CB.POS.Infrastructure.csproj" package Microsoft.EntityFrameworkCore.Tools
+dotnet add "CB.POS.Infrastructure/CB.POS.Infrastructure.csproj" package Serilog.Extensions.Logging.File
+dotnet add "CB.POS.Infrastructure/CB.POS.Infrastructure.csproj" package ESC-POS-NET
+
+# CB POS Solution Scaffolding Script
+# Stack: .NET 9, WinUI 3, SQLite, Serilog, Clean Architecture
+
+Write-Host "🚀 Initializing CB POS (Industrial Grade)..." -ForegroundColor Cyan
+
+# 1. Create Solution
+dotnet new sln -n "CB.POS"
+
+# 2. Create Projects (Clean Architecture)
+# Core: Entities, Interfaces, DTOs (No dependencies on UI or DB)
+dotnet new classlib -n "CB.POS.Core" -f net9.0
+# Infrastructure: Database, Printer implementations, External APIs
+dotnet new classlib -n "CB.POS.Infrastructure" -f net9.0
+# UI: The WinUI 3 Application
+dotnet new winui -n "CB.POS.UI" -f net9.0
+
+# 3. Define Project References
+# UI depends on Core and Infrastructure
+dotnet add "CB.POS.UI/CB.POS.UI.csproj" reference "CB.POS.Core/CB.POS.Core.csproj"
+dotnet add "CB.POS.UI/CB.POS.UI.csproj" reference "CB.POS.Infrastructure/CB.POS.Infrastructure.csproj"
+# Infrastructure depends on Core
+dotnet add "CB.POS.Infrastructure/CB.POS.Infrastructure.csproj" reference "CB.POS.Core/CB.POS.Core.csproj"
+
+# 4. Add Solution Folders & Link Projects
+dotnet sln "CB.POS.sln" add "CB.POS.Core/CB.POS.Core.csproj" --solution-folder "1. Core"
+dotnet sln "CB.POS.sln" add "CB.POS.Infrastructure/CB.POS.Infrastructure.csproj" --solution-folder "2. Infrastructure"
+dotnet sln "CB.POS.sln" add "CB.POS.UI/CB.POS.UI.csproj" --solution-folder "3. Presentation"
+
+# 5. Create Industrial Folder Structure (Modular)
+$folders = @(
+    "CB.POS.Core/Entities",
+    "CB.POS.Core/Interfaces/Hardware",
+    "CB.POS.Core/Interfaces/Services",
+    "CB.POS.Core/Interfaces/Repositories",
+    "CB.POS.Core/Features/Sales",
+    "CB.POS.Core/Features/Inventory",
+    
+    "CB.POS.Infrastructure/Data",
+    "CB.POS.Infrastructure/Hardware/Printers",
+    "CB.POS.Infrastructure/Hardware/Scanners",
+    "CB.POS.Infrastructure/Services",
+    
+    "CB.POS.UI/Services",
+    "CB.POS.UI/ViewModels",
+    "CB.POS.UI/Views/Sales",
+    "CB.POS.UI/Views/Admin",
+    "CB.POS.UI/Strings/en-US",
+    "CB.POS.UI/Strings/si-LK",
+    "CB.POS.UI/Strings/ta-LK"
+)
+
+foreach ($folder in $folders) {
+    New-Item -ItemType Directory -Path $folder -Force | Out-Null
+}
+
+# 6. Install Critical NuGets (The "Industrial" Stack)
+Write-Host "📦 Installing Industrial Grade Packages..." -ForegroundColor Yellow
+
+# Core: MVVM Toolkit (Standard for WinUI)
+dotnet add "CB.POS.Core/CB.POS.Core.csproj" package CommunityToolkit.Mvvm
+
+# Infrastructure: EF Core SQLite, Serilog (Logging), ESCPOS (Printing)
+dotnet add "CB.POS.Infrastructure/CB.POS.Infrastructure.csproj" package Microsoft.EntityFrameworkCore.Sqlite
+dotnet add "CB.POS.Infrastructure/CB.POS.Infrastructure.csproj" package Microsoft.EntityFrameworkCore.Tools
+dotnet add "CB.POS.Infrastructure/CB.POS.Infrastructure.csproj" package Serilog.Extensions.Logging.File
+dotnet add "CB.POS.Infrastructure/CB.POS.Infrastructure.csproj" package ESC-POS-NET
+
+# UI: Dependency Injection, Behaviors (for Keyboard Hooks)
+dotnet add "CB.POS.UI/CB.POS.UI.csproj" package Microsoft.Extensions.Hosting
+dotnet add "CB.POS.UI/CB.POS.UI.csproj" package Microsoft.Extensions.DependencyInjection
+dotnet add "CB.POS.UI/CB.POS.UI.csproj" package Microsoft.Xaml.Behaviors.WinUI.Managed
+
+# 7. Create a Dummy "ReadMe" for AI Context
+$readmeContent = @"
+# CB POS - Architecture Overview
+- **Core:** Contains Domain Entities (Product, Sale) and Interfaces (IPrinterService). Pure C#.
+- **Infrastructure:** Contains EF Core DbContext, Hardware Implementations (EscPosPrinter).
+- **UI:** WinUI 3. Uses Dependency Injection via App.xaml.cs.
+- **Localization:** Strings located in Strings/si-LK, ta-LK, en-US.
+"@
+Set-Content -Path "Architecture.md" -Value $readmeContent
+
+Write-Host "✅ CB POS Scaffolding Complete! Open CB.POS.sln in Visual Studio." -ForegroundColor Green

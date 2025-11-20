@@ -26,3 +26,11 @@
 - Use Dependency Injection for EVERYTHING.
 - Leave "Hooks" for AI features (e.g., `IRecommendationEngine` interfaces) even if implementing later.
 
+## 5. Interaction Design: "Keyboard-First" & "Focus-Aggressive"
+- **Primary Rule:** Every single action must be executable via keyboard.
+- **The "Focus Trap":** The cursor must aggressively return to the "Barcode Input" field automatically after every action (adding an item, closing a popup, voiding a line). The cashier should never have to click the text box to scan.
+- **Visual Cues:** All buttons must visually display their Hotkey (e.g., a button labeled "PAY" must show "[F5]" in the corner).
+- **Navigation:** Do not rely on "Tab" navigation (too slow). Use Global Hotkeys.
+- **Touch vs. Keyboard:**
+  - Touch: Large hit targets (min 48x48px) for non-cashier interactions.
+  - Keyboard: Global accelerators for cashier speed.

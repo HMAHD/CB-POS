@@ -1,16 +1,286 @@
+<?xml version="1.0" encoding="utf-8"?>
 <Page
     x:Class="CB.POS.UI.Views.SalesView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="using:CB.POS.UI.ViewModels"
+    xmlns:dto="using:CB.POS.Core.DTOs"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="{ThemeResource LayerFillColorDefaultBrush}">
 
-    <Grid>
-        <TextBlock Text="Sales Screen Placeholder" 
-                   HorizontalAlignment="Center" 
-                   VerticalAlignment="Center" 
-                   Style="{StaticResource TitleTextBlockStyle}"/>
+    <!-- Keyboard Accelerators for F-Keys -->
+    <Page.KeyboardAccelerators>
+        <KeyboardAccelerator Key="F1" Invoked="OnF1_Invoked" />
+        <KeyboardAccelerator Key="F2" Invoked="OnF2_Invoked" />
+        <KeyboardAccelerator Key="F3" Invoked="OnF3_Invoked" />
+        <KeyboardAccelerator Key="F4" Invoked="OnF4_Invoked" />
+        <KeyboardAccelerator Key="F5" Invoked="OnF5_Invoked" />
+    </Page.KeyboardAccelerators>
+
+    <Grid Padding="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="350" />
+        </Grid.ColumnDefinitions>
+
+        <!-- LEFT COLUMN: Cart List -->
+        <Grid Grid.Column="0" Margin="0,0,16,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Barcode Input Header -->
+            <Border Grid.Row="0" 
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="20"
+                    Margin="0,0,0,16">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox x:Name="BarcodeInput"
+                             Text="{x:Bind ViewModel.InputBarcode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             PlaceholderText="Scan Barcode... [F1]"
+                             FontSize="22"
+                             KeyDown="OnBarcodeKeyDown"
+                             VerticalAlignment="Center" />
+
+                    <StackPanel Grid.Column="1" 
+                               Orientation="Horizontal" 
+                               Spacing="8"
+                               Margin="12,0,0,0">
+                        <FontIcon Glyph="&#xE721;" 
+                                 FontSize="24"
+                                 Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                        <TextBlock Text="F1" 
+                                  FontSize="14"
+                                  VerticalAlignment="Center"
+                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Cart Items ListView -->
+            <Border Grid.Row="1"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                <ListView ItemsSource="{x:Bind ViewModel.CartItems, Mode=OneWay}"
+                          SelectedItem="{x:Bind ViewModel.SelectedCartItem, Mode=TwoWay}"
+                          SelectionMode="Single">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="dto:CartItemDto">
+                            <Grid Padding="16,12" ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Product Name (Left) -->
+                                <TextBlock Grid.Column="0"
+                                          Text="{x:Bind ProductName}"
+                                          FontSize="20"
+                                          FontWeight="Bold"
+                                          VerticalAlignment="Center"
+                                          TextWrapping="NoWrap"
+                                          TextTrimming="CharacterEllipsis" />
+
+                                <!-- Quantity x Price = Total (Right) -->
+                                <StackPanel Grid.Column="1" 
+                                           Orientation="Horizontal" 
+                                           Spacing="8"
+                                           VerticalAlignment="Center">
+                                    <TextBlock FontSize="18" 
+                                              Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                        <Run Text="{x:Bind Quantity, Mode=OneWay}" />
+                                        <Run Text=" x " />
+                                        <Run Text="{x:Bind UnitPrice, Mode=OneWay}" />
+                                        <Run Text=" = " />
+                                    </TextBlock>
+                                    <TextBlock Text="{x:Bind LineTotal, Mode=OneWay}"
+                                              FontSize="20"
+                                              FontWeight="SemiBold"
+                                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Border>
+
+            <!-- Error Message Area -->
+            <Border Grid.Row="2"
+                    Margin="0,16,0,0"
+                    Padding="16,12"
+                    Background="{ThemeResource SystemFillColorCriticalBackgroundBrush}"
+                    BorderBrush="{ThemeResource SystemFillColorCriticalBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Visibility="{x:Bind ViewModel.ErrorMessage, Mode=OneWay, Converter={StaticResource EmptyStringToCollapsedConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <FontIcon Glyph="&#xE783;" 
+                             FontSize="20"
+                             Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                             Margin="0,0,12,0" />
+                    <TextBlock Grid.Column="1"
+                              Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                              FontSize="16"
+                              Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                              TextWrapping="Wrap"
+                              VerticalAlignment="Center" />
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- RIGHT COLUMN: Totals & Actions Sidebar -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Total Display (Digital) -->
+            <Border Grid.Row="0"
+                    Background="{ThemeResource AccentFillColorDefaultBrush}"
+                    CornerRadius="8"
+                    Padding="24"
+                    Margin="0,0,0,16">
+                <StackPanel Spacing="8">
+                    <TextBlock x:Uid="Sales_Total"
+                              Text="TOTAL"
+                              FontSize="16"
+                              FontWeight="SemiBold"
+                              HorizontalAlignment="Right"
+                              Foreground="White"
+                              Opacity="0.8" />
+                    <TextBlock Text="{x:Bind ViewModel.TotalDisplay, Mode=OneWay}"
+                              FontSize="48"
+                              FontWeight="Bold"
+                              HorizontalAlignment="Right"
+                              Foreground="White"
+                              FontFamily="Consolas" />
+                </StackPanel>
+            </Border>
+
+            <!-- Breakdown Items -->
+            <Border Grid.Row="1"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="20"
+                    Margin="0,0,0,16">
+                <StackPanel Spacing="12">
+                    <Grid>
+                        <TextBlock x:Uid="Sales_ItemCount"
+                                  Text="Item Count"
+                                  FontSize="16"
+                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock Text="{x:Bind ViewModel.ItemCount, Mode=OneWay}"
+                                  FontSize="16"
+                                  FontWeight="SemiBold"
+                                  HorizontalAlignment="Right" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Action Buttons -->
+            <Grid Grid.Row="3" RowSpacing="12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- PAY Button (F5) - Green -->
+                <Button Grid.Row="0"
+                        x:Uid="Sales_PayButton"
+                        Content="[F5] PAY"
+                        Command="{x:Bind ViewModel.PayCommand}"
+                        HorizontalAlignment="Stretch"
+                        Height="72"
+                        FontSize="22"
+                        FontWeight="Bold"
+                        CornerRadius="8">
+                    <Button.Background>
+                        <SolidColorBrush Color="#10B981" />
+                    </Button.Background>
+                    <Button.Foreground>
+                        <SolidColorBrush Color="White" />
+                    </Button.Foreground>
+                </Button>
+
+                <!-- VOID Button (F4) - Red -->
+                <Button Grid.Row="1"
+                        x:Uid="Sales_VoidButton"
+                        Content="[F4] VOID"
+                        Command="{x:Bind ViewModel.VoidItemCommand}"
+                        HorizontalAlignment="Stretch"
+                        Height="64"
+                        FontSize="18"
+                        FontWeight="SemiBold"
+                        CornerRadius="8">
+                    <Button.Background>
+                        <SolidColorBrush Color="#EF4444" />
+                    </Button.Background>
+                    <Button.Foreground>
+                        <SolidColorBrush Color="White" />
+                    </Button.Foreground>
+                </Button>
+
+                <!-- SEARCH Button (F2) - Blue -->
+                <Button Grid.Row="2"
+                        x:Uid="Sales_SearchButton"
+                        Content="[F2] SEARCH"
+                        Command="{x:Bind ViewModel.SearchProductCommand}"
+                        HorizontalAlignment="Stretch"
+                        Height="64"
+                        FontSize="18"
+                        FontWeight="SemiBold"
+                        CornerRadius="8">
+                    <Button.Background>
+                        <SolidColorBrush Color="#3B82F6" />
+                    </Button.Background>
+                    <Button.Foreground>
+                        <SolidColorBrush Color="White" />
+                    </Button.Foreground>
+                </Button>
+
+                <!-- QTY Button (F3) - Yellow -->
+                <Button Grid.Row="3"
+                        x:Uid="Sales_QtyButton"
+                        Content="[F3] QTY"
+                        Command="{x:Bind ViewModel.ChangeQuantityCommand}"
+                        HorizontalAlignment="Stretch"
+                        Height="64"
+                        FontSize="18"
+                        FontWeight="SemiBold"
+                        CornerRadius="8">
+                    <Button.Background>
+                        <SolidColorBrush Color="#F59E0B" />
+                    </Button.Background>
+                    <Button.Foreground>
+                        <SolidColorBrush Color="White" />
+                    </Button.Foreground>
+                </Button>
+            </Grid>
+        </Grid>
     </Grid>
 </Page>

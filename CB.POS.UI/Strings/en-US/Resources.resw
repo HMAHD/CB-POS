@@ -73,4 +73,25 @@
   <data name="System_Ready.Text" xml:space="preserve">
     <value>System Ready</value>
   </data>
+  <data name="Sales_Total.Text" xml:space="preserve">
+    <value>TOTAL</value>
+  </data>
+  <data name="Sales_ItemCount.Text" xml:space="preserve">
+    <value>Item Count</value>
+  </data>
+  <data name="Sales_PayButton.Content" xml:space="preserve">
+    <value>[F5] PAY</value>
+  </data>
+  <data name="Sales_VoidButton.Content" xml:space="preserve">
+    <value>[F4] VOID</value>
+  </data>
+  <data name="Sales_SearchButton.Content" xml:space="preserve">
+    <value>[F2] SEARCH</value>
+  </data>
+  <data name="Sales_QtyButton.Content" xml:space="preserve">
+    <value>[F3] QTY</value>
+  </data>
+  <data name="Sales_EmptyCart.Text" xml:space="preserve">
+    <value>Cart is empty. Scan items to begin.</value>
+  </data>
 </root>

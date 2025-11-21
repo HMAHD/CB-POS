@@ -43,6 +43,7 @@ public partial class App : Application
                 services.AddSingleton<IFocusService, KeyboardFocusService>();
                 services.AddSingleton<ISessionContext, SessionContext>();
                 services.AddSingleton<INavigationService, NavigationService>();
+                services.AddSingleton<ICartService, CartService>();
 
                 // 4. Views & ViewModels
                 services.AddTransient<MainWindow>();
@@ -50,6 +51,7 @@ public partial class App : Application
                 services.AddTransient<LoginView>();
                 services.AddTransient<ShellViewModel>();
                 services.AddTransient<ShellView>();
+                services.AddTransient<SalesViewModel>();
                 services.AddTransient<SalesView>();
                 
                 // Future: Register other ViewModels and Views here

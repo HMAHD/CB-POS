@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CB.POS.UI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e52f7b7792d49f11dede1334facac0f77081500c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6f1ff7b73d65c6cee5e99e70fed141660ef577bf")]
 [assembly: System.Reflection.AssemblyProductAttribute("CB.POS.UI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CB.POS.UI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -50,7 +50,7 @@
             </NavigationView.MenuItems>
             
             <NavigationView.FooterMenuItems>
-                <NavigationViewItem Icon="Settings" Content="Settings" Tag="SettingsView"/>
+                <NavigationViewItem Icon="Setting" Content="Settings" Tag="SettingsView"/>
             </NavigationView.FooterMenuItems>
 
             <Frame x:Name="ContentFrame"/>

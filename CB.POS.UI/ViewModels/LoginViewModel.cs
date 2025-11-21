@@ -13,6 +13,8 @@ public partial class LoginViewModel : ObservableObject
 {
     private readonly PosDbContext _context;
     private readonly IFocusService _focusService;
+    private readonly ISessionContext _sessionContext;
+    private readonly INavigationService _navigationService;
 
     [ObservableProperty]
     private string _pinInput = "";
@@ -25,10 +27,12 @@ public partial class LoginViewModel : ObservableObject
     /// </summary>
     public string MaskedPin => new string('●', PinInput.Length);
 
-    public LoginViewModel(PosDbContext context, IFocusService focusService)
+    public LoginViewModel(PosDbContext context, IFocusService focusService, ISessionContext sessionContext, INavigationService navigationService)
     {
         _context = context;
         _focusService = focusService;
+        _sessionContext = sessionContext;
+        _navigationService = navigationService;
     }
 
     [RelayCommand]
@@ -75,17 +79,11 @@ public partial class LoginViewModel : ObservableObject
             PinInput = ""; // Clear for security
             OnPropertyChanged(nameof(MaskedPin));
             
-            // Navigate to Shell (Placeholder)
-            var dialog = new ContentDialog
-            {
-                Title = "Login Successful",
-                Content = $"Welcome, {employee.Name}!",
-                CloseButtonText = "OK",
-                XamlRoot = App.MainWindow.Content.XamlRoot
-            };
-            await dialog.ShowAsync();
+            // Set Authentication
+            _sessionContext.SetAuthentication(employee);
             
-            // TODO: Actual Navigation to ShellView
+            // Navigate to Shell
+            _navigationService.NavigateTo<ShellViewModel>();
         }
         else
         {

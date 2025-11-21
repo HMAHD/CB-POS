@@ -39,12 +39,17 @@ public partial class App : Application
                 services.AddScoped<DbInitializer>();
 
                 // 3. Services
+                // 3. Services
                 services.AddSingleton<IFocusService, KeyboardFocusService>();
+                services.AddSingleton<ISessionContext, SessionContext>();
+                services.AddSingleton<INavigationService, NavigationService>();
 
                 // 4. Views & ViewModels
                 services.AddTransient<MainWindow>();
                 services.AddTransient<LoginViewModel>();
                 services.AddTransient<LoginView>();
+                services.AddTransient<ShellViewModel>();
+                services.AddTransient<ShellView>();
                 
                 // Future: Register other ViewModels and Views here
                 // services.AddTransient<MainViewModel>();

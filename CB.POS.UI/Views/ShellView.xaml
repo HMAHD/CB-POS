@@ -6,12 +6,54 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewmodels="using:CB.POS.UI.ViewModels"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    Loaded="Page_Loaded">
 
     <Grid>
-        <TextBlock Text="{x:Bind ViewModel.WelcomeMessage, Mode=OneWay}" 
-                   HorizontalAlignment="Center" 
-                   VerticalAlignment="Center" 
-                   Style="{StaticResource TitleTextBlockStyle}"/>
+        <NavigationView x:Name="NavView"
+                        PaneDisplayMode="LeftCompact"
+                        IsBackButtonVisible="Collapsed"
+                        SelectionChanged="NavView_SelectionChanged"
+                        Loaded="NavView_Loaded">
+            <NavigationView.PaneHeader>
+                <TextBlock Text="CB POS" 
+                           Style="{StaticResource SubtitleTextBlockStyle}" 
+                           Margin="12,0,0,0"/>
+            </NavigationView.PaneHeader>
+            
+            <NavigationView.HeaderTemplate>
+                <DataTemplate>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="CB POS" Style="{StaticResource TitleTextBlockStyle}" VerticalAlignment="Center"/>
+                        
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Text="{Binding CurrentTime}" Style="{StaticResource HeaderTextBlockStyle}" VerticalAlignment="Center"/>
+                            <Border Background="{ThemeResource SystemControlBackgroundAccentBrush}" CornerRadius="4" Padding="8,4">
+                                <TextBlock Text="{Binding CurrentUserName}" Foreground="White" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                            </Border>
+                            <Button Command="{Binding LogoutCommand}" ToolTipService.ToolTip="Logout (F12)">
+                                <SymbolIcon Symbol="Switch"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </NavigationView.HeaderTemplate>
+
+            <NavigationView.MenuItems>
+                <NavigationViewItem Icon="Shop" Content="Sales" Tag="SalesView" ToolTipService.ToolTip="Sales (F1)"/>
+                <NavigationViewItem Icon="Library" Content="Inventory" Tag="InventoryView"/>
+                <NavigationViewItem Icon="Paste" Content="Reports" Tag="ReportsView"/>
+            </NavigationView.MenuItems>
+            
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem Icon="Settings" Content="Settings" Tag="SettingsView"/>
+            </NavigationView.FooterMenuItems>
+
+            <Frame x:Name="ContentFrame"/>
+        </NavigationView>
     </Grid>
 </Page>

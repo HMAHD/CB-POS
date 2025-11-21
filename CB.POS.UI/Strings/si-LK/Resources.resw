@@ -61,7 +61,7 @@
   <data name="Login_Welcome.Text" xml:space="preserve">
     <value>CB POS වෙත සාදරයෙන් පිළිගනිමු</value>
   </data>
-  <data name="Login_EnterPin.Header" xml:space="preserve">
+  <data name="Login_EnterPin.Text" xml:space="preserve">
     <value>ඔබේ PIN අංකය ඇතුළත් කරන්න</value>
   </data>
   <data name="Login_ErrorInvalid.Text" xml:space="preserve">

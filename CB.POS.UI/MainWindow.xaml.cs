@@ -9,7 +9,7 @@ public sealed partial class MainWindow : Window
         this.InitializeComponent();
         Title = "CB POS";
 
-        var navService = App.Current.Services.GetService(typeof(Services.INavigationService)) as Services.INavigationService;
+        var navService = ((App)App.Current).Host.Services.GetService(typeof(Services.INavigationService)) as Services.INavigationService;
         navService?.Initialize(RootFrame);
         
         // Navigate to Login View

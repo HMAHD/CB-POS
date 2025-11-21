@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 using System.Linq;
 using Microsoft.UI.Xaml.Controls;
+using CB.POS.UI.Services;
+using Serilog;
 
 namespace CB.POS.UI.ViewModels;
 
@@ -60,39 +62,51 @@ public partial class LoginViewModel : ObservableObject
     [RelayCommand]
     private async Task LoginAsync()
     {
-        if (string.IsNullOrWhiteSpace(PinInput))
+        try
         {
-            ErrorMessage = "Please enter a PIN.";
-            return;
-        }
+            Log.Information("LoginAsync called. PIN: {PinLength}", PinInput?.Length ?? 0);
+            if (string.IsNullOrWhiteSpace(PinInput))
+            {
+                Log.Warning("Login failed: PIN is empty.");
+                ErrorMessage = "Please enter a PIN.";
+                return;
+            }
 
-        // In a real app, hash the input before comparing.
-        // For MVP, we are comparing against the "PinHash" directly as per the seed data "1234".
-        // Ideally: var hash = HashService.Hash(PinInput);
-        
-        var employee = await _context.Employees
-            .FirstOrDefaultAsync(e => e.PinHash == PinInput && e.IsActive);
+            Log.Information("Querying database for employee...");
+            var employee = await _context.Employees
+                .FirstOrDefaultAsync(e => e.PinHash == PinInput && e.IsActive);
 
-        if (employee != null)
-        {
-            ErrorMessage = "";
-            PinInput = ""; // Clear for security
-            OnPropertyChanged(nameof(MaskedPin));
-            
-            // Set Authentication
-            _sessionContext.SetAuthentication(employee);
-            
-            // Navigate to Shell
-            _navigationService.NavigateTo<ShellViewModel>();
+            if (employee != null)
+            {
+                Log.Information("Employee found: {EmployeeName}. Authenticating...", employee.Name);
+                ErrorMessage = "";
+                PinInput = ""; // Clear for security
+                OnPropertyChanged(nameof(MaskedPin));
+                
+                // Set Authentication
+                _sessionContext.SetAuthentication(employee);
+                Log.Information("Authentication set.");
+                
+                // Navigate to Shell
+                Log.Information("Navigating to ShellViewModel...");
+                _navigationService.NavigateTo<ShellViewModel>();
+                Log.Information("Navigation call complete.");
+            }
+            else
+            {
+                Log.Warning("Login failed: Invalid PIN.");
+                ErrorMessage = "Invalid PIN. Please try again.";
+                PinInput = "";
+                OnPropertyChanged(nameof(MaskedPin));
+                
+                // Return focus to PIN input
+                _focusService.ResetFocusToInput();
+            }
         }
-        else
+        catch (System.Exception ex)
         {
-            ErrorMessage = "Invalid PIN. Please try again.";
-            PinInput = "";
-            OnPropertyChanged(nameof(MaskedPin));
-            
-            // Return focus to PIN input
-            _focusService.ResetFocusToInput();
+            Log.Error(ex, "Error during login execution.");
+            ErrorMessage = "An error occurred. Please check logs.";
         }
     }
 }

@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "CB.POS.UI (Unpackaged)": {
+      "commandName": "Project",
+      "commandLineArgs": "",
+      "workingDirectory": "$(ProjectDir)",
+      "nativeDebugging": false
+    }
+  }
+}

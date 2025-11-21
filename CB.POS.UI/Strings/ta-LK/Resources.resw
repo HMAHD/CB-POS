@@ -61,7 +61,7 @@
   <data name="Login_Welcome.Text" xml:space="preserve">
     <value>CB POS-ற்கு வரவேற்கிறோம்</value>
   </data>
-  <data name="Login_EnterPin.Header" xml:space="preserve">
+  <data name="Login_EnterPin.Text" xml:space="preserve">
     <value>உங்கள் PIN-ஐ உள்ளிடவும்</value>
   </data>
   <data name="Login_ErrorInvalid.Text" xml:space="preserve">

@@ -2,7 +2,8 @@
     x:Class="CB.POS.UI.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:CB.POS.UI">
+    xmlns:local="using:CB.POS.UI"
+    xmlns:converters="using:CB.POS.UI.Converters">
 
     <Application.Resources>
         <ResourceDictionary>
@@ -11,6 +12,8 @@
                 <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
             <!-- Other app resources here -->
+            <converters:EmptyStringToVisibilityConverter x:Key="EmptyStringToVisibilityConverter" />
+            <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
             <!-- Global Font Style -->
             <Style TargetType="TextBlock">

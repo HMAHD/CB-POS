@@ -1,0 +1,3 @@
+Language=EN-US
+Language=SI-LK
+Language=TA-LK

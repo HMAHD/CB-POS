@@ -50,6 +50,7 @@ public partial class App : Application
                 services.AddTransient<LoginView>();
                 services.AddTransient<ShellViewModel>();
                 services.AddTransient<ShellView>();
+                services.AddTransient<SalesView>();
                 
                 // Future: Register other ViewModels and Views here
                 // services.AddTransient<MainViewModel>();

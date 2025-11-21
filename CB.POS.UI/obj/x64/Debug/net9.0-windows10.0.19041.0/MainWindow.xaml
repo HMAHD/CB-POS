@@ -7,7 +7,7 @@
     mc:Ignorable="d">
 
     <Grid>
-        <Frame x:ConnectionId='2' x:Name="AppFrame"/>
+        <Frame x:ConnectionId='2' x:Name="RootFrame"/>
     </Grid>
 </Window>
 

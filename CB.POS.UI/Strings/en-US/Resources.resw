@@ -61,7 +61,7 @@
   <data name="Login_Welcome.Text" xml:space="preserve">
     <value>Welcome to CB POS</value>
   </data>
-  <data name="Login_EnterPin.Header" xml:space="preserve">
+  <data name="Login_EnterPin.Text" xml:space="preserve">
     <value>Enter Your PIN</value>
   </data>
   <data name="Login_ErrorInvalid.Text" xml:space="preserve">

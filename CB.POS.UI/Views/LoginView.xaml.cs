@@ -7,7 +7,7 @@ namespace CB.POS.UI.Views;
 
 public sealed partial class LoginView : Page
 {
-    public LoginViewModel ViewModel { get; }
+    public LoginViewModel? ViewModel { get; }
 
     public LoginView()
     {
@@ -24,7 +24,7 @@ public sealed partial class LoginView : Page
     {
         // Extract the digit from the key
         var key = args.KeyboardAccelerator.Key;
-        string digit = key switch
+        string? digit = key switch
         {
             Windows.System.VirtualKey.Number0 or Windows.System.VirtualKey.NumberPad0 => "0",
             Windows.System.VirtualKey.Number1 or Windows.System.VirtualKey.NumberPad1 => "1",
@@ -41,7 +41,7 @@ public sealed partial class LoginView : Page
 
         if (digit != null)
         {
-            ViewModel.AppendNumberCommand.Execute(digit);
+            ViewModel?.AppendNumberCommand.Execute(digit);
             args.Handled = true;
         }
     }
@@ -51,7 +51,7 @@ public sealed partial class LoginView : Page
     /// </summary>
     private void OnBackspace_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
-        ViewModel.BackspaceCommand.Execute(null);
+        ViewModel?.BackspaceCommand.Execute(null);
         args.Handled = true;
     }
 
@@ -60,7 +60,7 @@ public sealed partial class LoginView : Page
     /// </summary>
     private void OnEnter_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
-        ViewModel.LoginCommand.Execute(null);
+        ViewModel?.LoginCommand.Execute(null);
         args.Handled = true;
     }
 }

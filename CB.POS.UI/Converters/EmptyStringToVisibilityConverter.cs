@@ -8,7 +8,7 @@ namespace CB.POS.UI.Converters
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            string input = value as string;
+            string? input = value as string;
             return string.IsNullOrWhiteSpace(input) ? Visibility.Collapsed : Visibility.Visible;
         }
 

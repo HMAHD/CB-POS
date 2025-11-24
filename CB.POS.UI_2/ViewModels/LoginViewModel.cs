@@ -19,15 +19,15 @@ public partial class LoginViewModel : ObservableObject
     private readonly INavigationService _navigationService;
 
     [ObservableProperty]
-    private string _pinInput = "";
+    public partial string PinInput { get; set; }
 
     [ObservableProperty]
-    private string _errorMessage = "";
+    public partial string ErrorMessage { get; set; }
 
     /// <summary>
     /// Masked PIN display (shows dots instead of actual digits).
     /// </summary>
-    public string MaskedPin => new string('●', PinInput.Length);
+    public string MaskedPin => new string('●', PinInput?.Length ?? 0);
 
     public LoginViewModel(PosDbContext context, IFocusService focusService, ISessionContext sessionContext, INavigationService navigationService)
     {
@@ -35,6 +35,9 @@ public partial class LoginViewModel : ObservableObject
         _focusService = focusService;
         _sessionContext = sessionContext;
         _navigationService = navigationService;
+        
+        PinInput = "";
+        ErrorMessage = "";
     }
 
     [RelayCommand]

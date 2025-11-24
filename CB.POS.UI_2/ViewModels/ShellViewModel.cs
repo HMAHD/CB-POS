@@ -16,15 +16,18 @@ public partial class ShellViewModel : ObservableObject
     private readonly DispatcherTimer _timer;
 
     [ObservableProperty]
-    private string _currentUserName = "Guest";
+    public partial string CurrentUserName { get; set; }
 
     [ObservableProperty]
-    private string _currentTime = "";
+    public partial string CurrentTime { get; set; }
 
     public ShellViewModel(ISessionContext sessionContext, INavigationService navigationService)
     {
         _sessionContext = sessionContext;
         _navigationService = navigationService;
+        
+        CurrentUserName = "Guest";
+        CurrentTime = "";
 
         if (_sessionContext.CurrentEmployee != null)
         {

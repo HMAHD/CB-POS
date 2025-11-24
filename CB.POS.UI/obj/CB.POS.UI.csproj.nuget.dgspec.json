@@ -74,6 +74,11 @@
           },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.308/PortableRuntimeIdentifierGraph.json"
         }
+      },
+      "runtimes": {
+        "win-x64": {
+          "#import": []
+        }
       }
     },
     "C:\\Users\\ACER\\Documents\\CB-POS\\CB.POS.Infrastructure\\CB.POS.Infrastructure.csproj": {
@@ -164,6 +169,11 @@
           },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.308/PortableRuntimeIdentifierGraph.json"
         }
+      },
+      "runtimes": {
+        "win-x64": {
+          "#import": []
+        }
       }
     },
     "C:\\Users\\ACER\\Documents\\CB-POS\\CB.POS.UI\\CB.POS.UI.csproj": {
@@ -220,9 +230,9 @@
         "net9.0-windows10.0.19041": {
           "targetAlias": "net9.0-windows10.0.19041.0",
           "dependencies": {
-            "CommunityToolkit.Mvvm": {
+            "Microsoft.EntityFrameworkCore.Sqlite": {
               "target": "Package",
-              "version": "[8.4.0, )"
+              "version": "[9.0.0, )"
             },
             "Microsoft.Extensions.DependencyInjection": {
               "target": "Package",
@@ -240,13 +250,21 @@
               "target": "Package",
               "version": "[2.0.9, )"
             },
-            "Serilog.Extensions.Logging.File": {
+            "Serilog": {
               "target": "Package",
-              "version": "[3.0.0, )"
+              "version": "[4.2.0, )"
+            },
+            "Serilog.Extensions.Hosting": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Serilog.Extensions.Logging": {
+              "target": "Package",
+              "version": "[9.0.0, )"
             },
             "Serilog.Sinks.File": {
               "target": "Package",
-              "version": "[7.0.0, )"
+              "version": "[6.0.0, )"
             }
           },
           "imports": [
@@ -262,19 +280,7 @@
           "warn": true,
           "downloadDependencies": [
             {
-              "name": "Microsoft.AspNetCore.App.Runtime.win-arm64",
-              "version": "[9.0.11, 9.0.11]"
-            },
-            {
               "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
-              "version": "[9.0.11, 9.0.11]"
-            },
-            {
-              "name": "Microsoft.AspNetCore.App.Runtime.win-x86",
-              "version": "[9.0.11, 9.0.11]"
-            },
-            {
-              "name": "Microsoft.NETCore.App.Runtime.win-arm64",
               "version": "[9.0.11, 9.0.11]"
             },
             {
@@ -282,23 +288,11 @@
               "version": "[9.0.11, 9.0.11]"
             },
             {
-              "name": "Microsoft.NETCore.App.Runtime.win-x86",
-              "version": "[9.0.11, 9.0.11]"
-            },
-            {
               "name": "Microsoft.Windows.SDK.NET.Ref",
               "version": "[10.0.19041.57, 10.0.19041.57]"
             },
             {
-              "name": "Microsoft.WindowsDesktop.App.Runtime.win-arm64",
-              "version": "[9.0.11, 9.0.11]"
-            },
-            {
               "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
-              "version": "[9.0.11, 9.0.11]"
-            },
-            {
-              "name": "Microsoft.WindowsDesktop.App.Runtime.win-x86",
               "version": "[9.0.11, 9.0.11]"
             }
           ],
@@ -314,13 +308,7 @@
         }
       },
       "runtimes": {
-        "win-arm64": {
-          "#import": []
-        },
         "win-x64": {
-          "#import": []
-        },
-        "win-x86": {
           "#import": []
         }
       }

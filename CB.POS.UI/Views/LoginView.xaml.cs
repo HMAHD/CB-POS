@@ -1,27 +1,52 @@
 using CB.POS.UI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Navigation;
 using Windows.System;
 
 namespace CB.POS.UI.Views;
 
 public sealed partial class LoginView : Page
 {
-    public LoginViewModel? ViewModel { get; }
+    public LoginViewModel ViewModel { get; }
 
     public LoginView()
     {
         this.InitializeComponent();
-        
-        // Resolve ViewModel from the App's Host
-        ViewModel = ((App)App.Current).Host.Services.GetRequiredService<LoginViewModel>();
+        ViewModel = ((App)Application.Current).Host.Services.GetRequiredService<LoginViewModel>();
+    }
+
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        // Focus the hidden input box to capture keyboard input immediately
+        PinInputBox.Focus(FocusState.Programmatic);
     }
 
     private void PinInputBox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        // Handle physical keyboard input for PIN
+        // Handle Enter key
+        if (e.Key == VirtualKey.Enter)
+        {
+            if (ViewModel.LoginCommand.CanExecute(null))
+            {
+                ViewModel.LoginCommand.Execute(null);
+            }
+            e.Handled = true;
+            return;
+        }
+        
+        // Handle Backspace
+        if (e.Key == VirtualKey.Back)
+        {
+             ViewModel.BackspaceCommand.Execute(null);
+             e.Handled = true;
+             return;
+        }
+
+        // Handle numeric keys
         string? digit = e.Key switch
         {
             VirtualKey.Number0 or VirtualKey.NumberPad0 => "0",
@@ -39,17 +64,7 @@ public sealed partial class LoginView : Page
 
         if (digit != null)
         {
-            ViewModel?.AppendNumberCommand.Execute(digit);
-            e.Handled = true;
-        }
-        else if (e.Key == VirtualKey.Back)
-        {
-            ViewModel?.BackspaceCommand.Execute(null);
-            e.Handled = true;
-        }
-        else if (e.Key == VirtualKey.Enter)
-        {
-            ViewModel?.LoginCommand.Execute(null);
+            ViewModel.AppendNumberCommand.Execute(digit);
             e.Handled = true;
         }
     }

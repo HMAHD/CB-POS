@@ -39,6 +39,7 @@ public partial class App : Application
                 services.AddScoped<DbInitializer>();
 
                 // 3. Services
+                // 3. Services
                 services.AddSingleton<IFocusService, KeyboardFocusService>();
                 services.AddSingleton<ISessionContext, SessionContext>();
                 services.AddSingleton<INavigationService, NavigationService>();
@@ -52,6 +53,9 @@ public partial class App : Application
                 services.AddTransient<ShellView>();
                 services.AddTransient<SalesViewModel>();
                 services.AddTransient<SalesView>();
+                
+                // Future: Register other ViewModels and Views here
+                // services.AddTransient<MainViewModel>();
             })
             .Build();
 
@@ -60,13 +64,24 @@ public partial class App : Application
 
     private void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
     {
+        // Log the exception
         Log.Error(e.Exception, "Unhandled Exception");
+
+        // Prevent crash if possible
         e.Handled = true;
+
+        // Try to show a dialog (only if we have a window)
+        if (MainWindow != null && MainWindow.Content is FrameworkElement fe && fe.XamlRoot != null)
+        {
+            // We can't await in this synchronous event handler easily without blocking, 
+            // but for a critical error we might just log and swallow or try to invoke on dispatcher.
+            // For now, we just log and mark handled.
+        }
     }
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
-        var host = this.Host;
+        var host = this.Host; // Access your built host
         using (var scope = host.Services.CreateScope())
         {
             var initializer = scope.ServiceProvider.GetRequiredService<DbInitializer>();
@@ -74,6 +89,7 @@ public partial class App : Application
         }
         await Host.StartAsync();
 
+        // Resolve MainWindow from DI
         MainWindow = Host.Services.GetRequiredService<MainWindow>();
         MainWindow.Activate();
     }

@@ -37,6 +37,10 @@ public partial class SalesViewModel : ObservableObject
     public string TotalDisplay => $"Rs. {_cartService.TotalAmount:N2}";
     public int ItemCount => _cartService.ItemCount;
 
+    public string SubTotal => $"Rs. {(_cartService.TotalAmount / 1.05m):N2}";
+    public string TaxAmount => $"Rs. {(_cartService.TotalAmount - (_cartService.TotalAmount / 1.05m)):N2}";
+    public string GrandTotal => $"Rs. {_cartService.TotalAmount:N2}";
+
     public SalesViewModel(ICartService cartService, PosDbContext context)
     {
         _cartService = cartService;
@@ -51,6 +55,9 @@ public partial class SalesViewModel : ObservableObject
         // Notify UI that computed properties have changed
         OnPropertyChanged(nameof(TotalDisplay));
         OnPropertyChanged(nameof(ItemCount));
+        OnPropertyChanged(nameof(SubTotal));
+        OnPropertyChanged(nameof(TaxAmount));
+        OnPropertyChanged(nameof(GrandTotal));
     }
 
     /// <summary>
@@ -120,10 +127,20 @@ public partial class SalesViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Clear the entire cart
+    /// </summary>
+    [RelayCommand]
+    private void ClearCart()
+    {
+        _cartService.ClearCart();
+        ErrorMessage = "";
+    }
+
+    /// <summary>
     /// Process payment - placeholder for now
     /// </summary>
     [RelayCommand]
-    private async Task PayAsync()
+    private async Task CheckoutAsync()
     {
         if (CartItems.Count == 0)
         {

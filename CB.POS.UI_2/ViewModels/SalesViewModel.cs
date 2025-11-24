@@ -22,13 +22,13 @@ public partial class SalesViewModel : ObservableObject
     private readonly PosDbContext _context;
 
     [ObservableProperty]
-    private string _inputBarcode = "";
+    public partial string InputBarcode { get; set; }
 
     [ObservableProperty]
-    private string _errorMessage = "";
+    public partial string ErrorMessage { get; set; }
 
     [ObservableProperty]
-    private CartItemDto? _selectedCartItem;
+    public partial CartItemDto? SelectedCartItem { get; set; }
 
     // Expose cart service's observable collection directly
     public ObservableCollection<CartItemDto> CartItems => _cartService.CartItems;
@@ -41,6 +41,9 @@ public partial class SalesViewModel : ObservableObject
     {
         _cartService = cartService;
         _context = context;
+        
+        InputBarcode = "";
+        ErrorMessage = "";
 
         // Subscribe to cart updates to refresh UI properties
         _cartService.CartUpdated += OnCartUpdated;

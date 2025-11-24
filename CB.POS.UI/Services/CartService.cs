@@ -1,12 +1,14 @@
 using CB.POS.Core.DTOs;
 using CB.POS.Core.Entities;
 using CB.POS.Core.Interfaces.Services;
-using System;
 using System.Collections.ObjectModel;
-using System.Linq;
 
 namespace CB.POS.UI.Services;
 
+/// <summary>
+/// In-memory cart management service - the "brain" of the POS screen.
+/// Manages the current sale and provides automatic calculation of totals.
+/// </summary>
 public class CartService : ICartService
 {
     private decimal _totalAmount;

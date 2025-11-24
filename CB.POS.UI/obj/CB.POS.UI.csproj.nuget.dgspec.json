@@ -220,6 +220,10 @@
         "net9.0-windows10.0.19041": {
           "targetAlias": "net9.0-windows10.0.19041.0",
           "dependencies": {
+            "CommunityToolkit.Mvvm": {
+              "target": "Package",
+              "version": "[8.4.0, )"
+            },
             "Microsoft.Extensions.DependencyInjection": {
               "target": "Package",
               "version": "[9.0.0, )"
@@ -236,17 +240,13 @@
               "target": "Package",
               "version": "[2.0.9, )"
             },
-            "Serilog": {
+            "Serilog.Extensions.Logging.File": {
               "target": "Package",
-              "version": "[4.1.0, )"
-            },
-            "Serilog.Extensions.Logging": {
-              "target": "Package",
-              "version": "[8.0.0, )"
+              "version": "[3.0.0, )"
             },
             "Serilog.Sinks.File": {
               "target": "Package",
-              "version": "[6.0.0, )"
+              "version": "[7.0.0, )"
             }
           },
           "imports": [
@@ -262,7 +262,19 @@
           "warn": true,
           "downloadDependencies": [
             {
+              "name": "Microsoft.AspNetCore.App.Runtime.win-arm64",
+              "version": "[9.0.11, 9.0.11]"
+            },
+            {
               "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
+              "version": "[9.0.11, 9.0.11]"
+            },
+            {
+              "name": "Microsoft.AspNetCore.App.Runtime.win-x86",
+              "version": "[9.0.11, 9.0.11]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Runtime.win-arm64",
               "version": "[9.0.11, 9.0.11]"
             },
             {
@@ -270,11 +282,23 @@
               "version": "[9.0.11, 9.0.11]"
             },
             {
+              "name": "Microsoft.NETCore.App.Runtime.win-x86",
+              "version": "[9.0.11, 9.0.11]"
+            },
+            {
               "name": "Microsoft.Windows.SDK.NET.Ref",
               "version": "[10.0.19041.57, 10.0.19041.57]"
             },
             {
+              "name": "Microsoft.WindowsDesktop.App.Runtime.win-arm64",
+              "version": "[9.0.11, 9.0.11]"
+            },
+            {
               "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
+              "version": "[9.0.11, 9.0.11]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Runtime.win-x86",
               "version": "[9.0.11, 9.0.11]"
             }
           ],
@@ -290,7 +314,13 @@
         }
       },
       "runtimes": {
+        "win-arm64": {
+          "#import": []
+        },
         "win-x64": {
+          "#import": []
+        },
+        "win-x86": {
           "#import": []
         }
       }

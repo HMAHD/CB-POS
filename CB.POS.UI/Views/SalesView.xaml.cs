@@ -21,11 +21,12 @@ public sealed partial class SalesView : Page
         base.OnNavigatedTo(e);
         
         // Auto-focus barcode input when page loads
-        BarcodeInput.Focus(FocusState.Keyboard);
+        // BarcodeInput.Focus(FocusState.Keyboard);
     }
 
     private async void OnBarcodeKeyDown(object sender, KeyRoutedEventArgs e)
     {
+        /*
         if (e.Key == Windows.System.VirtualKey.Enter)
         {
             e.Handled = true;
@@ -36,36 +37,47 @@ public sealed partial class SalesView : Page
             // Return focus to barcode input
             BarcodeInput.Focus(FocusState.Keyboard);
         }
+        */
     }
 
     // Keyboard Accelerator Handlers
     private void OnF1_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
+        /*
         args.Handled = true;
         BarcodeInput.Focus(FocusState.Keyboard);
+        */
     }
 
     private async void OnF2_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
+        /*
         args.Handled = true;
         await ViewModel.SearchProductCommand.ExecuteAsync(null);
+        */
     }
 
     private async void OnF3_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
+        /*
         args.Handled = true;
         await ViewModel.ChangeQuantityCommand.ExecuteAsync(null);
+        */
     }
 
     private void OnF4_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
+        /*
         args.Handled = true;
         ViewModel.VoidItemCommand.Execute(null);
+        */
     }
 
     private async void OnF5_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
+        /*
         args.Handled = true;
         await ViewModel.PayCommand.ExecuteAsync(null);
+        */
     }
 }

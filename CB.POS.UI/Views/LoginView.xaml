@@ -4,45 +4,16 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:vm="using:CB.POS.UI.ViewModels"
-    mc:Ignorable="d"
-    Background="Transparent">
-
-    <!-- Keyboard Accelerators (Global) -->
-    <Page.KeyboardAccelerators>
-        <KeyboardAccelerator Key="Number0" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="Number1" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="Number2" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="Number3" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="Number4" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="Number5" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="Number6" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="Number7" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="Number8" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="Number9" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="NumberPad0" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="NumberPad1" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="NumberPad2" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="NumberPad3" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="NumberPad4" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="NumberPad5" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="NumberPad6" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="NumberPad7" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="NumberPad8" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="NumberPad9" Invoked="OnNumberKey_Invoked" />
-        <KeyboardAccelerator Key="Back" Invoked="OnBackspace_Invoked" />
-        <KeyboardAccelerator Key="Enter" Invoked="OnEnter_Invoked" />
-        <KeyboardAccelerator Key="Execute" Invoked="OnEnter_Invoked" />
-    </Page.KeyboardAccelerators>
+    mc:Ignorable="d">
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="2*" />
-            <ColumnDefinition Width="3*" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- Left Side: Branding -->
-        <Grid Grid.Column="0" Background="#1A1A1A">
+        <!-- Left Side: Logo & Branding -->
+        <Grid Grid.Column="0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
@@ -78,8 +49,13 @@
 
         <!-- Right Side: Interaction -->
         <Grid Grid.Column="1" 
-              Padding="60" 
-              Background="{ThemeResource LayerFillColorDefaultBrush}">
+              Padding="60">
+            <Grid.Background>
+                <AcrylicBrush TintColor="{ThemeResource LayerFillColorDefault}"
+                             TintOpacity="0.8"
+                             TintLuminosityOpacity="0.85"
+                             FallbackColor="{ThemeResource LayerFillColorDefault}" />
+            </Grid.Background>
             <StackPanel VerticalAlignment="Center" 
                        Spacing="32"
                        MaxWidth="400">
@@ -99,13 +75,24 @@
                        CornerRadius="8"
                        Padding="20,16"
                        MinHeight="64">
-                    <TextBlock x:Name="PinInputBox"
-                              Text="{x:Bind ViewModel.MaskedPin, Mode=OneWay}"
-                              FontSize="36"
-                              FontWeight="Bold"
-                              HorizontalAlignment="Center"
-                              VerticalAlignment="Center"
-                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                    <Grid>
+                        <!-- Hidden TextBox for keyboard input -->
+                        <TextBox x:Name="PinInputBox"
+                                Text="{x:Bind ViewModel.PinInput, Mode=TwoWay}"
+                                Opacity="0"
+                                IsTabStop="False"
+                                KeyDown="PinInputBox_KeyDown"
+                                MaxLength="6" />
+                        
+                        <!-- Visible masked display -->
+                        <TextBlock x:Name="PinDisplay"
+                                  Text="{x:Bind ViewModel.MaskedPin, Mode=OneWay}"
+                                  FontSize="36"
+                                  FontWeight="Bold"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                    </Grid>
                 </Border>
                 
                 <!-- Error Message -->

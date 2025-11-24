@@ -1,69 +1,66 @@
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
 using CB.POS.UI.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
-using Windows.System;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace CB.POS.UI.Views;
 
 public sealed partial class ShellView : Page
 {
-    public ShellViewModel? ViewModel { get; }
+    public ShellViewModel ViewModel { get; }
+
+    public string CurrentUserName => ViewModel.CurrentUserName;
 
     public ShellView()
     {
         this.InitializeComponent();
-        ViewModel = ((App)App.Current).Host.Services.GetService<ShellViewModel>();
-        this.DataContext = ViewModel;
-        
-        // Keyboard Accelerators
-        var logoutAccelerator = new KeyboardAccelerator { Key = VirtualKey.F12 };
-        logoutAccelerator.Invoked += (s, e) => ViewModel?.LogoutCommand.Execute(null);
-        this.KeyboardAccelerators.Add(logoutAccelerator);
-
-        var salesAccelerator = new KeyboardAccelerator { Key = VirtualKey.F1 };
-        salesAccelerator.Invoked += (s, e) => 
-        {
-            if (NavView?.MenuItems?.Count > 0)
-            {
-                NavView.SelectedItem = NavView.MenuItems[0]; // Select Sales
-            }
-        };
-        this.KeyboardAccelerators.Add(salesAccelerator);
+        ViewModel = ((App)App.Current).Host.Services.GetRequiredService<ShellViewModel>();
     }
 
-    private void NavView_Loaded(object sender, RoutedEventArgs e)
+    private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        // Set initial selection
-        if (NavView?.MenuItems?.Count > 0)
-        {
-            NavView.SelectedItem = NavView.MenuItems[0];
-        }
+        // Navigate to SalesView by default
+        // NavView.SelectedItem = NavView.MenuItems[0];
     }
 
     private void NavView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
-        // Delegate logic to ViewModel first (for "Coming Soon" checks)
-        ViewModel?.NavigateCommand.Execute(args);
-
-        // Handle Frame Navigation if valid
+        /*
         if (args.IsSettingsSelected)
         {
             // Settings handling handled by VM for now (Coming Soon)
         }
         else if (args.SelectedItem is NavigationViewItem item && item.Tag is string tag)
         {
-            if (tag == "SalesView")
+            if (tag == "Sales")
             {
+                NavView.Header = "Sales";
                 ContentFrame.Navigate(typeof(SalesView));
             }
-            // Other views are handled by VM dialogs for now
+            else if (tag == "Inventory")
+            {
+                NavView.Header = "Inventory";
+                // Navigate to Inventory View
+            }
+            else if (tag == "Reports")
+            {
+                NavView.Header = "Reports";
+                // Navigate to Reports View
+            }
         }
+        */
     }
 
-    private void Page_Loaded(object sender, RoutedEventArgs e)
+    private void ThemeToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        // Ensure focus is somewhere useful if needed
+        /*
+        if (sender is ToggleSwitch toggleSwitch)
+        {
+            if (this.XamlRoot != null && this.XamlRoot.Content is FrameworkElement rootElement)
+            {
+                rootElement.RequestedTheme = toggleSwitch.IsOn ? ElementTheme.Light : ElementTheme.Dark;
+            }
+        }
+        */
     }
 }

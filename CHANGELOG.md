@@ -57,3 +57,6 @@ All notable changes to this project will be documented in this file.
     -   Implemented Low Stock Indicators in Inventory Master.
     -   Added Global Barcode Scanner Hook for instant input handling.
     -   Added System Status Bar (Printer/Network status).
+    -   Refined Login Screen: Hidden Status Bar, Enabled Numpad Support.
+    -   Fixed Font Loading: Dynamically loading Noto Sans from assets to resolve warnings.
+    -   Fixed Login Enter Key: Enhanced key handling for robust submission.

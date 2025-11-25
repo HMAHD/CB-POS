@@ -19,6 +19,8 @@ def main():
                 if filename.lower().endswith((".ttf", ".otf")):
                     QFontDatabase.addApplicationFont(os.path.join(root, filename))
 
+
+
     window = MainWindow()
     window.showMaximized() # Industrial apps usually run full screen
     

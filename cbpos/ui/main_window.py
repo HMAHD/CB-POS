@@ -93,6 +93,7 @@ class MainWindow(QMainWindow):
         top_layout.addWidget(self.lbl_user)
         
         main_layout.addWidget(self.top_bar)
+        self.top_bar.setVisible(False) # Hide by default (Login Screen)
 
         # Stack
         self.stack = QStackedWidget()
@@ -132,6 +133,7 @@ class MainWindow(QMainWindow):
     def on_login_success(self, user):
         self.user = user
         self.lbl_user.setText(f"User: {user.username} | Role: {user.role.name if user.role else 'N/A'}")
+        self.top_bar.setVisible(True) # Show Status Bar
         print(f"Logged in as: {user.username}")
         
         # Load Sales View

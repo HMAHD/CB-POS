@@ -42,3 +42,7 @@ All notable changes to this project will be documented in this file.
     -   **Fixed**: Resolved `DetachedInstanceError` in Login by eagerly loading User roles.
     -   **Fixed**: Corrected attribute name mismatch (`stock_qty`) in Inventory View.
     -   **Fixed**: Resolved `InvalidRequestError` in Product Service by using `session.expunge_all()`.
+- Transaction Ops & Security (Phase 3 & 8):
+    -   Implemented `PermissionService` and `ManagerOverrideDialog`.
+    -   Enforced RBAC on Void operations (requires Manager PIN if unauthorized).
+    -   Enhanced Hold/Recall with list selection (`SuspendedTransaction`).

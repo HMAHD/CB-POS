@@ -156,6 +156,20 @@ class TransactionService:
             session.close()
 
     @staticmethod
+    def get_held_bills() -> list:
+        """Return a list of all suspended transactions."""
+        db = Database()
+        session = db.SessionLocal()
+        try:
+            suspended = session.query(SuspendedTransaction).order_by(SuspendedTransaction.timestamp.desc()).all()
+            # Detach objects
+            for s in suspended:
+                session.expunge(s)
+            return suspended
+        finally:
+            session.close()
+
+    @staticmethod
     def recall_bill(suspended_id: int, cart_service: CartService) -> bool:
         """Restore cart from SuspendedTransaction and delete the record."""
         import json
@@ -188,7 +202,10 @@ class TransactionService:
 
     @staticmethod
     def void_sale(sale_id: int, user_id: int, reason: str) -> bool:
-        """Mark sale as VOID and reverse stock deduction."""
+        """
+        Mark sale as VOID and reverse stock deduction.
+        Security: Caller must ensure user has permission.
+        """
         db = Database()
         session = db.SessionLocal()
         try:

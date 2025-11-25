@@ -20,8 +20,15 @@ def seed_data():
     Base.metadata.create_all(db.engine)
 
     with db.get_session() as session:
+        print("Seeding Permissions...")
+        perm_void = Permission(code="can_void_sale", description="Can void completed sales")
+        session.add(perm_void)
+        session.flush()
+
         print("Seeding Roles...")
         admin_role = Role(name="Admin")
+        admin_role.permissions.append(perm_void)
+        
         cashier_role = Role(name="Cashier")
         session.add_all([admin_role, cashier_role])
         session.flush()

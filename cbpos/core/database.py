@@ -27,12 +27,22 @@ class Database:
 
     def _initialize(self):
         """Initialize the database engine and session factory."""
+        connect_args = {}
+        if "sqlite" in Config.DB_URI:
+            connect_args = {"check_same_thread": False}
+            pool_args = {}
+        else:
+            pool_args = {
+                "pool_size": 10,
+                "max_overflow": 20,
+            }
+
         self.engine = create_engine(
             Config.DB_URI,
-            echo=False,  # Set to True for SQL logging
+            echo=False,
             pool_pre_ping=True,
-            pool_size=10,
-            max_overflow=20,
+            connect_args=connect_args,
+            **pool_args,
         )
         self.SessionLocal = sessionmaker(
             bind=self.engine, autocommit=False, autoflush=False

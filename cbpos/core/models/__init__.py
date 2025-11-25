@@ -48,6 +48,20 @@ class AuditLog(Base):
     
     user: Mapped["User"] = relationship()
 
+class InventoryLog(Base):
+    __tablename__ = 'inventory_logs'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey('products.id'))
+    qty_change: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+    new_qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+    reason: Mapped[str] = mapped_column(String(200), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+    product: Mapped["Product"] = relationship()
+    user: Mapped["User"] = relationship()
+
 class Category(Base):
     __tablename__ = "categories"
 

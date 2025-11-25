@@ -2,7 +2,7 @@ import uuid
 from decimal import Decimal
 from datetime import datetime
 from cbpos.core.database import Database
-from cbpos.core.models import Sale, SaleItem, Product, SuspendedTransaction, Customer, SalePayment
+from cbpos.core.models import Sale, SaleItem, Product, SuspendedTransaction, Customer, SalePayment, CompositeItem
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.tax_service import TaxService
@@ -89,7 +89,7 @@ class TransactionService:
                 )
                 session.add(payment)
 
-            # 4. Process Items & Deduct Stock
+                # 4. Process Items & Deduct Stock
             for item in cart_service.items:
                 product = item['product']
                 qty = item['qty']
@@ -103,9 +103,29 @@ class TransactionService:
                 )
                 session.add(sale_item)
                 
-                db_product = session.query(Product).with_for_update().get(product.id)
-                if db_product:
-                    db_product.stock_qty -= qty
+                # Check for Composite Item
+                # We need to query if this product is a parent in composite_items
+                # Since we don't have a direct relationship on Product for 'children' in the snippet provided,
+                # we query CompositeItem table.
+                # Ideally Product should have `composite_children` relationship. 
+                # Let's check the model definition in `models/__init__.py`.
+                # It seems `CompositeItem` has `parent` and `child` relationships but `Product` doesn't have `children`.
+                # So we query manually.
+                
+                composite_children = session.query(CompositeItem).filter(CompositeItem.parent_product_id == product.id).all()
+                
+                if composite_children:
+                    # Deduct from children
+                    for comp in composite_children:
+                        child_product = session.query(Product).with_for_update().get(comp.child_product_id)
+                        if child_product:
+                            deduction = comp.qty * qty
+                            child_product.stock_qty -= deduction
+                else:
+                    # Deduct from product itself
+                    db_product = session.query(Product).with_for_update().get(product.id)
+                    if db_product:
+                        db_product.stock_qty -= qty
 
             # 5. Commit
             session.commit()

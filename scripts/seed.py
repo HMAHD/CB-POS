@@ -8,7 +8,7 @@ project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
 from cbpos.core.database import Database, Base
-from cbpos.core.models import User, Category, Product, Role, Permission, Customer
+from cbpos.core.models import User, Category, Product, Role, Permission, Customer, CompositeItem
 
 def hash_pin(pin: str) -> str:
     return hashlib.sha256(pin.encode()).hexdigest()
@@ -101,6 +101,29 @@ def seed_data():
         print("Seeding Customers...")
         customer = Customer(name="John Doe", phone="0771234567", credit_limit=Decimal("5000.00"))
         session.add(customer)
+        session.flush()
+
+        print("Seeding Composite Items...")
+        # Hamper = 2x Biscuits + 1x Soap
+        biscuit = products[0]
+        soap = products[4]
+        
+        hamper = Product(
+            barcode="HAMPER001",
+            name_en="New Year Hamper",
+            price=Decimal("1500.00"),
+            cost=Decimal("1090.00"), # 2*500 + 90
+            stock_qty=Decimal("0.000"), # Virtual stock, depends on children
+            category=cat_map["Essentials"]
+        )
+        session.add(hamper)
+        session.flush()
+        
+        comps = [
+            CompositeItem(parent_product_id=hamper.id, child_product_id=biscuit.id, qty=Decimal("2.000")),
+            CompositeItem(parent_product_id=hamper.id, child_product_id=soap.id, qty=Decimal("1.000"))
+        ]
+        session.add_all(comps)
         session.flush()
 
         session.commit()

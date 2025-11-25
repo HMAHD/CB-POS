@@ -3,9 +3,10 @@ from PyQt6.QtWidgets import (
     QPushButton, QTableView, QHeaderView, QAbstractItemView, QMessageBox
 )
 from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex, QTimer
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
+from PyQt6.QtGui import QStandardItemModel, QStandardItem, QBrush, QColor
 from cbpos.core.services.product_service import ProductService
 from cbpos.ui.dialogs.product_editor_dialog import ProductEditorDialog
+from cbpos.ui.dialogs.stock_adjustment_dialog import StockAdjustmentDialog
 
 class ProductTableModel(QAbstractTableModel):
     def __init__(self, products=None):
@@ -35,6 +36,10 @@ class ProductTableModel(QAbstractTableModel):
             elif col == 5: return f"{product.cost:.2f}"
             elif col == 6: return "Yes" if product.is_weighted else "No"
             elif col == 7: return product.category.name if product.category else "-"
+        
+        elif role == Qt.ItemDataRole.BackgroundRole:
+            if product.stock_qty <= 10: # Low stock threshold
+                return QBrush(QColor("#550000")) # Dark Red background
         
         return None
 
@@ -69,6 +74,12 @@ class InventoryMasterView(QWidget):
         self.btn_add.clicked.connect(self.open_add_dialog)
         self.btn_add.setShortcut("F2")
         header_layout.addWidget(self.btn_add)
+        
+        self.btn_adjust = QPushButton("Adjust Stock (F3)")
+        self.btn_adjust.clicked.connect(self.open_adjust_dialog)
+        self.btn_adjust.setShortcut("F3")
+        self.btn_adjust.setStyleSheet("background-color: #FF851B; color: black;")
+        header_layout.addWidget(self.btn_adjust)
         
         self.btn_refresh = QPushButton("Refresh (F5)")
         self.btn_refresh.clicked.connect(self.load_data)
@@ -117,6 +128,19 @@ class InventoryMasterView(QWidget):
 
     def open_add_dialog(self):
         dialog = ProductEditorDialog(parent=self)
+        if dialog.exec():
+            self.load_data()
+
+    def open_adjust_dialog(self):
+        indexes = self.table.selectionModel().selectedRows()
+        if not indexes:
+            QMessageBox.warning(self, "Selection", "Please select a product to adjust.")
+            return
+            
+        index = indexes[0]
+        product = self.model.products[index.row()]
+        
+        dialog = StockAdjustmentDialog(product, parent=self)
         if dialog.exec():
             self.load_data()
 

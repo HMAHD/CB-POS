@@ -51,3 +51,9 @@ All notable changes to this project will be documented in this file.
     -   Implemented Credit Sales with Customer Credit Limit checks.
     -   Added `LoggingService` for database-backed Audit Logs.
     -   Enabled Database Connection Pooling for performance.
+- Inventory Integrity & Speed/UX (Phase 4, 5, 6):
+    -   Implemented Composite Items (Bundles/Hampers) with component stock deduction.
+    -   Added Stock Adjustment Tool with audit logging (`InventoryLog`).
+    -   Implemented Low Stock Indicators in Inventory Master.
+    -   Added Global Barcode Scanner Hook for instant input handling.
+    -   Added System Status Bar (Printer/Network status).

@@ -26,7 +26,9 @@ class Database:
         self.engine = create_engine(
             Config.DB_URI,
             echo=False,  # Set to True for SQL logging
-            pool_pre_ping=True
+            pool_pre_ping=True,
+            pool_size=10,
+            max_overflow=20
         )
         self.SessionLocal = sessionmaker(
             bind=self.engine,

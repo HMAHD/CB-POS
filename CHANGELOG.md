@@ -46,3 +46,8 @@ All notable changes to this project will be documented in this file.
     -   Implemented `PermissionService` and `ManagerOverrideDialog`.
     -   Enforced RBAC on Void operations (requires Manager PIN if unauthorized).
     -   Enhanced Hold/Recall with list selection (`SuspendedTransaction`).
+- Advanced Payments & Auditing (Phase 2 & 10):
+    -   Implemented Split Payments (Cash/Card/Credit).
+    -   Implemented Credit Sales with Customer Credit Limit checks.
+    -   Added `LoggingService` for database-backed Audit Logs.
+    -   Enabled Database Connection Pooling for performance.

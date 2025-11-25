@@ -2,7 +2,7 @@ import uuid
 from decimal import Decimal
 from datetime import datetime
 from cbpos.core.database import Database
-from cbpos.core.models import Sale, SaleItem, Product, SuspendedTransaction
+from cbpos.core.models import Sale, SaleItem, Product, SuspendedTransaction, Customer, SalePayment
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.tax_service import TaxService
@@ -14,14 +14,14 @@ class TransactionService:
     """
 
     @staticmethod
-    def process_sale(cart_service: CartService, payment_method: str, tendered: Decimal) -> bool:
+    def process_sale(cart_service: CartService, payments: list, customer_id: int = None) -> bool:
         """
-        Process the sale:
-        1. Calculate Taxes
-        2. Create Sale Header
-        3. Create Sale Items
-        4. Deduct Stock
-        5. Commit Transaction
+        Process the sale with multiple payments.
+        
+        Args:
+            cart_service: The cart containing items.
+            payments: List of dicts [{'method': 'CASH', 'amount': 500}, ...]
+            customer_id: Optional Customer ID for credit sales.
         """
         db = Database()
         session = db.SessionLocal()
@@ -31,21 +31,41 @@ class TransactionService:
             totals = cart_service.get_totals()
             total_amount = totals['subtotal']
             
-            # Generate Receipt No (Simple UUID for now, or Sequence)
+            # Validate Payments
+            total_paid = sum(p['amount'] for p in payments)
+            if total_paid < total_amount:
+                raise ValueError(f"Insufficient payment. Paid: {total_paid}, Due: {total_amount}")
+
+            # Generate Receipt No
             receipt_no = f"REC-{uuid.uuid4().hex[:8].upper()}"
             
             # Get Current User
             current_user = AuthService.get_current_user()
             if not current_user:
                 raise ValueError("No user logged in.")
-            
-            # Re-attach user to this session if needed, or just use ID
             cashier_id = current_user.id
 
+            # Handle Credit Logic
+            for p in payments:
+                if p['method'] == 'CREDIT':
+                    if not customer_id:
+                        raise ValueError("Customer required for Credit sale.")
+                    
+                    customer = session.query(Customer).with_for_update().get(customer_id)
+                    if not customer:
+                        raise ValueError("Invalid Customer.")
+                    
+                    if customer.current_balance + p['amount'] > customer.credit_limit:
+                        raise ValueError(f"Credit limit exceeded for {customer.name}.")
+                    
+                    customer.current_balance += p['amount']
+
             # 2. Create Sale Header
-            # Calculate Taxes
             tax_info = TaxService.calculate_taxes(total_amount)
             
+            # Determine primary method for simple display
+            primary_method = payments[0]['method'] if len(payments) == 1 else "SPLIT"
+
             sale = Sale(
                 receipt_no=receipt_no,
                 timestamp=datetime.now(),
@@ -53,70 +73,51 @@ class TransactionService:
                 tax_vat=tax_info['vat'],
                 tax_sscl=tax_info['sscl'],
                 net_revenue=tax_info['net'],
-                payment_method=payment_method,
-                cashier_id=cashier_id
+                payment_method=primary_method,
+                cashier_id=cashier_id,
+                customer_id=customer_id
             )
             session.add(sale)
-            session.flush() # Flush to get sale.id
+            session.flush()
             
-            # 3. Process Items
+            # 3. Create Sale Payments
+            for p in payments:
+                payment = SalePayment(
+                    sale_id=sale.id,
+                    payment_method=p['method'],
+                    amount=p['amount']
+                )
+                session.add(payment)
+
+            # 4. Process Items & Deduct Stock
             for item in cart_service.items:
                 product = item['product']
                 qty = item['qty']
-                unit_price = item['unit_price']
-                subtotal = item['total']
                 
-                # Create Sale Item
                 sale_item = SaleItem(
                     sale_id=sale.id,
                     product_id=product.id,
                     qty=qty,
-                    unit_price=unit_price,
-                    subtotal=subtotal
+                    unit_price=item['unit_price'],
+                    subtotal=item['total']
                 )
                 session.add(sale_item)
                 
-                # 4. Deduct Stock
-                # We need to fetch the product in THIS session to lock/update it
                 db_product = session.query(Product).with_for_update().get(product.id)
                 if db_product:
                     db_product.stock_qty -= qty
-                    # Optional: Check for negative stock
-                    if db_product.stock_qty < 0:
-                        print(f"Warning: Negative stock for {db_product.name_en}")
-            
+
             # 5. Commit
             session.commit()
             
-            # 6. Hardware Output (Async)
-            # We need to refresh the sale object or pass ID to worker? 
-            # Passing ID is safer across threads, but for now let's build receipt here or pass object.
-            # Ideally, we should have a global PrintWorker instance. 
-            # For this implementation, we will instantiate it here (which is not ideal for thread persistence, 
-            # but acceptable if we just want to fire and forget, or we should rely on a Singleton/Global).
-            
-            # Better approach: Use a global signal or service locator.
-            # For simplicity in this phase:
+            # 6. Hardware Output
             from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
             from cbpos.core.services.receipt_builder import ReceiptBuilder
             
-            # Note: In a real app, PrintWorker should be started at app launch and kept alive.
-            # Here we are creating it on the fly, which might kill the thread if garbage collected too fast.
-            # We will assume the caller (UI) handles the worker or we start it here and detach.
-            
-            # Let's assume we just print synchronously for the MVP to ensure it works, 
-            # or use the worker but keep a reference.
-            
-            worker = PrintWorker() # This will use MockPrinter by default
+            worker = PrintWorker()
             receipt_text = ReceiptBuilder.build_receipt(sale)
             worker.add_job('print_receipt', receipt_text)
             worker.add_job('kick_drawer')
-            
-            # We need to keep the worker alive long enough to finish. 
-            # In a proper PyQt app, the worker should be a member of the Application or MainWindow.
-            # For this "Service" method, we can't easily hold the reference.
-            # HACK: We will wait for it to finish or just run sync for now if it's Mock.
-            # Since it's Mock, it's fast.
             
             return True
             

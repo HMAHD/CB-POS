@@ -168,8 +168,8 @@ class SalesView(QWidget):
 
         dialog = PaymentDialog(totals['subtotal'], self)
         if dialog.exec():
-            tendered = dialog.tendered_amount
-            success = TransactionService.process_sale(self.cart_service, "CASH", tendered)
+            payments, customer_id = dialog.payment_data
+            success = TransactionService.process_sale(self.cart_service, payments, customer_id)
             if success:
                 QMessageBox.information(self, "Success", "Sale processed successfully!")
                 self.cart_service.clear()

@@ -73,6 +73,17 @@ class Product(Base):
 
     category: Mapped["Category"] = relationship(back_populates="products")
 
+class Customer(Base):
+    __tablename__ = "customers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    credit_limit: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    current_balance: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+
+    sales: Mapped[List["Sale"]] = relationship(back_populates="customer")
+
 class Sale(Base):
     __tablename__ = "sales"
 
@@ -83,12 +94,26 @@ class Sale(Base):
     tax_vat: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     tax_sscl: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     net_revenue: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
-    payment_method: Mapped[str] = mapped_column(String(20), nullable=False)
+    payment_method: Mapped[str] = mapped_column(String(20), nullable=False) # Primary method (or 'Split')
     status: Mapped[str] = mapped_column(String(20), default="COMPLETED") # COMPLETED, VOID
+    
     cashier_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    customer_id: Mapped[Optional[int]] = mapped_column(ForeignKey("customers.id"), nullable=True)
 
     cashier: Mapped["User"] = relationship(back_populates="sales")
+    customer: Mapped["Customer"] = relationship(back_populates="sales")
     items: Mapped[List["SaleItem"]] = relationship(back_populates="sale", cascade="all, delete-orphan")
+    payments: Mapped[List["SalePayment"]] = relationship(back_populates="sale", cascade="all, delete-orphan")
+
+class SalePayment(Base):
+    __tablename__ = "sale_payments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sale_id: Mapped[int] = mapped_column(ForeignKey("sales.id"))
+    payment_method: Mapped[str] = mapped_column(String(20), nullable=False) # Cash, Card, Credit
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+
+    sale: Mapped["Sale"] = relationship(back_populates="payments")
 
 class SaleItem(Base):
     __tablename__ = "sale_items"

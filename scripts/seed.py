@@ -8,7 +8,7 @@ project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
 from cbpos.core.database import Database, Base
-from cbpos.core.models import User, Category, Product, Role, Permission
+from cbpos.core.models import User, Category, Product, Role, Permission, Customer
 
 def hash_pin(pin: str) -> str:
     return hashlib.sha256(pin.encode()).hexdigest()
@@ -96,6 +96,13 @@ def seed_data():
             ),
         ]
         session.add_all(products)
+        session.flush()
+
+        print("Seeding Customers...")
+        customer = Customer(name="John Doe", phone="0771234567", credit_limit=Decimal("5000.00"))
+        session.add(customer)
+        session.flush()
+
         session.commit()
 
     print("Seeding Complete!")

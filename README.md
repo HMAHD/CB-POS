@@ -1,6 +1,6 @@
 # CB POS - Industrial Retail System
 
-![CB POS Logo](cbpos/assets/logo/Logo_light.png)
+![CB POS Logo](cbpos/assets/logo/CBPOS_Banner.png)
 
 **CB POS** is a high-performance, industrial-grade Point of Sale system designed for the Sri Lankan retail market. Built with Python and PyQt6, it prioritizes speed, stability, and offline capability.
 

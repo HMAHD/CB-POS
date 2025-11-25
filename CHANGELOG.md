@@ -34,3 +34,11 @@ All notable changes to this project will be documented in this file.
     -   Implemented `IPrinter` interface and `ESCPOSDriver` (with Mock fallback).
     -   Implemented `ReceiptBuilder` for formatting Sri Lankan compliant receipts.
     -   Integrated printing and cash drawer kick into `TransactionService`.
+- Inventory & Security (Phase 3 & 4):
+    -   Implemented `InventoryMasterView` (Advanced Grid with Search).
+    -   Implemented RBAC Models (`Role`, `Permission`, `RolePermission`, `AuditLog`).
+    -   Updated `User` model to use `role_id` relationship.
+    -   Standardized Development Environment (`setup_development_environment.py`).
+    -   **Fixed**: Resolved `DetachedInstanceError` in Login by eagerly loading User roles.
+    -   **Fixed**: Corrected attribute name mismatch (`stock_qty`) in Inventory View.
+    -   **Fixed**: Resolved `InvalidRequestError` in Product Service by using `session.expunge_all()`.

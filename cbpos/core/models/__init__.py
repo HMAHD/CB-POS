@@ -5,16 +5,48 @@ from sqlalchemy import String, Boolean, Integer, ForeignKey, DateTime, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from cbpos.core.database import Base
 
+class Role(Base):
+    __tablename__ = 'roles'
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    permissions: Mapped[List["Permission"]] = relationship(secondary="role_permissions")
+
+class Permission(Base):
+    __tablename__ = 'permissions'
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String(200))
+
+class RolePermission(Base):
+    __tablename__ = 'role_permissions'
+    
+    role_id: Mapped[int] = mapped_column(ForeignKey('roles.id'), primary_key=True)
+    permission_id: Mapped[int] = mapped_column(ForeignKey('permissions.id'), primary_key=True)
+
 class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     pin_hash: Mapped[str] = mapped_column(String(256), nullable=False)
-    role: Mapped[str] = mapped_column(String(20), nullable=False)  # 'admin' or 'cashier'
+    role_id: Mapped[Optional[int]] = mapped_column(ForeignKey('roles.id'), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
+    role: Mapped["Role"] = relationship()
     sales: Mapped[List["Sale"]] = relationship(back_populates="cashier")
+
+class AuditLog(Base):
+    __tablename__ = 'audit_logs'
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+    action: Mapped[str] = mapped_column(String(100), nullable=False)
+    details: Mapped[Optional[str]] = mapped_column(String)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    
+    user: Mapped["User"] = relationship()
 
 class Category(Base):
     __tablename__ = "categories"
@@ -34,10 +66,10 @@ class Product(Base):
     name_si: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     name_ta: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     stock_qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=0)
     is_weighted: Mapped[bool] = mapped_column(Boolean, default=False)
-    category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
+    category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"))
 
     category: Mapped["Category"] = relationship(back_populates="products")
 

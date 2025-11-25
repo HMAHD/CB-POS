@@ -1,4 +1,5 @@
 from typing import Optional, List, Dict, Any
+from sqlalchemy.orm import joinedload
 from cbpos.core.database import Database
 from cbpos.core.models import Product
 
@@ -21,21 +22,34 @@ class ProductService:
         return None
 
     @staticmethod
+    def search_products(query: str) -> List[Product]:
+        """
+        Search for products by name or barcode (alias for search, but can be expanded).
+        """
+        if not query:
+            # Return all (or top 100)
+            db = Database()
+            with db.get_session() as session:
+                products = session.query(Product).options(joinedload(Product.category)).limit(100).all()
+                session.expunge_all()
+                return products
+
+        db = Database()
+        with db.get_session() as session:
+            products = session.query(Product).options(joinedload(Product.category)).filter(
+                (Product.name_en.ilike(f"%{query}%")) |
+                (Product.barcode.ilike(f"%{query}%"))
+            ).limit(50).all()
+            
+            session.expunge_all()
+            return products
+
+    @staticmethod
     def search(query: str) -> List[Product]:
         """
         Search for products by name (case-insensitive partial match).
         """
-        db = Database()
-        with db.get_session() as session:
-            products = session.query(Product).filter(
-                (Product.name_en.ilike(f"%{query}%")) |
-                (Product.name_si.ilike(f"%{query}%")) |
-                (Product.name_ta.ilike(f"%{query}%"))
-            ).limit(20).all()
-            
-            for p in products:
-                session.expunge(p)
-            return products
+        return ProductService.search_products(query)
 
     @staticmethod
     def get_components(product_id: int) -> List[Dict[str, Any]]:

@@ -1,6 +1,6 @@
 import hashlib
 from typing import Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from cbpos.core.database import Database
 from cbpos.core.models import User
 
@@ -25,10 +25,14 @@ class AuthService:
         
         db = Database()
         with db.get_session() as session:
-            user = session.query(User).filter(User.pin_hash == pin_hash, User.is_active == True).first()
+            # Eagerly load the role to prevent DetachedInstanceError later
+            user = session.query(User).options(joinedload(User.role)).filter(User.pin_hash == pin_hash, User.is_active == True).first()
             if user:
-                # Detach user from session to keep it available after session closes
+                # Detach user and its role from session to keep them available after session closes
                 session.expunge(user)
+                if user.role:
+                    session.expunge(user.role)
+                    
                 AuthService._current_user = user
                 return user
         return None

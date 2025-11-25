@@ -1,127 +1,155 @@
-# Product Requirements Document (PRD): CB POS
-
-| Metadata | Details |
-| :--- | :--- |
-| **Product Name** | CB POS |
-| **Developer** | Ceybyte.com |
-| **Version** | 0.5 (Alpha) |
-| **Target Platform** | Windows 10/11 (WinUI 3 Desktop) |
-| **Tech Stack** | .NET 9, Entity Framework Core, SQLite |
-| **Design Philosophy** | Industrial Grade, Offline-First, Keyboard-Centric |
-| **Status** | 🟡 **Phase 2 (UI Implementation) - Currently Resolving Build Issues** |
+# 🚀 PRODUCT REQUIREMENTS DOCUMENT (PRD)
+## **Product Name:** CB POS (Ceylon Byte Point of Sale)
+**Version:** 1.0 (Master Blueprint)
+**Status:** Approved for Development
+**Target Market:** Sri Lankan Retail (Grocery, Hardware, Textile, Electronics)
+**Tech Stack:** Python 3.12+ | PyQt6 | SQLite/PostgreSQL | SQLAlchemy
 
 ---
 
-## 1. Executive Summary
-CB POS is a high-performance, industrial-grade Point of Sale system tailored for the Sri Lankan retail market. Unlike web-based POS systems, CB POS runs natively to ensure zero latency, handles power/internet interruptions gracefully (Offline-First), and supports Sinhala/Tamil natively. It prioritizes speed: keyboard-only operation for cashiers, with touch support as a secondary input.
+## 1. EXECUTIVE SUMMARY
+**CB POS** is a high-performance, offline-first retail management system designed specifically for the Sri Lankan market. Unlike fragile web-based systems, it is built as a native desktop application to ensure **zero-latency operation** and **100% reliability** during power or internet outages.
+
+It combines the feature richness of enterprise ERPs (like Aronium) with the speed of an industrial tool. It is "Keyboard-First," allowing cashiers to operate without a mouse, and "Compliance-Ready," handling Sri Lankan VAT/SSCL calculations in the background while keeping the user experience simple.
 
 ---
 
-## 2. Technical Architecture & Foundation
+## 2. TECHNICAL ARCHITECTURE
 
-### 2.1 Core Stack `[STATUS: COMPLETED]`
-* **Framework:** .NET 9 (Latest LTS/Stable).
-* **UI Framework:** WinUI 3 (Windows App SDK 1.6+).
-* **Deployment:** Unpackaged Executable (`.exe`), Self-Contained.
-* **Database:** SQLite (Local file `cbpos.db` in AppData).
-* **Architecture:** Modular Monolith / Clean Architecture.
-    * `CB.POS.Core`: Entities, Interfaces (Pure C#).
-    * `CB.POS.Infrastructure`: EF Core, Hardware Impl, File I/O.
-    * `CB.POS.UI`: Views, ViewModels, DI Container.
+### 2.1 Core Stack
+| Component | Technology | Rationale |
+| :--- | :--- | :--- |
+| **Language** | Python 3.12+ | Rapid development, vast library support for hardware. |
+| **GUI Framework** | PyQt6 (Qt 6) | Industry standard for stable, high-DPI, cross-platform UIs. |
+| **Database (Local)** | SQLite | Zero-configuration, corruption-resistant, single-file DB. |
+| **Database (Server)**| PostgreSQL | Optional for multi-terminal setups (Client-Server mode). |
+| **ORM** | SQLAlchemy 2.0 | Type-safe database interactions and migration support. |
+| **Hardware** | `python-escpos`, `pyusb` | Direct low-level control of Thermal Printers & Scanners. |
+| **Styling** | QSS (Qt Style Sheets) | CSS-like styling for a modern, branded look. |
 
-### 2.2 Infrastructure Services `[STATUS: COMPLETED]`
-* **Dependency Injection:** Microsoft.Extensions.Hosting (Generic Host).
-* **Logging:** Serilog (File sink: `AppData/CB_POS/logs`).
-* **Focus Management:** `KeyboardFocusService` (Auto-traps cursor for scanning).
-* **Seeding:** `DbInitializer` auto-generates Admin user & SL Product Data.
-
----
-
-## 3. Functional Requirements & Status
-
-### Phase 1: Core Data & Authentication `[STATUS: COMPLETED]`
-| ID | Feature | Description | Status |
-| :--- | :--- | :--- | :--- |
-| **1.1** | **User Entity** | `Employee` model with Name, Role, and `PinHash`. | ✅ Done |
-| **1.2** | **Inventory Model** | `Product` (Barcode Indexed), `Category`, `IsWeighted` support. | ✅ Done |
-| **1.3** | **Seed Data** | Auto-population of Sri Lankan products (Munchee, Highland, Keeris Samba). | ✅ Done |
-| **1.4** | **Auth Logic** | PIN-based authentication service. | ✅ Done |
-
-### Phase 2: User Interface (The Shell) `[STATUS: PARTIAL / BLOCKED]`
-| ID | Feature | Description | Status |
-| :--- | :--- | :--- | :--- |
-| **2.1** | **Login Screen** | Touch-friendly Numpad, Masked Input, Error Handling. | 🟡 Implemented (Debugging) |
-| **2.2** | **Main Shell** | `NavigationView` (Left Compact), Digital Clock, User Badge. | 🟡 Implemented (Debugging) |
-| **2.3** | **Navigation** | `NavigationService` to switch frames (Login -> Shell). | 🟡 Implemented (Debugging) |
-| **2.4** | **Visual Polish** | Mica Alt Backdrop, Theme Shadows, Animated Icons. | 🔴 **BLOCKED** (Build Error) |
-
-### Phase 3: Sales Operations (The Engine) `[STATUS: IN PROGRESS]`
-| ID | Feature | Description | Status |
-| :--- | :--- | :--- | :--- |
-| **3.1** | **Cart Logic** | `CartService`: Add/Remove, Calculate Totals, Decimal Qty (Weighted). | ✅ Done (Logic Only) |
-| **3.2** | **Sales View** | Split-screen UI (Cart List vs. Totals), High Contrast. | 🚧 Pending Implementation |
-| **3.3** | **Scanner Hook** | Global hook to capture Barcode Scanner input (vs Keyboard typing). | 🚧 Pending Implementation |
-| **3.4** | **Payment** | Cash Tender, Change Calculation, Transaction Commit. | ⚪ Not Started |
-
-### Phase 4: Hardware Integration `[STATUS: PLANNED]`
-| ID | Feature | Description | Status |
-| :--- | :--- | :--- | :--- |
-| **4.1** | **Printing** | ESC/POS implementation via `ESCPOS_NET` (USB/LAN). | ⚪ Not Started |
-| **4.2** | **Cash Drawer** | RJ11 trigger via Printer signal. | ⚪ Not Started |
-| **4.3** | **Customer Display** | Secondary Window/Pole Display support. | ⚪ Not Started |
+### 2.2 System Design Principles
+1.  **Offline-First:** The system *always* writes to the local DB first. Cloud sync (if enabled) happens asynchronously in the background.
+2.  **Modular MVC:** strict separation of **Model** (Database), **View** (PyQt Widgets), and **Controller** (Business Logic).
+3.  **Industrial Resilience:** Global Exception Handlers prevent crashes. If a printer fails, the app logs the error and continues the sale.
+4.  **Zero Latency:** Barcode scan to Cart addition must occur in **< 50ms**.
 
 ---
 
-## 4. UI/UX Guidelines (Industrial Standard)
+## 3. SRI LANKAN COMPLIANCE & TAX MODULE 🇱🇰
 
-* **Keyboard First:** All critical actions must have F-Key shortcuts.
-    * `F1`: Help
-    * `F2`: Search
-    * `F4`: Void Line
-    * `F5`: Pay
+### 3.1 "Backward Calculation" Engine
+Since Sri Lankan retail prices are **MRP (Maximum Retail Price)** (Tax Inclusive), the system calculates tax liabilities backward for reporting.
+
+* **Logic:** `Shelf Price = Base Price + VAT + SSCL`
+* **VAT Engine:**
+    * **Rate:** Configurable (Default: **18%**).
+    * **Formula:** `Taxable Value = Total Sales / 1.18`.
+* **SSCL (Social Security Contribution Levy) Engine:**
+    * **Rate:** Configurable (Default: **2.5%**).
+    * **Liable Turnover:** Configurable % of turnover (Default: **50%** for retail).
+    * **Formula:** `SSCL Payable = (Turnover * 50%) * 2.5%`.
+
+### 3.2 Owner’s Liability Dashboard
+A secure, owner-only view to track tax obligations in real-time.
+* [ ] **Daily Tax Meter:** Shows "Estimated Tax Payable" for the day/month.
+* [ ] **Net Payable Calc:** `Output VAT (Sales) - Input VAT (Purchases) = Net Payable`.
+
+### 3.3 Smart Invoicing
+* [ ] **B2C Receipt:** Standard receipt. Footer: *"Prices include all applicable government taxes."*
+* [ ] **B2B Tax Invoice:** Triggered if a customer with a VAT Reg Number is selected.
+    * *Action:* Splits the receipt to show Base Value, VAT Amount, and Total separately.
+
+---
+
+## 4. USER INTERFACE & "CEYLON BYTE" THEME
+
+### 4.1 Visual Identity
+* **Theme Engine:** Real-time toggle between **Ceylon Day** and **Ceylon Night** modes.
+* **Palette:**
+    * **Navy Blue (`#001F3F`)**: Primary Backgrounds (Night).
+    * **Cyan (`#00BCEB`)**: Primary Action Buttons / Active States.
+    * **Neon Green (`#39FF14`)**: Payment Confirmation / Success.
+    * **Signal Red (`#FF4136`)**: Void / Error / Low Stock.
+
+### 4.2 Workspace Layouts
+* **Touch Mode:** Grid-based "Visual Groups" for non-barcoded items (Vegetables, Bakery).
+* **Keyboard Mode:** Dense list view. **Focus Trap** ensures the cursor is *always* in the scan box.
+
+---
+
+## 5. DETAILED FEATURE REQUIREMENTS
+
+### Phase 1: Inventory & Product Management
+* [ ] **Product Variants:** Parent Item (Shirt) -> Variants (Red/S, Red/M).
+* [ ] **Composite Items:** "Hamper" sells 1 SKU but deducts 5 different inventory items.
+* [ ] **Weighted Items:** Boolean flag `is_weighted`. Supports decimal quantities (e.g., `0.500` kg).
+* [ ] **Low Stock Alerts:** Visual highlight when `Qty <= ReorderLevel`.
+* [ ] **Barcode Intelligence:** Supports parsing weight-embedded barcodes (e.g., from deli scales `200050012500` -> Item 500, Weight 1.25kg).
+
+### Phase 2: Sales Terminal (POS)
+* [ ] **Smart Cart:**
+    * **Merge Duplicates:** Scanning "Soap" twice updates Qty to 2, doesn't add a new row.
+    * **Price Override:** Manager PIN required to change price at checkout.
+    * **Line Discount:** % or Fixed discount per item.
+* [ ] **Hold & Recall:** "Park" a bill (save state to DB) and recall it later.
+* [ ] **Refund Wizard:** Scan original receipt barcode to auto-load items for return.
+* [ ] **Keyboard Shortcuts:**
+    * `F1`: Help Overlay
+    * `F2`: Global Search (Fuzzy Logic)
+    * `F5`: Pay / Tender
+    * `F6`: Hold Bill
     * `F12`: Logout
-* **Focus Trap:** The cursor must aggressively return to the Barcode Input field after 200ms of inactivity.
-* **Typography:**
-    * **Sinhala/Tamil:** "Iskoola Pota" or "Nirmala UI".
-    * **Numbers:** Monospaced font for alignment in lists.
-* **Visuals:**
-    * **Mica Alt:** Used for window background.
-    * **ThemeShadows:** Used to separate the "Bill" from the "Background".
+
+### Phase 3: Payments & Checkout
+* [ ] **Split Payments:** Pay Rs. 1000 Cash + Rs. 2000 Card on one bill.
+* [ ] **Credit Sales:** "Charge to Account" for registered customers.
+* [ ] **Smart Tender:** Auto-calculate change. Shortcuts for "Exact Amount", "5000", "1000".
+* [ ] **Receipt Engine:**
+    * Templates for 58mm and 80mm thermal paper.
+    * Support for printing Sinhala/Tamil logos/headers (Image Mode).
+
+### Phase 4: Customer Management (CRM)
+* [ ] **Credit Limits:** Stop credit sales if user exceeds defined debt limit.
+* [ ] **Loyalty Points:** Earn `X` points per `Y` Rupees. Redeem for discount.
+* [ ] **Customer Groups:** "Wholesale" group gets automatic 5% discount level.
+
+### Phase 5: Hardware Integration (HAL)
+* [ ] **Printer Routing:** Drink orders print at Bar Printer, Food at Kitchen Printer.
+* [ ] **Cash Drawer:** RJ11 kick signal sent only on Cash transactions.
+* [ ] **Pole Display:** Send `Total: Rs. XXX` to customer-facing VFD display.
 
 ---
 
-## 5. Localization Strategy `[STATUS: SETUP COMPLETE]`
-* **Mechanism:** WinUI 3 PRI Resources (`.resw`).
-* **Languages:**
-    * `en-US` (Default)
-    * `si-LK` (Sinhala)
-    * `ta-LK` (Tamil)
-* **Implementation:** All XAML strings use `x:Uid`.
+## 6. NON-FUNCTIONAL REQUIREMENTS
+
+1.  **Performance:**
+    * Application Startup: < 3 seconds.
+    * Barcode Search: < 50ms (Indexed Local DB).
+    * Transaction Commit: < 500ms.
+2.  **Security:**
+    * **PIN Hashing:** SHA-256.
+    * **Role-Based Access (RBAC):** Granular permissions (e.g., `can_void_transaction`, `can_view_reports`).
+3.  **Data Integrity:**
+    * **ACID Transactions:** Inventory is deducted ONLY if the Sale is successfully saved.
+    * **Auto-Backup:** Automatic `.zip` backup of `cbpos.db` to a specified folder on Exit.
 
 ---
 
-## 6. AI Integration Roadmap `[STATUS: FUTURE]`
-* **Smart Search:** Vector search for products (e.g., "Soap" -> finds "Body Wash").
-* **Inventory Prediction:** "Based on last Poya day sales, you need 50 extra packets of Incense Sticks."
-* **Natural Language Reporting:** "Show me total sales for Keeris Samba last week."
+## 7. DEPLOYMENT & UPDATE STRATEGY
+
+* **Packaging:** Use **PyInstaller** to compile to a single `.exe` file.
+* **Auto-Updater:**
+    1.  `Launcher.exe` checks GitHub/S3 for `version.json`.
+    2.  If update exists, download `.zip`.
+    3.  Backup current DB.
+    4.  Extract and overwrite binaries.
+    5.  Launch new version.
 
 ---
 
-## 7. Current Critical Issues (The "Blockers")
+## 8. GLOSSARY (Sri Lanka Context)
+* **MRP:** Maximum Retail Price (Includes Tax).
+* **GRN:** Goods Received Note (Stock Entry).
+* **SSCL:** Social Security Contribution Levy.
+* **COT:** Cash on Till (Expected Cash).
 
-**Priority 1: Build Pipeline Corruption**
-* **Symptom:** `XamlCompiler.exe exited with code 1`.
-* **Cause:** Likely namespace mismatch or corrupted `obj` artifacts following manual file reverts.
-* **Solution Strategy:** "Project Transplant" (Recreating `CB.POS.UI` project clean) is the recommended next step to resume development.
-
-**Priority 2: Zombie Processes**
-* **Symptom:** `CB.POS.UI.exe` remains locked after closing.
-* **Status:** **Resolved** (Added `ForceKill` target to `.csproj`).
-
----
-
-## 8. Next Steps (Immediate Action Plan)
-
-1.  **Resolve Build Error:** Execute the "Project Transplant" to get a clean, compiling UI project.
-2.  **Restore Views:** Carefully migrate `LoginView`, `ShellView`, and `SalesView` code one by one, verifying namespaces.
-3.  **UI Connection:** Connect `SalesViewModel` to the `CartService` to visualize the logic we have already built.

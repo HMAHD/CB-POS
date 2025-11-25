@@ -9,6 +9,11 @@ sys.path.append(str(project_root))
 from cbpos.core.database import Database
 from cbpos.core.models import User, Category, Product
 
+import hashlib
+
+def hash_pin(pin: str) -> str:
+    return hashlib.sha256(pin.encode()).hexdigest()
+
 def seed_data():
     db = Database()
     db.create_tables()
@@ -17,8 +22,8 @@ def seed_data():
         # 1. Users
         if not session.query(User).first():
             print("Seeding Users...")
-            admin = User(name="Admin", pin_hash="1234", role="admin") # In real app, hash this!
-            cashier = User(name="Cashier", pin_hash="0000", role="cashier")
+            admin = User(name="Admin", pin_hash=hash_pin("1234"), role="admin")
+            cashier = User(name="Cashier", pin_hash=hash_pin("0000"), role="cashier")
             session.add_all([admin, cashier])
         
         # 2. Categories

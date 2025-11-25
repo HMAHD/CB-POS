@@ -1,0 +1,87 @@
+/* Global Theme - Ceylon Byte Industrial */
+
+/* Variables (Not supported in pure QSS, so we hardcode them)
+   Navy: #001F3F
+   Cyan: #00BCEB
+   NeonGreen: #39FF14
+   White: #FFFFFF
+*/
+
+QMainWindow {
+    background-color: #001F3F;
+}
+
+QWidget {
+    font-family: "Noto Sans", "Noto Sans Sinhala", "Noto Sans Tamil", "Segoe UI", "Inter", sans-serif;
+    color: #FFFFFF;
+}
+
+/* Buttons */
+QPushButton {
+    background-color: #003366;
+    border: 2px solid #00BCEB;
+    border-radius: 8px;
+    color: #FFFFFF;
+    font-size: 16px;
+    font-weight: bold;
+    min-height: 50px;
+    padding: 5px;
+}
+
+QPushButton:hover {
+    background-color: #004080;
+    border-color: #39FF14;
+}
+
+QPushButton:pressed {
+    background-color: #00BCEB;
+    color: #001F3F;
+}
+
+/* Inputs */
+QLineEdit {
+    background-color: #001226;
+    border: 2px solid #00BCEB;
+    border-radius: 4px;
+    color: #FFFFFF;
+    font-size: 18px;
+    padding: 10px;
+    selection-background-color: #00BCEB;
+}
+
+QLineEdit:focus {
+    border-color: #39FF14;
+}
+
+/* Labels */
+QLabel {
+    color: #FFFFFF;
+    font-size: 14px;
+}
+
+QLabel#LogoText {
+    font-size: 48px;
+    font-weight: bold;
+    color: #00BCEB;
+}
+
+QLabel#Subtitle {
+    font-size: 18px;
+    color: #AAAAAA;
+    margin-top: 10px;
+}
+
+/* Numpad Specific */
+QPushButton#NumpadBtn {
+    font-size: 24px;
+    background-color: #002855;
+}
+
+QPushButton#NumpadBtn:pressed {
+    background-color: #00BCEB;
+}
+
+QPushButton#ActionBtn {
+    background-color: #004d40;
+    border-color: #39FF14;
+}

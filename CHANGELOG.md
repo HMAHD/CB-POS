@@ -14,3 +14,6 @@ All notable changes to this project will be documented in this file.
 - Login UI (`ui/views/login_view.py`) with custom Numpad and Split Screen layout.
 - Main Window (`ui/main_window.py`) with StackedWidget for view management.
 - Font Integration: Added support for "Noto Sans", "Noto Sans Sinhala", and "Noto Sans Tamil" loaded from `cbpos/assets/fonts`.
+- Sales Terminal (`ui/views/sales_view.py`) with Cart Table, Barcode Input, and Totals.
+- Product Service (`core/services/product_service.py`) for inventory lookup.
+- Cart Service (`core/services/cart_service.py`) for managing sale state.

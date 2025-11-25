@@ -51,5 +51,11 @@ class MainWindow(QMainWindow):
     def on_login_success(self, user: User):
         """Handle successful login."""
         print(f"Logged in as: {user.name} ({user.role})")
-        # Switch to Dashboard
-        self.stack.setCurrentWidget(self.dashboard_view)
+        
+        # Lazy load Sales View
+        from cbpos.ui.views.sales_view import SalesView
+        self.sales_view = SalesView()
+        self.stack.addWidget(self.sales_view)
+        
+        # Switch to Sales View
+        self.stack.setCurrentWidget(self.sales_view)

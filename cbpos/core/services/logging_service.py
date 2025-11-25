@@ -1,6 +1,6 @@
 from cbpos.core.database import Database
 from cbpos.core.models import AuditLog
-import json
+
 
 class LoggingService:
     """
@@ -12,7 +12,7 @@ class LoggingService:
     def log_action(user_id: int, action: str, details: str = None):
         """
         Log a critical action to the database.
-        
+
         Args:
             user_id (int): ID of the user performing the action.
             action (str): Short description of the action (e.g., 'VOID_SALE').
@@ -22,11 +22,7 @@ class LoggingService:
         # Use a fresh session to ensure log is committed independently of main transaction
         session = db.SessionLocal()
         try:
-            log = AuditLog(
-                user_id=user_id,
-                action=action,
-                details=details
-            )
+            log = AuditLog(user_id=user_id, action=action, details=details)
             session.add(log)
             session.commit()
         except Exception as e:

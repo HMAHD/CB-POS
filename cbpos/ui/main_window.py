@@ -1,64 +1,29 @@
 import os
-from PyQt6.QtWidgets import QMainWindow, QStackedWidget, QLabel, QWidget, QVBoxLayout
+from PyQt6.QtWidgets import (
+    QMainWindow,
+    QStackedWidget,
+    QLabel,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QApplication,
+)
 from PyQt6.QtCore import Qt
 from cbpos.ui.views.login_view import LoginView
-from cbpos.core.models import User
 
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("CB POS - Industrial Retail System")
-        self.resize(1024, 768) # Default resolution
-        
-        # Load Theme
-        self.load_theme()
-
-        # Central Widget (Stack)
-        self.stack = QStackedWidget()
-        self.setCentralWidget(self.stack)
-
-        # Initialize Views
-        self.init_views()
-
-    def load_theme(self):
-        """Load the global stylesheet."""
-        theme_path = os.path.join(os.path.dirname(__file__), "styles", "theme.qss")
-        try:
-            with open(theme_path, "r") as f:
-                self.setStyleSheet(f.read())
-        except FileNotFoundError:
-            print(f"Warning: Theme file not found at {theme_path}")
-
-    def init_views(self):
-        """Initialize and add views to the stack."""
-        # 1. Login View
-        self.login_view = LoginView()
-        self.login_view.login_success.connect(self.on_login_success)
-        self.stack.addWidget(self.login_view)
-
-        # 2. Dashboard (Placeholder)
-        self.dashboard_view = QWidget()
-        layout = QVBoxLayout(self.dashboard_view)
-        label = QLabel("Welcome to CB POS Dashboard")
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet("font-size: 32px; color: #39FF14;")
-import os
-from PyQt6.QtWidgets import QMainWindow, QStackedWidget, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QApplication
-from PyQt6.QtCore import Qt
-from cbpos.ui.views.login_view import LoginView
-from cbpos.core.models import User
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("CB POS - Industrial Retail System")
-        self.resize(1024, 768) # Default resolution
-        
+        self.resize(1024, 768)  # Default resolution
+
         # Scanner Hook
         self.scanner = BarcodeScanner(QApplication.instance())
         self.scanner.barcode_scanned.connect(self.on_barcode_scanned)
-        
+
         # Load Theme
         self.load_theme()
 
@@ -72,28 +37,34 @@ class MainWindow(QMainWindow):
         # Top Bar
         self.top_bar = QWidget()
         self.top_bar.setFixedHeight(40)
-        self.top_bar.setStyleSheet("background-color: #001226; border-bottom: 1px solid #00BCEB;")
+        self.top_bar.setStyleSheet(
+            "background-color: #001226; border-bottom: 1px solid #00BCEB;"
+        )
         top_layout = QHBoxLayout(self.top_bar)
         top_layout.setContentsMargins(10, 0, 10, 0)
-        
+
         self.lbl_status_printer = QLabel("PRINTER")
-        self.lbl_status_printer.setStyleSheet("color: #39FF14; font-weight: bold;") # Green = OK
+        self.lbl_status_printer.setStyleSheet(
+            "color: #39FF14; font-weight: bold;"
+        )  # Green = OK
         top_layout.addWidget(self.lbl_status_printer)
-        
+
         top_layout.addSpacing(20)
-        
+
         self.lbl_status_network = QLabel("OFFLINE MODE")
-        self.lbl_status_network.setStyleSheet("color: #FFDC00; font-weight: bold;") # Yellow = Offline
+        self.lbl_status_network.setStyleSheet(
+            "color: #FFDC00; font-weight: bold;"
+        )  # Yellow = Offline
         top_layout.addWidget(self.lbl_status_network)
-        
+
         top_layout.addStretch()
-        
+
         self.lbl_user = QLabel("Not Logged In")
         self.lbl_user.setStyleSheet("color: white;")
         top_layout.addWidget(self.lbl_user)
-        
+
         main_layout.addWidget(self.top_bar)
-        self.top_bar.setVisible(False) # Hide by default (Login Screen)
+        self.top_bar.setVisible(False)  # Hide by default (Login Screen)
 
         # Stack
         self.stack = QStackedWidget()
@@ -132,15 +103,18 @@ class MainWindow(QMainWindow):
 
     def on_login_success(self, user):
         self.user = user
-        self.lbl_user.setText(f"User: {user.username} | Role: {user.role.name if user.role else 'N/A'}")
-        self.top_bar.setVisible(True) # Show Status Bar
+        self.lbl_user.setText(
+            f"User: {user.username} | Role: {user.role.name if user.role else 'N/A'}"
+        )
+        self.top_bar.setVisible(True)  # Show Status Bar
         print(f"Logged in as: {user.username}")
-        
+
         # Load Sales View
         from cbpos.ui.views.sales_view import SalesView
+
         self.sales_view = SalesView()
         self.stack.addWidget(self.sales_view)
-        
+
         # Switch to Sales View
         self.stack.setCurrentWidget(self.sales_view)
 
@@ -148,10 +122,10 @@ class MainWindow(QMainWindow):
         print(f"Global Scanner Hook: {barcode}")
         # Pass to current view if it has a handler
         current_widget = self.stack.currentWidget()
-        if hasattr(current_widget, 'process_barcode_external'):
+        if hasattr(current_widget, "process_barcode_external"):
             current_widget.process_barcode_external(barcode)
-        elif hasattr(current_widget, 'barcode_input'):
-             # Fallback: set text in input if it exists
-             current_widget.barcode_input.setText(barcode)
-             if hasattr(current_widget, 'process_barcode'):
-                 current_widget.process_barcode()
+        elif hasattr(current_widget, "barcode_input"):
+            # Fallback: set text in input if it exists
+            current_widget.barcode_input.setText(barcode)
+            if hasattr(current_widget, "process_barcode"):
+                current_widget.process_barcode()

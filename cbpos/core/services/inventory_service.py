@@ -3,6 +3,7 @@ from cbpos.core.database import Database
 from cbpos.core.models import Product, InventoryLog
 from cbpos.core.services.auth_service import AuthService
 
+
 class InventoryService:
     """
     Service to handle inventory operations.
@@ -12,12 +13,12 @@ class InventoryService:
     def adjust_stock(product_id: int, qty_change: Decimal, reason: str) -> bool:
         """
         Adjust stock quantity for a product and log the change.
-        
+
         Args:
             product_id (int): ID of the product.
             qty_change (Decimal): Amount to change (positive or negative).
             reason (str): Reason for the adjustment.
-            
+
         Returns:
             bool: True if successful, False otherwise.
         """
@@ -33,13 +34,13 @@ class InventoryService:
                 raise ValueError("Product not found.")
 
             product.stock_qty += qty_change
-            
+
             log = InventoryLog(
                 product_id=product.id,
                 qty_change=qty_change,
                 new_qty=product.stock_qty,
                 reason=reason,
-                user_id=current_user.id
+                user_id=current_user.id,
             )
             session.add(log)
             session.commit()
@@ -58,6 +59,8 @@ class InventoryService:
         """
         db = Database()
         with db.get_session() as session:
-            products = session.query(Product).filter(Product.stock_qty < threshold).all()
+            products = (
+                session.query(Product).filter(Product.stock_qty < threshold).all()
+            )
             session.expunge_all()
             return products

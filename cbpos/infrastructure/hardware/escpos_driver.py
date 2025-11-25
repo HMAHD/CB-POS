@@ -1,11 +1,13 @@
 import time
-from PyQt6.QtCore import QThread, pyqtSignal, QObject
+from PyQt6.QtCore import QThread
 from cbpos.core.interfaces.iprinter import IPrinter
+
 
 class MockPrinter(IPrinter):
     """
     Mock Printer for development/testing without hardware.
     """
+
     def connect(self) -> bool:
         print("[MockPrinter] Connected")
         return True
@@ -14,7 +16,7 @@ class MockPrinter(IPrinter):
         print("[MockPrinter] Disconnected")
 
     def print_text(self, text: str):
-        print(f"[MockPrinter] {text}", end='')
+        print(f"[MockPrinter] {text}", end="")
 
     def print_line(self, text: str):
         print(f"[MockPrinter] {text}")
@@ -25,11 +27,13 @@ class MockPrinter(IPrinter):
     def kick_drawer(self):
         print("[MockPrinter] KICK DRAWER")
 
+
 class ESCPOSDriver(IPrinter):
     """
     Real implementation using python-escpos.
     For now, we will default to MockPrinter if python-escpos is not installed or configured.
     """
+
     def __init__(self):
         self.printer = None
 
@@ -39,7 +43,7 @@ class ESCPOSDriver(IPrinter):
             # For now, we'll try to use a Dummy printer or fail gracefully
             # from escpos.printer import Usb
             # self.printer = Usb(0x04b8, 0x0202) # Example Vendor/Product ID
-            return False # Not implemented yet
+            return False  # Not implemented yet
         except Exception as e:
             print(f"Printer Connection Failed: {e}")
             return False
@@ -64,10 +68,12 @@ class ESCPOSDriver(IPrinter):
         if self.printer:
             self.printer.cashdraw(2)
 
+
 class PrintWorker(QThread):
     """
     Worker thread to handle printing tasks asynchronously.
     """
+
     def __init__(self, printer: IPrinter = None):
         super().__init__()
         self.printer = printer or MockPrinter()
@@ -90,19 +96,19 @@ class PrintWorker(QThread):
                 if not self.printer.connect():
                     # If real printer fails, maybe fallback to mock or log error
                     if not isinstance(self.printer, MockPrinter):
-                         print("Printer connection failed. Using Mock.")
-                         self.printer = MockPrinter()
-                         self.printer.connect()
+                        print("Printer connection failed. Using Mock.")
+                        self.printer = MockPrinter()
+                        self.printer.connect()
 
-                if job_type == 'kick_drawer':
+                if job_type == "kick_drawer":
                     self.printer.kick_drawer()
-                elif job_type == 'print_receipt':
+                elif job_type == "print_receipt":
                     # data is the formatted receipt string
                     self.printer.print_text(data)
                     self.printer.cut()
-                
+
                 self.printer.disconnect()
             except Exception as e:
                 print(f"Print Job Failed: {e}")
-            
-            time.sleep(0.1) # Small delay between jobs
+
+            time.sleep(0.1)  # Small delay between jobs

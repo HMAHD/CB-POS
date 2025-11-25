@@ -12,20 +12,6 @@ All notable changes to this project will be documented in this file.
 - Authentication Service (`core/services/auth_service.py`) with PIN hashing.
 - Global Theme (`ui/styles/theme.qss`) implementing "Ceylon Byte" industrial design.
 - Login UI (`ui/views/login_view.py`) with custom Numpad and Split Screen layout.
-- Main Window (`ui/main_window.py`) with StackedWidget for view management.
-- Font Integration: Added support for "Noto Sans", "Noto Sans Sinhala", and "Noto Sans Tamil" loaded from `cbpos/assets/fonts`.
-- Sales Terminal (`ui/views/sales_view.py`) with Cart Table, Barcode Input, and Totals.
-- Product Service (`core/services/product_service.py`) for inventory lookup.
-- Cart Service (`core/services/cart_service.py`) for managing sale state.
-- Checkout Engine:
-    -   Tax Service (`core/services/tax_service.py`) for backward tax calculation.
-    -   Payment Dialog (`ui/dialogs/payment_dialog.py`) for processing payments.
-    -   Transaction Service (`core/services/transaction_service.py`) for atomic sales persistence.
-    -   Database Schema: Updated `sales` table to store `tax_vat`, `tax_sscl`, and `net_revenue`.
-- Inventory Management (Phase 4):
-    -   Implemented `InventoryView` for listing and searching products.
-    -   Implemented `ProductEditorDialog` for creating and editing products.
-    -   Added support for Composite Items (Bundles).
 - Transaction Operations (Phase 8):
     -   Implemented **Hold/Recall Bill** functionality.
     -   Implemented **Void Bill** (Clear Cart) functionality.
@@ -60,3 +46,10 @@ All notable changes to this project will be documented in this file.
     -   Refined Login Screen: Hidden Status Bar, Enabled Numpad Support.
     -   Fixed Font Loading: Dynamically loading Noto Sans from assets to resolve warnings.
     -   Fixed Login Enter Key: Enhanced key handling for robust submission.
+- DevOps & Financial Infrastructure (Phase 4):
+    -   Implemented `pre-commit` hooks for automated code quality (Black, Flake8).
+    -   Added `Shift` and `CashMovement` models for financial accountability.
+    -   Implemented `CashControlService` and `CashMovementDialog`.
+    -   Initialized Alembic for database migrations.
+    -   Prepared Deployment Artifacts: `cbpos.spec` (PyInstaller) and `LicenseService` stub.
+    -   **Fixed**: Sanitized `auth_service.py` to resolve reported SyntaxError.

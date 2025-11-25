@@ -4,15 +4,19 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
 from cbpos.config import Config
 
+
 class Base(DeclarativeBase):
     """Base class for all SQLAlchemy models."""
+
     pass
+
 
 class Database:
     """
     Singleton Database Manager.
     Handles engine creation and session management.
     """
+
     _instance = None
 
     def __new__(cls):
@@ -28,12 +32,10 @@ class Database:
             echo=False,  # Set to True for SQL logging
             pool_pre_ping=True,
             pool_size=10,
-            max_overflow=20
+            max_overflow=20,
         )
         self.SessionLocal = sessionmaker(
-            bind=self.engine,
-            autocommit=False,
-            autoflush=False
+            bind=self.engine, autocommit=False, autoflush=False
         )
 
     def create_tables(self):

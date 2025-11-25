@@ -1,13 +1,20 @@
 import os
 from PyQt6.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, 
-    QPushButton, QGridLayout, QMessageBox, QSpacerItem, QSizePolicy
+    QWidget,
+    QHBoxLayout,
+    QVBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QGridLayout,
+    QMessageBox,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QIntValidator
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.models import User
 from cbpos.config import Config
+
 
 class LoginView(QWidget):
     login_success = pyqtSignal(User)
@@ -30,22 +37,31 @@ class LoginView(QWidget):
         # Logo
         logo_label = QLabel()
         # Config.BASE_DIR is project root. Assets are in cbpos/assets/logo
-        logo_path = os.path.join(Config.BASE_DIR, "cbpos", "assets", "logo", "Logo_light.png")
+        logo_path = os.path.join(
+            Config.BASE_DIR, "cbpos", "assets", "logo", "Logo_light.png"
+        )
         if os.path.exists(logo_path):
             pixmap = QPixmap(logo_path)
-            scaled_pixmap = pixmap.scaled(300, 300, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            scaled_pixmap = pixmap.scaled(
+                300,
+                300,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
             logo_label.setPixmap(scaled_pixmap)
         else:
             logo_label.setText("CB POS")
             logo_label.setObjectName("LogoText")
-        
+
         logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Multilingual Welcome Text
         welcome_text = QLabel("Welcome / ආයුබෝවන් / வணக்கம்")
         welcome_text.setObjectName("Subtitle")
         welcome_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        welcome_text.setStyleSheet("font-size: 24px; color: #00BCEB; font-weight: bold; margin-top: 20px;")
+        welcome_text.setStyleSheet(
+            "font-size: 24px; color: #00BCEB; font-weight: bold; margin-top: 20px;"
+        )
 
         left_layout.addStretch()
         left_layout.addWidget(logo_label)
@@ -69,17 +85,17 @@ class LoginView(QWidget):
         self.pin_input = QLineEdit()
         self.pin_input.setPlaceholderText("Enter PIN")
         self.pin_input.setEchoMode(QLineEdit.EchoMode.Password)
-        self.pin_input.setReadOnly(False) # Allow keyboard input
+        self.pin_input.setReadOnly(False)  # Allow keyboard input
         self.pin_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.pin_input.setFixedWidth(300)
-        
+
         # Validator (Numbers only, max 4 digits)
         self.pin_input.setValidator(QIntValidator(0, 9999))
         self.pin_input.setMaxLength(4)
-        
+
         # Handle Enter Key
         self.pin_input.returnPressed.connect(self.attempt_login)
-        
+
         right_layout.addWidget(self.pin_input)
         right_layout.addSpacing(20)
 
@@ -88,26 +104,34 @@ class LoginView(QWidget):
         numpad_layout.setSpacing(10)
 
         buttons = [
-            ('1', 0, 0), ('2', 0, 1), ('3', 0, 2),
-            ('4', 1, 0), ('5', 1, 1), ('6', 1, 2),
-            ('7', 2, 0), ('8', 2, 1), ('9', 2, 2),
-            ('C', 3, 0), ('0', 3, 1), ('⏎', 3, 2)
+            ("1", 0, 0),
+            ("2", 0, 1),
+            ("3", 0, 2),
+            ("4", 1, 0),
+            ("5", 1, 1),
+            ("6", 1, 2),
+            ("7", 2, 0),
+            ("8", 2, 1),
+            ("9", 2, 2),
+            ("C", 3, 0),
+            ("0", 3, 1),
+            ("⏎", 3, 2),
         ]
 
         for text, row, col in buttons:
             btn = QPushButton(text)
             btn.setFixedSize(80, 80)
             btn.setObjectName("NumpadBtn")
-            
-            if text == 'C':
+
+            if text == "C":
                 btn.clicked.connect(self.clear_pin)
                 btn.setStyleSheet("color: #FF4136; border-color: #FF4136;")
-            elif text == '⏎':
+            elif text == "⏎":
                 btn.clicked.connect(self.attempt_login)
                 btn.setStyleSheet("color: #39FF14; border-color: #39FF14;")
             else:
                 btn.clicked.connect(lambda checked, t=text: self.append_pin(t))
-            
+
             numpad_layout.addWidget(btn, row, col)
 
         right_layout.addLayout(numpad_layout)
@@ -115,7 +139,7 @@ class LoginView(QWidget):
         # Add panels to main layout
         main_layout.addWidget(left_panel, 40)
         main_layout.addWidget(right_panel, 60)
-        
+
         # Set focus to input
         self.pin_input.setFocus()
 
@@ -123,7 +147,7 @@ class LoginView(QWidget):
         current_text = self.pin_input.text()
         if len(current_text) < 4:
             self.pin_input.setText(current_text + digit)
-            self.pin_input.setFocus() # Keep focus
+            self.pin_input.setFocus()  # Keep focus
 
     def clear_pin(self):
         self.pin_input.clear()
@@ -152,9 +176,8 @@ class LoginView(QWidget):
             return
 
         # Handle Numpad Numbers explicitly if focus is lost or not handled
-        key = event.key()
         text = event.text()
-        
+
         # Check if it's a number key (0-9)
         if text.isdigit():
             print(f"DEBUG: Number Key Detected: {text}")

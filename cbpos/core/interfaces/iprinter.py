@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class IPrinter(ABC):
     """
     Abstract Interface for POS Printers.

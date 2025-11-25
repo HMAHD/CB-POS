@@ -17,3 +17,7 @@ All notable changes to this project will be documented in this file.
 - Sales Terminal (`ui/views/sales_view.py`) with Cart Table, Barcode Input, and Totals.
 - Product Service (`core/services/product_service.py`) for inventory lookup.
 - Cart Service (`core/services/cart_service.py`) for managing sale state.
+- Checkout Engine:
+    -   Tax Service (`core/services/tax_service.py`) for backward tax calculation.
+    -   Payment Dialog (`ui/dialogs/payment_dialog.py`) for processing payments.
+    -   Transaction Service (`core/services/transaction_service.py`) for atomic sales persistence.

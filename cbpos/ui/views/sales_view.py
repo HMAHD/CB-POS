@@ -147,3 +147,34 @@ class SalesView(QWidget):
         # Update Total Label
         totals = self.cart_service.get_totals()
         self.total_label.setText(f"Rs. {totals['subtotal']:,.2f}")
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_F5:
+            self.open_payment_dialog()
+        else:
+            super().keyPressEvent(event)
+
+    def open_payment_dialog(self):
+        totals = self.cart_service.get_totals()
+        if totals['count'] == 0:
+            QMessageBox.warning(self, "Empty Cart", "Cannot process sale with empty cart.")
+            return
+
+        from cbpos.ui.dialogs.payment_dialog import PaymentDialog
+        dialog = PaymentDialog(totals['subtotal'], self)
+        if dialog.exec():
+            # Payment Confirmed
+            self.process_transaction(dialog.tendered_amount)
+
+    def process_transaction(self, tendered_amount):
+        from cbpos.core.services.transaction_service import TransactionService
+        
+        success = TransactionService.process_sale(self.cart_service, "CASH", tendered_amount)
+        
+        if success:
+            QMessageBox.information(self, "Success", "Sale processed successfully!")
+            self.cart_service.clear()
+            self.refresh_cart()
+            self.barcode_input.setFocus()
+        else:
+            QMessageBox.critical(self, "Error", "Transaction failed. Please check logs.")

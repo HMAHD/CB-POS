@@ -1,5 +1,12 @@
-.venv/
 __pycache__/
+*.pyc
+.venv/
+.idea/
+.vscode/
 *.db
+*.sqlite
+*.sqlite3
 *.log
-_legacy_dotnet/
+.DS_Store
+Thumbs.db
+.agent

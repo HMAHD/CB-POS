@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from cbpos.core.database import Database
 from cbpos.core.models import Product
 
@@ -36,3 +36,18 @@ class ProductService:
             for p in products:
                 session.expunge(p)
             return products
+
+    @staticmethod
+    def get_components(product_id: int) -> List[Dict[str, Any]]:
+        """Get components for a composite product."""
+        from cbpos.core.models import CompositeItem
+        db = Database()
+        with db.get_session() as session:
+            components = session.query(CompositeItem).filter(CompositeItem.parent_product_id == product_id).all()
+            result = []
+            for comp in components:
+                result.append({
+                    'product': comp.child,
+                    'qty': comp.qty
+                })
+            return result

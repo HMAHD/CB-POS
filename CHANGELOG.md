@@ -22,3 +22,15 @@ All notable changes to this project will be documented in this file.
     -   Payment Dialog (`ui/dialogs/payment_dialog.py`) for processing payments.
     -   Transaction Service (`core/services/transaction_service.py`) for atomic sales persistence.
     -   Database Schema: Updated `sales` table to store `tax_vat`, `tax_sscl`, and `net_revenue`.
+- Inventory Management (Phase 4):
+    -   Implemented `InventoryView` for listing and searching products.
+    -   Implemented `ProductEditorDialog` for creating and editing products.
+    -   Added support for Composite Items (Bundles).
+- Transaction Operations (Phase 8):
+    -   Implemented **Hold/Recall Bill** functionality.
+    -   Implemented **Void Bill** (Clear Cart) functionality.
+    -   Added `SuspendedTransaction` model.
+- Hardware & Receipts (Phase 5 & 9):
+    -   Implemented `IPrinter` interface and `ESCPOSDriver` (with Mock fallback).
+    -   Implemented `ReceiptBuilder` for formatting Sri Lankan compliant receipts.
+    -   Integrated printing and cash drawer kick into `TransactionService`.

@@ -4,9 +4,11 @@ from PyQt6.QtWidgets import (
     QLineEdit, QLabel, QPushButton, QGridLayout, QHeaderView, QMessageBox
 )
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QFont, QIntValidator
+from PyQt6.QtGui import QKeySequence, QShortcut
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.cart_service import CartService
+from cbpos.core.services.transaction_service import TransactionService
+from cbpos.ui.dialogs.payment_dialog import PaymentDialog
 
 class SalesView(QWidget):
     def __init__(self):
@@ -62,23 +64,36 @@ class SalesView(QWidget):
         
         right_layout.addSpacing(20)
         
-        # Numpad / Function Keys
-        grid_layout = QGridLayout()
-        grid_layout.setSpacing(10)
+        # Buttons
+        btn_layout = QGridLayout()
         
-        # Example Function Keys
-        f_keys = [
-            ('F1\nHelp', 0, 0), ('F2\nQty', 0, 1), ('F3\nVoid', 0, 2),
-            ('F4\nDisc', 1, 0), ('F5\nCust', 1, 1), ('F6\nHold', 1, 2)
-        ]
+        self.btn_pay = QPushButton("PAY (F5)")
+        self.btn_pay.setStyleSheet("background-color: #39FF14; color: black; font-weight: bold; padding: 20px;")
+        self.btn_pay.clicked.connect(self.process_payment)
+        btn_layout.addWidget(self.btn_pay, 0, 0, 1, 2)
         
-        for text, r, c in f_keys:
-            btn = QPushButton(text)
-            btn.setFixedSize(100, 80)
-            btn.setStyleSheet("background-color: #004d40; font-size: 14px;")
-            grid_layout.addWidget(btn, r, c)
-            
-        right_layout.addLayout(grid_layout)
+        self.btn_hold = QPushButton("HOLD (F6)")
+        self.btn_hold.setStyleSheet("background-color: #FFDC00; color: black;")
+        self.btn_hold.clicked.connect(self.hold_bill)
+        btn_layout.addWidget(self.btn_hold, 1, 0)
+        
+        self.btn_recall = QPushButton("RECALL (F7)")
+        self.btn_recall.setStyleSheet("background-color: #0074D9; color: white;")
+        self.btn_recall.clicked.connect(self.recall_bill)
+        btn_layout.addWidget(self.btn_recall, 1, 1)
+        
+        self.btn_void = QPushButton("VOID (F4)")
+        self.btn_void.setStyleSheet("background-color: #FF4136; color: white;")
+        self.btn_void.clicked.connect(self.void_bill)
+        btn_layout.addWidget(self.btn_void, 2, 0, 1, 2)
+        
+        # Temporary Inventory Button
+        self.btn_inv = QPushButton("INVENTORY")
+        self.btn_inv.setStyleSheet("background-color: #AAAAAA; color: black;")
+        self.btn_inv.clicked.connect(self.open_inventory)
+        btn_layout.addWidget(self.btn_inv, 3, 0, 1, 2)
+
+        right_layout.addLayout(btn_layout)
         right_layout.addStretch()
         
         # Total Display
@@ -91,9 +106,24 @@ class SalesView(QWidget):
         main_layout.addWidget(left_panel)
         main_layout.addWidget(right_panel)
 
+        # Shortcuts
+        self.shortcut_f5 = QShortcut(QKeySequence("F5"), self)
+        self.shortcut_f5.activated.connect(self.process_payment)
+        
+        self.shortcut_f6 = QShortcut(QKeySequence("F6"), self)
+        self.shortcut_f6.activated.connect(self.hold_bill)
+        
+        self.shortcut_f7 = QShortcut(QKeySequence("F7"), self)
+        self.shortcut_f7.activated.connect(self.recall_bill)
+        
+        self.shortcut_f4 = QShortcut(QKeySequence("F4"), self)
+        self.shortcut_f4.activated.connect(self.void_bill)
+
     def ensure_focus(self):
         """Force focus back to barcode input if window is active."""
         if self.window().isActiveWindow() and not self.barcode_input.hasFocus():
+            # Only force focus if no dialog is open
+            # This is a simple check, might need improvement
             self.barcode_input.setFocus()
 
     def process_barcode(self):
@@ -104,77 +134,90 @@ class SalesView(QWidget):
         product = ProductService.get_by_barcode(barcode)
         if product:
             self.cart_service.add_item(product)
-            self.refresh_cart()
+            self.update_cart_display()
             self.barcode_input.clear()
         else:
-            # Try search if not exact match (optional, or show error)
-            # For now, just show error
-            QMessageBox.warning(self, "Product Not Found", f"No product found for '{barcode}'")
-            self.barcode_input.selectAll()
+            # Try search if not barcode
+            products = ProductService.search(barcode)
+            if len(products) == 1:
+                self.cart_service.add_item(products[0])
+                self.update_cart_display()
+                self.barcode_input.clear()
+            elif len(products) > 1:
+                QMessageBox.information(self, "Multiple Found", "Multiple products found. Please refine search.")
+            else:
+                QMessageBox.warning(self, "Not Found", "Product not found.")
 
-    def refresh_cart(self):
-        """Redraw the cart table."""
+    def update_cart_display(self):
         self.cart_table.setRowCount(0)
-        
-        for item in self.cart_service.items:
-            row = self.cart_table.rowCount()
+        for row, item in enumerate(self.cart_service.items):
             self.cart_table.insertRow(row)
-            
-            p = item['product']
-            
-            # Name
-            name_item = QTableWidgetItem(p.name_en)
-            self.cart_table.setItem(row, 0, name_item)
-            
-            # Price
-            price_item = QTableWidgetItem(f"{p.price:,.2f}")
-            price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.cart_table.setItem(row, 1, price_item)
-            
-            # Qty
-            qty_item = QTableWidgetItem(f"{item['qty']:.3f}")
-            qty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.cart_table.setItem(row, 2, qty_item)
-            
-            # Total
-            total_item = QTableWidgetItem(f"{item['total']:,.2f}")
-            total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.cart_table.setItem(row, 3, total_item)
-            
-        # Scroll to bottom
-        self.cart_table.scrollToBottom()
+            self.cart_table.setItem(row, 0, QTableWidgetItem(item['product'].name_en))
+            self.cart_table.setItem(row, 1, QTableWidgetItem(f"{item['unit_price']:.2f}"))
+            self.cart_table.setItem(row, 2, QTableWidgetItem(f"{item['qty']:.3f}"))
+            self.cart_table.setItem(row, 3, QTableWidgetItem(f"{item['total']:.2f}"))
         
-        # Update Total Label
         totals = self.cart_service.get_totals()
-        self.total_label.setText(f"Rs. {totals['subtotal']:,.2f}")
+        self.total_label.setText(f"Rs. {totals['subtotal']:.2f}")
+        self.cart_table.scrollToBottom()
 
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_F5:
-            self.open_payment_dialog()
-        else:
-            super().keyPressEvent(event)
-
-    def open_payment_dialog(self):
+    def process_payment(self):
         totals = self.cart_service.get_totals()
-        if totals['count'] == 0:
-            QMessageBox.warning(self, "Empty Cart", "Cannot process sale with empty cart.")
+        if totals['subtotal'] <= 0:
             return
 
-        from cbpos.ui.dialogs.payment_dialog import PaymentDialog
         dialog = PaymentDialog(totals['subtotal'], self)
         if dialog.exec():
-            # Payment Confirmed
-            self.process_transaction(dialog.tendered_amount)
+            tendered = dialog.tendered_amount
+            success = TransactionService.process_sale(self.cart_service, "CASH", tendered)
+            if success:
+                QMessageBox.information(self, "Success", "Sale processed successfully!")
+                self.cart_service.clear()
+                self.update_cart_display()
+                self.barcode_input.setFocus()
+            else:
+                QMessageBox.critical(self, "Error", "Transaction failed!")
 
-    def process_transaction(self, tendered_amount):
-        from cbpos.core.services.transaction_service import TransactionService
+    def hold_bill(self):
+        if not self.cart_service.items:
+            return
         
-        success = TransactionService.process_sale(self.cart_service, "CASH", tendered_amount)
-        
-        if success:
-            QMessageBox.information(self, "Success", "Sale processed successfully!")
+        if TransactionService.hold_bill(self.cart_service):
             self.cart_service.clear()
-            self.refresh_cart()
-            self.barcode_input.setFocus()
+            self.update_cart_display()
+            QMessageBox.information(self, "Held", "Bill put on hold.")
         else:
-            QMessageBox.critical(self, "Error", "Transaction failed. Please check logs.")
+            QMessageBox.critical(self, "Error", "Failed to hold bill.")
+
+    def recall_bill(self):
+        from cbpos.core.database import Database
+        from cbpos.core.models import SuspendedTransaction
+        
+        db = Database()
+        with db.get_session() as session:
+            suspended = session.query(SuspendedTransaction).order_by(SuspendedTransaction.timestamp.desc()).first()
+            if not suspended:
+                QMessageBox.information(self, "Empty", "No held bills found.")
+                return
+            
+            sus_id = suspended.id
+            
+        if TransactionService.recall_bill(sus_id, self.cart_service):
+            self.update_cart_display()
+            QMessageBox.information(self, "Recalled", "Bill recalled.")
+        else:
+            QMessageBox.critical(self, "Error", "Failed to recall bill.")
+
+    def void_bill(self):
+        reply = QMessageBox.question(self, "Void Bill", "Are you sure you want to clear the current bill?",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            self.cart_service.clear()
+            self.update_cart_display()
+
+    def open_inventory(self):
+        from cbpos.ui.views.inventory_view import InventoryView
+        self.inv_window = InventoryView()
+        self.inv_window.resize(800, 600)
+        self.inv_window.show()

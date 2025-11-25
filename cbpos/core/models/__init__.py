@@ -52,6 +52,7 @@ class Sale(Base):
     tax_sscl: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     net_revenue: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     payment_method: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="COMPLETED") # COMPLETED, VOID
     cashier_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
     cashier: Mapped["User"] = relationship(back_populates="sales")
@@ -69,3 +70,22 @@ class SaleItem(Base):
 
     sale: Mapped["Sale"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship("Product")
+
+class SuspendedTransaction(Base):
+    __tablename__ = "suspended_transactions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    data: Mapped[str] = mapped_column(String, nullable=False) # JSON string of cart items
+    note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+
+class CompositeItem(Base):
+    __tablename__ = "composite_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    parent_product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    child_product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+
+    parent: Mapped["Product"] = relationship("Product", foreign_keys=[parent_product_id])
+    child: Mapped["Product"] = relationship("Product", foreign_keys=[child_product_id])

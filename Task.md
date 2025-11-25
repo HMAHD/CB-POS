@@ -9,57 +9,57 @@
 ## 🏗️ Phase 1: Project Initialization & Environment
 *Goal: Establish a sterile, reproducible development environment.*
 
-- [ ] **1.1 Directory Structure**
-    - [ ] Generate standard folders (`core`, `infrastructure`, `ui`, `tests`).
-    - [ ] Create `assets` folders (fonts, icons, sounds).
-    - [ ] Initialize `__init__.py` in all packages.
-- [ ] **1.2 Version Control & Config**
-    - [ ] Initialize Git repository.
-    - [ ] Create `.gitignore` (Python, PyCharm, VSCode specific).
-    - [ ] Create `config.py` using `pydantic-settings` for strongly typed env vars.
-- [ ] **1.3 Dependency Management**
-    - [ ] Create virtual environment (`.venv`).
-    - [ ] Generate `requirements.txt` with pinned versions (`PyQt6==6.7.0`, `SQLAlchemy==2.0.30`).
+- [x] **1.1 Directory Structure**
+    - [x] Generate standard folders (`core`, `infrastructure`, `ui`, `tests`).
+    - [x] Create `assets` folders (fonts, icons, sounds).
+    - [x] Initialize `__init__.py` in all packages.
+- [x] **1.2 Version Control & Config**
+    - [x] Initialize Git repository.
+    - [x] Create `.gitignore` (Python, PyCharm, VSCode specific).
+    - [x] Create `config.py` using `pydantic-settings` for strongly typed env vars.
+- [x] **1.3 Dependency Management**
+    - [x] Create virtual environment (`.venv`).
+    - [x] Generate `requirements.txt` with pinned versions (`PyQt6==6.7.0`, `SQLAlchemy==2.0.30`).
     - [ ] Setup `pre-commit` hooks (Black, Flake8) for code quality.
 
 ## 💾 Phase 2: Database Layer (The Brain)
 *Goal: Define the data structure ensuring integrity and speed.*
 
-- [ ] **2.1 ORM Setup (SQLAlchemy 2.0)**
-    - [ ] Implement Singleton Database Connection.
+- [x] **2.1 ORM Setup (SQLAlchemy 2.0)**
+    - [x] Implement Singleton Database Connection.
     - [ ] Configure Connection Pooling (for high throughput).
-    - [ ] Create Base declarative model.
-- [ ] **2.2 Core Models**
-    - [ ] **Auth:** `User`, `Role`, `Permission`.
-    - [ ] **Inventory:** `Category`, `Product`, `ProductVariant`, `Unit`.
-    - [ ] **Sales:** `Sale`, `SaleItem`, `Payment`.
+    - [x] Create Base declarative model.
+- [x] **2.2 Core Models**
+    - [x] **Auth:** `User`, `Role`, `Permission`.
+    - [x] **Inventory:** `Category`, `Product`, `ProductVariant`, `Unit`.
+    - [x] **Sales:** `Sale`, `SaleItem`, `Payment`.
     - [ ] **Audit:** `Log`, `Shift`, `CashMovement`.
 - [ ] **2.3 Migration Engine**
     - [ ] Initialize **Alembic**.
     - [ ] Create initial migration script.
-    - [ ] Create `scripts/seed.py` for SL Default Data.
+    - [x] Create `scripts/seed.py` for SL Default Data.
 
 ## 🔐 Phase 3: Authentication & Security
 *Goal: Protect the system from unauthorized access.*
 
-- [ ] **3.1 Security Logic**
-    - [ ] Implement SHA-256 PIN Hashing.
-    - [ ] Create `AuthService.login(pin)`.
-    - [ ] Create `SessionManager` (Singleton).
+- [x] **3.1 Security Logic**
+    - [x] Implement SHA-256 PIN Hashing.
+    - [x] Create `AuthService.login(pin)`.
+    - [x] Create `SessionManager` (Singleton).
 - [ ] **3.2 RBAC (Role-Based Access Control)**
     - [ ] Define Permissions (`CAN_VOID`, `CAN_REFUND`, `CAN_SEE_REPORTS`).
     - [ ] Implement `check_permission` decorator for sensitive functions.
-- [ ] **3.3 Login UI**
-    - [ ] Design Split-Screen Login (Brand Left / Numpad Right).
-    - [ ] Implement Masked PIN Input.
+- [x] **3.3 Login UI**
+    - [x] Design Split-Screen Login (Brand Left / Numpad Right).
+    - [x] Implement Masked PIN Input.
     - [ ] Add "Manager Override" popup logic.
 
 ## 📦 Phase 4: Advanced Inventory Management
 *Goal: Manage complex retail products.*
 
-- [ ] **4.1 Product Logic**
-    - [ ] Implement `ProductService`.
-    - [ ] Support **Weighted Items** (Boolean flag).
+- [x] **4.1 Product Logic**
+    - [x] Implement `ProductService`.
+    - [x] Support **Weighted Items** (Boolean flag).
     - [ ] Support **Composite Items** (Hampers).
 - [ ] **4.2 Inventory UI**
     - [ ] Create Product Master Grid (Search, Filter, Sort).
@@ -85,32 +85,32 @@
 ## 🖥️ Phase 6: The Sales Terminal (UI/UX)
 *Goal: A mouse-free interface for high-speed checkout.*
 
-- [ ] **6.1 Layout Engine**
-    - [ ] **Left Panel:** High-Contrast Cart Grid.
-    - [ ] **Right Panel:** Command Center (Numpad + Action Grid).
+- [x] **6.1 Layout Engine**
+    - [x] **Left Panel:** High-Contrast Cart Grid.
+    - [x] **Right Panel:** Command Center (Numpad + Action Grid).
     - [ ] **Top Bar:** Status Indicators (Printer, Network, User).
-- [ ] **6.2 Interaction Design**
-    - [ ] Implement **Focus Trap** (Cursor auto-return).
-    - [ ] Map Function Keys (`F1`-`F12`) to Actions.
+- [x] **6.2 Interaction Design**
+    - [x] Implement **Focus Trap** (Cursor auto-return).
+    - [x] Map Function Keys (`F1`-`F12`) to Actions.
     - [ ] Create "Touch Visual Groups" for non-barcoded items.
 
 ## 🛒 Phase 7: Cart Logic & Math Engine
 *Goal: Precision calculation without floating point errors.*
 
-- [ ] **7.1 Cart Service**
-    - [ ] Implement `add_item`, `remove_item`, `update_qty`.
-    - [ ] Logic: Merge duplicates vs New Line.
-    - [ ] Logic: Weighted item decimal handling (`0.500` kg).
-- [ ] **7.2 Calculation Engine**
-    - [ ] Implement `Decimal` based math (No floats).
-    - [ ] Calculate `Subtotal`, `LineDiscount`, `CartDiscount`, `Total`.
+- [x] **7.1 Cart Service**
+    - [x] Implement `add_item`, `remove_item`, `update_qty`.
+    - [x] Logic: Merge duplicates vs New Line.
+    - [x] Logic: Weighted item decimal handling (`0.500` kg).
+- [x] **7.2 Calculation Engine**
+    - [x] Implement `Decimal` based math (No floats).
+    - [x] Calculate `Subtotal`, `LineDiscount`, `CartDiscount`, `Total`.
 
 ## 💳 Phase 8: Transaction Processing
 *Goal: The core business function.*
 
-- [ ] **8.1 Transaction Service**
-    - [ ] Implement **Atomic Commit** (DB Transaction).
-    - [ ] Sequence: Save Header -> Save Lines -> Deduct Stock -> Commit.
+- [x] **8.1 Transaction Service**
+    - [x] Implement **Atomic Commit** (DB Transaction).
+    - [x] Sequence: Save Header -> Save Lines -> Deduct Stock -> Commit.
 - [ ] **8.2 Operations**
     - [ ] **Hold Bill:** Serialize cart to "Pending" table.
     - [ ] **Recall Bill:** Restore from Pending.
@@ -119,10 +119,10 @@
 ## 🇱🇰 Phase 9: Sri Lankan Compliance Module
 *Goal: Local tax laws.*
 
-- [ ] **9.1 Tax Engine (Backward Calc)**
-    - [ ] Logic: `Shelf Price = Base + VAT + SSCL`.
-    - [ ] Implement extraction formula for 18% VAT.
-    - [ ] Implement extraction formula for 2.5% SSCL.
+- [x] **9.1 Tax Engine (Backward Calc)**
+    - [x] Logic: `Shelf Price = Base + VAT + SSCL`.
+    - [x] Implement extraction formula for 18% VAT.
+    - [x] Implement extraction formula for 2.5% SSCL.
 - [ ] **9.2 Invoicing Rules**
     - [ ] Logic: Detect Registered Customer (VAT No).
     - [ ] Output: Switch Receipt format to "Tax Invoice".
@@ -130,9 +130,9 @@
 ## 💵 Phase 10: Payment & Checkout
 *Goal: Flexible tender handling.*
 
-- [ ] **10.1 Payment UI**
-    - [ ] Design Payment Dialog (Big Total).
-    - [ ] "Smart Cash" Buttons (Exact, 1000, 5000).
+- [x] **10.1 Payment UI**
+    - [x] Design Payment Dialog (Big Total).
+    - [x] "Smart Cash" Buttons (Exact, 1000, 5000).
 - [ ] **10.2 Logic**
     - [ ] **Split Payment:** Cash + Card.
     - [ ] **Credit Sale:** Assign to Customer Debt.
@@ -195,8 +195,8 @@
 ## 🎨 Phase 16: Theme & Localization
 *Goal: Ceylon Byte Branding.*
 
-- [ ] **16.1 Theme Engine**
-    - [ ] Implement `styles.qss`.
+- [x] **16.1 Theme Engine**
+    - [x] Implement `styles.qss`.
     - [ ] Create "Ceylon Night" and "Ceylon Day" themes.
 - [ ] **16.2 Localization**
     - [ ] Generate `.ts` files for Qt Linguist.

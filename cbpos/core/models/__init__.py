@@ -48,6 +48,9 @@ class Sale(Base):
     receipt_no: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    tax_vat: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    tax_sscl: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    net_revenue: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     payment_method: Mapped[str] = mapped_column(String(20), nullable=False)
     cashier_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 

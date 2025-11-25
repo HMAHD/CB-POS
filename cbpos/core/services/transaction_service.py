@@ -43,10 +43,16 @@ class TransactionService:
             cashier_id = current_user.id
 
             # 2. Create Sale Header
+            # Calculate Taxes
+            tax_info = TaxService.calculate_taxes(total_amount)
+            
             sale = Sale(
                 receipt_no=receipt_no,
                 timestamp=datetime.now(),
                 total_amount=total_amount,
+                tax_vat=tax_info['vat'],
+                tax_sscl=tax_info['sscl'],
+                net_revenue=tax_info['net'],
                 payment_method=payment_method,
                 cashier_id=cashier_id
             )

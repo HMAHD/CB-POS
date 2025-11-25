@@ -21,3 +21,4 @@ All notable changes to this project will be documented in this file.
     -   Tax Service (`core/services/tax_service.py`) for backward tax calculation.
     -   Payment Dialog (`ui/dialogs/payment_dialog.py`) for processing payments.
     -   Transaction Service (`core/services/transaction_service.py`) for atomic sales persistence.
+    -   Database Schema: Updated `sales` table to store `tax_vat`, `tax_sscl`, and `net_revenue`.

@@ -19,7 +19,7 @@ class LoggingService:
             details (str): Additional details (optional).
         """
         db = Database()
-        # Use a fresh session to ensure log is committed independently of main transaction
+        # Use a fresh session to ensure independent commit
         session = db.SessionLocal()
         try:
             log = AuditLog(user_id=user_id, action=action, details=details)

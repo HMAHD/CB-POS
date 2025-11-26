@@ -123,6 +123,9 @@ class LoginView(QWidget):
             btn.setFixedSize(80, 80)
             btn.setObjectName("NumpadBtn")
 
+            # CRITICAL: Prevent buttons from stealing focus from PIN input
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
             if text == "C":
                 btn.clicked.connect(self.clear_pin)
                 btn.setStyleSheet("color: #FF4136; border-color: #FF4136;")
@@ -143,11 +146,22 @@ class LoginView(QWidget):
         # Set focus to input
         self.pin_input.setFocus()
 
+    def showEvent(self, event):
+        """
+        Override showEvent to force focus on PIN input when view becomes visible.
+
+        This ensures the input field is always ready for keyboard input,
+        even after the view is shown or restored.
+        """
+        super().showEvent(event)
+        self.pin_input.setFocus()
+
     def append_pin(self, digit):
+        """Append digit to PIN input (called by numpad buttons)."""
         current_text = self.pin_input.text()
         if len(current_text) < 4:
             self.pin_input.setText(current_text + digit)
-            self.pin_input.setFocus()  # Keep focus
+            # Focus is automatically retained because buttons have NoFocus policy
 
     def clear_pin(self):
         self.pin_input.clear()

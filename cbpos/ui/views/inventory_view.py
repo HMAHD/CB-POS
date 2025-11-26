@@ -146,9 +146,10 @@ class InventoryView(QWidget):
         )
         if file_path:
             results = self.import_service.import_products_from_csv(file_path)
-            QMessageBox.information(
-                self,
-                "Import Results",
-                f"Success: {results['success']}\nFailed: {results['failed']}\nSkipped: {results['skipped']}",
+            message = (
+                f"Success: {results['success']}\\n"
+                f"Failed: {results['failed']}\\n"
+                f"Skipped: {results['skipped']}"
             )
+            QMessageBox.information(self, "Import Results", message)
             self.load_data()

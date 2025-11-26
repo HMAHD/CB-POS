@@ -35,7 +35,7 @@ class AuthService:
                 .first()
             )
             if user:
-                # Detach user and its role from session to keep them available after session closes
+                # Detach user and role to keep available after session close
                 if user.role:
                     _ = user.role.name  # Force load
                     session.expunge(user.role)

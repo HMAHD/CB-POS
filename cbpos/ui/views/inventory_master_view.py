@@ -147,7 +147,7 @@ class InventoryMasterView(QWidget):
 
     def load_data(self):
         # Initial load - get all or top 100
-        # For now, let's just search empty string which returns all (or limit in service)
+        # Search empty string returns all products
         self.perform_search()
 
     def on_search_changed(self):

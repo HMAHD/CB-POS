@@ -46,25 +46,13 @@ class SalesView(QWidget):
         self.cart_table.setColumnCount(4)
         self.cart_table.setHorizontalHeaderLabels(["Item", "Price", "Qty", "Total"])
         self.cart_table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.Stretch
+            QHeaderView.ResizeMode.Stretch
         )
+        self.cart_table.verticalHeader().setVisible(False)
+        self.cart_table.setShowGrid(False)
         self.cart_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.cart_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.cart_table.setStyleSheet(
-            """
-            QTableWidget {
-                font-size: 16px;
-                selection-background-color: #00BCEB;
-                selection-color: #001F3F;
-            }
-            QHeaderView::section {
-                background-color: #003366;
-                color: white;
-                font-weight: bold;
-                padding: 5px;
-            }
-        """
-        )
+        self.cart_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         left_layout.addWidget(self.cart_table)
 
         # --- RIGHT PANEL (Controls) ---
@@ -137,7 +125,7 @@ class SalesView(QWidget):
         self.total_label = QLabel("Rs. 0.00")
         self.total_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.total_label.setStyleSheet(
-            "font-size: 48px; font-weight: bold; color: #39FF14;"
+            "font-size: 64px; font-weight: bold; color: #39FF14; margin-top: 20px;"
         )
         right_layout.addWidget(self.total_label)
 
@@ -224,7 +212,7 @@ class SalesView(QWidget):
             self.lbl_customer.setText(cust_text)
             self.lbl_points.setText(f"Points: {self.customer.loyalty_points}")
         else:
-            # Optional: Clear customer if cancelled? No, keep previous selection usually.
+            # Keep previous customer selection on cancel
             pass
 
     def process_payment(self):

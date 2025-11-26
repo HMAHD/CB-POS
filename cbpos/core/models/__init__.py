@@ -80,8 +80,13 @@ class Shift(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     start_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     end_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    start_float: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
-    end_cash: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
+    starting_cash: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    expected_cash: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(10, 2), nullable=True
+    )
+    actual_cash: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(10, 2), nullable=True
+    )
     status: Mapped[str] = mapped_column(String(20), default="OPEN")  # OPEN, CLOSED
 
     user: Mapped["User"] = relationship()
@@ -95,7 +100,9 @@ class CashMovement(Base):
         ForeignKey("shifts.id"), nullable=True
     )
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    type: Mapped[str] = mapped_column(String(20), nullable=False)  # IN, OUT
+    type: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # IN, OUT, DROP, PAYOUT
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     reason: Mapped[str] = mapped_column(String(200), nullable=False)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)

@@ -2,110 +2,153 @@ from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QTableWidget,
-    QTableWidgetItem,
-    QPushButton,
     QLineEdit,
+    QPushButton,
+    QTableView,
     QHeaderView,
+    QMessageBox,
+    QFileDialog,
 )
+from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex
+from PyQt6.QtGui import QColor, QBrush
+from cbpos.core.services.inventory_service import InventoryService
+from cbpos.core.services.import_service import ImportService
+from cbpos.ui.dialogs.product_editor import ProductEditor
 
-from cbpos.core.database import Database
-from cbpos.core.models import Product
-from cbpos.ui.dialogs.product_editor_dialog import ProductEditorDialog
+
+class InventoryModel(QAbstractTableModel):
+    def __init__(self, products=None):
+        super().__init__()
+        self.products = products or []
+        self.headers = ["Barcode", "Name", "Category", "Price", "Stock", "Unit"]
+
+    def rowCount(self, parent=QModelIndex()):
+        return len(self.products)
+
+    def columnCount(self, parent=QModelIndex()):
+        return len(self.headers)
+
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        if not index.isValid():
+            return None
+
+        product = self.products[index.row()]
+        col = index.column()
+
+        if role == Qt.ItemDataRole.DisplayRole:
+            if col == 0:
+                return product.barcode
+            elif col == 1:
+                return product.name_en
+            elif col == 2:
+                return product.category.name if product.category else "-"
+            elif col == 3:
+                return "{:.2f}".format(product.price)
+            elif col == 4:
+                return "{:.3f}".format(product.stock_qty)
+            elif col == 5:
+                return "kg" if product.is_weighted else "unit"
+
+        elif role == Qt.ItemDataRole.BackgroundRole:
+            if product.stock_qty <= product.reorder_level:
+                return QBrush(QColor(255, 200, 200))  # Light Red
+
+        return None
+
+    def headerData(self, section, orientation, role):
+        if (
+            role == Qt.ItemDataRole.DisplayRole
+            and orientation == Qt.Orientation.Horizontal
+        ):
+            return self.headers[section]
+        return None
+
+    def update_data(self, products):
+        self.beginResetModel()
+        self.products = products
+        self.endResetModel()
 
 
 class InventoryView(QWidget):
     def __init__(self):
         super().__init__()
+        self.inventory_service = InventoryService()
+        self.import_service = ImportService()
         self.setup_ui()
-        self.refresh_data()
+        self.load_data()
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
 
-        # Toolbar
-        toolbar = QHBoxLayout()
+        # Top Bar
+        top_bar = QHBoxLayout()
+
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search by Name or Barcode...")
-        self.search_input.textChanged.connect(self.refresh_data)
+        self.search_input.setPlaceholderText("Search by Barcode or Name...")
+        self.search_input.textChanged.connect(self.filter_data)
 
-        btn_add = QPushButton("Add Product")
-        btn_add.clicked.connect(self.add_product)
+        self.add_btn = QPushButton("Add Product")
+        self.add_btn.clicked.connect(self.open_add_dialog)
 
-        btn_edit = QPushButton("Edit Selected")
-        btn_edit.clicked.connect(self.edit_product)
+        self.import_btn = QPushButton("Import CSV")
+        self.import_btn.clicked.connect(self.import_csv)
 
-        btn_refresh = QPushButton("Refresh")
-        btn_refresh.clicked.connect(self.refresh_data)
+        top_bar.addWidget(self.search_input)
+        top_bar.addWidget(self.add_btn)
+        top_bar.addWidget(self.import_btn)
 
-        toolbar.addWidget(self.search_input)
-        toolbar.addWidget(btn_add)
-        toolbar.addWidget(btn_edit)
-        toolbar.addWidget(btn_refresh)
-        layout.addLayout(toolbar)
+        layout.addLayout(top_bar)
 
         # Table
-        self.table = QTableWidget()
-        self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(
-            ["ID", "Barcode", "Name", "Price", "Stock"]
-        )
+        self.table = QTableView()
+        self.model = InventoryModel()
+        self.table.setModel(self.model)
+        self.table.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
+        self.table.setAlternatingRowColors(True)
         self.table.horizontalHeader().setSectionResizeMode(
-            2, QHeaderView.ResizeMode.Stretch
+            QHeaderView.ResizeMode.Stretch
         )
-        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.table.doubleClicked.connect(self.edit_product)
+        self.table.doubleClicked.connect(self.open_edit_dialog)
+
         layout.addWidget(self.table)
 
-    def refresh_data(self):
-        query_text = self.search_input.text().strip()
+    def load_data(self):
+        self.all_products = self.inventory_service.get_all_products()
+        self.model.update_data(self.all_products)
 
-        db = Database()
-        with db.get_session() as session:
-            query = session.query(Product)
-            if query_text:
-                query = query.filter(
-                    (Product.name_en.ilike(f"%{query_text}%"))
-                    | (Product.barcode.ilike(f"%{query_text}%"))
-                )
-
-            products = query.all()
-
-            self.table.setRowCount(len(products))
-            for i, p in enumerate(products):
-                self.table.setItem(i, 0, QTableWidgetItem(str(p.id)))
-                self.table.setItem(i, 1, QTableWidgetItem(p.barcode))
-                self.table.setItem(i, 2, QTableWidgetItem(p.name_en))
-                self.table.setItem(
-                    i, 3, QTableWidgetItem(f"{p.price:.2f}")  # noqa: E231
-                )
-                self.table.setItem(
-                    i, 4, QTableWidgetItem(f"{p.stock_qty:.3f}")  # noqa: E231
-                )
-
-    def add_product(self):
-        dialog = ProductEditorDialog(parent=self)
-        if dialog.exec():
-            self.refresh_data()
-
-    def edit_product(self):
-        row = self.table.currentRow()
-        if row < 0:
+    def filter_data(self, text):
+        if not text:
+            self.model.update_data(self.all_products)
             return
 
-        product_id = int(self.table.item(row, 0).text())
+        text = text.lower()
+        filtered = [
+            p
+            for p in self.all_products
+            if text in p.barcode.lower() or text in p.name_en.lower()
+        ]
+        self.model.update_data(filtered)
 
-        db = Database()
-        with db.get_session() as session:
-            product = session.query(Product).get(product_id)
-            if product:
-                # Must detach or use new session in dialog, but dialog creates its own session.
-                # We pass the detached object or just ID.
-                # Ideally pass ID, but for simplicity passing object (detached automatically by session close?)
-                # Actually, session closes at end of 'with', so 'product' is detached but valid.
-                session.expunge(product)
-
-        dialog = ProductEditorDialog(product, parent=self)
+    def open_add_dialog(self):
+        dialog = ProductEditor(parent=self)
         if dialog.exec():
-            self.refresh_data()
+            self.load_data()
+
+    def open_edit_dialog(self, index):
+        product = self.model.products[index.row()]
+        dialog = ProductEditor(product=product, parent=self)
+        if dialog.exec():
+            self.load_data()
+
+    def import_csv(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Import CSV", "", "CSV Files (*.csv)"
+        )
+        if file_path:
+            results = self.import_service.import_products_from_csv(file_path)
+            QMessageBox.information(
+                self,
+                "Import Results",
+                f"Success: {results['success']}\nFailed: {results['failed']}\nSkipped: {results['skipped']}",
+            )
+            self.load_data()

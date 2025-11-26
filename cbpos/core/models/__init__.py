@@ -129,8 +129,23 @@ class Product(Base):
     stock_qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=0)
     is_weighted: Mapped[bool] = mapped_column(Boolean, default=False)
     category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"))
+    parent_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("products.id"), nullable=True
+    )
+    reorder_level: Mapped[int] = mapped_column(default=0)
+    preferred_qty: Mapped[int] = mapped_column(default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     category: Mapped["Category"] = relationship(back_populates="products")
+    parent: Mapped["Product"] = relationship(
+        "Product", remote_side=[id], back_populates="variants"
+    )
+    variants: Mapped[List["Product"]] = relationship("Product", back_populates="parent")
+    components: Mapped[List["CompositeItem"]] = relationship(
+        "CompositeItem",
+        foreign_keys="CompositeItem.parent_product_id",
+        back_populates="parent",
+    )
 
 
 class Customer(Base):
@@ -224,6 +239,6 @@ class CompositeItem(Base):
     qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
 
     parent: Mapped["Product"] = relationship(
-        "Product", foreign_keys=[parent_product_id]
+        "Product", foreign_keys=[parent_product_id], back_populates="components"
     )
     child: Mapped["Product"] = relationship("Product", foreign_keys=[child_product_id])

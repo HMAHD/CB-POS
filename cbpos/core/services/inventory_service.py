@@ -1,66 +1,141 @@
+from typing import List, Optional, Dict, Any
 from decimal import Decimal
+from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from cbpos.core.database import Database
-from cbpos.core.models import Product, InventoryLog
-from cbpos.core.services.auth_service import AuthService
+from cbpos.core.models import Product, InventoryLog, AuditLog, CompositeItem
 
 
 class InventoryService:
-    """
-    Service to handle inventory operations.
-    """
+    def __init__(self):
+        self.db = Database()
 
-    @staticmethod
-    def adjust_stock(product_id: int, qty_change: Decimal, reason: str) -> bool:
-        """
-        Adjust stock quantity for a product and log the change.
+    def create_product(self, data: Dict[str, Any]) -> Product:
+        with self.db.get_session() as session:
+            # Extract composite items data if present
+            components_data = data.pop("components", [])
 
-        Args:
-            product_id (int): ID of the product.
-            qty_change (Decimal): Amount to change (positive or negative).
-            reason (str): Reason for the adjustment.
+            product = Product(**data)
+            session.add(product)
+            session.flush()  # Generate ID
 
-        Returns:
-            bool: True if successful, False otherwise.
-        """
-        db = Database()
-        session = db.SessionLocal()
-        try:
-            current_user = AuthService.get_current_user()
-            if not current_user:
-                raise ValueError("No user logged in.")
+            # Handle composite items
+            for comp_data in components_data:
+                child_id = comp_data.get("child_product_id")
+                qty = comp_data.get("qty")
+                if child_id and qty:
+                    composite = CompositeItem(
+                        parent_product_id=product.id, child_product_id=child_id, qty=qty
+                    )
+                    session.add(composite)
 
-            product = session.query(Product).with_for_update().get(product_id)
+            session.commit()
+            session.refresh(product)
+            return product
+
+    def update_product(
+        self, product_id: int, data: Dict[str, Any]
+    ) -> Optional[Product]:
+        with self.db.get_session() as session:
+            product = session.get(Product, product_id)
             if not product:
-                raise ValueError("Product not found.")
+                return None
 
-            product.stock_qty += qty_change
+            # Extract composite items data if present
+            components_data = data.pop("components", None)
 
-            log = InventoryLog(
-                product_id=product.id,
-                qty_change=qty_change,
-                new_qty=product.stock_qty,
-                reason=reason,
-                user_id=current_user.id,
-            )
-            session.add(log)
+            for key, value in data.items():
+                if hasattr(product, key):
+                    setattr(product, key, value)
+
+            if components_data is not None:
+                # Clear existing components
+                session.query(CompositeItem).filter(
+                    CompositeItem.parent_product_id == product.id
+                ).delete()
+                # Add new components
+                for comp_data in components_data:
+                    child_id = comp_data.get("child_product_id")
+                    qty = comp_data.get("qty")
+                    if child_id and qty:
+                        composite = CompositeItem(
+                            parent_product_id=product.id,
+                            child_product_id=child_id,
+                            qty=qty,
+                        )
+                        session.add(composite)
+
+            session.commit()
+            session.refresh(product)
+            return product
+
+    def delete_product(self, product_id: int) -> bool:
+        with self.db.get_session() as session:
+            product = session.get(Product, product_id)
+            if not product:
+                return False
+
+            product.is_active = False
             session.commit()
             return True
-        except Exception as e:
-            print(f"Stock Adjustment Failed: {e}")
-            session.rollback()
-            return False
-        finally:
-            session.close()
 
-    @staticmethod
-    def get_low_stock_products(threshold: Decimal = Decimal("10.000")) -> list:
-        """
-        Get list of products with stock below threshold.
-        """
-        db = Database()
-        with db.get_session() as session:
-            products = (
-                session.query(Product).filter(Product.stock_qty < threshold).all()
+    def get_low_stock_items(self) -> List[Product]:
+        with self.db.get_session() as session:
+            stmt = select(Product).where(
+                Product.is_active.is_(True), Product.stock_qty <= Product.reorder_level
             )
-            session.expunge_all()
-            return products
+            return list(session.scalars(stmt).all())
+
+    def adjust_stock(
+        self, product_id: int, qty_change: Decimal, reason: str, user_id: int
+    ) -> bool:
+        with self.db.get_session() as session:
+            product = session.get(Product, product_id)
+            if not product:
+                return False
+
+            old_qty = product.stock_qty
+            new_qty = old_qty + qty_change
+            product.stock_qty = new_qty
+
+            # Log to InventoryLog
+            inv_log = InventoryLog(
+                product_id=product.id,
+                qty_change=qty_change,
+                new_qty=new_qty,
+                reason=reason,
+                user_id=user_id,
+            )
+            session.add(inv_log)
+
+            # Log to AuditLog (as requested)
+            audit_log = AuditLog(
+                user_id=user_id,
+                action="STOCK_ADJUSTMENT",
+                details=(
+                    f"Product {product.name_en} ({product.barcode}) "
+                    f"stock adjusted by {qty_change}. Reason: {reason}"
+                ),
+            )
+            session.add(audit_log)
+
+            session.commit()
+            return True
+
+    def get_all_products(self) -> List[Product]:
+        with self.db.get_session() as session:
+            stmt = (
+                select(Product)
+                .options(joinedload(Product.category))
+                .where(Product.is_active.is_(True))
+            )
+            return list(session.scalars(stmt).all())
+
+    def get_product_by_barcode(self, barcode: str) -> Optional[Product]:
+        with self.db.get_session() as session:
+            stmt = (
+                select(Product)
+                .options(joinedload(Product.category))
+                .where(Product.barcode == barcode)
+            )
+            return session.scalars(stmt).first()

@@ -10,3 +10,5 @@ __pycache__/
 .DS_Store
 Thumbs.db
 .agent
+test_output.txt
+test_output_2.txt

@@ -150,7 +150,8 @@ class ReportsView(QWidget):
         today = date.today()
         data = self.report_service.get_daily_sales(today)
 
-        # Update Tiles (Accessing labels inside frames is a bit hacky, normally keep ref)
+        # Update Tiles (Accessing labels inside frames is a bit hacky,
+        # normally keep ref)
         # For simplicity, just rebuilding or assuming structure
         self.tile_sales.findChild(QLabel, "").nextInFocusChain().setText(
             "{:.2f}".format(data["total_sales"])

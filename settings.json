@@ -1,0 +1,11 @@
+{
+    "shop_name": "Ceylon Byte POS",
+    "shop_address": "123, Tech Street, Colombo",
+    "shop_phone": "+94 77 123 4567",
+    "vat_number": "",
+    "printer_type": "USB",
+    "printer_path": "",
+    "language": "en",
+    "receipt_header": "Welcome to Ceylon Byte",
+    "receipt_footer": "Thank You! Come Again."
+}

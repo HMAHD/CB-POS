@@ -166,11 +166,9 @@ class LoginView(QWidget):
             QMessageBox.warning(self, "Login Failed", "Invalid PIN. Please try again.")
 
     def keyPressEvent(self, event):
-        print(f"DEBUG: Key Pressed: {event.key()}")
         # Handle Numpad Enter and Main Enter
         # Note: Qt.Key_Enter is the Numpad Enter, Qt.Key_Return is the Main Enter
         if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
-            print("DEBUG: Enter Key Detected")
             self.attempt_login()
             event.accept()
             return
@@ -180,7 +178,6 @@ class LoginView(QWidget):
 
         # Check if it's a number key (0-9)
         if text.isdigit():
-            print(f"DEBUG: Number Key Detected: {text}")
             self.append_pin(text)
             event.accept()
             return

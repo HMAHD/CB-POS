@@ -160,9 +160,15 @@ class Customer(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(
+        String(20), unique=True, index=True, nullable=True
+    )
+    email: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    vat_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     credit_limit: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
-    current_balance: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    current_debt: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    loyalty_points: Mapped[int] = mapped_column(default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     sales: Mapped[List["Sale"]] = relationship(back_populates="customer")
 

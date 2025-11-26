@@ -36,9 +36,10 @@ class AuthService:
             )
             if user:
                 # Detach user and its role from session to keep them available after session closes
-                session.expunge(user)
                 if user.role:
+                    _ = user.role.name  # Force load
                     session.expunge(user.role)
+                session.expunge(user)
 
                 AuthService._current_user = user
                 return user

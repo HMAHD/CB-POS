@@ -155,11 +155,24 @@ class TransactionService:
 
             # 6. Hardware Output
             from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
-            from cbpos.core.services.receipt_builder import ReceiptBuilder
+            from cbpos.core.services.receipt_service import ReceiptService
+            from cbpos.core.services.config_service import ConfigService
 
             worker = PrintWorker()
-            receipt_text = ReceiptBuilder.build_receipt(sale)
-            worker.add_job("print_receipt", receipt_text)
+
+            # Check language for Unicode support
+            settings = ConfigService.get_all()
+            language = settings.get("language", "en")
+
+            if language == "en":
+                # Text Mode
+                receipt_text = ReceiptService.build_receipt_text(sale)
+                worker.add_job("print_receipt", receipt_text)
+            else:
+                # Image Mode (Unicode)
+                receipt_image = ReceiptService.build_receipt_image(sale)
+                worker.add_job("print_image", receipt_image)
+
             worker.add_job("kick_drawer")
 
             return True

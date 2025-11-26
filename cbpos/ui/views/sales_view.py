@@ -17,12 +17,16 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.ui.dialogs.payment_dialog import PaymentDialog
+from cbpos.ui.dialogs.customer_selection_dialog import (  # noqa: F401
+    CustomerSelectionDialog,
+)
 
 
 class SalesView(QWidget):
     def __init__(self):
         super().__init__()
         self.cart_service = CartService()
+        self.customer = None
         self.init_ui()
 
         # Focus Trap Timer
@@ -67,6 +71,22 @@ class SalesView(QWidget):
         right_panel = QWidget()
         right_panel.setFixedWidth(400)
         right_layout = QVBoxLayout(right_panel)
+
+        # Customer Section
+        cust_layout = QHBoxLayout()
+        self.lbl_customer = QLabel("Walk-in Customer")
+        self.lbl_customer.setStyleSheet("font-weight: bold; font-size: 14px;")
+        btn_cust = QPushButton("Select Customer")
+        btn_cust.clicked.connect(self.select_customer)
+        cust_layout.addWidget(self.lbl_customer)
+        cust_layout.addWidget(btn_cust)
+        right_layout.addLayout(cust_layout)
+
+        self.lbl_points = QLabel("")
+        self.lbl_points.setStyleSheet("color: #FFDC00; font-weight: bold;")
+        right_layout.addWidget(self.lbl_points)
+
+        right_layout.addSpacing(10)
 
         # Barcode Input
         self.barcode_input = QLineEdit()
@@ -194,6 +214,18 @@ class SalesView(QWidget):
         totals = self.cart_service.get_totals()
         self.total_label.setText(f"Rs. {totals['subtotal']:.2f}")  # noqa: E231
         self.cart_table.scrollToBottom()
+        self.cart_table.scrollToBottom()
+
+    def select_customer(self):
+        dialog = CustomerSelectionDialog(self)
+        if dialog.exec():
+            self.customer = dialog.selected_customer
+            cust_text = f"{self.customer.name} ({self.customer.phone})"
+            self.lbl_customer.setText(cust_text)
+            self.lbl_points.setText(f"Points: {self.customer.loyalty_points}")
+        else:
+            # Optional: Clear customer if cancelled? No, keep previous selection usually.
+            pass
 
     def process_payment(self):
         totals = self.cart_service.get_totals()
@@ -202,7 +234,10 @@ class SalesView(QWidget):
 
         dialog = PaymentDialog(totals["subtotal"], self)
         if dialog.exec():
-            payments, customer_id = dialog.payment_data
+            payments, _ = dialog.payment_data
+            # Use selected customer ID if available
+            customer_id = self.customer.id if self.customer else None
+
             success = TransactionService.process_sale(
                 self.cart_service, payments, customer_id
             )
@@ -211,6 +246,10 @@ class SalesView(QWidget):
                 self.cart_service.clear()
                 self.update_cart_display()
                 self.barcode_input.setFocus()
+                # Reset customer
+                self.customer = None
+                self.lbl_customer.setText("Walk-in Customer")
+                self.lbl_points.setText("")
             else:
                 QMessageBox.critical(self, "Error", "Transaction failed!")
 

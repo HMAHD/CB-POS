@@ -63,6 +63,19 @@ class MainWindow(QMainWindow):
         self.lbl_user.setStyleSheet("color: white;")
         top_layout.addWidget(self.lbl_user)
 
+        top_layout.addSpacing(20)
+
+        # Settings Button
+        from PyQt6.QtWidgets import QPushButton
+
+        self.btn_settings = QPushButton("⚙")
+        self.btn_settings.setFixedSize(30, 30)
+        self.btn_settings.setStyleSheet(
+            "background-color: #003366; color: white; border: none; font-size: 16px;"
+        )
+        self.btn_settings.clicked.connect(self.show_settings)
+        top_layout.addWidget(self.btn_settings)
+
         main_layout.addWidget(self.top_bar)
         self.top_bar.setVisible(False)  # Hide by default (Login Screen)
 
@@ -111,9 +124,13 @@ class MainWindow(QMainWindow):
 
         # Load Sales View
         from cbpos.ui.views.sales_view import SalesView
+        from cbpos.ui.views.settings_view import SettingsView
 
         self.sales_view = SalesView()
+        self.settings_view = SettingsView()
+
         self.stack.addWidget(self.sales_view)
+        self.stack.addWidget(self.settings_view)
 
         # Switch to Sales View
         self.stack.setCurrentWidget(self.sales_view)
@@ -129,3 +146,7 @@ class MainWindow(QMainWindow):
             current_widget.barcode_input.setText(barcode)
             if hasattr(current_widget, "process_barcode"):
                 current_widget.process_barcode()
+
+    def show_settings(self):
+        if hasattr(self, "settings_view"):
+            self.stack.setCurrentWidget(self.settings_view)

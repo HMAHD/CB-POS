@@ -1,0 +1,1300 @@
+# 📋 CB POS: Master Industrial Roadmap (30 Phases)
+
+**Status:** 🟡 In Progress  
+**Architecture:** Python 3.12 | PyQt6 | MVC Pattern | SQLite/PostgreSQL  
+**Target:** Industrial Retail (Sri Lanka)  
+**Based on:** Aronium POS Feature Analysis + Industrial Best Practices
+
+---
+
+## 🏗️ Phase 1: Project Initialization & Environment
+*Goal: Establish a sterile, reproducible development environment.*
+
+- [x] **1.1 Directory Structure**
+    - [x] Generate standard folders (`core`, `infrastructure`, `ui`, `tests`).
+    - [x] Create `assets` folders (fonts, icons, sounds).
+    - [x] Initialize `__init__.py` in all packages.
+- [x] **1.2 Version Control & Config**
+    - [x] Initialize Git repository.
+    - [x] Create `.gitignore` (Python, PyCharm, VSCode specific).
+    - [x] Create `config.py` using `pydantic-settings` for strongly typed env vars.
+- [x] **1.3 Dependency Management**
+    - [x] Create virtual environment (`.venv`).
+    - [x] Generate `requirements.txt` with pinned versions (`PyQt6==6.7.0`, `SQLAlchemy==2.0.30`).
+    - [x] Setup `pre-commit` hooks (Black, Flake8) for code quality.
+- [ ] **1.4 Documentation Structure**
+    - [ ] Create `docs/` folder with README.md
+    - [ ] Setup API documentation framework (Sphinx/MkDocs)
+    - [ ] Create developer onboarding guide
+
+---
+
+## 💾 Phase 2: Database Layer (The Brain)
+*Goal: Define the data structure ensuring integrity and speed.*
+
+- [x] **2.1 ORM Setup (SQLAlchemy 2.0)**
+    - [x] Implement Singleton Database Connection.
+    - [x] Configure Connection Pooling (for high throughput).
+    - [x] Create Base declarative model.
+- [x] **2.2 Core Models**
+    - [x] **Auth:** `User`, `Role`, `Permission`.
+    - [x] **Inventory:** `Category`, `Product`, `ProductVariant`, `Unit`.
+    - [x] **Sales:** `Sale`, `SaleItem`, `Payment`.
+    - [x] **Audit:** `Log`, `Shift`, `CashMovement`.
+- [x] **2.3 Migration Engine**
+    - [x] Initialize **Alembic**.
+    - [x] Create initial migration script.
+    - [x] Create `scripts/seed.py` for SL Default Data.
+- [ ] **2.4 Extended Models (From Aronium)**
+    - [ ] **Customer Extended:** Add loyalty_points, credit_limit, price_list_id
+    - [ ] **Supplier Model:** name, company, tax_number, contact info
+    - [ ] **PriceList:** Support multiple pricing tiers
+    - [ ] **PriceListItem:** Product-specific pricing per list
+    - [ ] **Promotion:** time-based, quantity-based discounts
+    - [ ] **StockMovement:** Complete audit trail with document references
+    - [ ] **Document:** Unified document system (Sales, Purchase, Proforma, Returns)
+    - [ ] **VoidReason:** Track void/cancellation reasons
+- [ ] **2.5 Advanced Relationships**
+    - [ ] Product-Supplier many-to-many relationship
+    - [ ] Customer-PriceList assignment
+    - [ ] Hierarchical ProductGroup (parent-child categories)
+    - [ ] Document-StockMovement linkage
+
+---
+
+## 🔐 Phase 3: Authentication & Security
+*Goal: Protect the system from unauthorized access.*
+
+- [x] **3.1 Security Logic**
+    - [x] Implement SHA-256 PIN Hashing.
+    - [x] Create `AuthService.login(pin)`.
+    - [x] Create `SessionManager` (Singleton).
+- [ ] **3.2 RBAC (Role-Based Access Control)**
+    - [ ] Define Permissions (`CAN_VOID`, `CAN_REFUND`, `CAN_SEE_REPORTS`).
+    - [ ] Implement `check_permission` decorator for sensitive functions.
+    - [ ] **Access Level System (0-9):** Numeric hierarchy like Aronium
+    - [ ] **Operation-Level Permissions:** Granular control per feature
+    - [ ] **Permission Groups:** Sales, Management, Documents, Reports, Settings
+- [x] **3.3 Login UI**
+    - [x] Design Split-Screen Login (Brand Left / Numpad Right).
+    - [x] Implement Masked PIN Input.
+    - [ ] Add "Manager Override" popup logic.
+- [ ] **3.4 Session Management**
+    - [ ] Auto-logout on inactivity (configurable timeout)
+    - [ ] Session activity logging
+    - [ ] Multi-user session tracking (for networked version)
+    - [ ] Password recovery mechanism (email-based)
+
+---
+
+## 📦 Phase 4: Advanced Inventory Management
+*Goal: Manage complex retail products.*
+
+- [x] **4.1 Product Logic**
+    - [x] Implement `ProductService`.
+    - [x] Support **Weighted Items** (Boolean flag).
+    - [x] Support **Composite Items** (Hampers).
+- [ ] **4.2 Inventory UI**
+    - [ ] Create Product Master Grid (Search, Filter, Sort).
+    - [ ] Create Product Editor Dialog.
+    - [ ] Implement CSV Import Wizard (`pandas` integration).
+    - [ ] **Product Image Upload:** Support product photos
+    - [ ] **Multiple Barcode Support:** Pipe-separated barcodes per product
+    - [ ] **Age Restriction Flag:** For controlled items
+- [x] **4.3 Stock Control**
+    - [x] Implement `StockAdjustment` (Damage/Expired/Correction).
+    - [x] Create "Low Stock" logic and UI indicators.
+- [ ] **4.4 Advanced Stock Features (From Aronium)**
+    - [ ] **Reorder Point System:** Auto-generate purchase suggestions
+    - [ ] **Preferred Quantity:** Target stock levels per product
+    - [ ] **Supplier Assignment:** Default supplier per product
+    - [ ] **Service Items:** Non-stock items (don't track inventory)
+    - [ ] **Stock History View:** Complete movement audit trail
+    - [ ] **Prevent Negative Inventory:** Optional blocking with override
+    - [ ] **Stock Valuation Report:** FIFO/LIFO/Weighted Average
+- [ ] **4.5 Category Management**
+    - [ ] Hierarchical category tree (unlimited depth)
+    - [ ] Category-based discounts and promotions
+    - [ ] Visual category icons for touch interface
+    - [ ] Category-based reporting
+
+---
+
+## 🤖 Phase 5: Hardware Abstraction Layer (HAL)
+*Goal: Write code once, run on any hardware.*
+
+- [ ] **5.1 Architecture**
+    - [ ] Define Interfaces: `IPrinter`, `IScanner`, `IDisplay`.
+    - [ ] **Cash Drawer Interface:** Standard kick commands
+    - [ ] **Weighing Scale Interface:** Serial communication protocol
+    - [ ] **Customer Display Interface:** Secondary screen support
+- [x] **5.2 Printing (ESC/POS)**
+    - [x] Implement `ThermalPrinter` driver using `python-escpos`.
+    - [ ] Support USB and Network printers.
+    - [ ] Implement "Image Print" mode for Sinhala/Tamil text fallback.
+    - [ ] **A4 Invoice Printing:** PDF generation with reportlab
+    - [ ] **Receipt Templates:** Customizable header/footer/logo
+    - [ ] **Kitchen Printer Routing:** Category-based print stations
+- [x] **5.3 Input Devices**
+    - [x] Implement `BarcodeScanner` hook (differentiate typing vs scanning).
+    - [ ] Implement `CashDrawer` kick logic (RJ11 signal).
+    - [ ] **Weighing Scale Integration:** Barcode prefix detection
+    - [ ] **Scale Barcode Parser:** Extract weight from embedded barcodes
+- [ ] **5.4 Printer Configuration**
+    - [ ] Paper width settings (58mm/80mm/A4)
+    - [ ] Character set selection
+    - [ ] Print density and line spacing
+    - [ ] Auto-print on payment option
+    - [ ] Number of receipt copies
+
+---
+
+## 🖥️ Phase 6: The Sales Terminal (UI/UX)
+*Goal: A mouse-free interface for high-speed checkout.*
+
+- [x] **6.1 Layout Engine**
+    - [x] **Left Panel:** High-Contrast Cart Grid.
+    - [x] **Right Panel:** Command Center (Numpad + Action Grid).
+    - [x] **Top Bar:** Status Indicators (Printer, Network, User).
+- [x] **6.2 Interaction Design**
+    - [x] Implement **Focus Trap** (Cursor auto-return).
+    - [x] Map Function Keys (`F1`-`F12`) to Actions.
+    - [ ] Create "Touch Visual Groups" for non-barcoded items.
+- [ ] **6.3 Visual Layout Mode (From Aronium)**
+    - [ ] **Product Grid:** Large touchscreen-friendly buttons
+    - [ ] **Product Images:** Visual product representation
+    - [ ] **Category Navigation:** Quick category switching
+    - [ ] **Responsive Design:** Adapt to screen size
+- [ ] **6.4 Search & Filter**
+    - [ ] **Multi-Mode Search:** Barcode / SKU / Name toggle
+    - [ ] **Type-ahead Search:** Live filtering as you type
+    - [ ] **Advanced Search Dialog (F3):** Multi-field filtering
+    - [ ] **Quick Product Lookup:** Recent/favorite products
+- [ ] **6.5 Order Item Display**
+    - [ ] **Status Icons:** Added/Confirmed/Voided indicators
+    - [ ] **Line Item Actions:** Edit qty/price/discount per line
+    - [ ] **Item Notes:** Add special instructions
+    - [ ] **Item Colors:** Visual status differentiation
+
+---
+
+## 🛒 Phase 7: Cart Logic & Math Engine
+*Goal: Precision calculation without floating point errors.*
+
+- [x] **7.1 Cart Service**
+    - [x] Implement `add_item`, `remove_item`, `update_qty`.
+    - [x] Logic: Merge duplicates vs New Line.
+    - [x] Logic: Weighted item decimal handling (`0.500` kg).
+- [x] **7.2 Calculation Engine**
+    - [x] Implement `Decimal` based math (No floats).
+    - [x] Calculate `Subtotal`, `LineDiscount`, `CartDiscount`, `Total`.
+- [ ] **7.3 Advanced Discount System (From Aronium)**
+    - [ ] **Item-Level Discounts:** Percentage or fixed amount
+    - [ ] **Cart-Level Discounts:** Applied to total
+    - [ ] **Customer Discounts:** Auto-apply from customer profile
+    - [ ] **Product-Specific Discounts:** Per product rules
+    - [ ] **Group Discounts:** Category-based discounts
+    - [ ] **Discount Precedence:** Product > Group > Customer
+- [ ] **7.4 Price Override**
+    - [ ] **Manual Price Change:** If allowed by product settings
+    - [ ] **Permission Check:** Require higher access level
+    - [ ] **Price History:** Log original price
+
+---
+
+## 💳 Phase 8: Transaction Processing
+*Goal: The core business function.*
+
+- [x] **8.1 Transaction Service**
+    - [x] Implement **Atomic Commit** (DB Transaction).
+    - [x] Sequence: Save Header -> Save Lines -> Deduct Stock -> Commit.
+- [ ] **8.2 Operations**
+    - [ ] **Hold Bill:** Serialize cart to "Pending" table.
+    - [ ] **Recall Bill:** Restore from Pending.
+    - [ ] **Void Bill:** Record void reason.
+    - [ ] **Lock Order:** Save and prevent modifications
+    - [ ] **Transfer Order:** Split to another order/user
+- [ ] **8.3 Multiple Open Orders (From Aronium)**
+    - [ ] **Unlimited Simultaneous Orders:** Per user
+    - [ ] **Order Switching:** Quick navigation between orders
+    - [ ] **Order List View:** See all open orders
+    - [ ] **User-Specific Orders:** Filter by cashier
+    - [ ] **Order Status Tracking:** Open/Saved/Locked/Closed/Voided
+- [ ] **8.4 Document Numbering**
+    - [ ] **Auto-Generated Numbers:** Sequential document IDs
+    - [ ] **Configurable Format:** Prefix/suffix patterns
+    - [ ] **Reset Options:** Daily/monthly/yearly reset
+
+---
+
+## 🇱🇰 Phase 9: Sri Lankan Compliance Module
+*Goal: Local tax laws.*
+
+- [x] **9.1 Tax Engine (Backward Calc)**
+    - [x] Logic: `Shelf Price = Base + VAT + SSCL`.
+    - [x] Implement extraction formula for 18% VAT.
+    - [x] Implement extraction formula for 2.5% SSCL.
+- [ ] **9.2 Invoicing Rules**
+    - [ ] Logic: Detect Registered Customer (VAT No).
+    - [ ] Output: Switch Receipt format to "Tax Invoice".
+    - [ ] **Tax Breakdown Display:** Show VAT and SSCL separately
+    - [ ] **Tax-Exempt Sales:** Support with permission
+- [ ] **9.3 Multi-Tax Support (Future)**
+    - [ ] **Per-Product Tax Rates:** Different taxes per item
+    - [ ] **Multiple Taxes Per Product:** Tax1:10|Tax2:5 format
+    - [ ] **Tax Override:** Change rate during sale
+    - [ ] **Fixed Tax Amounts:** Support fixed-value taxes
+
+---
+
+## 💵 Phase 10: Payment & Checkout
+*Goal: Flexible tender handling.*
+
+- [x] **10.1 Payment UI**
+    - [x] Design Payment Dialog (Big Total).
+    - [x] "Smart Cash" Buttons (Exact, 1000, 5000).
+- [x] **10.2 Logic**
+    - [x] **Split Payment:** Cash + Card.
+    - [x] **Credit Sale:** Assign to Customer Debt.
+    - [ ] **Change Calculation:** Live update.
+- [ ] **10.3 Payment Types (From Aronium)**
+    - [ ] **Configurable Payment Methods:** Create custom types
+    - [ ] **Payment Type Properties:**
+        - [ ] Mark transaction as paid (Yes/No)
+        - [ ] Allow change calculation
+        - [ ] Auto-open cash drawer
+        - [ ] Auto-print receipt
+        - [ ] Keyboard shortcut assignment
+    - [ ] **Quick Payment (F12):** One-click default payment
+    - [ ] **Payment Form Settings:** Customize display
+- [ ] **10.4 Receipt Options**
+    - [ ] **Print Receipt:** Thermal printer
+    - [ ] **Print Invoice:** A4 printer
+    - [ ] **Email Receipt:** Send to customer
+    - [ ] **Save as PDF:** Digital copy
+    - [ ] **Skip Printing:** No receipt option
+    - [ ] **Receipt Dialog:** Choose action after sale
+
+---
+
+## 👥 Phase 11: Customer Management (CRM)
+*Goal: Repeat business.*
+
+- [ ] **11.1 Customer DB**
+    - [ ] CRUD for Customers (Name, Phone, VAT No).
+    - [ ] Credit Limit logic.
+    - [ ] **Company Information:** Separate company fields
+    - [ ] **Multiple Contacts:** Phone, email, address
+    - [ ] **Customer Type:** Customer vs Supplier flag
+- [ ] **11.2 Loyalty**
+    - [ ] Points Engine (Earn X points per Y spent).
+    - [ ] Redemption Logic at checkout.
+    - [ ] **Loyalty Card Assignment:** Barcode scannable cards
+    - [ ] **Quick Customer Lookup:** Search by card/phone/tax number
+    - [ ] **Purchase History:** View customer transactions
+- [ ] **11.3 Customer Features (From Aronium)**
+    - [ ] **Price List Assignment:** Customer-specific pricing
+    - [ ] **Customer Discounts:** Pre-configured discount rules
+    - [ ] **Credit Terms:** Payment terms per customer
+    - [ ] **Outstanding Balance:** Real-time debt tracking
+    - [ ] **Customer Reports:** Purchase patterns, payment history
+- [ ] **11.4 Customer Selection**
+    - [ ] Select from sales screen
+    - [ ] Select from payment screen
+    - [ ] Search by name/tax/card
+    - [ ] Quick add during sale
+
+---
+
+## ⏲️ Phase 12: Shift Management
+*Goal: Cash control and theft prevention.*
+
+- [x] **12.1 Cash Control**
+    - [x] **Float Entry:** Start of day cash.
+    - [x] **Cash In/Out:** Petty cash recording.
+- [ ] **12.2 Reports**
+    - [ ] **X-Read:** Mid-shift snapshot.
+    - [ ] **Z-Read:** End of day reset & variance calculation.
+- [ ] **12.3 End of Day Process (From Aronium)**
+    - [ ] **Cash Reconciliation:** Count vs expected
+    - [ ] **Variance Tracking:** Over/short reporting
+    - [ ] **Shift Summary:** Sales by payment type
+    - [ ] **User Activity:** Per-cashier performance
+    - [ ] **Transaction Count:** Number of sales
+    - [ ] **Voided Items:** Track cancellations
+    - [ ] **Optional Number Reset:** Daily document numbering
+
+---
+
+## 🧾 Phase 13: Receipt Generation
+*Goal: Professional physical output.*
+
+- [ ] **13.1 Templating**
+    - [ ] Create `ReceiptBuilder` class.
+    - [ ] Header (Logo, Address).
+    - [ ] Body (Items, Qty, Price).
+    - [ ] Footer (Tax breakdown, Thank you message).
+- [ ] **13.2 Routing**
+    - [ ] Logic to print to Kitchen vs Counter based on Category.
+- [ ] **13.3 Advanced Receipt Features (From Aronium)**
+    - [ ] **Company Logo:** Image printing support
+    - [ ] **Custom Header/Footer:** Configurable text
+    - [ ] **Barcode/QR Code:** On receipt (with plugins)
+    - [ ] **Tax Breakdown Display:** Line-by-line tax amounts
+    - [ ] **Payment Details:** Show payment types and change
+    - [ ] **Item Merging:** Combine duplicate items
+    - [ ] **Receipt vs Invoice:** Different formats
+- [ ] **13.4 Template Customization**
+    - [ ] Visual template designer
+    - [ ] Multiple template support
+    - [ ] Test print functionality
+    - [ ] Preview before printing
+
+---
+
+## 📊 Phase 14: Reporting & Analytics
+*Goal: Business insights.*
+
+- [ ] **14.1 Dashboard**
+    - [ ] Live Sales Ticker.
+    - [ ] "Top Movers" Widget.
+    - [ ] **Today's Summary:** Sales, profit, transactions
+    - [ ] **Stock Alerts:** Low stock warnings
+- [ ] **14.2 Core Reports**
+    - [ ] Sales by Date/User/Category.
+    - [ ] Inventory Valuation.
+    - [ ] Tax Liability Report (Output VAT - Input VAT).
+- [ ] **14.3 Export**
+    - [ ] Export Table Data to Excel/CSV.
+    - [ ] **PDF Export:** Professional report format
+    - [ ] **Email Reports:** Direct email delivery
+- [ ] **14.4 Comprehensive Report Suite (From Aronium)**
+    - [ ] **Sales Reports:**
+        - [ ] Sales Summary by period
+        - [ ] Sales by Product (individual performance)
+        - [ ] Sales by Group (category performance)
+        - [ ] Sales by User (employee performance)
+        - [ ] Sales by Payment Type
+        - [ ] Sales by Customer
+        - [ ] Hourly Sales (time-based patterns)
+    - [ ] **Financial Reports:**
+        - [ ] Profit Report (margins and totals)
+        - [ ] Tax Report (tax collected by rate)
+        - [ ] Payment Type Report
+        - [ ] Cash In/Out movements
+    - [ ] **Inventory Reports:**
+        - [ ] Stock on Hand (current levels)
+        - [ ] Stock Value (inventory valuation)
+        - [ ] Stock Movement (item history)
+        - [ ] Low Stock Warning
+        - [ ] Reorder List (purchase recommendations)
+        - [ ] Stock by Group
+    - [ ] **Customer Reports:**
+        - [ ] Customer Sales
+        - [ ] Customer Purchase History
+        - [ ] Unpaid Sales (outstanding balances)
+        - [ ] Customer Discounts usage
+    - [ ] **Product Reports:**
+        - [ ] Best Selling Products
+        - [ ] Product Margin (profit by product)
+        - [ ] Slow Moving Items
+        - [ ] Price List export
+    - [ ] **Document Reports:**
+        - [ ] Document List (all by type)
+        - [ ] Voided Items
+        - [ ] Unpaid Documents
+        - [ ] Paid Documents
+- [ ] **14.5 Report Filtering & Actions**
+    - [ ] Date range selection
+    - [ ] Multi-field filtering
+    - [ ] View on screen
+    - [ ] Print report
+    - [ ] Export (PDF/Excel/CSV)
+    - [ ] Email directly
+- [ ] **14.6 Scheduled Reporting**
+    - [ ] Daily automatic reports
+    - [ ] Weekly summaries
+    - [ ] Monthly reports
+    - [ ] Custom intervals
+    - [ ] Auto-email recipients
+
+---
+
+## ⚙️ Phase 15: Settings & Configuration
+*Goal: User customizability.*
+
+- [ ] **15.1 Config UI**
+    - [ ] Hardware Setup (Select Printer/Scanner).
+    - [ ] Business Details (Name, Address, Phone).
+    - [ ] Tax Rates configuration.
+- [ ] **15.2 Feature Flags**
+    - [ ] Toggle features (e.g., Enable Loyalty, Enable Touch Mode).
+- [ ] **15.3 Comprehensive Settings (From Aronium)**
+    - [ ] **General Settings:**
+        - [ ] Company information
+        - [ ] Regional settings (language, currency, date format)
+        - [ ] Appearance (theme, font size, zoom level)
+    - [ ] **Order & Payment Settings:**
+        - [ ] Default search type (Barcode/Code/Name)
+        - [ ] Show search switcher
+        - [ ] Default quantity behavior
+        - [ ] Default discount type
+        - [ ] Prevent negative inventory
+        - [ ] Display receipt print dialog
+        - [ ] Merge items on receipt
+        - [ ] Void reason requirement
+    - [ ] **Product Settings:**
+        - [ ] Allow quantity decimals
+        - [ ] Show product groups in search
+        - [ ] Default tax rate
+        - [ ] Price change allowed by default
+        - [ ] Auto-generate product codes
+    - [ ] **Document Settings:**
+        - [ ] Document numbering format
+        - [ ] Starting numbers
+        - [ ] Prefix/suffix patterns
+        - [ ] Reset frequency
+    - [ ] **Print Settings:**
+        - [ ] Receipt printer selection
+        - [ ] A4 printer selection
+        - [ ] Paper width (58mm/80mm/A4)
+        - [ ] Character set
+        - [ ] Receipt template
+        - [ ] Auto-print options
+        - [ ] Number of copies
+    - [ ] **User Settings:**
+        - [ ] Change password
+        - [ ] Display name
+        - [ ] Default layout preference
+        - [ ] Language preference
+
+---
+
+## 🎨 Phase 16: Theme & Localization
+*Goal: Ceylon Byte Branding.*
+
+- [x] **16.1 Theme Engine**
+    - [x] Implement `styles.qss`.
+    - [ ] Create "Ceylon Night" and "Ceylon Day" themes.
+    - [ ] **High-Contrast Mode:** For visibility
+    - [ ] **Touch-Optimized Theme:** Large buttons
+    - [ ] **Color Customization:** Brand color support
+- [ ] **16.2 Localization**
+    - [ ] Generate `.ts` files for Qt Linguist.
+    - [ ] Translate UI to Sinhala and Tamil.
+    - [ ] Implement Runtime Language Switcher.
+    - [ ] **Font Support:** Unicode fonts for Sinhala/Tamil
+    - [ ] **RTL Support:** Future Arabic support
+    - [ ] **Date/Number Formatting:** Locale-specific
+
+---
+
+## 🔄 Phase 17: Data Management
+*Goal: Safety and Portability.*
+
+- [ ] **17.1 Backup System**
+    - [ ] Manual Backup Button (Zip DB + Images).
+    - [ ] Auto-Backup on Exit logic.
+    - [ ] **Scheduled Backups:** Automatic daily/weekly
+    - [ ] **Backup Location:** Configurable path
+    - [ ] **Backup Retention:** Keep last N backups
+- [ ] **17.2 Data Tools**
+    - [ ] "Factory Reset" (Clear Transactions, keep Items).
+    - [ ] Database Optimizer (`VACUUM`).
+    - [ ] **Database Repair:** Fix corruption issues
+- [ ] **17.3 Import/Export (From Aronium)**
+    - [ ] **CSV Import:**
+        - [ ] Products (with template)
+        - [ ] Customers
+        - [ ] Suppliers
+        - [ ] Column mapping
+        - [ ] Duplicate handling (skip/merge)
+        - [ ] Validation before import
+        - [ ] Progress tracking
+    - [ ] **CSV Export:**
+        - [ ] Products
+        - [ ] Customers
+        - [ ] Sales data
+        - [ ] Stock levels
+    - [ ] **Bulk Operations:**
+        - [ ] Bulk price update
+        - [ ] Bulk category assignment
+- [ ] **17.4 Database Utilities**
+    - [ ] View database location
+    - [ ] Change database server (for networked version)
+    - [ ] Database health check
+    - [ ] Integrity verification
+
+---
+
+## 🌐 Phase 18: Networking & Sync (Future Proofing)
+*Goal: Multi-terminal readiness.*
+
+- [ ] **18.1 API Hooks**
+    - [ ] Prepare structure for REST API client.
+    - [ ] **Client-Server Architecture:** Design for multi-terminal
+- [ ] **18.2 Sync Worker**
+    - [ ] Create background thread for potential cloud sync.
+- [ ] **18.3 Multi-Terminal Support (From Aronium Pro)**
+    - [ ] **Database Server Setup:**
+        - [ ] PostgreSQL server configuration
+        - [ ] Network discovery
+        - [ ] Connection pooling
+        - [ ] Test connectivity
+    - [ ] **Multi-User Operations:**
+        - [ ] Simultaneous users support
+        - [ ] User-specific orders
+        - [ ] Real-time inventory updates
+        - [ ] Centralized reporting
+        - [ ] User activity tracking
+    - [ ] **Concurrency Control:**
+        - [ ] Optimistic locking
+        - [ ] Stock conflict detection
+        - [ ] First-come-first-served logic
+        - [ ] Real-time sync
+    - [ ] **Network Configuration:**
+        - [ ] Server name/IP setup
+        - [ ] Database instance config
+        - [ ] Authentication settings
+        - [ ] Auto-discover servers
+- [ ] **18.4 Cloud Integration (Future)**
+    - [ ] Cloud backup
+    - [ ] Remote monitoring
+    - [ ] Multi-location consolidation
+
+---
+
+## 🧪 Phase 19: Quality Assurance
+*Goal: Bug-free code.*
+
+- [ ] **19.1 Unit Tests**
+    - [ ] Test Math Engine (Rounding, Tax).
+    - [ ] Test Cart Logic.
+    - [ ] **Test Discount Calculations:** All discount types
+    - [ ] **Test Tax Calculations:** Sri Lankan tax formulas
+    - [ ] **Test Payment Logic:** Split payments, credit
+- [ ] **19.2 Integration Tests**
+    - [ ] Test Database Transactions (Rollback).
+    - [ ] **Test Hardware Integration:** Printer, scanner, drawer
+    - [ ] **Test Multi-User Scenarios:** Concurrent access
+- [ ] **19.3 Stress Tests**
+    - [ ] Rapid Scan Test (50ms interval).
+    - [ ] Large DB Load Test (50k items).
+    - [ ] **Long-Running Session:** 24-hour stability test
+    - [ ] **High-Volume Sales:** 1000 transactions/day
+- [ ] **19.4 User Acceptance Testing**
+    - [ ] Real-world scenario testing
+    - [ ] Beta testing with actual retailers
+    - [ ] Performance benchmarking
+
+---
+
+## 🚀 Phase 20: Packaging & Deployment
+*Goal: Shipping the product.*
+
+- [x] **20.1 PyInstaller**
+    - [x] Create `cbpos.spec` file.
+    - [x] Handle hidden imports (SQLAlchemy, PyQt).
+    - [x] Bundle assets (Fonts/Icons).
+- [ ] **20.2 Installer (InnoSetup)**
+    - [ ] Create `setup.iss` script.
+    - [ ] Register Desktop Shortcuts.
+    - [ ] **Start Menu Integration:** Program shortcuts
+    - [ ] **File Associations:** Associate with CB POS files
+    - [ ] **Uninstaller:** Clean removal process
+- [x] **20.3 Licensing**
+    - [x] Implement Machine ID generation.
+    - [x] Create License Key verification logic.
+    - [ ] **Activation System:** Online activation
+    - [ ] **Trial Period:** 30-day trial
+    - [ ] **License Management:** View/update license
+
+---
+
+## 🏪 Phase 21: Document Management System
+*Goal: Comprehensive transaction documentation (From Aronium).*
+
+- [ ] **21.1 Document Types**
+    - [ ] **Income Documents:**
+        - [ ] Sales (regular transactions)
+        - [ ] Proforma/Quotation (quotes)
+        - [ ] Customer Orders
+        - [ ] Returns (credit notes)
+    - [ ] **Expense Documents:**
+        - [ ] Purchase (inventory receive)
+        - [ ] Stock Return (return to supplier)
+        - [ ] Purchase Orders
+    - [ ] **Internal Documents:**
+        - [ ] Inventory Count (physical stock take)
+        - [ ] Loss and Damage (write-offs)
+        - [ ] Transfer (between locations)
+        - [ ] Adjustment (stock corrections)
+- [ ] **21.2 Document Properties**
+    - [ ] **Header Information:**
+        - [ ] Auto-generated document number
+        - [ ] Document type and status
+        - [ ] Date/time tracking
+        - [ ] Customer/Supplier link
+        - [ ] User who created
+        - [ ] Due date (for unpaid)
+    - [ ] **Document Items:**
+        - [ ] Product details snapshot
+        - [ ] Quantity, price, discount, tax
+        - [ ] Line totals
+        - [ ] Cost price (for profit tracking)
+    - [ ] **Document Totals:**
+        - [ ] Subtotal, discount, tax, total
+        - [ ] Paid amount and balance
+    - [ ] **Payment Information:**
+        - [ ] Payment types used
+        - [ ] Amounts per type
+        - [ ] Change given
+- [ ] **21.3 Document Operations**
+    - [ ] **View Documents:**
+        - [ ] List view with filters
+        - [ ] Search by number/customer/date
+        - [ ] Status filtering
+        - [ ] Type filtering
+    - [ ] **Create Document:**
+        - [ ] Select type
+        - [ ] Add header info
+        - [ ] Add items (drag-drop or search)
+        - [ ] Add payments
+        - [ ] Save and commit
+    - [ ] **Edit Document:**
+        - [ ] Modify allowed fields
+        - [ ] Restrictions on closed documents
+    - [ ] **Delete/Void Document:**
+        - [ ] Permission-based
+        - [ ] Cannot delete if referenced
+        - [ ] Void reason tracking
+    - [ ] **Print/Export:**
+        - [ ] Receipt format
+        - [ ] Invoice format (A4)
+        - [ ] Proforma format
+        - [ ] PDF export
+        - [ ] Email to customer
+- [ ] **21.4 Proforma/Quotation System**
+    - [ ] Create quotes for customers
+    - [ ] Does not affect stock
+    - [ ] Convert to actual sale later
+    - [ ] Custom proforma template
+    - [ ] Validity period tracking
+- [ ] **21.5 Document Filters**
+    - [ ] Date range (from/to)
+    - [ ] Document type
+    - [ ] Paid status (paid/unpaid/all)
+    - [ ] Customer/Supplier
+    - [ ] Document number
+    - [ ] User who created
+    - [ ] Amount range
+
+---
+
+## 📦 Phase 22: Advanced Purchase & Inventory
+*Goal: Complete inventory lifecycle management (From Aronium).*
+
+- [ ] **22.1 Purchase Documents**
+    - [ ] **Create Purchase:**
+        - [ ] Auto-generated number
+        - [ ] External document reference (supplier invoice)
+        - [ ] Vendor/Supplier selection
+        - [ ] Document date
+        - [ ] Stock date (when items received)
+        - [ ] Add items with cost prices
+        - [ ] Optional payment tracking
+        - [ ] Auto-update stock on save
+    - [ ] **Purchase Fields:**
+        - [ ] System document number
+        - [ ] External reference
+        - [ ] Supplier info
+        - [ ] Date received
+        - [ ] Item list with costs
+        - [ ] Payment methods
+        - [ ] Notes/comments
+- [ ] **22.2 Supplier Management**
+    - [ ] **Supplier CRUD:**
+        - [ ] Name, company details
+        - [ ] Tax number
+        - [ ] Contact information
+        - [ ] Address
+        - [ ] Active/inactive status
+    - [ ] **Supplier Features:**
+        - [ ] Link products to suppliers
+        - [ ] Default supplier per product
+        - [ ] Supplier-based reorder reports
+        - [ ] Supplier payment tracking
+        - [ ] Purchase history per supplier
+- [ ] **22.3 Stock Control Plugin Features**
+    - [ ] **Reorder Management:**
+        - [ ] Reorder point alerts
+        - [ ] Preferred quantity targets
+        - [ ] Auto-generate purchase suggestions
+        - [ ] Low stock warnings (real-time)
+        - [ ] Required quantity calculation
+    - [ ] **Reorder Reports:**
+        - [ ] Reorder Product List (grouped by supplier)
+        - [ ] Quantity needed to reach preferred level
+        - [ ] Supplier-based filtering
+        - [ ] Low stock warning report
+        - [ ] Purchase planning tool
+- [ ] **22.4 Stock Operations**
+    - [ ] **Stock Adjustments:**
+        - [ ] Manual quantity changes
+        - [ ] Stock take corrections
+        - [ ] Damage/loss recording
+        - [ ] Transfer between locations
+    - [ ] **Stock Documents:**
+        - [ ] Purchase receipts
+        - [ ] Stock returns
+        - [ ] Inventory counts
+        - [ ] Loss and damage
+        - [ ] Inter-location transfers
+    - [ ] **Stock History:**
+        - [ ] View all movements
+        - [ ] Date range filtering
+        - [ ] Document reference
+        - [ ] User tracking
+        - [ ] Before/after quantities
+- [ ] **22.5 Inventory Valuation**
+    - [ ] FIFO method
+    - [ ] LIFO method
+    - [ ] Weighted average
+    - [ ] Stock value reports
+
+---
+
+## 🎯 Phase 23: Promotions & Pricing Engine
+*Goal: Advanced pricing strategies (From Aronium).*
+
+- [ ] **23.1 Price Lists**
+    - [ ] **Multiple Price Lists:**
+        - [ ] Create named price lists
+        - [ ] Copy/duplicate lists
+        - [ ] Bulk price editing
+        - [ ] Percentage adjustments
+        - [ ] Product-specific overrides
+    - [ ] **Price List Assignment:**
+        - [ ] Assign to customers
+        - [ ] Manual selection in sale
+        - [ ] Automatic application
+        - [ ] Priority rules
+    - [ ] **Price List Operations:**
+        - [ ] Create/edit/delete lists
+        - [ ] Set product prices per list
+        - [ ] Time-based pricing
+        - [ ] Customer-specific pricing
+- [ ] **23.2 Promotions & Happy Hour**
+    - [ ] **Promotion Types:**
+        - [ ] Percentage discount
+        - [ ] Fixed price
+        - [ ] Buy X get Y discounts
+        - [ ] Quantity discounts
+        - [ ] Time-based promotions
+    - [ ] **Configuration:**
+        - [ ] Start/End date and time
+        - [ ] Days of week selection
+        - [ ] Active/inactive toggle
+        - [ ] Product/Group selection
+    - [ ] **Quantity Promotions:**
+        - [ ] Apply to all (e.g., buy 3, get 50% off all 3)
+        - [ ] Apply to next (e.g., buy 2, get 1 free)
+        - [ ] Required quantity to trigger
+        - [ ] Number of items to discount
+        - [ ] Product vs group level
+        - [ ] Promotion precedence rules
+- [ ] **23.3 Customer Discounts**
+    - [ ] **Discount Rules:**
+        - [ ] Product-specific discounts
+        - [ ] Product group discounts
+        - [ ] Percentage or fixed amount
+        - [ ] Automatic application
+        - [ ] Discount precedence: Product > Group > Customer
+    - [ ] **Discount Management:**
+        - [ ] Assign to customers
+        - [ ] Track discount usage
+        - [ ] Discount reports
+- [ ] **23.4 Price Change Control**
+    - [ ] Per-product "price change allowed" flag
+    - [ ] Permission-based override
+    - [ ] Price history logging
+    - [ ] Original price retention
+
+---
+
+## 🍽️ Phase 24: Restaurant Features (Floor Plans)
+*Goal: Table management for F&B (From Aronium).*
+
+- [ ] **24.1 Floor Plan Design**
+    - [ ] **Visual Layout Designer:**
+        - [ ] Drag-and-drop table placement
+        - [ ] Multiple floor plans (rooms/areas)
+        - [ ] Table sizing and arrangement
+        - [ ] Design mode with visual feedback
+    - [ ] **Floor Plan Management:**
+        - [ ] Create/edit/delete floor plans
+        - [ ] Switch between floors
+        - [ ] Save layout configurations
+- [ ] **24.2 Table Operations**
+    - [ ] **Assign Order to Table:**
+        - [ ] Click table to open order
+        - [ ] Table number tracking
+    - [ ] **Table Status Indicators:**
+        - [ ] Available (green)
+        - [ ] Occupied (red)
+        - [ ] Reserved (yellow)
+    - [ ] **Table Management:**
+        - [ ] Move orders between tables
+        - [ ] Combine/merge tables
+        - [ ] Split checks
+        - [ ] Table turnover tracking
+- [ ] **24.3 Kitchen Printer (Print Stations)**
+    - [ ] **Multi-Station Printing:**
+        - [ ] Route orders by product/group
+        - [ ] Separate tickets per station
+        - [ ] Kitchen ticket format
+        - [ ] Order timing
+    - [ ] **Configuration:**
+        - [ ] Assign products to stations
+        - [ ] Assign groups to stations
+        - [ ] Multiple printers per station
+        - [ ] Ticket templates
+        - [ ] Print timing rules
+    - [ ] **Example Routing:**
+        - [ ] Pizza → Kitchen printer
+        - [ ] Drinks → Bar printer
+        - [ ] Desserts → Pastry station
+- [ ] **24.4 Enable Floor Plans**
+    - [ ] Settings toggle
+    - [ ] Automatic display after F9 or login
+    - [ ] Single-user vs multi-user behavior
+
+---
+
+## 💳 Phase 25: Credit Management & Accounts Receivable
+*Goal: Manage customer credit sales (From Aronium).*
+
+- [ ] **25.1 Credit Sale Features**
+    - [ ] **Credit Payment Type:**
+        - [ ] Create "Credit" payment method
+        - [ ] Uncheck "Mark transaction as paid"
+        - [ ] Set default due date (days)
+        - [ ] Track unpaid documents
+        - [ ] Outstanding balance monitoring
+    - [ ] **Credit Sale Workflow:**
+        - [ ] Create sale with credit payment
+        - [ ] Document marked "Unpaid"
+        - [ ] Track in Credit Payments screen
+        - [ ] Receive payment later
+        - [ ] Allocate to specific invoices
+        - [ ] Update status to "Paid"
+- [ ] **25.2 Settling Credit Balance**
+    - [ ] **Credit Payments Screen:**
+        - [ ] Select customer
+        - [ ] View outstanding invoices
+        - [ ] Enter paid amount
+        - [ ] Choose payment type (Cash, Card, etc.)
+        - [ ] Automatic distribution (oldest first)
+        - [ ] Manual invoice selection
+        - [ ] Partial payments support
+        - [ ] Full balance settlement
+        - [ ] Print payment receipt
+- [ ] **25.3 Credit Management**
+    - [ ] **Customer Credit Settings:**
+        - [ ] Credit limit per customer
+        - [ ] Credit terms (payment days)
+        - [ ] Block sales if over limit
+        - [ ] Credit approval workflow
+    - [ ] **Credit Reports:**
+        - [ ] Outstanding balances report
+        - [ ] Aging analysis (30/60/90 days)
+        - [ ] Customer payment history
+        - [ ] Credit limit utilization
+        - [ ] Overdue accounts
+- [ ] **25.4 Payment Allocation**
+    - [ ] Automatic distribution to oldest invoices
+    - [ ] Manual selection of invoices to pay
+    - [ ] Partial payment recording
+    - [ ] Payment receipt generation
+
+---
+
+## 🎨 Phase 26: Advanced UI/UX Features
+*Goal: Polish and usability enhancements (From Aronium).*
+
+- [ ] **26.1 Keyboard Shortcuts Enhancement**
+    - [ ] **Complete Shortcut Mapping:**
+        - [ ] Del - Void selected item
+        - [ ] F2 - Open discount dialog
+        - [ ] F3 - Product search screen
+        - [ ] F4 - Change quantity
+        - [ ] F7 - Split order screen
+        - [ ] F8 - Save current, start new sale
+        - [ ] F9 - Create sub-order
+        - [ ] F10 - Open payment screen
+        - [ ] F11 - Toggle full screen
+        - [ ] F12 - Quick close with default payment
+        - [ ] Esc - Deselect item, focus search
+        - [ ] Ctrl+D - Open cash drawer
+        - [ ] Ctrl+T - Toggle search type
+        - [ ] Ctrl++ - Zoom in
+        - [ ] Ctrl+- - Zoom out
+        - [ ] Ctrl+0 - Reset zoom (100%)
+        - [ ] Page Up - Select first item
+        - [ ] Page Down - Select last item
+    - [ ] Customizable shortcut configuration
+    - [ ] Shortcut confirmation options
+    - [ ] Display shortcut hints in UI
+- [ ] **26.2 Touch Optimization**
+    - [ ] **Large Touch Buttons:**
+        - [ ] Minimum button size (60px height)
+        - [ ] Touch-friendly spacing
+        - [ ] Visual feedback on touch
+    - [ ] **Touch Gestures:**
+        - [ ] Swipe to delete
+        - [ ] Long press for options
+        - [ ] Pinch zoom
+    - [ ] **Virtual Keyboard:**
+        - [ ] On-screen numpad
+        - [ ] On-screen QWERTY keyboard
+        - [ ] Auto-show when needed
+- [ ] **26.3 Visual Feedback**
+    - [ ] **Status Indicators:**
+        - [ ] Item status icons (added/confirmed/voided)
+        - [ ] Order status colors
+        - [ ] Payment status badges
+    - [ ] **Progress Indicators:**
+        - [ ] Loading spinners
+        - [ ] Progress bars for long operations
+        - [ ] Success/error notifications
+    - [ ] **Sound Effects:**
+        - [ ] Beep on successful scan
+        - [ ] Error sound
+        - [ ] Payment complete sound
+- [ ] **26.4 Accessibility**
+    - [ ] High contrast mode
+    - [ ] Font size adjustment
+    - [ ] Colorblind-friendly schemes
+    - [ ] Screen reader support
+    - [ ] Keyboard-only navigation
+
+---
+
+## 🔧 Phase 27: System Administration Tools
+*Goal: Maintenance and troubleshooting utilities.*
+
+- [ ] **27.1 Database Tools**
+    - [ ] **Database Health:**
+        - [ ] Integrity check
+        - [ ] Corruption detection
+        - [ ] Repair utilities
+        - [ ] Optimization (VACUUM, ANALYZE)
+    - [ ] **Database Info:**
+        - [ ] View database location
+        - [ ] Database size statistics
+        - [ ] Table row counts
+        - [ ] Index status
+- [ ] **27.2 System Diagnostics**
+    - [ ] **Health Monitoring:**
+        - [ ] Disk space check
+        - [ ] Memory usage
+        - [ ] CPU utilization
+        - [ ] Network status (if networked)
+    - [ ] **Error Logging:**
+        - [ ] View application logs
+        - [ ] Export logs for support
+        - [ ] Log level configuration
+        - [ ] Automatic error reporting
+- [ ] **27.3 Troubleshooting Wizards**
+    - [ ] **Printer Troubleshooter:**
+        - [ ] Test print
+        - [ ] Detect printers
+        - [ ] Driver verification
+        - [ ] Connection test
+    - [ ] **Scanner Troubleshooter:**
+        - [ ] Test scan
+        - [ ] Barcode format detection
+        - [ ] Connection test
+    - [ ] **Database Troubleshooter:**
+        - [ ] Connection test
+        - [ ] Server status (networked)
+        - [ ] Migration status
+        - [ ] Fix common issues
+- [ ] **27.4 Reset & Maintenance**
+    - [ ] **Selective Reset:**
+        - [ ] Clear transactions only
+        - [ ] Clear customers only
+        - [ ] Clear products only
+        - [ ] Full factory reset
+    - [ ] **Data Cleanup:**
+        - [ ] Archive old transactions
+        - [ ] Delete test data
+        - [ ] Clean up orphaned records
+
+---
+
+## 🌍 Phase 28: Multi-Location & Warehouse
+*Goal: Support retail chains (From Aronium Community Requests).*
+
+- [ ] **28.1 Multiple Warehouse Locations**
+    - [ ] **Location Setup:**
+        - [ ] Create locations/warehouses
+        - [ ] Location-based inventory
+        - [ ] Default location per user
+        - [ ] Location selection in POS
+    - [ ] **Inter-Location Operations:**
+        - [ ] Transfer documents
+        - [ ] Transfer stock between locations
+        - [ ] Location-specific sales
+        - [ ] Location-specific reports
+- [ ] **28.2 Consolidated Reporting**
+    - [ ] **Multi-Location Reports:**
+        - [ ] Sales by location
+        - [ ] Stock levels across all locations
+        - [ ] Inter-location transfers
+        - [ ] Consolidated P&L
+    - [ ] **Location Comparison:**
+        - [ ] Compare performance
+        - [ ] Identify best sellers per location
+        - [ ] Stock redistribution suggestions
+- [ ] **28.3 Location-Based Features**
+    - [ ] Location-specific pricing
+    - [ ] Location-specific promotions
+    - [ ] Location-based user access
+    - [ ] Transfer approval workflow
+
+---
+
+## 🎁 Phase 29: Gift Cards & Vouchers
+*Goal: Implement prepaid card system (From Aronium Community Requests).*
+
+- [ ] **29.1 Gift Card Issuance**
+    - [ ] **Create Gift Cards:**
+        - [ ] Generate unique card numbers
+        - [ ] Set initial balance
+        - [ ] Expiry date (optional)
+        - [ ] Physical or digital cards
+    - [ ] **Gift Card Types:**
+        - [ ] Fixed value cards
+        - [ ] Variable value cards
+        - [ ] Promotional vouchers
+        - [ ] Store credit cards
+- [ ] **29.2 Gift Card Usage**
+    - [ ] **Redemption:**
+        - [ ] Scan/enter card number
+        - [ ] Check balance
+        - [ ] Deduct from balance
+        - [ ] Partial redemption
+        - [ ] Multiple cards per transaction
+    - [ ] **Balance Tracking:**
+        - [ ] Real-time balance updates
+        - [ ] Transaction history per card
+        - [ ] Recharge/top-up functionality
+- [ ] **29.3 Gift Card Management**
+    - [ ] **Admin Functions:**
+        - [ ] View all issued cards
+        - [ ] Check card status
+        - [ ] Void/cancel cards
+        - [ ] Card activity reports
+        - [ ] Expiry management
+    - [ ] **Reports:**
+        - [ ] Cards issued
+        - [ ] Outstanding balance (liability)
+        - [ ] Redemption patterns
+        - [ ] Expired cards
+
+---
+
+## 📈 Phase 30: Advanced Analytics & Business Intelligence
+*Goal: Data-driven decision making.*
+
+- [ ] **30.1 Advanced Dashboard**
+    - [ ] **Real-Time KPIs:**
+        - [ ] Today's sales vs yesterday
+        - [ ] Sales vs target
+        - [ ] Average transaction value
+        - [ ] Items per transaction
+        - [ ] Conversion rate
+        - [ ] Hourly sales graph
+    - [ ] **Trend Analysis:**
+        - [ ] 7-day sales trend
+        - [ ] Month-over-month comparison
+        - [ ] Year-over-year growth
+        - [ ] Seasonal patterns
+- [ ] **30.2 Product Analytics**
+    - [ ] **Performance Metrics:**
+        - [ ] Best sellers (by revenue/quantity)
+        - [ ] Slow movers
+        - [ ] Stock turnover rate
+        - [ ] Days to sell
+        - [ ] ABC analysis (Pareto)
+    - [ ] **Profitability:**
+        - [ ] Margin by product
+        - [ ] Margin by category
+        - [ ] High/low margin items
+        - [ ] Loss leaders identification
+- [ ] **30.3 Customer Analytics**
+    - [ ] **Customer Segmentation:**
+        - [ ] RFM analysis (Recency, Frequency, Monetary)
+        - [ ] Top customers by spend
+        - [ ] Customer lifetime value
+        - [ ] Churn prediction
+    - [ ] **Purchase Patterns:**
+        - [ ] Basket analysis
+        - [ ] Product affinity (what's bought together)
+        - [ ] Cross-sell opportunities
+- [ ] **30.4 Predictive Analytics**
+    - [ ] **Forecasting:**
+        - [ ] Sales forecast (next week/month)
+        - [ ] Inventory requirement prediction
+        - [ ] Seasonal demand planning
+    - [ ] **Alerts & Recommendations:**
+        - [ ] Stock reorder suggestions
+        - [ ] Price optimization recommendations
+        - [ ] Promotion effectiveness
+- [ ] **30.5 Export & Integration**
+    - [ ] **Data Export:**
+        - [ ] Raw data export for external BI tools
+        - [ ] API for third-party integration
+        - [ ] Scheduled data dumps
+    - [ ] **Accounting Integration:**
+        - [ ] Export to accounting software
+        - [ ] Chart of accounts mapping
+        - [ ] Automatic journal entries
+
+---
+
+## 🎓 Bonus Phase: Training & Documentation
+*Goal: Ensure successful adoption.*
+
+- [ ] **B1. User Documentation**
+    - [ ] **User Manual:**
+        - [ ] Getting started guide
+        - [ ] Feature documentation
+        - [ ] Troubleshooting guide
+        - [ ] FAQ section
+    - [ ] **Video Tutorials:**
+        - [ ] Basic operations
+        - [ ] Advanced features
+        - [ ] Common tasks
+    - [ ] **Quick Reference Cards:**
+        - [ ] Keyboard shortcuts
+        - [ ] Common operations
+        - [ ] Troubleshooting tips
+- [ ] **B2. Administrator Guide**
+    - [ ] Installation instructions
+    - [ ] Initial setup checklist
+    - [ ] Hardware configuration
+    - [ ] Network setup (multi-terminal)
+    - [ ] Backup procedures
+    - [ ] Security best practices
+- [ ] **B3. Developer Documentation**
+    - [ ] Architecture overview
+    - [ ] API documentation
+    - [ ] Database schema
+    - [ ] Plugin development guide
+    - [ ] Contribution guidelines
+- [ ] **B4. Training Materials**
+    - [ ] Training presentation slides
+    - [ ] Hands-on exercises
+    - [ ] Assessment tests
+    - [ ] Certification program
+
+---
+
+## 📊 Progress Summary
+
+### Completed Phases: 3/30 (10%)
+- ✅ Phase 1: Project Initialization (100%)
+- ✅ Phase 2: Database Layer (100%)
+- ✅ Phase 3: Authentication (75% - RBAC pending)
+
+### In Progress Phases:
+- 🟡 Phase 4: Inventory Management (60%)
+- 🟡 Phase 5: Hardware Integration (40%)
+- 🟡 Phase 6: Sales Terminal UI (70%)
+- 🟡 Phase 7: Cart Logic (80%)
+- 🟡 Phase 8: Transaction Processing (70%)
+
+### Upcoming Priority:
+1. Complete Phase 4 (Inventory UI & Advanced Features)
+2. Complete Phase 5 (Hardware drivers)
+3. Complete Phase 10 (Payment & Checkout)
+4. Phase 13 (Receipt Generation)
+5. Phase 14 (Reporting)
+
+---
+
+## 🎯 Key Milestones
+
+### Milestone 1: MVP (Minimum Viable Product) - Target: Month 3
+- ✅ Basic POS functionality
+- ✅ Product management
+- ✅ Sales processing
+- ⏳ Payment handling
+- ⏳ Receipt printing
+- ⏳ Basic reports
+
+### Milestone 2: Feature Complete - Target: Month 6
+- [ ] All core features
+- [ ] Customer management
+- [ ] Inventory control
+- [ ] Advanced reporting
+- [ ] Multi-user support
+
+### Milestone 3: Production Ready - Target: Month 9
+- [ ] All advanced features
+- [ ] Complete testing
+- [ ] Documentation
+- [ ] Training materials
+- [ ] Installer package
+
+### Milestone 4: Scale Ready - Target: Month 12
+- [ ] Multi-terminal support
+- [ ] Cloud sync
+- [ ] Advanced analytics
+- [ ] Plugin system
+- [ ] API integration
+
+---
+
+## 📝 Notes
+
+**Based on Aronium POS Feature Analysis:**
+- All major Aronium features have been incorporated
+- Added Sri Lankan specific requirements (tax compliance)
+- Extended with advanced analytics and BI features
+- Included restaurant features (floor plans)
+- Added multi-location support for retail chains
+
+**Technology Stack:**
+- Python 3.12 (latest stable)
+- PyQt6 6.7.0 (GUI framework)
+- SQLAlchemy 2.0.30 (ORM)
+- PostgreSQL/SQLite (database)
+- python-escpos (thermal printing)
+- reportlab (PDF generation)
+- Alembic (migrations)
+
+**Development Approach:**
+- MVC Architecture Pattern
+- Singleton Database Connection
+- Service Layer for business logic
+- Repository Pattern for data access
+- Event-driven UI updates
+- Async operations for long tasks
+
+**Quality Standards:**
+- 80%+ test coverage target
+- Code review required for all PRs
+- Pre-commit hooks (Black, Flake8, mypy)
+- Documentation for all public APIs
+- Performance benchmarking
+
+---
+
+**Last Updated:** November 26, 2025  
+**Version:** 2.0 (Comprehensive Update)  
+**Total Phases:** 30 + Bonus  
+**Estimated Completion:** 12 months  
+**Current Sprint:** Phase 4-8 (Core POS Functionality)

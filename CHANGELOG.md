@@ -1,26 +1,3 @@
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-## [Unreleased] - 2025-11-26
-### Fixed
-- **Font Rendering**: Resolved "OpenType support missing" errors by implementing robust ResourceLoader.
-    - Created `infrastructure/resource_loader.py` with recursive font loading.
-    - Updated `main.py` to load fonts before UI initialization and set global default font.
-    - Modified `theme.qss` with wildcard selector for font enforcement.
-    - System now properly retrieves and uses font family names (e.g., "Noto Sans") instead of falling back to "Segoe UI".
-- **Startup Crash**: Fixed `TypeError: QFontDatabase... not enough arguments` by using static methods only (PyQt6 requirement).
-- **Login UX**: 
-    - Set `NoFocus` policy on all numpad buttons to prevent focus stealing from PIN input.
-    - Added `showEvent` override to force focus on PIN input field when view becomes visible.
-    - Both physical keyboard Enter and virtual numpad Enter now trigger login correctly.
-
-### Improved
-- **Console Output**: Cleaned startup logging for production readiness.
-    - Reduced ResourceLoader verbosity to summary-only (shows file count instead of individual fonts).
-    - Implemented Qt message handler to suppress internal "OpenType support missing" warnings.
-    - Real Qt errors and warnings still display for debugging.
-
 ## [0.1.0] - 2025-11-25
 ### Added
 - Initial project structure scaffolding.

@@ -94,9 +94,9 @@
     - [x] Implement `ProductService`.
     - [x] Support **Weighted Items** (Boolean flag).
     - [x] Support **Composite Items** (Hampers).
-- [ ] **4.2 Inventory UI**
-    - [ ] Create Product Master Grid (Search, Filter, Sort).
-    - [ ] Create Product Editor Dialog.
+- [x] **4.2 Inventory UI**
+    - [x] Create Product Master Grid (Search, Filter, Sort).
+    - [x] Create Product Editor Dialog.
     - [ ] Implement CSV Import Wizard (`pandas` integration).
     - [ ] **Product Image Upload:** Support product photos
     - [ ] **Multiple Barcode Support:** Pipe-separated barcodes per product
@@ -123,8 +123,8 @@
 ## 🤖 Phase 5: Hardware Abstraction Layer (HAL)
 *Goal: Write code once, run on any hardware.*
 
-- [ ] **5.1 Architecture**
-    - [ ] Define Interfaces: `IPrinter`, `IScanner`, `IDisplay`.
+- [x] **5.1 Architecture**
+    - [x] Define Interfaces: `IPrinter`, `IScanner`, `IDisplay`.
     - [ ] **Cash Drawer Interface:** Standard kick commands
     - [ ] **Weighing Scale Interface:** Serial communication protocol
     - [ ] **Customer Display Interface:** Secondary screen support
@@ -208,10 +208,10 @@
 - [x] **8.1 Transaction Service**
     - [x] Implement **Atomic Commit** (DB Transaction).
     - [x] Sequence: Save Header -> Save Lines -> Deduct Stock -> Commit.
-- [ ] **8.2 Operations**
-    - [ ] **Hold Bill:** Serialize cart to "Pending" table.
-    - [ ] **Recall Bill:** Restore from Pending.
-    - [ ] **Void Bill:** Record void reason.
+- [x] **8.2 Operations**
+    - [x] **Hold Bill:** Serialize cart to "Pending" table.
+    - [x] **Recall Bill:** Restore from Pending.
+    - [x] **Void Bill:** Record void reason.
     - [ ] **Lock Order:** Save and prevent modifications
     - [ ] **Transfer Order:** Split to another order/user
 - [ ] **8.3 Multiple Open Orders (From Aronium)**
@@ -234,9 +234,9 @@
     - [x] Logic: `Shelf Price = Base + VAT + SSCL`.
     - [x] Implement extraction formula for 18% VAT.
     - [x] Implement extraction formula for 2.5% SSCL.
-- [ ] **9.2 Invoicing Rules**
-    - [ ] Logic: Detect Registered Customer (VAT No).
-    - [ ] Output: Switch Receipt format to "Tax Invoice".
+- [x] **9.2 Invoicing Rules**
+    - [x] Logic: Detect Registered Customer (VAT No).
+    - [x] Output: Switch Receipt format to "Tax Invoice".
     - [ ] **Tax Breakdown Display:** Show VAT and SSCL separately
     - [ ] **Tax-Exempt Sales:** Support with permission
 - [ ] **9.3 Multi-Tax Support (Future)**
@@ -280,15 +280,15 @@
 ## 👥 Phase 11: Customer Management (CRM)
 *Goal: Repeat business.*
 
-- [ ] **11.1 Customer DB**
-    - [ ] CRUD for Customers (Name, Phone, VAT No).
-    - [ ] Credit Limit logic.
+- [x] **11.1 Customer DB**
+    - [x] CRUD for Customers (Name, Phone, VAT No).
+    - [x] Credit Limit logic.
     - [ ] **Company Information:** Separate company fields
     - [ ] **Multiple Contacts:** Phone, email, address
     - [ ] **Customer Type:** Customer vs Supplier flag
-- [ ] **11.2 Loyalty**
-    - [ ] Points Engine (Earn X points per Y spent).
-    - [ ] Redemption Logic at checkout.
+- [x] **11.2 Loyalty**
+    - [x] Points Engine (Earn X points per Y spent).
+    - [x] Redemption Logic at checkout.
     - [ ] **Loyalty Card Assignment:** Barcode scannable cards
     - [ ] **Quick Customer Lookup:** Search by card/phone/tax number
     - [ ] **Purchase History:** View customer transactions
@@ -312,9 +312,9 @@
 - [x] **12.1 Cash Control**
     - [x] **Float Entry:** Start of day cash.
     - [x] **Cash In/Out:** Petty cash recording.
-- [ ] **12.2 Reports**
-    - [ ] **X-Read:** Mid-shift snapshot.
-    - [ ] **Z-Read:** End of day reset & variance calculation.
+- [x] **12.2 Reports**
+    - [x] **X-Read:** Mid-shift snapshot.
+    - [x] **Z-Read:** End of day reset & variance calculation.
 - [ ] **12.3 End of Day Process (From Aronium)**
     - [ ] **Cash Reconciliation:** Count vs expected
     - [ ] **Variance Tracking:** Over/short reporting
@@ -329,13 +329,13 @@
 ## 🧾 Phase 13: Receipt Generation
 *Goal: Professional physical output.*
 
-- [ ] **13.1 Templating**
-    - [ ] Create `ReceiptBuilder` class.
-    - [ ] Header (Logo, Address).
-    - [ ] Body (Items, Qty, Price).
-    - [ ] Footer (Tax breakdown, Thank you message).
-- [ ] **13.2 Routing**
-    - [ ] Logic to print to Kitchen vs Counter based on Category.
+- [x] **13.1 Templating**
+    - [x] Create `ReceiptBuilder` class.
+    - [x] Header (Logo, Address).
+    - [x] Body (Items, Qty, Price).
+    - [x] Footer (Tax breakdown, Thank you message).
+- [x] **13.2 Routing**
+    - [x] Logic to print to Kitchen vs Counter based on Category.
 - [ ] **13.3 Advanced Receipt Features (From Aronium)**
     - [ ] **Company Logo:** Image printing support
     - [ ] **Custom Header/Footer:** Configurable text
@@ -355,15 +355,15 @@
 ## 📊 Phase 14: Reporting & Analytics
 *Goal: Business insights.*
 
-- [ ] **14.1 Dashboard**
-    - [ ] Live Sales Ticker.
-    - [ ] "Top Movers" Widget.
+- [x] **14.1 Dashboard**
+    - [x] Live Sales Ticker.
+    - [x] "Top Movers" Widget.
     - [ ] **Today's Summary:** Sales, profit, transactions
     - [ ] **Stock Alerts:** Low stock warnings
-- [ ] **14.2 Core Reports**
-    - [ ] Sales by Date/User/Category.
-    - [ ] Inventory Valuation.
-    - [ ] Tax Liability Report (Output VAT - Input VAT).
+- [x] **14.2 Core Reports**
+    - [x] Sales by Date/User/Category.
+    - [x] Inventory Valuation.
+    - [x] Tax Liability Report (Output VAT - Input VAT).
 - [ ] **14.3 Export**
     - [ ] Export Table Data to Excel/CSV.
     - [ ] **PDF Export:** Professional report format
@@ -423,10 +423,10 @@
 ## ⚙️ Phase 15: Settings & Configuration
 *Goal: User customizability.*
 
-- [ ] **15.1 Config UI**
-    - [ ] Hardware Setup (Select Printer/Scanner).
-    - [ ] Business Details (Name, Address, Phone).
-    - [ ] Tax Rates configuration.
+- [x] **15.1 Config UI**
+    - [x] Hardware Setup (Select Printer/Scanner).
+    - [x] Business Details (Name, Address, Phone).
+    - [x] Tax Rates configuration.
 - [ ] **15.2 Feature Flags**
     - [ ] Toggle features (e.g., Enable Loyalty, Enable Touch Mode).
 - [ ] **15.3 Comprehensive Settings (From Aronium)**

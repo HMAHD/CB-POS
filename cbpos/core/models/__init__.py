@@ -135,6 +135,7 @@ class Product(Base):
     cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     stock_qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=0)
     is_weighted: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_composite: Mapped[bool] = mapped_column(Boolean, default=False)
     category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"))
     parent_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("products.id"), nullable=True

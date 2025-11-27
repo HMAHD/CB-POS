@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QHBoxLayout,
     QHeaderView,
-    QSpinBox,
+    QLabel,
 )
 
 from sqlalchemy import select
@@ -65,6 +65,11 @@ class ProductEditor(QDialog):
         self.setup_composition_tab()
         self.tabs.addTab(self.tab_composition, "Composition")
 
+        # Tab 4: Image
+        self.tab_image = QWidget()
+        self.setup_image_tab()
+        self.tabs.addTab(self.tab_image, "Image")
+
         layout.addWidget(self.tabs)
 
         buttons = QDialogButtonBox(
@@ -110,18 +115,22 @@ class ProductEditor(QDialog):
         self.stock_input.setRange(-10000, 1000000)
         self.stock_input.setDecimals(3)
 
-        self.reorder_input = QSpinBox()
+        self.reorder_input = QDoubleSpinBox()
         self.reorder_input.setRange(0, 10000)
+        self.reorder_input.setDecimals(3)
 
-        self.preferred_qty_input = QSpinBox()
+        self.preferred_qty_input = QDoubleSpinBox()
         self.preferred_qty_input.setRange(0, 10000)
+        self.preferred_qty_input.setDecimals(3)
 
         self.weighted_check = QCheckBox("Is Weighted Item?")
+        self.service_check = QCheckBox("Is Service Item (No Stock Tracking)")
 
         layout.addRow("Stock Qty:", self.stock_input)
-        layout.addRow("Reorder Level:", self.reorder_input)
+        layout.addRow("Reorder Point:", self.reorder_input)
         layout.addRow("Preferred Qty:", self.preferred_qty_input)
         layout.addRow("", self.weighted_check)
+        layout.addRow("", self.service_check)
 
     def setup_composition_tab(self):
         layout = QVBoxLayout(self.tab_composition)
@@ -195,6 +204,63 @@ class ProductEditor(QDialog):
 
         return handler
 
+    def setup_image_tab(self):
+        layout = QVBoxLayout(self.tab_image)
+
+        self.lbl_image = QLabel("No Image Selected")
+        self.lbl_image.setFixedSize(200, 200)
+        self.lbl_image.setStyleSheet("border: 1px solid gray; background: #f0f0f0;")
+        self.lbl_image.setScaledContents(True)
+
+        btn_upload = QPushButton("Upload Image")
+        btn_upload.clicked.connect(self.upload_image)
+
+        btn_clear = QPushButton("Clear Image")
+        btn_clear.clicked.connect(self.clear_image)
+
+        layout.addWidget(self.lbl_image)
+        layout.addWidget(btn_upload)
+        layout.addWidget(btn_clear)
+        layout.addStretch()
+
+        self.current_image_path = None
+
+    def upload_image(self):
+        from PyQt6.QtWidgets import QFileDialog
+        import shutil
+        import os
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Select Image", "", "Images (*.png *.jpg *.jpeg)"
+        )
+
+        if file_path:
+            # Copy to assets
+            filename = os.path.basename(file_path)
+            target_dir = os.path.join(os.getcwd(), "cbpos", "assets", "product_images")
+            os.makedirs(target_dir, exist_ok=True)
+
+            target_path = os.path.join(target_dir, filename)
+            shutil.copy(file_path, target_path)
+
+            self.current_image_path = f"product_images/{filename}"
+            self.show_image(target_path)
+
+    def clear_image(self):
+        self.current_image_path = None
+        self.lbl_image.clear()
+        self.lbl_image.setText("No Image Selected")
+
+    def show_image(self, path):
+        from PyQt6.QtGui import QPixmap
+        import os
+
+        if os.path.exists(path):
+            pixmap = QPixmap(path)
+            self.lbl_image.setPixmap(pixmap)
+        else:
+            self.lbl_image.setText("Image Not Found")
+
     def load_data(self):
         self.barcode_input.setText(self.product.barcode)
         self.barcode_input.setReadOnly(True)
@@ -210,9 +276,19 @@ class ProductEditor(QDialog):
         self.cost_input.setValue(float(self.product.cost))
 
         self.stock_input.setValue(float(self.product.stock_qty))
-        self.reorder_input.setValue(self.product.reorder_level)
-        self.preferred_qty_input.setValue(self.product.preferred_qty)
+        self.reorder_input.setValue(float(self.product.reorder_point))
+        self.preferred_qty_input.setValue(float(self.product.preferred_qty))
         self.weighted_check.setChecked(self.product.is_weighted)
+        self.service_check.setChecked(self.product.is_service)
+
+        if self.product.image_path:
+            import os
+
+            full_path = os.path.join(
+                os.getcwd(), "cbpos", "assets", self.product.image_path
+            )
+            self.show_image(full_path)
+            self.current_image_path = self.product.image_path
 
         # Load components
         db = Database()
@@ -251,9 +327,11 @@ class ProductEditor(QDialog):
             "price": Decimal(str(self.price_input.value())),
             "cost": Decimal(str(self.cost_input.value())),
             "stock_qty": Decimal(str(self.stock_input.value())),
-            "reorder_level": self.reorder_input.value(),
-            "preferred_qty": self.preferred_qty_input.value(),
+            "reorder_point": Decimal(str(self.reorder_input.value())),
+            "preferred_qty": Decimal(str(self.preferred_qty_input.value())),
             "is_weighted": self.weighted_check.isChecked(),
+            "is_service": self.service_check.isChecked(),
+            "image_path": getattr(self, "current_image_path", None),
             "is_active": True,
         }
 

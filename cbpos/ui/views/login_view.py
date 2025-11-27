@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPixmap, QIntValidator
+from PyQt6.QtGui import QPixmap, QIntValidator, QKeySequence, QShortcut
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.models import User
 from cbpos.config import Config
@@ -146,6 +146,13 @@ class LoginView(QWidget):
         # Set focus to input
         self.pin_input.setFocus()
 
+        # Shortcuts for Enter Key (Decentralized Handling)
+        self.shortcut_enter = QShortcut(QKeySequence(Qt.Key.Key_Return), self)
+        self.shortcut_enter.activated.connect(self.attempt_login)
+
+        self.shortcut_num_enter = QShortcut(QKeySequence(Qt.Key.Key_Enter), self)
+        self.shortcut_num_enter.activated.connect(self.attempt_login)
+
     def showEvent(self, event):
         """
         Override showEvent to force focus on PIN input when view becomes visible.
@@ -180,17 +187,8 @@ class LoginView(QWidget):
             QMessageBox.warning(self, "Login Failed", "Invalid PIN. Please try again.")
 
     def keyPressEvent(self, event):
-        # Handle Numpad Enter and Main Enter
-        # Note: Qt.Key_Enter is the Numpad Enter, Qt.Key_Return is the Main Enter
-        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
-            self.attempt_login()
-            event.accept()
-            return
-
-        # Handle Numpad Numbers explicitly if focus is lost or not handled
+        # Handle Numpad Numbers explicitly
         text = event.text()
-
-        # Check if it's a number key (0-9)
         if text.isdigit():
             self.append_pin(text)
             event.accept()

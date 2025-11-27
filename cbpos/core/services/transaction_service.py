@@ -103,6 +103,8 @@ class TransactionService:
                 session.add(payment)
 
                 # 4. Process Items & Deduct Stock
+            from cbpos.core.services.stock_service import StockService
+
             for item in cart_service.items:
                 product = item["product"]
                 qty = item["qty"]
@@ -117,14 +119,6 @@ class TransactionService:
                 session.add(sale_item)
 
                 # Check for Composite Item
-                # We need to query if this product is a parent in composite_items
-                # Since we don't have a direct relationship on Product for 'children' in the snippet provided,
-                # we query CompositeItem table.
-                # Ideally Product should have `composite_children` relationship.
-                # Let's check the model definition in `models/__init__.py`.
-                # It seems `CompositeItem` has `parent` and `child` relationships but `Product` doesn't have `children`.
-                # So we query manually.
-
                 composite_children = (
                     session.query(CompositeItem)
                     .filter(CompositeItem.parent_product_id == product.id)
@@ -134,21 +128,23 @@ class TransactionService:
                 if composite_children:
                     # Deduct from children
                     for comp in composite_children:
-                        child_product = (
-                            session.query(Product)
-                            .with_for_update()
-                            .get(comp.child_product_id)
+                        deduction = comp.qty * qty
+                        StockService.record_movement(
+                            product_id=comp.child_product_id,
+                            qty_change=-deduction,
+                            movement_type="SALE",
+                            reference=receipt_no,
+                            user_id=cashier_id,
                         )
-                        if child_product:
-                            deduction = comp.qty * qty
-                            child_product.stock_qty -= deduction
                 else:
                     # Deduct from product itself
-                    db_product = (
-                        session.query(Product).with_for_update().get(product.id)
+                    StockService.record_movement(
+                        product_id=product.id,
+                        qty_change=-qty,
+                        movement_type="SALE",
+                        reference=receipt_no,
+                        user_id=cashier_id,
                     )
-                    if db_product:
-                        db_product.stock_qty -= qty
 
             # 5. Commit
             session.commit()

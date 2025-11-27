@@ -117,8 +117,12 @@ class Category(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     color: Mapped[str] = mapped_column(String(7), default="#FFFFFF")
+    parent_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("categories.id"), nullable=True
+    )
 
     products: Mapped[List["Product"]] = relationship(back_populates="category")
+    parent: Mapped["Category"] = relationship("Category", remote_side=[id])
 
 
 class Product(Base):
@@ -136,12 +140,14 @@ class Product(Base):
     stock_qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=0)
     is_weighted: Mapped[bool] = mapped_column(Boolean, default=False)
     is_composite: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_service: Mapped[bool] = mapped_column(Boolean, default=False)
+    reorder_point: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=0)
+    preferred_qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=0)
+    image_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"))
     parent_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("products.id"), nullable=True
     )
-    reorder_level: Mapped[int] = mapped_column(default=0)
-    preferred_qty: Mapped[int] = mapped_column(default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     category: Mapped["Category"] = relationship(back_populates="products")
@@ -308,3 +314,21 @@ class PurchaseItem(Base):
 
     purchase: Mapped["Purchase"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship("Product")
+
+
+class StockMovement(Base):
+    __tablename__ = "stock_movements"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    qty_change: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+    balance_after: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+    reference: Mapped[str] = mapped_column(String(100), nullable=False)
+    type: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # SALE, PURCHASE, ADJUSTMENT, RETURN, VOID
+
+    product: Mapped["Product"] = relationship()
+    user: Mapped["User"] = relationship()

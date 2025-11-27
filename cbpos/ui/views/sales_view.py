@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QMessageBox,
 )
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.cart_service import CartService
@@ -29,10 +29,10 @@ class SalesView(QWidget):
         self.customer = None
         self.init_ui()
 
-        # Focus Trap Timer
-        self.focus_timer = QTimer(self)
-        self.focus_timer.timeout.connect(self.ensure_focus)
-        self.focus_timer.start(2000)  # Check every 2 seconds
+        # Focus Trap Timer - REMOVED
+        # self.focus_timer = QTimer(self)
+        # self.focus_timer.timeout.connect(self.ensure_focus)
+        # self.focus_timer.start(2000)
 
     def init_ui(self):
         main_layout = QHBoxLayout(self)
@@ -146,12 +146,16 @@ class SalesView(QWidget):
         self.shortcut_f4 = QShortcut(QKeySequence("F4"), self)
         self.shortcut_f4.activated.connect(self.void_bill)
 
-    def ensure_focus(self):
-        """Force focus back to barcode input if window is active."""
-        if self.window().isActiveWindow() and not self.barcode_input.hasFocus():
-            # Only force focus if no dialog is open
-            # This is a simple check, might need improvement
-            self.barcode_input.setFocus()
+        # Shortcuts for Enter Key (Decentralized Handling)
+        self.shortcut_enter = QShortcut(QKeySequence(Qt.Key.Key_Return), self)
+        self.shortcut_enter.activated.connect(self.process_barcode)
+
+        self.shortcut_num_enter = QShortcut(QKeySequence(Qt.Key.Key_Enter), self)
+        self.shortcut_num_enter.activated.connect(self.process_barcode)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.barcode_input.setFocus()
 
     def process_barcode_external(self, barcode):
         """Handle barcode from global scanner hook."""

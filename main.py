@@ -50,13 +50,17 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("CB POS")
 
+    # Install Global Input Manager
+    from cbpos.infrastructure.input_manager import InputManager
+
+    input_manager = InputManager()
+    app.installEventFilter(input_manager)
+
     # CRITICAL: Load fonts BEFORE any UI is created
     print("[BOOTSTRAP] Loading application resources...")
     primary_font_family = ResourceLoader.load_fonts()
 
     # Force the application-wide default font
-    # This overrides the system default (e.g., "Segoe UI") and ensures
-    # the custom font is used even if QSS doesn't apply to certain widgets
     default_font = QFont(primary_font_family, 10)
     app.setFont(default_font)
     print(f"[BOOTSTRAP] Application font set to: {primary_font_family}")
@@ -69,4 +73,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)

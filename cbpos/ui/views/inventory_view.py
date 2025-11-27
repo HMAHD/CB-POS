@@ -93,9 +93,13 @@ class InventoryView(QWidget):
         self.import_btn = QPushButton("Import CSV")
         self.import_btn.clicked.connect(self.import_csv)
 
+        self.cat_btn = QPushButton("Manage Categories")
+        self.cat_btn.clicked.connect(self.open_category_dialog)
+
         top_bar.addWidget(self.search_input)
         top_bar.addWidget(self.add_btn)
         top_bar.addWidget(self.import_btn)
+        top_bar.addWidget(self.cat_btn)
 
         layout.addLayout(top_bar)
 
@@ -109,6 +113,10 @@ class InventoryView(QWidget):
             QHeaderView.ResizeMode.Stretch
         )
         self.table.doubleClicked.connect(self.open_edit_dialog)
+
+        # Context Menu
+        self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self.open_context_menu)
 
         layout.addWidget(self.table)
 
@@ -140,6 +148,31 @@ class InventoryView(QWidget):
         if dialog.exec():
             self.load_data()
 
+    def open_category_dialog(self):
+        from cbpos.ui.dialogs.category_dialog import CategoryDialog
+
+        dialog = CategoryDialog(parent=self)
+        dialog.exec()
+        self.load_data()
+
+    def open_context_menu(self, position):
+        from PyQt6.QtWidgets import QMenu
+        from cbpos.ui.dialogs.stock_history_dialog import StockHistoryDialog
+
+        index = self.table.indexAt(position)
+        if not index.isValid():
+            return
+
+        menu = QMenu()
+        history_action = menu.addAction("View Stock History")
+
+        action = menu.exec(self.table.viewport().mapToGlobal(position))
+
+        if action == history_action:
+            product = self.model.products[index.row()]
+            dialog = StockHistoryDialog(product, parent=self)
+            dialog.exec()
+
     def import_csv(self):
         file_path, _ = QFileDialog.getOpenFileName(
             self, "Import CSV", "", "CSV Files (*.csv)"
@@ -147,8 +180,8 @@ class InventoryView(QWidget):
         if file_path:
             results = self.import_service.import_products_from_csv(file_path)
             message = (
-                f"Success: {results['success']}\\n"
-                f"Failed: {results['failed']}\\n"
+                f"Success: {results['success']}\n"
+                f"Failed: {results['failed']}\n"
                 f"Skipped: {results['skipped']}"
             )
             QMessageBox.information(self, "Import Results", message)

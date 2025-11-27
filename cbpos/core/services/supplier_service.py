@@ -1,0 +1,106 @@
+from typing import List, Optional
+from sqlalchemy import select
+from cbpos.core.models import Supplier
+from cbpos.core.database import get_db_session
+
+
+class SupplierService:
+    """
+    Service for managing suppliers.
+    """
+
+    @staticmethod
+    def create_supplier(
+        company_name: str,
+        phone: Optional[str] = None,
+        contact_person: Optional[str] = None,
+        email: Optional[str] = None,
+        address: Optional[str] = None,
+        tax_number: Optional[str] = None,
+    ) -> Supplier:
+        """
+        Create a new supplier.
+        """
+        with get_db_session() as session:
+            supplier = Supplier(
+                company_name=company_name,
+                phone=phone,
+                contact_person=contact_person,
+                email=email,
+                address=address,
+                tax_number=tax_number,
+            )
+            session.add(supplier)
+            session.commit()
+            session.refresh(supplier)
+            return supplier
+
+    @staticmethod
+    def update_supplier(
+        supplier_id: int,
+        company_name: Optional[str] = None,
+        phone: Optional[str] = None,
+        contact_person: Optional[str] = None,
+        email: Optional[str] = None,
+        address: Optional[str] = None,
+        tax_number: Optional[str] = None,
+        is_active: Optional[bool] = None,
+    ) -> Optional[Supplier]:
+        """
+        Update an existing supplier.
+        """
+        with get_db_session() as session:
+            supplier = session.get(Supplier, supplier_id)
+            if not supplier:
+                return None
+
+            if company_name is not None:
+                supplier.company_name = company_name
+            if phone is not None:
+                supplier.phone = phone
+            if contact_person is not None:
+                supplier.contact_person = contact_person
+            if email is not None:
+                supplier.email = email
+            if address is not None:
+                supplier.address = address
+            if tax_number is not None:
+                supplier.tax_number = tax_number
+            if is_active is not None:
+                supplier.is_active = is_active
+
+            session.commit()
+            session.refresh(supplier)
+            return supplier
+
+    @staticmethod
+    def get_all_suppliers(active_only: bool = True) -> List[Supplier]:
+        """
+        Get all suppliers.
+        """
+        with get_db_session() as session:
+            stmt = select(Supplier)
+            if active_only:
+                stmt = stmt.where(Supplier.is_active.is_(True))
+            return list(session.scalars(stmt).all())
+
+    @staticmethod
+    def search_suppliers(query: str) -> List[Supplier]:
+        """
+        Search suppliers by name, phone, or contact person.
+        """
+        with get_db_session() as session:
+            stmt = select(Supplier).where(
+                (Supplier.company_name.ilike(f"%{query}%"))
+                | (Supplier.phone.ilike(f"%{query}%"))
+                | (Supplier.contact_person.ilike(f"%{query}%"))
+            )
+            return list(session.scalars(stmt).all())
+
+    @staticmethod
+    def get_supplier_by_id(supplier_id: int) -> Optional[Supplier]:
+        """
+        Get a supplier by ID.
+        """
+        with get_db_session() as session:
+            return session.get(Supplier, supplier_id)

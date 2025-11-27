@@ -14,6 +14,7 @@ from cbpos.ui.views.login_view import LoginView
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.custom_widgets import SidebarButton
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
+from cbpos.ui.views.purchase_view import PurchaseView
 
 
 class MainWindow(QMainWindow):
@@ -59,10 +60,11 @@ class MainWindow(QMainWindow):
         self.btn_dashboard = self.create_nav_button("Dashboard", Icons.DASHBOARD, 0)
         self.btn_sales = self.create_nav_button("Sales", Icons.SALES, 1)
         self.btn_inventory = self.create_nav_button("Inventory", Icons.INVENTORY, 2)
-        self.btn_customers = self.create_nav_button("Customers", Icons.CUSTOMERS, 3)
-        self.btn_reports = self.create_nav_button("Reports", Icons.REPORTS, 4)
-        self.btn_history = self.create_nav_button("History", Icons.HISTORY, 5)
-        self.btn_settings = self.create_nav_button("Settings", Icons.SETTINGS, 6)
+        self.btn_purchasing = self.create_nav_button("Purchasing", Icons.PURCHASE, 3)
+        self.btn_customers = self.create_nav_button("Customers", Icons.CUSTOMERS, 4)
+        self.btn_reports = self.create_nav_button("Reports", Icons.REPORTS, 5)
+        self.btn_history = self.create_nav_button("History", Icons.HISTORY, 6)
+        self.btn_settings = self.create_nav_button("Settings", Icons.SETTINGS, 7)
 
         self.sidebar_layout.addStretch()
 
@@ -154,7 +156,11 @@ class MainWindow(QMainWindow):
         self.inventory_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.stack.addWidget(self.inventory_view)
 
-        # 3. Customers
+        # 3. Purchasing
+        self.purchase_view = PurchaseView()
+        self.stack.addWidget(self.purchase_view)
+
+        # 4. Customers
         from cbpos.ui.views.customer_view import CustomerView
 
         self.customer_view = CustomerView()
@@ -193,6 +199,10 @@ class MainWindow(QMainWindow):
 
         # Switch to Dashboard
         self.switch_tab(0)
+
+        # Pass user to views
+        if hasattr(self, "purchase_view"):
+            self.purchase_view.set_user(user)
 
     def logout(self):
         self.user = None

@@ -45,7 +45,7 @@ class Database:
             **pool_args,
         )
         self.SessionLocal = sessionmaker(
-            bind=self.engine, autocommit=False, autoflush=False
+            bind=self.engine, autocommit=False, autoflush=False, expire_on_commit=False
         )
 
     def create_tables(self):
@@ -67,3 +67,8 @@ class Database:
             raise
         finally:
             session.close()
+
+
+def get_db_session():
+    """Helper to get a database session."""
+    return Database().get_session()

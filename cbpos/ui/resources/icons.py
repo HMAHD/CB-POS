@@ -16,6 +16,7 @@ class Icons:
     HISTORY = "fa5s.history"
     SETTINGS = "fa5s.cog"
     LOGOUT = "fa5s.sign-out-alt"
+    PURCHASE = "fa5s.truck"
 
     # Actions
     ADD = "fa5s.plus"

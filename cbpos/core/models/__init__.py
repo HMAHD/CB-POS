@@ -262,3 +262,49 @@ class CompositeItem(Base):
         "Product", foreign_keys=[parent_product_id], back_populates="components"
     )
     child: Mapped["Product"] = relationship("Product", foreign_keys=[child_product_id])
+
+
+class Supplier(Base):
+    __tablename__ = "suppliers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    company_name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    contact_person: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(
+        String(20), unique=True, index=True, nullable=True
+    )
+    email: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    address: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    tax_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    purchases: Mapped[List["Purchase"]] = relationship(back_populates="supplier")
+
+
+class Purchase(Base):
+    __tablename__ = "purchases"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"))
+    reference_no: Mapped[str] = mapped_column(String(50), nullable=False)
+    date_received: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    total_cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    status: Mapped[str] = mapped_column(String(20), default="DRAFT")  # DRAFT, COMPLETED
+
+    supplier: Mapped["Supplier"] = relationship(back_populates="purchases")
+    items: Mapped[List["PurchaseItem"]] = relationship(
+        back_populates="purchase", cascade="all, delete-orphan"
+    )
+
+
+class PurchaseItem(Base):
+    __tablename__ = "purchase_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    purchase_id: Mapped[int] = mapped_column(ForeignKey("purchases.id"))
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    qty_received: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+    unit_cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+
+    purchase: Mapped["Purchase"] = relationship(back_populates="items")
+    product: Mapped["Product"] = relationship("Product")

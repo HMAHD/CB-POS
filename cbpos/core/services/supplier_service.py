@@ -17,6 +17,7 @@ class SupplierService:
         email: Optional[str] = None,
         address: Optional[str] = None,
         tax_number: Optional[str] = None,
+        contact_details: Optional[str] = None,
     ) -> Supplier:
         """
         Create a new supplier.
@@ -29,6 +30,7 @@ class SupplierService:
                 email=email,
                 address=address,
                 tax_number=tax_number,
+                contact_details=contact_details,
             )
             session.add(supplier)
             session.commit()
@@ -44,6 +46,7 @@ class SupplierService:
         email: Optional[str] = None,
         address: Optional[str] = None,
         tax_number: Optional[str] = None,
+        contact_details: Optional[str] = None,
         is_active: Optional[bool] = None,
     ) -> Optional[Supplier]:
         """
@@ -66,6 +69,8 @@ class SupplierService:
                 supplier.address = address
             if tax_number is not None:
                 supplier.tax_number = tax_number
+            if contact_details is not None:
+                supplier.contact_details = contact_details
             if is_active is not None:
                 supplier.is_active = is_active
 

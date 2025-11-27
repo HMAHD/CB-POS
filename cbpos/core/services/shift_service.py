@@ -71,7 +71,7 @@ class ShiftService:
                 .join(Sale)
                 .where(
                     Sale.cashier_id == shift.user_id,
-                    Sale.timestamp >= shift.start_time,
+                    Sale.date >= shift.start_time,
                     SalePayment.payment_method == "Cash",
                 )
             )
@@ -84,6 +84,7 @@ class ShiftService:
             # OUT = Remove from drawer (e.g. expense)
             # DROP = Remove to safe
             # PAYOUT = Remove to vendor/customer
+            # 87:
 
             movements = session.scalars(
                 select(CashMovement).where(CashMovement.shift_id == shift_id)

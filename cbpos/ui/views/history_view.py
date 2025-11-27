@@ -146,8 +146,8 @@ class HistoryView(QWidget):
         db = Database()
         with db.get_session() as session:
             query = session.query(Sale).filter(
-                Sale.timestamp >= datetime.combine(from_date, datetime.min.time()),
-                Sale.timestamp <= datetime.combine(to_date, datetime.max.time()),
+                Sale.date >= datetime.combine(from_date, datetime.min.time()),
+                Sale.date <= datetime.combine(to_date, datetime.max.time()),
             )
 
             if search_term:
@@ -156,7 +156,7 @@ class HistoryView(QWidget):
                     | (Sale.customer.has(name=search_term))
                 )
 
-            sales = query.order_by(Sale.timestamp.desc()).all()
+            sales = query.order_by(Sale.date.desc()).all()
 
             # Detach from session
             for sale in sales:
@@ -172,7 +172,7 @@ class HistoryView(QWidget):
             self.transaction_table.insertRow(row)
 
             # Date/Time
-            dt_item = QTableWidgetItem(sale.timestamp.strftime("%Y-%m-%d %H:%M"))
+            dt_item = QTableWidgetItem(sale.date.strftime("%Y-%m-%d %H:%M"))
             dt_item.setData(Qt.ItemDataRole.UserRole, sale.id)
             self.transaction_table.setItem(row, 0, dt_item)
 
@@ -236,7 +236,7 @@ class HistoryView(QWidget):
         """Display sale details in details panel"""
         details_text = f"""
         <b>Receipt:</b> {sale.receipt_no}<br>
-        <b>Date:</b> {sale.timestamp.strftime("%Y-%m-%d %H:%M:%S")}<br>
+        <b>Date:</b> {sale.date.strftime("%Y-%m-%d %H:%M:%S")}<br>
         <b>Cashier:</b> {sale.cashier.username if sale.cashier else 'Unknown'}<br>
         <b>Total:</b> Rs. {sale.total_amount:.2f}<br>
         <b>Payment:</b> {sale.payment_method}<br>

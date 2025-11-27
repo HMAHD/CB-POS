@@ -19,7 +19,7 @@ class ReportService:
             total_sales = (
                 session.scalar(
                     select(func.sum(Sale.total_amount)).where(
-                        Sale.timestamp >= start_dt, Sale.timestamp <= end_dt
+                        Sale.date >= start_dt, Sale.date <= end_dt
                     )
                 )
                 or 0
@@ -29,7 +29,7 @@ class ReportService:
             total_tax = (
                 session.scalar(
                     select(func.sum(Sale.tax_vat + Sale.tax_sscl)).where(
-                        Sale.timestamp >= start_dt, Sale.timestamp <= end_dt
+                        Sale.date >= start_dt, Sale.date <= end_dt
                     )
                 )
                 or 0
@@ -39,7 +39,7 @@ class ReportService:
             payment_breakdown = session.execute(
                 select(SalePayment.payment_method, func.sum(SalePayment.amount))
                 .join(Sale)
-                .where(Sale.timestamp >= start_dt, Sale.timestamp <= end_dt)
+                .where(Sale.date >= start_dt, Sale.date <= end_dt)
                 .group_by(SalePayment.payment_method)
             ).all()
 
@@ -74,10 +74,10 @@ class ReportService:
             # but SQLAlchemy extract usually handles it)
             results = session.execute(
                 select(
-                    extract("hour", Sale.timestamp).label("hour"),
+                    extract("hour", Sale.date).label("hour"),
                     func.sum(Sale.total_amount),
                 )
-                .where(Sale.timestamp >= start_dt, Sale.timestamp <= end_dt)
+                .where(Sale.date >= start_dt, Sale.date <= end_dt)
                 .group_by("hour")
                 .order_by("hour")
             ).all()

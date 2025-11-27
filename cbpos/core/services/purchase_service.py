@@ -1,8 +1,9 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Tuple, Optional
-from cbpos.core.models import Purchase, PurchaseItem, Product, InventoryLog
+from typing import List, Dict, Any, Optional
+from cbpos.core.models import Purchase, PurchaseItem, Product, StockMovement
 from cbpos.core.database import get_db_session
+from cbpos.core.services.document_service import DocumentService
 
 
 class PurchaseService:
@@ -13,50 +14,46 @@ class PurchaseService:
     @staticmethod
     def create_purchase(
         supplier_id: int,
-        reference_no: str,
-        items: List[Tuple[int, Decimal, Decimal]],  # (product_id, qty, unit_cost)
+        reference_external: str,  # Vendor Invoice #
+        user_id: int,
         date_received: Optional[datetime] = None,
     ) -> Purchase:
         """
-        Create a new purchase (GRN) in DRAFT status.
+        Create a new purchase (GRN) header in DRAFT status.
         """
         if date_received is None:
             date_received = datetime.now()
 
-        total_cost = sum(qty * cost for _, qty, cost in items)
+        # Generate internal GRN number
+        document_number = DocumentService.generate_number("PURCHASE")
 
         with get_db_session() as session:
             purchase = Purchase(
-                supplier_id=supplier_id,
-                reference_no=reference_no,
-                date_received=date_received,
-                total_cost=total_cost,
+                document_number=document_number,
+                type="purchase",  # Polymorphic identity
+                date=date_received,
+                user_id=user_id,
                 status="DRAFT",
+                reference_external=reference_external,
+                supplier_id=supplier_id,
+                total_cost=Decimal("0.00"),
             )
             session.add(purchase)
-            session.flush()  # Get ID
-
-            for prod_id, qty, cost in items:
-                item = PurchaseItem(
-                    purchase_id=purchase.id,
-                    product_id=prod_id,
-                    qty_received=qty,
-                    unit_cost=cost,
-                )
-                session.add(item)
-
             session.commit()
             session.refresh(purchase)
             return purchase
 
     @staticmethod
-    def commit_purchase(purchase_id: int, user_id: int) -> Purchase:
+    def commit_purchase(purchase_id: int, items_data: List[Dict[str, Any]]) -> Purchase:
         """
         Commit a purchase:
-        1. Update stock quantity.
-        2. Update product cost price (Weighted Average).
-        3. Log inventory change.
-        4. Mark purchase as COMPLETED.
+        1. Create PurchaseItems.
+        2. Update stock quantity.
+        3. Update product cost price (Weighted Average).
+        4. Log StockMovement.
+        5. Mark purchase as COMPLETED.
+
+        items_data format: [{'product_id': int, 'qty': Decimal, 'cost': Decimal}]
         """
         with get_db_session() as session:
             purchase = session.get(Purchase, purchase_id)
@@ -65,41 +62,61 @@ class PurchaseService:
             if purchase.status == "COMPLETED":
                 raise ValueError("Purchase already committed")
 
-            for item in purchase.items:
-                product = session.get(Product, item.product_id)
+            total_purchase_cost = Decimal("0.00")
+
+            for item_data in items_data:
+                product_id = item_data["product_id"]
+                qty_received = Decimal(str(item_data["qty"]))
+                unit_cost = Decimal(str(item_data["cost"]))
+
+                # Create Purchase Item
+                purchase_item = PurchaseItem(
+                    purchase_id=purchase.id,
+                    product_id=product_id,
+                    qty_received=qty_received,
+                    unit_cost=unit_cost,
+                )
+                session.add(purchase_item)
+
+                total_purchase_cost += qty_received * unit_cost
+
+                # Update Product Stock & Cost
+                product = session.get(Product, product_id)
                 if not product:
                     continue
 
                 old_qty = product.stock_qty
                 old_cost = product.cost
-                new_qty_received = item.qty_received
-                new_unit_cost = item.unit_cost
 
                 # 1. Update Stock
-                product.stock_qty += new_qty_received
+                product.stock_qty += qty_received
 
                 # 2. Calculate Weighted Average Cost
                 # Formula: ((OldQty * OldCost) + (NewQty * NewCost)) / (OldQty + NewQty)
                 total_old_value = old_qty * old_cost
-                total_new_value = new_qty_received * new_unit_cost
-                total_qty = old_qty + new_qty_received
+                total_new_value = qty_received * unit_cost
+                total_qty = old_qty + qty_received
 
                 if total_qty > 0:
                     new_avg_cost = (total_old_value + total_new_value) / total_qty
-                    product.cost = new_avg_cost
+                    product.cost = new_avg_cost.quantize(Decimal("0.01"))
 
-                # 3. Log Inventory Change
-                log = InventoryLog(
+                # 3. Log Stock Movement
+                movement = StockMovement(
                     product_id=product.id,
-                    qty_change=new_qty_received,
-                    new_qty=product.stock_qty,
-                    reason=f"GRN: {purchase.reference_no}",
-                    user_id=user_id,
+                    user_id=purchase.user_id,
                     timestamp=datetime.now(),
+                    qty_change=qty_received,
+                    balance_after=product.stock_qty,
+                    document_id=purchase.id,
+                    type="PURCHASE",
                 )
-                session.add(log)
+                session.add(movement)
 
+            # Finalize Purchase
+            purchase.total_cost = total_purchase_cost
             purchase.status = "COMPLETED"
+
             session.commit()
             session.refresh(purchase)
             return purchase

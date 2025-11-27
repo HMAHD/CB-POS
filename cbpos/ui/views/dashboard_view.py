@@ -56,7 +56,7 @@ class DashboardView(QWidget):
             # Total Revenue
             total_revenue = (
                 session.query(func.sum(Sale.total_amount))
-                .filter(func.date(Sale.timestamp) == today, Sale.status != "VOID")
+                .filter(func.date(Sale.date) == today, Sale.status != "VOID")
                 .scalar()
                 or 0
             )
@@ -64,7 +64,7 @@ class DashboardView(QWidget):
             # Transaction Count
             trans_count = (
                 session.query(func.count(Sale.id))
-                .filter(func.date(Sale.timestamp) == today, Sale.status != "VOID")
+                .filter(func.date(Sale.date) == today, Sale.status != "VOID")
                 .scalar()
                 or 0
             )
@@ -72,7 +72,7 @@ class DashboardView(QWidget):
             # Void Count
             void_count = (
                 session.query(func.count(Sale.id))
-                .filter(func.date(Sale.timestamp) == today, Sale.status == "VOID")
+                .filter(func.date(Sale.date) == today, Sale.status == "VOID")
                 .scalar()
                 or 0
             )

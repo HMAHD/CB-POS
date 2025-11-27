@@ -16,6 +16,9 @@ from cbpos.core.models import (  # noqa: E402
     Permission,
     Customer,
     CompositeItem,
+    PriceList,
+    Supplier,
+    VoidReason,
 )
 
 
@@ -51,6 +54,24 @@ def seed_data():
             username="cashier", pin_hash=hash_pin("0000"), role_id=cashier_role.id
         )
         session.add_all([admin, cashier])
+        session.flush()
+
+        print("Seeding Void Reasons...")
+        void_reasons = [
+            VoidReason(code="MISTAKE", description="Cashier Mistake"),
+            VoidReason(code="RETURN", description="Customer Return"),
+            VoidReason(code="DAMAGED", description="Damaged Goods"),
+        ]
+        session.add_all(void_reasons)
+
+        print("Seeding Price Lists...")
+        price_lists = [
+            PriceList(name="Standard", is_active=True),
+            PriceList(name="Wholesale", is_active=True),
+            PriceList(name="Happy Hour", is_active=True),
+        ]
+        session.add_all(price_lists)
+        session.flush()
 
         print("Seeding Categories...")
         cats = [
@@ -63,6 +84,24 @@ def seed_data():
         session.flush()
 
         cat_map = {c.name: c for c in cats}
+
+        print("Seeding Suppliers...")
+        suppliers = [
+            Supplier(
+                company_name="Munchee (CBL)",
+                contact_person="Kamal",
+                phone="0112223333",
+                tax_number="TAX-001",
+            ),
+            Supplier(
+                company_name="Highland",
+                contact_person="Nimal",
+                phone="0114445555",
+                tax_number="TAX-002",
+            ),
+        ]
+        session.add_all(suppliers)
+        session.flush()
 
         print("Seeding Products...")
         products = [
@@ -112,9 +151,16 @@ def seed_data():
         session.add_all(products)
         session.flush()
 
+        # Link products to suppliers
+        products[0].suppliers.append(suppliers[0])  # Munchee -> Munchee
+        products[1].suppliers.append(suppliers[1])  # Highland -> Highland
+
         print("Seeding Customers...")
         customer = Customer(
-            name="John Doe", phone="0771234567", credit_limit=Decimal("5000.00")
+            name="John Doe",
+            phone="0771234567",
+            credit_limit=Decimal("5000.00"),
+            price_list_id=price_lists[1].id,  # Wholesale
         )
         session.add(customer)
         session.flush()
@@ -131,6 +177,7 @@ def seed_data():
             cost=Decimal("1090.00"),  # 2*500 + 90
             stock_qty=Decimal("0.000"),  # Virtual stock, depends on children
             category=cat_map["Essentials"],
+            is_composite=True,
         )
         session.add(hamper)
         session.flush()

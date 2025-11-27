@@ -195,9 +195,15 @@ class Sale(Base):
     customer_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("customers.id"), nullable=True
     )
+    refund_of_sale_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("sales.id"), nullable=True
+    )
 
     cashier: Mapped["User"] = relationship(back_populates="sales")
     customer: Mapped["Customer"] = relationship(back_populates="sales")
+    refunded_sale: Mapped[Optional["Sale"]] = relationship(
+        "Sale", remote_side=[id], foreign_keys=[refund_of_sale_id]
+    )
     items: Mapped[List["SaleItem"]] = relationship(
         back_populates="sale", cascade="all, delete-orphan"
     )

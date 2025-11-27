@@ -1,4 +1,3 @@
 [flake8]
-max-line-length = 88
-extend-ignore = E203
-exclude = .git,__pycache__,docs/source/conf.py,old,build,dist,.venv
+per-file-ignores =
+    cbpos/ui/views/history_view.py:E221,E222,E231,E702

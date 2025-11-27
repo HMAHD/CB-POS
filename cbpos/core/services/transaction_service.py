@@ -296,3 +296,148 @@ class TransactionService:
             return False
         finally:
             session.close()
+
+    @staticmethod
+    def process_refund(original_sale_id: int, refund_reason: str, user_id: int) -> bool:
+        """
+        Process a full refund for a previous sale.
+        Creates a negative transaction and restores stock.
+
+        Args:
+            original_sale_id: ID of the original sale to refund
+            refund_reason: Reason for the refund
+            user_id: Current user ID processing the refund
+
+        Returns:
+            bool: True if successful
+        """
+        db = Database()
+        session = db.SessionLocal()
+
+        try:
+            # 1. Validate original sale
+            original_sale = session.query(Sale).get(original_sale_id)
+            if not original_sale:
+                raise ValueError(f"Sale ID {original_sale_id} not found.")
+
+            if original_sale.status == "VOID":
+                raise ValueError("Cannot refund a voided sale.")
+
+            if original_sale.payment_method == "REFUND":
+                raise ValueError("Cannot refund a refund transaction.")
+
+            # Check if already refunded
+            existing_refund = (
+                session.query(Sale)
+                .filter(Sale.refund_of_sale_id == original_sale_id)
+                .first()
+            )
+            if existing_refund:
+                raise ValueError(
+                    f"Sale already refunded (Refund: {existing_refund.receipt_no})"
+                )
+
+            # 2. Create refund transaction (negative values)
+            refund_receipt_no = f"REF-{uuid.uuid4().hex[:8].upper()}"
+
+            # Calculate negative taxes
+            refund_amount = -original_sale.total_amount
+            tax_info = TaxService.calculate_taxes(refund_amount)
+
+            refund_sale = Sale(
+                receipt_no=refund_receipt_no,
+                timestamp=datetime.now(),
+                total_amount=refund_amount,
+                tax_vat=tax_info["vat"],
+                tax_sscl=tax_info["sscl"],
+                net_revenue=tax_info["net"],
+                payment_method="REFUND",
+                status="COMPLETED",
+                cashier_id=user_id,
+                customer_id=original_sale.customer_id,
+                refund_of_sale_id=original_sale_id,
+            )
+            session.add(refund_sale)
+            session.flush()
+
+            # 3. Create refund line items (negative quantities)
+            for original_item in original_sale.items:
+                refund_item = SaleItem(
+                    sale_id=refund_sale.id,
+                    product_id=original_item.product_id,
+                    qty=-original_item.qty,
+                    unit_price=original_item.unit_price,
+                    subtotal=-original_item.subtotal,
+                )
+                session.add(refund_item)
+
+                # 4. RESTORE stock (increase)
+                product = (
+                    session.query(Product)
+                    .with_for_update()
+                    .get(original_item.product_id)
+                )
+                if product:
+                    # Check if composite
+                    composite_children = (
+                        session.query(CompositeItem)
+                        .filter(CompositeItem.parent_product_id == product.id)
+                        .all()
+                    )
+
+                    if composite_children:
+                        # Restore child product stock
+                        for comp in composite_children:
+                            child_product = (
+                                session.query(Product)
+                                .with_for_update()
+                                .get(comp.child_product_id)
+                            )
+                            if child_product:
+                                restoration = comp.qty * original_item.qty
+                                child_product.stock_qty += restoration
+                    else:
+                        # Restore product stock directly
+                        product.stock_qty += original_item.qty
+
+            # 5. Create refund payment record
+            refund_payment = SalePayment(
+                sale_id=refund_sale.id,
+                payment_method="REFUND",
+                amount=refund_amount,
+            )
+            session.add(refund_payment)
+
+            # 6. Log the refund
+            print(
+                f"REFUND: {original_sale.receipt_no} -> "
+                f"{refund_receipt_no} by User {user_id}: {refund_reason}"
+            )
+
+            # 7. Commit
+            session.commit()
+
+            # 8. Print refund voucher
+            from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+            from cbpos.core.services.receipt_service import ReceiptService
+            from cbpos.core.services.config_service import ConfigService
+
+            worker = PrintWorker()
+            settings = ConfigService.get_all()
+            language = settings.get("language", "en")
+
+            if language == "en":
+                receipt_text = ReceiptService.build_receipt_text(refund_sale)
+                worker.add_job("print_receipt", receipt_text)
+            else:
+                receipt_image = ReceiptService.build_receipt_image(refund_sale)
+                worker.add_job("print_image", receipt_image)
+
+            return True
+
+        except Exception as e:
+            print(f"Refund Failed: {e}")
+            session.rollback()
+            return False
+        finally:
+            session.close()

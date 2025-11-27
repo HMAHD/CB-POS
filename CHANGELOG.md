@@ -1,3 +1,22 @@
+## [Unreleased]
+### Added
+- **Transaction History & Refunds** (Phase 8.3):
+    - Implemented HistoryView with transaction filtering by date range and search.
+    - Added full refund processing with automatic stock restoration.
+    - Integrated refund tracking via refund_of_sale_id foreign key in Sales model.
+    - Updated ReceiptService to format refund vouchers with REFUND VOUCHER header.
+    - Added TransactionService.process_refund() method with validation and audit logging.
+    - Supports refunds for both regular and composite products with proper stock restoration.
+    - History view accessible via main window sidebar navigation.
+- **Composite Products** (Phase 8.2):
+    - Implemented bundle/hamper support in Product Editor.
+    - Added is_composite flag to Product model for quick identification.
+    - Created ProductEditorDialog with tabbed interface for managing compositions.
+    - Stock deduction automatically handles child products when composite items sold.
+### Fixed
+- Resolved SQLite migration constraint naming issues for refund foreign key.
+- Fixed f-string format specifiers causing flake8 E231 errors.
+
 ## [0.1.0] - 2025-11-25
 ### Added
 - Initial project structure scaffolding.

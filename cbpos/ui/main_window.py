@@ -61,7 +61,8 @@ class MainWindow(QMainWindow):
         self.btn_inventory = self.create_nav_button("Inventory", Icons.INVENTORY, 2)
         self.btn_customers = self.create_nav_button("Customers", Icons.CUSTOMERS, 3)
         self.btn_reports = self.create_nav_button("Reports", Icons.REPORTS, 4)
-        self.btn_settings = self.create_nav_button("Settings", Icons.SETTINGS, 5)
+        self.btn_history = self.create_nav_button("History", Icons.HISTORY, 5)
+        self.btn_settings = self.create_nav_button("Settings", Icons.SETTINGS, 6)
 
         self.sidebar_layout.addStretch()
 
@@ -165,7 +166,13 @@ class MainWindow(QMainWindow):
         self.reports_view = ReportsView()
         self.stack.addWidget(self.reports_view)
 
-        # 5. Settings
+        # 5. History
+        from cbpos.ui.views.history_view import HistoryView
+
+        self.history_view = HistoryView()
+        self.stack.addWidget(self.history_view)
+
+        # 6. Settings
         from cbpos.ui.views.settings_view import SettingsView
 
         self.settings_view = SettingsView()

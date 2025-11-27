@@ -45,7 +45,7 @@
     - [x] Initialize **Alembic**.
     - [x] Create initial migration script.
     - [x] Create `scripts/seed.py` for SL Default Data.
-- [ ] **2.4 Extended Models (From Aronium)**
+- [ ] **2.4 Extended Models **
     - [ ] **Customer Extended:** Add loyalty_points, credit_limit, price_list_id
     - [ ] **Supplier Model:** name, company, tax_number, contact info
     - [ ] **PriceList:** Support multiple pricing tiers
@@ -69,9 +69,9 @@
     - [x] Implement SHA-256 PIN Hashing.
     - [x] Create `AuthService.login(pin)`.
     - [x] Create `SessionManager` (Singleton).
-- [ ] **3.2 RBAC (Role-Based Access Control)**
-    - [ ] Define Permissions (`CAN_VOID`, `CAN_REFUND`, `CAN_SEE_REPORTS`).
-    - [ ] Implement `check_permission` decorator for sensitive functions.
+- [x] **3.2 RBAC (Role-Based Access Control)**
+    - [x] Define Permissions (`CAN_VOID`, `CAN_REFUND`, `CAN_SEE_REPORTS`).
+    - [x] Implement `check_permission` decorator for sensitive functions.
     - [ ] **Access Level System (0-9):** Numeric hierarchy like Aronium
     - [ ] **Operation-Level Permissions:** Granular control per feature
     - [ ] **Permission Groups:** Sales, Management, Documents, Reports, Settings
@@ -80,7 +80,7 @@
     - [x] Implement Masked PIN Input.
     - [ ] Add "Manager Override" popup logic.
 - [ ] **3.4 Session Management**
-    - [ ] Auto-logout on inactivity (configurable timeout)
+    - [x] Auto-logout on inactivity (configurable timeout)
     - [ ] Session activity logging
     - [ ] Multi-user session tracking (for networked version)
     - [ ] Password recovery mechanism (email-based)
@@ -104,7 +104,7 @@
 - [x] **4.3 Stock Control**
     - [x] Implement `StockAdjustment` (Damage/Expired/Correction).
     - [x] Create "Low Stock" logic and UI indicators.
-- [ ] **4.4 Advanced Stock Features (From Aronium)**
+- [ ] **4.4 Advanced Stock Features **
     - [ ] **Reorder Point System:** Auto-generate purchase suggestions
     - [ ] **Preferred Quantity:** Target stock levels per product
     - [ ] **Supplier Assignment:** Default supplier per product
@@ -160,11 +160,11 @@
     - [x] Implement **Focus Trap** (Cursor auto-return).
     - [x] Map Function Keys (`F1`-`F12`) to Actions.
     - [ ] Create "Touch Visual Groups" for non-barcoded items.
-- [ ] **6.3 Visual Layout Mode (From Aronium)**
-    - [ ] **Product Grid:** Large touchscreen-friendly buttons
-    - [ ] **Product Images:** Visual product representation
-    - [ ] **Category Navigation:** Quick category switching
-    - [ ] **Responsive Design:** Adapt to screen size
+- [x] **6.3 Visual Layout Mode **
+    - [x] **Product Grid:** Large touchscreen-friendly buttons
+    - [x] **Product Images:** Visual product representation
+    - [x] **Category Navigation:** Quick category switching
+    - [x] **Responsive Design:** Adapt to screen size
 - [ ] **6.4 Search & Filter**
     - [ ] **Multi-Mode Search:** Barcode / SKU / Name toggle
     - [ ] **Type-ahead Search:** Live filtering as you type
@@ -188,7 +188,7 @@
 - [x] **7.2 Calculation Engine**
     - [x] Implement `Decimal` based math (No floats).
     - [x] Calculate `Subtotal`, `LineDiscount`, `CartDiscount`, `Total`.
-- [ ] **7.3 Advanced Discount System (From Aronium)**
+- [ ] **7.3 Advanced Discount System **
     - [ ] **Item-Level Discounts:** Percentage or fixed amount
     - [ ] **Cart-Level Discounts:** Applied to total
     - [ ] **Customer Discounts:** Auto-apply from customer profile
@@ -214,7 +214,7 @@
     - [x] **Void Bill:** Record void reason.
     - [ ] **Lock Order:** Save and prevent modifications
     - [ ] **Transfer Order:** Split to another order/user
-- [ ] **8.3 Multiple Open Orders (From Aronium)**
+- [ ] **8.3 Multiple Open Orders **
     - [ ] **Unlimited Simultaneous Orders:** Per user
     - [ ] **Order Switching:** Quick navigation between orders
     - [ ] **Order List View:** See all open orders
@@ -257,7 +257,7 @@
     - [x] **Split Payment:** Cash + Card.
     - [x] **Credit Sale:** Assign to Customer Debt.
     - [ ] **Change Calculation:** Live update.
-- [ ] **10.3 Payment Types (From Aronium)**
+- [ ] **10.3 Payment Types **
     - [ ] **Configurable Payment Methods:** Create custom types
     - [ ] **Payment Type Properties:**
         - [ ] Mark transaction as paid (Yes/No)
@@ -292,7 +292,7 @@
     - [ ] **Loyalty Card Assignment:** Barcode scannable cards
     - [ ] **Quick Customer Lookup:** Search by card/phone/tax number
     - [ ] **Purchase History:** View customer transactions
-- [ ] **11.3 Customer Features (From Aronium)**
+- [ ] **11.3 Customer Features **
     - [ ] **Price List Assignment:** Customer-specific pricing
     - [ ] **Customer Discounts:** Pre-configured discount rules
     - [ ] **Credit Terms:** Payment terms per customer
@@ -315,7 +315,7 @@
 - [x] **12.2 Reports**
     - [x] **X-Read:** Mid-shift snapshot.
     - [x] **Z-Read:** End of day reset & variance calculation.
-- [ ] **12.3 End of Day Process (From Aronium)**
+- [ ] **12.3 End of Day Process **
     - [ ] **Cash Reconciliation:** Count vs expected
     - [ ] **Variance Tracking:** Over/short reporting
     - [ ] **Shift Summary:** Sales by payment type
@@ -336,7 +336,7 @@
     - [x] Footer (Tax breakdown, Thank you message).
 - [x] **13.2 Routing**
     - [x] Logic to print to Kitchen vs Counter based on Category.
-- [ ] **13.3 Advanced Receipt Features (From Aronium)**
+- [ ] **13.3 Advanced Receipt Features **
     - [ ] **Company Logo:** Image printing support
     - [ ] **Custom Header/Footer:** Configurable text
     - [ ] **Barcode/QR Code:** On receipt (with plugins)
@@ -368,7 +368,7 @@
     - [ ] Export Table Data to Excel/CSV.
     - [ ] **PDF Export:** Professional report format
     - [ ] **Email Reports:** Direct email delivery
-- [ ] **14.4 Comprehensive Report Suite (From Aronium)**
+- [ ] **14.4 Comprehensive Report Suite **
     - [ ] **Sales Reports:**
         - [ ] Sales Summary by period
         - [ ] Sales by Product (individual performance)
@@ -429,7 +429,7 @@
     - [x] Tax Rates configuration.
 - [ ] **15.2 Feature Flags**
     - [ ] Toggle features (e.g., Enable Loyalty, Enable Touch Mode).
-- [ ] **15.3 Comprehensive Settings (From Aronium)**
+- [ ] **15.3 Comprehensive Settings **
     - [ ] **General Settings:**
         - [ ] Company information
         - [ ] Regional settings (language, currency, date format)
@@ -463,8 +463,8 @@
         - [ ] Auto-print options
         - [ ] Number of copies
     - [ ] **User Settings:**
-        - [ ] Change password
-        - [ ] Display name
+        - [x] Change password
+        - [x] Display name
         - [ ] Default layout preference
         - [ ] Language preference
 
@@ -502,7 +502,7 @@
     - [ ] "Factory Reset" (Clear Transactions, keep Items).
     - [ ] Database Optimizer (`VACUUM`).
     - [ ] **Database Repair:** Fix corruption issues
-- [ ] **17.3 Import/Export (From Aronium)**
+- [ ] **17.3 Import/Export **
     - [ ] **CSV Import:**
         - [ ] Products (with template)
         - [ ] Customers
@@ -612,7 +612,7 @@
 ---
 
 ## 🏪 Phase 21: Document Management System
-*Goal: Comprehensive transaction documentation (From Aronium).*
+*Goal: Comprehensive transaction documentation .*
 
 - [ ] **21.1 Document Types**
     - [ ] **Income Documents:**
@@ -692,7 +692,7 @@
 ---
 
 ## 📦 Phase 22: Advanced Purchase & Inventory
-*Goal: Complete inventory lifecycle management (From Aronium).*
+*Goal: Complete inventory lifecycle management .*
 
 - [ ] **22.1 Purchase Documents**
     - [ ] **Create Purchase:**
@@ -765,7 +765,7 @@
 ---
 
 ## 🎯 Phase 23: Promotions & Pricing Engine
-*Goal: Advanced pricing strategies (From Aronium).*
+*Goal: Advanced pricing strategies .*
 
 - [ ] **23.1 Price Lists**
     - [ ] **Multiple Price Lists:**
@@ -823,7 +823,7 @@
 ---
 
 ## 🍽️ Phase 24: Restaurant Features (Floor Plans)
-*Goal: Table management for F&B (From Aronium).*
+*Goal: Table management for F&B .*
 
 - [ ] **24.1 Floor Plan Design**
     - [ ] **Visual Layout Designer:**
@@ -872,7 +872,7 @@
 ---
 
 ## 💳 Phase 25: Credit Management & Accounts Receivable
-*Goal: Manage customer credit sales (From Aronium).*
+*Goal: Manage customer credit sales .*
 
 - [ ] **25.1 Credit Sale Features**
     - [ ] **Credit Payment Type:**
@@ -920,7 +920,7 @@
 ---
 
 ## 🎨 Phase 26: Advanced UI/UX Features
-*Goal: Polish and usability enhancements (From Aronium).*
+*Goal: Polish and usability enhancements .*
 
 - [ ] **26.1 Keyboard Shortcuts Enhancement**
     - [ ] **Complete Shortcut Mapping:**

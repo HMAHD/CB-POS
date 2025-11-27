@@ -13,6 +13,7 @@ class Icons:
     INVENTORY = "fa5s.boxes"
     REPORTS = "fa5s.chart-line"
     CUSTOMERS = "fa5s.users"
+    USERS = "fa5s.user-shield"
     HISTORY = "fa5s.history"
     SETTINGS = "fa5s.cog"
     LOGOUT = "fa5s.sign-out-alt"

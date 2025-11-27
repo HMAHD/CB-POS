@@ -30,3 +30,61 @@ class PermissionService:
                 return True
 
         return False
+
+    @staticmethod
+    def get_all_permissions():
+        """Get all available permissions."""
+        from cbpos.core.models import Permission
+        from cbpos.core.database import Database
+
+        db = Database()
+        with db.get_session() as session:
+            permissions = session.query(Permission).all()
+            session.expunge_all()
+            return permissions
+
+    @staticmethod
+    def update_role_permissions(role_id: int, permission_ids: list[int]):
+        """
+        Update permissions for a role.
+
+        SAFETY: Prevents revoking critical permissions from Admin.
+        """
+        from cbpos.core.models import Role, Permission
+        from cbpos.core.database import Database
+
+        db = Database()
+        with db.get_session() as session:
+            role = session.query(Role).get(role_id)
+            if not role:
+                return False
+
+            # Fetch new permissions
+            new_perms = (
+                session.query(Permission)
+                .filter(Permission.id.in_(permission_ids))
+                .all()
+            )
+
+            # --- SAFETY CHECK: ADMIN LOCKOUT PREVENTION ---
+            if role.name == "Admin":
+                # Ensure critical permissions are present
+                critical_codes = ["manage_users", "manage_permissions"]
+
+                # Get IDs of critical permissions
+                critical_perms = (
+                    session.query(Permission)
+                    .filter(Permission.code.in_(critical_codes))
+                    .all()
+                )
+
+                # Add them to new_perms if not already there
+                current_ids = {p.id for p in new_perms}
+                for cp in critical_perms:
+                    if cp.id not in current_ids:
+                        new_perms.append(cp)
+            # ----------------------------------------------
+
+            role.permissions = new_perms
+            session.commit()
+            return True

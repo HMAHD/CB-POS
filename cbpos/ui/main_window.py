@@ -15,6 +15,7 @@ from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.custom_widgets import SidebarButton
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 from cbpos.ui.views.purchase_view import PurchaseView
+from cbpos.infrastructure.session_watchdog import SessionWatchdog
 
 
 class MainWindow(QMainWindow):
@@ -26,6 +27,10 @@ class MainWindow(QMainWindow):
         # Scanner Hook
         self.scanner = BarcodeScanner(QApplication.instance())
         self.scanner.barcode_scanned.connect(self.on_barcode_scanned)
+
+        # Session Watchdog
+        self.watchdog = SessionWatchdog(timeout_minutes=5, parent=self)
+        self.watchdog.session_expired.connect(self.logout)
 
         # Load Theme
         self.load_theme()
@@ -64,7 +69,8 @@ class MainWindow(QMainWindow):
         self.btn_customers = self.create_nav_button("Customers", Icons.CUSTOMERS, 4)
         self.btn_reports = self.create_nav_button("Reports", Icons.REPORTS, 5)
         self.btn_history = self.create_nav_button("History", Icons.HISTORY, 6)
-        self.btn_settings = self.create_nav_button("Settings", Icons.SETTINGS, 7)
+        self.btn_users = self.create_nav_button("Users", Icons.USERS, 7)
+        self.btn_settings = self.create_nav_button("Settings", Icons.SETTINGS, 8)
 
         self.sidebar_layout.addStretch()
 
@@ -166,19 +172,25 @@ class MainWindow(QMainWindow):
         self.customer_view = CustomerView()
         self.stack.addWidget(self.customer_view)
 
-        # 4. Reports
+        # 5. Reports
         from cbpos.ui.views.reports_view import ReportsView
 
         self.reports_view = ReportsView()
         self.stack.addWidget(self.reports_view)
 
-        # 5. History
+        # 6. History
         from cbpos.ui.views.history_view import HistoryView
 
         self.history_view = HistoryView()
         self.stack.addWidget(self.history_view)
 
-        # 6. Settings
+        # 7. Users
+        from cbpos.ui.views.user_view import UserView
+
+        self.user_view = UserView()
+        self.stack.addWidget(self.user_view)
+
+        # 8. Settings
         from cbpos.ui.views.settings_view import SettingsView
 
         self.settings_view = SettingsView()
@@ -197,6 +209,9 @@ class MainWindow(QMainWindow):
         self.sidebar.setVisible(True)
         self.top_bar.setVisible(True)
 
+        # Start Watchdog
+        self.watchdog.start_monitoring()
+
         # Switch to Dashboard
         self.switch_tab(0)
 
@@ -208,6 +223,10 @@ class MainWindow(QMainWindow):
         self.user = None
         self.sidebar.setVisible(False)
         self.top_bar.setVisible(False)
+
+        # Stop Watchdog
+        self.watchdog.stop_monitoring()
+
         self.stack.setCurrentWidget(self.login_view)
 
     def on_barcode_scanned(self, barcode):

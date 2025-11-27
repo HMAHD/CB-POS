@@ -79,3 +79,31 @@ class ProductService:
             for comp in components:
                 result.append({"product": comp.child, "qty": comp.qty})
             return result
+            return result
+
+    @staticmethod
+    def get_all_categories():
+        """Get all active categories."""
+        from cbpos.core.models import Category
+
+        db = Database()
+        with db.get_session() as session:
+            categories = session.query(Category).all()
+            session.expunge_all()
+            return categories
+
+    @staticmethod
+    def get_products_by_category(category_id: int):
+        """Get active products for a specific category."""
+        db = Database()
+        with db.get_session() as session:
+            products = (
+                session.query(Product)
+                .filter(
+                    Product.category_id == category_id,
+                    Product.is_active.is_(True),
+                )
+                .all()
+            )
+            session.expunge_all()
+            return products

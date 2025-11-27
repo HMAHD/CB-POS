@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QHeaderView,
     QMessageBox,
+    QStackedLayout,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
@@ -20,6 +21,8 @@ from cbpos.ui.dialogs.payment_dialog import PaymentDialog
 from cbpos.ui.dialogs.customer_selection_dialog import (  # noqa: F401
     CustomerSelectionDialog,
 )
+from cbpos.ui.views.visual_pos_view import VisualPosView
+from cbpos.ui.resources.icons import Icons
 
 
 class SalesView(QWidget):
@@ -28,11 +31,6 @@ class SalesView(QWidget):
         self.cart_service = CartService()
         self.customer = None
         self.init_ui()
-
-        # Focus Trap Timer - REMOVED
-        # self.focus_timer = QTimer(self)
-        # self.focus_timer.timeout.connect(self.ensure_focus)
-        # self.focus_timer.start(2000)
 
     def init_ui(self):
         main_layout = QHBoxLayout(self)
@@ -57,24 +55,45 @@ class SalesView(QWidget):
 
         # --- RIGHT PANEL (Controls) ---
         right_panel = QWidget()
-        right_panel.setFixedWidth(400)
+        right_panel.setFixedWidth(450)  # Slightly wider for visual grid
         right_layout = QVBoxLayout(right_panel)
 
-        # Customer Section
-        cust_layout = QHBoxLayout()
+        # 1. Header (Customer + Toggle)
+        header_layout = QHBoxLayout()
+
         self.lbl_customer = QLabel("Walk-in Customer")
         self.lbl_customer.setStyleSheet("font-weight: bold; font-size: 14px;")
-        btn_cust = QPushButton("Select Customer")
+
+        btn_cust = QPushButton("Select")
+        btn_cust.setFixedWidth(80)
         btn_cust.clicked.connect(self.select_customer)
-        cust_layout.addWidget(self.lbl_customer)
-        cust_layout.addWidget(btn_cust)
-        right_layout.addLayout(cust_layout)
+
+        self.btn_toggle_view = QPushButton()
+        self.btn_toggle_view.setIcon(Icons.get("fa5s.th"))
+        self.btn_toggle_view.setToolTip("Toggle Visual Mode")
+        self.btn_toggle_view.setCheckable(True)
+        self.btn_toggle_view.setFixedWidth(40)
+        self.btn_toggle_view.clicked.connect(self.toggle_view)
+
+        header_layout.addWidget(self.lbl_customer)
+        header_layout.addWidget(btn_cust)
+        header_layout.addWidget(self.btn_toggle_view)
+
+        right_layout.addLayout(header_layout)
 
         self.lbl_points = QLabel("")
         self.lbl_points.setStyleSheet("color: #FFDC00; font-weight: bold;")
         right_layout.addWidget(self.lbl_points)
 
         right_layout.addSpacing(10)
+
+        # 2. Stacked Content (Keyboard vs Visual)
+        self.stack_layout = QStackedLayout()
+
+        # --- MODE 0: Keyboard (Barcode + Numpad Actions) ---
+        keyboard_widget = QWidget()
+        kb_layout = QVBoxLayout(keyboard_widget)
+        kb_layout.setContentsMargins(0, 0, 0, 0)
 
         # Barcode Input
         self.barcode_input = QLineEdit()
@@ -83,11 +102,11 @@ class SalesView(QWidget):
             "font-size: 20px; padding: 10px; border: 2px solid #00BCEB;"
         )
         self.barcode_input.returnPressed.connect(self.process_barcode)
-        right_layout.addWidget(self.barcode_input)
+        kb_layout.addWidget(self.barcode_input)
 
-        right_layout.addSpacing(20)
+        kb_layout.addSpacing(20)
 
-        # Buttons
+        # Action Buttons
         btn_layout = QGridLayout()
 
         self.btn_pay = QPushButton("PAY (F5)")
@@ -118,10 +137,20 @@ class SalesView(QWidget):
         self.btn_inv.clicked.connect(self.open_inventory)
         btn_layout.addWidget(self.btn_inv, 3, 0, 1, 2)
 
-        right_layout.addLayout(btn_layout)
-        right_layout.addStretch()
+        kb_layout.addLayout(btn_layout)
+        kb_layout.addStretch()
 
-        # Total Display
+        # --- MODE 1: Visual POS ---
+        self.visual_pos = VisualPosView()
+        self.visual_pos.item_clicked.connect(self.on_visual_item_clicked)
+
+        # Add to stack
+        self.stack_layout.addWidget(keyboard_widget)
+        self.stack_layout.addWidget(self.visual_pos)
+
+        right_layout.addLayout(self.stack_layout)
+
+        # Total Display (Always Visible)
         self.total_label = QLabel("Rs. 0.00")
         self.total_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.total_label.setStyleSheet(
@@ -157,8 +186,30 @@ class SalesView(QWidget):
         super().showEvent(event)
         self.barcode_input.setFocus()
 
+    def toggle_view(self):
+        """Toggle between Keyboard and Visual modes."""
+        if self.stack_layout.currentIndex() == 0:
+            self.stack_layout.setCurrentIndex(1)
+            self.btn_toggle_view.setChecked(True)
+        else:
+            self.stack_layout.setCurrentIndex(0)
+            self.btn_toggle_view.setChecked(False)
+            self.barcode_input.setFocus()
+
+    def on_visual_item_clicked(self, product):
+        """Handle item click from Visual POS."""
+        self.cart_service.add_item(product)
+        self.update_cart_display()
+
     def process_barcode_external(self, barcode):
         """Handle barcode from global scanner hook."""
+        # Ensure we are in keyboard mode or just process it?
+        # Ideally, scanner should work in both modes.
+        # If in visual mode, we might want to just add item directly without input field focus
+        # But for now, let's switch to keyboard mode to show feedback
+        if self.stack_layout.currentIndex() == 1:
+            self.toggle_view()
+
         self.barcode_input.setText(barcode)
         self.process_barcode()
 
@@ -205,7 +256,6 @@ class SalesView(QWidget):
 
         totals = self.cart_service.get_totals()
         self.total_label.setText(f"Rs. {totals['subtotal']:.2f}")  # noqa: E231
-        self.cart_table.scrollToBottom()
         self.cart_table.scrollToBottom()
 
     def select_customer(self):

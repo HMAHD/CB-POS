@@ -3,7 +3,43 @@
 **Status:** 🟡 In Progress  
 **Architecture:** Python 3.12 | PyQt6 | MVC Pattern | SQLite/PostgreSQL  
 **Target:** Industrial Retail (Sri Lanka)  
-**Based on:** Aronium POS Feature Analysis + Industrial Best Practices
+**Based on:** POS Feature Analysis + Industrial Best Practices
+
+---
+
+## 🔀 Recommended Build Order (Retail Focus)
+
+1. Phase 1 – Project Initialization & Environment  
+2. Phase 2 – Database Layer (The Brain)  
+3. Phase 3 – Authentication & Security  
+4. Phase 4 – Advanced Inventory Management  
+5. Phase 5 – Hardware Abstraction Layer (HAL)  
+6. Phase 6 – The Sales Terminal (UI/UX)  
+7. Phase 7 – Cart Logic & Math Engine  
+8. Phase 8 – Transaction Processing  
+9. Phase 10 – Payment & Checkout  
+10. Phase 9 – Sri Lankan Compliance Module  
+11. Phase 11 – Customer Management (CRM)  
+12. Phase 12 – Shift Management  
+13. Phase 13 – Receipt Generation  
+14. Phase 14 – Reporting & Analytics  
+15. Phase 21 – Document Management System  
+16. Phase 22 – Advanced Purchase & Inventory  
+17. Phase 23 – Promotions & Pricing Engine  
+18. Phase 25 – Credit Management & Accounts Receivable  
+19. Phase 29 – Gift Cards & Vouchers  
+20. Phase 28 – Multi-Location & Warehouse  
+21. Phase 18 – Networking & Sync (Future Proofing)  
+22. Phase 17 – Data Management  
+23. Phase 27 – System Administration Tools  
+24. Phase 15 – Settings & Configuration  
+25. Phase 16 – Theme & Localization  
+26. Phase 26 – Advanced UI/UX Features  
+27. Phase 30 – Advanced Analytics & BI  
+28. Phase 19 – Quality Assurance  
+29. Phase 20 – Packaging & Deployment  
+30. Bonus Phase – Training & Documentation  
+31. Restaurant Module – moved from Phase 24 (do later)
 
 ---
 
@@ -45,20 +81,20 @@
     - [x] Initialize **Alembic**.
     - [x] Create initial migration script.
     - [x] Create `scripts/seed.py` for SL Default Data.
-- [ ] **2.4 Extended Models **
-    - [ ] **Customer Extended:** Add loyalty_points, credit_limit, price_list_id
-    - [ ] **Supplier Model:** name, company, tax_number, contact info
-    - [ ] **PriceList:** Support multiple pricing tiers
-    - [ ] **PriceListItem:** Product-specific pricing per list
-    - [ ] **Promotion:** time-based, quantity-based discounts
-    - [ ] **StockMovement:** Complete audit trail with document references
-    - [ ] **Document:** Unified document system (Sales, Purchase, Proforma, Returns)
-    - [ ] **VoidReason:** Track void/cancellation reasons
-- [ ] **2.5 Advanced Relationships**
-    - [ ] Product-Supplier many-to-many relationship
-    - [ ] Customer-PriceList assignment
-    - [ ] Hierarchical ProductGroup (parent-child categories)
-    - [ ] Document-StockMovement linkage
+- [x] **2.4 Extended Models **
+    - [x] **Customer Extended:** Add loyalty_points, credit_limit, price_list_id
+    - [x] **Supplier Model:** name, company, tax_number, contact info
+    - [x] **PriceList:** Support multiple pricing tiers
+    - [x] **PriceListItem:** Product-specific pricing per list
+    - [x] **Promotion:** time-based, quantity-based discounts
+    - [x] **StockMovement:** Complete audit trail with document references
+    - [x] **Document:** Unified document system (Sales, Purchase, Proforma, Returns)
+    - [x] **VoidReason:** Track void/cancellation reasons
+- [x] **2.5 Advanced Relationships**
+    - [x] Product-Supplier many-to-many relationship
+    - [x] Customer-PriceList assignment
+    - [x] Hierarchical ProductGroup (parent-child categories)
+    - [x] Document-StockMovement linkage
 
 ---
 
@@ -134,7 +170,6 @@
     - [ ] Implement "Image Print" mode for Sinhala/Tamil text fallback.
     - [ ] **A4 Invoice Printing:** PDF generation with reportlab
     - [ ] **Receipt Templates:** Customizable header/footer/logo
-    - [ ] **Kitchen Printer Routing:** Category-based print stations
 - [x] **5.3 Input Devices**
     - [x] Implement `BarcodeScanner` hook (differentiate typing vs scanning).
     - [ ] Implement `CashDrawer` kick logic (RJ11 signal).
@@ -822,55 +857,6 @@
 
 ---
 
-## 🍽️ Phase 24: Restaurant Features (Floor Plans)
-*Goal: Table management for F&B .*
-
-- [ ] **24.1 Floor Plan Design**
-    - [ ] **Visual Layout Designer:**
-        - [ ] Drag-and-drop table placement
-        - [ ] Multiple floor plans (rooms/areas)
-        - [ ] Table sizing and arrangement
-        - [ ] Design mode with visual feedback
-    - [ ] **Floor Plan Management:**
-        - [ ] Create/edit/delete floor plans
-        - [ ] Switch between floors
-        - [ ] Save layout configurations
-- [ ] **24.2 Table Operations**
-    - [ ] **Assign Order to Table:**
-        - [ ] Click table to open order
-        - [ ] Table number tracking
-    - [ ] **Table Status Indicators:**
-        - [ ] Available (green)
-        - [ ] Occupied (red)
-        - [ ] Reserved (yellow)
-    - [ ] **Table Management:**
-        - [ ] Move orders between tables
-        - [ ] Combine/merge tables
-        - [ ] Split checks
-        - [ ] Table turnover tracking
-- [ ] **24.3 Kitchen Printer (Print Stations)**
-    - [ ] **Multi-Station Printing:**
-        - [ ] Route orders by product/group
-        - [ ] Separate tickets per station
-        - [ ] Kitchen ticket format
-        - [ ] Order timing
-    - [ ] **Configuration:**
-        - [ ] Assign products to stations
-        - [ ] Assign groups to stations
-        - [ ] Multiple printers per station
-        - [ ] Ticket templates
-        - [ ] Print timing rules
-    - [ ] **Example Routing:**
-        - [ ] Pizza → Kitchen printer
-        - [ ] Drinks → Bar printer
-        - [ ] Desserts → Pastry station
-- [ ] **24.4 Enable Floor Plans**
-    - [ ] Settings toggle
-    - [ ] Automatic display after F9 or login
-    - [ ] Single-user vs multi-user behavior
-
----
-
 ## 💳 Phase 25: Credit Management & Accounts Receivable
 *Goal: Manage customer credit sales .*
 
@@ -1042,259 +1028,114 @@
         - [ ] Location-based inventory
         - [ ] Default location per user
         - [ ] Location selection in POS
-    - [ ] **Inter-Location Operations:**
+    - [ ] **Inter-Location Transfers:**
         - [ ] Transfer documents
-        - [ ] Transfer stock between locations
-        - [ ] Location-specific sales
-        - [ ] Location-specific reports
-- [ ] **28.2 Consolidated Reporting**
-    - [ ] **Multi-Location Reports:**
-        - [ ] Sales by location
-        - [ ] Stock levels across all locations
-        - [ ] Inter-location transfers
-        - [ ] Consolidated P&L
-    - [ ] **Location Comparison:**
-        - [ ] Compare performance
-        - [ ] Identify best sellers per location
-        - [ ] Stock redistribution suggestions
-- [ ] **28.3 Location-Based Features**
-    - [ ] Location-specific pricing
-    - [ ] Location-specific promotions
-    - [ ] Location-based user access
-    - [ ] Transfer approval workflow
+        - [ ] Stock movement per location
+        - [ ] Approval workflow
+- [ ] **28.2 Location-Based Reporting**
+    - [ ] Sales by location
+    - [ ] Stock by location
+    - [ ] Profitability by location
+    - [ ] Location comparison dashboards
+- [ ] **28.3 Location Permissions**
+    - [ ] Per-location access for users
+    - [ ] Role-based location visibility
+    - [ ] Central vs store-level rights
 
 ---
 
 ## 🎁 Phase 29: Gift Cards & Vouchers
-*Goal: Implement prepaid card system (From Aronium Community Requests).*
+*Goal: Prepaid and promotional balances.*
 
-- [ ] **29.1 Gift Card Issuance**
-    - [ ] **Create Gift Cards:**
-        - [ ] Generate unique card numbers
-        - [ ] Set initial balance
-        - [ ] Expiry date (optional)
-        - [ ] Physical or digital cards
-    - [ ] **Gift Card Types:**
-        - [ ] Fixed value cards
-        - [ ] Variable value cards
-        - [ ] Promotional vouchers
-        - [ ] Store credit cards
+- [ ] **29.1 Gift Card Basics**
+    - [ ] Issue gift cards
+    - [ ] Fixed and variable amounts
+    - [ ] Generate card numbers/barcodes
+    - [ ] Expiry rules
 - [ ] **29.2 Gift Card Usage**
-    - [ ] **Redemption:**
-        - [ ] Scan/enter card number
-        - [ ] Check balance
-        - [ ] Deduct from balance
-        - [ ] Partial redemption
-        - [ ] Multiple cards per transaction
-    - [ ] **Balance Tracking:**
-        - [ ] Real-time balance updates
-        - [ ] Transaction history per card
-        - [ ] Recharge/top-up functionality
-- [ ] **29.3 Gift Card Management**
-    - [ ] **Admin Functions:**
-        - [ ] View all issued cards
-        - [ ] Check card status
-        - [ ] Void/cancel cards
-        - [ ] Card activity reports
-        - [ ] Expiry management
-    - [ ] **Reports:**
-        - [ ] Cards issued
-        - [ ] Outstanding balance (liability)
-        - [ ] Redemption patterns
-        - [ ] Expired cards
+    - [ ] Redeem at POS
+    - [ ] Partial redemption
+    - [ ] Balance enquiry
+    - [ ] Combine with other tenders
+- [ ] **29.3 Management & Reporting**
+    - [ ] Card list and status
+    - [ ] Liability report
+    - [ ] Redemption statistics
+    - [ ] Expiry tracking
 
 ---
 
-## 📈 Phase 30: Advanced Analytics & Business Intelligence
-*Goal: Data-driven decision making.*
+## 📈 Phase 30: Advanced Analytics & BI
+*Goal: Strategic decision support.*
 
-- [ ] **30.1 Advanced Dashboard**
-    - [ ] **Real-Time KPIs:**
-        - [ ] Today's sales vs yesterday
-        - [ ] Sales vs target
-        - [ ] Average transaction value
-        - [ ] Items per transaction
-        - [ ] Conversion rate
-        - [ ] Hourly sales graph
-    - [ ] **Trend Analysis:**
-        - [ ] 7-day sales trend
-        - [ ] Month-over-month comparison
-        - [ ] Year-over-year growth
-        - [ ] Seasonal patterns
+- [ ] **30.1 KPIs & Dashboards**
+    - [ ] Sales KPIs (GMV, margin, AOV)
+    - [ ] Inventory KPIs (turnover, coverage)
+    - [ ] Cash/credit mix
 - [ ] **30.2 Product Analytics**
-    - [ ] **Performance Metrics:**
-        - [ ] Best sellers (by revenue/quantity)
-        - [ ] Slow movers
-        - [ ] Stock turnover rate
-        - [ ] Days to sell
-        - [ ] ABC analysis (Pareto)
-    - [ ] **Profitability:**
-        - [ ] Margin by product
-        - [ ] Margin by category
-        - [ ] High/low margin items
-        - [ ] Loss leaders identification
+    - [ ] ABC analysis
+    - [ ] Slow/fast movers
+    - [ ] Profitability by product/group
 - [ ] **30.3 Customer Analytics**
-    - [ ] **Customer Segmentation:**
-        - [ ] RFM analysis (Recency, Frequency, Monetary)
-        - [ ] Top customers by spend
-        - [ ] Customer lifetime value
-        - [ ] Churn prediction
-    - [ ] **Purchase Patterns:**
-        - [ ] Basket analysis
-        - [ ] Product affinity (what's bought together)
-        - [ ] Cross-sell opportunities
-- [ ] **30.4 Predictive Analytics**
-    - [ ] **Forecasting:**
-        - [ ] Sales forecast (next week/month)
-        - [ ] Inventory requirement prediction
-        - [ ] Seasonal demand planning
-    - [ ] **Alerts & Recommendations:**
-        - [ ] Stock reorder suggestions
-        - [ ] Price optimization recommendations
-        - [ ] Promotion effectiveness
-- [ ] **30.5 Export & Integration**
-    - [ ] **Data Export:**
-        - [ ] Raw data export for external BI tools
-        - [ ] API for third-party integration
-        - [ ] Scheduled data dumps
-    - [ ] **Accounting Integration:**
-        - [ ] Export to accounting software
-        - [ ] Chart of accounts mapping
-        - [ ] Automatic journal entries
+    - [ ] RFM scoring
+    - [ ] CLV estimation
+    - [ ] Churn indicators
+    - [ ] Basket analysis
+- [ ] **30.4 Forecasting**
+    - [ ] Sales forecasts
+    - [ ] Reorder suggestions based on trends
+- [ ] **30.5 Integration**
+    - [ ] Export datasets to BI tools
+    - [ ] Accounting/ERP export hooks
 
 ---
 
 ## 🎓 Bonus Phase: Training & Documentation
-*Goal: Ensure successful adoption.*
+*Goal: Smooth rollout and collaboration.*
 
-- [ ] **B1. User Documentation**
-    - [ ] **User Manual:**
-        - [ ] Getting started guide
-        - [ ] Feature documentation
-        - [ ] Troubleshooting guide
-        - [ ] FAQ section
-    - [ ] **Video Tutorials:**
-        - [ ] Basic operations
-        - [ ] Advanced features
-        - [ ] Common tasks
-    - [ ] **Quick Reference Cards:**
-        - [ ] Keyboard shortcuts
-        - [ ] Common operations
-        - [ ] Troubleshooting tips
-- [ ] **B2. Administrator Guide**
-    - [ ] Installation instructions
-    - [ ] Initial setup checklist
-    - [ ] Hardware configuration
-    - [ ] Network setup (multi-terminal)
-    - [ ] Backup procedures
-    - [ ] Security best practices
-- [ ] **B3. Developer Documentation**
+- [ ] **B.1 User Documentation**
+    - [ ] Cashier manual
+    - [ ] Manager/admin guide
+    - [ ] Hardware setup guide
+- [ ] **B.2 Developer Documentation**
     - [ ] Architecture overview
-    - [ ] API documentation
-    - [ ] Database schema
-    - [ ] Plugin development guide
-    - [ ] Contribution guidelines
-- [ ] **B4. Training Materials**
-    - [ ] Training presentation slides
-    - [ ] Hands-on exercises
-    - [ ] Assessment tests
-    - [ ] Certification program
+    - [ ] API reference
+    - [ ] Plugin/how-to-extend guide
+- [ ] **B.3 Training Assets**
+    - [ ] Video tutorials
+    - [ ] Sample datasets
+    - [ ] Practice exercises
 
 ---
 
-## 📊 Progress Summary
+## 🍽️ Restaurant Module (Deferred from Phase 24)
+*Goal: Table and kitchen management for F&B – build only after core retail is stable.*
 
-### Completed Phases: 3/30 (10%)
-- ✅ Phase 1: Project Initialization (100%)
-- ✅ Phase 2: Database Layer (100%)
-- ✅ Phase 3: Authentication (75% - RBAC pending)
+- [ ] **R1 Floor Plan Design**
+    - [ ] Visual layout designer (drag/drop tables)
+    - [ ] Multiple floor plans (rooms/areas)
+    - [ ] Table sizing and arrangement
+    - [ ] Design mode with visual feedback
+- [ ] **R2 Floor Plan Management**
+    - [ ] Create/edit/delete floor plans
+    - [ ] Switch between floors
+    - [ ] Save layout configurations
+- [ ] **R3 Table Operations**
+    - [ ] Assign order to table
+    - [ ] Table number tracking
+    - [ ] Table status indicators (available/occupied/reserved)
+    - [ ] Move orders between tables
+    - [ ] Combine/merge tables
+    - [ ] Split checks
+    - [ ] Table turnover tracking
+- [ ] **R4 Kitchen Print Stations**
+    - [ ] Multi-station routing by product/group
+    - [ ] Separate tickets per station
+    - [ ] Kitchen ticket format
+    - [ ] Order timing and reprints
+    - [ ] Station configuration and templates
+- [ ] **R5 Restaurant Settings**
+    - [ ] Enable/disable restaurant mode
+    - [ ] Auto-show floor plan on login/F9
+    - [ ] Single-user vs multi-user behavior
 
-### In Progress Phases:
-- 🟡 Phase 4: Inventory Management (60%)
-- 🟡 Phase 5: Hardware Integration (40%)
-- 🟡 Phase 6: Sales Terminal UI (70%)
-- 🟡 Phase 7: Cart Logic (80%)
-- 🟡 Phase 8: Transaction Processing (70%)
-
-### Upcoming Priority:
-1. Complete Phase 4 (Inventory UI & Advanced Features)
-2. Complete Phase 5 (Hardware drivers)
-3. Complete Phase 10 (Payment & Checkout)
-4. Phase 13 (Receipt Generation)
-5. Phase 14 (Reporting)
-
----
-
-## 🎯 Key Milestones
-
-### Milestone 1: MVP (Minimum Viable Product) - Target: Month 3
-- ✅ Basic POS functionality
-- ✅ Product management
-- ✅ Sales processing
-- ⏳ Payment handling
-- ⏳ Receipt printing
-- ⏳ Basic reports
-
-### Milestone 2: Feature Complete - Target: Month 6
-- [ ] All core features
-- [ ] Customer management
-- [ ] Inventory control
-- [ ] Advanced reporting
-- [ ] Multi-user support
-
-### Milestone 3: Production Ready - Target: Month 9
-- [ ] All advanced features
-- [ ] Complete testing
-- [ ] Documentation
-- [ ] Training materials
-- [ ] Installer package
-
-### Milestone 4: Scale Ready - Target: Month 12
-- [ ] Multi-terminal support
-- [ ] Cloud sync
-- [ ] Advanced analytics
-- [ ] Plugin system
-- [ ] API integration
-
----
-
-## 📝 Notes
-
-**Based on Aronium POS Feature Analysis:**
-- All major Aronium features have been incorporated
-- Added Sri Lankan specific requirements (tax compliance)
-- Extended with advanced analytics and BI features
-- Included restaurant features (floor plans)
-- Added multi-location support for retail chains
-
-**Technology Stack:**
-- Python 3.12 (latest stable)
-- PyQt6 6.7.0 (GUI framework)
-- SQLAlchemy 2.0.30 (ORM)
-- PostgreSQL/SQLite (database)
-- python-escpos (thermal printing)
-- reportlab (PDF generation)
-- Alembic (migrations)
-
-**Development Approach:**
-- MVC Architecture Pattern
-- Singleton Database Connection
-- Service Layer for business logic
-- Repository Pattern for data access
-- Event-driven UI updates
-- Async operations for long tasks
-
-**Quality Standards:**
-- 80%+ test coverage target
-- Code review required for all PRs
-- Pre-commit hooks (Black, Flake8, mypy)
-- Documentation for all public APIs
-- Performance benchmarking
-
----
-
-**Last Updated:** November 26, 2025  
-**Version:** 2.0 (Comprehensive Update)  
-**Total Phases:** 30 + Bonus  
-**Estimated Completion:** 12 months  
-**Current Sprint:** Phase 4-8 (Core POS Functionality)

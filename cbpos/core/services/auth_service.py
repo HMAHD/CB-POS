@@ -42,6 +42,23 @@ class AuthService:
                 session.expunge(user)
 
                 AuthService._current_user = user
+
+                # Log Login
+                try:
+                    from cbpos.core.models import AuditLog
+
+                    log = AuditLog(
+                        user_id=user.id,
+                        action="User Login",
+                        event_type="LOGIN",
+                        terminal_id="TERM-01",
+                        details="Successful login via PIN",
+                    )
+                    session.add(log)
+                    session.commit()
+                except Exception:
+                    pass
+
                 return user
         return None
 
@@ -53,4 +70,22 @@ class AuthService:
     @staticmethod
     def logout():
         """Clear the current user session."""
+        if AuthService._current_user:
+            try:
+                db = Database()
+                with db.get_session() as session:
+                    from cbpos.core.models import AuditLog
+
+                    log = AuditLog(
+                        user_id=AuthService._current_user.id,
+                        action="User Logout",
+                        event_type="LOGOUT",
+                        terminal_id="TERM-01",
+                        details="Manual logout",
+                    )
+                    session.add(log)
+                    session.commit()
+            except Exception:
+                pass
+
         AuthService._current_user = None

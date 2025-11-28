@@ -386,6 +386,10 @@ class AuditLog(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     action: Mapped[str] = mapped_column(String(100), nullable=False)
+    event_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # LOGIN, LOGOUT, TIMEOUT
+    terminal_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     details: Mapped[Optional[str]] = mapped_column(String)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 

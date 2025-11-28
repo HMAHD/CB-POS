@@ -61,6 +61,9 @@ def seed_data():
             VoidReason(code="MISTAKE", description="Cashier Mistake"),
             VoidReason(code="RETURN", description="Customer Return"),
             VoidReason(code="DAMAGED", description="Damaged Goods"),
+            VoidReason(code="CHANGED_MIND", description="Customer Changed Mind"),
+            VoidReason(code="ACCIDENTAL", description="Accidental Entry"),
+            VoidReason(code="MANAGER", description="Manager Override"),
         ]
         session.add_all(void_reasons)
 

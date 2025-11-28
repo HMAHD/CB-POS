@@ -79,3 +79,20 @@ class UserService:
             ).one()
             session.expunge_all()
             return user
+
+    @staticmethod
+    def get_recent_activity(limit: int = 50):
+        """Get recent audit logs."""
+        from cbpos.core.models import AuditLog
+
+        db = Database()
+        with db.get_session() as session:
+            logs = (
+                session.query(AuditLog)
+                .options(joinedload(AuditLog.user))
+                .order_by(AuditLog.timestamp.desc())
+                .limit(limit)
+                .all()
+            )
+            session.expunge_all()
+            return logs

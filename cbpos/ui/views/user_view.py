@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QCheckBox,
     QMessageBox,
+    QTabWidget,
 )
 from PyQt6.QtCore import Qt
 from cbpos.core.services.user_service import UserService
@@ -110,10 +111,32 @@ class UserView(QWidget):
     def __init__(self):
         super().__init__()
         self.init_ui()
-        self.load_users()
 
     def init_ui(self):
         layout = QVBoxLayout(self)
+
+        self.tabs = QTabWidget()
+        layout.addWidget(self.tabs)
+
+        # Tab 1: Users
+        self.user_tab = QWidget()
+        self.init_user_tab()
+        self.tabs.addTab(self.user_tab, "Users")
+
+        # Tab 2: Activity Log
+        self.log_tab = QWidget()
+        self.init_log_tab()
+        self.tabs.addTab(self.log_tab, "Activity Log")
+
+        # Load data
+        self.load_users()
+        self.load_logs()
+
+        # Refresh on tab change
+        self.tabs.currentChanged.connect(self.on_tab_changed)
+
+    def init_user_tab(self):
+        layout = QVBoxLayout(self.user_tab)
 
         # Toolbar
         toolbar = QHBoxLayout()
@@ -145,6 +168,22 @@ class UserView(QWidget):
 
         layout.addWidget(self.table)
 
+    def init_log_tab(self):
+        layout = QVBoxLayout(self.log_tab)
+
+        self.log_table = QTableWidget()
+        self.log_table.setColumnCount(5)
+        self.log_table.setHorizontalHeaderLabels(
+            ["Time", "User", "Event", "Terminal", "Details"]
+        )
+        self.log_table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
+        )
+        self.log_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.log_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+
+        layout.addWidget(self.log_table)
+
     def load_users(self):
         self.users = UserService.get_all_users()
         self.table.setRowCount(len(self.users))
@@ -161,6 +200,25 @@ class UserView(QWidget):
             if not user.is_active:
                 item_status.setForeground(Qt.GlobalColor.red)
             self.table.setItem(row, 3, item_status)
+
+    def load_logs(self):
+        logs = UserService.get_recent_activity()
+        self.log_table.setRowCount(len(logs))
+
+        for row, log in enumerate(logs):
+            self.log_table.setItem(row, 0, QTableWidgetItem(str(log.timestamp)))
+            self.log_table.setItem(
+                row, 1, QTableWidgetItem(log.user.username if log.user else "Unknown")
+            )
+            self.log_table.setItem(row, 2, QTableWidgetItem(log.event_type))
+            self.log_table.setItem(row, 3, QTableWidgetItem(log.terminal_id or "-"))
+            self.log_table.setItem(row, 4, QTableWidgetItem(log.details or ""))
+
+    def on_tab_changed(self, index):
+        if index == 0:
+            self.load_users()
+        else:
+            self.load_logs()
 
     def add_user(self):
         dialog = UserDialog(parent=self)

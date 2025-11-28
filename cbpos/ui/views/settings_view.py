@@ -10,8 +10,11 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QMessageBox,
     QGroupBox,
+    QCheckBox,
+    QSpinBox,
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtPrintSupport import QPrinterInfo
 from cbpos.core.services.config_service import ConfigService
 
 
@@ -88,29 +91,78 @@ class SettingsView(QWidget):
     def init_hardware_tab(self):
         layout = QVBoxLayout(self.tab_hardware)
         layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
 
-        # Printer Group
+        # === PRINTER CONFIGURATION ===
         grp_printer = QGroupBox("Printer Configuration")
-        form_layout = QFormLayout(grp_printer)
+        form_printer = QFormLayout(grp_printer)
 
-        self.combo_printer_type = QComboBox()
-        self.combo_printer_type.addItems(["USB", "NETWORK", "MOCK"])
+        # Get available system printers
+        available_printers = QPrinterInfo.availablePrinterNames()
+        if not available_printers:
+            available_printers = ["No printers found"]
 
-        self.input_printer_path = QLineEdit()
-        self.input_printer_path.setPlaceholderText(
-            "e.g., COM3, 192.168.1.100, or empty for Auto-USB"
-        )
+        # Receipt Printer
+        self.combo_receipt_printer = QComboBox()
+        self.combo_receipt_printer.addItems(available_printers)
+        form_printer.addRow("Receipt Printer (Thermal):", self.combo_receipt_printer)
 
-        form_layout.addRow("Printer Type:", self.combo_printer_type)
-        form_layout.addRow("Path / IP:", self.input_printer_path)
+        # A4 Printer
+        self.combo_a4_printer = QComboBox()
+        self.combo_a4_printer.addItems(available_printers)
+        form_printer.addRow("A4 Printer (Invoice):", self.combo_a4_printer)
+
+        # Auto-Print Checkbox
+        self.chk_auto_print = QCheckBox("Print receipt automatically after sale")
+        self.chk_auto_print.setChecked(True)
+        form_printer.addRow("Auto-Print:", self.chk_auto_print)
+
+        # Receipt Copies
+        self.spin_copies = QSpinBox()
+        self.spin_copies.setRange(1, 5)
+        self.spin_copies.setValue(1)
+        form_printer.addRow("Receipt Copies:", self.spin_copies)
 
         layout.addWidget(grp_printer)
 
-        # Test Print
-        btn_test = QPushButton("Test Print")
-        btn_test.setStyleSheet("background-color: #FFDC00; color: black;")
-        btn_test.clicked.connect(self.test_print)
-        layout.addWidget(btn_test)
+        # === SCALE CONFIGURATION ===
+        grp_scale = QGroupBox("Scale Barcode Configuration (Grocery)")
+        form_scale = QFormLayout(grp_scale)
+
+        # Barcode Prefix
+        self.input_scale_prefix = QLineEdit()
+        self.input_scale_prefix.setPlaceholderText("e.g., 20")
+        self.input_scale_prefix.setMaxLength(2)
+        form_scale.addRow("Barcode Prefix (2 digits):", self.input_scale_prefix)
+
+        # Decimal Places
+        self.spin_decimal_places = QSpinBox()
+        self.spin_decimal_places.setRange(0, 5)
+        self.spin_decimal_places.setValue(3)
+        form_scale.addRow("Decimal Places (Weight):", self.spin_decimal_places)
+
+        layout.addWidget(grp_scale)
+
+        # === BANKING DETAILS ===
+        grp_banking = QGroupBox("Banking Details (For A4 Invoices)")
+        form_banking = QFormLayout(grp_banking)
+
+        # Bank Name
+        self.input_bank_name = QLineEdit()
+        self.input_bank_name.setPlaceholderText("e.g., Commercial Bank of Ceylon")
+        form_banking.addRow("Bank Name:", self.input_bank_name)
+
+        # Account Number
+        self.input_account_number = QLineEdit()
+        self.input_account_number.setPlaceholderText("e.g., 1234567890")
+        form_banking.addRow("Account Number:", self.input_account_number)
+
+        # Branch
+        self.input_bank_branch = QLineEdit()
+        self.input_bank_branch.setPlaceholderText("e.g., Colombo Fort")
+        form_banking.addRow("Branch:", self.input_bank_branch)
+
+        layout.addWidget(grp_banking)
 
         layout.addStretch()
 
@@ -134,29 +186,74 @@ class SettingsView(QWidget):
         self.input_header.setText(settings.get("receipt_header", ""))
         self.input_footer.setText(settings.get("receipt_footer", ""))
 
-        # Hardware
-        self.combo_printer_type.setCurrentText(settings.get("printer_type", "USB"))
-        self.input_printer_path.setText(settings.get("printer_path", ""))
+        # Hardware - Printers
+        receipt_printer = settings.get("receipt_printer_name", "")
+        if receipt_printer:
+            index = self.combo_receipt_printer.findText(receipt_printer)
+            if index >= 0:
+                self.combo_receipt_printer.setCurrentIndex(index)
+
+        a4_printer = settings.get("a4_printer_name", "")
+        if a4_printer:
+            index = self.combo_a4_printer.findText(a4_printer)
+            if index >= 0:
+                self.combo_a4_printer.setCurrentIndex(index)
+
+        self.chk_auto_print.setChecked(settings.get("auto_print_receipt", True))
+        self.spin_copies.setValue(settings.get("receipt_copies", 1))
+
+        # Hardware - Scale
+        self.input_scale_prefix.setText(settings.get("scale_barcode_prefix", "20"))
+        self.spin_decimal_places.setValue(settings.get("scale_decimal_places", 3))
+
+        # Hardware - Banking
+        self.input_bank_name.setText(
+            settings.get("company_bank_name", "Commercial Bank of Ceylon")
+        )
+        self.input_account_number.setText(
+            settings.get("company_account_number", "1234567890")
+        )
+        self.input_bank_branch.setText(
+            settings.get("company_bank_branch", "Colombo Fort")
+        )
 
         # Appearance
         self.combo_language.setCurrentText(settings.get("language", "en"))
 
     def save_settings(self):
+        # Validate Scale Prefix
+        scale_prefix = self.input_scale_prefix.text().strip()
+        if len(scale_prefix) != 2 or not scale_prefix.isdigit():
+            QMessageBox.warning(
+                self,
+                "Validation Error",
+                "Scale Barcode Prefix must be exactly 2 digits (e.g., '20').",
+            )
+            return
+
         data = {
+            # General
             "shop_name": self.input_shop_name.text(),
             "shop_address": self.input_address.text(),
             "shop_phone": self.input_phone.text(),
             "vat_number": self.input_vat.text(),
             "receipt_header": self.input_header.text(),
             "receipt_footer": self.input_footer.text(),
-            "printer_type": self.combo_printer_type.currentText(),
-            "printer_path": self.input_printer_path.text(),
+            # Hardware - Printers
+            "receipt_printer_name": self.combo_receipt_printer.currentText(),
+            "a4_printer_name": self.combo_a4_printer.currentText(),
+            "auto_print_receipt": self.chk_auto_print.isChecked(),
+            "receipt_copies": self.spin_copies.value(),
+            # Hardware - Scale
+            "scale_barcode_prefix": scale_prefix,
+            "scale_decimal_places": self.spin_decimal_places.value(),
+            # Hardware - Banking
+            "company_bank_name": self.input_bank_name.text(),
+            "company_account_number": self.input_account_number.text(),
+            "company_bank_branch": self.input_bank_branch.text(),
+            # Appearance
             "language": self.combo_language.currentText(),
         }
 
         ConfigService.update_all(data)
         QMessageBox.information(self, "Success", "Settings saved successfully!")
-
-    def test_print(self):
-        # TODO: Implement actual test print via PrinterService
-        QMessageBox.information(self, "Test Print", "Test print signal sent (Mock).")

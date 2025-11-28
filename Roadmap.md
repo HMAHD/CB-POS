@@ -161,26 +161,26 @@
 
 - [x] **5.1 Architecture**
     - [x] Define Interfaces: `IPrinter`, `IScanner`, `IDisplay`.
-    - [ ] **Cash Drawer Interface:** Standard kick commands
-    - [ ] **Weighing Scale Interface:** Serial communication protocol
-    - [ ] **Customer Display Interface:** Secondary screen support
+    - [x] **Cash Drawer Interface:** Standard kick commands
+    - [x] **Weighing Scale Interface:** Serial communication protocol
+    - [x] **Customer Display Interface:** Secondary screen support
 - [x] **5.2 Printing (ESC/POS)**
     - [x] Implement `ThermalPrinter` driver using `python-escpos`.
-    - [ ] Support USB and Network printers.
-    - [ ] Implement "Image Print" mode for Sinhala/Tamil text fallback.
-    - [ ] **A4 Invoice Printing:** PDF generation with reportlab
-    - [ ] **Receipt Templates:** Customizable header/footer/logo
+    - [x] Support USB and Network printers.
+    - [x] Implement "Image Print" mode for Sinhala/Tamil text fallback.
+    - [x] **A4 Invoice Printing:** PDF generation with reportlab
+    - [x] **Receipt Templates:** Customizable header/footer/logo
 - [x] **5.3 Input Devices**
     - [x] Implement `BarcodeScanner` hook (differentiate typing vs scanning).
-    - [ ] Implement `CashDrawer` kick logic (RJ11 signal).
-    - [ ] **Weighing Scale Integration:** Barcode prefix detection
-    - [ ] **Scale Barcode Parser:** Extract weight from embedded barcodes
-- [ ] **5.4 Printer Configuration**
-    - [ ] Paper width settings (58mm/80mm/A4)
-    - [ ] Character set selection
-    - [ ] Print density and line spacing
-    - [ ] Auto-print on payment option
-    - [ ] Number of receipt copies
+    - [x] Implement `CashDrawer` kick logic (RJ11 signal).
+    - [x] **Weighing Scale Integration:** Barcode prefix detection
+    - [x] **Scale Barcode Parser:** Extract weight from embedded barcodes
+- [x] **5.4 Printer Configuration**
+    - [x] Paper width settings (58mm/80mm/A4)
+    - [x] Character set selection
+    - [x] Print density and line spacing
+    - [x] Auto-print on payment option
+    - [x] Number of receipt copies
 
 ---
 

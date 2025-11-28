@@ -22,6 +22,19 @@ class ConfigService:
         "language": "en",  # en, si, ta
         "receipt_header": "Welcome to Ceylon Byte",
         "receipt_footer": "Thank You! Come Again.",
+        # Hardware Configuration
+        "receipt_printer_name": "",  # System printer name for thermal receipts
+        "a4_printer_name": "",  # System printer name for A4 invoices
+        "receipt_copies": 1,  # Number of receipt copies to print
+        "paper_width": "80mm",  # 58mm or 80mm
+        "auto_print_receipt": True,  # Auto-print receipt after sale
+        # Scale Barcode Configuration
+        "scale_barcode_prefix": "20",  # Prefix for scale barcodes
+        "scale_decimal_places": 3,  # Decimal places for weight
+        # Banking Details (for invoices)
+        "company_bank_name": "Commercial Bank of Ceylon",
+        "company_account_number": "1234567890",
+        "company_bank_branch": "Colombo Fort",
     }
 
     _settings: Dict[str, Any] = {}

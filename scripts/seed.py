@@ -20,6 +20,7 @@ from cbpos.core.models import (  # noqa: E402
     Supplier,
     VoidReason,
 )
+from cbpos.core.constants.permissions import Permissions  # noqa: E402
 
 
 def hash_pin(pin: str) -> str:
@@ -34,26 +35,47 @@ def seed_data():
 
     with db.get_session() as session:
         print("Seeding Permissions...")
-        perm_void = Permission(
-            code="can_void_sale", description="Can void completed sales"
-        )
-        session.add(perm_void)
+        perm_map = {}
+        groups = Permissions.get_groups()
+
+        for group, codes in groups.items():
+            for code in codes:
+                perm = Permission(
+                    code=code, description=code.replace(".", " ").title(), group=group
+                )
+                session.add(perm)
+                perm_map[code] = perm
         session.flush()
 
         print("Seeding Roles...")
-        admin_role = Role(name="Admin")
-        admin_role.permissions.append(perm_void)
+        # Admin (Level 9) - All Permissions
+        admin_role = Role(name="Admin", access_level=9)
+        for perm in perm_map.values():
+            admin_role.permissions.append(perm)
 
-        cashier_role = Role(name="Cashier")
-        session.add_all([admin_role, cashier_role])
+        # Manager (Level 5) - Sales + Inventory + Reports
+        manager_role = Role(name="Manager", access_level=5)
+        for code in groups["Sales"] + groups["Inventory"] + groups["Reports"]:
+            manager_role.permissions.append(perm_map[code])
+
+        # Cashier (Level 1) - Sales Only (Restricted)
+        cashier_role = Role(name="Cashier", access_level=1)
+        # Cashier gets basic sales view and add item, but maybe not void/discount
+        cashier_role.permissions.append(perm_map[Permissions.SALES_VIEW])
+        cashier_role.permissions.append(perm_map[Permissions.SALES_ADD_ITEM])
+
+        session.add_all([admin_role, manager_role, cashier_role])
         session.flush()
 
         print("Seeding Users...")
         admin = User(username="admin", pin_hash=hash_pin("1234"), role_id=admin_role.id)
+        manager = User(
+            username="manager", pin_hash=hash_pin("5678"), role_id=manager_role.id
+        )
         cashier = User(
             username="cashier", pin_hash=hash_pin("0000"), role_id=cashier_role.id
         )
-        session.add_all([admin, cashier])
+        session.add_all([admin, manager, cashier])
         session.flush()
 
         print("Seeding Void Reasons...")

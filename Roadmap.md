@@ -58,10 +58,10 @@
     - [x] Create virtual environment (`.venv`).
     - [x] Generate `requirements.txt` with pinned versions (`PyQt6==6.7.0`, `SQLAlchemy==2.0.30`).
     - [x] Setup `pre-commit` hooks (Black, Flake8) for code quality.
-- [ ] **1.4 Documentation Structure**
-    - [ ] Create `docs/` folder with README.md
-    - [ ] Setup API documentation framework (Sphinx/MkDocs)
-    - [ ] Create developer onboarding guide
+- [x] **1.4 Documentation Structure**
+    - [x] Create `docs/` folder with README.md
+    - [x] Setup API documentation framework (Sphinx/MkDocs)
+    - [x] Create developer onboarding guide
 
 ---
 
@@ -108,18 +108,18 @@
 - [x] **3.2 RBAC (Role-Based Access Control)**
     - [x] Define Permissions (`CAN_VOID`, `CAN_REFUND`, `CAN_SEE_REPORTS`).
     - [x] Implement `check_permission` decorator for sensitive functions.
-    - [ ] **Access Level System (0-9):** Numeric hierarchy like Aronium
-    - [ ] **Operation-Level Permissions:** Granular control per feature
-    - [ ] **Permission Groups:** Sales, Management, Documents, Reports, Settings
+    - [x] **Access Level System (0-9):** Numeric hierarchy like Aronium
+    - [x] **Operation-Level Permissions:** Granular control per feature
+    - [x] **Permission Groups:** Sales, Management, Documents, Reports, Settings
 - [x] **3.3 Login UI**
     - [x] Design Split-Screen Login (Brand Left / Numpad Right).
     - [x] Implement Masked PIN Input.
     - [ ] Add "Manager Override" popup logic.
-- [ ] **3.4 Session Management**
+- [x] **3.4 Session Management**
     - [x] Auto-logout on inactivity (configurable timeout)
-    - [ ] Session activity logging
-    - [ ] Multi-user session tracking (for networked version)
-    - [ ] Password recovery mechanism (email-based)
+    - [x] Session activity logging
+    - [x] Multi-user session tracking (for networked version)
+    - [x] Password recovery mechanism (email-based)
 
 ---
 

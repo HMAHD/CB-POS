@@ -38,6 +38,7 @@ class Role(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    access_level: Mapped[int] = mapped_column(Integer, default=0)
     permissions: Mapped[List["Permission"]] = relationship(
         secondary=role_permissions, back_populates="roles"
     )
@@ -49,6 +50,7 @@ class Permission(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String(200))
+    group: Mapped[str] = mapped_column(String(50), default="General")
 
     roles: Mapped[List["Role"]] = relationship(
         secondary=role_permissions, back_populates="permissions"

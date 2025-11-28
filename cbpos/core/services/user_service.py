@@ -11,6 +11,16 @@ class UserService:
     """
 
     @staticmethod
+    def can_manage_user(current_user: User, target_user: User) -> bool:
+        """
+        Check if current_user can manage target_user.
+        Logic: current_user.role.access_level > target_user.role.access_level
+        """
+        if not current_user.role or not target_user.role:
+            return False
+        return current_user.role.access_level > target_user.role.access_level
+
+    @staticmethod
     def get_all_users() -> List[User]:
         """Get all users with their roles."""
         db = Database()

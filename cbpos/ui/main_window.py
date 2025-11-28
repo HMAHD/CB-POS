@@ -10,6 +10,8 @@ from PyQt6.QtWidgets import (
     QFrame,
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPixmap
+from pathlib import Path
 from cbpos.ui.views.login_view import LoginView
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.custom_widgets import SidebarButton
@@ -53,10 +55,26 @@ class MainWindow(QMainWindow):
         self.sidebar_layout.setSpacing(5)
 
         # Logo Area
-        lbl_logo = QLabel("CEYLON BYTE")
+        base_path = Path(__file__).resolve().parent.parent
+        logo_path = base_path / "assets" / "logo" / "cover_black.png"
+
+        lbl_logo = QLabel()
         lbl_logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        if logo_path.exists():
+            pixmap = QPixmap(str(logo_path))
+            # Scale to height 40px, smooth
+            scaled_pixmap = pixmap.scaledToHeight(
+                40, Qt.TransformationMode.SmoothTransformation
+            )
+            lbl_logo.setPixmap(scaled_pixmap)
+        else:
+            lbl_logo.setText("CEYLON BYTE")
+            lbl_logo.setStyleSheet(
+                "font-size: 20px; font-weight: bold; color: #00BCEB;"
+            )
+
         lbl_logo.setStyleSheet(
-            "font-size: 20px; font-weight: bold; color: #00BCEB; margin-bottom: 20px;"
+            "border: none; background: transparent; margin-bottom: 20px;"
         )
         self.sidebar_layout.addWidget(lbl_logo)
 

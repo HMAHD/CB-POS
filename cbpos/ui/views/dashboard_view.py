@@ -1,85 +1,124 @@
-from PyQt6.QtWidgets import QWidget, QGridLayout, QVBoxLayout, QLabel
-from PyQt6.QtCore import QTimer
-from cbpos.ui.widgets.custom_widgets import InfoCard
-from cbpos.ui.resources.icons import Icons
-from cbpos.core.database import Database
-from cbpos.core.models import Sale
-from sqlalchemy import func
-from datetime import datetime
+from PyQt6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QFrame,
+    QTableWidget,
+    QHeaderView,
+    QTableWidgetItem,
+)
+from PyQt6.QtCore import Qt
+from cbpos.ui.widgets.info_card import InfoCard
+from cbpos.core.services.user_service import UserService
 
 
 class DashboardView(QWidget):
     def __init__(self):
         super().__init__()
         self.init_ui()
-        self.refresh_stats()
-
-        # Auto-refresh every 30 seconds
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.refresh_stats)
-        self.timer.start(30000)
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(20)
 
-        # Header
-        header = QLabel("DASHBOARD")
-        header.setStyleSheet("font-size: 32px; font-weight: bold; color: #39FF14; ")
-        layout.addWidget(header)
+        # 1. Top Row: Info Cards
+        cards_layout = QHBoxLayout()
+        cards_layout.setSpacing(20)
 
-        # Cards Grid
-        self.grid = QGridLayout()
-        self.grid.setSpacing(20)
+        # Card 1: Revenue
+        self.card_revenue = InfoCard(
+            "Total Revenue", "Rs. 45,200", "fa5s.rupee-sign", "+12% vs yesterday", True
+        )
+        cards_layout.addWidget(self.card_revenue)
 
-        self.card_sales = InfoCard("Total Sales", "Rs. 0.00", Icons.SALES, "#39FF14")
-        self.card_trans = InfoCard("Transactions", "0", Icons.REPORTS, "#00BCEB")
-        self.card_customers = InfoCard("New Customers", "0", Icons.CUSTOMERS, "#FFDC00")
-        self.card_voids = InfoCard("Voided Bills", "0", Icons.VOID, "#FF4136")
+        # Card 2: Transactions
+        self.card_transactions = InfoCard(
+            "Transactions", "128", "fa5s.receipt", "+5% vs yesterday", True
+        )
+        cards_layout.addWidget(self.card_transactions)
 
-        self.grid.addWidget(self.card_sales, 0, 0)
-        self.grid.addWidget(self.card_trans, 0, 1)
-        self.grid.addWidget(self.card_customers, 0, 2)
-        self.grid.addWidget(self.card_voids, 0, 3)
+        # Card 3: Low Stock
+        self.card_low_stock = InfoCard(
+            "Low Stock Items",
+            "3",
+            "fa5s.exclamation-triangle",
+            "Needs Attention",
+            False,
+        )
+        cards_layout.addWidget(self.card_low_stock)
 
-        layout.addLayout(self.grid)
-        layout.addStretch()
+        # Card 4: Active Staff
+        self.card_staff = InfoCard(
+            "Active Staff", "4", "fa5s.users", "All systems normal", True
+        )
+        cards_layout.addWidget(self.card_staff)
 
-    def refresh_stats(self):
-        """Fetch stats from DB."""
-        db = Database()
-        with db.get_session() as session:
-            # Today's Sales
-            today = datetime.now().date()
+        layout.addLayout(cards_layout)
 
-            # Total Revenue
-            total_revenue = (
-                session.query(func.sum(Sale.total_amount))
-                .filter(func.date(Sale.date) == today, Sale.status != "VOID")
-                .scalar()
-                or 0
+        # 2. Center Section: Chart Placeholder
+        chart_frame = QFrame()
+        chart_frame.setStyleSheet(
+            "background-color: #001F3F; border: 1px solid #003366; border-radius: 8px;"
+        )
+        chart_layout = QVBoxLayout(chart_frame)
+
+        lbl_chart = QLabel("Sales Overview (Chart Placeholder)")
+        lbl_chart.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_chart.setStyleSheet("color: #AAAAAA; font-size: 16px;")
+        chart_layout.addWidget(lbl_chart)
+
+        layout.addWidget(chart_frame, stretch=1)
+
+        # 3. Bottom Section: Recent Activity
+        lbl_activity = QLabel("Recent System Activity")
+        lbl_activity.setStyleSheet(
+            "color: #FFFFFF; font-size: 14px; font-weight: bold; margin-top: 10px;"
+        )
+        layout.addWidget(lbl_activity)
+
+        self.log_table = QTableWidget()
+        self.log_table.setColumnCount(3)
+        self.log_table.setHorizontalHeaderLabels(["Time", "User", "Action"])
+        self.log_table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
+        )
+        self.log_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.log_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.log_table.setFixedHeight(200)
+        self.log_table.setStyleSheet(
+            """
+            QTableWidget {
+                background-color: #001F3F;
+                border: 1px solid #003366;
+                border-radius: 8px;
+            }
+            QHeaderView::section {
+                background-color: #003366;
+                color: white;
+                border: none;
+                padding: 5px;
+            }
+        """
+        )
+
+        layout.addWidget(self.log_table)
+
+        # Load initial data
+        self.refresh_data()
+
+    def refresh_data(self):
+        # Refresh logs
+        logs = UserService.get_recent_activity(limit=10)
+        self.log_table.setRowCount(len(logs))
+        for row, log in enumerate(logs):
+            self.log_table.setItem(
+                row, 0, QTableWidgetItem(log.timestamp.strftime("%H:%M:%S"))
             )
-
-            # Transaction Count
-            trans_count = (
-                session.query(func.count(Sale.id))
-                .filter(func.date(Sale.date) == today, Sale.status != "VOID")
-                .scalar()
-                or 0
+            self.log_table.setItem(
+                row, 1, QTableWidgetItem(log.user.username if log.user else "Unknown")
             )
-
-            # Void Count
-            void_count = (
-                session.query(func.count(Sale.id))
-                .filter(func.date(Sale.date) == today, Sale.status == "VOID")
-                .scalar()
-                or 0
+            self.log_table.setItem(
+                row, 2, QTableWidgetItem(f"{log.event_type}: {log.details}")
             )
-
-            # Update UI
-            revenue_formatted = "Rs. {:,.2f}".format(total_revenue)
-            self.card_sales.set_value(revenue_formatted)
-            self.card_trans.set_value(str(trans_count))
-            self.card_voids.set_value(str(void_count))
-            # Customer count requires Customer model query (skipped)

@@ -35,7 +35,9 @@ class ProductEditor(QDialog):
         self.setMinimumHeight(500)
 
         self.categories = []
+        self.suppliers = []
         self.load_categories()
+        self.load_suppliers()
 
         self.setup_ui()
         if product:
@@ -45,6 +47,13 @@ class ProductEditor(QDialog):
         db = Database()
         with db.get_session() as session:
             self.categories = list(session.scalars(select(Category)).all())
+
+    def load_suppliers(self):
+        from cbpos.core.models import Supplier
+
+        db = Database()
+        with db.get_session() as session:
+            self.suppliers = list(session.scalars(select(Supplier)).all())
 
     def setup_ui(self):
         layout = QVBoxLayout(self)

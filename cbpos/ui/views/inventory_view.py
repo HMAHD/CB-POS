@@ -13,7 +13,7 @@ from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex
 from PyQt6.QtGui import QColor, QBrush
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.services.import_service import ImportService
-from cbpos.ui.dialogs.product_editor import ProductEditorDialog
+from cbpos.ui.dialogs.product_editor import ProductEditor
 
 
 class InventoryModel(QAbstractTableModel):
@@ -138,13 +138,13 @@ class InventoryView(QWidget):
         self.model.update_data(filtered)
 
     def open_add_dialog(self):
-        dialog = ProductEditorDialog(parent=self)
+        dialog = ProductEditor(parent=self)
         if dialog.exec():
             self.load_data()
 
     def open_edit_dialog(self, index):
         product = self.model.products[index.row()]
-        dialog = ProductEditorDialog(product=product, parent=self)
+        dialog = ProductEditor(product=product, parent=self)
         if dialog.exec():
             self.load_data()
 

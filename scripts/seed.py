@@ -133,7 +133,73 @@ def seed_data():
             Product(
                 barcode="47920240",
                 name_en="Munchee Super Cream Cracker 490g",
+                price=Decimal("650.00"),
+                cost=Decimal("500.00"),
+                stock_qty=Decimal("100.000"),
+                reorder_point=Decimal("20.000"),
+                preferred_qty=Decimal("100.000"),
+                category=cat_map["Biscuits"],
+                default_supplier_id=suppliers[0].id,
+            ),
+            Product(
+                barcode="47900001",
+                name_en="Highland Full Cream Milk 1L",
+                price=Decimal("520.00"),
+                cost=Decimal("450.00"),
+                stock_qty=Decimal("50.000"),
+                reorder_point=Decimal("10.000"),
+                preferred_qty=Decimal("50.000"),
+                category=cat_map["Beverages"],
+                default_supplier_id=suppliers[1].id,
+            ),
+            Product(
+                barcode="1001",
+                name_en="Sugar 1kg",
+                name_si="සීනි",
+                price=Decimal("350.00"),
+                cost=Decimal("300.00"),
+                stock_qty=Decimal("100.000"),
+                reorder_point=Decimal("20.000"),
+                preferred_qty=Decimal("100.000"),
+                category=cat_map["Essentials"],
+                default_supplier_id=suppliers[0].id,
+            ),
+            # Service Item (no inventory tracking)
+            Product(
+                barcode="SVC001",
+                name_en="Delivery Charge",
+                name_si="බෙදාහැරීමේ ගාස්තුව",
+                price=Decimal("350.00"),
+                cost=Decimal("0.00"),
+                stock_qty=Decimal("0.000"),
+                is_service=True,
+                category=cat_map["Essentials"],
+            ),
+            # Low Stock Item (for reorder testing)
+            Product(
+                barcode="8901234567890",
+                name_en="Samaposha Powder 500g",
+                name_si="සමපෝෂා",
+                price=Decimal("1250.00"),
+                cost=Decimal("1100.00"),
+                stock_qty=Decimal("2.000"),  # Below reorder point
+                reorder_point=Decimal("10.000"),
+                preferred_qty=Decimal("50.000"),
+                category=cat_map["Essentials"],
+                default_supplier_id=suppliers[1].id,
+            ),
+            # Weighted Item
+            Product(
+                barcode="2001",
+                name_en="Red Onion (Per KG)",
+                price=Decimal("380.00"),
+                cost=Decimal("320.00"),
+                stock_qty=Decimal("50.500"),
+                is_weighted=True,
+                reorder_point=Decimal("10.000"),
+                preferred_qty=Decimal("100.000"),
                 category=cat_map["Vegetables"],
+                default_supplier_id=suppliers[0].id,
             ),
             Product(
                 barcode="3001",
@@ -141,6 +207,8 @@ def seed_data():
                 price=Decimal("110.00"),
                 cost=Decimal("90.00"),
                 stock_qty=Decimal("200.000"),
+                reorder_point=Decimal("50.000"),
+                preferred_qty=Decimal("200.000"),
                 category=cat_map["Essentials"],
             ),
         ]
@@ -149,7 +217,7 @@ def seed_data():
 
         # Link products to suppliers
         products[0].suppliers.append(suppliers[0])  # Munchee -> Munchee
-        products[1].suppliers.append(suppliers[1])  # Highland -> Highland
+        products[1].suppliers.append(suppliers[1])  # Highland -> City Imports
 
         print("Seeding Customers...")
         customer = Customer(
@@ -164,7 +232,7 @@ def seed_data():
         print("Seeding Composite Items...")
         # Hamper = 2x Biscuits + 1x Soap
         biscuit = products[0]
-        soap = products[4]
+        soap = products[6]
 
         hamper = Product(
             barcode="HAMPER001",

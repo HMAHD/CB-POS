@@ -11,9 +11,13 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QMessageBox,
     QStackedLayout,
+    QToolButton,
+    QMenu,
+    QInputDialog,
+    QCompleter,
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QKeySequence, QShortcut
+from PyQt6.QtGui import QKeySequence, QShortcut, QAction, QColor, QBrush
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.transaction_service import TransactionService
@@ -21,6 +25,7 @@ from cbpos.ui.dialogs.payment_dialog import PaymentDialog
 from cbpos.ui.dialogs.customer_selection_dialog import (  # noqa: F401
     CustomerSelectionDialog,
 )
+from cbpos.ui.dialogs.advanced_search_dialog import AdvancedSearchDialog
 from cbpos.ui.views.visual_pos_view import VisualPosView
 from cbpos.ui.resources.icons import Icons
 
@@ -29,7 +34,9 @@ class SalesView(QWidget):
     def __init__(self):
         super().__init__()
         self.cart_service = CartService()
+        self.product_service = ProductService()
         self.customer = None
+        self.current_search_mode = "ALL"
         self.init_ui()
 
     def init_ui(self):
@@ -51,11 +58,13 @@ class SalesView(QWidget):
         self.cart_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.cart_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.cart_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cart_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.cart_table.customContextMenuRequested.connect(self.show_cart_context_menu)
         left_layout.addWidget(self.cart_table)
 
         # --- RIGHT PANEL (Controls) ---
         right_panel = QWidget()
-        right_panel.setFixedWidth(450)  # Slightly wider for visual grid
+        right_panel.setFixedWidth(450)
         right_layout = QVBoxLayout(right_panel)
 
         # 1. Header (Customer + Toggle)
@@ -90,19 +99,47 @@ class SalesView(QWidget):
         # 2. Stacked Content (Keyboard vs Visual)
         self.stack_layout = QStackedLayout()
 
-        # --- MODE 0: Keyboard (Barcode + Numpad Actions) ---
+        # --- MODE 0: Keyboard (Search + Numpad Actions) ---
         keyboard_widget = QWidget()
         kb_layout = QVBoxLayout(keyboard_widget)
         kb_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Barcode Input
+        # Search Mode Widget (Phase 6)
+        search_container = QWidget()
+        search_layout = QHBoxLayout(search_container)
+        search_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Mode Selector Button
+        self.search_mode_btn = QToolButton()
+        self.search_mode_btn.setText("★")
+        self.search_mode_btn.setToolTip("Search Mode")
+        self.search_mode_btn.setFixedWidth(40)
+        self.search_mode_btn.setStyleSheet("font-size: 18px;")
+        self.search_mode_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+
+        # Mode Menu
+        mode_menu = QMenu(self)
+        mode_menu.addAction("★ All Fields", lambda: self.set_search_mode("ALL", "★"))
+        mode_menu.addAction(
+            "▮ Barcode Only", lambda: self.set_search_mode("BARCODE", "▮")
+        )
+        mode_menu.addAction("# Code/ID", lambda: self.set_search_mode("CODE", "#"))
+        mode_menu.addAction("⌂ Name Only", lambda: self.set_search_mode("NAME", "⌂"))
+        self.search_mode_btn.setMenu(mode_menu)
+
+        search_layout.addWidget(self.search_mode_btn)
+
+        # Search Input
         self.barcode_input = QLineEdit()
-        self.barcode_input.setPlaceholderText("Scan Barcode...")
+        self.barcode_input.setPlaceholderText("Scan or type product...")
         self.barcode_input.setStyleSheet(
             "font-size: 20px; padding: 10px; border: 2px solid #00BCEB;"
         )
         self.barcode_input.returnPressed.connect(self.process_barcode)
-        kb_layout.addWidget(self.barcode_input)
+        search_layout.addWidget(self.barcode_input)
+
+        kb_layout.addWidget(search_container)
+        self.setup_autocomplete()
 
         kb_layout.addSpacing(20)
 
@@ -169,6 +206,10 @@ class SalesView(QWidget):
         self.shortcut_f4 = QShortcut(QKeySequence("F4"), self)
         self.shortcut_f4.activated.connect(self.void_bill)
 
+        # F3 for Advanced Search (Phase 6)
+        self.shortcut_f3 = QShortcut(QKeySequence("F3"), self)
+        self.shortcut_f3.activated.connect(self.open_advanced_search)
+
         # Shortcuts for Enter Key (Decentralized Handling)
         self.shortcut_enter = QShortcut(QKeySequence(Qt.Key.Key_Return), self)
         self.shortcut_enter.activated.connect(self.process_barcode)
@@ -197,10 +238,6 @@ class SalesView(QWidget):
 
     def process_barcode_external(self, barcode):
         """Handle barcode from global scanner hook."""
-        # Ensure we are in keyboard mode or just process it?
-        # Ideally, scanner should work in both modes.
-        # If in visual mode, we might want to just add item directly without input field focus
-        # But for now, let's switch to keyboard mode to show feedback
         if self.stack_layout.currentIndex() == 1:
             self.toggle_view()
 
@@ -208,36 +245,50 @@ class SalesView(QWidget):
         self.process_barcode()
 
     def process_barcode(self):
-        barcode = self.barcode_input.text().strip()
-        if not barcode:
+        """Process product search using current search mode (Phase 6)."""
+        query = self.barcode_input.text().strip()
+        if not query:
             return
 
-        product = ProductService.get_by_barcode(barcode)
-        if product:
-            self.cart_service.add_item(product)
+        # Use product_service with current search mode
+        products = self.product_service.search_products(
+            query, mode=self.current_search_mode
+        )
+
+        if len(products) == 1:
+            self.cart_service.add_item(products[0])
             self.update_cart_display()
             self.barcode_input.clear()
+        elif len(products) > 1:
+            # Open advanced search with pre-filled query
+            dialog = AdvancedSearchDialog(self)
+            dialog.search_input.setText(query)
+            dialog.perform_search()
+            dialog.product_selected.connect(self.on_advanced_search_product_selected)
+            dialog.exec()
+            self.barcode_input.clear()
         else:
-            # Try search if not barcode
-            products = ProductService.search(barcode)
-            if len(products) == 1:
-                self.cart_service.add_item(products[0])
-                self.update_cart_display()
-                self.barcode_input.clear()
-            elif len(products) > 1:
-                QMessageBox.information(
-                    self,
-                    "Multiple Found",
-                    "Multiple products found. Please refine search.",
-                )
-            else:
-                QMessageBox.warning(self, "Not Found", "Product not found.")
+            QMessageBox.warning(self, "Not Found", "Product not found.")
 
     def update_cart_display(self):
+        """Update cart display with visual indicators (Phase 6)."""
         self.cart_table.setRowCount(0)
         for row, item in enumerate(self.cart_service.items):
             self.cart_table.insertRow(row)
-            self.cart_table.setItem(row, 0, QTableWidgetItem(item["product"].name_en))
+
+            # Product Name (with note indicator)
+            name = item["product"].name_en
+            if item.get("note"):
+                name = f"📝 {name}"
+            name_item = QTableWidgetItem(name)
+
+            # Highlight if discounted
+            if item.get("is_discounted", False):
+                bg_color = QColor(220, 255, 220)  # Pale green
+                brush = QBrush(bg_color)
+                name_item.setBackground(brush)
+
+            self.cart_table.setItem(row, 0, name_item)
             self.cart_table.setItem(
                 row, 1, QTableWidgetItem(f"{item['unit_price']:.2f}")  # noqa: E231
             )
@@ -259,9 +310,6 @@ class SalesView(QWidget):
             cust_text = f"{self.customer.name} ({self.customer.phone})"
             self.lbl_customer.setText(cust_text)
             self.lbl_points.setText(f"Points: {self.customer.loyalty_points}")
-        else:
-            # Keep previous customer selection on cancel
-            pass
 
     def process_payment(self):
         totals = self.cart_service.get_totals()
@@ -271,7 +319,6 @@ class SalesView(QWidget):
         dialog = PaymentDialog(totals["subtotal"], self)
         if dialog.exec():
             payments, _ = dialog.payment_data
-            # Use selected customer ID if available
             customer_id = self.customer.id if self.customer else None
 
             success = TransactionService.process_sale(
@@ -338,7 +385,7 @@ class SalesView(QWidget):
             if dialog.exec():
                 authorized_user = dialog.authorized_user
             else:
-                return  # Cancelled
+                return
 
         # 2. Confirm Void
         reply = QMessageBox.question(
@@ -351,6 +398,119 @@ class SalesView(QWidget):
         if reply == QMessageBox.StandardButton.Yes:
             self.cart_service.clear()
             self.update_cart_display()
-
-            # Log the action (Optional)
             print(f"Cart Voided by {authorized_user.username}")
+
+    # --- Phase 6: Advanced Search & Cart Enhancements ---
+
+    def set_search_mode(self, mode: str, icon: str):
+        """Update search mode and icon."""
+        self.current_search_mode = mode
+        self.search_mode_btn.setText(icon)
+        self.barcode_input.setFocus()
+
+    def setup_autocomplete(self):
+        """Setup QCompleter for product names."""
+        names = self.product_service.get_top_products(100)
+        completer = QCompleter(names, self)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.barcode_input.setCompleter(completer)
+
+    def show_cart_context_menu(self, position):
+        """Display context menu for cart items."""
+        if self.cart_table.rowCount() == 0:
+            return
+
+        menu = QMenu(self)
+
+        add_note_action = QAction("📝 Add Note", self)
+        add_note_action.triggered.connect(self.add_line_note)
+        menu.addAction(add_note_action)
+
+        change_qty_action = QAction("📊 Change Quantity", self)
+        change_qty_action.triggered.connect(self.change_line_quantity)
+        menu.addAction(change_qty_action)
+
+        discount_action = QAction("💰 Apply Line Discount", self)
+        discount_action.triggered.connect(self.apply_line_discount)
+        menu.addAction(discount_action)
+
+        remove_action = QAction("❌ Remove Item", self)
+        remove_action.triggered.connect(self.remove_line_item)
+        menu.addAction(remove_action)
+
+        menu.exec(self.cart_table.viewport().mapToGlobal(position))
+
+    def add_line_note(self):
+        """Add note to selected cart line."""
+        row = self.cart_table.currentRow()
+        if row >= 0:
+            note, ok = QInputDialog.getText(
+                self, "Line Note", "Enter note for this item:"
+            )
+            if ok and note:
+                self.cart_service.items[row]["note"] = note
+                self.update_cart_display()
+
+    def change_line_quantity(self):
+        """Change quantity of selected cart line."""
+        row = self.cart_table.currentRow()
+        if row >= 0:
+            current_qty = self.cart_service.items[row]["qty"]
+            qty, ok = QInputDialog.getDouble(
+                self,
+                "Change Quantity",
+                "Enter new quantity:",
+                value=float(current_qty),
+                min=0.001,
+                max=999999,
+                decimals=3,
+            )
+            if ok:
+                self.cart_service.items[row]["qty"] = qty
+                self.cart_service.items[row]["total"] = (
+                    qty * self.cart_service.items[row]["unit_price"]
+                )
+                self.update_cart_display()
+
+    def apply_line_discount(self):
+        """Apply discount to selected cart line."""
+        row = self.cart_table.currentRow()
+        if row >= 0:
+            discount, ok = QInputDialog.getDouble(
+                self,
+                "Line Discount",
+                "Enter discount amount:",
+                min=0,
+                max=999999,
+                decimals=2,
+            )
+            if ok:
+                self.cart_service.items[row]["discount"] = discount
+                self.cart_service.items[row]["is_discounted"] = discount > 0
+                self.cart_service.items[row]["total"] = (
+                    self.cart_service.items[row]["qty"]
+                    * self.cart_service.items[row]["unit_price"]
+                    - discount
+                )
+                self.update_cart_display()
+
+    def remove_line_item(self):
+        """Remove selected item from cart."""
+        row = self.cart_table.currentRow()
+        if row >= 0:
+            del self.cart_service.items[row]
+            self.update_cart_display()
+
+    def open_advanced_search(self):
+        """Open advanced search dialog (F3)."""
+        dialog = AdvancedSearchDialog(self)
+        dialog.product_selected.connect(self.on_advanced_search_product_selected)
+        dialog.exec()
+        self.barcode_input.setFocus()
+
+    def on_advanced_search_product_selected(self, product):
+        """Handle product selection from advanced search."""
+        self.cart_service.add_item(product)
+        self.update_cart_display()
+        self.barcode_input.setFocus()

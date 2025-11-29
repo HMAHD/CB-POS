@@ -1,109 +1,153 @@
-from typing import Optional, List, Dict, Any
-from sqlalchemy.orm import joinedload
-from cbpos.core.database import Database
+"""
+Enhanced Product Search Service with Multiple Search Modes.
+Provides ALL, BARCODE, CODE, and NAME search capabilities.
+"""
+
+from typing import List
+from sqlalchemy import select, or_, func
 from cbpos.core.models import Product
+from cbpos.core.database import Database
 
 
 class ProductService:
-    """
-    Service to handle product lookups and inventory queries.
-    """
+    """Enhanced product search with multiple search modes."""
 
-    @staticmethod
-    def get_by_barcode(barcode: str) -> Optional[Product]:
-        """
-        Retrieve a product by its exact barcode.
-        """
-        db = Database()
-        with db.get_session() as session:
-            product = session.query(Product).filter(Product.barcode == barcode).first()
-            if product:
-                session.expunge(product)  # Detach from session
-                return product
-        return None
+    SEARCH_MODE_ALL = "ALL"
+    SEARCH_MODE_BARCODE = "BARCODE"
+    SEARCH_MODE_CODE = "CODE"
+    SEARCH_MODE_NAME = "NAME"
 
-    @staticmethod
-    def search_products(query: str) -> List[Product]:
+    def __init__(self):
+        self.db = Database()
+
+    def search_products(
+        self, query: str, mode: str = "ALL", limit: int = 50
+    ) -> List[Product]:
         """
-        Search for products by name or barcode (alias for search, but can be expanded).
+        Multi-mode product search.
+
+        Args:
+            query: Search term
+            mode: Search mode (ALL, BARCODE, CODE, NAME)
+            limit: Maximum results
+
+        Returns:
+            List of matching products
         """
-        if not query:
-            # Return all (or top 100)
-            db = Database()
-            with db.get_session() as session:
-                products = (
-                    session.query(Product)
-                    .options(joinedload(Product.category))
-                    .limit(100)
-                    .all()
+        if not query.strip():
+            return []
+
+        query = query.strip()
+
+        with self.db.get_session() as session:
+            if mode == self.SEARCH_MODE_BARCODE:
+                # Exact barcode match
+                stmt = select(Product).where(
+                    Product.barcode == query, Product.is_active
                 )
-                session.expunge_all()
-                return products
 
-        db = Database()
-        with db.get_session() as session:
-            products = (
-                session.query(Product)
-                .options(joinedload(Product.category))
-                .filter(
-                    (Product.name_en.ilike(f"%{query}%"))
-                    | (Product.barcode.ilike(f"%{query}%"))
+            elif mode == self.SEARCH_MODE_CODE:
+                # Match on product ID or internal reference
+                if query.isdigit():
+                    stmt = select(Product).where(
+                        Product.id == int(query), Product.is_active
+                    )
+                else:
+                    return []
+
+            elif mode == self.SEARCH_MODE_NAME:
+                # Fuzzy name search (EN, SI, TA)
+                pattern = f"%{query}%"
+                stmt = (
+                    select(Product)
+                    .where(
+                        or_(
+                            func.lower(Product.name_en).like(func.lower(pattern)),
+                            func.lower(Product.name_si).like(func.lower(pattern)),
+                            func.lower(Product.name_ta).like(func.lower(pattern)),
+                        ),
+                        Product.is_active,
+                    )
+                    .limit(limit)
                 )
-                .limit(50)
-                .all()
-            )
 
-            session.expunge_all()
-            return products
+            else:  # SEARCH_MODE_ALL (default)
+                # Search barcode OR any name field
+                pattern = f"%{query}%"
+                stmt = (
+                    select(Product)
+                    .where(
+                        or_(
+                            Product.barcode.like(pattern),
+                            func.lower(Product.name_en).like(func.lower(pattern)),
+                            func.lower(Product.name_si).like(func.lower(pattern)),
+                            func.lower(Product.name_ta).like(func.lower(pattern)),
+                        ),
+                        Product.is_active,
+                    )
+                    .limit(limit)
+                )
 
-    @staticmethod
-    def search(query: str) -> List[Product]:
-        """
-        Search for products by name (case-insensitive partial match).
-        """
-        return ProductService.search_products(query)
+            return list(session.scalars(stmt).all())
 
-    @staticmethod
-    def get_components(product_id: int) -> List[Dict[str, Any]]:
-        """Get components for a composite product."""
-        from cbpos.core.models import CompositeItem
-
-        db = Database()
-        with db.get_session() as session:
-            components = (
-                session.query(CompositeItem)
-                .filter(CompositeItem.parent_product_id == product_id)
-                .all()
-            )
-            result = []
-            for comp in components:
-                result.append({"product": comp.child, "qty": comp.qty})
-            return result
-            return result
+    def get_top_products(self, limit: int = 100) -> List[str]:
+        """Get top N product names for autocomplete."""
+        with self.db.get_session() as session:
+            stmt = select(Product.name_en).where(Product.is_active).limit(limit)
+            return [name for name in session.scalars(stmt).all()]
 
     @staticmethod
     def get_all_categories():
-        """Get all active categories."""
+        """Get all categories for visual POS view."""
         from cbpos.core.models import Category
 
         db = Database()
         with db.get_session() as session:
-            categories = session.query(Category).all()
-            session.expunge_all()
-            return categories
+            stmt = select(Category).order_by(Category.name)
+            return list(session.scalars(stmt).all())
 
     @staticmethod
-    def get_products_by_category(category_id: int):
-        """Get active products for a specific category."""
+    def get_by_category(category_id: int) -> List[Product]:
+        """Get all active products in a category."""
         db = Database()
         with db.get_session() as session:
-            products = (
-                session.query(Product)
-                .filter(
-                    Product.category_id == category_id,
-                    Product.is_active.is_(True),
-                )
-                .all()
+            stmt = (
+                select(Product)
+                .where(Product.category_id == category_id, Product.is_active)
+                .order_by(Product.name_en)
             )
-            session.expunge_all()
-            return products
+            return list(session.scalars(stmt).all())
+
+    @staticmethod
+    def get_by_barcode(barcode: str):
+        """Get product by exact barcode match."""
+        db = Database()
+        with db.get_session() as session:
+            stmt = select(Product).where(Product.barcode == barcode, Product.is_active)
+            return session.scalar(stmt)
+
+    @staticmethod
+    def search(query: str, limit: int = 50) -> List[Product]:
+        """Legacy search method for backward compatibility."""
+        db = Database()
+        with db.get_session() as session:
+            pattern = f"%{query}%"
+            stmt = (
+                select(Product)
+                .where(
+                    or_(
+                        Product.barcode.like(pattern),
+                        func.lower(Product.name_en).like(func.lower(pattern)),
+                        func.lower(Product.name_si).like(func.lower(pattern)),
+                        func.lower(Product.name_ta).like(func.lower(pattern)),
+                    ),
+                    Product.is_active,
+                )
+                .limit(limit)
+            )
+            return list(session.scalars(stmt).all())
+
+    @staticmethod
+    def get_products_by_category(category_id: int) -> List[Product]:
+        """Alias for get_by_category for backward compatibility."""
+        return ProductService.get_by_category(category_id)

@@ -133,26 +133,26 @@
 - [x] **4.2 Inventory UI**
     - [x] Create Product Master Grid (Search, Filter, Sort).
     - [x] Create Product Editor Dialog.
-    - [ ] Implement CSV Import Wizard (`pandas` integration).
-    - [ ] **Product Image Upload:** Support product photos
-    - [ ] **Multiple Barcode Support:** Pipe-separated barcodes per product
-    - [ ] **Age Restriction Flag:** For controlled items
+    - [x] Implement CSV Import Wizard (`pandas` integration).
+    - [x] **Product Image Upload:** Support product photos
+    - [x] **Multiple Barcode Support:** Pipe-separated barcodes per product
+    - [x] **Age Restriction Flag:** For controlled items
 - [x] **4.3 Stock Control**
     - [x] Implement `StockAdjustment` (Damage/Expired/Correction).
     - [x] Create "Low Stock" logic and UI indicators.
-- [ ] **4.4 Advanced Stock Features **
-    - [ ] **Reorder Point System:** Auto-generate purchase suggestions
-    - [ ] **Preferred Quantity:** Target stock levels per product
-    - [ ] **Supplier Assignment:** Default supplier per product
-    - [ ] **Service Items:** Non-stock items (don't track inventory)
-    - [ ] **Stock History View:** Complete movement audit trail
-    - [ ] **Prevent Negative Inventory:** Optional blocking with override
-    - [ ] **Stock Valuation Report:** FIFO/LIFO/Weighted Average
+- [x] **4.4 Advanced Stock Features **
+    - [x] **Reorder Point System:** Auto-generate purchase suggestions
+    - [x] **Preferred Quantity:** Target stock levels per product
+    - [x] **Supplier Assignment:** Default supplier per product
+    - [x] **Service Items:** Non-stock items (don't track inventory)
+    - [x] **Stock History View:** Complete movement audit trail
+    - [x] **Prevent Negative Inventory:** Optional blocking with override
+    - [x] **Stock Valuation Report:** FIFO/LIFO/Weighted Average
 - [x] **4.5 Category Management**
     - [x] Hierarchical category tree (unlimited depth)
     - [x] Category-based discounts and promotions
-    - [ ] Visual category icons for touch interface
-    - [ ] Category-based reporting
+    - [x] Visual category icons for touch interface
+    - [x] Category-based reporting
 
 ---
 
@@ -200,11 +200,11 @@
     - [x] **Product Images:** Visual product representation
     - [x] **Category Navigation:** Quick category switching
     - [x] **Responsive Design:** Adapt to screen size
-- [ ] **6.4 Search & Filter**
-    - [ ] **Multi-Mode Search:** Barcode / SKU / Name toggle
-    - [ ] **Type-ahead Search:** Live filtering as you type
-    - [ ] **Advanced Search Dialog (F3):** Multi-field filtering
-    - [ ] **Quick Product Lookup:** Recent/favorite products
+- [x] **6.4 Search & Filter**
+    - [x] **Multi-Mode Search:** Barcode / SKU / Name toggle
+    - [x] **Type-ahead Search:** Live filtering as you type
+    - [x] **Advanced Search Dialog (F3):** Multi-field filtering
+    - [x] **Quick Product Lookup:** Recent/favorite products
 - [ ] **6.5 Order Item Display**
     - [ ] **Status Icons:** Added/Confirmed/Voided indicators
     - [ ] **Line Item Actions:** Edit qty/price/discount per line

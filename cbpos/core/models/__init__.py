@@ -167,6 +167,10 @@ class Sale(Document):
     tax_vat: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     tax_sscl: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     net_revenue: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    additional_discount_type: Mapped[str] = mapped_column(String(20), default="NONE")
+    additional_discount_value: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), default=0
+    )
     payment_method: Mapped[str] = mapped_column(
         String(20), nullable=False
     )  # Primary method
@@ -321,6 +325,12 @@ class SaleItem(Base):
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
     qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    original_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    discount_type: Mapped[str] = mapped_column(
+        String(20), default="NONE"
+    )  # NONE, PERCENTAGE, FIXED
+    discount_value: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    is_manual_price: Mapped[bool] = mapped_column(Boolean, default=False)
     subtotal: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
     sale: Mapped["Sale"] = relationship(back_populates="items")

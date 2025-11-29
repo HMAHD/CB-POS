@@ -205,11 +205,11 @@
     - [x] **Type-ahead Search:** Live filtering as you type
     - [x] **Advanced Search Dialog (F3):** Multi-field filtering
     - [x] **Quick Product Lookup:** Recent/favorite products
-- [ ] **6.5 Order Item Display**
-    - [ ] **Status Icons:** Added/Confirmed/Voided indicators
-    - [ ] **Line Item Actions:** Edit qty/price/discount per line
-    - [ ] **Item Notes:** Add special instructions
-    - [ ] **Item Colors:** Visual status differentiation
+- [x] **6.5 Order Item Display**
+    - [x] **Status Icons:** Added/Confirmed/Voided indicators
+    - [x] **Line Item Actions:** Edit qty/price/discount per line
+    - [x] **Item Notes:** Add special instructions
+    - [x] **Item Colors:** Visual status differentiation
 
 ---
 
@@ -223,17 +223,17 @@
 - [x] **7.2 Calculation Engine**
     - [x] Implement `Decimal` based math (No floats).
     - [x] Calculate `Subtotal`, `LineDiscount`, `CartDiscount`, `Total`.
-- [ ] **7.3 Advanced Discount System **
-    - [ ] **Item-Level Discounts:** Percentage or fixed amount
-    - [ ] **Cart-Level Discounts:** Applied to total
-    - [ ] **Customer Discounts:** Auto-apply from customer profile
-    - [ ] **Product-Specific Discounts:** Per product rules
-    - [ ] **Group Discounts:** Category-based discounts
-    - [ ] **Discount Precedence:** Product > Group > Customer
-- [ ] **7.4 Price Override**
-    - [ ] **Manual Price Change:** If allowed by product settings
-    - [ ] **Permission Check:** Require higher access level
-    - [ ] **Price History:** Log original price
+- [x] **7.3 Advanced Discount System **
+    - [x] **Item-Level Discounts:** Percentage or fixed amount
+    - [x] **Cart-Level Discounts:** Applied to total
+    - [x] **Customer Discounts:** Auto-apply from customer profile
+    - [x] **Product-Specific Discounts:** Per product rules
+    - [x] **Group Discounts:** Category-based discounts
+    - [x] **Discount Precedence:** Product > Group > Customer
+- [x] **7.4 Price Override**
+    - [x] **Manual Price Change:** If allowed by product settings
+    - [x] **Permission Check:** Require higher access level
+    - [x] **Price History:** Log original price
 
 ---
 

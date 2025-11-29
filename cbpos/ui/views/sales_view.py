@@ -22,6 +22,7 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.ui.dialogs.payment_dialog import PaymentDialog
+from cbpos.ui.dialogs.discount_dialog import DiscountDialog
 from cbpos.ui.dialogs.customer_selection_dialog import (  # noqa: F401
     CustomerSelectionDialog,
 )
@@ -282,16 +283,54 @@ class SalesView(QWidget):
                 name = f"📝 {name}"
             name_item = QTableWidgetItem(name)
 
+            # Price Display (Strikethrough if discounted/overridden)
+            if (
+                item.get("original_price")
+                and item["unit_price"] < item["original_price"]
+            ):
+                # We can't easily do rich text in QTableWidgetItem without a delegate,
+                # but we can show "Old -> New" or just New.
+                # User requested Strikethrough.
+                # Let's use a custom widget or just text for now if simple.
+                # Actually, QTableWidgetItem doesn't support HTML directly easily for strikethrough without setFont.
+                # Let's try to simulate it or just show "Old -> New" for clarity if strikethrough is hard.
+                # Wait, user explicitly asked for Strikethrough.
+                # I will use a QFont with setStrikeOut for the original price, but I need two prices.
+                # So I will format it as: "~~100.00~~ 90.00"
+                # Since I can't style parts of text in one item easily, I'll just show the final price
+                # and maybe a tooltip or color indication, OR use a custom cell widget.
+                # Given constraints, I'll use the "~~100.00~~ 90.00" string format which is not real strikethrough.
+                # BETTER APPROACH: Use a cell widget (QLabel) that supports HTML.
+
+                lbl_price = QLabel()
+                lbl_price.setText(
+                    "<s>{:.2f}</s> <b>{:.2f}</b>".format(
+                        item["original_price"], item["unit_price"]
+                    )
+                )
+                lbl_price.setAlignment(
+                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+                )
+                lbl_price.setStyleSheet("background-color: transparent;")
+                self.cart_table.setCellWidget(row, 1, lbl_price)
+            else:
+                self.cart_table.setItem(
+                    row, 1, QTableWidgetItem(f"{item['unit_price']:.2f}")  # noqa: E231
+                )
+
             # Highlight if discounted
-            if item.get("is_discounted", False):
+            if item.get("discount_type") != "NONE" or item.get("is_manual_price"):
                 bg_color = QColor(220, 255, 220)  # Pale green
                 brush = QBrush(bg_color)
                 name_item.setBackground(brush)
 
             self.cart_table.setItem(row, 0, name_item)
-            self.cart_table.setItem(
-                row, 1, QTableWidgetItem(f"{item['unit_price']:.2f}")  # noqa: E231
-            )
+            # If we didn't set a cell widget for price, we need to set the item
+            if not self.cart_table.cellWidget(row, 1):
+                self.cart_table.setItem(
+                    row, 1, QTableWidgetItem(f"{item['unit_price']:.2f}")  # noqa: E231
+                )
+
             self.cart_table.setItem(
                 row, 2, QTableWidgetItem(f"{item['qty']:.3f}")  # noqa: E231
             )
@@ -300,7 +339,7 @@ class SalesView(QWidget):
             )
 
         totals = self.cart_service.get_totals()
-        self.total_label.setText(f"Rs. {totals['subtotal']:.2f}")  # noqa: E231
+        self.total_label.setText(f"Rs. {totals['final_total']:.2f}")  # noqa: E231
         self.cart_table.scrollToBottom()
 
     def select_customer(self):
@@ -435,6 +474,10 @@ class SalesView(QWidget):
         discount_action.triggered.connect(self.apply_line_discount)
         menu.addAction(discount_action)
 
+        price_action = QAction("🏷️ Change Price", self)
+        price_action.triggered.connect(self.change_line_price)
+        menu.addAction(price_action)
+
         remove_action = QAction("❌ Remove Item", self)
         remove_action.triggered.connect(self.remove_line_item)
         menu.addAction(remove_action)
@@ -477,23 +520,49 @@ class SalesView(QWidget):
         """Apply discount to selected cart line."""
         row = self.cart_table.currentRow()
         if row >= 0:
-            discount, ok = QInputDialog.getDouble(
-                self,
-                "Line Discount",
-                "Enter discount amount:",
-                min=0,
-                max=999999,
-                decimals=2,
-            )
-            if ok:
-                self.cart_service.items[row]["discount"] = discount
-                self.cart_service.items[row]["is_discounted"] = discount > 0
-                self.cart_service.items[row]["total"] = (
-                    self.cart_service.items[row]["qty"]
-                    * self.cart_service.items[row]["unit_price"]
-                    - discount
-                )
+            dialog = DiscountDialog(self)
+            if dialog.exec():
+                disc_type, disc_value = dialog.get_data()
+                self.cart_service.apply_line_discount(row, disc_type, disc_value)
                 self.update_cart_display()
+
+    def change_line_price(self):
+        """Override price of selected cart line (Manager Only)."""
+        row = self.cart_table.currentRow()
+        if row < 0:
+            return
+
+        # 1. Check Permission
+        from cbpos.core.services.auth_service import AuthService
+        from cbpos.core.services.permission_service import PermissionService
+        from cbpos.ui.dialogs.manager_override_dialog import ManagerOverrideDialog
+
+        current_user = AuthService.get_current_user()
+        authorized_user = current_user
+
+        if not PermissionService.user_has_permission(current_user, "change_price"):
+            # Request Override
+            dialog = ManagerOverrideDialog("change_price", self)
+            if dialog.exec():
+                authorized_user = dialog.authorized_user
+            else:
+                return
+
+        # 2. Get New Price
+        current_price = self.cart_service.items[row]["unit_price"]
+        new_price, ok = QInputDialog.getDouble(
+            self,
+            "Change Price",
+            "Enter new price:",
+            value=float(current_price),
+            min=0.01,
+            max=999999,
+            decimals=2,
+        )
+
+        if ok:
+            self.cart_service.override_price(row, new_price, authorized_user)
+            self.update_cart_display()
 
     def remove_line_item(self):
         """Remove selected item from cart."""

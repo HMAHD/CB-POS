@@ -244,6 +244,9 @@ class Product(Base):
     parent_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("products.id"), nullable=True
     )
+    default_supplier_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("suppliers.id"), nullable=True
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     category: Mapped["Category"] = relationship(back_populates="products")
@@ -258,6 +261,9 @@ class Product(Base):
     )
     suppliers: Mapped[List["Supplier"]] = relationship(
         secondary=product_suppliers, back_populates="products"
+    )
+    default_supplier: Mapped[Optional["Supplier"]] = relationship(
+        "Supplier", foreign_keys=[default_supplier_id]
     )
 
 

@@ -89,3 +89,67 @@ class ReportService:
                 final_data.append({"hour": h, "sales": sales_by_hour.get(h, 0)})
 
             return final_data
+
+    def get_stock_valuation(self) -> Dict[str, Any]:
+        """
+        Calculate stock valuation metrics.
+
+        Returns:
+            dict: {
+                'total_cost_value': Decimal,
+                'total_retail_value': Decimal,
+                'potential_profit': Decimal,
+                'category_breakdown': List[dict]
+            }
+        """
+        with self.db.get_session() as session:
+            from cbpos.core.models import Category
+            from decimal import Decimal
+
+            # Calculate total stock value
+            total_cost = session.scalar(
+                select(func.sum(Product.cost * Product.stock_qty)).where(
+                    Product.is_active == True  # noqa: E712
+                )
+            ) or Decimal("0.00")
+
+            total_retail = session.scalar(
+                select(func.sum(Product.price * Product.stock_qty)).where(
+                    Product.is_active == True  # noqa: E712
+                )
+            ) or Decimal("0.00")
+
+            potential_profit = total_retail - total_cost
+
+            # Category breakdown
+            category_results = session.execute(
+                select(
+                    Category.name,
+                    func.sum(Product.cost * Product.stock_qty).label("cost_value"),
+                    func.sum(Product.price * Product.stock_qty).label("retail_value"),
+                    func.count(Product.id).label("product_count"),
+                )
+                .join(Product, Product.category_id == Category.id)
+                .where(Product.is_active == True)  # noqa: E712
+                .group_by(Category.id)
+                .order_by(desc("retail_value"))
+            ).all()
+
+            category_breakdown = [
+                {
+                    "category": name,
+                    "cost_value": cost_val or Decimal("0.00"),
+                    "retail_value": retail_val or Decimal("0.00"),
+                    "product_count": count,
+                    "profit": (retail_val or Decimal("0.00"))
+                    - (cost_val or Decimal("0.00")),
+                }
+                for name, cost_val, retail_val, count in category_results
+            ]
+
+            return {
+                "total_cost_value": total_cost,
+                "total_retail_value": total_retail,
+                "potential_profit": potential_profit,
+                "category_breakdown": category_breakdown,
+            }

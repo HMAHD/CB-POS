@@ -13,7 +13,7 @@ from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex
 from PyQt6.QtGui import QColor, QBrush
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.services.import_service import ImportService
-from cbpos.ui.dialogs.product_editor import ProductEditor
+from cbpos.ui.dialogs.product_editor import ProductEditorDialog
 
 
 class InventoryModel(QAbstractTableModel):
@@ -50,7 +50,7 @@ class InventoryModel(QAbstractTableModel):
                 return "kg" if product.is_weighted else "unit"
 
         elif role == Qt.ItemDataRole.BackgroundRole:
-            if product.stock_qty <= product.reorder_level:
+            if product.stock_qty <= product.reorder_point:
                 return QBrush(QColor(255, 200, 200))  # Light Red
 
         return None
@@ -138,13 +138,13 @@ class InventoryView(QWidget):
         self.model.update_data(filtered)
 
     def open_add_dialog(self):
-        dialog = ProductEditor(parent=self)
+        dialog = ProductEditorDialog(parent=self)
         if dialog.exec():
             self.load_data()
 
     def open_edit_dialog(self, index):
         product = self.model.products[index.row()]
-        dialog = ProductEditor(product=product, parent=self)
+        dialog = ProductEditorDialog(product=product, parent=self)
         if dialog.exec():
             self.load_data()
 

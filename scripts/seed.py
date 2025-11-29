@@ -113,16 +113,16 @@ def seed_data():
         print("Seeding Suppliers...")
         suppliers = [
             Supplier(
-                company_name="Munchee (CBL)",
-                contact_person="Kamal",
+                company_name="Munchee Distributors",
+                contact_person="Kamal Perera",
                 phone="0112223333",
-                tax_number="TAX-001",
+                tax_number="TAX-MUNCHEE-001",
             ),
             Supplier(
-                company_name="Highland",
-                contact_person="Nimal",
+                company_name="City Imports",
+                contact_person="Nimal Silva",
                 phone="0114445555",
-                tax_number="TAX-002",
+                tax_number="TAX-CITY-002",
             ),
         ]
         session.add_all(suppliers)
@@ -133,35 +133,6 @@ def seed_data():
             Product(
                 barcode="47920240",
                 name_en="Munchee Super Cream Cracker 490g",
-                price=Decimal("650.00"),
-                cost=Decimal("500.00"),
-                stock_qty=Decimal("100.000"),
-                category=cat_map["Biscuits"],
-            ),
-            Product(
-                barcode="47900001",
-                name_en="Highland Full Cream Milk 1L",
-                price=Decimal("520.00"),
-                cost=Decimal("450.00"),
-                stock_qty=Decimal("50.000"),
-                category=cat_map["Beverages"],
-            ),
-            Product(
-                barcode="1001",
-                name_en="Keeris Samba 1kg",
-                price=Decimal("320.00"),
-                cost=Decimal("280.00"),
-                stock_qty=Decimal("1000.000"),
-                is_weighted=True,
-                category=cat_map["Essentials"],
-            ),
-            Product(
-                barcode="2001",
-                name_en="Carrot",
-                price=Decimal("450.00"),
-                cost=Decimal("300.00"),
-                stock_qty=Decimal("50.000"),
-                is_weighted=True,
                 category=cat_map["Vegetables"],
             ),
             Product(

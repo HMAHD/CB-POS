@@ -129,6 +129,14 @@ class ProductEditor(QDialog):
         layout.addRow("Stock Qty:", self.stock_input)
         layout.addRow("Reorder Point:", self.reorder_input)
         layout.addRow("Preferred Qty:", self.preferred_qty_input)
+
+        # Default Supplier
+        self.supplier_combo = QComboBox()
+        self.supplier_combo.addItem("-- No Default Supplier --", None)
+        for supplier in self.suppliers:
+            self.supplier_combo.addItem(supplier.company_name, supplier.id)
+        layout.addRow("Default Supplier:", self.supplier_combo)
+
         layout.addRow("", self.weighted_check)
         layout.addRow("", self.service_check)
 
@@ -281,6 +289,15 @@ class ProductEditor(QDialog):
         self.weighted_check.setChecked(self.product.is_weighted)
         self.service_check.setChecked(self.product.is_service)
 
+        # Load supplier
+        if (
+            hasattr(self.product, "default_supplier_id")
+            and self.product.default_supplier_id
+        ):
+            idx = self.supplier_combo.findData(self.product.default_supplier_id)
+            if idx >= 0:
+                self.supplier_combo.setCurrentIndex(idx)
+
         if self.product.image_path:
             import os
 
@@ -329,6 +346,7 @@ class ProductEditor(QDialog):
             "stock_qty": Decimal(str(self.stock_input.value())),
             "reorder_point": Decimal(str(self.reorder_input.value())),
             "preferred_qty": Decimal(str(self.preferred_qty_input.value())),
+            "default_supplier_id": self.supplier_combo.currentData(),
             "is_weighted": self.weighted_check.isChecked(),
             "is_service": self.service_check.isChecked(),
             "image_path": getattr(self, "current_image_path", None),

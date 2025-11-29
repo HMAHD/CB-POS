@@ -148,9 +148,9 @@
     - [ ] **Stock History View:** Complete movement audit trail
     - [ ] **Prevent Negative Inventory:** Optional blocking with override
     - [ ] **Stock Valuation Report:** FIFO/LIFO/Weighted Average
-- [ ] **4.5 Category Management**
-    - [ ] Hierarchical category tree (unlimited depth)
-    - [ ] Category-based discounts and promotions
+- [x] **4.5 Category Management**
+    - [x] Hierarchical category tree (unlimited depth)
+    - [x] Category-based discounts and promotions
     - [ ] Visual category icons for touch interface
     - [ ] Category-based reporting
 

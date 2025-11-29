@@ -173,8 +173,14 @@ class TransactionService:
 
             return True
 
+        except ValueError as e:
+            # Handle insufficient stock or validation errors
+            error_msg = str(e)
+            print("Transaction Error: {0}".format(error_msg))
+            session.rollback()
+            raise  # Re-raise to allow UI to handle
         except Exception as e:
-            print(f"Transaction Failed: {e}")
+            print("Transaction Failed: {0}".format(e))
             session.rollback()
             return False
         finally:

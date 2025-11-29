@@ -15,7 +15,7 @@ class ConfigService:
     DEFAULTS = {
         "shop_name": "Ceylon Byte POS",
         "shop_address": "123, Tech Street, Colombo",
-        "shop_phone": "+94 77 123 4567",
+        "shop_phone": "+94767378901",
         "vat_number": "",
         "printer_type": "USB",  # USB, NETWORK, MOCK
         "printer_path": "",  # e.g., COM3, 192.168.1.100, or empty for auto-USB
@@ -35,6 +35,8 @@ class ConfigService:
         "company_bank_name": "Commercial Bank of Ceylon",
         "company_account_number": "1234567890",
         "company_bank_branch": "Colombo Fort",
+        # Inventory Control
+        "allow_negative_stock": False,  # Allow overselling
     }
 
     _settings: Dict[str, Any] = {}

@@ -131,12 +131,6 @@ class SalesView(QWidget):
         self.btn_void.clicked.connect(self.void_bill)
         btn_layout.addWidget(self.btn_void, 2, 0, 1, 2)
 
-        # Temporary Inventory Button
-        self.btn_inv = QPushButton("INVENTORY")
-        self.btn_inv.setStyleSheet("background-color: #AAAAAA; color: black;")
-        self.btn_inv.clicked.connect(self.open_inventory)
-        btn_layout.addWidget(self.btn_inv, 3, 0, 1, 2)
-
         kb_layout.addLayout(btn_layout)
         kb_layout.addStretch()
 
@@ -360,11 +354,3 @@ class SalesView(QWidget):
 
             # Log the action (Optional)
             print(f"Cart Voided by {authorized_user.username}")
-
-    def open_inventory(self):
-        # Temporary access to Inventory
-        from cbpos.ui.views.inventory_master_view import InventoryMasterView
-
-        self.inventory_window = InventoryMasterView()
-        self.inventory_window.resize(1024, 768)
-        self.inventory_window.show()

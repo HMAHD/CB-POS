@@ -16,15 +16,33 @@ class StockService:
     ) -> Optional[StockMovement]:
         """
         Record a stock movement and update product quantity.
-        Atomic operation.
+        Atomic operation with negative stock validation.
         """
         with get_db_session() as session:
             product = session.get(Product, product_id)
             if not product:
-                raise ValueError(f"Product {product_id} not found")
+                raise ValueError("Product {0} not found".format(product_id))
 
+            # Skip inventory tracking for service items
             if product.is_service:
                 return None
+
+            # Check for negative stock (if deducting)
+            if qty_change < 0:
+                from cbpos.core.services.config_service import ConfigService
+
+                config = ConfigService.get_all()
+                allow_negative = config.get("allow_negative_stock", False)
+
+                new_balance = product.stock_qty + qty_change
+                if not allow_negative and new_balance < 0:
+                    raise ValueError(
+                        "Insufficient Stock: {0} (Available: {1:.3f}, Required: {2:.3f})".format(
+                            product.name_en,
+                            product.stock_qty,
+                            abs(qty_change),
+                        )
+                    )
 
             # Update Stock
             product.stock_qty += qty_change
@@ -45,6 +63,7 @@ class StockService:
 
     @staticmethod
     def get_history(product_id: int) -> List[StockMovement]:
+        """Get stock movement history for a product."""
         with get_db_session() as session:
             stmt = (
                 select(StockMovement)
@@ -55,6 +74,7 @@ class StockService:
 
     @staticmethod
     def get_reorder_list() -> List[Product]:
+        """Get list of products that need reordering."""
         with get_db_session() as session:
             stmt = select(Product).where(
                 Product.is_active.is_(True),

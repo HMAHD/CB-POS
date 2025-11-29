@@ -175,9 +175,10 @@ class MainWindow(QMainWindow):
         self.sales_view = SalesView()
         self.stack.addWidget(self.sales_view)
 
-        # 2. Inventory (Placeholder)
-        self.inventory_view = QLabel("Inventory View")
-        self.inventory_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # 2. Inventory
+        from cbpos.ui.views.inventory_view import InventoryView
+
+        self.inventory_view = InventoryView()
         self.stack.addWidget(self.inventory_view)
 
         # 3. Purchasing

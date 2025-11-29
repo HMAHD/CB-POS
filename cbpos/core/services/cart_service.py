@@ -138,7 +138,7 @@ class CartService:
     def get_totals(self) -> Dict[str, Any]:
         """Return the cart totals."""
         # 1. Sum Net Lines
-        subtotal = sum(item["total"] for item in self.items)
+        subtotal = sum((item["total"] for item in self.items), Decimal("0.00"))
 
         # 2. Apply Cart Discount
         cart_discount_amt = Decimal("0.00")

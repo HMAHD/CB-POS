@@ -40,17 +40,24 @@ class ProductService:
         query = query.strip()
 
         with self.db.get_session() as session:
+            # Add joinedload to eager load category
+            from sqlalchemy.orm import joinedload
+
             if mode == self.SEARCH_MODE_BARCODE:
                 # Exact barcode match
-                stmt = select(Product).where(
-                    Product.barcode == query, Product.is_active
+                stmt = (
+                    select(Product)
+                    .options(joinedload(Product.category))
+                    .where(Product.barcode == query, Product.is_active)
                 )
 
             elif mode == self.SEARCH_MODE_CODE:
                 # Match on product ID or internal reference
                 if query.isdigit():
-                    stmt = select(Product).where(
-                        Product.id == int(query), Product.is_active
+                    stmt = (
+                        select(Product)
+                        .options(joinedload(Product.category))
+                        .where(Product.id == int(query), Product.is_active)
                     )
                 else:
                     return []
@@ -60,6 +67,7 @@ class ProductService:
                 pattern = f"%{query}%"
                 stmt = (
                     select(Product)
+                    .options(joinedload(Product.category))
                     .where(
                         or_(
                             func.lower(Product.name_en).like(func.lower(pattern)),
@@ -76,6 +84,7 @@ class ProductService:
                 pattern = f"%{query}%"
                 stmt = (
                     select(Product)
+                    .options(joinedload(Product.category))
                     .where(
                         or_(
                             Product.barcode.like(pattern),

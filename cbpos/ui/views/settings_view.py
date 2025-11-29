@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QCheckBox,
     QSpinBox,
+    QFrame,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtPrintSupport import QPrinterInfo
@@ -45,13 +46,16 @@ class SettingsView(QWidget):
         self.tab_general = QWidget()
         self.tab_hardware = QWidget()
         self.tab_appearance = QWidget()
+        self.tab_documents = QWidget()
 
         self.tabs.addTab(self.tab_general, "General")
         self.tabs.addTab(self.tab_hardware, "Hardware")
+        self.tabs.addTab(self.tab_documents, "Documents")
         self.tabs.addTab(self.tab_appearance, "Appearance")
 
         self.init_general_tab()
         self.init_hardware_tab()
+        self.init_documents_tab()
         self.init_appearance_tab()
 
         main_layout.addWidget(self.tabs)
@@ -164,7 +168,70 @@ class SettingsView(QWidget):
 
         layout.addWidget(grp_banking)
 
+        layout.addWidget(grp_banking)
+
         layout.addStretch()
+
+    def init_documents_tab(self):
+        layout = QFormLayout(self.tab_documents)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+
+        # Explanation
+        lbl_info = QLabel(
+            "Configure document number formats. Use {Y}, {M}, {D} for date parts and {seq:05d} for sequence."
+        )
+        lbl_info.setWordWrap(True)
+        lbl_info.setStyleSheet("color: #AAAAAA; font-style: italic;")
+        layout.addRow(lbl_info)
+
+        # Reset Period
+        self.combo_reset_period = QComboBox()
+        self.combo_reset_period.addItems(["YEARLY", "MONTHLY", "NEVER"])
+        layout.addRow("Sequence Reset Period:", self.combo_reset_period)
+
+        # Separator
+        line = QFrame()
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setFrameShadow(QFrame.Shadow.Sunken)
+        layout.addRow(line)
+
+        # Formats
+        self.input_fmt_sale = QLineEdit()
+        self.input_fmt_sale.setPlaceholderText("INV-{Y}-{seq:05d}")
+        layout.addRow("Sale Invoice Format:", self.input_fmt_sale)
+
+        self.input_fmt_purchase = QLineEdit()
+        self.input_fmt_purchase.setPlaceholderText("GRN-{Y}-{seq:05d}")
+        layout.addRow("Purchase (GRN) Format:", self.input_fmt_purchase)
+
+        self.input_fmt_return = QLineEdit()
+        self.input_fmt_return.setPlaceholderText("CN-{Y}-{seq:05d}")
+        layout.addRow("Return (CN) Format:", self.input_fmt_return)
+
+        # Preview
+        self.lbl_preview = QLabel("Preview: INV-2023-00001")
+        self.lbl_preview.setStyleSheet("font-weight: bold; color: #39FF14;")
+        layout.addRow("Example Preview:", self.lbl_preview)
+
+        # Connect changes to preview
+        self.input_fmt_sale.textChanged.connect(self.update_preview)
+
+    def update_preview(self, text):
+        from datetime import datetime
+
+        now = datetime.now()
+        try:
+            # Simple mock render
+            rendered = (
+                text.replace("{Y}", now.strftime("%Y"))
+                .replace("{M}", now.strftime("%m"))
+                .replace("{D}", now.strftime("%d"))
+                .replace("{seq:05d}", "00001")
+            )
+            self.lbl_preview.setText(f"Preview: {rendered}")
+        except Exception:
+            self.lbl_preview.setText("Preview: Invalid Format")
 
     def init_appearance_tab(self):
         layout = QFormLayout(self.tab_appearance)
@@ -217,6 +284,20 @@ class SettingsView(QWidget):
             settings.get("company_bank_branch", "Colombo Fort")
         )
 
+        # Documents
+        self.combo_reset_period.setCurrentText(
+            settings.get("doc_reset_period", "YEARLY")
+        )
+        self.input_fmt_sale.setText(
+            settings.get("doc_format_sale", "INV-{Y}-{seq:05d}")
+        )
+        self.input_fmt_purchase.setText(
+            settings.get("doc_format_purchase", "GRN-{Y}-{seq:05d}")
+        )
+        self.input_fmt_return.setText(
+            settings.get("doc_format_return", "CN-{Y}-{seq:05d}")
+        )
+
         # Appearance
         self.combo_language.setCurrentText(settings.get("language", "en"))
 
@@ -251,6 +332,11 @@ class SettingsView(QWidget):
             "company_bank_name": self.input_bank_name.text(),
             "company_account_number": self.input_account_number.text(),
             "company_bank_branch": self.input_bank_branch.text(),
+            # Documents
+            "doc_reset_period": self.combo_reset_period.currentText(),
+            "doc_format_sale": self.input_fmt_sale.text(),
+            "doc_format_purchase": self.input_fmt_purchase.text(),
+            "doc_format_return": self.input_fmt_return.text(),
             # Appearance
             "language": self.combo_language.currentText(),
         }

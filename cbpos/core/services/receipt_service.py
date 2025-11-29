@@ -37,8 +37,8 @@ class ReceiptService:
             lines.append(f"VAT: {sale.customer.vat_number}")
             lines.append("-" * ReceiptService.WIDTH_CHARS)
 
-        lines.append(f"Date: {sale.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
-        lines.append(f"Receipt No: {sale.receipt_no}")
+        lines.append(f"Date: {sale.date.strftime('%Y-%m-%d %H:%M:%S')}")
+        lines.append(f"Receipt No: {sale.document_number}")
         lines.append("-" * ReceiptService.WIDTH_CHARS)
 
         # 2. Items

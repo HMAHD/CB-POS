@@ -247,18 +247,18 @@
     - [x] **Hold Bill:** Serialize cart to "Pending" table.
     - [x] **Recall Bill:** Restore from Pending.
     - [x] **Void Bill:** Record void reason.
-    - [ ] **Lock Order:** Save and prevent modifications
-    - [ ] **Transfer Order:** Split to another order/user
-- [ ] **8.3 Multiple Open Orders **
-    - [ ] **Unlimited Simultaneous Orders:** Per user
-    - [ ] **Order Switching:** Quick navigation between orders
-    - [ ] **Order List View:** See all open orders
-    - [ ] **User-Specific Orders:** Filter by cashier
-    - [ ] **Order Status Tracking:** Open/Saved/Locked/Closed/Voided
-- [ ] **8.4 Document Numbering**
-    - [ ] **Auto-Generated Numbers:** Sequential document IDs
-    - [ ] **Configurable Format:** Prefix/suffix patterns
-    - [ ] **Reset Options:** Daily/monthly/yearly reset
+    - [x] **Lock Order:** Save and prevent modifications
+    - [x] **Transfer Order:** Split to another order/user
+- [x] **8.3 Multiple Open Orders **
+    - [x] **Unlimited Simultaneous Orders:** Per user
+    - [x] **Order Switching:** Quick navigation between orders
+    - [x] **Order List View:** See all open orders
+    - [x] **User-Specific Orders:** Filter by cashier
+    - [x] **Order Status Tracking:** Open/Saved/Locked/Closed/Voided
+- [x] **8.4 Document Numbering**
+    - [x] **Auto-Generated Numbers:** Sequential document IDs
+    - [x] **Configurable Format:** Prefix/suffix patterns
+    - [x] **Reset Options:** Daily/monthly/yearly reset
 
 ---
 
@@ -519,7 +519,6 @@
     - [ ] Translate UI to Sinhala and Tamil.
     - [ ] Implement Runtime Language Switcher.
     - [ ] **Font Support:** Unicode fonts for Sinhala/Tamil
-    - [ ] **RTL Support:** Future Arabic support
     - [ ] **Date/Number Formatting:** Locale-specific
 
 ---

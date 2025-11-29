@@ -1,4 +1,4 @@
-## [Unreleased]
+## [0.1.0] - 2025-11-29
 ### Added
 - **Transaction History & Refunds** (Phase 8.3):
     - Implemented HistoryView with transaction filtering by date range and search.

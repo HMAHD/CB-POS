@@ -34,7 +34,7 @@ class UserService:
         """Get all available roles."""
         db = Database()
         with db.get_session() as session:
-            roles = session.query(Role).all()
+            roles = session.query(Role).options(joinedload(Role.permissions)).all()
             session.expunge_all()
             return roles
 

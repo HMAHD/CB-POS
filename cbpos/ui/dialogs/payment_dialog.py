@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
 )
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QDoubleValidator
 from cbpos.core.database import Database
 from cbpos.core.models import Customer
@@ -34,6 +35,17 @@ class PaymentDialog(QDialog):
     def init_ui(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
+
+        # 1. Total/Remaining Display
+        self.lbl_remaining = QLabel(
+            f"Total: Rs. {self.total_amount:,.2f}"  # noqa: E231
+        )
+        self.lbl_remaining.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_remaining.setStyleSheet(
+            "font-size: 24px; color: #FF4136; font-weight: bold; border: 1px solid #FF4136; padding: 10px;"
+        )
+        layout.addWidget(self.lbl_remaining)
+
         # 3. Payment Entry
         entry_group = QWidget()
         entry_group.setStyleSheet("background-color: #003366; border-radius: 8px;")

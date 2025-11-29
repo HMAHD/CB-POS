@@ -82,14 +82,14 @@ class TransactionService:
             primary_method = payments[0]["method"] if len(payments) == 1 else "SPLIT"
 
             sale = Sale(
-                receipt_no=receipt_no,
-                timestamp=datetime.now(),
+                document_number=receipt_no,
+                date=datetime.now(),
                 total_amount=total_amount,
                 tax_vat=tax_info["vat"],
                 tax_sscl=tax_info["sscl"],
                 net_revenue=tax_info["net"],
                 payment_method=primary_method,
-                cashier_id=cashier_id,
+                user_id=cashier_id,
                 customer_id=customer_id,
             )
             session.add(sale)
@@ -114,6 +114,7 @@ class TransactionService:
                     product_id=product.id,
                     qty=qty,
                     unit_price=item["unit_price"],
+                    original_price=item["original_price"],
                     subtotal=item["total"],
                 )
                 session.add(sale_item)
@@ -133,8 +134,9 @@ class TransactionService:
                             product_id=comp.child_product_id,
                             qty_change=-deduction,
                             movement_type="SALE",
-                            reference=receipt_no,
+                            document_id=sale.id,
                             user_id=cashier_id,
+                            session=session,
                         )
                 else:
                     # Deduct from product itself
@@ -142,8 +144,9 @@ class TransactionService:
                         product_id=product.id,
                         qty_change=-qty,
                         movement_type="SALE",
-                        reference=receipt_no,
+                        document_id=sale.id,
                         user_id=cashier_id,
+                        session=session,
                     )
 
             # 5. Commit
@@ -288,7 +291,7 @@ class TransactionService:
                     product.stock_qty += item.qty
 
             # Log reason (Ideally in an Audit Log, but printing for now)
-            print(f"VOID Sale {sale.receipt_no} by User {user_id}: {reason}")
+            print(f"VOID Sale {sale.document_number} by User {user_id}: {reason}")
 
             session.commit()
             return True
@@ -336,7 +339,7 @@ class TransactionService:
             )
             if existing_refund:
                 raise ValueError(
-                    f"Sale already refunded (Refund: {existing_refund.receipt_no})"
+                    f"Sale already refunded (Refund: {existing_refund.document_number})"
                 )
 
             # 2. Create refund transaction (negative values)
@@ -347,15 +350,15 @@ class TransactionService:
             tax_info = TaxService.calculate_taxes(refund_amount)
 
             refund_sale = Sale(
-                receipt_no=refund_receipt_no,
-                timestamp=datetime.now(),
+                document_number=refund_receipt_no,
+                date=datetime.now(),
                 total_amount=refund_amount,
                 tax_vat=tax_info["vat"],
                 tax_sscl=tax_info["sscl"],
                 net_revenue=tax_info["net"],
                 payment_method="REFUND",
                 status="COMPLETED",
-                cashier_id=user_id,
+                user_id=user_id,
                 customer_id=original_sale.customer_id,
                 refund_of_sale_id=original_sale_id,
             )
@@ -412,7 +415,7 @@ class TransactionService:
 
             # 6. Log the refund
             print(
-                f"REFUND: {original_sale.receipt_no} -> "
+                f"REFUND: {original_sale.document_number} -> "
                 f"{refund_receipt_no} by User {user_id}: {refund_reason}"
             )
 
@@ -443,3 +446,70 @@ class TransactionService:
             return False
         finally:
             session.close()
+
+    @staticmethod
+    def lock_order(sale_id: int) -> bool:
+        """
+        Lock an order to prevent further edits.
+        Useful for pre-payments or finalized but unpaid orders.
+        """
+        db = Database()
+        session = db.SessionLocal()
+        try:
+            sale = session.query(Sale).get(sale_id)
+            if not sale:
+                return False
+
+            sale.status = "LOCKED"
+            session.commit()
+            return True
+        except Exception as e:
+            print(f"Lock Order Failed: {e}")
+            session.rollback()
+            return False
+        finally:
+            session.close()
+
+    @staticmethod
+    def transfer_order(sale_id: int, target_user_id: int) -> bool:
+        """
+        Transfer ownership of an order to another user.
+        """
+        from cbpos.core.models import User, AuditLog
+
+        db = Database()
+        session = db.SessionLocal()
+        try:
+            sale = session.query(Sale).get(sale_id)
+            target_user = session.query(User).get(target_user_id)
+
+            if not sale or not target_user:
+                return False
+
+            old_user_id = sale.user_id
+            sale.user_id = target_user_id
+
+            # Audit Log
+            log = AuditLog(
+                user_id=old_user_id,  # Logged by original owner (or current user)
+                action="TRANSFER_ORDER",
+                event_type="TRANSACTION",
+                details=f"Order {sale.document_number} transferred to {target_user.username} (ID: {target_user_id})",
+            )
+            session.add(log)
+
+            session.commit()
+            return True
+        except Exception as e:
+            print(f"Transfer Order Failed: {e}")
+            session.rollback()
+            return False
+        finally:
+            session.close()
+
+    @staticmethod
+    def get_held_bill_count() -> int:
+        """Return the number of currently held bills."""
+        db = Database()
+        with db.get_session() as session:
+            return session.query(SuspendedTransaction).count()

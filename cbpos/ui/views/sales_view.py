@@ -11,23 +11,23 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QMessageBox,
     QStackedLayout,
-    QToolButton,
     QMenu,
+    QToolButton,
     QInputDialog,
     QCompleter,
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QKeySequence, QShortcut, QAction, QColor, QBrush
+from PyQt6.QtGui import QKeySequence, QShortcut, QAction, QBrush, QColor
+from decimal import Decimal
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.ui.dialogs.payment_dialog import PaymentDialog
 from cbpos.ui.dialogs.discount_dialog import DiscountDialog
-from cbpos.ui.dialogs.customer_selection_dialog import (  # noqa: F401
-    CustomerSelectionDialog,
-)
+from cbpos.ui.dialogs.customer_selection_dialog import CustomerSelectionDialog
 from cbpos.ui.dialogs.advanced_search_dialog import AdvancedSearchDialog
 from cbpos.ui.views.visual_pos_view import VisualPosView
+from cbpos.ui.widgets.order_bar import OrderBar
 from cbpos.ui.resources.icons import Icons
 
 
@@ -61,6 +61,13 @@ class SalesView(QWidget):
         self.cart_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.cart_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.cart_table.customContextMenuRequested.connect(self.show_cart_context_menu)
+
+        # Order Bar (Multi-Tab)
+        self.order_bar = OrderBar()
+        self.order_bar.tab_switched.connect(self.switch_to_order)
+        self.order_bar.new_tab_requested.connect(self.create_new_order)
+        left_layout.addWidget(self.order_bar)
+
         left_layout.addWidget(self.cart_table)
 
         # --- RIGHT PANEL (Controls) ---
@@ -221,6 +228,7 @@ class SalesView(QWidget):
     def showEvent(self, event):
         super().showEvent(event)
         self.barcode_input.setFocus()
+        self.order_bar.refresh_tabs()
 
     def toggle_view(self):
         """Toggle between Keyboard and Visual modes."""
@@ -360,20 +368,26 @@ class SalesView(QWidget):
             payments, _ = dialog.payment_data
             customer_id = self.customer.id if self.customer else None
 
-            success = TransactionService.process_sale(
-                self.cart_service, payments, customer_id
-            )
-            if success:
-                QMessageBox.information(self, "Success", "Sale processed successfully!")
-                self.cart_service.clear()
-                self.update_cart_display()
-                self.barcode_input.setFocus()
-                # Reset customer
-                self.customer = None
-                self.lbl_customer.setText("Walk-in Customer")
-                self.lbl_points.setText("")
-            else:
-                QMessageBox.critical(self, "Error", "Transaction failed!")
+            try:
+                success = TransactionService.process_sale(
+                    self.cart_service, payments, customer_id
+                )
+                if success:
+                    QMessageBox.information(
+                        self, "Success", "Sale processed successfully!"
+                    )
+                    self.cart_service.clear()
+                    self.update_cart_display()
+                    self.barcode_input.setFocus()
+                    # Reset customer
+                    self.customer = None
+                    self.lbl_customer.setText("Walk-in Customer")
+                    self.lbl_points.setText("")
+                    self.order_bar.refresh_tabs()
+            except ValueError as e:
+                QMessageBox.warning(self, "Validation Error", str(e))
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Transaction failed: {str(e)}")
 
     def hold_bill(self):
         if not self.cart_service.items:
@@ -382,6 +396,7 @@ class SalesView(QWidget):
         if TransactionService.hold_bill(self.cart_service):
             self.cart_service.clear()
             self.update_cart_display()
+            self.order_bar.refresh_tabs()
             QMessageBox.information(self, "Held", "Bill put on hold.")
         else:
             QMessageBox.critical(self, "Error", "Failed to hold bill.")
@@ -462,23 +477,23 @@ class SalesView(QWidget):
 
         menu = QMenu(self)
 
-        add_note_action = QAction("📝 Add Note", self)
+        add_note_action = QAction("Add Note", self)
         add_note_action.triggered.connect(self.add_line_note)
         menu.addAction(add_note_action)
 
-        change_qty_action = QAction("📊 Change Quantity", self)
+        change_qty_action = QAction("Change Quantity", self)
         change_qty_action.triggered.connect(self.change_line_quantity)
         menu.addAction(change_qty_action)
 
-        discount_action = QAction("💰 Apply Line Discount", self)
+        discount_action = QAction("Apply Line Discount", self)
         discount_action.triggered.connect(self.apply_line_discount)
         menu.addAction(discount_action)
 
-        price_action = QAction("🏷️ Change Price", self)
+        price_action = QAction("Change Price", self)
         price_action.triggered.connect(self.change_line_price)
         menu.addAction(price_action)
 
-        remove_action = QAction("❌ Remove Item", self)
+        remove_action = QAction("Remove Item", self)
         remove_action.triggered.connect(self.remove_line_item)
         menu.addAction(remove_action)
 
@@ -510,9 +525,9 @@ class SalesView(QWidget):
                 decimals=3,
             )
             if ok:
-                self.cart_service.items[row]["qty"] = qty
+                self.cart_service.items[row]["qty"] = Decimal(str(qty))
                 self.cart_service.items[row]["total"] = (
-                    qty * self.cart_service.items[row]["unit_price"]
+                    Decimal(str(qty)) * self.cart_service.items[row]["unit_price"]
                 )
                 self.update_cart_display()
 
@@ -583,3 +598,45 @@ class SalesView(QWidget):
         self.cart_service.add_item(product)
         self.update_cart_display()
         self.barcode_input.setFocus()
+
+    def switch_to_order(self, suspended_id):
+        """
+        Switch to a held order.
+        1. Hold current order (if has items).
+        2. Recall target order.
+        """
+        # 1. Hold Current (Auto-Hold)
+        if self.cart_service.items:
+            # We don't ask for note here for speed, or maybe use "Auto-Hold" note
+            if not TransactionService.hold_bill(self.cart_service, note="Auto-Switch"):
+                QMessageBox.critical(self, "Error", "Failed to hold current order.")
+                return
+            self.cart_service.clear()
+
+        # 2. Recall Target
+        if TransactionService.recall_bill(suspended_id, self.cart_service):
+            self.update_cart_display()
+            self.order_bar.refresh_tabs()
+        else:
+            QMessageBox.warning(
+                self, "Error", "Could not recall order. It may have been taken."
+            )
+            self.order_bar.refresh_tabs()
+
+    def create_new_order(self):
+        """
+        Start a new order.
+        1. Hold current order (if has items).
+        2. Clear cart.
+        """
+        if self.cart_service.items:
+            if TransactionService.hold_bill(self.cart_service, note="Auto-Switch"):
+                self.cart_service.clear()
+                self.update_cart_display()
+                self.order_bar.refresh_tabs()
+            else:
+                QMessageBox.critical(self, "Error", "Failed to hold current order.")
+        else:
+            # Already empty, just refresh tabs to be sure
+            self.order_bar.refresh_tabs()
+            self.barcode_input.setFocus()

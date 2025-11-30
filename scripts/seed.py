@@ -19,6 +19,7 @@ from cbpos.core.models import (  # noqa: E402
     PriceList,
     Supplier,
     VoidReason,
+    PaymentMethod,
 )
 from cbpos.core.constants.permissions import Permissions  # noqa: E402
 
@@ -259,6 +260,18 @@ def seed_data():
             ),
         ]
         session.add_all(comps)
+        session.flush()
+
+        session.add_all(comps)
+        session.flush()
+
+        print("Seeding Payment Methods...")
+        payment_methods = [
+            PaymentMethod(name="Cash", is_cash=True, open_drawer=True, shortcut="F12"),
+            PaymentMethod(name="Card", is_cash=False, open_drawer=False),
+            PaymentMethod(name="Credit", is_cash=False, open_drawer=False),
+        ]
+        session.add_all(payment_methods)
         session.flush()
 
         session.commit()

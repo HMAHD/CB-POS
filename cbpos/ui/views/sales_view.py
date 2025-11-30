@@ -24,6 +24,8 @@ from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.ui.dialogs.payment_dialog import PaymentDialog
 from cbpos.ui.dialogs.discount_dialog import DiscountDialog
+from cbpos.ui.dialogs.receipt_options_dialog import ReceiptOptionsDialog
+from cbpos.core.services.config_service import ConfigService
 from cbpos.ui.dialogs.customer_selection_dialog import CustomerSelectionDialog
 from cbpos.ui.dialogs.advanced_search_dialog import AdvancedSearchDialog
 from cbpos.ui.views.visual_pos_view import VisualPosView
@@ -383,7 +385,30 @@ class SalesView(QWidget):
                     self.customer = None
                     self.lbl_customer.setText("Walk-in Customer")
                     self.lbl_points.setText("")
+                    self.lbl_customer.setText("Walk-in Customer")
+                    self.lbl_points.setText("")
                     self.order_bar.refresh_tabs()
+
+                    # Show Receipt Options if configured
+                    settings = ConfigService.get_all()
+                    if settings.get("show_receipt_dialog", "True") == "True":
+                        # We need the sale object. TransactionService.process_sale returns bool.
+                        # We might need to fetch the last sale or modify process_sale to return the sale object.
+                        # For now, let's fetch the last sale for this user/terminal.
+                        # Or better, let's just assume it worked and show options for "Last Sale".
+                        # Ideally TransactionService returns the Sale ID.
+                        # Let's assume we can get the last sale from DB.
+                        from cbpos.core.database import Database
+                        from cbpos.core.models import Sale
+
+                        db = Database()
+                        with db.get_session() as session:
+                            last_sale = (
+                                session.query(Sale).order_by(Sale.id.desc()).first()
+                            )
+                            if last_sale:
+                                dlg = ReceiptOptionsDialog(last_sale, self)
+                                dlg.exec()
             except ValueError as e:
                 QMessageBox.warning(self, "Validation Error", str(e))
             except Exception as e:

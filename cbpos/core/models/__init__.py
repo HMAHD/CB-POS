@@ -476,3 +476,14 @@ class SuspendedTransaction(Base):
         String, nullable=False
     )  # JSON string of cart items
     note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+
+
+class PaymentMethod(Base):
+    __tablename__ = "payment_methods"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    is_cash: Mapped[bool] = mapped_column(Boolean, default=False)
+    open_drawer: Mapped[bool] = mapped_column(Boolean, default=False)
+    shortcut: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)

@@ -13,10 +13,14 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QSpinBox,
     QFrame,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtPrintSupport import QPrinterInfo
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.payment_service import PaymentService
 
 
 class SettingsView(QWidget):
@@ -47,15 +51,18 @@ class SettingsView(QWidget):
         self.tab_hardware = QWidget()
         self.tab_appearance = QWidget()
         self.tab_documents = QWidget()
+        self.tab_payments = QWidget()
 
         self.tabs.addTab(self.tab_general, "General")
         self.tabs.addTab(self.tab_hardware, "Hardware")
         self.tabs.addTab(self.tab_documents, "Documents")
+        self.tabs.addTab(self.tab_payments, "Payments")
         self.tabs.addTab(self.tab_appearance, "Appearance")
 
         self.init_general_tab()
         self.init_hardware_tab()
         self.init_documents_tab()
+        self.init_payments_tab()
         self.init_appearance_tab()
 
         main_layout.addWidget(self.tabs)
@@ -233,6 +240,79 @@ class SettingsView(QWidget):
         except Exception:
             self.lbl_preview.setText("Preview: Invalid Format")
 
+    def init_payments_tab(self):
+        layout = QVBoxLayout(self.tab_payments)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # 1. Payment Methods Table
+        grp_methods = QGroupBox("Payment Methods")
+        methods_layout = QVBoxLayout(grp_methods)
+
+        self.table_methods = QTableWidget()
+        self.table_methods.setColumnCount(5)
+        self.table_methods.setHorizontalHeaderLabels(
+            ["ID", "Name", "Cash?", "Drawer?", "Shortcut"]
+        )
+        self.table_methods.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
+        )
+        self.table_methods.verticalHeader().setVisible(False)
+        methods_layout.addWidget(self.table_methods)
+
+        # Refresh Button (Simulate Management)
+        # In a full app, we'd have Add/Edit/Delete buttons here calling PaymentService
+        # For now, just read-only view of what's in DB
+        btn_refresh = QPushButton("Refresh Methods")
+        btn_refresh.clicked.connect(self.load_payment_methods)
+        methods_layout.addWidget(btn_refresh)
+
+        layout.addWidget(grp_methods)
+
+        # 2. SMTP Settings
+        grp_smtp = QGroupBox("Email Configuration (SMTP)")
+        form_smtp = QFormLayout(grp_smtp)
+
+        self.input_smtp_host = QLineEdit()
+        self.input_smtp_port = QLineEdit()
+        self.input_smtp_user = QLineEdit()
+        self.input_smtp_pass = QLineEdit()
+        self.input_smtp_pass.setEchoMode(QLineEdit.EchoMode.Password)
+        self.chk_smtp_ssl = QCheckBox("Use SSL")
+
+        form_smtp.addRow("SMTP Host:", self.input_smtp_host)
+        form_smtp.addRow("SMTP Port:", self.input_smtp_port)
+        form_smtp.addRow("Username:", self.input_smtp_user)
+        form_smtp.addRow("Password:", self.input_smtp_pass)
+        form_smtp.addRow("", self.chk_smtp_ssl)
+
+        layout.addWidget(grp_smtp)
+
+        # 3. Receipt Options
+        grp_opts = QGroupBox("Post-Sale Options")
+        form_opts = QFormLayout(grp_opts)
+
+        self.chk_show_receipt_dialog = QCheckBox(
+            "Show Receipt Options Dialog after Sale"
+        )
+        form_opts.addRow(self.chk_show_receipt_dialog)
+
+        layout.addWidget(grp_opts)
+
+    def load_payment_methods(self):
+        self.table_methods.setRowCount(0)
+        methods = PaymentService.get_all_methods()
+        for row, m in enumerate(methods):
+            self.table_methods.insertRow(row)
+            self.table_methods.setItem(row, 0, QTableWidgetItem(str(m.id)))
+            self.table_methods.setItem(row, 1, QTableWidgetItem(m.name))
+            self.table_methods.setItem(
+                row, 2, QTableWidgetItem("Yes" if m.is_cash else "No")
+            )
+            self.table_methods.setItem(
+                row, 3, QTableWidgetItem("Yes" if m.open_drawer else "No")
+            )
+            self.table_methods.setItem(row, 4, QTableWidgetItem(m.shortcut or ""))
+
     def init_appearance_tab(self):
         layout = QFormLayout(self.tab_appearance)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -298,6 +378,17 @@ class SettingsView(QWidget):
             settings.get("doc_format_return", "CN-{Y}-{seq:05d}")
         )
 
+        # Payments
+        self.load_payment_methods()
+        self.input_smtp_host.setText(settings.get("smtp_host", ""))
+        self.input_smtp_port.setText(str(settings.get("smtp_port", "587")))
+        self.input_smtp_user.setText(settings.get("smtp_user", ""))
+        self.input_smtp_pass.setText(settings.get("smtp_pass", ""))
+        self.chk_smtp_ssl.setChecked(settings.get("smtp_use_ssl", "False") == "True")
+        self.chk_show_receipt_dialog.setChecked(
+            settings.get("show_receipt_dialog", "True") == "True"
+        )
+
         # Appearance
         self.combo_language.setCurrentText(settings.get("language", "en"))
 
@@ -339,6 +430,13 @@ class SettingsView(QWidget):
             "doc_format_return": self.input_fmt_return.text(),
             # Appearance
             "language": self.combo_language.currentText(),
+            # Payments
+            "smtp_host": self.input_smtp_host.text(),
+            "smtp_port": self.input_smtp_port.text(),
+            "smtp_user": self.input_smtp_user.text(),
+            "smtp_pass": self.input_smtp_pass.text(),
+            "smtp_use_ssl": str(self.chk_smtp_ssl.isChecked()),
+            "show_receipt_dialog": str(self.chk_show_receipt_dialog.isChecked()),
         }
 
         ConfigService.update_all(data)

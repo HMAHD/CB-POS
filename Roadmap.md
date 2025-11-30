@@ -508,18 +508,18 @@
 ## 🎨 Phase 16: Theme & Localization
 *Goal: Ceylon Byte Branding.*
 
-- [x] **16.1 Theme Engine**
+    - [x] **16.1 Theme Engine**
     - [x] Implement `styles.qss`.
-    - [ ] Create "Ceylon Night" and "Ceylon Day" themes.
-    - [ ] **High-Contrast Mode:** For visibility
-    - [ ] **Touch-Optimized Theme:** Large buttons
-    - [ ] **Color Customization:** Brand color support
-- [ ] **16.2 Localization**
-    - [ ] Generate `.ts` files for Qt Linguist.
-    - [ ] Translate UI to Sinhala and Tamil.
-    - [ ] Implement Runtime Language Switcher.
-    - [ ] **Font Support:** Unicode fonts for Sinhala/Tamil
-    - [ ] **Date/Number Formatting:** Locale-specific
+    - [x] Create "Ceylon Night" and "Ceylon Day" themes.
+    - [x] **High-Contrast Mode:** For visibility
+    - [x] **Touch-Optimized Theme:** Large buttons
+    - [x] **Color Customization:** Brand color support
+- [x] **16.2 Localization**
+    - [x] Generate `.ts` files for Qt Linguist.
+    - [x] Translate UI to Sinhala and Tamil.
+    - [x] Implement Runtime Language Switcher.
+    - [x] **Font Support:** Unicode fonts for Sinhala/Tamil
+    - [x] **Date/Number Formatting:** Locale-specific
 
 ---
 
@@ -733,21 +733,6 @@
         - [ ] Auto-generated number
         - [ ] External document reference (supplier invoice)
         - [ ] Vendor/Supplier selection
-        - [ ] Document date
-        - [ ] Stock date (when items received)
-        - [ ] Add items with cost prices
-        - [ ] Optional payment tracking
-        - [ ] Auto-update stock on save
-    - [ ] **Purchase Fields:**
-        - [ ] System document number
-        - [ ] External reference
-        - [ ] Supplier info
-        - [ ] Date received
-        - [ ] Item list with costs
-        - [ ] Payment methods
-        - [ ] Notes/comments
-- [ ] **22.2 Supplier Management**
-    - [ ] **Supplier CRUD:**
         - [ ] Name, company details
         - [ ] Tax number
         - [ ] Contact information

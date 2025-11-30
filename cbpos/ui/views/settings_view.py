@@ -19,6 +19,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtPrintSupport import QPrinterInfo
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.theme_service import ThemeService
+from cbpos.core.services.language_service import LanguageService
 
 
 class SettingsView(QWidget):
@@ -198,9 +200,17 @@ class SettingsView(QWidget):
         layout.addRow("Phone:", self.input_phone)
         layout.addRow("VAT Number:", self.input_vat)
 
+        # Theme
+        self.combo_theme = QComboBox()
+        self.combo_theme.addItems(["Ceylon Night (Dark)", "Ceylon Day (Light)"])
+        layout.addRow("Theme:", self.combo_theme)
+
         # Language
         self.combo_language = QComboBox()
-        self.combo_language.addItems(["English (en)", "Sinhala (si)", "Tamil (ta)"])
+        languages = LanguageService.get_available_languages()
+        # Store codes in user data
+        for code, name in languages.items():
+            self.combo_language.addItem(f"{name} ({code})", code)
         layout.addRow("Language:", self.combo_language)
 
     def init_order_payment_page(self):
@@ -329,10 +339,16 @@ class SettingsView(QWidget):
         self.input_phone.setText(settings.get("shop_phone", ""))
         self.input_vat.setText(settings.get("vat_number", ""))
 
-        lang_map = {"en": 0, "si": 1, "ta": 2}
-        self.combo_language.setCurrentIndex(
-            lang_map.get(settings.get("language", "en"), 0)
-        )
+        # Theme
+        current_theme = settings.get("theme", "Dark")
+        index = 0 if current_theme == "Dark" else 1
+        self.combo_theme.setCurrentIndex(index)
+
+        # Language
+        current_lang = settings.get("language", "en")
+        index = self.combo_language.findData(current_lang)
+        if index >= 0:
+            self.combo_language.setCurrentIndex(index)
 
         # Order & Payment
         self.combo_reset_period.setCurrentText(
@@ -377,13 +393,19 @@ class SettingsView(QWidget):
             QMessageBox.warning(self, "Error", "Scale Prefix must be 2 digits.")
             return
 
-        lang_code = ["en", "si", "ta"][self.combo_language.currentIndex()]
+        theme_selection = "Dark" if self.combo_theme.currentIndex() == 0 else "Light"
+        lang_code = self.combo_language.currentData()
+
+        # Check if language changed
+        current_lang = ConfigService.get_all().get("language", "en")
+        lang_changed = lang_code != current_lang
 
         data = {
             "shop_name": self.input_shop_name.text(),
             "shop_address": self.input_address.text(),
             "shop_phone": self.input_phone.text(),
             "vat_number": self.input_vat.text(),
+            "theme": theme_selection,
             "language": lang_code,
             "doc_reset_period": self.combo_reset_period.currentText(),
             "doc_format_sale": self.input_fmt_sale.text(),
@@ -399,5 +421,17 @@ class SettingsView(QWidget):
         }
 
         ConfigService.update_all(data)
-        QMessageBox.information(self, "Saved", "Settings saved successfully.")
+
+        # Apply Theme Immediately
+        ThemeService.apply_theme(theme_selection)
+
+        if lang_changed:
+            QMessageBox.information(
+                self,
+                "Restart Required",
+                "Please restart the application to apply language changes.",
+            )
+        else:
+            QMessageBox.information(self, "Saved", "Settings saved successfully.")
+
         self.close_requested.emit()

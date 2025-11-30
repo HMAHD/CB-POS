@@ -1,12 +1,13 @@
 /* 
     Ceylon Byte POS - Industrial Theme 
     Palette:
-    - Background: #001F3F (Deep Navy)
-    - Panel: #003366 (Lighter Navy)
+    - Background: #1E1E1E (Dark Grey)
+    - Sidebar/Panel: #2D2D30 (Lighter Grey)
+    - Input BG: #333333
     - Accent: #00BCEB (Cyan)
-    - Success: #39FF14 (Neon Green)
+    - Success: #39FF14 (Neon Green) or #4CAF50 (Material Green)
     - Warning: #FFDC00 (Yellow)
-    - Error: #FF4136 (Red)
+    - Error: #F44336 (Red)
     - Text: #FFFFFF (White)
 */
 
@@ -17,84 +18,99 @@
 
 /* Global Reset */
 QWidget {
-    background-color: #001F3F;
+    background-color: #1E1E1E;
     color: #FFFFFF;
     font-size: 14px;
 }
 
 /* Inputs */
-QLineEdit {
-    background-color: #003366;
-    border: 1px solid #00509E;
+QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
+    background-color: #333333;
+    border: 1px solid #555555;
     border-radius: 4px;
     padding: 8px;
     font-size: 16px;
     color: #FFFFFF;
 }
 
-QLineEdit:focus {
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
     border: 2px solid #00BCEB;
 }
 
 /* Buttons */
 QPushButton {
-    background-color: #003366;
-    border: 1px solid #00509E;
+    background-color: #404040;
+    border: none;
     border-radius: 4px;
-    padding: 10px;
+    padding: 10px 20px;
     font-weight: bold;
+    color: #FFFFFF;
     text-transform: uppercase;
 }
 
 QPushButton:hover {
-    background-color: #004080;
+    background-color: #505050;
     border: 1px solid #00BCEB;
 }
 
 QPushButton:pressed {
-    background-color: #002855;
+    background-color: #303030;
 }
 
-/* Primary Action Button (e.g., Pay) */
-QPushButton[class="primary"] {
-    background-color: #39FF14;
-    color: #000000;
-    border: none;
-}
-
-QPushButton[class="primary"]:hover {
-    background-color: #32E010;
-}
-
-/* Danger Button (e.g., Void) */
-QPushButton[class="danger"] {
-    background-color: #FF4136;
+/* Primary Action Button (e.g., Pay, Save) */
+QPushButton#BtnSave, QPushButton#PayBtn, QPushButton[class="primary"] {
+    background-color: #4CAF50; /* Material Green */
     color: #FFFFFF;
-    border: none;
+}
+
+QPushButton#BtnSave:hover, QPushButton#PayBtn:hover, QPushButton[class="primary"]:hover {
+    background-color: #43A047;
+}
+
+/* Danger Button (e.g., Void, Cancel) */
+QPushButton#BtnCancel, QPushButton#VoidBtn, QPushButton[class="danger"] {
+    background-color: #F44336; /* Red */
+    color: #FFFFFF;
+}
+
+QPushButton#BtnCancel:hover, QPushButton#VoidBtn:hover, QPushButton[class="danger"]:hover {
+    background-color: #D32F2F;
 }
 
 /* Warning Button (e.g., Hold) */
 QPushButton[class="warning"] {
     background-color: #FFDC00;
     color: #000000;
-    border: none;
 }
 
-/* Tables */
-QTableWidget {
-    background-color: #001F3F;
-    gridline-color: #003366;
-    border: 1px solid #003366;
-    selection-background-color: #39FF14;
-    selection-color: #000000;
+/* Lists & Tables */
+QListWidget, QTableWidget {
+    background-color: #1E1E1E;
+    border: none;
+    outline: none;
+    gridline-color: #2D2D30;
+}
+
+QListWidget::item, QTableWidget::item {
+    padding: 12px;
+    border-bottom: 1px solid #2D2D30;
+    color: #FFFFFF;
+}
+
+QListWidget::item:selected, QTableWidget::item:selected {
+    background-color: #39FF14;
+    color: #000000;
+    border-left: 4px solid #00BCEB;
 }
 
 QHeaderView::section {
     background-color: #00BCEB;
     color: #000000;
-    padding: 8px;
+    padding: 10px;
     font-weight: bold;
     border: none;
+    border-bottom: 2px solid #0099CC;
+    text-transform: uppercase;
 }
 
 QTableCornerButton::section {
@@ -104,13 +120,13 @@ QTableCornerButton::section {
 /* Scrollbars */
 QScrollBar:vertical {
     border: none;
-    background: #001F3F;
+    background: #1E1E1E;
     width: 10px;
     margin: 0px;
 }
 
 QScrollBar::handle:vertical {
-    background: #00509E;
+    background: #404040;
     min-height: 20px;
     border-radius: 5px;
 }
@@ -121,12 +137,12 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
 
 /* Tab Widget */
 QTabWidget::pane {
-    border: 1px solid #003366;
-    background-color: #001F3F;
+    border: 1px solid #3E3E42;
+    background-color: #1E1E1E;
 }
 
 QTabBar::tab {
-    background: #003366;
+    background: #2D2D30;
     color: #FFFFFF;
     padding: 10px 20px;
     margin-right: 2px;
@@ -140,7 +156,7 @@ QTabBar::tab:selected {
 
 /* Group Box */
 QGroupBox {
-    border: 1px solid #00509E;
+    border: 1px solid #3E3E42;
     border-radius: 4px;
     margin-top: 20px;
     font-weight: bold;
@@ -151,4 +167,62 @@ QGroupBox::title {
     subcontrol-position: top left;
     padding: 0 5px;
     color: #00BCEB;
+}
+
+/* Sidebar Specifics */
+QFrame#Sidebar {
+    background-color: #001830;
+}
+
+/* Sidebar Buttons (QToolButton) */
+/* Sidebar Buttons (QToolButton) */
+/* Sidebar Buttons (QToolButton) */
+QToolButton {
+    padding-top: 15px;
+    padding-bottom: 15px;
+    padding-left: 24px;
+    padding-right: 40px;
+    margin: 0px;
+    border: none;
+    border-radius: 0px;
+    background: transparent;
+    color: #AAAAAA;
+    text-align: left;
+    width: 100%;
+}
+
+QToolButton:hover {
+    background-color: #002855;
+    color: #FFFFFF;
+    border-left: 4px solid #00BCEB;
+}
+
+QToolButton:checked, QToolButton[active="true"] {
+    background-color: #003366;
+    color: #FFFFFF;
+    border-left: 4px solid #00BCEB;
+    font-weight: bold;
+}
+
+/* Special Sidebar Buttons */
+QToolButton#BtnPos {
+    color: #39FF14; /* Neon Green */
+    font-weight: bold;
+    border-top: 1px solid #333333;
+    background-color: rgba(57, 255, 20, 0.1);
+}
+
+QToolButton#BtnPos:hover {
+    background-color: rgba(57, 255, 20, 0.2);
+    border-left: 4px solid #39FF14;
+}
+
+QToolButton#BtnLogout {
+    color: #FF4136; /* Signal Red */
+    background-color: rgba(255, 65, 54, 0.1);
+}
+
+QToolButton#BtnLogout:hover {
+    background-color: rgba(255, 65, 54, 0.2);
+    border-left: 4px solid #FF4136;
 }

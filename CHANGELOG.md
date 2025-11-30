@@ -1,3 +1,30 @@
+## [Unreleased] - 2025-11-30
+### Refactored
+- **Sales Screen Overhaul** (Phase 6):
+    -   Redesigned `SalesView` with a split-screen "Command Console" layout.
+    -   Implemented Left Panel (75%) for Cart, Search, and Totals.
+    -   Implemented Right Panel (25%) for Action Grid and Payment.
+    -   Styled Cart Table with borderless, alternating row colors and large text.
+    -   Added massive Green "PAY" button for improved usability.
+- **Management Sidebar Polish**:
+    -   Refactored sidebar to be collapsible with smooth animations.
+    -   Implemented full-width navigation buttons with dynamic styling (Center vs Left align).
+    -   Added distinct styling for "POS / Sales" (Green) and "Logout" (Red) buttons.
+    -   Fixed User Badge loading logic and asset paths.
+- **UI Architecture**:
+    -   Refactored `MainWindow` to act as a mode-switcher (Sales vs. Management) without a permanent sidebar.
+    -   Created `ManagementView` (`ui/views/management_view.py`) as the dedicated Back Office container with sidebar navigation.
+    -   Updated `SalesView` (`ui/views/sales_view.py`) with a top header and "Three Dots" menu button for navigation.
+    -   Implemented `SideMenu` (`ui/widgets/side_menu.py`) skeleton for future slide-out navigation overlay.
+    -   **Side Menu Overlay**:
+        -   Implemented fully functional `SideMenu` widget with Navigation, User Profile, and System Toolbar.
+        -   Added slide-in/out animation in `SalesView`.
+        -   Implemented click-outside-to-close behavior using `eventFilter`.
+        -   Wired up navigation signals (`Management`, `Logout`, `Fullscreen`, `Power`) in `MainWindow`.
+### Fixed
+-   Resolved `QPainter` warnings by ensuring valid pixmaps and sizes in `ManagementView`.
+-   Fixed asset paths for Logo and User Badges using `pathlib`.
+
 ## [0.1.0] - 2025-11-29
 ### Added
 - **Transaction History & Refunds** (Phase 8.3):

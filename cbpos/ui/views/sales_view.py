@@ -10,14 +10,14 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QHeaderView,
     QMessageBox,
-    QStackedLayout,
     QMenu,
     QToolButton,
     QInputDialog,
     QCompleter,
+    QFrame,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QKeySequence, QShortcut, QAction, QBrush, QColor
+from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint
+from PyQt6.QtGui import QKeySequence, QShortcut, QAction, QBrush, QColor, QPixmap
 from decimal import Decimal
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.cart_service import CartService
@@ -28,9 +28,9 @@ from cbpos.ui.dialogs.receipt_options_dialog import ReceiptOptionsDialog
 from cbpos.core.services.config_service import ConfigService
 from cbpos.ui.dialogs.customer_selection_dialog import CustomerSelectionDialog
 from cbpos.ui.dialogs.advanced_search_dialog import AdvancedSearchDialog
-from cbpos.ui.views.visual_pos_view import VisualPosView
 from cbpos.ui.widgets.order_bar import OrderBar
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.widgets.side_menu import SideMenu
 
 
 class SalesView(QWidget):
@@ -42,79 +42,79 @@ class SalesView(QWidget):
         self.current_search_mode = "ALL"
         self.init_ui()
 
-    def init_ui(self):
-        main_layout = QHBoxLayout(self)
+        # Side Menu Overlay
+        self.side_menu = SideMenu(self)
+        self.side_menu.setVisible(False)
 
-        # --- LEFT PANEL (Cart) ---
+        # Animation
+        self.menu_animation = QPropertyAnimation(self.side_menu, b"pos")
+        self.menu_animation.setDuration(300)
+        self.menu_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+        # Install Event Filter for clicking outside
+        self.installEventFilter(self)
+
+    def init_ui(self):
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # --- HEADER ---
+        header_widget = QWidget()
+        header_widget.setFixedHeight(50)
+        header_widget.setStyleSheet(
+            "background-color: #001226; border-bottom: 1px solid #003366;"
+        )
+        header_layout = QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(20, 0, 20, 0)
+
+        # Brand (Logo)
+        lbl_logo = QLabel()
+        logo_pixmap = QPixmap("assets/logo/cover_black.png")
+        if not logo_pixmap.isNull():
+            lbl_logo.setPixmap(
+                logo_pixmap.scaledToHeight(
+                    30, Qt.TransformationMode.SmoothTransformation
+                )
+            )
+        else:
+            lbl_logo.setText("CEYLON BYTE POS")  # Fallback
+            lbl_logo.setStyleSheet(
+                "color: #00BCEB; font-weight: bold; font-size: 16px;"
+            )
+        lbl_logo.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
+        header_layout.addWidget(lbl_logo)
+
+        header_layout.addStretch()
+
+        # Menu Button
+        self.menu_button = QToolButton()
+        self.menu_button.setObjectName("menu_button")
+        self.menu_button.setIcon(Icons.get("fa5s.ellipsis-v"))
+        self.menu_button.setStyleSheet("border: none; background: transparent;")
+        self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.menu_button.clicked.connect(self.toggle_side_menu)
+        header_layout.addWidget(self.menu_button)
+
+        main_layout.addWidget(header_widget)
+
+        # --- CONTENT AREA (Split Screen) ---
+        content_widget = QWidget()
+        content_layout = QHBoxLayout(content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+
+        # ==========================
+        # LEFT PANEL (Cart & Totals) - 75%
+        # ==========================
         left_panel = QWidget()
         left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(10, 10, 10, 10)
+        left_layout.setSpacing(10)
 
-        # Cart Table
-        self.cart_table = QTableWidget()
-        self.cart_table.setColumnCount(4)
-        self.cart_table.setHorizontalHeaderLabels(["Item", "Price", "Qty", "Total"])
-        self.cart_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
-        self.cart_table.verticalHeader().setVisible(False)
-        self.cart_table.setShowGrid(False)
-        self.cart_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.cart_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.cart_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.cart_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.cart_table.customContextMenuRequested.connect(self.show_cart_context_menu)
-
-        # Order Bar (Multi-Tab)
-        self.order_bar = OrderBar()
-        self.order_bar.tab_switched.connect(self.switch_to_order)
-        self.order_bar.new_tab_requested.connect(self.create_new_order)
-        left_layout.addWidget(self.order_bar)
-
-        left_layout.addWidget(self.cart_table)
-
-        # --- RIGHT PANEL (Controls) ---
-        right_panel = QWidget()
-        right_panel.setFixedWidth(450)
-        right_layout = QVBoxLayout(right_panel)
-
-        # 1. Header (Customer + Toggle)
-        header_layout = QHBoxLayout()
-
-        self.lbl_customer = QLabel("Walk-in Customer")
-        self.lbl_customer.setStyleSheet("font-weight: bold; font-size: 14px;")
-
-        btn_cust = QPushButton("Select")
-        btn_cust.setFixedWidth(80)
-        btn_cust.clicked.connect(self.select_customer)
-
-        self.btn_toggle_view = QPushButton()
-        self.btn_toggle_view.setIcon(Icons.get("fa5s.th"))
-        self.btn_toggle_view.setToolTip("Toggle Visual Mode")
-        self.btn_toggle_view.setCheckable(True)
-        self.btn_toggle_view.setFixedWidth(40)
-        self.btn_toggle_view.clicked.connect(self.toggle_view)
-
-        header_layout.addWidget(self.lbl_customer)
-        header_layout.addWidget(btn_cust)
-        header_layout.addWidget(self.btn_toggle_view)
-
-        right_layout.addLayout(header_layout)
-
-        self.lbl_points = QLabel("")
-        self.lbl_points.setStyleSheet("color: #FFDC00; font-weight: bold;")
-        right_layout.addWidget(self.lbl_points)
-
-        right_layout.addSpacing(10)
-
-        # 2. Stacked Content (Keyboard vs Visual)
-        self.stack_layout = QStackedLayout()
-
-        # --- MODE 0: Keyboard (Search + Numpad Actions) ---
-        keyboard_widget = QWidget()
-        kb_layout = QVBoxLayout(keyboard_widget)
-        kb_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Search Mode Widget (Phase 6)
+        # 1. Search Bar (Top)
         search_container = QWidget()
         search_layout = QHBoxLayout(search_container)
         search_layout.setContentsMargins(0, 0, 0, 0)
@@ -124,7 +124,10 @@ class SalesView(QWidget):
         self.search_mode_btn.setText("★")
         self.search_mode_btn.setToolTip("Search Mode")
         self.search_mode_btn.setFixedWidth(40)
-        self.search_mode_btn.setStyleSheet("font-size: 18px;")
+        self.search_mode_btn.setFixedHeight(40)
+        self.search_mode_btn.setStyleSheet(
+            "font-size: 18px; background-color: #333; border: 1px solid #555;"
+        )
         self.search_mode_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
 
         # Mode Menu
@@ -141,69 +144,219 @@ class SalesView(QWidget):
 
         # Search Input
         self.barcode_input = QLineEdit()
-        self.barcode_input.setPlaceholderText("Scan or type product...")
+        self.barcode_input.setPlaceholderText("Scan or type product... (Enter)")
+        self.barcode_input.setFixedHeight(40)
         self.barcode_input.setStyleSheet(
-            "font-size: 20px; padding: 10px; border: 2px solid #00BCEB;"
+            "font-size: 16px; padding: 5px; border: 1px solid #555; background-color: #222; color: white;"
         )
         self.barcode_input.returnPressed.connect(self.process_barcode)
         search_layout.addWidget(self.barcode_input)
 
-        kb_layout.addWidget(search_container)
         self.setup_autocomplete()
+        left_layout.addWidget(search_container)
 
-        kb_layout.addSpacing(20)
+        # 2. Cart Table (Center)
+        self.cart_table = QTableWidget()
+        self.cart_table.setColumnCount(4)
+        self.cart_table.setHorizontalHeaderLabels(["Item", "Price", "Qty", "Total"])
+        self.cart_table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
+        )
+        self.cart_table.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.ResizeToContents
+        )  # Item name flexible
+        self.cart_table.verticalHeader().setVisible(False)
+        self.cart_table.setShowGrid(False)
+        self.cart_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.cart_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.cart_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.cart_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.cart_table.customContextMenuRequested.connect(self.show_cart_context_menu)
+        self.cart_table.setAlternatingRowColors(True)
+        # Styling handled in theme.qss, but setting object name for specificity if needed
+        self.cart_table.setObjectName("CartTable")
 
-        # Action Buttons
-        btn_layout = QGridLayout()
+        left_layout.addWidget(self.cart_table)
 
+        # 3. Order Bar (Tabs)
+        self.order_bar = OrderBar()
+        self.order_bar.tab_switched.connect(self.switch_to_order)
+        self.order_bar.new_tab_requested.connect(self.create_new_order)
+        left_layout.addWidget(self.order_bar)
+
+        # 4. Totals Widget (Bottom)
+        total_widget = QFrame()
+        total_widget.setStyleSheet(
+            "background-color: #252526; border-top: 2px solid #3E3E42; border-radius: 5px;"
+        )
+        total_layout = QHBoxLayout(total_widget)
+        total_layout.setContentsMargins(20, 10, 20, 10)
+
+        # Subtotals (Left)
+        subtotal_layout = QVBoxLayout()
+        self.lbl_subtotal = QLabel("Subtotal: 0.00")
+        self.lbl_tax = QLabel("Tax: 0.00")
+        self.lbl_subtotal.setStyleSheet("color: #AAAAAA; font-size: 14px;")
+        self.lbl_tax.setStyleSheet("color: #AAAAAA; font-size: 14px;")
+        subtotal_layout.addWidget(self.lbl_subtotal)
+        subtotal_layout.addWidget(self.lbl_tax)
+        total_layout.addLayout(subtotal_layout)
+
+        total_layout.addStretch()
+
+        # Grand Total (Right)
+        self.total_label = QLabel("0.00")
+        self.total_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        self.total_label.setStyleSheet(
+            "font-size: 48px; font-weight: bold; color: #39FF14;"
+        )
+        total_layout.addWidget(self.total_label)
+
+        left_layout.addWidget(total_widget)
+
+        # ==========================
+        # RIGHT PANEL (Controls) - 25%
+        # ==========================
+        right_panel = QWidget()
+        right_panel.setFixedWidth(350)  # Fixed width for control panel
+        right_panel.setStyleSheet(
+            "background-color: #1E1E1E; border-left: 1px solid #3E3E42;"
+        )
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(10, 10, 10, 10)
+        right_layout.setSpacing(10)
+
+        # 1. Customer Header
+        customer_frame = QFrame()
+        customer_frame.setStyleSheet(
+            "background-color: #2D2D30; border-radius: 5px; padding: 5px;"
+        )
+        cust_layout = QHBoxLayout(customer_frame)
+        cust_layout.setContentsMargins(5, 5, 5, 5)
+
+        self.lbl_customer = QLabel("Walk-in Customer")
+        self.lbl_customer.setStyleSheet(
+            "font-weight: bold; font-size: 14px; color: white;"
+        )
+
+        btn_cust = QPushButton("Select")
+        btn_cust.setFixedWidth(70)
+        btn_cust.setStyleSheet(
+            "background-color: #007ACC; color: white; border: none; padding: 5px;"
+        )
+        btn_cust.clicked.connect(self.select_customer)
+
+        cust_layout.addWidget(self.lbl_customer)
+        cust_layout.addStretch()
+        cust_layout.addWidget(btn_cust)
+
+        right_layout.addWidget(customer_frame)
+
+        self.lbl_points = QLabel("")
+        self.lbl_points.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_points.setStyleSheet(
+            "color: #FFDC00; font-weight: bold; font-size: 12px;"
+        )
+        right_layout.addWidget(self.lbl_points)
+
+        # 2. Action Grid (Command Console)
+        # Using a Grid Layout for square buttons
+        action_grid = QGridLayout()
+        action_grid.setSpacing(10)
+
+        # Helper to create styled action buttons
+        def create_action_btn(text, icon, slot, row, col, color=None):
+            btn = QPushButton(text)
+            btn.setFixedSize(100, 80)  # Square-ish
+            # btn.setIcon(Icons.get(icon)) # Icons need to be handled carefully with text
+            # For now, just text or we can add icon later.
+            # The user requested "Icon + Text below".
+            # Standard QPushButton doesn't support Text Under Icon easily without QToolButton or stylesheet hacks.
+            # Let's use QToolButton for better control or just styled QPushButton.
+            # Going with styled QPushButton for simplicity and robustness first.
+
+            style = """
+                QPushButton {
+                    background-color: #2D2D30;
+                    border: 1px solid #3E3E42;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 12px;
+                }
+                QPushButton:hover {
+                    border: 1px solid #00BCEB;
+                    background-color: #3E3E42;
+                }
+                QPushButton:pressed {
+                    background-color: #00BCEB;
+                    color: black;
+                }
+            """
+            if color:
+                style += "QPushButton {{ color: {}; }}".format(color)
+
+            btn.setStyleSheet(style)
+            btn.clicked.connect(slot)
+            action_grid.addWidget(btn, row, col)
+            return btn
+
+        # Row 0
+        create_action_btn("F2\nCustomer", "", self.select_customer, 0, 0)
+        create_action_btn("F3\nSearch", "", self.open_advanced_search, 0, 1)
+        create_action_btn("F4\nQty", "", self.change_line_quantity, 0, 2)
+
+        # Row 1
+        create_action_btn("F6\nHold", "", self.hold_bill, 1, 0, "#FFDC00")
+        create_action_btn("F7\nRecall", "", self.recall_bill, 1, 1)
+        create_action_btn(
+            "F8\nDrawer", "", lambda: print("Drawer"), 1, 2
+        )  # Placeholder
+
+        # Row 2
+        create_action_btn("Del\nVoid", "", self.void_bill, 2, 0, "#FF4136")
+        create_action_btn("Ref\nRefund", "", lambda: print("Refund"), 2, 1, "#FF4136")
+        create_action_btn("...\nMore", "", lambda: print("More"), 2, 2)
+
+        right_layout.addLayout(action_grid)
+        right_layout.addStretch()
+
+        # 3. Pay Button (Bottom)
         self.btn_pay = QPushButton("PAY (F5)")
+        self.btn_pay.setFixedHeight(80)
+        self.btn_pay.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_pay.setStyleSheet(
-            "background-color: #39FF14; color: black; font-weight: bold; padding: 20px;"
+            """
+            QPushButton {
+                background-color: #39FF14;
+                color: #001F3F;
+                font-size: 24px;
+                font-weight: bold;
+                border: none;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #32E012;
+            }
+            QPushButton:pressed {
+                background-color: #28B40E;
+            }
+        """
         )
         self.btn_pay.clicked.connect(self.process_payment)
-        btn_layout.addWidget(self.btn_pay, 0, 0, 1, 2)
+        right_layout.addWidget(self.btn_pay)
 
-        self.btn_hold = QPushButton("HOLD (F6)")
-        self.btn_hold.setStyleSheet("background-color: #FFDC00; color: black;")
-        self.btn_hold.clicked.connect(self.hold_bill)
-        btn_layout.addWidget(self.btn_hold, 1, 0)
+        # Add panels to content layout
+        content_layout.addWidget(left_panel, stretch=75)
+        content_layout.addWidget(right_panel, stretch=25)
 
-        self.btn_recall = QPushButton("RECALL (F7)")
-        self.btn_recall.setStyleSheet("background-color: #0074D9; color: white;")
-        self.btn_recall.clicked.connect(self.recall_bill)
-        btn_layout.addWidget(self.btn_recall, 1, 1)
-
-        self.btn_void = QPushButton("VOID (F4)")
-        self.btn_void.setStyleSheet("background-color: #FF4136; color: white;")
-        self.btn_void.clicked.connect(self.void_bill)
-        btn_layout.addWidget(self.btn_void, 2, 0, 1, 2)
-
-        kb_layout.addLayout(btn_layout)
-        kb_layout.addStretch()
-
-        # --- MODE 1: Visual POS ---
-        self.visual_pos = VisualPosView()
-        self.visual_pos.item_clicked.connect(self.on_visual_item_clicked)
-
-        # Add to stack
-        self.stack_layout.addWidget(keyboard_widget)
-        self.stack_layout.addWidget(self.visual_pos)
-
-        right_layout.addLayout(self.stack_layout)
-
-        # Total Display (Always Visible)
-        self.total_label = QLabel("Rs. 0.00")
-        self.total_label.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.total_label.setStyleSheet(
-            "font-size: 64px; font-weight: bold; color: #39FF14; margin-top: 20px;"
-        )
-        right_layout.addWidget(self.total_label)
-
-        # Add panels
-        main_layout.addWidget(left_panel)
-        main_layout.addWidget(right_panel)
+        main_layout.addWidget(content_widget)
 
         # Shortcuts
+        self.setup_shortcuts()
+
+    def setup_shortcuts(self):
         self.shortcut_f5 = QShortcut(QKeySequence("F5"), self)
         self.shortcut_f5.activated.connect(self.process_payment)
 
@@ -214,11 +367,18 @@ class SalesView(QWidget):
         self.shortcut_f7.activated.connect(self.recall_bill)
 
         self.shortcut_f4 = QShortcut(QKeySequence("F4"), self)
-        self.shortcut_f4.activated.connect(self.void_bill)
+        self.shortcut_f4.activated.connect(
+            self.change_line_quantity
+        )  # Changed to Qty as per grid
 
-        # F3 for Advanced Search (Phase 6)
         self.shortcut_f3 = QShortcut(QKeySequence("F3"), self)
         self.shortcut_f3.activated.connect(self.open_advanced_search)
+
+        self.shortcut_f2 = QShortcut(QKeySequence("F2"), self)
+        self.shortcut_f2.activated.connect(self.select_customer)
+
+        self.shortcut_del = QShortcut(QKeySequence(Qt.Key.Key_Delete), self)
+        self.shortcut_del.activated.connect(self.void_bill)
 
         # Shortcuts for Enter Key (Decentralized Handling)
         self.shortcut_enter = QShortcut(QKeySequence(Qt.Key.Key_Return), self)
@@ -227,20 +387,62 @@ class SalesView(QWidget):
         self.shortcut_num_enter = QShortcut(QKeySequence(Qt.Key.Key_Enter), self)
         self.shortcut_num_enter.activated.connect(self.process_barcode)
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # Position menu at right edge
+        menu_width = self.side_menu.width()
+        if self.side_menu.isVisible():
+            self.side_menu.setGeometry(
+                self.width() - menu_width, 0, menu_width, self.height()
+            )
+        else:
+            self.side_menu.setGeometry(self.width(), 0, menu_width, self.height())
+
+    def toggle_side_menu(self):
+        menu_width = self.side_menu.width()
+        start_pos = self.side_menu.pos()
+
+        if self.side_menu.isVisible():
+            # Slide Out (Hide)
+            end_pos = QPoint(self.width(), 0)
+            self.menu_animation.setStartValue(start_pos)
+            self.menu_animation.setEndValue(end_pos)
+            self.menu_animation.finished.connect(
+                lambda: self.side_menu.setVisible(False)
+            )
+            self.menu_animation.finished.connect(
+                self.menu_animation.finished.disconnect
+            )  # Disconnect after run
+            self.menu_animation.start()
+        else:
+            # Slide In (Show)
+            self.side_menu.setVisible(True)
+            self.side_menu.raise_()
+            start_pos = QPoint(self.width(), 0)
+            end_pos = QPoint(self.width() - menu_width, 0)
+            self.side_menu.setGeometry(
+                self.width(), 0, menu_width, self.height()
+            )  # Ensure start pos
+
+            self.menu_animation.setStartValue(start_pos)
+            self.menu_animation.setEndValue(end_pos)
+            self.menu_animation.start()
+
+    def eventFilter(self, source, event):
+        if event.type() == event.Type.MouseButtonPress and self.side_menu.isVisible():
+            # Check if click is outside menu
+            if (
+                not self.side_menu.geometry().contains(event.pos())
+                and source is not self.menu_button
+            ):
+                self.toggle_side_menu()
+                return True
+        return super().eventFilter(source, event)
+
     def showEvent(self, event):
         super().showEvent(event)
         self.barcode_input.setFocus()
         self.order_bar.refresh_tabs()
-
-    def toggle_view(self):
-        """Toggle between Keyboard and Visual modes."""
-        if self.stack_layout.currentIndex() == 0:
-            self.stack_layout.setCurrentIndex(1)
-            self.btn_toggle_view.setChecked(True)
-        else:
-            self.stack_layout.setCurrentIndex(0)
-            self.btn_toggle_view.setChecked(False)
-            self.barcode_input.setFocus()
 
     def on_visual_item_clicked(self, product):
         """Handle item click from Visual POS."""
@@ -249,9 +451,6 @@ class SalesView(QWidget):
 
     def process_barcode_external(self, barcode):
         """Handle barcode from global scanner hook."""
-        if self.stack_layout.currentIndex() == 1:
-            self.toggle_view()
-
         self.barcode_input.setText(barcode)
         self.process_barcode()
 
@@ -298,20 +497,6 @@ class SalesView(QWidget):
                 item.get("original_price")
                 and item["unit_price"] < item["original_price"]
             ):
-                # We can't easily do rich text in QTableWidgetItem without a delegate,
-                # but we can show "Old -> New" or just New.
-                # User requested Strikethrough.
-                # Let's use a custom widget or just text for now if simple.
-                # Actually, QTableWidgetItem doesn't support HTML directly easily for strikethrough without setFont.
-                # Let's try to simulate it or just show "Old -> New" for clarity if strikethrough is hard.
-                # Wait, user explicitly asked for Strikethrough.
-                # I will use a QFont with setStrikeOut for the original price, but I need two prices.
-                # So I will format it as: "~~100.00~~ 90.00"
-                # Since I can't style parts of text in one item easily, I'll just show the final price
-                # and maybe a tooltip or color indication, OR use a custom cell widget.
-                # Given constraints, I'll use the "~~100.00~~ 90.00" string format which is not real strikethrough.
-                # BETTER APPROACH: Use a cell widget (QLabel) that supports HTML.
-
                 lbl_price = QLabel()
                 lbl_price.setText(
                     "<s>{:.2f}</s> <b>{:.2f}</b>".format(
@@ -321,7 +506,7 @@ class SalesView(QWidget):
                 lbl_price.setAlignment(
                     Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
                 )
-                lbl_price.setStyleSheet("background-color: transparent;")
+                lbl_price.setStyleSheet("background-color: transparent; color: white;")
                 self.cart_table.setCellWidget(row, 1, lbl_price)
             else:
                 self.cart_table.setItem(
@@ -330,7 +515,7 @@ class SalesView(QWidget):
 
             # Highlight if discounted
             if item.get("discount_type") != "NONE" or item.get("is_manual_price"):
-                bg_color = QColor(220, 255, 220)  # Pale green
+                bg_color = QColor(0, 50, 0)  # Dark Green for dark mode
                 brush = QBrush(bg_color)
                 name_item.setBackground(brush)
 
@@ -349,7 +534,9 @@ class SalesView(QWidget):
             )
 
         totals = self.cart_service.get_totals()
-        self.total_label.setText(f"Rs. {totals['final_total']:.2f}")  # noqa: E231
+        self.total_label.setText(f"{totals['final_total']:.2f}")  # noqa: E231
+        self.lbl_subtotal.setText(f"Subtotal: {totals['subtotal']:.2f}")  # noqa: E231
+        self.lbl_tax.setText(f"Tax: {totals['tax']:.2f}")  # noqa: E231
         self.cart_table.scrollToBottom()
 
     def select_customer(self):
@@ -385,19 +572,11 @@ class SalesView(QWidget):
                     self.customer = None
                     self.lbl_customer.setText("Walk-in Customer")
                     self.lbl_points.setText("")
-                    self.lbl_customer.setText("Walk-in Customer")
-                    self.lbl_points.setText("")
                     self.order_bar.refresh_tabs()
 
                     # Show Receipt Options if configured
                     settings = ConfigService.get_all()
                     if settings.get("show_receipt_dialog", "True") == "True":
-                        # We need the sale object. TransactionService.process_sale returns bool.
-                        # We might need to fetch the last sale or modify process_sale to return the sale object.
-                        # For now, let's fetch the last sale for this user/terminal.
-                        # Or better, let's just assume it worked and show options for "Last Sale".
-                        # Ideally TransactionService returns the Sale ID.
-                        # Let's assume we can get the last sale from DB.
                         from cbpos.core.database import Database
                         from cbpos.core.models import Sale
 
@@ -457,6 +636,10 @@ class SalesView(QWidget):
 
         current_user = AuthService.get_current_user()
         authorized_user = current_user
+
+        # If cart is empty, nothing to void
+        if not self.cart_service.items:
+            return
 
         if not PermissionService.user_has_permission(current_user, "can_void_sale"):
             # Request Override

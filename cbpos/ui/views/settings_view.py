@@ -5,25 +5,25 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
-    QTabWidget,
-    QComboBox,
+    QStackedWidget,
+    QListWidget,
+    QListWidgetItem,
     QFormLayout,
     QMessageBox,
     QGroupBox,
     QCheckBox,
     QSpinBox,
     QFrame,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
+    QComboBox,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtPrintSupport import QPrinterInfo
 from cbpos.core.services.config_service import ConfigService
-from cbpos.core.services.payment_service import PaymentService
 
 
 class SettingsView(QWidget):
+    close_requested = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         self.init_ui()
@@ -31,264 +31,211 @@ class SettingsView(QWidget):
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
-        # Title
-        title = QLabel("System Configuration")
-        title.setStyleSheet("font-size: 24px; font-weight: bold; color: #00BCEB;")
-        main_layout.addWidget(title)
+        # 1. Header
+        header_frame = QFrame()
+        header_frame.setStyleSheet(
+            "background-color: #001F3F; border-bottom: 2px solid #003366;"
+        )
+        header_frame.setFixedHeight(60)
+        header_layout = QHBoxLayout(header_frame)
+        header_layout.setContentsMargins(20, 0, 20, 0)
 
-        # Tabs
-        self.tabs = QTabWidget()
-        self.tabs.setStyleSheet(
+        lbl_title = QLabel("Settings")
+        lbl_title.setStyleSheet("font-size: 24px; font-weight: bold; color: #00BCEB;")
+        header_layout.addWidget(lbl_title)
+
+        main_layout.addWidget(header_frame)
+
+        # 2. Body (Sidebar + Content)
+        body_layout = QHBoxLayout()
+        body_layout.setContentsMargins(0, 0, 0, 0)
+        body_layout.setSpacing(0)
+
+        # 2.1 Sidebar
+        self.sidebar = QListWidget()
+        self.sidebar.setFixedWidth(220)
+        self.sidebar.setStyleSheet(
             """
-            QTabWidget::pane { border: 1px solid #003366; }
-            QTabBar::tab { background: #001F3F; color: white; padding: 10px; }
-            QTabBar::tab:selected { background: #00BCEB; color: black; }
+            QListWidget {
+                background-color: #2D2D30;
+                border: none;
+                outline: none;
+            }
+            QListWidget::item {
+                color: #FFFFFF;
+                padding: 15px;
+                border-bottom: 1px solid #3E3E42;
+            }
+            QListWidget::item:selected {
+                background-color: #3E3E42;
+                border-left: 4px solid #00BCEB;
+                color: #FFFFFF;
+            }
+            QListWidget::item:hover {
+                background-color: #3E3E42;
+            }
         """
         )
+        self.sidebar.currentRowChanged.connect(self.change_page)
 
-        self.tab_general = QWidget()
-        self.tab_hardware = QWidget()
-        self.tab_appearance = QWidget()
-        self.tab_documents = QWidget()
-        self.tab_payments = QWidget()
+        # Sidebar Items
+        import qtawesome as qta
 
-        self.tabs.addTab(self.tab_general, "General")
-        self.tabs.addTab(self.tab_hardware, "Hardware")
-        self.tabs.addTab(self.tab_documents, "Documents")
-        self.tabs.addTab(self.tab_payments, "Payments")
-        self.tabs.addTab(self.tab_appearance, "Appearance")
+        items = [
+            ("General", "fa5s.sliders-h"),
+            ("Order & Payment", "fa5s.credit-card"),
+            ("Hardware", "fa5s.print"),
+            ("Users", "fa5s.users"),
+            ("Database", "fa5s.database"),
+            ("About", "fa5s.info-circle"),
+        ]
 
-        self.init_general_tab()
-        self.init_hardware_tab()
-        self.init_documents_tab()
-        self.init_payments_tab()
-        self.init_appearance_tab()
+        for item_text, icon_name in items:
+            item = QListWidgetItem(item_text)
+            item.setIcon(qta.icon(icon_name, color="white"))
+            item.setSizeHint(QSize(0, 50))
+            item.setTextAlignment(
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+            )
+            self.sidebar.addItem(item)
 
-        main_layout.addWidget(self.tabs)
+        body_layout.addWidget(self.sidebar)
 
-        # Action Buttons
-        btn_layout = QHBoxLayout()
-        btn_save = QPushButton("Save Settings")
-        btn_save.setStyleSheet(
-            "background-color: #39FF14; color: black; font-weight: bold; padding: 10px;"
+        # 2.2 Content Area
+        self.stack = QStackedWidget()
+        self.stack.setStyleSheet(
+            "background-color: #F0F0F0; color: #000000;"
+        )  # Light content area for contrast or keep dark?
+        # Let's keep it consistent with the theme (dark) but maybe slightly lighter than sidebar
+        self.stack.setStyleSheet(
+            "QWidget { background-color: #1E1E1E; color: #FFFFFF; } "
+            "QLineEdit, QComboBox, QSpinBox { "
+            "background-color: #333337; color: white; border: 1px solid #555; padding: 5px; }"
         )
-        btn_save.clicked.connect(self.save_settings)
-        btn_layout.addStretch()
-        btn_layout.addWidget(btn_save)
 
-        main_layout.addLayout(btn_layout)
+        # Pages
+        self.page_general = QWidget()
+        self.page_order_payment = QWidget()
+        self.page_hardware = QWidget()
+        self.page_users = QWidget()
+        self.page_database = QWidget()
+        self.page_about = QWidget()
 
-    def init_general_tab(self):
-        layout = QFormLayout(self.tab_general)
-        layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-        layout.setFormAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-        layout.setContentsMargins(20, 20, 20, 20)
+        self.stack.addWidget(self.page_general)
+        self.stack.addWidget(self.page_order_payment)
+        self.stack.addWidget(self.page_hardware)
+        self.stack.addWidget(self.page_users)
+        self.stack.addWidget(self.page_database)
+        self.stack.addWidget(self.page_about)
+
+        self.init_general_page()
+        self.init_order_payment_page()
+        self.init_hardware_page()
+        self.init_users_page()
+        self.init_database_page()
+        self.init_about_page()
+
+        body_layout.addWidget(self.stack)
+        main_layout.addLayout(body_layout)
+
+        # 3. Footer
+        footer_frame = QFrame()
+        footer_frame.setFixedHeight(60)
+        footer_frame.setStyleSheet(
+            "background-color: #2D2D30; border-top: 1px solid #3E3E42;"
+        )
+        footer_layout = QHBoxLayout(footer_frame)
+        footer_layout.setContentsMargins(20, 10, 20, 10)
+
+        footer_layout.addStretch()
+
+        self.btn_save = QPushButton("Save")
+        self.btn_save.setFixedSize(100, 35)
+        self.btn_save.setStyleSheet(
+            "background-color: #39FF14; color: black; font-weight: bold; border-radius: 4px;"
+        )
+        self.btn_save.clicked.connect(self.save_all)
+
+        self.btn_cancel = QPushButton("Cancel")
+        self.btn_cancel.setFixedSize(100, 35)
+        self.btn_cancel.setStyleSheet(
+            "background-color: #FF4136; color: white; font-weight: bold; border-radius: 4px;"
+        )
+        self.btn_cancel.clicked.connect(self.close_requested.emit)
+
+        footer_layout.addWidget(self.btn_save)
+        footer_layout.addWidget(self.btn_cancel)
+
+        main_layout.addWidget(footer_frame)
+
+        # Select first item
+        self.sidebar.setCurrentRow(0)
+
+    def change_page(self, index):
+        self.stack.setCurrentIndex(index)
+
+    def init_general_page(self):
+        layout = QFormLayout(self.page_general)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(20)
+
+        lbl_header = QLabel("General Settings")
+        lbl_header.setStyleSheet(
+            "font-size: 18px; font-weight: bold; color: #00BCEB; margin-bottom: 20px;"
+        )
+        layout.addRow(lbl_header)
 
         self.input_shop_name = QLineEdit()
         self.input_address = QLineEdit()
         self.input_phone = QLineEdit()
         self.input_vat = QLineEdit()
-        self.input_header = QLineEdit()
-        self.input_footer = QLineEdit()
 
         layout.addRow("Shop Name:", self.input_shop_name)
         layout.addRow("Address:", self.input_address)
         layout.addRow("Phone:", self.input_phone)
         layout.addRow("VAT Number:", self.input_vat)
-        layout.addRow("Receipt Header:", self.input_header)
-        layout.addRow("Receipt Footer:", self.input_footer)
 
-    def init_hardware_tab(self):
-        layout = QVBoxLayout(self.tab_hardware)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
+        # Language
+        self.combo_language = QComboBox()
+        self.combo_language.addItems(["English (en)", "Sinhala (si)", "Tamil (ta)"])
+        layout.addRow("Language:", self.combo_language)
 
-        # === PRINTER CONFIGURATION ===
-        grp_printer = QGroupBox("Printer Configuration")
-        form_printer = QFormLayout(grp_printer)
+    def init_order_payment_page(self):
+        layout = QVBoxLayout(self.page_order_payment)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(20)
 
-        # Get available system printers
-        available_printers = QPrinterInfo.availablePrinterNames()
-        if not available_printers:
-            available_printers = ["No printers found"]
+        lbl_header = QLabel("Order & Payment Configuration")
+        lbl_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #00BCEB;")
+        layout.addWidget(lbl_header)
 
-        # Receipt Printer
-        self.combo_receipt_printer = QComboBox()
-        self.combo_receipt_printer.addItems(available_printers)
-        form_printer.addRow("Receipt Printer (Thermal):", self.combo_receipt_printer)
+        # Documents Section (Migrated)
+        grp_docs = QGroupBox("Document Numbering")
+        form_docs = QFormLayout(grp_docs)
 
-        # A4 Printer
-        self.combo_a4_printer = QComboBox()
-        self.combo_a4_printer.addItems(available_printers)
-        form_printer.addRow("A4 Printer (Invoice):", self.combo_a4_printer)
-
-        # Auto-Print Checkbox
-        self.chk_auto_print = QCheckBox("Print receipt automatically after sale")
-        self.chk_auto_print.setChecked(True)
-        form_printer.addRow("Auto-Print:", self.chk_auto_print)
-
-        # Receipt Copies
-        self.spin_copies = QSpinBox()
-        self.spin_copies.setRange(1, 5)
-        self.spin_copies.setValue(1)
-        form_printer.addRow("Receipt Copies:", self.spin_copies)
-
-        layout.addWidget(grp_printer)
-
-        # === SCALE CONFIGURATION ===
-        grp_scale = QGroupBox("Scale Barcode Configuration (Grocery)")
-        form_scale = QFormLayout(grp_scale)
-
-        # Barcode Prefix
-        self.input_scale_prefix = QLineEdit()
-        self.input_scale_prefix.setPlaceholderText("e.g., 20")
-        self.input_scale_prefix.setMaxLength(2)
-        form_scale.addRow("Barcode Prefix (2 digits):", self.input_scale_prefix)
-
-        # Decimal Places
-        self.spin_decimal_places = QSpinBox()
-        self.spin_decimal_places.setRange(0, 5)
-        self.spin_decimal_places.setValue(3)
-        form_scale.addRow("Decimal Places (Weight):", self.spin_decimal_places)
-
-        layout.addWidget(grp_scale)
-
-        # === BANKING DETAILS ===
-        grp_banking = QGroupBox("Banking Details (For A4 Invoices)")
-        form_banking = QFormLayout(grp_banking)
-
-        # Bank Name
-        self.input_bank_name = QLineEdit()
-        self.input_bank_name.setPlaceholderText("e.g., Commercial Bank of Ceylon")
-        form_banking.addRow("Bank Name:", self.input_bank_name)
-
-        # Account Number
-        self.input_account_number = QLineEdit()
-        self.input_account_number.setPlaceholderText("e.g., 1234567890")
-        form_banking.addRow("Account Number:", self.input_account_number)
-
-        # Branch
-        self.input_bank_branch = QLineEdit()
-        self.input_bank_branch.setPlaceholderText("e.g., Colombo Fort")
-        form_banking.addRow("Branch:", self.input_bank_branch)
-
-        layout.addWidget(grp_banking)
-
-        layout.addWidget(grp_banking)
-
-        layout.addStretch()
-
-    def init_documents_tab(self):
-        layout = QFormLayout(self.tab_documents)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
-
-        # Explanation
-        lbl_info = QLabel(
-            "Configure document number formats. Use {Y}, {M}, {D} for date parts and {seq:05d} for sequence."
-        )
-        lbl_info.setWordWrap(True)
-        lbl_info.setStyleSheet("color: #AAAAAA; font-style: italic;")
-        layout.addRow(lbl_info)
-
-        # Reset Period
         self.combo_reset_period = QComboBox()
         self.combo_reset_period.addItems(["YEARLY", "MONTHLY", "NEVER"])
-        layout.addRow("Sequence Reset Period:", self.combo_reset_period)
+        form_docs.addRow("Reset Period:", self.combo_reset_period)
 
-        # Separator
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setFrameShadow(QFrame.Shadow.Sunken)
-        layout.addRow(line)
-
-        # Formats
         self.input_fmt_sale = QLineEdit()
         self.input_fmt_sale.setPlaceholderText("INV-{Y}-{seq:05d}")
-        layout.addRow("Sale Invoice Format:", self.input_fmt_sale)
+        form_docs.addRow("Sale Format:", self.input_fmt_sale)
 
         self.input_fmt_purchase = QLineEdit()
         self.input_fmt_purchase.setPlaceholderText("GRN-{Y}-{seq:05d}")
-        layout.addRow("Purchase (GRN) Format:", self.input_fmt_purchase)
+        form_docs.addRow("Purchase Format:", self.input_fmt_purchase)
 
         self.input_fmt_return = QLineEdit()
         self.input_fmt_return.setPlaceholderText("CN-{Y}-{seq:05d}")
-        layout.addRow("Return (CN) Format:", self.input_fmt_return)
+        form_docs.addRow("Return Format:", self.input_fmt_return)
 
-        # Preview
-        self.lbl_preview = QLabel("Preview: INV-2023-00001")
-        self.lbl_preview.setStyleSheet("font-weight: bold; color: #39FF14;")
-        layout.addRow("Example Preview:", self.lbl_preview)
+        layout.addWidget(grp_docs)
 
-        # Connect changes to preview
-        self.input_fmt_sale.textChanged.connect(self.update_preview)
-
-    def update_preview(self, text):
-        from datetime import datetime
-
-        now = datetime.now()
-        try:
-            # Simple mock render
-            rendered = (
-                text.replace("{Y}", now.strftime("%Y"))
-                .replace("{M}", now.strftime("%m"))
-                .replace("{D}", now.strftime("%d"))
-                .replace("{seq:05d}", "00001")
-            )
-            self.lbl_preview.setText(f"Preview: {rendered}")
-        except Exception:
-            self.lbl_preview.setText("Preview: Invalid Format")
-
-    def init_payments_tab(self):
-        layout = QVBoxLayout(self.tab_payments)
-        layout.setContentsMargins(20, 20, 20, 20)
-
-        # 1. Payment Methods Table
-        grp_methods = QGroupBox("Payment Methods")
-        methods_layout = QVBoxLayout(grp_methods)
-
-        self.table_methods = QTableWidget()
-        self.table_methods.setColumnCount(5)
-        self.table_methods.setHorizontalHeaderLabels(
-            ["ID", "Name", "Cash?", "Drawer?", "Shortcut"]
-        )
-        self.table_methods.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
-        self.table_methods.verticalHeader().setVisible(False)
-        methods_layout.addWidget(self.table_methods)
-
-        # Refresh Button (Simulate Management)
-        # In a full app, we'd have Add/Edit/Delete buttons here calling PaymentService
-        # For now, just read-only view of what's in DB
-        btn_refresh = QPushButton("Refresh Methods")
-        btn_refresh.clicked.connect(self.load_payment_methods)
-        methods_layout.addWidget(btn_refresh)
-
-        layout.addWidget(grp_methods)
-
-        # 2. SMTP Settings
-        grp_smtp = QGroupBox("Email Configuration (SMTP)")
-        form_smtp = QFormLayout(grp_smtp)
-
-        self.input_smtp_host = QLineEdit()
-        self.input_smtp_port = QLineEdit()
-        self.input_smtp_user = QLineEdit()
-        self.input_smtp_pass = QLineEdit()
-        self.input_smtp_pass.setEchoMode(QLineEdit.EchoMode.Password)
-        self.chk_smtp_ssl = QCheckBox("Use SSL")
-
-        form_smtp.addRow("SMTP Host:", self.input_smtp_host)
-        form_smtp.addRow("SMTP Port:", self.input_smtp_port)
-        form_smtp.addRow("Username:", self.input_smtp_user)
-        form_smtp.addRow("Password:", self.input_smtp_pass)
-        form_smtp.addRow("", self.chk_smtp_ssl)
-
-        layout.addWidget(grp_smtp)
-
-        # 3. Receipt Options
-        grp_opts = QGroupBox("Post-Sale Options")
+        # Payment Options
+        grp_opts = QGroupBox("Payment Options")
         form_opts = QFormLayout(grp_opts)
 
         self.chk_show_receipt_dialog = QCheckBox(
@@ -297,30 +244,81 @@ class SettingsView(QWidget):
         form_opts.addRow(self.chk_show_receipt_dialog)
 
         layout.addWidget(grp_opts)
+        layout.addStretch()
 
-    def load_payment_methods(self):
-        self.table_methods.setRowCount(0)
-        methods = PaymentService.get_all_methods()
-        for row, m in enumerate(methods):
-            self.table_methods.insertRow(row)
-            self.table_methods.setItem(row, 0, QTableWidgetItem(str(m.id)))
-            self.table_methods.setItem(row, 1, QTableWidgetItem(m.name))
-            self.table_methods.setItem(
-                row, 2, QTableWidgetItem("Yes" if m.is_cash else "No")
-            )
-            self.table_methods.setItem(
-                row, 3, QTableWidgetItem("Yes" if m.open_drawer else "No")
-            )
-            self.table_methods.setItem(row, 4, QTableWidgetItem(m.shortcut or ""))
+    def init_hardware_page(self):
+        layout = QVBoxLayout(self.page_hardware)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(20)
 
-    def init_appearance_tab(self):
-        layout = QFormLayout(self.tab_appearance)
-        layout.setContentsMargins(20, 20, 20, 20)
+        lbl_header = QLabel("Hardware Configuration")
+        lbl_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #00BCEB;")
+        layout.addWidget(lbl_header)
 
-        self.combo_language = QComboBox()
-        self.combo_language.addItems(["en", "si", "ta"])
+        # Printers
+        grp_printer = QGroupBox("Printers")
+        form_printer = QFormLayout(grp_printer)
 
-        layout.addRow("Language:", self.combo_language)
+        available_printers = QPrinterInfo.availablePrinterNames() or [
+            "No printers found"
+        ]
+
+        self.combo_receipt_printer = QComboBox()
+        self.combo_receipt_printer.addItems(available_printers)
+        form_printer.addRow("Receipt Printer:", self.combo_receipt_printer)
+
+        self.combo_a4_printer = QComboBox()
+        self.combo_a4_printer.addItems(available_printers)
+        form_printer.addRow("A4 Printer:", self.combo_a4_printer)
+
+        self.chk_auto_print = QCheckBox("Auto-Print Receipt")
+        form_printer.addRow("", self.chk_auto_print)
+
+        self.spin_copies = QSpinBox()
+        self.spin_copies.setRange(1, 5)
+        form_printer.addRow("Copies:", self.spin_copies)
+
+        layout.addWidget(grp_printer)
+
+        # Scale
+        grp_scale = QGroupBox("Weighing Scale")
+        form_scale = QFormLayout(grp_scale)
+
+        self.input_scale_prefix = QLineEdit()
+        self.input_scale_prefix.setMaxLength(2)
+        form_scale.addRow("Barcode Prefix (2 digits):", self.input_scale_prefix)
+
+        self.spin_decimal_places = QSpinBox()
+        self.spin_decimal_places.setRange(0, 4)
+        form_scale.addRow("Decimal Places:", self.spin_decimal_places)
+
+        layout.addWidget(grp_scale)
+        layout.addStretch()
+
+    def init_users_page(self):
+        layout = QVBoxLayout(self.page_users)
+        layout.setContentsMargins(40, 40, 40, 40)
+        lbl = QLabel("User Management (Placeholder)")
+        lbl.setStyleSheet("color: #888;")
+        layout.addWidget(lbl)
+        layout.addStretch()
+
+    def init_database_page(self):
+        layout = QVBoxLayout(self.page_database)
+        layout.setContentsMargins(40, 40, 40, 40)
+        lbl = QLabel("Database Maintenance (Placeholder)")
+        lbl.setStyleSheet("color: #888;")
+        layout.addWidget(lbl)
+        layout.addStretch()
+
+    def init_about_page(self):
+        layout = QVBoxLayout(self.page_about)
+        layout.setContentsMargins(40, 40, 40, 40)
+        lbl = QLabel("About CB POS\nVersion 0.1.0\n\n(c) 2025 Ceylon Byte")
+        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl.setStyleSheet("font-size: 16px; color: #CCC;")
+        layout.addWidget(lbl)
+        layout.addStretch()
 
     def load_settings(self):
         settings = ConfigService.get_all()
@@ -330,41 +328,13 @@ class SettingsView(QWidget):
         self.input_address.setText(settings.get("shop_address", ""))
         self.input_phone.setText(settings.get("shop_phone", ""))
         self.input_vat.setText(settings.get("vat_number", ""))
-        self.input_header.setText(settings.get("receipt_header", ""))
-        self.input_footer.setText(settings.get("receipt_footer", ""))
 
-        # Hardware - Printers
-        receipt_printer = settings.get("receipt_printer_name", "")
-        if receipt_printer:
-            index = self.combo_receipt_printer.findText(receipt_printer)
-            if index >= 0:
-                self.combo_receipt_printer.setCurrentIndex(index)
-
-        a4_printer = settings.get("a4_printer_name", "")
-        if a4_printer:
-            index = self.combo_a4_printer.findText(a4_printer)
-            if index >= 0:
-                self.combo_a4_printer.setCurrentIndex(index)
-
-        self.chk_auto_print.setChecked(settings.get("auto_print_receipt", True))
-        self.spin_copies.setValue(settings.get("receipt_copies", 1))
-
-        # Hardware - Scale
-        self.input_scale_prefix.setText(settings.get("scale_barcode_prefix", "20"))
-        self.spin_decimal_places.setValue(settings.get("scale_decimal_places", 3))
-
-        # Hardware - Banking
-        self.input_bank_name.setText(
-            settings.get("company_bank_name", "Commercial Bank of Ceylon")
-        )
-        self.input_account_number.setText(
-            settings.get("company_account_number", "1234567890")
-        )
-        self.input_bank_branch.setText(
-            settings.get("company_bank_branch", "Colombo Fort")
+        lang_map = {"en": 0, "si": 1, "ta": 2}
+        self.combo_language.setCurrentIndex(
+            lang_map.get(settings.get("language", "en"), 0)
         )
 
-        # Documents
+        # Order & Payment
         self.combo_reset_period.setCurrentText(
             settings.get("doc_reset_period", "YEARLY")
         )
@@ -377,67 +347,57 @@ class SettingsView(QWidget):
         self.input_fmt_return.setText(
             settings.get("doc_format_return", "CN-{Y}-{seq:05d}")
         )
-
-        # Payments
-        self.load_payment_methods()
-        self.input_smtp_host.setText(settings.get("smtp_host", ""))
-        self.input_smtp_port.setText(str(settings.get("smtp_port", "587")))
-        self.input_smtp_user.setText(settings.get("smtp_user", ""))
-        self.input_smtp_pass.setText(settings.get("smtp_pass", ""))
-        self.chk_smtp_ssl.setChecked(settings.get("smtp_use_ssl", "False") == "True")
         self.chk_show_receipt_dialog.setChecked(
             settings.get("show_receipt_dialog", "True") == "True"
         )
 
-        # Appearance
-        self.combo_language.setCurrentText(settings.get("language", "en"))
+        # Hardware
+        receipt_printer = settings.get("receipt_printer_name", "")
+        if receipt_printer:
+            idx = self.combo_receipt_printer.findText(receipt_printer)
+            if idx >= 0:
+                self.combo_receipt_printer.setCurrentIndex(idx)
 
-    def save_settings(self):
-        # Validate Scale Prefix
+        a4_printer = settings.get("a4_printer_name", "")
+        if a4_printer:
+            idx = self.combo_a4_printer.findText(a4_printer)
+            if idx >= 0:
+                self.combo_a4_printer.setCurrentIndex(idx)
+
+        self.chk_auto_print.setChecked(settings.get("auto_print_receipt", True))
+        self.spin_copies.setValue(settings.get("receipt_copies", 1))
+
+        self.input_scale_prefix.setText(settings.get("scale_barcode_prefix", "20"))
+        self.spin_decimal_places.setValue(settings.get("scale_decimal_places", 3))
+
+    def save_all(self):
+        # Validation
         scale_prefix = self.input_scale_prefix.text().strip()
         if len(scale_prefix) != 2 or not scale_prefix.isdigit():
-            QMessageBox.warning(
-                self,
-                "Validation Error",
-                "Scale Barcode Prefix must be exactly 2 digits (e.g., '20').",
-            )
+            QMessageBox.warning(self, "Error", "Scale Prefix must be 2 digits.")
             return
 
+        lang_code = ["en", "si", "ta"][self.combo_language.currentIndex()]
+
         data = {
-            # General
             "shop_name": self.input_shop_name.text(),
             "shop_address": self.input_address.text(),
             "shop_phone": self.input_phone.text(),
             "vat_number": self.input_vat.text(),
-            "receipt_header": self.input_header.text(),
-            "receipt_footer": self.input_footer.text(),
-            # Hardware - Printers
-            "receipt_printer_name": self.combo_receipt_printer.currentText(),
-            "a4_printer_name": self.combo_a4_printer.currentText(),
-            "auto_print_receipt": self.chk_auto_print.isChecked(),
-            "receipt_copies": self.spin_copies.value(),
-            # Hardware - Scale
-            "scale_barcode_prefix": scale_prefix,
-            "scale_decimal_places": self.spin_decimal_places.value(),
-            # Hardware - Banking
-            "company_bank_name": self.input_bank_name.text(),
-            "company_account_number": self.input_account_number.text(),
-            "company_bank_branch": self.input_bank_branch.text(),
-            # Documents
+            "language": lang_code,
             "doc_reset_period": self.combo_reset_period.currentText(),
             "doc_format_sale": self.input_fmt_sale.text(),
             "doc_format_purchase": self.input_fmt_purchase.text(),
             "doc_format_return": self.input_fmt_return.text(),
-            # Appearance
-            "language": self.combo_language.currentText(),
-            # Payments
-            "smtp_host": self.input_smtp_host.text(),
-            "smtp_port": self.input_smtp_port.text(),
-            "smtp_user": self.input_smtp_user.text(),
-            "smtp_pass": self.input_smtp_pass.text(),
-            "smtp_use_ssl": str(self.chk_smtp_ssl.isChecked()),
             "show_receipt_dialog": str(self.chk_show_receipt_dialog.isChecked()),
+            "receipt_printer_name": self.combo_receipt_printer.currentText(),
+            "a4_printer_name": self.combo_a4_printer.currentText(),
+            "auto_print_receipt": self.chk_auto_print.isChecked(),
+            "receipt_copies": self.spin_copies.value(),
+            "scale_barcode_prefix": scale_prefix,
+            "scale_decimal_places": self.spin_decimal_places.value(),
         }
 
         ConfigService.update_all(data)
-        QMessageBox.information(self, "Success", "Settings saved successfully!")
+        QMessageBox.information(self, "Saved", "Settings saved successfully.")
+        self.close_requested.emit()

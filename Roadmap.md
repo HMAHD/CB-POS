@@ -291,24 +291,24 @@
 - [x] **10.2 Logic**
     - [x] **Split Payment:** Cash + Card.
     - [x] **Credit Sale:** Assign to Customer Debt.
-    - [ ] **Change Calculation:** Live update.
-- [ ] **10.3 Payment Types **
-    - [ ] **Configurable Payment Methods:** Create custom types
-    - [ ] **Payment Type Properties:**
-        - [ ] Mark transaction as paid (Yes/No)
-        - [ ] Allow change calculation
-        - [ ] Auto-open cash drawer
-        - [ ] Auto-print receipt
-        - [ ] Keyboard shortcut assignment
-    - [ ] **Quick Payment (F12):** One-click default payment
-    - [ ] **Payment Form Settings:** Customize display
-- [ ] **10.4 Receipt Options**
-    - [ ] **Print Receipt:** Thermal printer
-    - [ ] **Print Invoice:** A4 printer
-    - [ ] **Email Receipt:** Send to customer
-    - [ ] **Save as PDF:** Digital copy
-    - [ ] **Skip Printing:** No receipt option
-    - [ ] **Receipt Dialog:** Choose action after sale
+    - [x] **Change Calculation:** Live update.
+- [x] **10.3 Payment Types **
+    - [x] **Configurable Payment Methods:** Create custom types
+    - [x] **Payment Type Properties:**
+        - [x] Mark transaction as paid (Yes/No)
+        - [x] Allow change calculation
+        - [x] Auto-open cash drawer
+        - [x] Auto-print receipt
+        - [x] Keyboard shortcut assignment
+    - [x] **Quick Payment (F12):** One-click default payment
+    - [x] **Payment Form Settings:** Customize display
+- [x] **10.4 Receipt Options**
+    - [x] **Print Receipt:** Thermal printer
+    - [x] **Print Invoice:** A4 printer
+    - [x] **Email Receipt:** Send to customer
+    - [x] **Save as PDF:** Digital copy
+    - [x] **Skip Printing:** No receipt option
+    - [x] **Receipt Dialog:** Choose action after sale
 
 ---
 

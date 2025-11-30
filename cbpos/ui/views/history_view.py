@@ -20,6 +20,8 @@ from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.core.services.auth_service import AuthService
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from sqlalchemy.orm import joinedload
+from cbpos.core.models import SaleItem
 
 
 class HistoryView(QWidget):
@@ -152,11 +154,19 @@ class HistoryView(QWidget):
 
             if search_term:
                 query = query.filter(
-                    (Sale.receipt_no.like(f"%{search_term}%"))
+                    (Sale.document_number.like(f"%{search_term}%"))
                     | (Sale.customer.has(name=search_term))
                 )
 
-            sales = query.order_by(Sale.date.desc()).all()
+            sales = (
+                query.options(
+                    joinedload(Sale.user),
+                    joinedload(Sale.customer),
+                    joinedload(Sale.items).joinedload(SaleItem.product),
+                )
+                .order_by(Sale.date.desc())
+                .all()
+            )
 
             # Detach from session
             for sale in sales:
@@ -177,10 +187,12 @@ class HistoryView(QWidget):
             self.transaction_table.setItem(row, 0, dt_item)
 
             # Receipt#
-            self.transaction_table.setItem(row, 1, QTableWidgetItem(sale.receipt_no))
+            self.transaction_table.setItem(
+                row, 1, QTableWidgetItem(sale.document_number)
+            )
 
             # Cashier
-            cashier_name = sale.cashier.username if sale.cashier else "Unknown"
+            cashier_name = sale.user.username if sale.user else "Unknown"
             self.transaction_table.setItem(row, 2, QTableWidgetItem(cashier_name))
 
             # Total
@@ -235,9 +247,9 @@ class HistoryView(QWidget):
     def display_details(self, sale):
         """Display sale details in details panel"""
         details_text = f"""
-        <b>Receipt:</b> {sale.receipt_no}<br>
+        <b>Receipt:</b> {sale.document_number}<br>
         <b>Date:</b> {sale.date.strftime("%Y-%m-%d %H:%M:%S")}<br>
-        <b>Cashier:</b> {sale.cashier.username if sale.cashier else 'Unknown'}<br>
+        <b>Cashier:</b> {sale.user.username if sale.user else 'Unknown'}<br>
         <b>Total:</b> Rs. {sale.total_amount:.2f}<br>
         <b>Payment:</b> {sale.payment_method}<br>
         <b>Status:</b> {sale.status}
@@ -307,7 +319,7 @@ class HistoryView(QWidget):
             QMessageBox.information(
                 self,
                 "Success",
-                f"Receipt {self.current_sale.receipt_no} sent to printer.",
+                f"Receipt {self.current_sale.document_number} sent to printer.",
             )
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to reprint receipt: {e}")
@@ -322,7 +334,7 @@ class HistoryView(QWidget):
             self,
             "Confirm Refund",
             f"<b>Refund Transaction?</b><br><br>"
-            f"Receipt: {self.current_sale.receipt_no}<br>"
+            f"Receipt: {self.current_sale.document_number}<br>"
             f"Amount: Rs. {self.current_sale.total_amount:.2f}<br><br>"
             f"<b style='color: #FF4136;'>Warning:</b> Stock will be restored. "
             f"This action cannot be undone.",

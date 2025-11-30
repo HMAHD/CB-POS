@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QToolButton
 from PyQt6.QtCore import Qt, QSize
 from cbpos.ui.resources.icons import Icons
 
@@ -59,23 +59,24 @@ class InfoCard(QWidget):
         self.val_lbl.setText(value)
 
 
-class SidebarButton(QPushButton):
+class SidebarButton(QToolButton):
     """
     Flat button for the sidebar with icon and text.
     """
 
     def __init__(self, text: str, icon_name: str):
         super().__init__()
-        self.setText(f"  {text}")
+        self.setText(text)
         self.setIcon(Icons.get(icon_name, "#AAAAAA"))
         self.setIconSize(QSize(24, 24))
         self.setCheckable(True)
         self.setAutoExclusive(True)
         self.setFixedHeight(50)
+        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setStyleSheet(
             """
-            QPushButton {
+            QToolButton {
                 background-color: transparent;
                 color: #AAAAAA;
                 border: none;
@@ -85,11 +86,11 @@ class SidebarButton(QPushButton):
                 font-size: 14px;
                 font-weight: normal;
             }
-            QPushButton:hover {
+            QToolButton:hover {
                 background-color: #002855;
                 color: white;
             }
-            QPushButton:checked {
+            QToolButton:checked {
                 background-color: #003366;
                 color: #00BCEB;
                 border-left: 4px solid #00BCEB;
@@ -101,5 +102,3 @@ class SidebarButton(QPushButton):
     def set_active(self, active: bool):
         """Set the active state of the button and update styling."""
         self.setChecked(active)
-        # Note: Icon color is set at initialization and doesn't change dynamically
-        # CSS handles text color changes on hover/checked states

@@ -2,21 +2,17 @@ import os
 from PyQt6.QtWidgets import (
     QMainWindow,
     QStackedWidget,
-    QLabel,
     QWidget,
     QVBoxLayout,
-    QHBoxLayout,
     QApplication,
-    QFrame,
 )
+from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap
-from pathlib import Path
 from cbpos.ui.views.login_view import LoginView
-from cbpos.ui.resources.icons import Icons
-from cbpos.ui.widgets.custom_widgets import SidebarButton
+from cbpos.ui.views.sales_view import SalesView
+from cbpos.ui.views.management_view import ManagementView
+from cbpos.ui.views.settings_view import SettingsView
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
-from cbpos.ui.views.purchase_view import PurchaseView
 from cbpos.infrastructure.session_watchdog import SessionWatchdog
 
 
@@ -40,119 +36,16 @@ class MainWindow(QMainWindow):
         # Central Widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-        self.main_layout = QHBoxLayout(central_widget)
+        self.main_layout = QVBoxLayout(central_widget)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
 
-        # 1. Sidebar (Hidden initially)
-        self.sidebar = QFrame()
-        self.sidebar.setFixedWidth(250)
-        self.sidebar.setStyleSheet(
-            "background-color: #001226; border-right: 1px solid #003366;"
-        )
-        self.sidebar_layout = QVBoxLayout(self.sidebar)
-        self.sidebar_layout.setContentsMargins(0, 20, 0, 20)
-        self.sidebar_layout.setSpacing(5)
-
-        # Logo Area
-        base_path = Path(__file__).resolve().parent.parent
-        logo_path = base_path / "assets" / "logo" / "cover_black.png"
-
-        lbl_logo = QLabel()
-        lbl_logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        if logo_path.exists():
-            pixmap = QPixmap(str(logo_path))
-            # Scale to height 40px, smooth
-            scaled_pixmap = pixmap.scaledToHeight(
-                40, Qt.TransformationMode.SmoothTransformation
-            )
-            lbl_logo.setPixmap(scaled_pixmap)
-        else:
-            lbl_logo.setText("CEYLON BYTE")
-            lbl_logo.setStyleSheet(
-                "font-size: 20px; font-weight: bold; color: #00BCEB;"
-            )
-
-        lbl_logo.setStyleSheet(
-            "border: none; background: transparent; margin-bottom: 20px;"
-        )
-        self.sidebar_layout.addWidget(lbl_logo)
-
-        # Nav Buttons
-        self.nav_buttons = []
-        self.btn_dashboard = self.create_nav_button("Dashboard", Icons.DASHBOARD, 0)
-        self.btn_sales = self.create_nav_button("Sales", Icons.SALES, 1)
-        self.btn_inventory = self.create_nav_button("Inventory", Icons.INVENTORY, 2)
-        self.btn_purchasing = self.create_nav_button("Purchasing", Icons.PURCHASE, 3)
-        self.btn_customers = self.create_nav_button("Customers", Icons.CUSTOMERS, 4)
-        self.btn_reports = self.create_nav_button("Reports", Icons.REPORTS, 5)
-        self.btn_history = self.create_nav_button("History", Icons.HISTORY, 6)
-        self.btn_users = self.create_nav_button("Users", Icons.USERS, 7)
-        self.btn_settings = self.create_nav_button("Settings", Icons.SETTINGS, 8)
-
-        self.sidebar_layout.addStretch()
-
-        # User Info in Sidebar
-        self.lbl_user = QLabel("Not Logged In")
-        self.lbl_user.setStyleSheet("color: #AAAAAA; padding: 10px; font-size: 12px;")
-        self.lbl_user.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.sidebar_layout.addWidget(self.lbl_user)
-
-        self.btn_logout = SidebarButton("Logout", Icons.LOGOUT)
-        self.btn_logout.clicked.connect(self.logout)
-        self.sidebar_layout.addWidget(self.btn_logout)
-
-        self.main_layout.addWidget(self.sidebar)
-        self.sidebar.setVisible(False)
-
-        # 2. Main Content Area
-        content_area = QWidget()
-        content_layout = QVBoxLayout(content_area)
-        content_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Top Bar (Status)
-        self.top_bar = QWidget()
-        self.top_bar.setFixedHeight(40)
-        self.top_bar.setStyleSheet(
-            "background-color: #001F3F; border-bottom: 1px solid #003366;"
-        )
-        top_layout = QHBoxLayout(self.top_bar)
-        top_layout.setContentsMargins(20, 0, 20, 0)
-
-        self.lbl_status_printer = QLabel("PRINTER")
-        self.lbl_status_printer.setStyleSheet("color: #39FF14; font-weight: bold;")
-        top_layout.addWidget(self.lbl_status_printer)
-
-        top_layout.addStretch()
-
-        self.lbl_date = QLabel("2023-10-27 10:00 AM")  # Placeholder
-        self.lbl_date.setStyleSheet("color: white;")
-        top_layout.addWidget(self.lbl_date)
-
-        content_layout.addWidget(self.top_bar)
-        self.top_bar.setVisible(False)
-
         # Stack
         self.stack = QStackedWidget()
-        content_layout.addWidget(self.stack)
-
-        self.main_layout.addWidget(content_area)
+        self.main_layout.addWidget(self.stack)
 
         # Initialize Views
         self.init_views()
-
-    def create_nav_button(self, text, icon, index):
-        btn = SidebarButton(text, icon)
-        btn.clicked.connect(lambda: self.switch_tab(index))
-        self.sidebar_layout.addWidget(btn)
-        self.nav_buttons.append(btn)
-        return btn
-
-    def switch_tab(self, index):
-        self.stack.setCurrentIndex(index)
-        # Update active state
-        for i, btn in enumerate(self.nav_buttons):
-            btn.set_active(i == index)
 
     def load_theme(self):
         theme_path = os.path.join(os.path.dirname(__file__), "styles", "theme.qss")
@@ -163,85 +56,70 @@ class MainWindow(QMainWindow):
             print(f"Warning: Theme file not found at {theme_path}")
 
     def init_views(self):
-        # 0. Dashboard
-        from cbpos.ui.views.dashboard_view import DashboardView
-
-        self.dashboard_view = DashboardView()
-        self.stack.addWidget(self.dashboard_view)
-
-        # 1. Sales
-        from cbpos.ui.views.sales_view import SalesView
-
-        self.sales_view = SalesView()
-        self.stack.addWidget(self.sales_view)
-
-        # 2. Inventory
-        from cbpos.ui.views.inventory_view import InventoryView
-
-        self.inventory_view = InventoryView()
-        self.stack.addWidget(self.inventory_view)
-
-        # 3. Purchasing
-        self.purchase_view = PurchaseView()
-        self.stack.addWidget(self.purchase_view)
-
-        # 4. Customers
-        from cbpos.ui.views.customer_view import CustomerView
-
-        self.customer_view = CustomerView()
-        self.stack.addWidget(self.customer_view)
-
-        # 5. Reports
-        from cbpos.ui.views.reports_view import ReportsView
-
-        self.reports_view = ReportsView()
-        self.stack.addWidget(self.reports_view)
-
-        # 6. History
-        from cbpos.ui.views.history_view import HistoryView
-
-        self.history_view = HistoryView()
-        self.stack.addWidget(self.history_view)
-
-        # 7. Users
-        from cbpos.ui.views.user_view import UserView
-
-        self.user_view = UserView()
-        self.stack.addWidget(self.user_view)
-
-        # 8. Settings
-        from cbpos.ui.views.settings_view import SettingsView
-
-        self.settings_view = SettingsView()
-        self.stack.addWidget(self.settings_view)
-
-        # Login View
+        # 0. Login View
         self.login_view = LoginView()
         self.login_view.login_success.connect(self.on_login_success)
         self.stack.addWidget(self.login_view)
 
+        # 1. Sales View
+        self.sales_view = SalesView()
+        # Connect Side Menu Signals
+        self.sales_view.side_menu.management_clicked.connect(self.switch_to_management)
+        self.sales_view.side_menu.logout_clicked.connect(self.logout)
+        self.sales_view.side_menu.settings_clicked.connect(self.switch_to_settings)
+        self.sales_view.side_menu.fullscreen_clicked.connect(self.toggle_fullscreen)
+        self.sales_view.side_menu.power_clicked.connect(self.close)
+        self.stack.addWidget(self.sales_view)
+
+        # 2. Management View
+        self.management_view = ManagementView()
+        self.management_view.logout_requested.connect(self.logout)
+        self.management_view.request_pos_view.connect(
+            lambda: self.stack.setCurrentWidget(self.sales_view)
+        )
+        self.stack.addWidget(self.management_view)
+
+        # 3. Settings View (Top Level)
+        self.settings_view = SettingsView()
+        self.settings_view.close_requested.connect(self.go_back)
+        self.stack.addWidget(self.settings_view)
+
         self.stack.setCurrentWidget(self.login_view)
+
+        # Fullscreen Shortcut
+        self.shortcut_esc = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
+        self.shortcut_esc.activated.connect(self.exit_fullscreen)
+
+        # Track history for "Back" button
+        self.last_index = 0
+        self.stack.currentChanged.connect(self.on_stack_changed)
+
+    def on_stack_changed(self, index):
+        # Don't track SettingsView (index 3) as a history point
+        if index != 3:
+            self.last_index = index
+
+    def go_back(self):
+        self.stack.setCurrentIndex(self.last_index)
 
     def on_login_success(self, user):
         self.user = user
-        self.lbl_user.setText(f"{user.username}\n{user.role.name if user.role else ''}")
-        self.sidebar.setVisible(True)
-        self.top_bar.setVisible(True)
 
         # Start Watchdog
         self.watchdog.start_monitoring()
 
-        # Switch to Dashboard
-        self.switch_tab(0)
-
         # Pass user to views
-        if hasattr(self, "purchase_view"):
-            self.purchase_view.set_user(user)
+        if hasattr(self.management_view, "set_user"):
+            self.management_view.set_user(user)
+
+        if hasattr(self.sales_view, "side_menu"):
+            self.sales_view.side_menu.set_user(user)
+
+        # Switch to Sales View (Default)
+        self.stack.setCurrentWidget(self.sales_view)
 
     def logout(self):
         self.user = None
-        self.sidebar.setVisible(False)
-        self.top_bar.setVisible(False)
 
         # Stop Watchdog
         self.watchdog.stop_monitoring()
@@ -253,3 +131,27 @@ class MainWindow(QMainWindow):
         current = self.stack.currentWidget()
         if hasattr(current, "process_barcode_external"):
             current.process_barcode_external(barcode)
+
+    def switch_to_management(self):
+        self.stack.setCurrentWidget(self.management_view)
+        # Hide side menu in sales view if open
+        self.sales_view.side_menu.setVisible(False)
+
+    def switch_to_settings(self):
+        # Save current index before switching
+        self.last_index = self.stack.currentIndex()
+        self.stack.setCurrentWidget(self.settings_view)
+        # Hide side menu in sales view if open
+        self.sales_view.side_menu.setVisible(False)
+
+    def toggle_fullscreen(self):
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
+            # Optional: Show notification/toast here
+            print("Press Esc to exit fullscreen")
+
+    def exit_fullscreen(self):
+        if self.isFullScreen():
+            self.showNormal()

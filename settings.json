@@ -7,5 +7,16 @@
     "printer_path": "",
     "language": "en",
     "receipt_header": "Welcome to Ceylon Byte",
-    "receipt_footer": "Thank You! Come Again."
+    "receipt_footer": "Thank You! Come Again.",
+    "doc_reset_period": "YEARLY",
+    "doc_format_sale": "INV-{Y}-{seq:05d}",
+    "doc_format_purchase": "GRN-{Y}-{seq:05d}",
+    "doc_format_return": "CN-{Y}-{seq:05d}",
+    "show_receipt_dialog": "True",
+    "receipt_printer_name": "Microsoft Print to PDF",
+    "a4_printer_name": "Microsoft Print to PDF",
+    "auto_print_receipt": true,
+    "receipt_copies": 1,
+    "scale_barcode_prefix": "20",
+    "scale_decimal_places": 3
 }

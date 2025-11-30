@@ -1,12 +1,12 @@
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
-    QHBoxLayout,
     QLabel,
     QFrame,
     QTableWidget,
     QHeaderView,
     QTableWidgetItem,
+    QGridLayout,
 )
 from PyQt6.QtCore import Qt
 from cbpos.ui.widgets.info_card import InfoCard
@@ -23,21 +23,23 @@ class DashboardView(QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(20)
 
-        # 1. Top Row: Info Cards
-        cards_layout = QHBoxLayout()
+        # 1. Top Row: Info Cards (Grid Layout)
+        cards_layout = QGridLayout()
         cards_layout.setSpacing(20)
 
         # Card 1: Revenue
         self.card_revenue = InfoCard(
             "Total Revenue", "Rs. 45,200", "fa5s.rupee-sign", "+12% vs yesterday", True
         )
-        cards_layout.addWidget(self.card_revenue)
+        self.style_card(self.card_revenue)
+        cards_layout.addWidget(self.card_revenue, 0, 0)
 
         # Card 2: Transactions
         self.card_transactions = InfoCard(
             "Transactions", "128", "fa5s.receipt", "+5% vs yesterday", True
         )
-        cards_layout.addWidget(self.card_transactions)
+        self.style_card(self.card_transactions)
+        cards_layout.addWidget(self.card_transactions, 0, 1)
 
         # Card 3: Low Stock
         self.card_low_stock = InfoCard(
@@ -47,26 +49,34 @@ class DashboardView(QWidget):
             "Needs Attention",
             False,
         )
-        cards_layout.addWidget(self.card_low_stock)
+        self.style_card(self.card_low_stock)
+        cards_layout.addWidget(self.card_low_stock, 0, 2)
 
         # Card 4: Active Staff
         self.card_staff = InfoCard(
             "Active Staff", "4", "fa5s.users", "All systems normal", True
         )
-        cards_layout.addWidget(self.card_staff)
+        self.style_card(self.card_staff)
+        cards_layout.addWidget(self.card_staff, 0, 3)
 
         layout.addLayout(cards_layout)
 
         # 2. Center Section: Chart Placeholder
         chart_frame = QFrame()
         chart_frame.setStyleSheet(
-            "background-color: #001F3F; border: 1px solid #003366; border-radius: 8px;"
+            """
+            QFrame {
+                background-color: #001830;
+                border: 1px solid #004080;
+                border-radius: 8px;
+            }
+            """
         )
         chart_layout = QVBoxLayout(chart_frame)
 
         lbl_chart = QLabel("Sales Overview (Chart Placeholder)")
         lbl_chart.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_chart.setStyleSheet("color: #AAAAAA; font-size: 16px;")
+        lbl_chart.setStyleSheet("color: #AAAAAA; font-size: 16px; font-weight: bold;")
         chart_layout.addWidget(lbl_chart)
 
         layout.addWidget(chart_frame, stretch=1)
@@ -86,6 +96,8 @@ class DashboardView(QWidget):
         )
         self.log_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.log_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.log_table.verticalHeader().setVisible(False)
+        self.log_table.setShowGrid(False)
         self.log_table.setFixedHeight(200)
         self.log_table.setStyleSheet(
             """
@@ -93,12 +105,19 @@ class DashboardView(QWidget):
                 background-color: #001F3F;
                 border: 1px solid #003366;
                 border-radius: 8px;
+                gridline-color: transparent;
+            }
+            QTableWidget::item {
+                padding: 10px;
+                border-bottom: 1px solid #003366;
+                height: 45px;
             }
             QHeaderView::section {
                 background-color: #003366;
-                color: white;
+                color: #00BCEB;
+                font-weight: bold;
                 border: none;
-                padding: 5px;
+                padding: 8px;
             }
         """
         )
@@ -107,6 +126,22 @@ class DashboardView(QWidget):
 
         # Load initial data
         self.refresh_data()
+
+    def style_card(self, card):
+        """Apply gradient background to info cards."""
+        card.setStyleSheet(
+            """
+            QWidget {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #003366, stop:1 #001F3F);
+                border-radius: 8px;
+                border: 1px solid #00509E;
+            }
+            QLabel {
+                background: transparent;
+                border: none;
+            }
+            """
+        )
 
     def refresh_data(self):
         # Refresh logs

@@ -508,7 +508,7 @@
 ## 🎨 Phase 16: Theme & Localization
 *Goal: Ceylon Byte Branding.*
 
-- [x] **16.1 Theme Engine**
+    - [x] **16.1 Theme Engine**
     - [x] Implement `styles.qss`.
     - [x] Create "Ceylon Night" and "Ceylon Day" themes.
     - [x] **High-Contrast Mode:** For visibility
@@ -733,21 +733,6 @@
         - [ ] Auto-generated number
         - [ ] External document reference (supplier invoice)
         - [ ] Vendor/Supplier selection
-        - [ ] Document date
-        - [ ] Stock date (when items received)
-        - [ ] Add items with cost prices
-        - [ ] Optional payment tracking
-        - [ ] Auto-update stock on save
-    - [ ] **Purchase Fields:**
-        - [ ] System document number
-        - [ ] External reference
-        - [ ] Supplier info
-        - [ ] Date received
-        - [ ] Item list with costs
-        - [ ] Payment methods
-        - [ ] Notes/comments
-- [ ] **22.2 Supplier Management**
-    - [ ] **Supplier CRUD:**
         - [ ] Name, company details
         - [ ] Tax number
         - [ ] Contact information

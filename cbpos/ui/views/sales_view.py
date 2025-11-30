@@ -6,8 +6,6 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem,
     QLineEdit,
     QLabel,
-    QPushButton,
-    QGridLayout,
     QHeaderView,
     QMessageBox,
     QMenu,
@@ -15,6 +13,8 @@ from PyQt6.QtWidgets import (
     QInputDialog,
     QCompleter,
     QFrame,
+    QSplitter,
+    QButtonGroup,
 )
 from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint
 from PyQt6.QtGui import QKeySequence, QShortcut, QAction, QBrush, QColor, QPixmap
@@ -33,6 +33,8 @@ from cbpos.core.services.customer_service import CustomerService
 from cbpos.ui.widgets.order_bar import OrderBar
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.side_menu import SideMenu
+from pathlib import Path
+from cbpos.ui.widgets.action_panel import ActionPanel
 
 
 class SalesView(QWidget):
@@ -73,11 +75,16 @@ class SalesView(QWidget):
 
         # Brand (Logo)
         lbl_logo = QLabel()
-        logo_pixmap = QPixmap("assets/logo/cover_black.png")
-        if not logo_pixmap.isNull():
+        # Fix: Use Path to find the logo correctly relative to this file or project root
+        # Assuming project root is 3 levels up from ui/views/sales_view.py
+        # But easier to rely on working directory if running from main.py
+        logo_path = Path("assets/logo/cover_black.png")
+
+        if logo_path.exists():
+            logo_pixmap = QPixmap(str(logo_path))
             lbl_logo.setPixmap(
                 logo_pixmap.scaledToHeight(
-                    30, Qt.TransformationMode.SmoothTransformation
+                    35, Qt.TransformationMode.SmoothTransformation
                 )
             )
         else:
@@ -104,10 +111,12 @@ class SalesView(QWidget):
         main_layout.addWidget(header_widget)
 
         # --- CONTENT AREA (Split Screen) ---
-        content_widget = QWidget()
-        content_layout = QHBoxLayout(content_widget)
-        content_layout.setContentsMargins(0, 0, 0, 0)
-        content_layout.setSpacing(0)
+        # Replace QHBoxLayout with QSplitter
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.splitter.setHandleWidth(10)  # For styling
+        self.splitter.setChildrenCollapsible(False)
+
+        main_layout.addWidget(self.splitter)
 
         # ==========================
         # LEFT PANEL (Cart & Totals) - 75%
@@ -122,28 +131,34 @@ class SalesView(QWidget):
         search_layout = QHBoxLayout(search_container)
         search_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Mode Selector Button
-        self.search_mode_btn = QToolButton()
-        self.search_mode_btn.setText("★")
-        self.search_mode_btn.setToolTip("Search Mode")
-        self.search_mode_btn.setFixedWidth(40)
-        self.search_mode_btn.setFixedHeight(40)
-        self.search_mode_btn.setStyleSheet(
-            "font-size: 18px; background-color: #333; border: 1px solid #555;"
-        )
-        self.search_mode_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        # Mode Selector (Segmented Control)
+        self.mode_group = QButtonGroup(self)
+        self.mode_group.setExclusive(True)
+        self.mode_group.buttonClicked.connect(self.on_search_mode_changed)
 
-        # Mode Menu
-        mode_menu = QMenu(self)
-        mode_menu.addAction("★ All Fields", lambda: self.set_search_mode("ALL", "★"))
-        mode_menu.addAction(
-            "▮ Barcode Only", lambda: self.set_search_mode("BARCODE", "▮")
-        )
-        mode_menu.addAction("# Code/ID", lambda: self.set_search_mode("CODE", "#"))
-        mode_menu.addAction("⌂ Name Only", lambda: self.set_search_mode("NAME", "⌂"))
-        self.search_mode_btn.setMenu(mode_menu)
+        modes = [
+            ("ALL", "*", "All"),
+            ("BARCODE", "||||", "Barcode"),
+            ("CODE", "#", "Code"),
+            ("NAME", "Tag", "Name"),
+        ]
 
-        search_layout.addWidget(self.search_mode_btn)
+        for mode_id, text, tooltip in modes:
+            btn = QToolButton()
+            btn.setText(text)
+            btn.setCheckable(True)
+            btn.setToolTip(tooltip)
+            btn.setFixedSize(40, 40)
+            btn.setProperty("mode", mode_id)
+            btn.setProperty("class", "SearchModeBtn")  # For styling
+
+            if mode_id == "ALL":
+                btn.setChecked(True)
+
+            self.mode_group.addButton(btn)
+            search_layout.addWidget(btn)
+
+        search_layout.addSpacing(10)
 
         # Search Input
         self.barcode_input = QLineEdit()
@@ -222,144 +237,44 @@ class SalesView(QWidget):
         # ==========================
         # RIGHT PANEL (Controls) - 25%
         # ==========================
-        right_panel = QWidget()
-        right_panel.setFixedWidth(350)  # Fixed width for control panel
-        right_panel.setStyleSheet(
+        self.action_panel = ActionPanel()
+        self.action_panel.setFixedWidth(350)
+        self.action_panel.setStyleSheet(
             "background-color: #1E1E1E; border-left: 1px solid #3E3E42;"
         )
-        right_layout = QVBoxLayout(right_panel)
-        right_layout.setContentsMargins(10, 10, 10, 10)
-        right_layout.setSpacing(10)
 
-        # 1. Customer Header
-        customer_frame = QFrame()
-        customer_frame.setStyleSheet(
-            "background-color: #2D2D30; border-radius: 5px; padding: 5px;"
+        # Connect Action Panel Signals
+        self.action_panel.customer_clicked.connect(self.select_customer)
+        self.action_panel.pay_clicked.connect(self.process_payment)
+
+        self.action_panel.action_f2.connect(self.select_customer)
+        self.action_panel.action_f3.connect(self.open_advanced_search)
+        self.action_panel.action_f4.connect(self.change_line_quantity)
+        self.action_panel.action_f6.connect(self.hold_bill)
+        self.action_panel.action_f7.connect(self.recall_bill)
+        self.action_panel.action_f8.connect(lambda: print("Drawer"))  # Placeholder
+        self.action_panel.action_del.connect(self.void_bill)
+        self.action_panel.action_ref.connect(lambda: print("Refund"))  # Placeholder
+        self.action_panel.action_more.connect(lambda: print("More"))  # Placeholder
+
+        # Context Menu for Customer Button (Access via internal button if needed, or just keep simple for now)
+        self.action_panel.btn_cust_select.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu
         )
-        cust_layout = QHBoxLayout(customer_frame)
-        cust_layout.setContentsMargins(5, 5, 5, 5)
-
-        self.lbl_customer = QLabel("Walk-in Customer")
-        self.lbl_customer.setStyleSheet(
-            "font-weight: bold; font-size: 14px; color: white;"
+        self.action_panel.btn_cust_select.customContextMenuRequested.connect(
+            self.show_customer_menu
         )
+        self.btn_cust = self.action_panel.btn_cust_select  # Alias for existing code
 
-        btn_cust = QPushButton("Select")
-        btn_cust.setFixedWidth(70)
-        btn_cust.setStyleSheet(
-            "background-color: #007ACC; color: white; border: none; padding: 5px;"
-        )
-        btn_cust.clicked.connect(self.select_customer)
+        # Add panels to splitter
+        self.splitter.addWidget(left_panel)
+        self.splitter.addWidget(self.action_panel)
 
-        # Context Menu for Customer Button
-        btn_cust.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        btn_cust.customContextMenuRequested.connect(self.show_customer_menu)
-        self.btn_cust = btn_cust
-
-        cust_layout.addWidget(self.lbl_customer)
-        cust_layout.addStretch()
-        cust_layout.addWidget(btn_cust)
-
-        right_layout.addWidget(customer_frame)
-
-        self.lbl_points = QLabel("")
-        self.lbl_points.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_points.setStyleSheet(
-            "color: #FFDC00; font-weight: bold; font-size: 12px;"
-        )
-        right_layout.addWidget(self.lbl_points)
-
-        # 2. Action Grid (Command Console)
-        # Using a Grid Layout for square buttons
-        action_grid = QGridLayout()
-        action_grid.setSpacing(10)
-
-        # Helper to create styled action buttons
-        def create_action_btn(text, icon, slot, row, col, color=None):
-            btn = QPushButton(text)
-            btn.setFixedSize(100, 80)  # Square-ish
-            # btn.setIcon(Icons.get(icon)) # Icons need to be handled carefully with text
-            # For now, just text or we can add icon later.
-            # The user requested "Icon + Text below".
-            # Standard QPushButton doesn't support Text Under Icon easily without QToolButton or stylesheet hacks.
-            # Let's use QToolButton for better control or just styled QPushButton.
-            # Going with styled QPushButton for simplicity and robustness first.
-
-            style = """
-                QPushButton {
-                    background-color: #2D2D30;
-                    border: 1px solid #3E3E42;
-                    color: white;
-                    font-weight: bold;
-                    font-size: 12px;
-                }
-                QPushButton:hover {
-                    border: 1px solid #00BCEB;
-                    background-color: #3E3E42;
-                }
-                QPushButton:pressed {
-                    background-color: #00BCEB;
-                    color: black;
-                }
-            """
-            if color:
-                style += "QPushButton {{ color: {}; }}".format(color)
-
-            btn.setStyleSheet(style)
-            btn.clicked.connect(slot)
-            action_grid.addWidget(btn, row, col)
-            return btn
-
-        # Row 0
-        create_action_btn("F2\nCustomer", "", self.select_customer, 0, 0)
-        create_action_btn("F3\nSearch", "", self.open_advanced_search, 0, 1)
-        create_action_btn("F4\nQty", "", self.change_line_quantity, 0, 2)
-
-        # Row 1
-        create_action_btn("F6\nHold", "", self.hold_bill, 1, 0, "#FFDC00")
-        create_action_btn("F7\nRecall", "", self.recall_bill, 1, 1)
-        create_action_btn(
-            "F8\nDrawer", "", lambda: print("Drawer"), 1, 2
-        )  # Placeholder
-
-        # Row 2
-        create_action_btn("Del\nVoid", "", self.void_bill, 2, 0, "#FF4136")
-        create_action_btn("Ref\nRefund", "", lambda: print("Refund"), 2, 1, "#FF4136")
-        create_action_btn("...\nMore", "", lambda: print("More"), 2, 2)
-
-        right_layout.addLayout(action_grid)
-        right_layout.addStretch()
-
-        # 3. Pay Button (Bottom)
-        self.btn_pay = QPushButton("PAY (F5)")
-        self.btn_pay.setFixedHeight(80)
-        self.btn_pay.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_pay.setStyleSheet(
-            """
-            QPushButton {
-                background-color: #39FF14;
-                color: #001F3F;
-                font-size: 24px;
-                font-weight: bold;
-                border: none;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #32E012;
-            }
-            QPushButton:pressed {
-                background-color: #28B40E;
-            }
-        """
-        )
-        self.btn_pay.clicked.connect(self.process_payment)
-        right_layout.addWidget(self.btn_pay)
-
-        # Add panels to content layout
-        content_layout.addWidget(left_panel, stretch=75)
-        content_layout.addWidget(right_panel, stretch=25)
-
-        main_layout.addWidget(content_widget)
+        # Set Stretch Factors (75% / 25%)
+        self.splitter.setStretchFactor(0, 3)
+        self.splitter.setStretchFactor(1, 1)
+        self.splitter.setCollapsible(0, False)
+        self.splitter.setCollapsible(1, False)
 
         # Shortcuts
         self.setup_shortcuts()
@@ -563,9 +478,9 @@ class SalesView(QWidget):
 
     def set_customer(self, customer):
         self.customer = customer
-        cust_text = f"{self.customer.name} ({self.customer.phone})"
-        self.lbl_customer.setText(cust_text)
-        self.lbl_points.setText(f"Points: {self.customer.loyalty_points}")
+        self.action_panel.set_customer_info(
+            self.customer.name, self.customer.phone, self.customer.loyalty_points
+        )
 
         # Trigger price recalculation if needed (Phase 2)
         # self.cart_service.recalculate_prices(customer.price_list_id)
@@ -595,8 +510,7 @@ class SalesView(QWidget):
 
     def clear_customer(self):
         self.customer = None
-        self.lbl_customer.setText("Walk-in Customer")
-        self.lbl_points.setText("")
+        self.action_panel.clear_customer_info()
 
     def process_payment(self):
         totals = self.cart_service.get_totals()
@@ -621,8 +535,7 @@ class SalesView(QWidget):
                     self.barcode_input.setFocus()
                     # Reset customer
                     self.customer = None
-                    self.lbl_customer.setText("Walk-in Customer")
-                    self.lbl_points.setText("")
+                    self.action_panel.clear_customer_info()
                     self.order_bar.refresh_tabs()
 
                     # Show Receipt Options if configured
@@ -715,11 +628,28 @@ class SalesView(QWidget):
 
     # --- Phase 6: Advanced Search & Cart Enhancements ---
 
-    def set_search_mode(self, mode: str, icon: str):
-        """Update search mode and icon."""
+    def on_search_mode_changed(self, button):
+        """Handle search mode change from segmented control."""
+        mode = button.property("mode")
         self.current_search_mode = mode
-        self.search_mode_btn.setText(icon)
+
+        placeholders = {
+            "ALL": "Scan or type product... (Enter)",
+            "BARCODE": "Scan barcode...",
+            "CODE": "Enter product code...",
+            "NAME": "Type product name...",
+        }
+        self.barcode_input.setPlaceholderText(placeholders.get(mode, "Search..."))
         self.barcode_input.setFocus()
+
+    def set_search_mode(self, mode: str, icon: str):
+        # Legacy support or external call
+        # Find button with this mode and check it
+        for btn in self.mode_group.buttons():
+            if btn.property("mode") == mode:
+                btn.setChecked(True)
+                self.on_search_mode_changed(btn)
+                break
 
     def setup_autocomplete(self):
         """Setup QCompleter for product names."""

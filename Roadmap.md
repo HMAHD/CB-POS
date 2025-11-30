@@ -510,16 +510,16 @@
 
 - [x] **16.1 Theme Engine**
     - [x] Implement `styles.qss`.
-    - [ ] Create "Ceylon Night" and "Ceylon Day" themes.
-    - [ ] **High-Contrast Mode:** For visibility
-    - [ ] **Touch-Optimized Theme:** Large buttons
-    - [ ] **Color Customization:** Brand color support
-- [ ] **16.2 Localization**
-    - [ ] Generate `.ts` files for Qt Linguist.
-    - [ ] Translate UI to Sinhala and Tamil.
-    - [ ] Implement Runtime Language Switcher.
-    - [ ] **Font Support:** Unicode fonts for Sinhala/Tamil
-    - [ ] **Date/Number Formatting:** Locale-specific
+    - [x] Create "Ceylon Night" and "Ceylon Day" themes.
+    - [x] **High-Contrast Mode:** For visibility
+    - [x] **Touch-Optimized Theme:** Large buttons
+    - [x] **Color Customization:** Brand color support
+- [x] **16.2 Localization**
+    - [x] Generate `.ts` files for Qt Linguist.
+    - [x] Translate UI to Sinhala and Tamil.
+    - [x] Implement Runtime Language Switcher.
+    - [x] **Font Support:** Unicode fonts for Sinhala/Tamil
+    - [x] **Date/Number Formatting:** Locale-specific
 
 ---
 

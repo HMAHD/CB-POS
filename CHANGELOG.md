@@ -27,6 +27,12 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 -   Resolved `QPainter` warnings by ensuring valid pixmaps and sizes in `ManagementView`.
 -   Fixed asset paths for Logo and User Badges using `pathlib`.
+- **Theme & Localization** (Phase 16):
+    -   Implemented Dynamic Theme Switching (Dark/Light).
+    -   Created `ThemeService` for handling stylesheet application and variable injection.
+    -   Created `LanguageService` for managing application translations.
+    -   Added Theme and Language selectors to `SettingsView`.
+    -   Added `scripts/update_translations.py` to generate translation files.
 
 ## [0.1.0] - 2025-11-29
 ### Added

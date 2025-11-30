@@ -99,6 +99,12 @@ class ProductService:
 
             return list(session.scalars(stmt).all())
 
+    def get_all_products(self) -> List[Product]:
+        """Get all active products."""
+        with self.db.get_session() as session:
+            stmt = select(Product).where(Product.is_active).order_by(Product.name_en)
+            return list(session.scalars(stmt).all())
+
     def get_top_products(self, limit: int = 100) -> List[str]:
         """Get top N product names for autocomplete."""
         with self.db.get_session() as session:

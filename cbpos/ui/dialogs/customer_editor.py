@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QSpinBox,
 )
+from PyQt6.QtGui import QColor
 
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.services.price_list_service import (
@@ -54,6 +55,9 @@ class CustomerEditor(QDialog):
         self.tabs.addTab(self.create_commercial_tab(), "Commercial")
         self.tabs.addTab(self.create_contacts_tab(), "Contacts")
         self.tabs.addTab(self.create_loyalty_tab(), "Loyalty")
+        if self.customer:
+            self.tabs.addTab(self.create_history_tab(), "History")
+            self.tabs.currentChanged.connect(self.on_tab_changed)
 
         layout.addWidget(self.tabs)
 
@@ -122,7 +126,8 @@ class CustomerEditor(QDialog):
         # Contact Table
         self.contact_table = QTableWidget()
         self.contact_table.setColumnCount(4)
-        self.contact_table.setHorizontalHeaderLabels(["Name", "Role", "Phone", "Email"])
+        headers = ["Name", "Role", "Phone", "Email"]
+        self.contact_table.setHorizontalHeaderLabels(headers)
         self.contact_table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
@@ -155,6 +160,58 @@ class CustomerEditor(QDialog):
         form.addRow("Current Points:", self.points_label)
 
         return widget
+
+    def create_history_tab(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+
+        self.history_table = QTableWidget()
+        self.history_table.setColumnCount(5)
+        self.history_table.setHorizontalHeaderLabels(
+            ["Date", "Receipt #", "Total", "Status", "Payment"]
+        )
+        self.history_table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.ResizeMode.Stretch
+        )
+        self.history_table.setSelectionBehavior(
+            QTableWidget.SelectionBehavior.SelectRows
+        )
+        self.history_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        layout.addWidget(self.history_table)
+
+        return widget
+
+    def on_tab_changed(self, index):
+        if self.tabs.tabText(index) == "History":
+            self.load_history()
+
+    def load_history(self):
+        if not self.customer:
+            return
+
+        history = self.customer_service.get_purchase_history(self.customer.id)
+        self.history_table.setRowCount(0)
+
+        for sale in history:
+            row = self.history_table.rowCount()
+            self.history_table.insertRow(row)
+
+            self.history_table.setItem(
+                row, 0, QTableWidgetItem(sale.date.strftime("%Y-%m-%d %H:%M"))
+            )
+            self.history_table.setItem(row, 1, QTableWidgetItem(str(sale.id)))
+            self.history_table.setItem(
+                row, 2, QTableWidgetItem("{:.2f}".format(sale.total_amount))
+            )
+
+            status_item = QTableWidgetItem(sale.status)
+            if sale.status == "VOID":
+                status_item.setForeground(QColor("red"))
+            elif sale.status == "COMPLETED":  # Assuming COMPLETED is PAID equivalent
+                status_item.setForeground(QColor("green"))
+            self.history_table.setItem(row, 3, status_item)
+
+            self.history_table.setItem(row, 4, QTableWidgetItem(sale.payment_method))
 
     def add_contact_row(self):
         row = self.contact_table.rowCount()

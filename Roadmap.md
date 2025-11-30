@@ -262,7 +262,7 @@
 
 ---
 
-## 🇱🇰 Phase 9: Sri Lankan Compliance Module
+## 🇱🇰 Phase 9: Sri Lankan Compliance Module (Tax)
 *Goal: Local tax laws.*
 
 - [x] **9.1 Tax Engine (Backward Calc)**
@@ -318,26 +318,26 @@
 - [x] **11.1 Customer DB**
     - [x] CRUD for Customers (Name, Phone, VAT No).
     - [x] Credit Limit logic.
-    - [ ] **Company Information:** Separate company fields
-    - [ ] **Multiple Contacts:** Phone, email, address
-    - [ ] **Customer Type:** Customer vs Supplier flag
+    - [x] **Company Information:** Separate company fields
+    - [x] **Multiple Contacts:** Phone, email, address
+    - [x] **Customer Type:** Customer vs Supplier flag
 - [x] **11.2 Loyalty**
     - [x] Points Engine (Earn X points per Y spent).
     - [x] Redemption Logic at checkout.
-    - [ ] **Loyalty Card Assignment:** Barcode scannable cards
-    - [ ] **Quick Customer Lookup:** Search by card/phone/tax number
-    - [ ] **Purchase History:** View customer transactions
-- [ ] **11.3 Customer Features **
-    - [ ] **Price List Assignment:** Customer-specific pricing
-    - [ ] **Customer Discounts:** Pre-configured discount rules
-    - [ ] **Credit Terms:** Payment terms per customer
-    - [ ] **Outstanding Balance:** Real-time debt tracking
-    - [ ] **Customer Reports:** Purchase patterns, payment history
-- [ ] **11.4 Customer Selection**
-    - [ ] Select from sales screen
-    - [ ] Select from payment screen
-    - [ ] Search by name/tax/card
-    - [ ] Quick add during sale
+    - [x] **Loyalty Card Assignment:** Barcode scannable cards
+    - [x] **Quick Customer Lookup:** Search by card/phone/tax number
+    - [x] **Purchase History:** View customer transactions
+- [x] **11.3 Customer Features **
+    - [x] **Price List Assignment:** Customer-specific pricing
+    - [x] **Customer Discounts:** Pre-configured discount rules
+    - [x] **Credit Terms:** Payment terms per customer
+    - [x] **Outstanding Balance:** Real-time debt tracking
+    - [x] **Customer Reports:** Purchase patterns, payment history
+- [x] **11.4 Customer Selection**
+    - [x] Select from sales screen
+    - [x] Select from payment screen
+    - [x] Search by name/tax/card
+    - [x] Quick add during sale
 
 ---
 

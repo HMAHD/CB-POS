@@ -39,6 +39,11 @@ All notable changes to this project will be documented in this file.
     -   Added Horizontal Search Modes (All, Barcode, Code, Name).
     -   Replaced layout with resizable `QSplitter`.
     -   Fixed Header Logo.
+- **Shift Closing & Z-Report** (Phase 12):
+    -   Implemented `ShiftService.get_shift_summary` for financial snapshots.
+    -   Created `DenominationWidget` for blind cash counting.
+    -   Developed `ShiftClosingDialog` wizard (Count -> Review -> Close).
+    -   Added Z-Report generation in `ReceiptService` with variance tracking.
 
 ## [0.1.0] - 2025-11-29
 ### Added

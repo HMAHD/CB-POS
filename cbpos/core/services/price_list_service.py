@@ -1,0 +1,90 @@
+from typing import List, Optional
+from datetime import datetime
+from decimal import Decimal
+from sqlalchemy import select, or_
+from cbpos.core.database import Database
+from cbpos.core.models import PriceList, PriceListItem
+
+
+class PriceListService:
+    def __init__(self):
+        self.db = Database()
+
+    def create_price_list(
+        self,
+        name: str,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+    ) -> PriceList:
+        with self.db.get_session() as session:
+            price_list = PriceList(
+                name=name, start_date=start_date, end_date=end_date, is_active=True
+            )
+            session.add(price_list)
+            session.commit()
+            session.refresh(price_list)
+            session.expunge(price_list)
+            return price_list
+
+    def get_all_lists(self) -> List[PriceList]:
+        with self.db.get_session() as session:
+            stmt = select(PriceList).order_by(PriceList.id)
+            lists = list(session.scalars(stmt).all())
+            for pl in lists:
+                session.expunge(pl)
+            return lists
+
+    def get_active_lists(self) -> List[PriceList]:
+        now = datetime.now()
+        with self.db.get_session() as session:
+            stmt = select(PriceList).where(
+                PriceList.is_active.is_(True),
+                or_(PriceList.start_date.is_(None), PriceList.start_date <= now),
+                or_(PriceList.end_date.is_(None), PriceList.end_date >= now),
+            )
+            lists = list(session.scalars(stmt).all())
+            for pl in lists:
+                session.expunge(pl)
+            return lists
+
+    def set_item_price(
+        self, list_id: int, product_id: int, price: Decimal
+    ) -> PriceListItem:
+        with self.db.get_session() as session:
+            # Check if exists
+            stmt = select(PriceListItem).where(
+                PriceListItem.price_list_id == list_id,
+                PriceListItem.product_id == product_id,
+            )
+            item = session.scalar(stmt)
+
+            if item:
+                item.price = price
+            else:
+                item = PriceListItem(
+                    price_list_id=list_id, product_id=product_id, price=price
+                )
+                session.add(item)
+
+            session.commit()
+            session.refresh(item)
+            session.expunge(item)
+            return item
+
+    def get_items(self, list_id: int) -> List[PriceListItem]:
+        with self.db.get_session() as session:
+            stmt = (
+                select(PriceListItem)
+                .where(PriceListItem.price_list_id == list_id)
+                .join(PriceListItem.product)
+            )  # Ensure product is loaded if needed, though scalars might not load rels by default without options
+
+            # We might want to eager load product to show names
+            from sqlalchemy.orm import selectinload
+
+            stmt = stmt.options(selectinload(PriceListItem.product))
+
+            items = list(session.scalars(stmt).all())
+            for item in items:
+                session.expunge(item)
+            return items

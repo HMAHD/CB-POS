@@ -21,6 +21,8 @@ from cbpos.ui.views.customer_view import CustomerView
 from cbpos.ui.views.reports_view import ReportsView
 from cbpos.ui.views.history_view import HistoryView
 from cbpos.ui.views.user_view import UserView
+from cbpos.ui.views.pricelist_view import PriceListView
+from cbpos.ui.views.promotion_view import PromotionView
 
 
 class ManagementView(QWidget):
@@ -96,6 +98,8 @@ class ManagementView(QWidget):
         self.btn_reports = self.create_nav_button("Reports", Icons.REPORTS, 4)
         self.btn_history = self.create_nav_button("History", Icons.HISTORY, 5)
         self.btn_users = self.create_nav_button("Users", Icons.USERS, 6)
+        self.btn_pricelists = self.create_nav_button("Price Lists", Icons.PRICE_LIST, 7)
+        self.btn_promotions = self.create_nav_button("Promotions", Icons.PROMOTION, 8)
 
         # Push everything else to bottom
         self.sidebar_layout.addStretch()
@@ -213,6 +217,14 @@ class ManagementView(QWidget):
         self.user_view = UserView()
         self.stack.addWidget(self.user_view)
 
+        # 7. Price Lists
+        self.pricelist_view = PriceListView()
+        self.stack.addWidget(self.pricelist_view)
+
+        # 8. Promotions
+        self.promotion_view = PromotionView()
+        self.stack.addWidget(self.promotion_view)
+
     def set_user(self, user):
         self.user = user
 
@@ -255,6 +267,8 @@ class ManagementView(QWidget):
         # Permission check for Users tab
         is_admin = "admin" in role
         self.btn_users.setVisible(is_admin)
+        self.btn_pricelists.setVisible(is_admin)
+        self.btn_promotions.setVisible(is_admin)
 
         if hasattr(self, "purchase_view"):
             self.purchase_view.set_user(user)

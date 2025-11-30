@@ -28,6 +28,8 @@ from cbpos.ui.dialogs.receipt_options_dialog import ReceiptOptionsDialog
 from cbpos.core.services.config_service import ConfigService
 from cbpos.ui.dialogs.customer_selection_dialog import CustomerSelectionDialog
 from cbpos.ui.dialogs.advanced_search_dialog import AdvancedSearchDialog
+from cbpos.ui.dialogs.customer_quick_add import CustomerQuickAddDialog
+from cbpos.core.services.customer_service import CustomerService
 from cbpos.ui.widgets.order_bar import OrderBar
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.side_menu import SideMenu
@@ -38,6 +40,7 @@ class SalesView(QWidget):
         super().__init__()
         self.cart_service = CartService()
         self.product_service = ProductService()
+        self.customer_service = CustomerService()
         self.customer = None
         self.current_search_mode = "ALL"
         self.init_ui()
@@ -247,6 +250,11 @@ class SalesView(QWidget):
             "background-color: #007ACC; color: white; border: none; padding: 5px;"
         )
         btn_cust.clicked.connect(self.select_customer)
+
+        # Context Menu for Customer Button
+        btn_cust.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        btn_cust.customContextMenuRequested.connect(self.show_customer_menu)
+        self.btn_cust = btn_cust
 
         cust_layout.addWidget(self.lbl_customer)
         cust_layout.addStretch()
@@ -460,6 +468,15 @@ class SalesView(QWidget):
         if not query:
             return
 
+        # 1. Check for Loyalty Card (e.g. Starts with L- or specific length)
+        # Assuming L- prefix for now as per request
+        if query.startswith("L-") or (len(query) == 12 and query.isdigit()):
+            customer = self.customer_service.find_by_loyalty_card(query)
+            if customer:
+                self.set_customer(customer)
+                self.barcode_input.clear()
+                return
+
         # Use product_service with current search mode
         products = self.product_service.search_products(
             query, mode=self.current_search_mode
@@ -542,10 +559,44 @@ class SalesView(QWidget):
     def select_customer(self):
         dialog = CustomerSelectionDialog(self)
         if dialog.exec():
-            self.customer = dialog.selected_customer
-            cust_text = f"{self.customer.name} ({self.customer.phone})"
-            self.lbl_customer.setText(cust_text)
-            self.lbl_points.setText(f"Points: {self.customer.loyalty_points}")
+            self.set_customer(dialog.selected_customer)
+
+    def set_customer(self, customer):
+        self.customer = customer
+        cust_text = f"{self.customer.name} ({self.customer.phone})"
+        self.lbl_customer.setText(cust_text)
+        self.lbl_points.setText(f"Points: {self.customer.loyalty_points}")
+
+        # Trigger price recalculation if needed (Phase 2)
+        # self.cart_service.recalculate_prices(customer.price_list_id)
+
+    def show_customer_menu(self, pos):
+        menu = QMenu(self)
+
+        quick_add = QAction("Quick Add New", self)
+        quick_add.triggered.connect(self.quick_add_customer)
+        menu.addAction(quick_add)
+
+        if self.customer:
+            details = QAction("View Details", self)
+            # details.triggered.connect(self.view_customer_details) # TODO
+            menu.addAction(details)
+
+            clear = QAction("Clear Customer", self)
+            clear.triggered.connect(self.clear_customer)
+            menu.addAction(clear)
+
+        menu.exec(self.btn_cust.mapToGlobal(pos))
+
+    def quick_add_customer(self):
+        dialog = CustomerQuickAddDialog(self)
+        if dialog.exec():
+            self.set_customer(dialog.created_customer)
+
+    def clear_customer(self):
+        self.customer = None
+        self.lbl_customer.setText("Walk-in Customer")
+        self.lbl_points.setText("")
 
     def process_payment(self):
         totals = self.cart_service.get_totals()

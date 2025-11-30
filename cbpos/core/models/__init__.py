@@ -276,14 +276,21 @@ class Customer(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+    company_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    is_company: Mapped[bool] = mapped_column(Boolean, default=False)
     phone: Mapped[Optional[str]] = mapped_column(
         String(20), unique=True, index=True, nullable=True
     )
     email: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    address: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     vat_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     credit_limit: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     current_debt: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    payment_terms: Mapped[int] = mapped_column(Integer, default=0)  # Days
     loyalty_points: Mapped[int] = mapped_column(default=0)
+    loyalty_card_code: Mapped[Optional[str]] = mapped_column(
+        String(50), unique=True, index=True, nullable=True
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     price_list_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("price_lists.id"), nullable=True
@@ -291,6 +298,22 @@ class Customer(Base):
 
     sales: Mapped[List["Sale"]] = relationship(back_populates="customer")
     price_list: Mapped["PriceList"] = relationship()
+    contacts: Mapped[List["CustomerContact"]] = relationship(
+        back_populates="customer", cascade="all, delete-orphan"
+    )
+
+
+class CustomerContact(Base):
+    __tablename__ = "customer_contacts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"))
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    role: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    email: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+    customer: Mapped["Customer"] = relationship(back_populates="contacts")
 
 
 class Supplier(Base):

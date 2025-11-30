@@ -18,6 +18,8 @@ class Icons:
     SETTINGS = "fa5s.cog"
     LOGOUT = "fa5s.sign-out-alt"
     PURCHASE = "fa5s.truck"
+    PRICE_LIST = "fa5s.tags"
+    PROMOTION = "fa5s.bullhorn"
 
     # Actions
     ADD = "fa5s.plus"

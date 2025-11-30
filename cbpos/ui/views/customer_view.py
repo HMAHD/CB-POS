@@ -7,15 +7,11 @@ from PyQt6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
-    QDialog,
-    QFormLayout,
     QLineEdit,
-    QDoubleSpinBox,
-    QDialogButtonBox,
-    QMessageBox,
 )
 from PyQt6.QtGui import QColor
 from cbpos.core.services.customer_service import CustomerService
+from cbpos.ui.dialogs.customer_editor import CustomerEditor
 
 
 class CustomerView(QWidget):
@@ -103,74 +99,3 @@ class CustomerView(QWidget):
             dialog = CustomerEditor(customer, parent=self)
             if dialog.exec():
                 self.load_customers()
-
-
-class CustomerEditor(QDialog):
-    def __init__(self, customer=None, parent=None):
-        super().__init__(parent)
-        self.customer = customer
-        self.customer_service = CustomerService()
-        self.setWindowTitle("Customer Editor" if customer else "New Customer")
-        self.setMinimumWidth(400)
-        self.setup_ui()
-        if customer:
-            self.load_data()
-
-    def setup_ui(self):
-        layout = QVBoxLayout(self)
-        form = QFormLayout()
-
-        self.name_input = QLineEdit()
-        self.phone_input = QLineEdit()
-        self.email_input = QLineEdit()
-        self.vat_input = QLineEdit()
-
-        self.limit_input = QDoubleSpinBox()
-        self.limit_input.setRange(0, 1000000)
-        self.limit_input.setDecimals(2)
-
-        form.addRow("Name:", self.name_input)
-        form.addRow("Phone:", self.phone_input)
-        form.addRow("Email:", self.email_input)
-        form.addRow("VAT Number:", self.vat_input)
-        form.addRow("Credit Limit:", self.limit_input)
-
-        layout.addLayout(form)
-
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Save
-            | QDialogButtonBox.StandardButton.Cancel
-        )
-        buttons.accepted.connect(self.save)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
-
-    def load_data(self):
-        self.name_input.setText(self.customer.name)
-        self.phone_input.setText(self.customer.phone or "")
-        self.email_input.setText(self.customer.email or "")
-        self.vat_input.setText(self.customer.vat_number or "")
-        self.limit_input.setValue(float(self.customer.credit_limit))
-
-    def save(self):
-        data = {
-            "name": self.name_input.text().strip(),
-            "phone": self.phone_input.text().strip() or None,
-            "email": self.email_input.text().strip() or None,
-            "vat_number": self.vat_input.text().strip() or None,
-            "credit_limit": Decimal(str(self.limit_input.value())),
-            "is_active": True,
-        }
-
-        if not data["name"]:
-            QMessageBox.warning(self, "Error", "Name is required")
-            return
-
-        try:
-            if self.customer:
-                self.customer_service.update_customer(self.customer.id, data)
-            else:
-                self.customer_service.create_customer(data)
-            self.accept()
-        except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))

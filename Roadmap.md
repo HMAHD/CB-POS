@@ -1104,6 +1104,10 @@
     - [ ] Video tutorials
     - [ ] Sample datasets
     - [ ] Practice exercises
+- [x] **Phase 11: Enterprise CRM**
+    - [x] Advanced Customer Models (B2B, Contacts).
+    - [x] Loyalty Program Basics.
+    - [x] Price Lists & Tiered Pricing.ses
 
 ---
 

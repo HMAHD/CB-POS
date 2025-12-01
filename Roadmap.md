@@ -399,13 +399,13 @@
     - [x] Sales by Date/User/Category.
     - [x] Inventory Valuation.
     - [x] Tax Liability Report (Output VAT - Input VAT).
-- [ ] **14.3 Export**
-    - [ ] Export Table Data to Excel/CSV.
-    - [ ] **PDF Export:** Professional report format
+- [x] **14.3 Export**
+    - [x] Export Table Data to Excel/CSV.
+    - [x] **PDF Export:** Professional report format
     - [ ] **Email Reports:** Direct email delivery
 - [ ] **14.4 Comprehensive Report Suite **
     - [ ] **Sales Reports:**
-        - [ ] Sales Summary by period
+        - [x] Sales Summary by period
         - [ ] Sales by Product (individual performance)
         - [ ] Sales by Group (category performance)
         - [ ] Sales by User (employee performance)
@@ -439,12 +439,12 @@
         - [ ] Voided Items
         - [ ] Unpaid Documents
         - [ ] Paid Documents
-- [ ] **14.5 Report Filtering & Actions**
-    - [ ] Date range selection
-    - [ ] Multi-field filtering
-    - [ ] View on screen
+- [x] **14.5 Report Filtering & Actions**
+    - [x] Date range selection
+    - [x] Multi-field filtering
+    - [x] View on screen
     - [ ] Print report
-    - [ ] Export (PDF/Excel/CSV)
+    - [x] Export (PDF/Excel/CSV)
     - [ ] Email directly
 - [ ] **14.6 Scheduled Reporting**
     - [ ] Daily automatic reports

@@ -18,11 +18,11 @@ from cbpos.ui.views.dashboard_view import DashboardView
 from cbpos.ui.views.inventory_view import InventoryView
 from cbpos.ui.views.purchase_view import PurchaseView
 from cbpos.ui.views.customer_view import CustomerView
-from cbpos.ui.views.reports_view import ReportsView
-from cbpos.ui.views.history_view import HistoryView
+from cbpos.ui.views.reports.report_viewer import ReportViewer
 from cbpos.ui.views.user_view import UserView
 from cbpos.ui.views.pricelist_view import PriceListView
 from cbpos.ui.views.promotion_view import PromotionView
+from cbpos.ui.views.history_view import HistoryView
 
 
 class ManagementView(QWidget):
@@ -206,7 +206,7 @@ class ManagementView(QWidget):
         self.stack.addWidget(self.customer_view)
 
         # 4. Reports
-        self.reports_view = ReportsView()
+        self.reports_view = ReportViewer()
         self.stack.addWidget(self.reports_view)
 
         # 5. History

@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2025-12-01
+
+### Added
+- **Reporting Framework** (Phase 14):
+  - Implemented Modular Reporting Architecture (`BaseReport`, `ReportRegistry`).
+  - Created `ExportService` supporting Excel (`xlsxwriter`), CSV, and PDF (`xhtml2pdf`).
+  - Developed `ReportViewer` UI with dynamic filtering and export options.
+  - Implemented `DailySalesSummaryReport` as the first plugin-based report.
+  - Integrated Reporting module into `ManagementView`.
+
 ## [Unreleased] - 2025-11-30
 
 ### Added

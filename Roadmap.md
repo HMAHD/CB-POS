@@ -350,14 +350,14 @@
 - [x] **12.2 Reports**
     - [x] **X-Read:** Mid-shift snapshot.
     - [x] **Z-Read:** End of day reset & variance calculation.
-- [ ] **12.3 End of Day Process **
-    - [ ] **Cash Reconciliation:** Count vs expected
-    - [ ] **Variance Tracking:** Over/short reporting
-    - [ ] **Shift Summary:** Sales by payment type
-    - [ ] **User Activity:** Per-cashier performance
-    - [ ] **Transaction Count:** Number of sales
-    - [ ] **Voided Items:** Track cancellations
-    - [ ] **Optional Number Reset:** Daily document numbering
+- [x] **12.3 End of Day Process **
+    - [x] **Cash Reconciliation:** Count vs expected
+    - [x] **Variance Tracking:** Over/short reporting
+    - [x] **Shift Summary:** Sales by payment type
+    - [x] **User Activity:** Per-cashier performance
+    - [x] **Transaction Count:** Number of sales
+    - [x] **Voided Items:** Track cancellations
+    - [x] **Optional Number Reset:** Daily document numbering
 
 ---
 

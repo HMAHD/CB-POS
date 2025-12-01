@@ -39,6 +39,17 @@ All notable changes to this project will be documented in this file.
     -   Added Horizontal Search Modes (All, Barcode, Code, Name).
     -   Replaced layout with resizable `QSplitter`.
     -   Fixed Header Logo.
+- **Code Review Remediation** (PR #4):
+    -   Refactored `ReceiptService` to restore header logic and improve safety.
+    -   Refactored `ShiftService` to correctly handle shift end times in summary calculations.
+    -   Refactored `DenominationWidget` for configurable currency and robust math.
+    -   Refactored `ShiftClosingDialog` for safe access and better styling.
+    -   Fixed linting errors (E231, F401).
+- **Shift Closing & Z-Report** (Phase 12):
+    -   Implemented `ShiftService.get_shift_summary` for financial snapshots.
+    -   Created `DenominationWidget` for blind cash counting.
+    -   Developed `ShiftClosingDialog` wizard (Count -> Review -> Close).
+    -   Added Z-Report generation in `ReceiptService` with variance tracking.
 
 ## [0.1.0] - 2025-11-29
 ### Added

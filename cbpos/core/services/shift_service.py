@@ -76,8 +76,11 @@ class ShiftService:
                     Sale.date >= shift.start_time,
                     Sale.status == "COMPLETED",
                 )
-                .group_by(SalePayment.payment_method)
             )
+            if shift.end_time:
+                sales_stmt = sales_stmt.where(Sale.date <= shift.end_time)
+
+            sales_stmt = sales_stmt.group_by(SalePayment.payment_method)
             sales_results = session.execute(sales_stmt).all()
             sales_by_method = {row[0]: row[1] for row in sales_results}
 
@@ -87,9 +90,10 @@ class ShiftService:
             total_sales = sum(sales_by_method.values())
 
             # 2. Cash Movements
-            movements = session.scalars(
-                select(CashMovement).where(CashMovement.shift_id == shift_id)
-            ).all()
+            moves_stmt = select(CashMovement).where(CashMovement.shift_id == shift_id)
+            if shift.end_time:
+                moves_stmt = moves_stmt.where(CashMovement.timestamp <= shift.end_time)
+            movements = session.scalars(moves_stmt).all()
 
             total_drops = sum(m.amount for m in movements if m.type == "DROP")
             total_payouts = sum(
@@ -112,21 +116,25 @@ class ShiftService:
                 Sale.date >= shift.start_time,
                 Sale.status == "VOID",
             )
+            if shift.end_time:
+                void_stmt = void_stmt.where(Sale.date <= shift.end_time)
             void_count, void_value = session.execute(void_stmt).first()
 
             # Transaction Count
-            txn_count = session.scalar(
-                select(func.count(Sale.id)).where(
-                    Sale.user_id == shift.user_id,
-                    Sale.date >= shift.start_time,
-                    Sale.status == "COMPLETED",
-                )
+            txn_stmt = select(func.count(Sale.id)).where(
+                Sale.user_id == shift.user_id,
+                Sale.date >= shift.start_time,
+                Sale.status == "COMPLETED",
             )
+            if shift.end_time:
+                txn_stmt = txn_stmt.where(Sale.date <= shift.end_time)
+            txn_count = session.scalar(txn_stmt)
 
             return {
                 "shift_id": shift.id,
                 "user_name": shift.user.username,
                 "start_time": shift.start_time,
+                "end_time": shift.end_time,
                 "starting_cash": shift.starting_cash,
                 "sales_by_method": sales_by_method,
                 "total_sales": total_sales,

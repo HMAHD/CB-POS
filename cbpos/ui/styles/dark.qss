@@ -305,3 +305,13 @@ QToolButton[class="SearchModeBtn"]:hover {
     background-color: #444444;
     color: #FFFFFF;
 }
+
+/* Variance label colours */
+QLabel[variance="positive"] {
+    color: #39FF14;   /* neon green */
+    font-weight: bold;
+}
+QLabel[variance="negative"] {
+    color: #FF4136;   /* bright red */
+    font-weight: bold;
+}

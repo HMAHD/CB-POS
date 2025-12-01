@@ -14,20 +14,10 @@ class DashboardService:
             today = date.today()
 
             # 1. Total Sales (Today)
-            total_sales = (
-                session.query(func.sum(Sale.total_amount))
-                .filter(func.date(Sale.date) == today)
-                .scalar()
-                or 0
-            )
+            total_sales = session.query(func.sum(Sale.total_amount)).filter(func.date(Sale.date) == today).scalar() or 0
 
             # 2. Transaction Count (Today)
-            txn_count = (
-                session.query(func.count(Sale.id))
-                .filter(func.date(Sale.date) == today)
-                .scalar()
-                or 0
-            )
+            txn_count = session.query(func.count(Sale.id)).filter(func.date(Sale.date) == today).scalar() or 0
 
             # 3. Low Stock Count
             low_stock_count = (
@@ -39,12 +29,7 @@ class DashboardService:
             )
 
             # 4. Active Staff (Open Shifts)
-            active_staff = (
-                session.query(func.count(Shift.id))
-                .filter(Shift.status == "OPEN")
-                .scalar()
-                or 0
-            )
+            active_staff = session.query(func.count(Shift.id)).filter(Shift.status == "OPEN").scalar() or 0
 
             return {
                 "total_sales": total_sales,

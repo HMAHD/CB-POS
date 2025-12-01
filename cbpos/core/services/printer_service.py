@@ -44,9 +44,7 @@ class PrinterService:
             a4_printer = ConfigService.get("a4_printer_name")
 
             if not a4_printer:
-                print(
-                    "[PrinterService] A4 printer not configured. Skipping invoice print."
-                )
+                print("[PrinterService] A4 printer not configured. Skipping invoice print.")
                 return
 
             # Generate PDF in temp directory
@@ -79,9 +77,7 @@ class PrinterService:
             # Get receipt printer name
             receipt_printer = ConfigService.get("receipt_printer_name")
             if not receipt_printer:
-                print(
-                    "[PrinterService] Receipt printer not configured. Skipping print."
-                )
+                print("[PrinterService] Receipt printer not configured. Skipping print.")
                 return
 
             # Get number of copies
@@ -93,11 +89,7 @@ class PrinterService:
             # Print copies
             for i in range(copies):
                 PrinterService._send_to_thermal_printer(receipt_data, receipt_printer)
-                print(
-                    "[PrinterService] Printed receipt copy {0}/{1}".format(
-                        i + 1, copies
-                    )
-                )
+                print("[PrinterService] Printed receipt copy {0}/{1}".format(i + 1, copies))
 
         except Exception as e:
             print("[PrinterService] Error printing thermal receipt: {0}".format(e))
@@ -142,9 +134,7 @@ class PrinterService:
 
         # Sale Info
         receipt += LEFT
-        receipt += "Date: {0}\n".format(sale.date.strftime("%Y-%m-%d %H:%M")).encode(
-            "utf-8"
-        )
+        receipt += "Date: {0}\n".format(sale.date.strftime("%Y-%m-%d %H:%M")).encode("utf-8")
         receipt += "Invoice: INV-{0:06d}\n".format(sale.id).encode("utf-8")
         if sale.customer:
             receipt += "Customer: {0}\n".format(sale.customer.name).encode("utf-8")
@@ -153,25 +143,17 @@ class PrinterService:
         # Items
         for item in sale.items:
             product_name = item.product.name if item.product else "Unknown"
-            qty = (
-                "{0:.3f}".format(item.quantity)
-                if item.quantity % 1 != 0
-                else "{0}".format(int(item.quantity))
-            )
+            qty = "{0:.3f}".format(item.quantity) if item.quantity % 1 != 0 else "{0}".format(int(item.quantity))
             price = item.unit_price * item.quantity - item.discount
             receipt += "{0:<25}\n".format(product_name[:25]).encode("utf-8")
-            receipt += "  {0} x Rs.{1:,.2f}".format(qty, item.unit_price).encode(
-                "utf-8"
-            )
+            receipt += "  {0} x Rs.{1:,.2f}".format(qty, item.unit_price).encode("utf-8")
             receipt += "{0:>12,.2f}\n".format(price).encode("utf-8")
 
         receipt += b"-" * 42 + b"\n"
 
         # Totals
         receipt += BOLD_ON
-        receipt += "{0:<30}Rs.{1:>10,.2f}\n".format("TOTAL:", sale.total_amount).encode(
-            "utf-8"
-        )
+        receipt += "{0:<30}Rs.{1:>10,.2f}\n".format("TOTAL:", sale.total_amount).encode("utf-8")
         receipt += BOLD_OFF
 
         if sale.payment_method:
@@ -206,9 +188,7 @@ class PrinterService:
                 [
                     "powershell",
                     "-Command",
-                    'Start-Process -FilePath "{0}" -Verb Print -WindowStyle Hidden'.format(
-                        pdf_path
-                    ),
+                    'Start-Process -FilePath "{0}" -Verb Print -WindowStyle Hidden'.format(pdf_path),
                 ],
                 check=True,
             )
@@ -247,11 +227,7 @@ class PrinterService:
             )
 
             os.unlink(temp_file.name)
-            print(
-                "[PrinterService] Sent receipt to thermal printer: {0}".format(
-                    printer_name
-                )
-            )
+            print("[PrinterService] Sent receipt to thermal printer: {0}".format(printer_name))
 
         except Exception as e:
             print("[PrinterService] Error sending to thermal printer: {0}".format(e))

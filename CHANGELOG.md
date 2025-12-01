@@ -5,11 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] - 2025-12-01
 
 ### Added
-- Implemented Advanced Receipt Engine with support for graphical logos, barcodes, item merging, and a visual previewer.
-- Added "Receipt" tab in Settings for customizing header, footer, logo, barcode, tax breakdown, item merging, and print options.
-- Added Visual Receipt Preview dialog that simulates the final receipt layout.
-- Implemented item merging logic for receipts.
-- Implemented Shift Closing & Z-Report features.
+  - Implemented Advanced Receipt Engine with support for graphical logos, barcodes, item merging, and a visual previewer.
+  - Added "Receipt" tab in Settings for customizing header, footer, logo, barcode, tax breakdown, item merging, and print options.
+  - Added Visual Receipt Preview dialog that simulates the final receipt layout.
+  - Implemented item merging logic for receipts.
+  - Implemented Shift Closing & Z-Report features.
 - **Theme & Localization** (Phase 16):
   - Implemented Dynamic Theme Switching (Dark/Light).
   - Created `ThemeService` for handling stylesheet application and variable injection.
@@ -57,8 +57,14 @@ All notable changes to this project will be documented in this file.
   - Fixed linting errors (E231, F401).
 
 ### Fixed
-- Resolved `QPainter` warnings by ensuring valid pixmaps and sizes in `ManagementView`.
-- Fixed asset paths for Logo and User Badges using `pathlib`.
+  - Resolved `QPainter` warnings by ensuring valid pixmaps and sizes in `ManagementView`.
+  - Fixed asset paths for Logo and User Badges using `pathlib`.
+  - Resolved persistent `E501` line length errors across multiple files.
+  - Fixed `IndentationError` in `side_menu.py`.
+  - Removed unused imports (`F401`) in `manager_override_dialog.py`.
+  - Aligned `black` and `flake8` configuration to use 120 characters line length.
+  - Fixed `E702` multiple statements on one line in `email_service.py` and `history_view.py`.
+  - Fixed `E231` missing whitespace in `history_view.py`.
 
 ***
 
@@ -80,22 +86,22 @@ All notable changes to this project will be documented in this file.
   - Stock deduction automatically handles child products when composite items are sold.
 
 ### Fixed
-- Resolved SQLite migration constraint naming issues for refund foreign key.
-- Fixed f-string format specifiers causing flake8 E231 errors.
+  - Resolved SQLite migration constraint naming issues for refund foreign key.
+  - Fixed f-string format specifiers causing flake8 E231 errors.
 
 ***
 
 ## [0.1.0] - 2025-11-25
 
 ### Added
-- Initial project structure scaffolding.
-- Configuration files (`.gitignore`, `requirements.txt`).
-- Database layer (`core/database.py`) with Singleton pattern and SQLAlchemy 2.0.
-- Domain models (`core/models/__init__.py`) for `User`, `Category`, `Product`, `Sale`, `SaleItem`.
-- Seeding script (`scripts/seed.py`) with Sri Lankan retail data.
-- Authentication Service (`core/services/auth_service.py`) with PIN hashing.
-- Global Theme (`ui/styles/theme.qss`) implementing "Ceylon Byte" industrial design.
-- Login UI (`ui/views/login_view.py`) with custom Numpad and Split Screen layout.
+  - Initial project structure scaffolding.
+  - Configuration files (`.gitignore`, `requirements.txt`).
+  - Database layer (`core/database.py`) with Singleton pattern and SQLAlchemy 2.0.
+  - Domain models (`core/models/__init__.py`) for `User`, `Category`, `Product`, `Sale`, `SaleItem`.
+  - Seeding script (`scripts/seed.py`) with Sri Lankan retail data.
+  - Authentication Service (`core/services/auth_service.py`) with PIN hashing.
+  - Global Theme (`ui/styles/theme.qss`) implementing "Ceylon Byte" industrial design.
+  - Login UI (`ui/views/login_view.py`) with custom Numpad and Split Screen layout.
 - **Transaction Operations** (Phase 8):
   - Implemented **Hold/Recall Bill** functionality.
   - Implemented **Void Bill** (Clear Cart) functionality.

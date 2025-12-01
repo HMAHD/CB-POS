@@ -24,18 +24,14 @@ class InventoryService:
                 child_id = comp_data.get("child_product_id")
                 qty = comp_data.get("qty")
                 if child_id and qty:
-                    composite = CompositeItem(
-                        parent_product_id=product.id, child_product_id=child_id, qty=qty
-                    )
+                    composite = CompositeItem(parent_product_id=product.id, child_product_id=child_id, qty=qty)
                     session.add(composite)
 
             session.commit()
             session.refresh(product)
             return product
 
-    def update_product(
-        self, product_id: int, data: Dict[str, Any]
-    ) -> Optional[Product]:
+    def update_product(self, product_id: int, data: Dict[str, Any]) -> Optional[Product]:
         with self.db.get_session() as session:
             product = session.get(Product, product_id)
             if not product:
@@ -50,9 +46,7 @@ class InventoryService:
 
             if components_data is not None:
                 # Clear existing components
-                session.query(CompositeItem).filter(
-                    CompositeItem.parent_product_id == product.id
-                ).delete()
+                session.query(CompositeItem).filter(CompositeItem.parent_product_id == product.id).delete()
                 # Add new components
                 for comp_data in components_data:
                     child_id = comp_data.get("child_product_id")
@@ -81,14 +75,10 @@ class InventoryService:
 
     def get_low_stock_items(self) -> List[Product]:
         with self.db.get_session() as session:
-            stmt = select(Product).where(
-                Product.is_active.is_(True), Product.stock_qty <= Product.reorder_level
-            )
+            stmt = select(Product).where(Product.is_active.is_(True), Product.stock_qty <= Product.reorder_level)
             return list(session.scalars(stmt).all())
 
-    def adjust_stock(
-        self, product_id: int, qty_change: Decimal, reason: str, user_id: int
-    ) -> bool:
+    def adjust_stock(self, product_id: int, qty_change: Decimal, reason: str, user_id: int) -> bool:
         with self.db.get_session() as session:
             product = session.get(Product, product_id)
             if not product:
@@ -124,18 +114,10 @@ class InventoryService:
 
     def get_all_products(self) -> List[Product]:
         with self.db.get_session() as session:
-            stmt = (
-                select(Product)
-                .options(joinedload(Product.category))
-                .where(Product.is_active.is_(True))
-            )
+            stmt = select(Product).options(joinedload(Product.category)).where(Product.is_active.is_(True))
             return list(session.scalars(stmt).all())
 
     def get_product_by_barcode(self, barcode: str) -> Optional[Product]:
         with self.db.get_session() as session:
-            stmt = (
-                select(Product)
-                .options(joinedload(Product.category))
-                .where(Product.barcode == barcode)
-            )
+            stmt = select(Product).options(joinedload(Product.category)).where(Product.barcode == barcode)
             return session.scalars(stmt).first()

@@ -19,5 +19,12 @@
     "receipt_copies": 1,
     "scale_barcode_prefix": "20",
     "scale_decimal_places": 3,
-    "theme": "Dark"
+    "theme": "Dark",
+    "auto_report_enabled": true,
+    "auto_report_time": "23:30",
+    "admin_email": "test@example.com",
+    "smtp_host": "smtp.example.com",
+    "smtp_port": "587",
+    "smtp_user": "user",
+    "smtp_pass": "pass"
 }

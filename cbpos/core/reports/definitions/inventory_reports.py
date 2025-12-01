@@ -91,9 +91,7 @@ class LowStockReport(BaseReport):
 
             data = []
             for p in products:
-                supplier_name = (
-                    p.default_supplier.company_name if p.default_supplier else "Unknown"
-                )
+                supplier_name = p.default_supplier.company_name if p.default_supplier else "Unknown"
 
                 data.append(
                     {

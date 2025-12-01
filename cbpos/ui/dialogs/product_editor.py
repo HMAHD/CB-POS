@@ -81,10 +81,7 @@ class ProductEditor(QDialog):
 
         layout.addWidget(self.tabs)
 
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Save
-            | QDialogButtonBox.StandardButton.Cancel
-        )
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.save_product)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
@@ -171,9 +168,7 @@ class ProductEditor(QDialog):
         self.comp_table = QTableWidget()
         self.comp_table.setColumnCount(4)
         self.comp_table.setHorizontalHeaderLabels(["ID", "Name", "Qty", "Action"])
-        self.comp_table.horizontalHeader().setSectionResizeMode(
-            1, QHeaderView.ResizeMode.Stretch
-        )
+        self.comp_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.comp_table.hideColumn(0)  # Hide ID
         layout.addWidget(self.comp_table)
 
@@ -206,9 +201,7 @@ class ProductEditor(QDialog):
         self.comp_table.setItem(row, 2, QTableWidgetItem(str(qty)))
 
         remove_btn = QPushButton("Remove")
-        remove_btn.clicked.connect(
-            self.create_remove_handler(self.comp_table, remove_btn)
-        )
+        remove_btn.clicked.connect(self.create_remove_handler(self.comp_table, remove_btn))
 
         self.comp_table.setCellWidget(row, 3, remove_btn)
         self.comp_barcode_input.clear()
@@ -247,9 +240,7 @@ class ProductEditor(QDialog):
         import shutil
         import os
 
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "Select Image", "", "Images (*.png *.jpg *.jpeg)"
-        )
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select Image", "", "Images (*.png *.jpg *.jpeg)")
 
         if file_path:
             # Copy to assets
@@ -299,10 +290,7 @@ class ProductEditor(QDialog):
         self.service_check.setChecked(self.product.is_service)
 
         # Load supplier
-        if (
-            hasattr(self.product, "default_supplier_id")
-            and self.product.default_supplier_id
-        ):
+        if hasattr(self.product, "default_supplier_id") and self.product.default_supplier_id:
             idx = self.supplier_combo.findData(self.product.default_supplier_id)
             if idx >= 0:
                 self.supplier_combo.setCurrentIndex(idx)
@@ -310,26 +298,20 @@ class ProductEditor(QDialog):
         if self.product.image_path:
             import os
 
-            full_path = os.path.join(
-                os.getcwd(), "cbpos", "assets", self.product.image_path
-            )
+            full_path = os.path.join(os.getcwd(), "cbpos", "assets", self.product.image_path)
             self.show_image(full_path)
             self.current_image_path = self.product.image_path
 
         # Load components
         db = Database()
         with db.get_session() as session:
-            stmt = select(CompositeItem).where(
-                CompositeItem.parent_product_id == self.product.id
-            )
+            stmt = select(CompositeItem).where(CompositeItem.parent_product_id == self.product.id)
             components = session.scalars(stmt).all()
 
             for comp in components:
                 row = self.comp_table.rowCount()
                 self.comp_table.insertRow(row)
-                self.comp_table.setItem(
-                    row, 0, QTableWidgetItem(str(comp.child_product_id))
-                )
+                self.comp_table.setItem(row, 0, QTableWidgetItem(str(comp.child_product_id)))
 
                 child = session.get(Product, comp.child_product_id)
                 child_name = child.name_en if child else "Unknown"
@@ -338,9 +320,7 @@ class ProductEditor(QDialog):
                 self.comp_table.setItem(row, 2, QTableWidgetItem(str(comp.qty)))
 
                 remove_btn = QPushButton("Remove")
-                remove_btn.clicked.connect(
-                    self.create_remove_handler(self.comp_table, remove_btn)
-                )
+                remove_btn.clicked.connect(self.create_remove_handler(self.comp_table, remove_btn))
                 self.comp_table.setCellWidget(row, 3, remove_btn)
 
     def save_product(self):

@@ -39,9 +39,7 @@ class PromotionView(QWidget):
         header.addStretch()
 
         btn_add = QPushButton("Create Promotion")
-        btn_add.setStyleSheet(
-            "background-color: #00BCEB; color: white; font-weight: bold; padding: 8px;"
-        )
+        btn_add.setStyleSheet("background-color: #00BCEB; color: white; font-weight: bold; padding: 8px;")
         btn_add.clicked.connect(self.add_promotion)
         header.addWidget(btn_add)
 
@@ -50,12 +48,8 @@ class PromotionView(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(
-            ["Name", "Type", "Value", "Start", "End", "Status"]
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+        self.table.setHorizontalHeaderLabels(["Name", "Type", "Value", "Start", "End", "Status"])
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table)
@@ -70,12 +64,8 @@ class PromotionView(QWidget):
             self.table.setItem(row, 0, QTableWidgetItem(p.name))
             self.table.setItem(row, 1, QTableWidgetItem(p.type))
             self.table.setItem(row, 2, QTableWidgetItem("{:.2f}".format(p.value)))
-            self.table.setItem(
-                row, 3, QTableWidgetItem(p.start_time.strftime("%Y-%m-%d %H:%M"))
-            )
-            self.table.setItem(
-                row, 4, QTableWidgetItem(p.end_time.strftime("%Y-%m-%d %H:%M"))
-            )
+            self.table.setItem(row, 3, QTableWidgetItem(p.start_time.strftime("%Y-%m-%d %H:%M")))
+            self.table.setItem(row, 4, QTableWidgetItem(p.end_time.strftime("%Y-%m-%d %H:%M")))
 
             status = "Active" if p.is_active else "Inactive"
             self.table.setItem(row, 5, QTableWidgetItem(status))
@@ -131,10 +121,7 @@ class PromotionDialog(QDialog):
 
         layout.addLayout(form)
 
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Save
-            | QDialogButtonBox.StandardButton.Cancel
-        )
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)

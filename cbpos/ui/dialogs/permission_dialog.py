@@ -85,18 +85,12 @@ class PermissionDialog(QDialog):
                         "admin.manage_users",
                         "admin.manage_roles",
                     ]:
-                        perm_item.setFlags(
-                            perm_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable
-                        )
-                        perm_item.setCheckState(
-                            col_index, Qt.CheckState.Checked
-                        )  # Force Checked
+                        perm_item.setFlags(perm_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+                        perm_item.setCheckState(col_index, Qt.CheckState.Checked)  # Force Checked
 
         # Resize columns
         for i in range(len(headers)):
-            self.tree.header().setSectionResizeMode(
-                i, QHeaderView.ResizeMode.ResizeToContents
-            )
+            self.tree.header().setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
 
     def save_changes(self):
         try:
@@ -110,18 +104,12 @@ class PermissionDialog(QDialog):
 
                     for k, role in enumerate(self.roles):
                         col_index = k + 1
-                        is_checked = (
-                            perm_item.checkState(col_index) == Qt.CheckState.Checked
-                        )
+                        is_checked = perm_item.checkState(col_index) == Qt.CheckState.Checked
 
                         # Update role permission
-                        PermissionService.update_role_permission(
-                            role.id, perm_id, is_checked
-                        )
+                        PermissionService.update_role_permission(role.id, perm_id, is_checked)
 
-            QMessageBox.information(
-                self, "Success", "Permissions updated successfully."
-            )
+            QMessageBox.information(self, "Success", "Permissions updated successfully.")
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save permissions: {str(e)}")

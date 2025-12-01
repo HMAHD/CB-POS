@@ -21,12 +21,8 @@ def db_session():
     """
     db = Database()
     # Force StaticPool for in-memory DB to persist data across sessions
-    db.engine = create_engine(
-        Config.DB_URI, connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
-    db.SessionLocal = sessionmaker(
-        bind=db.engine, autocommit=False, autoflush=False, expire_on_commit=False
-    )
+    db.engine = create_engine(Config.DB_URI, connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    db.SessionLocal = sessionmaker(bind=db.engine, autocommit=False, autoflush=False, expire_on_commit=False)
 
     db.create_tables()
 
@@ -76,9 +72,7 @@ def test_purchase_flow(db_session):
     # 2. Create Purchase Draft
     # Receive 10 more @ 120.00
     items = [(product_id, Decimal("10.000"), Decimal("120.00"))]
-    purchase = PurchaseService.create_purchase(
-        supplier_id=supplier.id, reference_no="INV-001", items=items
-    )
+    purchase = PurchaseService.create_purchase(supplier_id=supplier.id, reference_no="INV-001", items=items)
 
     assert purchase.status == "DRAFT"
     assert purchase.total_cost == Decimal("1200.00")
@@ -109,9 +103,7 @@ def test_weighted_average_cost_complex(db_session):
     db_session.commit()
 
     # Initial: 5 @ 100.00
-    product = Product(
-        barcode="1002", name_en="Widget", price=200.00, cost=100.00, stock_qty=5.000
-    )
+    product = Product(barcode="1002", name_en="Widget", price=200.00, cost=100.00, stock_qty=5.000)
     db_session.add(product)
     db_session.commit()
 

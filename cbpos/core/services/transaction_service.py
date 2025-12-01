@@ -23,9 +23,7 @@ class TransactionService:
     """
 
     @staticmethod
-    def process_sale(
-        cart_service: CartService, payments: list, customer_id: int = None
-    ) -> bool:
+    def process_sale(cart_service: CartService, payments: list, customer_id: int = None) -> bool:
         """
         Process the sale with multiple payments.
 
@@ -45,9 +43,7 @@ class TransactionService:
             # Validate Payments
             total_paid = sum(p["amount"] for p in payments)
             if total_paid < total_amount:
-                raise ValueError(
-                    f"Insufficient payment. Paid: {total_paid}, Due: {total_amount}"
-                )
+                raise ValueError(f"Insufficient payment. Paid: {total_paid}, Due: {total_amount}")
 
             # Generate Receipt No
             receipt_no = f"REC-{uuid.uuid4().hex[:8].upper()}"
@@ -64,9 +60,7 @@ class TransactionService:
                     if not customer_id:
                         raise ValueError("Customer required for Credit sale.")
 
-                    customer = (
-                        session.query(Customer).with_for_update().get(customer_id)
-                    )
+                    customer = session.query(Customer).with_for_update().get(customer_id)
                     if not customer:
                         raise ValueError("Invalid Customer.")
 
@@ -97,9 +91,7 @@ class TransactionService:
 
             # 3. Create Sale Payments
             for p in payments:
-                payment = SalePayment(
-                    sale_id=sale.id, payment_method=p["method"], amount=p["amount"]
-                )
+                payment = SalePayment(sale_id=sale.id, payment_method=p["method"], amount=p["amount"])
                 session.add(payment)
 
                 # 4. Process Items & Deduct Stock
@@ -121,9 +113,7 @@ class TransactionService:
 
                 # Check for Composite Item
                 composite_children = (
-                    session.query(CompositeItem)
-                    .filter(CompositeItem.parent_product_id == product.id)
-                    .all()
+                    session.query(CompositeItem).filter(CompositeItem.parent_product_id == product.id).all()
                 )
 
                 if composite_children:
@@ -200,9 +190,7 @@ class TransactionService:
             # Serialize cart items
             items_data = []
             for item in cart_service.items:
-                items_data.append(
-                    {"barcode": item["product"].barcode, "qty": str(item["qty"])}
-                )
+                items_data.append({"barcode": item["product"].barcode, "qty": str(item["qty"])})
 
             json_data = json.dumps(items_data)
 
@@ -223,11 +211,7 @@ class TransactionService:
         db = Database()
         session = db.SessionLocal()
         try:
-            suspended = (
-                session.query(SuspendedTransaction)
-                .order_by(SuspendedTransaction.timestamp.desc())
-                .all()
-            )
+            suspended = session.query(SuspendedTransaction).order_by(SuspendedTransaction.timestamp.desc()).all()
             # Detach objects
             for s in suspended:
                 session.expunge(s)
@@ -332,15 +316,9 @@ class TransactionService:
                 raise ValueError("Cannot refund a refund transaction.")
 
             # Check if already refunded
-            existing_refund = (
-                session.query(Sale)
-                .filter(Sale.refund_of_sale_id == original_sale_id)
-                .first()
-            )
+            existing_refund = session.query(Sale).filter(Sale.refund_of_sale_id == original_sale_id).first()
             if existing_refund:
-                raise ValueError(
-                    f"Sale already refunded (Refund: {existing_refund.document_number})"
-                )
+                raise ValueError(f"Sale already refunded (Refund: {existing_refund.document_number})")
 
             # 2. Create refund transaction (negative values)
             refund_receipt_no = f"REF-{uuid.uuid4().hex[:8].upper()}"
@@ -377,27 +355,17 @@ class TransactionService:
                 session.add(refund_item)
 
                 # 4. RESTORE stock (increase)
-                product = (
-                    session.query(Product)
-                    .with_for_update()
-                    .get(original_item.product_id)
-                )
+                product = session.query(Product).with_for_update().get(original_item.product_id)
                 if product:
                     # Check if composite
                     composite_children = (
-                        session.query(CompositeItem)
-                        .filter(CompositeItem.parent_product_id == product.id)
-                        .all()
+                        session.query(CompositeItem).filter(CompositeItem.parent_product_id == product.id).all()
                     )
 
                     if composite_children:
                         # Restore child product stock
                         for comp in composite_children:
-                            child_product = (
-                                session.query(Product)
-                                .with_for_update()
-                                .get(comp.child_product_id)
-                            )
+                            child_product = session.query(Product).with_for_update().get(comp.child_product_id)
                             if child_product:
                                 restoration = comp.qty * original_item.qty
                                 child_product.stock_qty += restoration
@@ -415,8 +383,7 @@ class TransactionService:
 
             # 6. Log the refund
             print(
-                f"REFUND: {original_sale.document_number} -> "
-                f"{refund_receipt_no} by User {user_id}: {refund_reason}"
+                f"REFUND: {original_sale.document_number} -> " f"{refund_receipt_no} by User {user_id}: {refund_reason}"
             )
 
             # 7. Commit

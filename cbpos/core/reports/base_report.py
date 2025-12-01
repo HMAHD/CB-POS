@@ -33,7 +33,12 @@ class BaseReport(ABC):
         Example:
         [
             {'name': 'date_range', 'type': 'date_range', 'label': 'Date Range'},
-            {'name': 'category_id', 'type': 'combo', 'label': 'Category', 'options': [...]},
+            {
+                'name': 'category_id',
+                'type': 'combo',
+                'label': 'Category',
+                'options': [...]
+            },
         ]
         """
         pass

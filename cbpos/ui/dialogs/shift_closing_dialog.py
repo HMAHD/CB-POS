@@ -143,16 +143,12 @@ class ShiftClosingDialog(QDialog):
             return
 
         try:
-            final_summary = self.shift_service.close_shift(
-                self.shift_id, self.counted_cash, reason
-            )
+            final_summary = self.shift_service.close_shift(self.shift_id, self.counted_cash, reason)
             # Generate Z-Report (printing is delegated to hardware layer)
             # In a real deployment you would send `report_text` to the printer.
             ReceiptService.print_z_report(final_summary)
 
-            QMessageBox.information(
-                self, "Success", "Shift closed and Z-Report generated."
-            )
+            QMessageBox.information(self, "Success", "Shift closed and Z-Report generated.")
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to close shift: {e}")

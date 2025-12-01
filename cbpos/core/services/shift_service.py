@@ -33,9 +33,7 @@ class ShiftService:
 
     def get_current_shift(self, user_id: int) -> Optional[Shift]:
         with self.db.get_session() as session:
-            return session.scalars(
-                select(Shift).where(Shift.user_id == user_id, Shift.status == "OPEN")
-            ).first()
+            return session.scalars(select(Shift).where(Shift.user_id == user_id, Shift.status == "OPEN")).first()
 
     def record_cash_movement(
         self, shift_id: int, type: str, amount: Decimal, reason: str, user_id: int
@@ -96,19 +94,11 @@ class ShiftService:
             movements = session.scalars(moves_stmt).all()
 
             total_drops = sum(m.amount for m in movements if m.type == "DROP")
-            total_payouts = sum(
-                m.amount for m in movements if m.type == "PAYOUT" or m.type == "OUT"
-            )
+            total_payouts = sum(m.amount for m in movements if m.type == "PAYOUT" or m.type == "OUT")
             total_ins = sum(m.amount for m in movements if m.type == "IN")
 
             # 3. Expected Cash
-            expected_cash = (
-                shift.starting_cash
-                + total_cash_sales
-                + total_ins
-                - total_drops
-                - total_payouts
-            )
+            expected_cash = shift.starting_cash + total_cash_sales + total_ins - total_drops - total_payouts
 
             # 4. Audit Stats (Voids)
             void_stmt = select(func.count(Sale.id), func.sum(Sale.total_amount)).where(
@@ -149,9 +139,7 @@ class ShiftService:
                 "txn_count": txn_count or 0,
             }
 
-    def close_shift(
-        self, shift_id: int, counted_cash: Decimal, notes: str = None
-    ) -> Dict[str, Any]:
+    def close_shift(self, shift_id: int, counted_cash: Decimal, notes: str = None) -> Dict[str, Any]:
         with self.db.get_session() as session:
             shift = session.get(Shift, shift_id)
             if not shift or shift.status != "OPEN":

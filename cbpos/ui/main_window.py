@@ -62,9 +62,7 @@ class MainWindow(QMainWindow):
         # 2. Management View
         self.management_view = ManagementView()
         self.management_view.logout_requested.connect(self.logout)
-        self.management_view.request_pos_view.connect(
-            lambda: self.stack.setCurrentWidget(self.sales_view)
-        )
+        self.management_view.request_pos_view.connect(lambda: self.stack.setCurrentWidget(self.sales_view))
         self.stack.addWidget(self.management_view)
 
         # 3. Settings View (Top Level)

@@ -58,14 +58,9 @@ class ReportViewer(QWidget):
         # Configure Buttons
         self.btn_run.clicked.connect(self.run_report)
         self.btn_run.setEnabled(False)
-        self.btn_run.setStyleSheet(
-            "background-color: #00BCEB; color: white; "
-            "font-weight: bold; padding: 5px 15px;"
-        )
+        self.btn_run.setStyleSheet("background-color: #00BCEB; color: white; " "font-weight: bold; padding: 5px 15px;")
 
-        self.btn_print.setIcon(
-            self.style().standardIcon(self.style().StandardPixmap.SP_FileIcon)
-        )
+        self.btn_print.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_FileIcon))
         self.btn_print.clicked.connect(self.print_report)
         self.btn_print.setEnabled(False)
 
@@ -74,6 +69,10 @@ class ReportViewer(QWidget):
 
         self.btn_export_pdf.clicked.connect(self.export_pdf)
         self.btn_export_pdf.setEnabled(False)
+
+        self.btn_email = QPushButton("Email")
+        self.btn_email.clicked.connect(self.email_report)
+        self.btn_email.setEnabled(False)
 
         # Top Bar: Filters & Actions
         top_bar = QHBoxLayout()
@@ -97,6 +96,7 @@ class ReportViewer(QWidget):
         bottom_bar.addWidget(self.btn_print)
         bottom_bar.addWidget(self.btn_export_excel)
         bottom_bar.addWidget(self.btn_export_pdf)
+        bottom_bar.addWidget(self.btn_email)
         right_layout.addLayout(bottom_bar)
 
         splitter.addWidget(right_widget)
@@ -129,15 +129,14 @@ class ReportViewer(QWidget):
 
         self.current_report = self.registry.get_report_by_id(report_id)
         if self.current_report:
-            self.filter_widget.build_filters(
-                self.current_report.get_filter_definitions()
-            )
+            self.filter_widget.build_filters(self.current_report.get_filter_definitions())
             self.btn_run.setEnabled(True)
             # Clear previous results
             self.table_model.set_data(pd.DataFrame())
             self.btn_export_excel.setEnabled(False)
             self.btn_export_pdf.setEnabled(False)
             self.btn_print.setEnabled(False)
+            self.btn_email.setEnabled(False)
 
     def run_report(self):
         if not self.current_report:
@@ -153,13 +152,13 @@ class ReportViewer(QWidget):
                 self.btn_export_excel.setEnabled(True)
                 self.btn_export_pdf.setEnabled(True)
                 self.btn_print.setEnabled(True)
+                self.btn_email.setEnabled(True)
             else:
-                QMessageBox.information(
-                    self, "Report", "No data found for the selected filters."
-                )
+                QMessageBox.information(self, "Report", "No data found for the selected filters.")
                 self.btn_export_excel.setEnabled(False)
                 self.btn_export_pdf.setEnabled(False)
                 self.btn_print.setEnabled(False)
+                self.btn_email.setEnabled(False)
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to generate report: {str(e)}")
@@ -169,14 +168,10 @@ class ReportViewer(QWidget):
         if df.empty:
             return
 
-        filename, _ = QFileDialog.getSaveFileName(
-            self, "Save Excel", "", "Excel Files (*.xlsx)"
-        )
+        filename, _ = QFileDialog.getSaveFileName(self, "Save Excel", "", "Excel Files (*.xlsx)")
         if filename:
             try:
-                self.export_service.export_to_excel(
-                    df, filename, self.current_report.name
-                )
+                self.export_service.export_to_excel(df, filename, self.current_report.name)
                 QMessageBox.information(self, "Success", "Export successful!")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Export failed: {str(e)}")
@@ -186,14 +181,10 @@ class ReportViewer(QWidget):
         if df.empty:
             return
 
-        filename, _ = QFileDialog.getSaveFileName(
-            self, "Save PDF", "", "PDF Files (*.pdf)"
-        )
+        filename, _ = QFileDialog.getSaveFileName(self, "Save PDF", "", "PDF Files (*.pdf)")
         if filename:
             try:
-                self.export_service.export_to_pdf(
-                    df, filename, self.current_report.name
-                )
+                self.export_service.export_to_pdf(df, filename, self.current_report.name)
                 QMessageBox.information(self, "Success", "Export successful!")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Export failed: {str(e)}")
@@ -256,3 +247,55 @@ class ReportViewer(QWidget):
             document = QTextDocument()
             document.setHtml(html_content)
             document.print(printer)
+
+    def email_report(self):
+        from cbpos.core.services.email_service import EmailService
+        from cbpos.core.services.config_service import ConfigService
+        import tempfile
+        import os
+        from PyQt6.QtWidgets import QInputDialog
+
+        df = self.table_model.get_dataframe()
+        if df.empty:
+            return
+
+        # Get Recipient
+        config = ConfigService.get_all()
+        default_email = config.get("admin_email", "")
+
+        email, ok = QInputDialog.getText(self, "Email Report", "Recipient Email:", text=default_email)
+
+        if ok and email:
+            try:
+                # Generate PDF to temp file
+                temp_dir = tempfile.gettempdir()
+                filename = f"{self.current_report.name.replace(' ', '_')}.pdf"
+                filepath = os.path.join(temp_dir, filename)
+
+                self.export_service.export_to_pdf(df, filepath, self.current_report.name)
+
+                # Send Email
+                body = f"Please find attached the {self.current_report.name}."
+
+                # Create worker and thread (fire and forget for now, but ideally track
+                # it)
+                # Note: In a real app, we should keep a reference to the worker/thread
+                # to prevent premature garbage collection if the local variable goes
+                # out of scope.
+                # The EmailService.send_email returns the thread, so we can store it.
+                self._email_thread = EmailService.send_email(
+                    email,
+                    f"Report: {self.current_report.name}",
+                    body,
+                    filepath,
+                    callback=lambda success, msg: (
+                        QMessageBox.information(self, "Email", msg)
+                        if success
+                        else QMessageBox.warning(self, "Email Failed", msg)
+                    ),
+                )
+
+                QMessageBox.information(self, "Email", "Email sending started in background...")
+
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to prepare email: {str(e)}")

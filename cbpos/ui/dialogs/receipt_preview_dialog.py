@@ -44,9 +44,7 @@ class ReceiptPreviewDialog(QDialog):
         self.btn_close.clicked.connect(self.accept)
 
         self.btn_print = QPushButton("Close Preview")
-        self.btn_print.setStyleSheet(
-            "background-color: #00BCEB; color: white; font-weight: bold;"
-        )
+        self.btn_print.setStyleSheet("background-color: #00BCEB; color: white; font-weight: bold;")
         self.btn_print.clicked.connect(self.accept)
 
         btn_layout.addStretch()
@@ -62,14 +60,12 @@ class ReceiptPreviewDialog(QDialog):
         html = [
             "<html><head><style>",
             "body { background-color: %s; color: %s; "
-            "font-family: 'Courier New', monospace; font-size: 12px; }"
-            % (bg_color, text_color),
+            "font-family: 'Courier New', monospace; font-size: 12px; }" % (bg_color, text_color),
             ".receipt-container { width: 300px; margin: 0 auto; }",
             ".center-block { display: block; text-align: center; }",
             ".cut-line { border-top: 1px dashed #000; margin: 10px 0; }",
             ".cut-text { text-align: center; font-size: 10px; color: #888; }",
-            ".barcode-box { text-align: center; margin: 10px 0; "
-            "border: 1px solid #000; padding: 5px; }",
+            ".barcode-box { text-align: center; margin: 10px 0; " "border: 1px solid #000; padding: 5px; }",
             ".img-responsive { max-width: 100%; height: auto; }",
             "</style></head><body>",
             "<div class='receipt-container'>",
@@ -87,9 +83,7 @@ class ReceiptPreviewDialog(QDialog):
             if c_type == "text":
                 val = cmd.get("val", "").replace(" ", "&nbsp;")
                 val = val.replace("\n", "<br>")
-                div = "<div style='{} white-space: pre-wrap;'>{}</div>".format(
-                    style, val
-                )
+                div = "<div style='{} white-space: pre-wrap;'>{}</div>".format(style, val)
                 html.append(div)
 
             elif c_type == "image":
@@ -97,8 +91,7 @@ class ReceiptPreviewDialog(QDialog):
                 if path:
                     # Use file:// protocol for local images
                     img_tag = (
-                        "<div style='text-align: center;'>"
-                        "<img src='file:///{}' class='img-responsive'></div>"
+                        "<div style='text-align: center;'>" "<img src='file:///{}' class='img-responsive'></div>"
                     ).format(path)
                     html.append(img_tag)
 

@@ -61,18 +61,11 @@ class InvoiceService:
             spaceAfter=12,
         )
 
-        header_style = ParagraphStyle(
-            "Header", parent=styles["Normal"], fontSize=10, alignment=TA_CENTER
-        )
+        header_style = ParagraphStyle("Header", parent=styles["Normal"], fontSize=10, alignment=TA_CENTER)
 
         # === HEADER SECTION ===
         # Logo (if exists)
-        logo_path = (
-            Path(__file__).resolve().parent.parent.parent
-            / "assets"
-            / "logo"
-            / "cover_black.png"
-        )
+        logo_path = Path(__file__).resolve().parent.parent.parent / "assets" / "logo" / "cover_black.png"
         if logo_path.exists():
             logo = Image(str(logo_path), width=60 * mm, height=20 * mm)
             logo.hAlign = "CENTER"
@@ -81,15 +74,9 @@ class InvoiceService:
 
         # Company Details
         elements.append(Paragraph("CEYLON BYTE POS SYSTEM", header_style))
-        elements.append(
-            Paragraph("123 Main Street, Colombo 00700, Sri Lanka", header_style)
-        )
-        elements.append(
-            Paragraph("Tel: +94 11 234 5678 | Email: info@ceylonbyte.lk", header_style)
-        )
-        elements.append(
-            Paragraph("VAT Reg: 123456789V | SSCL Reg: SSCL/2024/001", header_style)
-        )
+        elements.append(Paragraph("123 Main Street, Colombo 00700, Sri Lanka", header_style))
+        elements.append(Paragraph("Tel: +94 11 234 5678 | Email: info@ceylonbyte.lk", header_style))
+        elements.append(Paragraph("VAT Reg: 123456789V | SSCL Reg: SSCL/2024/001", header_style))
         elements.append(Spacer(1, 10 * mm))
 
         # Invoice Title
@@ -108,17 +95,11 @@ class InvoiceService:
                 "Customer:",
                 sale.customer.name if sale.customer else "Walk-in Customer",
                 "VAT No:",
-                (
-                    sale.customer.vat_number
-                    if sale.customer and sale.customer.vat_number
-                    else "N/A"
-                ),
+                (sale.customer.vat_number if sale.customer and sale.customer.vat_number else "N/A"),
             ],
         ]
 
-        invoice_table = Table(
-            invoice_data, colWidths=[30 * mm, 60 * mm, 30 * mm, 60 * mm]
-        )
+        invoice_table = Table(invoice_data, colWidths=[30 * mm, 60 * mm, 30 * mm, 60 * mm])
         invoice_table.setStyle(
             TableStyle(
                 [
@@ -138,24 +119,14 @@ class InvoiceService:
 
         for item in sale.items:
             item_name = item.product.name if item.product else "Unknown Item"
-            qty = (
-                "{0: .3f}".format(item.quantity)
-                if item.quantity % 1 != 0
-                else "{0}".format(int(item.quantity))
-            )
+            qty = "{0: .3f}".format(item.quantity) if item.quantity % 1 != 0 else "{0}".format(int(item.quantity))
             unit_price = "Rs. {0: ,.2f}".format(item.unit_price)
-            discount = (
-                "Rs. {0: ,.2f}".format(item.discount) if item.discount else "Rs. 0.00"
-            )
-            net_amount = "Rs. {0: ,.2f}".format(
-                item.unit_price * item.quantity - item.discount
-            )
+            discount = "Rs. {0: ,.2f}".format(item.discount) if item.discount else "Rs. 0.00"
+            net_amount = "Rs. {0: ,.2f}".format(item.unit_price * item.quantity - item.discount)
 
             items_data.append([item_name, qty, unit_price, discount, net_amount])
 
-        items_table = Table(
-            items_data, colWidths=[80 * mm, 20 * mm, 30 * mm, 25 * mm, 30 * mm]
-        )
+        items_table = Table(items_data, colWidths=[80 * mm, 20 * mm, 30 * mm, 25 * mm, 30 * mm])
         items_table.setStyle(
             TableStyle(
                 [
@@ -212,9 +183,7 @@ class InvoiceService:
         elements.append(Spacer(1, 10 * mm))
 
         # === FOOTER SECTION ===
-        footer_style = ParagraphStyle(
-            "Footer", parent=styles["Normal"], fontSize=9, alignment=TA_LEFT
-        )
+        footer_style = ParagraphStyle("Footer", parent=styles["Normal"], fontSize=9, alignment=TA_LEFT)
 
         elements.append(Paragraph("<b>Banking Details:</b>", footer_style))
         elements.append(Paragraph("Bank: Commercial Bank of Ceylon", footer_style))
@@ -222,12 +191,8 @@ class InvoiceService:
         elements.append(Paragraph("Branch: Colombo Fort", footer_style))
         elements.append(Spacer(1, 10 * mm))
 
-        signature_data = [
-            ["Authorized Signature:", "_" * 30, "Company Stamp:", "[STAMP]"]
-        ]
-        signature_table = Table(
-            signature_data, colWidths=[40 * mm, 50 * mm, 40 * mm, 55 * mm]
-        )
+        signature_data = [["Authorized Signature:", "_" * 30, "Company Stamp:", "[STAMP]"]]
+        signature_table = Table(signature_data, colWidths=[40 * mm, 50 * mm, 40 * mm, 55 * mm])
         signature_table.setStyle(
             TableStyle(
                 [

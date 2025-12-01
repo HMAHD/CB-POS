@@ -12,9 +12,7 @@ class PricingService:
     """
 
     @staticmethod
-    def calculate_price(
-        product: Product, customer: Optional[Customer] = None
-    ) -> Dict[str, Any]:
+    def calculate_price(product: Product, customer: Optional[Customer] = None) -> Dict[str, Any]:
         """
         Calculate the final price for a product.
 

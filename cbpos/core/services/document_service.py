@@ -42,9 +42,7 @@ class DocumentService:
             f"doc_format_{doc_type.lower()}",
             defaults.get(doc_type, "DOC-{Y}-{seq:05d}"),
         )
-        reset_period = settings.get(
-            "doc_reset_period", "YEARLY"
-        )  # YEARLY, MONTHLY, NEVER
+        reset_period = settings.get("doc_reset_period", "YEARLY")  # YEARLY, MONTHLY, NEVER
 
         # 2. Parse Date Placeholders
         now = datetime.now()
@@ -75,11 +73,7 @@ class DocumentService:
             pass
 
         # RENDER DATE PARTS
-        prefix_pattern = (
-            pattern.replace("{Y}", year_str)
-            .replace("{M}", month_str)
-            .replace("{D}", day_str)
-        )
+        prefix_pattern = pattern.replace("{Y}", year_str).replace("{M}", month_str).replace("{D}", day_str)
 
         # Extract the part before {seq} to use as DB filter
         # This assumes {seq} is at the end or we can filter by the static part.
@@ -153,11 +147,7 @@ class DocumentService:
                         final_number = f"{final_number}{new_seq}"
 
                     # Check if exists (Race condition check)
-                    exists = (
-                        session.query(Document)
-                        .filter_by(document_number=final_number)
-                        .first()
-                    )
+                    exists = session.query(Document).filter_by(document_number=final_number).first()
                     if not exists:
                         return final_number
 

@@ -118,9 +118,4 @@ class ScaleService:
             bool: True if barcode matches scale format
         """
         prefix = prefix or ScaleService.DEFAULT_PREFIX
-        return (
-            barcode is not None
-            and len(barcode) == 13
-            and barcode.startswith(prefix)
-            and barcode.isdigit()
-        )
+        return barcode is not None and len(barcode) == 13 and barcode.startswith(prefix) and barcode.isdigit()

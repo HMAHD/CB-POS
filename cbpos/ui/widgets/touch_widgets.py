@@ -40,21 +40,6 @@ class ProductCard(QToolButton):
 
         icon_label.setPixmap(Icons.get("fa5s.box").pixmap(40, 40))
 
-        layout.addWidget(icon_label, 1)
-
-        # Name
-        name_label = QLabel(self.product.name_en)
-        name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        name_label.setWordWrap(True)
-        name_label.setStyleSheet("font-size: 10px; font-weight: bold; color: white;")
-        layout.addWidget(name_label)
-
-        # Price
-        price_label = QLabel("Rs. {:.2f}".format(self.product.price))
-        price_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        price_label.setStyleSheet("font-size: 10px; color: #39FF14;")
-        layout.addWidget(price_label)
-
         # Style
         self.setStyleSheet(
             """

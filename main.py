@@ -39,7 +39,8 @@ def main():
     Application entry point.
 
     Initializes Qt application, loads resources, and launches the main window.
-    Font loading MUST happen before any UI is created to prevent fallback to system fonts.
+    Font loading MUST happen before any UI is created to prevent fallback to
+    system fonts.
     """
     # Install custom message handler to suppress Qt internal warnings
     qInstallMessageHandler(qt_message_handler)

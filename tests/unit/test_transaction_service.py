@@ -18,9 +18,7 @@ def test_process_sale_atomic(db_session):
     permission = Permission(code="sale_atomic")
     role = Role(name="Cashier_Atomic", permissions=[permission])
     user = User(username="cashier_atomic", pin_hash="hash", role=role)
-    product = Product(
-        name_en="Test Product Atomic", price=100.0, stock_qty=10.0, barcode="123_atomic"
-    )
+    product = Product(name_en="Test Product Atomic", price=100.0, stock_qty=10.0, barcode="123_atomic")
     db_session.add_all([permission, role, user, product])
     db_session.commit()
 
@@ -127,9 +125,7 @@ def test_void_sale(db_session):
     permission = Permission(code="void_sale_unique")
     role = Role(name="Manager_Void", permissions=[permission])
     user = User(username="manager_void", pin_hash="hash", role=role)
-    product = Product(
-        name_en="Test Product Void", price=100.0, stock_qty=8.0, barcode="123_void"
-    )
+    product = Product(name_en="Test Product Void", price=100.0, stock_qty=8.0, barcode="123_void")
     db_session.add_all([permission, role, user, product])
     db_session.commit()
 

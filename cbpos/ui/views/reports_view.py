@@ -79,9 +79,7 @@ class ReportsView(QWidget):
     def create_tile(self, title, value):
         frame = QFrame()
         frame.setFrameShape(QFrame.Shape.StyledPanel)
-        frame.setStyleSheet(
-            "background-color: #001F3F; color: white; border-radius: 10px;"
-        )
+        frame.setStyleSheet("background-color: #001F3F; color: white; border-radius: 10px;")
 
         layout = QVBoxLayout(frame)
         lbl_title = QLabel(title)
@@ -122,9 +120,7 @@ class ReportsView(QWidget):
         self.sales_table = QTableWidget()
         self.sales_table.setColumnCount(2)
         self.sales_table.setHorizontalHeaderLabels(["Payment Method", "Amount"])
-        self.sales_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+        self.sales_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.sales_table)
 
     def setup_z_report_tab(self):
@@ -153,9 +149,7 @@ class ReportsView(QWidget):
         # Update Tiles (Accessing labels inside frames is a bit hacky,
         # normally keep ref)
         # For simplicity, just rebuilding or assuming structure
-        self.tile_sales.findChild(QLabel, "").nextInFocusChain().setText(
-            "{:.2f}".format(data["total_sales"])
-        )
+        self.tile_sales.findChild(QLabel, "").nextInFocusChain().setText("{:.2f}".format(data["total_sales"]))
 
         # Check shift
         shift = self.shift_service.get_current_shift(self.current_user_id)
@@ -188,14 +182,10 @@ class ReportsView(QWidget):
             self.btn_close_shift.setEnabled(False)
 
     def start_shift(self):
-        amount, ok = QInputDialog.getDouble(
-            self, "Start Shift", "Enter Opening Float:", 0, 0, 100000, 2
-        )
+        amount, ok = QInputDialog.getDouble(self, "Start Shift", "Enter Opening Float:", 0, 0, 100000, 2)
         if ok:
             try:
-                self.shift_service.start_shift(
-                    self.current_user_id, Decimal(str(amount))
-                )
+                self.shift_service.start_shift(self.current_user_id, Decimal(str(amount)))
                 self.check_shift_status()
                 QMessageBox.information(self, "Success", "Shift Started")
             except Exception as e:
@@ -206,9 +196,7 @@ class ReportsView(QWidget):
         if not shift:
             return
 
-        amount, ok = QInputDialog.getDouble(
-            self, "Close Shift", "Enter Counted Cash:", 0, 0, 1000000, 2
-        )
+        amount, ok = QInputDialog.getDouble(self, "Close Shift", "Enter Counted Cash:", 0, 0, 1000000, 2)
         if ok:
             try:
                 result = self.shift_service.close_shift(shift.id, Decimal(str(amount)))

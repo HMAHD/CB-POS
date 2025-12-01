@@ -17,9 +17,7 @@ class PriceListService:
         end_date: Optional[datetime] = None,
     ) -> PriceList:
         with self.db.get_session() as session:
-            price_list = PriceList(
-                name=name, start_date=start_date, end_date=end_date, is_active=True
-            )
+            price_list = PriceList(name=name, start_date=start_date, end_date=end_date, is_active=True)
             session.add(price_list)
             session.commit()
             session.refresh(price_list)
@@ -47,9 +45,7 @@ class PriceListService:
                 session.expunge(pl)
             return lists
 
-    def set_item_price(
-        self, list_id: int, product_id: int, price: Decimal
-    ) -> PriceListItem:
+    def set_item_price(self, list_id: int, product_id: int, price: Decimal) -> PriceListItem:
         with self.db.get_session() as session:
             # Check if exists
             stmt = select(PriceListItem).where(
@@ -61,9 +57,7 @@ class PriceListService:
             if item:
                 item.price = price
             else:
-                item = PriceListItem(
-                    price_list_id=list_id, product_id=product_id, price=price
-                )
+                item = PriceListItem(price_list_id=list_id, product_id=product_id, price=price)
                 session.add(item)
 
             session.commit()
@@ -74,9 +68,7 @@ class PriceListService:
     def get_items(self, list_id: int) -> List[PriceListItem]:
         with self.db.get_session() as session:
             stmt = (
-                select(PriceListItem)
-                .where(PriceListItem.price_list_id == list_id)
-                .join(PriceListItem.product)
+                select(PriceListItem).where(PriceListItem.price_list_id == list_id).join(PriceListItem.product)
             )  # Ensure product is loaded if needed, though scalars might not load rels by default without options
 
             # We might want to eager load product to show names

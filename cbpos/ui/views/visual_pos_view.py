@@ -49,9 +49,7 @@ class VisualPosView(QWidget):
         self.product_grid = QGridLayout(self.grid_container)
         self.product_grid.setContentsMargins(5, 5, 5, 5)
         self.product_grid.setSpacing(10)
-        self.product_grid.setAlignment(
-            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
-        )
+        self.product_grid.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
 
         grid_scroll = QScrollArea()
         grid_scroll.setWidgetResizable(True)

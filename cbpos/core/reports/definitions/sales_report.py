@@ -41,11 +41,13 @@ class DailySalesSummaryReport(BaseReport):
 
         with Database().get_session() as session:
             # Query: Group by Date and Sum Total Amount
-            # Note: SQLite stores dates as strings usually, but SQLAlchemy handles it if typed correctly.
+            # Note: SQLite stores dates as strings usually, but SQLAlchemy handles
+            # it if typed correctly.
             # Assuming Sale.date is a Date or DateTime object.
 
             # If Sale.date is DateTime, we might need to cast to Date for grouping.
-            # For simplicity, assuming we filter by range and just list sales or group by day.
+            # For simplicity, assuming we filter by range and just list sales or
+            # group by day.
             # The prompt says: "Group by Date -> Sum Total".
 
             stmt = (
@@ -68,9 +70,7 @@ class DailySalesSummaryReport(BaseReport):
                     {
                         "Date": row.sale_date,
                         "Transactions": row.transaction_count,
-                        "Total Sales": (
-                            float(row.total_sales) if row.total_sales else 0.0
-                        ),
+                        "Total Sales": (float(row.total_sales) if row.total_sales else 0.0),
                     }
                 )
 

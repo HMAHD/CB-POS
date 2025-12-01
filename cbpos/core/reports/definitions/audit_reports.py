@@ -3,7 +3,7 @@ import pandas as pd
 from sqlalchemy import func
 from cbpos.core.reports.base_report import BaseReport
 from cbpos.core.database import get_db_session
-from cbpos.core.models import StockMovement, Product, User
+from cbpos.core.models import StockMovement, Product, User, CashMovement
 
 
 class StockMovementReport(BaseReport):
@@ -47,10 +47,62 @@ class StockMovementReport(BaseReport):
                         "Type": m.type,
                         "Qty Change": float(m.qty_change),
                         "Balance": float(m.balance_after),
-                        "Reference": (
-                            f"Doc #{m.document_id}" if m.document_id else "N/A"
-                        ),
+                        "Reference": (f"Doc #{m.document_id}" if m.document_id else "N/A"),
                     }
                 )
 
             return pd.DataFrame(data)
+
+
+class CashFlowReport(BaseReport):
+    @property
+    def id(self) -> str:
+        return "cash_flow"
+
+    @property
+    def name(self) -> str:
+        return "Cash Flow Audit"
+
+    @property
+    def category(self) -> str:
+        return "Audit"
+
+    def get_filter_definitions(self) -> List[Dict[str, Any]]:
+        return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
+
+    def generate(self, filters: Dict[str, Any]) -> pd.DataFrame:
+        with get_db_session() as session:
+            date_range = filters.get("date_range", {})
+            start_date = date_range.get("start")
+            end_date = date_range.get("end")
+
+            query = session.query(CashMovement).join(User)
+
+            if start_date:
+                query = query.filter(func.date(CashMovement.timestamp) >= start_date)
+            if end_date:
+                query = query.filter(func.date(CashMovement.timestamp) <= end_date)
+
+            movements = query.order_by(CashMovement.timestamp.desc()).all()
+
+            data = []
+            for m in movements:
+                data.append(
+                    {
+                        "Date": m.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                        "User": m.user.username,
+                        "Type": m.type,
+                        "Amount": float(m.amount),
+                        "Reason": m.reason,
+                    }
+                )
+
+            df = pd.DataFrame(data)
+            if not df.empty:
+                # Calculate Net Movement for Footer/Summary
+                # This logic might be better handled in the UI or a separate
+                # summary dict,
+                # but for a DataFrame report, we can just return the raw data.
+                pass
+
+            return df

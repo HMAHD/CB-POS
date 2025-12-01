@@ -35,12 +35,8 @@ class StockHistoryDialog(QDialog):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(
-            ["Date", "Type", "Reference", "User", "Change", "Balance"]
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+        self.table.setHorizontalHeaderLabels(["Date", "Type", "Reference", "User", "Change", "Balance"])
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.table)
 
         # Close Button
@@ -56,9 +52,7 @@ class StockHistoryDialog(QDialog):
             row = self.table.rowCount()
             self.table.insertRow(row)
 
-            self.table.setItem(
-                row, 0, QTableWidgetItem(move.timestamp.strftime("%Y-%m-%d %H:%M"))
-            )
+            self.table.setItem(row, 0, QTableWidgetItem(move.timestamp.strftime("%Y-%m-%d %H:%M")))
             self.table.setItem(row, 1, QTableWidgetItem(move.type))
             self.table.setItem(row, 2, QTableWidgetItem(move.reference))
 
@@ -73,6 +67,4 @@ class StockHistoryDialog(QDialog):
                 change_item.setForeground(Qt.GlobalColor.red)
             self.table.setItem(row, 4, change_item)
 
-            self.table.setItem(
-                row, 5, QTableWidgetItem(f"{move.balance_after:.3f}")  # noqa: E231
-            )
+            self.table.setItem(row, 5, QTableWidgetItem(f"{move.balance_after:.3f}"))  # noqa: E231

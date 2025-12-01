@@ -52,9 +52,7 @@ def verify_advanced_inventory():
             session.commit()
 
         # Try to record movement for service item
-        result = StockService.record_movement(
-            service_item.id, Decimal("-1"), "SALE", "REC001", user.id
-        )
+        result = StockService.record_movement(service_item.id, Decimal("-1"), "SALE", "REC001", user.id)
         assert result is None
         print("Verified Service Item: No stock movement recorded")
 
@@ -77,9 +75,7 @@ def verify_advanced_inventory():
             session.commit()
 
         # Record Movement
-        StockService.record_movement(
-            product.id, Decimal("-5"), "SALE", "REC002", user.id
-        )
+        StockService.record_movement(product.id, Decimal("-5"), "SALE", "REC002", user.id)
 
         # Verify Balance
         session.refresh(product)

@@ -17,8 +17,9 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QTextEdit,
     QFileDialog,
+    QTimeEdit,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QSize
+from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTime
 from PyQt6.QtPrintSupport import QPrinterInfo
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.theme_service import ThemeService
@@ -44,9 +45,7 @@ class SettingsView(QWidget):
 
         # 1. Header
         header_frame = QFrame()
-        header_frame.setStyleSheet(
-            "background-color: #001F3F; border-bottom: 2px solid #003366;"
-        )
+        header_frame.setStyleSheet("background-color: #001F3F; border-bottom: 2px solid #003366;")
         header_frame.setFixedHeight(60)
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(20, 0, 20, 0)
@@ -99,6 +98,7 @@ class SettingsView(QWidget):
             ("Hardware", "fa5s.print"),
             ("Users", "fa5s.users"),
             ("Database", "fa5s.database"),
+            ("Automation", "fa5s.robot"),
             ("About", "fa5s.info-circle"),
         ]
 
@@ -106,9 +106,7 @@ class SettingsView(QWidget):
             item = QListWidgetItem(item_text)
             item.setIcon(qta.icon(icon_name, color="white"))
             item.setSizeHint(QSize(0, 50))
-            item.setTextAlignment(
-                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-            )
+            item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             self.sidebar.addItem(item)
 
         body_layout.addWidget(self.sidebar)
@@ -129,6 +127,7 @@ class SettingsView(QWidget):
         self.page_hardware = QWidget()
         self.page_users = QWidget()
         self.page_database = QWidget()
+        self.page_automation = QWidget()
         self.page_about = QWidget()
 
         self.stack.addWidget(self.page_general)
@@ -137,6 +136,7 @@ class SettingsView(QWidget):
         self.stack.addWidget(self.page_hardware)
         self.stack.addWidget(self.page_users)
         self.stack.addWidget(self.page_database)
+        self.stack.addWidget(self.page_automation)
         self.stack.addWidget(self.page_about)
 
         self.init_general_page()
@@ -145,6 +145,7 @@ class SettingsView(QWidget):
         self.init_hardware_page()
         self.init_users_page()
         self.init_database_page()
+        self.init_automation_page()
         self.init_about_page()
 
         body_layout.addWidget(self.stack)
@@ -153,9 +154,7 @@ class SettingsView(QWidget):
         # 3. Footer
         footer_frame = QFrame()
         footer_frame.setFixedHeight(60)
-        footer_frame.setStyleSheet(
-            "background-color: #2D2D30; border-top: 1px solid #3E3E42;"
-        )
+        footer_frame.setStyleSheet("background-color: #2D2D30; border-top: 1px solid #3E3E42;")
         footer_layout = QHBoxLayout(footer_frame)
         footer_layout.setContentsMargins(20, 10, 20, 10)
 
@@ -164,14 +163,14 @@ class SettingsView(QWidget):
         self.btn_save = QPushButton("Save")
         self.btn_save.setFixedSize(100, 35)
         self.btn_save.setStyleSheet(
-            "background-color: #39FF14; color: black; font-weight: bold; border-radius: 4px;"
+            "background-color: #39FF14; color: black; " "font-weight: bold; border-radius: 4px;"
         )
         self.btn_save.clicked.connect(self.save_all)
 
         self.btn_cancel = QPushButton("Cancel")
         self.btn_cancel.setFixedSize(100, 35)
         self.btn_cancel.setStyleSheet(
-            "background-color: #FF4136; color: white; font-weight: bold; border-radius: 4px;"
+            "background-color: #FF4136; color: white; " "font-weight: bold; border-radius: 4px;"
         )
         self.btn_cancel.clicked.connect(self.close_requested.emit)
 
@@ -192,9 +191,7 @@ class SettingsView(QWidget):
         layout.setSpacing(20)
 
         lbl_header = QLabel("General Settings")
-        lbl_header.setStyleSheet(
-            "font-size: 18px; font-weight: bold; color: #00BCEB; margin-bottom: 20px;"
-        )
+        lbl_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #00BCEB; margin-bottom: 20px;")
         layout.addRow(lbl_header)
 
         self.input_shop_name = QLineEdit()
@@ -255,9 +252,7 @@ class SettingsView(QWidget):
         grp_opts = QGroupBox("Payment Options")
         form_opts = QFormLayout(grp_opts)
 
-        self.chk_show_receipt_dialog = QCheckBox(
-            "Show Receipt Options Dialog after Sale"
-        )
+        self.chk_show_receipt_dialog = QCheckBox("Show Receipt Options Dialog after Sale")
         form_opts.addRow(self.chk_show_receipt_dialog)
 
         layout.addWidget(grp_opts)
@@ -330,9 +325,7 @@ class SettingsView(QWidget):
         grp_printer = QGroupBox("Printers")
         form_printer = QFormLayout(grp_printer)
 
-        available_printers = QPrinterInfo.availablePrinterNames() or [
-            "No printers found"
-        ]
+        available_printers = QPrinterInfo.availablePrinterNames() or ["No printers found"]
 
         self.combo_receipt_printer = QComboBox()
         self.combo_receipt_printer.addItems(available_printers)
@@ -391,6 +384,61 @@ class SettingsView(QWidget):
         layout.addWidget(lbl)
         layout.addStretch()
 
+    def init_automation_page(self):
+        """Initialize Automation Settings Page"""
+        layout = QVBoxLayout(self.page_automation)
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        # Title
+        title = QLabel("Automation Settings")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #00BCEB;")
+        layout.addWidget(title)
+
+        # Form Layout
+        form_layout = QFormLayout()
+        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        form_layout.setSpacing(15)
+
+        # 1. Auto-Report Scheduler
+        self.chk_auto_report = QCheckBox("Enable Daily Auto-Report")
+        self.chk_auto_report.setStyleSheet("font-size: 16px;")
+        form_layout.addRow("Scheduler:", self.chk_auto_report)
+
+        self.time_auto_report = QTimeEdit()
+        self.time_auto_report.setDisplayFormat("HH:mm")
+        form_layout.addRow("Report Time:", self.time_auto_report)
+
+        self.input_admin_email = QLineEdit()
+        self.input_admin_email.setPlaceholderText("admin@example.com")
+        form_layout.addRow("Admin Email:", self.input_admin_email)
+
+        # Separator
+        line = QFrame()
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setFrameShadow(QFrame.Shadow.Sunken)
+        form_layout.addRow(line)
+
+        # 2. Email Settings (SMTP)
+        self.input_smtp_host = QLineEdit()
+        self.input_smtp_host.setPlaceholderText("smtp.gmail.com")
+        form_layout.addRow("SMTP Host:", self.input_smtp_host)
+
+        self.input_smtp_port = QLineEdit()
+        self.input_smtp_port.setPlaceholderText("587")
+        form_layout.addRow("SMTP Port:", self.input_smtp_port)
+
+        self.input_smtp_user = QLineEdit()
+        self.input_smtp_user.setPlaceholderText("email@example.com")
+        form_layout.addRow("SMTP User:", self.input_smtp_user)
+
+        self.input_smtp_pass = QLineEdit()
+        self.input_smtp_pass.setEchoMode(QLineEdit.EchoMode.Password)
+        self.input_smtp_pass.setPlaceholderText("App Password")
+        form_layout.addRow("SMTP Password:", self.input_smtp_pass)
+
+        layout.addLayout(form_layout)
+        layout.addStretch()
+
     def load_settings(self):
         settings = ConfigService.get_all()
 
@@ -412,21 +460,11 @@ class SettingsView(QWidget):
             self.combo_language.setCurrentIndex(index)
 
         # Order & Payment
-        self.combo_reset_period.setCurrentText(
-            settings.get("doc_reset_period", "YEARLY")
-        )
-        self.input_fmt_sale.setText(
-            settings.get("doc_format_sale", "INV-{Y}-{seq:05d}")
-        )
-        self.input_fmt_purchase.setText(
-            settings.get("doc_format_purchase", "GRN-{Y}-{seq:05d}")
-        )
-        self.input_fmt_return.setText(
-            settings.get("doc_format_return", "CN-{Y}-{seq:05d}")
-        )
-        self.chk_show_receipt_dialog.setChecked(
-            settings.get("show_receipt_dialog", "True") == "True"
-        )
+        self.combo_reset_period.setCurrentText(settings.get("doc_reset_period", "YEARLY"))
+        self.input_fmt_sale.setText(settings.get("doc_format_sale", "INV-{Y}-{seq:05d}"))
+        self.input_fmt_purchase.setText(settings.get("doc_format_purchase", "GRN-{Y}-{seq:05d}"))
+        self.input_fmt_return.setText(settings.get("doc_format_return", "CN-{Y}-{seq:05d}"))
+        self.chk_show_receipt_dialog.setChecked(settings.get("show_receipt_dialog", "True") == "True")
 
         # Receipt
         self.input_logo_path.setText(settings.get("receipt_logo_path", ""))
@@ -453,12 +491,21 @@ class SettingsView(QWidget):
         self.spin_copies.setValue(settings.get("receipt_copies", 1))
 
         self.input_scale_prefix.setText(settings.get("scale_barcode_prefix", "20"))
+        self.input_scale_prefix.setText(settings.get("scale_barcode_prefix", "20"))
         self.spin_decimal_places.setValue(settings.get("scale_decimal_places", 3))
 
+        # Automation
+        self.chk_auto_report.setChecked(settings.get("auto_report_enabled", False))
+        self.time_auto_report.setTime(QTime.fromString(settings.get("auto_report_time", "22:00"), "HH:mm"))
+        self.input_admin_email.setText(settings.get("admin_email", ""))
+
+        self.input_smtp_host.setText(settings.get("smtp_host", ""))
+        self.input_smtp_port.setText(str(settings.get("smtp_port", "587")))
+        self.input_smtp_user.setText(settings.get("smtp_user", ""))
+        self.input_smtp_pass.setText(settings.get("smtp_pass", ""))
+
     def browse_logo(self):
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Select Logo", "", "Images (*.png *.jpg *.bmp)"
-        )
+        path, _ = QFileDialog.getOpenFileName(self, "Select Logo", "", "Images (*.png *.jpg *.bmp)")
         if path:
             self.input_logo_path.setText(path)
 
@@ -495,6 +542,14 @@ class SettingsView(QWidget):
             "receipt_copies": self.spin_copies.value(),
             "scale_barcode_prefix": scale_prefix,
             "scale_decimal_places": self.spin_decimal_places.value(),
+            # Automation
+            "auto_report_enabled": self.chk_auto_report.isChecked(),
+            "auto_report_time": self.time_auto_report.time().toString("HH:mm"),
+            "admin_email": self.input_admin_email.text(),
+            "smtp_host": self.input_smtp_host.text(),
+            "smtp_port": self.input_smtp_port.text(),
+            "smtp_user": self.input_smtp_user.text(),
+            "smtp_pass": self.input_smtp_pass.text(),
         }
 
     def preview_receipt(self):
@@ -526,9 +581,7 @@ class SettingsView(QWidget):
 
         # Use current UI settings for preview without saving
         current_settings = self._get_current_settings_dict()
-        commands = ReceiptBuilder.build_receipt(
-            dummy_sale, config_override=current_settings
-        )
+        commands = ReceiptBuilder.build_receipt(dummy_sale, config_override=current_settings)
 
         dlg = ReceiptPreviewDialog(commands, self)
         dlg.exec()

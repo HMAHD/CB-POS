@@ -23,9 +23,7 @@ class MockPrinter(IPrinter):
         for cmd in commands:
             c_type = cmd.get("type")
             if c_type == "text":
-                print(
-                    f"[MockPrinter] TEXT ({cmd.get('align', 'left')}): {cmd.get('val')}"
-                )
+                print(f"[MockPrinter] TEXT ({cmd.get('align', 'left')}): {cmd.get('val')}")
             elif c_type == "image":
                 print(f"[MockPrinter] IMAGE: {cmd.get('path')}")
             elif c_type == "barcode":
@@ -58,9 +56,7 @@ class ESCPOSDriver(IPrinter):
                     vid, pid = p_path.split(":")
                     self.printer = Usb(int(vid, 16), int(pid, 16))
                 else:
-                    print(
-                        "USB Printer requires VID:PID in settings (e.g., 0x04b8:0x0202)"
-                    )
+                    print("USB Printer requires VID:PID in settings (e.g., 0x04b8:0x0202)")
                     return False
             elif p_type == "NETWORK":
                 if p_path:
@@ -99,15 +95,11 @@ class ESCPOSDriver(IPrinter):
                         try:
                             img = Image.open(path)
                             # Resize if too wide (max 500px usually safe for 80mm)
-                            max_width = ConfigService.get_int(
-                                "printer_image_max_width", 500
-                            )
+                            max_width = ConfigService.get_int("printer_image_max_width", 500)
                             if img.width > max_width:
                                 ratio = max_width / img.width
                                 new_height = int(img.height * ratio)
-                                img = img.resize(
-                                    (max_width, new_height), Image.Resampling.LANCZOS
-                                )
+                                img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
                             self.printer.image(img)
                         except Exception as e:
                             print(f"Failed to print image: {e}")

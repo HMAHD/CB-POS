@@ -63,9 +63,7 @@ class InfoCard(QFrame):
         # Value (Center)
         self.value_label = QLabel(value)
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.value_label.setStyleSheet(
-            "color: #FFFFFF; font-size: 28px; font-weight: bold;"
-        )
+        self.value_label.setStyleSheet("color: #FFFFFF; font-size: 28px; font-weight: bold;")
         layout.addWidget(self.value_label)
 
         # Trend (Bottom)

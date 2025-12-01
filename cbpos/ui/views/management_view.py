@@ -42,9 +42,7 @@ class ManagementView(QWidget):
         # 1. Sidebar
         self.sidebar = QFrame()
         self.sidebar.setFixedWidth(250)
-        self.sidebar.setStyleSheet(
-            "background-color: #001830; border-right: 1px solid #003366;"
-        )
+        self.sidebar.setStyleSheet("background-color: #001830; border-right: 1px solid #003366;")
         self.sidebar_layout = QVBoxLayout(self.sidebar)
         self.sidebar_layout.setContentsMargins(0, 0, 0, 0)
         self.sidebar_layout.setSpacing(10)
@@ -62,16 +60,10 @@ class ManagementView(QWidget):
         logo_pixmap = QPixmap(logo_path)
 
         if not logo_pixmap.isNull():
-            self.lbl_logo.setPixmap(
-                logo_pixmap.scaledToHeight(
-                    40, Qt.TransformationMode.SmoothTransformation
-                )
-            )
+            self.lbl_logo.setPixmap(logo_pixmap.scaledToHeight(40, Qt.TransformationMode.SmoothTransformation))
         else:
             self.lbl_logo.setText("CB POS")
-            self.lbl_logo.setStyleSheet(
-                "color: white; font-weight: bold; font-size: 18px;"
-            )
+            self.lbl_logo.setStyleSheet("color: white; font-weight: bold; font-size: 18px;")
 
         self.btn_toggle = QToolButton()
         self.btn_toggle.setIcon(Icons.get("fa5s.bars", "white"))
@@ -110,9 +102,7 @@ class ManagementView(QWidget):
         self.btn_pos = SidebarButton("   POS / Sales", "fa5s.cash-register")
         self.btn_pos.setObjectName("BtnPos")  # Special Styling
         self.btn_pos.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.btn_pos.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-        )
+        self.btn_pos.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.btn_pos.clicked.connect(self.request_pos_view.emit)
         self.sidebar_layout.addWidget(self.btn_pos)
 
@@ -125,9 +115,7 @@ class ManagementView(QWidget):
         self.btn_logout = SidebarButton("   Logout", Icons.LOGOUT)
         self.btn_logout.setObjectName("BtnLogout")  # Special Styling
         self.btn_logout.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.btn_logout.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-        )
+        self.btn_logout.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.btn_logout.clicked.connect(self.logout_requested.emit)
         self.sidebar_layout.addWidget(self.btn_logout)
 
@@ -247,11 +235,7 @@ class ManagementView(QWidget):
             if badge_path.exists():
                 pix = QPixmap(str(badge_path))
                 if not pix.isNull():
-                    self.lbl_badge.setPixmap(
-                        pix.scaledToHeight(
-                            40, Qt.TransformationMode.SmoothTransformation
-                        )
-                    )
+                    self.lbl_badge.setPixmap(pix.scaledToHeight(40, Qt.TransformationMode.SmoothTransformation))
                     self.lbl_badge.setVisible(not self.is_collapsed)
                     self.lbl_badge.setText("")  # Clear text
                 else:
@@ -314,7 +298,8 @@ class ManagementView(QWidget):
     def update_sidebar_styles(self):
         """
         Dynamically update stylesheets based on collapsed state.
-        This is necessary because QSS alone cannot handle the complex padding/alignment changes
+        This is necessary because QSS alone cannot handle the complex
+        padding/alignment changes
         required for the collapsed 'icon-only' mode vs the expanded 'full-width' mode.
         """
         if self.is_collapsed:

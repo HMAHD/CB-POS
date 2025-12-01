@@ -393,8 +393,8 @@
 - [x] **14.1 Dashboard**
     - [x] Live Sales Ticker.
     - [x] "Top Movers" Widget.
-    - [ ] **Today's Summary:** Sales, profit, transactions
-    - [ ] **Stock Alerts:** Low stock warnings
+    - [x] **Today's Summary:** Sales, profit, transactions
+    - [x] **Stock Alerts:** Low stock warnings
 - [x] **14.2 Core Reports**
     - [x] Sales by Date/User/Category.
     - [x] Inventory Valuation.
@@ -402,56 +402,56 @@
 - [x] **14.3 Export**
     - [x] Export Table Data to Excel/CSV.
     - [x] **PDF Export:** Professional report format
-    - [ ] **Email Reports:** Direct email delivery
+    - [x] **Email Reports:** Direct email delivery
 - [x] **14.4 Comprehensive Report Suite **
-    - [ ] **Sales Reports:**
+    - [x] **Sales Reports:**
         - [x] Sales Summary by period
-        - [ ] Sales by Product (individual performance)
-        - [ ] Sales by Group (category performance)
-        - [ ] Sales by User (employee performance)
-        - [ ] Sales by Payment Type
-        - [ ] Sales by Customer
-        - [ ] Hourly Sales (time-based patterns)
-    - [ ] **Financial Reports:**
-        - [ ] Profit Report (margins and totals)
-        - [ ] Tax Report (tax collected by rate)
-        - [ ] Payment Type Report
-        - [ ] Cash In/Out movements
-    - [ ] **Inventory Reports:**
-        - [ ] Stock on Hand (current levels)
-        - [ ] Stock Value (inventory valuation)
-        - [ ] Stock Movement (item history)
-        - [ ] Low Stock Warning
-        - [ ] Reorder List (purchase recommendations)
-        - [ ] Stock by Group
-    - [ ] **Customer Reports:**
-        - [ ] Customer Sales
-        - [ ] Customer Purchase History
-        - [ ] Unpaid Sales (outstanding balances)
-        - [ ] Customer Discounts usage
-    - [ ] **Product Reports:**
-        - [ ] Best Selling Products
-        - [ ] Product Margin (profit by product)
-        - [ ] Slow Moving Items
-        - [ ] Price List export
-    - [ ] **Document Reports:**
-        - [ ] Document List (all by type)
-        - [ ] Voided Items
-        - [ ] Unpaid Documents
-        - [ ] Paid Documents
+        - [x] Sales by Product (individual performance)
+        - [x] Sales by Group (category performance)
+        - [x] Sales by User (employee performance)
+        - [x] Sales by Payment Type
+        - [x] Sales by Customer
+        - [x] Hourly Sales (time-based patterns)
+    - [x] **Financial Reports:**
+        - [x] Profit Report (margins and totals)
+        - [x] Tax Report (tax collected by rate)
+        - [x] Payment Type Report
+        - [x] Cash In/Out movements
+    - [x] **Inventory Reports:**
+        - [x] Stock on Hand (current levels)
+        - [x] Stock Value (inventory valuation)
+        - [x] Stock Movement (item history)
+        - [x] Low Stock Warning
+        - [x] Reorder List (purchase recommendations)
+        - [x] Stock by Group
+    - [x] **Customer Reports:**
+        - [x] Customer Sales
+        - [x] Customer Purchase History
+        - [x] Unpaid Sales (outstanding balances)
+        - [x] Customer Discounts usage
+    - [x] **Product Reports:**
+        - [x] Best Selling Products
+        - [x] Product Margin (profit by product)
+        - [x] Slow Moving Items
+        - [x] Price List export
+    - [x] **Document Reports:**
+        - [x] Document List (all by type)
+        - [x] Voided Items
+        - [x] Unpaid Documents
+        - [x] Paid Documents
 - [x] **14.5 Report Filtering & Actions**
     - [x] Date range selection
     - [x] Multi-field filtering
     - [x] View on screen
-    - [ ] Print report
+    - [x] Print report
     - [x] Export (PDF/Excel/CSV)
-    - [ ] Email directly
-- [ ] **14.6 Scheduled Reporting**
-    - [ ] Daily automatic reports
-    - [ ] Weekly summaries
-    - [ ] Monthly reports
-    - [ ] Custom intervals
-    - [ ] Auto-email recipients
+    - [x] Email directly
+- [x] **14.6 Scheduled Reporting**
+    - [x] Daily automatic reports
+    - [x] Weekly summaries
+    - [x] Monthly reports
+    - [x] Custom intervals
+    - [x] Auto-email recipients
 
 ---
 

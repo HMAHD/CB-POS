@@ -49,17 +49,35 @@ class ReportViewer(QWidget):
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
 
+        # Initialize Buttons FIRST
+        self.btn_run = QPushButton("Run Report")
+        self.btn_print = QPushButton("Print")
+        self.btn_export_excel = QPushButton("Export Excel")
+        self.btn_export_pdf = QPushButton("Export PDF")
+
+        # Configure Buttons
+        self.btn_run.clicked.connect(self.run_report)
+        self.btn_run.setEnabled(False)
+        self.btn_run.setStyleSheet(
+            "background-color: #00BCEB; color: white; "
+            "font-weight: bold; padding: 5px 15px;"
+        )
+
+        self.btn_print.setIcon(
+            self.style().standardIcon(self.style().StandardPixmap.SP_FileIcon)
+        )
+        self.btn_print.clicked.connect(self.print_report)
+        self.btn_print.setEnabled(False)
+
+        self.btn_export_excel.clicked.connect(self.export_excel)
+        self.btn_export_excel.setEnabled(False)
+
+        self.btn_export_pdf.clicked.connect(self.export_pdf)
+        self.btn_export_pdf.setEnabled(False)
+
         # Top Bar: Filters & Actions
         top_bar = QHBoxLayout()
         self.filter_widget = FilterWidget()
-        self.btn_run = QPushButton("Run Report")
-        self.btn_run.clicked.connect(self.run_report)
-        self.btn_run.setEnabled(False)
-
-        # Style the Run button
-        self.btn_run.setStyleSheet(
-            "background-color: #00BCEB; color: white; font-weight: bold; padding: 5px 15px;"
-        )
 
         top_bar.addWidget(self.filter_widget)
         top_bar.addWidget(self.btn_run)
@@ -72,11 +90,11 @@ class ReportViewer(QWidget):
         self.table_view.horizontalHeader().setStretchLastSection(True)
         self.table_view.setAlternatingRowColors(True)
         right_layout.addWidget(self.table_view)
-        self.btn_export_pdf.setEnabled(False)
 
         # Bottom Bar: Exports
         bottom_bar = QHBoxLayout()
         bottom_bar.addStretch()
+        bottom_bar.addWidget(self.btn_print)
         bottom_bar.addWidget(self.btn_export_excel)
         bottom_bar.addWidget(self.btn_export_pdf)
         right_layout.addLayout(bottom_bar)
@@ -119,6 +137,7 @@ class ReportViewer(QWidget):
             self.table_model.set_data(pd.DataFrame())
             self.btn_export_excel.setEnabled(False)
             self.btn_export_pdf.setEnabled(False)
+            self.btn_print.setEnabled(False)
 
     def run_report(self):
         if not self.current_report:
@@ -133,12 +152,14 @@ class ReportViewer(QWidget):
             if not df.empty:
                 self.btn_export_excel.setEnabled(True)
                 self.btn_export_pdf.setEnabled(True)
+                self.btn_print.setEnabled(True)
             else:
                 QMessageBox.information(
                     self, "Report", "No data found for the selected filters."
                 )
                 self.btn_export_excel.setEnabled(False)
                 self.btn_export_pdf.setEnabled(False)
+                self.btn_print.setEnabled(False)
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to generate report: {str(e)}")
@@ -176,3 +197,62 @@ class ReportViewer(QWidget):
                 QMessageBox.information(self, "Success", "Export successful!")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Export failed: {str(e)}")
+
+    def print_report(self):
+        from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
+        from PyQt6.QtGui import QTextDocument
+
+        df = self.table_model.get_dataframe()
+        if df.empty:
+            return
+
+        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        dialog = QPrintDialog(printer, self)
+
+        if dialog.exec() == QPrintDialog.DialogCode.Accepted:
+            # Create HTML content for printing
+            import textwrap
+
+            html_content = textwrap.dedent(
+                """
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: Helvetica, sans-serif; }}
+                    h1 {{ text-align: center; color: #001F3F; }}
+                    table {{
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 20px;
+                    }}
+                    th {{
+                        background-color: #00BCEB;
+                        color: white;
+                        padding: 8px;
+                        text-align: left;
+                    }}
+                    td {{
+                        padding: 8px;
+                        border-bottom: 1px solid #ddd;
+                    }}
+                    tr:nth-child(even) {{
+                        background-color: #f2f2f2;
+                    }}
+                </style>
+            </head>
+            <body>
+                <h1>CB POS - {report_name}</h1>
+                <p style="text-align: center;">Generated on: {generated_on}</p>
+                {table_html}
+            </body>
+            </html>
+            """
+            ).format(
+                report_name=self.current_report.name,
+                generated_on=pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
+                table_html=df.to_html(classes="table", index=False, border=0),
+            )
+
+            document = QTextDocument()
+            document.setHtml(html_content)
+            document.print(printer)

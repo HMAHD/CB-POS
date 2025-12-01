@@ -24,3 +24,17 @@ def register_all_reports():
     # Inventory
     registry.register(InventoryValuationReport)
     registry.register(LowStockReport)
+
+    # Financial
+    from cbpos.core.reports.definitions.financial_reports import (
+        ProfitLossReport,
+        TaxLiabilityReport,
+    )
+
+    registry.register(ProfitLossReport)
+    registry.register(TaxLiabilityReport)
+
+    # Audit
+    from cbpos.core.reports.definitions.audit_reports import StockMovementReport
+
+    registry.register(StockMovementReport)

@@ -65,6 +65,11 @@ def main():
     app.setFont(default_font)
     print(f"[BOOTSTRAP] Application font set to: {primary_font_family}")
 
+    # Initialize Theme (Defaults to Dark)
+    from cbpos.core.services.theme_service import ThemeService
+
+    ThemeService.apply_theme("Dark")
+
     # Register Reports
     from cbpos.core.reports import register_all_reports
 

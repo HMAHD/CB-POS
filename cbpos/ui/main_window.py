@@ -1,4 +1,3 @@
-import os
 from PyQt6.QtWidgets import (
     QMainWindow,
     QStackedWidget,
@@ -30,9 +29,6 @@ class MainWindow(QMainWindow):
         self.watchdog = SessionWatchdog(timeout_minutes=5, parent=self)
         self.watchdog.session_expired.connect(self.logout)
 
-        # Load Theme
-        self.load_theme()
-
         # Central Widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -46,14 +42,6 @@ class MainWindow(QMainWindow):
 
         # Initialize Views
         self.init_views()
-
-    def load_theme(self):
-        theme_path = os.path.join(os.path.dirname(__file__), "styles", "theme.qss")
-        try:
-            with open(theme_path, "r") as f:
-                self.setStyleSheet(f.read())
-        except FileNotFoundError:
-            print(f"Warning: Theme file not found at {theme_path}")
 
     def init_views(self):
         # 0. Login View

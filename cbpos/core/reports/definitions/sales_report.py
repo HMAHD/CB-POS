@@ -5,7 +5,7 @@ from datetime import date
 
 from cbpos.core.reports.base_report import BaseReport
 from cbpos.core.models import Sale
-from cbpos.core.database import SessionLocal
+from cbpos.core.database import Database
 
 
 class DailySalesSummaryReport(BaseReport):
@@ -39,7 +39,7 @@ class DailySalesSummaryReport(BaseReport):
         if not start_date or not end_date:
             return pd.DataFrame()
 
-        with SessionLocal() as session:
+        with Database().get_session() as session:
             # Query: Group by Date and Sum Total Amount
             # Note: SQLite stores dates as strings usually, but SQLAlchemy handles it if typed correctly.
             # Assuming Sale.date is a Date or DateTime object.

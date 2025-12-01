@@ -15,12 +15,18 @@ from PyQt6.QtWidgets import (
     QSpinBox,
     QFrame,
     QComboBox,
+    QTextEdit,
+    QFileDialog,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtPrintSupport import QPrinterInfo
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.services.language_service import LanguageService
+from cbpos.ui.dialogs.receipt_preview_dialog import ReceiptPreviewDialog
+from cbpos.core.services.receipt_builder import ReceiptBuilder
+from cbpos.core.models import Sale, SaleItem, Product
+import decimal
 
 
 class SettingsView(QWidget):
@@ -89,6 +95,7 @@ class SettingsView(QWidget):
         items = [
             ("General", "fa5s.sliders-h"),
             ("Order & Payment", "fa5s.credit-card"),
+            ("Receipt", "fa5s.receipt"),
             ("Hardware", "fa5s.print"),
             ("Users", "fa5s.users"),
             ("Database", "fa5s.database"),
@@ -109,18 +116,16 @@ class SettingsView(QWidget):
         # 2.2 Content Area
         self.stack = QStackedWidget()
         self.stack.setStyleSheet(
-            "background-color: #F0F0F0; color: #000000;"
-        )  # Light content area for contrast or keep dark?
-        # Let's keep it consistent with the theme (dark) but maybe slightly lighter than sidebar
-        self.stack.setStyleSheet(
             "QWidget { background-color: #1E1E1E; color: #FFFFFF; } "
-            "QLineEdit, QComboBox, QSpinBox { "
-            "background-color: #333337; color: white; border: 1px solid #555; padding: 5px; }"
+            "QLineEdit, QComboBox, QSpinBox, QTextEdit { "
+            "background-color: #333337; color: white; border: 1px solid #555; "
+            "padding: 5px; }"
         )
 
         # Pages
         self.page_general = QWidget()
         self.page_order_payment = QWidget()
+        self.page_receipt = QWidget()
         self.page_hardware = QWidget()
         self.page_users = QWidget()
         self.page_database = QWidget()
@@ -128,6 +133,7 @@ class SettingsView(QWidget):
 
         self.stack.addWidget(self.page_general)
         self.stack.addWidget(self.page_order_payment)
+        self.stack.addWidget(self.page_receipt)
         self.stack.addWidget(self.page_hardware)
         self.stack.addWidget(self.page_users)
         self.stack.addWidget(self.page_database)
@@ -135,6 +141,7 @@ class SettingsView(QWidget):
 
         self.init_general_page()
         self.init_order_payment_page()
+        self.init_receipt_page()
         self.init_hardware_page()
         self.init_users_page()
         self.init_database_page()
@@ -256,6 +263,60 @@ class SettingsView(QWidget):
         layout.addWidget(grp_opts)
         layout.addStretch()
 
+    def init_receipt_page(self):
+        layout = QVBoxLayout(self.page_receipt)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(20)
+
+        lbl_header = QLabel("Receipt Designer")
+        lbl_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #00BCEB;")
+        layout.addWidget(lbl_header)
+
+        # Logo
+        grp_logo = QGroupBox("Logo")
+        logo_layout = QHBoxLayout(grp_logo)
+        self.input_logo_path = QLineEdit()
+        self.input_logo_path.setReadOnly(True)
+        self.btn_browse_logo = QPushButton("Browse...")
+        self.btn_browse_logo.clicked.connect(self.browse_logo)
+        self.btn_clear_logo = QPushButton("Clear")
+        self.btn_clear_logo.clicked.connect(lambda: self.input_logo_path.clear())
+
+        logo_layout.addWidget(self.input_logo_path)
+        logo_layout.addWidget(self.btn_browse_logo)
+        logo_layout.addWidget(self.btn_clear_logo)
+        layout.addWidget(grp_logo)
+
+        # Content
+        grp_content = QGroupBox("Content")
+        form_content = QFormLayout(grp_content)
+
+        self.txt_header = QTextEdit()
+        self.txt_header.setFixedHeight(80)
+        form_content.addRow("Header Text:", self.txt_header)
+
+        self.txt_footer = QTextEdit()
+        self.txt_footer.setFixedHeight(80)
+        form_content.addRow("Footer Text:", self.txt_footer)
+
+        self.chk_show_barcode = QCheckBox("Show Barcode")
+        self.chk_merge_items = QCheckBox("Merge Duplicate Items")
+        self.chk_show_tax = QCheckBox("Show Tax Breakdown")
+
+        form_content.addRow("", self.chk_show_barcode)
+        form_content.addRow("", self.chk_merge_items)
+        form_content.addRow("", self.chk_show_tax)
+
+        layout.addWidget(grp_content)
+
+        # Preview Button
+        self.btn_preview = QPushButton("Preview Receipt")
+        self.btn_preview.setStyleSheet("background-color: #007ACC; color: white;")
+        self.btn_preview.clicked.connect(self.preview_receipt)
+        layout.addWidget(self.btn_preview)
+
+        layout.addStretch()
+
     def init_hardware_page(self):
         layout = QVBoxLayout(self.page_hardware)
         layout.setContentsMargins(40, 40, 40, 40)
@@ -367,6 +428,14 @@ class SettingsView(QWidget):
             settings.get("show_receipt_dialog", "True") == "True"
         )
 
+        # Receipt
+        self.input_logo_path.setText(settings.get("receipt_logo_path", ""))
+        self.txt_header.setText(settings.get("receipt_header", ""))
+        self.txt_footer.setText(settings.get("receipt_footer", ""))
+        self.chk_show_barcode.setChecked(settings.get("show_barcode", True))
+        self.chk_merge_items.setChecked(settings.get("merge_items", True))
+        self.chk_show_tax.setChecked(settings.get("show_tax_breakdown", True))
+
         # Hardware
         receipt_printer = settings.get("receipt_printer_name", "")
         if receipt_printer:
@@ -386,11 +455,59 @@ class SettingsView(QWidget):
         self.input_scale_prefix.setText(settings.get("scale_barcode_prefix", "20"))
         self.spin_decimal_places.setValue(settings.get("scale_decimal_places", 3))
 
-    def save_all(self):
+    def browse_logo(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Select Logo", "", "Images (*.png *.jpg *.bmp)"
+        )
+        if path:
+            self.input_logo_path.setText(path)
+
+    def preview_receipt(self):
+        # Create a dummy sale for preview
+        dummy_sale = Sale(
+            id=12345,
+            total_amount=decimal.Decimal("1500.00"),
+            tax_vat=decimal.Decimal("228.81"),
+            tax_sscl=decimal.Decimal("37.50"),
+            net_revenue=decimal.Decimal("1233.69"),
+        )
+        # Dummy items
+        p1 = Product(name_en="Test Product 1")
+        p2 = Product(name_en="Test Product 2")
+        dummy_sale.items = [
+            SaleItem(
+                product=p1,
+                qty=decimal.Decimal(1),
+                unit_price=decimal.Decimal(500),
+                subtotal=decimal.Decimal(500),
+            ),
+            SaleItem(
+                product=p2,
+                qty=decimal.Decimal(2),
+                unit_price=decimal.Decimal(500),
+                subtotal=decimal.Decimal(1000),
+            ),
+        ]
+
+        # Temporarily save settings to config so builder uses them
+        # Or better, pass config to builder? Builder reads from ConfigService.
+        # So we should update ConfigService temporarily or just save first?
+        # The user might want to preview BEFORE saving.
+        # But ConfigService is global.
+        # Let's just update the in-memory config without saving to disk if possible,
+        # or just save to disk. Saving is safer.
+        self.save_all(silent=True)
+
+        commands = ReceiptBuilder.build_receipt(dummy_sale)
+        dlg = ReceiptPreviewDialog(commands, self)
+        dlg.exec()
+
+    def save_all(self, silent=False):
         # Validation
         scale_prefix = self.input_scale_prefix.text().strip()
         if len(scale_prefix) != 2 or not scale_prefix.isdigit():
-            QMessageBox.warning(self, "Error", "Scale Prefix must be 2 digits.")
+            if not silent:
+                QMessageBox.warning(self, "Error", "Scale Prefix must be 2 digits.")
             return
 
         theme_selection = "Dark" if self.combo_theme.currentIndex() == 0 else "Light"
@@ -412,6 +529,13 @@ class SettingsView(QWidget):
             "doc_format_purchase": self.input_fmt_purchase.text(),
             "doc_format_return": self.input_fmt_return.text(),
             "show_receipt_dialog": str(self.chk_show_receipt_dialog.isChecked()),
+            # Receipt
+            "receipt_logo_path": self.input_logo_path.text(),
+            "receipt_header": self.txt_header.toPlainText(),
+            "receipt_footer": self.txt_footer.toPlainText(),
+            "show_barcode": self.chk_show_barcode.isChecked(),
+            "merge_items": self.chk_merge_items.isChecked(),
+            "show_tax_breakdown": self.chk_show_tax.isChecked(),
             "receipt_printer_name": self.combo_receipt_printer.currentText(),
             "a4_printer_name": self.combo_a4_printer.currentText(),
             "auto_print_receipt": self.chk_auto_print.isChecked(),
@@ -425,13 +549,14 @@ class SettingsView(QWidget):
         # Apply Theme Immediately
         ThemeService.apply_theme(theme_selection)
 
-        if lang_changed:
-            QMessageBox.information(
-                self,
-                "Restart Required",
-                "Please restart the application to apply language changes.",
-            )
-        else:
-            QMessageBox.information(self, "Saved", "Settings saved successfully.")
+        if not silent:
+            if lang_changed:
+                QMessageBox.information(
+                    self,
+                    "Restart Required",
+                    "Please restart the application to apply " "language changes.",
+                )
+            else:
+                QMessageBox.information(self, "Saved", "Settings saved successfully.")
 
-        self.close_requested.emit()
+            self.close_requested.emit()

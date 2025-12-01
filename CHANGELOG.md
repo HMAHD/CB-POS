@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2025-11-30
+### Added
+- Implemented Advanced Receipt Engine with support for graphical logos and barcodes.
+- Added "Receipt" tab in Settings for customizing header, footer, logo, and print options.
+- Added Visual Receipt Preview dialog.
+- Implemented item merging logic for receipts.
+- Implemented Shift Closing & Z-Report features.
 ### Refactored
 - **Sales Screen Overhaul** (Phase 6):
     -   Redesigned `SalesView` with a split-screen "Command Console" layout.
@@ -38,7 +44,7 @@ All notable changes to this project will be documented in this file.
     -   Implemented `ActionPanel` with "Key-Corner" layout.
     -   Added Horizontal Search Modes (All, Barcode, Code, Name).
     -   Replaced layout with resizable `QSplitter`.
-    -   Fixed Header Logo.
+        -   Fixed Header Logo.
 - **Code Review Remediation** (PR #4):
     -   Refactored `ReceiptService` to restore header logic and improve safety.
     -   Refactored `ShiftService` to correctly handle shift end times in summary calculations.

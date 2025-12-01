@@ -1,4 +1,5 @@
 import time
+from typing import List, Dict, Any
 from PyQt6.QtCore import QThread
 from cbpos.core.interfaces.iprinter import IPrinter
 from cbpos.core.services.config_service import ConfigService
@@ -18,20 +19,24 @@ class MockPrinter(IPrinter):
     def disconnect(self):
         print("[MockPrinter] Disconnected")
 
-    def print_text(self, text: str):
-        print(f"[MockPrinter] {text}", end="")
-
-    def print_line(self, text: str):
-        print(f"[MockPrinter] {text}")
-
-    def cut(self):
-        print("[MockPrinter] CUT")
+    def print_commands(self, commands: List[Dict[str, Any]]):
+        for cmd in commands:
+            c_type = cmd.get("type")
+            if c_type == "text":
+                print(
+                    f"[MockPrinter] TEXT ({cmd.get('align', 'left')}): {cmd.get('val')}"
+                )
+            elif c_type == "image":
+                print(f"[MockPrinter] IMAGE: {cmd.get('path')}")
+            elif c_type == "barcode":
+                print(f"[MockPrinter] BARCODE: {cmd.get('val')} ({cmd.get('code')})")
+            elif c_type == "feed":
+                print(f"[MockPrinter] FEED: {cmd.get('lines')} lines")
+            elif c_type == "cut":
+                print("[MockPrinter] CUT")
 
     def kick_drawer(self):
         print("[MockPrinter] KICK DRAWER")
-
-    def print_image(self, image: Image.Image):
-        print(f"[MockPrinter] Printing Image: {image.size}")
 
 
 class ESCPOSDriver(IPrinter):
@@ -49,16 +54,10 @@ class ESCPOSDriver(IPrinter):
 
         try:
             if p_type == "USB":
-                # Auto-detect or specific
-                # For now, we'll try to find the first USB printer if no path (VID:PID) is given
-                # This is a simplification. In production, we need VID:PID.
-                # Example path format: "0x04b8:0x0202"
                 if p_path and ":" in p_path:
                     vid, pid = p_path.split(":")
                     self.printer = Usb(int(vid, 16), int(pid, 16))
                 else:
-                    # Fallback to Dummy if no VID:PID provided for now
-                    # Real auto-detection requires scanning USB bus
                     print(
                         "USB Printer requires VID:PID in settings (e.g., 0x04b8:0x0202)"
                     )
@@ -70,7 +69,6 @@ class ESCPOSDriver(IPrinter):
                     print("Network Printer requires IP address")
                     return False
             else:
-                # MOCK or unknown
                 return False
 
             return True
@@ -82,25 +80,59 @@ class ESCPOSDriver(IPrinter):
         if self.printer:
             self.printer.close()
 
-    def print_text(self, text: str):
-        if self.printer:
-            self.printer.text(text)
+    def print_commands(self, commands: List[Dict[str, Any]]):
+        if not self.printer:
+            return
 
-    def print_line(self, text: str):
-        if self.printer:
-            self.printer.text(text + "\n")
+        for cmd in commands:
+            try:
+                c_type = cmd.get("type")
 
-    def cut(self):
-        if self.printer:
-            self.printer.cut()
+                if c_type == "text":
+                    align = cmd.get("align", "left").upper()
+                    self.printer.set(align=align)
+                    self.printer.text(cmd.get("val") + "\n")
+
+                elif c_type == "image":
+                    path = cmd.get("path")
+                    if path:
+                        try:
+                            img = Image.open(path)
+                            # Resize if too wide (max 500px usually safe for 80mm)
+                            max_width = ConfigService.get_int(
+                                "printer_image_max_width", 500
+                            )
+                            if img.width > max_width:
+                                ratio = max_width / img.width
+                                new_height = int(img.height * ratio)
+                                img = img.resize(
+                                    (max_width, new_height), Image.Resampling.LANCZOS
+                                )
+                            self.printer.image(img)
+                        except Exception as e:
+                            print(f"Failed to print image: {e}")
+
+                elif c_type == "barcode":
+                    code = cmd.get("val")
+                    bc_type = cmd.get("code", "CODE39")
+                    try:
+                        self.printer.barcode(code, bc_type, function_type="B")
+                    except Exception as e:
+                        print(f"Failed to print barcode: {e}")
+
+                elif c_type == "feed":
+                    lines = cmd.get("lines", 1)
+                    self.printer.text("\n" * lines)
+
+                elif c_type == "cut":
+                    self.printer.cut()
+
+            except Exception as e:
+                print(f"Error processing command {cmd}: {e}")
 
     def kick_drawer(self):
         if self.printer:
             self.printer.cashdraw(2)
-
-    def print_image(self, image: Image.Image):
-        if self.printer:
-            self.printer.image(image)
 
 
 class PrintWorker(QThread):
@@ -117,7 +149,7 @@ class PrintWorker(QThread):
     def add_job(self, job_type: str, data: any = None):
         """
         Add a job to the queue.
-        job_type: 'print_receipt', 'kick_drawer', 'print_image'
+        job_type: 'print_receipt' (data=commands), 'kick_drawer'
         """
         self.queue.append((job_type, data))
         if not self.isRunning():
@@ -144,11 +176,8 @@ class PrintWorker(QThread):
                     if job_type == "kick_drawer":
                         current_printer.kick_drawer()
                     elif job_type == "print_receipt":
-                        current_printer.print_text(data)
-                        current_printer.cut()
-                    elif job_type == "print_image":
-                        current_printer.print_image(data)
-                        current_printer.cut()
+                        # data is now a list of commands
+                        current_printer.print_commands(data)
 
                     current_printer.disconnect()
                 else:
@@ -157,9 +186,9 @@ class PrintWorker(QThread):
                     mock = MockPrinter()
                     mock.connect()
                     if job_type == "print_receipt":
-                        mock.print_text(data)
-                    elif job_type == "print_image":
-                        mock.print_image(data)
+                        mock.print_commands(data)
+                    elif job_type == "kick_drawer":
+                        mock.kick_drawer()
                     mock.disconnect()
 
             except Exception as e:

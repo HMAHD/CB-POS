@@ -371,19 +371,19 @@
     - [x] Footer (Tax breakdown, Thank you message).
 - [x] **13.2 Routing**
     - [x] Logic to print to Kitchen vs Counter based on Category.
-- [ ] **13.3 Advanced Receipt Features **
-    - [ ] **Company Logo:** Image printing support
-    - [ ] **Custom Header/Footer:** Configurable text
-    - [ ] **Barcode/QR Code:** On receipt (with plugins)
-    - [ ] **Tax Breakdown Display:** Line-by-line tax amounts
-    - [ ] **Payment Details:** Show payment types and change
-    - [ ] **Item Merging:** Combine duplicate items
-    - [ ] **Receipt vs Invoice:** Different formats
-- [ ] **13.4 Template Customization**
-    - [ ] Visual template designer
-    - [ ] Multiple template support
-    - [ ] Test print functionality
-    - [ ] Preview before printing
+- [x] **13.3 Advanced Receipt Features **
+    - [x] **Company Logo:** Image printing support
+    - [x] **Custom Header/Footer:** Configurable text
+    - [x] **Barcode/QR Code:** On receipt (with plugins)
+    - [x] **Tax Breakdown Display:** Line-by-line tax amounts
+    - [x] **Payment Details:** Show payment types and change
+    - [x] **Item Merging:** Combine duplicate items
+    - [x] **Receipt vs Invoice:** Different formats
+- [x] **13.4 Template Customization**
+    - [x] Visual template designer
+    - [x] Multiple template support
+    - [x] Test print functionality
+    - [x] Preview before printing
 
 ---
 

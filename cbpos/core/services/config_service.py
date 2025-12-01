@@ -22,6 +22,10 @@ class ConfigService:
         "language": "en",  # en, si, ta
         "receipt_header": "Welcome to Ceylon Byte",
         "receipt_footer": "Thank You! Come Again.",
+        "receipt_logo_path": "",  # Path to logo image
+        "show_barcode": True,
+        "show_tax_breakdown": True,
+        "merge_items": True,  # Merge duplicate items
         # Hardware Configuration
         "receipt_printer_name": "",  # System printer name for thermal receipts
         "a4_printer_name": "",  # System printer name for A4 invoices

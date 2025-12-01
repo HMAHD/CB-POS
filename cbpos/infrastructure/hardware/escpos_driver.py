@@ -99,11 +99,14 @@ class ESCPOSDriver(IPrinter):
                         try:
                             img = Image.open(path)
                             # Resize if too wide (max 500px usually safe for 80mm)
-                            if img.width > 500:
-                                ratio = 500 / img.width
+                            max_width = ConfigService.get_int(
+                                "printer_image_max_width", 500
+                            )
+                            if img.width > max_width:
+                                ratio = max_width / img.width
                                 new_height = int(img.height * ratio)
                                 img = img.resize(
-                                    (500, new_height), Image.Resampling.LANCZOS
+                                    (max_width, new_height), Image.Resampling.LANCZOS
                                 )
                             self.printer.image(img)
                         except Exception as e:

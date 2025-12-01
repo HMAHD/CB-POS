@@ -462,6 +462,41 @@ class SettingsView(QWidget):
         if path:
             self.input_logo_path.setText(path)
 
+    def _get_current_settings_dict(self):
+        """
+        Collects current UI state into a dictionary matching ConfigService keys.
+        """
+        scale_prefix = self.input_scale_prefix.text().strip()
+        theme_selection = "Dark" if self.combo_theme.currentIndex() == 0 else "Light"
+        lang_code = self.combo_language.currentData()
+
+        return {
+            "shop_name": self.input_shop_name.text(),
+            "shop_address": self.input_address.text(),
+            "shop_phone": self.input_phone.text(),
+            "vat_number": self.input_vat.text(),
+            "theme": theme_selection,
+            "language": lang_code,
+            "doc_reset_period": self.combo_reset_period.currentText(),
+            "doc_format_sale": self.input_fmt_sale.text(),
+            "doc_format_purchase": self.input_fmt_purchase.text(),
+            "doc_format_return": self.input_fmt_return.text(),
+            "show_receipt_dialog": str(self.chk_show_receipt_dialog.isChecked()),
+            # Receipt
+            "receipt_logo_path": self.input_logo_path.text(),
+            "receipt_header": self.txt_header.toPlainText(),
+            "receipt_footer": self.txt_footer.toPlainText(),
+            "show_barcode": self.chk_show_barcode.isChecked(),
+            "merge_items": self.chk_merge_items.isChecked(),
+            "show_tax_breakdown": self.chk_show_tax.isChecked(),
+            "receipt_printer_name": self.combo_receipt_printer.currentText(),
+            "a4_printer_name": self.combo_a4_printer.currentText(),
+            "auto_print_receipt": self.chk_auto_print.isChecked(),
+            "receipt_copies": self.spin_copies.value(),
+            "scale_barcode_prefix": scale_prefix,
+            "scale_decimal_places": self.spin_decimal_places.value(),
+        }
+
     def preview_receipt(self):
         # Create a dummy sale for preview
         dummy_sale = Sale(
@@ -489,16 +524,12 @@ class SettingsView(QWidget):
             ),
         ]
 
-        # Temporarily save settings to config so builder uses them
-        # Or better, pass config to builder? Builder reads from ConfigService.
-        # So we should update ConfigService temporarily or just save first?
-        # The user might want to preview BEFORE saving.
-        # But ConfigService is global.
-        # Let's just update the in-memory config without saving to disk if possible,
-        # or just save to disk. Saving is safer.
-        self.save_all(silent=True)
+        # Use current UI settings for preview without saving
+        current_settings = self._get_current_settings_dict()
+        commands = ReceiptBuilder.build_receipt(
+            dummy_sale, config_override=current_settings
+        )
 
-        commands = ReceiptBuilder.build_receipt(dummy_sale)
         dlg = ReceiptPreviewDialog(commands, self)
         dlg.exec()
 
@@ -510,46 +541,17 @@ class SettingsView(QWidget):
                 QMessageBox.warning(self, "Error", "Scale Prefix must be 2 digits.")
             return
 
-        theme_selection = "Dark" if self.combo_theme.currentIndex() == 0 else "Light"
-        lang_code = self.combo_language.currentData()
-
-        # Check if language changed
-        current_lang = ConfigService.get_all().get("language", "en")
-        lang_changed = lang_code != current_lang
-
-        data = {
-            "shop_name": self.input_shop_name.text(),
-            "shop_address": self.input_address.text(),
-            "shop_phone": self.input_phone.text(),
-            "vat_number": self.input_vat.text(),
-            "theme": theme_selection,
-            "language": lang_code,
-            "doc_reset_period": self.combo_reset_period.currentText(),
-            "doc_format_sale": self.input_fmt_sale.text(),
-            "doc_format_purchase": self.input_fmt_purchase.text(),
-            "doc_format_return": self.input_fmt_return.text(),
-            "show_receipt_dialog": str(self.chk_show_receipt_dialog.isChecked()),
-            # Receipt
-            "receipt_logo_path": self.input_logo_path.text(),
-            "receipt_header": self.txt_header.toPlainText(),
-            "receipt_footer": self.txt_footer.toPlainText(),
-            "show_barcode": self.chk_show_barcode.isChecked(),
-            "merge_items": self.chk_merge_items.isChecked(),
-            "show_tax_breakdown": self.chk_show_tax.isChecked(),
-            "receipt_printer_name": self.combo_receipt_printer.currentText(),
-            "a4_printer_name": self.combo_a4_printer.currentText(),
-            "auto_print_receipt": self.chk_auto_print.isChecked(),
-            "receipt_copies": self.spin_copies.value(),
-            "scale_barcode_prefix": scale_prefix,
-            "scale_decimal_places": self.spin_decimal_places.value(),
-        }
-
+        data = self._get_current_settings_dict()
         ConfigService.update_all(data)
 
         # Apply Theme Immediately
-        ThemeService.apply_theme(theme_selection)
+        ThemeService.apply_theme(data["theme"])
 
         if not silent:
+            # Check if language changed
+            current_lang = ConfigService.get_all().get("language", "en")
+            lang_changed = data["language"] != current_lang
+
             if lang_changed:
                 QMessageBox.information(
                     self,

@@ -35,18 +35,7 @@ class ReceiptPreviewDialog(QDialog):
 
         # Preview Area
         self.preview_area = QTextBrowser()
-        self.preview_area.setStyleSheet(
-            """
-            QTextBrowser {
-                background-color: #FFFFFF;
-                color: #000000;
-                font-family: 'Courier New', monospace;
-                font-size: 12px;
-                border: 1px solid #CCC;
-                padding: 10px;
-            }
-            """
-        )
+        self.preview_area.setProperty("class", "preview-browser")
         layout.addWidget(self.preview_area)
 
         # Buttons
@@ -54,12 +43,10 @@ class ReceiptPreviewDialog(QDialog):
         self.btn_close = QPushButton("Close")
         self.btn_close.clicked.connect(self.accept)
 
-        self.btn_print = QPushButton("Print")
+        self.btn_print = QPushButton("Close Preview")
         self.btn_print.setStyleSheet(
             "background-color: #00BCEB; color: white; font-weight: bold;"
         )
-        # For now just close, caller handles print if needed
-        # or we can add signal
         self.btn_print.clicked.connect(self.accept)
 
         btn_layout.addStretch()
@@ -68,10 +55,25 @@ class ReceiptPreviewDialog(QDialog):
         layout.addLayout(btn_layout)
 
     def _render_receipt(self):
-        html = ["<html><body>"]
+        # Get colors from config or defaults
+        bg_color = "#FFFFFF"
+        text_color = "#000000"
 
-        # Style for 80mm simulation
-        html.append("<div style='width: 300px; margin: 0 auto;'>")
+        html = [
+            "<html><head><style>",
+            "body { background-color: %s; color: %s; "
+            "font-family: 'Courier New', monospace; font-size: 12px; }"
+            % (bg_color, text_color),
+            ".receipt-container { width: 300px; margin: 0 auto; }",
+            ".center-block { display: block; text-align: center; }",
+            ".cut-line { border-top: 1px dashed #000; margin: 10px 0; }",
+            ".cut-text { text-align: center; font-size: 10px; color: #888; }",
+            ".barcode-box { text-align: center; margin: 10px 0; "
+            "border: 1px solid #000; padding: 5px; }",
+            ".img-responsive { max-width: 100%; height: auto; }",
+            "</style></head><body>",
+            "<div class='receipt-container'>",
+        ]
 
         for cmd in self.commands:
             c_type = cmd.get("type")
@@ -96,18 +98,14 @@ class ReceiptPreviewDialog(QDialog):
                     # Use file:// protocol for local images
                     img_tag = (
                         "<div style='text-align: center;'>"
-                        "<img src='file:///{}' width='150'></div>"
+                        "<img src='file:///{}' class='img-responsive'></div>"
                     ).format(path)
                     html.append(img_tag)
 
             elif c_type == "barcode":
                 val = cmd.get("val")
                 # Simulate barcode with a placeholder or simple div
-                barcode_div = (
-                    "<div style='text-align: center; margin: 10px 0; "
-                    "border: 1px solid #000; padding: 5px;'>"
-                    f"[BARCODE: {val}]</div>"
-                )
+                barcode_div = "<div class='barcode-box'>" f"[BARCODE: {val}]</div>"
                 html.append(barcode_div)
 
             elif c_type == "feed":
@@ -115,12 +113,8 @@ class ReceiptPreviewDialog(QDialog):
                 html.append("<br>" * lines)
 
             elif c_type == "cut":
-                html.append("<hr style='border-top: 1px dashed #000;'>")
-                html.append(
-                    "<div style='text-align: center; font-size: 10px; "
-                    "color: #888;'>"
-                    "[CUT]</div>"
-                )
+                html.append("<hr class='cut-line'>")
+                html.append("<div class='cut-text'>[CUT]</div>")
 
         html.append("</div></body></html>")
         self.preview_area.setHtml("".join(html))

@@ -65,6 +65,12 @@ def main():
     app.setFont(default_font)
     print(f"[BOOTSTRAP] Application font set to: {primary_font_family}")
 
+    # Register Reports
+    from cbpos.core.reports import register_all_reports
+
+    register_all_reports()
+    print("[BOOTSTRAP] Reports registered.")
+
     # Launch main window
     window = MainWindow()
     window.showMaximized()  # Industrial apps usually run full screen

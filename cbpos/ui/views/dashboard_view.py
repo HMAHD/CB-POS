@@ -144,6 +144,21 @@ class DashboardView(QWidget):
         )
 
     def refresh_data(self):
+        from cbpos.core.services.dashboard_service import DashboardService
+
+        # Fetch KPIs
+        kpis = DashboardService.get_kpis()
+
+        # Update Cards
+        self.card_revenue.set_value("Rs. {:,.2f}".format(kpis["total_sales"]))
+        self.card_transactions.set_value(str(kpis["txn_count"]))
+        self.card_low_stock.set_value(str(kpis["low_stock_count"]))
+        self.card_staff.set_value(str(kpis["active_staff"]))
+
+        # Fetch Hourly Sales (For Chart)
+        hourly_sales = DashboardService.get_hourly_sales()
+        print(f"[DASHBOARD] Hourly Sales: {hourly_sales}")
+
         # Refresh logs
         logs = UserService.get_recent_activity(limit=10)
         self.log_table.setRowCount(len(logs))

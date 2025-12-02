@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QTimeEdit,
     QFrame,
+    QMessageBox,
 )
 from PyQt6.QtCore import Qt, QTime
 from PyQt6.QtPrintSupport import QPrinterInfo
@@ -666,23 +667,17 @@ class ProfilePage(SettingsPage):
         display_name = self.input_name.text()
 
         if not current_pin:
-            from PyQt6.QtWidgets import QMessageBox
-
             QMessageBox.warning(self, "Error", "Current PIN is required.")
             return
 
         # Verify Current PIN
         verified_user = AuthService.verify_pin(current_pin)
         if not verified_user or verified_user.id != user.id:
-            from PyQt6.QtWidgets import QMessageBox
-
             QMessageBox.critical(self, "Error", "Invalid Current PIN.")
             return
 
         # Update
         success = UserService.update_user_profile(user.id, display_name, new_pin if new_pin else None)
-
-        from PyQt6.QtWidgets import QMessageBox
 
         if success:
             QMessageBox.information(self, "Success", "Profile updated successfully.")

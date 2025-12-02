@@ -1,4 +1,5 @@
 import hashlib
+import logging
 from typing import Optional
 from cbpos.core.database import Database
 from cbpos.core.models import User, AuditLog
@@ -60,7 +61,7 @@ class UserService:
             return True
 
         except Exception as e:
-            print(f"Profile Update Failed: {e}")
+            logging.error(f"Profile Update Failed: {e}")
             session.rollback()
             return False
         finally:

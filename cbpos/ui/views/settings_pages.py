@@ -361,12 +361,16 @@ class HardwarePage(SettingsPage):
         self.spin_decimal_places.setValue(settings.get("scale_decimal_places", 3))
 
     def save(self) -> dict:
+        prefix = self.input_scale_prefix.text()
+        if len(prefix) != 2 or not prefix.isdigit():
+            raise ValueError("Scale Barcode Prefix must be exactly 2 digits.")
+
         return {
             "receipt_printer_name": self.combo_receipt_printer.currentText(),
             "a4_printer_name": self.combo_a4_printer.currentText(),
             "auto_print_receipt": self.chk_auto_print.isChecked(),
             "receipt_copies": self.spin_copies.value(),
-            "scale_barcode_prefix": self.input_scale_prefix.text(),
+            "scale_barcode_prefix": prefix,
             "scale_decimal_places": self.spin_decimal_places.value(),
         }
 

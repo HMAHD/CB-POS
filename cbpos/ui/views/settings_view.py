@@ -180,8 +180,12 @@ class SettingsView(QWidget):
 
     def save_all(self):
         all_settings = {}
-        for page in self.pages:
-            all_settings.update(page.save())
+        try:
+            for page in self.pages:
+                all_settings.update(page.save())
+        except ValueError as e:
+            QMessageBox.warning(self, "Validation Error", str(e))
+            return
 
         ConfigService.update_all(all_settings)
 

@@ -33,6 +33,12 @@ All notable changes to this project will be documented in this file.
   - Created `SchedulerService` for automated daily sales reports.
   - Enhanced `ReportViewer` with Direct Print and Email capabilities.
   - Added Automation Settings tab for configuring Auto-Report schedules and SMTP.
+- **Comprehensive Settings** (Phase 15):
+  - Implemented Modular Settings Architecture with `SettingsPage` base class.
+  - Expanded `ConfigService` with Sales, Inventory, and Document settings.
+  - Implemented "Negative Stock" prevention with recursive check for Composite Items.
+  - Implemented "Default Search Mode" configuration for Sales View.
+  - Migrated Hardware and Payment settings to modular pages.
 
 ### Refactored
 - **Sales Screen Overhaul** (Phase 6):

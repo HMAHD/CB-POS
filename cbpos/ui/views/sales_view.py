@@ -44,7 +44,8 @@ class SalesView(QWidget):
         self.product_service = ProductService()
         self.customer_service = CustomerService()
         self.customer = None
-        self.current_search_mode = "ALL"
+        self.customer = None
+        self.current_search_mode = ConfigService.get("default_search_mode") or "ALL"
         self.init_ui()
 
         # Side Menu Overlay
@@ -142,7 +143,7 @@ class SalesView(QWidget):
             btn.setProperty("mode", mode_id)
             btn.setProperty("class", "SearchModeBtn")  # For styling
 
-            if mode_id == "ALL":
+            if mode_id == self.current_search_mode:
                 btn.setChecked(True)
 
             self.mode_group.addButton(btn)

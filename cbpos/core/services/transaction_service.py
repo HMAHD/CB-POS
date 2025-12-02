@@ -45,6 +45,41 @@ class TransactionService:
             if total_paid < total_amount:
                 raise ValueError(f"Insufficient payment. Paid: {total_paid}, Due: {total_amount}")
 
+            # Negative Stock Check
+            from cbpos.core.services.config_service import ConfigService
+
+            if not ConfigService.get("allow_negative_stock"):
+                # Check all items
+                for item in cart_service.items:
+                    product = item["product"]
+                    qty_needed = item["qty"]
+
+                    # Check if composite
+                    composite_children = (
+                        session.query(CompositeItem).filter(CompositeItem.parent_product_id == product.id).all()
+                    )
+
+                    if composite_children:
+                        # Check children stock
+                        for comp in composite_children:
+                            child_product = session.query(Product).get(comp.child_product_id)
+                            required_qty = comp.qty * qty_needed
+                            if child_product.stock_qty < required_qty:
+                                raise ValueError(
+                                    f"Insufficient stock for component '{child_product.name_en}' "
+                                    f"(in {product.name_en}). Available: {child_product.stock_qty}, "
+                                    f"Required: {required_qty}"
+                                )
+                    else:
+                        # Check direct stock
+                        # We need to refresh product from DB to get latest stock
+                        db_product = session.query(Product).get(product.id)
+                        if db_product.stock_qty < qty_needed:
+                            raise ValueError(
+                                f"Insufficient stock for '{product.name_en}'. "
+                                f"Available: {db_product.stock_qty}, Required: {qty_needed}"
+                            )
+
             # Generate Receipt No
             receipt_no = f"REC-{uuid.uuid4().hex[:8].upper()}"
 

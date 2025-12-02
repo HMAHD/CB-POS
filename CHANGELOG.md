@@ -76,6 +76,11 @@ All notable changes to this project will be documented in this file.
   - Aligned `black` and `flake8` configuration to use 120 characters line length.
   - Fixed `E702` multiple statements on one line in `email_service.py` and `history_view.py`.
   - Fixed `E231` missing whitespace in `history_view.py`.
+- **Code Review Remediation (Critical)**:
+  - Synced Black and Flake8 line lengths to 120 characters (`pyproject.toml`).
+  - Refactored `EmailService` to use `QThreadPool` for thread-safe email sending.
+  - Restored missing `pin_input` field in `ManagerOverrideDialog`.
+  - Restored missing Name and Price labels in `ProductCard` (Touch Widgets).
 
 ***
 

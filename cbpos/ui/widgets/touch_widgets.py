@@ -39,6 +39,20 @@ class ProductCard(QToolButton):
         from cbpos.ui.resources.icons import Icons
 
         icon_label.setPixmap(Icons.get("fa5s.box").pixmap(40, 40))
+        layout.addWidget(icon_label)
+
+        # Name Label
+        self.lbl_name = QLabel(self.product.name)
+        self.lbl_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_name.setWordWrap(True)
+        self.lbl_name.setStyleSheet("font-size: 12px; color: white; font-weight: bold;")
+        layout.addWidget(self.lbl_name)
+
+        # Price Label
+        self.lbl_price = QLabel(f"{self.product.price:,.2f}")  # noqa: E231
+        self.lbl_price.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_price.setStyleSheet("font-size: 14px; color: #00BCEB; font-weight: bold;")
+        layout.addWidget(self.lbl_price)
 
         # Style
         self.setStyleSheet(

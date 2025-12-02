@@ -112,6 +112,7 @@ class TaxLiabilityReport(BaseReport):
                         "Net Revenue": float(sale.net_revenue),
                         "VAT (18%)": float(sale.tax_vat),
                         "SSCL (2.5%)": float(sale.tax_sscl),
+                        "Total Tax": float(sale.tax_vat + sale.tax_sscl),
                     }
                 )
 

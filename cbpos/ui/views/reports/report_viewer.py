@@ -20,6 +20,8 @@ from cbpos.ui.views.reports.pandas_model import PandasModel
 
 # Import and register reports (Ideally this happens at app startup)
 from cbpos.core.reports.definitions.sales_report import DailySalesSummaryReport
+from cbpos.core.reports.definitions.financial_reports import ProfitLossReport, TaxLiabilityReport
+from cbpos.core.reports.definitions.audit_reports import CashMovementAuditReport
 
 
 class ReportViewer(QWidget):
@@ -30,6 +32,9 @@ class ReportViewer(QWidget):
         self.current_report = None
         # Register reports (Temporary location, should be in main app init)
         self.registry.register(DailySalesSummaryReport)
+        self.registry.register(ProfitLossReport)
+        self.registry.register(TaxLiabilityReport)
+        self.registry.register(CashMovementAuditReport)
 
         self.setup_ui()
 

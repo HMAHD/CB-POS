@@ -25,7 +25,14 @@ All notable changes to this project will be documented in this file.
   - Implemented `ShiftService.get_shift_summary` for financial snapshots.
   - Created `DenominationWidget` for blind cash counting.
   - Developed `ShiftClosingDialog` wizard (Count -> Review -> Close).
+  - Implemented `ShiftClosingDialog` wizard (Count -> Review -> Close).
   - Added Z-Report generation in `ReceiptService` with variance tracking.
+- **Reporting & Automation** (Phase 14):
+  - Implemented `ProfitLossReport` and `TaxLiabilityReport` (Financials).
+  - Implemented `EmailService` with threaded SMTP support and PDF attachments.
+  - Created `SchedulerService` for automated daily sales reports.
+  - Enhanced `ReportViewer` with Direct Print and Email capabilities.
+  - Added Automation Settings tab for configuring Auto-Report schedules and SMTP.
 
 ### Refactored
 - **Sales Screen Overhaul** (Phase 6):

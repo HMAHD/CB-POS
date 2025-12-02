@@ -1,100 +1,80 @@
-from PyQt6.QtCore import QObject, QTimer, QTime, QDate
+import os
+import tempfile
+from datetime import datetime
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.email_service import EmailService
 from cbpos.core.services.export_service import ExportService
-from cbpos.core.reports.registry import ReportRegistry
 from cbpos.core.reports.definitions.sales_report import DailySalesSummaryReport
-from cbpos.core.reports.definitions.financial_reports import TaxLiabilityReport
-import os
-import tempfile
 
 
-class SchedulerService(QObject):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.check_schedule)
-        self.timer.start(60000)  # Check every minute
-        self.registry = ReportRegistry()
-        self.export_service = ExportService()
+class SchedulerService:
+    """
+    Service to handle background automation tasks (e.g. Auto-Reports).
+    Should be called periodically (e.g. every minute) by a timer in the main app.
+    """
 
-    def check_schedule(self):
+    @staticmethod
+    def check_automation():
+        """
+        Check if any automation tasks need to run.
+        """
         config = ConfigService.get_all()
-        if not config.get("auto_report_enabled", False):
-            return
 
+        # 1. Check Auto-Report
+        if config.get("auto_report_enabled", False):
+            SchedulerService._process_auto_report(config)
+
+    @staticmethod
+    def _process_auto_report(config):
         report_time_str = config.get("auto_report_time", "22:00")
-        last_run_date_str = config.get("last_auto_report_date", "")
-        try:
-            report_time = QTime.fromString(report_time_str, "HH:mm")
-            today = QDate.currentDate()
-
-            # If already run today, skip
-            if last_run_date_str == today.toString("yyyy-MM-dd"):
-                return
-
-            # If it's time (or past time) and hasn't run today
-            now = QTime.currentTime()
-            if now >= report_time:
-                self.run_eod_process()
-
-                # Update last run date
-                ConfigService.set("last_auto_report_date", today.toString("yyyy-MM-dd"))
-
-        except Exception as e:
-            print(f"Scheduler Error: {e}")
-
-    def run_eod_process(self):
-        print("Running EOD Process...")
-        config = ConfigService.get_all()
+        last_run_str = config.get("auto_report_last_run", "")
         admin_email = config.get("admin_email", "")
 
         if not admin_email:
-            print("EOD Process Skipped: No Admin Email")
             return
 
+        now = datetime.now()
+        today_str = now.strftime("%Y-%m-%d")
+
+        # If already run today, skip
+        if last_run_str == today_str:
+            return
+
+        # Check time
         try:
-            # 1. Generate Reports
-            sales_report = DailySalesSummaryReport()
-            tax_report = TaxLiabilityReport()
+            report_time = datetime.strptime(report_time_str, "%H:%M").time()
+        except ValueError:
+            return
 
-            # Filters for "Today"
-            filters = {"date_range": {"start": QDate.currentDate().toPyDate(), "end": QDate.currentDate().toPyDate()}}
+        if now.time() >= report_time:
+            # Run Report
+            try:
+                print("Running Auto-Report...")
+                report = DailySalesSummaryReport()
+                # Generate for today
+                filters = {"date_range": {"start": today_str, "end": today_str}}
+                df = report.generate(filters)
 
-            df_sales = sales_report.generate(filters)
-            df_tax = tax_report.generate(filters)
+                if not df.empty:
+                    # Generate PDF
+                    export_service = ExportService()
+                    temp_dir = tempfile.gettempdir()
+                    filename = f"AutoReport_{today_str}.pdf"
+                    filepath = os.path.join(temp_dir, filename)
 
-            # 2. Export to PDF
-            temp_dir = tempfile.gettempdir()
-            sales_pdf = os.path.join(
-                temp_dir,
-                f"EOD_Sales_{QDate.currentDate().toString('yyyyMMdd')}.pdf",
-            )
-            tax_pdf = os.path.join(
-                temp_dir,
-                f"EOD_Tax_{QDate.currentDate().toString('yyyyMMdd')}.pdf",
-            )
+                    export_service.export_to_pdf(df, filepath, f"Daily Sales Summary - {today_str}")
 
-            self.export_service.export_to_pdf(df_sales, sales_pdf, "Daily Sales Summary")
-            self.export_service.export_to_pdf(df_tax, tax_pdf, "Tax Liability Report")
+                    # Send Email
+                    EmailService.send_email_with_pdf(
+                        admin_email,
+                        f"Daily Sales Report - {today_str}",
+                        "Please find attached the daily sales summary.",
+                        filepath,
+                    )
+                    print(f"Auto-Report sent to {admin_email}")
 
-            # 3. Email
-            body = f"Please find attached the End of Day reports for {QDate.currentDate().toString('yyyy-MM-dd')}."
+                # Update Last Run (even if empty, to avoid retrying every minute)
+                ConfigService.update("auto_report_last_run", today_str)
 
-            # Send Sales Report
-            EmailService.send_email(
-                admin_email, f"EOD Sales Report - " f"{QDate.currentDate().toString('yyyy-MM-dd')}", body, sales_pdf
-            )
-
-            # Send Tax Report
-            EmailService.send_email(
-                admin_email,
-                f"EOD Tax Report - " f"{QDate.currentDate().toString('yyyy-MM-dd')}",
-                body,
-                tax_pdf,
-            )
-
-            print("EOD Process Completed: Emails Sent")
-
-        except Exception as e:
-            print(f"EOD Process Failed: {e}")
+            except Exception as e:
+                print(f"Auto-Report Failed: {e}")

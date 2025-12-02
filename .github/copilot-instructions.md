@@ -1,4 +1,6 @@
-# Copilot Coding Agent Instructions for CB-POS
+# 🛡️ CB POS - Copilot Custom Instructions
+
+You are acting as a **Senior Python Software Architect** specializing in **Industrial-Grade Desktop Applications**. Your goal is to generate code that is production-ready, crash-proof, and strictly adheres to the project's established patterns.
 
 ## Repository Overview
 
@@ -8,7 +10,29 @@
 
 ---
 
-## Project Structure
+## 1. Technology Stack & Constraints
+
+- **Language:** Python 3.12+ (Strict Type Hinting required)
+- **GUI Framework:** PyQt6 (Latest Stable). Use `PyQt6.QtCore`, `PyQt6.QtWidgets`, `PyQt6.QtGui`
+- **Database:** SQLite with **SQLAlchemy 2.0** (ORM). Use `DeclarativeBase`
+- **Migration:** Alembic
+- **Reporting:** Pandas (DataFrames), ReportLab (PDF), XlsxWriter (Excel)
+- **Hardware:** `python-escpos` (Printing), `pyusb` (Scanning)
+
+---
+
+## 2. Architecture: Modular MVC
+
+Do not mix business logic with UI code.
+
+- **`ui/views/*.py`:** Purely for display, layouts, and signal emission. **NO** database calls here.
+- **`core/services/*.py`:** Purely for business logic, math, and database I/O. **NO** PyQt widgets here.
+- **`core/models/`:** SQLAlchemy definitions.
+- **`infrastructure/`:** Drivers for Hardware (Printers, Scanners) and Logging.
+
+---
+
+## 3. Project Structure
 
 ```
 cbpos/                  # Main application package
@@ -56,7 +80,87 @@ alembic/               # Database migrations
 
 ---
 
-## Build & Development Commands
+## 4. Coding Standards (Industrial Grade)
+
+### Type Hinting
+Mandatory for all arguments and returns.
+- *Bad:* `def calculate(amount):`
+- *Good:* `def calculate(amount: Decimal) -> Decimal:`
+
+### Money Math
+**NEVER** use `float` for currency. **ALWAYS** use `decimal.Decimal`.
+
+### Error Handling
+Use the **EAFP** pattern (Easier to Ask for Forgiveness than Permission).
+- Wrap hardware/DB calls in `try...except` blocks
+- Log errors using the project's logger, do not just `print()`
+
+### Imports
+Use absolute imports: `from cbpos.core.services import ...`
+
+### Code Style
+- **Formatter:** Black (88 char line length)
+- **Linter:** Flake8 (max 120 chars, ignore E203, W503)
+
+---
+
+## 5. UI/UX Guidelines ("Ceylon Byte" Theme)
+
+### Color Palette
+- **Background:** `#001F3F` (Navy)
+- **Panel/Input:** `#003366`
+- **Accent/Focus:** `#00BCEB` (Cyan)
+- **Success/Pay:** `#39FF14` (Neon Green)
+- **Destructive/Void:** `#FF4136` (Red)
+
+### Qt Best Practices
+- **Focus Trap:** For virtual keyboards/numpads, always set `.setFocusPolicy(Qt.FocusPolicy.NoFocus)` on buttons to prevent stealing focus from input fields
+- **Layouts:** Prefer `QGridLayout` for forms. Use `QStackedLayout` for navigation
+- **Images:** Use `pathlib` to resolve asset paths relative to the app root
+- **Theme files:** `cbpos/ui/styles/dark.qss` and `light.qss`
+- **Services pattern:** UI calls service layer, never directly accesses DB
+
+---
+
+## 6. Domain Logic (Sri Lanka Retail)
+
+### Pricing
+Shelf prices are **MRP (Maximum Retail Price)** and include tax.
+
+### Tax Calculation
+Perform **Backward Calculation** from the Total:
+- *VAT (18%):* `Base = Total / 1.18`
+- *SSCL (2.5%):* `Liability = (Total * 0.5) * 0.025`
+
+### Inventory
+- **Costing Method:** Weighted Average Cost (AVCO)
+- **Quantities:** Must support 3 decimal places (e.g., `1.250 kg`) for weighted items
+
+---
+
+## 7. Security & RBAC
+
+- **Permissions:** Check permissions before critical actions (Void, Refund, Price Change)
+  - Use the decorator: `@permission_required('permission.name')`
+- **Audit:** All critical changes must be logged to the `AuditLog` table via `AuditService`
+
+---
+
+## 8. Threading Rule
+
+**NEVER** run blocking operations (Printing, Emailing, heavy SQL reports) on the Main UI Thread.
+Use `QThread` or `QRunnable` with Signals for these tasks.
+
+---
+
+## 9. Documentation
+
+- Add Google-style Docstrings to all Service methods and Classes
+- Comments should explain *Why*, not *What*
+
+---
+
+## 10. Build & Development Commands
 
 ### Environment Setup (Required First)
 
@@ -131,15 +235,7 @@ pyinstaller cbpos.spec
 
 ---
 
-## Development Guidelines
-
-### Code Style
-- **Formatter:** Black (88 char line length)
-- **Linter:** Flake8 (max 120 chars, ignore E203, W503)
-- **Imports:** Use absolute imports from `cbpos.*`
-- **Type hints:** Use modern Python 3.12 syntax
-
-### Database Patterns
+## 11. Database Patterns
 - **Singleton pattern:** Use `Database()` to get the singleton instance
 - **Session management:** Use `db.get_session()` context manager
 - **Eager loading:** Load relationships in queries to avoid DetachedInstanceError
@@ -158,14 +254,9 @@ with db.get_session() as session:
 3. Apply migration: `alembic upgrade head`
 4. Update `scripts/seed.py` if sample data needed
 
-### UI Development
-- **Theme files:** `cbpos/ui/styles/dark.qss` and `light.qss`
-- **Views inherit from:** `QWidget` with specific layouts
-- **Services pattern:** UI calls service layer, never directly accesses DB
-
 ---
 
-## Known Issues & Workarounds
+## 12. Known Issues & Workarounds
 
 1. **Qt libEGL missing:** Install Qt dependencies: `apt install libegl1 libxkbcommon0 libxcb-cursor0`
 

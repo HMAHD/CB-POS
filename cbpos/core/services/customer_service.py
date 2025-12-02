@@ -4,6 +4,7 @@ from sqlalchemy import select, or_, desc
 from sqlalchemy.orm import selectinload
 from cbpos.core.database import Database
 from cbpos.core.models import Customer, CustomerContact, Sale
+from cbpos.core.services.config_service import ConfigService
 
 
 class CustomerService:
@@ -77,6 +78,10 @@ class CustomerService:
         Adds loyalty points based on amount spent.
         Rule: 1 point per 100 currency units.
         """
+
+        if not ConfigService.get("enable_loyalty"):
+            return 0
+
         points_to_add = int(amount_spent // 100)
         if points_to_add <= 0:
             return 0

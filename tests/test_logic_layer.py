@@ -16,6 +16,9 @@ from cbpos.core.services.cart_service import CartService  # noqa: E402
 def test_logic():
     print("Testing Logic Layer...")
 
+    # Initialize Database (Create tables if not exist)
+    Database().create_tables()
+
     # 1. Test Document Service
     doc_num = DocumentService.generate_number("SALE")
     print(f"Generated Document Number: {doc_num}")

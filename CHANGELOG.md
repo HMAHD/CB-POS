@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
 ## [Unreleased] - 2025-12-01
 
@@ -30,6 +30,8 @@ All notable changes to this project will be documented in this file.
 - **Reporting & Automation** (Phase 14):
   - Implemented `ProfitLossReport` and `TaxLiabilityReport` (Financials).
   - Implemented `EmailService` with threaded SMTP support and PDF attachments.
+  - Styled Cart Table with borderless, alternating row colors and large text.
+  - Added massive Green "PAY" button for improved usability.
   - Created `SchedulerService` for automated daily sales reports.
   - Enhanced `ReportViewer` with Direct Print and Email capabilities.
   - Added Automation Settings tab for configuring Auto-Report schedules and SMTP.
@@ -39,8 +41,6 @@ All notable changes to this project will be documented in this file.
   - Redesigned `SalesView` with a split-screen "Command Console" layout.
   - Implemented Left Panel (75%) for Cart, Search, and Totals.
   - Implemented Right Panel (25%) for Action Grid and Payment.
-  - Styled Cart Table with borderless, alternating row colors and large text.
-  - Added massive Green "PAY" button for improved usability.
 - **Management Sidebar Polish**:
   - Refactored sidebar to be collapsible with smooth animations.
   - Implemented full-width navigation buttons with dynamic styling (Center vs Left align).
@@ -64,7 +64,10 @@ All notable changes to this project will be documented in this file.
   - Fixed linting errors (E231, F401).
 - **Code Review Remediation** (Reports & Tests):
   - Renamed `CashFlowReport` to `CashMovementAuditReport` to resolve naming collision.
-  - Deleted unused `ui/views/reports_view.py` after verifying `ManagementView` imports.
+  - Refactored `EmailService` to use `QThreadPool` for thread-safe email sending.
+  - Restored missing `pin_input` field in `ManagerOverrideDialog`.
+  - Restored missing Name and Price labels in `ProductCard` (Touch Widgets).
+    - Deleted unused `ui/views/reports_view.py` after verifying `ManagementView` imports.
   - Fixed `test_purchase_service.py` to correctly match `PurchaseService` signature.
 
 ### Fixed
@@ -78,9 +81,6 @@ All notable changes to this project will be documented in this file.
   - Fixed `E231` missing whitespace in `history_view.py`.
 - **Code Review Remediation (Critical)**:
   - Synced Black and Flake8 line lengths to 120 characters (`pyproject.toml`).
-  - Refactored `EmailService` to use `QThreadPool` for thread-safe email sending.
-  - Restored missing `pin_input` field in `ManagerOverrideDialog`.
-  - Restored missing Name and Price labels in `ProductCard` (Touch Widgets).
 
 ***
 
@@ -101,14 +101,20 @@ All notable changes to this project will be documented in this file.
   - Created `ProductEditorDialog` with tabbed interface for managing compositions.
   - Stock deduction automatically handles child products when composite items are sold.
 
-### Fixed
+  ### Fixed
   - Resolved SQLite migration constraint naming issues for refund foreign key.
   - Fixed f-string format specifiers causing flake8 E231 errors.
+  - Enforced validation on `HardwarePage` (`settings_pages.py`) so that **Scale Barcode Prefix** must be exactly 2 digits.
+  - Updated `SettingsView.save_all` (`settings_view.py`) to catch validation errors and show a warning message instead of crashing or saving invalid data.
+  - Switched `UserService.update_user_profile` (`user_service.py`) from `print` to `logging.error` for proper error logging.
+  - Ran `pre-commit run --all-files` and confirmed it passes; verified changes match the requested logic.
+  - Optimized `TransactionService` to use batch queries, eliminating N+1 performance issues.
+  - Secured `ThemeService` against CSS injection by validating font size.
+  - Hardened `UserService` with PIN validation, input sanitization, and added `get_recent_activity`.
 
 ***
 
 ## [0.1.0] - 2025-11-25
-
 ### Added
   - Initial project structure scaffolding.
   - Configuration files (`.gitignore`, `requirements.txt`).

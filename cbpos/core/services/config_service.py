@@ -17,6 +17,13 @@ class ConfigService:
         "shop_address": "123, Tech Street, Colombo",
         "shop_phone": "+94767378901",
         "vat_number": "",
+        "company_tax_id": "",
+        "currency_symbol": "Rs.",
+        "date_format": "YYYY-MM-DD",
+        # Tax Configuration
+        "tax_vat_rate": 18.0,
+        "tax_sscl_rate": 2.5,
+        "tax_sscl_turnover_pct": 50.0,
         "printer_type": "USB",  # USB, NETWORK, MOCK
         "printer_path": "",  # e.g., COM3, 192.168.1.100, or empty for auto-USB
         "language": "en",  # en, si, ta
@@ -26,6 +33,10 @@ class ConfigService:
         "show_barcode": True,
         "show_tax_breakdown": True,
         "merge_items": True,  # Merge duplicate items
+        # Sales Configuration
+        "default_search_mode": "ALL",  # ALL, BARCODE, NAME
+        "quick_pay_enabled": True,
+        "require_void_reason": True,
         # Hardware Configuration
         "receipt_printer_name": "",  # System printer name for thermal receipts
         "a4_printer_name": "",  # System printer name for A4 invoices
@@ -41,6 +52,19 @@ class ConfigService:
         "company_bank_branch": "Colombo Fort",
         # Inventory Control
         "allow_negative_stock": False,  # Allow overselling
+        "auto_generate_barcodes": True,
+        # Feature Flags
+        "enable_loyalty": True,
+        "enable_touch_mode": True,
+        "enable_visual_search": True,
+        # Appearance
+        "font_size": 12,
+        # Document Numbering
+        "doc_format_sale": "INV-{Y}-{seq:05d}",
+        "doc_format_purchase": "GRN-{Y}-{seq:05d}",
+        "doc_format_return": "CN-{Y}-{seq:05d}",
+        "doc_reset_period": "YEARLY",
+        "show_receipt_dialog": True,
     }
 
     _settings: Dict[str, Any] = {}

@@ -64,7 +64,7 @@ class ProfitLossReport(BaseReport):
                         "Revenue": revenue,
                         "Cost (COGS)": cogs,
                         "Gross Profit": gross_profit,
-                        "Margin %": round(margin_pct, 2),
+                        "Margin %": f"{margin_pct:.2f}%",  # noqa: E231
                     }
                 )
 
@@ -108,11 +108,11 @@ class TaxLiabilityReport(BaseReport):
                     {
                         "Date": sale.date.strftime("%Y-%m-%d"),
                         "Invoice #": sale.document_number,
-                        "Total Sale": float(sale.total_amount),
-                        "Net Revenue": float(sale.net_revenue),
-                        "VAT (18%)": float(sale.tax_vat),
-                        "SSCL (2.5%)": float(sale.tax_sscl),
-                        "Total Tax": float(sale.tax_vat + sale.tax_sscl),
+                        "Total Sale": sale.total_amount,
+                        "Net Revenue": sale.net_revenue,
+                        "VAT (18%)": sale.tax_vat,
+                        "SSCL (2.5%)": sale.tax_sscl,
+                        "Total Tax": sale.tax_vat + sale.tax_sscl,
                     }
                 )
 

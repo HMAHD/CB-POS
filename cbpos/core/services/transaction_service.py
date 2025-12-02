@@ -14,6 +14,12 @@ from cbpos.core.models import (
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.tax_service import TaxService
+from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.stock_service import StockService
+from cbpos.core.services.receipt_service import ReceiptService
+from cbpos.core.services.product_service import ProductService
+from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+import json
 
 
 class TransactionService:
@@ -44,6 +50,68 @@ class TransactionService:
             total_paid = sum(p["amount"] for p in payments)
             if total_paid < total_amount:
                 raise ValueError(f"Insufficient payment. Paid: {total_paid}, Due: {total_amount}")
+
+            # Negative Stock Check
+
+            if not ConfigService.get("allow_negative_stock"):
+                # 1. Collect all Product IDs (Parents)
+                cart_items = cart_service.items
+                parent_ids = [item["product"].id for item in cart_items]
+
+                # 2. Fetch Composite Definitions for these parents
+                composites = session.query(CompositeItem).filter(CompositeItem.parent_product_id.in_(parent_ids)).all()
+
+                # 3. Collect Child IDs from Composites
+                child_ids = [c.child_product_id for c in composites]
+
+                # 4. Fetch ALL involved Products (Parents + Children) in one query
+                all_product_ids = set(parent_ids) | set(child_ids)
+                all_products = (
+                    session.query(Product)
+                    .filter(Product.id.in_(all_product_ids))
+                    .with_for_update()  # Lock rows for stock check
+                    .all()
+                )
+                product_map = {p.id: p for p in all_products}
+
+                # 5. Group Composites by Parent
+                composite_map = {}
+                for comp in composites:
+                    composite_map.setdefault(comp.parent_product_id, []).append(comp)
+
+                # 6. Perform Stock Check in Memory
+                for item in cart_items:
+                    product_id = item["product"].id
+                    qty_needed = item["qty"]
+
+                    # Get fresh product from map
+                    product = product_map.get(product_id)
+                    if not product:
+                        raise ValueError(f"Product {product_id} missing from database.")
+
+                    comps = composite_map.get(product_id, [])
+
+                    if comps:
+                        # Check children stock
+                        for comp in comps:
+                            child_product = product_map.get(comp.child_product_id)
+                            if not child_product:
+                                raise ValueError(f"Component product {comp.child_product_id} missing.")
+
+                            required_qty = comp.qty * qty_needed
+                            if child_product.stock_qty < required_qty:
+                                raise ValueError(
+                                    f"Insufficient stock for component '{child_product.name_en}' "
+                                    f"(in {product.name_en}). Available: {child_product.stock_qty}, "
+                                    f"Required: {required_qty}"
+                                )
+                    else:
+                        # Check direct stock
+                        if product.stock_qty < qty_needed:
+                            raise ValueError(
+                                f"Insufficient stock for '{product.name_en}'. "
+                                f"Available: {product.stock_qty}, Required: {qty_needed}"
+                            )
 
             # Generate Receipt No
             receipt_no = f"REC-{uuid.uuid4().hex[:8].upper()}"
@@ -95,7 +163,6 @@ class TransactionService:
                 session.add(payment)
 
                 # 4. Process Items & Deduct Stock
-            from cbpos.core.services.stock_service import StockService
 
             for item in cart_service.items:
                 product = item["product"]
@@ -143,10 +210,6 @@ class TransactionService:
             session.commit()
 
             # 6. Hardware Output
-            from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
-            from cbpos.core.services.receipt_service import ReceiptService
-            from cbpos.core.services.config_service import ConfigService
-
             worker = PrintWorker()
 
             # Check language for Unicode support
@@ -182,8 +245,6 @@ class TransactionService:
     @staticmethod
     def hold_bill(cart_service: CartService, note: str = None) -> bool:
         """Serialize cart items and save to SuspendedTransaction."""
-        import json
-
         db = Database()
         session = db.SessionLocal()
         try:
@@ -222,8 +283,6 @@ class TransactionService:
     @staticmethod
     def recall_bill(suspended_id: int, cart_service: CartService) -> bool:
         """Restore cart from SuspendedTransaction and delete the record."""
-        import json
-        from cbpos.core.services.product_service import ProductService
 
         db = Database()
         session = db.SessionLocal()
@@ -390,10 +449,6 @@ class TransactionService:
             session.commit()
 
             # 8. Print refund voucher
-            from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
-            from cbpos.core.services.receipt_service import ReceiptService
-            from cbpos.core.services.config_service import ConfigService
-
             worker = PrintWorker()
             settings = ConfigService.get_all()
             language = settings.get("language", "en")

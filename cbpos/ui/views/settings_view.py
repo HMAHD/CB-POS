@@ -3,31 +3,28 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QPushButton,
     QStackedWidget,
     QListWidget,
     QListWidgetItem,
-    QFormLayout,
-    QMessageBox,
-    QGroupBox,
-    QCheckBox,
-    QSpinBox,
     QFrame,
-    QComboBox,
-    QTextEdit,
-    QFileDialog,
-    QTimeEdit,
+    QMessageBox,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTime
-from PyQt6.QtPrintSupport import QPrinterInfo
+from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.theme_service import ThemeService
-from cbpos.core.services.language_service import LanguageService
-from cbpos.ui.dialogs.receipt_preview_dialog import ReceiptPreviewDialog
-from cbpos.core.services.receipt_builder import ReceiptBuilder
-from cbpos.core.models import Sale, SaleItem, Product
-import decimal
+from cbpos.ui.views.settings_pages import (
+    GeneralPage,
+    SalesPage,
+    TaxPage,
+    InventoryPage,
+    DocumentPage,
+    HardwarePage,
+    PaymentPage,
+    ReceiptPage,
+    AutomationPage,
+    ProfilePage,
+)
 
 
 class SettingsView(QWidget):
@@ -93,13 +90,15 @@ class SettingsView(QWidget):
 
         items = [
             ("General", "fa5s.sliders-h"),
-            ("Order & Payment", "fa5s.credit-card"),
+            ("Sales", "fa5s.shopping-cart"),
+            ("Taxes", "fa5s.percent"),
+            ("Inventory", "fa5s.boxes"),
+            ("Documents", "fa5s.file-invoice"),
             ("Receipt", "fa5s.receipt"),
             ("Hardware", "fa5s.print"),
-            ("Users", "fa5s.users"),
-            ("Database", "fa5s.database"),
+            ("Payments", "fa5s.credit-card"),
             ("Automation", "fa5s.robot"),
-            ("About", "fa5s.info-circle"),
+            ("My Profile", "fa5s.user-cog"),
         ]
 
         for item_text, icon_name in items:
@@ -115,38 +114,27 @@ class SettingsView(QWidget):
         self.stack = QStackedWidget()
         self.stack.setStyleSheet(
             "QWidget { background-color: #1E1E1E; color: #FFFFFF; } "
-            "QLineEdit, QComboBox, QSpinBox, QTextEdit { "
+            "QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit { "
             "background-color: #333337; color: white; border: 1px solid #555; "
             "padding: 5px; }"
         )
 
-        # Pages
-        self.page_general = QWidget()
-        self.page_order_payment = QWidget()
-        self.page_receipt = QWidget()
-        self.page_hardware = QWidget()
-        self.page_users = QWidget()
-        self.page_database = QWidget()
-        self.page_automation = QWidget()
-        self.page_about = QWidget()
+        # Initialize Pages
+        self.pages = [
+            GeneralPage(),
+            SalesPage(),
+            TaxPage(),
+            InventoryPage(),
+            DocumentPage(),
+            ReceiptPage(),
+            HardwarePage(),
+            PaymentPage(),
+            AutomationPage(),
+            ProfilePage(),
+        ]
 
-        self.stack.addWidget(self.page_general)
-        self.stack.addWidget(self.page_order_payment)
-        self.stack.addWidget(self.page_receipt)
-        self.stack.addWidget(self.page_hardware)
-        self.stack.addWidget(self.page_users)
-        self.stack.addWidget(self.page_database)
-        self.stack.addWidget(self.page_automation)
-        self.stack.addWidget(self.page_about)
-
-        self.init_general_page()
-        self.init_order_payment_page()
-        self.init_receipt_page()
-        self.init_hardware_page()
-        self.init_users_page()
-        self.init_database_page()
-        self.init_automation_page()
-        self.init_about_page()
+        for page in self.pages:
+            self.stack.addWidget(page)
 
         body_layout.addWidget(self.stack)
         main_layout.addLayout(body_layout)
@@ -185,433 +173,44 @@ class SettingsView(QWidget):
     def change_page(self, index):
         self.stack.setCurrentIndex(index)
 
-    def init_general_page(self):
-        layout = QFormLayout(self.page_general)
-        layout.setContentsMargins(40, 40, 40, 40)
-        layout.setSpacing(20)
-
-        lbl_header = QLabel("General Settings")
-        lbl_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #00BCEB; margin-bottom: 20px;")
-        layout.addRow(lbl_header)
-
-        self.input_shop_name = QLineEdit()
-        self.input_address = QLineEdit()
-        self.input_phone = QLineEdit()
-        self.input_vat = QLineEdit()
-
-        layout.addRow("Shop Name:", self.input_shop_name)
-        layout.addRow("Address:", self.input_address)
-        layout.addRow("Phone:", self.input_phone)
-        layout.addRow("VAT Number:", self.input_vat)
-
-        # Theme
-        self.combo_theme = QComboBox()
-        self.combo_theme.addItems(["Ceylon Night (Dark)", "Ceylon Day (Light)"])
-        layout.addRow("Theme:", self.combo_theme)
-
-        # Language
-        self.combo_language = QComboBox()
-        languages = LanguageService.get_available_languages()
-        # Store codes in user data
-        for code, name in languages.items():
-            self.combo_language.addItem(f"{name} ({code})", code)
-        layout.addRow("Language:", self.combo_language)
-
-    def init_order_payment_page(self):
-        layout = QVBoxLayout(self.page_order_payment)
-        layout.setContentsMargins(40, 40, 40, 40)
-        layout.setSpacing(20)
-
-        lbl_header = QLabel("Order & Payment Configuration")
-        lbl_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #00BCEB;")
-        layout.addWidget(lbl_header)
-
-        # Documents Section (Migrated)
-        grp_docs = QGroupBox("Document Numbering")
-        form_docs = QFormLayout(grp_docs)
-
-        self.combo_reset_period = QComboBox()
-        self.combo_reset_period.addItems(["YEARLY", "MONTHLY", "NEVER"])
-        form_docs.addRow("Reset Period:", self.combo_reset_period)
-
-        self.input_fmt_sale = QLineEdit()
-        self.input_fmt_sale.setPlaceholderText("INV-{Y}-{seq:05d}")
-        form_docs.addRow("Sale Format:", self.input_fmt_sale)
-
-        self.input_fmt_purchase = QLineEdit()
-        self.input_fmt_purchase.setPlaceholderText("GRN-{Y}-{seq:05d}")
-        form_docs.addRow("Purchase Format:", self.input_fmt_purchase)
-
-        self.input_fmt_return = QLineEdit()
-        self.input_fmt_return.setPlaceholderText("CN-{Y}-{seq:05d}")
-        form_docs.addRow("Return Format:", self.input_fmt_return)
-
-        layout.addWidget(grp_docs)
-
-        # Payment Options
-        grp_opts = QGroupBox("Payment Options")
-        form_opts = QFormLayout(grp_opts)
-
-        self.chk_show_receipt_dialog = QCheckBox("Show Receipt Options Dialog after Sale")
-        form_opts.addRow(self.chk_show_receipt_dialog)
-
-        layout.addWidget(grp_opts)
-        layout.addStretch()
-
-    def init_receipt_page(self):
-        layout = QVBoxLayout(self.page_receipt)
-        layout.setContentsMargins(40, 40, 40, 40)
-        layout.setSpacing(20)
-
-        lbl_header = QLabel("Receipt Designer")
-        lbl_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #00BCEB;")
-        layout.addWidget(lbl_header)
-
-        # Logo
-        grp_logo = QGroupBox("Logo")
-        logo_layout = QHBoxLayout(grp_logo)
-        self.input_logo_path = QLineEdit()
-        self.input_logo_path.setReadOnly(True)
-        self.btn_browse_logo = QPushButton("Browse...")
-        self.btn_browse_logo.clicked.connect(self.browse_logo)
-        self.btn_clear_logo = QPushButton("Clear")
-        self.btn_clear_logo.clicked.connect(lambda: self.input_logo_path.clear())
-
-        logo_layout.addWidget(self.input_logo_path)
-        logo_layout.addWidget(self.btn_browse_logo)
-        logo_layout.addWidget(self.btn_clear_logo)
-        layout.addWidget(grp_logo)
-
-        # Content
-        grp_content = QGroupBox("Content")
-        form_content = QFormLayout(grp_content)
-
-        self.txt_header = QTextEdit()
-        self.txt_header.setFixedHeight(80)
-        form_content.addRow("Header Text:", self.txt_header)
-
-        self.txt_footer = QTextEdit()
-        self.txt_footer.setFixedHeight(80)
-        form_content.addRow("Footer Text:", self.txt_footer)
-
-        self.chk_show_barcode = QCheckBox("Show Barcode")
-        self.chk_merge_items = QCheckBox("Merge Duplicate Items")
-        self.chk_show_tax = QCheckBox("Show Tax Breakdown")
-
-        form_content.addRow("", self.chk_show_barcode)
-        form_content.addRow("", self.chk_merge_items)
-        form_content.addRow("", self.chk_show_tax)
-
-        layout.addWidget(grp_content)
-
-        # Preview Button
-        self.btn_preview = QPushButton("Preview Receipt")
-        self.btn_preview.setStyleSheet("background-color: #007ACC; color: white;")
-        self.btn_preview.clicked.connect(self.preview_receipt)
-        layout.addWidget(self.btn_preview)
-
-        layout.addStretch()
-
-    def init_hardware_page(self):
-        layout = QVBoxLayout(self.page_hardware)
-        layout.setContentsMargins(40, 40, 40, 40)
-        layout.setSpacing(20)
-
-        lbl_header = QLabel("Hardware Configuration")
-        lbl_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #00BCEB;")
-        layout.addWidget(lbl_header)
-
-        # Printers
-        grp_printer = QGroupBox("Printers")
-        form_printer = QFormLayout(grp_printer)
-
-        available_printers = QPrinterInfo.availablePrinterNames() or ["No printers found"]
-
-        self.combo_receipt_printer = QComboBox()
-        self.combo_receipt_printer.addItems(available_printers)
-        form_printer.addRow("Receipt Printer:", self.combo_receipt_printer)
-
-        self.combo_a4_printer = QComboBox()
-        self.combo_a4_printer.addItems(available_printers)
-        form_printer.addRow("A4 Printer:", self.combo_a4_printer)
-
-        self.chk_auto_print = QCheckBox("Auto-Print Receipt")
-        form_printer.addRow("", self.chk_auto_print)
-
-        self.spin_copies = QSpinBox()
-        self.spin_copies.setRange(1, 5)
-        form_printer.addRow("Copies:", self.spin_copies)
-
-        layout.addWidget(grp_printer)
-
-        # Scale
-        grp_scale = QGroupBox("Weighing Scale")
-        form_scale = QFormLayout(grp_scale)
-
-        self.input_scale_prefix = QLineEdit()
-        self.input_scale_prefix.setMaxLength(2)
-        form_scale.addRow("Barcode Prefix (2 digits):", self.input_scale_prefix)
-
-        self.spin_decimal_places = QSpinBox()
-        self.spin_decimal_places.setRange(0, 4)
-        form_scale.addRow("Decimal Places:", self.spin_decimal_places)
-
-        layout.addWidget(grp_scale)
-        layout.addStretch()
-
-    def init_users_page(self):
-        layout = QVBoxLayout(self.page_users)
-        layout.setContentsMargins(40, 40, 40, 40)
-        lbl = QLabel("User Management (Placeholder)")
-        lbl.setStyleSheet("color: #888;")
-        layout.addWidget(lbl)
-        layout.addStretch()
-
-    def init_database_page(self):
-        layout = QVBoxLayout(self.page_database)
-        layout.setContentsMargins(40, 40, 40, 40)
-        lbl = QLabel("Database Maintenance (Placeholder)")
-        lbl.setStyleSheet("color: #888;")
-        layout.addWidget(lbl)
-        layout.addStretch()
-
-    def init_about_page(self):
-        layout = QVBoxLayout(self.page_about)
-        layout.setContentsMargins(40, 40, 40, 40)
-        lbl = QLabel("About CB POS\nVersion 0.1.0\n\n(c) 2025 Ceylon Byte")
-        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl.setStyleSheet("font-size: 16px; color: #CCC;")
-        layout.addWidget(lbl)
-        layout.addStretch()
-
-    def init_automation_page(self):
-        """Initialize Automation Settings Page"""
-        layout = QVBoxLayout(self.page_automation)
-        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        # Title
-        title = QLabel("Automation Settings")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #00BCEB;")
-        layout.addWidget(title)
-
-        # Form Layout
-        form_layout = QFormLayout()
-        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-        form_layout.setSpacing(15)
-
-        # 1. Auto-Report Scheduler
-        self.chk_auto_report = QCheckBox("Enable Daily Auto-Report")
-        self.chk_auto_report.setStyleSheet("font-size: 16px;")
-        form_layout.addRow("Scheduler:", self.chk_auto_report)
-
-        self.time_auto_report = QTimeEdit()
-        self.time_auto_report.setDisplayFormat("HH:mm")
-        form_layout.addRow("Report Time:", self.time_auto_report)
-
-        self.input_admin_email = QLineEdit()
-        self.input_admin_email.setPlaceholderText("admin@example.com")
-        form_layout.addRow("Admin Email:", self.input_admin_email)
-
-        # Separator
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setFrameShadow(QFrame.Shadow.Sunken)
-        form_layout.addRow(line)
-
-        # 2. Email Settings (SMTP)
-        self.input_smtp_host = QLineEdit()
-        self.input_smtp_host.setPlaceholderText("smtp.gmail.com")
-        form_layout.addRow("SMTP Host:", self.input_smtp_host)
-
-        self.input_smtp_port = QLineEdit()
-        self.input_smtp_port.setPlaceholderText("587")
-        form_layout.addRow("SMTP Port:", self.input_smtp_port)
-
-        self.input_smtp_user = QLineEdit()
-        self.input_smtp_user.setPlaceholderText("email@example.com")
-        form_layout.addRow("SMTP User:", self.input_smtp_user)
-
-        self.input_smtp_pass = QLineEdit()
-        self.input_smtp_pass.setEchoMode(QLineEdit.EchoMode.Password)
-        self.input_smtp_pass.setPlaceholderText("App Password")
-        form_layout.addRow("SMTP Password:", self.input_smtp_pass)
-
-        layout.addLayout(form_layout)
-        layout.addStretch()
-
     def load_settings(self):
         settings = ConfigService.get_all()
+        for page in self.pages:
+            page.load(settings)
 
-        # General
-        self.input_shop_name.setText(settings.get("shop_name", ""))
-        self.input_address.setText(settings.get("shop_address", ""))
-        self.input_phone.setText(settings.get("shop_phone", ""))
-        self.input_vat.setText(settings.get("vat_number", ""))
-
-        # Theme
-        current_theme = settings.get("theme", "Dark")
-        index = 0 if current_theme == "Dark" else 1
-        self.combo_theme.setCurrentIndex(index)
-
-        # Language
-        current_lang = settings.get("language", "en")
-        index = self.combo_language.findData(current_lang)
-        if index >= 0:
-            self.combo_language.setCurrentIndex(index)
-
-        # Order & Payment
-        self.combo_reset_period.setCurrentText(settings.get("doc_reset_period", "YEARLY"))
-        self.input_fmt_sale.setText(settings.get("doc_format_sale", "INV-{Y}-{seq:05d}"))
-        self.input_fmt_purchase.setText(settings.get("doc_format_purchase", "GRN-{Y}-{seq:05d}"))
-        self.input_fmt_return.setText(settings.get("doc_format_return", "CN-{Y}-{seq:05d}"))
-        self.chk_show_receipt_dialog.setChecked(settings.get("show_receipt_dialog", "True") == "True")
-
-        # Receipt
-        self.input_logo_path.setText(settings.get("receipt_logo_path", ""))
-        self.txt_header.setText(settings.get("receipt_header", ""))
-        self.txt_footer.setText(settings.get("receipt_footer", ""))
-        self.chk_show_barcode.setChecked(settings.get("show_barcode", True))
-        self.chk_merge_items.setChecked(settings.get("merge_items", True))
-        self.chk_show_tax.setChecked(settings.get("show_tax_breakdown", True))
-
-        # Hardware
-        receipt_printer = settings.get("receipt_printer_name", "")
-        if receipt_printer:
-            idx = self.combo_receipt_printer.findText(receipt_printer)
-            if idx >= 0:
-                self.combo_receipt_printer.setCurrentIndex(idx)
-
-        a4_printer = settings.get("a4_printer_name", "")
-        if a4_printer:
-            idx = self.combo_a4_printer.findText(a4_printer)
-            if idx >= 0:
-                self.combo_a4_printer.setCurrentIndex(idx)
-
-        self.chk_auto_print.setChecked(settings.get("auto_print_receipt", True))
-        self.spin_copies.setValue(settings.get("receipt_copies", 1))
-
-        self.input_scale_prefix.setText(settings.get("scale_barcode_prefix", "20"))
-        self.input_scale_prefix.setText(settings.get("scale_barcode_prefix", "20"))
-        self.spin_decimal_places.setValue(settings.get("scale_decimal_places", 3))
-
-        # Automation
-        self.chk_auto_report.setChecked(settings.get("auto_report_enabled", False))
-        self.time_auto_report.setTime(QTime.fromString(settings.get("auto_report_time", "22:00"), "HH:mm"))
-        self.input_admin_email.setText(settings.get("admin_email", ""))
-
-        self.input_smtp_host.setText(settings.get("smtp_host", ""))
-        self.input_smtp_port.setText(str(settings.get("smtp_port", "587")))
-        self.input_smtp_user.setText(settings.get("smtp_user", ""))
-        self.input_smtp_pass.setText(settings.get("smtp_pass", ""))
-
-    def browse_logo(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Select Logo", "", "Images (*.png *.jpg *.bmp)")
-        if path:
-            self.input_logo_path.setText(path)
-
-    def _get_current_settings_dict(self):
-        """
-        Collects current UI state into a dictionary matching ConfigService keys.
-        """
-        scale_prefix = self.input_scale_prefix.text().strip()
-        theme_selection = "Dark" if self.combo_theme.currentIndex() == 0 else "Light"
-        lang_code = self.combo_language.currentData()
-
-        return {
-            "shop_name": self.input_shop_name.text(),
-            "shop_address": self.input_address.text(),
-            "shop_phone": self.input_phone.text(),
-            "vat_number": self.input_vat.text(),
-            "theme": theme_selection,
-            "language": lang_code,
-            "doc_reset_period": self.combo_reset_period.currentText(),
-            "doc_format_sale": self.input_fmt_sale.text(),
-            "doc_format_purchase": self.input_fmt_purchase.text(),
-            "doc_format_return": self.input_fmt_return.text(),
-            "show_receipt_dialog": str(self.chk_show_receipt_dialog.isChecked()),
-            # Receipt
-            "receipt_logo_path": self.input_logo_path.text(),
-            "receipt_header": self.txt_header.toPlainText(),
-            "receipt_footer": self.txt_footer.toPlainText(),
-            "show_barcode": self.chk_show_barcode.isChecked(),
-            "merge_items": self.chk_merge_items.isChecked(),
-            "show_tax_breakdown": self.chk_show_tax.isChecked(),
-            "receipt_printer_name": self.combo_receipt_printer.currentText(),
-            "a4_printer_name": self.combo_a4_printer.currentText(),
-            "auto_print_receipt": self.chk_auto_print.isChecked(),
-            "receipt_copies": self.spin_copies.value(),
-            "scale_barcode_prefix": scale_prefix,
-            "scale_decimal_places": self.spin_decimal_places.value(),
-            # Automation
-            "auto_report_enabled": self.chk_auto_report.isChecked(),
-            "auto_report_time": self.time_auto_report.time().toString("HH:mm"),
-            "admin_email": self.input_admin_email.text(),
-            "smtp_host": self.input_smtp_host.text(),
-            "smtp_port": self.input_smtp_port.text(),
-            "smtp_user": self.input_smtp_user.text(),
-            "smtp_pass": self.input_smtp_pass.text(),
-        }
-
-    def preview_receipt(self):
-        # Create a dummy sale for preview
-        dummy_sale = Sale(
-            id=12345,
-            total_amount=decimal.Decimal("1500.00"),
-            tax_vat=decimal.Decimal("228.81"),
-            tax_sscl=decimal.Decimal("37.50"),
-            net_revenue=decimal.Decimal("1233.69"),
-        )
-        # Dummy items
-        p1 = Product(name_en="Test Product 1")
-        p2 = Product(name_en="Test Product 2")
-        dummy_sale.items = [
-            SaleItem(
-                product=p1,
-                qty=decimal.Decimal(1),
-                unit_price=decimal.Decimal(500),
-                subtotal=decimal.Decimal(500),
-            ),
-            SaleItem(
-                product=p2,
-                qty=decimal.Decimal(2),
-                unit_price=decimal.Decimal(500),
-                subtotal=decimal.Decimal(1000),
-            ),
-        ]
-
-        # Use current UI settings for preview without saving
-        current_settings = self._get_current_settings_dict()
-        commands = ReceiptBuilder.build_receipt(dummy_sale, config_override=current_settings)
-
-        dlg = ReceiptPreviewDialog(commands, self)
-        dlg.exec()
-
-    def save_all(self, silent=False):
-        # Validation
-        scale_prefix = self.input_scale_prefix.text().strip()
-        if len(scale_prefix) != 2 or not scale_prefix.isdigit():
-            if not silent:
-                QMessageBox.warning(self, "Error", "Scale Prefix must be 2 digits.")
+    def save_all(self):
+        all_settings = {}
+        try:
+            for page in self.pages:
+                all_settings.update(page.save())
+        except ValueError as e:
+            QMessageBox.warning(self, "Validation Error", str(e))
             return
 
-        data = self._get_current_settings_dict()
-        ConfigService.update_all(data)
+        # Capture current state BEFORE update
+        current_lang = ConfigService.get_all().get("language", "en")
+        current_font_size = ConfigService.get_all().get("font_size", 12)
 
-        # Apply Theme Immediately
-        ThemeService.apply_theme(data["theme"])
+        ConfigService.update_all(all_settings)
 
-        if not silent:
-            # Check if language changed
-            current_lang = ConfigService.get_all().get("language", "en")
-            lang_changed = data["language"] != current_lang
+        # Apply Theme if theme OR font_size changed
+        new_theme = all_settings.get("theme")
+        new_font_size = all_settings.get("font_size")
 
-            if lang_changed:
-                QMessageBox.information(
-                    self,
-                    "Restart Required",
-                    "Please restart the application to apply " "language changes.",
-                )
-            else:
-                QMessageBox.information(self, "Saved", "Settings saved successfully.")
+        if new_theme or (new_font_size and new_font_size != current_font_size):
+            # If theme not in settings (not changed), get current
+            theme_to_apply = new_theme or ConfigService.get("theme")
+            ThemeService.apply_theme(theme_to_apply)
 
-            self.close_requested.emit()
+        # Check if language changed
+        new_lang = all_settings.get("language", "en")
+        if new_lang != current_lang:
+            QMessageBox.information(
+                self,
+                "Restart Required",
+                "Please restart the application to apply language changes.",
+            )
+        else:
+            QMessageBox.information(self, "Saved", "Settings saved successfully.")
+
+        self.close_requested.emit()

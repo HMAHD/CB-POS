@@ -3,6 +3,9 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.core.models import Sale, SaleItem
 
 
+from cbpos.core.utils.formatters import format_currency
+
+
 class ReceiptBuilder:
     """
     Builds a list of command objects for printing or previewing receipts.
@@ -70,7 +73,7 @@ class ReceiptBuilder:
             qty = item.qty
             price = item.unit_price
             total = item.subtotal
-            line = "{} x {:,.2f} = {:,.2f}".format(qty, price, total)
+            line = "{} x {} = {}".format(qty, format_currency(price), format_currency(total))
             commands.append({"type": "text", "val": line, "align": "right"})
 
         commands.append({"type": "text", "val": "-" * 42, "align": "center"})
@@ -79,7 +82,7 @@ class ReceiptBuilder:
         commands.append(
             {
                 "type": "text",
-                "val": "Total: {:,.2f}".format(sale.total_amount),
+                "val": "Total: {}".format(format_currency(sale.total_amount)),
                 "align": "right",
             }
         )
@@ -92,7 +95,7 @@ class ReceiptBuilder:
                 commands.append(
                     {
                         "type": "text",
-                        "val": "VAT: {:,.2f}".format(sale.tax_vat),
+                        "val": "VAT: {}".format(format_currency(sale.tax_vat)),
                         "align": "right",
                     }
                 )
@@ -100,7 +103,7 @@ class ReceiptBuilder:
                 commands.append(
                     {
                         "type": "text",
-                        "val": "SSCL: {:,.2f}".format(sale.tax_sscl),
+                        "val": "SSCL: {}".format(format_currency(sale.tax_sscl)),
                         "align": "right",
                     }
                 )

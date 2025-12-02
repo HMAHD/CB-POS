@@ -92,7 +92,7 @@ class CashMovementAuditReport(BaseReport):
                         "Date": m.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                         "User": m.user.username,
                         "Type": m.type,
-                        "Amount": float(m.amount),
+                        "Amount": m.amount,
                         "Reason": m.reason,
                     }
                 )

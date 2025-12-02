@@ -6,7 +6,6 @@ from datetime import date
 from cbpos.core.reports.base_report import BaseReport
 from cbpos.core.models import Sale
 from cbpos.core.database import Database
-from cbpos.core.utils.formatters import format_currency
 
 
 class DailySalesSummaryReport(BaseReport):
@@ -71,7 +70,7 @@ class DailySalesSummaryReport(BaseReport):
                     {
                         "Date": row.sale_date,
                         "Transactions": row.transaction_count,
-                        "Total Sales": format_currency(float(row.total_sales) if row.total_sales else 0.0),
+                        "Total Sales": float(row.total_sales) if row.total_sales else 0.0,
                     }
                 )
 

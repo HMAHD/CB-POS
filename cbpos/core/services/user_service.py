@@ -27,42 +27,36 @@ class UserService:
         Returns:
             bool: True if successful, False otherwise.
         """
-        db = Database()
-        session = db.SessionLocal()
-
         try:
-            user = session.query(User).get(user_id)
-            if not user:
-                return False
+            with Database().get_session() as session:
+                user = session.get(User, user_id)
+                if not user:
+                    return False
 
-            # 1. Update Display Name (Safe)
-            user.username = display_name  # Assuming 'username' is the display name field
+                # 1. Update Display Name (Safe)
+                user.username = display_name  # Assuming 'username' is the display name field
 
-            # 2. Update PIN (If provided)
-            if new_pin:
-                # Hash the new PIN
-                pin_hash = hashlib.sha256(new_pin.encode()).hexdigest()
-                user.pin_hash = pin_hash
+                # 2. Update PIN (If provided)
+                if new_pin:
+                    # Hash the new PIN
+                    pin_hash = hashlib.sha256(new_pin.encode()).hexdigest()
+                    user.pin_hash = pin_hash
 
-            # 3. Audit Log
-            # Log the change for security auditing
-            current_user = AuthService.get_current_user()
-            logger_id = current_user.id if current_user else user_id
+                # 3. Audit Log
+                # Log the change for security auditing
+                current_user = AuthService.get_current_user()
+                logger_id = current_user.id if current_user else user_id
 
-            log = AuditLog(
-                user_id=logger_id,
-                action="PROFILE_UPDATE",
-                event_type="SECURITY",
-                details=f"User {user_id} updated profile. PIN Changed: {bool(new_pin)}",
-            )
-            session.add(log)
-
-            session.commit()
-            return True
+                log = AuditLog(
+                    user_id=logger_id,
+                    action="PROFILE_UPDATE",
+                    event_type="SECURITY",
+                    details=f"User {user_id} updated profile. PIN Changed: {bool(new_pin)}",
+                )
+                session.add(log)
+                session.commit()
+                return True
 
         except Exception as e:
             logging.error(f"Profile Update Failed: {e}")
-            session.rollback()
             return False
-        finally:
-            session.close()

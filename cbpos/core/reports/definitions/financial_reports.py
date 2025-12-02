@@ -4,7 +4,6 @@ from sqlalchemy import func
 from cbpos.core.reports.base_report import BaseReport
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Sale, SaleItem, Product
-from cbpos.core.utils.formatters import format_currency
 
 
 class ProfitLossReport(BaseReport):
@@ -62,9 +61,9 @@ class ProfitLossReport(BaseReport):
                     {
                         "Date": row.date.strftime("%Y-%m-%d"),
                         "Invoice #": row.document_number,
-                        "Revenue": format_currency(revenue),
-                        "Cost (COGS)": format_currency(cogs),
-                        "Gross Profit": format_currency(gross_profit),
+                        "Revenue": revenue,
+                        "Cost (COGS)": cogs,
+                        "Gross Profit": gross_profit,
                         "Margin %": f"{margin_pct:.2f}%",  # noqa: E231
                     }
                 )
@@ -109,11 +108,11 @@ class TaxLiabilityReport(BaseReport):
                     {
                         "Date": sale.date.strftime("%Y-%m-%d"),
                         "Invoice #": sale.document_number,
-                        "Total Sale": format_currency(sale.total_amount),
-                        "Net Revenue": format_currency(sale.net_revenue),
-                        "VAT (18%)": format_currency(sale.tax_vat),
-                        "SSCL (2.5%)": format_currency(sale.tax_sscl),
-                        "Total Tax": format_currency(sale.tax_vat + sale.tax_sscl),
+                        "Total Sale": sale.total_amount,
+                        "Net Revenue": sale.net_revenue,
+                        "VAT (18%)": sale.tax_vat,
+                        "SSCL (2.5%)": sale.tax_sscl,
+                        "Total Tax": sale.tax_vat + sale.tax_sscl,
                     }
                 )
 

@@ -1,6 +1,7 @@
 import os
 from PyQt6.QtWidgets import QApplication
 from cbpos.infrastructure.resource_loader import ResourceLoader
+from cbpos.core.services.config_service import ConfigService
 
 
 class ThemeService:
@@ -28,10 +29,9 @@ class ThemeService:
                 style_content = f.read()
 
             # Variable Injection
-            from cbpos.core.services.config_service import ConfigService
-
             font_family = ResourceLoader.get_primary_font()
-            font_size = str(ConfigService.get("font_size")) + "px"
+            font_size_val = ConfigService.get("font_size")
+            font_size = f"{font_size_val}px" if font_size_val else "12px"
 
             style_content = style_content.replace("{{FONT_FAMILY}}", font_family)
             style_content = style_content.replace("{{FONT_SIZE}}", font_size)

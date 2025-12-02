@@ -187,17 +187,24 @@ class SettingsView(QWidget):
             QMessageBox.warning(self, "Validation Error", str(e))
             return
 
+        # Capture current state BEFORE update
+        current_lang = ConfigService.get_all().get("language", "en")
+        current_font_size = ConfigService.get_all().get("font_size", 12)
+
         ConfigService.update_all(all_settings)
 
-        # Apply Theme Immediately
-        if "theme" in all_settings:
-            ThemeService.apply_theme(all_settings["theme"])
+        # Apply Theme if theme OR font_size changed
+        new_theme = all_settings.get("theme")
+        new_font_size = all_settings.get("font_size")
+
+        if new_theme or (new_font_size and new_font_size != current_font_size):
+            # If theme not in settings (not changed), get current
+            theme_to_apply = new_theme or ConfigService.get("theme")
+            ThemeService.apply_theme(theme_to_apply)
 
         # Check if language changed
-        current_lang = ConfigService.get_all().get("language", "en")
-        lang_changed = all_settings.get("language", "en") != current_lang
-
-        if lang_changed:
+        new_lang = all_settings.get("language", "en")
+        if new_lang != current_lang:
             QMessageBox.information(
                 self,
                 "Restart Required",

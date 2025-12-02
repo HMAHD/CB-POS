@@ -2,8 +2,9 @@ from decimal import Decimal
 from unittest.mock import patch
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.services.tax_service import TaxService
-from cbpos.core.models import Product, User, Role, Sale, Permission
+from cbpos.core.models import Product, User, Role, Sale, Permission, SaleItem
 from cbpos.core.services.cart_service import CartService
+from datetime import datetime
 
 
 # --- Test Case A: Atomic Commit (Sale + Stock) ---
@@ -129,8 +130,6 @@ def test_void_sale(db_session):
     db_session.add_all([permission, role, user, product])
     db_session.commit()
 
-    from datetime import datetime
-
     sale = Sale(
         document_number="REC-VOID-TEST",
         date=datetime.now(),
@@ -143,8 +142,6 @@ def test_void_sale(db_session):
     )
     db_session.add(sale)
     db_session.flush()
-
-    from cbpos.core.models import SaleItem
 
     sale_item = SaleItem(
         sale_id=sale.id,

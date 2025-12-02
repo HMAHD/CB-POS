@@ -25,6 +25,7 @@ from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.services.price_list_service import (
     PriceListService,
 )  # Assuming this exists or will be needed
+from cbpos.core.services.config_service import ConfigService
 
 
 class CustomerEditor(QDialog):
@@ -54,8 +55,6 @@ class CustomerEditor(QDialog):
         self.tabs.addTab(self.create_general_tab(), "General")
         self.tabs.addTab(self.create_commercial_tab(), "Commercial")
         self.tabs.addTab(self.create_contacts_tab(), "Contacts")
-
-        from cbpos.core.services.config_service import ConfigService
 
         if ConfigService.get("enable_loyalty"):
             self.tabs.addTab(self.create_loyalty_tab(), "Loyalty")

@@ -4,7 +4,6 @@ from sqlalchemy import func
 from cbpos.core.reports.base_report import BaseReport
 from cbpos.core.database import get_db_session
 from cbpos.core.models import StockMovement, Product, User, CashMovement
-from cbpos.core.utils.formatters import format_currency
 
 
 class StockMovementReport(BaseReport):
@@ -93,7 +92,7 @@ class CashMovementAuditReport(BaseReport):
                         "Date": m.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
                         "User": m.user.username,
                         "Type": m.type,
-                        "Amount": format_currency(m.amount),
+                        "Amount": m.amount,
                         "Reason": m.reason,
                     }
                 )

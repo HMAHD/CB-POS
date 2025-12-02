@@ -52,21 +52,52 @@ class TransactionService:
                 raise ValueError(f"Insufficient payment. Paid: {total_paid}, Due: {total_amount}")
 
             # Negative Stock Check
+
             if not ConfigService.get("allow_negative_stock"):
-                # Check all items
-                for item in cart_service.items:
-                    product = item["product"]
+                # 1. Collect all Product IDs (Parents)
+                cart_items = cart_service.items
+                parent_ids = [item["product"].id for item in cart_items]
+
+                # 2. Fetch Composite Definitions for these parents
+                composites = session.query(CompositeItem).filter(CompositeItem.parent_product_id.in_(parent_ids)).all()
+
+                # 3. Collect Child IDs from Composites
+                child_ids = [c.child_product_id for c in composites]
+
+                # 4. Fetch ALL involved Products (Parents + Children) in one query
+                all_product_ids = set(parent_ids) | set(child_ids)
+                all_products = (
+                    session.query(Product)
+                    .filter(Product.id.in_(all_product_ids))
+                    .with_for_update()  # Lock rows for stock check
+                    .all()
+                )
+                product_map = {p.id: p for p in all_products}
+
+                # 5. Group Composites by Parent
+                composite_map = {}
+                for comp in composites:
+                    composite_map.setdefault(comp.parent_product_id, []).append(comp)
+
+                # 6. Perform Stock Check in Memory
+                for item in cart_items:
+                    product_id = item["product"].id
                     qty_needed = item["qty"]
 
-                    # Check if composite
-                    composite_children = (
-                        session.query(CompositeItem).filter(CompositeItem.parent_product_id == product.id).all()
-                    )
+                    # Get fresh product from map
+                    product = product_map.get(product_id)
+                    if not product:
+                        raise ValueError(f"Product {product_id} missing from database.")
 
-                    if composite_children:
+                    comps = composite_map.get(product_id, [])
+
+                    if comps:
                         # Check children stock
-                        for comp in composite_children:
-                            child_product = session.query(Product).get(comp.child_product_id)
+                        for comp in comps:
+                            child_product = product_map.get(comp.child_product_id)
+                            if not child_product:
+                                raise ValueError(f"Component product {comp.child_product_id} missing.")
+
                             required_qty = comp.qty * qty_needed
                             if child_product.stock_qty < required_qty:
                                 raise ValueError(
@@ -76,12 +107,10 @@ class TransactionService:
                                 )
                     else:
                         # Check direct stock
-                        # We need to refresh product from DB to get latest stock
-                        db_product = session.query(Product).get(product.id)
-                        if db_product.stock_qty < qty_needed:
+                        if product.stock_qty < qty_needed:
                             raise ValueError(
                                 f"Insufficient stock for '{product.name_en}'. "
-                                f"Available: {db_product.stock_qty}, Required: {qty_needed}"
+                                f"Available: {product.stock_qty}, Required: {qty_needed}"
                             )
 
             # Generate Receipt No

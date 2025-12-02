@@ -30,8 +30,16 @@ class ThemeService:
 
             # Variable Injection
             font_family = ResourceLoader.get_primary_font()
-            font_size_val = ConfigService.get("font_size")
-            font_size = f"{font_size_val}px" if font_size_val else "12px"
+            raw_size = ConfigService.get("font_size")
+
+            # Security: Validate font_size to prevent CSS injection
+            try:
+                font_size_int = int(str(raw_size))
+                if not (8 <= font_size_int <= 36):
+                    raise ValueError("Font size out of bounds")
+                font_size = f"{font_size_int}px"
+            except (ValueError, TypeError):
+                font_size = "12px"  # Safe fallback
 
             style_content = style_content.replace("{{FONT_FAMILY}}", font_family)
             style_content = style_content.replace("{{FONT_SIZE}}", font_size)

@@ -47,4 +47,7 @@ def format_date(date_obj: Union[datetime, date, str]) -> str:
     elif fmt == "MM/DD/YYYY":
         strftime_fmt = "%m/%d/%Y"
 
-    return date_obj.strftime(strftime_fmt)
+    try:
+        return date_obj.strftime(strftime_fmt)
+    except Exception:
+        return str(date_obj)

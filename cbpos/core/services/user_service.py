@@ -34,10 +34,13 @@ class UserService:
                     return False
 
                 # 1. Update Display Name (Safe)
-                user.username = display_name  # Assuming 'username' is the display name field
+                user.username = display_name.strip()  # Sanitize input
 
                 # 2. Update PIN (If provided)
                 if new_pin:
+                    if len(new_pin) < 4 or not new_pin.isdigit():
+                        raise ValueError("PIN must be at least 4 digits")
+
                     # Hash the new PIN
                     pin_hash = hashlib.sha256(new_pin.encode()).hexdigest()
                     user.pin_hash = pin_hash
@@ -56,6 +59,32 @@ class UserService:
                 session.add(log)
                 session.commit()
                 return True
+
+        except Exception as e:
+            logging.error(f"Profile Update Failed: {e}")
+            return False
+
+    @staticmethod
+    def get_recent_activity(user_id: int, limit: int = 10) -> list:
+        """
+        Retrieve recent audit logs for a specific user.
+        """
+        try:
+            with Database().get_session() as session:
+                logs = (
+                    session.query(AuditLog)
+                    .filter(AuditLog.user_id == user_id)
+                    .order_by(AuditLog.timestamp.desc())
+                    .limit(limit)
+                    .all()
+                )
+                # Detach objects for UI use
+                for log in logs:
+                    session.expunge(log)
+                return logs
+        except Exception as e:
+            logging.error(f"Failed to fetch activity: {e}")
+            return []
 
         except Exception as e:
             logging.error(f"Profile Update Failed: {e}")

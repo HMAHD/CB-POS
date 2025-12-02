@@ -71,16 +71,19 @@ def test_purchase_flow(db_session):
 
     # 2. Create Purchase Draft
     # Receive 10 more @ 120.00
-    items = [(product_id, Decimal("10.000"), Decimal("120.00"))]
-    purchase = PurchaseService.create_purchase(supplier_id=supplier.id, reference_no="INV-001", items=items)
+    # 2. Create Purchase Draft
+    # Receive 10 more @ 120.00
+    purchase = PurchaseService.create_purchase(supplier_id=supplier.id, reference_external="INV-001", user_id=user_id)
 
     assert purchase.status == "DRAFT"
-    assert purchase.total_cost == Decimal("1200.00")
+    assert purchase.total_cost == Decimal("0.00")
 
     # 3. Commit Purchase
-    committed_purchase = PurchaseService.commit_purchase(purchase.id, user_id)
+    items_data = [{"product_id": product_id, "qty": Decimal("10.000"), "cost": Decimal("120.00")}]
+    committed_purchase = PurchaseService.commit_purchase(purchase.id, items_data)
 
     assert committed_purchase.status == "COMPLETED"
+    assert committed_purchase.total_cost == Decimal("1200.00")
 
     # 4. Verify Stock and Cost
     # Refresh product from DB
@@ -110,9 +113,11 @@ def test_weighted_average_cost_complex(db_session):
     supplier = SupplierService.create_supplier("Supplier B")
 
     # Receive: 15 @ 200.00
-    items = [(product.id, Decimal("15.000"), Decimal("200.00"))]
-    purchase = PurchaseService.create_purchase(supplier.id, "INV-002", items)
-    PurchaseService.commit_purchase(purchase.id, user.id)
+    # Receive: 15 @ 200.00
+    purchase = PurchaseService.create_purchase(supplier.id, "INV-002", user.id)
+
+    items_data = [{"product_id": product.id, "qty": Decimal("15.000"), "cost": Decimal("200.00")}]
+    PurchaseService.commit_purchase(purchase.id, items_data)
 
     db_session.refresh(product)
 

@@ -54,14 +54,14 @@ class StockMovementReport(BaseReport):
             return pd.DataFrame(data)
 
 
-class CashFlowReport(BaseReport):
+class CashMovementAuditReport(BaseReport):
     @property
     def id(self) -> str:
-        return "cash_flow"
+        return "cash_movement_audit"
 
     @property
     def name(self) -> str:
-        return "Cash Flow Audit"
+        return "Cash Movement Audit"
 
     @property
     def category(self) -> str:

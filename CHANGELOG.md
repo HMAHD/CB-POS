@@ -55,6 +55,10 @@ All notable changes to this project will be documented in this file.
   - Refactored `DenominationWidget` for configurable currency and robust math.
   - Refactored `ShiftClosingDialog` for safe access and better styling.
   - Fixed linting errors (E231, F401).
+- **Code Review Remediation** (Reports & Tests):
+  - Renamed `CashFlowReport` to `CashMovementAuditReport` to resolve naming collision.
+  - Deleted unused `ui/views/reports_view.py` after verifying `ManagementView` imports.
+  - Fixed `test_purchase_service.py` to correctly match `PurchaseService` signature.
 
 ### Fixed
   - Resolved `QPainter` warnings by ensuring valid pixmaps and sizes in `ManagementView`.

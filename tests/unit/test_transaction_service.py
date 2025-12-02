@@ -129,10 +129,13 @@ def test_void_sale(db_session):
     db_session.add_all([permission, role, user, product])
     db_session.commit()
 
+    from datetime import datetime
+
     sale = Sale(
-        receipt_no="REC-VOID-TEST",
+        document_number="REC-VOID-TEST",
+        date=datetime.now(),
         total_amount=100.0,
-        cashier_id=user.id,
+        user_id=user.id,
         tax_vat=0,
         tax_sscl=0,
         net_revenue=100,
@@ -148,6 +151,7 @@ def test_void_sale(db_session):
         product_id=product.id,
         qty=2.0,
         unit_price=100.0,
+        original_price=100.0,
         subtotal=200.0,
     )
     db_session.add(sale_item)

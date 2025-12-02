@@ -32,6 +32,15 @@ All notable changes to this project will be documented in this file.
   - Implemented `EmailService` with threaded SMTP support and PDF attachments.
   - Styled Cart Table with borderless, alternating row colors and large text.
   - Added massive Green "PAY" button for improved usability.
+  - Created `SchedulerService` for automated daily sales reports.
+  - Enhanced `ReportViewer` with Direct Print and Email capabilities.
+  - Added Automation Settings tab for configuring Auto-Report schedules and SMTP.
+
+### Refactored
+- **Sales Screen Overhaul** (Phase 6):
+  - Redesigned `SalesView` with a split-screen "Command Console" layout.
+  - Implemented Left Panel (75%) for Cart, Search, and Totals.
+  - Implemented Right Panel (25%) for Action Grid and Payment.
 - **Management Sidebar Polish**:
   - Refactored sidebar to be collapsible with smooth animations.
   - Implemented full-width navigation buttons with dynamic styling (Center vs Left align).

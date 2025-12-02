@@ -29,8 +29,8 @@ def test_transfer_order(mock_db):
     mock_db.return_value.SessionLocal.return_value = mock_session
 
     mock_sale = MagicMock(spec=Sale)
-    mock_sale.cashier_id = 1
-    mock_sale.receipt_no = "REC-123"
+    mock_sale.user_id = 1
+    mock_sale.document_number = "REC-123"
 
     mock_user = MagicMock(spec=User)
     mock_user.id = 2
@@ -51,6 +51,6 @@ def test_transfer_order(mock_db):
 
     # Verify
     assert result is True
-    assert mock_sale.cashier_id == 200
+    assert mock_sale.user_id == 200
     mock_session.add.assert_called()  # Audit Log added
     mock_session.commit.assert_called_once()

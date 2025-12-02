@@ -462,46 +462,46 @@
     - [x] Hardware Setup (Select Printer/Scanner).
     - [x] Business Details (Name, Address, Phone).
     - [x] Tax Rates configuration.
-- [ ] **15.2 Feature Flags**
-    - [ ] Toggle features (e.g., Enable Loyalty, Enable Touch Mode).
-- [ ] **15.3 Comprehensive Settings **
-    - [ ] **General Settings:**
-        - [ ] Company information
-        - [ ] Regional settings (language, currency, date format)
-        - [ ] Appearance (theme, font size, zoom level)
-    - [ ] **Order & Payment Settings:**
-        - [ ] Default search type (Barcode/Code/Name)
-        - [ ] Show search switcher
-        - [ ] Default quantity behavior
-        - [ ] Default discount type
-        - [ ] Prevent negative inventory
-        - [ ] Display receipt print dialog
-        - [ ] Merge items on receipt
-        - [ ] Void reason requirement
-    - [ ] **Product Settings:**
-        - [ ] Allow quantity decimals
-        - [ ] Show product groups in search
-        - [ ] Default tax rate
-        - [ ] Price change allowed by default
-        - [ ] Auto-generate product codes
-    - [ ] **Document Settings:**
-        - [ ] Document numbering format
-        - [ ] Starting numbers
-        - [ ] Prefix/suffix patterns
-        - [ ] Reset frequency
-    - [ ] **Print Settings:**
-        - [ ] Receipt printer selection
-        - [ ] A4 printer selection
-        - [ ] Paper width (58mm/80mm/A4)
-        - [ ] Character set
-        - [ ] Receipt template
-        - [ ] Auto-print options
-        - [ ] Number of copies
-    - [ ] **User Settings:**
+- [x] **15.2 Feature Flags**
+    - [x] Toggle features (e.g., Enable Loyalty, Enable Touch Mode).
+- [x] **15.3 Comprehensive Settings **
+    - [x] **General Settings:**
+        - [x] Company information
+        - [x] Regional settings (language, currency, date format)
+        - [x] Appearance (theme, font size, zoom level)
+    - [x] **Order & Payment Settings:**
+        - [x] Default search type (Barcode/Code/Name)
+        - [x] Show search switcher
+        - [x] Default quantity behavior
+        - [x] Default discount type
+        - [x] Prevent negative inventory
+        - [x] Display receipt print dialog
+        - [x] Merge items on receipt
+        - [x] Void reason requirement
+    - [x] **Product Settings:**
+        - [x] Allow quantity decimals
+        - [x] Show product groups in search
+        - [x] Default tax rate
+        - [x] Price change allowed by default
+        - [x] Auto-generate product codes
+    - [x] **Document Settings:**
+        - [x] Document numbering format
+        - [x] Starting numbers
+        - [x] Prefix/suffix patterns
+        - [x] Reset frequency
+    - [x] **Print Settings:**
+        - [x] Receipt printer selection
+        - [x] A4 printer selection
+        - [x] Paper width (58mm/80mm/A4)
+        - [x] Character set
+        - [x] Receipt template
+        - [x] Auto-print options
+        - [x] Number of copies
+    - [x] **User Settings:**
         - [x] Change password
         - [x] Display name
-        - [ ] Default layout preference
-        - [ ] Language preference
+        - [x] Default layout preference
+        - [x] Language preference
 
 ---
 

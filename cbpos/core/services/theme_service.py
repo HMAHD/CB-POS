@@ -28,8 +28,13 @@ class ThemeService:
                 style_content = f.read()
 
             # Variable Injection
+            from cbpos.core.services.config_service import ConfigService
+
             font_family = ResourceLoader.get_primary_font()
+            font_size = str(ConfigService.get("font_size")) + "px"
+
             style_content = style_content.replace("{{FONT_FAMILY}}", font_family)
+            style_content = style_content.replace("{{FONT_SIZE}}", font_size)
 
             app = QApplication.instance()
             if app:

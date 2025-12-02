@@ -53,6 +53,12 @@ class ConfigService:
         # Inventory Control
         "allow_negative_stock": False,  # Allow overselling
         "auto_generate_barcodes": True,
+        # Feature Flags
+        "enable_loyalty": True,
+        "enable_touch_mode": True,
+        "enable_visual_search": True,
+        # Appearance
+        "font_size": 12,
         # Document Numbering
         "doc_format_sale": "INV-{Y}-{seq:05d}",
         "doc_format_purchase": "GRN-{Y}-{seq:05d}",

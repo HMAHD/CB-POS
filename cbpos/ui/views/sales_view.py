@@ -35,6 +35,7 @@ from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.side_menu import SideMenu
 from pathlib import Path
 from cbpos.ui.widgets.action_panel import ActionPanel
+from cbpos.core.utils.formatters import format_currency
 
 
 class SalesView(QWidget):
@@ -43,7 +44,6 @@ class SalesView(QWidget):
         self.cart_service = CartService()
         self.product_service = ProductService()
         self.customer_service = CustomerService()
-        self.customer = None
         self.customer = None
         self.current_search_mode = ConfigService.get("default_search_mode") or "ALL"
         self.init_ui()
@@ -74,9 +74,6 @@ class SalesView(QWidget):
 
         # Brand (Logo)
         lbl_logo = QLabel()
-        # Fix: Use Path to find the logo correctly relative to this file or project root
-        # Assuming project root is 3 levels up from ui/views/sales_view.py
-        # But easier to rely on working directory if running from main.py
         logo_path = Path("assets/logo/cover_black.png")
 
         if logo_path.exists():
@@ -101,8 +98,7 @@ class SalesView(QWidget):
 
         main_layout.addWidget(header_widget)
 
-        # --- CONTENT AREA (Split Screen) ---
-        # Replace QHBoxLayout with QSplitter
+        # --- BODY (Splitter) ---
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
         self.splitter.setHandleWidth(10)  # For styling
         self.splitter.setChildrenCollapsible(False)
@@ -257,6 +253,36 @@ class SalesView(QWidget):
 
         # Shortcuts
         self.setup_shortcuts()
+
+        # Initialize Cart
+        self.update_cart_ui()
+
+    def update_cart_ui(self):
+        self.cart_table.setRowCount(0)
+        for row, item in enumerate(self.cart_service.items):
+            self.cart_table.insertRow(row)
+
+            product = item["product"]
+            qty = item["qty"]
+            price = item["price"]
+            discount = item["discount"]
+            total = item["total"]
+
+            self.cart_table.setItem(row, 0, QTableWidgetItem(product.name_en))
+            self.cart_table.setItem(row, 1, QTableWidgetItem(format_currency(price)))
+            self.cart_table.setItem(row, 2, QTableWidgetItem(str(qty)))
+
+            disc_text = f"{discount}%" if discount > 0 else "-"
+            self.cart_table.setItem(row, 3, QTableWidgetItem(disc_text))
+
+            self.cart_table.setItem(row, 4, QTableWidgetItem(format_currency(total)))
+
+        total_amount = self.cart_service.get_total()
+        item_count = len(self.cart_service.items)
+
+        self.lbl_total.setText(format_currency(total_amount))
+        self.lbl_item_count.setText(f"Items: {item_count}")
+        self.cart_table.scrollToBottom()
 
     def setup_shortcuts(self):
         self.shortcut_f5 = QShortcut(QKeySequence("F5"), self)

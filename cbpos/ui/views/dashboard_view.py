@@ -137,12 +137,13 @@ class DashboardView(QWidget):
 
     def refresh_data(self):
         from cbpos.core.services.dashboard_service import DashboardService
+        from cbpos.core.utils.formatters import format_currency
 
         # Fetch KPIs
         kpis = DashboardService.get_kpis()
 
         # Update Cards
-        self.card_revenue.set_value("Rs. {:,.2f}".format(kpis["total_sales"]))
+        self.card_revenue.set_value(format_currency(kpis["total_sales"]))
         self.card_transactions.set_value(str(kpis["txn_count"]))
         self.card_low_stock.set_value(str(kpis["low_stock_count"]))
         self.card_staff.set_value(str(kpis["active_staff"]))

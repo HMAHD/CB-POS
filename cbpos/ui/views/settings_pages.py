@@ -71,6 +71,16 @@ class GeneralPage(SettingsPage):
         layout.addRow("Company Tax ID:", self.input_tax_id)
         layout.addRow("Currency Symbol:", self.input_currency)
 
+        # Appearance
+        self.spin_font_size = QSpinBox()
+        self.spin_font_size.setRange(8, 24)
+        self.spin_font_size.setSuffix(" px")
+        layout.addRow("Font Size:", self.spin_font_size)
+
+        lbl_restart = QLabel("(Requires Restart)")
+        lbl_restart.setStyleSheet("color: #FF4136; font-size: 10px;")
+        layout.addRow("", lbl_restart)
+
         # Theme
         self.combo_theme = QComboBox()
         self.combo_theme.addItems(["Ceylon Night (Dark)", "Ceylon Day (Light)"])
@@ -90,6 +100,7 @@ class GeneralPage(SettingsPage):
         self.input_vat.setText(settings.get("vat_number", ""))
         self.input_tax_id.setText(settings.get("company_tax_id", ""))
         self.input_currency.setText(settings.get("currency_symbol", "Rs."))
+        self.spin_font_size.setValue(settings.get("font_size", 12))
 
         current_theme = settings.get("theme", "Dark")
         index = 0 if current_theme == "Dark" else 1
@@ -110,6 +121,7 @@ class GeneralPage(SettingsPage):
             "vat_number": self.input_vat.text(),
             "company_tax_id": self.input_tax_id.text(),
             "currency_symbol": self.input_currency.text(),
+            "font_size": self.spin_font_size.value(),
             "theme": theme_selection,
             "language": lang_code,
         }

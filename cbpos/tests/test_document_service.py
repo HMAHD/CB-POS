@@ -10,6 +10,8 @@ def test_generate_number_default(mock_config, mock_db):
     mock_session = MagicMock()
     mock_db.return_value.get_session.return_value.__enter__.return_value = mock_session
 
+    mock_config.get_all.return_value = {}
+
     # Mock no existing document
     mock_session.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
 

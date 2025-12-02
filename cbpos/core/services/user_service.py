@@ -85,7 +85,3 @@ class UserService:
         except Exception as e:
             logging.error(f"Failed to fetch activity: {e}")
             return []
-
-        except Exception as e:
-            logging.error(f"Profile Update Failed: {e}")
-            return False

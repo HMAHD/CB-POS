@@ -16,12 +16,14 @@ from cbpos.core.services.theme_service import ThemeService
 from cbpos.ui.views.settings_pages import (
     GeneralPage,
     SalesPage,
+    TaxPage,
     InventoryPage,
     DocumentPage,
     HardwarePage,
     PaymentPage,
     ReceiptPage,
     AutomationPage,
+    ProfilePage,
 )
 
 
@@ -89,12 +91,14 @@ class SettingsView(QWidget):
         items = [
             ("General", "fa5s.sliders-h"),
             ("Sales", "fa5s.shopping-cart"),
+            ("Taxes", "fa5s.percent"),
             ("Inventory", "fa5s.boxes"),
             ("Documents", "fa5s.file-invoice"),
             ("Receipt", "fa5s.receipt"),
             ("Hardware", "fa5s.print"),
             ("Payments", "fa5s.credit-card"),
             ("Automation", "fa5s.robot"),
+            ("My Profile", "fa5s.user-cog"),
         ]
 
         for item_text, icon_name in items:
@@ -110,7 +114,7 @@ class SettingsView(QWidget):
         self.stack = QStackedWidget()
         self.stack.setStyleSheet(
             "QWidget { background-color: #1E1E1E; color: #FFFFFF; } "
-            "QLineEdit, QComboBox, QSpinBox, QTextEdit { "
+            "QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit { "
             "background-color: #333337; color: white; border: 1px solid #555; "
             "padding: 5px; }"
         )
@@ -119,12 +123,14 @@ class SettingsView(QWidget):
         self.pages = [
             GeneralPage(),
             SalesPage(),
+            TaxPage(),
             InventoryPage(),
             DocumentPage(),
             ReceiptPage(),
             HardwarePage(),
             PaymentPage(),
             AutomationPage(),
+            ProfilePage(),
         ]
 
         for page in self.pages:

@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QCheckBox,
     QSpinBox,
+    QDoubleSpinBox,
     QComboBox,
     QTextEdit,
     QFileDialog,
@@ -19,6 +20,8 @@ from PyQt6.QtCore import Qt, QTime
 from PyQt6.QtPrintSupport import QPrinterInfo
 from cbpos.core.services.language_service import LanguageService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
+from cbpos.core.services.auth_service import AuthService
+from cbpos.core.services.user_service import UserService
 from cbpos.ui.dialogs.receipt_preview_dialog import ReceiptPreviewDialog
 from cbpos.core.models import Sale, SaleItem, Product
 import decimal
@@ -147,6 +150,56 @@ class SalesPage(SettingsPage):
             "default_search_mode": self.combo_search_mode.currentText(),
             "quick_pay_enabled": self.chk_quick_pay.isChecked(),
             "require_void_reason": self.chk_void_reason.isChecked(),
+        }
+
+
+class TaxPage(SettingsPage):
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(20)
+
+        lbl_header = QLabel("Tax Configuration")
+        lbl_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #00BCEB;")
+        layout.addWidget(lbl_header)
+
+        # Warning
+        lbl_warn = QLabel("Note: Changing these values affects ALL future sales immediately.")
+        lbl_warn.setStyleSheet("color: #FF4136; font-style: italic;")
+        layout.addWidget(lbl_warn)
+
+        form = QFormLayout()
+
+        self.spin_vat = QSpinBox()
+        self.spin_vat.setRange(0, 100)
+        self.spin_vat.setSuffix("%")
+        form.addRow("VAT Rate:", self.spin_vat)
+
+        self.spin_sscl = QDoubleSpinBox()
+        self.spin_sscl.setRange(0, 100)
+        self.spin_sscl.setDecimals(2)
+        self.spin_sscl.setSuffix("%")
+        form.addRow("SSCL Rate:", self.spin_sscl)
+
+        self.spin_sscl_turnover = QDoubleSpinBox()
+        self.spin_sscl_turnover.setRange(0, 100)
+        self.spin_sscl_turnover.setDecimals(1)
+        self.spin_sscl_turnover.setSuffix("%")
+        form.addRow("SSCL Turnover Base:", self.spin_sscl_turnover)
+
+        layout.addLayout(form)
+        layout.addStretch()
+
+    def load(self, settings: dict):
+        self.spin_vat.setValue(int(settings.get("tax_vat_rate", 18)))
+        self.spin_sscl.setValue(float(settings.get("tax_sscl_rate", 2.5)))
+        self.spin_sscl_turnover.setValue(float(settings.get("tax_sscl_turnover_pct", 50.0)))
+
+    def save(self) -> dict:
+        return {
+            "tax_vat_rate": self.spin_vat.value(),
+            "tax_sscl_rate": self.spin_sscl.value(),
+            "tax_sscl_turnover_pct": self.spin_sscl_turnover.value(),
         }
 
 
@@ -540,3 +593,84 @@ class AutomationPage(SettingsPage):
             "smtp_user": self.input_smtp_user.text(),
             "smtp_pass": self.input_smtp_pass.text(),
         }
+
+
+class ProfilePage(SettingsPage):
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(20)
+
+        lbl_header = QLabel("My Profile")
+        lbl_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #00BCEB;")
+        layout.addWidget(lbl_header)
+
+        form = QFormLayout()
+
+        self.input_name = QLineEdit()
+        form.addRow("Display Name:", self.input_name)
+
+        self.input_current_pin = QLineEdit()
+        self.input_current_pin.setEchoMode(QLineEdit.EchoMode.Password)
+        form.addRow("Current PIN:", self.input_current_pin)
+
+        self.input_new_pin = QLineEdit()
+        self.input_new_pin.setEchoMode(QLineEdit.EchoMode.Password)
+        self.input_new_pin.setPlaceholderText("Leave empty to keep current")
+        form.addRow("New PIN:", self.input_new_pin)
+
+        layout.addLayout(form)
+
+        # Update Button
+        self.btn_update = QPushButton("Update Profile")
+        self.btn_update.setStyleSheet("background-color: #007ACC; color: white; padding: 10px;")
+        self.btn_update.clicked.connect(self.update_profile)
+        layout.addWidget(self.btn_update)
+
+        layout.addStretch()
+
+    def load(self, settings: dict):
+        user = AuthService.get_current_user()
+        if user:
+            self.input_name.setText(user.username)
+        self.input_current_pin.clear()
+        self.input_new_pin.clear()
+
+    def save(self) -> dict:
+        # Profile page handles its own saving via the button
+        return {}
+
+    def update_profile(self):
+        user = AuthService.get_current_user()
+        if not user:
+            return
+
+        current_pin = self.input_current_pin.text()
+        new_pin = self.input_new_pin.text()
+        display_name = self.input_name.text()
+
+        if not current_pin:
+            from PyQt6.QtWidgets import QMessageBox
+
+            QMessageBox.warning(self, "Error", "Current PIN is required.")
+            return
+
+        # Verify Current PIN
+        verified_user = AuthService.verify_pin(current_pin)
+        if not verified_user or verified_user.id != user.id:
+            from PyQt6.QtWidgets import QMessageBox
+
+            QMessageBox.critical(self, "Error", "Invalid Current PIN.")
+            return
+
+        # Update
+        success = UserService.update_user_profile(user.id, display_name, new_pin if new_pin else None)
+
+        from PyQt6.QtWidgets import QMessageBox
+
+        if success:
+            QMessageBox.information(self, "Success", "Profile updated successfully.")
+            self.input_current_pin.clear()
+            self.input_new_pin.clear()
+        else:
+            QMessageBox.critical(self, "Error", "Failed to update profile.")

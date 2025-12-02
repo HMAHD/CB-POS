@@ -20,6 +20,10 @@ class ConfigService:
         "company_tax_id": "",
         "currency_symbol": "Rs.",
         "date_format": "YYYY-MM-DD",
+        # Tax Configuration
+        "tax_vat_rate": 18.0,
+        "tax_sscl_rate": 2.5,
+        "tax_sscl_turnover_pct": 50.0,
         "printer_type": "USB",  # USB, NETWORK, MOCK
         "printer_path": "",  # e.g., COM3, 192.168.1.100, or empty for auto-USB
         "language": "en",  # en, si, ta

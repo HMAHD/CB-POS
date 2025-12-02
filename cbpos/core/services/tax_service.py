@@ -1,15 +1,34 @@
 from decimal import Decimal
 from typing import Dict
+from cbpos.core.services.config_service import ConfigService
 
 
 class TaxService:
     """
     Service to handle Sri Lankan Tax Logic (Backward Calculation).
+    Rates are fetched from ConfigService.
     """
 
-    VAT_RATE = Decimal("0.18")
-    SSCL_RATE = Decimal("0.025")
-    SSCL_TURNOVER_PCT = Decimal("0.5")  # SSCL is on 50% of turnover for Retail
+    @staticmethod
+    def _get_rates():
+        """
+        Helper to fetch and convert rates from config.
+        Returns Decimals: VAT (0.18), SSCL (0.025), Turnover% (0.5)
+        """
+        config = ConfigService.get_all()
+
+        # Fetch values (defaults if missing)
+        vat_pct = config.get("tax_vat_rate", 18.0)
+        sscl_pct = config.get("tax_sscl_rate", 2.5)
+        turnover_pct = config.get("tax_sscl_turnover_pct", 50.0)
+
+        # Convert to Decimal safely
+        # Rate = Percentage / 100
+        vat_rate = Decimal(str(vat_pct)) / Decimal("100")
+        sscl_rate = Decimal(str(sscl_pct)) / Decimal("100")
+        turnover_rate = Decimal(str(turnover_pct)) / Decimal("100")
+
+        return vat_rate, sscl_rate, turnover_rate
 
     @staticmethod
     def calculate_taxes(total_mrp: Decimal) -> Dict[str, Decimal]:
@@ -17,8 +36,8 @@ class TaxService:
         Calculate tax breakdown from the MRP (Tax Inclusive Price).
 
         Formula:
-        1. SSCL Liability = (MRP * 0.5) * 0.025
-        2. VAT Liable Base = MRP / 1.18
+        1. SSCL Liability = (MRP * Turnover%) * SSCL Rate
+        2. VAT Liable Base = MRP / (1 + VAT Rate)
         3. VAT Amount = MRP - VAT Liable Base
         4. Net Revenue = MRP - VAT - SSCL
 
@@ -28,27 +47,20 @@ class TaxService:
         Returns:
             dict: {'vat': Decimal, 'sscl': Decimal, 'net': Decimal}
         """
-        # 1. SSCL
-        # Note: In strict accounting, SSCL might be part of the VAT base,
-        # but for simple retail backward calc, we often treat them as components extracted from MRP.
-        # However, the user prompt specified: "The user enters the Final Price. The System divides by 1.18 (for VAT)..."
-        # And "SSCL: Calculated on 50% of Turnover at 2.5%."
+        vat_rate, sscl_rate, turnover_rate = TaxService._get_rates()
 
-        # Let's follow the standard interpretation for "Backward Calculation":
-        # The MRP includes VAT. So we first strip VAT.
-
-        # VAT Calculation
+        # 1. VAT Calculation
         # Base + VAT = MRP
-        # Base * 1.18 = MRP
-        # Base = MRP / 1.18
-        vat_liable_base = total_mrp / (Decimal("1") + TaxService.VAT_RATE)
+        # Base * (1 + VAT_RATE) = MRP
+        # Base = MRP / (1 + VAT_RATE)
+        vat_liable_base = total_mrp / (Decimal("1") + vat_rate)
         vat_amount = total_mrp - vat_liable_base
 
-        # SSCL Calculation
-        # SSCL is usually a turnover tax, calculated on the gross receipt.
-        sscl_amount = (total_mrp * TaxService.SSCL_TURNOVER_PCT) * TaxService.SSCL_RATE
+        # 2. SSCL Calculation
+        # SSCL is calculated on a percentage of turnover
+        sscl_amount = (total_mrp * turnover_rate) * sscl_rate
 
-        # Net Revenue (What the shop keeps)
+        # 3. Net Revenue (What the shop keeps)
         # Revenue = Total - Taxes
         net_revenue = total_mrp - vat_amount - sscl_amount
 

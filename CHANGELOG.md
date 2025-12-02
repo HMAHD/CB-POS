@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to this project will be documented in this file. Never Delete added Changes, You Can Rewrite but never delete.
+All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
 ## [Unreleased] - 2025-12-01
 

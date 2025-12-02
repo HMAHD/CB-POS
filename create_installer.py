@@ -16,9 +16,7 @@ def create_installer():
 
     # Run PyInstaller
     print("📦 Running PyInstaller...")
-    result = subprocess.run(
-        ["pyinstaller", "--clean", "cbpos.spec"], capture_output=True, text=True
-    )
+    result = subprocess.run(["pyinstaller", "--clean", "cbpos.spec"], capture_output=True, text=True)
 
     if result.returncode == 0:
         print("✅ Build Successful!")

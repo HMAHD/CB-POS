@@ -80,18 +80,14 @@ def test_purchasing():
         # Total Value = 110000
         # Total Qty = 200
         # Avg Cost = 110000 / 200 = 550.00
-        expected_cost = ((initial_qty * initial_cost) + (new_qty * new_cost)) / (
-            initial_qty + new_qty
-        )
+        expected_cost = ((initial_qty * initial_cost) + (new_qty * new_cost)) / (initial_qty + new_qty)
         print(f"Expected Cost: {expected_cost}")
 
         # Allow small rounding diff
         assert abs(final_cost - expected_cost) < Decimal("0.01")
 
         # Verify Stock Movement
-        movement = (
-            session.query(StockMovement).filter_by(document_id=purchase.id).first()
-        )
+        movement = session.query(StockMovement).filter_by(document_id=purchase.id).first()
         assert movement is not None
         assert movement.qty_change == new_qty
         print("Stock Movement Verified.")

@@ -1,9 +1,8 @@
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
-    QLabel,
-    QLineEdit,
     QPushButton,
+    QLineEdit,
     QMessageBox,
 )
 from PyQt6.QtCore import Qt
@@ -31,31 +30,26 @@ class ManagerOverrideDialog(QDialog):
     def init_ui(self):
         layout = QVBoxLayout(self)
 
-        lbl_msg = QLabel("Enter Manager PIN:")
-        lbl_msg.setStyleSheet("font-size: 16px; font-weight: bold;")
-        layout.addWidget(lbl_msg)
-
         self.pin_input = QLineEdit()
         self.pin_input.setEchoMode(QLineEdit.EchoMode.Password)
-        self.pin_input.setStyleSheet(
-            "font-size: 20px; padding: 5px; color: black; background-color: white;"
-        )
+        self.pin_input.setPlaceholderText("Enter Manager PIN")
+        self.pin_input.setStyleSheet("padding: 10px; font-size: 16px; color: black; background-color: white;")
         self.pin_input.returnPressed.connect(self.verify_pin)
         layout.addWidget(self.pin_input)
 
         btn_verify = QPushButton("Verify")
-        btn_verify.setStyleSheet(
-            "background-color: #00BCEB; color: black; font-weight: bold; padding: 10px;"
-        )
+        btn_verify.setStyleSheet("background-color: #00BCEB; color: black; font-weight: bold; padding: 10px;")
         btn_verify.clicked.connect(self.verify_pin)
         layout.addWidget(btn_verify)
 
         btn_cancel = QPushButton("Cancel")
-        btn_cancel.setStyleSheet(
-            "background-color: #FF4136; color: white; padding: 10px;"
-        )
+        btn_cancel.setStyleSheet("background-color: #FF4136; color: white; padding: 10px;")
         btn_cancel.clicked.connect(self.reject)
         layout.addWidget(btn_cancel)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.pin_input.setFocus()
 
     def verify_pin(self):
         pin = self.pin_input.text()

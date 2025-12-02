@@ -45,16 +45,12 @@ class UserService:
 
         db = Database()
         with db.get_session() as session:
-            user = User(
-                username=username, pin_hash=pin_hash, role_id=role_id, is_active=True
-            )
+            user = User(username=username, pin_hash=pin_hash, role_id=role_id, is_active=True)
             session.add(user)
             session.commit()
             session.refresh(user)
             # Eager load role before expunging
-            session.query(User).options(joinedload(User.role)).filter(
-                User.id == user.id
-            ).one()
+            session.query(User).options(joinedload(User.role)).filter(User.id == user.id).one()
             session.expunge_all()
             return user
 
@@ -84,9 +80,7 @@ class UserService:
             session.commit()
             session.refresh(user)
             # Eager load role before expunging
-            session.query(User).options(joinedload(User.role)).filter(
-                User.id == user.id
-            ).one()
+            session.query(User).options(joinedload(User.role)).filter(User.id == user.id).one()
             session.expunge_all()
             return user
 

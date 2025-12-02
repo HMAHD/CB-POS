@@ -22,18 +22,10 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     with op.batch_alter_table("products", schema=None) as batch_op:
         # batch_op.add_column(sa.Column('parent_id', sa.Integer(), nullable=True))
-        batch_op.add_column(
-            sa.Column("reorder_level", sa.Integer(), nullable=False, server_default="0")
-        )
-        batch_op.add_column(
-            sa.Column("preferred_qty", sa.Integer(), nullable=False, server_default="0")
-        )
-        batch_op.add_column(
-            sa.Column("is_active", sa.Boolean(), nullable=False, server_default="1")
-        )
-        batch_op.create_foreign_key(
-            "fk_products_parent_id", "products", ["parent_id"], ["id"]
-        )
+        batch_op.add_column(sa.Column("reorder_level", sa.Integer(), nullable=False, server_default="0"))
+        batch_op.add_column(sa.Column("preferred_qty", sa.Integer(), nullable=False, server_default="0"))
+        batch_op.add_column(sa.Column("is_active", sa.Boolean(), nullable=False, server_default="1"))
+        batch_op.create_foreign_key("fk_products_parent_id", "products", ["parent_id"], ["id"])
 
 
 def downgrade() -> None:

@@ -38,7 +38,7 @@
 
 1.  **Clone the Repository**
     ```bash
-    git clone https://github.com/yourusername/cb-pos.git
+    git clone https://github.com/HMAHD/cb-pos.git
     cd cb-pos
     ```
 

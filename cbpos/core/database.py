@@ -44,9 +44,7 @@ class Database:
             connect_args=connect_args,
             **pool_args,
         )
-        self.SessionLocal = sessionmaker(
-            bind=self.engine, autocommit=False, autoflush=False, expire_on_commit=False
-        )
+        self.SessionLocal = sessionmaker(bind=self.engine, autocommit=False, autoflush=False, expire_on_commit=False)
 
     def create_tables(self):
         """Create all tables defined in Base metadata."""

@@ -95,12 +95,8 @@ class AdvancedSearchDialog(QDialog):
         # Results Table
         self.table = QTableWidget()
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(
-            ["Name", "Barcode", "Stock", "Price", "Category"]
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.Stretch
-        )
+        self.table.setHorizontalHeaderLabels(["Name", "Barcode", "Stock", "Price", "Category"])
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.doubleClicked.connect(self.on_select)
@@ -126,25 +122,19 @@ class AdvancedSearchDialog(QDialog):
         btn_layout.addStretch()
 
         btn_select = QPushButton("Select [Enter]")
-        btn_select.setStyleSheet(
-            "background-color: #39FF14; color: black; padding: 10px; font-weight: bold;"
-        )
+        btn_select.setStyleSheet("background-color: #39FF14; color: black; padding: 10px; font-weight: bold;")
         btn_select.clicked.connect(self.on_select)
         btn_layout.addWidget(btn_select)
 
         btn_cancel = QPushButton("Cancel [Esc]")
-        btn_cancel.setStyleSheet(
-            "background-color: #003366; color: white; padding: 10px; font-weight: bold;"
-        )
+        btn_cancel.setStyleSheet("background-color: #003366; color: white; padding: 10px; font-weight: bold;")
         btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(btn_cancel)
 
         layout.addLayout(btn_layout)
 
         # Shortcuts
-        QShortcut(QKeySequence(Qt.Key.Key_Return), self).activated.connect(
-            self.on_select
-        )
+        QShortcut(QKeySequence(Qt.Key.Key_Return), self).activated.connect(self.on_select)
         QShortcut(QKeySequence(Qt.Key.Key_Escape), self).activated.connect(self.reject)
 
         # Focus
@@ -194,15 +184,11 @@ class AdvancedSearchDialog(QDialog):
             self.table.setItem(row, 1, QTableWidgetItem(product.barcode))
 
             stock_item = QTableWidgetItem(f"{float(product.stock_qty): .2f}")
-            stock_item.setTextAlignment(
-                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-            )
+            stock_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.table.setItem(row, 2, stock_item)
 
             price_item = QTableWidgetItem(f"Rs. {float(product.price): .2f}")
-            price_item.setTextAlignment(
-                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-            )
+            price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.table.setItem(row, 3, price_item)
 
             cat_name = product.category.name if product.category else "-"

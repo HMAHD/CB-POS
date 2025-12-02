@@ -11,7 +11,8 @@ from sqlalchemy import event  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
 # Force in-memory DB for tests
-# We import Config from cbpos.core.database to ensure we patch the exact object used there
+# We import Config from cbpos.core.database to ensure we patch the exact object
+# used there
 from cbpos.core.database import Config as DBConfig  # noqa: E402
 
 DBConfig.DB_URI = "sqlite:///:memory:"

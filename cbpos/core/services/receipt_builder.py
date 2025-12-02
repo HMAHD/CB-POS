@@ -15,9 +15,7 @@ class ReceiptBuilder:
     """
 
     @classmethod
-    def build_receipt(
-        cls, sale: Sale, config_override: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+    def build_receipt(cls, sale: Sale, config_override: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         Generates receipt commands for a given Sale.
 
@@ -49,9 +47,7 @@ class ReceiptBuilder:
             commands.append({"type": "feed", "lines": 1})
 
         # 3. Sale Details
-        commands.append(
-            {"type": "text", "val": f"Receipt #: {sale.id}", "align": "left"}
-        )
+        commands.append({"type": "text", "val": f"Receipt #: {sale.id}", "align": "left"})
         commands.append(
             {
                 "type": "text",
@@ -67,9 +63,7 @@ class ReceiptBuilder:
 
         for item in display_items:
             # Name line
-            product_name = (
-                item.product.name_en if hasattr(item, "product") else item.name
-            )
+            product_name = item.product.name_en if hasattr(item, "product") else item.name
             commands.append({"type": "text", "val": product_name, "align": "left"})
 
             # Qty x Price = Total line

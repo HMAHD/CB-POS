@@ -2,14 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] - 2025-11-30
+## [Unreleased] - 2025-12-01
 
 ### Added
-- Implemented Advanced Receipt Engine with support for graphical logos, barcodes, item merging, and a visual previewer.
-- Added "Receipt" tab in Settings for customizing header, footer, logo, barcode, tax breakdown, item merging, and print options.
-- Added Visual Receipt Preview dialog that simulates the final receipt layout.
-- Implemented item merging logic for receipts.
-- Implemented Shift Closing & Z-Report features.
+  - Implemented Advanced Receipt Engine with support for graphical logos, barcodes, item merging, and a visual previewer.
+  - Added "Receipt" tab in Settings for customizing header, footer, logo, barcode, tax breakdown, item merging, and print options.
+  - Added Visual Receipt Preview dialog that simulates the final receipt layout.
+  - Implemented item merging logic for receipts.
+  - Implemented Shift Closing & Z-Report features.
 - **Theme & Localization** (Phase 16):
   - Implemented Dynamic Theme Switching (Dark/Light).
   - Created `ThemeService` for handling stylesheet application and variable injection.
@@ -25,7 +25,14 @@ All notable changes to this project will be documented in this file.
   - Implemented `ShiftService.get_shift_summary` for financial snapshots.
   - Created `DenominationWidget` for blind cash counting.
   - Developed `ShiftClosingDialog` wizard (Count -> Review -> Close).
+  - Implemented `ShiftClosingDialog` wizard (Count -> Review -> Close).
   - Added Z-Report generation in `ReceiptService` with variance tracking.
+- **Reporting & Automation** (Phase 14):
+  - Implemented `ProfitLossReport` and `TaxLiabilityReport` (Financials).
+  - Implemented `EmailService` with threaded SMTP support and PDF attachments.
+  - Created `SchedulerService` for automated daily sales reports.
+  - Enhanced `ReportViewer` with Direct Print and Email capabilities.
+  - Added Automation Settings tab for configuring Auto-Report schedules and SMTP.
 
 ### Refactored
 - **Sales Screen Overhaul** (Phase 6):
@@ -55,10 +62,25 @@ All notable changes to this project will be documented in this file.
   - Refactored `DenominationWidget` for configurable currency and robust math.
   - Refactored `ShiftClosingDialog` for safe access and better styling.
   - Fixed linting errors (E231, F401).
+- **Code Review Remediation** (Reports & Tests):
+  - Renamed `CashFlowReport` to `CashMovementAuditReport` to resolve naming collision.
+  - Deleted unused `ui/views/reports_view.py` after verifying `ManagementView` imports.
+  - Fixed `test_purchase_service.py` to correctly match `PurchaseService` signature.
 
 ### Fixed
-- Resolved `QPainter` warnings by ensuring valid pixmaps and sizes in `ManagementView`.
-- Fixed asset paths for Logo and User Badges using `pathlib`.
+  - Resolved `QPainter` warnings by ensuring valid pixmaps and sizes in `ManagementView`.
+  - Fixed asset paths for Logo and User Badges using `pathlib`.
+  - Resolved persistent `E501` line length errors across multiple files.
+  - Fixed `IndentationError` in `side_menu.py`.
+  - Removed unused imports (`F401`) in `manager_override_dialog.py`.
+  - Aligned `black` and `flake8` configuration to use 120 characters line length.
+  - Fixed `E702` multiple statements on one line in `email_service.py` and `history_view.py`.
+  - Fixed `E231` missing whitespace in `history_view.py`.
+- **Code Review Remediation (Critical)**:
+  - Synced Black and Flake8 line lengths to 120 characters (`pyproject.toml`).
+  - Refactored `EmailService` to use `QThreadPool` for thread-safe email sending.
+  - Restored missing `pin_input` field in `ManagerOverrideDialog`.
+  - Restored missing Name and Price labels in `ProductCard` (Touch Widgets).
 
 ***
 
@@ -80,22 +102,22 @@ All notable changes to this project will be documented in this file.
   - Stock deduction automatically handles child products when composite items are sold.
 
 ### Fixed
-- Resolved SQLite migration constraint naming issues for refund foreign key.
-- Fixed f-string format specifiers causing flake8 E231 errors.
+  - Resolved SQLite migration constraint naming issues for refund foreign key.
+  - Fixed f-string format specifiers causing flake8 E231 errors.
 
 ***
 
 ## [0.1.0] - 2025-11-25
 
 ### Added
-- Initial project structure scaffolding.
-- Configuration files (`.gitignore`, `requirements.txt`).
-- Database layer (`core/database.py`) with Singleton pattern and SQLAlchemy 2.0.
-- Domain models (`core/models/__init__.py`) for `User`, `Category`, `Product`, `Sale`, `SaleItem`.
-- Seeding script (`scripts/seed.py`) with Sri Lankan retail data.
-- Authentication Service (`core/services/auth_service.py`) with PIN hashing.
-- Global Theme (`ui/styles/theme.qss`) implementing "Ceylon Byte" industrial design.
-- Login UI (`ui/views/login_view.py`) with custom Numpad and Split Screen layout.
+  - Initial project structure scaffolding.
+  - Configuration files (`.gitignore`, `requirements.txt`).
+  - Database layer (`core/database.py`) with Singleton pattern and SQLAlchemy 2.0.
+  - Domain models (`core/models/__init__.py`) for `User`, `Category`, `Product`, `Sale`, `SaleItem`.
+  - Seeding script (`scripts/seed.py`) with Sri Lankan retail data.
+  - Authentication Service (`core/services/auth_service.py`) with PIN hashing.
+  - Global Theme (`ui/styles/theme.qss`) implementing "Ceylon Byte" industrial design.
+  - Login UI (`ui/views/login_view.py`) with custom Numpad and Split Screen layout.
 - **Transaction Operations** (Phase 8):
   - Implemented **Hold/Recall Bill** functionality.
   - Implemented **Void Bill** (Clear Cart) functionality.

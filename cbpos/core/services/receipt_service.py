@@ -49,11 +49,7 @@ class ReceiptService:
 
         for item in sale.items:
             name = item.product.name_en[:20]
-            lines.append(
-                "{:<20} {:>5.0f} {:>7.2f} {:>8.2f}".format(
-                    name, item.qty, item.unit_price, item.subtotal
-                )
-            )
+            lines.append("{:<20} {:>5.0f} {:>7.2f} {:>8.2f}".format(name, item.qty, item.unit_price, item.subtotal))
 
         lines.append("-" * ReceiptService.WIDTH_CHARS)
 
@@ -69,9 +65,7 @@ class ReceiptService:
         lines.append("-" * ReceiptService.WIDTH_CHARS)
 
         # 5. Footer
-        lines.append(
-            ReceiptService._center(settings.get("receipt_footer", "Thank You!"))
-        )
+        lines.append(ReceiptService._center(settings.get("receipt_footer", "Thank You!")))
         lines.append("\n\n")
 
         return "\n".join(lines)
@@ -136,56 +130,24 @@ class ReceiptService:
         lines.append("SALES BREAKDOWN")
         lines.append(ReceiptService._ROW_FMT.format("Method", "Amount"))
         for method, amount in summary.get("sales_by_method", {}).items():
-            lines.append(
-                ReceiptService._ROW_FMT.format(method, "{:.2f}".format(amount))
-            )
+            lines.append(ReceiptService._ROW_FMT.format(method, "{:.2f}".format(amount)))
         lines.append("-" * ReceiptService.WIDTH_CHARS)
-        lines.append(
-            ReceiptService._ROW_FMT.format(
-                "TOTAL SALES", "{:.2f}".format(summary.get("total_sales", 0))
-            )
-        )
+        lines.append(ReceiptService._ROW_FMT.format("TOTAL SALES", "{:.2f}".format(summary.get("total_sales", 0))))
         lines.append("-" * ReceiptService.WIDTH_CHARS)
 
         # 4. Cash Control
         lines.append("CASH CONTROL")
-        lines.append(
-            ReceiptService._ROW_FMT.format(
-                "Opening Float", "{:.2f}".format(summary.get("starting_cash", 0))
-            )
-        )
-        lines.append(
-            ReceiptService._ROW_FMT.format(
-                "Cash Sales", "{:.2f}".format(summary.get("cash_sales", 0))
-            )
-        )
-        lines.append(
-            ReceiptService._ROW_FMT.format(
-                "Cash In", "{:.2f}".format(summary.get("cash_in", 0))
-            )
-        )
-        lines.append(
-            ReceiptService._ROW_FMT.format(
-                "Cash Out", "{:.2f}".format(summary.get("cash_out", 0))
-            )
-        )
+        lines.append(ReceiptService._ROW_FMT.format("Opening Float", "{:.2f}".format(summary.get("starting_cash", 0))))
+        lines.append(ReceiptService._ROW_FMT.format("Cash Sales", "{:.2f}".format(summary.get("cash_sales", 0))))
+        lines.append(ReceiptService._ROW_FMT.format("Cash In", "{:.2f}".format(summary.get("cash_in", 0))))
+        lines.append(ReceiptService._ROW_FMT.format("Cash Out", "{:.2f}".format(summary.get("cash_out", 0))))
         lines.append("-" * ReceiptService.WIDTH_CHARS)
-        lines.append(
-            ReceiptService._ROW_FMT.format(
-                "Expected Cash", "{:.2f}".format(summary.get("expected_cash", 0))
-            )
-        )
-        lines.append(
-            ReceiptService._ROW_FMT.format(
-                "Actual Cash", "{:.2f}".format(summary.get("actual_cash", 0))
-            )
-        )
+        lines.append(ReceiptService._ROW_FMT.format("Expected Cash", "{:.2f}".format(summary.get("expected_cash", 0))))
+        lines.append(ReceiptService._ROW_FMT.format("Actual Cash", "{:.2f}".format(summary.get("actual_cash", 0))))
 
         variance = summary.get("variance", 0)
         var_label = "VARIANCE"
-        lines.append(
-            ReceiptService._ROW_FMT.format(var_label, "{:.2f}".format(variance))
-        )
+        lines.append(ReceiptService._ROW_FMT.format(var_label, "{:.2f}".format(variance)))
         if summary.get("notes"):
             lines.append(f"Note: {summary['notes']}")
 
@@ -193,21 +155,9 @@ class ReceiptService:
 
         # 5. Audit
         lines.append("AUDIT")
-        lines.append(
-            ReceiptService._ROW_FMT.format(
-                "Transactions", str(summary.get("txn_count", 0))
-            )
-        )
-        lines.append(
-            ReceiptService._ROW_FMT.format(
-                "Void Count", str(summary.get("void_count", 0))
-            )
-        )
-        lines.append(
-            ReceiptService._ROW_FMT.format(
-                "Void Value", "{:.2f}".format(summary.get("void_value", 0))
-            )
-        )
+        lines.append(ReceiptService._ROW_FMT.format("Transactions", str(summary.get("txn_count", 0))))
+        lines.append(ReceiptService._ROW_FMT.format("Void Count", str(summary.get("void_count", 0))))
+        lines.append(ReceiptService._ROW_FMT.format("Void Value", "{:.2f}".format(summary.get("void_value", 0))))
 
         lines.append("-" * ReceiptService.WIDTH_CHARS)
         lines.append(ReceiptService._center("*** END OF REPORT ***"))

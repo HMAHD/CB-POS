@@ -67,9 +67,7 @@ class SalesView(QWidget):
         # --- HEADER ---
         header_widget = QWidget()
         header_widget.setFixedHeight(50)
-        header_widget.setStyleSheet(
-            "background-color: #001226; border-bottom: 1px solid #003366;"
-        )
+        header_widget.setStyleSheet("background-color: #001226; border-bottom: 1px solid #003366;")
         header_layout = QHBoxLayout(header_widget)
         header_layout.setContentsMargins(20, 0, 20, 0)
 
@@ -82,19 +80,11 @@ class SalesView(QWidget):
 
         if logo_path.exists():
             logo_pixmap = QPixmap(str(logo_path))
-            lbl_logo.setPixmap(
-                logo_pixmap.scaledToHeight(
-                    35, Qt.TransformationMode.SmoothTransformation
-                )
-            )
+            lbl_logo.setPixmap(logo_pixmap.scaledToHeight(35, Qt.TransformationMode.SmoothTransformation))
         else:
             lbl_logo.setText("CEYLON BYTE POS")  # Fallback
-            lbl_logo.setStyleSheet(
-                "color: #00BCEB; font-weight: bold; font-size: 16px;"
-            )
-        lbl_logo.setAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-        )
+            lbl_logo.setStyleSheet("color: #00BCEB; font-weight: bold; font-size: 16px;")
+        lbl_logo.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         header_layout.addWidget(lbl_logo)
 
         header_layout.addStretch()
@@ -165,7 +155,7 @@ class SalesView(QWidget):
         self.barcode_input.setPlaceholderText("Scan or type product... (Enter)")
         self.barcode_input.setFixedHeight(40)
         self.barcode_input.setStyleSheet(
-            "font-size: 16px; padding: 5px; border: 1px solid #555; background-color: #222; color: white;"
+            "font-size: 16px; padding: 5px; border: 1px solid #555; " "background-color: #222; color: white;"
         )
         self.barcode_input.returnPressed.connect(self.process_barcode)
         search_layout.addWidget(self.barcode_input)
@@ -177,9 +167,7 @@ class SalesView(QWidget):
         self.cart_table = QTableWidget()
         self.cart_table.setColumnCount(4)
         self.cart_table.setHorizontalHeaderLabels(["Item", "Price", "Qty", "Total"])
-        self.cart_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+        self.cart_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.cart_table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.ResizeToContents
         )  # Item name flexible
@@ -191,7 +179,8 @@ class SalesView(QWidget):
         self.cart_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.cart_table.customContextMenuRequested.connect(self.show_cart_context_menu)
         self.cart_table.setAlternatingRowColors(True)
-        # Styling handled in theme.qss, but setting object name for specificity if needed
+        # Styling handled in theme.qss, but setting object name for specificity
+        # if needed
         self.cart_table.setObjectName("CartTable")
 
         left_layout.addWidget(self.cart_table)
@@ -204,9 +193,7 @@ class SalesView(QWidget):
 
         # 4. Totals Widget (Bottom)
         total_widget = QFrame()
-        total_widget.setStyleSheet(
-            "background-color: #252526; border-top: 2px solid #3E3E42; border-radius: 5px;"
-        )
+        total_widget.setStyleSheet("background-color: #252526; border-top: 2px solid #3E3E42; " "border-radius: 5px;")
         total_layout = QHBoxLayout(total_widget)
         total_layout.setContentsMargins(20, 10, 20, 10)
 
@@ -224,12 +211,8 @@ class SalesView(QWidget):
 
         # Grand Total (Right)
         self.total_label = QLabel("0.00")
-        self.total_label.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
-        self.total_label.setStyleSheet(
-            "font-size: 48px; font-weight: bold; color: #39FF14;"
-        )
+        self.total_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.total_label.setStyleSheet("font-size: 48px; font-weight: bold; color: #39FF14;")
         total_layout.addWidget(self.total_label)
 
         left_layout.addWidget(total_widget)
@@ -239,9 +222,7 @@ class SalesView(QWidget):
         # ==========================
         self.action_panel = ActionPanel()
         self.action_panel.setFixedWidth(350)
-        self.action_panel.setStyleSheet(
-            "background-color: #1E1E1E; border-left: 1px solid #3E3E42;"
-        )
+        self.action_panel.setStyleSheet("background-color: #1E1E1E; border-left: 1px solid #3E3E42;")
 
         # Connect Action Panel Signals
         self.action_panel.customer_clicked.connect(self.select_customer)
@@ -257,13 +238,10 @@ class SalesView(QWidget):
         self.action_panel.action_ref.connect(lambda: print("Refund"))  # Placeholder
         self.action_panel.action_more.connect(lambda: print("More"))  # Placeholder
 
-        # Context Menu for Customer Button (Access via internal button if needed, or just keep simple for now)
-        self.action_panel.btn_cust_select.setContextMenuPolicy(
-            Qt.ContextMenuPolicy.CustomContextMenu
-        )
-        self.action_panel.btn_cust_select.customContextMenuRequested.connect(
-            self.show_customer_menu
-        )
+        # Context Menu for Customer Button (Access via internal button if needed,
+        # or just keep simple for now)
+        self.action_panel.btn_cust_select.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.action_panel.btn_cust_select.customContextMenuRequested.connect(self.show_customer_menu)
         self.btn_cust = self.action_panel.btn_cust_select  # Alias for existing code
 
         # Add panels to splitter
@@ -290,9 +268,7 @@ class SalesView(QWidget):
         self.shortcut_f7.activated.connect(self.recall_bill)
 
         self.shortcut_f4 = QShortcut(QKeySequence("F4"), self)
-        self.shortcut_f4.activated.connect(
-            self.change_line_quantity
-        )  # Changed to Qty as per grid
+        self.shortcut_f4.activated.connect(self.change_line_quantity)  # Changed to Qty as per grid
 
         self.shortcut_f3 = QShortcut(QKeySequence("F3"), self)
         self.shortcut_f3.activated.connect(self.open_advanced_search)
@@ -315,9 +291,7 @@ class SalesView(QWidget):
         # Position menu at right edge
         menu_width = self.side_menu.width()
         if self.side_menu.isVisible():
-            self.side_menu.setGeometry(
-                self.width() - menu_width, 0, menu_width, self.height()
-            )
+            self.side_menu.setGeometry(self.width() - menu_width, 0, menu_width, self.height())
         else:
             self.side_menu.setGeometry(self.width(), 0, menu_width, self.height())
 
@@ -330,12 +304,8 @@ class SalesView(QWidget):
             end_pos = QPoint(self.width(), 0)
             self.menu_animation.setStartValue(start_pos)
             self.menu_animation.setEndValue(end_pos)
-            self.menu_animation.finished.connect(
-                lambda: self.side_menu.setVisible(False)
-            )
-            self.menu_animation.finished.connect(
-                self.menu_animation.finished.disconnect
-            )  # Disconnect after run
+            self.menu_animation.finished.connect(lambda: self.side_menu.setVisible(False))
+            self.menu_animation.finished.connect(self.menu_animation.finished.disconnect)  # Disconnect after run
             self.menu_animation.start()
         else:
             # Slide In (Show)
@@ -343,9 +313,7 @@ class SalesView(QWidget):
             self.side_menu.raise_()
             start_pos = QPoint(self.width(), 0)
             end_pos = QPoint(self.width() - menu_width, 0)
-            self.side_menu.setGeometry(
-                self.width(), 0, menu_width, self.height()
-            )  # Ensure start pos
+            self.side_menu.setGeometry(self.width(), 0, menu_width, self.height())  # Ensure start pos
 
             self.menu_animation.setStartValue(start_pos)
             self.menu_animation.setEndValue(end_pos)
@@ -354,10 +322,7 @@ class SalesView(QWidget):
     def eventFilter(self, source, event):
         if event.type() == event.Type.MouseButtonPress and self.side_menu.isVisible():
             # Check if click is outside menu
-            if (
-                not self.side_menu.geometry().contains(event.pos())
-                and source is not self.menu_button
-            ):
+            if not self.side_menu.geometry().contains(event.pos()) and source is not self.menu_button:
                 self.toggle_side_menu()
                 return True
         return super().eventFilter(source, event)
@@ -393,9 +358,7 @@ class SalesView(QWidget):
                 return
 
         # Use product_service with current search mode
-        products = self.product_service.search_products(
-            query, mode=self.current_search_mode
-        )
+        products = self.product_service.search_products(query, mode=self.current_search_mode)
 
         if len(products) == 1:
             self.cart_service.add_item(products[0])
@@ -425,25 +388,14 @@ class SalesView(QWidget):
             name_item = QTableWidgetItem(name)
 
             # Price Display (Strikethrough if discounted/overridden)
-            if (
-                item.get("original_price")
-                and item["unit_price"] < item["original_price"]
-            ):
+            if item.get("original_price") and item["unit_price"] < item["original_price"]:
                 lbl_price = QLabel()
-                lbl_price.setText(
-                    "<s>{:.2f}</s> <b>{:.2f}</b>".format(
-                        item["original_price"], item["unit_price"]
-                    )
-                )
-                lbl_price.setAlignment(
-                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-                )
+                lbl_price.setText("<s>{:.2f}</s> <b>{:.2f}</b>".format(item["original_price"], item["unit_price"]))
+                lbl_price.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 lbl_price.setStyleSheet("background-color: transparent; color: white;")
                 self.cart_table.setCellWidget(row, 1, lbl_price)
             else:
-                self.cart_table.setItem(
-                    row, 1, QTableWidgetItem(f"{item['unit_price']:.2f}")  # noqa: E231
-                )
+                self.cart_table.setItem(row, 1, QTableWidgetItem(f"{item['unit_price']:.2f}"))  # noqa: E231
 
             # Highlight if discounted
             if item.get("discount_type") != "NONE" or item.get("is_manual_price"):
@@ -454,16 +406,10 @@ class SalesView(QWidget):
             self.cart_table.setItem(row, 0, name_item)
             # If we didn't set a cell widget for price, we need to set the item
             if not self.cart_table.cellWidget(row, 1):
-                self.cart_table.setItem(
-                    row, 1, QTableWidgetItem(f"{item['unit_price']:.2f}")  # noqa: E231
-                )
+                self.cart_table.setItem(row, 1, QTableWidgetItem(f"{item['unit_price']:.2f}"))  # noqa: E231
 
-            self.cart_table.setItem(
-                row, 2, QTableWidgetItem(f"{item['qty']:.3f}")  # noqa: E231
-            )
-            self.cart_table.setItem(
-                row, 3, QTableWidgetItem(f"{item['total']:.2f}")  # noqa: E231
-            )
+            self.cart_table.setItem(row, 2, QTableWidgetItem(f"{item['qty']:.3f}"))  # noqa: E231
+            self.cart_table.setItem(row, 3, QTableWidgetItem(f"{item['total']:.2f}"))  # noqa: E231
 
         totals = self.cart_service.get_totals()
         self.total_label.setText(f"{totals['final_total']:.2f}")  # noqa: E231
@@ -478,9 +424,7 @@ class SalesView(QWidget):
 
     def set_customer(self, customer):
         self.customer = customer
-        self.action_panel.set_customer_info(
-            self.customer.name, self.customer.phone, self.customer.loyalty_points
-        )
+        self.action_panel.set_customer_info(self.customer.name, self.customer.phone, self.customer.loyalty_points)
 
         # Trigger price recalculation if needed (Phase 2)
         # self.cart_service.recalculate_prices(customer.price_list_id)
@@ -523,13 +467,9 @@ class SalesView(QWidget):
             customer_id = self.customer.id if self.customer else None
 
             try:
-                success = TransactionService.process_sale(
-                    self.cart_service, payments, customer_id
-                )
+                success = TransactionService.process_sale(self.cart_service, payments, customer_id)
                 if success:
-                    QMessageBox.information(
-                        self, "Success", "Sale processed successfully!"
-                    )
+                    QMessageBox.information(self, "Success", "Sale processed successfully!")
                     self.cart_service.clear()
                     self.update_cart_display()
                     self.barcode_input.setFocus()
@@ -546,9 +486,7 @@ class SalesView(QWidget):
 
                         db = Database()
                         with db.get_session() as session:
-                            last_sale = (
-                                session.query(Sale).order_by(Sale.id.desc()).first()
-                            )
+                            last_sale = session.query(Sale).order_by(Sale.id.desc()).first()
                             if last_sale:
                                 dlg = ReceiptOptionsDialog(last_sale, self)
                                 dlg.exec()
@@ -575,11 +513,7 @@ class SalesView(QWidget):
 
         db = Database()
         with db.get_session() as session:
-            suspended = (
-                session.query(SuspendedTransaction)
-                .order_by(SuspendedTransaction.timestamp.desc())
-                .first()
-            )
+            suspended = session.query(SuspendedTransaction).order_by(SuspendedTransaction.timestamp.desc()).first()
             if not suspended:
                 QMessageBox.information(self, "Empty", "No held bills found.")
                 return
@@ -692,9 +626,7 @@ class SalesView(QWidget):
         """Add note to selected cart line."""
         row = self.cart_table.currentRow()
         if row >= 0:
-            note, ok = QInputDialog.getText(
-                self, "Line Note", "Enter note for this item:"
-            )
+            note, ok = QInputDialog.getText(self, "Line Note", "Enter note for this item:")
             if ok and note:
                 self.cart_service.items[row]["note"] = note
                 self.update_cart_display()
@@ -715,9 +647,7 @@ class SalesView(QWidget):
             )
             if ok:
                 self.cart_service.items[row]["qty"] = Decimal(str(qty))
-                self.cart_service.items[row]["total"] = (
-                    Decimal(str(qty)) * self.cart_service.items[row]["unit_price"]
-                )
+                self.cart_service.items[row]["total"] = Decimal(str(qty)) * self.cart_service.items[row]["unit_price"]
                 self.update_cart_display()
 
     def apply_line_discount(self):
@@ -807,9 +737,7 @@ class SalesView(QWidget):
             self.update_cart_display()
             self.order_bar.refresh_tabs()
         else:
-            QMessageBox.warning(
-                self, "Error", "Could not recall order. It may have been taken."
-            )
+            QMessageBox.warning(self, "Error", "Could not recall order. It may have been taken.")
             self.order_bar.refresh_tabs()
 
     def create_new_order(self):

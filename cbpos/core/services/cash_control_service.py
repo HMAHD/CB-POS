@@ -12,9 +12,7 @@ class CashControlService:
         db = Database()
         with db.get_session() as session:
             # Check if user already has an open shift
-            existing = (
-                session.query(Shift).filter_by(user_id=user_id, status="OPEN").first()
-            )
+            existing = session.query(Shift).filter_by(user_id=user_id, status="OPEN").first()
             if existing:
                 return None  # Shift already open
 
@@ -34,9 +32,7 @@ class CashControlService:
     def end_shift(user_id: int, end_cash: Decimal) -> Optional[Shift]:
         db = Database()
         with db.get_session() as session:
-            shift = (
-                session.query(Shift).filter_by(user_id=user_id, status="OPEN").first()
-            )
+            shift = session.query(Shift).filter_by(user_id=user_id, status="OPEN").first()
             if not shift:
                 return None
 
@@ -52,9 +48,7 @@ class CashControlService:
     def get_current_shift(user_id: int) -> Optional[Shift]:
         db = Database()
         with db.get_session() as session:
-            shift = (
-                session.query(Shift).filter_by(user_id=user_id, status="OPEN").first()
-            )
+            shift = session.query(Shift).filter_by(user_id=user_id, status="OPEN").first()
             if shift:
                 session.expunge(shift)
             return shift
@@ -68,14 +62,10 @@ class CashControlService:
         return CashControlService._record_movement(user_id, "OUT", amount, reason)
 
     @staticmethod
-    def _record_movement(
-        user_id: int, type_: str, amount: Decimal, reason: str
-    ) -> bool:
+    def _record_movement(user_id: int, type_: str, amount: Decimal, reason: str) -> bool:
         db = Database()
         with db.get_session() as session:
-            shift = (
-                session.query(Shift).filter_by(user_id=user_id, status="OPEN").first()
-            )
+            shift = session.query(Shift).filter_by(user_id=user_id, status="OPEN").first()
 
             movement = CashMovement(
                 shift_id=shift.id if shift else None,

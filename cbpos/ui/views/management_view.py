@@ -18,11 +18,11 @@ from cbpos.ui.views.dashboard_view import DashboardView
 from cbpos.ui.views.inventory_view import InventoryView
 from cbpos.ui.views.purchase_view import PurchaseView
 from cbpos.ui.views.customer_view import CustomerView
-from cbpos.ui.views.reports_view import ReportsView
-from cbpos.ui.views.history_view import HistoryView
+from cbpos.ui.views.reports.report_viewer import ReportViewer
 from cbpos.ui.views.user_view import UserView
 from cbpos.ui.views.pricelist_view import PriceListView
 from cbpos.ui.views.promotion_view import PromotionView
+from cbpos.ui.views.history_view import HistoryView
 
 
 class ManagementView(QWidget):
@@ -42,9 +42,7 @@ class ManagementView(QWidget):
         # 1. Sidebar
         self.sidebar = QFrame()
         self.sidebar.setFixedWidth(250)
-        self.sidebar.setStyleSheet(
-            "background-color: #001830; border-right: 1px solid #003366;"
-        )
+        self.sidebar.setStyleSheet("background-color: #001830; border-right: 1px solid #003366;")
         self.sidebar_layout = QVBoxLayout(self.sidebar)
         self.sidebar_layout.setContentsMargins(0, 0, 0, 0)
         self.sidebar_layout.setSpacing(10)
@@ -62,16 +60,10 @@ class ManagementView(QWidget):
         logo_pixmap = QPixmap(logo_path)
 
         if not logo_pixmap.isNull():
-            self.lbl_logo.setPixmap(
-                logo_pixmap.scaledToHeight(
-                    40, Qt.TransformationMode.SmoothTransformation
-                )
-            )
+            self.lbl_logo.setPixmap(logo_pixmap.scaledToHeight(40, Qt.TransformationMode.SmoothTransformation))
         else:
             self.lbl_logo.setText("CB POS")
-            self.lbl_logo.setStyleSheet(
-                "color: white; font-weight: bold; font-size: 18px;"
-            )
+            self.lbl_logo.setStyleSheet("color: white; font-weight: bold; font-size: 18px;")
 
         self.btn_toggle = QToolButton()
         self.btn_toggle.setIcon(Icons.get("fa5s.bars", "white"))
@@ -110,9 +102,7 @@ class ManagementView(QWidget):
         self.btn_pos = SidebarButton("   POS / Sales", "fa5s.cash-register")
         self.btn_pos.setObjectName("BtnPos")  # Special Styling
         self.btn_pos.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.btn_pos.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-        )
+        self.btn_pos.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.btn_pos.clicked.connect(self.request_pos_view.emit)
         self.sidebar_layout.addWidget(self.btn_pos)
 
@@ -125,9 +115,7 @@ class ManagementView(QWidget):
         self.btn_logout = SidebarButton("   Logout", Icons.LOGOUT)
         self.btn_logout.setObjectName("BtnLogout")  # Special Styling
         self.btn_logout.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.btn_logout.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-        )
+        self.btn_logout.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.btn_logout.clicked.connect(self.logout_requested.emit)
         self.sidebar_layout.addWidget(self.btn_logout)
 
@@ -206,7 +194,7 @@ class ManagementView(QWidget):
         self.stack.addWidget(self.customer_view)
 
         # 4. Reports
-        self.reports_view = ReportsView()
+        self.reports_view = ReportViewer()
         self.stack.addWidget(self.reports_view)
 
         # 5. History
@@ -247,11 +235,7 @@ class ManagementView(QWidget):
             if badge_path.exists():
                 pix = QPixmap(str(badge_path))
                 if not pix.isNull():
-                    self.lbl_badge.setPixmap(
-                        pix.scaledToHeight(
-                            40, Qt.TransformationMode.SmoothTransformation
-                        )
-                    )
+                    self.lbl_badge.setPixmap(pix.scaledToHeight(40, Qt.TransformationMode.SmoothTransformation))
                     self.lbl_badge.setVisible(not self.is_collapsed)
                     self.lbl_badge.setText("")  # Clear text
                 else:
@@ -314,7 +298,8 @@ class ManagementView(QWidget):
     def update_sidebar_styles(self):
         """
         Dynamically update stylesheets based on collapsed state.
-        This is necessary because QSS alone cannot handle the complex padding/alignment changes
+        This is necessary because QSS alone cannot handle the complex
+        padding/alignment changes
         required for the collapsed 'icon-only' mode vs the expanded 'full-width' mode.
         """
         if self.is_collapsed:

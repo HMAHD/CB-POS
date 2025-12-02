@@ -31,22 +31,14 @@ def upgrade() -> None:
     # op.add_column('customers', sa.Column('company_name', sa.String(length=100), nullable=True))
     op.add_column(
         "customers",
-        sa.Column(
-            "is_company", sa.Boolean(), server_default=sa.text("0"), nullable=False
-        ),
+        sa.Column("is_company", sa.Boolean(), server_default=sa.text("0"), nullable=False),
     )
-    op.add_column(
-        "customers", sa.Column("address", sa.String(length=200), nullable=True)
-    )
+    op.add_column("customers", sa.Column("address", sa.String(length=200), nullable=True))
     op.add_column(
         "customers",
-        sa.Column(
-            "payment_terms", sa.Integer(), server_default=sa.text("0"), nullable=False
-        ),
+        sa.Column("payment_terms", sa.Integer(), server_default=sa.text("0"), nullable=False),
     )
-    op.add_column(
-        "customers", sa.Column("loyalty_card_code", sa.String(length=50), nullable=True)
-    )
+    op.add_column("customers", sa.Column("loyalty_card_code", sa.String(length=50), nullable=True))
     # op.add_column('customers', sa.Column('price_list_id', sa.Integer(), nullable=True))
 
     with op.batch_alter_table("customers", schema=None) as batch_op:

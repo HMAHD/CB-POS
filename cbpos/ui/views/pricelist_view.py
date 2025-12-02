@@ -63,9 +63,7 @@ class PriceListView(QWidget):
 
         # Header Info
         self.lbl_list_name = QLabel("Select a Price List")
-        self.lbl_list_name.setStyleSheet(
-            "font-weight: bold; font-size: 18px; color: #00BCEB;"
-        )
+        self.lbl_list_name.setStyleSheet("font-weight: bold; font-size: 18px; color: #00BCEB;")
         right_layout.addWidget(self.lbl_list_name)
 
         self.lbl_dates = QLabel("")
@@ -74,12 +72,8 @@ class PriceListView(QWidget):
         # Grid
         self.table = QTableWidget()
         self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(
-            ["ID", "Product", "Base Price", "List Price"]
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+        self.table.setHorizontalHeaderLabels(["ID", "Product", "Base Price", "List Price"])
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.doubleClicked.connect(self.edit_item_price)
@@ -102,16 +96,8 @@ class PriceListView(QWidget):
         self.current_list = item.data(Qt.ItemDataRole.UserRole)
         self.lbl_list_name.setText(self.current_list.name)
 
-        start = (
-            self.current_list.start_date.strftime("%Y-%m-%d")
-            if self.current_list.start_date
-            else "N/A"
-        )
-        end = (
-            self.current_list.end_date.strftime("%Y-%m-%d")
-            if self.current_list.end_date
-            else "N/A"
-        )
+        start = self.current_list.start_date.strftime("%Y-%m-%d") if self.current_list.start_date else "N/A"
+        end = self.current_list.end_date.strftime("%Y-%m-%d") if self.current_list.end_date else "N/A"
         self.lbl_dates.setText(f"Valid: {start} to {end}")
 
         self.load_items()
@@ -136,9 +122,7 @@ class PriceListView(QWidget):
             self.table.setItem(row, 2, QTableWidgetItem("{:.2f}".format(p.price)))
 
             list_price = price_map.get(p.id)
-            price_display = (
-                "{:.2f}".format(list_price) if list_price is not None else "-"
-            )
+            price_display = "{:.2f}".format(list_price) if list_price is not None else "-"
 
             price_item = QTableWidgetItem(price_display)
             if list_price is not None:
@@ -179,9 +163,7 @@ class PriceListView(QWidget):
 
         if ok:
             try:
-                self.price_list_service.set_item_price(
-                    self.current_list.id, product_id, Decimal(str(new_price))
-                )
+                self.price_list_service.set_item_price(self.current_list.id, product_id, Decimal(str(new_price)))
                 self.load_items()
             except Exception as e:
                 QMessageBox.critical(self, "Error", str(e))
@@ -212,10 +194,7 @@ class PriceListDialog(QDialog):
 
         layout.addLayout(form)
 
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Save
-            | QDialogButtonBox.StandardButton.Cancel
-        )
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)

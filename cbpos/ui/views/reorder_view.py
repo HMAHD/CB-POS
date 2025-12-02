@@ -56,9 +56,7 @@ class ReorderView(QWidget):
                 "Supplier",
             ]
         )
-        self.table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setStyleSheet(
@@ -91,18 +89,14 @@ class ReorderView(QWidget):
         btn_layout = QHBoxLayout()
 
         btn_refresh = QPushButton("Refresh")
-        btn_refresh.setStyleSheet(
-            "background-color: #003366; color: white; padding: 10px; font-weight: bold;"
-        )
+        btn_refresh.setStyleSheet("background-color: #003366; color: white; padding: 10px; font-weight: bold;")
         btn_refresh.clicked.connect(self.load_reorder_items)
         btn_layout.addWidget(btn_refresh)
 
         btn_layout.addStretch()
 
         btn_create_po = QPushButton("Create Purchase Order")
-        btn_create_po.setStyleSheet(
-            "background-color: #39FF14; color: black; padding: 10px; font-weight: bold;"
-        )
+        btn_create_po.setStyleSheet("background-color: #39FF14; color: black; padding: 10px; font-weight: bold;")
         btn_create_po.clicked.connect(self.create_purchase_order)
         btn_layout.addWidget(btn_create_po)
 
@@ -137,33 +131,23 @@ class ReorderView(QWidget):
 
                 # Current Stock
                 stock_item = QTableWidgetItem("{0:.3f}".format(product.stock_qty))
-                stock_item.setTextAlignment(
-                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-                )
+                stock_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 if product.stock_qty <= 0:
                     stock_item.setForeground(QColor("#FF4136"))
                 self.table.setItem(row, 2, stock_item)
 
                 # Reorder Point
                 reorder_item = QTableWidgetItem("{0:.3f}".format(product.reorder_point))
-                reorder_item.setTextAlignment(
-                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-                )
+                reorder_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.table.setItem(row, 3, reorder_item)
 
                 # Preferred Qty
-                preferred_item = QTableWidgetItem(
-                    "{0:.3f}".format(product.preferred_qty)
-                )
-                preferred_item.setTextAlignment(
-                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-                )
+                preferred_item = QTableWidgetItem("{0:.3f}".format(product.preferred_qty))
+                preferred_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.table.setItem(row, 4, preferred_item)
 
                 # Supplier (first one if exists)
-                supplier_name = (
-                    product.suppliers[0].name if product.suppliers else "No Supplier"
-                )
+                supplier_name = product.suppliers[0].name if product.suppliers else "No Supplier"
                 self.table.setItem(row, 5, QTableWidgetItem(supplier_name))
 
                 # Store product ID in row data
@@ -201,9 +185,7 @@ class ReorderView(QWidget):
                             "product_name": product.name_en,
                             "current_stock": product.stock_qty,
                             "order_qty": order_qty,
-                            "supplier": (
-                                product.suppliers[0].name if product.suppliers else ""
-                            ),
+                            "supplier": (product.suppliers[0].name if product.suppliers else ""),
                         }
                     )
 
@@ -212,7 +194,5 @@ class ReorderView(QWidget):
         QMessageBox.information(
             self,
             "Purchase Order",
-            "Created purchase order with {0} items.\nNavigating to Purchase view...".format(
-                len(po_items)
-            ),
+            "Created purchase order with {0} items.\n" "Navigating to Purchase view...".format(len(po_items)),
         )

@@ -76,25 +76,19 @@ class CategoryTreeDialog(QDialog):
         btn_layout = QHBoxLayout()
 
         btn_add_root = QPushButton("Add Root Category")
-        btn_add_root.setStyleSheet(
-            "background-color: #39FF14; color: black; padding: 8px; font-weight: bold;"
-        )
+        btn_add_root.setStyleSheet("background-color: #39FF14; color: black; padding: 8px; font-weight: bold;")
         btn_add_root.clicked.connect(self.add_root_category)
         btn_layout.addWidget(btn_add_root)
 
         btn_layout.addStretch()
 
         btn_refresh = QPushButton("Refresh")
-        btn_refresh.setStyleSheet(
-            "background-color: #003366; color: white; padding: 8px; font-weight: bold;"
-        )
+        btn_refresh.setStyleSheet("background-color: #003366; color: white; padding: 8px; font-weight: bold;")
         btn_refresh.clicked.connect(self.load_categories)
         btn_layout.addWidget(btn_refresh)
 
         btn_close = QPushButton("Close")
-        btn_close.setStyleSheet(
-            "background-color: #003366; color: white; padding: 8px; font-weight: bold;"
-        )
+        btn_close.setStyleSheet("background-color: #003366; color: white; padding: 8px; font-weight: bold;")
         btn_close.clicked.connect(self.close)
         btn_layout.addWidget(btn_close)
 
@@ -199,9 +193,7 @@ class CategoryTreeDialog(QDialog):
         category_id = item.data(0, Qt.ItemDataRole.UserRole)
         current_name = item.text(0)
 
-        name, ok = QInputDialog.getText(
-            self, "Edit Category", "Category Name:", text=current_name
-        )
+        name, ok = QInputDialog.getText(self, "Edit Category", "Category Name:", text=current_name)
         if ok and name:
             with self.db.get_session() as session:
                 category = session.get(Category, category_id)

@@ -10,9 +10,7 @@ def update_translations():
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     # Target directory for translations
-    translations_dir = os.path.join(
-        base_dir, "cbpos", "ui", "resources", "translations"
-    )
+    translations_dir = os.path.join(base_dir, "cbpos", "ui", "resources", "translations")
 
     if not os.path.exists(translations_dir):
         os.makedirs(translations_dir)
@@ -50,9 +48,7 @@ def update_translations():
         except subprocess.CalledProcessError as e:
             print(f"Error updating {os.path.basename(ts_file)}: {e}")
         except FileNotFoundError:
-            print(
-                "Error: pylupdate6 not found. Please install PyQt6 tools (pip install PyQt6)."
-            )
+            print("Error: pylupdate6 not found. Please install PyQt6 tools " "(pip install PyQt6).")
             return
 
 

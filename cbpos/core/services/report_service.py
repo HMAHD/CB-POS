@@ -17,20 +17,14 @@ class ReportService:
 
             # Total Sales
             total_sales = (
-                session.scalar(
-                    select(func.sum(Sale.total_amount)).where(
-                        Sale.date >= start_dt, Sale.date <= end_dt
-                    )
-                )
+                session.scalar(select(func.sum(Sale.total_amount)).where(Sale.date >= start_dt, Sale.date <= end_dt))
                 or 0
             )
 
             # Total Tax
             total_tax = (
                 session.scalar(
-                    select(func.sum(Sale.tax_vat + Sale.tax_sscl)).where(
-                        Sale.date >= start_dt, Sale.date <= end_dt
-                    )
+                    select(func.sum(Sale.tax_vat + Sale.tax_sscl)).where(Sale.date >= start_dt, Sale.date <= end_dt)
                 )
                 or 0
             )
@@ -47,9 +41,7 @@ class ReportService:
                 "date": report_date,
                 "total_sales": total_sales,
                 "total_tax": total_tax,
-                "payment_breakdown": {
-                    method: amount for method, amount in payment_breakdown
-                },
+                "payment_breakdown": {method: amount for method, amount in payment_breakdown},
             }
 
     def get_top_products(self, limit: int = 10) -> List[Dict[str, Any]]:
@@ -108,15 +100,11 @@ class ReportService:
 
             # Calculate total stock value
             total_cost = session.scalar(
-                select(func.sum(Product.cost * Product.stock_qty)).where(
-                    Product.is_active == True  # noqa: E712
-                )
+                select(func.sum(Product.cost * Product.stock_qty)).where(Product.is_active == True)  # noqa: E712
             ) or Decimal("0.00")
 
             total_retail = session.scalar(
-                select(func.sum(Product.price * Product.stock_qty)).where(
-                    Product.is_active == True  # noqa: E712
-                )
+                select(func.sum(Product.price * Product.stock_qty)).where(Product.is_active == True)  # noqa: E712
             ) or Decimal("0.00")
 
             potential_profit = total_retail - total_cost
@@ -141,8 +129,7 @@ class ReportService:
                     "cost_value": cost_val or Decimal("0.00"),
                     "retail_value": retail_val or Decimal("0.00"),
                     "product_count": count,
-                    "profit": (retail_val or Decimal("0.00"))
-                    - (cost_val or Decimal("0.00")),
+                    "profit": (retail_val or Decimal("0.00")) - (cost_val or Decimal("0.00")),
                 }
                 for name, cost_val, retail_val, count in category_results
             ]

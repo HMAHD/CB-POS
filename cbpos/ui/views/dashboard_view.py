@@ -28,16 +28,12 @@ class DashboardView(QWidget):
         cards_layout.setSpacing(20)
 
         # Card 1: Revenue
-        self.card_revenue = InfoCard(
-            "Total Revenue", "Rs. 45,200", "fa5s.rupee-sign", "+12% vs yesterday", True
-        )
+        self.card_revenue = InfoCard("Total Revenue", "Rs. 45,200", "fa5s.rupee-sign", "+12% vs yesterday", True)
         self.style_card(self.card_revenue)
         cards_layout.addWidget(self.card_revenue, 0, 0)
 
         # Card 2: Transactions
-        self.card_transactions = InfoCard(
-            "Transactions", "128", "fa5s.receipt", "+5% vs yesterday", True
-        )
+        self.card_transactions = InfoCard("Transactions", "128", "fa5s.receipt", "+5% vs yesterday", True)
         self.style_card(self.card_transactions)
         cards_layout.addWidget(self.card_transactions, 0, 1)
 
@@ -53,9 +49,7 @@ class DashboardView(QWidget):
         cards_layout.addWidget(self.card_low_stock, 0, 2)
 
         # Card 4: Active Staff
-        self.card_staff = InfoCard(
-            "Active Staff", "4", "fa5s.users", "All systems normal", True
-        )
+        self.card_staff = InfoCard("Active Staff", "4", "fa5s.users", "All systems normal", True)
         self.style_card(self.card_staff)
         cards_layout.addWidget(self.card_staff, 0, 3)
 
@@ -83,17 +77,13 @@ class DashboardView(QWidget):
 
         # 3. Bottom Section: Recent Activity
         lbl_activity = QLabel("Recent System Activity")
-        lbl_activity.setStyleSheet(
-            "color: #FFFFFF; font-size: 14px; font-weight: bold; margin-top: 10px;"
-        )
+        lbl_activity.setStyleSheet("color: #FFFFFF; font-size: 14px; font-weight: bold; margin-top: 10px;")
         layout.addWidget(lbl_activity)
 
         self.log_table = QTableWidget()
         self.log_table.setColumnCount(3)
         self.log_table.setHorizontalHeaderLabels(["Time", "User", "Action"])
-        self.log_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+        self.log_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.log_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.log_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.log_table.verticalHeader().setVisible(False)
@@ -132,7 +122,9 @@ class DashboardView(QWidget):
         card.setStyleSheet(
             """
             QWidget {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #003366, stop:1 #001F3F);
+                background: qlineargradient(
+                    x1:0, y1:0, x2:1, y2:1, stop:0 #003366, stop:1 #001F3F
+                );
                 border-radius: 8px;
                 border: 1px solid #00509E;
             }
@@ -144,16 +136,25 @@ class DashboardView(QWidget):
         )
 
     def refresh_data(self):
+        from cbpos.core.services.dashboard_service import DashboardService
+
+        # Fetch KPIs
+        kpis = DashboardService.get_kpis()
+
+        # Update Cards
+        self.card_revenue.set_value("Rs. {:,.2f}".format(kpis["total_sales"]))
+        self.card_transactions.set_value(str(kpis["txn_count"]))
+        self.card_low_stock.set_value(str(kpis["low_stock_count"]))
+        self.card_staff.set_value(str(kpis["active_staff"]))
+
+        # Fetch Hourly Sales (For Chart)
+        hourly_sales = DashboardService.get_hourly_sales()
+        print(f"[DASHBOARD] Hourly Sales: {hourly_sales}")
+
         # Refresh logs
         logs = UserService.get_recent_activity(limit=10)
         self.log_table.setRowCount(len(logs))
         for row, log in enumerate(logs):
-            self.log_table.setItem(
-                row, 0, QTableWidgetItem(log.timestamp.strftime("%H:%M:%S"))
-            )
-            self.log_table.setItem(
-                row, 1, QTableWidgetItem(log.user.username if log.user else "Unknown")
-            )
-            self.log_table.setItem(
-                row, 2, QTableWidgetItem(f"{log.event_type}: {log.details}")
-            )
+            self.log_table.setItem(row, 0, QTableWidgetItem(log.timestamp.strftime("%H:%M:%S")))
+            self.log_table.setItem(row, 1, QTableWidgetItem(log.user.username if log.user else "Unknown"))
+            self.log_table.setItem(row, 2, QTableWidgetItem(f"{log.event_type}: {log.details}"))

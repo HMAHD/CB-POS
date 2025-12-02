@@ -56,10 +56,7 @@ class InventoryModel(QAbstractTableModel):
         return None
 
     def headerData(self, section, orientation, role):
-        if (
-            role == Qt.ItemDataRole.DisplayRole
-            and orientation == Qt.Orientation.Horizontal
-        ):
+        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             return self.headers[section]
         return None
 
@@ -109,9 +106,7 @@ class InventoryView(QWidget):
         self.table.setModel(self.model)
         self.table.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         self.table.setAlternatingRowColors(True)
-        self.table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.doubleClicked.connect(self.open_edit_dialog)
 
         # Context Menu
@@ -130,11 +125,7 @@ class InventoryView(QWidget):
             return
 
         text = text.lower()
-        filtered = [
-            p
-            for p in self.all_products
-            if text in p.barcode.lower() or text in p.name_en.lower()
-        ]
+        filtered = [p for p in self.all_products if text in p.barcode.lower() or text in p.name_en.lower()]
         self.model.update_data(filtered)
 
     def open_add_dialog(self):
@@ -174,15 +165,11 @@ class InventoryView(QWidget):
             dialog.exec()
 
     def import_csv(self):
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "Import CSV", "", "CSV Files (*.csv)"
-        )
+        file_path, _ = QFileDialog.getOpenFileName(self, "Import CSV", "", "CSV Files (*.csv)")
         if file_path:
             results = self.import_service.import_products_from_csv(file_path)
             message = (
-                f"Success: {results['success']}\n"
-                f"Failed: {results['failed']}\n"
-                f"Skipped: {results['skipped']}"
+                f"Success: {results['success']}\n" f"Failed: {results['failed']}\n" f"Skipped: {results['skipped']}"
             )
             QMessageBox.information(self, "Import Results", message)
             self.load_data()

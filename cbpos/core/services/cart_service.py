@@ -97,9 +97,7 @@ class CartService:
             self._recalculate_line(item)
 
             # TODO: Log to AuditLog (Infrastructure required)
-            print(
-                f"AUDIT: Price Override by {user.username} - Item {item['product'].name_en} to {new_price}"
-            )
+            print(f"AUDIT: Price Override by {user.username} - " f"Item {item['product'].name_en} to {new_price}")
 
     def _recalculate_line(self, item: Dict[str, Any]):
         """Recalculate the total for a single line item."""

@@ -12,7 +12,13 @@ from cbpos.ui.resources.icons import Icons
 
 class InfoCard(QFrame):
     def __init__(
-        self, title, value, icon_name, trend_text=None, trend_positive=True, parent=None
+        self,
+        title,
+        value,
+        icon_name,
+        trend_text=None,
+        trend_positive=True,
+        parent=None,
     ):
         super().__init__(parent)
         self.setFixedSize(240, 140)
@@ -40,32 +46,46 @@ class InfoCard(QFrame):
 
         # Icon
         icon_label = QLabel()
-        icon_label.setPixmap(
-            Icons.get(icon_name, "rgba(255, 255, 255, 0.3)").pixmap(32, 32)
-        )
+        icon = Icons.get(icon_name, "rgba(255, 255, 255, 0.3)")
+        icon_label.setPixmap(icon.pixmap(32, 32))
         top_layout.addWidget(icon_label)
 
         top_layout.addStretch()
 
         # Title
         title_label = QLabel(title)
-        title_label.setStyleSheet("color: #AAAAAA; font-size: 12px; font-weight: bold;")
+        style = "color: #AAAAAA; font-size: 12px; font-weight: bold;"
+        title_label.setStyleSheet(style)
         top_layout.addWidget(title_label)
 
         layout.addLayout(top_layout)
 
         # Value (Center)
-        value_label = QLabel(value)
-        value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        value_label.setStyleSheet("color: #FFFFFF; font-size: 28px; font-weight: bold;")
-        layout.addWidget(value_label)
+        self.value_label = QLabel(value)
+        self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.value_label.setStyleSheet("color: #FFFFFF; font-size: 28px; font-weight: bold;")
+        layout.addWidget(self.value_label)
 
         # Trend (Bottom)
+        self.trend_label = QLabel(trend_text if trend_text else "")
+        self.trend_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+
         if trend_text:
-            trend_label = QLabel(trend_text)
-            trend_label.setAlignment(Qt.AlignmentFlag.AlignRight)
             color = "#39FF14" if trend_positive else "#FF4136"
-            trend_label.setStyleSheet("color: {}; font-size: 11px;".format(color))
-            layout.addWidget(trend_label)
+            style = "color: {}; font-size: 11px;".format(color)
+            self.trend_label.setStyleSheet(style)
         else:
-            layout.addStretch()
+            self.trend_label.setStyleSheet("color: #AAAAAA; font-size: 11px;")
+
+        layout.addWidget(self.trend_label)
+
+    def set_value(self, text: str):
+        """Update the main value label."""
+        self.value_label.setText(text)
+
+    def set_trend(self, text: str, positive: bool = True):
+        """Update the trend label and color."""
+        self.trend_label.setText(text)
+        color = "#39FF14" if positive else "#FF4136"
+        style = "color: {}; font-size: 11px;".format(color)
+        self.trend_label.setStyleSheet(style)

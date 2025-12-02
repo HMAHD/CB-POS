@@ -73,18 +73,10 @@ class HistoryView(QWidget):
         self.transaction_table.setHorizontalHeaderLabels(
             ["Date/Time", "Receipt#", "Cashier", "Total", "Method", "Status"]
         )
-        self.transaction_table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.ResizeToContents
-        )
-        self.transaction_table.horizontalHeader().setSectionResizeMode(
-            1, QHeaderView.ResizeMode.Stretch
-        )
-        self.transaction_table.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
-        )
-        self.transaction_table.setSelectionMode(
-            QTableWidget.SelectionMode.SingleSelection
-        )
+        self.transaction_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self.transaction_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.transaction_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.transaction_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.transaction_table.itemSelectionChanged.connect(self.on_selection_changed)
         self.transaction_table.doubleClicked.connect(self.on_double_click)
         splitter.addWidget(self.transaction_table)
@@ -104,12 +96,8 @@ class HistoryView(QWidget):
         details_layout.addWidget(QLabel("<b>Line Items:</b>"))
         self.items_table = QTableWidget()
         self.items_table.setColumnCount(4)
-        self.items_table.setHorizontalHeaderLabels(
-            ["Product", "Qty", "Unit Price", "Subtotal"]
-        )
-        self.items_table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.Stretch
-        )
+        self.items_table.setHorizontalHeaderLabels(["Product", "Qty", "Unit Price", "Subtotal"])
+        self.items_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.items_table.verticalHeader().setVisible(False)
         details_layout.addWidget(self.items_table)
 
@@ -154,8 +142,7 @@ class HistoryView(QWidget):
 
             if search_term:
                 query = query.filter(
-                    (Sale.document_number.like(f"%{search_term}%"))
-                    | (Sale.customer.has(name=search_term))
+                    (Sale.document_number.like(f"%{search_term}%")) | (Sale.customer.has(name=search_term))
                 )
 
             sales = (
@@ -187,9 +174,7 @@ class HistoryView(QWidget):
             self.transaction_table.setItem(row, 0, dt_item)
 
             # Receipt#
-            self.transaction_table.setItem(
-                row, 1, QTableWidgetItem(sale.document_number)
-            )
+            self.transaction_table.setItem(row, 1, QTableWidgetItem(sale.document_number))
 
             # Cashier
             cashier_name = sale.user.username if sale.user else "Unknown"
@@ -197,15 +182,11 @@ class HistoryView(QWidget):
 
             # Total
             total_item = QTableWidgetItem("Rs. {:.2f}".format(sale.total_amount))
-            total_item.setTextAlignment(
-                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-            )
+            total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.transaction_table.setItem(row, 3, total_item)
 
             # Method
-            self.transaction_table.setItem(
-                row, 4, QTableWidgetItem(sale.payment_method)
-            )
+            self.transaction_table.setItem(row, 4, QTableWidgetItem(sale.payment_method))
 
             # Status
             status_item = QTableWidgetItem(sale.status)
@@ -226,9 +207,7 @@ class HistoryView(QWidget):
             return
 
         # Get sale ID from first column
-        sale_id = self.transaction_table.item(selected_rows[0].row(), 0).data(
-            Qt.ItemDataRole.UserRole
-        )
+        sale_id = self.transaction_table.item(selected_rows[0].row(), 0).data(Qt.ItemDataRole.UserRole)
 
         # Load sale details
         db = Database()
@@ -240,9 +219,7 @@ class HistoryView(QWidget):
                 self.display_details(sale)
                 self.reprint_btn.setEnabled(True)
                 # Enable refund only for completed non-refund sales
-                self.refund_btn.setEnabled(
-                    sale.status == "COMPLETED" and sale.payment_method != "REFUND"
-                )
+                self.refund_btn.setEnabled(sale.status == "COMPLETED" and sale.payment_method != "REFUND")
 
     def display_details(self, sale):
         """Display sale details in details panel"""
@@ -256,7 +233,7 @@ class HistoryView(QWidget):
         """
 
         if sale.refund_of_sale_id:
-            details_text += f"<br><b>Refund of Sale:</b> #{sale.refund_of_sale_id}"
+            details_text += f"<br><b>Refund of Sale:</b> #{sale.refund_of_sale_id}"  # noqa: E231
 
         self.details_label.setText(details_text)
 
@@ -271,23 +248,17 @@ class HistoryView(QWidget):
 
             # Quantity
             qty_item = QTableWidgetItem("{:.3f}".format(item.qty))
-            qty_item.setTextAlignment(
-                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-            )
+            qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(row_idx, 1, qty_item)
 
             # Unit Price
             price_item = QTableWidgetItem("{:.2f}".format(item.unit_price))
-            price_item.setTextAlignment(
-                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-            )
+            price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(row_idx, 2, price_item)
 
             # Subtotal
             subtotal_item = QTableWidgetItem("{:.2f}".format(item.subtotal))
-            subtotal_item.setTextAlignment(
-                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-            )
+            subtotal_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(row_idx, 3, subtotal_item)
 
     def on_double_click(self):
@@ -335,8 +306,9 @@ class HistoryView(QWidget):
             "Confirm Refund",
             f"<b>Refund Transaction?</b><br><br>"
             f"Receipt: {self.current_sale.document_number}<br>"
-            f"Amount: Rs. {self.current_sale.total_amount:.2f}<br><br>"
-            f"<b style='color: #FF4136;'>Warning:</b> Stock will be restored. "
+            f"Amount: Rs. {self.current_sale.total_amount:.2f}<br><br>"  # noqa: E231
+            f"<b style='color: #FF4136'>Warning:</b> "  # noqa: E231
+            f"Stock will be restored. "
             f"This action cannot be undone.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
@@ -349,18 +321,12 @@ class HistoryView(QWidget):
                     QMessageBox.warning(self, "Error", "No user logged in.")
                     return
 
-                success = TransactionService.process_refund(
-                    self.current_sale.id, "Customer Return", current_user.id
-                )
+                success = TransactionService.process_refund(self.current_sale.id, "Customer Return", current_user.id)
 
                 if success:
-                    QMessageBox.information(
-                        self, "Success", "Refund processed successfully."
-                    )
+                    QMessageBox.information(self, "Success", "Refund processed successfully.")
                     self.apply_filter()  # Refresh list
                 else:
-                    QMessageBox.critical(
-                        self, "Error", "Failed to process refund. Check logs."
-                    )
+                    QMessageBox.critical(self, "Error", "Failed to process refund. Check logs.")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Refund failed: {e}")

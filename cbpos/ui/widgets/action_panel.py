@@ -19,9 +19,7 @@ class ActionBtn(QPushButton):
     Bottom: Text
     """
 
-    def __init__(
-        self, shortcut_text, label_text, icon_name=None, color=None, parent=None
-    ):
+    def __init__(self, shortcut_text, label_text, icon_name=None, color=None, parent=None):
         super().__init__(parent)
         self.setFixedSize(100, 80)
         self.setProperty("class", "ActionGridBtn")
@@ -34,9 +32,7 @@ class ActionBtn(QPushButton):
         # 1. Shortcut Label (Top-Left)
         self.lbl_shortcut = QLabel(shortcut_text)
         self.lbl_shortcut.setObjectName("lblShortcut")
-        self.lbl_shortcut.setAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
-        )
+        self.lbl_shortcut.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         layout.addWidget(self.lbl_shortcut, 0, 0)
 
         # 2. Icon (Center)
@@ -50,9 +46,7 @@ class ActionBtn(QPushButton):
         # 3. Text (Bottom)
         self.lbl_text = QLabel(label_text)
         self.lbl_text.setObjectName("lblText")
-        self.lbl_text.setAlignment(
-            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom
-        )
+        self.lbl_text.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
         self.lbl_text.setWordWrap(True)
         layout.addWidget(self.lbl_text, 2, 0)
 
@@ -101,22 +95,16 @@ class ActionPanel(QWidget):
 
         # --- 1. Customer Section ---
         customer_frame = QFrame()
-        customer_frame.setStyleSheet(
-            "background-color: #2D2D30; border-radius: 5px; padding: 5px;"
-        )
+        customer_frame.setStyleSheet("background-color: #2D2D30; border-radius: 5px; padding: 5px;")
         cust_layout = QHBoxLayout(customer_frame)
         cust_layout.setContentsMargins(5, 5, 5, 5)
 
         self.lbl_customer = QLabel("Walk-in Customer")
-        self.lbl_customer.setStyleSheet(
-            "font-weight: bold; font-size: 14px; color: white;"
-        )
+        self.lbl_customer.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
 
         self.btn_cust_select = QPushButton("Select")
         self.btn_cust_select.setFixedWidth(70)
-        self.btn_cust_select.setStyleSheet(
-            "background-color: #007ACC; color: white; border: none; padding: 5px;"
-        )
+        self.btn_cust_select.setStyleSheet("background-color: #007ACC; color: white; border: none; padding: 5px;")
         self.btn_cust_select.clicked.connect(self.customer_clicked.emit)
 
         cust_layout.addWidget(self.lbl_customer)
@@ -128,9 +116,7 @@ class ActionPanel(QWidget):
         # Points Label
         self.lbl_points = QLabel("")
         self.lbl_points.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_points.setStyleSheet(
-            "color: #FFDC00; font-weight: bold; font-size: 12px;"
-        )
+        self.lbl_points.setStyleSheet("color: #FFDC00; font-weight: bold; font-size: 12px;")
         layout.addWidget(self.lbl_points)
 
         # --- 2. Action Grid ---

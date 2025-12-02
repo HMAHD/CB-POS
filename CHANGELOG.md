@@ -110,7 +110,15 @@ All notable changes to this project will be documented in this file. Never delet
   - Ran `pre-commit run --all-files` and confirmed it passes; verified changes match the requested logic.
   - Optimized `TransactionService` to use batch queries, eliminating N+1 performance issues.
   - Secured `ThemeService` against CSS injection by validating font size.
+
   - Hardened `UserService` with PIN validation, input sanitization, and added `get_recent_activity`.
+  - Fixed `AttributeError` in `SalesView` by updating `update_cart_ui` to use `CartService.get_totals()`.
+  - Fixed `AttributeError` in `SalesView` by renaming `total_label` to `lbl_total` to match usage.
+  - Refactored `SalesView` summary panel to include `lbl_item_count`, `lbl_subtotal`, `lbl_tax`, and `lbl_discount`.
+  - Fixed `TypeError` in `UserService.get_recent_activity` by making `user_id` optional.
+  - Resolved `DetachedInstanceError` in `UserService` by eager loading user relationship.
+  - Implemented missing `UserService` methods (`get_all_users`, `get_all_roles`, `create_user`, `update_user`).
+  - Fixed `TypeError` in `SettingsView` by correcting boolean value in `settings.json`.
 
 ***
 

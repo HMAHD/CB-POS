@@ -190,27 +190,37 @@ class SalesView(QWidget):
 
         # 4. Totals Widget (Bottom)
         total_widget = QFrame()
-        total_widget.setStyleSheet("background-color: #252526; border-top: 2px solid #3E3E42; " "border-radius: 5px;")
+        total_widget.setStyleSheet("background-color: #252526; border-top: 2px solid #3E3E42; border-radius: 5px;")
         total_layout = QHBoxLayout(total_widget)
         total_layout.setContentsMargins(20, 10, 20, 10)
 
         # Subtotals (Left)
         subtotal_layout = QVBoxLayout()
+        self.lbl_item_count = QLabel("Items: 0")
         self.lbl_subtotal = QLabel("Subtotal: 0.00")
+        self.lbl_discount = QLabel("Disc: 0.00")
         self.lbl_tax = QLabel("Tax: 0.00")
-        self.lbl_subtotal.setStyleSheet("color: #AAAAAA; font-size: 14px;")
-        self.lbl_tax.setStyleSheet("color: #AAAAAA; font-size: 14px;")
+
+        # Styling for small labels
+        small_label_style = "color: #AAAAAA; font-size: 14px;"
+        self.lbl_item_count.setStyleSheet(small_label_style)
+        self.lbl_subtotal.setStyleSheet(small_label_style)
+        self.lbl_discount.setStyleSheet(small_label_style)
+        self.lbl_tax.setStyleSheet(small_label_style)
+
+        subtotal_layout.addWidget(self.lbl_item_count)
         subtotal_layout.addWidget(self.lbl_subtotal)
+        subtotal_layout.addWidget(self.lbl_discount)
         subtotal_layout.addWidget(self.lbl_tax)
         total_layout.addLayout(subtotal_layout)
 
         total_layout.addStretch()
 
         # Grand Total (Right)
-        self.total_label = QLabel("0.00")
-        self.total_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        self.total_label.setStyleSheet("font-size: 48px; font-weight: bold; color: #39FF14;")
-        total_layout.addWidget(self.total_label)
+        self.lbl_total = QLabel("0.00")
+        self.lbl_total.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.lbl_total.setStyleSheet("font-size: 48px; font-weight: bold; color: #39FF14;")
+        total_layout.addWidget(self.lbl_total)
 
         left_layout.addWidget(total_widget)
 
@@ -277,11 +287,35 @@ class SalesView(QWidget):
 
             self.cart_table.setItem(row, 4, QTableWidgetItem(format_currency(total)))
 
-        total_amount = self.cart_service.get_total()
-        item_count = len(self.cart_service.items)
+        totals = self.cart_service.get_totals()
 
-        self.lbl_total.setText(format_currency(total_amount))
+        # Extract values
+        final_total = totals.get("final_total", 0)
+        subtotal = totals.get("subtotal", 0)
+        cart_discount = totals.get("cart_discount", 0)
+        # Tax is not explicitly in get_totals() top level, but it's calculated in TaxService.
+        # Wait, get_totals() returns subtotal, discount, final_total.
+        # Tax is usually included in the price (MRP).
+        # If we want to show tax breakdown, we might need to calculate it or get it from somewhere.
+        # For now, let's assume TaxService.calculate_taxes(final_total) is needed or just show 0 if not available.
+        # Actually, TaxService.calculate_taxes(total_amount) was used in process_sale.
+        # Let's calculate it here for display.
+        from cbpos.core.services.tax_service import TaxService
+
+        tax_info = TaxService.calculate_taxes(final_total)
+        tax_amount = tax_info["vat"] + tax_info["sscl"]
+
+        item_count = totals.get("item_count", 0)  # Sum of quantities
+        # or totals.get("count", 0) # Number of lines
+        # User asked for "Items: {count}" which usually means item count.
+        # Let's use item_count (qty sum) as it's more useful for retail.
+
+        self.lbl_total.setText(format_currency(final_total))
+        self.lbl_subtotal.setText(f"Subtotal: {format_currency(subtotal)}")
+        self.lbl_discount.setText(f"Disc: {format_currency(cart_discount)}")
+        self.lbl_tax.setText(f"Tax: {format_currency(tax_amount)}")
         self.lbl_item_count.setText(f"Items: {item_count}")
+
         self.cart_table.scrollToBottom()
 
     def setup_shortcuts(self):

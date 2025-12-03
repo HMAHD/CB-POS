@@ -561,6 +561,26 @@
 
 ---
 
+## 🌐 Phase 18: Local Network & Multi-Terminal (LAN)
+*Goal: Allow multiple PCs to sell from one central database over Ethernet/WiFi.*
+
+  - [ ] **18.1 Database Engine Factory**
+      - [ ] Add `psycopg2-binary` dependency.
+      - [ ] Refactor `core/database.py` to support dynamic switching.
+      - [ ] Implement `get_db_url()`: Returns `sqlite:///...` or `postgresql://...` based on config.
+      - [ ] Configure **Connection Pooling** (QueuePool) for PostgreSQL mode.
+  - [ ] **18.2 Network Configuration UI**
+      - [ ] Create `ui/views/settings/network_page.py`.
+      - [ ] **Mode Selector:** [Standalone (Default)] vs [Network Client].
+      - **Server Settings:** Host IP, Port, DB Name, Username, Password.
+      - **Test Connection:** Button to verify visibility of the Server PC.
+  - [ ] **18.3 Concurrency & Locking**
+      - **Optimistic Locking:** Add `version_id` to `Product` model.
+      - **Conflict Handling:** Update `TransactionService` to catch `StaleDataError`.
+          - *Scenario:* Cashier A and B try to buy the last item at the exact same moment. The DB rejects the second one. The system must auto-refresh and tell Cashier B "Stock changed, retrying...".
+
+---
+
 ## 🌐 Phase 18: Networking & Sync (Future Proofing)
 *Goal: Multi-terminal readiness.*
 
@@ -1126,4 +1146,3 @@
     - [ ] Enable/disable restaurant mode
     - [ ] Auto-show floor plan on login/F9
     - [ ] Single-user vs multi-user behavior
-

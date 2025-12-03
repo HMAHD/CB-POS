@@ -39,6 +39,12 @@ All notable changes to this project will be documented in this file.
     -   Added Horizontal Search Modes (All, Barcode, Code, Name).
     -   Replaced layout with resizable `QSplitter`.
     -   Fixed Header Logo.
+- **Light Theme Overhaul** (Phase 16):
+    -   Rewrote `light.qss` with "Enterprise Light" aesthetic (Borders, High Contrast).
+    -   Implemented "Restart Required" strategy for theme changes to ensure asset integrity.
+    -   Updated `ThemeService` to provide dynamic assets (Logo/Icons) based on theme.
+    -   Fixed `CartService` crash by ensuring `tax` key defaults to Decimal.
+    -   Refactored `SalesView` layout to ensure Header visibility.
 
 ## [0.1.0] - 2025-11-29
 ### Added

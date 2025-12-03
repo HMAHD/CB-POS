@@ -60,25 +60,25 @@ class SalesView(QWidget):
         self.installEventFilter(self)
 
     def init_ui(self):
+        # 1. Main Layout (Vertical)
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # --- HEADER ---
-        header_widget = QWidget()
-        header_widget.setFixedHeight(50)
-        header_widget.setStyleSheet(
+        # 2. Header (Top)
+        self.header_widget = QWidget()
+        self.header_widget.setFixedHeight(50)
+        self.header_widget.setStyleSheet(
             "background-color: #001226; border-bottom: 1px solid #003366;"
         )
-        header_layout = QHBoxLayout(header_widget)
+        header_layout = QHBoxLayout(self.header_widget)
         header_layout.setContentsMargins(20, 0, 20, 0)
 
         # Brand (Logo)
         lbl_logo = QLabel()
-        # Fix: Use Path to find the logo correctly relative to this file or project root
-        # Assuming project root is 3 levels up from ui/views/sales_view.py
-        # But easier to rely on working directory if running from main.py
-        logo_path = Path("assets/logo/cover_black.png")
+        from cbpos.core.services.theme_service import ThemeService
+
+        logo_path = Path(ThemeService.get_logo_path())
 
         if logo_path.exists():
             logo_pixmap = QPixmap(str(logo_path))
@@ -102,27 +102,28 @@ class SalesView(QWidget):
         # Menu Button
         self.menu_button = QToolButton()
         self.menu_button.setObjectName("menu_button")
-        self.menu_button.setIcon(Icons.get("fa5s.ellipsis-v"))
-        self.menu_button.setStyleSheet("border: none; background: transparent;")
+        icon_color = ThemeService.get_icon_color()
+        self.menu_button.setIcon(Icons.get("fa5s.bars", icon_color))
+        self.menu_button.setStyleSheet(
+            "border: none; background: transparent; color: {};".format(icon_color)
+        )
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.menu_button.clicked.connect(self.toggle_side_menu)
         header_layout.addWidget(self.menu_button)
 
-        main_layout.addWidget(header_widget)
+        main_layout.addWidget(self.header_widget)
 
-        # --- CONTENT AREA (Split Screen) ---
-        # Replace QHBoxLayout with QSplitter
+        # 3. Content Area (Splitter)
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
-        self.splitter.setHandleWidth(10)  # For styling
+        self.splitter.setHandleWidth(10)
         self.splitter.setChildrenCollapsible(False)
-
         main_layout.addWidget(self.splitter)
 
         # ==========================
         # LEFT PANEL (Cart & Totals) - 75%
         # ==========================
-        left_panel = QWidget()
-        left_layout = QVBoxLayout(left_panel)
+        self.container_left = QWidget()
+        left_layout = QVBoxLayout(self.container_left)
         left_layout.setContentsMargins(10, 10, 10, 10)
         left_layout.setSpacing(10)
 
@@ -257,7 +258,7 @@ class SalesView(QWidget):
         self.action_panel.action_ref.connect(lambda: print("Refund"))  # Placeholder
         self.action_panel.action_more.connect(lambda: print("More"))  # Placeholder
 
-        # Context Menu for Customer Button (Access via internal button if needed, or just keep simple for now)
+        # Context Menu for Customer Button
         self.action_panel.btn_cust_select.setContextMenuPolicy(
             Qt.ContextMenuPolicy.CustomContextMenu
         )
@@ -267,7 +268,7 @@ class SalesView(QWidget):
         self.btn_cust = self.action_panel.btn_cust_select  # Alias for existing code
 
         # Add panels to splitter
-        self.splitter.addWidget(left_panel)
+        self.splitter.addWidget(self.container_left)
         self.splitter.addWidget(self.action_panel)
 
         # Set Stretch Factors (75% / 25%)

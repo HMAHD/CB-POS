@@ -67,7 +67,17 @@ class SidebarButton(QToolButton):
     def __init__(self, text: str, icon_name: str):
         super().__init__()
         self.setText(text)
-        self.setIcon(Icons.get(icon_name, "#AAAAAA"))
+        from cbpos.core.services.theme_service import ThemeService
+
+        icon_color = ThemeService.get_icon_color()
+        # Use a slightly lighter color for inactive state if needed, or just use the theme color
+        # For sidebar, inactive is usually grey, active is cyan.
+        # But let's stick to the plan: use get_icon_color or hardcoded grey for inactive?
+        # The original code used #AAAAAA (light grey).
+        # In Light mode, #AAAAAA is visible on white.
+        # So we might not strictly need to change this for INACTIVE state.
+        # But let's ensure it's robust.
+        self.setIcon(Icons.get(icon_name, icon_color))
         self.setIconSize(QSize(24, 24))
         self.setCheckable(True)
         self.setAutoExclusive(True)

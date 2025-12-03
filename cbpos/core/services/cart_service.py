@@ -156,6 +156,7 @@ class CartService:
             "subtotal": subtotal.quantize(Decimal("0.01")),
             "cart_discount": cart_discount_amt.quantize(Decimal("0.01")),
             "final_total": final_total.quantize(Decimal("0.01")),
+            "tax": Decimal("0.00"),  # Placeholder for tax calculation
             "count": len(self.items),
             "item_count": sum(item["qty"] for item in self.items),
         }

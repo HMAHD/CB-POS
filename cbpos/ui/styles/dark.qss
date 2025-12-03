@@ -305,3 +305,45 @@ QToolButton[class="SearchModeBtn"]:hover {
     background-color: #444444;
     color: #FFFFFF;
 }
+
+/* --- Phase 17: UI/UX Overhaul Fixes --- */
+
+/* 2.2 Product Search Filter Icons */
+#widget_search_filters QPushButton {
+    background-color: transparent;
+    border: none;
+    color: #B0BEC5; /* Light gray by default */
+    padding: 5px;
+    border-radius: 4px;
+}
+
+#widget_search_filters QPushButton:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Subtle light hover */
+    color: #FFFFFF;
+}
+
+#widget_search_filters QPushButton:checked {
+    background-color: #00BCEB; /* Cyan accent for selected state */
+    color: #FFFFFF;
+}
+
+/* 2.3 Right Panel Shortcuts & Buttons */
+#frame_sales_right QPushButton {
+    color: #FFFFFF;
+    font-weight: bold;
+}
+
+/* Shortcut Labels */
+.label-shortcut {
+    color: #E0E0E0; /* Slightly muted white for shortcut hints */
+    font-size: 10px;
+}
+
+/* 2.4 "ORDERS:" Label Footer Fix */
+#lbl_orders_header {
+    background-color: transparent; /* Remove blue bg */
+    color: #00BCEB; /* Keep cyan text color */
+    font-weight: bold;
+    padding: 0;
+    margin-bottom: 5px;
+}

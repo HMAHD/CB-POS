@@ -56,9 +56,9 @@ class ManagementView(QWidget):
         header_layout.setContentsMargins(10, 10, 10, 10)
 
         self.lbl_logo = QLabel()
-        # Use absolute path
-        # Ensure we point to cbpos/assets
-        logo_path = os.path.abspath(os.path.join("cbpos", "assets", "logo", "02.png"))
+        from cbpos.core.services.theme_service import ThemeService
+
+        logo_path = ThemeService.get_logo_path()
         logo_pixmap = QPixmap(logo_path)
 
         if not logo_pixmap.isNull():
@@ -74,7 +74,8 @@ class ManagementView(QWidget):
             )
 
         self.btn_toggle = QToolButton()
-        self.btn_toggle.setIcon(Icons.get("fa5s.bars", "white"))
+        icon_color = ThemeService.get_icon_color()
+        self.btn_toggle.setIcon(Icons.get("fa5s.bars", icon_color))
         self.btn_toggle.setStyleSheet("border: none; background: transparent;")
         self.btn_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_toggle.clicked.connect(self.toggle_sidebar)

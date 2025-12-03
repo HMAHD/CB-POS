@@ -422,14 +422,17 @@ class SettingsView(QWidget):
 
         ConfigService.update_all(data)
 
-        # Apply Theme Immediately
+        # Capture old theme to check for changes
+        old_theme = ThemeService.current_theme
+
+        # Apply Theme Immediately (Partial)
         ThemeService.apply_theme(theme_selection)
 
-        if lang_changed:
+        if lang_changed or (theme_selection != old_theme):
             QMessageBox.information(
                 self,
                 "Restart Required",
-                "Please restart the application to apply language changes.",
+                "Please restart the application to apply changes completely.",
             )
         else:
             QMessageBox.information(self, "Saved", "Settings saved successfully.")

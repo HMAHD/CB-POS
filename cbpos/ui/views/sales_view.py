@@ -87,9 +87,8 @@ class SalesView(QWidget):
             )
         else:
             lbl_logo.setText("CEYLON BYTE POS")  # Fallback
-            lbl_logo.setStyleSheet(
-                "color: #00BCEB; font-weight: bold; font-size: 16px;"
-            )
+            lbl_logo.setText("CEYLON BYTE POS")  # Fallback
+            lbl_logo.setObjectName("LogoLabel")
         lbl_logo.setAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )
@@ -102,9 +101,8 @@ class SalesView(QWidget):
         self.menu_button.setObjectName("menu_button")
         icon_color = ThemeService.get_icon_color()
         self.menu_button.setIcon(Icons.get("fa5s.bars", icon_color))
-        self.menu_button.setStyleSheet(
-            "border: none; background: transparent; color: {};".format(icon_color)
-        )
+        self.menu_button.setIcon(Icons.get("fa5s.bars", icon_color))
+
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.menu_button.clicked.connect(self.toggle_side_menu)
         header_layout.addWidget(self.menu_button)
@@ -212,8 +210,8 @@ class SalesView(QWidget):
         subtotal_layout = QVBoxLayout()
         self.lbl_subtotal = QLabel("Subtotal: 0.00")
         self.lbl_tax = QLabel("Tax: 0.00")
-        self.lbl_subtotal.setStyleSheet("color: #AAAAAA; font-size: 14px;")
-        self.lbl_tax.setStyleSheet("color: #AAAAAA; font-size: 14px;")
+        self.lbl_subtotal.setObjectName("SubtotalLabel")
+        self.lbl_tax.setObjectName("TaxLabel")
         subtotal_layout.addWidget(self.lbl_subtotal)
         subtotal_layout.addWidget(self.lbl_tax)
         total_layout.addLayout(subtotal_layout)
@@ -225,9 +223,7 @@ class SalesView(QWidget):
         self.total_label.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
-        self.total_label.setStyleSheet(
-            "font-size: 48px; font-weight: bold; color: #39FF14;"
-        )
+        self.total_label.setObjectName("TotalLabel")
         total_layout.addWidget(self.total_label)
 
         left_layout.addWidget(total_widget)
@@ -434,7 +430,7 @@ class SalesView(QWidget):
                 lbl_price.setAlignment(
                     Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
                 )
-                lbl_price.setStyleSheet("background-color: transparent; color: white;")
+                lbl_price.setProperty("class", "StrikethroughPrice")
                 self.cart_table.setCellWidget(row, 1, lbl_price)
             else:
                 self.cart_table.setItem(

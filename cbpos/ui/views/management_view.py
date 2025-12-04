@@ -42,9 +42,7 @@ class ManagementView(QWidget):
         # 1. Sidebar
         self.sidebar = QFrame()
         self.sidebar.setFixedWidth(250)
-        self.sidebar.setStyleSheet(
-            "background-color: #001830; border-right: 1px solid #003366;"
-        )
+        self.sidebar.setObjectName("Sidebar")
         self.sidebar_layout = QVBoxLayout(self.sidebar)
         self.sidebar_layout.setContentsMargins(0, 0, 0, 0)
         self.sidebar_layout.setSpacing(10)
@@ -69,14 +67,13 @@ class ManagementView(QWidget):
             )
         else:
             self.lbl_logo.setText("CB POS")
-            self.lbl_logo.setStyleSheet(
-                "color: white; font-weight: bold; font-size: 18px;"
-            )
+            self.lbl_logo.setText("CB POS")
+            self.lbl_logo.setObjectName("SidebarLogo")
 
         self.btn_toggle = QToolButton()
         icon_color = ThemeService.get_icon_color()
         self.btn_toggle.setIcon(Icons.get("fa5s.bars", icon_color))
-        self.btn_toggle.setStyleSheet("border: none; background: transparent;")
+        self.btn_toggle.setObjectName("SidebarToggle")
         self.btn_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_toggle.clicked.connect(self.toggle_sidebar)
 
@@ -318,81 +315,9 @@ class ManagementView(QWidget):
         This is necessary because QSS alone cannot handle the complex padding/alignment changes
         required for the collapsed 'icon-only' mode vs the expanded 'full-width' mode.
         """
-        if self.is_collapsed:
-            # Collapsed Styles (Center Align, No Padding)
-            common_style = """
-                QToolButton {
-                    padding-left: 0px;
-                    padding-right: 0px;
-                    text-align: center;
-                    border: none;
-                    background: transparent;
-                }
-            """
-
-            # POS Button (Keep colors but center)
-            pos_style = """
-                QToolButton {
-                    color: #39FF14;
-                    background-color: rgba(57, 255, 20, 0.1);
-                    border: none;
-                    border-top: 1px solid #333;
-                    text-align: center;
-                    padding-left: 0px;
-                }
-                QToolButton:hover { background-color: rgba(57, 255, 20, 0.2); }
-            """
-
-            # Logout Button (Keep colors but center)
-            logout_style = """
-                QToolButton {
-                    color: #FF4136;
-                    background-color: rgba(255, 65, 54, 0.1);
-                    border: none;
-                    text-align: center;
-                    padding-left: 0px;
-                }
-                QToolButton:hover { background-color: rgba(255, 65, 54, 0.2); }
-            """
-
-            for btn in self.nav_buttons:
-                btn.setStyleSheet(common_style)
-
-            self.btn_pos.setStyleSheet(pos_style)
-            self.btn_logout.setStyleSheet(logout_style)
-
-        else:
-            # Expanded Styles (Left Align, Padding)
-
-            # Standard Nav Buttons - Clear style to let QSS take over
-            for btn in self.nav_buttons:
-                btn.setStyleSheet("")
-
-            # POS Button (Specific Style)
-            self.btn_pos.setStyleSheet(
-                """
-                QToolButton {
-                    color: #39FF14;
-                    background-color: rgba(57, 255, 20, 0.1);
-                    border: none;
-                    border-top: 1px solid #333;
-                    text-align: left;
-                    padding-left: 24px;
-                }
-                QToolButton:hover { background-color: rgba(57, 255, 20, 0.2); }
-            """
-            )
-
-            # Logout Button (Specific Style)
-            self.btn_logout.setStyleSheet(
-                """
-                QToolButton {
-                    color: #FF4136;
-                    background-color: rgba(255, 65, 54, 0.1);
-                    border: none;
-                    text-align: left;
-                    padding-left: 24px;
-                }
-                QToolButton:hover { background-color: rgba(255, 65, 54, 0.2); }
-            """
-            )
+        # Update Property for all buttons
+        buttons = self.nav_buttons + [self.btn_pos, self.btn_logout]
+        for btn in buttons:
+            btn.setProperty("collapsed", self.is_collapsed)
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)

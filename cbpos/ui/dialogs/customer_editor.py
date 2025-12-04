@@ -19,7 +19,8 @@ from PyQt6.QtWidgets import (
     QLabel,
     QSpinBox,
 )
-from PyQt6.QtGui import QColor
+from PyQt6.QtCore import Qt
+
 
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.services.price_list_service import (
@@ -39,6 +40,7 @@ class CustomerEditor(QDialog):
         self.setWindowTitle("Customer Editor" if customer else "New Customer")
         self.setMinimumWidth(600)
         self.setMinimumHeight(500)
+        self.setObjectName("CustomerEditor")
 
         self.contacts = []  # List to hold contact dicts
 
@@ -206,9 +208,9 @@ class CustomerEditor(QDialog):
 
             status_item = QTableWidgetItem(sale.status)
             if sale.status == "VOID":
-                status_item.setForeground(QColor("red"))
+                status_item.setData(Qt.ItemDataRole.UserRole, "VOID")
             elif sale.status == "COMPLETED":  # Assuming COMPLETED is PAID equivalent
-                status_item.setForeground(QColor("green"))
+                status_item.setData(Qt.ItemDataRole.UserRole, "COMPLETED")
             self.history_table.setItem(row, 3, status_item)
 
             self.history_table.setItem(row, 4, QTableWidgetItem(sale.payment_method))

@@ -38,15 +38,13 @@ class SettingsView(QWidget):
 
         # 1. Header
         header_frame = QFrame()
-        header_frame.setStyleSheet(
-            "background-color: #001F3F; border-bottom: 2px solid #003366;"
-        )
+        header_frame.setObjectName("SettingsHeader")
         header_frame.setFixedHeight(60)
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(20, 0, 20, 0)
 
         lbl_title = QLabel("Settings")
-        lbl_title.setStyleSheet("font-size: 24px; font-weight: bold; color: #00BCEB;")
+        lbl_title.setObjectName("SettingsTitle")
         header_layout.addWidget(lbl_title)
 
         main_layout.addWidget(header_frame)
@@ -59,28 +57,7 @@ class SettingsView(QWidget):
         # 2.1 Sidebar
         self.sidebar = QListWidget()
         self.sidebar.setFixedWidth(220)
-        self.sidebar.setStyleSheet(
-            """
-            QListWidget {
-                background-color: #2D2D30;
-                border: none;
-                outline: none;
-            }
-            QListWidget::item {
-                color: #FFFFFF;
-                padding: 15px;
-                border-bottom: 1px solid #3E3E42;
-            }
-            QListWidget::item:selected {
-                background-color: #3E3E42;
-                border-left: 4px solid #00BCEB;
-                color: #FFFFFF;
-            }
-            QListWidget::item:hover {
-                background-color: #3E3E42;
-            }
-        """
-        )
+        self.sidebar.setObjectName("SettingsSidebar")
         self.sidebar.currentRowChanged.connect(self.change_page)
 
         # Sidebar Items
@@ -108,15 +85,7 @@ class SettingsView(QWidget):
 
         # 2.2 Content Area
         self.stack = QStackedWidget()
-        self.stack.setStyleSheet(
-            "background-color: #F0F0F0; color: #000000;"
-        )  # Light content area for contrast or keep dark?
-        # Let's keep it consistent with the theme (dark) but maybe slightly lighter than sidebar
-        self.stack.setStyleSheet(
-            "QWidget { background-color: #1E1E1E; color: #FFFFFF; } "
-            "QLineEdit, QComboBox, QSpinBox { "
-            "background-color: #333337; color: white; border: 1px solid #555; padding: 5px; }"
-        )
+        self.stack.setObjectName("SettingsContent")
 
         # Pages
         self.page_general = QWidget()
@@ -146,9 +115,7 @@ class SettingsView(QWidget):
         # 3. Footer
         footer_frame = QFrame()
         footer_frame.setFixedHeight(60)
-        footer_frame.setStyleSheet(
-            "background-color: #2D2D30; border-top: 1px solid #3E3E42;"
-        )
+        footer_frame.setObjectName("SettingsFooter")
         footer_layout = QHBoxLayout(footer_frame)
         footer_layout.setContentsMargins(20, 10, 20, 10)
 
@@ -156,16 +123,12 @@ class SettingsView(QWidget):
 
         self.btn_save = QPushButton("Save")
         self.btn_save.setFixedSize(100, 35)
-        self.btn_save.setStyleSheet(
-            "background-color: #39FF14; color: black; font-weight: bold; border-radius: 4px;"
-        )
+        self.btn_save.setObjectName("BtnSave")
         self.btn_save.clicked.connect(self.save_all)
 
         self.btn_cancel = QPushButton("Cancel")
         self.btn_cancel.setFixedSize(100, 35)
-        self.btn_cancel.setStyleSheet(
-            "background-color: #FF4136; color: white; font-weight: bold; border-radius: 4px;"
-        )
+        self.btn_cancel.setObjectName("BtnCancel")
         self.btn_cancel.clicked.connect(self.close_requested.emit)
 
         footer_layout.addWidget(self.btn_save)
@@ -185,9 +148,7 @@ class SettingsView(QWidget):
         layout.setSpacing(20)
 
         lbl_header = QLabel("General Settings")
-        lbl_header.setStyleSheet(
-            "font-size: 18px; font-weight: bold; color: #00BCEB; margin-bottom: 20px;"
-        )
+        lbl_header.setProperty("class", "SectionHeader")
         layout.addRow(lbl_header)
 
         self.input_shop_name = QLineEdit()
@@ -219,7 +180,7 @@ class SettingsView(QWidget):
         layout.setSpacing(20)
 
         lbl_header = QLabel("Order & Payment Configuration")
-        lbl_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #00BCEB;")
+        lbl_header.setProperty("class", "SectionHeader")
         layout.addWidget(lbl_header)
 
         # Documents Section (Migrated)
@@ -262,7 +223,7 @@ class SettingsView(QWidget):
         layout.setSpacing(20)
 
         lbl_header = QLabel("Hardware Configuration")
-        lbl_header.setStyleSheet("font-size: 18px; font-weight: bold; color: #00BCEB;")
+        lbl_header.setProperty("class", "SectionHeader")
         layout.addWidget(lbl_header)
 
         # Printers

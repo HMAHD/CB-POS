@@ -299,7 +299,7 @@ QToolButton[class="SearchModeBtn"]:checked {
     background-color: #00BCEB;
     color: #000000;
     border: 1px solid #00BCEB;
-    z-index: 10;
+    border: 1px solid #00BCEB;
 }
 QToolButton[class="SearchModeBtn"]:hover {
     background-color: #444444;

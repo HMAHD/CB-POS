@@ -393,12 +393,14 @@ class SettingsView(QWidget):
             QMessageBox.warning(self, "Error", "Scale Prefix must be 2 digits.")
             return
 
+        # 1. Capture Current State
+        current_config = ConfigService.get_all()
+        current_lang = current_config.get("language", "en")
+        current_theme = current_config.get("theme", "Dark")
+
+        # 2. Get New Data
         theme_selection = "Dark" if self.combo_theme.currentIndex() == 0 else "Light"
         lang_code = self.combo_language.currentData()
-
-        # Check if language changed
-        current_lang = ConfigService.get_all().get("language", "en")
-        lang_changed = lang_code != current_lang
 
         data = {
             "shop_name": self.input_shop_name.text(),
@@ -420,15 +422,18 @@ class SettingsView(QWidget):
             "scale_decimal_places": self.spin_decimal_places.value(),
         }
 
+        # 3. Persist
         ConfigService.update_all(data)
 
-        # Capture old theme to check for changes
-        old_theme = ThemeService.current_theme
+        # 4. Compare & Notify
+        restart_required = (lang_code != current_lang) or (
+            theme_selection != current_theme
+        )
 
         # Apply Theme Immediately (Partial)
         ThemeService.apply_theme(theme_selection)
 
-        if lang_changed or (theme_selection != old_theme):
+        if restart_required:
             QMessageBox.information(
                 self,
                 "Restart Required",

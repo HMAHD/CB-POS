@@ -19,5 +19,5 @@
     "receipt_copies": 1,
     "scale_barcode_prefix": "20",
     "scale_decimal_places": 3,
-    "theme": "Light"
+    "theme": "Dark"
 }

@@ -68,9 +68,7 @@ class SalesView(QWidget):
         # 2. Header (Top)
         self.header_widget = QWidget()
         self.header_widget.setFixedHeight(50)
-        self.header_widget.setStyleSheet(
-            "background-color: #001226; border-bottom: 1px solid #003366;"
-        )
+        self.header_widget.setObjectName("HeaderWidget")
         header_layout = QHBoxLayout(self.header_widget)
         header_layout.setContentsMargins(20, 0, 20, 0)
 
@@ -129,6 +127,7 @@ class SalesView(QWidget):
 
         # 1. Search Bar (Top)
         search_container = QWidget()
+        search_container.setObjectName("SearchWidget")
         search_layout = QHBoxLayout(search_container)
         search_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -152,6 +151,7 @@ class SalesView(QWidget):
             btn.setFixedSize(40, 40)
             btn.setProperty("mode", mode_id)
             btn.setProperty("class", "SearchModeBtn")  # For styling
+            btn.setObjectName("SearchModeBtn")  # For styling
 
             if mode_id == "ALL":
                 btn.setChecked(True)
@@ -165,9 +165,7 @@ class SalesView(QWidget):
         self.barcode_input = QLineEdit()
         self.barcode_input.setPlaceholderText("Scan or type product... (Enter)")
         self.barcode_input.setFixedHeight(40)
-        self.barcode_input.setStyleSheet(
-            "font-size: 16px; padding: 5px; border: 1px solid #555; background-color: #222; color: white;"
-        )
+
         self.barcode_input.returnPressed.connect(self.process_barcode)
         search_layout.addWidget(self.barcode_input)
 
@@ -205,9 +203,8 @@ class SalesView(QWidget):
 
         # 4. Totals Widget (Bottom)
         total_widget = QFrame()
-        total_widget.setStyleSheet(
-            "background-color: #252526; border-top: 2px solid #3E3E42; border-radius: 5px;"
-        )
+        total_widget.setObjectName("TotalWidget")
+
         total_layout = QHBoxLayout(total_widget)
         total_layout.setContentsMargins(20, 10, 20, 10)
 
@@ -240,9 +237,7 @@ class SalesView(QWidget):
         # ==========================
         self.action_panel = ActionPanel()
         self.action_panel.setFixedWidth(350)
-        self.action_panel.setStyleSheet(
-            "background-color: #1E1E1E; border-left: 1px solid #3E3E42;"
-        )
+        self.action_panel.setObjectName("ActionPanel")
 
         # Connect Action Panel Signals
         self.action_panel.customer_clicked.connect(self.select_customer)

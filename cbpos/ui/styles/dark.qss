@@ -12,7 +12,21 @@
 
 /* Global Font Enforcement */
 * {
-    font-family: "Noto Sans", "Iskoola Pota", "Segoe UI", sans-serif;
+    font-family: "{{FONT_FAMILY}}", "Noto Sans", "Iskoola Pota", "Segoe UI", sans-serif;
+}
+
+QLabel#BadgeLabel {
+    color: #00BCEB;
+    font-weight: bold;
+}
+
+QLabel.PlaceholderLabel {
+    color: #AAAAAA;
+}
+
+QLabel.AboutLabel {
+    font-size: 16px;
+    color: #AAAAAA;
 }
 
 /* Global Reset */

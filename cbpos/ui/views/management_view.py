@@ -254,11 +254,11 @@ class ManagementView(QWidget):
                     self.lbl_badge.setText("")  # Clear text
                 else:
                     self.lbl_badge.setText(f"[{role.upper()}]")
-                    self.lbl_badge.setStyleSheet("color: #00BCEB; font-weight: bold;")
+                    self.lbl_badge.setObjectName("BadgeLabel")
             else:
                 print(f"WARNING: Badge not found at {badge_path}")
                 self.lbl_badge.setText(f"[{role.upper()}]")
-                self.lbl_badge.setStyleSheet("color: #00BCEB; font-weight: bold;")
+                self.lbl_badge.setObjectName("BadgeLabel")
         else:
             self.lbl_badge.clear()
 

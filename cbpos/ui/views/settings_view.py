@@ -270,7 +270,7 @@ class SettingsView(QWidget):
         layout = QVBoxLayout(self.page_users)
         layout.setContentsMargins(40, 40, 40, 40)
         lbl = QLabel("User Management (Placeholder)")
-        lbl.setStyleSheet("color: #888;")
+        lbl.setProperty("class", "PlaceholderLabel")
         layout.addWidget(lbl)
         layout.addStretch()
 
@@ -278,7 +278,7 @@ class SettingsView(QWidget):
         layout = QVBoxLayout(self.page_database)
         layout.setContentsMargins(40, 40, 40, 40)
         lbl = QLabel("Database Maintenance (Placeholder)")
-        lbl.setStyleSheet("color: #888;")
+        lbl.setProperty("class", "PlaceholderLabel")
         layout.addWidget(lbl)
         layout.addStretch()
 
@@ -287,7 +287,7 @@ class SettingsView(QWidget):
         layout.setContentsMargins(40, 40, 40, 40)
         lbl = QLabel("About CB POS\nVersion 0.1.0\n\n(c) 2025 Ceylon Byte")
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl.setStyleSheet("font-size: 16px; color: #CCC;")
+        lbl.setProperty("class", "AboutLabel")
         layout.addWidget(lbl)
         layout.addStretch()
 

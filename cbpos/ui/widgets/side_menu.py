@@ -147,18 +147,14 @@ class SideMenu(QWidget):
 
         # Avatar
         self.lbl_avatar = QLabel()
-        self.lbl_avatar.setPixmap(
-            Icons.get("fa5s.user-circle", "#00BCEB").pixmap(64, 64)
-        )
+        self.lbl_avatar.setPixmap(Icons.get("fa5s.user-circle", "#00BCEB").pixmap(64, 64))
         self.lbl_avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
         user_layout.addWidget(self.lbl_avatar)
 
         # Name & Role
         self.lbl_username = QLabel("Guest")
         self.lbl_username.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_username.setStyleSheet(
-            "color: white; font-size: 18px; font-weight: bold;"
-        )
+        self.lbl_username.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
         user_layout.addWidget(self.lbl_username)
 
         self.lbl_role = QLabel("No Role")
@@ -169,9 +165,7 @@ class SideMenu(QWidget):
         user_layout.addSpacing(20)
 
         # Logout
-        self.btn_logout = MenuButton(
-            "Sign Out", "fa5s.sign-out-alt", is_destructive=True
-        )
+        self.btn_logout = MenuButton("Sign Out", "fa5s.sign-out-alt", is_destructive=True)
         self.btn_logout.clicked.connect(self.logout_clicked.emit)
         user_layout.addWidget(self.btn_logout)
 

@@ -60,11 +60,7 @@ class PermissionService:
                 return False
 
             # Fetch new permissions
-            new_perms = (
-                session.query(Permission)
-                .filter(Permission.id.in_(permission_ids))
-                .all()
-            )
+            new_perms = session.query(Permission).filter(Permission.id.in_(permission_ids)).all()
 
             # --- SAFETY CHECK: ADMIN LOCKOUT PREVENTION ---
             if role.name == "Admin":
@@ -72,11 +68,7 @@ class PermissionService:
                 critical_codes = ["manage_users", "manage_permissions"]
 
                 # Get IDs of critical permissions
-                critical_perms = (
-                    session.query(Permission)
-                    .filter(Permission.code.in_(critical_codes))
-                    .all()
-                )
+                critical_perms = session.query(Permission).filter(Permission.code.in_(critical_codes)).all()
 
                 # Add them to new_perms if not already there
                 current_ids = {p.id for p in new_perms}

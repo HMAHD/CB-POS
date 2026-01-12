@@ -19,9 +19,7 @@ class ActionBtn(QPushButton):
     Bottom: Text
     """
 
-    def __init__(
-        self, shortcut_text, label_text, icon_name=None, color=None, parent=None
-    ):
+    def __init__(self, shortcut_text, label_text, icon_name=None, color=None, parent=None):
         super().__init__(parent)
         self.setFixedSize(100, 80)
         self.setProperty("class", "ActionGridBtn")
@@ -34,9 +32,7 @@ class ActionBtn(QPushButton):
         # 1. Shortcut Label (Top-Left)
         self.lbl_shortcut = QLabel(shortcut_text)
         self.lbl_shortcut.setObjectName("lblShortcut")
-        self.lbl_shortcut.setAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop
-        )
+        self.lbl_shortcut.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         layout.addWidget(self.lbl_shortcut, 0, 0)
 
         # 2. Icon (Center)
@@ -50,9 +46,7 @@ class ActionBtn(QPushButton):
         # 3. Text (Bottom)
         self.lbl_text = QLabel(label_text)
         self.lbl_text.setObjectName("lblText")
-        self.lbl_text.setAlignment(
-            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom
-        )
+        self.lbl_text.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
         self.lbl_text.setWordWrap(True)
         layout.addWidget(self.lbl_text, 2, 0)
 

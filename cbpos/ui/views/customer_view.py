@@ -40,12 +40,8 @@ class CustomerView(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(
-            ["ID", "Name", "Phone", "Credit Limit", "Current Debt", "Points"]
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+        self.table.setHorizontalHeaderLabels(["ID", "Name", "Phone", "Credit Limit", "Current Debt", "Points"])
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.doubleClicked.connect(self.open_edit_dialog)
@@ -77,9 +73,7 @@ class CustomerView(QWidget):
             debt_str = "{:.2f}".format(customer.current_debt)
             debt_item = QTableWidgetItem(debt_str)
             # Highlight high debt ( > 90% of limit)
-            if customer.credit_limit > 0 and customer.current_debt >= (
-                customer.credit_limit * Decimal("0.9")
-            ):
+            if customer.credit_limit > 0 and customer.current_debt >= (customer.credit_limit * Decimal("0.9")):
                 debt_item.setForeground(QColor("red"))
                 debt_item.setToolTip("High Debt Warning!")
 

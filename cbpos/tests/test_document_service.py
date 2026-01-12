@@ -10,10 +10,10 @@ def test_generate_number_default(mock_config, mock_db):
     mock_session = MagicMock()
     mock_db.return_value.get_session.return_value.__enter__.return_value = mock_session
 
+    mock_config.get_all.return_value = {}
+
     # Mock no existing document
-    mock_session.query.return_value.filter.return_value.order_by.return_value.first.return_value = (
-        None
-    )
+    mock_session.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
 
     # Mock collision check
     mock_session.query.return_value.filter_by.return_value.first.return_value = None
@@ -40,18 +40,14 @@ def test_generate_number_custom_pattern(mock_config, mock_db):
     # Mock existing document
     mock_last_doc = MagicMock()
     mock_last_doc.document_number = "MYINV-2023-005"
-    mock_session.query.return_value.filter.return_value.order_by.return_value.first.return_value = (
-        mock_last_doc
-    )
+    mock_session.query.return_value.filter.return_value.order_by.return_value.first.return_value = mock_last_doc
 
     # Mock collision check (filter_by) to return None (does not exist)
     mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
     # Execute
     with patch("cbpos.core.services.document_service.datetime") as mock_date:
-        mock_date.now.return_value.strftime.side_effect = lambda fmt: (
-            "2023" if fmt == "%Y" else "01"
-        )
+        mock_date.now.return_value.strftime.side_effect = lambda fmt: ("2023" if fmt == "%Y" else "01")
 
         doc_num = DocumentService.generate_number("SALE")
 
@@ -70,9 +66,7 @@ def test_generate_number_retry_logic(mock_config, mock_db):
     mock_db.return_value.get_session.return_value.__enter__.return_value = mock_session
 
     # Mock no existing document initially
-    mock_session.query.return_value.filter.return_value.order_by.return_value.first.return_value = (
-        None
-    )
+    mock_session.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
 
     # Mock collision check: First attempt returns Exists, Second returns None
     mock_exists = MagicMock()

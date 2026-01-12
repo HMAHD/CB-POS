@@ -39,9 +39,7 @@ class UserDialog(QDialog):
         layout.addWidget(self.txt_username)
 
         # PIN
-        layout.addWidget(
-            QLabel("PIN (Leave empty to keep unchanged):" if self.user else "PIN:")
-        )
+        layout.addWidget(QLabel("PIN (Leave empty to keep unchanged):" if self.user else "PIN:"))
         self.txt_pin = QLineEdit()
         self.txt_pin.setEchoMode(QLineEdit.EchoMode.Password)
         layout.addWidget(self.txt_pin)
@@ -97,9 +95,7 @@ class UserDialog(QDialog):
 
         try:
             if self.user:
-                UserService.update_user(
-                    self.user.id, username, pin if pin else None, role_id, is_active
-                )
+                UserService.update_user(self.user.id, username, pin if pin else None, role_id, is_active)
             else:
                 UserService.create_user(username, pin, role_id)
             self.accept()
@@ -159,9 +155,7 @@ class UserView(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["ID", "Username", "Role", "Status"])
-        self.table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.doubleClicked.connect(self.edit_user)
@@ -173,12 +167,8 @@ class UserView(QWidget):
 
         self.log_table = QTableWidget()
         self.log_table.setColumnCount(5)
-        self.log_table.setHorizontalHeaderLabels(
-            ["Time", "User", "Event", "Terminal", "Details"]
-        )
-        self.log_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+        self.log_table.setHorizontalHeaderLabels(["Time", "User", "Event", "Terminal", "Details"])
+        self.log_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.log_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.log_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
@@ -191,9 +181,7 @@ class UserView(QWidget):
         for row, user in enumerate(self.users):
             self.table.setItem(row, 0, QTableWidgetItem(str(user.id)))
             self.table.setItem(row, 1, QTableWidgetItem(user.username))
-            self.table.setItem(
-                row, 2, QTableWidgetItem(user.role.name if user.role else "None")
-            )
+            self.table.setItem(row, 2, QTableWidgetItem(user.role.name if user.role else "None"))
 
             status = "Active" if user.is_active else "Inactive"
             item_status = QTableWidgetItem(status)
@@ -207,9 +195,7 @@ class UserView(QWidget):
 
         for row, log in enumerate(logs):
             self.log_table.setItem(row, 0, QTableWidgetItem(str(log.timestamp)))
-            self.log_table.setItem(
-                row, 1, QTableWidgetItem(log.user.username if log.user else "Unknown")
-            )
+            self.log_table.setItem(row, 1, QTableWidgetItem(log.user.username if log.user else "Unknown"))
             self.log_table.setItem(row, 2, QTableWidgetItem(log.event_type))
             self.log_table.setItem(row, 3, QTableWidgetItem(log.terminal_id or "-"))
             self.log_table.setItem(row, 4, QTableWidgetItem(log.details or ""))

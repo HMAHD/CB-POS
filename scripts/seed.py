@@ -22,6 +22,7 @@ from cbpos.core.models import (  # noqa: E402
     PaymentMethod,
 )
 from cbpos.core.constants.permissions import Permissions  # noqa: E402
+import cbpos.core.models  # noqa: F401
 
 
 def hash_pin(pin: str) -> str:
@@ -41,9 +42,7 @@ def seed_data():
 
         for group, codes in groups.items():
             for code in codes:
-                perm = Permission(
-                    code=code, description=code.replace(".", " ").title(), group=group
-                )
+                perm = Permission(code=code, description=code.replace(".", " ").title(), group=group)
                 session.add(perm)
                 perm_map[code] = perm
         session.flush()
@@ -70,12 +69,8 @@ def seed_data():
 
         print("Seeding Users...")
         admin = User(username="admin", pin_hash=hash_pin("1234"), role_id=admin_role.id)
-        manager = User(
-            username="manager", pin_hash=hash_pin("5678"), role_id=manager_role.id
-        )
-        cashier = User(
-            username="cashier", pin_hash=hash_pin("0000"), role_id=cashier_role.id
-        )
+        manager = User(username="manager", pin_hash=hash_pin("5678"), role_id=manager_role.id)
+        cashier = User(username="cashier", pin_hash=hash_pin("0000"), role_id=cashier_role.id)
         session.add_all([admin, manager, cashier])
         session.flush()
 

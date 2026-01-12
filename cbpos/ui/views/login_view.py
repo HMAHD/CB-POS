@@ -37,9 +37,7 @@ class LoginView(QWidget):
         # Logo
         logo_label = QLabel()
         # Config.BASE_DIR is project root. Assets are in cbpos/assets/logo
-        logo_path = os.path.join(
-            Config.BASE_DIR, "cbpos", "assets", "logo", "Logo_light.png"
-        )
+        logo_path = os.path.join(Config.BASE_DIR, "cbpos", "assets", "logo", "Logo_light.png")
         if os.path.exists(logo_path):
             pixmap = QPixmap(logo_path)
             scaled_pixmap = pixmap.scaled(
@@ -59,9 +57,7 @@ class LoginView(QWidget):
         welcome_text = QLabel("Welcome / ආයුබෝවන් / வணக்கம்")
         welcome_text.setObjectName("Subtitle")
         welcome_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        welcome_text.setStyleSheet(
-            "font-size: 24px; color: #00BCEB; font-weight: bold; margin-top: 20px;"
-        )
+        welcome_text.setStyleSheet("font-size: 24px; color: #00BCEB; font-weight: bold; margin-top: 20px;")
 
         left_layout.addStretch()
         left_layout.addWidget(logo_label)

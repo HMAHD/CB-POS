@@ -36,17 +36,11 @@ class ImportService:
 
                 for row in reader:
                     try:
-                        barcode = row.get(
-                            field_map.get("barcode", "Barcode"), ""
-                        ).strip()
+                        barcode = row.get(field_map.get("barcode", "Barcode"), "").strip()
                         name = row.get(field_map.get("name", "Name"), "").strip()
-                        price_str = row.get(
-                            field_map.get("price", "Price"), "0"
-                        ).strip()
+                        price_str = row.get(field_map.get("price", "Price"), "0").strip()
                         cost_str = row.get(field_map.get("cost", "Cost"), "0").strip()
-                        stock_str = row.get(
-                            field_map.get("stock", "Stock"), "0"
-                        ).strip()
+                        stock_str = row.get(field_map.get("stock", "Stock"), "0").strip()
 
                         if not barcode:
                             # Try fallback keys if mapping failed or specific keys used

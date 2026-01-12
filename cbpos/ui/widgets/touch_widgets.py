@@ -39,21 +39,20 @@ class ProductCard(QToolButton):
         from cbpos.ui.resources.icons import Icons
 
         icon_label.setPixmap(Icons.get("fa5s.box").pixmap(40, 40))
+        layout.addWidget(icon_label)
 
-        layout.addWidget(icon_label, 1)
+        # Name Label
+        self.lbl_name = QLabel(self.product.name)
+        self.lbl_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_name.setWordWrap(True)
+        self.lbl_name.setStyleSheet("font-size: 12px; color: white; font-weight: bold;")
+        layout.addWidget(self.lbl_name)
 
-        # Name
-        name_label = QLabel(self.product.name_en)
-        name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        name_label.setWordWrap(True)
-        name_label.setStyleSheet("font-size: 10px; font-weight: bold; color: white;")
-        layout.addWidget(name_label)
-
-        # Price
-        price_label = QLabel("Rs. {:.2f}".format(self.product.price))
-        price_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        price_label.setStyleSheet("font-size: 10px; color: #39FF14;")
-        layout.addWidget(price_label)
+        # Price Label
+        self.lbl_price = QLabel(f"{self.product.price:,.2f}")  # noqa: E231
+        self.lbl_price.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_price.setStyleSheet("font-size: 14px; color: #00BCEB; font-weight: bold;")
+        layout.addWidget(self.lbl_price)
 
         # Style
         self.setStyleSheet(

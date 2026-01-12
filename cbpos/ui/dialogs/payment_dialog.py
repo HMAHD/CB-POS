@@ -21,6 +21,9 @@ from cbpos.core.models import Customer
 from cbpos.core.services.payment_service import PaymentService
 
 
+from cbpos.core.utils.formatters import format_currency
+
+
 class PaymentDialog(QDialog):
     def __init__(self, total_amount: Decimal, parent=None):
         print("DEBUG: PaymentDialog.__init__ started")
@@ -58,9 +61,7 @@ class PaymentDialog(QDialog):
         left_layout.setContentsMargins(0, 0, 0, 0)
 
         # 1. Total/Remaining Display
-        self.lbl_remaining = QLabel(
-            f"Total: Rs. {self.total_amount:,.2f}"  # noqa: E231
-        )
+        self.lbl_remaining = QLabel(f"Total: {format_currency(self.total_amount)}")  # noqa: E231
         self.lbl_remaining.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_remaining.setObjectName("PaymentRemainingLabel")
         left_layout.addWidget(self.lbl_remaining)
@@ -261,16 +262,12 @@ class PaymentDialog(QDialog):
         if self.current_method.name.upper() == "CREDIT":
             cust_name = self.cmb_customer.currentText()
             if not cust_name:
-                QMessageBox.warning(
-                    self, "Error", "Please select a customer for Credit sale."
-                )
+                QMessageBox.warning(self, "Error", "Please select a customer for Credit sale.")
                 return
             self.customer_id = self.customers_map.get(cust_name)
 
         self.payments.append({"method": self.current_method.name, "amount": amount})
-        self.list_payments.addItem(
-            f"{self.current_method.name}: Rs. {amount:,.2f}"  # noqa: E231
-        )
+        self.list_payments.addItem(f"{self.current_method.name}: {format_currency(amount)}")  # noqa: E231
 
         self.update_balance()
         self.txt_amount.clear()

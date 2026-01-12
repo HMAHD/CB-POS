@@ -33,7 +33,7 @@ QLabel.AboutLabel {
 QWidget {
     background-color: #1E1E1E;
     color: #FFFFFF;
-    font-size: 14px;
+    font-size: {{FONT_SIZE}};
 }
 
 /* Inputs */

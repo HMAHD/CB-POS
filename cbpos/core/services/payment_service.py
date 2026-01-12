@@ -24,11 +24,7 @@ class PaymentService:
         """
         db = Database()
         with db.get_session() as session:
-            return (
-                session.query(PaymentMethod)
-                .filter(PaymentMethod.is_active.is_(True))
-                .all()
-            )
+            return session.query(PaymentMethod).filter(PaymentMethod.is_active.is_(True)).all()
 
     @staticmethod
     def create_method(

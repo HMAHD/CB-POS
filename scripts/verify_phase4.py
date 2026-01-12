@@ -31,9 +31,7 @@ def test_financials():
             print(f"Using existing shift: ID={shift.id}")
 
         # Cash Movement
-        CashControlService.record_cash_in(
-            user.id, Decimal("1000.00"), "Petty Cash Topup"
-        )
+        CashControlService.record_cash_in(user.id, Decimal("1000.00"), "Petty Cash Topup")
         print("Recorded Cash IN: 1000.00")
 
         CashControlService.record_cash_out(user.id, Decimal("500.00"), "Lunch")

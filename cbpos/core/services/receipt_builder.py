@@ -1,54 +1,168 @@
-from cbpos.core.models import Sale
+from typing import List, Dict, Any, Optional
+from cbpos.core.services.config_service import ConfigService
+from cbpos.core.models import Sale, SaleItem
+
+
+from cbpos.core.utils.formatters import format_currency
 
 
 class ReceiptBuilder:
     """
-    Builds the text content for receipts.
+    Builds a list of command objects for printing or previewing receipts.
+    Commands are device-agnostic dictionaries:
+    - {'type': 'text', 'val': '...', 'align': 'left|center|right'}
+    - {'type': 'image', 'path': '...'}
+    - {'type': 'barcode', 'val': '...', 'code': 'CODE39|QR'}
+    - {'type': 'feed', 'lines': 1}
+    - {'type': 'cut'}
     """
 
-    WIDTH = 42  # Standard 80mm thermal printer width (approx 42-48 chars)
-
-    @staticmethod
-    def build_receipt(sale: Sale) -> str:
+    @classmethod
+    def build_receipt(cls, sale: Sale, config_override: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
-        Generate the complete receipt text.
+        Generates receipt commands for a given Sale.
+
+        Args:
+            sale: The Sale model instance.
+            config_override: Optional dictionary to override ConfigService values.
         """
-        lines = []
+        commands = []
 
-        # 1. Header
-        lines.append(ReceiptBuilder._center("CEYLON BYTE POS"))
-        lines.append("-" * ReceiptBuilder.WIDTH)
+        # Helper to get config value with override support
+        def get_conf(key, default=None):
+            if config_override and key in config_override:
+                return config_override[key]
+            return (
+                ConfigService.get_str(key, default)
+                if isinstance(default, str)
+                else ConfigService.get_bool(key, default)
+            )
 
-        for item in sale.items:
-            # Truncate name if too long
-            name = item.product.name_en[:20]
-            name_col = "{:<20}".format(name)
-            qty_col = "{:>5.0f}".format(item.qty)
-            price_col = "{:>7.2f}".format(item.unit_price)
-            total_col = "{:>8.2f}".format(item.subtotal)
-            lines.append("{} {} {} {}".format(name_col, qty_col, price_col, total_col))
+        # 1. Logo
+        logo_path = get_conf("receipt_logo_path", "")
+        if logo_path:
+            commands.append({"type": "image", "path": logo_path})
 
-        lines.append("-" * ReceiptBuilder.WIDTH)
+        # 2. Header
+        header_text = get_conf("receipt_header", "")
+        if header_text:
+            commands.append({"type": "text", "val": header_text, "align": "center"})
+            commands.append({"type": "feed", "lines": 1})
 
-        # 4. Totals
-        lines.append("{:<20} {:>21.2f}".format("TOTAL", sale.total_amount))
-        lines.append("-" * ReceiptBuilder.WIDTH)
+        # 3. Sale Details
+        commands.append({"type": "text", "val": f"Receipt #: {sale.id}", "align": "left"})
+        commands.append(
+            {
+                "type": "text",
+                "val": f"Date: {sale.date.strftime('%Y-%m-%d %H:%M')}",
+                "align": "left",
+            }
+        )
+        commands.append({"type": "text", "val": "-" * 42, "align": "center"})
 
-        # 5. Tax Breakdown (Backward Calc)
-        # Assuming sale.tax_vat and sale.tax_sscl are populated
-        lines.append(ReceiptBuilder._center("*** TAX BREAKDOWN ***"))
-        lines.append("{:<20} {:>21.2f}".format("VAT (18%)", sale.tax_vat))
-        lines.append("{:<20} {:>21.2f}".format("SSCL (2.5%)", sale.tax_sscl))
-        lines.append("{:<20} {:>21.2f}".format("Net Revenue", sale.net_revenue))
-        lines.append("-" * ReceiptBuilder.WIDTH)
+        # 4. Items
+        merge = get_conf("merge_items", True)
+        display_items = cls._merge_items(sale.items) if merge else sale.items
+
+        for item in display_items:
+            # Name line
+            product_name = item.product.name_en if hasattr(item, "product") else item.name
+            commands.append({"type": "text", "val": product_name, "align": "left"})
+
+            # Qty x Price = Total line
+            qty = item.qty
+            price = item.unit_price
+            total = item.subtotal
+            line = "{} x {} = {}".format(qty, format_currency(price), format_currency(total))
+            commands.append({"type": "text", "val": line, "align": "right"})
+
+        commands.append({"type": "text", "val": "-" * 42, "align": "center"})
+
+        # 5. Totals
+        commands.append(
+            {
+                "type": "text",
+                "val": "Total: {}".format(format_currency(sale.total_amount)),
+                "align": "right",
+            }
+        )
+
+        # Tax Breakdown
+        if get_conf("show_tax_breakdown", True):
+            commands.append({"type": "feed", "lines": 1})
+            commands.append({"type": "text", "val": "Tax Breakdown:", "align": "left"})
+            if sale.tax_vat > 0:
+                commands.append(
+                    {
+                        "type": "text",
+                        "val": "VAT: {}".format(format_currency(sale.tax_vat)),
+                        "align": "right",
+                    }
+                )
+            if sale.tax_sscl > 0:
+                commands.append(
+                    {
+                        "type": "text",
+                        "val": "SSCL: {}".format(format_currency(sale.tax_sscl)),
+                        "align": "right",
+                    }
+                )
 
         # 6. Footer
-        lines.append(ReceiptBuilder._center("Thank You! Come Again."))
-        lines.append(ReceiptBuilder._center("Software by Ceylon Byte"))
-        lines.append("\n\n")  # Feed
+        commands.append({"type": "feed", "lines": 1})
+        footer_text = get_conf("receipt_footer", "")
+        if footer_text:
+            commands.append({"type": "text", "val": footer_text, "align": "center"})
 
-        return "\n".join(lines)
+        # 7. Barcode
+        if get_conf("show_barcode", True):
+            commands.append({"type": "feed", "lines": 1})
+            commands.append(
+                {
+                    "type": "barcode",
+                    "val": str(sale.id),
+                    "code": "CODE39",
+                    "align": "center",
+                }
+            )
+
+        # 8. Cut
+        commands.append({"type": "feed", "lines": 2})
+        commands.append({"type": "cut"})
+
+        return commands
 
     @staticmethod
-    def _center(text: str) -> str:
-        return text.center(ReceiptBuilder.WIDTH)
+    def _merge_items(items: List[SaleItem]) -> List[Any]:
+        """
+        Merges SaleItems with the same product_id.
+        Returns a list of objects with product, qty, unit_price, subtotal attributes.
+        """
+        merged = {}
+        for item in items:
+            pid = item.product_id
+            if pid in merged:
+                merged[pid].qty += item.qty
+                merged[pid].subtotal += item.subtotal
+            else:
+                # Create a simple object or clone to avoid modifying original SaleItems
+                # We use a simple class or dict wrapper for display
+                merged[pid] = ItemDisplay(
+                    product=item.product,
+                    qty=item.qty,
+                    unit_price=item.unit_price,
+                    subtotal=item.subtotal,
+                    name=item.product.name_en,
+                )
+        return list(merged.values())
+
+
+class ItemDisplay:
+    """Helper class for merged items display"""
+
+    def __init__(self, product, qty, unit_price, subtotal, name):
+        self.product = product
+        self.qty = qty
+        self.unit_price = unit_price
+        self.subtotal = subtotal
+        self.name = name

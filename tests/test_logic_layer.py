@@ -16,6 +16,9 @@ from cbpos.core.services.cart_service import CartService  # noqa: E402
 def test_logic():
     print("Testing Logic Layer...")
 
+    # Initialize Database (Create tables if not exist)
+    Database().create_tables()
+
     # 1. Test Document Service
     doc_num = DocumentService.generate_number("SALE")
     print(f"Generated Document Number: {doc_num}")
@@ -34,9 +37,7 @@ def test_logic():
 
         # Case A: No Customer
         price_a = PricingService.calculate_price(product, None)
-        print(
-            f"Price (No Customer): {price_a['final_price']} ({price_a['applied_rule']})"
-        )
+        print(f"Price (No Customer): {price_a['final_price']} ({price_a['applied_rule']})")
         assert price_a["final_price"] == product.price
 
         # Case B: Wholesale Customer
@@ -45,11 +46,7 @@ def test_logic():
         if wholesale_list:
             # Add a price list item for this product
             # Check if exists first
-            pli = (
-                session.query(PriceListItem)
-                .filter_by(price_list_id=wholesale_list.id, product_id=product.id)
-                .first()
-            )
+            pli = session.query(PriceListItem).filter_by(price_list_id=wholesale_list.id, product_id=product.id).first()
             if not pli:
                 pli = PriceListItem(
                     price_list_id=wholesale_list.id,
@@ -60,20 +57,14 @@ def test_logic():
                 session.commit()
                 print(f"Added Wholesale Price: {pli.price}")
 
-            customer = (
-                session.query(Customer)
-                .filter(Customer.price_list_id == wholesale_list.id)
-                .first()
-            )
+            customer = session.query(Customer).filter(Customer.price_list_id == wholesale_list.id).first()
             if customer:
                 # Need to re-query product to ensure it's attached to session if needed,
                 # but calculate_price handles its own session.
                 # However, we passed 'product' which might be detached.
                 # PricingService uses product.id, so it should be fine.
                 price_b = PricingService.calculate_price(product, customer)
-                print(
-                    f"Price (Wholesale Customer): {price_b['final_price']} ({price_b['applied_rule']})"
-                )
+                print(f"Price (Wholesale Customer): {price_b['final_price']} " f"({price_b['applied_rule']})")
                 assert price_b["final_price"] < product.price
                 assert "Wholesale" in price_b["applied_rule"]
             else:

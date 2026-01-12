@@ -58,9 +58,7 @@ class CashMovementDialog(QDialog):
 
         self.btn_save = QPushButton("Save")
         self.btn_save.clicked.connect(self.validate_and_save)
-        self.btn_save.setStyleSheet(
-            "background-color: #0074D9; color: white; font-weight: bold;"
-        )
+        self.btn_save.setStyleSheet("background-color: #0074D9; color: white; font-weight: bold;")
         btn_layout.addWidget(self.btn_save)
 
         self.btn_cancel = QPushButton("Cancel")

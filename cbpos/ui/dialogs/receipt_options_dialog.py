@@ -33,7 +33,8 @@ class ReceiptOptionsDialog(QDialog):
         layout.addWidget(lbl_title)
 
         lbl_info = QLabel(
-            f"Order #{self.sale.document_number}\nTotal: Rs. {self.sale.total_amount:,.2f}"  # noqa: E231
+            f"Order #{self.sale.document_number}\n"
+            f"Total: Rs. {self.sale.total_amount:,.2f}"  # noqa: E231
         )
         lbl_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_info.setObjectName("ReceiptInfo")
@@ -77,20 +78,14 @@ class ReceiptOptionsDialog(QDialog):
         if self.sale.customer and self.sale.customer.email:
             default_email = self.sale.customer.email
 
-        email, ok = QInputDialog.getText(
-            self, "Email Receipt", "Enter Email Address:", text=default_email
-        )
+        email, ok = QInputDialog.getText(self, "Email Receipt", "Enter Email Address:", text=default_email)
 
         if ok and email:
             # Send in background
             self.worker = EmailService.send_receipt(email, self.sale.document_number)
             self.worker.finished.connect(self.on_email_finished)
-            QMessageBox.information(
-                self, "Sending", "Email is being sent in the background."
-            )
+            QMessageBox.information(self, "Sending", "Email is being sent in the background.")
 
     def on_email_finished(self, success, message):
         if not success:
-            QMessageBox.warning(
-                self, "Email Failed", f"Failed to send email: {message}"
-            )
+            QMessageBox.warning(self, "Email Failed", f"Failed to send email: {message}")

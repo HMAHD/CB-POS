@@ -1,6 +1,7 @@
 import os
 from PyQt6.QtWidgets import QApplication
 from cbpos.infrastructure.resource_loader import ResourceLoader
+from cbpos.core.services.config_service import ConfigService
 
 
 class ThemeService:
@@ -32,7 +33,19 @@ class ThemeService:
 
             # Variable Injection
             font_family = ResourceLoader.get_primary_font()
+            raw_size = ConfigService.get("font_size")
+
+            # Security: Validate font_size to prevent CSS injection
+            try:
+                font_size_int = int(str(raw_size))
+                if not (8 <= font_size_int <= 36):
+                    raise ValueError("Font size out of bounds")
+                font_size = f"{font_size_int}px"
+            except (ValueError, TypeError):
+                font_size = "12px"  # Safe fallback
+
             style_content = style_content.replace("{{FONT_FAMILY}}", font_family)
+            style_content = style_content.replace("{{FONT_SIZE}}", font_size)
 
             app = QApplication.instance()
             if app:

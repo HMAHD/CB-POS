@@ -39,9 +39,7 @@ class Role(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     access_level: Mapped[int] = mapped_column(Integer, default=0)
-    permissions: Mapped[List["Permission"]] = relationship(
-        secondary=role_permissions, back_populates="roles"
-    )
+    permissions: Mapped[List["Permission"]] = relationship(secondary=role_permissions, back_populates="roles")
 
 
 class Permission(Base):
@@ -52,9 +50,7 @@ class Permission(Base):
     description: Mapped[Optional[str]] = mapped_column(String(200))
     group: Mapped[str] = mapped_column(String(50), default="General")
 
-    roles: Mapped[List["Role"]] = relationship(
-        secondary=role_permissions, back_populates="permissions"
-    )
+    roles: Mapped[List["Role"]] = relationship(secondary=role_permissions, back_populates="permissions")
 
 
 class User(Base):
@@ -63,9 +59,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     pin_hash: Mapped[str] = mapped_column(String(256), nullable=False)
-    role_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("roles.id"), nullable=True
-    )
+    role_id: Mapped[Optional[int]] = mapped_column(ForeignKey("roles.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     role: Mapped["Role"] = relationship()
@@ -81,16 +75,12 @@ class PriceList(Base):
     start_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     end_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
-    items: Mapped[List["PriceListItem"]] = relationship(
-        back_populates="price_list", cascade="all, delete-orphan"
-    )
+    items: Mapped[List["PriceListItem"]] = relationship(back_populates="price_list", cascade="all, delete-orphan")
 
 
 class PriceListItem(Base):
     __tablename__ = "price_list_items"
-    __table_args__ = (
-        UniqueConstraint("price_list_id", "product_id", name="uq_pricelist_product"),
-    )
+    __table_args__ = (UniqueConstraint("price_list_id", "product_id", name="uq_pricelist_product"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     price_list_id: Mapped[int] = mapped_column(ForeignKey("price_lists.id"))
@@ -108,12 +98,8 @@ class Promotion(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     start_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     end_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    days_of_week: Mapped[Optional[str]] = mapped_column(
-        String(50), nullable=True
-    )  # JSON or CSV: "0,1,2" (Mon,Tue,Wed)
-    type: Mapped[str] = mapped_column(
-        String(20), nullable=False
-    )  # PERCENTAGE, FIXED_AMOUNT, BOGO
+    days_of_week: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # JSON or CSV: "0,1,2" (Mon,Tue,Wed)
+    type: Mapped[str] = mapped_column(String(20), nullable=False)  # PERCENTAGE, FIXED_AMOUNT, BOGO
     value: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -131,21 +117,13 @@ class Document(Base):
     __tablename__ = "documents"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    document_number: Mapped[str] = mapped_column(
-        String(50), unique=True, nullable=False
-    )
+    document_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     type: Mapped[str] = mapped_column(String(20), nullable=False)
     date: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    status: Mapped[str] = mapped_column(
-        String(20), default="COMPLETED"
-    )  # COMPLETED, VOID, DRAFT
-    reference_external: Mapped[Optional[str]] = mapped_column(
-        String(100), nullable=True
-    )
-    void_reason_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("void_reasons.id"), nullable=True
-    )
+    status: Mapped[str] = mapped_column(String(20), default="COMPLETED")  # COMPLETED, VOID, DRAFT
+    reference_external: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    void_reason_id: Mapped[Optional[int]] = mapped_column(ForeignKey("void_reasons.id"), nullable=True)
 
     user: Mapped["User"] = relationship()
     void_reason: Mapped["VoidReason"] = relationship()
@@ -160,28 +138,20 @@ class Sale(Document):
     __tablename__ = "sales"
 
     id: Mapped[int] = mapped_column(ForeignKey("documents.id"), primary_key=True)
-    customer_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("customers.id"), nullable=True
-    )
+    customer_id: Mapped[Optional[int]] = mapped_column(ForeignKey("customers.id"), nullable=True)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     tax_vat: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     tax_sscl: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     net_revenue: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     additional_discount_type: Mapped[str] = mapped_column(String(20), default="NONE")
-    additional_discount_value: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2), default=0
-    )
-    payment_method: Mapped[str] = mapped_column(
-        String(20), nullable=False
-    )  # Primary method
+    additional_discount_value: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    payment_method: Mapped[str] = mapped_column(String(20), nullable=False)  # Primary method
+    refund_of_sale_id: Mapped[Optional[int]] = mapped_column(ForeignKey("sales.id"), nullable=True)
 
     customer: Mapped["Customer"] = relationship(back_populates="sales")
-    items: Mapped[List["SaleItem"]] = relationship(
-        back_populates="sale", cascade="all, delete-orphan"
-    )
-    payments: Mapped[List["SalePayment"]] = relationship(
-        back_populates="sale", cascade="all, delete-orphan"
-    )
+    items: Mapped[List["SaleItem"]] = relationship(back_populates="sale", cascade="all, delete-orphan")
+    payments: Mapped[List["SalePayment"]] = relationship(back_populates="sale", cascade="all, delete-orphan")
+    refund_of_sale: Mapped["Sale"] = relationship("Sale", remote_side=[id], foreign_keys=[refund_of_sale_id])
 
     __mapper_args__ = {
         "polymorphic_identity": "sale",
@@ -196,9 +166,7 @@ class Purchase(Document):
     total_cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
 
     supplier: Mapped["Supplier"] = relationship(back_populates="purchases")
-    items: Mapped[List["PurchaseItem"]] = relationship(
-        back_populates="purchase", cascade="all, delete-orphan"
-    )
+    items: Mapped[List["PurchaseItem"]] = relationship(back_populates="purchase", cascade="all, delete-orphan")
 
     __mapper_args__ = {
         "polymorphic_identity": "purchase",
@@ -212,26 +180,18 @@ class Category(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     color: Mapped[str] = mapped_column(String(7), default="#FFFFFF")
-    parent_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("categories.id"), nullable=True
-    )
+    parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True)
 
     products: Mapped[List["Product"]] = relationship(back_populates="category")
-    parent: Mapped["Category"] = relationship(
-        "Category", remote_side=[id], back_populates="subcategories"
-    )
-    subcategories: Mapped[List["Category"]] = relationship(
-        "Category", back_populates="parent"
-    )
+    parent: Mapped["Category"] = relationship("Category", remote_side=[id], back_populates="subcategories")
+    subcategories: Mapped[List["Category"]] = relationship("Category", back_populates="parent")
 
 
 class Product(Base):
     __tablename__ = "products"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    barcode: Mapped[str] = mapped_column(
-        String(50), unique=True, index=True, nullable=False
-    )
+    barcode: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     name_en: Mapped[str] = mapped_column(String(200), nullable=False)
     name_si: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     name_ta: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
@@ -245,30 +205,20 @@ class Product(Base):
     preferred_qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=0)
     image_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"))
-    parent_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("products.id"), nullable=True
-    )
-    default_supplier_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("suppliers.id"), nullable=True
-    )
+    parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("products.id"), nullable=True)
+    default_supplier_id: Mapped[Optional[int]] = mapped_column(ForeignKey("suppliers.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     category: Mapped["Category"] = relationship(back_populates="products")
-    parent: Mapped["Product"] = relationship(
-        "Product", remote_side=[id], back_populates="variants"
-    )
+    parent: Mapped["Product"] = relationship("Product", remote_side=[id], back_populates="variants")
     variants: Mapped[List["Product"]] = relationship("Product", back_populates="parent")
     components: Mapped[List["CompositeItem"]] = relationship(
         "CompositeItem",
         foreign_keys="CompositeItem.parent_product_id",
         back_populates="parent",
     )
-    suppliers: Mapped[List["Supplier"]] = relationship(
-        secondary=product_suppliers, back_populates="products"
-    )
-    default_supplier: Mapped[Optional["Supplier"]] = relationship(
-        "Supplier", foreign_keys=[default_supplier_id]
-    )
+    suppliers: Mapped[List["Supplier"]] = relationship(secondary=product_suppliers, back_populates="products")
+    default_supplier: Mapped[Optional["Supplier"]] = relationship("Supplier", foreign_keys=[default_supplier_id])
 
 
 class Customer(Base):
@@ -278,9 +228,7 @@ class Customer(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     company_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     is_company: Mapped[bool] = mapped_column(Boolean, default=False)
-    phone: Mapped[Optional[str]] = mapped_column(
-        String(20), unique=True, index=True, nullable=True
-    )
+    phone: Mapped[Optional[str]] = mapped_column(String(20), unique=True, index=True, nullable=True)
     email: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     vat_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
@@ -288,19 +236,13 @@ class Customer(Base):
     current_debt: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     payment_terms: Mapped[int] = mapped_column(Integer, default=0)  # Days
     loyalty_points: Mapped[int] = mapped_column(default=0)
-    loyalty_card_code: Mapped[Optional[str]] = mapped_column(
-        String(50), unique=True, index=True, nullable=True
-    )
+    loyalty_card_code: Mapped[Optional[str]] = mapped_column(String(50), unique=True, index=True, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    price_list_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("price_lists.id"), nullable=True
-    )
+    price_list_id: Mapped[Optional[int]] = mapped_column(ForeignKey("price_lists.id"), nullable=True)
 
     sales: Mapped[List["Sale"]] = relationship(back_populates="customer")
     price_list: Mapped["PriceList"] = relationship()
-    contacts: Mapped[List["CustomerContact"]] = relationship(
-        back_populates="customer", cascade="all, delete-orphan"
-    )
+    contacts: Mapped[List["CustomerContact"]] = relationship(back_populates="customer", cascade="all, delete-orphan")
 
 
 class CustomerContact(Base):
@@ -322,21 +264,15 @@ class Supplier(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     company_name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     contact_person: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    phone: Mapped[Optional[str]] = mapped_column(
-        String(20), unique=True, index=True, nullable=True
-    )
+    phone: Mapped[Optional[str]] = mapped_column(String(20), unique=True, index=True, nullable=True)
     email: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     tax_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    contact_details: Mapped[Optional[str]] = mapped_column(
-        String(200), nullable=True
-    )  # Extra details
+    contact_details: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)  # Extra details
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     purchases: Mapped[List["Purchase"]] = relationship(back_populates="supplier")
-    products: Mapped[List["Product"]] = relationship(
-        secondary=product_suppliers, back_populates="suppliers"
-    )
+    products: Mapped[List["Product"]] = relationship(secondary=product_suppliers, back_populates="suppliers")
 
 
 # --- Details & Logs ---
@@ -349,9 +285,7 @@ class SaleItem(Base):
     qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     original_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    discount_type: Mapped[str] = mapped_column(
-        String(20), default="NONE"
-    )  # NONE, PERCENTAGE, FIXED
+    discount_type: Mapped[str] = mapped_column(String(20), default="NONE")  # NONE, PERCENTAGE, FIXED
     discount_value: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
     is_manual_price: Mapped[bool] = mapped_column(Boolean, default=False)
     subtotal: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
@@ -365,9 +299,7 @@ class SalePayment(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     sale_id: Mapped[int] = mapped_column(ForeignKey("sales.id"))
-    payment_method: Mapped[str] = mapped_column(
-        String(20), nullable=False
-    )  # Cash, Card, Credit
+    payment_method: Mapped[str] = mapped_column(String(20), nullable=False)  # Cash, Card, Credit
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
     sale: Mapped["Sale"] = relationship(back_populates="payments")
@@ -395,12 +327,8 @@ class StockMovement(Base):
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     qty_change: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
     balance_after: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
-    document_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("documents.id"), nullable=True
-    )
-    type: Mapped[str] = mapped_column(
-        String(20), nullable=False
-    )  # SALE, PURCHASE, ADJUSTMENT, RETURN, VOID
+    document_id: Mapped[Optional[int]] = mapped_column(ForeignKey("documents.id"), nullable=True)
+    type: Mapped[str] = mapped_column(String(20), nullable=False)  # SALE, PURCHASE, ADJUSTMENT, RETURN, VOID
 
     product: Mapped["Product"] = relationship()
     user: Mapped["User"] = relationship()
@@ -415,9 +343,7 @@ class CompositeItem(Base):
     child_product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
     qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
 
-    parent: Mapped["Product"] = relationship(
-        "Product", foreign_keys=[parent_product_id], back_populates="components"
-    )
+    parent: Mapped["Product"] = relationship("Product", foreign_keys=[parent_product_id], back_populates="components")
     child: Mapped["Product"] = relationship("Product", foreign_keys=[child_product_id])
 
 
@@ -427,9 +353,7 @@ class AuditLog(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     action: Mapped[str] = mapped_column(String(100), nullable=False)
-    event_type: Mapped[str] = mapped_column(
-        String(50), nullable=False
-    )  # LOGIN, LOGOUT, TIMEOUT
+    event_type: Mapped[str] = mapped_column(String(50), nullable=False)  # LOGIN, LOGOUT, TIMEOUT
     terminal_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     details: Mapped[Optional[str]] = mapped_column(String)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
@@ -460,12 +384,8 @@ class Shift(Base):
     start_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     end_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     starting_cash: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
-    expected_cash: Mapped[Optional[Decimal]] = mapped_column(
-        Numeric(10, 2), nullable=True
-    )
-    actual_cash: Mapped[Optional[Decimal]] = mapped_column(
-        Numeric(10, 2), nullable=True
-    )
+    expected_cash: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
+    actual_cash: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="OPEN")  # OPEN, CLOSED
 
     user: Mapped["User"] = relationship()
@@ -475,13 +395,9 @@ class CashMovement(Base):
     __tablename__ = "cash_movements"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    shift_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("shifts.id"), nullable=True
-    )
+    shift_id: Mapped[Optional[int]] = mapped_column(ForeignKey("shifts.id"), nullable=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    type: Mapped[str] = mapped_column(
-        String(20), nullable=False
-    )  # IN, OUT, DROP, PAYOUT
+    type: Mapped[str] = mapped_column(String(20), nullable=False)  # IN, OUT, DROP, PAYOUT
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     reason: Mapped[str] = mapped_column(String(200), nullable=False)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
@@ -495,9 +411,7 @@ class SuspendedTransaction(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
-    data: Mapped[str] = mapped_column(
-        String, nullable=False
-    )  # JSON string of cart items
+    data: Mapped[str] = mapped_column(String, nullable=False)  # JSON string of cart items
     note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
 
 

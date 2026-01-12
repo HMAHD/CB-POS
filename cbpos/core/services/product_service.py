@@ -20,9 +20,7 @@ class ProductService:
     def __init__(self):
         self.db = Database()
 
-    def search_products(
-        self, query: str, mode: str = "ALL", limit: int = 50
-    ) -> List[Product]:
+    def search_products(self, query: str, mode: str = "ALL", limit: int = 50) -> List[Product]:
         """
         Multi-mode product search.
 
@@ -127,9 +125,7 @@ class ProductService:
         db = Database()
         with db.get_session() as session:
             stmt = (
-                select(Product)
-                .where(Product.category_id == category_id, Product.is_active)
-                .order_by(Product.name_en)
+                select(Product).where(Product.category_id == category_id, Product.is_active).order_by(Product.name_en)
             )
             return list(session.scalars(stmt).all())
 

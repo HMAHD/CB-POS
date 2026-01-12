@@ -350,14 +350,14 @@
 - [x] **12.2 Reports**
     - [x] **X-Read:** Mid-shift snapshot.
     - [x] **Z-Read:** End of day reset & variance calculation.
-- [ ] **12.3 End of Day Process **
-    - [ ] **Cash Reconciliation:** Count vs expected
-    - [ ] **Variance Tracking:** Over/short reporting
-    - [ ] **Shift Summary:** Sales by payment type
-    - [ ] **User Activity:** Per-cashier performance
-    - [ ] **Transaction Count:** Number of sales
-    - [ ] **Voided Items:** Track cancellations
-    - [ ] **Optional Number Reset:** Daily document numbering
+- [x] **12.3 End of Day Process **
+    - [x] **Cash Reconciliation:** Count vs expected
+    - [x] **Variance Tracking:** Over/short reporting
+    - [x] **Shift Summary:** Sales by payment type
+    - [x] **User Activity:** Per-cashier performance
+    - [x] **Transaction Count:** Number of sales
+    - [x] **Voided Items:** Track cancellations
+    - [x] **Optional Number Reset:** Daily document numbering
 
 ---
 
@@ -371,19 +371,19 @@
     - [x] Footer (Tax breakdown, Thank you message).
 - [x] **13.2 Routing**
     - [x] Logic to print to Kitchen vs Counter based on Category.
-- [ ] **13.3 Advanced Receipt Features **
-    - [ ] **Company Logo:** Image printing support
-    - [ ] **Custom Header/Footer:** Configurable text
-    - [ ] **Barcode/QR Code:** On receipt (with plugins)
-    - [ ] **Tax Breakdown Display:** Line-by-line tax amounts
-    - [ ] **Payment Details:** Show payment types and change
-    - [ ] **Item Merging:** Combine duplicate items
-    - [ ] **Receipt vs Invoice:** Different formats
-- [ ] **13.4 Template Customization**
-    - [ ] Visual template designer
-    - [ ] Multiple template support
-    - [ ] Test print functionality
-    - [ ] Preview before printing
+- [x] **13.3 Advanced Receipt Features **
+    - [x] **Company Logo:** Image printing support
+    - [x] **Custom Header/Footer:** Configurable text
+    - [x] **Barcode/QR Code:** On receipt (with plugins)
+    - [x] **Tax Breakdown Display:** Line-by-line tax amounts
+    - [x] **Payment Details:** Show payment types and change
+    - [x] **Item Merging:** Combine duplicate items
+    - [x] **Receipt vs Invoice:** Different formats
+- [x] **13.4 Template Customization**
+    - [x] Visual template designer
+    - [x] Multiple template support
+    - [x] Test print functionality
+    - [x] Preview before printing
 
 ---
 
@@ -393,65 +393,65 @@
 - [x] **14.1 Dashboard**
     - [x] Live Sales Ticker.
     - [x] "Top Movers" Widget.
-    - [ ] **Today's Summary:** Sales, profit, transactions
-    - [ ] **Stock Alerts:** Low stock warnings
+    - [x] **Today's Summary:** Sales, profit, transactions
+    - [x] **Stock Alerts:** Low stock warnings
 - [x] **14.2 Core Reports**
     - [x] Sales by Date/User/Category.
     - [x] Inventory Valuation.
     - [x] Tax Liability Report (Output VAT - Input VAT).
-- [ ] **14.3 Export**
-    - [ ] Export Table Data to Excel/CSV.
-    - [ ] **PDF Export:** Professional report format
-    - [ ] **Email Reports:** Direct email delivery
-- [ ] **14.4 Comprehensive Report Suite **
-    - [ ] **Sales Reports:**
-        - [ ] Sales Summary by period
-        - [ ] Sales by Product (individual performance)
-        - [ ] Sales by Group (category performance)
-        - [ ] Sales by User (employee performance)
-        - [ ] Sales by Payment Type
-        - [ ] Sales by Customer
-        - [ ] Hourly Sales (time-based patterns)
-    - [ ] **Financial Reports:**
-        - [ ] Profit Report (margins and totals)
-        - [ ] Tax Report (tax collected by rate)
-        - [ ] Payment Type Report
-        - [ ] Cash In/Out movements
-    - [ ] **Inventory Reports:**
-        - [ ] Stock on Hand (current levels)
-        - [ ] Stock Value (inventory valuation)
-        - [ ] Stock Movement (item history)
-        - [ ] Low Stock Warning
-        - [ ] Reorder List (purchase recommendations)
-        - [ ] Stock by Group
-    - [ ] **Customer Reports:**
-        - [ ] Customer Sales
-        - [ ] Customer Purchase History
-        - [ ] Unpaid Sales (outstanding balances)
-        - [ ] Customer Discounts usage
-    - [ ] **Product Reports:**
-        - [ ] Best Selling Products
-        - [ ] Product Margin (profit by product)
-        - [ ] Slow Moving Items
-        - [ ] Price List export
-    - [ ] **Document Reports:**
-        - [ ] Document List (all by type)
-        - [ ] Voided Items
-        - [ ] Unpaid Documents
-        - [ ] Paid Documents
-- [ ] **14.5 Report Filtering & Actions**
-    - [ ] Date range selection
-    - [ ] Multi-field filtering
-    - [ ] View on screen
-    - [ ] Print report
-    - [ ] Export (PDF/Excel/CSV)
-    - [ ] Email directly
-- [ ] **14.6 Scheduled Reporting**
-    - [ ] Daily automatic reports
-    - [ ] Weekly summaries
-    - [ ] Monthly reports
-    - [ ] Custom intervals
-    - [ ] Auto-email recipients
+- [x] **14.3 Export**
+    - [x] Export Table Data to Excel/CSV.
+    - [x] **PDF Export:** Professional report format
+    - [x] **Email Reports:** Direct email delivery
+- [x] **14.4 Comprehensive Report Suite **
+    - [x] **Sales Reports:**
+        - [x] Sales Summary by period
+        - [x] Sales by Product (individual performance)
+        - [x] Sales by Group (category performance)
+        - [x] Sales by User (employee performance)
+        - [x] Sales by Payment Type
+        - [x] Sales by Customer
+        - [x] Hourly Sales (time-based patterns)
+    - [x] **Financial Reports:**
+        - [x] Profit Report (margins and totals)
+        - [x] Tax Report (tax collected by rate)
+        - [x] Payment Type Report
+        - [x] Cash In/Out movements
+    - [x] **Inventory Reports:**
+        - [x] Stock on Hand (current levels)
+        - [x] Stock Value (inventory valuation)
+        - [x] Stock Movement (item history)
+        - [x] Low Stock Warning
+        - [x] Reorder List (purchase recommendations)
+        - [x] Stock by Group
+    - [x] **Customer Reports:**
+        - [x] Customer Sales
+        - [x] Customer Purchase History
+        - [x] Unpaid Sales (outstanding balances)
+        - [x] Customer Discounts usage
+    - [x] **Product Reports:**
+        - [x] Best Selling Products
+        - [x] Product Margin (profit by product)
+        - [x] Slow Moving Items
+        - [x] Price List export
+    - [x] **Document Reports:**
+        - [x] Document List (all by type)
+        - [x] Voided Items
+        - [x] Unpaid Documents
+        - [x] Paid Documents
+- [x] **14.5 Report Filtering & Actions**
+    - [x] Date range selection
+    - [x] Multi-field filtering
+    - [x] View on screen
+    - [x] Print report
+    - [x] Export (PDF/Excel/CSV)
+    - [x] Email directly
+- [x] **14.6 Scheduled Reporting**
+    - [x] Daily automatic reports
+    - [x] Weekly summaries
+    - [x] Monthly reports
+    - [x] Custom intervals
+    - [x] Auto-email recipients
 
 ---
 
@@ -462,46 +462,46 @@
     - [x] Hardware Setup (Select Printer/Scanner).
     - [x] Business Details (Name, Address, Phone).
     - [x] Tax Rates configuration.
-- [ ] **15.2 Feature Flags**
-    - [ ] Toggle features (e.g., Enable Loyalty, Enable Touch Mode).
-- [ ] **15.3 Comprehensive Settings **
-    - [ ] **General Settings:**
-        - [ ] Company information
-        - [ ] Regional settings (language, currency, date format)
-        - [ ] Appearance (theme, font size, zoom level)
-    - [ ] **Order & Payment Settings:**
-        - [ ] Default search type (Barcode/Code/Name)
-        - [ ] Show search switcher
-        - [ ] Default quantity behavior
-        - [ ] Default discount type
-        - [ ] Prevent negative inventory
-        - [ ] Display receipt print dialog
-        - [ ] Merge items on receipt
-        - [ ] Void reason requirement
-    - [ ] **Product Settings:**
-        - [ ] Allow quantity decimals
-        - [ ] Show product groups in search
-        - [ ] Default tax rate
-        - [ ] Price change allowed by default
-        - [ ] Auto-generate product codes
-    - [ ] **Document Settings:**
-        - [ ] Document numbering format
-        - [ ] Starting numbers
-        - [ ] Prefix/suffix patterns
-        - [ ] Reset frequency
-    - [ ] **Print Settings:**
-        - [ ] Receipt printer selection
-        - [ ] A4 printer selection
-        - [ ] Paper width (58mm/80mm/A4)
-        - [ ] Character set
-        - [ ] Receipt template
-        - [ ] Auto-print options
-        - [ ] Number of copies
-    - [ ] **User Settings:**
+- [x] **15.2 Feature Flags**
+    - [x] Toggle features (e.g., Enable Loyalty, Enable Touch Mode).
+- [x] **15.3 Comprehensive Settings **
+    - [x] **General Settings:**
+        - [x] Company information
+        - [x] Regional settings (language, currency, date format)
+        - [x] Appearance (theme, font size, zoom level)
+    - [x] **Order & Payment Settings:**
+        - [x] Default search type (Barcode/Code/Name)
+        - [x] Show search switcher
+        - [x] Default quantity behavior
+        - [x] Default discount type
+        - [x] Prevent negative inventory
+        - [x] Display receipt print dialog
+        - [x] Merge items on receipt
+        - [x] Void reason requirement
+    - [x] **Product Settings:**
+        - [x] Allow quantity decimals
+        - [x] Show product groups in search
+        - [x] Default tax rate
+        - [x] Price change allowed by default
+        - [x] Auto-generate product codes
+    - [x] **Document Settings:**
+        - [x] Document numbering format
+        - [x] Starting numbers
+        - [x] Prefix/suffix patterns
+        - [x] Reset frequency
+    - [x] **Print Settings:**
+        - [x] Receipt printer selection
+        - [x] A4 printer selection
+        - [x] Paper width (58mm/80mm/A4)
+        - [x] Character set
+        - [x] Receipt template
+        - [x] Auto-print options
+        - [x] Number of copies
+    - [x] **User Settings:**
         - [x] Change password
         - [x] Display name
-        - [ ] Default layout preference
-        - [ ] Language preference
+        - [x] Default layout preference
+        - [x] Language preference
 
 ---
 
@@ -558,6 +558,26 @@
     - [ ] Change database server (for networked version)
     - [ ] Database health check
     - [ ] Integrity verification
+
+---
+
+## 🌐 Phase 18: Local Network & Multi-Terminal (LAN)
+*Goal: Allow multiple PCs to sell from one central database over Ethernet/WiFi.*
+
+  - [ ] **18.1 Database Engine Factory**
+      - [ ] Add `psycopg2-binary` dependency.
+      - [ ] Refactor `core/database.py` to support dynamic switching.
+      - [ ] Implement `get_db_url()`: Returns `sqlite:///...` or `postgresql://...` based on config.
+      - [ ] Configure **Connection Pooling** (QueuePool) for PostgreSQL mode.
+  - [ ] **18.2 Network Configuration UI**
+      - [ ] Create `ui/views/settings/network_page.py`.
+      - [ ] **Mode Selector:** [Standalone (Default)] vs [Network Client].
+      - **Server Settings:** Host IP, Port, DB Name, Username, Password.
+      - **Test Connection:** Button to verify visibility of the Server PC.
+  - [ ] **18.3 Concurrency & Locking**
+      - **Optimistic Locking:** Add `version_id` to `Product` model.
+      - **Conflict Handling:** Update `TransactionService` to catch `StaleDataError`.
+          - *Scenario:* Cashier A and B try to buy the last item at the exact same moment. The DB rejects the second one. The system must auto-refresh and tell Cashier B "Stock changed, retrying...".
 
 ---
 
@@ -1126,4 +1146,3 @@
     - [ ] Enable/disable restaurant mode
     - [ ] Auto-show floor plan on login/F9
     - [ ] Single-user vs multi-user behavior
-

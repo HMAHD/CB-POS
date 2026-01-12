@@ -26,6 +26,7 @@ from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.services.price_list_service import (
     PriceListService,
 )  # Assuming this exists or will be needed
+from cbpos.core.services.config_service import ConfigService
 
 
 class CustomerEditor(QDialog):
@@ -56,7 +57,10 @@ class CustomerEditor(QDialog):
         self.tabs.addTab(self.create_general_tab(), "General")
         self.tabs.addTab(self.create_commercial_tab(), "Commercial")
         self.tabs.addTab(self.create_contacts_tab(), "Contacts")
-        self.tabs.addTab(self.create_loyalty_tab(), "Loyalty")
+
+        if ConfigService.get("enable_loyalty"):
+            self.tabs.addTab(self.create_loyalty_tab(), "Loyalty")
+
         if self.customer:
             self.tabs.addTab(self.create_history_tab(), "History")
             self.tabs.currentChanged.connect(self.on_tab_changed)
@@ -64,10 +68,7 @@ class CustomerEditor(QDialog):
         layout.addWidget(self.tabs)
 
         # Buttons
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Save
-            | QDialogButtonBox.StandardButton.Cancel
-        )
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.save)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
@@ -130,9 +131,7 @@ class CustomerEditor(QDialog):
         self.contact_table.setColumnCount(4)
         headers = ["Name", "Role", "Phone", "Email"]
         self.contact_table.setHorizontalHeaderLabels(headers)
-        self.contact_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+        self.contact_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.contact_table)
 
         # Buttons
@@ -169,15 +168,9 @@ class CustomerEditor(QDialog):
 
         self.history_table = QTableWidget()
         self.history_table.setColumnCount(5)
-        self.history_table.setHorizontalHeaderLabels(
-            ["Date", "Receipt #", "Total", "Status", "Payment"]
-        )
-        self.history_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
-        self.history_table.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
-        )
+        self.history_table.setHorizontalHeaderLabels(["Date", "Receipt #", "Total", "Status", "Payment"])
+        self.history_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.history_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.history_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         layout.addWidget(self.history_table)
 
@@ -198,13 +191,9 @@ class CustomerEditor(QDialog):
             row = self.history_table.rowCount()
             self.history_table.insertRow(row)
 
-            self.history_table.setItem(
-                row, 0, QTableWidgetItem(sale.date.strftime("%Y-%m-%d %H:%M"))
-            )
+            self.history_table.setItem(row, 0, QTableWidgetItem(sale.date.strftime("%Y-%m-%d %H:%M")))
             self.history_table.setItem(row, 1, QTableWidgetItem(str(sale.id)))
-            self.history_table.setItem(
-                row, 2, QTableWidgetItem("{:.2f}".format(sale.total_amount))
-            )
+            self.history_table.setItem(row, 2, QTableWidgetItem("{:.2f}".format(sale.total_amount)))
 
             status_item = QTableWidgetItem(sale.status)
             if sale.status == "VOID":
@@ -251,12 +240,8 @@ class CustomerEditor(QDialog):
                 self.contact_table.insertRow(row)
                 self.contact_table.setItem(row, 0, QTableWidgetItem(contact.name))
                 self.contact_table.setItem(row, 1, QTableWidgetItem(contact.role or ""))
-                self.contact_table.setItem(
-                    row, 2, QTableWidgetItem(contact.phone or "")
-                )
-                self.contact_table.setItem(
-                    row, 3, QTableWidgetItem(contact.email or "")
-                )
+                self.contact_table.setItem(row, 2, QTableWidgetItem(contact.phone or ""))
+                self.contact_table.setItem(row, 3, QTableWidgetItem(contact.email or ""))
 
     def save(self):
         # Gather Contact Data
@@ -270,19 +255,13 @@ class CustomerEditor(QDialog):
                 {
                     "name": name_item.text().strip(),
                     "role": (
-                        self.contact_table.item(row, 1).text().strip()
-                        if self.contact_table.item(row, 1)
-                        else None
+                        self.contact_table.item(row, 1).text().strip() if self.contact_table.item(row, 1) else None
                     ),
                     "phone": (
-                        self.contact_table.item(row, 2).text().strip()
-                        if self.contact_table.item(row, 2)
-                        else None
+                        self.contact_table.item(row, 2).text().strip() if self.contact_table.item(row, 2) else None
                     ),
                     "email": (
-                        self.contact_table.item(row, 3).text().strip()
-                        if self.contact_table.item(row, 3)
-                        else None
+                        self.contact_table.item(row, 3).text().strip() if self.contact_table.item(row, 3) else None
                     ),
                 }
             )

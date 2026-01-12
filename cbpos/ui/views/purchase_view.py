@@ -53,10 +53,7 @@ class SupplierTableModel(QAbstractTableModel):
         return None
 
     def headerData(self, section, orientation, role):
-        if (
-            role == Qt.ItemDataRole.DisplayRole
-            and orientation == Qt.Orientation.Horizontal
-        ):
+        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             return self.headers[section]
         return None
 
@@ -150,12 +147,8 @@ class PurchaseView(QWidget):
 
         # Table
         self.supplier_table = QTableView()
-        self.supplier_table.setSelectionBehavior(
-            QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        self.supplier_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+        self.supplier_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.supplier_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.supplier_table)
 
     def setup_grn_tab(self):
@@ -195,15 +188,11 @@ class PurchaseView(QWidget):
 
         # Items Grid
         self.grn_model = QStandardItemModel(0, 5)
-        self.grn_model.setHorizontalHeaderLabels(
-            ["ID", "Product Name", "Receive Qty", "Unit Cost", "Total"]
-        )
+        self.grn_model.setHorizontalHeaderLabels(["ID", "Product Name", "Receive Qty", "Unit Cost", "Total"])
 
         self.grn_table = QTableView()
         self.grn_table.setModel(self.grn_model)
-        self.grn_table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+        self.grn_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.grn_table)
 
         # Footer
@@ -212,9 +201,7 @@ class PurchaseView(QWidget):
         self.total_label.setStyleSheet("font-size: 16px; font-weight: bold;")
 
         commit_btn = QPushButton("Commit Stock")
-        commit_btn.setStyleSheet(
-            "background-color: #39FF14; color: black; font-weight: bold; padding: 10px;"
-        )
+        commit_btn.setStyleSheet("background-color: #39FF14; color: black; font-weight: bold; padding: 10px;")
         commit_btn.clicked.connect(self.commit_grn)
 
         footer_layout.addStretch()
@@ -284,9 +271,7 @@ class PurchaseView(QWidget):
         ref_no = self.invoice_input.text()
 
         if not supplier_id or not ref_no:
-            QMessageBox.warning(
-                self, "Error", "Please select Supplier and enter Reference #"
-            )
+            QMessageBox.warning(self, "Error", "Please select Supplier and enter Reference #")
             return
 
         if not self.grn_items:

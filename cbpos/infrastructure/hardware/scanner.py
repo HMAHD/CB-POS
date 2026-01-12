@@ -27,9 +27,7 @@ class BarcodeScanner(QObject):
             text = event.text()
             if text:
                 self.buffer += text
-                self.timer.start(
-                    50
-                )  # Reset buffer if no input for 50ms (Scanner is fast)
+                self.timer.start(50)  # Reset buffer if no input for 50ms (Scanner is fast)
 
                 # If Enter is pressed, emit signal
                 if event.key() == 16777220 or event.key() == 16777221:  # Enter keys

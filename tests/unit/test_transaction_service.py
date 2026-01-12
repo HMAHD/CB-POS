@@ -2,8 +2,9 @@ from decimal import Decimal
 from unittest.mock import patch
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.services.tax_service import TaxService
-from cbpos.core.models import Product, User, Role, Sale, Permission
+from cbpos.core.models import Product, User, Role, Sale, Permission, SaleItem
 from cbpos.core.services.cart_service import CartService
+from datetime import datetime
 
 
 # --- Test Case A: Atomic Commit (Sale + Stock) ---
@@ -18,9 +19,7 @@ def test_process_sale_atomic(db_session):
     permission = Permission(code="sale_atomic")
     role = Role(name="Cashier_Atomic", permissions=[permission])
     user = User(username="cashier_atomic", pin_hash="hash", role=role)
-    product = Product(
-        name_en="Test Product Atomic", price=100.0, stock_qty=10.0, barcode="123_atomic"
-    )
+    product = Product(name_en="Test Product Atomic", price=100.0, stock_qty=10.0, barcode="123_atomic")
     db_session.add_all([permission, role, user, product])
     db_session.commit()
 
@@ -127,16 +126,15 @@ def test_void_sale(db_session):
     permission = Permission(code="void_sale_unique")
     role = Role(name="Manager_Void", permissions=[permission])
     user = User(username="manager_void", pin_hash="hash", role=role)
-    product = Product(
-        name_en="Test Product Void", price=100.0, stock_qty=8.0, barcode="123_void"
-    )
+    product = Product(name_en="Test Product Void", price=100.0, stock_qty=8.0, barcode="123_void")
     db_session.add_all([permission, role, user, product])
     db_session.commit()
 
     sale = Sale(
-        receipt_no="REC-VOID-TEST",
+        document_number="REC-VOID-TEST",
+        date=datetime.now(),
         total_amount=100.0,
-        cashier_id=user.id,
+        user_id=user.id,
         tax_vat=0,
         tax_sscl=0,
         net_revenue=100,
@@ -145,13 +143,12 @@ def test_void_sale(db_session):
     db_session.add(sale)
     db_session.flush()
 
-    from cbpos.core.models import SaleItem
-
     sale_item = SaleItem(
         sale_id=sale.id,
         product_id=product.id,
         qty=2.0,
         unit_price=100.0,
+        original_price=100.0,
         subtotal=200.0,
     )
     db_session.add(sale_item)

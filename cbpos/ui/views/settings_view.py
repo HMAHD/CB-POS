@@ -3,24 +3,28 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QPushButton,
     QStackedWidget,
     QListWidget,
     QListWidgetItem,
-    QFormLayout,
-    QMessageBox,
-    QGroupBox,
-    QCheckBox,
-    QSpinBox,
     QFrame,
-    QComboBox,
+    QMessageBox,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
-from PyQt6.QtPrintSupport import QPrinterInfo
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.theme_service import ThemeService
-from cbpos.core.services.language_service import LanguageService
+from cbpos.ui.views.settings_pages import (
+    GeneralPage,
+    SalesPage,
+    TaxPage,
+    InventoryPage,
+    DocumentPage,
+    HardwarePage,
+    PaymentPage,
+    ReceiptPage,
+    AutomationPage,
+    ProfilePage,
+)
 
 
 class SettingsView(QWidget):
@@ -65,20 +69,22 @@ class SettingsView(QWidget):
 
         items = [
             ("General", "fa5s.sliders-h"),
-            ("Order & Payment", "fa5s.credit-card"),
+            ("Sales", "fa5s.shopping-cart"),
+            ("Taxes", "fa5s.percent"),
+            ("Inventory", "fa5s.boxes"),
+            ("Documents", "fa5s.file-invoice"),
+            ("Receipt", "fa5s.receipt"),
             ("Hardware", "fa5s.print"),
-            ("Users", "fa5s.users"),
-            ("Database", "fa5s.database"),
-            ("About", "fa5s.info-circle"),
+            ("Payments", "fa5s.credit-card"),
+            ("Automation", "fa5s.robot"),
+            ("My Profile", "fa5s.user-cog"),
         ]
 
         for item_text, icon_name in items:
             item = QListWidgetItem(item_text)
             item.setIcon(qta.icon(icon_name, color="white"))
             item.setSizeHint(QSize(0, 50))
-            item.setTextAlignment(
-                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-            )
+            item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             self.sidebar.addItem(item)
 
         body_layout.addWidget(self.sidebar)
@@ -87,27 +93,22 @@ class SettingsView(QWidget):
         self.stack = QStackedWidget()
         self.stack.setObjectName("SettingsContent")
 
-        # Pages
-        self.page_general = QWidget()
-        self.page_order_payment = QWidget()
-        self.page_hardware = QWidget()
-        self.page_users = QWidget()
-        self.page_database = QWidget()
-        self.page_about = QWidget()
+        # Initialize Pages
+        self.pages = [
+            GeneralPage(),
+            SalesPage(),
+            TaxPage(),
+            InventoryPage(),
+            DocumentPage(),
+            ReceiptPage(),
+            HardwarePage(),
+            PaymentPage(),
+            AutomationPage(),
+            ProfilePage(),
+        ]
 
-        self.stack.addWidget(self.page_general)
-        self.stack.addWidget(self.page_order_payment)
-        self.stack.addWidget(self.page_hardware)
-        self.stack.addWidget(self.page_users)
-        self.stack.addWidget(self.page_database)
-        self.stack.addWidget(self.page_about)
-
-        self.init_general_page()
-        self.init_order_payment_page()
-        self.init_hardware_page()
-        self.init_users_page()
-        self.init_database_page()
-        self.init_about_page()
+        for page in self.pages:
+            self.stack.addWidget(page)
 
         body_layout.addWidget(self.stack)
         main_layout.addLayout(body_layout)
@@ -293,66 +294,27 @@ class SettingsView(QWidget):
 
     def load_settings(self):
         settings = ConfigService.get_all()
-
-        # General
-        self.input_shop_name.setText(settings.get("shop_name", ""))
-        self.input_address.setText(settings.get("shop_address", ""))
-        self.input_phone.setText(settings.get("shop_phone", ""))
-        self.input_vat.setText(settings.get("vat_number", ""))
-
-        # Theme
-        current_theme = settings.get("theme", "Dark")
-        index = 0 if current_theme == "Dark" else 1
-        self.combo_theme.setCurrentIndex(index)
-
-        # Language
-        current_lang = settings.get("language", "en")
-        index = self.combo_language.findData(current_lang)
-        if index >= 0:
-            self.combo_language.setCurrentIndex(index)
-
-        # Order & Payment
-        self.combo_reset_period.setCurrentText(
-            settings.get("doc_reset_period", "YEARLY")
-        )
-        self.input_fmt_sale.setText(
-            settings.get("doc_format_sale", "INV-{Y}-{seq:05d}")
-        )
-        self.input_fmt_purchase.setText(
-            settings.get("doc_format_purchase", "GRN-{Y}-{seq:05d}")
-        )
-        self.input_fmt_return.setText(
-            settings.get("doc_format_return", "CN-{Y}-{seq:05d}")
-        )
-        self.chk_show_receipt_dialog.setChecked(
-            settings.get("show_receipt_dialog", "True") == "True"
-        )
-
-        # Hardware
-        receipt_printer = settings.get("receipt_printer_name", "")
-        if receipt_printer:
-            idx = self.combo_receipt_printer.findText(receipt_printer)
-            if idx >= 0:
-                self.combo_receipt_printer.setCurrentIndex(idx)
-
-        a4_printer = settings.get("a4_printer_name", "")
-        if a4_printer:
-            idx = self.combo_a4_printer.findText(a4_printer)
-            if idx >= 0:
-                self.combo_a4_printer.setCurrentIndex(idx)
-
-        self.chk_auto_print.setChecked(settings.get("auto_print_receipt", True))
-        self.spin_copies.setValue(settings.get("receipt_copies", 1))
-
-        self.input_scale_prefix.setText(settings.get("scale_barcode_prefix", "20"))
-        self.spin_decimal_places.setValue(settings.get("scale_decimal_places", 3))
+        for page in self.pages:
+            page.load(settings)
 
     def save_all(self):
-        # Validation
-        scale_prefix = self.input_scale_prefix.text().strip()
-        if len(scale_prefix) != 2 or not scale_prefix.isdigit():
-            QMessageBox.warning(self, "Error", "Scale Prefix must be 2 digits.")
+        all_settings = {}
+        try:
+            for page in self.pages:
+                all_settings.update(page.save())
+        except ValueError as e:
+            QMessageBox.warning(self, "Validation Error", str(e))
             return
+
+        # Capture current state BEFORE update
+        current_lang = ConfigService.get_all().get("language", "en")
+        current_font_size = ConfigService.get_all().get("font_size", 12)
+
+        ConfigService.update_all(all_settings)
+
+        # Apply Theme if theme OR font_size changed
+        new_theme = all_settings.get("theme")
+        new_font_size = all_settings.get("font_size")
 
         # 1. Capture Current State
         current_config = ConfigService.get_all()

@@ -39,7 +39,8 @@ def main():
     Application entry point.
 
     Initializes Qt application, loads resources, and launches the main window.
-    Font loading MUST happen before any UI is created to prevent fallback to system fonts.
+    Font loading MUST happen before any UI is created to prevent fallback to
+    system fonts.
     """
     # Install custom message handler to suppress Qt internal warnings
     qInstallMessageHandler(qt_message_handler)
@@ -64,6 +65,17 @@ def main():
     default_font = QFont(primary_font_family, 10)
     app.setFont(default_font)
     print(f"[BOOTSTRAP] Application font set to: {primary_font_family}")
+
+    # Initialize Theme (Defaults to Dark)
+    from cbpos.core.services.theme_service import ThemeService
+
+    ThemeService.apply_theme("Dark")
+
+    # Register Reports
+    from cbpos.core.reports import register_all_reports
+
+    register_all_reports()
+    print("[BOOTSTRAP] Reports registered.")
 
     # Launch main window
     window = MainWindow()

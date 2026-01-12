@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QRadioButton,
     QButtonGroup,
     QGridLayout,
+    QMessageBox,
 )
 from PyQt6.QtCore import Qt
 
@@ -103,3 +104,13 @@ class DiscountDialog(QDialog):
 
     def get_data(self):
         return self.discount_type, self.spin_value.value()
+
+    def accept(self):
+        if self.spin_value.value() <= 0:
+            QMessageBox.warning(
+                self,
+                "Invalid Input",
+                "Please enter a valid discount value.",
+            )
+            return
+        super().accept()

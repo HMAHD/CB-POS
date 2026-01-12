@@ -38,7 +38,7 @@
 
 1.  **Clone the Repository**
     ```bash
-    git clone https://github.com/yourusername/cb-pos.git
+    git clone https://github.com/HMAHD/cb-pos.git
     cd cb-pos
     ```
 
@@ -76,6 +76,15 @@ To create a standalone `.exe` file:
 pyinstaller cbpos.spec
 ```
 The output will be in the `dist/` folder.
+
+### Code Quality Checks
+Run pre-commit hooks on all files to ensure code quality:
+```bash
+pre-commit run --all-files
+```
+This runs the following checks:
+-   **Black**: Code formatting
+-   **Flake8**: Linting and style enforcement
 
 ## 📂 Project Structure
 

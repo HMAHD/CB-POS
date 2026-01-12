@@ -63,10 +63,7 @@ class CategoryDialog(QDialog):
 
         layout.addLayout(form)
 
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Save
-            | QDialogButtonBox.StandardButton.Cancel
-        )
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.save)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
@@ -82,9 +79,7 @@ class CategoryDialog(QDialog):
                 self.parent_combo.addItem(cat.name, cat.id)
 
     def pick_color(self):
-        color = QColorDialog.getColor(
-            QColor(self.selected_color), self, "Select Category Color"
-        )
+        color = QColorDialog.getColor(QColor(self.selected_color), self, "Select Category Color")
         if color.isValid():
             self.selected_color = color.name()
             self.lbl_color.setStyleSheet(
@@ -114,9 +109,7 @@ class CategoryDialog(QDialog):
                     cat.parent_id = parent_id
                     cat.color = self.selected_color
                 else:
-                    cat = Category(
-                        name=name, parent_id=parent_id, color=self.selected_color
-                    )
+                    cat = Category(name=name, parent_id=parent_id, color=self.selected_color)
                     session.add(cat)
 
                 session.commit()

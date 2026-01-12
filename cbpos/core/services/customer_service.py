@@ -4,6 +4,7 @@ from sqlalchemy import select, or_, desc
 from sqlalchemy.orm import selectinload
 from cbpos.core.database import Database
 from cbpos.core.models import Customer, CustomerContact, Sale
+from cbpos.core.services.config_service import ConfigService
 
 
 class CustomerService:
@@ -27,9 +28,7 @@ class CustomerService:
             session.expunge(customer)
             return customer
 
-    def update_customer(
-        self, customer_id: int, data: Dict[str, Any]
-    ) -> Optional[Customer]:
+    def update_customer(self, customer_id: int, data: Dict[str, Any]) -> Optional[Customer]:
         contacts_data = data.pop("contacts", None)
 
         with self.db.get_session() as session:
@@ -79,6 +78,10 @@ class CustomerService:
         Adds loyalty points based on amount spent.
         Rule: 1 point per 100 currency units.
         """
+
+        if not ConfigService.get("enable_loyalty"):
+            return 0
+
         points_to_add = int(amount_spent // 100)
         if points_to_add <= 0:
             return 0
@@ -115,11 +118,7 @@ class CustomerService:
 
     def get_customer(self, customer_id: int) -> Optional[Customer]:
         with self.db.get_session() as session:
-            stmt = (
-                select(Customer)
-                .where(Customer.id == customer_id)
-                .options(selectinload(Customer.contacts))
-            )
+            stmt = select(Customer).where(Customer.id == customer_id).options(selectinload(Customer.contacts))
             customer = session.scalar(stmt)
             if customer:
                 session.expunge(customer)
@@ -127,11 +126,7 @@ class CustomerService:
 
     def get_all_customers(self) -> List[Customer]:
         with self.db.get_session() as session:
-            stmt = (
-                select(Customer)
-                .where(Customer.is_active.is_(True))
-                .options(selectinload(Customer.contacts))
-            )
+            stmt = select(Customer).where(Customer.is_active.is_(True)).options(selectinload(Customer.contacts))
             customers = list(session.scalars(stmt).all())
             for customer in customers:
                 session.expunge(customer)
@@ -139,12 +134,7 @@ class CustomerService:
 
     def get_purchase_history(self, customer_id: int, limit: int = 20) -> List[Sale]:
         with self.db.get_session() as session:
-            stmt = (
-                select(Sale)
-                .where(Sale.customer_id == customer_id)
-                .order_by(desc(Sale.date))
-                .limit(limit)
-            )
+            stmt = select(Sale).where(Sale.customer_id == customer_id).order_by(desc(Sale.date)).limit(limit)
             sales = list(session.scalars(stmt).all())
             for sale in sales:
                 session.expunge(sale)
@@ -152,18 +142,24 @@ class CustomerService:
 
     def get_outstanding_balance(self, customer_id: int) -> Decimal:
         with self.db.get_session() as session:
-            # Sum of total_amount for sales where payment_method is 'Credit' and status is not 'PAID'
-            # Note: The status field in Sale model is generic 'COMPLETED', 'VOID', 'DRAFT'.
-            # Assuming we need to check payment method 'Credit' and maybe a 'payment_status' if it existed.
-            # Based on user request: "Sum of total_amount for Sales where payment_method='Credit' AND status != 'PAID'"
+            # Sum of total_amount for sales where payment_method is 'Credit' and
+            # status is not 'PAID'
+            # Note: The status field in Sale model is generic 'COMPLETED', 'VOID',
+            # 'DRAFT'.
+            # Assuming we need to check payment method 'Credit' and maybe a
+            # 'payment_status' if it existed.
+            # Based on user request: "Sum of total_amount for Sales where
+            # payment_method='Credit' AND status != 'PAID'"
             # But Sale model doesn't have 'payment_status'. It has 'status'.
-            # Let's assume 'status' logic or just use current_debt from Customer model which is simpler and likely
-            # what is intended for balance.
+            # Let's assume 'status' logic or just use current_debt from Customer model
+            # which is simpler and likely what is intended for balance.
             # However, the user explicitly asked for this method.
             # Let's implement it as sum of Credit sales that are COMPLETED.
-            # Actually, the Customer model has `current_debt`. This method might be for verification or detailed
+            # Actually, the Customer model has `current_debt`. This method might be
+            # for verification or detailed breakdown.
             # breakdown.
-            # Let's stick to the user's prompt logic as best as possible with existing fields.
+            # Let's stick to the user's prompt logic as best as possible with existing
+            # fields.
             # If 'PAID' status doesn't exist, we'll assume 'COMPLETED' means the transaction is done, but for Credit,
             # it means debt is incurred.
 

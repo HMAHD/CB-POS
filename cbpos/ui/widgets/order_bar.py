@@ -23,9 +23,7 @@ class OrderBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedHeight(60)
-        self.setStyleSheet(
-            "background-color: #001F3F; border-bottom: 2px solid #003366;"
-        )
+        self.setStyleSheet("background-color: #001F3F; border-bottom: 2px solid #003366;")
 
         self.init_ui()
         self.refresh_tabs()
@@ -45,12 +43,8 @@ class OrderBar(QWidget):
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
         self.scroll_area.setStyleSheet("background: transparent;")
-        self.scroll_area.setVerticalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
-        self.scroll_area.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAsNeeded
-        )
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
         self.tabs_container = QWidget()
         self.tabs_layout = QHBoxLayout(self.tabs_container)
@@ -121,9 +115,7 @@ class OrderBar(QWidget):
 
             # Connect
             # Use closure to capture bill.id
-            btn.clicked.connect(
-                lambda checked, bid=bill.id: self.tab_switched.emit(bid)
-            )
+            btn.clicked.connect(lambda checked, bid=bill.id: self.tab_switched.emit(bid))
 
             self.tabs_layout.addWidget(btn)
 

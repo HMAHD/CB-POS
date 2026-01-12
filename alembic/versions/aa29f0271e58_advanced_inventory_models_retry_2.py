@@ -43,16 +43,10 @@ def upgrade() -> None:
     )
     with op.batch_alter_table("categories", schema=None) as batch_op:
         batch_op.add_column(sa.Column("parent_id", sa.Integer(), nullable=True))
-        batch_op.create_foreign_key(
-            "fk_categories_parent_id", "categories", ["parent_id"], ["id"]
-        )
+        batch_op.create_foreign_key("fk_categories_parent_id", "categories", ["parent_id"], ["id"])
 
     with op.batch_alter_table("products", schema=None) as batch_op:
-        batch_op.add_column(
-            sa.Column(
-                "is_service", sa.Boolean(), nullable=False, server_default=sa.text("0")
-            )
-        )
+        batch_op.add_column(sa.Column("is_service", sa.Boolean(), nullable=False, server_default=sa.text("0")))
         batch_op.add_column(
             sa.Column(
                 "reorder_point",
@@ -61,9 +55,7 @@ def upgrade() -> None:
                 server_default=sa.text("0"),
             )
         )
-        batch_op.add_column(
-            sa.Column("image_path", sa.String(length=500), nullable=True)
-        )
+        batch_op.add_column(sa.Column("image_path", sa.String(length=500), nullable=True))
         batch_op.alter_column(
             "preferred_qty",
             existing_type=sa.INTEGER(),

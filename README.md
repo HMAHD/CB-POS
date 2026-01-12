@@ -59,6 +59,12 @@
     python scripts/seed.py
     ```
 
+5.  **Configuration**
+    Copy the example settings file and update it with your local configuration (e.g., SMTP, Shop Name):
+    ```bash
+    cp settings.json.example settings.json
+    ```
+
 ## 🚀 Usage
 
 ### Running the App

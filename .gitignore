@@ -1,13 +1,32 @@
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 .venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.whl
+
+# IDEs
 .idea/
 .vscode/
-*.db
+*.swp
+*.swo
+
+# Project Specific
+cbpos.db
 *.sqlite
 *.sqlite3
 *.log
+settings.json
+runtime_error.txt
+flake8_output.txt
+flake8_report.txt
+test_output*.txt
+verify_automation.py
+
+# OS
 .DS_Store
 Thumbs.db
-test_output.txt
-test_output_2.txt

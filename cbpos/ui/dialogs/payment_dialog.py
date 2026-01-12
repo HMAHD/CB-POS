@@ -35,7 +35,8 @@ class PaymentDialog(QDialog):
 
         self.setWindowTitle("Payment")
         self.setFixedSize(800, 600)  # Wider for side-by-side layout
-        self.setStyleSheet("background-color: #001F3F; color: white;")
+        self.setFixedSize(800, 600)  # Wider for side-by-side layout
+        self.setObjectName("PaymentDialog")
 
         print("DEBUG: Loading payment methods...")
         self.load_payment_methods()
@@ -62,25 +63,23 @@ class PaymentDialog(QDialog):
         # 1. Total/Remaining Display
         self.lbl_remaining = QLabel(f"Total: {format_currency(self.total_amount)}")  # noqa: E231
         self.lbl_remaining.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_remaining.setStyleSheet(
-            "font-size: 24px; color: #FF4136; font-weight: bold; border: 1px solid #FF4136; padding: 10px;"
-        )
+        self.lbl_remaining.setObjectName("PaymentRemainingLabel")
         left_layout.addWidget(self.lbl_remaining)
 
         # 2. Payment Entry Form
         entry_group = QWidget()
-        entry_group.setStyleSheet("background-color: #003366; border-radius: 8px;")
+        entry_group.setObjectName("PaymentEntryGroup")
         entry_layout = QGridLayout(entry_group)
 
         entry_layout.addWidget(QLabel("Method:"), 0, 0)
         self.lbl_selected_method = QLabel("Select Method ->")
-        self.lbl_selected_method.setStyleSheet("font-weight: bold; font-size: 16px; color: #00BCEB;")
+        self.lbl_selected_method.setObjectName("PaymentMethodLabel")
         entry_layout.addWidget(self.lbl_selected_method, 0, 1)
 
         entry_layout.addWidget(QLabel("Amount:"), 1, 0)
         self.txt_amount = QLineEdit()
         self.txt_amount.setPlaceholderText("Amount")
-        self.txt_amount.setStyleSheet("font-size: 18px; padding: 5px; color: black; background-color: white;")
+        self.txt_amount.setPlaceholderText("Amount")
         self.txt_amount.setValidator(QDoubleValidator(0.00, 999999.99, 2))
         self.txt_amount.returnPressed.connect(self.add_payment)
         entry_layout.addWidget(self.txt_amount, 1, 1)
@@ -88,7 +87,7 @@ class PaymentDialog(QDialog):
         # Customer Selection (Hidden by default)
         self.lbl_customer = QLabel("Customer:")
         self.cmb_customer = QComboBox()
-        self.cmb_customer.setStyleSheet("font-size: 18px; padding: 5px; color: black; background-color: white;")
+        self.cmb_customer.setObjectName("PaymentCustomerCombo")
         self.load_customers()
 
         self.lbl_customer.setVisible(False)
@@ -98,7 +97,7 @@ class PaymentDialog(QDialog):
         entry_layout.addWidget(self.cmb_customer, 2, 1)
 
         btn_add = QPushButton("Add Payment")
-        btn_add.setStyleSheet("background-color: #00BCEB; color: black; font-weight: bold; padding: 10px;")
+        btn_add.setObjectName("BtnAddPayment")
         btn_add.clicked.connect(self.add_payment)
         entry_layout.addWidget(btn_add, 3, 0, 1, 2)
 
@@ -106,18 +105,18 @@ class PaymentDialog(QDialog):
 
         # 3. Payment List
         self.list_payments = QListWidget()
-        self.list_payments.setStyleSheet("font-size: 16px; color: black; background-color: white;")
+        self.list_payments.setObjectName("PaymentList")
         left_layout.addWidget(self.list_payments)
 
         # 4. Bottom Actions
         action_layout = QHBoxLayout()
 
         btn_cancel = QPushButton("Cancel")
-        btn_cancel.setStyleSheet("background-color: #FF4136; color: white; padding: 15px;")
+        btn_cancel.setObjectName("BtnCancel")
         btn_cancel.clicked.connect(self.reject)
 
         self.btn_finish = QPushButton("FINISH SALE")
-        self.btn_finish.setStyleSheet("background-color: #AAAAAA; color: black; padding: 15px; font-weight: bold;")
+        self.btn_finish.setObjectName("BtnFinishSale")
         self.btn_finish.setEnabled(False)
         self.btn_finish.clicked.connect(self.accept)
 
@@ -134,13 +133,13 @@ class PaymentDialog(QDialog):
         right_layout.setContentsMargins(0, 0, 0, 0)
 
         lbl_methods = QLabel("Select Tender:")
-        lbl_methods.setStyleSheet("font-size: 18px; font-weight: bold; color: #AAAAAA;")
+        lbl_methods.setObjectName("PaymentMethodsHeader")
         right_layout.addWidget(lbl_methods)
 
         # Scroll Area for methods if many
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("background: transparent; border: none;")
+        scroll.setObjectName("PaymentMethodsScroll")
 
         methods_container = QWidget()
         self.methods_grid = QGridLayout(methods_container)
@@ -151,23 +150,10 @@ class PaymentDialog(QDialog):
         for method in self.payment_methods:
             btn = QPushButton(method.name)
             btn.setFixedSize(100, 80)
-            style = """
-                QPushButton {
-                    background-color: #003366;
-                    color: white;
-                    font-weight: bold;
-                    font-size: 14px;
-                    border: 2px solid #005bb5;
-                    border-radius: 8px;
-                }
-                QPushButton:hover {
-                    background-color: #004080;
-                }
-            """
             if method.is_cash:
-                style = style.replace("#003366", "#2ECC40").replace("#005bb5", "#2ECC40")  # Greenish
-
-            btn.setStyleSheet(style)
+                btn.setProperty("class", "PaymentMethodBtnCash")
+            else:
+                btn.setProperty("class", "PaymentMethodBtn")
 
             # Connect
             # Use closure
@@ -178,7 +164,7 @@ class PaymentDialog(QDialog):
             # Add shortcut label if exists
             if method.shortcut:
                 lbl_sc = QLabel(method.shortcut, btn)
-                lbl_sc.setStyleSheet("background: rgba(0,0,0,0.5); color: white; padding: 2px;")
+                lbl_sc.setObjectName("PaymentShortcutLabel")
                 lbl_sc.move(5, 5)
 
             col += 1
@@ -291,23 +277,21 @@ class PaymentDialog(QDialog):
         remaining = self.get_remaining_amount()
 
         if remaining > 0:
-            self.lbl_remaining.setText(f"Remaining: {format_currency(remaining)}")  # noqa: E231
-            self.lbl_remaining.setStyleSheet(
-                "font-size: 24px; color: #FF4136; font-weight: bold; border: 1px solid #FF4136; padding: 10px;"
-            )
+            self.lbl_remaining.setText(f"Remaining: Rs. {remaining:,.2f}")  # noqa: E231
+            self.lbl_remaining.setProperty("state", "remaining")
+            self.lbl_remaining.style().unpolish(self.lbl_remaining)
+            self.lbl_remaining.style().polish(self.lbl_remaining)
             self.btn_finish.setEnabled(False)
-            self.btn_finish.setStyleSheet("background-color: #AAAAAA; color: black; padding: 15px; font-weight: bold;")
+            self.btn_finish.setEnabled(False)
             self.txt_amount.setText(str(remaining))
         else:
             change = abs(remaining)
-            self.lbl_remaining.setText(f"Change: {format_currency(change)}")  # noqa: E231
-            self.lbl_remaining.setStyleSheet(
-                "font-size: 24px; color: #39FF14; font-weight: bold; border: 1px solid #39FF14; padding: 10px;"
-            )
+            self.lbl_remaining.setText(f"Change: Rs. {change:,.2f}")  # noqa: E231
+            self.lbl_remaining.setProperty("state", "change")
+            self.lbl_remaining.style().unpolish(self.lbl_remaining)
+            self.lbl_remaining.style().polish(self.lbl_remaining)
             self.btn_finish.setEnabled(True)
-            self.btn_finish.setStyleSheet(
-                "background-color: #39FF14; color: black; padding: 15px; " "font-weight: bold;"
-            )
+            self.btn_finish.setEnabled(True)
             self.btn_finish.setFocus()
 
     @property

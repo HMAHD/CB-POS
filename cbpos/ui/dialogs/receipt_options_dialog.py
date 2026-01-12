@@ -17,7 +17,8 @@ class ReceiptOptionsDialog(QDialog):
         self.sale = sale
         self.setWindowTitle("Receipt Options")
         self.setFixedSize(500, 300)
-        self.setStyleSheet("background-color: #001F3F; color: white;")
+        self.setFixedSize(500, 300)
+        self.setObjectName("ReceiptOptionsDialog")
         self.init_ui()
 
     def init_ui(self):
@@ -28,7 +29,7 @@ class ReceiptOptionsDialog(QDialog):
         # Title
         lbl_title = QLabel("Transaction Completed!")
         lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_title.setStyleSheet("font-size: 24px; font-weight: bold; color: #39FF14;")
+        lbl_title.setObjectName("ReceiptTitle")
         layout.addWidget(lbl_title)
 
         lbl_info = QLabel(
@@ -36,7 +37,7 @@ class ReceiptOptionsDialog(QDialog):
             f"Total: Rs. {self.sale.total_amount:,.2f}"  # noqa: E231
         )
         lbl_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_info.setStyleSheet("font-size: 16px; color: #AAAAAA;")
+        lbl_info.setObjectName("ReceiptInfo")
         layout.addWidget(lbl_info)
 
         # Buttons
@@ -45,38 +46,26 @@ class ReceiptOptionsDialog(QDialog):
 
         # Print Thermal
         btn_print = QPushButton("Print Receipt (Thermal)")
-        btn_print.setStyleSheet(self._get_btn_style("#00BCEB"))
+        btn_print.setProperty("class", "ReceiptOptionBtn")
+        btn_print.setProperty("btnColor", "cyan")
         btn_print.clicked.connect(self.print_thermal)
         btn_layout.addWidget(btn_print)
 
         # Email
         btn_email = QPushButton("Email Receipt")
-        btn_email.setStyleSheet(self._get_btn_style("#FF851B"))
+        btn_email.setProperty("class", "ReceiptOptionBtn")
+        btn_email.setProperty("btnColor", "orange")
         btn_email.clicked.connect(self.email_receipt)
         btn_layout.addWidget(btn_email)
 
         # Close
         btn_close = QPushButton("Close")
-        btn_close.setStyleSheet(self._get_btn_style("#AAAAAA"))
+        btn_close.setProperty("class", "ReceiptOptionBtn")
+        btn_close.setProperty("btnColor", "gray")
         btn_close.clicked.connect(self.accept)
         btn_layout.addWidget(btn_close)
 
         layout.addLayout(btn_layout)
-
-    def _get_btn_style(self, color):
-        return (
-            "QPushButton {{"
-            "    background-color: {0};"  # noqa: E702
-            "    color: black;"
-            "    font-weight: bold;"
-            "    font-size: 16px;"
-            "    padding: 10px;"
-            "    border-radius: 5px;"
-            "}}"
-            "QPushButton:hover {{"
-            "    background-color: white;"
-            "}}"
-        ).format(color)
 
     def print_thermal(self):
         # In a real app, this would trigger the printer

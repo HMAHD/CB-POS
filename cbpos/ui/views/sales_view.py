@@ -61,28 +61,34 @@ class SalesView(QWidget):
         self.installEventFilter(self)
 
     def init_ui(self):
+        # 1. Main Layout (Vertical)
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # --- HEADER ---
-        header_widget = QWidget()
-        header_widget.setFixedHeight(50)
-        header_widget.setStyleSheet("background-color: #001226; border-bottom: 1px solid #003366;")
-        header_layout = QHBoxLayout(header_widget)
+        # 2. Header (Top)
+        self.header_widget = QWidget()
+        self.header_widget.setFixedHeight(50)
+        self.header_widget.setObjectName("HeaderWidget")
+        header_layout = QHBoxLayout(self.header_widget)
         header_layout.setContentsMargins(20, 0, 20, 0)
 
         # Brand (Logo)
         lbl_logo = QLabel()
-        logo_path = Path("assets/logo/cover_black.png")
+        from cbpos.core.services.theme_service import ThemeService
+
+        logo_path = Path(ThemeService.get_logo_path())
 
         if logo_path.exists():
             logo_pixmap = QPixmap(str(logo_path))
             lbl_logo.setPixmap(logo_pixmap.scaledToHeight(35, Qt.TransformationMode.SmoothTransformation))
         else:
             lbl_logo.setText("CEYLON BYTE POS")  # Fallback
-            lbl_logo.setStyleSheet("color: #00BCEB; font-weight: bold; font-size: 16px;")
-        lbl_logo.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            lbl_logo.setText("CEYLON BYTE POS")  # Fallback
+            lbl_logo.setObjectName("LogoLabel")
+        lbl_logo.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
         header_layout.addWidget(lbl_logo)
 
         header_layout.addStretch()
@@ -90,31 +96,33 @@ class SalesView(QWidget):
         # Menu Button
         self.menu_button = QToolButton()
         self.menu_button.setObjectName("menu_button")
-        self.menu_button.setIcon(Icons.get("fa5s.ellipsis-v"))
-        self.menu_button.setStyleSheet("border: none; background: transparent;")
+        icon_color = ThemeService.get_icon_color()
+        self.menu_button.setIcon(Icons.get("fa5s.bars", icon_color))
+        self.menu_button.setIcon(Icons.get("fa5s.bars", icon_color))
+
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.menu_button.clicked.connect(self.toggle_side_menu)
         header_layout.addWidget(self.menu_button)
 
-        main_layout.addWidget(header_widget)
+        main_layout.addWidget(self.header_widget)
 
-        # --- BODY (Splitter) ---
+        # 3. Content Area (Splitter)
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
-        self.splitter.setHandleWidth(10)  # For styling
+        self.splitter.setHandleWidth(10)
         self.splitter.setChildrenCollapsible(False)
-
         main_layout.addWidget(self.splitter)
 
         # ==========================
         # LEFT PANEL (Cart & Totals) - 75%
         # ==========================
-        left_panel = QWidget()
-        left_layout = QVBoxLayout(left_panel)
+        self.container_left = QWidget()
+        left_layout = QVBoxLayout(self.container_left)
         left_layout.setContentsMargins(10, 10, 10, 10)
         left_layout.setSpacing(10)
 
         # 1. Search Bar (Top)
         search_container = QWidget()
+        search_container.setObjectName("SearchWidget")
         search_layout = QHBoxLayout(search_container)
         search_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -138,6 +146,7 @@ class SalesView(QWidget):
             btn.setFixedSize(40, 40)
             btn.setProperty("mode", mode_id)
             btn.setProperty("class", "SearchModeBtn")  # For styling
+            btn.setObjectName("SearchModeBtn")  # For styling
 
             if mode_id == self.current_search_mode:
                 btn.setChecked(True)
@@ -151,9 +160,7 @@ class SalesView(QWidget):
         self.barcode_input = QLineEdit()
         self.barcode_input.setPlaceholderText("Scan or type product... (Enter)")
         self.barcode_input.setFixedHeight(40)
-        self.barcode_input.setStyleSheet(
-            "font-size: 16px; padding: 5px; border: 1px solid #555; " "background-color: #222; color: white;"
-        )
+
         self.barcode_input.returnPressed.connect(self.process_barcode)
         search_layout.addWidget(self.barcode_input)
 
@@ -190,7 +197,8 @@ class SalesView(QWidget):
 
         # 4. Totals Widget (Bottom)
         total_widget = QFrame()
-        total_widget.setStyleSheet("background-color: #252526; border-top: 2px solid #3E3E42; border-radius: 5px;")
+        total_widget.setObjectName("TotalWidget")
+
         total_layout = QHBoxLayout(total_widget)
         total_layout.setContentsMargins(20, 10, 20, 10)
 
@@ -200,15 +208,8 @@ class SalesView(QWidget):
         self.lbl_subtotal = QLabel("Subtotal: 0.00")
         self.lbl_discount = QLabel("Disc: 0.00")
         self.lbl_tax = QLabel("Tax: 0.00")
-
-        # Styling for small labels
-        small_label_style = "color: #AAAAAA; font-size: 14px;"
-        self.lbl_item_count.setStyleSheet(small_label_style)
-        self.lbl_subtotal.setStyleSheet(small_label_style)
-        self.lbl_discount.setStyleSheet(small_label_style)
-        self.lbl_tax.setStyleSheet(small_label_style)
-
-        subtotal_layout.addWidget(self.lbl_item_count)
+        self.lbl_subtotal.setObjectName("SubtotalLabel")
+        self.lbl_tax.setObjectName("TaxLabel")
         subtotal_layout.addWidget(self.lbl_subtotal)
         subtotal_layout.addWidget(self.lbl_discount)
         subtotal_layout.addWidget(self.lbl_tax)
@@ -217,10 +218,12 @@ class SalesView(QWidget):
         total_layout.addStretch()
 
         # Grand Total (Right)
-        self.lbl_total = QLabel("0.00")
-        self.lbl_total.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        self.lbl_total.setStyleSheet("font-size: 48px; font-weight: bold; color: #39FF14;")
-        total_layout.addWidget(self.lbl_total)
+        self.total_label = QLabel("0.00")
+        self.total_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        self.total_label.setObjectName("TotalLabel")
+        total_layout.addWidget(self.total_label)
 
         left_layout.addWidget(total_widget)
 
@@ -229,7 +232,7 @@ class SalesView(QWidget):
         # ==========================
         self.action_panel = ActionPanel()
         self.action_panel.setFixedWidth(350)
-        self.action_panel.setStyleSheet("background-color: #1E1E1E; border-left: 1px solid #3E3E42;")
+        self.action_panel.setObjectName("ActionPanel")
 
         # Connect Action Panel Signals
         self.action_panel.customer_clicked.connect(self.select_customer)
@@ -245,14 +248,17 @@ class SalesView(QWidget):
         self.action_panel.action_ref.connect(lambda: print("Refund"))  # Placeholder
         self.action_panel.action_more.connect(lambda: print("More"))  # Placeholder
 
-        # Context Menu for Customer Button (Access via internal button if needed,
-        # or just keep simple for now)
-        self.action_panel.btn_cust_select.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.action_panel.btn_cust_select.customContextMenuRequested.connect(self.show_customer_menu)
+        # Context Menu for Customer Button
+        self.action_panel.btn_cust_select.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self.action_panel.btn_cust_select.customContextMenuRequested.connect(
+            self.show_customer_menu
+        )
         self.btn_cust = self.action_panel.btn_cust_select  # Alias for existing code
 
         # Add panels to splitter
-        self.splitter.addWidget(left_panel)
+        self.splitter.addWidget(self.container_left)
         self.splitter.addWidget(self.action_panel)
 
         # Set Stretch Factors (75% / 25%)
@@ -451,9 +457,15 @@ class SalesView(QWidget):
             # Price Display (Strikethrough if discounted/overridden)
             if item.get("original_price") and item["unit_price"] < item["original_price"]:
                 lbl_price = QLabel()
-                lbl_price.setText("<s>{:.2f}</s> <b>{:.2f}</b>".format(item["original_price"], item["unit_price"]))
-                lbl_price.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                lbl_price.setStyleSheet("background-color: transparent; color: white;")
+                lbl_price.setText(
+                    "<s>{:.2f}</s> <b>{:.2f}</b>".format(
+                        item["original_price"], item["unit_price"]
+                    )
+                )
+                lbl_price.setAlignment(
+                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+                )
+                lbl_price.setProperty("class", "StrikethroughPrice")
                 self.cart_table.setCellWidget(row, 1, lbl_price)
             else:
                 self.cart_table.setItem(row, 1, QTableWidgetItem(f"{item['unit_price']:.2f}"))  # noqa: E231

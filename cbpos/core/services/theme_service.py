@@ -9,6 +9,8 @@ class ThemeService:
     Service to handle application theme switching.
     """
 
+    current_theme = "Dark"
+
     @staticmethod
     def apply_theme(theme_name: str):
         """
@@ -17,6 +19,7 @@ class ThemeService:
         Args:
             theme_name (str): The name of the theme ('Dark' or 'Light').
         """
+        ThemeService.current_theme = theme_name
         theme_file = "dark.qss" if theme_name.lower() == "dark" else "light.qss"
 
         # Resolve path relative to this file
@@ -62,3 +65,24 @@ class ThemeService:
             list: List of theme names.
         """
         return ["Dark", "Light"]
+
+    @staticmethod
+    def get_logo_path() -> str:
+        """
+        Returns the path to the logo based on the current theme.
+        """
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        if ThemeService.current_theme.lower() == "light":
+            return os.path.join(base_dir, "assets", "logo", "cover_black.png")
+        else:
+            return os.path.join(base_dir, "assets", "logo", "cover_white.png")
+
+    @staticmethod
+    def get_icon_color() -> str:
+        """
+        Returns the icon color based on the current theme.
+        """
+        if ThemeService.current_theme.lower() == "light":
+            return "#333333"
+        else:
+            return "white"

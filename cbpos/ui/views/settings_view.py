@@ -42,13 +42,13 @@ class SettingsView(QWidget):
 
         # 1. Header
         header_frame = QFrame()
-        header_frame.setStyleSheet("background-color: #001F3F; border-bottom: 2px solid #003366;")
+        header_frame.setObjectName("SettingsHeader")
         header_frame.setFixedHeight(60)
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(20, 0, 20, 0)
 
         lbl_title = QLabel("Settings")
-        lbl_title.setStyleSheet("font-size: 24px; font-weight: bold; color: #00BCEB;")
+        lbl_title.setObjectName("SettingsTitle")
         header_layout.addWidget(lbl_title)
 
         main_layout.addWidget(header_frame)
@@ -61,28 +61,7 @@ class SettingsView(QWidget):
         # 2.1 Sidebar
         self.sidebar = QListWidget()
         self.sidebar.setFixedWidth(220)
-        self.sidebar.setStyleSheet(
-            """
-            QListWidget {
-                background-color: #2D2D30;
-                border: none;
-                outline: none;
-            }
-            QListWidget::item {
-                color: #FFFFFF;
-                padding: 15px;
-                border-bottom: 1px solid #3E3E42;
-            }
-            QListWidget::item:selected {
-                background-color: #3E3E42;
-                border-left: 4px solid #00BCEB;
-                color: #FFFFFF;
-            }
-            QListWidget::item:hover {
-                background-color: #3E3E42;
-            }
-        """
-        )
+        self.sidebar.setObjectName("SettingsSidebar")
         self.sidebar.currentRowChanged.connect(self.change_page)
 
         # Sidebar Items
@@ -112,12 +91,7 @@ class SettingsView(QWidget):
 
         # 2.2 Content Area
         self.stack = QStackedWidget()
-        self.stack.setStyleSheet(
-            "QWidget { background-color: #1E1E1E; color: #FFFFFF; } "
-            "QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit { "
-            "background-color: #333337; color: white; border: 1px solid #555; "
-            "padding: 5px; }"
-        )
+        self.stack.setObjectName("SettingsContent")
 
         # Initialize Pages
         self.pages = [
@@ -142,7 +116,7 @@ class SettingsView(QWidget):
         # 3. Footer
         footer_frame = QFrame()
         footer_frame.setFixedHeight(60)
-        footer_frame.setStyleSheet("background-color: #2D2D30; border-top: 1px solid #3E3E42;")
+        footer_frame.setObjectName("SettingsFooter")
         footer_layout = QHBoxLayout(footer_frame)
         footer_layout.setContentsMargins(20, 10, 20, 10)
 
@@ -150,16 +124,12 @@ class SettingsView(QWidget):
 
         self.btn_save = QPushButton("Save")
         self.btn_save.setFixedSize(100, 35)
-        self.btn_save.setStyleSheet(
-            "background-color: #39FF14; color: black; " "font-weight: bold; border-radius: 4px;"
-        )
+        self.btn_save.setObjectName("BtnSave")
         self.btn_save.clicked.connect(self.save_all)
 
         self.btn_cancel = QPushButton("Cancel")
         self.btn_cancel.setFixedSize(100, 35)
-        self.btn_cancel.setStyleSheet(
-            "background-color: #FF4136; color: white; " "font-weight: bold; border-radius: 4px;"
-        )
+        self.btn_cancel.setObjectName("BtnCancel")
         self.btn_cancel.clicked.connect(self.close_requested.emit)
 
         footer_layout.addWidget(self.btn_save)
@@ -172,6 +142,155 @@ class SettingsView(QWidget):
 
     def change_page(self, index):
         self.stack.setCurrentIndex(index)
+
+    def init_general_page(self):
+        layout = QFormLayout(self.page_general)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(20)
+
+        lbl_header = QLabel("General Settings")
+        lbl_header.setProperty("class", "SectionHeader")
+        layout.addRow(lbl_header)
+
+        self.input_shop_name = QLineEdit()
+        self.input_address = QLineEdit()
+        self.input_phone = QLineEdit()
+        self.input_vat = QLineEdit()
+
+        layout.addRow("Shop Name:", self.input_shop_name)
+        layout.addRow("Address:", self.input_address)
+        layout.addRow("Phone:", self.input_phone)
+        layout.addRow("VAT Number:", self.input_vat)
+
+        # Theme
+        self.combo_theme = QComboBox()
+        self.combo_theme.addItems(["Ceylon Night (Dark)", "Ceylon Day (Light)"])
+        layout.addRow("Theme:", self.combo_theme)
+
+        # Language
+        self.combo_language = QComboBox()
+        languages = LanguageService.get_available_languages()
+        # Store codes in user data
+        for code, name in languages.items():
+            self.combo_language.addItem(f"{name} ({code})", code)
+        layout.addRow("Language:", self.combo_language)
+
+    def init_order_payment_page(self):
+        layout = QVBoxLayout(self.page_order_payment)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(20)
+
+        lbl_header = QLabel("Order & Payment Configuration")
+        lbl_header.setProperty("class", "SectionHeader")
+        layout.addWidget(lbl_header)
+
+        # Documents Section (Migrated)
+        grp_docs = QGroupBox("Document Numbering")
+        form_docs = QFormLayout(grp_docs)
+
+        self.combo_reset_period = QComboBox()
+        self.combo_reset_period.addItems(["YEARLY", "MONTHLY", "NEVER"])
+        form_docs.addRow("Reset Period:", self.combo_reset_period)
+
+        self.input_fmt_sale = QLineEdit()
+        self.input_fmt_sale.setPlaceholderText("INV-{Y}-{seq:05d}")
+        form_docs.addRow("Sale Format:", self.input_fmt_sale)
+
+        self.input_fmt_purchase = QLineEdit()
+        self.input_fmt_purchase.setPlaceholderText("GRN-{Y}-{seq:05d}")
+        form_docs.addRow("Purchase Format:", self.input_fmt_purchase)
+
+        self.input_fmt_return = QLineEdit()
+        self.input_fmt_return.setPlaceholderText("CN-{Y}-{seq:05d}")
+        form_docs.addRow("Return Format:", self.input_fmt_return)
+
+        layout.addWidget(grp_docs)
+
+        # Payment Options
+        grp_opts = QGroupBox("Payment Options")
+        form_opts = QFormLayout(grp_opts)
+
+        self.chk_show_receipt_dialog = QCheckBox(
+            "Show Receipt Options Dialog after Sale"
+        )
+        form_opts.addRow(self.chk_show_receipt_dialog)
+
+        layout.addWidget(grp_opts)
+        layout.addStretch()
+
+    def init_hardware_page(self):
+        layout = QVBoxLayout(self.page_hardware)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(20)
+
+        lbl_header = QLabel("Hardware Configuration")
+        lbl_header.setProperty("class", "SectionHeader")
+        layout.addWidget(lbl_header)
+
+        # Printers
+        grp_printer = QGroupBox("Printers")
+        form_printer = QFormLayout(grp_printer)
+
+        available_printers = QPrinterInfo.availablePrinterNames() or [
+            "No printers found"
+        ]
+
+        self.combo_receipt_printer = QComboBox()
+        self.combo_receipt_printer.addItems(available_printers)
+        form_printer.addRow("Receipt Printer:", self.combo_receipt_printer)
+
+        self.combo_a4_printer = QComboBox()
+        self.combo_a4_printer.addItems(available_printers)
+        form_printer.addRow("A4 Printer:", self.combo_a4_printer)
+
+        self.chk_auto_print = QCheckBox("Auto-Print Receipt")
+        form_printer.addRow("", self.chk_auto_print)
+
+        self.spin_copies = QSpinBox()
+        self.spin_copies.setRange(1, 5)
+        form_printer.addRow("Copies:", self.spin_copies)
+
+        layout.addWidget(grp_printer)
+
+        # Scale
+        grp_scale = QGroupBox("Weighing Scale")
+        form_scale = QFormLayout(grp_scale)
+
+        self.input_scale_prefix = QLineEdit()
+        self.input_scale_prefix.setMaxLength(2)
+        form_scale.addRow("Barcode Prefix (2 digits):", self.input_scale_prefix)
+
+        self.spin_decimal_places = QSpinBox()
+        self.spin_decimal_places.setRange(0, 4)
+        form_scale.addRow("Decimal Places:", self.spin_decimal_places)
+
+        layout.addWidget(grp_scale)
+        layout.addStretch()
+
+    def init_users_page(self):
+        layout = QVBoxLayout(self.page_users)
+        layout.setContentsMargins(40, 40, 40, 40)
+        lbl = QLabel("User Management (Placeholder)")
+        lbl.setProperty("class", "PlaceholderLabel")
+        layout.addWidget(lbl)
+        layout.addStretch()
+
+    def init_database_page(self):
+        layout = QVBoxLayout(self.page_database)
+        layout.setContentsMargins(40, 40, 40, 40)
+        lbl = QLabel("Database Maintenance (Placeholder)")
+        lbl.setProperty("class", "PlaceholderLabel")
+        layout.addWidget(lbl)
+        layout.addStretch()
+
+    def init_about_page(self):
+        layout = QVBoxLayout(self.page_about)
+        layout.setContentsMargins(40, 40, 40, 40)
+        lbl = QLabel("About CB POS\nVersion 0.1.0\n\n(c) 2025 Ceylon Byte")
+        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl.setProperty("class", "AboutLabel")
+        layout.addWidget(lbl)
+        layout.addStretch()
 
     def load_settings(self):
         settings = ConfigService.get_all()
@@ -197,18 +316,51 @@ class SettingsView(QWidget):
         new_theme = all_settings.get("theme")
         new_font_size = all_settings.get("font_size")
 
-        if new_theme or (new_font_size and new_font_size != current_font_size):
-            # If theme not in settings (not changed), get current
-            theme_to_apply = new_theme or ConfigService.get("theme")
-            ThemeService.apply_theme(theme_to_apply)
+        # 1. Capture Current State
+        current_config = ConfigService.get_all()
+        current_lang = current_config.get("language", "en")
+        current_theme = current_config.get("theme", "Dark")
 
-        # Check if language changed
-        new_lang = all_settings.get("language", "en")
-        if new_lang != current_lang:
+        # 2. Get New Data
+        theme_selection = "Dark" if self.combo_theme.currentIndex() == 0 else "Light"
+        lang_code = self.combo_language.currentData()
+
+        data = {
+            "shop_name": self.input_shop_name.text(),
+            "shop_address": self.input_address.text(),
+            "shop_phone": self.input_phone.text(),
+            "vat_number": self.input_vat.text(),
+            "theme": theme_selection,
+            "language": lang_code,
+            "doc_reset_period": self.combo_reset_period.currentText(),
+            "doc_format_sale": self.input_fmt_sale.text(),
+            "doc_format_purchase": self.input_fmt_purchase.text(),
+            "doc_format_return": self.input_fmt_return.text(),
+            "show_receipt_dialog": str(self.chk_show_receipt_dialog.isChecked()),
+            "receipt_printer_name": self.combo_receipt_printer.currentText(),
+            "a4_printer_name": self.combo_a4_printer.currentText(),
+            "auto_print_receipt": self.chk_auto_print.isChecked(),
+            "receipt_copies": self.spin_copies.value(),
+            "scale_barcode_prefix": scale_prefix,
+            "scale_decimal_places": self.spin_decimal_places.value(),
+        }
+
+        # 3. Persist
+        ConfigService.update_all(data)
+
+        # 4. Compare & Notify
+        restart_required = (lang_code != current_lang) or (
+            theme_selection != current_theme
+        )
+
+        # Apply Theme Immediately (Partial)
+        ThemeService.apply_theme(theme_selection)
+
+        if restart_required:
             QMessageBox.information(
                 self,
                 "Restart Required",
-                "Please restart the application to apply language changes.",
+                "Please restart the application to apply changes completely.",
             )
         else:
             QMessageBox.information(self, "Saved", "Settings saved successfully.")

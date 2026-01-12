@@ -17,7 +17,8 @@ class DiscountDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Apply Discount")
         self.setFixedSize(400, 350)
-        self.setStyleSheet("background-color: #001F3F; color: white;")
+        self.setFixedSize(400, 350)
+        self.setObjectName("DiscountDialog")
 
         self.discount_type = "PERCENTAGE"
         self.discount_value = 0.0
@@ -34,11 +35,11 @@ class DiscountDialog(QDialog):
 
         self.rb_percent = QRadioButton("Percentage (%)")
         self.rb_percent.setChecked(True)
-        self.rb_percent.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.rb_percent.setObjectName("RbPercent")
         self.type_group.addButton(self.rb_percent)
 
         self.rb_fixed = QRadioButton("Fixed Amount (Rs)")
-        self.rb_fixed.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.rb_fixed.setObjectName("RbFixed")
         self.type_group.addButton(self.rb_fixed)
 
         type_layout.addWidget(self.rb_percent)
@@ -52,22 +53,7 @@ class DiscountDialog(QDialog):
         self.spin_value.setRange(0, 999999)
         self.spin_value.setDecimals(2)
         self.spin_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.spin_value.setStyleSheet(
-            """
-            QDoubleSpinBox {
-                font-size: 32px;
-                font-weight: bold;
-                padding: 10px;
-                border: 2px solid #00BCEB;
-                border-radius: 5px;
-                background-color: #003366;
-                color: white;
-            }
-            QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
-                width: 0px;
-            }
-        """
-        )
+        self.spin_value.setObjectName("DiscountValueInput")
         layout.addWidget(self.spin_value)
 
         # 3. Presets
@@ -79,20 +65,7 @@ class DiscountDialog(QDialog):
         for p in presets:
             btn = QPushButton(f"{p}%")
             btn.setFixedSize(80, 50)
-            btn.setStyleSheet(
-                """
-                QPushButton {
-                    background-color: #0074D9;
-                    color: white;
-                    font-weight: bold;
-                    font-size: 16px;
-                    border-radius: 5px;
-                }
-                QPushButton:hover {
-                    background-color: #005bb5;
-                }
-            """
-            )
+            btn.setProperty("class", "PresetBtn")
             btn.clicked.connect(lambda checked, val=p: self.spin_value.setValue(val))
             self.presets_layout.addWidget(btn, row, col)
             col += 1
@@ -107,28 +80,12 @@ class DiscountDialog(QDialog):
 
         btn_cancel = QPushButton("Cancel")
         btn_cancel.setFixedHeight(50)
-        btn_cancel.setStyleSheet(
-            """
-            background-color: #FF4136;
-            color: white;
-            font-weight: bold;
-            font-size: 16px;
-            border-radius: 5px;
-        """
-        )
+        btn_cancel.setObjectName("BtnCancel")
         btn_cancel.clicked.connect(self.reject)
 
         btn_apply = QPushButton("Apply Discount")
         btn_apply.setFixedHeight(50)
-        btn_apply.setStyleSheet(
-            """
-            background-color: #39FF14;
-            color: black;
-            font-weight: bold;
-            font-size: 16px;
-            border-radius: 5px;
-        """
-        )
+        btn_apply.setObjectName("BtnApplyDiscount")
         btn_apply.clicked.connect(self.accept)
 
         btn_layout.addWidget(btn_cancel)

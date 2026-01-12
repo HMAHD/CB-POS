@@ -71,6 +71,26 @@ All notable changes to this project will be documented in this file. Never delet
   - Fixed `test_purchase_service.py` to correctly match `PurchaseService` signature.
 
 ### Fixed
+-   Resolved `QPainter` warnings by ensuring valid pixmaps and sizes in `ManagementView`.
+-   Fixed asset paths for Logo and User Badges using `pathlib`.
+### Added
+- **Theme & Localization** (Phase 16):
+    -   Implemented Dynamic Theme Switching (Dark/Light).
+    -   Created `ThemeService` for handling stylesheet application and variable injection.
+    -   Created `LanguageService` for managing application translations.
+    -   Added Theme and Language selectors to `SettingsView`.
+    -   Added `scripts/update_translations.py` to generate translation files.
+- **Sales View Polish** (Phase 16.2):
+    -   Implemented `ActionPanel` with "Key-Corner" layout.
+    -   Added Horizontal Search Modes (All, Barcode, Code, Name).
+    -   Replaced layout with resizable `QSplitter`.
+    -   Fixed Header Logo.
+- **Light Theme Overhaul** (Phase 16):
+    -   Rewrote `light.qss` with "Enterprise Light" aesthetic (Borders, High Contrast).
+    -   Implemented "Restart Required" strategy for theme changes to ensure asset integrity.
+    -   Updated `ThemeService` to provide dynamic assets (Logo/Icons) based on theme.
+    -   Fixed `CartService` crash by ensuring `tax` key defaults to Decimal.
+    -   Refactored `SalesView` layout to ensure Header visibility.
   - Resolved `QPainter` warnings by ensuring valid pixmaps and sizes in `ManagementView`.
   - Fixed asset paths for Logo and User Badges using `pathlib`.
   - Resolved persistent `E501` line length errors across multiple files.

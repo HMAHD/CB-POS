@@ -95,16 +95,16 @@ class ActionPanel(QWidget):
 
         # --- 1. Customer Section ---
         customer_frame = QFrame()
-        customer_frame.setStyleSheet("background-color: #2D2D30; border-radius: 5px; padding: 5px;")
+        customer_frame.setObjectName("CustomerPanel")
         cust_layout = QHBoxLayout(customer_frame)
         cust_layout.setContentsMargins(5, 5, 5, 5)
 
         self.lbl_customer = QLabel("Walk-in Customer")
-        self.lbl_customer.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
+        self.lbl_customer.setObjectName("CustomerLabel")
 
         self.btn_cust_select = QPushButton("Select")
         self.btn_cust_select.setFixedWidth(70)
-        self.btn_cust_select.setStyleSheet("background-color: #007ACC; color: white; border: none; padding: 5px;")
+        self.btn_cust_select.setObjectName("BtnCustomerSelect")
         self.btn_cust_select.clicked.connect(self.customer_clicked.emit)
 
         cust_layout.addWidget(self.lbl_customer)
@@ -116,7 +116,7 @@ class ActionPanel(QWidget):
         # Points Label
         self.lbl_points = QLabel("")
         self.lbl_points.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_points.setStyleSheet("color: #FFDC00; font-weight: bold; font-size: 12px;")
+        self.lbl_points.setObjectName("PointsLabel")
         layout.addWidget(self.lbl_points)
 
         # --- 2. Action Grid ---
@@ -171,24 +171,7 @@ class ActionPanel(QWidget):
         self.btn_pay = QPushButton("PAY (F5)")
         self.btn_pay.setFixedHeight(80)
         self.btn_pay.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_pay.setStyleSheet(
-            """
-            QPushButton {
-                background-color: #39FF14;
-                color: #001F3F;
-                font-size: 24px;
-                font-weight: bold;
-                border: none;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #32E012;
-            }
-            QPushButton:pressed {
-                background-color: #28B40E;
-            }
-        """
-        )
+        self.btn_pay.setObjectName("BtnPay")
         self.btn_pay.clicked.connect(self.pay_clicked.emit)
         layout.addWidget(self.btn_pay)
 

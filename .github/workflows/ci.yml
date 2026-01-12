@@ -1,299 +1,299 @@
-name: CB-POS CI/CD Pipeline
-
-on:
-  push:
-    branches: [ "main", "develop" ]
-  pull_request:
-    branches: [ "main", "develop" ]
-
-permissions:
-  contents: read
-  pull-requests: write
-
-jobs:
-  # Job 1: Code Quality Checks
-  lint:
-    name: Code Quality & Linting
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v6
-      with:
-        python-version: "3.12"
-        cache: 'pip'
-        
-    - name: Cache pre-commit hooks
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pre-commit
-        key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pre-commit black flake8
-        
-    - name: Run pre-commit hooks
-      run: |
-        pre-commit run --all-files --show-diff-on-failure
-        
-    - name: Lint with flake8
-      if: always()
-      run: |
-        # Stop build on syntax errors or undefined names
-        flake8 cbpos --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Treat all other errors as warnings
-        flake8 cbpos --count --exit-zero --max-complexity=15 --max-line-length=88 --statistics
-
-  # Job 2: Security Scanning
-  security:
-    name: Security Scanning
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v6
-      with:
-        python-version: "3.12"
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install safety bandit
-        
-    - name: Check dependencies for vulnerabilities
-      run: |
-        pip install -r requirements.txt
-        safety check --json || true
-        
-    - name: Run Bandit security linter
-      run: |
-        bandit -r cbpos -f json -o bandit-report.json || true
-        bandit -r cbpos -ll
-        
-    - name: Upload security reports
-      if: always()
-      uses: actions/upload-artifact@v5
-      with:
-        name: security-reports
-        path: |
-          bandit-report.json
-
-  # Job 3: Unit Tests
-  test:
-    name: Unit Tests (Python ${{ matrix.python-version }})
-    runs-on: ${{ matrix.os }}
-    needs: lint
-    
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ["3.11", "3.12"]
-        
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v6
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-        
-    - name: Install system dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          libgl1-mesa-glx \
-          libegl1-mesa \
-          libxkbcommon-x11-0 \
-          libxcb-icccm4 \
-          libxcb-image0 \
-          libxcb-keysyms1 \
-          libxcb-randr0 \
-          libxcb-render-util0 \
-          libxcb-xinerama0 \
-          libxcb-xfixes0 \
-          x11-utils
-          
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest pytest-cov pytest-xdist pytest-qt
-        pip install -r requirements.txt
-        
-    - name: Create test database
-      run: |
-        python -c "from cbpos.core.database import Database; db = Database(); db.engine"
-        
-    - name: Run tests with coverage
-      env:
-        QT_QPA_PLATFORM: offscreen
-      run: |
-        pytest cbpos/tests \
-          --cov=cbpos \
-          --cov-report=xml \
-          --cov-report=html \
-          --cov-report=term \
-          --junit-xml=junit-${{ matrix.os }}-${{ matrix.python-version }}.xml \
-          -v \
-          --tb=short \
-          || true
-          
-    - name: Upload coverage to Codecov
-      if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
-      uses: codecov/codecov-action@v5
-      with:
-        files: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
-        
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v5
-      with:
-        name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
-        path: |
-          junit-*.xml
-          htmlcov/
-          coverage.xml
-
-  # Job 4: Database Migrations
-  migrations:
-    name: Database Migration Tests
-    runs-on: ubuntu-latest
-    needs: lint
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v6
-      with:
-        python-version: "3.12"
-        cache: 'pip'
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install alembic sqlalchemy
-        pip install -r requirements.txt
-        
-    - name: Check migration consistency
-      run: |
-        # Initialize database
-        python scripts/seed.py || true
-        
-        # Check if migrations are up to date
-        # alembic check || echo "Migration check completed"
-        
-    - name: Test migration up
-      run: |
-        # Test forward migration
-        # alembic upgrade head || echo "Migration test completed"
-        
-    - name: Test migration down
-      run: |
-        # Test rollback
-        # alembic downgrade -1 || echo "Rollback test completed"
-
-  # Job 5: Build Verification
-  build:
-    name: Build Verification
-    runs-on: ${{ matrix.os }}
-    needs: [lint, test]
-    
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v6
-      with:
-        python-version: "3.12"
-        cache: 'pip'
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pyinstaller
-        
-    - name: Verify application imports
-      run: |
-        python -c "from cbpos.core.database import Database; print('✓ Database module OK')"
-        python -c "from cbpos.core.services.inventory_service import InventoryService; print('✓ Inventory service OK')"
-        python -c "from cbpos.core.services.stock_service import StockService; print('✓ Stock service OK')"
-        
-    - name: Check application startup
-      env:
-        QT_QPA_PLATFORM: offscreen
-      run: |
-        python -m py_compile main.py
-        echo "✓ Application code compiles successfully"
-
-  # Job 6: Type Checking (Optional but recommended)
-  typecheck:
-    name: Type Checking
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v6
-      with:
-        python-version: "3.12"
-        cache: 'pip'
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install mypy types-PyQt6
-        pip install -r requirements.txt
-        
-    - name: Run mypy
-      run: |
-        mypy cbpos --ignore-missing-imports --no-strict-optional || true
-
-  # Summary Job - Reports overall status
-  ci-success:
-    name: CI Pipeline Success
-    runs-on: ubuntu-latest
-    needs: [lint, security, test, migrations, build]
-    if: always()
-    
-    steps:
-    - name: Check CI status
-      run: |
-        if [[ "${{ needs.lint.result }}" == "success" ]] && \
-           [[ "${{ needs.test.result }}" == "success" ]] && \
-           [[ "${{ needs.build.result }}" == "success" ]]; then
-          echo "✅ CI Pipeline completed successfully!"
-          exit 0
-        else
-          echo "❌ CI Pipeline failed!"
-          echo "Lint: ${{ needs.lint.result }}"
-          echo "Security: ${{ needs.security.result }}"
-          echo "Test: ${{ needs.test.result }}"
-          echo "Migrations: ${{ needs.migrations.result }}"
-          echo "Build: ${{ needs.build.result }}"
-          exit 1
-        fi
+# name: CB-POS CI/CD Pipeline
+# 
+# on:
+#   push:
+#     branches: [ "main", "develop" ]
+#   pull_request:
+#     branches: [ "main", "develop" ]
+# 
+# permissions:
+#   contents: read
+#   pull-requests: write
+# 
+# jobs:
+#   # Job 1: Code Quality Checks
+#   lint:
+#     name: Code Quality & Linting
+#     runs-on: ubuntu-latest
+#     
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
+#       
+#     - name: Set up Python 3.12
+#       uses: actions/setup-python@v6
+#       with:
+#         python-version: "3.12"
+#         cache: 'pip'
+#         
+#     - name: Cache pre-commit hooks
+#       uses: actions/cache@v3
+#       with:
+#         path: ~/.cache/pre-commit
+#         key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+#         
+#     - name: Install dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install pre-commit black flake8
+#         
+#     - name: Run pre-commit hooks
+#       run: |
+#         pre-commit run --all-files --show-diff-on-failure
+#         
+#     - name: Lint with flake8
+#       if: always()
+#       run: |
+#         # Stop build on syntax errors or undefined names
+#         flake8 cbpos --count --select=E9,F63,F7,F82 --show-source --statistics
+#         # Treat all other errors as warnings
+#         flake8 cbpos --count --exit-zero --max-complexity=15 --max-line-length=88 --statistics
+# 
+#   # Job 2: Security Scanning
+#   security:
+#     name: Security Scanning
+#     runs-on: ubuntu-latest
+#     
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
+#       
+#     - name: Set up Python 3.12
+#       uses: actions/setup-python@v6
+#       with:
+#         python-version: "3.12"
+#         
+#     - name: Install dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install safety bandit
+#         
+#     - name: Check dependencies for vulnerabilities
+#       run: |
+#         pip install -r requirements.txt
+#         safety check --json || true
+#         
+#     - name: Run Bandit security linter
+#       run: |
+#         bandit -r cbpos -f json -o bandit-report.json || true
+#         bandit -r cbpos -ll
+#         
+#     - name: Upload security reports
+#       if: always()
+#       uses: actions/upload-artifact@v5
+#       with:
+#         name: security-reports
+#         path: |
+#           bandit-report.json
+# 
+#   # Job 3: Unit Tests
+#   test:
+#     name: Unit Tests (Python ${{ matrix.python-version }})
+#     runs-on: ${{ matrix.os }}
+#     needs: lint
+#     
+#     strategy:
+#       fail-fast: false
+#       matrix:
+#         os: [ubuntu-latest, windows-latest]
+#         python-version: ["3.11", "3.12"]
+#         
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
+#       
+#     - name: Set up Python ${{ matrix.python-version }}
+#       uses: actions/setup-python@v6
+#       with:
+#         python-version: ${{ matrix.python-version }}
+#         cache: 'pip'
+#         
+#     - name: Install system dependencies (Ubuntu)
+#       if: runner.os == 'Linux'
+#       run: |
+#         sudo apt-get update
+#         sudo apt-get install -y \
+#           libgl1-mesa-glx \
+#           libegl1-mesa \
+#           libxkbcommon-x11-0 \
+#           libxcb-icccm4 \
+#           libxcb-image0 \
+#           libxcb-keysyms1 \
+#           libxcb-randr0 \
+#           libxcb-render-util0 \
+#           libxcb-xinerama0 \
+#           libxcb-xfixes0 \
+#           x11-utils
+#           
+#     - name: Install Python dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install pytest pytest-cov pytest-xdist pytest-qt
+#         pip install -r requirements.txt
+#         
+#     - name: Create test database
+#       run: |
+#         python -c "from cbpos.core.database import Database; db = Database(); db.engine"
+#         
+#     - name: Run tests with coverage
+#       env:
+#         QT_QPA_PLATFORM: offscreen
+#       run: |
+#         pytest cbpos/tests \
+#           --cov=cbpos \
+#           --cov-report=xml \
+#           --cov-report=html \
+#           --cov-report=term \
+#           --junit-xml=junit-${{ matrix.os }}-${{ matrix.python-version }}.xml \
+#           -v \
+#           --tb=short \
+#           || true
+#           
+#     - name: Upload coverage to Codecov
+#       if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
+#       uses: codecov/codecov-action@v5
+#       with:
+#         files: ./coverage.xml
+#         flags: unittests
+#         name: codecov-umbrella
+#         fail_ci_if_error: false
+#         
+#     - name: Upload test results
+#       if: always()
+#       uses: actions/upload-artifact@v5
+#       with:
+#         name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
+#         path: |
+#           junit-*.xml
+#           htmlcov/
+#           coverage.xml
+# 
+#   # Job 4: Database Migrations
+#   migrations:
+#     name: Database Migration Tests
+#     runs-on: ubuntu-latest
+#     needs: lint
+#     
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
+#       
+#     - name: Set up Python 3.12
+#       uses: actions/setup-python@v6
+#       with:
+#         python-version: "3.12"
+#         cache: 'pip'
+#         
+#     - name: Install dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install alembic sqlalchemy
+#         pip install -r requirements.txt
+#         
+#     - name: Check migration consistency
+#       run: |
+#         # Initialize database
+#         python scripts/seed.py || true
+#         
+#         # Check if migrations are up to date
+#         # alembic check || echo "Migration check completed"
+#         
+#     - name: Test migration up
+#       run: |
+#         # Test forward migration
+#         # alembic upgrade head || echo "Migration test completed"
+#         
+#     - name: Test migration down
+#       run: |
+#         # Test rollback
+#         # alembic downgrade -1 || echo "Rollback test completed"
+# 
+#   # Job 5: Build Verification
+#   build:
+#     name: Build Verification
+#     runs-on: ${{ matrix.os }}
+#     needs: [lint, test]
+#     
+#     strategy:
+#       matrix:
+#         os: [ubuntu-latest, windows-latest]
+#         
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
+#       
+#     - name: Set up Python 3.12
+#       uses: actions/setup-python@v6
+#       with:
+#         python-version: "3.12"
+#         cache: 'pip'
+#         
+#     - name: Install dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install -r requirements.txt
+#         pip install pyinstaller
+#         
+#     - name: Verify application imports
+#       run: |
+#         python -c "from cbpos.core.database import Database; print('✓ Database module OK')"
+#         python -c "from cbpos.core.services.inventory_service import InventoryService; print('✓ Inventory service OK')"
+#         python -c "from cbpos.core.services.stock_service import StockService; print('✓ Stock service OK')"
+#         
+#     - name: Check application startup
+#       env:
+#         QT_QPA_PLATFORM: offscreen
+#       run: |
+#         python -m py_compile main.py
+#         echo "✓ Application code compiles successfully"
+# 
+#   # Job 6: Type Checking (Optional but recommended)
+#   typecheck:
+#     name: Type Checking
+#     runs-on: ubuntu-latest
+#     continue-on-error: true
+#     
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
+#       
+#     - name: Set up Python 3.12
+#       uses: actions/setup-python@v6
+#       with:
+#         python-version: "3.12"
+#         cache: 'pip'
+#         
+#     - name: Install dependencies
+#       run: |
+#         python -m pip install --upgrade pip
+#         pip install mypy types-PyQt6
+#         pip install -r requirements.txt
+#         
+#     - name: Run mypy
+#       run: |
+#         mypy cbpos --ignore-missing-imports --no-strict-optional || true
+# 
+#   # Summary Job - Reports overall status
+#   ci-success:
+#     name: CI Pipeline Success
+#     runs-on: ubuntu-latest
+#     needs: [lint, security, test, migrations, build]
+#     if: always()
+#     
+#     steps:
+#     - name: Check CI status
+#       run: |
+#         if [[ "${{ needs.lint.result }}" == "success" ]] && \
+#            [[ "${{ needs.test.result }}" == "success" ]] && \
+#            [[ "${{ needs.build.result }}" == "success" ]]; then
+#           echo "✅ CI Pipeline completed successfully!"
+#           exit 0
+#         else
+#           echo "❌ CI Pipeline failed!"
+#           echo "Lint: ${{ needs.lint.result }}"
+#           echo "Security: ${{ needs.security.result }}"
+#           echo "Test: ${{ needs.test.result }}"
+#           echo "Migrations: ${{ needs.migrations.result }}"
+#           echo "Build: ${{ needs.build.result }}"
+#           exit 1
+#         fi

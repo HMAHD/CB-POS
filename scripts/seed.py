@@ -22,6 +22,7 @@ from cbpos.core.models import (  # noqa: E402
     PaymentMethod,
 )
 from cbpos.core.constants.permissions import Permissions  # noqa: E402
+import cbpos.core.models  # noqa: F401
 
 
 def hash_pin(pin: str) -> str:

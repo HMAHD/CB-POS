@@ -200,6 +200,34 @@ QSpinBox::down-button:hover::down-arrow, QDoubleSpinBox::down-button:hover::down
     border-top-color: #FFFFFF;
 }
 
+/* Checkboxes */
+QCheckBox {
+    background-color: transparent;
+    color: #E0E0E0;
+    spacing: 8px;
+}
+
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #3E3E42;
+    border-radius: 3px;
+    background-color: #2D2D30;
+}
+
+QCheckBox::indicator:hover {
+    border-color: #00BCEB;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #00BCEB;
+    border-color: #00BCEB;
+}
+
+QCheckBox::indicator:checked:hover {
+    background-color: #00A3D9;
+}
+
 /* Buttons */
 QPushButton {
     background-color: #2D2D30;
@@ -302,6 +330,11 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0px;
 }
 
+/* ScrollArea Transparency Fix */
+QScrollArea > QWidget > QWidget {
+    background-color: transparent;
+}
+
 /* Tab Widget */
 QTabWidget::pane {
     border: 1px solid #3E3E42;
@@ -337,6 +370,17 @@ QGroupBox::title {
     subcontrol-position: top left;
     padding: 0 5px;
     color: #00BCEB;
+}
+
+/* --- FIX: Force Transparency for Labels & Checkboxes inside GroupBoxes --- */
+QGroupBox QLabel {
+    background-color: transparent;
+    color: #E0E0E0;
+}
+
+QGroupBox QCheckBox {
+    background-color: transparent;
+    color: #E0E0E0;
 }
 
 /* --- Sidebar --- */

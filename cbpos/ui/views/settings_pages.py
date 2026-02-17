@@ -29,7 +29,7 @@ import decimal
 
 
 class SettingsPage(QWidget):
-    """Base class for settings pages."""
+    """Base class for settings pages with standardized layout patterns."""
 
     def __init__(self):
         super().__init__()
@@ -47,22 +47,86 @@ class SettingsPage(QWidget):
         """Return a dictionary of settings to save. Override in subclasses."""
         return {}
 
+    def create_form_container(self, top_margin=30, side_margin=30, bottom_margin=30):
+        """
+        Creates a standardized form layout container for settings pages.
 
-class GeneralPage(SettingsPage):
-    def init_ui(self):
+        Returns:
+            tuple: (container_layout, form_layout, form_widget)
+            - container_layout: QVBoxLayout with top alignment
+            - form_layout: QFormLayout with proper spacing and growth policy
+            - form_widget: QWidget wrapping the form_layout (ensures full-width)
+
+        Usage:
+            container, form, form_widget = self.create_form_container()
+            # Add form rows
+            form.addRow("Label:", widget)
+            # Add form widget to container
+            container.addWidget(form_widget)
+        """
         # Main container with top alignment
         container = QVBoxLayout(self)
         container.setContentsMargins(0, 0, 0, 0)
         container.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        # Create a widget to hold the form (forces full width)
+        # Create widget to hold form (forces full width expansion)
         form_widget = QWidget()
-        layout = QFormLayout(form_widget)
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setVerticalSpacing(15)
-        layout.setHorizontalSpacing(20)
-        layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-        layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        form_layout = QFormLayout(form_widget)
+        form_layout.setContentsMargins(side_margin, top_margin, side_margin, bottom_margin)
+        form_layout.setVerticalSpacing(15)
+        form_layout.setHorizontalSpacing(20)
+
+        # Force Left & Top alignment to prevent centering
+        form_layout.setFormAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+
+        # Keep labels right-aligned for professional look
+        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+
+        form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+
+        return container, form_layout, form_widget
+
+    def create_group_container(self, top_margin=30, side_margin=30, bottom_margin=30):
+        """
+        Creates a standardized group-based layout container for settings pages.
+
+        Returns:
+            QVBoxLayout: Main layout with proper spacing and top alignment
+
+        Usage:
+            main_layout = self.create_group_container()
+            # Add groups
+            grp = QGroupBox("Section Title")
+            form = QFormLayout(grp)
+            main_layout.addWidget(grp)
+        """
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(side_margin, top_margin, side_margin, bottom_margin)
+        main_layout.setSpacing(20)
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        return main_layout
+
+    def configure_form_layout(self, form_layout):
+        """
+        Applies standard configuration to a QFormLayout.
+        Use this for forms inside QGroupBox widgets.
+        """
+        form_layout.setVerticalSpacing(15)
+        form_layout.setHorizontalSpacing(20)
+
+        # Force Left & Top alignment to prevent centering
+        form_layout.setFormAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+
+        # Keep labels right-aligned for professional look
+        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+
+        form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+
+
+class GeneralPage(SettingsPage):
+    def init_ui(self):
+        container, layout, form_widget = self.create_form_container()
 
         self.input_shop_name = QLineEdit()
         self.input_address = QLineEdit()
@@ -139,19 +203,7 @@ class GeneralPage(SettingsPage):
 
 class SalesPage(SettingsPage):
     def init_ui(self):
-        # Main container with top alignment
-        container = QVBoxLayout(self)
-        container.setContentsMargins(0, 0, 0, 0)
-        container.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        # Create a widget to hold the form (forces full width)
-        form_widget = QWidget()
-        layout = QFormLayout(form_widget)
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setVerticalSpacing(15)
-        layout.setHorizontalSpacing(20)
-        layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-        layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        container, layout, form_widget = self.create_form_container()
 
         self.combo_search_mode = QComboBox()
         self.combo_search_mode.addItems(["ALL", "BARCODE", "NAME"])
@@ -163,7 +215,6 @@ class SalesPage(SettingsPage):
         self.chk_void_reason = QCheckBox("Require Reason for Void")
         layout.addRow("", self.chk_void_reason)
 
-        # Add form widget to container
         container.addWidget(form_widget)
 
     def load(self, settings: dict):
@@ -181,10 +232,7 @@ class SalesPage(SettingsPage):
 
 class TaxPage(SettingsPage):
     def init_ui(self):
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(15)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)  # Force top alignment
+        main_layout = self.create_group_container()
 
         # Warning
         lbl_warn = QLabel("Note: Changing these values affects ALL future sales immediately.")
@@ -195,10 +243,7 @@ class TaxPage(SettingsPage):
         form_widget = QWidget()
         layout = QFormLayout(form_widget)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setVerticalSpacing(15)
-        layout.setHorizontalSpacing(20)
-        layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-        layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.configure_form_layout(layout)
 
         self.spin_vat = QSpinBox()
         self.spin_vat.setRange(0, 100)
@@ -218,7 +263,6 @@ class TaxPage(SettingsPage):
         layout.addRow("SSCL Turnover Base:", self.spin_sscl_turnover)
 
         main_layout.addWidget(form_widget)
-        # Removed addStretch() - causes vertical centering
 
     def load(self, settings: dict):
         self.spin_vat.setValue(int(settings.get("tax_vat_rate", 18)))
@@ -235,19 +279,7 @@ class TaxPage(SettingsPage):
 
 class InventoryPage(SettingsPage):
     def init_ui(self):
-        # Main container with top alignment
-        container = QVBoxLayout(self)
-        container.setContentsMargins(0, 0, 0, 0)
-        container.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        # Create a widget to hold the form (forces full width)
-        form_widget = QWidget()
-        layout = QFormLayout(form_widget)
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setVerticalSpacing(15)
-        layout.setHorizontalSpacing(20)
-        layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-        layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        container, layout, form_widget = self.create_form_container()
 
         self.chk_negative_stock = QCheckBox("Allow Negative Stock (Overselling)")
         layout.addRow("", self.chk_negative_stock)
@@ -255,7 +287,6 @@ class InventoryPage(SettingsPage):
         self.chk_auto_barcodes = QCheckBox("Auto-Generate Barcodes for New Items")
         layout.addRow("", self.chk_auto_barcodes)
 
-        # Add form widget to container
         container.addWidget(form_widget)
 
     def load(self, settings: dict):
@@ -271,19 +302,7 @@ class InventoryPage(SettingsPage):
 
 class DocumentPage(SettingsPage):
     def init_ui(self):
-        # Main container with top alignment
-        container = QVBoxLayout(self)
-        container.setContentsMargins(0, 0, 0, 0)
-        container.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        # Create a widget to hold the form (forces full width)
-        form_widget = QWidget()
-        layout = QFormLayout(form_widget)
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setVerticalSpacing(15)
-        layout.setHorizontalSpacing(20)
-        layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-        layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        container, layout, form_widget = self.create_form_container()
 
         self.combo_reset_period = QComboBox()
         self.combo_reset_period.addItems(["YEARLY", "MONTHLY", "NEVER"])
@@ -301,7 +320,6 @@ class DocumentPage(SettingsPage):
         self.input_fmt_return.setPlaceholderText("CN-{Y}-{seq:05d}")
         layout.addRow("Return Format:", self.input_fmt_return)
 
-        # Add form widget to container
         container.addWidget(form_widget)
 
     def load(self, settings: dict):
@@ -321,18 +339,12 @@ class DocumentPage(SettingsPage):
 
 class HardwarePage(SettingsPage):
     def init_ui(self):
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(20)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)  # Force top alignment
+        main_layout = self.create_group_container()
 
         # Printers
         grp_printer = QGroupBox("Printers")
         form_printer = QFormLayout(grp_printer)
-        form_printer.setVerticalSpacing(15)
-        form_printer.setHorizontalSpacing(20)
-        form_printer.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-        form_printer.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.configure_form_layout(form_printer)
 
         available_printers = QPrinterInfo.availablePrinterNames() or ["No printers found"]
 
@@ -356,10 +368,7 @@ class HardwarePage(SettingsPage):
         # Scale
         grp_scale = QGroupBox("Weighing Scale")
         form_scale = QFormLayout(grp_scale)
-        form_scale.setVerticalSpacing(15)
-        form_scale.setHorizontalSpacing(20)
-        form_scale.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-        form_scale.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.configure_form_layout(form_scale)
 
         self.input_scale_prefix = QLineEdit()
         self.input_scale_prefix.setMaxLength(2)
@@ -370,7 +379,6 @@ class HardwarePage(SettingsPage):
         form_scale.addRow("Decimal Places:", self.spin_decimal_places)
 
         main_layout.addWidget(grp_scale)
-        # Removed addStretch() - causes vertical centering
 
     def load(self, settings: dict):
         receipt_printer = settings.get("receipt_printer_name", "")
@@ -408,16 +416,10 @@ class HardwarePage(SettingsPage):
 
 class PaymentPage(SettingsPage):
     def init_ui(self):
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(20)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)  # Force top alignment
+        main_layout = self.create_group_container()
 
         form = QFormLayout()
-        form.setVerticalSpacing(15)
-        form.setHorizontalSpacing(20)
-        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.configure_form_layout(form)
 
         self.chk_show_receipt_dialog = QCheckBox("Show Receipt Options Dialog after Sale")
         form.addRow("", self.chk_show_receipt_dialog)
@@ -427,10 +429,7 @@ class PaymentPage(SettingsPage):
         # Banking Details
         grp_bank = QGroupBox("Banking Details (For Invoices)")
         form_bank = QFormLayout(grp_bank)
-        form_bank.setVerticalSpacing(15)
-        form_bank.setHorizontalSpacing(20)
-        form_bank.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-        form_bank.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.configure_form_layout(form_bank)
 
         self.input_bank_name = QLineEdit()
         self.input_account_no = QLineEdit()
@@ -441,7 +440,6 @@ class PaymentPage(SettingsPage):
         form_bank.addRow("Branch:", self.input_branch)
 
         main_layout.addWidget(grp_bank)
-        # Removed addStretch() - causes vertical centering
 
     def load(self, settings: dict):
         self.chk_show_receipt_dialog.setChecked(settings.get("show_receipt_dialog", True))
@@ -460,10 +458,7 @@ class PaymentPage(SettingsPage):
 
 class ReceiptPage(SettingsPage):
     def init_ui(self):
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(20)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)  # Force top alignment
+        main_layout = self.create_group_container()
 
         # Logo
         grp_logo = QGroupBox("Logo")
@@ -483,10 +478,7 @@ class ReceiptPage(SettingsPage):
         # Content
         grp_content = QGroupBox("Content")
         form_content = QFormLayout(grp_content)
-        form_content.setVerticalSpacing(15)
-        form_content.setHorizontalSpacing(20)
-        form_content.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-        form_content.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.configure_form_layout(form_content)
 
         self.txt_header = QTextEdit()
         self.txt_header.setFixedHeight(80)
@@ -511,7 +503,6 @@ class ReceiptPage(SettingsPage):
         self.btn_preview.setStyleSheet("background-color: #007ACC; color: white;")
         self.btn_preview.clicked.connect(self.preview_receipt)
         main_layout.addWidget(self.btn_preview)
-        # Removed addStretch() - causes vertical centering
 
     def browse_logo(self):
         path, _ = QFileDialog.getOpenFileName(self, "Select Logo", "", "Images (*.png *.jpg *.bmp)")
@@ -573,19 +564,7 @@ class ReceiptPage(SettingsPage):
 
 class AutomationPage(SettingsPage):
     def init_ui(self):
-        # Main container with top alignment
-        container = QVBoxLayout(self)
-        container.setContentsMargins(0, 0, 0, 0)
-        container.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        # Create a widget to hold the form (forces full width)
-        form_widget = QWidget()
-        form_layout = QFormLayout(form_widget)
-        form_layout.setContentsMargins(30, 30, 30, 30)
-        form_layout.setVerticalSpacing(15)
-        form_layout.setHorizontalSpacing(20)
-        form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        container, form_layout, form_widget = self.create_form_container()
 
         # 1. Auto-Report Scheduler
         self.chk_auto_report = QCheckBox("Enable Daily Auto-Report")
@@ -624,7 +603,6 @@ class AutomationPage(SettingsPage):
         self.input_smtp_pass.setPlaceholderText("App Password")
         form_layout.addRow("SMTP Password:", self.input_smtp_pass)
 
-        # Add form widget to container
         container.addWidget(form_widget)
 
     def load(self, settings: dict):
@@ -651,16 +629,10 @@ class AutomationPage(SettingsPage):
 
 class ProfilePage(SettingsPage):
     def init_ui(self):
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(20)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)  # Force top alignment
+        main_layout = self.create_group_container()
 
         form = QFormLayout()
-        form.setVerticalSpacing(15)
-        form.setHorizontalSpacing(20)
-        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.configure_form_layout(form)
 
         self.input_name = QLineEdit()
         form.addRow("Display Name:", self.input_name)
@@ -681,7 +653,6 @@ class ProfilePage(SettingsPage):
         self.btn_update.setStyleSheet("background-color: #007ACC; color: white; padding: 10px;")
         self.btn_update.clicked.connect(self.update_profile)
         main_layout.addWidget(self.btn_update)
-        # Removed addStretch() - causes vertical centering
 
     def load(self, settings: dict):
         user = AuthService.get_current_user()

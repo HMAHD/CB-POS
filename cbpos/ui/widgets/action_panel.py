@@ -23,6 +23,7 @@ class ActionBtn(QPushButton):
         super().__init__(parent)
         self.setFixedSize(100, 80)
         self.setProperty("class", "ActionGridBtn")
+        self._icon_name = icon_name  # Store for theme updates
 
         # Main Layout
         layout = QGridLayout(self)
@@ -38,9 +39,6 @@ class ActionBtn(QPushButton):
         # 2. Icon (Center)
         self.lbl_icon = QLabel()
         self.lbl_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        if icon_name:
-            icon = Icons.get(icon_name, color="white")
-            self.lbl_icon.setPixmap(icon.pixmap(32, 32))
         layout.addWidget(self.lbl_icon, 1, 0)
 
         # 3. Text (Bottom)
@@ -50,13 +48,44 @@ class ActionBtn(QPushButton):
         self.lbl_text.setWordWrap(True)
         layout.addWidget(self.lbl_text, 2, 0)
 
+        # Apply theme-aware styling
+        self._apply_theme_styles(icon_name)
+
         # Apply custom color if provided
         if color:
             self.setProperty("btnColor", color)
 
-    def set_icon(self, icon_name):
+    def _apply_theme_styles(self, icon_name=None):
+        """Apply theme-aware colors to labels and icons."""
+        from cbpos.core.services.theme_service import ThemeService
+
+        is_dark = ThemeService.current_theme.lower() == "dark"
+
+        if is_dark:
+            shortcut_color = "#AAAAAA"  # Subtle gray for shortcuts
+            text_color = "#FFFFFF"      # White for text
+            icon_color = "white"
+        else:
+            shortcut_color = "#555555"  # Dark gray for shortcuts
+            text_color = "#000000"      # Black for text
+            icon_color = "#333333"
+
+        # Apply styles with transparent background
+        self.lbl_shortcut.setStyleSheet(f"background: transparent; color: {shortcut_color};")
+        self.lbl_text.setStyleSheet(f"background: transparent; color: {text_color};")
+        self.lbl_icon.setStyleSheet("background: transparent;")
+
+        # Set icon with correct color
         if icon_name:
-            icon = Icons.get(icon_name, color="white")
+            icon = Icons.get(icon_name, color=icon_color)
+            self.lbl_icon.setPixmap(icon.pixmap(32, 32))
+
+    def set_icon(self, icon_name):
+        from cbpos.core.services.theme_service import ThemeService
+        is_dark = ThemeService.current_theme.lower() == "dark"
+        icon_color = "white" if is_dark else "#333333"
+        if icon_name:
+            icon = Icons.get(icon_name, color=icon_color)
             self.lbl_icon.setPixmap(icon.pixmap(32, 32))
 
 
@@ -101,6 +130,7 @@ class ActionPanel(QWidget):
 
         self.lbl_customer = QLabel("Walk-in Customer")
         self.lbl_customer.setObjectName("CustomerLabel")
+        self.lbl_customer.setStyleSheet("background: transparent;")
 
         self.btn_cust_select = QPushButton("Select")
         self.btn_cust_select.setFixedWidth(70)
@@ -117,6 +147,7 @@ class ActionPanel(QWidget):
         self.lbl_points = QLabel("")
         self.lbl_points.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_points.setObjectName("PointsLabel")
+        self.lbl_points.setStyleSheet("background: transparent;")
         layout.addWidget(self.lbl_points)
 
         # --- 2. Action Grid ---

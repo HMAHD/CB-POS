@@ -35,7 +35,7 @@ class OrderBar(QWidget):
 
         # 1. Label
         lbl_title = QLabel("ORDERS:")
-        lbl_title.setStyleSheet("color: #AAAAAA; font-weight: bold;")
+        lbl_title.setStyleSheet("color: #AAAAAA; font-weight: bold; background: transparent;")
         layout.addWidget(lbl_title)
 
         # 2. Scroll Area for Tabs

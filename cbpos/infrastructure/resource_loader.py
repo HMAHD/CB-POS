@@ -80,11 +80,9 @@ class ResourceLoader:
             print(f"[ResourceLoader] Failed to load: {failed_count} files")
 
         # Determine the primary font to use
-        # Priority: Noto Sans > Iskoola Pota > First loaded > Segoe UI (fallback)
+        # Priority: Noto Sans > First loaded > Segoe UI (fallback)
         if "Noto Sans" in cls._loaded_font_families:
             cls._primary_font = "Noto Sans"
-        elif "Iskoola Pota" in cls._loaded_font_families:
-            cls._primary_font = "Iskoola Pota"
         elif cls._loaded_font_families:
             cls._primary_font = cls._loaded_font_families[0]
         else:

@@ -84,8 +84,8 @@ class SalesView(QWidget):
             lbl_logo.setPixmap(logo_pixmap.scaledToHeight(35, Qt.TransformationMode.SmoothTransformation))
         else:
             lbl_logo.setText("CEYLON BYTE POS")  # Fallback
-            lbl_logo.setText("CEYLON BYTE POS")  # Fallback
             lbl_logo.setObjectName("LogoLabel")
+        lbl_logo.setStyleSheet("background: transparent;")
         lbl_logo.setAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )
@@ -96,8 +96,8 @@ class SalesView(QWidget):
         # Menu Button
         self.menu_button = QToolButton()
         self.menu_button.setObjectName("menu_button")
+        self.menu_button.setStyleSheet("background: transparent; border: none;")
         icon_color = ThemeService.get_icon_color()
-        self.menu_button.setIcon(Icons.get("fa5s.bars", icon_color))
         self.menu_button.setIcon(Icons.get("fa5s.bars", icon_color))
 
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -205,9 +205,13 @@ class SalesView(QWidget):
         # Subtotals (Left)
         subtotal_layout = QVBoxLayout()
         self.lbl_item_count = QLabel("Items: 0")
+        self.lbl_item_count.setStyleSheet("background: transparent;")
         self.lbl_subtotal = QLabel("Subtotal: 0.00")
+        self.lbl_subtotal.setStyleSheet("background: transparent;")
         self.lbl_discount = QLabel("Disc: 0.00")
+        self.lbl_discount.setStyleSheet("background: transparent;")
         self.lbl_tax = QLabel("Tax: 0.00")
+        self.lbl_tax.setStyleSheet("background: transparent;")
         self.lbl_subtotal.setObjectName("SubtotalLabel")
         self.lbl_tax.setObjectName("TaxLabel")
         subtotal_layout.addWidget(self.lbl_subtotal)
@@ -219,6 +223,7 @@ class SalesView(QWidget):
 
         # Grand Total (Right)
         self.total_label = QLabel("0.00")
+        self.total_label.setStyleSheet("background: transparent;")
         self.total_label.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
@@ -316,7 +321,7 @@ class SalesView(QWidget):
         # User asked for "Items: {count}" which usually means item count.
         # Let's use item_count (qty sum) as it's more useful for retail.
 
-        self.lbl_total.setText(format_currency(final_total))
+        self.total_label.setText(format_currency(final_total))
         self.lbl_subtotal.setText(f"Subtotal: {format_currency(subtotal)}")
         self.lbl_discount.setText(f"Disc: {format_currency(cart_discount)}")
         self.lbl_tax.setText(f"Tax: {format_currency(tax_amount)}")

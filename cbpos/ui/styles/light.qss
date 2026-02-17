@@ -12,7 +12,7 @@
 
 /* Global Font Enforcement */
 * {
-    font-family: "{{FONT_FAMILY}}", "Noto Sans", "Iskoola Pota", "Segoe UI", sans-serif;
+    font-family: "{{FONT_FAMILY}}", "Noto Sans", "Segoe UI", sans-serif;
 }
 
 QLabel#BadgeLabel {
@@ -36,8 +36,8 @@ QWidget {
     font-size: 14px;
 }
 
-/* Inputs */
-QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
+/* Inputs - Global Baseline */
+QLineEdit {
     background-color: #FFFFFF;
     border: 1px solid #CED4DA;
     border-radius: 4px;
@@ -48,8 +48,156 @@ QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
     selection-color: #FFFFFF;
 }
 
-QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
+QLineEdit:focus {
     border: 2px solid #0D6EFD;
+    background-color: #F8F9FA;
+}
+
+/* ComboBox - Dropdown Selector */
+QComboBox {
+    background-color: #FFFFFF;
+    border: 1px solid #CED4DA;
+    border-radius: 4px;
+    padding: 8px 12px;
+    padding-right: 30px;  /* Space for arrow */
+    font-size: 14px;
+    color: #212529;
+    min-height: 32px;
+}
+
+QComboBox:hover {
+    border: 1px solid #ADB5BD;
+    background-color: #F8F9FA;
+}
+
+QComboBox:focus {
+    border: 2px solid #0D6EFD;
+    background-color: #F8F9FA;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 30px;
+    background: transparent;
+}
+
+QComboBox::down-arrow {
+    image: none;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 7px solid #495057;
+    margin-right: 8px;
+}
+
+QComboBox:hover::down-arrow {
+    border-top-color: #212529;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #FFFFFF;
+    border: 1px solid #0D6EFD;
+    selection-background-color: #0D6EFD;
+    selection-color: #FFFFFF;
+    color: #212529;
+    padding: 4px;
+    outline: none;
+}
+
+QComboBox QAbstractItemView::item {
+    padding: 8px 12px;
+    min-height: 28px;
+}
+
+QComboBox QAbstractItemView::item:hover {
+    background-color: #E9ECEF;
+    color: #0D6EFD;
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background-color: #0D6EFD;
+    color: #FFFFFF;
+}
+
+/* SpinBox - Number Input */
+QSpinBox, QDoubleSpinBox {
+    background-color: #FFFFFF;
+    border: 1px solid #CED4DA;
+    border-radius: 4px;
+    padding: 8px 12px;
+    padding-right: 40px;  /* Space for buttons */
+    font-size: 14px;
+    color: #212529;
+    min-height: 32px;
+}
+
+QSpinBox:hover, QDoubleSpinBox:hover {
+    border: 1px solid #ADB5BD;
+    background-color: #F8F9FA;
+}
+
+QSpinBox:focus, QDoubleSpinBox:focus {
+    border: 2px solid #0D6EFD;
+    background-color: #F8F9FA;
+}
+
+QSpinBox::up-button, QDoubleSpinBox::up-button {
+    background-color: #E9ECEF;
+    border: none;
+    border-top-right-radius: 4px;
+    width: 20px;
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+}
+
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover {
+    background-color: #CED4DA;
+}
+
+QSpinBox::up-button:pressed, QDoubleSpinBox::up-button:pressed {
+    background-color: #0D6EFD;
+}
+
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+    image: none;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 6px solid #495057;
+    width: 0;
+    height: 0;
+}
+
+QSpinBox::up-button:hover::up-arrow, QDoubleSpinBox::up-button:hover::up-arrow {
+    border-bottom-color: #212529;
+}
+
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    background-color: #E9ECEF;
+    border: none;
+    border-bottom-right-radius: 4px;
+    width: 20px;
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+}
+
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
+    background-color: #CED4DA;
+}
+
+QSpinBox::down-button:pressed, QDoubleSpinBox::down-button:pressed {
+    background-color: #0D6EFD;
+}
+
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    image: none;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #495057;
+    width: 0;
+    height: 0;
+}
+
+QSpinBox::down-button:hover::down-arrow, QDoubleSpinBox::down-button:hover::down-arrow {
+    border-top-color: #212529;
 }
 
 /* Buttons */
@@ -282,10 +430,20 @@ QWidget#HeaderWidget {
     border-bottom: 1px solid #003366;
 }
 
+QWidget#HeaderWidget QLabel {
+    background: transparent;
+}
+
+QWidget#HeaderWidget QToolButton {
+    background: transparent;
+    border: none;
+}
+
 QLabel#LogoLabel {
     color: #00BCEB;
     font-weight: bold;
     font-size: 16px;
+    background: transparent;
 }
 
 /* Search Bar & Filters */
@@ -343,15 +501,21 @@ QWidget#TotalWidget {
     border-radius: 0px;
 }
 
+QWidget#TotalWidget QLabel {
+    background: transparent;
+}
+
 QLabel#SubtotalLabel, QLabel#TaxLabel {
     color: #495057;
     font-size: 14px;
+    background: transparent;
 }
 
 QLabel#TotalLabel {
     font-size: 48px;
     font-weight: bold;
     color: #198754;
+    background: transparent;
 }
 
 /* Action Panel */
@@ -360,16 +524,25 @@ QWidget#ActionPanel {
     border-left: 1px solid #DEE2E6;
 }
 
+QWidget#ActionPanel QLabel {
+    background: transparent;
+}
+
 QFrame#CustomerPanel {
     background-color: #00BCEB;
     border-radius: 5px;
     padding: 5px;
 }
 
+QFrame#CustomerPanel QLabel {
+    background: transparent;
+}
+
 QLabel#CustomerLabel {
     font-weight: bold;
     font-size: 14px;
     color: black;
+    background: transparent;
 }
 
 QPushButton#BtnCustomerSelect {
@@ -383,6 +556,7 @@ QLabel#PointsLabel {
     color: black;
     font-weight: bold;
     font-size: 12px;
+    background: transparent;
 }
 
 /* Action Grid Button */
@@ -408,8 +582,13 @@ QPushButton[class="ActionGridBtn"][btnColor="#FFDC00"] { border-bottom: 3px soli
 QPushButton[class="ActionGridBtn"][btnColor="#FF4136"] { border-bottom: 3px solid #DC3545; }
 
 /* Internal Labels in Grid Buttons */
-QPushButton[class="ActionGridBtn"] QLabel#lblShortcut {
+QPushButton[class="ActionGridBtn"] QLabel {
+    background: transparent;
     color: #000000;
+}
+
+QPushButton[class="ActionGridBtn"] QLabel#lblShortcut {
+    color: #333333;
     font-size: 10px;
     font-weight: bold;
     background: transparent;
@@ -422,6 +601,7 @@ QPushButton[class="ActionGridBtn"] QLabel#lblText {
     background: transparent;
 }
 
+QPushButton[class="ActionGridBtn"]:pressed QLabel,
 QPushButton[class="ActionGridBtn"]:pressed QLabel#lblText,
 QPushButton[class="ActionGridBtn"]:pressed QLabel#lblShortcut {
     color: #FFFFFF;
@@ -458,38 +638,32 @@ QLabel#InfoCardTitle {
 }
 
 /* Settings View */
-QFrame#SettingsHeader {
-    background-color: #001F3F;
-    border-bottom: 2px solid #003366;
-}
-
-QLabel#SettingsTitle {
-    font-size: 24px;
-    font-weight: bold;
-    color: #00BCEB;
-}
-
 QListWidget#SettingsSidebar {
-    background-color: #F8F9FA;
+    background-color: #F3F4F6;
     border: none;
-    outline: none;
     border-right: 1px solid #DEE2E6;
+    outline: none;
 }
 
 QListWidget#SettingsSidebar::item {
-    color: #212529;
-    padding: 15px;
-    border-bottom: 1px solid #DEE2E6;
-}
-
-QListWidget#SettingsSidebar::item:selected {
-    background-color: #E3F2FD;
-    border-left: 4px solid #0D6EFD;
-    color: #0D6EFD;
+    color: #495057;
+    padding: 12px 20px;
+    padding-left: 20px;
+    border: none;
+    border-left: 3px solid transparent;
+    background-color: transparent;
 }
 
 QListWidget#SettingsSidebar::item:hover {
     background-color: #E9ECEF;
+    color: #212529;
+}
+
+QListWidget#SettingsSidebar::item:selected {
+    background-color: #E3F2FD;
+    color: #0D6EFD;
+    border-left: 3px solid #0D6EFD;
+    font-weight: bold;
 }
 
 QWidget#SettingsContent {
@@ -497,13 +671,34 @@ QWidget#SettingsContent {
     color: #212529;
 }
 
-QWidget#SettingsContent QLineEdit, 
-QWidget#SettingsContent QComboBox, 
-QWidget#SettingsContent QSpinBox {
+/* Settings Content Area - Improved Input Styling */
+QWidget#SettingsContent QLineEdit,
+QWidget#SettingsContent QComboBox,
+QWidget#SettingsContent QSpinBox,
+QWidget#SettingsContent QDoubleSpinBox,
+QWidget#SettingsContent QTextEdit {
     background-color: #FFFFFF;
     color: #212529;
     border: 1px solid #CED4DA;
-    padding: 5px;
+    border-radius: 4px;
+    padding-left: 10px;
+    min-height: 32px;
+    font-size: 14px;
+}
+
+QWidget#SettingsContent QLineEdit:focus,
+QWidget#SettingsContent QComboBox:focus,
+QWidget#SettingsContent QSpinBox:focus,
+QWidget#SettingsContent QDoubleSpinBox:focus,
+QWidget#SettingsContent QTextEdit:focus {
+    border: 2px solid #0D6EFD;
+    background-color: #F8F9FA;
+}
+
+/* Settings Form Labels */
+QWidget#SettingsContent QLabel {
+    color: #495057;
+    font-size: 14px;
 }
 
 QLabel[class="SectionHeader"] {

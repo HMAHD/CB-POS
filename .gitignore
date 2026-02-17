@@ -30,3 +30,6 @@ verify_automation.py
 # OS
 .DS_Store
 Thumbs.db
+
+#AI
+CLAUDE.md

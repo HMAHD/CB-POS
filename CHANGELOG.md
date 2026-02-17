@@ -37,6 +37,28 @@ All notable changes to this project will be documented in this file. Never delet
   - Added Automation Settings tab for configuring Auto-Report schedules and SMTP.
 
 ### Refactored
+- **Settings Dialog UX Overhaul (Phase 3 - Vertical Alignment Fix)**:
+  - Fixed vertical centering issue where content floated in the middle of the page.
+  - Wrapped all FormLayout pages in VBoxLayout containers with AlignTop alignment.
+  - Content now properly aligns to the top of the settings area for all pages.
+  - Improved QComboBox and QSpinBox arrow visibility with larger CSS triangles and better colors (#CCCCCC for dark, #495057 for light).
+- **Settings Dialog UX Overhaul (Phase 2 - Field Expansion Fix)**:
+  - Fixed short input fields issue by implementing `QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow` across all settings pages.
+  - Standardized form layouts with right-aligned labels and consistent spacing (15px vertical, 20px horizontal).
+  - Removed redundant page headers inside content areas (headers were causing visual clutter).
+  - Improved sidebar width to 260px for better proportions (25% sidebar, 75% content).
+  - Enhanced input field styling with 32px minimum height and proper border radius (4px).
+  - Updated all 10 settings pages (General, Sales, Tax, Inventory, Documents, Receipt, Hardware, Payment, Automation, Profile).
+  - Ensured QTextEdit fields also expand properly with matching styles.
+  - Applied industrial enterprise-standard form layouts with optimal margins (30px).
+- **Settings Dialog UX Overhaul (Phase 1)**:
+  - Removed redundant floating header (window title is sufficient).
+  - Redesigned sidebar with VS Code-inspired styling (#252526 background).
+  - Implemented active item indicator with 3px Cyan left border and cyan text.
+  - Improved content area input styling with proper heights, consistent padding (10px left), and focus states.
+  - Enhanced form label alignment and contrast (#DDDDDD on dark theme, #495057 on light theme).
+  - Unified footer bar with better spacing and right-aligned action buttons.
+  - Updated both dark.qss and light.qss for consistent industrial appearance.
 - **Sales Screen Overhaul** (Phase 6):
   - Redesigned `SalesView` with a split-screen "Command Console" layout.
   - Implemented Left Panel (75%) for Cart, Search, and Totals.

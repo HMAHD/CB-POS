@@ -169,7 +169,12 @@ class SettingsView(QWidget):
         ThemeService.apply_theme(new_theme)
 
         # Determine if restart is required
-        restart_required = new_lang != current_lang or new_font_size != current_font_size
+        # Use .get() to avoid KeyErrors if keys are missing
+        restart_required = (
+            new_lang != current_lang
+            or new_font_size != current_font_size
+            or all_settings.get("db_mode") != current_config.get("db_mode")
+        )
 
         if restart_required:
             QMessageBox.information(

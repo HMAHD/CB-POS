@@ -158,28 +158,33 @@ class MigrationService:
 
                 # 7. Reset PostgreSQL sequences (critical!)
                 # After bulk insert with explicit IDs, sequences are out of sync
+                # Use nested transactions (savepoints) to isolate failures
                 for model in MigrationService.MIGRATION_ORDER:
                     table_name = model.__tablename__
 
                     # Check if table has an 'id' column (primary key)
                     if hasattr(model, "id"):
                         try:
-                            # Get the sequence name for this table's id column
-                            seq_query = text(
-                                f"SELECT pg_get_serial_sequence('{table_name}', 'id') as seq_name"  # noqa: E501
-                            )
-                            result = tgt_session.execute(seq_query)
-                            seq_name = result.scalar()
-
-                            if seq_name:
-                                # Reset sequence to max(id) + 1
-                                reset_query = text(
-                                    f"SELECT setval('{seq_name}', "
-                                    f"COALESCE((SELECT MAX(id) FROM {table_name}), 0) + 1, false)"
+                            # Use a nested transaction (savepoint)
+                            # If this specific table fails, it won't rollback the whole migration
+                            with tgt_session.begin_nested():
+                                seq_query = text(
+                                    f"SELECT pg_get_serial_sequence('{table_name}', 'id') as seq_name"  # noqa: E501
                                 )
-                                tgt_session.execute(reset_query)
+                                result = tgt_session.execute(seq_query)
+                                seq_name = result.scalar()
+
+                                if seq_name:
+                                    # Reset sequence to max(id) + 1
+                                    # This ensures the next INSERT gets a valid new ID
+                                    reset_query = text(
+                                        f"SELECT setval('{seq_name}', "
+                                        f"COALESCE((SELECT MAX(id) FROM {table_name}), 0) + 1, false)"
+                                    )
+                                    tgt_session.execute(reset_query)
                         except Exception:
-                            # Not all tables have sequences, that's OK
+                            # Expected for tables without sequences (like association tables)
+                            # The nested transaction handles the rollback automatically
                             pass
 
                 tgt_session.commit()

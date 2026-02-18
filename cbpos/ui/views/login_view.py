@@ -21,7 +21,12 @@ class LoginView(QWidget):
 
     def __init__(self):
         super().__init__()
+        self.logo_label = None  # Store reference for theme updates
         self.init_ui()
+
+        # Register theme callback to update logo
+        from cbpos.core.services.theme_service import ThemeService
+        ThemeService.register_theme_callback(self.update_logo)
 
     def init_ui(self):
         main_layout = QHBoxLayout(self)
@@ -35,23 +40,9 @@ class LoginView(QWidget):
         left_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Logo
-        logo_label = QLabel()
-        # Config.BASE_DIR is project root. Assets are in cbpos/assets/logo
-        logo_path = os.path.join(Config.BASE_DIR, "cbpos", "assets", "logo", "Logo_light.png")
-        if os.path.exists(logo_path):
-            pixmap = QPixmap(logo_path)
-            scaled_pixmap = pixmap.scaled(
-                300,
-                300,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-            logo_label.setPixmap(scaled_pixmap)
-        else:
-            logo_label.setText("CB POS")
-            logo_label.setObjectName("LogoText")
-
-        logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.logo_label = QLabel()
+        self.update_logo()  # Set initial logo based on current theme
+        self.logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Multilingual Welcome Text
         welcome_text = QLabel("Welcome / ආයුබෝවන් / வணக்கம்")
@@ -60,7 +51,7 @@ class LoginView(QWidget):
         # Removed inline style - now styled via QSS with WelcomeText object name
 
         left_layout.addStretch()
-        left_layout.addWidget(logo_label)
+        left_layout.addWidget(self.logo_label)
         left_layout.addWidget(welcome_text)
         left_layout.addStretch()
 
@@ -79,6 +70,7 @@ class LoginView(QWidget):
 
         # PIN Display
         self.pin_input = QLineEdit()
+        self.pin_input.setObjectName("PinInput")  # For QSS styling
         self.pin_input.setPlaceholderText("Enter PIN")
         self.pin_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.pin_input.setReadOnly(False)  # Allow keyboard input
@@ -191,3 +183,27 @@ class LoginView(QWidget):
             return
 
         super().keyPressEvent(event)
+
+    def update_logo(self):
+        """Update logo for login view (uses 02.png for both themes - navy background)."""
+        if not hasattr(self, 'logo_label') or self.logo_label is None:
+            return
+
+        from pathlib import Path
+
+        # Use 02.png for both themes since login left panel is navy blue in both
+        logo_path = Config.BASE_DIR / "cbpos" / "assets" / "logo" / "02.png"
+
+        if logo_path.exists():
+            pixmap = QPixmap(str(logo_path))
+            scaled_pixmap = pixmap.scaled(
+                300,
+                300,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            self.logo_label.setPixmap(scaled_pixmap)
+        else:
+            # Fallback if logo file not found
+            self.logo_label.setText("CB POS")
+            self.logo_label.setObjectName("LogoText")

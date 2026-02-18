@@ -1124,6 +1124,11 @@ QWidget#LoginLeftPanel {
     background-color: #001226;  /* Deep navy branding panel */
 }
 
+/* Ensure all labels in login left panel have transparent backgrounds */
+QWidget#LoginLeftPanel QLabel {
+    background-color: transparent;
+}
+
 QLabel#WelcomeText {
     font-size: 24px;
     color: #00BCEB;  /* Cyan accent */
@@ -1132,25 +1137,73 @@ QLabel#WelcomeText {
 }
 
 QLabel#FooterLabel {
-    color: #888888;
+    color: #CCCCCC;  /* Lighter gray for better visibility on navy */
     font-size: 12px;
 }
 
+QLabel#LogoText {
+    color: white;
+    font-size: 36px;
+    font-weight: bold;
+}
+
+/* === PIN INPUT FIELD === */
+QLineEdit#PinInput {
+    background-color: white;
+    border: 2px solid #00BCEB;  /* Cyan border */
+    border-radius: 8px;
+    padding: 15px;
+    font-size: 32px;
+    font-weight: bold;
+    letter-spacing: 8px;  /* Space out PIN dots */
+    color: #001F3F;
+}
+
+QLineEdit#PinInput:focus {
+    border: 2px solid #0099CC;  /* Darker cyan on focus */
+    background-color: #F0F9FF;  /* Subtle blue tint */
+}
+
 /* === NUMPAD BUTTONS === */
+/* Base styling for all numpad buttons */
+QPushButton#NumpadBtn {
+    background-color: #F5F5F5;
+    border: 2px solid #E0E0E0;
+    border-radius: 8px;
+    color: #001F3F;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+QPushButton#NumpadBtn:hover {
+    background-color: #E8E8E8;
+    border-color: #00BCEB;
+}
+
+QPushButton#NumpadBtn:pressed {
+    background-color: #D0D0D0;
+}
+
+/* Clear button (Red) */
 QPushButton#NumpadBtn[btnType="clear"] {
     color: #DC3545;  /* Red for clear */
     border-color: #DC3545;
+    background-color: #FFF5F5;
 }
 
 QPushButton#NumpadBtn[btnType="clear"]:hover {
-    background-color: rgba(220, 53, 69, 0.1);
+    background-color: #FFE8E8;
+    border-color: #BB2D3B;
 }
 
+/* Enter button (Green) */
 QPushButton#NumpadBtn[btnType="enter"] {
     color: #198754;  /* Green for enter */
     border-color: #198754;
+    background-color: #F0FFF4;
 }
 
 QPushButton#NumpadBtn[btnType="enter"]:hover {
-    background-color: rgba(25, 135, 84, 0.1);
+    background-color: #E0FFE8;
+    border-color: #146C43;
 }

@@ -94,8 +94,8 @@ class SalesView(QWidget):
         self.menu_button = QToolButton()
         self.menu_button.setObjectName("menu_button")
         self.menu_button.setStyleSheet("background: transparent; border: none;")
-        icon_color = ThemeService.get_icon_color()
-        self.menu_button.setIcon(Icons.get("fa5s.bars", icon_color))
+        # Hamburger menu icon is always white for visibility on dark header
+        self.menu_button.setIcon(Icons.get("fa5s.bars", "white"))
 
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.menu_button.clicked.connect(self.toggle_side_menu)
@@ -300,6 +300,14 @@ class SalesView(QWidget):
         else:
             self.lbl_logo.setText("CEYLON BYTE POS")  # Fallback
             self.lbl_logo.setObjectName("LogoLabel")
+
+        # Update hamburger menu icon (if it exists) - always white
+        if hasattr(self, 'menu_button'):
+            self.menu_button.setIcon(Icons.get("fa5s.bars", "white"))
+
+        # Update side menu icons (if it exists)
+        if hasattr(self, 'side_menu'):
+            self.side_menu.update_all_icons()
 
     def update_cart_ui(self):
         self.cart_table.setRowCount(0)

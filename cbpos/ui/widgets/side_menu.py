@@ -26,10 +26,8 @@ class MenuButton(QPushButton):
         self.icon_name = icon_name
         self.is_destructive = is_destructive
 
-        # Use theme service to get the correct color
-        from cbpos.core.services.theme_service import ThemeService
-        icon_color = "#FF4136" if is_destructive else ThemeService.get_icon_color()
-        self.setIcon(Icons.get(icon_name, icon_color))
+        # Set initial icon
+        self.update_icon()
         self.setIconSize(QSize(24, 24))
 
         self.setFixedHeight(60)
@@ -38,6 +36,12 @@ class MenuButton(QPushButton):
         # Set property for CSS targeting
         if is_destructive:
             self.setProperty("destructive", True)
+
+    def update_icon(self):
+        """Update icon color based on current theme."""
+        from cbpos.core.services.theme_service import ThemeService
+        icon_color = "#FF4136" if self.is_destructive else ThemeService.get_icon_color()
+        self.setIcon(Icons.get(self.icon_name, icon_color))
 
 
 class IconButton(QPushButton):
@@ -49,14 +53,21 @@ class IconButton(QPushButton):
         super().__init__()
         self.setObjectName("IconButton")  # For CSS styling
 
-        # Use theme service for icon color
-        from cbpos.core.services.theme_service import ThemeService
-        icon_color = ThemeService.get_icon_color()
-        self.setIcon(Icons.get(icon_name, icon_color))
+        # Store icon name for theme updates
+        self.icon_name = icon_name
+
+        # Set initial icon
+        self.update_icon()
         self.setIconSize(QSize(24, 24))
         self.setToolTip(tooltip)
         self.setFixedSize(50, 50)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def update_icon(self):
+        """Update icon color based on current theme."""
+        from cbpos.core.services.theme_service import ThemeService
+        icon_color = ThemeService.get_icon_color()
+        self.setIcon(Icons.get(self.icon_name, icon_color))
 
 
 class SideMenu(QWidget):
@@ -202,3 +213,27 @@ class SideMenu(QWidget):
             self.lbl_role.setText("Not Logged In")
             self.btn_management.setVisible(False)
             self.btn_settings.setVisible(False)
+
+    def update_all_icons(self):
+        """Update all icons in the side menu when theme changes."""
+        # Update MenuButtons
+        if hasattr(self, 'btn_management'):
+            self.btn_management.update_icon()
+        if hasattr(self, 'btn_history'):
+            self.btn_history.update_icon()
+        if hasattr(self, 'btn_documents'):
+            self.btn_documents.update_icon()
+        if hasattr(self, 'btn_logout'):
+            self.btn_logout.update_icon()
+
+        # Update IconButtons (toolbar)
+        if hasattr(self, 'btn_settings'):
+            self.btn_settings.update_icon()
+        if hasattr(self, 'btn_fullscreen'):
+            self.btn_fullscreen.update_icon()
+        if hasattr(self, 'btn_power'):
+            self.btn_power.update_icon()
+
+        # Update avatar icon (always cyan)
+        if hasattr(self, 'lbl_avatar'):
+            self.lbl_avatar.setPixmap(Icons.get("fa5s.user-circle", "#00BCEB").pixmap(64, 64))

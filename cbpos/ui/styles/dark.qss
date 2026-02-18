@@ -1033,12 +1033,17 @@ QPushButton[class="ReceiptOptionBtn"][btnColor="orange"] { background-color: #FF
 QPushButton[class="ReceiptOptionBtn"][btnColor="gray"] { background-color: #AAAAAA; }
 
 /* ===================================================================
-   LOGIN VIEW STYLES
+   LOGIN VIEW STYLES - Dark Theme
    ================================================================ */
 
 /* === LOGIN LEFT PANEL === */
 QWidget#LoginLeftPanel {
     background-color: #001226;  /* Deep navy branding panel */
+}
+
+/* Ensure all labels in login left panel have transparent backgrounds */
+QWidget#LoginLeftPanel QLabel {
+    background-color: transparent;
 }
 
 QLabel#WelcomeText {
@@ -1049,25 +1054,73 @@ QLabel#WelcomeText {
 }
 
 QLabel#FooterLabel {
-    color: #AAAAAA;  /* Lighter gray for dark theme */
+    color: #CCCCCC;  /* Lighter gray for better visibility */
     font-size: 12px;
 }
 
+QLabel#LogoText {
+    color: white;
+    font-size: 36px;
+    font-weight: bold;
+}
+
+/* === PIN INPUT FIELD === */
+QLineEdit#PinInput {
+    background-color: #1A1A1A;
+    border: 2px solid #00BCEB;  /* Cyan border */
+    border-radius: 8px;
+    padding: 15px;
+    font-size: 32px;
+    font-weight: bold;
+    letter-spacing: 8px;  /* Space out PIN dots */
+    color: white;
+}
+
+QLineEdit#PinInput:focus {
+    border: 2px solid #33D4FF;  /* Brighter cyan on focus */
+    background-color: #2A2A2A;  /* Slightly lighter background */
+}
+
 /* === NUMPAD BUTTONS === */
+/* Base styling for all numpad buttons */
+QPushButton#NumpadBtn {
+    background-color: #2A2A2A;
+    border: 2px solid #404040;
+    border-radius: 8px;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+QPushButton#NumpadBtn:hover {
+    background-color: #3A3A3A;
+    border-color: #00BCEB;
+}
+
+QPushButton#NumpadBtn:pressed {
+    background-color: #1A1A1A;
+}
+
+/* Clear button (Red) */
 QPushButton#NumpadBtn[btnType="clear"] {
-    color: #DC3545;  /* Red for clear */
+    color: #FF6B6B;  /* Brighter red for dark theme */
     border-color: #DC3545;
+    background-color: #2A1A1A;
 }
 
 QPushButton#NumpadBtn[btnType="clear"]:hover {
-    background-color: rgba(220, 53, 69, 0.1);
+    background-color: #3A2020;
+    border-color: #FF4136;
 }
 
+/* Enter button (Green) */
 QPushButton#NumpadBtn[btnType="enter"] {
-    color: #198754;  /* Green for enter */
+    color: #51CF66;  /* Brighter green for dark theme */
     border-color: #198754;
+    background-color: #1A2A1A;
 }
 
 QPushButton#NumpadBtn[btnType="enter"]:hover {
-    background-color: rgba(25, 135, 84, 0.1);
+    background-color: #203A20;
+    border-color: #39FF14;
 }

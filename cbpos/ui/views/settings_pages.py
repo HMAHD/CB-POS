@@ -960,8 +960,6 @@ class NetworkPage(SettingsPage):
         self.btn_test.setEnabled(False)
 
         # Process events to show the status
-        from PyQt6.QtWidgets import QApplication
-
         QApplication.processEvents()
 
         # Test connection

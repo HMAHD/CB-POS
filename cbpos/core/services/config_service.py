@@ -66,6 +66,13 @@ class ConfigService:
         "doc_format_return": "CN-{Y}-{seq:05d}",
         "doc_reset_period": "YEARLY",
         "show_receipt_dialog": True,
+        # Network Database Configuration
+        "db_mode": "standalone",  # standalone (SQLite) or network (PostgreSQL)
+        "network_db_host": "localhost",
+        "network_db_port": 5432,
+        "network_db_name": "cbpos",
+        "network_db_user": "postgres",
+        "network_db_password": "",
     }
 
     _settings: Dict[str, Any] = {}

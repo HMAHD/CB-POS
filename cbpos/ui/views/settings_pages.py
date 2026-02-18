@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
+    QGridLayout,
     QLabel,
     QLineEdit,
     QPushButton,
@@ -16,16 +17,21 @@ from PyQt6.QtWidgets import (
     QTimeEdit,
     QFrame,
     QMessageBox,
+    QApplication,
+    QProgressDialog,
 )
 from PyQt6.QtCore import Qt, QTime
 from PyQt6.QtPrintSupport import QPrinterInfo
+from sqlalchemy.engine import URL
 from cbpos.core.services.language_service import LanguageService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.user_service import UserService
 from cbpos.ui.dialogs.receipt_preview_dialog import ReceiptPreviewDialog
 from cbpos.core.models import Sale, SaleItem, Product
+from cbpos.config import Config
 import decimal
+import socket
 
 
 class SettingsPage(QWidget):
@@ -692,3 +698,377 @@ class ProfilePage(SettingsPage):
             self.input_new_pin.clear()
         else:
             QMessageBox.critical(self, "Error", "Failed to update profile.")
+
+
+class NetworkPage(SettingsPage):
+    """Network database configuration for multi-terminal setup - Connectivity Dashboard."""
+
+    def __init__(self):
+        self.connection_tested = False  # Track if connection test passed
+        super().__init__()
+
+    def init_ui(self):
+        # Main container with card-based layout
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(30, 30, 30, 30)
+        main_layout.setSpacing(25)
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        # === CARD 1: Hero Status Card ===
+        self.status_card = QFrame()
+        self.status_card.setObjectName("StatusCard")
+        self.status_card.setFrameShape(QFrame.Shape.StyledPanel)
+        status_layout = QHBoxLayout(self.status_card)
+        status_layout.setContentsMargins(20, 20, 20, 20)
+        status_layout.setSpacing(15)
+
+        # Icon/Mode indicator
+        self.lbl_mode_icon = QLabel("💻")  # Will change to 🖥️ for Network
+        self.lbl_mode_icon.setObjectName("StatusIcon")
+
+        # Status text
+        status_text_layout = QVBoxLayout()
+        self.lbl_status_title = QLabel("Single Computer Mode")
+        self.lbl_status_title.setObjectName("StatusTitle")
+        self.lbl_status_subtitle = QLabel("Standalone • Local Database")
+        self.lbl_status_subtitle.setObjectName("StatusSubtitle")
+        status_text_layout.addWidget(self.lbl_status_title)
+        status_text_layout.addWidget(self.lbl_status_subtitle)
+
+        # Mode selector (right side)
+        mode_selector_layout = QVBoxLayout()
+        mode_label = QLabel("Database Mode:")
+        mode_label.setObjectName("StatusModeLabel")
+        self.cmb_db_mode = QComboBox()
+        self.cmb_db_mode.addItems(["Standalone", "Network"])
+        self.cmb_db_mode.setObjectName("StatusModeSelector")
+        self.cmb_db_mode.currentTextChanged.connect(self._on_mode_changed)
+        mode_selector_layout.addWidget(mode_label)
+        mode_selector_layout.addWidget(self.cmb_db_mode)
+
+        status_layout.addWidget(self.lbl_mode_icon)
+        status_layout.addLayout(status_text_layout, 1)
+        status_layout.addLayout(mode_selector_layout)
+
+        main_layout.addWidget(self.status_card)
+
+        # === CARD 2: Server Configuration Card ===
+        self.config_card = QFrame()
+        self.config_card.setObjectName("NetworkCard")
+        self.config_card.setFrameShape(QFrame.Shape.StyledPanel)
+        config_layout = QVBoxLayout(self.config_card)
+        config_layout.setContentsMargins(25, 25, 25, 25)
+        config_layout.setSpacing(18)
+
+        # Card title
+        config_title = QLabel("📡 Server Configuration")
+        config_title.setObjectName("CardTitle")
+        config_layout.addWidget(config_title)
+
+        # Helper: Show this computer's IP (cross-platform UDP socket trick)
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                # Connect to a public DNS server (Google's) to determine the routing IP
+                # This doesn't actually send a packet
+                s.connect(("8.8.8.8", 80))
+                local_ip = s.getsockname()[0]
+        except Exception:
+            local_ip = "127.0.0.1"  # Safe fallback
+
+        self.lbl_local_ip = QLabel(f"💡 This Computer's IP: {local_ip}")
+        self.lbl_local_ip.setObjectName("IPHelper")
+        config_layout.addWidget(self.lbl_local_ip)
+
+        # Compact grid layout for inputs (2 columns: label + input, stacked vertically)
+        grid_layout = QGridLayout()
+        grid_layout.setVerticalSpacing(12)
+        grid_layout.setHorizontalSpacing(10)
+        grid_layout.setColumnStretch(0, 0)  # Label column: fixed width
+        grid_layout.setColumnStretch(1, 1)  # Input column: stretches
+
+        # Row 0: Host IP
+        lbl_host = QLabel("Host IP:")
+        lbl_host.setObjectName("FormLabel")
+        self.input_host = QLineEdit()
+        self.input_host.setObjectName("InputNetwork")
+        self.input_host.setPlaceholderText("e.g., 192.168.1.100")
+        grid_layout.addWidget(lbl_host, 0, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        grid_layout.addWidget(self.input_host, 0, 1)
+
+        # Row 1: Port
+        lbl_port = QLabel("Port:")
+        lbl_port.setObjectName("FormLabel")
+        self.input_port = QSpinBox()
+        self.input_port.setObjectName("InputNetwork")
+        self.input_port.setRange(1, 65535)
+        self.input_port.setValue(5432)
+        grid_layout.addWidget(lbl_port, 1, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        grid_layout.addWidget(self.input_port, 1, 1)
+
+        # Row 2: Database Name
+        lbl_dbname = QLabel("Database Name:")
+        lbl_dbname.setObjectName("FormLabel")
+        self.input_dbname = QLineEdit()
+        self.input_dbname.setObjectName("InputNetwork")
+        self.input_dbname.setPlaceholderText("cbpos")
+        grid_layout.addWidget(lbl_dbname, 2, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        grid_layout.addWidget(self.input_dbname, 2, 1)
+
+        # Row 3: Username
+        lbl_user = QLabel("Username:")
+        lbl_user.setObjectName("FormLabel")
+        self.input_user = QLineEdit()
+        self.input_user.setObjectName("InputNetwork")
+        self.input_user.setPlaceholderText("postgres")
+        grid_layout.addWidget(lbl_user, 3, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        grid_layout.addWidget(self.input_user, 3, 1)
+
+        # Row 4: Password
+        lbl_password = QLabel("Password:")
+        lbl_password.setObjectName("FormLabel")
+        self.input_password = QLineEdit()
+        self.input_password.setObjectName("InputNetwork")
+        self.input_password.setEchoMode(QLineEdit.EchoMode.Password)
+        self.input_password.setPlaceholderText("••••••••")
+        grid_layout.addWidget(lbl_password, 4, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        grid_layout.addWidget(self.input_password, 4, 1)
+
+        config_layout.addLayout(grid_layout)
+
+        # Test Connection Button (full width)
+        test_btn_layout = QHBoxLayout()
+        self.btn_test = QPushButton("🔌 Test Connection")
+        self.btn_test.setObjectName("BtnTestNetwork")
+        self.btn_test.clicked.connect(self._test_connection)
+        self.lbl_test_status = QLabel("")
+        self.lbl_test_status.setObjectName("TestStatus")
+        test_btn_layout.addWidget(self.btn_test)
+        test_btn_layout.addWidget(self.lbl_test_status, 1)
+        config_layout.addLayout(test_btn_layout)
+
+        main_layout.addWidget(self.config_card)
+
+        # === CARD 3: Data Migration Card (The Magic Section) ===
+        self.migration_card = QFrame()
+        self.migration_card.setObjectName("MigrationCard")
+        self.migration_card.setFrameShape(QFrame.Shape.StyledPanel)
+        migration_layout = QVBoxLayout(self.migration_card)
+        migration_layout.setContentsMargins(25, 25, 25, 25)
+        migration_layout.setSpacing(18)
+
+        migration_title = QLabel("🚀 First-Time Server Setup")
+        migration_title.setObjectName("CardTitle")
+        migration_layout.addWidget(migration_title)
+
+        migration_info = QLabel(
+            "Setting up the Main Server? Upload your current data to get started.\n\n"
+            "This will transfer all products, customers, and sales history to the network database.\n"
+            "⚠ The target database must be empty."
+        )
+        migration_info.setWordWrap(True)
+        migration_info.setObjectName("MigrationInfo")
+        migration_layout.addWidget(migration_info)
+
+        self.btn_migrate = QPushButton("📤 Upload Local Data to Server")
+        self.btn_migrate.setObjectName("BtnMigrate")
+        self.btn_migrate.setEnabled(False)  # Disabled until connection test passes
+        self.btn_migrate.clicked.connect(self._migrate_data)
+        migration_layout.addWidget(self.btn_migrate)
+
+        main_layout.addWidget(self.migration_card)
+
+        # Warning footer
+        self.lbl_warning = QLabel("⚠ Changing database mode requires application restart.")
+        self.lbl_warning.setObjectName("NetworkWarning")
+        self.lbl_warning.setWordWrap(True)
+        main_layout.addWidget(self.lbl_warning)
+
+        # Initialize visibility
+        self._on_mode_changed("Standalone")
+
+    def load(self, settings: dict):
+        """Load network settings into UI."""
+        db_mode = settings.get("db_mode", "standalone")
+        self.cmb_db_mode.setCurrentText("Standalone" if db_mode == "standalone" else "Network")
+
+        self.input_host.setText(settings.get("network_db_host", "localhost"))
+        self.input_port.setValue(settings.get("network_db_port", 5432))
+        self.input_dbname.setText(settings.get("network_db_name", "cbpos"))
+        self.input_user.setText(settings.get("network_db_user", "postgres"))
+        self.input_password.setText(settings.get("network_db_password", ""))
+
+        # Update visibility based on loaded mode
+        self._on_mode_changed(self.cmb_db_mode.currentText())
+
+    def save(self) -> dict:
+        """Return network settings to save."""
+        db_mode = "standalone" if self.cmb_db_mode.currentText() == "Standalone" else "network"
+
+        return {
+            "db_mode": db_mode,
+            "network_db_host": self.input_host.text().strip(),
+            "network_db_port": self.input_port.value(),
+            "network_db_name": self.input_dbname.text().strip(),
+            "network_db_user": self.input_user.text().strip(),
+            "network_db_password": self.input_password.text(),
+        }
+
+    def _on_mode_changed(self, mode: str):
+        """Update UI based on selected mode - show/hide cards and update status."""
+        is_network = mode == "Network"
+
+        # Update Hero Status Card
+        if is_network:
+            self.lbl_mode_icon.setText("🌐")
+            self.lbl_status_title.setText("Network Mode")
+            self.lbl_status_subtitle.setText("Multi-Terminal • Shared Database")
+        else:
+            self.lbl_mode_icon.setText("💻")
+            self.lbl_status_title.setText("Single Computer Mode")
+            self.lbl_status_subtitle.setText("Standalone • Local Database")
+
+        # Show/hide configuration and migration cards
+        self.config_card.setVisible(is_network)
+        self.migration_card.setVisible(is_network)
+
+        # Reset connection test status
+        self.connection_tested = False
+        self.btn_migrate.setEnabled(False)
+        self.lbl_test_status.setText("")
+
+    def _get_network_config(self):
+        """Extracts and cleans network configuration from UI."""
+        return {
+            "host": self.input_host.text().strip(),
+            "port": self.input_port.value(),
+            "dbname": self.input_dbname.text().strip(),
+            "user": self.input_user.text().strip(),
+            "password": self.input_password.text(),
+        }
+
+    def _test_connection(self):
+        """Test database connection with current credentials and update status."""
+        from cbpos.core.database import Database
+
+        # Get network config from UI
+        cfg = self._get_network_config()
+
+        # Validate inputs
+        if not all([cfg["host"], cfg["dbname"], cfg["user"]]):
+            QMessageBox.warning(
+                self,
+                "Validation Error",
+                "Please fill in all required fields (Host, Database Name, Username).",
+            )
+            return
+
+        # Show testing state
+        self.lbl_test_status.setText("⏳ Testing...")
+        self.btn_test.setEnabled(False)
+
+        # Process events to show the status
+        QApplication.processEvents()
+
+        # Test connection
+        success, message = Database.test_connection(
+            mode="network",
+            host=cfg["host"],
+            port=cfg["port"],
+            dbname=cfg["dbname"],
+            user=cfg["user"],
+            password=cfg["password"],
+        )
+
+        # Update status
+        self.btn_test.setEnabled(True)
+
+        if success:
+            self.connection_tested = True
+            self.lbl_test_status.setText("✅ Connected")
+            self.btn_migrate.setEnabled(True)  # Enable migration button
+            QMessageBox.information(self, "Connection Test", f"✓ {message}\n\nYou can now upload your data.")
+        else:
+            self.connection_tested = False
+            self.lbl_test_status.setText("❌ Failed")
+            self.btn_migrate.setEnabled(False)
+            QMessageBox.critical(self, "Connection Test", f"✗ {message}")
+
+    def _migrate_data(self):
+        """Migrate data from local SQLite to PostgreSQL server."""
+        from cbpos.core.services.migration_service import MigrationService
+
+        # Get network config from UI
+        cfg = self._get_network_config()
+
+        # Validate inputs
+        if not all([cfg["host"], cfg["dbname"], cfg["user"]]):
+            QMessageBox.warning(
+                self,
+                "Validation Error",
+                "Please fill in all required connection fields before migrating data.",
+            )
+            return
+
+        # Confirm with user
+        confirm = QMessageBox.question(
+            self,
+            "Confirm Data Migration",
+            f"This will upload ALL your local data to:\n\n"
+            f"  Host: {cfg['host']}:{cfg['port']}\n"
+            f"  Database: {cfg['dbname']}\n\n"
+            f"The target database must be empty. This operation may take several minutes.\n\n"
+            f"Do you want to continue?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+
+        # Build database URLs
+        sqlite_url = Config.DB_URI
+
+        # Use SQLAlchemy URL.create to safely handle special characters in password
+        url_obj = URL.create(
+            drivername="postgresql+psycopg2",
+            username=cfg["user"],
+            password=cfg["password"],
+            host=cfg["host"],
+            port=cfg["port"],
+            database=cfg["dbname"],
+        )
+        postgres_url = url_obj.render_as_string(hide_password=False)
+
+        # Show progress dialog
+        progress = QProgressDialog("Migrating data to server...\nPlease wait.", None, 0, 0, self)
+        progress.setWindowTitle("Data Migration")
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setValue(0)
+        progress.show()
+
+        # Process events to ensure dialog appears
+        QApplication.processEvents()
+
+        try:
+            # Perform migration
+            success, message = MigrationService.migrate_sqlite_to_postgres(sqlite_url, postgres_url)
+
+            progress.close()
+
+            if success:
+                QMessageBox.information(
+                    self,
+                    "Migration Successful",
+                    f"{message}\n\n"
+                    f"Next steps:\n"
+                    f"1. Save these network settings\n"
+                    f"2. Restart the application\n"
+                    f"3. All terminals can now connect to the server",
+                )
+            else:
+                QMessageBox.critical(self, "Migration Failed", f"Migration error:\n\n{message}")
+
+        except Exception as e:
+            progress.close()
+            QMessageBox.critical(self, "Migration Error", f"Unexpected error during migration:\n\n{str(e)}")

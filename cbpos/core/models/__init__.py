@@ -208,6 +208,7 @@ class Product(Base):
     parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("products.id"), nullable=True)
     default_supplier_id: Mapped[Optional[int]] = mapped_column(ForeignKey("suppliers.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    version_id: Mapped[int] = mapped_column(Integer, default=1, nullable=False)  # Optimistic Locking
 
     category: Mapped["Category"] = relationship(back_populates="products")
     parent: Mapped["Product"] = relationship("Product", remote_side=[id], back_populates="variants")
@@ -219,6 +220,8 @@ class Product(Base):
     )
     suppliers: Mapped[List["Supplier"]] = relationship(secondary=product_suppliers, back_populates="products")
     default_supplier: Mapped[Optional["Supplier"]] = relationship("Supplier", foreign_keys=[default_supplier_id])
+
+    __mapper_args__ = {"version_id_col": version_id}  # Enable Optimistic Locking
 
 
 class Customer(Base):

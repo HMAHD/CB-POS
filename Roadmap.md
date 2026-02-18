@@ -584,37 +584,37 @@
 ## 🌐 Phase 18: Networking & Sync (Future Proofing)
 *Goal: Multi-terminal readiness.*
 
-- [ ] **18.1 API Hooks**
-    - [ ] Prepare structure for REST API client.
-    - [ ] **Client-Server Architecture:** Design for multi-terminal
-- [ ] **18.2 Sync Worker**
-    - [ ] Create background thread for potential cloud sync.
-- [ ] **18.3 Multi-Terminal Support (From Aronium Pro)**
-    - [ ] **Database Server Setup:**
-        - [ ] PostgreSQL server configuration
-        - [ ] Network discovery
-        - [ ] Connection pooling
-        - [ ] Test connectivity
-    - [ ] **Multi-User Operations:**
-        - [ ] Simultaneous users support
-        - [ ] User-specific orders
-        - [ ] Real-time inventory updates
-        - [ ] Centralized reporting
-        - [ ] User activity tracking
-    - [ ] **Concurrency Control:**
-        - [ ] Optimistic locking
-        - [ ] Stock conflict detection
-        - [ ] First-come-first-served logic
-        - [ ] Real-time sync
-    - [ ] **Network Configuration:**
-        - [ ] Server name/IP setup
-        - [ ] Database instance config
-        - [ ] Authentication settings
-        - [ ] Auto-discover servers
-- [ ] **18.4 Cloud Integration (Future)**
-    - [ ] Cloud backup
-    - [ ] Remote monitoring
-    - [ ] Multi-location consolidation
+- [x] **18.1 API Hooks**
+    - [x] Prepare structure for REST API client.
+    - [x] **Client-Server Architecture:** Design for multi-terminal
+- [x] **18.2 Sync Worker**
+    - [x] Create background thread for potential cloud sync.
+- [x] **18.3 Multi-Terminal Support (From Aronium Pro)**
+    - [x] **Database Server Setup:**
+        - [x] PostgreSQL server configuration
+        - [x] Network discovery
+        - [x] Connection pooling
+        - [x] Test connectivity
+    - [x] **Multi-User Operations:**
+        - [x] Simultaneous users support
+        - [x] User-specific orders
+        - [x] Real-time inventory updates
+        - [x] Centralized reporting
+        - [x] User activity tracking
+    - [x] **Concurrency Control:**
+        - [x] Optimistic locking
+        - [x] Stock conflict detection
+        - [x] First-come-first-served logic
+        - [x] Real-time sync
+    - [x] **Network Configuration:**
+        - [x] Server name/IP setup
+        - [x] Database instance config
+        - [x] Authentication settings
+        - [x] Auto-discover servers
+- [x] **18.4 Cloud Integration (Future)**
+    - [x] Cloud backup
+    - [x] Remote monitoring
+    - [x] Multi-location consolidation
 
 ---
 

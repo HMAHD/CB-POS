@@ -2,7 +2,6 @@ from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QLabel,
     QPushButton,
     QStackedWidget,
     QListWidget,
@@ -24,6 +23,7 @@ from cbpos.ui.views.settings_pages import (
     ReceiptPage,
     AutomationPage,
     ProfilePage,
+    NetworkPage,
 )
 
 
@@ -64,6 +64,7 @@ class SettingsView(QWidget):
             ("Hardware", "fa5s.print"),
             ("Payments", "fa5s.credit-card"),
             ("Automation", "fa5s.robot"),
+            ("Network", "fa5s.network-wired"),
             ("My Profile", "fa5s.user-cog"),
         ]
 
@@ -91,6 +92,7 @@ class SettingsView(QWidget):
             HardwarePage(),
             PaymentPage(),
             AutomationPage(),
+            NetworkPage(),
             ProfilePage(),
         ]
 
@@ -167,9 +169,11 @@ class SettingsView(QWidget):
         ThemeService.apply_theme(new_theme)
 
         # Determine if restart is required
+        # Use .get() to avoid KeyErrors if keys are missing
         restart_required = (
-            new_lang != current_lang or
-            new_font_size != current_font_size
+            new_lang != current_lang
+            or new_font_size != current_font_size
+            or all_settings.get("db_mode") != current_config.get("db_mode")
         )
 
         if restart_required:

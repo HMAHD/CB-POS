@@ -3,6 +3,7 @@ Data Migration Service for CB-POS
 Handles one-click migration from SQLite (Standalone) to PostgreSQL (Network).
 """
 
+import logging
 from typing import Tuple
 from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.orm import sessionmaker
@@ -32,6 +33,9 @@ from cbpos.core.models import (
     Shift,
     CashMovement,
 )
+
+# Setup logger for this module
+logger = logging.getLogger(__name__)
 
 
 class MigrationService:
@@ -175,17 +179,19 @@ class MigrationService:
                                 seq_name = result.scalar()
 
                                 if seq_name:
-                                    # Reset sequence to max(id) + 1
-                                    # This ensures the next INSERT gets a valid new ID
-                                    reset_query = text(
-                                        f"SELECT setval('{seq_name}', "
-                                        f"COALESCE((SELECT MAX(id) FROM {table_name}), 0) + 1, false)"
-                                    )
-                                    tgt_session.execute(reset_query)
-                        except Exception:
-                            # Expected for tables without sequences (like association tables)
-                            # The nested transaction handles the rollback automatically
-                            pass
+                                    # Calculate next ID safely
+                                    max_id_sql = text(f"SELECT MAX(id) FROM {table_name}")
+                                    max_id = tgt_session.execute(max_id_sql).scalar() or 0
+                                    next_id = max_id + 1
+
+                                    # Use Bind Parameters for the setval call
+                                    # This prevents SQL Injection attacks via the sequence name
+                                    reset_query = text("SELECT setval(:seq, :val, false)")
+                                    tgt_session.execute(reset_query, {"seq": seq_name, "val": next_id})
+                        except Exception as e:
+                            # Log the error instead of silencing it
+                            # This helps debug why a specific table might have failed
+                            logger.warning(f"Skipping sequence reset for table '{table_name}': {e}")
 
                 tgt_session.commit()
 

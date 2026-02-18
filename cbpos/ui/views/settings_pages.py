@@ -936,18 +936,25 @@ class NetworkPage(SettingsPage):
         self.btn_migrate.setEnabled(False)
         self.lbl_test_status.setText("")
 
+    def _get_network_config(self):
+        """Extracts and cleans network configuration from UI."""
+        return {
+            "host": self.input_host.text().strip(),
+            "port": self.input_port.value(),
+            "dbname": self.input_dbname.text().strip(),
+            "user": self.input_user.text().strip(),
+            "password": self.input_password.text(),
+        }
+
     def _test_connection(self):
         """Test database connection with current credentials and update status."""
         from cbpos.core.database import Database
 
-        # Validate inputs
-        host = self.input_host.text().strip()
-        port = self.input_port.value()
-        dbname = self.input_dbname.text().strip()
-        user = self.input_user.text().strip()
-        password = self.input_password.text()
+        # Get network config from UI
+        cfg = self._get_network_config()
 
-        if not all([host, dbname, user]):
+        # Validate inputs
+        if not all([cfg["host"], cfg["dbname"], cfg["user"]]):
             QMessageBox.warning(
                 self,
                 "Validation Error",
@@ -964,7 +971,12 @@ class NetworkPage(SettingsPage):
 
         # Test connection
         success, message = Database.test_connection(
-            mode="network", host=host, port=port, dbname=dbname, user=user, password=password
+            mode="network",
+            host=cfg["host"],
+            port=cfg["port"],
+            dbname=cfg["dbname"],
+            user=cfg["user"],
+            password=cfg["password"],
         )
 
         # Update status
@@ -985,14 +997,11 @@ class NetworkPage(SettingsPage):
         """Migrate data from local SQLite to PostgreSQL server."""
         from cbpos.core.services.migration_service import MigrationService
 
-        # Validate inputs
-        host = self.input_host.text().strip()
-        port = self.input_port.value()
-        dbname = self.input_dbname.text().strip()
-        user = self.input_user.text().strip()
-        password = self.input_password.text()
+        # Get network config from UI
+        cfg = self._get_network_config()
 
-        if not all([host, dbname, user]):
+        # Validate inputs
+        if not all([cfg["host"], cfg["dbname"], cfg["user"]]):
             QMessageBox.warning(
                 self,
                 "Validation Error",
@@ -1005,8 +1014,8 @@ class NetworkPage(SettingsPage):
             self,
             "Confirm Data Migration",
             f"This will upload ALL your local data to:\n\n"
-            f"  Host: {host}:{port}\n"
-            f"  Database: {dbname}\n\n"
+            f"  Host: {cfg['host']}:{cfg['port']}\n"
+            f"  Database: {cfg['dbname']}\n\n"
             f"The target database must be empty. This operation may take several minutes.\n\n"
             f"Do you want to continue?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -1022,11 +1031,11 @@ class NetworkPage(SettingsPage):
         # Use SQLAlchemy URL.create to safely handle special characters in password
         url_obj = URL.create(
             drivername="postgresql+psycopg2",
-            username=user,
-            password=password,
-            host=host,
-            port=port,
-            database=dbname,
+            username=cfg["user"],
+            password=cfg["password"],
+            host=cfg["host"],
+            port=cfg["port"],
+            database=cfg["dbname"],
         )
         postgres_url = url_obj.render_as_string(hide_password=False)
 

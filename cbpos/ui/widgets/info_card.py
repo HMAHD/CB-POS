@@ -21,71 +21,83 @@ class InfoCard(QFrame):
         parent=None,
     ):
         super().__init__(parent)
-        self.setFixedSize(240, 140)
-        self.setStyleSheet(
-            """
-            InfoCard {
-                background-color: #003366;
-                border-radius: 8px;
-            }
-        """
-        )
+        self.setObjectName("InfoCard")  # For QSS styling
+        self.setFixedSize(280, 140)  # Wider for better spacing
+
+        # Store icon name for theme updates
+        self.icon_name = icon_name
+        self.icon_label = None
 
         # Shadow Effect
         shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(15)
-        shadow.setColor(QColor(0, 0, 0, 80))
-        shadow.setOffset(0, 4)
+        shadow.setBlurRadius(20)
+        shadow.setColor(QColor(0, 0, 0, 100))
+        shadow.setOffset(0, 5)
         self.setGraphicsEffect(shadow)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(5)
 
         # Top Row: Icon + Title
         top_layout = QHBoxLayout()
+        top_layout.setSpacing(10)
 
         # Icon
-        icon_label = QLabel()
-        icon = Icons.get(icon_name, "rgba(255, 255, 255, 0.3)")
-        icon_label.setPixmap(icon.pixmap(32, 32))
-        top_layout.addWidget(icon_label)
+        self.icon_label = QLabel()
+        self.icon_label.setObjectName("CardIcon")
+        self.update_icon()
+        top_layout.addWidget(self.icon_label)
 
         top_layout.addStretch()
 
         # Title
         title_label = QLabel(title)
-        style = "color: #AAAAAA; font-size: 12px; font-weight: bold;"
-        title_label.setStyleSheet(style)
+        title_label.setObjectName("CardTitle")
         top_layout.addWidget(title_label)
 
         layout.addLayout(top_layout)
 
+        layout.addSpacing(10)
+
         # Value (Center)
         self.value_label = QLabel(value)
+        self.value_label.setObjectName("CardValue")
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.value_label.setStyleSheet("color: #FFFFFF; font-size: 28px; font-weight: bold;")
         layout.addWidget(self.value_label)
 
+        layout.addSpacing(5)
+
         # Trend (Bottom)
+        self.trend_text = trend_text
+        self.trend_positive = trend_positive
         self.trend_label = QLabel(trend_text if trend_text else "")
+        self.trend_label.setObjectName("CardTrend")
         self.trend_label.setAlignment(Qt.AlignmentFlag.AlignRight)
 
+        # Set property for CSS targeting
         if trend_text:
-            color = "#39FF14" if trend_positive else "#FF4136"
-            style = "color: {}; font-size: 11px;".format(color)
-            self.trend_label.setStyleSheet(style)
-        else:
-            self.trend_label.setStyleSheet("color: #AAAAAA; font-size: 11px;")
+            self.trend_label.setProperty("trendType", "positive" if trend_positive else "negative")
 
         layout.addWidget(self.trend_label)
+
+    def update_icon(self):
+        """Update icon color based on current theme."""
+        if self.icon_label is None:
+            return
+        from cbpos.core.services.theme_service import ThemeService
+        # Use white icon with 40% opacity
+        icon = Icons.get(self.icon_name, "white")
+        self.icon_label.setPixmap(icon.pixmap(40, 40))
 
     def set_value(self, text: str):
         """Update the main value label."""
         self.value_label.setText(text)
 
     def set_trend(self, text: str, positive: bool = True):
-        """Update the trend label and color."""
+        """Update the trend label and property."""
         self.trend_label.setText(text)
-        color = "#39FF14" if positive else "#FF4136"
-        style = "color: {}; font-size: 11px;".format(color)
-        self.trend_label.setStyleSheet(style)
+        self.trend_label.setProperty("trendType", "positive" if positive else "negative")
+        # Force style refresh
+        self.trend_label.style().unpolish(self.trend_label)
+        self.trend_label.style().polish(self.trend_label)

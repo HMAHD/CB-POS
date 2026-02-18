@@ -50,8 +50,13 @@ class InventoryModel(QAbstractTableModel):
                 return "kg" if product.is_weighted else "unit"
 
         elif role == Qt.ItemDataRole.BackgroundRole:
+            # Low stock warning - theme-aware colors via QSS alternate rows
             if product.stock_qty <= product.reorder_point:
-                return QBrush(QColor(255, 200, 200))  # Light Red
+                from cbpos.core.services.theme_service import ThemeService
+                if ThemeService.current_theme.lower() == "light":
+                    return QBrush(QColor(254, 226, 226))  # Very light red for light theme
+                else:
+                    return QBrush(QColor(60, 30, 30))  # Dark red tint for dark theme
 
         return None
 

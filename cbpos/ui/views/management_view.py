@@ -113,10 +113,11 @@ class ManagementView(QWidget):
         self.btn_pos.clicked.connect(self.request_pos_view.emit)
         user_profile_layout.addWidget(self.btn_pos)
 
-        # User Info (Badge)
+        # User Info (Badge) - Hidden for clean UI
         self.lbl_badge = QLabel()
         self.lbl_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_badge.setFixedHeight(50)  # Approx height for badge
+        self.lbl_badge.setFixedHeight(0)  # Hidden - no height
+        self.lbl_badge.setVisible(False)  # Completely hidden
         user_profile_layout.addWidget(self.lbl_badge)
 
         self.btn_logout = SidebarButton("   Logout", Icons.LOGOUT)

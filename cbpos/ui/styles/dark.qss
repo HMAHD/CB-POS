@@ -56,41 +56,51 @@ QLineEdit:focus {
 /* ComboBox - Dropdown Selector */
 QComboBox {
     background-color: #2D2D30;
-    border: 1px solid #3E3E42;
+    border: 1px solid #555555;
     border-radius: 4px;
     padding: 8px 12px;
-    padding-right: 30px;  /* Space for arrow */
+    padding-right: 35px;  /* Space for arrow */
     font-size: 14px;
     color: #FFFFFF;
     min-height: 32px;
 }
 
 QComboBox:hover {
-    border: 1px solid #555555;
-    background-color: #333337;
-}
-
-QComboBox:focus {
     border: 1px solid #00BCEB;
     background-color: #333337;
 }
 
+QComboBox:focus {
+    border: 2px solid #00BCEB;
+    background-color: #333337;
+}
+
 QComboBox::drop-down {
-    border: none;
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
     width: 30px;
-    background: transparent;
+    border-left: 1px solid #555555;  /* Separator line */
+    background: #3E3E42;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+QComboBox::drop-down:hover {
+    background: #00BCEB;  /* Cyan background on hover */
 }
 
 QComboBox::down-arrow {
     image: none;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-top: 7px solid #CCCCCC;
-    margin-right: 8px;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #00BCEB;  /* Cyan arrow pointing down */
 }
 
+QComboBox::drop-down:hover QComboBox::down-arrow,
 QComboBox:hover::down-arrow {
-    border-top-color: #FFFFFF;
+    border-top-color: #FFFFFF;  /* White arrow on cyan background */
 }
 
 QComboBox QAbstractItemView {
@@ -118,114 +128,129 @@ QComboBox QAbstractItemView::item:selected {
     color: #000000;
 }
 
-/* SpinBox - Number Input */
+/* SpinBox - Number Input (Modern Touch-Friendly Design) */
 QSpinBox, QDoubleSpinBox {
     background-color: #2D2D30;
-    border: 1px solid #3E3E42;
+    border: 1px solid #555555;
     border-radius: 4px;
     padding: 8px 12px;
-    padding-right: 40px;  /* Space for buttons */
+    padding-right: 35px;  /* Space for wider buttons */
     font-size: 14px;
     color: #FFFFFF;
-    min-height: 32px;
+    min-height: 36px;  /* Touch-friendly height */
 }
 
 QSpinBox:hover, QDoubleSpinBox:hover {
-    border: 1px solid #555555;
-    background-color: #333337;
-}
-
-QSpinBox:focus, QDoubleSpinBox:focus {
     border: 1px solid #00BCEB;
     background-color: #333337;
 }
 
+QSpinBox:focus, QDoubleSpinBox:focus {
+    border: 2px solid #00BCEB;
+    background-color: #333337;
+}
+
+/* UP Button - Wider for easier clicking */
 QSpinBox::up-button, QDoubleSpinBox::up-button {
-    background-color: #3E3E42;
-    border: none;
-    border-top-right-radius: 4px;
-    width: 20px;
     subcontrol-origin: border;
     subcontrol-position: top right;
+    width: 30px;  /* Much wider target area */
+    height: 18px;  /* Half of total height */
+    border-left: 1px solid #555555;
+    border-bottom: 1px solid #555555;
+    background-color: #3E3E42;
+    border-top-right-radius: 4px;
 }
 
 QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover {
-    background-color: #555555;
+    background-color: #00BCEB;  /* Cyan highlight on hover */
 }
 
 QSpinBox::up-button:pressed, QDoubleSpinBox::up-button:pressed {
-    background-color: #00BCEB;
+    background-color: #0099CC;  /* Darker cyan when pressed */
 }
 
+/* UP Arrow - Clear white triangle */
 QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
     image: none;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-bottom: 6px solid #CCCCCC;
     width: 0;
     height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 6px solid #FFFFFF;  /* White up-pointing triangle */
 }
 
 QSpinBox::up-button:hover::up-arrow, QDoubleSpinBox::up-button:hover::up-arrow {
-    border-bottom-color: #FFFFFF;
+    border-bottom-color: #000000;  /* Black triangle on cyan background */
 }
 
+/* DOWN Button - Wider for easier clicking */
 QSpinBox::down-button, QDoubleSpinBox::down-button {
-    background-color: #3E3E42;
-    border: none;
-    border-bottom-right-radius: 4px;
-    width: 20px;
     subcontrol-origin: border;
     subcontrol-position: bottom right;
+    width: 30px;  /* Much wider target area */
+    height: 18px;  /* Half of total height */
+    border-left: 1px solid #555555;
+    border-top: 1px solid #555555;
+    background-color: #3E3E42;
+    border-bottom-right-radius: 4px;
 }
 
 QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
-    background-color: #555555;
+    background-color: #00BCEB;  /* Cyan highlight on hover */
 }
 
 QSpinBox::down-button:pressed, QDoubleSpinBox::down-button:pressed {
-    background-color: #00BCEB;
+    background-color: #0099CC;  /* Darker cyan when pressed */
 }
 
+/* DOWN Arrow - Clear white triangle */
 QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
     image: none;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #CCCCCC;
     width: 0;
     height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #FFFFFF;  /* White down-pointing triangle */
 }
 
 QSpinBox::down-button:hover::down-arrow, QDoubleSpinBox::down-button:hover::down-arrow {
-    border-top-color: #FFFFFF;
+    border-top-color: #000000;  /* Black triangle on cyan background */
 }
 
-/* Checkboxes */
+/* Checkboxes - Clean Outline Style */
 QCheckBox {
-    background-color: transparent;
+    spacing: 10px;
     color: #E0E0E0;
-    spacing: 8px;
+    background-color: transparent;  /* Fix black background issue */
 }
 
+/* Unchecked State - Empty box with visible border */
 QCheckBox::indicator {
-    width: 18px;
-    height: 18px;
-    border: 2px solid #3E3E42;
-    border-radius: 3px;
-    background-color: #2D2D30;
+    width: 22px;
+    height: 22px;
+    border: 2px solid #666666;  /* Visible border when unchecked */
+    border-radius: 4px;
+    background-color: transparent;  /* Empty/outline style */
 }
 
-QCheckBox::indicator:hover {
-    border-color: #00BCEB;
+/* Unchecked Hover - Cyan glow */
+QCheckBox::indicator:unchecked:hover {
+    border-color: #00BCEB;  /* Cyan border on hover */
+    background-color: rgba(0, 188, 235, 0.1);  /* Subtle cyan tint */
 }
 
+/* Checked State - Filled cyan box */
 QCheckBox::indicator:checked {
-    background-color: #00BCEB;
+    background-color: #00BCEB;  /* Solid cyan fill */
     border-color: #00BCEB;
+    /* Ideally use: image: url(cbpos/assets/icons/check.svg); */
 }
 
+/* Checked Hover - Brighter cyan */
 QCheckBox::indicator:checked:hover {
-    background-color: #00A3D9;
+    background-color: #00E5FF;  /* Brighter cyan on hover */
+    border-color: #00E5FF;
 }
 
 /* Buttons */
@@ -384,9 +409,91 @@ QGroupBox QCheckBox {
 }
 
 /* --- Sidebar --- */
+/* Sidebar Container - Dark Mode */
+QFrame#SidebarContainer,
 QFrame#Sidebar {
-    background-color: #001830;
-    border-right: 1px solid #003366;
+    background-color: #001F3F;  /* Navy Blue */
+    border-right: 1px solid #001020;
+}
+
+/* User Profile Section - Dark Mode (KILL THE LINES) */
+QWidget#UserProfileContainer {
+    background-color: transparent;  /* Blend with sidebar */
+    border: none;  /* Remove all borders */
+    outline: none;  /* Remove outline */
+}
+
+/* POS Side Menu (Hamburger Menu) - Dark Mode */
+QWidget#POSSideMenu {
+    background-color: #001830;  /* Navy blue background */
+    border-left: 1px solid #003366;  /* Darker blue border */
+}
+
+/* POS Side Menu - Labels (Username, Role) */
+QWidget#POSSideMenu QLabel {
+    background-color: transparent;
+    color: #E0E0E0;  /* Light text for dark background */
+}
+
+/* POS Side Menu - Separator Lines */
+QWidget#POSSideMenu QFrame[frameShape="4"] {
+    background-color: #003366;  /* Dark blue separator */
+}
+
+/* POS Side Menu - Menu Buttons */
+QPushButton#MenuButton {
+    background-color: transparent;
+    color: #E0E0E0;
+    border: none;
+    text-align: left;
+    padding-left: 15px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+QPushButton#MenuButton:hover {
+    background-color: #002855;
+    color: #00BCEB;  /* Cyan highlight */
+}
+
+QPushButton#MenuButton[destructive="true"] {
+    color: #FF4136;  /* Red for destructive actions */
+}
+
+QPushButton#MenuButton[destructive="true"]:hover {
+    background-color: rgba(255, 65, 54, 0.1);
+    color: #FF4136;
+}
+
+/* POS Side Menu - Icon Buttons (Bottom Toolbar) */
+QPushButton#IconButton {
+    background-color: transparent;
+    border: none;
+    border-radius: 8px;
+}
+
+QPushButton#IconButton:hover {
+    background-color: #002855;
+}
+
+QPushButton#IconButton:pressed {
+    background-color: #003366;
+}
+
+/* POS Side Menu - Username Label */
+QLabel#MenuUsername {
+    color: #FFFFFF;
+    font-size: 16px;
+    font-weight: bold;
+    background-color: transparent;
+}
+
+/* POS Side Menu - Role Label */
+QLabel#MenuRole {
+    color: #AAAAAA;  /* Muted gray */
+    font-size: 13px;
+    font-weight: normal;
+    background-color: transparent;
 }
 
 QLabel#SidebarLogo {

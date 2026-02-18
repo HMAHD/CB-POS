@@ -209,11 +209,11 @@ class SalesPage(SettingsPage):
         self.combo_search_mode.addItems(["ALL", "BARCODE", "NAME"])
         layout.addRow("Default Search Mode:", self.combo_search_mode)
 
-        self.chk_quick_pay = QCheckBox("Enable Quick Pay (F12)")
-        layout.addRow("", self.chk_quick_pay)
+        self.chk_quick_pay = QCheckBox()
+        layout.addRow("Enable Quick Pay (F12):", self.chk_quick_pay)
 
-        self.chk_void_reason = QCheckBox("Require Reason for Void")
-        layout.addRow("", self.chk_void_reason)
+        self.chk_void_reason = QCheckBox()
+        layout.addRow("Require Reason for Void:", self.chk_void_reason)
 
         container.addWidget(form_widget)
 
@@ -281,11 +281,11 @@ class InventoryPage(SettingsPage):
     def init_ui(self):
         container, layout, form_widget = self.create_form_container()
 
-        self.chk_negative_stock = QCheckBox("Allow Negative Stock (Overselling)")
-        layout.addRow("", self.chk_negative_stock)
+        self.chk_negative_stock = QCheckBox()
+        layout.addRow("Allow Negative Stock (Overselling):", self.chk_negative_stock)
 
-        self.chk_auto_barcodes = QCheckBox("Auto-Generate Barcodes for New Items")
-        layout.addRow("", self.chk_auto_barcodes)
+        self.chk_auto_barcodes = QCheckBox()
+        layout.addRow("Auto-Generate Barcodes for New Items:", self.chk_auto_barcodes)
 
         container.addWidget(form_widget)
 
@@ -356,8 +356,8 @@ class HardwarePage(SettingsPage):
         self.combo_a4_printer.addItems(available_printers)
         form_printer.addRow("A4 Printer:", self.combo_a4_printer)
 
-        self.chk_auto_print = QCheckBox("Auto-Print Receipt")
-        form_printer.addRow("", self.chk_auto_print)
+        self.chk_auto_print = QCheckBox()
+        form_printer.addRow("Auto-Print Receipt:", self.chk_auto_print)
 
         self.spin_copies = QSpinBox()
         self.spin_copies.setRange(1, 5)
@@ -421,8 +421,8 @@ class PaymentPage(SettingsPage):
         form = QFormLayout()
         self.configure_form_layout(form)
 
-        self.chk_show_receipt_dialog = QCheckBox("Show Receipt Options Dialog after Sale")
-        form.addRow("", self.chk_show_receipt_dialog)
+        self.chk_show_receipt_dialog = QCheckBox()
+        form.addRow("Show Receipt Options Dialog after Sale:", self.chk_show_receipt_dialog)
 
         main_layout.addLayout(form)
 
@@ -488,13 +488,13 @@ class ReceiptPage(SettingsPage):
         self.txt_footer.setFixedHeight(80)
         form_content.addRow("Footer Text:", self.txt_footer)
 
-        self.chk_show_barcode = QCheckBox("Show Barcode")
-        self.chk_merge_items = QCheckBox("Merge Duplicate Items")
-        self.chk_show_tax = QCheckBox("Show Tax Breakdown")
+        self.chk_show_barcode = QCheckBox()
+        self.chk_merge_items = QCheckBox()
+        self.chk_show_tax = QCheckBox()
 
-        form_content.addRow("", self.chk_show_barcode)
-        form_content.addRow("", self.chk_merge_items)
-        form_content.addRow("", self.chk_show_tax)
+        form_content.addRow("Show Barcode:", self.chk_show_barcode)
+        form_content.addRow("Merge Duplicate Items:", self.chk_merge_items)
+        form_content.addRow("Show Tax Breakdown:", self.chk_show_tax)
 
         main_layout.addWidget(grp_content)
 
@@ -567,9 +567,8 @@ class AutomationPage(SettingsPage):
         container, form_layout, form_widget = self.create_form_container()
 
         # 1. Auto-Report Scheduler
-        self.chk_auto_report = QCheckBox("Enable Daily Auto-Report")
-        self.chk_auto_report.setStyleSheet("font-size: 16px;")
-        form_layout.addRow("Scheduler:", self.chk_auto_report)
+        self.chk_auto_report = QCheckBox()
+        form_layout.addRow("Enable Daily Auto-Report:", self.chk_auto_report)
 
         self.time_auto_report = QTimeEdit()
         self.time_auto_report.setDisplayFormat("HH:mm")

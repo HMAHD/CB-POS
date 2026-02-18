@@ -61,14 +61,16 @@ class ActionBtn(QPushButton):
 
         is_dark = ThemeService.current_theme.lower() == "dark"
 
+        # Both themes now use Dark Navy backgrounds, so both use white icons
         if is_dark:
             shortcut_color = "#AAAAAA"  # Subtle gray for shortcuts
             text_color = "#FFFFFF"      # White for text
             icon_color = "white"
         else:
-            shortcut_color = "#555555"  # Dark gray for shortcuts
-            text_color = "#000000"      # Black for text
-            icon_color = "#333333"
+            # Light theme now uses Dark Navy buttons, so white icons/text
+            shortcut_color = "#AAAAAA"  # Light gray for shortcuts
+            text_color = "#FFFFFF"      # White for text
+            icon_color = "white"        # White icons on Navy background
 
         # Apply styles with transparent background
         self.lbl_shortcut.setStyleSheet(f"background: transparent; color: {shortcut_color};")
@@ -83,7 +85,8 @@ class ActionBtn(QPushButton):
     def set_icon(self, icon_name):
         from cbpos.core.services.theme_service import ThemeService
         is_dark = ThemeService.current_theme.lower() == "dark"
-        icon_color = "white" if is_dark else "#333333"
+        # Both themes use white icons now (Dark Navy backgrounds in both)
+        icon_color = "white"
         if icon_name:
             icon = Icons.get(icon_name, color=icon_color)
             self.lbl_icon.setPixmap(icon.pixmap(32, 32))

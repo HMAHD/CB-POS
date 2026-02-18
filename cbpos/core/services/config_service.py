@@ -58,6 +58,7 @@ class ConfigService:
         "enable_touch_mode": True,
         "enable_visual_search": True,
         # Appearance
+        "theme": "Dark",
         "font_size": 12,
         # Document Numbering
         "doc_format_sale": "INV-{Y}-{seq:05d}",

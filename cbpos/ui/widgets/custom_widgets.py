@@ -50,22 +50,17 @@ class InfoCard(QWidget):
 class SidebarButton(QToolButton):
     """
     Flat button for the sidebar with icon and text.
+    Supports dynamic icon color updates when theme changes.
     """
 
     def __init__(self, text: str, icon_name: str):
         super().__init__()
         self.setText(text)
-        from cbpos.core.services.theme_service import ThemeService
+        self.icon_name = icon_name  # Store for theme updates
 
-        icon_color = ThemeService.get_icon_color()
-        # Use a slightly lighter color for inactive state if needed, or just use the theme color
-        # For sidebar, inactive is usually grey, active is cyan.
-        # But let's stick to the plan: use get_icon_color or hardcoded grey for inactive?
-        # The original code used #AAAAAA (light grey).
-        # In Light mode, #AAAAAA is visible on white.
-        # So we might not strictly need to change this for INACTIVE state.
-        # But let's ensure it's robust.
-        self.setIcon(Icons.get(icon_name, icon_color))
+        # Set initial icon with theme-appropriate color
+        self.update_icon()
+
         self.setIconSize(QSize(24, 24))
         self.setCheckable(True)
         self.setAutoExclusive(True)
@@ -73,6 +68,12 @@ class SidebarButton(QToolButton):
         self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setObjectName("SidebarButton")
+
+    def update_icon(self):
+        """Update icon color based on current theme."""
+        from cbpos.core.services.theme_service import ThemeService
+        icon_color = ThemeService.get_icon_color()
+        self.setIcon(Icons.get(self.icon_name, icon_color))
 
     def set_active(self, active: bool):
         """Set the active state of the button and update styling."""

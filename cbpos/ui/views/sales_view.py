@@ -73,23 +73,20 @@ class SalesView(QWidget):
         header_layout = QHBoxLayout(self.header_widget)
         header_layout.setContentsMargins(20, 0, 20, 0)
 
-        # Brand (Logo)
-        lbl_logo = QLabel()
+        # Brand (Logo) - Store as instance variable for theme updates
+        self.lbl_logo = QLabel()
         from cbpos.core.services.theme_service import ThemeService
 
-        logo_path = Path(ThemeService.get_logo_path())
+        self.update_logo()  # Set initial logo
 
-        if logo_path.exists():
-            logo_pixmap = QPixmap(str(logo_path))
-            lbl_logo.setPixmap(logo_pixmap.scaledToHeight(35, Qt.TransformationMode.SmoothTransformation))
-        else:
-            lbl_logo.setText("CEYLON BYTE POS")  # Fallback
-            lbl_logo.setObjectName("LogoLabel")
-        lbl_logo.setStyleSheet("background: transparent;")
-        lbl_logo.setAlignment(
+        self.lbl_logo.setStyleSheet("background: transparent;")
+        self.lbl_logo.setAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )
-        header_layout.addWidget(lbl_logo)
+        header_layout.addWidget(self.lbl_logo)
+
+        # Register callback to update logo when theme changes
+        ThemeService.register_theme_callback(self.update_logo)
 
         header_layout.addStretch()
 
@@ -277,6 +274,20 @@ class SalesView(QWidget):
 
         # Initialize Cart
         self.update_cart_ui()
+
+    def update_logo(self):
+        """Update logo based on current theme (called on theme change)."""
+        from cbpos.core.services.theme_service import ThemeService
+        from pathlib import Path
+
+        logo_path = Path(ThemeService.get_logo_path())
+
+        if logo_path.exists():
+            logo_pixmap = QPixmap(str(logo_path))
+            self.lbl_logo.setPixmap(logo_pixmap.scaledToHeight(35, Qt.TransformationMode.SmoothTransformation))
+        else:
+            self.lbl_logo.setText("CEYLON BYTE POS")  # Fallback
+            self.lbl_logo.setObjectName("LogoLabel")
 
     def update_cart_ui(self):
         self.cart_table.setRowCount(0)

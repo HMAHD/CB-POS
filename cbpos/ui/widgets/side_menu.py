@@ -20,33 +20,24 @@ class MenuButton(QPushButton):
     def __init__(self, text: str, icon_name: str, is_destructive: bool = False):
         super().__init__()
         self.setText(f"  {text}")
+        self.setObjectName("MenuButton")  # For CSS styling
 
-        color = "#FF4136" if is_destructive else "#FFFFFF"
-        self.setIcon(Icons.get(icon_name, color))
+        # Store the icon name and destructive flag for theme updates
+        self.icon_name = icon_name
+        self.is_destructive = is_destructive
+
+        # Use theme service to get the correct color
+        from cbpos.core.services.theme_service import ThemeService
+        icon_color = "#FF4136" if is_destructive else ThemeService.get_icon_color()
+        self.setIcon(Icons.get(icon_name, icon_color))
         self.setIconSize(QSize(24, 24))
 
         self.setFixedHeight(60)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        # Base Style
-        base_style = (
-            "QPushButton {"
-            "    background-color: transparent;"
-            "    color: %s;"
-            "    border: none;"
-            "    text-align: left;"
-            "    padding-left: 30px;"
-            "    font-size: 16px;"
-            "    font-weight: 500;"
-            "}"
-            "QPushButton:hover {"
-            "    background-color: rgba(255, 255, 255, 0.1);"
-            "}"
-            "QPushButton:pressed {"
-            "    background-color: rgba(255, 255, 255, 0.2);"
-            "}"
-        ) % color
-        self.setStyleSheet(base_style)
+        # Set property for CSS targeting
+        if is_destructive:
+            self.setProperty("destructive", True)
 
 
 class IconButton(QPushButton):
@@ -56,23 +47,16 @@ class IconButton(QPushButton):
 
     def __init__(self, icon_name: str, tooltip: str):
         super().__init__()
-        self.setIcon(Icons.get(icon_name, "#AAAAAA"))
+        self.setObjectName("IconButton")  # For CSS styling
+
+        # Use theme service for icon color
+        from cbpos.core.services.theme_service import ThemeService
+        icon_color = ThemeService.get_icon_color()
+        self.setIcon(Icons.get(icon_name, icon_color))
         self.setIconSize(QSize(24, 24))
         self.setToolTip(tooltip)
         self.setFixedSize(50, 50)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setStyleSheet(
-            """
-            QPushButton {
-                background-color: transparent;
-                border: none;
-                border-radius: 25px;
-            }
-            QPushButton:hover {
-                background-color: rgba(255, 255, 255, 0.1);
-            }
-        """
-        )
 
 
 class SideMenu(QWidget):
@@ -89,9 +73,7 @@ class SideMenu(QWidget):
         super().__init__(parent)
         self.setFixedWidth(300)
         self.setVisible(False)
-
-        # Visuals
-        self.setStyleSheet("background-color: #001830; border-left: 1px solid #003366;")
+        self.setObjectName("POSSideMenu")  # For theme-specific styling
 
         # Shadow
         shadow = QGraphicsDropShadowEffect(self)
@@ -153,13 +135,13 @@ class SideMenu(QWidget):
 
         # Name & Role
         self.lbl_username = QLabel("Guest")
+        self.lbl_username.setObjectName("MenuUsername")
         self.lbl_username.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_username.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
         user_layout.addWidget(self.lbl_username)
 
         self.lbl_role = QLabel("No Role")
+        self.lbl_role.setObjectName("MenuRole")
         self.lbl_role.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_role.setStyleSheet("color: #AAAAAA; font-size: 14px;")
         user_layout.addWidget(self.lbl_role)
 
         user_layout.addSpacing(20)

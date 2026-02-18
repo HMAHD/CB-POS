@@ -1,15 +1,19 @@
 import os
+from pathlib import Path
 from PyQt6.QtWidgets import QApplication
 from cbpos.infrastructure.resource_loader import ResourceLoader
 from cbpos.core.services.config_service import ConfigService
+from cbpos.config import Config
 
 
 class ThemeService:
     """
     Service to handle application theme switching.
+    Single Source of Truth for theme-dependent assets (logos, icon colors).
     """
 
     current_theme = "Dark"
+    theme_change_callbacks = []  # List of callbacks to call when theme changes
 
     @staticmethod
     def apply_theme(theme_name: str):
@@ -51,10 +55,28 @@ class ThemeService:
             if app:
                 app.setStyleSheet(style_content)
 
+            # Notify all registered callbacks that theme has changed
+            for callback in ThemeService.theme_change_callbacks:
+                try:
+                    callback()
+                except Exception as e:
+                    print(f"Error in theme change callback: {e}")
+
         except FileNotFoundError:
             print(f"Error: Theme file not found at {style_path}")
         except Exception as e:
             print(f"Error applying theme: {e}")
+
+    @staticmethod
+    def register_theme_callback(callback):
+        """
+        Register a callback to be called when theme changes.
+
+        Args:
+            callback: A callable that takes no arguments
+        """
+        if callback not in ThemeService.theme_change_callbacks:
+            ThemeService.theme_change_callbacks.append(callback)
 
     @staticmethod
     def get_available_themes() -> list:
@@ -69,20 +91,40 @@ class ThemeService:
     @staticmethod
     def get_logo_path() -> str:
         """
-        Returns the path to the logo based on the current theme.
+        Returns the correct logo file path based on the current theme.
+
+        LOGO LOGIC:
+        - Dark Theme → White Text Logo (visible on dark backgrounds)
+        - Light Theme → Black Text Logo (visible on light backgrounds)
+
+        Returns:
+            str: Absolute path to the appropriate logo file
         """
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        # Use current_theme as the single source of truth
         if ThemeService.current_theme.lower() == "light":
-            return os.path.join(base_dir, "assets", "logo", "cover_black.png")
+            # Light theme needs BLACK text logo
+            logo_file = "cover_black.png"
         else:
-            return os.path.join(base_dir, "assets", "logo", "cover_white.png")
+            # Dark theme (default) needs WHITE text logo
+            logo_file = "cover_white.png"
+
+        return str(Config.BASE_DIR / "cbpos" / "ui" / "assets" / "logo" / logo_file)
 
     @staticmethod
     def get_icon_color() -> str:
         """
-        Returns the icon color based on the current theme.
+        Returns the hex color string for icons based on the current theme.
+
+        ICON LOGIC:
+        - Dark Theme → White Icons (visible on dark backgrounds)
+        - Light Theme → Black Icons (visible on light backgrounds)
+
+        Returns:
+            str: Color string ("white", "black", or hex code)
         """
         if ThemeService.current_theme.lower() == "light":
-            return "#333333"
+            # Light theme needs BLACK icons
+            return "black"  # Pure black for maximum contrast
         else:
-            return "white"
+            # Dark theme needs WHITE icons
+            return "white"  # Strict white for Dark Mode

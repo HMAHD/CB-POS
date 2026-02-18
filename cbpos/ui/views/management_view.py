@@ -42,7 +42,7 @@ class ManagementView(QWidget):
         # 1. Sidebar
         self.sidebar = QFrame()
         self.sidebar.setFixedWidth(250)
-        self.sidebar.setObjectName("Sidebar")
+        self.sidebar.setObjectName("SidebarContainer")  # For theme-specific styling
         self.sidebar_layout = QVBoxLayout(self.sidebar)
         self.sidebar_layout.setContentsMargins(0, 0, 0, 0)
         self.sidebar_layout.setSpacing(10)
@@ -99,6 +99,11 @@ class ManagementView(QWidget):
         self.sidebar_layout.addStretch()
 
         # 1.3 Bottom Section (POS + User + Logout)
+        self.user_profile_widget = QWidget()
+        self.user_profile_widget.setObjectName("UserProfileContainer")  # For killing artifact lines
+        user_profile_layout = QVBoxLayout(self.user_profile_widget)
+        user_profile_layout.setContentsMargins(0, 0, 0, 0)
+        user_profile_layout.setSpacing(0)
 
         # POS Button
         self.btn_pos = SidebarButton("   POS / Sales", "fa5s.cash-register")
@@ -106,22 +111,24 @@ class ManagementView(QWidget):
         self.btn_pos.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.btn_pos.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.btn_pos.clicked.connect(self.request_pos_view.emit)
-        self.sidebar_layout.addWidget(self.btn_pos)
+        user_profile_layout.addWidget(self.btn_pos)
 
         # User Info (Badge)
         self.lbl_badge = QLabel()
         self.lbl_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_badge.setFixedHeight(50)  # Approx height for badge
-        self.sidebar_layout.addWidget(self.lbl_badge)
+        user_profile_layout.addWidget(self.lbl_badge)
 
         self.btn_logout = SidebarButton("   Logout", Icons.LOGOUT)
         self.btn_logout.setObjectName("BtnLogout")  # Special Styling
         self.btn_logout.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.btn_logout.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.btn_logout.clicked.connect(self.logout_requested.emit)
-        self.sidebar_layout.addWidget(self.btn_logout)
+        user_profile_layout.addWidget(self.btn_logout)
 
-        self.sidebar_layout.addSpacing(10)
+        user_profile_layout.addSpacing(10)
+
+        self.sidebar_layout.addWidget(self.user_profile_widget)
 
         self.main_layout.addWidget(self.sidebar)
 
@@ -151,6 +158,10 @@ class ManagementView(QWidget):
 
         # Apply initial styles
         self.update_sidebar_styles()
+
+        # Register callback to update icons when theme changes
+        from cbpos.core.services.theme_service import ThemeService
+        ThemeService.register_theme_callback(self.update_sidebar_icons)
 
     def create_nav_button(self, text, icon, index):
         # Add spaces for visual separation
@@ -310,3 +321,13 @@ class ManagementView(QWidget):
             btn.setProperty("collapsed", self.is_collapsed)
             btn.style().unpolish(btn)
             btn.style().polish(btn)
+
+    def update_sidebar_icons(self):
+        """
+        Update all sidebar button icons when theme changes.
+        Call this after theme switching to refresh icon colors.
+        """
+        buttons = self.nav_buttons + [self.btn_pos, self.btn_logout]
+        for btn in buttons:
+            if hasattr(btn, 'update_icon'):
+                btn.update_icon()

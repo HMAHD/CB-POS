@@ -59,14 +59,14 @@ QComboBox {
     border: 1px solid #CED4DA;
     border-radius: 4px;
     padding: 8px 12px;
-    padding-right: 30px;  /* Space for arrow */
+    padding-right: 35px;  /* Space for arrow */
     font-size: 14px;
     color: #212529;
     min-height: 32px;
 }
 
 QComboBox:hover {
-    border: 1px solid #ADB5BD;
+    border: 1px solid #0D6EFD;
     background-color: #F8F9FA;
 }
 
@@ -76,21 +76,31 @@ QComboBox:focus {
 }
 
 QComboBox::drop-down {
-    border: none;
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
     width: 30px;
-    background: transparent;
+    border-left: 1px solid #CED4DA;  /* Separator line */
+    background: #E9ECEF;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+QComboBox::drop-down:hover {
+    background: #0D6EFD;  /* Blue background on hover */
 }
 
 QComboBox::down-arrow {
     image: none;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-top: 7px solid #495057;
-    margin-right: 8px;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #0D6EFD;  /* Blue arrow pointing down */
 }
 
+QComboBox::drop-down:hover QComboBox::down-arrow,
 QComboBox:hover::down-arrow {
-    border-top-color: #212529;
+    border-top-color: #FFFFFF;  /* White arrow on blue background */
 }
 
 QComboBox QAbstractItemView {
@@ -118,20 +128,20 @@ QComboBox QAbstractItemView::item:selected {
     color: #FFFFFF;
 }
 
-/* SpinBox - Number Input */
+/* SpinBox - Number Input (Modern Touch-Friendly Design) */
 QSpinBox, QDoubleSpinBox {
     background-color: #FFFFFF;
     border: 1px solid #CED4DA;
     border-radius: 4px;
     padding: 8px 12px;
-    padding-right: 40px;  /* Space for buttons */
+    padding-right: 35px;  /* Space for wider buttons */
     font-size: 14px;
     color: #212529;
-    min-height: 32px;
+    min-height: 36px;  /* Touch-friendly height */
 }
 
 QSpinBox:hover, QDoubleSpinBox:hover {
-    border: 1px solid #ADB5BD;
+    border: 1px solid #0D6EFD;
     background-color: #F8F9FA;
 }
 
@@ -140,92 +150,107 @@ QSpinBox:focus, QDoubleSpinBox:focus {
     background-color: #F8F9FA;
 }
 
+/* UP Button - Wider for easier clicking */
 QSpinBox::up-button, QDoubleSpinBox::up-button {
-    background-color: #E9ECEF;
-    border: none;
-    border-top-right-radius: 4px;
-    width: 20px;
     subcontrol-origin: border;
     subcontrol-position: top right;
+    width: 30px;  /* Much wider target area */
+    height: 18px;  /* Half of total height */
+    border-left: 1px solid #CED4DA;
+    border-bottom: 1px solid #CED4DA;
+    background-color: #E9ECEF;
+    border-top-right-radius: 4px;
 }
 
 QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover {
-    background-color: #CED4DA;
+    background-color: #0D6EFD;  /* Blue highlight on hover */
 }
 
 QSpinBox::up-button:pressed, QDoubleSpinBox::up-button:pressed {
-    background-color: #0D6EFD;
+    background-color: #0B5ED7;  /* Darker blue when pressed */
 }
 
+/* UP Arrow - Clear dark triangle */
 QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
     image: none;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-bottom: 6px solid #495057;
     width: 0;
     height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 6px solid #495057;  /* Dark up-pointing triangle */
 }
 
 QSpinBox::up-button:hover::up-arrow, QDoubleSpinBox::up-button:hover::up-arrow {
-    border-bottom-color: #212529;
+    border-bottom-color: #FFFFFF;  /* White triangle on blue background */
 }
 
+/* DOWN Button - Wider for easier clicking */
 QSpinBox::down-button, QDoubleSpinBox::down-button {
-    background-color: #E9ECEF;
-    border: none;
-    border-bottom-right-radius: 4px;
-    width: 20px;
     subcontrol-origin: border;
     subcontrol-position: bottom right;
+    width: 30px;  /* Much wider target area */
+    height: 18px;  /* Half of total height */
+    border-left: 1px solid #CED4DA;
+    border-top: 1px solid #CED4DA;
+    background-color: #E9ECEF;
+    border-bottom-right-radius: 4px;
 }
 
 QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
-    background-color: #CED4DA;
+    background-color: #0D6EFD;  /* Blue highlight on hover */
 }
 
 QSpinBox::down-button:pressed, QDoubleSpinBox::down-button:pressed {
-    background-color: #0D6EFD;
+    background-color: #0B5ED7;  /* Darker blue when pressed */
 }
 
+/* DOWN Arrow - Clear dark triangle */
 QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
     image: none;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #495057;
     width: 0;
     height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #495057;  /* Dark down-pointing triangle */
 }
 
 QSpinBox::down-button:hover::down-arrow, QDoubleSpinBox::down-button:hover::down-arrow {
-    border-top-color: #212529;
+    border-top-color: #FFFFFF;  /* White triangle on blue background */
 }
 
-/* Checkboxes */
+/* Checkboxes - Clean Outline Style */
 QCheckBox {
-    background-color: transparent;
+    spacing: 10px;
     color: #212529;
-    spacing: 8px;
+    background-color: transparent;  /* Fix white background issue */
 }
 
+/* Unchecked State - Empty box with visible border */
 QCheckBox::indicator {
-    width: 18px;
-    height: 18px;
-    border: 2px solid #CED4DA;
-    border-radius: 3px;
-    background-color: #FFFFFF;
+    width: 22px;
+    height: 22px;
+    border: 2px solid #ADB5BD;  /* Visible border when unchecked */
+    border-radius: 4px;
+    background-color: transparent;  /* Empty/outline style */
 }
 
-QCheckBox::indicator:hover {
-    border-color: #0D6EFD;
+/* Unchecked Hover - Blue glow */
+QCheckBox::indicator:unchecked:hover {
+    border-color: #0D6EFD;  /* Blue border on hover */
+    background-color: rgba(13, 110, 253, 0.1);  /* Subtle blue tint */
 }
 
+/* Checked State - Filled blue box */
 QCheckBox::indicator:checked {
-    background-color: #0D6EFD;
+    background-color: #0D6EFD;  /* Solid blue fill */
     border-color: #0D6EFD;
+    /* Ideally use: image: url(cbpos/assets/icons/check.svg); */
 }
 
+/* Checked Hover - Darker blue */
 QCheckBox::indicator:checked:hover {
-    background-color: #0B5ED7;
+    background-color: #0B5ED7;  /* Darker blue on hover */
+    border-color: #0B5ED7;
 }
 
 /* Buttons */
@@ -387,9 +412,97 @@ QGroupBox QCheckBox {
 }
 
 /* --- Sidebar --- */
+/* Sidebar Container - Light Mode */
+QFrame#SidebarContainer,
 QFrame#Sidebar {
-    background-color: #FFFFFF;
-    border-right: 1px solid #DEE2E6;
+    background-color: #FFFFFF;  /* White Background */
+    border-right: 1px solid #DEE2E6;  /* Subtle separator */
+}
+
+/* Sidebar Container Text - Dark for Light Mode */
+QWidget#SidebarContainer QLabel,
+QWidget#SidebarContainer QPushButton {
+    color: #212529;  /* Dark Text for Light Mode */
+}
+
+/* User Profile Section - Light Mode (KILL THE LINES) */
+QWidget#UserProfileContainer {
+    background-color: transparent;  /* Blend with sidebar */
+    border: none;  /* Remove all borders */
+    outline: none;  /* Remove outline */
+}
+
+/* POS Side Menu (Hamburger Menu) - Light Mode */
+QWidget#POSSideMenu {
+    background-color: #FFFFFF;  /* White background */
+    border-left: 1px solid #DEE2E6;  /* Subtle left border */
+}
+
+/* POS Side Menu - Labels (Username, Role) */
+QWidget#POSSideMenu QLabel {
+    background-color: transparent;
+    color: #212529;  /* Dark text for light background */
+}
+
+/* POS Side Menu - Separator Lines */
+QWidget#POSSideMenu QFrame[frameShape="4"] {
+    background-color: #DEE2E6;  /* Light gray separator */
+}
+
+/* POS Side Menu - Menu Buttons */
+QPushButton#MenuButton {
+    background-color: transparent;
+    color: #212529;
+    border: none;
+    text-align: left;
+    padding-left: 15px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+QPushButton#MenuButton:hover {
+    background-color: #F8F9FA;
+    color: #0D6EFD;
+}
+
+QPushButton#MenuButton[destructive="true"] {
+    color: #DC3545;  /* Bootstrap red for destructive actions */
+}
+
+QPushButton#MenuButton[destructive="true"]:hover {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: #DC3545;
+}
+
+/* POS Side Menu - Icon Buttons (Bottom Toolbar) */
+QPushButton#IconButton {
+    background-color: transparent;
+    border: none;
+    border-radius: 8px;
+}
+
+QPushButton#IconButton:hover {
+    background-color: #F8F9FA;
+}
+
+QPushButton#IconButton:pressed {
+    background-color: #E9ECEF;
+}
+
+/* POS Side Menu - Username Label */
+QLabel#MenuUsername {
+    color: #212529;
+    font-size: 16px;
+    font-weight: bold;
+    background-color: transparent;
+}
+
+/* POS Side Menu - Role Label */
+QLabel#MenuRole {
+    color: #6C757D;  /* Muted gray */
+    font-size: 13px;
+    font-weight: normal;
+    background-color: transparent;
 }
 
 QLabel#SidebarLogo {
@@ -451,81 +564,113 @@ QToolButton#BtnPos[collapsed="true"] {
     padding-left: 0px;
 }
 
+/* Sign Out Button - Professional Outlined Design */
 QToolButton#BtnLogout {
-    color: #DC3545;
-    text-align: left;
-    padding-left: 24px;
+    color: #DC3545;  /* Bootstrap Red */
+    background-color: transparent;
+    border: 1px solid #DC3545;  /* Red Border */
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 10px 15px;  /* Spacing from edges */
+    font-weight: bold;
+    text-align: center;  /* Center text */
 }
 
 QToolButton#BtnLogout:hover {
-    background-color: #FBE9EB; /* Pale Red */
+    background-color: #DC3545;
+    color: white;  /* White text on Red background */
 }
 
 QToolButton#BtnLogout[collapsed="true"] {
     text-align: center;
-    padding-left: 0px;
+    padding: 8px;
+    margin: 10px 10px;
 }
 
 /* --- Sales View Specifics --- */
 
-/* Header (Dark Navy as requested) */
+/* ===== 1. TOP HEADER BAR (Brand Anchor - Dark Navy in Light Mode) ===== */
 QWidget#HeaderWidget {
-    background-color: #001F3F;
-    border-bottom: 1px solid #003366;
+    background-color: #001F3F;  /* Dark Navy */
+    border-bottom: 2px solid #00BCEB;  /* Cyan Accent Line */
 }
 
-QWidget#HeaderWidget QLabel {
+/* Labels/Icons inside Header - White text on Navy */
+QWidget#HeaderWidget QLabel,
+QWidget#HeaderWidget QPushButton {
+    color: white;  /* White text on Navy */
     background: transparent;
 }
 
 QWidget#HeaderWidget QToolButton {
     background: transparent;
     border: none;
+    color: white;
 }
 
 QLabel#LogoLabel {
-    color: #00BCEB;
+    color: #00BCEB;  /* Cyan brand logo */
     font-weight: bold;
     font-size: 16px;
     background: transparent;
 }
 
-/* Search Bar & Filters */
+/* ===== 5. SEARCH BAR & FILTER BUTTONS ===== */
 QWidget#SearchWidget {
     background-color: transparent;
 }
 
-QToolButton#SearchModeBtn {
-    background-color: #E0E0E0;
-    color: #495057;
-    border: 1px solid #CED4DA;
+/* Search Input Field */
+QWidget#SearchWidget QLineEdit {
+    background-color: #FFFFFF;
+    border: 2px solid #DEE2E6;
+    border-radius: 4px;
+    color: #212529;
+    padding: 8px;
+    font-size: 14px;
 }
 
-QToolButton#SearchModeBtn:checked {
-    background-color: #00BCEB;
-    color: #000000;
-    font-weight: bold;
-    border: 1px solid #00BCEB;
+QWidget#SearchWidget QLineEdit:focus {
+    border: 2px solid #00BCEB;  /* Cyan Focus */
+}
+
+/* Filter Buttons (*, |||, #) */
+QToolButton#SearchModeBtn {
+    background-color: #F8F9FA;
+    color: #495057;
+    border: 1px solid #DEE2E6;
+    border-radius: 4px;
 }
 
 QToolButton#SearchModeBtn:hover {
-    background-color: #D6D8DB;
+    background-color: #E9ECEF;
+    color: #212529;
 }
 
-/* Cart Table */
+QToolButton#SearchModeBtn:checked {
+    background-color: #001F3F;  /* Navy Active */
+    color: white;
+    border: 1px solid #001F3F;
+    font-weight: bold;
+}
+
+/* ===== 4. PRODUCT TABLE (Cart Table - Readability) ===== */
 QTableWidget#CartTable {
     background-color: #FFFFFF;
-    color: #212529;
-    gridline-color: transparent;
+    gridline-color: #F1F3F5;
 }
 
 QTableWidget#CartTable QHeaderView::section {
-    background-color: #E9ECEF;
-    color: #495057;
-    padding: 8px;
+    background-color: #E9ECEF;  /* Darker Gray Header */
+    color: #212529;  /* Almost Black Text */
+    font-weight: bold;
     border: none;
     border-bottom: 2px solid #DEE2E6;
-    font-weight: bold;
+    padding: 8px;
+}
+
+QTableWidget#CartTable::item {
+    color: #212529;
 }
 
 QTableWidget#CartTable::item:selected {
@@ -572,83 +717,107 @@ QWidget#ActionPanel QLabel {
     background: transparent;
 }
 
+/* ===== 2. CUSTOMER PANEL (Matching the Header) ===== */
 QFrame#CustomerPanel {
-    background-color: #00BCEB;
-    border-radius: 5px;
-    padding: 5px;
+    background-color: #001F3F;  /* Dark Navy */
+    border: 1px solid #001F3F;
+    border-radius: 4px;
 }
 
 QFrame#CustomerPanel QLabel {
+    color: white;  /* White text */
     background: transparent;
 }
 
 QLabel#CustomerLabel {
     font-weight: bold;
     font-size: 14px;
-    color: black;
+    color: white;  /* White text on Navy */
     background: transparent;
 }
 
+/* The "SELECT" Button inside Customer Panel */
 QPushButton#BtnCustomerSelect {
-    background-color: #FFFFFF;
-    color: #00BCEB;
-    border: 1px solid #00BCEB;
+    background-color: #00BCEB;  /* Cyan Button */
+    color: white;
+    border: none;
+    border-radius: 3px;
+    font-weight: bold;
     padding: 5px;
 }
 
+QPushButton#BtnCustomerSelect:hover {
+    background-color: #00A8D6;  /* Slightly darker cyan */
+}
+
+QPushButton#BtnCustomerSelect:pressed {
+    background-color: #0096C7;
+}
+
 QLabel#PointsLabel {
-    color: black;
+    color: white;  /* White text on Navy */
     font-weight: bold;
     font-size: 12px;
     background: transparent;
 }
 
-/* Action Grid Button */
+/* ===== 3. ACTION BUTTONS (Dark Navy - High Visibility) ===== */
 QPushButton[class="ActionGridBtn"] {
-    background-color: #00BCEB;
-    border: 1px solid #0096C7;
-    color: #000000;
-    border-radius: 4px;
+    background-color: #001F3F;  /* Dark Navy Background */
+    color: white;  /* White Text */
+    border: 1px solid #001F3F;
+    border-radius: 8px;
+    padding: 10px;
+    font-weight: bold;
 }
 
+/* Hover Effect */
 QPushButton[class="ActionGridBtn"]:hover {
-    background-color: #00A8D6;
-    border: 1px solid #0081AB;
+    background-color: #003366;  /* Lighter Navy Hover */
+    border-color: #00BCEB;  /* Cyan Border Accent */
 }
 
+/* Pressed Effect */
 QPushButton[class="ActionGridBtn"]:pressed {
-    background-color: #0096C7;
-    color: #FFFFFF;
+    background-color: #00BCEB;  /* Cyan Active */
 }
 
-/* Custom Colors for Action Buttons (Bottom Border) */
-QPushButton[class="ActionGridBtn"][btnColor="#FFDC00"] { border-bottom: 3px solid #FFC107; }
-QPushButton[class="ActionGridBtn"][btnColor="#FF4136"] { border-bottom: 3px solid #DC3545; }
+/* Custom Colors for Action Buttons (Bottom Border Accents) */
+QPushButton[class="ActionGridBtn"][btnColor="#FFDC00"] {
+    border-bottom: 3px solid #FFC107;
+}
+QPushButton[class="ActionGridBtn"][btnColor="#FF4136"] {
+    border-bottom: 3px solid #DC3545;
+}
 
 /* Internal Labels in Grid Buttons */
 QPushButton[class="ActionGridBtn"] QLabel {
     background: transparent;
-    color: #000000;
+    color: white;  /* White text on Navy */
 }
 
 QPushButton[class="ActionGridBtn"] QLabel#lblShortcut {
-    color: #333333;
+    color: #AAAAAA;  /* Light gray for shortcuts */
     font-size: 10px;
     font-weight: bold;
     background: transparent;
 }
 
 QPushButton[class="ActionGridBtn"] QLabel#lblText {
-    color: #000000;
+    color: white;  /* White text */
     font-size: 12px;
     font-weight: bold;
     background: transparent;
 }
 
+/* All labels stay white on hover and press for consistency */
+QPushButton[class="ActionGridBtn"]:hover QLabel,
+QPushButton[class="ActionGridBtn"]:hover QLabel#lblText,
+QPushButton[class="ActionGridBtn"]:hover QLabel#lblShortcut,
 QPushButton[class="ActionGridBtn"]:pressed QLabel,
 QPushButton[class="ActionGridBtn"]:pressed QLabel#lblText,
 QPushButton[class="ActionGridBtn"]:pressed QLabel#lblShortcut {
-    color: #FFFFFF;
+    color: white;
 }
 
 /* Pay Button */

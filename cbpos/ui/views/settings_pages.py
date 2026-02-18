@@ -755,6 +755,33 @@ class NetworkPage(SettingsPage):
         self.btn_test.clicked.connect(self._test_connection)
         layout.addRow("", self.btn_test)
 
+        # Add separator
+        separator2 = QFrame()
+        separator2.setFrameShape(QFrame.Shape.HLine)
+        separator2.setFrameShadow(QFrame.Shadow.Sunken)
+        layout.addRow(separator2)
+
+        # Migration Section (One-Click Data Upload)
+        self.grp_migration = QGroupBox("One-Click Data Migration")
+        self.grp_migration.setObjectName("NetworkMigrationGroup")
+        migration_layout = QVBoxLayout(self.grp_migration)
+
+        self.lbl_migration_info = QLabel(
+            "Transfer your local data (products, customers, sales) to the network server automatically.\n\n"
+            "⚠ This will copy ALL data from your local SQLite database to the PostgreSQL server.\n"
+            "The target database must be empty."
+        )
+        self.lbl_migration_info.setWordWrap(True)
+        self.lbl_migration_info.setObjectName("MigrationInfoLabel")
+        migration_layout.addWidget(self.lbl_migration_info)
+
+        self.btn_migrate = QPushButton("🚀 Upload Local Data to Server")
+        self.btn_migrate.setObjectName("BtnMigrate")
+        self.btn_migrate.clicked.connect(self._migrate_data)
+        migration_layout.addWidget(self.btn_migrate)
+
+        layout.addRow(self.grp_migration)
+
         # Warning label
         self.lbl_warning = QLabel(
             "⚠ Warning: Changing database mode requires application restart. "
@@ -798,6 +825,7 @@ class NetworkPage(SettingsPage):
         is_network = mode == "Network"
         self.grp_credentials.setVisible(is_network)
         self.btn_test.setVisible(is_network)
+        self.grp_migration.setVisible(is_network)
 
     def _test_connection(self):
         """Test database connection with current credentials."""
@@ -828,3 +856,81 @@ class NetworkPage(SettingsPage):
             QMessageBox.information(self, "Connection Test", f"✓ {message}")
         else:
             QMessageBox.critical(self, "Connection Test", f"✗ {message}")
+
+    def _migrate_data(self):
+        """Migrate data from local SQLite to PostgreSQL server."""
+        from PyQt6.QtWidgets import QProgressDialog
+        from PyQt6.QtCore import Qt
+        from cbpos.core.services.migration_service import MigrationService
+        from cbpos.config import Config
+
+        # Validate inputs
+        host = self.input_host.text().strip()
+        port = self.input_port.value()
+        dbname = self.input_dbname.text().strip()
+        user = self.input_user.text().strip()
+        password = self.input_password.text()
+
+        if not all([host, dbname, user]):
+            QMessageBox.warning(
+                self,
+                "Validation Error",
+                "Please fill in all required connection fields before migrating data.",
+            )
+            return
+
+        # Confirm with user
+        confirm = QMessageBox.question(
+            self,
+            "Confirm Data Migration",
+            f"This will upload ALL your local data to:\n\n"
+            f"  Host: {host}:{port}\n"
+            f"  Database: {dbname}\n\n"
+            f"The target database must be empty. This operation may take several minutes.\n\n"
+            f"Do you want to continue?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+
+        # Build database URLs
+        sqlite_url = Config.DB_URI
+        postgres_url = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}"
+
+        # Show progress dialog
+        progress = QProgressDialog("Migrating data to server...\nPlease wait.", None, 0, 0, self)
+        progress.setWindowTitle("Data Migration")
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setValue(0)
+        progress.show()
+
+        # Process events to ensure dialog appears
+        from PyQt6.QtWidgets import QApplication
+
+        QApplication.processEvents()
+
+        try:
+            # Perform migration
+            success, message = MigrationService.migrate_sqlite_to_postgres(sqlite_url, postgres_url)
+
+            progress.close()
+
+            if success:
+                QMessageBox.information(
+                    self,
+                    "Migration Successful",
+                    f"{message}\n\n"
+                    f"Next steps:\n"
+                    f"1. Save these network settings\n"
+                    f"2. Restart the application\n"
+                    f"3. All terminals can now connect to the server",
+                )
+            else:
+                QMessageBox.critical(self, "Migration Failed", f"Migration error:\n\n{message}")
+
+        except Exception as e:
+            progress.close()
+            QMessageBox.critical(self, "Migration Error", f"Unexpected error during migration:\n\n{str(e)}")

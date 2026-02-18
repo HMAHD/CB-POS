@@ -1375,3 +1375,55 @@ QLabel#NetworkWarningLabel {
     padding: 12px;
     font-size: 12px;
 }
+
+QGroupBox#NetworkMigrationGroup {
+    background-color: rgba(57, 255, 20, 0.05);
+    border: 1px solid rgba(57, 255, 20, 0.2);
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 20px;
+    font-weight: 600;
+    color: #E5E5E5;
+}
+
+QGroupBox#NetworkMigrationGroup::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 4px 8px;
+    color: #39FF14;
+}
+
+QLabel#MigrationInfoLabel {
+    background-color: transparent;
+    color: #CCCCCC;
+    font-size: 12px;
+    padding: 8px;
+}
+
+QPushButton#BtnMigrate {
+    background-color: #39FF14;
+    color: #001F3F;
+    border: 2px solid #39FF14;
+    border-radius: 6px;
+    padding: 12px 24px;
+    font-weight: 700;
+    font-size: 14px;
+    min-width: 200px;
+    min-height: 40px;
+}
+
+QPushButton#BtnMigrate:hover {
+    background-color: #4DFF2E;
+    border-color: #4DFF2E;
+}
+
+QPushButton#BtnMigrate:pressed {
+    background-color: #2EE010;
+    border-color: #2EE010;
+}
+
+QPushButton#BtnMigrate:disabled {
+    background-color: #1A1A1A;
+    color: #666666;
+    border-color: #2A2A2A;
+}

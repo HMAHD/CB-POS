@@ -1394,3 +1394,68 @@ QLineEdit:disabled {
     background-color: #F9FAFB;
     color: #9CA3AF;
 }
+
+/* === NETWORK SETTINGS === */
+QLineEdit#InputNetwork,
+QSpinBox#InputNetwork,
+QComboBox#InputNetwork {
+    background-color: #FFFFFF;
+    color: #374151;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+QLineEdit#InputNetwork:focus,
+QSpinBox#InputNetwork:focus,
+QComboBox#InputNetwork:focus {
+    border-color: #0066CC;
+    background-color: #F9FAFB;
+}
+
+QGroupBox#NetworkCredentialsGroup {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding-top: 20px;
+    font-weight: 600;
+    color: #111827;
+}
+
+QGroupBox#NetworkCredentialsGroup::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 4px 8px;
+    color: #0066CC;
+}
+
+QPushButton#BtnTestConnection {
+    background-color: transparent;
+    color: #0066CC;
+    border: 2px solid #0066CC;
+    border-radius: 6px;
+    padding: 10px 24px;
+    font-weight: 600;
+    font-size: 14px;
+    min-width: 150px;
+}
+
+QPushButton#BtnTestConnection:hover {
+    background-color: rgba(0, 102, 204, 0.1);
+    border-color: #0052A3;
+}
+
+QPushButton#BtnTestConnection:pressed {
+    background-color: rgba(0, 102, 204, 0.2);
+}
+
+QLabel#NetworkWarningLabel {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: #D97706;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 12px;
+}

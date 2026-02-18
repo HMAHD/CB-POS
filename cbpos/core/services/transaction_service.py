@@ -1,6 +1,7 @@
 import uuid
 from decimal import Decimal
 from datetime import datetime
+from sqlalchemy.orm.exc import StaleDataError
 from cbpos.core.database import Database
 from cbpos.core.models import (
     Sale,
@@ -229,6 +230,10 @@ class TransactionService:
 
             return True
 
+        except StaleDataError:
+            # Handle race condition from concurrent stock updates
+            session.rollback()
+            raise ValueError("Stock changed by another terminal. Please retry the transaction.")
         except ValueError as e:
             # Handle insufficient stock or validation errors
             error_msg = str(e)

@@ -692,3 +692,139 @@ class ProfilePage(SettingsPage):
             self.input_new_pin.clear()
         else:
             QMessageBox.critical(self, "Error", "Failed to update profile.")
+
+
+class NetworkPage(SettingsPage):
+    """Network database configuration for multi-terminal setup."""
+
+    def init_ui(self):
+        container, layout, form_widget = self.create_form_container()
+
+        # Database Mode Selector
+        self.cmb_db_mode = QComboBox()
+        self.cmb_db_mode.addItems(["Standalone", "Network"])
+        self.cmb_db_mode.setObjectName("InputNetwork")
+        self.cmb_db_mode.currentTextChanged.connect(self._on_mode_changed)
+        layout.addRow("Database Mode:", self.cmb_db_mode)
+
+        # Add separator
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setFrameShadow(QFrame.Shadow.Sunken)
+        layout.addRow(separator)
+
+        # Network credentials group
+        self.grp_credentials = QGroupBox("Network Database Credentials")
+        self.grp_credentials.setObjectName("NetworkCredentialsGroup")
+        credentials_layout = QFormLayout(self.grp_credentials)
+        credentials_layout.setVerticalSpacing(15)
+        credentials_layout.setHorizontalSpacing(20)
+
+        self.input_host = QLineEdit()
+        self.input_host.setObjectName("InputNetwork")
+        self.input_host.setPlaceholderText("e.g., 192.168.1.100 or localhost")
+        credentials_layout.addRow("Host IP:", self.input_host)
+
+        self.input_port = QSpinBox()
+        self.input_port.setObjectName("InputNetwork")
+        self.input_port.setRange(1, 65535)
+        self.input_port.setValue(5432)
+        credentials_layout.addRow("Port:", self.input_port)
+
+        self.input_dbname = QLineEdit()
+        self.input_dbname.setObjectName("InputNetwork")
+        self.input_dbname.setPlaceholderText("Database name")
+        credentials_layout.addRow("Database Name:", self.input_dbname)
+
+        self.input_user = QLineEdit()
+        self.input_user.setObjectName("InputNetwork")
+        self.input_user.setPlaceholderText("Database username")
+        credentials_layout.addRow("Username:", self.input_user)
+
+        self.input_password = QLineEdit()
+        self.input_password.setObjectName("InputNetwork")
+        self.input_password.setEchoMode(QLineEdit.EchoMode.Password)
+        self.input_password.setPlaceholderText("Database password")
+        credentials_layout.addRow("Password:", self.input_password)
+
+        layout.addRow(self.grp_credentials)
+
+        # Test Connection Button
+        self.btn_test = QPushButton("Test Connection")
+        self.btn_test.setObjectName("BtnTestConnection")
+        self.btn_test.clicked.connect(self._test_connection)
+        layout.addRow("", self.btn_test)
+
+        # Warning label
+        self.lbl_warning = QLabel(
+            "⚠ Warning: Changing database mode requires application restart. "
+            "Ensure PostgreSQL server is accessible before switching to Network mode."
+        )
+        self.lbl_warning.setWordWrap(True)
+        self.lbl_warning.setObjectName("NetworkWarningLabel")
+        layout.addRow(self.lbl_warning)
+
+        container.addWidget(form_widget)
+
+    def load(self, settings: dict):
+        """Load network settings into UI."""
+        db_mode = settings.get("db_mode", "standalone")
+        self.cmb_db_mode.setCurrentText("Standalone" if db_mode == "standalone" else "Network")
+
+        self.input_host.setText(settings.get("network_db_host", "localhost"))
+        self.input_port.setValue(settings.get("network_db_port", 5432))
+        self.input_dbname.setText(settings.get("network_db_name", "cbpos"))
+        self.input_user.setText(settings.get("network_db_user", "postgres"))
+        self.input_password.setText(settings.get("network_db_password", ""))
+
+        # Update visibility based on loaded mode
+        self._on_mode_changed(self.cmb_db_mode.currentText())
+
+    def save(self) -> dict:
+        """Return network settings to save."""
+        db_mode = "standalone" if self.cmb_db_mode.currentText() == "Standalone" else "network"
+
+        return {
+            "db_mode": db_mode,
+            "network_db_host": self.input_host.text().strip(),
+            "network_db_port": self.input_port.value(),
+            "network_db_name": self.input_dbname.text().strip(),
+            "network_db_user": self.input_user.text().strip(),
+            "network_db_password": self.input_password.text(),
+        }
+
+    def _on_mode_changed(self, mode: str):
+        """Show/hide credentials group based on selected mode."""
+        is_network = mode == "Network"
+        self.grp_credentials.setVisible(is_network)
+        self.btn_test.setVisible(is_network)
+
+    def _test_connection(self):
+        """Test database connection with current credentials."""
+        from cbpos.core.database import Database
+
+        mode = "standalone" if self.cmb_db_mode.currentText() == "Standalone" else "network"
+
+        if mode == "network":
+            host = self.input_host.text().strip()
+            port = self.input_port.value()
+            dbname = self.input_dbname.text().strip()
+            user = self.input_user.text().strip()
+            password = self.input_password.text()
+
+            if not all([host, dbname, user]):
+                QMessageBox.warning(
+                    self, "Validation Error", "Please fill in all required fields (Host, Database Name, Username)."
+                )
+                return
+
+            success, message = Database.test_connection(
+                mode="network", host=host, port=port, dbname=dbname, user=user, password=password
+            )
+        else:
+            success, message = Database.test_connection(mode="standalone")
+
+        if success:
+            QMessageBox.information(self, "Connection Test", f"✓ {message}")
+        else:
+            QMessageBox.critical(self, "Connection Test", f"✗ {message}")

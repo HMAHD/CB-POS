@@ -239,10 +239,9 @@ class ManagementView(QWidget):
             badge_filename = "mod.png"
 
         if badge_filename:
-            # Use pathlib for robust path handling
-            # Ensure we point to cbpos/assets
-            base_path = Path(os.getcwd())
-            badge_path = base_path / "cbpos" / "assets" / "badge" / badge_filename
+            # Use Config.BASE_DIR for reliable path resolution (works in packaged apps)
+            from cbpos.config import Config
+            badge_path = Config.BASE_DIR / "cbpos" / "ui" / "assets" / "badge" / badge_filename
             print(f"Loading Badge from: {badge_path}")
 
             if badge_path.exists():

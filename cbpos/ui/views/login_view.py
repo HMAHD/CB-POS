@@ -30,7 +30,7 @@ class LoginView(QWidget):
 
         # --- LEFT PANEL (Branding) ---
         left_panel = QWidget()
-        left_panel.setStyleSheet("background-color: #001226;")
+        left_panel.setObjectName("LoginLeftPanel")  # Style via QSS
         left_layout = QVBoxLayout(left_panel)
         left_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -55,9 +55,9 @@ class LoginView(QWidget):
 
         # Multilingual Welcome Text
         welcome_text = QLabel("Welcome / ආයුබෝවන් / வணக்கம்")
-        welcome_text.setObjectName("Subtitle")
+        welcome_text.setObjectName("WelcomeText")
         welcome_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        welcome_text.setStyleSheet("font-size: 24px; color: #00BCEB; font-weight: bold; margin-top: 20px;")
+        # Removed inline style - now styled via QSS with WelcomeText object name
 
         left_layout.addStretch()
         left_layout.addWidget(logo_label)
@@ -66,7 +66,7 @@ class LoginView(QWidget):
 
         # Footer
         footer_label = QLabel(f"Version {Config.VERSION} | © 2026 Ceylon Byte")
-        footer_label.setStyleSheet("color: #888888; font-size: 12px;")
+        footer_label.setObjectName("FooterLabel")  # Style via QSS
         footer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         left_layout.addWidget(footer_label)
         left_layout.addSpacing(20)
@@ -124,10 +124,10 @@ class LoginView(QWidget):
 
             if text == "C":
                 btn.clicked.connect(self.clear_pin)
-                btn.setStyleSheet("color: #FF4136; border-color: #FF4136;")
+                btn.setProperty("btnType", "clear")  # Style via QSS
             elif text == "⏎":
                 btn.clicked.connect(self.attempt_login)
-                btn.setStyleSheet("color: #39FF14; border-color: #39FF14;")
+                btn.setProperty("btnType", "enter")  # Style via QSS
             else:
                 btn.clicked.connect(lambda checked, t=text: self.append_pin(t))
 

@@ -1031,3 +1031,43 @@ QPushButton[class="ReceiptOptionBtn"]:hover {
 QPushButton[class="ReceiptOptionBtn"][btnColor="cyan"] { background-color: #00BCEB; }
 QPushButton[class="ReceiptOptionBtn"][btnColor="orange"] { background-color: #FF851B; }
 QPushButton[class="ReceiptOptionBtn"][btnColor="gray"] { background-color: #AAAAAA; }
+
+/* ===================================================================
+   LOGIN VIEW STYLES
+   ================================================================ */
+
+/* === LOGIN LEFT PANEL === */
+QWidget#LoginLeftPanel {
+    background-color: #001226;  /* Deep navy branding panel */
+}
+
+QLabel#WelcomeText {
+    font-size: 24px;
+    color: #00BCEB;  /* Cyan accent */
+    font-weight: bold;
+    margin-top: 20px;
+}
+
+QLabel#FooterLabel {
+    color: #AAAAAA;  /* Lighter gray for dark theme */
+    font-size: 12px;
+}
+
+/* === NUMPAD BUTTONS === */
+QPushButton#NumpadBtn[btnType="clear"] {
+    color: #DC3545;  /* Red for clear */
+    border-color: #DC3545;
+}
+
+QPushButton#NumpadBtn[btnType="clear"]:hover {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+QPushButton#NumpadBtn[btnType="enter"] {
+    color: #198754;  /* Green for enter */
+    border-color: #198754;
+}
+
+QPushButton#NumpadBtn[btnType="enter"]:hover {
+    background-color: rgba(25, 135, 84, 0.1);
+}

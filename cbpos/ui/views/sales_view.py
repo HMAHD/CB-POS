@@ -166,12 +166,24 @@ class SalesView(QWidget):
 
         # 2. Cart Table (Center)
         self.cart_table = QTableWidget()
-        self.cart_table.setColumnCount(4)
-        self.cart_table.setHorizontalHeaderLabels(["Item", "Price", "Qty", "Total"])
-        self.cart_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.cart_table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.ResizeToContents
-        )  # Item name flexible
+        self.cart_table.setColumnCount(5)
+        self.cart_table.setHorizontalHeaderLabels(["Item", "Price", "Qty", "Disc", "Total"])
+
+        # Optimized column sizing for better readability
+        self.cart_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)  # Item - flexible
+        self.cart_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)    # Price - fixed
+        self.cart_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)    # Qty - fixed
+        self.cart_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)    # Disc - fixed
+        self.cart_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)    # Total - fixed
+
+        # Set fixed widths for numeric columns (better alignment)
+        self.cart_table.setColumnWidth(1, 100)  # Price
+        self.cart_table.setColumnWidth(2, 80)   # Qty
+        self.cart_table.setColumnWidth(3, 60)   # Disc
+        self.cart_table.setColumnWidth(4, 120)  # Total
+
+        # Set object name for CSS targeting
+        self.cart_table.setObjectName("CartTable")
         self.cart_table.verticalHeader().setVisible(False)
         self.cart_table.setShowGrid(False)
         self.cart_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)

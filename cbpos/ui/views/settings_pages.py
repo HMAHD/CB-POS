@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
+    QGridLayout,
     QLabel,
     QLineEdit,
     QPushButton,
@@ -695,103 +696,193 @@ class ProfilePage(SettingsPage):
 
 
 class NetworkPage(SettingsPage):
-    """Network database configuration for multi-terminal setup."""
+    """Network database configuration for multi-terminal setup - Connectivity Dashboard."""
+
+    def __init__(self):
+        self.connection_tested = False  # Track if connection test passed
+        super().__init__()
 
     def init_ui(self):
-        container, layout, form_widget = self.create_form_container()
+        # Main container with card-based layout
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(30, 30, 30, 30)
+        main_layout.setSpacing(25)
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        # Database Mode Selector
+        # === CARD 1: Hero Status Card ===
+        self.status_card = QFrame()
+        self.status_card.setObjectName("StatusCard")
+        self.status_card.setFrameShape(QFrame.Shape.StyledPanel)
+        status_layout = QHBoxLayout(self.status_card)
+        status_layout.setContentsMargins(20, 20, 20, 20)
+        status_layout.setSpacing(15)
+
+        # Icon/Mode indicator
+        self.lbl_mode_icon = QLabel("💻")  # Will change to 🖥️ for Network
+        self.lbl_mode_icon.setObjectName("StatusIcon")
+
+        # Status text
+        status_text_layout = QVBoxLayout()
+        self.lbl_status_title = QLabel("Single Computer Mode")
+        self.lbl_status_title.setObjectName("StatusTitle")
+        self.lbl_status_subtitle = QLabel("Standalone • Local Database")
+        self.lbl_status_subtitle.setObjectName("StatusSubtitle")
+        status_text_layout.addWidget(self.lbl_status_title)
+        status_text_layout.addWidget(self.lbl_status_subtitle)
+
+        # Mode selector (right side)
+        mode_selector_layout = QVBoxLayout()
+        mode_label = QLabel("Database Mode:")
+        mode_label.setObjectName("StatusModeLabel")
         self.cmb_db_mode = QComboBox()
         self.cmb_db_mode.addItems(["Standalone", "Network"])
-        self.cmb_db_mode.setObjectName("InputNetwork")
+        self.cmb_db_mode.setObjectName("StatusModeSelector")
         self.cmb_db_mode.currentTextChanged.connect(self._on_mode_changed)
-        layout.addRow("Database Mode:", self.cmb_db_mode)
+        mode_selector_layout.addWidget(mode_label)
+        mode_selector_layout.addWidget(self.cmb_db_mode)
 
-        # Add separator
-        separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setFrameShadow(QFrame.Shadow.Sunken)
-        layout.addRow(separator)
+        status_layout.addWidget(self.lbl_mode_icon)
+        status_layout.addLayout(status_text_layout, 1)
+        status_layout.addLayout(mode_selector_layout)
 
-        # Network credentials group
-        self.grp_credentials = QGroupBox("Network Database Credentials")
-        self.grp_credentials.setObjectName("NetworkCredentialsGroup")
-        credentials_layout = QFormLayout(self.grp_credentials)
-        credentials_layout.setVerticalSpacing(15)
-        credentials_layout.setHorizontalSpacing(20)
+        main_layout.addWidget(self.status_card)
 
+        # === CARD 2: Server Configuration Card ===
+        self.config_card = QFrame()
+        self.config_card.setObjectName("NetworkCard")
+        self.config_card.setFrameShape(QFrame.Shape.StyledPanel)
+        config_layout = QVBoxLayout(self.config_card)
+        config_layout.setContentsMargins(25, 25, 25, 25)
+        config_layout.setSpacing(18)
+
+        # Card title
+        config_title = QLabel("📡 Server Configuration")
+        config_title.setObjectName("CardTitle")
+        config_layout.addWidget(config_title)
+
+        # Helper: Show this computer's IP
+        import socket
+
+        try:
+            local_ip = socket.gethostbyname(socket.gethostname())
+            if local_ip.startswith("127."):  # Fallback for localhost-only
+                import subprocess
+
+                result = subprocess.run(["hostname", "-I"], capture_output=True, text=True, timeout=1)
+                local_ip = result.stdout.split()[0] if result.stdout else "Unknown"
+        except Exception:
+            local_ip = "Unknown"
+
+        self.lbl_local_ip = QLabel(f"💡 This Computer's IP: {local_ip}")
+        self.lbl_local_ip.setObjectName("IPHelper")
+        config_layout.addWidget(self.lbl_local_ip)
+
+        # Compact grid layout for inputs (2 columns: label + input, stacked vertically)
+        grid_layout = QGridLayout()
+        grid_layout.setVerticalSpacing(12)
+        grid_layout.setHorizontalSpacing(10)
+        grid_layout.setColumnStretch(0, 0)  # Label column: fixed width
+        grid_layout.setColumnStretch(1, 1)  # Input column: stretches
+
+        # Row 0: Host IP
+        lbl_host = QLabel("Host IP:")
+        lbl_host.setObjectName("FormLabel")
         self.input_host = QLineEdit()
         self.input_host.setObjectName("InputNetwork")
-        self.input_host.setPlaceholderText("e.g., 192.168.1.100 or localhost")
-        credentials_layout.addRow("Host IP:", self.input_host)
+        self.input_host.setPlaceholderText("e.g., 192.168.1.100")
+        grid_layout.addWidget(lbl_host, 0, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        grid_layout.addWidget(self.input_host, 0, 1)
 
+        # Row 1: Port
+        lbl_port = QLabel("Port:")
+        lbl_port.setObjectName("FormLabel")
         self.input_port = QSpinBox()
         self.input_port.setObjectName("InputNetwork")
         self.input_port.setRange(1, 65535)
         self.input_port.setValue(5432)
-        credentials_layout.addRow("Port:", self.input_port)
+        grid_layout.addWidget(lbl_port, 1, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        grid_layout.addWidget(self.input_port, 1, 1)
 
+        # Row 2: Database Name
+        lbl_dbname = QLabel("Database Name:")
+        lbl_dbname.setObjectName("FormLabel")
         self.input_dbname = QLineEdit()
         self.input_dbname.setObjectName("InputNetwork")
-        self.input_dbname.setPlaceholderText("Database name")
-        credentials_layout.addRow("Database Name:", self.input_dbname)
+        self.input_dbname.setPlaceholderText("cbpos")
+        grid_layout.addWidget(lbl_dbname, 2, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        grid_layout.addWidget(self.input_dbname, 2, 1)
 
+        # Row 3: Username
+        lbl_user = QLabel("Username:")
+        lbl_user.setObjectName("FormLabel")
         self.input_user = QLineEdit()
         self.input_user.setObjectName("InputNetwork")
-        self.input_user.setPlaceholderText("Database username")
-        credentials_layout.addRow("Username:", self.input_user)
+        self.input_user.setPlaceholderText("postgres")
+        grid_layout.addWidget(lbl_user, 3, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        grid_layout.addWidget(self.input_user, 3, 1)
 
+        # Row 4: Password
+        lbl_password = QLabel("Password:")
+        lbl_password.setObjectName("FormLabel")
         self.input_password = QLineEdit()
         self.input_password.setObjectName("InputNetwork")
         self.input_password.setEchoMode(QLineEdit.EchoMode.Password)
-        self.input_password.setPlaceholderText("Database password")
-        credentials_layout.addRow("Password:", self.input_password)
+        self.input_password.setPlaceholderText("••••••••")
+        grid_layout.addWidget(lbl_password, 4, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        grid_layout.addWidget(self.input_password, 4, 1)
 
-        layout.addRow(self.grp_credentials)
+        config_layout.addLayout(grid_layout)
 
-        # Test Connection Button
-        self.btn_test = QPushButton("Test Connection")
-        self.btn_test.setObjectName("BtnTestConnection")
+        # Test Connection Button (full width)
+        test_btn_layout = QHBoxLayout()
+        self.btn_test = QPushButton("🔌 Test Connection")
+        self.btn_test.setObjectName("BtnTestNetwork")
         self.btn_test.clicked.connect(self._test_connection)
-        layout.addRow("", self.btn_test)
+        self.lbl_test_status = QLabel("")
+        self.lbl_test_status.setObjectName("TestStatus")
+        test_btn_layout.addWidget(self.btn_test)
+        test_btn_layout.addWidget(self.lbl_test_status, 1)
+        config_layout.addLayout(test_btn_layout)
 
-        # Add separator
-        separator2 = QFrame()
-        separator2.setFrameShape(QFrame.Shape.HLine)
-        separator2.setFrameShadow(QFrame.Shadow.Sunken)
-        layout.addRow(separator2)
+        main_layout.addWidget(self.config_card)
 
-        # Migration Section (One-Click Data Upload)
-        self.grp_migration = QGroupBox("One-Click Data Migration")
-        self.grp_migration.setObjectName("NetworkMigrationGroup")
-        migration_layout = QVBoxLayout(self.grp_migration)
+        # === CARD 3: Data Migration Card (The Magic Section) ===
+        self.migration_card = QFrame()
+        self.migration_card.setObjectName("MigrationCard")
+        self.migration_card.setFrameShape(QFrame.Shape.StyledPanel)
+        migration_layout = QVBoxLayout(self.migration_card)
+        migration_layout.setContentsMargins(25, 25, 25, 25)
+        migration_layout.setSpacing(18)
 
-        self.lbl_migration_info = QLabel(
-            "Transfer your local data (products, customers, sales) to the network server automatically.\n\n"
-            "⚠ This will copy ALL data from your local SQLite database to the PostgreSQL server.\n"
-            "The target database must be empty."
+        migration_title = QLabel("🚀 First-Time Server Setup")
+        migration_title.setObjectName("CardTitle")
+        migration_layout.addWidget(migration_title)
+
+        migration_info = QLabel(
+            "Setting up the Main Server? Upload your current data to get started.\n\n"
+            "This will transfer all products, customers, and sales history to the network database.\n"
+            "⚠ The target database must be empty."
         )
-        self.lbl_migration_info.setWordWrap(True)
-        self.lbl_migration_info.setObjectName("MigrationInfoLabel")
-        migration_layout.addWidget(self.lbl_migration_info)
+        migration_info.setWordWrap(True)
+        migration_info.setObjectName("MigrationInfo")
+        migration_layout.addWidget(migration_info)
 
-        self.btn_migrate = QPushButton("🚀 Upload Local Data to Server")
+        self.btn_migrate = QPushButton("📤 Upload Local Data to Server")
         self.btn_migrate.setObjectName("BtnMigrate")
+        self.btn_migrate.setEnabled(False)  # Disabled until connection test passes
         self.btn_migrate.clicked.connect(self._migrate_data)
         migration_layout.addWidget(self.btn_migrate)
 
-        layout.addRow(self.grp_migration)
+        main_layout.addWidget(self.migration_card)
 
-        # Warning label
-        self.lbl_warning = QLabel(
-            "⚠ Warning: Changing database mode requires application restart. "
-            "Ensure PostgreSQL server is accessible before switching to Network mode."
-        )
+        # Warning footer
+        self.lbl_warning = QLabel("⚠ Changing database mode requires application restart.")
+        self.lbl_warning.setObjectName("NetworkWarning")
         self.lbl_warning.setWordWrap(True)
-        self.lbl_warning.setObjectName("NetworkWarningLabel")
-        layout.addRow(self.lbl_warning)
+        main_layout.addWidget(self.lbl_warning)
 
-        container.addWidget(form_widget)
+        # Initialize visibility
+        self._on_mode_changed("Standalone")
 
     def load(self, settings: dict):
         """Load network settings into UI."""
@@ -821,40 +912,73 @@ class NetworkPage(SettingsPage):
         }
 
     def _on_mode_changed(self, mode: str):
-        """Show/hide credentials group based on selected mode."""
+        """Update UI based on selected mode - show/hide cards and update status."""
         is_network = mode == "Network"
-        self.grp_credentials.setVisible(is_network)
-        self.btn_test.setVisible(is_network)
-        self.grp_migration.setVisible(is_network)
+
+        # Update Hero Status Card
+        if is_network:
+            self.lbl_mode_icon.setText("🌐")
+            self.lbl_status_title.setText("Network Mode")
+            self.lbl_status_subtitle.setText("Multi-Terminal • Shared Database")
+        else:
+            self.lbl_mode_icon.setText("💻")
+            self.lbl_status_title.setText("Single Computer Mode")
+            self.lbl_status_subtitle.setText("Standalone • Local Database")
+
+        # Show/hide configuration and migration cards
+        self.config_card.setVisible(is_network)
+        self.migration_card.setVisible(is_network)
+
+        # Reset connection test status
+        self.connection_tested = False
+        self.btn_migrate.setEnabled(False)
+        self.lbl_test_status.setText("")
 
     def _test_connection(self):
-        """Test database connection with current credentials."""
+        """Test database connection with current credentials and update status."""
         from cbpos.core.database import Database
 
-        mode = "standalone" if self.cmb_db_mode.currentText() == "Standalone" else "network"
+        # Validate inputs
+        host = self.input_host.text().strip()
+        port = self.input_port.value()
+        dbname = self.input_dbname.text().strip()
+        user = self.input_user.text().strip()
+        password = self.input_password.text()
 
-        if mode == "network":
-            host = self.input_host.text().strip()
-            port = self.input_port.value()
-            dbname = self.input_dbname.text().strip()
-            user = self.input_user.text().strip()
-            password = self.input_password.text()
-
-            if not all([host, dbname, user]):
-                QMessageBox.warning(
-                    self, "Validation Error", "Please fill in all required fields (Host, Database Name, Username)."
-                )
-                return
-
-            success, message = Database.test_connection(
-                mode="network", host=host, port=port, dbname=dbname, user=user, password=password
+        if not all([host, dbname, user]):
+            QMessageBox.warning(
+                self,
+                "Validation Error",
+                "Please fill in all required fields (Host, Database Name, Username).",
             )
-        else:
-            success, message = Database.test_connection(mode="standalone")
+            return
+
+        # Show testing state
+        self.lbl_test_status.setText("⏳ Testing...")
+        self.btn_test.setEnabled(False)
+
+        # Process events to show the status
+        from PyQt6.QtWidgets import QApplication
+
+        QApplication.processEvents()
+
+        # Test connection
+        success, message = Database.test_connection(
+            mode="network", host=host, port=port, dbname=dbname, user=user, password=password
+        )
+
+        # Update status
+        self.btn_test.setEnabled(True)
 
         if success:
-            QMessageBox.information(self, "Connection Test", f"✓ {message}")
+            self.connection_tested = True
+            self.lbl_test_status.setText("✅ Connected")
+            self.btn_migrate.setEnabled(True)  # Enable migration button
+            QMessageBox.information(self, "Connection Test", f"✓ {message}\n\nYou can now upload your data.")
         else:
+            self.connection_tested = False
+            self.lbl_test_status.setText("❌ Failed")
+            self.btn_migrate.setEnabled(False)
             QMessageBox.critical(self, "Connection Test", f"✗ {message}")
 
     def _migrate_data(self):

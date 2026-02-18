@@ -17,16 +17,21 @@ from PyQt6.QtWidgets import (
     QTimeEdit,
     QFrame,
     QMessageBox,
+    QApplication,
+    QProgressDialog,
 )
 from PyQt6.QtCore import Qt, QTime
 from PyQt6.QtPrintSupport import QPrinterInfo
+from sqlalchemy.engine import URL
 from cbpos.core.services.language_service import LanguageService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.user_service import UserService
 from cbpos.ui.dialogs.receipt_preview_dialog import ReceiptPreviewDialog
 from cbpos.core.models import Sale, SaleItem, Product
+from cbpos.config import Config
 import decimal
+import socket
 
 
 class SettingsPage(QWidget):
@@ -760,18 +765,15 @@ class NetworkPage(SettingsPage):
         config_title.setObjectName("CardTitle")
         config_layout.addWidget(config_title)
 
-        # Helper: Show this computer's IP
-        import socket
-
+        # Helper: Show this computer's IP (cross-platform UDP socket trick)
         try:
-            local_ip = socket.gethostbyname(socket.gethostname())
-            if local_ip.startswith("127."):  # Fallback for localhost-only
-                import subprocess
-
-                result = subprocess.run(["hostname", "-I"], capture_output=True, text=True, timeout=1)
-                local_ip = result.stdout.split()[0] if result.stdout else "Unknown"
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                # Connect to a public DNS server (Google's) to determine the routing IP
+                # This doesn't actually send a packet
+                s.connect(("8.8.8.8", 80))
+                local_ip = s.getsockname()[0]
         except Exception:
-            local_ip = "Unknown"
+            local_ip = "127.0.0.1"  # Safe fallback
 
         self.lbl_local_ip = QLabel(f"💡 This Computer's IP: {local_ip}")
         self.lbl_local_ip.setObjectName("IPHelper")
@@ -983,10 +985,7 @@ class NetworkPage(SettingsPage):
 
     def _migrate_data(self):
         """Migrate data from local SQLite to PostgreSQL server."""
-        from PyQt6.QtWidgets import QProgressDialog
-        from PyQt6.QtCore import Qt
         from cbpos.core.services.migration_service import MigrationService
-        from cbpos.config import Config
 
         # Validate inputs
         host = self.input_host.text().strip()
@@ -1021,7 +1020,17 @@ class NetworkPage(SettingsPage):
 
         # Build database URLs
         sqlite_url = Config.DB_URI
-        postgres_url = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}"
+
+        # Use SQLAlchemy URL.create to safely handle special characters in password
+        url_obj = URL.create(
+            drivername="postgresql+psycopg2",
+            username=user,
+            password=password,
+            host=host,
+            port=port,
+            database=dbname,
+        )
+        postgres_url = url_obj.render_as_string(hide_password=False)
 
         # Show progress dialog
         progress = QProgressDialog("Migrating data to server...\nPlease wait.", None, 0, 0, self)
@@ -1032,8 +1041,6 @@ class NetworkPage(SettingsPage):
         progress.show()
 
         # Process events to ensure dialog appears
-        from PyQt6.QtWidgets import QApplication
-
         QApplication.processEvents()
 
         try:

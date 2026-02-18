@@ -86,6 +86,10 @@ class MigrationService:
         Returns:
             Tuple of (success: bool, message: str)
         """
+        # Initialize engines as None for proper cleanup in finally block
+        source_engine = None
+        target_engine = None
+
         try:
             # 1. Create engines
             source_engine = create_engine(sqlite_url, echo=False)
@@ -135,20 +139,19 @@ class MigrationService:
                 for model in MigrationService.MIGRATION_ORDER:
                     table_name = model.__tablename__
 
-                    # Query all records from source
-                    records = src_session.query(model).all()
+                    # Stream records in batches to avoid OOM with large datasets
+                    query = src_session.query(model)
+                    record_count = 0
 
-                    if not records:
-                        continue  # Skip empty tables
-
-                    # Use merge to preserve IDs and handle relationships
-                    for record in records:
+                    # Process 1000 records at a time to prevent memory exhaustion
+                    for record in query.yield_per(1000):
                         # Detach from source session to avoid conflicts
                         src_session.expunge(record)
                         # Merge into target (preserves primary key)
                         tgt_session.merge(record)
+                        record_count += 1
 
-                    total_records += len(records)
+                    total_records += record_count
 
                 # Commit all data
                 tgt_session.commit()
@@ -200,9 +203,9 @@ class MigrationService:
             return False, f"Migration setup error: {str(e)}"
         finally:
             # Dispose engines to close all connections
-            if "source_engine" in locals():
+            if source_engine:
                 source_engine.dispose()
-            if "target_engine" in locals():
+            if target_engine:
                 target_engine.dispose()
 
     @staticmethod

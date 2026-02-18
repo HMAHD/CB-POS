@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from typing import Generator, Optional
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import URL
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
 from sqlalchemy.pool import QueuePool
 from cbpos.config import Config
@@ -66,7 +67,16 @@ class Database:
         user = ConfigService.get("network_db_user") or "postgres"
         password = ConfigService.get("network_db_password") or ""
 
-        return f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}"
+        # Use SQLAlchemy URL.create to safely handle special characters in password
+        url_obj = URL.create(
+            drivername="postgresql+psycopg2",
+            username=user,
+            password=password,
+            host=host,
+            port=port,
+            database=dbname,
+        )
+        return url_obj.render_as_string(hide_password=False)
 
     @staticmethod
     def test_connection(
@@ -99,7 +109,16 @@ class Database:
                 if not all([host, port, dbname, user]):
                     return False, "Missing required connection parameters"
 
-                test_uri = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}"
+                # Use SQLAlchemy URL.create to safely handle special characters in password
+                url_obj = URL.create(
+                    drivername="postgresql+psycopg2",
+                    username=user,
+                    password=password,
+                    host=host,
+                    port=port,
+                    database=dbname,
+                )
+                test_uri = url_obj.render_as_string(hide_password=False)
                 test_engine = create_engine(test_uri, echo=False, pool_pre_ping=True)
 
             # Test connection

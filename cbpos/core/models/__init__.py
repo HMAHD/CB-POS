@@ -119,7 +119,7 @@ class Document(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     document_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     type: Mapped[str] = mapped_column(String(20), nullable=False)
-    date: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    date: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     status: Mapped[str] = mapped_column(String(20), default="COMPLETED")  # COMPLETED, VOID, DRAFT
     reference_external: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -325,9 +325,9 @@ class StockMovement(Base):
     __tablename__ = "stock_movements"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)
     qty_change: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
     balance_after: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
     document_id: Mapped[Optional[int]] = mapped_column(ForeignKey("documents.id"), nullable=True)

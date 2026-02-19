@@ -82,6 +82,6 @@ class DashboardService:
                 if hour is not None:
                     h_idx = int(hour)
                     if 0 <= h_idx < 24:
-                        sales_by_hour[h_idx] = float(total) if total else 0
+                        sales_by_hour[h_idx] = str(total) if total else 0
 
             return sales_by_hour

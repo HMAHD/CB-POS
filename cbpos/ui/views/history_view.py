@@ -14,14 +14,10 @@ from PyQt6.QtWidgets import (
     QSplitter,
 )
 from PyQt6.QtCore import Qt, QDate
-from cbpos.core.database import Database
-from cbpos.core.models import Sale
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.core.services.auth_service import AuthService
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
-from sqlalchemy.orm import joinedload
-from cbpos.core.models import SaleItem
 
 
 class HistoryView(QWidget):
@@ -131,33 +127,13 @@ class HistoryView(QWidget):
         """Apply date range and search filters"""
         from_date = self.from_date.date().toPyDate()
         to_date = self.to_date.date().toPyDate()
-        search_term = self.search_input.text().strip()
+        search_term = self.search_input.text().strip() or None
 
-        db = Database()
-        with db.get_session() as session:
-            query = session.query(Sale).filter(
-                Sale.date >= datetime.combine(from_date, datetime.min.time()),
-                Sale.date <= datetime.combine(to_date, datetime.max.time()),
-            )
-
-            if search_term:
-                query = query.filter(
-                    (Sale.document_number.like(f"%{search_term}%")) | (Sale.customer.has(name=search_term))
-                )
-
-            sales = (
-                query.options(
-                    joinedload(Sale.user),
-                    joinedload(Sale.customer),
-                    joinedload(Sale.items).joinedload(SaleItem.product),
-                )
-                .order_by(Sale.date.desc())
-                .all()
-            )
-
-            # Detach from session
-            for sale in sales:
-                session.expunge(sale)
+        sales = TransactionService.get_sales_history(
+            from_date=datetime.combine(from_date, datetime.min.time()),
+            to_date=datetime.combine(to_date, datetime.max.time()),
+            search_term=search_term,
+        )
 
         self.populate_table(sales)
 
@@ -210,16 +186,13 @@ class HistoryView(QWidget):
         sale_id = self.transaction_table.item(selected_rows[0].row(), 0).data(Qt.ItemDataRole.UserRole)
 
         # Load sale details
-        db = Database()
-        with db.get_session() as session:
-            sale = session.query(Sale).get(sale_id)
-            if sale:
-                session.expunge(sale)
-                self.current_sale = sale
-                self.display_details(sale)
-                self.reprint_btn.setEnabled(True)
-                # Enable refund only for completed non-refund sales
-                self.refund_btn.setEnabled(sale.status == "COMPLETED" and sale.payment_method != "REFUND")
+        sale = TransactionService.get_sale_details(sale_id)
+        if sale:
+            self.current_sale = sale
+            self.display_details(sale)
+            self.reprint_btn.setEnabled(True)
+            # Enable refund only for completed non-refund sales
+            self.refund_btn.setEnabled(sale.status == "COMPLETED" and sale.payment_method != "REFUND")
 
     def display_details(self, sale):
         """Display sale details in details panel"""

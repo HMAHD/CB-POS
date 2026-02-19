@@ -1037,7 +1037,7 @@ class NetworkPage(SettingsPage):
             port=cfg["port"],
             database=cfg["dbname"],
         )
-        postgres_url = url_obj.render_as_string(hide_password=False)
+        postgres_url = url_obj
 
         # Show progress dialog
         progress = QProgressDialog("Migrating data to server...\nPlease wait.", None, 0, 0, self)

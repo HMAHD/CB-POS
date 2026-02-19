@@ -8,7 +8,6 @@ from cbpos.core.models import Product, StockMovement
 
 class StockService:
     @staticmethod
-    @staticmethod
     def record_movement(
         product_id: int,
         qty_change: Decimal,

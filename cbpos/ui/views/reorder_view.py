@@ -11,9 +11,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont, QColor
-from cbpos.core.database import Database
-from cbpos.core.models import Product
-from sqlalchemy import select
+from decimal import Decimal
+from cbpos.core.services.stock_service import StockService
 
 
 class ReorderView(QWidget):
@@ -26,7 +25,6 @@ class ReorderView(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.db = Database()
         self.init_ui()
         self.load_reorder_items()
 
@@ -104,54 +102,47 @@ class ReorderView(QWidget):
 
     def load_reorder_items(self):
         """Load products where stock_qty <= reorder_point."""
-        with self.db.get_session() as session:
-            # Query products that need reordering
-            products = session.scalars(
-                select(Product)
-                .where(Product.stock_qty <= Product.reorder_point)
-                .where(Product.is_active == True)  # noqa: E712
-                .order_by(Product.stock_qty)
-            ).all()
+        products = StockService.get_reorder_list()
 
-            self.table.setRowCount(len(products))
+        self.table.setRowCount(len(products))
 
-            for row, product in enumerate(products):
-                # Product Name
-                name_item = QTableWidgetItem(product.name_en)
-                if product.stock_qty <= 0:
-                    # Out of stock - Bold Red
-                    font = QFont()
-                    font.setBold(True)
-                    name_item.setFont(font)
-                    name_item.setForeground(QColor("#FF4136"))
-                self.table.setItem(row, 0, name_item)
+        for row, product in enumerate(products):
+            # Product Name
+            name_item = QTableWidgetItem(product.name_en)
+            if product.stock_qty <= 0:
+                # Out of stock - Bold Red
+                font = QFont()
+                font.setBold(True)
+                name_item.setFont(font)
+                name_item.setForeground(QColor("#FF4136"))
+            self.table.setItem(row, 0, name_item)
 
-                # Barcode
-                self.table.setItem(row, 1, QTableWidgetItem(product.barcode))
+            # Barcode
+            self.table.setItem(row, 1, QTableWidgetItem(product.barcode))
 
-                # Current Stock
-                stock_item = QTableWidgetItem("{0:.3f}".format(product.stock_qty))
-                stock_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                if product.stock_qty <= 0:
-                    stock_item.setForeground(QColor("#FF4136"))
-                self.table.setItem(row, 2, stock_item)
+            # Current Stock
+            stock_item = QTableWidgetItem("{0:.3f}".format(product.stock_qty))
+            stock_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            if product.stock_qty <= 0:
+                stock_item.setForeground(QColor("#FF4136"))
+            self.table.setItem(row, 2, stock_item)
 
-                # Reorder Point
-                reorder_item = QTableWidgetItem("{0:.3f}".format(product.reorder_point))
-                reorder_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                self.table.setItem(row, 3, reorder_item)
+            # Reorder Point
+            reorder_item = QTableWidgetItem("{0:.3f}".format(product.reorder_point))
+            reorder_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self.table.setItem(row, 3, reorder_item)
 
-                # Preferred Qty
-                preferred_item = QTableWidgetItem("{0:.3f}".format(product.preferred_qty))
-                preferred_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                self.table.setItem(row, 4, preferred_item)
+            # Preferred Qty
+            preferred_item = QTableWidgetItem("{0:.3f}".format(product.preferred_qty))
+            preferred_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self.table.setItem(row, 4, preferred_item)
 
-                # Supplier (first one if exists)
-                supplier_name = product.suppliers[0].name if product.suppliers else "No Supplier"
-                self.table.setItem(row, 5, QTableWidgetItem(supplier_name))
+            # Supplier (first one if exists)
+            supplier_name = product.suppliers[0].name if product.suppliers else "No Supplier"
+            self.table.setItem(row, 5, QTableWidgetItem(supplier_name))
 
-                # Store product ID in row data
-                self.table.item(row, 0).setData(Qt.ItemDataRole.UserRole, product.id)
+            # Store product ID in row data
+            self.table.item(row, 0).setData(Qt.ItemDataRole.UserRole, product.id)
 
     def create_purchase_order(self):
         """
@@ -168,26 +159,26 @@ class ReorderView(QWidget):
             )
             return
 
-        # Collect items with calculated order quantities
+        # Collect items with calculated order quantities from table data
         po_items = []
-        with self.db.get_session() as session:
-            for row in sorted(selected_rows):
-                product_id = self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
-                product = session.get(Product, product_id)
+        for row in sorted(selected_rows):
+            product_id = self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
+            product_name = self.table.item(row, 0).text()
+            current_stock = Decimal(self.table.item(row, 2).text())
+            preferred_qty = Decimal(self.table.item(row, 4).text())
+            supplier = self.table.item(row, 5).text()
 
-                if product:
-                    # Calculate order qty = Preferred - Current
-                    order_qty = max(product.preferred_qty - product.stock_qty, 0)
+            order_qty = max(preferred_qty - current_stock, Decimal("0"))
 
-                    po_items.append(
-                        {
-                            "product_id": product.id,
-                            "product_name": product.name_en,
-                            "current_stock": product.stock_qty,
-                            "order_qty": order_qty,
-                            "supplier": (product.suppliers[0].name if product.suppliers else ""),
-                        }
-                    )
+            po_items.append(
+                {
+                    "product_id": product_id,
+                    "product_name": product_name,
+                    "current_stock": current_stock,
+                    "order_qty": order_qty,
+                    "supplier": supplier if supplier != "No Supplier" else "",
+                }
+            )
 
         # Emit signal to navigate to Purchase View with items
         self.navigate_to_purchase.emit(po_items)

@@ -76,7 +76,7 @@ class Database:
             port=port,
             database=dbname,
         )
-        return url_obj.render_as_string(hide_password=False)
+        return url_obj
 
     @staticmethod
     def test_connection(
@@ -118,8 +118,7 @@ class Database:
                     port=port,
                     database=dbname,
                 )
-                test_uri = url_obj.render_as_string(hide_password=False)
-                test_engine = create_engine(test_uri, echo=False, pool_pre_ping=True)
+                test_engine = create_engine(url_obj, echo=False, pool_pre_ping=True)
 
             # Test connection
             with test_engine.connect() as conn:

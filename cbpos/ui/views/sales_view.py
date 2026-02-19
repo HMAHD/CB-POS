@@ -80,9 +80,7 @@ class SalesView(QWidget):
         self.update_logo()  # Set initial logo
 
         self.lbl_logo.setStyleSheet("background: transparent;")
-        self.lbl_logo.setAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-        )
+        self.lbl_logo.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         header_layout.addWidget(self.lbl_logo)
 
         # Register callback to update logo when theme changes
@@ -171,15 +169,15 @@ class SalesView(QWidget):
 
         # Optimized column sizing for better readability
         self.cart_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)  # Item - flexible
-        self.cart_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)    # Price - fixed
-        self.cart_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)    # Qty - fixed
-        self.cart_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)    # Disc - fixed
-        self.cart_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)    # Total - fixed
+        self.cart_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)  # Price - fixed
+        self.cart_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)  # Qty - fixed
+        self.cart_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)  # Disc - fixed
+        self.cart_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)  # Total - fixed
 
         # Set fixed widths for numeric columns (better alignment)
         self.cart_table.setColumnWidth(1, 100)  # Price
-        self.cart_table.setColumnWidth(2, 80)   # Qty
-        self.cart_table.setColumnWidth(3, 60)   # Disc
+        self.cart_table.setColumnWidth(2, 80)  # Qty
+        self.cart_table.setColumnWidth(3, 60)  # Disc
         self.cart_table.setColumnWidth(4, 120)  # Total
 
         # Set object name for CSS targeting
@@ -233,9 +231,7 @@ class SalesView(QWidget):
         # Grand Total (Right)
         self.total_label = QLabel("0.00")
         self.total_label.setStyleSheet("background: transparent;")
-        self.total_label.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
+        self.total_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.total_label.setObjectName("TotalLabel")
         total_layout.addWidget(self.total_label)
 
@@ -263,12 +259,8 @@ class SalesView(QWidget):
         self.action_panel.action_more.connect(lambda: print("More"))  # Placeholder
 
         # Context Menu for Customer Button
-        self.action_panel.btn_cust_select.setContextMenuPolicy(
-            Qt.ContextMenuPolicy.CustomContextMenu
-        )
-        self.action_panel.btn_cust_select.customContextMenuRequested.connect(
-            self.show_customer_menu
-        )
+        self.action_panel.btn_cust_select.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.action_panel.btn_cust_select.customContextMenuRequested.connect(self.show_customer_menu)
         self.btn_cust = self.action_panel.btn_cust_select  # Alias for existing code
 
         # Add panels to splitter
@@ -302,11 +294,11 @@ class SalesView(QWidget):
             self.lbl_logo.setObjectName("LogoLabel")
 
         # Update hamburger menu icon (if it exists) - always white
-        if hasattr(self, 'menu_button'):
+        if hasattr(self, "menu_button"):
             self.menu_button.setIcon(Icons.get("fa5s.bars", "white"))
 
         # Update side menu icons (if it exists)
-        if hasattr(self, 'side_menu'):
+        if hasattr(self, "side_menu"):
             self.side_menu.update_all_icons()
 
     def update_cart_ui(self):
@@ -493,14 +485,8 @@ class SalesView(QWidget):
             # Price Display (Strikethrough if discounted/overridden)
             if item.get("original_price") and item["unit_price"] < item["original_price"]:
                 lbl_price = QLabel()
-                lbl_price.setText(
-                    "<s>{:.2f}</s> <b>{:.2f}</b>".format(
-                        item["original_price"], item["unit_price"]
-                    )
-                )
-                lbl_price.setAlignment(
-                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-                )
+                lbl_price.setText("<s>{:.2f}</s> <b>{:.2f}</b>".format(item["original_price"], item["unit_price"]))
+                lbl_price.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 lbl_price.setProperty("class", "StrikethroughPrice")
                 self.cart_table.setCellWidget(row, 1, lbl_price)
             else:
@@ -590,15 +576,10 @@ class SalesView(QWidget):
                     # Show Receipt Options if configured
                     settings = ConfigService.get_all()
                     if settings.get("show_receipt_dialog", "True") == "True":
-                        from cbpos.core.database import Database
-                        from cbpos.core.models import Sale
-
-                        db = Database()
-                        with db.get_session() as session:
-                            last_sale = session.query(Sale).order_by(Sale.id.desc()).first()
-                            if last_sale:
-                                dlg = ReceiptOptionsDialog(last_sale, self)
-                                dlg.exec()
+                        last_sale = TransactionService.get_last_sale()
+                        if last_sale:
+                            dlg = ReceiptOptionsDialog(last_sale, self)
+                            dlg.exec()
             except ValueError as e:
                 QMessageBox.warning(self, "Validation Error", str(e))
             except Exception as e:
@@ -617,19 +598,12 @@ class SalesView(QWidget):
             QMessageBox.critical(self, "Error", "Failed to hold bill.")
 
     def recall_bill(self):
-        from cbpos.core.database import Database
-        from cbpos.core.models import SuspendedTransaction
+        suspended = TransactionService.get_latest_suspended()
+        if not suspended:
+            QMessageBox.information(self, "Empty", "No held bills found.")
+            return
 
-        db = Database()
-        with db.get_session() as session:
-            suspended = session.query(SuspendedTransaction).order_by(SuspendedTransaction.timestamp.desc()).first()
-            if not suspended:
-                QMessageBox.information(self, "Empty", "No held bills found.")
-                return
-
-            sus_id = suspended.id
-
-        if TransactionService.recall_bill(sus_id, self.cart_service):
+        if TransactionService.recall_bill(suspended.id, self.cart_service):
             self.update_cart_display()
             QMessageBox.information(self, "Recalled", "Bill recalled.")
         else:
@@ -667,7 +641,6 @@ class SalesView(QWidget):
         if reply == QMessageBox.StandardButton.Yes:
             self.cart_service.clear()
             self.update_cart_display()
-            print(f"Cart Voided by {authorized_user.username}")
 
     # --- Phase 6: Advanced Search & Cart Enhancements ---
 

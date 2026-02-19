@@ -1,8 +1,11 @@
 import hashlib
+import logging
 from typing import Optional
 from sqlalchemy.orm import joinedload
 from cbpos.core.database import Database
 from cbpos.core.models import User
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -46,18 +49,20 @@ class AuthService:
                 # Log Login
                 try:
                     from cbpos.core.models import AuditLog
+                    from cbpos.core.services.config_service import ConfigService
 
+                    terminal_id = ConfigService.get("terminal_id") or "TERM-01"
                     log = AuditLog(
                         user_id=user.id,
                         action="User Login",
                         event_type="LOGIN",
-                        terminal_id="TERM-01",
+                        terminal_id=terminal_id,
                         details="Successful login via PIN",
                     )
                     session.add(log)
                     session.commit()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.error(f"Failed to write login audit log: {e}")
 
                 return user
         return None
@@ -75,17 +80,19 @@ class AuthService:
                 db = Database()
                 with db.get_session() as session:
                     from cbpos.core.models import AuditLog
+                    from cbpos.core.services.config_service import ConfigService
 
+                    terminal_id = ConfigService.get("terminal_id") or "TERM-01"
                     log = AuditLog(
                         user_id=AuthService._current_user.id,
                         action="User Logout",
                         event_type="LOGOUT",
-                        terminal_id="TERM-01",
+                        terminal_id=terminal_id,
                         details="Manual logout",
                     )
                     session.add(log)
                     session.commit()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"Failed to write logout audit log: {e}")
 
         AuthService._current_user = None

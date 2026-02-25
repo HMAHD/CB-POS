@@ -51,10 +51,11 @@ class ReceiptBuilder:
 
         # 3. Sale Details
         commands.append({"type": "text", "val": f"Receipt #: {sale.id}", "align": "left"})
+        date_str = sale.date.strftime("%Y-%m-%d %H:%M") if sale.date else "N/A"
         commands.append(
             {
                 "type": "text",
-                "val": f"Date: {sale.date.strftime('%Y-%m-%d %H:%M')}",
+                "val": f"Date: {date_str}",
                 "align": "left",
             }
         )

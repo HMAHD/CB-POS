@@ -15,11 +15,6 @@
     font-family: "{{FONT_FAMILY}}", "Noto Sans", "Segoe UI", sans-serif;
 }
 
-QLabel#BadgeLabel {
-    color: #00BCEB;
-    font-weight: bold;
-}
-
 QLabel.PlaceholderLabel {
     color: #AAAAAA;
 }

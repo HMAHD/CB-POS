@@ -115,13 +115,6 @@ class ManagementView(QWidget):
         self.btn_pos.clicked.connect(self.request_pos_view.emit)
         user_profile_layout.addWidget(self.btn_pos)
 
-        # User Info (Badge) - Hidden for clean UI
-        self.lbl_badge = QLabel()
-        self.lbl_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_badge.setFixedHeight(0)  # Hidden - no height
-        self.lbl_badge.setVisible(False)  # Completely hidden
-        user_profile_layout.addWidget(self.lbl_badge)
-
         self.btn_logout = SidebarButton("   Logout", Icons.LOGOUT)
         self.btn_logout.setObjectName("BtnLogout")  # Special Styling
         self.btn_logout.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
@@ -233,39 +226,8 @@ class ManagementView(QWidget):
     def set_user(self, user):
         self.user = user
 
-        # Badge Logic
-        role = user.role.name.lower() if user.role else "cashier"
-        badge_filename = ""
-
-        if "admin" in role:
-            badge_filename = "admin.png"
-        elif "manager" in role or "mod" in role:
-            badge_filename = "mod.png"
-
-        if badge_filename:
-            # Use Config.BASE_DIR for reliable path resolution (works in packaged apps)
-            from cbpos.config import Config
-
-            badge_path = Config.BASE_DIR / "cbpos" / "ui" / "assets" / "badge" / badge_filename
-            logger.debug("Loading Badge from: %s", badge_path)
-
-            if badge_path.exists():
-                pix = QPixmap(str(badge_path))
-                if not pix.isNull():
-                    self.lbl_badge.setPixmap(pix.scaledToHeight(40, Qt.TransformationMode.SmoothTransformation))
-                    self.lbl_badge.setVisible(not self.is_collapsed)
-                    self.lbl_badge.setText("")  # Clear text
-                else:
-                    self.lbl_badge.setText(f"[{role.upper()}]")
-                    self.lbl_badge.setObjectName("BadgeLabel")
-            else:
-                logger.warning("Badge not found at %s", badge_path)
-                self.lbl_badge.setText(f"[{role.upper()}]")
-                self.lbl_badge.setObjectName("BadgeLabel")
-        else:
-            self.lbl_badge.clear()
-
         # Permission check for Users tab
+        role = user.role.name.lower() if user.role else "cashier"
         is_admin = "admin" in role
         self.btn_users.setVisible(is_admin)
         self.btn_pricelists.setVisible(is_admin)
@@ -281,16 +243,12 @@ class ManagementView(QWidget):
             # Expand
             end_width = 250
             self.lbl_logo.setVisible(True)
-            # Only show badge if it has content (pixmap or text)
-            if self.lbl_badge.pixmap() or self.lbl_badge.text():
-                self.lbl_badge.setVisible(True)
             style = Qt.ToolButtonStyle.ToolButtonTextBesideIcon
             self.is_collapsed = False
         else:
             # Collapse
             end_width = 70
             self.lbl_logo.setVisible(False)
-            self.lbl_badge.setVisible(False)
             style = Qt.ToolButtonStyle.ToolButtonIconOnly
             self.is_collapsed = True
 

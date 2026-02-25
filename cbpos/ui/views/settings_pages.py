@@ -534,9 +534,12 @@ class ReceiptPage(SettingsPage):
         }
 
     def preview_receipt(self):
+        from datetime import datetime
+
         # Create a dummy sale for preview
         dummy_sale = Sale(
             id=12345,
+            date=datetime.now(),
             total_amount=decimal.Decimal("1500.00"),
             tax_vat=decimal.Decimal("228.81"),
             tax_sscl=decimal.Decimal("37.50"),

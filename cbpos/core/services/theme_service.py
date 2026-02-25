@@ -1,9 +1,11 @@
+import logging
 import os
-from pathlib import Path
 from PyQt6.QtWidgets import QApplication
 from cbpos.infrastructure.resource_loader import ResourceLoader
 from cbpos.core.services.config_service import ConfigService
 from cbpos.config import Config
+
+logger = logging.getLogger(__name__)
 
 
 class ThemeService:
@@ -26,10 +28,7 @@ class ThemeService:
         ThemeService.current_theme = theme_name
         theme_file = "dark.qss" if theme_name.lower() == "dark" else "light.qss"
 
-        # Resolve path relative to this file
-        # cbpos/core/services/theme_service.py -> cbpos/ui/styles/
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        style_path = os.path.join(base_dir, "ui", "styles", theme_file)
+        style_path = os.path.join(str(Config.BASE_DIR), "cbpos", "ui", "styles", theme_file)
 
         try:
             with open(style_path, "r", encoding="utf-8") as f:
@@ -60,12 +59,12 @@ class ThemeService:
                 try:
                     callback()
                 except Exception as e:
-                    print(f"Error in theme change callback: {e}")
+                    logger.error("Error in theme change callback: %s", e)
 
         except FileNotFoundError:
-            print(f"Error: Theme file not found at {style_path}")
+            logger.error("Theme file not found at %s", style_path)
         except Exception as e:
-            print(f"Error applying theme: {e}")
+            logger.error("Error applying theme: %s", e)
 
     @staticmethod
     def register_theme_callback(callback):

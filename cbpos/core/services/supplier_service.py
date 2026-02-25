@@ -1,7 +1,7 @@
 from typing import List, Optional
 from sqlalchemy import select
 from cbpos.core.models import Supplier
-from cbpos.core.database import get_db_session
+from cbpos.core.database import Database
 
 
 class SupplierService:
@@ -22,7 +22,8 @@ class SupplierService:
         """
         Create a new supplier.
         """
-        with get_db_session() as session:
+        db = Database()
+        with db.get_session() as session:
             supplier = Supplier(
                 company_name=company_name,
                 phone=phone,
@@ -52,7 +53,8 @@ class SupplierService:
         """
         Update an existing supplier.
         """
-        with get_db_session() as session:
+        db = Database()
+        with db.get_session() as session:
             supplier = session.get(Supplier, supplier_id)
             if not supplier:
                 return None
@@ -83,7 +85,8 @@ class SupplierService:
         """
         Get all suppliers.
         """
-        with get_db_session() as session:
+        db = Database()
+        with db.get_session() as session:
             stmt = select(Supplier)
             if active_only:
                 stmt = stmt.where(Supplier.is_active.is_(True))
@@ -94,7 +97,8 @@ class SupplierService:
         """
         Search suppliers by name, phone, or contact person.
         """
-        with get_db_session() as session:
+        db = Database()
+        with db.get_session() as session:
             stmt = select(Supplier).where(
                 (Supplier.company_name.ilike(f"%{query}%"))
                 | (Supplier.phone.ilike(f"%{query}%"))
@@ -107,5 +111,6 @@ class SupplierService:
         """
         Get a supplier by ID.
         """
-        with get_db_session() as session:
+        db = Database()
+        with db.get_session() as session:
             return session.get(Supplier, supplier_id)

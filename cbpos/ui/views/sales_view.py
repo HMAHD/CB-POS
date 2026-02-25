@@ -1,3 +1,4 @@
+import logging
 from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
@@ -33,9 +34,10 @@ from cbpos.core.services.customer_service import CustomerService
 from cbpos.ui.widgets.order_bar import OrderBar
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.side_menu import SideMenu
-from pathlib import Path
 from cbpos.ui.widgets.action_panel import ActionPanel
 from cbpos.core.utils.formatters import format_currency
+
+logger = logging.getLogger(__name__)
 
 
 class SalesView(QWidget):
@@ -253,10 +255,10 @@ class SalesView(QWidget):
         self.action_panel.action_f4.connect(self.change_line_quantity)
         self.action_panel.action_f6.connect(self.hold_bill)
         self.action_panel.action_f7.connect(self.recall_bill)
-        self.action_panel.action_f8.connect(lambda: print("Drawer"))  # Placeholder
+        self.action_panel.action_f8.connect(lambda: logger.debug("Drawer action not implemented"))
         self.action_panel.action_del.connect(self.void_bill)
-        self.action_panel.action_ref.connect(lambda: print("Refund"))  # Placeholder
-        self.action_panel.action_more.connect(lambda: print("More"))  # Placeholder
+        self.action_panel.action_ref.connect(lambda: logger.debug("Refund action not implemented"))
+        self.action_panel.action_more.connect(lambda: logger.debug("More action not implemented"))
 
         # Context Menu for Customer Button
         self.action_panel.btn_cust_select.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -616,7 +618,7 @@ class SalesView(QWidget):
         from cbpos.ui.dialogs.manager_override_dialog import ManagerOverrideDialog
 
         current_user = AuthService.get_current_user()
-        authorized_user = current_user
+        authorized_user = current_user  # noqa: F841
 
         # If cart is empty, nothing to void
         if not self.cart_service.items:
@@ -626,7 +628,7 @@ class SalesView(QWidget):
             # Request Override
             dialog = ManagerOverrideDialog("can_void_sale", self)
             if dialog.exec():
-                authorized_user = dialog.authorized_user
+                authorized_user = dialog.authorized_user  # noqa: F841
             else:
                 return
 

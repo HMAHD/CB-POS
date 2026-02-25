@@ -1,5 +1,9 @@
+import logging
+
 from cbpos.core.database import Database
 from cbpos.core.models import AuditLog
+
+logger = logging.getLogger(__name__)
 
 
 class LoggingService:
@@ -19,14 +23,9 @@ class LoggingService:
             details (str): Additional details (optional).
         """
         db = Database()
-        # Use a fresh session to ensure independent commit
-        session = db.SessionLocal()
         try:
-            log = AuditLog(user_id=user_id, action=action, details=details)
-            session.add(log)
-            session.commit()
+            with db.get_session() as session:
+                log = AuditLog(user_id=user_id, action=action, details=details)
+                session.add(log)
         except Exception as e:
-            print(f"Failed to write audit log: {e}")
-            session.rollback()
-        finally:
-            session.close()
+            logger.error("Failed to write audit log: %s", e)

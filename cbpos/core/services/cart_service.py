@@ -1,7 +1,10 @@
+import logging
 from decimal import Decimal
 from typing import List, Dict, Any, Optional
 from cbpos.core.models import Product, Customer
 from cbpos.core.services.pricing_service import PricingService
+
+logger = logging.getLogger(__name__)
 
 
 class CartService:
@@ -69,7 +72,7 @@ class CartService:
         self.cart_discount_type = "NONE"
         self.cart_discount_value = Decimal("0.00")
 
-    def apply_line_discount(self, index: int, type: str, value: float):
+    def apply_line_discount(self, index: int, type: str, value: Decimal):
         """Apply discount to a specific line item."""
         if 0 <= index < len(self.items):
             item = self.items[index]
@@ -77,13 +80,13 @@ class CartService:
             item["discount_value"] = Decimal(str(value))
             self._recalculate_line(item)
 
-    def apply_cart_discount(self, type: str, value: float):
+    def apply_cart_discount(self, type: str, value: Decimal):
         """Apply discount to the entire cart."""
         self.cart_discount_type = type
         self.cart_discount_value = Decimal(str(value))
         # No line recalculation needed, just totals
 
-    def override_price(self, index: int, new_price: float, user: Any):
+    def override_price(self, index: int, new_price: Decimal, user: Any):
         """
         Override the price of a specific line item.
         Requires permission check (handled by caller or decorator).
@@ -96,8 +99,7 @@ class CartService:
             # Strategy: Keep discount, apply on new price.
             self._recalculate_line(item)
 
-            # TODO: Log to AuditLog (Infrastructure required)
-            print(f"AUDIT: Price Override by {user.username} - " f"Item {item['product'].name_en} to {new_price}")
+            logger.info("Price override by %s - Item %s to %s", user.username, item["product"].name_en, new_price)
 
     def _recalculate_line(self, item: Dict[str, Any]):
         """Recalculate the total for a single line item."""

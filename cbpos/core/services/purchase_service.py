@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Dict, Any, Optional
 from cbpos.core.models import Purchase, PurchaseItem, Product, StockMovement
-from cbpos.core.database import get_db_session
+from cbpos.core.database import Database
 from cbpos.core.services.document_service import DocumentService
 
 
@@ -27,7 +27,8 @@ class PurchaseService:
         # Generate internal GRN number
         document_number = DocumentService.generate_number("PURCHASE")
 
-        with get_db_session() as session:
+        db = Database()
+        with db.get_session() as session:
             purchase = Purchase(
                 document_number=document_number,
                 type="purchase",  # Polymorphic identity
@@ -55,7 +56,8 @@ class PurchaseService:
 
         items_data format: [{'product_id': int, 'qty': Decimal, 'cost': Decimal}]
         """
-        with get_db_session() as session:
+        db = Database()
+        with db.get_session() as session:
             purchase = session.get(Purchase, purchase_id)
             if not purchase:
                 raise ValueError("Purchase not found")
@@ -123,5 +125,6 @@ class PurchaseService:
 
     @staticmethod
     def get_purchase(purchase_id: int) -> Optional[Purchase]:
-        with get_db_session() as session:
+        db = Database()
+        with db.get_session() as session:
             return session.get(Purchase, purchase_id)

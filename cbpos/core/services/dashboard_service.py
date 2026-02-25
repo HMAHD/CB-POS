@@ -1,6 +1,7 @@
+from decimal import Decimal
 from sqlalchemy import func, extract
 from datetime import date
-from cbpos.core.database import get_db_session
+from cbpos.core.database import Database
 from cbpos.core.models import Sale, Product, Shift
 
 
@@ -10,7 +11,8 @@ class DashboardService:
         """
         Fetch Key Performance Indicators for the Dashboard.
         """
-        with get_db_session() as session:
+        db = Database()
+        with db.get_session() as session:
             today = date.today()
 
             # 1. Total Sales (Today)
@@ -44,7 +46,8 @@ class DashboardService:
         Get sales count grouped by hour for today.
         Returns a fixed-length list of 24 integers (0-23).
         """
-        with get_db_session() as session:
+        db = Database()
+        with db.get_session() as session:
             today = date.today()
 
             # Query sales grouped by hour
@@ -82,6 +85,6 @@ class DashboardService:
                 if hour is not None:
                     h_idx = int(hour)
                     if 0 <= h_idx < 24:
-                        sales_by_hour[h_idx] = str(total) if total else 0
+                        sales_by_hour[h_idx] = Decimal(str(total)) if total else Decimal("0")
 
             return sales_by_hour

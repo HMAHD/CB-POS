@@ -2,7 +2,7 @@ from decimal import Decimal
 from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from cbpos.core.database import get_db_session
+from cbpos.core.database import Database
 from cbpos.core.models import Product, StockMovement
 
 
@@ -31,7 +31,8 @@ class StockService:
                 commit=False,
             )
 
-        with get_db_session() as db_session:
+        db = Database()
+        with db.get_session() as db_session:
             return StockService._execute_movement(
                 db_session,
                 product_id,
@@ -102,7 +103,8 @@ class StockService:
     @staticmethod
     def get_history(product_id: int) -> List[StockMovement]:
         """Get stock movement history for a product."""
-        with get_db_session() as session:
+        db = Database()
+        with db.get_session() as session:
             stmt = (
                 select(StockMovement)
                 .where(StockMovement.product_id == product_id)
@@ -113,7 +115,8 @@ class StockService:
     @staticmethod
     def get_reorder_list() -> List[Product]:
         """Get list of products that need reordering."""
-        with get_db_session() as session:
+        db = Database()
+        with db.get_session() as session:
             stmt = select(Product).where(
                 Product.is_active.is_(True),
                 Product.is_service.is_(False),

@@ -1,7 +1,10 @@
+import logging
 from datetime import datetime
 from sqlalchemy import desc
 from cbpos.core.database import Database
 from cbpos.core.models import Document
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentService:
@@ -155,7 +158,7 @@ class DocumentService:
                     time.sleep(0.05)  # Small backoff
 
             except Exception as e:
-                print(f"Error generating document number: {e}")
+                logger.error("Error generating document number: %s", e)
                 if attempt == max_retries - 1:
                     # Fallback to UUID if all fails
                     import uuid

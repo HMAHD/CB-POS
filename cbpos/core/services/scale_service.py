@@ -18,6 +18,12 @@ class ScaleService:
     DEFAULT_PREFIX = "20"
     DEFAULT_DECIMAL_PLACES = 3
 
+    # EAN-13 barcode field positions (PP IIIII WWWWW C)
+    PRODUCT_ID_START = 2
+    PRODUCT_ID_END = 7
+    WEIGHT_START = 7
+    WEIGHT_END = 12
+
     @staticmethod
     def parse_barcode(
         barcode: str,
@@ -53,10 +59,8 @@ class ScaleService:
             return None
 
         try:
-            # Extract components
-            # Format: PP IIIII WWWWW C
-            product_id_str = barcode[2:7]  # 5 digits for product ID
-            weight_str = barcode[7:12]  # 5 digits for weight/price
+            product_id_str = barcode[ScaleService.PRODUCT_ID_START : ScaleService.PRODUCT_ID_END]
+            weight_str = barcode[ScaleService.WEIGHT_START : ScaleService.WEIGHT_END]
 
             # Validate checksum (EAN-13 algorithm)
             if not ScaleService._validate_ean13_checksum(barcode):

@@ -1,4 +1,3 @@
-import os
 from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
@@ -12,12 +11,11 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QIntValidator, QKeySequence, QShortcut
 from cbpos.core.services.auth_service import AuthService
-from cbpos.core.models import User
 from cbpos.config import Config
 
 
 class LoginView(QWidget):
-    login_success = pyqtSignal(User)
+    login_success = pyqtSignal(object)
 
     def __init__(self):
         super().__init__()
@@ -26,6 +24,7 @@ class LoginView(QWidget):
 
         # Register theme callback to update logo
         from cbpos.core.services.theme_service import ThemeService
+
         ThemeService.register_theme_callback(self.update_logo)
 
     def init_ui(self):
@@ -186,10 +185,8 @@ class LoginView(QWidget):
 
     def update_logo(self):
         """Update logo for login view (uses 02.png for both themes - navy background)."""
-        if not hasattr(self, 'logo_label') or self.logo_label is None:
+        if not hasattr(self, "logo_label") or self.logo_label is None:
             return
-
-        from pathlib import Path
 
         # Use 02.png for both themes since login left panel is navy blue in both
         logo_path = Config.BASE_DIR / "cbpos" / "assets" / "logo" / "02.png"

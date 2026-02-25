@@ -15,7 +15,10 @@ class PaymentService:
         """
         db = Database()
         with db.get_session() as session:
-            return session.query(PaymentMethod).all()
+            results = session.query(PaymentMethod).all()
+            for m in results:
+                session.expunge(m)
+            return results
 
     @staticmethod
     def get_active_methods() -> List[PaymentMethod]:
@@ -24,7 +27,10 @@ class PaymentService:
         """
         db = Database()
         with db.get_session() as session:
-            return session.query(PaymentMethod).filter(PaymentMethod.is_active.is_(True)).all()
+            results = session.query(PaymentMethod).filter(PaymentMethod.is_active.is_(True)).all()
+            for m in results:
+                session.expunge(m)
+            return results
 
     @staticmethod
     def create_method(

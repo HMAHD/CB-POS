@@ -95,13 +95,19 @@ class ProductService:
                     .limit(limit)
                 )
 
-            return list(session.scalars(stmt).all())
+            results = list(session.scalars(stmt).all())
+            for p in results:
+                session.expunge(p)
+            return results
 
     def get_all_products(self) -> List[Product]:
         """Get all active products."""
         with self.db.get_session() as session:
             stmt = select(Product).where(Product.is_active).order_by(Product.name_en)
-            return list(session.scalars(stmt).all())
+            results = list(session.scalars(stmt).all())
+            for p in results:
+                session.expunge(p)
+            return results
 
     def get_top_products(self, limit: int = 100) -> List[str]:
         """Get top N product names for autocomplete."""
@@ -117,7 +123,10 @@ class ProductService:
         db = Database()
         with db.get_session() as session:
             stmt = select(Category).order_by(Category.name)
-            return list(session.scalars(stmt).all())
+            results = list(session.scalars(stmt).all())
+            for c in results:
+                session.expunge(c)
+            return results
 
     @staticmethod
     def get_by_category(category_id: int) -> List[Product]:
@@ -127,7 +136,10 @@ class ProductService:
             stmt = (
                 select(Product).where(Product.category_id == category_id, Product.is_active).order_by(Product.name_en)
             )
-            return list(session.scalars(stmt).all())
+            results = list(session.scalars(stmt).all())
+            for p in results:
+                session.expunge(p)
+            return results
 
     @staticmethod
     def get_by_barcode(barcode: str):
@@ -156,7 +168,10 @@ class ProductService:
                 )
                 .limit(limit)
             )
-            return list(session.scalars(stmt).all())
+            results = list(session.scalars(stmt).all())
+            for p in results:
+                session.expunge(p)
+            return results
 
     @staticmethod
     def get_products_by_category(category_id: int) -> List[Product]:

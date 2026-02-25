@@ -1,5 +1,5 @@
-import os
-from pathlib import Path
+import logging
+
 from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
@@ -23,6 +23,8 @@ from cbpos.ui.views.user_view import UserView
 from cbpos.ui.views.pricelist_view import PriceListView
 from cbpos.ui.views.promotion_view import PromotionView
 from cbpos.ui.views.history_view import HistoryView
+
+logger = logging.getLogger(__name__)
 
 
 class ManagementView(QWidget):
@@ -162,6 +164,7 @@ class ManagementView(QWidget):
 
         # Register callback to update icons when theme changes
         from cbpos.core.services.theme_service import ThemeService
+
         ThemeService.register_theme_callback(self.update_sidebar_icons)
 
     def create_nav_button(self, text, icon, index):
@@ -242,8 +245,9 @@ class ManagementView(QWidget):
         if badge_filename:
             # Use Config.BASE_DIR for reliable path resolution (works in packaged apps)
             from cbpos.config import Config
+
             badge_path = Config.BASE_DIR / "cbpos" / "ui" / "assets" / "badge" / badge_filename
-            print(f"Loading Badge from: {badge_path}")
+            logger.debug("Loading Badge from: %s", badge_path)
 
             if badge_path.exists():
                 pix = QPixmap(str(badge_path))
@@ -255,7 +259,7 @@ class ManagementView(QWidget):
                     self.lbl_badge.setText(f"[{role.upper()}]")
                     self.lbl_badge.setObjectName("BadgeLabel")
             else:
-                print(f"WARNING: Badge not found at {badge_path}")
+                logger.warning("Badge not found at %s", badge_path)
                 self.lbl_badge.setText(f"[{role.upper()}]")
                 self.lbl_badge.setObjectName("BadgeLabel")
         else:
@@ -329,5 +333,5 @@ class ManagementView(QWidget):
         """
         buttons = self.nav_buttons + [self.btn_pos, self.btn_logout]
         for btn in buttons:
-            if hasattr(btn, 'update_icon'):
+            if hasattr(btn, "update_icon"):
                 btn.update_icon()

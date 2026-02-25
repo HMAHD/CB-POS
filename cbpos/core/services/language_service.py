@@ -1,6 +1,10 @@
+import logging
 import os
 from PyQt6.QtCore import QTranslator
 from PyQt6.QtWidgets import QApplication
+from cbpos.config import Config
+
+logger = logging.getLogger(__name__)
 
 
 class LanguageService:
@@ -34,9 +38,7 @@ class LanguageService:
         # Load new translator
         cls._translator = QTranslator()
 
-        # Path to translations: cbpos/ui/resources/translations/
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        translations_dir = os.path.join(base_dir, "ui", "resources", "translations")
+        translations_dir = os.path.join(str(Config.BASE_DIR), "cbpos", "ui", "resources", "translations")
 
         # Extract language code (e.g., 'si' from 'si_LK')
         lang_code = locale_code.split("_")[0] if "_" in locale_code else locale_code
@@ -47,7 +49,7 @@ class LanguageService:
         if cls._translator.load(path):
             app.installTranslator(cls._translator)
         else:
-            print(f"Warning: Could not load translation file: {path}")
+            logger.warning("Could not load translation file: %s", path)
 
     @staticmethod
     def get_available_languages() -> dict:

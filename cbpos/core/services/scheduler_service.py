@@ -1,3 +1,4 @@
+import logging
 import os
 import tempfile
 from datetime import datetime
@@ -5,6 +6,8 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.email_service import EmailService
 from cbpos.core.services.export_service import ExportService
 from cbpos.core.reports.definitions.sales_report import DailySalesSummaryReport
+
+logger = logging.getLogger(__name__)
 
 
 class SchedulerService:
@@ -49,7 +52,7 @@ class SchedulerService:
         if now.time() >= report_time:
             # Run Report
             try:
-                print("Running Auto-Report...")
+                logger.info("Running Auto-Report...")
                 report = DailySalesSummaryReport()
                 # Generate for today
                 filters = {"date_range": {"start": today_str, "end": today_str}}
@@ -71,10 +74,10 @@ class SchedulerService:
                         "Please find attached the daily sales summary.",
                         filepath,
                     )
-                    print(f"Auto-Report sent to {admin_email}")
+                    logger.info("Auto-Report sent to %s", admin_email)
 
                 # Update Last Run (even if empty, to avoid retrying every minute)
                 ConfigService.update("auto_report_last_run", today_str)
 
             except Exception as e:
-                print(f"Auto-Report Failed: {e}")
+                logger.error("Auto-Report Failed: %s", e)

@@ -1,3 +1,5 @@
+import logging
+
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -11,6 +13,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from cbpos.ui.widgets.info_card import InfoCard
 from cbpos.core.services.user_service import UserService
+
+logger = logging.getLogger(__name__)
 
 
 class DashboardView(QWidget):
@@ -100,7 +104,7 @@ class DashboardView(QWidget):
 
         # Fetch Hourly Sales (For Chart)
         hourly_sales = DashboardService.get_hourly_sales()
-        print(f"[DASHBOARD] Hourly Sales: {hourly_sales}")
+        logger.debug("Hourly Sales: %s", hourly_sales)
 
         # Refresh logs
         logs = UserService.get_recent_activity(limit=10)

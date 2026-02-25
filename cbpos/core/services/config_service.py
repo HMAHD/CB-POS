@@ -1,7 +1,10 @@
 import json
+import logging
 import os
 from typing import Dict, Any
 from cbpos.config import Config
+
+logger = logging.getLogger(__name__)
 
 
 class ConfigService:
@@ -85,7 +88,7 @@ class ConfigService:
                 with open(cls.SETTINGS_FILE, "r", encoding="utf-8") as f:
                     cls._settings = json.load(f)
             except Exception as e:
-                print(f"Error loading settings: {e}. Using defaults.")
+                logger.error("Error loading settings: %s. Using defaults.", e)
                 cls._settings = cls.DEFAULTS.copy()
         else:
             cls._settings = cls.DEFAULTS.copy()
@@ -98,7 +101,7 @@ class ConfigService:
             with open(cls.SETTINGS_FILE, "w", encoding="utf-8") as f:
                 json.dump(cls._settings, f, indent=4, ensure_ascii=False)
         except Exception as e:
-            print(f"Error saving settings: {e}")
+            logger.error("Error saving settings: %s", e)
 
     @classmethod
     def get(cls, key: str) -> Any:

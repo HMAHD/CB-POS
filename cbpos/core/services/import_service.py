@@ -1,7 +1,10 @@
 import csv
+import logging
 from decimal import Decimal, InvalidOperation
 from typing import Dict
 from cbpos.core.services.inventory_service import InventoryService
+
+logger = logging.getLogger(__name__)
 
 
 class ImportService:
@@ -78,10 +81,10 @@ class ImportService:
                         results["success"] += 1
 
                     except Exception as e:
-                        print(f"Error importing row: {e}")
+                        logger.error("Error importing row: %s", e)
                         results["failed"] += 1
         except Exception as e:
-            print(f"Error opening file: {e}")
+            logger.error("Error opening file: %s", e)
             return results
 
         return results

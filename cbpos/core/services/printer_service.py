@@ -1,8 +1,11 @@
+import logging
 import os
 import tempfile
 from cbpos.core.models import Sale
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.invoice_service import InvoiceService
+
+logger = logging.getLogger(__name__)
 
 
 class PrinterService:
@@ -44,7 +47,7 @@ class PrinterService:
             a4_printer = ConfigService.get("a4_printer_name")
 
             if not a4_printer:
-                print("[PrinterService] A4 printer not configured. Skipping invoice print.")
+                logger.warning("[PrinterService] A4 printer not configured. Skipping invoice print.")
                 return
 
             # Generate PDF in temp directory
@@ -53,13 +56,13 @@ class PrinterService:
 
             # Generate PDF
             InvoiceService.generate_pdf(sale, pdf_path)
-            print("[PrinterService] Generated A4 invoice: {0}".format(pdf_path))
+            logger.info("[PrinterService] Generated A4 invoice: {0}".format(pdf_path))
 
             # Print PDF (platform-specific)
             PrinterService._send_pdf_to_printer(pdf_path, a4_printer)
 
         except Exception as e:
-            print("[PrinterService] Error printing A4 invoice: {0}".format(e))
+            logger.error("[PrinterService] Error printing A4 invoice: {0}".format(e))
 
     @staticmethod
     def _print_thermal_receipt(sale: Sale) -> None:
@@ -77,7 +80,7 @@ class PrinterService:
             # Get receipt printer name
             receipt_printer = ConfigService.get("receipt_printer_name")
             if not receipt_printer:
-                print("[PrinterService] Receipt printer not configured. Skipping print.")
+                logger.warning("[PrinterService] Receipt printer not configured. Skipping print.")
                 return
 
             # Get number of copies
@@ -89,10 +92,10 @@ class PrinterService:
             # Print copies
             for i in range(copies):
                 PrinterService._send_to_thermal_printer(receipt_data, receipt_printer)
-                print("[PrinterService] Printed receipt copy {0}/{1}".format(i + 1, copies))
+                logger.warning("[PrinterService] Printed receipt copy {0}/{1}".format(i + 1, copies))
 
         except Exception as e:
-            print("[PrinterService] Error printing thermal receipt: {0}".format(e))
+            logger.error("[PrinterService] Error printing thermal receipt: {0}".format(e))
 
     @staticmethod
     def _format_receipt(sale: Sale) -> bytes:
@@ -192,9 +195,9 @@ class PrinterService:
                 ],
                 check=True,
             )
-            print("[PrinterService] Sent PDF to printer: {0}".format(printer_name))
+            logger.info("[PrinterService] Sent PDF to printer: {0}".format(printer_name))
         except Exception as e:
-            print("[PrinterService] Error sending PDF to printer: {0}".format(e))
+            logger.error("[PrinterService] Error sending PDF to printer: {0}".format(e))
 
     @staticmethod
     def _send_to_thermal_printer(data: bytes, printer_name: str) -> None:
@@ -227,7 +230,7 @@ class PrinterService:
             )
 
             os.unlink(temp_file.name)
-            print("[PrinterService] Sent receipt to thermal printer: {0}".format(printer_name))
+            logger.info("[PrinterService] Sent receipt to thermal printer: {0}".format(printer_name))
 
         except Exception as e:
-            print("[PrinterService] Error sending to thermal printer: {0}".format(e))
+            logger.error("[PrinterService] Error sending to thermal printer: {0}".format(e))

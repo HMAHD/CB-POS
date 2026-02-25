@@ -53,6 +53,7 @@ class InventoryModel(QAbstractTableModel):
             # Low stock warning - theme-aware colors via QSS alternate rows
             if product.stock_qty <= product.reorder_point:
                 from cbpos.core.services.theme_service import ThemeService
+
                 if ThemeService.current_theme.lower() == "light":
                     return QBrush(QColor(254, 226, 226))  # Very light red for light theme
                 else:
@@ -76,10 +77,10 @@ class InventoryView(QWidget):
         super().__init__()
         self.inventory_service = InventoryService()
         self.import_service = ImportService()
-        self.setup_ui()
+        self.init_ui()
         self.load_data()
 
-    def setup_ui(self):
+    def init_ui(self):
         layout = QVBoxLayout(self)
 
         # Top Bar

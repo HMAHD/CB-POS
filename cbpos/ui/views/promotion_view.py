@@ -25,10 +25,10 @@ class PromotionView(QWidget):
     def __init__(self):
         super().__init__()
         self.promotion_service = PromotionService()
-        self.setup_ui()
+        self.init_ui()
         self.load_promotions()
 
-    def setup_ui(self):
+    def init_ui(self):
         layout = QVBoxLayout(self)
 
         # Header
@@ -86,9 +86,9 @@ class PromotionDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("New Promotion")
         self.setMinimumWidth(400)
-        self.setup_ui()
+        self.init_ui()
 
-    def setup_ui(self):
+    def init_ui(self):
         layout = QVBoxLayout(self)
         form = QFormLayout()
 

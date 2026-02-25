@@ -1,4 +1,5 @@
 from cbpos.core.models import User
+from cbpos.core.constants.permissions import ADMIN_ROLE_NAME, CRITICAL_ADMIN_PERMISSIONS
 
 
 class PermissionService:
@@ -21,8 +22,8 @@ class PermissionService:
         if not user or not user.role:
             return False
 
-        # Admin has all permissions (optional override)
-        if user.role.name == "Admin":
+        # Admin has all permissions
+        if user.role.name == ADMIN_ROLE_NAME:
             return True
 
         for perm in user.role.permissions:
@@ -63,9 +64,8 @@ class PermissionService:
             new_perms = session.query(Permission).filter(Permission.id.in_(permission_ids)).all()
 
             # --- SAFETY CHECK: ADMIN LOCKOUT PREVENTION ---
-            if role.name == "Admin":
-                # Ensure critical permissions are present
-                critical_codes = ["manage_users", "manage_permissions"]
+            if role.name == ADMIN_ROLE_NAME:
+                critical_codes = CRITICAL_ADMIN_PERMISSIONS
 
                 # Get IDs of critical permissions
                 critical_perms = session.query(Permission).filter(Permission.code.in_(critical_codes)).all()

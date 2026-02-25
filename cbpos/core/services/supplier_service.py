@@ -1,7 +1,10 @@
+import logging
 from typing import List, Optional
 from sqlalchemy import select
 from cbpos.core.models import Supplier
 from cbpos.core.database import Database
+
+logger = logging.getLogger(__name__)
 
 
 class SupplierService:

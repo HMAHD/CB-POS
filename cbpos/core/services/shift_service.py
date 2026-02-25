@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any
 from sqlalchemy import select, func
 from cbpos.core.database import Database
 from cbpos.core.models import Shift, CashMovement, Sale, SalePayment
+from cbpos.core.constants.status import ShiftStatus, DocumentStatus, PaymentMethodType
 
 
 class ShiftService:
@@ -14,7 +15,7 @@ class ShiftService:
         with self.db.get_session() as session:
             # Check if user already has an open shift
             existing_shift = session.scalars(
-                select(Shift).where(Shift.user_id == user_id, Shift.status == "OPEN")
+                select(Shift).where(Shift.user_id == user_id, Shift.status == ShiftStatus.OPEN)
             ).first()
 
             if existing_shift:
@@ -24,7 +25,7 @@ class ShiftService:
                 user_id=user_id,
                 starting_cash=float_amount,
                 start_time=datetime.now(),
-                status="OPEN",
+                status=ShiftStatus.OPEN,
             )
             session.add(shift)
             session.commit()
@@ -33,14 +34,16 @@ class ShiftService:
 
     def get_current_shift(self, user_id: int) -> Optional[Shift]:
         with self.db.get_session() as session:
-            return session.scalars(select(Shift).where(Shift.user_id == user_id, Shift.status == "OPEN")).first()
+            return session.scalars(
+                select(Shift).where(Shift.user_id == user_id, Shift.status == ShiftStatus.OPEN)
+            ).first()
 
     def record_cash_movement(
         self, shift_id: int, type: str, amount: Decimal, reason: str, user_id: int
     ) -> CashMovement:
         with self.db.get_session() as session:
             shift = session.get(Shift, shift_id)
-            if not shift or shift.status != "OPEN":
+            if not shift or shift.status != ShiftStatus.OPEN:
                 raise ValueError("Shift is not open or does not exist.")
 
             movement = CashMovement(
@@ -72,7 +75,7 @@ class ShiftService:
                 .where(
                     Sale.user_id == shift.user_id,
                     Sale.date >= shift.start_time,
-                    Sale.status == "COMPLETED",
+                    Sale.status == DocumentStatus.COMPLETED,
                 )
             )
             if shift.end_time:
@@ -82,9 +85,9 @@ class ShiftService:
             sales_results = session.execute(sales_stmt).all()
             sales_by_method = {row[0]: row[1] for row in sales_results}
 
-            total_cash_sales = sales_by_method.get("Cash", Decimal(0))
-            total_card_sales = sales_by_method.get("Card", Decimal(0))
-            total_credit_sales = sales_by_method.get("Credit", Decimal(0))
+            total_cash_sales = sales_by_method.get(PaymentMethodType.CASH, Decimal(0))
+            total_card_sales = sales_by_method.get(PaymentMethodType.CARD, Decimal(0))
+            total_credit_sales = sales_by_method.get(PaymentMethodType.CREDIT, Decimal(0))
             total_sales = sum(sales_by_method.values())
 
             # 2. Cash Movements
@@ -104,7 +107,7 @@ class ShiftService:
             void_stmt = select(func.count(Sale.id), func.sum(Sale.total_amount)).where(
                 Sale.user_id == shift.user_id,
                 Sale.date >= shift.start_time,
-                Sale.status == "VOID",
+                Sale.status == DocumentStatus.VOID,
             )
             if shift.end_time:
                 void_stmt = void_stmt.where(Sale.date <= shift.end_time)
@@ -114,7 +117,7 @@ class ShiftService:
             txn_stmt = select(func.count(Sale.id)).where(
                 Sale.user_id == shift.user_id,
                 Sale.date >= shift.start_time,
-                Sale.status == "COMPLETED",
+                Sale.status == DocumentStatus.COMPLETED,
             )
             if shift.end_time:
                 txn_stmt = txn_stmt.where(Sale.date <= shift.end_time)
@@ -142,7 +145,7 @@ class ShiftService:
     def close_shift(self, shift_id: int, counted_cash: Decimal, notes: str = None) -> Dict[str, Any]:
         with self.db.get_session() as session:
             shift = session.get(Shift, shift_id)
-            if not shift or shift.status != "OPEN":
+            if not shift or shift.status != ShiftStatus.OPEN:
                 raise ValueError("Shift is not open or does not exist.")
 
             summary = self.get_shift_summary(shift_id)
@@ -153,7 +156,7 @@ class ShiftService:
             shift.end_time = datetime.now()
             shift.actual_cash = counted_cash
             shift.expected_cash = expected_cash
-            shift.status = "CLOSED"
+            shift.status = ShiftStatus.CLOSED
             # We might want to store notes/variance in the shift model if we add those fields later
             # For now, we rely on the calculated values
 

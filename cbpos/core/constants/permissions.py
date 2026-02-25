@@ -1,3 +1,8 @@
+ADMIN_ROLE_NAME = "Admin"
+
+CRITICAL_ADMIN_PERMISSIONS = ["manage_users", "manage_permissions"]
+
+
 class Permissions:
     # Sales Group
     SALES_VIEW = "sales.view"

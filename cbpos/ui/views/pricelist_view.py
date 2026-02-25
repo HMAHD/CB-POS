@@ -31,10 +31,10 @@ class PriceListView(QWidget):
         self.price_list_service = PriceListService()
         self.product_service = ProductService()
         self.current_list = None
-        self.setup_ui()
+        self.init_ui()
         self.load_lists()
 
-    def setup_ui(self):
+    def init_ui(self):
         layout = QHBoxLayout(self)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -147,10 +147,10 @@ class PriceListView(QWidget):
         row = index.row()
         product_id = int(self.table.item(row, 0).text())
         product_name = self.table.item(row, 1).text()
-        base_price = float(self.table.item(row, 2).text())
+        base_price = Decimal(self.table.item(row, 2).text())
 
         current_val_str = self.table.item(row, 3).text()
-        current_val = float(current_val_str) if current_val_str != "-" else base_price
+        current_val = float(current_val_str) if current_val_str != "-" else float(base_price)
 
         new_price, ok = QInputDialog.getDouble(
             self,
@@ -173,9 +173,9 @@ class PriceListDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("New Price List")
-        self.setup_ui()
+        self.init_ui()
 
-    def setup_ui(self):
+    def init_ui(self):
         layout = QVBoxLayout(self)
         form = QFormLayout()
 

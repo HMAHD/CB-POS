@@ -1,5 +1,6 @@
 from decimal import Decimal
 from pathlib import Path
+from cbpos.core.services.config_service import ConfigService
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib import colors
@@ -160,8 +161,14 @@ class InvoiceService:
         totals_data = [
             ["Subtotal:", "Rs. {0: ,.2f}".format(subtotal)],
             ["Total Discount:", "Rs. {0: ,.2f}".format(total_discount)],
-            ["VAT (15%):", "Rs. {0: ,.2f}".format(vat_amount)],
-            ["SSCL (2.5%):", "Rs. {0: ,.2f}".format(sscl_amount)],
+            [
+                "VAT ({0}%):".format(ConfigService.get("tax_vat_rate") or 18),
+                "Rs. {0: ,.2f}".format(vat_amount),
+            ],
+            [
+                "SSCL ({0}%):".format(ConfigService.get("tax_sscl_rate") or 2.5),
+                "Rs. {0: ,.2f}".format(sscl_amount),
+            ],
             ["Grand Total:", "Rs. {0: ,.2f}".format(grand_total)],
         ]
 

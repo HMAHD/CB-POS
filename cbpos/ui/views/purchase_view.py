@@ -65,9 +65,9 @@ class SupplierDialog(QDialog):
             "Add Supplier" if not supplier else "Edit Supplier",
         )
         self.supplier = supplier
-        self.setup_ui()
+        self.init_ui()
 
-    def setup_ui(self):
+    def init_ui(self):
         layout = QFormLayout(self)
 
         self.company_input = QLineEdit()
@@ -112,10 +112,10 @@ class SupplierDialog(QDialog):
 class PurchaseView(QWidget):
     def __init__(self):
         super().__init__()
-        self.setup_ui()
+        self.init_ui()
         self.refresh_suppliers()
 
-    def setup_ui(self):
+    def init_ui(self):
         layout = QVBoxLayout(self)
 
         self.tabs = QTabWidget()

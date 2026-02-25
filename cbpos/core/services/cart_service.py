@@ -34,6 +34,9 @@ class CartService:
         Add a product to the cart.
         If product exists, update quantity.
         """
+        if qty <= Decimal("0"):
+            raise ValueError("Quantity must be positive")
+
         # Check if product already in cart
         for item in self.items:
             if item["product"].id == product.id:
@@ -91,6 +94,9 @@ class CartService:
         Override the price of a specific line item.
         Requires permission check (handled by caller or decorator).
         """
+        if new_price < Decimal("0"):
+            raise ValueError("Price cannot be negative")
+
         if 0 <= index < len(self.items):
             item = self.items[index]
             item["unit_price"] = Decimal(str(new_price))

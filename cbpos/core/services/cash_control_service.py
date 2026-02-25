@@ -4,6 +4,7 @@ from typing import Optional
 
 from cbpos.core.database import Database
 from cbpos.core.models import Shift, CashMovement
+from cbpos.core.constants.status import ShiftStatus
 
 
 class CashControlService:
@@ -12,7 +13,7 @@ class CashControlService:
         db = Database()
         with db.get_session() as session:
             # Check if user already has an open shift
-            existing = session.query(Shift).filter_by(user_id=user_id, status="OPEN").first()
+            existing = session.query(Shift).filter_by(user_id=user_id, status=ShiftStatus.OPEN).first()
             if existing:
                 return None  # Shift already open
 
@@ -20,7 +21,7 @@ class CashControlService:
                 user_id=user_id,
                 start_time=datetime.now(),
                 start_float=start_float,
-                status="OPEN",
+                status=ShiftStatus.OPEN,
             )
             session.add(shift)
             session.commit()
@@ -32,13 +33,13 @@ class CashControlService:
     def end_shift(user_id: int, end_cash: Decimal) -> Optional[Shift]:
         db = Database()
         with db.get_session() as session:
-            shift = session.query(Shift).filter_by(user_id=user_id, status="OPEN").first()
+            shift = session.query(Shift).filter_by(user_id=user_id, status=ShiftStatus.OPEN).first()
             if not shift:
                 return None
 
             shift.end_time = datetime.now()
             shift.end_cash = end_cash
-            shift.status = "CLOSED"
+            shift.status = ShiftStatus.CLOSED
             session.commit()
             session.refresh(shift)
             session.expunge(shift)
@@ -48,7 +49,7 @@ class CashControlService:
     def get_current_shift(user_id: int) -> Optional[Shift]:
         db = Database()
         with db.get_session() as session:
-            shift = session.query(Shift).filter_by(user_id=user_id, status="OPEN").first()
+            shift = session.query(Shift).filter_by(user_id=user_id, status=ShiftStatus.OPEN).first()
             if shift:
                 session.expunge(shift)
             return shift
@@ -65,7 +66,7 @@ class CashControlService:
     def _record_movement(user_id: int, type_: str, amount: Decimal, reason: str) -> bool:
         db = Database()
         with db.get_session() as session:
-            shift = session.query(Shift).filter_by(user_id=user_id, status="OPEN").first()
+            shift = session.query(Shift).filter_by(user_id=user_id, status=ShiftStatus.OPEN).first()
 
             movement = CashMovement(
                 shift_id=shift.id if shift else None,

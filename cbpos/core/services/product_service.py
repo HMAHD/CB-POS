@@ -3,10 +3,13 @@ Enhanced Product Search Service with Multiple Search Modes.
 Provides ALL, BARCODE, CODE, and NAME search capabilities.
 """
 
+import logging
 from typing import List
 from sqlalchemy import select, or_, func
 from cbpos.core.models import Product
 from cbpos.core.database import Database
+
+logger = logging.getLogger(__name__)
 
 
 class ProductService:

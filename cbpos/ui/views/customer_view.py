@@ -18,10 +18,10 @@ class CustomerView(QWidget):
     def __init__(self):
         super().__init__()
         self.customer_service = CustomerService()
-        self.setup_ui()
+        self.init_ui()
         self.load_customers()
 
-    def setup_ui(self):
+    def init_ui(self):
         layout = QVBoxLayout(self)
 
         # Top Bar

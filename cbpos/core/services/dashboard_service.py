@@ -3,6 +3,7 @@ from sqlalchemy import func, extract
 from datetime import date
 from cbpos.core.database import Database
 from cbpos.core.models import Sale, Product, Shift
+from cbpos.core.constants.status import ShiftStatus
 
 
 class DashboardService:
@@ -31,7 +32,7 @@ class DashboardService:
             )
 
             # 4. Active Staff (Open Shifts)
-            active_staff = session.query(func.count(Shift.id)).filter(Shift.status == "OPEN").scalar() or 0
+            active_staff = session.query(func.count(Shift.id)).filter(Shift.status == ShiftStatus.OPEN).scalar() or 0
 
             return {
                 "total_sales": total_sales,

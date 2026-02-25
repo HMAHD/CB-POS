@@ -28,10 +28,10 @@ class HistoryView(QWidget):
     def __init__(self):
         super().__init__()
         self.current_sale = None
-        self.setup_ui()
+        self.init_ui()
         self.load_today()
 
-    def setup_ui(self):
+    def init_ui(self):
         """Setup the UI layout"""
         layout = QVBoxLayout(self)
 

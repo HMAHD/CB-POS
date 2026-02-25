@@ -36,9 +36,9 @@ class ReportViewer(QWidget):
         self.registry.register(TaxLiabilityReport)
         self.registry.register(CashMovementAuditReport)
 
-        self.setup_ui()
+        self.init_ui()
 
-    def setup_ui(self):
+    def init_ui(self):
         main_layout = QHBoxLayout(self)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)

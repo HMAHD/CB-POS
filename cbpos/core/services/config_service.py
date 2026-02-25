@@ -77,6 +77,9 @@ class ConfigService:
         "network_db_name": "cbpos",
         "network_db_user": "postgres",
         "network_db_password": "",
+        "network_db_sslmode": "prefer",  # disable, allow, prefer, require, verify-full
+        # Transaction timeout in seconds (0 = no timeout)
+        "db_statement_timeout": 30,
     }
 
     _settings: Dict[str, Any] = {}

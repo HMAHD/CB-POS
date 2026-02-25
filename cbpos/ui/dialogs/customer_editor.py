@@ -285,6 +285,23 @@ class CustomerEditor(QDialog):
             QMessageBox.warning(self, "Error", "Name is required")
             return
 
+        # Validate email format if provided
+        if data.get("email"):
+            import re
+
+            if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", data["email"]):
+                QMessageBox.warning(self, "Error", "Invalid email format")
+                return
+
+        # Validate phone format if provided (Sri Lanka: +94XXXXXXXXX or 0XXXXXXXXX)
+        if data.get("phone"):
+            import re
+
+            phone = data["phone"].replace(" ", "").replace("-", "")
+            if not re.match(r"^(\+94|0)\d{9}$", phone):
+                QMessageBox.warning(self, "Error", "Invalid phone number (expected +94XXXXXXXXX or 0XXXXXXXXX)")
+                return
+
         try:
             if self.customer:
                 self.customer_service.update_customer(self.customer.id, data)

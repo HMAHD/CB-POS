@@ -39,7 +39,10 @@ class Database:
             pool_args = {}
         else:  # network mode
             db_uri = self._get_postgres_uri()
-            connect_args = {}
+            # Apply statement timeout if configured (in milliseconds for PostgreSQL)
+            statement_timeout = ConfigService.get("db_statement_timeout") or 30
+            timeout_ms = int(statement_timeout) * 1000
+            connect_args = {"options": f"-c statement_timeout={timeout_ms}"}
             pool_args = {
                 "poolclass": QueuePool,
                 "pool_size": 10,
@@ -66,6 +69,12 @@ class Database:
         dbname = ConfigService.get("network_db_name") or "cbpos"
         user = ConfigService.get("network_db_user") or "postgres"
         password = ConfigService.get("network_db_password") or ""
+        sslmode = ConfigService.get("network_db_sslmode") or "prefer"
+
+        # Build query params for SSL configuration
+        query = {}
+        if sslmode and sslmode != "disable":
+            query["sslmode"] = sslmode
 
         # Use SQLAlchemy URL.create to safely handle special characters in password
         url_obj = URL.create(
@@ -75,6 +84,7 @@ class Database:
             host=host,
             port=port,
             database=dbname,
+            query=query,
         )
         return url_obj
 

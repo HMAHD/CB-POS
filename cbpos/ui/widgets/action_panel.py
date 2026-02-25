@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.constants import ACTION_BTN_WIDTH, ACTION_BTN_HEIGHT
 
 
 class ActionBtn(QPushButton):
@@ -64,13 +65,13 @@ class ActionBtn(QPushButton):
         # Both themes now use Dark Navy backgrounds, so both use white icons
         if is_dark:
             shortcut_color = "#AAAAAA"  # Subtle gray for shortcuts
-            text_color = "#FFFFFF"      # White for text
+            text_color = "#FFFFFF"  # White for text
             icon_color = "white"
         else:
             # Light theme now uses Dark Navy buttons, so white icons/text
             shortcut_color = "#AAAAAA"  # Light gray for shortcuts
-            text_color = "#FFFFFF"      # White for text
-            icon_color = "white"        # White icons on Navy background
+            text_color = "#FFFFFF"  # White for text
+            icon_color = "white"  # White icons on Navy background
 
         # Apply styles with transparent background
         self.lbl_shortcut.setStyleSheet(f"background: transparent; color: {shortcut_color};")
@@ -83,9 +84,7 @@ class ActionBtn(QPushButton):
             self.lbl_icon.setPixmap(icon.pixmap(32, 32))
 
     def set_icon(self, icon_name):
-        from cbpos.core.services.theme_service import ThemeService
-        is_dark = ThemeService.current_theme.lower() == "dark"
-        # Both themes use white icons now (Dark Navy backgrounds in both)
+        # Both themes use white icons (Dark Navy backgrounds in both)
         icon_color = "white"
         if icon_name:
             icon = Icons.get(icon_name, color=icon_color)
@@ -136,7 +135,7 @@ class ActionPanel(QWidget):
         self.lbl_customer.setStyleSheet("background: transparent;")
 
         self.btn_cust_select = QPushButton("Select")
-        self.btn_cust_select.setFixedWidth(70)
+        self.btn_cust_select.setFixedWidth(ACTION_BTN_WIDTH)
         self.btn_cust_select.setObjectName("BtnCustomerSelect")
         self.btn_cust_select.clicked.connect(self.customer_clicked.emit)
 
@@ -203,7 +202,7 @@ class ActionPanel(QWidget):
 
         # --- 3. Pay Button ---
         self.btn_pay = QPushButton("PAY (F5)")
-        self.btn_pay.setFixedHeight(80)
+        self.btn_pay.setFixedHeight(ACTION_BTN_HEIGHT)
         self.btn_pay.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_pay.setObjectName("BtnPay")
         self.btn_pay.clicked.connect(self.pay_clicked.emit)

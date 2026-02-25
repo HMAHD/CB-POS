@@ -120,11 +120,26 @@ class InventoryService:
             session.commit()
             return True
 
-    def get_all_products(self) -> List[Product]:
-        """Get all active products with categories."""
+    def get_all_products(self, limit: int = 1000, offset: int = 0) -> List[Product]:
+        """Get active products with categories, with pagination support."""
         with self.db.get_session() as session:
-            stmt = select(Product).options(joinedload(Product.category)).where(Product.is_active.is_(True))
+            stmt = (
+                select(Product)
+                .options(joinedload(Product.category))
+                .where(Product.is_active.is_(True))
+                .order_by(Product.name_en)
+                .limit(limit)
+                .offset(offset)
+            )
             return list(session.scalars(stmt).all())
+
+    def count_active_products(self) -> int:
+        """Get count of active products for pagination."""
+        from sqlalchemy import func
+
+        with self.db.get_session() as session:
+            stmt = select(func.count()).select_from(Product).where(Product.is_active.is_(True))
+            return session.scalar(stmt) or 0
 
     def get_product_by_barcode(self, barcode: str) -> Optional[Product]:
         """Get a single product by its barcode."""

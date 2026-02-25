@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QSplitter,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 import pandas as pd
 
 from cbpos.core.reports.registry import ReportRegistry
@@ -22,6 +22,25 @@ from cbpos.ui.views.reports.pandas_model import PandasModel
 from cbpos.core.reports.definitions.sales_report import DailySalesSummaryReport
 from cbpos.core.reports.definitions.financial_reports import ProfitLossReport, TaxLiabilityReport
 from cbpos.core.reports.definitions.audit_reports import CashMovementAuditReport
+
+
+class ReportWorker(QThread):
+    """Background thread for report generation to avoid freezing the UI."""
+
+    finished = pyqtSignal(object)  # emits DataFrame
+    error = pyqtSignal(str)
+
+    def __init__(self, report, filters):
+        super().__init__()
+        self.report = report
+        self.filters = filters
+
+    def run(self):
+        try:
+            df = self.report.generate(self.filters)
+            self.finished.emit(df)
+        except Exception as e:
+            self.error.emit(str(e))
 
 
 class ReportViewer(QWidget):
@@ -148,25 +167,26 @@ class ReportViewer(QWidget):
             return
 
         filters = self.filter_widget.get_filter_values()
-        try:
-            # TODO: Run in QThread to avoid freezing UI
-            df = self.current_report.generate(filters)
-            self.table_model.set_data(df)
 
-            if not df.empty:
-                self.btn_export_excel.setEnabled(True)
-                self.btn_export_pdf.setEnabled(True)
-                self.btn_print.setEnabled(True)
-                self.btn_email.setEnabled(True)
-            else:
-                QMessageBox.information(self, "Report", "No data found for the selected filters.")
-                self.btn_export_excel.setEnabled(False)
-                self.btn_export_pdf.setEnabled(False)
-                self.btn_print.setEnabled(False)
-                self.btn_email.setEnabled(False)
+        # Run report generation in a background thread
+        self._report_worker = ReportWorker(self.current_report, filters)
+        self._report_worker.finished.connect(self._on_report_finished)
+        self._report_worker.error.connect(self._on_report_error)
+        self._report_worker.start()
 
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to generate report: {str(e)}")
+    def _on_report_finished(self, df):
+        self.table_model.set_data(df)
+        has_data = not df.empty
+        self.btn_export_excel.setEnabled(has_data)
+        self.btn_export_pdf.setEnabled(has_data)
+        self.btn_print.setEnabled(has_data)
+        self.btn_email.setEnabled(has_data)
+
+        if not has_data:
+            QMessageBox.information(self, "Report", "No data found for the selected filters.")
+
+    def _on_report_error(self, error_msg):
+        QMessageBox.critical(self, "Error", f"Failed to generate report: {error_msg}")
 
     def export_excel(self):
         df = self.table_model.get_dataframe()

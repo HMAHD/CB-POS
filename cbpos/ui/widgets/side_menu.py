@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QColor
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.constants import SIDEBAR_WIDTH, SIDEBAR_BUTTON_HEIGHT, ACTION_BTN_HEIGHT
 
 
 class MenuButton(QPushButton):
@@ -30,7 +31,7 @@ class MenuButton(QPushButton):
         self.update_icon()
         self.setIconSize(QSize(24, 24))
 
-        self.setFixedHeight(60)
+        self.setFixedHeight(SIDEBAR_BUTTON_HEIGHT)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         # Set property for CSS targeting
@@ -40,6 +41,7 @@ class MenuButton(QPushButton):
     def update_icon(self):
         """Update icon color based on current theme."""
         from cbpos.core.services.theme_service import ThemeService
+
         icon_color = "#FF4136" if self.is_destructive else ThemeService.get_icon_color()
         self.setIcon(Icons.get(self.icon_name, icon_color))
 
@@ -66,6 +68,7 @@ class IconButton(QPushButton):
     def update_icon(self):
         """Update icon color based on current theme."""
         from cbpos.core.services.theme_service import ThemeService
+
         icon_color = ThemeService.get_icon_color()
         self.setIcon(Icons.get(self.icon_name, icon_color))
 
@@ -82,7 +85,7 @@ class SideMenu(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedWidth(300)
+        self.setFixedWidth(SIDEBAR_WIDTH)
         self.setVisible(False)
         self.setObjectName("POSSideMenu")  # For theme-specific styling
 
@@ -173,7 +176,7 @@ class SideMenu(QWidget):
 
         # 3. Bottom Section (System Toolbar)
         toolbar_container = QWidget()
-        toolbar_container.setFixedHeight(80)
+        toolbar_container.setFixedHeight(ACTION_BTN_HEIGHT)
         toolbar_layout = QHBoxLayout(toolbar_container)
         toolbar_layout.setContentsMargins(20, 0, 20, 0)
         toolbar_layout.setSpacing(20)
@@ -217,23 +220,23 @@ class SideMenu(QWidget):
     def update_all_icons(self):
         """Update all icons in the side menu when theme changes."""
         # Update MenuButtons
-        if hasattr(self, 'btn_management'):
+        if hasattr(self, "btn_management"):
             self.btn_management.update_icon()
-        if hasattr(self, 'btn_history'):
+        if hasattr(self, "btn_history"):
             self.btn_history.update_icon()
-        if hasattr(self, 'btn_documents'):
+        if hasattr(self, "btn_documents"):
             self.btn_documents.update_icon()
-        if hasattr(self, 'btn_logout'):
+        if hasattr(self, "btn_logout"):
             self.btn_logout.update_icon()
 
         # Update IconButtons (toolbar)
-        if hasattr(self, 'btn_settings'):
+        if hasattr(self, "btn_settings"):
             self.btn_settings.update_icon()
-        if hasattr(self, 'btn_fullscreen'):
+        if hasattr(self, "btn_fullscreen"):
             self.btn_fullscreen.update_icon()
-        if hasattr(self, 'btn_power'):
+        if hasattr(self, "btn_power"):
             self.btn_power.update_icon()
 
         # Update avatar icon (always cyan)
-        if hasattr(self, 'lbl_avatar'):
+        if hasattr(self, "lbl_avatar"):
             self.lbl_avatar.setPixmap(Icons.get("fa5s.user-circle", "#00BCEB").pixmap(64, 64))

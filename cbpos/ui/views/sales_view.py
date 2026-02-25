@@ -27,6 +27,7 @@ from cbpos.ui.dialogs.payment_dialog import PaymentDialog
 from cbpos.ui.dialogs.discount_dialog import DiscountDialog
 from cbpos.ui.dialogs.receipt_options_dialog import ReceiptOptionsDialog
 from cbpos.core.services.config_service import ConfigService
+from cbpos.ui.constants import SEARCH_BAR_HEIGHT, CART_TABLE_ROW_HEIGHT, PAYMENT_PANEL_WIDTH
 from cbpos.ui.dialogs.customer_selection_dialog import CustomerSelectionDialog
 from cbpos.ui.dialogs.advanced_search_dialog import AdvancedSearchDialog
 from cbpos.ui.dialogs.customer_quick_add import CustomerQuickAddDialog
@@ -70,7 +71,7 @@ class SalesView(QWidget):
 
         # 2. Header (Top)
         self.header_widget = QWidget()
-        self.header_widget.setFixedHeight(50)
+        self.header_widget.setFixedHeight(SEARCH_BAR_HEIGHT)
         self.header_widget.setObjectName("HeaderWidget")
         header_layout = QHBoxLayout(self.header_widget)
         header_layout.setContentsMargins(20, 0, 20, 0)
@@ -156,7 +157,7 @@ class SalesView(QWidget):
         # Search Input
         self.barcode_input = QLineEdit()
         self.barcode_input.setPlaceholderText("Scan or type product... (Enter)")
-        self.barcode_input.setFixedHeight(40)
+        self.barcode_input.setFixedHeight(CART_TABLE_ROW_HEIGHT)
 
         self.barcode_input.returnPressed.connect(self.process_barcode)
         search_layout.addWidget(self.barcode_input)
@@ -243,7 +244,7 @@ class SalesView(QWidget):
         # RIGHT PANEL (Controls) - 25%
         # ==========================
         self.action_panel = ActionPanel()
-        self.action_panel.setFixedWidth(350)
+        self.action_panel.setFixedWidth(PAYMENT_PANEL_WIDTH)
         self.action_panel.setObjectName("ActionPanel")
 
         # Connect Action Panel Signals

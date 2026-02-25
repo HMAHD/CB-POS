@@ -1,6 +1,7 @@
 import csv
 import logging
 from decimal import Decimal, InvalidOperation
+from pathlib import Path
 from typing import Dict
 from cbpos.core.services.inventory_service import InventoryService
 
@@ -11,11 +12,27 @@ class ImportService:
     def __init__(self):
         self.inventory_service = InventoryService()
 
+    @staticmethod
+    def _validate_file_path(file_path: str, must_exist: bool = True) -> Path:
+        """Validate file path to prevent path traversal attacks."""
+        resolved = Path(file_path).resolve()
+        # Block paths containing traversal patterns
+        if ".." in Path(file_path).parts:
+            raise ValueError(f"Path traversal detected: {file_path}")
+        # Ensure the path is under the user's home directory or common data locations
+        home = Path.home().resolve()
+        if not str(resolved).startswith(str(home)) and not str(resolved).startswith("/tmp"):
+            raise ValueError(f"Path outside allowed directories: {file_path}")
+        if must_exist and not resolved.is_file():
+            raise FileNotFoundError(f"File not found: {file_path}")
+        return resolved
+
     def import_products_from_csv(self, file_path: str) -> Dict[str, int]:
         results = {"success": 0, "failed": 0, "skipped": 0}
 
         try:
-            with open(file_path, mode="r", encoding="utf-8-sig", newline="") as csvfile:
+            validated_path = self._validate_file_path(file_path)
+            with open(validated_path, mode="r", encoding="utf-8-sig", newline="") as csvfile:
                 reader = csv.DictReader(csvfile)
 
                 # Normalize headers if possible, but DictReader uses the first line.

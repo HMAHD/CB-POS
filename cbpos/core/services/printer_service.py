@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import tempfile
 from cbpos.core.models import Sale
 from cbpos.core.services.config_service import ConfigService
@@ -173,6 +174,16 @@ class PrinterService:
 
         return receipt
 
+    # Only allow safe characters in printer names and file paths
+    _SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-\.\s\\/:]+$")
+
+    @staticmethod
+    def _validate_name(value: str, label: str) -> str:
+        """Validate a printer name or path contains no shell-injection characters."""
+        if not PrinterService._SAFE_NAME_RE.match(value):
+            raise ValueError(f"Invalid {label}: contains disallowed characters")
+        return value
+
     @staticmethod
     def _send_pdf_to_printer(pdf_path: str, printer_name: str) -> None:
         """
@@ -185,6 +196,9 @@ class PrinterService:
         import subprocess
 
         try:
+            PrinterService._validate_name(pdf_path, "PDF path")
+            PrinterService._validate_name(printer_name, "printer name")
+
             # Windows: Use SumatraPDF or Adobe Reader for silent printing
             # For now, use default print command
             subprocess.run(
@@ -195,9 +209,11 @@ class PrinterService:
                 ],
                 check=True,
             )
-            logger.info("[PrinterService] Sent PDF to printer: {0}".format(printer_name))
+            logger.info("[PrinterService] Sent PDF to printer: %s", printer_name)
+        except ValueError as e:
+            logger.error("[PrinterService] Validation error: %s", e)
         except Exception as e:
-            logger.error("[PrinterService] Error sending PDF to printer: {0}".format(e))
+            logger.error("[PrinterService] Error sending PDF to printer: %s", e)
 
     @staticmethod
     def _send_to_thermal_printer(data: bytes, printer_name: str) -> None:
@@ -217,6 +233,8 @@ class PrinterService:
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".prn")
             temp_file.write(data)
             temp_file.close()
+
+            PrinterService._validate_name(printer_name, "printer name")
 
             # Send to printer using copy command
             subprocess.run(

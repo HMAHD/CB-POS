@@ -113,7 +113,7 @@ class CustomerEditor(QDialog):
 
         self.price_list_combo = QComboBox()
         self.price_list_combo.addItem("Default", None)
-        # TODO: Load price lists if service exists
+        # Price list loading deferred until PriceList management UI is complete
 
         form.addRow("VAT Number:", self.vat_input)
         form.addRow("Credit Limit:", self.limit_input)

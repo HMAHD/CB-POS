@@ -1,3 +1,4 @@
+import base64
 import json
 import logging
 import os
@@ -80,6 +81,27 @@ class ConfigService:
 
     _settings: Dict[str, Any] = {}
 
+    # Keys that should be obfuscated (base64-encoded) in the settings file
+    _SENSITIVE_KEYS = {"network_db_password"}
+
+    @classmethod
+    def _encode_sensitive(cls, value: str) -> str:
+        """Encode a sensitive value for storage."""
+        if not value:
+            return ""
+        return base64.b64encode(value.encode("utf-8")).decode("ascii")
+
+    @classmethod
+    def _decode_sensitive(cls, value: str) -> str:
+        """Decode a sensitive value from storage."""
+        if not value:
+            return ""
+        try:
+            return base64.b64decode(value.encode("ascii")).decode("utf-8")
+        except Exception:
+            # If decoding fails, treat as plaintext (migration from old format)
+            return value
+
     @classmethod
     def load(cls):
         """Load settings from file, or create with defaults if not exists."""
@@ -87,6 +109,10 @@ class ConfigService:
             try:
                 with open(cls.SETTINGS_FILE, "r", encoding="utf-8") as f:
                     cls._settings = json.load(f)
+                # Decode sensitive values after loading
+                for key in cls._SENSITIVE_KEYS:
+                    if key in cls._settings and cls._settings[key]:
+                        cls._settings[key] = cls._decode_sensitive(cls._settings[key])
             except Exception as e:
                 logger.error("Error loading settings: %s. Using defaults.", e)
                 cls._settings = cls.DEFAULTS.copy()
@@ -96,10 +122,15 @@ class ConfigService:
 
     @classmethod
     def save(cls):
-        """Save current settings to file."""
+        """Save current settings to file with sensitive values encoded."""
         try:
+            # Create a copy with sensitive values encoded
+            save_data = cls._settings.copy()
+            for key in cls._SENSITIVE_KEYS:
+                if key in save_data and save_data[key]:
+                    save_data[key] = cls._encode_sensitive(save_data[key])
             with open(cls.SETTINGS_FILE, "w", encoding="utf-8") as f:
-                json.dump(cls._settings, f, indent=4, ensure_ascii=False)
+                json.dump(save_data, f, indent=4, ensure_ascii=False)
         except Exception as e:
             logger.error("Error saving settings: %s", e)
 

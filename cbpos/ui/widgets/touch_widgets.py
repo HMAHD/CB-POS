@@ -32,10 +32,7 @@ class ProductCard(QToolButton):
         icon_label = QLabel()
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # TODO: Load actual image if available
-        # if self.product.image_path:
-        #     ...
-        # else:
+        # Product image support deferred; using default box icon
         from cbpos.ui.resources.icons import Icons
 
         icon_label.setPixmap(Icons.get("fa5s.box").pixmap(40, 40))

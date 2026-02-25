@@ -1,86 +1,68 @@
+import logging
 import smtplib
 import ssl
+import threading
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from typing import Optional, Callable
-from PyQt6.QtCore import QRunnable, QThreadPool, QObject, pyqtSignal
 from cbpos.core.services.config_service import ConfigService
 
-
-class WorkerSignals(QObject):
-    """
-    Defines the signals available from a running worker thread.
-    Supported signals are:
-    finished: No data
-    error: tuple (exctype, value, traceback.format_exc() )
-    result: object data returned from processing, anything
-    """
-
-    result = pyqtSignal(bool, str)
+logger = logging.getLogger(__name__)
 
 
-class EmailWorker(QRunnable):
-    """
-    Worker thread for sending emails.
-    """
+def _send_email_task(
+    to_email: str,
+    subject: str,
+    body: str,
+    attachment_path: Optional[str],
+    callback: Optional[Callable[[bool, str], None]],
+) -> None:
+    """Background task that sends an email via SMTP."""
+    config = ConfigService.get_all()
+    smtp_host = config.get("smtp_host", "")
+    smtp_port = int(config.get("smtp_port", "587"))
+    smtp_user = config.get("smtp_user", "")
+    smtp_pass = config.get("smtp_pass", "")
 
-    def __init__(self, to_email, subject, body, attachment_path):
-        super().__init__()
-        self.to_email = to_email
-        self.subject = subject
-        self.body = body
-        self.attachment_path = attachment_path
-        self.signals = WorkerSignals()
+    if not all([smtp_host, smtp_port, smtp_user, smtp_pass]):
+        if callback:
+            callback(False, "SMTP configuration is incomplete.")
+        return
 
-    def run(self):
-        config = ConfigService.get_all()
-        smtp_host = config.get("smtp_host", "")
-        smtp_port = int(config.get("smtp_port", "587"))
-        smtp_user = config.get("smtp_user", "")
-        smtp_pass = config.get("smtp_pass", "")
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = smtp_user
+        msg["To"] = to_email
+        msg["Subject"] = subject
+        msg.attach(MIMEText(body, "plain"))
 
-        if not all([smtp_host, smtp_port, smtp_user, smtp_pass]):
-            self.signals.result.emit(False, "SMTP configuration is incomplete.")
-            return
+        if attachment_path:
+            with open(attachment_path, "rb") as f:
+                filename = attachment_path.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+                part = MIMEApplication(f.read(), Name=filename)
+            part.add_header("Content-Disposition", "attachment", filename=filename)
+            msg.attach(part)
 
-        try:
-            # Create Message
-            msg = MIMEMultipart()
-            msg["From"] = smtp_user
-            msg["To"] = self.to_email
-            msg["Subject"] = self.subject
+        context = ssl.create_default_context()
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls(context=context)
+            server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
 
-            msg.attach(MIMEText(self.body, "plain"))
+        if callback:
+            callback(True, "Email sent successfully.")
 
-            # Attach File
-            if self.attachment_path:
-                with open(self.attachment_path, "rb") as f:
-                    part = MIMEApplication(f.read(), Name=self.attachment_path.split("/")[-1])
-
-                # After the file is closed
-                filename = self.attachment_path.split("/")[-1]
-                part.add_header("Content-Disposition", "attachment", filename=filename)
-                msg.attach(part)
-
-            # Connect and Send
-            context = ssl.create_default_context()
-
-            with smtplib.SMTP(smtp_host, smtp_port) as server:
-                server.starttls(context=context)
-                server.login(smtp_user, smtp_pass)
-                server.send_message(msg)
-
-            self.signals.result.emit(True, "Email sent successfully.")
-
-        except Exception as e:
-            self.signals.result.emit(False, str(e))
+    except Exception as e:
+        logger.error("Failed to send email: %s", e)
+        if callback:
+            callback(False, str(e))
 
 
 class EmailService:
     """
     Service for sending emails (reports, alerts) using SMTP.
-    Uses QThreadPool for thread safety.
+    Uses threading.Thread for background sending (no PyQt dependency).
     """
 
     @staticmethod
@@ -92,27 +74,23 @@ class EmailService:
         callback: Optional[Callable[[bool, str], None]] = None,
     ):
         """
-        Send an email in a background thread using QThreadPool.
+        Send an email in a background thread.
 
         Args:
             to_email: Recipient email address
             subject: Email subject
             body: Email body (plain text)
             attachment_path: Optional path to a file to attach (e.g. PDF)
-            callback: Optional function to call when done: callback(success: bool, message: str)
+            callback: Optional function to call when done: callback(success, message)
         """
-        worker = EmailWorker(to_email, subject, body, attachment_path)
-
-        if callback:
-            # Connect the signal to the callback
-            # Note: The callback must be thread-safe or slot-compatible
-            worker.signals.result.connect(callback)
-
-        QThreadPool.globalInstance().start(worker)
+        thread = threading.Thread(
+            target=_send_email_task,
+            args=(to_email, subject, body, attachment_path, callback),
+            daemon=True,
+        )
+        thread.start()
 
     @staticmethod
     def send_email_with_pdf(to_email: str, subject: str, body: str, pdf_path: str):
-        """
-        Alias for send_email to match specific requirement.
-        """
+        """Alias for send_email with a PDF attachment."""
         EmailService.send_email(to_email, subject, body, pdf_path)

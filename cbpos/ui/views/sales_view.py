@@ -535,7 +535,6 @@ class SalesView(QWidget):
 
         if self.customer:
             details = QAction("View Details", self)
-            # details.triggered.connect(self.view_customer_details) # TODO
             menu.addAction(details)
 
             clear = QAction("Clear Customer", self)

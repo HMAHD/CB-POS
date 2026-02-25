@@ -3,6 +3,7 @@ from decimal import Decimal
 from typing import List, Dict, Any, Optional
 from cbpos.core.models import Purchase, PurchaseItem, Product, StockMovement
 from cbpos.core.database import Database
+from cbpos.core.constants.status import Precision
 from cbpos.core.services.document_service import DocumentService
 
 
@@ -101,7 +102,7 @@ class PurchaseService:
 
                 if total_qty > 0:
                     new_avg_cost = (total_old_value + total_new_value) / total_qty
-                    product.cost = new_avg_cost.quantize(Decimal("0.01"))
+                    product.cost = new_avg_cost.quantize(Precision.MONEY)
 
                 # 3. Log Stock Movement
                 movement = StockMovement(

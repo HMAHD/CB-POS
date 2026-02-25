@@ -1,5 +1,6 @@
 from decimal import Decimal
 from typing import Dict
+from cbpos.core.constants.status import Precision
 from cbpos.core.services.config_service import ConfigService
 
 
@@ -65,7 +66,7 @@ class TaxService:
         net_revenue = total_mrp - vat_amount - sscl_amount
 
         return {
-            "vat": vat_amount.quantize(Decimal("0.01")),
-            "sscl": sscl_amount.quantize(Decimal("0.01")),
-            "net": net_revenue.quantize(Decimal("0.01")),
+            "vat": vat_amount.quantize(Precision.MONEY),
+            "sscl": sscl_amount.quantize(Precision.MONEY),
+            "net": net_revenue.quantize(Precision.MONEY),
         }

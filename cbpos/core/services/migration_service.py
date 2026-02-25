@@ -5,6 +5,7 @@ Handles one-click migration from SQLite (Standalone) to PostgreSQL (Network).
 
 import logging
 from typing import Tuple
+import re
 from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.orm import sessionmaker
 from cbpos.core.database import Base
@@ -43,6 +44,16 @@ class MigrationService:
     Service to migrate data from SQLite to PostgreSQL.
     Preserves all data, IDs, and relationships.
     """
+
+    # Regex to validate SQL identifiers (table names) - alphanumeric + underscore only
+    _VALID_IDENTIFIER = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+
+    @staticmethod
+    def _safe_identifier(name: str) -> str:
+        """Validate and quote a SQL identifier to prevent injection."""
+        if not MigrationService._VALID_IDENTIFIER.match(name):
+            raise ValueError(f"Invalid SQL identifier: {name!r}")
+        return f'"{name}"'
 
     # Order matters! Tables with foreign keys must come after their dependencies
     MIGRATION_ORDER = [
@@ -117,7 +128,8 @@ class MigrationService:
                 with target_engine.connect() as conn:
                     for table in existing_tables:
                         if table in ["users", "products", "sales", "customers"]:  # Key tables
-                            result = conn.execute(text(f"SELECT COUNT(*) FROM {table}"))
+                            safe_table = MigrationService._safe_identifier(table)
+                            result = conn.execute(text(f"SELECT COUNT(*) FROM {safe_table}"))
                             count = result.scalar()
                             if count and count > 0:
                                 return (
@@ -172,15 +184,14 @@ class MigrationService:
                             # Use a nested transaction (savepoint)
                             # If this specific table fails, it won't rollback the whole migration
                             with tgt_session.begin_nested():
-                                seq_query = text(
-                                    f"SELECT pg_get_serial_sequence('{table_name}', 'id') as seq_name"  # noqa: E501
-                                )
-                                result = tgt_session.execute(seq_query)
+                                safe_name = MigrationService._safe_identifier(table_name)
+                                seq_query = text("SELECT pg_get_serial_sequence(:tbl, 'id') as seq_name")
+                                result = tgt_session.execute(seq_query, {"tbl": table_name})
                                 seq_name = result.scalar()
 
                                 if seq_name:
                                     # Calculate next ID safely
-                                    max_id_sql = text(f"SELECT MAX(id) FROM {table_name}")
+                                    max_id_sql = text(f"SELECT MAX(id) FROM {safe_name}")
                                     max_id = tgt_session.execute(max_id_sql).scalar() or 0
                                     next_id = max_id + 1
 
@@ -238,7 +249,8 @@ class MigrationService:
                 for model in MigrationService.MIGRATION_ORDER:
                     table_name = model.__tablename__
                     try:
-                        result = conn.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
+                        safe_name = MigrationService._safe_identifier(table_name)
+                        result = conn.execute(text(f"SELECT COUNT(*) FROM {safe_name}"))
                         counts[table_name] = result.scalar() or 0
                     except Exception:
                         counts[table_name] = 0

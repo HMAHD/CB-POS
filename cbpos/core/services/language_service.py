@@ -1,7 +1,5 @@
 import logging
 import os
-from PyQt6.QtCore import QTranslator
-from PyQt6.QtWidgets import QApplication
 from cbpos.config import Config
 
 logger = logging.getLogger(__name__)
@@ -14,6 +12,18 @@ class LanguageService:
 
     _translator = None
 
+    # Injected callables to avoid PyQt imports in the service layer
+    _install_translator = None  # (translator) -> None
+    _remove_translator = None  # (translator) -> None
+    _create_translator = None  # () -> translator object
+
+    @classmethod
+    def set_translator_handlers(cls, create, install, remove):
+        """Inject Qt translator functions to keep service layer free of PyQt imports."""
+        cls._create_translator = create
+        cls._install_translator = install
+        cls._remove_translator = remove
+
     @classmethod
     def load_language(cls, locale_code: str):
         """
@@ -22,13 +32,13 @@ class LanguageService:
         Args:
             locale_code (str): The locale code (e.g., 'si_LK', 'ta_LK', 'en_US').
         """
-        app = QApplication.instance()
-        if not app:
+        if not cls._create_translator:
+            logger.warning("Translator handlers not registered; skipping language load")
             return
 
         # Remove existing translator if any
-        if cls._translator:
-            app.removeTranslator(cls._translator)
+        if cls._translator and cls._remove_translator:
+            cls._remove_translator(cls._translator)
 
         # English is the default, so we just remove the translator
         if locale_code.startswith("en"):
@@ -36,7 +46,7 @@ class LanguageService:
             return
 
         # Load new translator
-        cls._translator = QTranslator()
+        cls._translator = cls._create_translator()
 
         translations_dir = os.path.join(str(Config.BASE_DIR), "cbpos", "ui", "resources", "translations")
 
@@ -47,7 +57,7 @@ class LanguageService:
         path = os.path.join(translations_dir, filename)
 
         if cls._translator.load(path):
-            app.installTranslator(cls._translator)
+            cls._install_translator(cls._translator)
         else:
             logger.warning("Could not load translation file: %s", path)
 

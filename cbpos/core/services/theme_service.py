@@ -1,6 +1,5 @@
 import logging
 import os
-from PyQt6.QtWidgets import QApplication
 from cbpos.infrastructure.resource_loader import ResourceLoader
 from cbpos.core.services.config_service import ConfigService
 from cbpos.config import Config
@@ -16,6 +15,14 @@ class ThemeService:
 
     current_theme = "Dark"
     theme_change_callbacks = []  # List of callbacks to call when theme changes
+
+    # Injected callable: set_stylesheet(css_string) -> None
+    _set_stylesheet = None
+
+    @classmethod
+    def set_stylesheet_handler(cls, handler):
+        """Inject the function used to apply stylesheets (avoids PyQt import in service)."""
+        cls._set_stylesheet = handler
 
     @staticmethod
     def apply_theme(theme_name: str):
@@ -50,9 +57,10 @@ class ThemeService:
             style_content = style_content.replace("{{FONT_FAMILY}}", font_family)
             style_content = style_content.replace("{{FONT_SIZE}}", font_size)
 
-            app = QApplication.instance()
-            if app:
-                app.setStyleSheet(style_content)
+            if ThemeService._set_stylesheet:
+                ThemeService._set_stylesheet(style_content)
+            else:
+                logger.warning("No stylesheet handler registered; theme not applied to UI")
 
             # Notify all registered callbacks that theme has changed
             for callback in ThemeService.theme_change_callbacks:

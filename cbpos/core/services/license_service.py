@@ -20,7 +20,7 @@ class LicenseService:
         Check if a valid license exists.
         For now, this is a stub that always returns False (Trial Mode).
         """
-        # TODO: Implement actual license check (e.g. file, registry, API)
+        # Stub: always returns False (Trial Mode) until license system is built
         return False
 
     @staticmethod

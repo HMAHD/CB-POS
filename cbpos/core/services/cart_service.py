@@ -2,6 +2,7 @@ import logging
 from decimal import Decimal
 from typing import List, Dict, Any, Optional
 from cbpos.core.models import Product, Customer
+from cbpos.core.constants.status import Precision
 from cbpos.core.services.pricing_service import PricingService
 
 logger = logging.getLogger(__name__)
@@ -125,8 +126,8 @@ class CartService:
         # 3. Net Line Total
         net_line = gross_line - discount_amount
 
-        item["subtotal"] = gross_line.quantize(Decimal("0.01"))
-        item["total"] = net_line.quantize(Decimal("0.01"))
+        item["subtotal"] = gross_line.quantize(Precision.MONEY)
+        item["total"] = net_line.quantize(Precision.MONEY)
 
     def _recalculate_all_prices(self):
         """Recalculate prices for all items (e.g., when customer changes)."""
@@ -159,9 +160,9 @@ class CartService:
         final_total = subtotal - cart_discount_amt
 
         return {
-            "subtotal": subtotal.quantize(Decimal("0.01")),
-            "cart_discount": cart_discount_amt.quantize(Decimal("0.01")),
-            "final_total": final_total.quantize(Decimal("0.01")),
+            "subtotal": subtotal.quantize(Precision.MONEY),
+            "cart_discount": cart_discount_amt.quantize(Precision.MONEY),
+            "final_total": final_total.quantize(Precision.MONEY),
             "tax": Decimal("0.00"),  # Placeholder for tax calculation
             "count": len(self.items),
             "item_count": sum(item["qty"] for item in self.items),

@@ -1,5 +1,10 @@
+import logging
+from pathlib import Path
+
 import pandas as pd
 from xhtml2pdf import pisa
+
+logger = logging.getLogger(__name__)
 
 
 class ExportService:
@@ -7,11 +12,23 @@ class ExportService:
     Service to handle data export to various formats.
     """
 
+    @staticmethod
+    def _validate_export_path(filepath: str) -> Path:
+        """Validate export path to prevent path traversal attacks."""
+        resolved = Path(filepath).resolve()
+        if ".." in Path(filepath).parts:
+            raise ValueError(f"Path traversal detected: {filepath}")
+        home = Path.home().resolve()
+        if not str(resolved).startswith(str(home)) and not str(resolved).startswith("/tmp"):
+            raise ValueError(f"Export path outside allowed directories: {filepath}")
+        return resolved
+
     def export_to_excel(self, df: pd.DataFrame, filepath: str, title: str = "Report"):
         """
         Exports DataFrame to Excel with styling.
         """
-        writer = pd.ExcelWriter(filepath, engine="xlsxwriter")
+        validated = self._validate_export_path(filepath)
+        writer = pd.ExcelWriter(validated, engine="xlsxwriter")
         df.to_excel(writer, sheet_name="Sheet1", index=False)
 
         workbook = writer.book
@@ -50,7 +67,8 @@ class ExportService:
         """
         Exports DataFrame to CSV.
         """
-        df.to_csv(filepath, index=False)
+        validated = self._validate_export_path(filepath)
+        df.to_csv(validated, index=False)
 
     def export_to_pdf(self, df: pd.DataFrame, filepath: str, title: str = "Report"):
         """
@@ -90,7 +108,8 @@ class ExportService:
         )
 
         # Generate PDF
-        with open(filepath, "wb") as result_file:
+        validated = self._validate_export_path(filepath)
+        with open(validated, "wb") as result_file:
             pisa_status = pisa.CreatePDF(src=html_content, dest=result_file)
 
         if pisa_status.err:

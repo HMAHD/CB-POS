@@ -70,8 +70,20 @@ def main():
     from cbpos.core.services.theme_service import ThemeService
     from cbpos.core.services.config_service import ConfigService
 
+    # Inject stylesheet handler so ThemeService doesn't need PyQt imports
+    ThemeService.set_stylesheet_handler(lambda css: app.setStyleSheet(css))
     saved_theme = ConfigService.get("theme")  # Returns "Dark" by default
     ThemeService.apply_theme(saved_theme)
+
+    # Inject translator handlers so LanguageService doesn't need PyQt imports
+    from PyQt6.QtCore import QTranslator
+    from cbpos.core.services.language_service import LanguageService
+
+    LanguageService.set_translator_handlers(
+        create=QTranslator,
+        install=lambda t: app.installTranslator(t),
+        remove=lambda t: app.removeTranslator(t),
+    )
 
     # Register Reports
     from cbpos.core.reports import register_all_reports

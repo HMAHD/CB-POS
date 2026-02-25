@@ -51,3 +51,11 @@ def format_date(date_obj: Union[datetime, date, str]) -> str:
         return date_obj.strftime(strftime_fmt)
     except Exception:
         return str(date_obj)
+
+
+def escape_like(value: str) -> str:
+    """
+    Escape special characters (%, _, \\) in a value for use in SQL LIKE patterns.
+    Prevents user input from being interpreted as LIKE wildcards.
+    """
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")

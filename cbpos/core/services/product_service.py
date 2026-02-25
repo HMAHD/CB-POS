@@ -8,6 +8,7 @@ from typing import List
 from sqlalchemy import select, or_, func
 from cbpos.core.models import Product
 from cbpos.core.database import Database
+from cbpos.core.utils.formatters import escape_like
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ class ProductService:
 
             elif mode == self.SEARCH_MODE_NAME:
                 # Fuzzy name search (EN, SI, TA)
-                pattern = f"%{query}%"
+                pattern = f"%{escape_like(query)}%"
                 stmt = (
                     select(Product)
                     .options(joinedload(Product.category))
@@ -82,7 +83,7 @@ class ProductService:
 
             else:  # SEARCH_MODE_ALL (default)
                 # Search barcode OR any name field
-                pattern = f"%{query}%"
+                pattern = f"%{escape_like(query)}%"
                 stmt = (
                     select(Product)
                     .options(joinedload(Product.category))

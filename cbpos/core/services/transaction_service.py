@@ -20,6 +20,7 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.stock_service import StockService
 from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.core.services.product_service import ProductService
+from cbpos.core.utils.formatters import escape_like
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 import json
 
@@ -45,6 +46,17 @@ class TransactionService:
         Raises:
             ValueError: If validation fails or insufficient stock.
         """
+        try:
+            return TransactionService._execute_sale(cart_service, payments, customer_id)
+        except ValueError:
+            raise
+        except Exception as e:
+            logger.error("Failed to process sale: %s", e)
+            return False
+
+    @staticmethod
+    def _execute_sale(cart_service: CartService, payments: list, customer_id: int = None) -> bool:
+        """Internal method that executes the sale transaction."""
         db = Database()
         with db.get_session() as session:
             # 1. Prepare Data
@@ -516,6 +528,7 @@ class TransactionService:
         from_date: datetime,
         to_date: datetime,
         search_term: str = None,
+        limit: int = 500,
     ) -> list:
         """
         Fetch sales within a date range with optional search filter.
@@ -524,6 +537,7 @@ class TransactionService:
             from_date: Start datetime
             to_date: End datetime
             search_term: Optional receipt# or customer name filter
+            limit: Maximum number of results (default 500)
 
         Returns:
             List of detached Sale objects with eager-loaded relationships
@@ -537,7 +551,7 @@ class TransactionService:
 
             if search_term:
                 query = query.filter(
-                    (Sale.document_number.like(f"%{search_term}%")) | (Sale.customer.has(name=search_term))
+                    (Sale.document_number.like(f"%{escape_like(search_term)}%")) | (Sale.customer.has(name=search_term))
                 )
 
             from cbpos.core.models import SaleItem
@@ -549,6 +563,7 @@ class TransactionService:
                     joinedload(Sale.items).joinedload(SaleItem.product),
                 )
                 .order_by(Sale.date.desc())
+                .limit(limit)
                 .all()
             )
 

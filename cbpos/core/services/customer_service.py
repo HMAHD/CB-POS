@@ -5,6 +5,7 @@ from sqlalchemy.orm import selectinload
 from cbpos.core.database import Database
 from cbpos.core.models import Customer, CustomerContact, Sale
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.utils.formatters import escape_like
 
 
 class CustomerService:
@@ -97,13 +98,14 @@ class CustomerService:
 
     def search_customers(self, query: str) -> List[Customer]:
         with self.db.get_session() as session:
+            safe_query = escape_like(query)
             stmt = (
                 select(Customer)
                 .where(
                     or_(
-                        Customer.name.ilike(f"%{query}%"),
-                        Customer.phone.ilike(f"%{query}%"),
-                        Customer.company_name.ilike(f"%{query}%"),
+                        Customer.name.ilike(f"%{safe_query}%"),
+                        Customer.phone.ilike(f"%{safe_query}%"),
+                        Customer.company_name.ilike(f"%{safe_query}%"),
                         Customer.loyalty_card_code == query,
                     ),
                     Customer.is_active.is_(True),

@@ -3,6 +3,7 @@ from typing import List, Optional
 from sqlalchemy import select
 from cbpos.core.models import Supplier
 from cbpos.core.database import Database
+from cbpos.core.utils.formatters import escape_like
 
 logger = logging.getLogger(__name__)
 
@@ -102,10 +103,11 @@ class SupplierService:
         """
         db = Database()
         with db.get_session() as session:
+            safe_query = escape_like(query)
             stmt = select(Supplier).where(
-                (Supplier.company_name.ilike(f"%{query}%"))
-                | (Supplier.phone.ilike(f"%{query}%"))
-                | (Supplier.contact_person.ilike(f"%{query}%"))
+                (Supplier.company_name.ilike(f"%{safe_query}%"))
+                | (Supplier.phone.ilike(f"%{safe_query}%"))
+                | (Supplier.contact_person.ilike(f"%{safe_query}%"))
             )
             return list(session.scalars(stmt).all())
 

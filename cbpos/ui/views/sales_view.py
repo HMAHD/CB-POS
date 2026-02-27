@@ -259,15 +259,23 @@ class SalesView(QWidget):
         self.action_panel.action_f8.connect(lambda: logger.debug("Drawer action not implemented"))
         self.action_panel.action_del.connect(self.void_bill)
         self.action_panel.action_ref.connect(self.open_refund)
-        self.action_panel.action_more.connect(lambda: logger.debug("More action not implemented"))
+        self.action_panel.action_more.connect(self.toggle_product_grid)
 
         # Context Menu for Customer Button
         self.action_panel.btn_cust_select.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.action_panel.btn_cust_select.customContextMenuRequested.connect(self.show_customer_menu)
         self.btn_cust = self.action_panel.btn_cust_select  # Alias for existing code
 
+        # Product Grid Panel (Touch Mode) — hidden by default
+        from cbpos.ui.widgets.product_grid_panel import ProductGridPanel
+
+        self.product_grid = ProductGridPanel()
+        self.product_grid.product_selected.connect(self.on_visual_item_clicked)
+        self.product_grid.setVisible(False)
+
         # Add panels to splitter
         self.splitter.addWidget(self.container_left)
+        self.splitter.addWidget(self.product_grid)
         self.splitter.addWidget(self.action_panel)
 
         # Set Stretch Factors (75% / 25%)
@@ -837,6 +845,15 @@ class SalesView(QWidget):
             # Already empty, just refresh tabs to be sure
             self.order_bar.refresh_tabs()
             self.barcode_input.setFocus()
+
+    def toggle_product_grid(self) -> None:
+        """Toggle the visual product grid panel on/off."""
+        is_visible = self.product_grid.isVisible()
+        self.product_grid.setVisible(not is_visible)
+        if not is_visible:
+            # Set splitter sizes: cart 50%, grid 30%, action 20%
+            total = self.splitter.width()
+            self.splitter.setSizes([int(total * 0.5), int(total * 0.3), int(total * 0.2)])
 
     def open_receive_payment(self) -> None:
         """Open Receive Payment dialog from POS (quick payment without sale)."""

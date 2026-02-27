@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file. Never delet
 - **Touch Visual Product Grid (31.8)**: ProductGridPanel with scrollable category tabs and product button grid for touch/visual POS mode. Collapsible panel in SalesView toggled via More button.
 - **Branding on All Outputs (31.9)**: "Powered by CB POS — ceybyte.com" footer added to all receipts, invoices, PDF/Excel exports, and Z-reports. Invoice company details now read from ConfigService instead of hardcoded values.
 - **Trilingual Receipt Strings (31.10)**: Receipt labels (Total, Date, Tax Breakdown, etc.) now use translated strings for English, Sinhala, and Tamil based on language configuration.
+- **Units of Measurement CRUD (31.11)**: Unit model with name, abbreviation, and decimal places. UnitManagerDialog for creating, editing, and soft-deleting units with product guard. Unit selector in ProductEditor. Inventory table shows unit abbreviation. 8 default seed units (Piece, Kilogram, Gram, Liter, Meter, Pack, Box, Dozen).
 - **Side Menu Enhancements**: Added Reprint Receipt and Refund buttons to POS side menu for quick access.
 
 ## [0.4.0] - 2026-02-27

@@ -101,9 +101,7 @@ class CategoryManagerDialog(QDialog):
         color_layout = QHBoxLayout()
         self.lbl_color = QLabel()
         self.lbl_color.setFixedSize(30, 30)
-        self.lbl_color.setStyleSheet(
-            "background-color: #FFFFFF; border: 1px solid gray; border-radius: 2px;"
-        )
+        self.lbl_color.setStyleSheet("background-color: #FFFFFF; border: 1px solid gray; border-radius: 2px;")
         self.btn_pick_color = QPushButton("Pick Color")
         self.btn_pick_color.clicked.connect(self._pick_color)
         color_layout.addWidget(self.lbl_color)
@@ -186,9 +184,7 @@ class CategoryManagerDialog(QDialog):
             self.edit_parent.clear()
             self.edit_parent.addItem("None (Top Level)", None)
 
-            all_cats = session.execute(
-                select(Category).order_by(Category.name)
-            ).scalars().all()
+            all_cats = session.execute(select(Category).order_by(Category.name)).scalars().all()
 
             excluded_ids = self._get_descendant_ids(session, cat_id)
             excluded_ids.add(cat_id)
@@ -203,9 +199,7 @@ class CategoryManagerDialog(QDialog):
 
     def _get_descendant_ids(self, session, cat_id: int) -> set:
         """Get all descendant category IDs to prevent circular parenting."""
-        children = session.execute(
-            select(Category.id).where(Category.parent_id == cat_id)
-        ).scalars().all()
+        children = session.execute(select(Category.id).where(Category.parent_id == cat_id)).scalars().all()
         ids = set(children)
         for child_id in children:
             ids |= self._get_descendant_ids(session, child_id)
@@ -243,9 +237,7 @@ class CategoryManagerDialog(QDialog):
         parent_id = current.data(0, CATEGORY_ID_ROLE)
         parent_name = current.text(0)
 
-        name, ok = QInputDialog.getText(
-            self, "New Subcategory", f"Subcategory under '{parent_name}':"
-        )
+        name, ok = QInputDialog.getText(self, "New Subcategory", f"Subcategory under '{parent_name}':")
         if not ok or not name.strip():
             return
 
@@ -281,9 +273,7 @@ class CategoryManagerDialog(QDialog):
 
             # Guard: check for products in this category or subcategories
             product_count = session.execute(
-                select(func.count(Product.id)).where(
-                    Product.category_id.in_(all_ids)
-                )
+                select(func.count(Product.id)).where(Product.category_id.in_(all_ids))
             ).scalar()
 
             if product_count > 0:
@@ -321,9 +311,7 @@ class CategoryManagerDialog(QDialog):
         self._load_tree()
 
     def _pick_color(self) -> None:
-        color = QColorDialog.getColor(
-            QColor(self.selected_color), self, "Select Category Color"
-        )
+        color = QColorDialog.getColor(QColor(self.selected_color), self, "Select Category Color")
         if color.isValid():
             self.selected_color = color.name()
             self.lbl_color.setStyleSheet(

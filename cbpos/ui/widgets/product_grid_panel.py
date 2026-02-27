@@ -33,8 +33,8 @@ class ProductGridPanel(QWidget):
         self.product_service = ProductService()
         self.current_category_id = None
         self.setObjectName("ProductGridPanel")
+        self._categories_loaded = False
         self._init_ui()
-        self._load_categories()
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -123,8 +123,9 @@ class ProductGridPanel(QWidget):
             col = i % cols
             self.grid_layout.addWidget(card, row, col)
 
-    def resizeEvent(self, event):
-        """Reload grid on resize to adjust columns."""
-        super().resizeEvent(event)
-        if self.current_category_id is not None or self.grid_layout.count() > 0:
-            self._load_products(self.current_category_id)
+    def showEvent(self, event):
+        """Load categories on first show."""
+        super().showEvent(event)
+        if not self._categories_loaded:
+            self._categories_loaded = True
+            self._load_categories()

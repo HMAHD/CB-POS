@@ -480,6 +480,13 @@
 - [x] **31.10 Trilingual Receipt Strings**
     - [x] RECEIPT_STRINGS dictionary with en/si/ta translations
     - [x] Receipt labels use translated strings based on language config
+- [x] **31.11 Units of Measurement CRUD**
+    - [x] Unit model (name, abbreviation, decimal_places, is_active) with Product FK
+    - [x] UnitService with full CRUD (create, update, soft-delete with product guard)
+    - [x] UnitManagerDialog accessible from Inventory view
+    - [x] Unit selector integrated into ProductEditor
+    - [x] Inventory table shows unit abbreviation from product.unit relationship
+    - [x] Default seed units (Piece, Kilogram, Gram, Liter, Meter, Pack, Box, Dozen)
 
 ---
 

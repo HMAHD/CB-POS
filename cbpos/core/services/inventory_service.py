@@ -125,7 +125,7 @@ class InventoryService:
         with self.db.get_session() as session:
             stmt = (
                 select(Product)
-                .options(joinedload(Product.category))
+                .options(joinedload(Product.category), joinedload(Product.unit))
                 .where(Product.is_active.is_(True))
                 .order_by(Product.name_en)
                 .limit(limit)

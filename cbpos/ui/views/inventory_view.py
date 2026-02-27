@@ -47,7 +47,9 @@ class InventoryModel(QAbstractTableModel):
             elif col == 4:
                 return "{:.3f}".format(product.stock_qty)
             elif col == 5:
-                return "kg" if product.is_weighted else "unit"
+                if product.unit:
+                    return product.unit.abbreviation
+                return "kg" if product.is_weighted else "pcs"
 
         elif role == Qt.ItemDataRole.BackgroundRole:
             # Low stock warning - theme-aware colors via QSS alternate rows
@@ -99,6 +101,9 @@ class InventoryView(QWidget):
         self.cat_btn = QPushButton("Manage Categories")
         self.cat_btn.clicked.connect(self.open_category_dialog)
 
+        self.unit_btn = QPushButton("Units")
+        self.unit_btn.clicked.connect(self.open_unit_manager)
+
         self.label_btn = QPushButton("Print Labels")
         self.label_btn.clicked.connect(self.open_label_print)
 
@@ -106,6 +111,7 @@ class InventoryView(QWidget):
         top_bar.addWidget(self.add_btn)
         top_bar.addWidget(self.import_btn)
         top_bar.addWidget(self.cat_btn)
+        top_bar.addWidget(self.unit_btn)
         top_bar.addWidget(self.label_btn)
 
         layout.addLayout(top_bar)
@@ -155,6 +161,12 @@ class InventoryView(QWidget):
         dialog = CategoryManagerDialog(parent=self)
         dialog.exec()
         self.load_data()
+
+    def open_unit_manager(self):
+        from cbpos.ui.dialogs.unit_manager import UnitManagerDialog
+
+        dialog = UnitManagerDialog(parent=self)
+        dialog.exec()
 
     def open_label_print(self):
         from cbpos.ui.dialogs.label_print_dialog import LabelPrintDialog

@@ -215,6 +215,20 @@ class ProformaItem(Base):
 
 
 # --- Core Business Entities ---
+class Unit(Base):
+    """Unit of measurement for products (e.g., kg, piece, liter, pack)."""
+
+    __tablename__ = "units"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    abbreviation: Mapped[str] = mapped_column(String(10), nullable=False)
+    decimal_places: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    products: Mapped[List["Product"]] = relationship(back_populates="unit")
+
+
 class Category(Base):
     __tablename__ = "categories"
 
@@ -248,10 +262,12 @@ class Product(Base):
     category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"))
     parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("products.id"), nullable=True)
     default_supplier_id: Mapped[Optional[int]] = mapped_column(ForeignKey("suppliers.id"), nullable=True)
+    unit_id: Mapped[Optional[int]] = mapped_column(ForeignKey("units.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     version_id: Mapped[int] = mapped_column(Integer, default=1, nullable=False)  # Optimistic Locking
 
     category: Mapped["Category"] = relationship(back_populates="products")
+    unit: Mapped[Optional["Unit"]] = relationship(back_populates="products")
     parent: Mapped["Product"] = relationship("Product", remote_side=[id], back_populates="variants")
     variants: Mapped[List["Product"]] = relationship("Product", back_populates="parent")
     components: Mapped[List["CompositeItem"]] = relationship(

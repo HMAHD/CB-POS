@@ -39,7 +39,7 @@ class ProductCard(QToolButton):
         layout.addWidget(icon_label)
 
         # Name Label
-        self.lbl_name = QLabel(self.product.name)
+        self.lbl_name = QLabel(getattr(self.product, "name_en", None) or getattr(self.product, "name", ""))
         self.lbl_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_name.setWordWrap(True)
         self.lbl_name.setStyleSheet("font-size: 12px; color: white; font-weight: bold;")

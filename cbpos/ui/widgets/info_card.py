@@ -85,7 +85,6 @@ class InfoCard(QFrame):
         """Update icon color based on current theme."""
         if self.icon_label is None:
             return
-        from cbpos.core.services.theme_service import ThemeService
         # Use white icon with 40% opacity
         icon = Icons.get(self.icon_name, "white")
         self.icon_label.setPixmap(icon.pixmap(40, 40))

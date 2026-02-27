@@ -569,7 +569,8 @@
       - [x] Refactor `core/database.py` to support dynamic switching.
       - [x] Implement `get_db_url()`: Returns `sqlite:///...` or `postgresql://...` based on config.
       - [x] Configure **Connection Pooling** (QueuePool) for PostgreSQL mode.
-  - [x] **18.2 Network Configuration UI**
+  - [x
+  ] **18.2 Network Configuration UI**
       - [x] Create `ui/views/settings/network_page.py`.
       - [x] **Mode Selector:** [Standalone (Default)] vs [Network Client].
       - **Server Settings:** Host IP, Port, DB Name, Username, Password.

@@ -30,6 +30,9 @@ class PaymentMethodType:
     CASH = "Cash"
     CARD = "Card"
     CREDIT = "Credit"
+    QR_MOBILE = "QR/Mobile"
+    CHEQUE = "Cheque"
+    BANK_TRANSFER = "Transfer"
     REFUND = "REFUND"
 
 

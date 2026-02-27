@@ -88,6 +88,9 @@ class ShiftService:
             total_cash_sales = sales_by_method.get(PaymentMethodType.CASH, Decimal(0))
             total_card_sales = sales_by_method.get(PaymentMethodType.CARD, Decimal(0))
             total_credit_sales = sales_by_method.get(PaymentMethodType.CREDIT, Decimal(0))
+            total_qr_mobile = sales_by_method.get(PaymentMethodType.QR_MOBILE, Decimal(0))
+            total_cheque = sales_by_method.get(PaymentMethodType.CHEQUE, Decimal(0))
+            total_transfer = sales_by_method.get(PaymentMethodType.BANK_TRANSFER, Decimal(0))
             total_sales = sum(sales_by_method.values())
 
             # 2. Cash Movements
@@ -123,6 +126,19 @@ class ShiftService:
                 txn_stmt = txn_stmt.where(Sale.date <= shift.end_time)
             txn_count = session.scalar(txn_stmt)
 
+            # 5. Tax Totals for the shift
+            tax_stmt = select(
+                func.sum(Sale.tax_vat).label("total_vat"),
+                func.sum(Sale.tax_sscl).label("total_sscl"),
+            ).where(
+                Sale.user_id == shift.user_id,
+                Sale.date >= shift.start_time,
+                Sale.status == DocumentStatus.COMPLETED,
+            )
+            if shift.end_time:
+                tax_stmt = tax_stmt.where(Sale.date <= shift.end_time)
+            tax_row = session.execute(tax_stmt).first()
+
             return {
                 "shift_id": shift.id,
                 "user_name": shift.user.username,
@@ -134,12 +150,17 @@ class ShiftService:
                 "cash_sales": total_cash_sales,
                 "card_sales": total_card_sales,
                 "credit_sales": total_credit_sales,
+                "qr_mobile_sales": total_qr_mobile,
+                "cheque_sales": total_cheque,
+                "transfer_sales": total_transfer,
                 "cash_in": total_ins,
                 "cash_out": total_payouts + total_drops,
                 "expected_cash": expected_cash,
                 "void_count": void_count or 0,
                 "void_value": void_value or Decimal(0),
                 "txn_count": txn_count or 0,
+                "total_vat": tax_row[0] or Decimal(0) if tax_row else Decimal(0),
+                "total_sscl": tax_row[1] or Decimal(0) if tax_row else Decimal(0),
             }
 
     def close_shift(self, shift_id: int, counted_cash: Decimal, notes: str = None) -> Dict[str, Any]:

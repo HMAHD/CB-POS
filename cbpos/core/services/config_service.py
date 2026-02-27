@@ -61,6 +61,7 @@ class ConfigService:
         "enable_loyalty": True,
         "enable_touch_mode": True,
         "enable_visual_search": True,
+        "auto_select_barcode_match": True,
         # Appearance
         "theme": "Dark",
         "font_size": 12,
@@ -80,12 +81,22 @@ class ConfigService:
         "network_db_sslmode": "prefer",  # disable, allow, prefer, require, verify-full
         # Transaction timeout in seconds (0 = no timeout)
         "db_statement_timeout": 30,
+        # Terminal Identification
+        "terminal_id": "TERM-01",
+        # Automation / Email
+        "auto_report_enabled": False,
+        "auto_report_time": "22:00",
+        "admin_email": "",
+        "smtp_host": "",
+        "smtp_port": "587",
+        "smtp_user": "",
+        "smtp_pass": "",
     }
 
     _settings: Dict[str, Any] = {}
 
     # Keys that should be obfuscated (base64-encoded) in the settings file
-    _SENSITIVE_KEYS = {"network_db_password"}
+    _SENSITIVE_KEYS = {"network_db_password", "smtp_pass"}
 
     @classmethod
     def _encode_sensitive(cls, value: str) -> str:

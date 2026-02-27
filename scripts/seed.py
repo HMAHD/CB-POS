@@ -265,6 +265,9 @@ def seed_data():
             PaymentMethod(name="Cash", is_cash=True, open_drawer=True, shortcut="F12"),
             PaymentMethod(name="Card", is_cash=False, open_drawer=False),
             PaymentMethod(name="Credit", is_cash=False, open_drawer=False),
+            PaymentMethod(name="QR/Mobile", is_cash=False, open_drawer=False),
+            PaymentMethod(name="Cheque", is_cash=False, open_drawer=False),
+            PaymentMethod(name="Transfer", is_cash=False, open_drawer=False),
         ]
         session.add_all(payment_methods)
         session.flush()

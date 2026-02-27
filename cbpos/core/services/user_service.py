@@ -56,6 +56,21 @@ class UserService:
             return False
 
     @staticmethod
+    def update_admin_pin(new_pin: str) -> bool:
+        """Update the admin user's PIN during first-run setup."""
+        try:
+            with Database().get_session() as session:
+                admin = session.query(User).filter(User.username == "admin").first()
+                if not admin:
+                    return False
+                admin.pin_hash = hashlib.sha256(new_pin.encode()).hexdigest()
+                session.commit()
+                return True
+        except Exception as e:
+            logging.error(f"Update Admin PIN Failed: {e}")
+            return False
+
+    @staticmethod
     def get_recent_activity(user_id: Optional[int] = None, limit: int = 10) -> list:
         """
         Retrieve recent audit logs.

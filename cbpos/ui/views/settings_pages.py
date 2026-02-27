@@ -19,14 +19,13 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QApplication,
     QProgressDialog,
+    QScrollArea,
 )
 from PyQt6.QtCore import Qt, QTime
 from PyQt6.QtPrintSupport import QPrinterInfo
 from sqlalchemy.engine import URL
 from cbpos.core.services.language_service import LanguageService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
-from cbpos.core.services.auth_service import AuthService
-from cbpos.core.services.user_service import UserService
 from cbpos.ui.dialogs.receipt_preview_dialog import ReceiptPreviewDialog
 from cbpos.core.models import Sale, SaleItem, Product
 from cbpos.config import Config
@@ -53,86 +52,73 @@ class SettingsPage(QWidget):
         """Return a dictionary of settings to save. Override in subclasses."""
         return {}
 
+    def _create_scroll_area(self):
+        """Creates a QScrollArea that wraps content for the page."""
+        outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        outer_layout.addWidget(scroll)
+
+        inner_widget = QWidget()
+        inner_widget.setStyleSheet("background: transparent;")
+        scroll.setWidget(inner_widget)
+        return inner_widget
+
     def create_form_container(self, top_margin=30, side_margin=30, bottom_margin=30):
         """
-        Creates a standardized form layout container for settings pages.
+        Creates a scrollable form layout container for settings pages.
 
         Returns:
             tuple: (container_layout, form_layout, form_widget)
-            - container_layout: QVBoxLayout with top alignment
-            - form_layout: QFormLayout with proper spacing and growth policy
-            - form_widget: QWidget wrapping the form_layout (ensures full-width)
-
-        Usage:
-            container, form, form_widget = self.create_form_container()
-            # Add form rows
-            form.addRow("Label:", widget)
-            # Add form widget to container
-            container.addWidget(form_widget)
         """
-        # Main container with top alignment
-        container = QVBoxLayout(self)
+        inner_widget = self._create_scroll_area()
+        container = QVBoxLayout(inner_widget)
         container.setContentsMargins(0, 0, 0, 0)
         container.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        # Create widget to hold form (forces full width expansion)
         form_widget = QWidget()
         form_layout = QFormLayout(form_widget)
         form_layout.setContentsMargins(side_margin, top_margin, side_margin, bottom_margin)
         form_layout.setVerticalSpacing(15)
         form_layout.setHorizontalSpacing(20)
-
-        # Force Left & Top alignment to prevent centering
         form_layout.setFormAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-
-        # Keep labels right-aligned for professional look
         form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-
         form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
         return container, form_layout, form_widget
 
     def create_group_container(self, top_margin=30, side_margin=30, bottom_margin=30):
-        """
-        Creates a standardized group-based layout container for settings pages.
-
-        Returns:
-            QVBoxLayout: Main layout with proper spacing and top alignment
-
-        Usage:
-            main_layout = self.create_group_container()
-            # Add groups
-            grp = QGroupBox("Section Title")
-            form = QFormLayout(grp)
-            main_layout.addWidget(grp)
-        """
-        main_layout = QVBoxLayout(self)
+        """Creates a scrollable group-based layout container for settings pages."""
+        inner_widget = self._create_scroll_area()
+        main_layout = QVBoxLayout(inner_widget)
         main_layout.setContentsMargins(side_margin, top_margin, side_margin, bottom_margin)
         main_layout.setSpacing(20)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
         return main_layout
 
     def configure_form_layout(self, form_layout):
-        """
-        Applies standard configuration to a QFormLayout.
-        Use this for forms inside QGroupBox widgets.
-        """
+        """Applies standard configuration to a QFormLayout."""
         form_layout.setVerticalSpacing(15)
         form_layout.setHorizontalSpacing(20)
-
-        # Force Left & Top alignment to prevent centering
         form_layout.setFormAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-
-        # Keep labels right-aligned for professional look
         form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-
         form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
 
-class GeneralPage(SettingsPage):
+class ShopInfoPage(SettingsPage):
+    """Consolidated: General + Payment banking + Automation email settings."""
+
     def init_ui(self):
-        container, layout, form_widget = self.create_form_container()
+        main_layout = self.create_group_container()
+
+        # --- Shop Details ---
+        grp_shop = QGroupBox("Shop Details")
+        form_shop = QFormLayout(grp_shop)
+        self.configure_form_layout(form_shop)
 
         self.input_shop_name = QLineEdit()
         self.input_address = QLineEdit()
@@ -141,37 +127,90 @@ class GeneralPage(SettingsPage):
         self.input_tax_id = QLineEdit()
         self.input_currency = QLineEdit()
 
-        layout.addRow("Shop Name:", self.input_shop_name)
-        layout.addRow("Address:", self.input_address)
-        layout.addRow("Phone:", self.input_phone)
-        layout.addRow("VAT Number:", self.input_vat)
-        layout.addRow("Company Tax ID:", self.input_tax_id)
-        layout.addRow("Currency Symbol:", self.input_currency)
+        form_shop.addRow("Shop Name:", self.input_shop_name)
+        form_shop.addRow("Address:", self.input_address)
+        form_shop.addRow("Phone:", self.input_phone)
+        form_shop.addRow("VAT Number:", self.input_vat)
+        form_shop.addRow("Company Tax ID:", self.input_tax_id)
+        form_shop.addRow("Currency Symbol:", self.input_currency)
 
-        # Appearance
+        main_layout.addWidget(grp_shop)
+
+        # --- Banking Details ---
+        grp_bank = QGroupBox("Banking Details (For Invoices)")
+        form_bank = QFormLayout(grp_bank)
+        self.configure_form_layout(form_bank)
+
+        self.input_bank_name = QLineEdit()
+        self.input_account_no = QLineEdit()
+        self.input_branch = QLineEdit()
+
+        form_bank.addRow("Bank Name:", self.input_bank_name)
+        form_bank.addRow("Account Number:", self.input_account_no)
+        form_bank.addRow("Branch:", self.input_branch)
+
+        main_layout.addWidget(grp_bank)
+
+        # --- Email / Automation ---
+        grp_email = QGroupBox("Email & Auto-Report")
+        form_email = QFormLayout(grp_email)
+        self.configure_form_layout(form_email)
+
+        self.chk_auto_report = QCheckBox()
+        form_email.addRow("Enable Daily Auto-Report:", self.chk_auto_report)
+
+        self.time_auto_report = QTimeEdit()
+        self.time_auto_report.setDisplayFormat("HH:mm")
+        form_email.addRow("Report Time:", self.time_auto_report)
+
+        self.input_admin_email = QLineEdit()
+        self.input_admin_email.setPlaceholderText("admin@example.com")
+        form_email.addRow("Admin Email:", self.input_admin_email)
+
+        self.input_smtp_host = QLineEdit()
+        self.input_smtp_host.setPlaceholderText("smtp.gmail.com")
+        form_email.addRow("SMTP Host:", self.input_smtp_host)
+
+        self.input_smtp_port = QLineEdit()
+        self.input_smtp_port.setPlaceholderText("587")
+        form_email.addRow("SMTP Port:", self.input_smtp_port)
+
+        self.input_smtp_user = QLineEdit()
+        self.input_smtp_user.setPlaceholderText("email@example.com")
+        form_email.addRow("SMTP User:", self.input_smtp_user)
+
+        self.input_smtp_pass = QLineEdit()
+        self.input_smtp_pass.setEchoMode(QLineEdit.EchoMode.Password)
+        self.input_smtp_pass.setPlaceholderText("App Password")
+        form_email.addRow("SMTP Password:", self.input_smtp_pass)
+
+        main_layout.addWidget(grp_email)
+
+        # --- Appearance ---
+        grp_appearance = QGroupBox("Appearance")
+        form_appearance = QFormLayout(grp_appearance)
+        self.configure_form_layout(form_appearance)
+
         self.spin_font_size = QSpinBox()
         self.spin_font_size.setRange(8, 24)
         self.spin_font_size.setSuffix(" px")
-        layout.addRow("Font Size:", self.spin_font_size)
+        form_appearance.addRow("Font Size:", self.spin_font_size)
 
         lbl_restart = QLabel("(Requires Restart)")
         lbl_restart.setStyleSheet("color: #FF4136; font-size: 10px;")
-        layout.addRow("", lbl_restart)
+        form_appearance.addRow("", lbl_restart)
 
-        # Theme
         self.combo_theme = QComboBox()
         self.combo_theme.addItems(["Ceylon Night (Dark)", "Ceylon Day (Light)"])
-        layout.addRow("Theme:", self.combo_theme)
+        form_appearance.addRow("Theme:", self.combo_theme)
 
-        # Language
         self.combo_language = QComboBox()
         languages = LanguageService.get_available_languages()
         for code, name in languages.items():
             self.combo_language.addItem(f"{name} ({code})", code)
-        layout.addRow("Language:", self.combo_language)
+        form_appearance.addRow("Language:", self.combo_language)
 
-        # Add form widget to container
-        container.addWidget(form_widget)
+        main_layout.addWidget(grp_appearance)
 
     def load(self, settings: dict):
         self.input_shop_name.setText(settings.get("shop_name", ""))
@@ -180,12 +219,22 @@ class GeneralPage(SettingsPage):
         self.input_vat.setText(settings.get("vat_number", ""))
         self.input_tax_id.setText(settings.get("company_tax_id", ""))
         self.input_currency.setText(settings.get("currency_symbol", "Rs."))
+
+        self.input_bank_name.setText(settings.get("company_bank_name", ""))
+        self.input_account_no.setText(settings.get("company_account_number", ""))
+        self.input_branch.setText(settings.get("company_bank_branch", ""))
+
+        self.chk_auto_report.setChecked(settings.get("auto_report_enabled", False))
+        self.time_auto_report.setTime(QTime.fromString(settings.get("auto_report_time", "22:00"), "HH:mm"))
+        self.input_admin_email.setText(settings.get("admin_email", ""))
+        self.input_smtp_host.setText(settings.get("smtp_host", ""))
+        self.input_smtp_port.setText(str(settings.get("smtp_port", "587")))
+        self.input_smtp_user.setText(settings.get("smtp_user", ""))
+        self.input_smtp_pass.setText(settings.get("smtp_pass", ""))
+
         self.spin_font_size.setValue(settings.get("font_size", 12))
-
         current_theme = settings.get("theme", "Dark")
-        index = 0 if current_theme == "Dark" else 1
-        self.combo_theme.setCurrentIndex(index)
-
+        self.combo_theme.setCurrentIndex(0 if current_theme == "Dark" else 1)
         current_lang = settings.get("language", "en")
         index = self.combo_language.findData(current_lang)
         if index >= 0:
@@ -201,82 +250,91 @@ class GeneralPage(SettingsPage):
             "vat_number": self.input_vat.text(),
             "company_tax_id": self.input_tax_id.text(),
             "currency_symbol": self.input_currency.text(),
+            "company_bank_name": self.input_bank_name.text(),
+            "company_account_number": self.input_account_no.text(),
+            "company_bank_branch": self.input_branch.text(),
+            "auto_report_enabled": self.chk_auto_report.isChecked(),
+            "auto_report_time": self.time_auto_report.time().toString("HH:mm"),
+            "admin_email": self.input_admin_email.text(),
+            "smtp_host": self.input_smtp_host.text(),
+            "smtp_port": self.input_smtp_port.text(),
+            "smtp_user": self.input_smtp_user.text(),
+            "smtp_pass": self.input_smtp_pass.text(),
             "font_size": self.spin_font_size.value(),
             "theme": theme_selection,
             "language": lang_code,
         }
 
 
-class SalesPage(SettingsPage):
-    def init_ui(self):
-        container, layout, form_widget = self.create_form_container()
+class SalesTaxPage(SettingsPage):
+    """Consolidated: Sales + Tax settings."""
 
-        self.combo_search_mode = QComboBox()
-        self.combo_search_mode.addItems(["ALL", "BARCODE", "NAME"])
-        layout.addRow("Default Search Mode:", self.combo_search_mode)
-
-        self.chk_quick_pay = QCheckBox()
-        layout.addRow("Enable Quick Pay (F12):", self.chk_quick_pay)
-
-        self.chk_void_reason = QCheckBox()
-        layout.addRow("Require Reason for Void:", self.chk_void_reason)
-
-        container.addWidget(form_widget)
-
-    def load(self, settings: dict):
-        self.combo_search_mode.setCurrentText(settings.get("default_search_mode", "ALL"))
-        self.chk_quick_pay.setChecked(settings.get("quick_pay_enabled", True))
-        self.chk_void_reason.setChecked(settings.get("require_void_reason", True))
-
-    def save(self) -> dict:
-        return {
-            "default_search_mode": self.combo_search_mode.currentText(),
-            "quick_pay_enabled": self.chk_quick_pay.isChecked(),
-            "require_void_reason": self.chk_void_reason.isChecked(),
-        }
-
-
-class TaxPage(SettingsPage):
     def init_ui(self):
         main_layout = self.create_group_container()
 
-        # Warning
+        # --- Sales Settings ---
+        grp_sales = QGroupBox("Sales")
+        form_sales = QFormLayout(grp_sales)
+        self.configure_form_layout(form_sales)
+
+        self.combo_search_mode = QComboBox()
+        self.combo_search_mode.addItems(["ALL", "BARCODE", "NAME"])
+        form_sales.addRow("Default Search Mode:", self.combo_search_mode)
+
+        self.chk_quick_pay = QCheckBox()
+        form_sales.addRow("Enable Quick Pay (F12):", self.chk_quick_pay)
+
+        self.chk_void_reason = QCheckBox()
+        form_sales.addRow("Require Reason for Void:", self.chk_void_reason)
+
+        self.chk_show_receipt_dialog = QCheckBox()
+        form_sales.addRow("Show Receipt Options after Sale:", self.chk_show_receipt_dialog)
+
+        main_layout.addWidget(grp_sales)
+
+        # --- Tax Settings ---
+        grp_tax = QGroupBox("Tax Configuration")
+        form_tax = QFormLayout(grp_tax)
+        self.configure_form_layout(form_tax)
+
         lbl_warn = QLabel("Note: Changing these values affects ALL future sales immediately.")
         lbl_warn.setStyleSheet("color: #FF4136; font-style: italic;")
-        main_layout.addWidget(lbl_warn)
-
-        # Create a widget to hold the form (forces full width)
-        form_widget = QWidget()
-        layout = QFormLayout(form_widget)
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.configure_form_layout(layout)
+        form_tax.addRow(lbl_warn)
 
         self.spin_vat = QSpinBox()
         self.spin_vat.setRange(0, 100)
         self.spin_vat.setSuffix("%")
-        layout.addRow("VAT Rate:", self.spin_vat)
+        form_tax.addRow("VAT Rate:", self.spin_vat)
 
         self.spin_sscl = QDoubleSpinBox()
         self.spin_sscl.setRange(0, 100)
         self.spin_sscl.setDecimals(2)
         self.spin_sscl.setSuffix("%")
-        layout.addRow("SSCL Rate:", self.spin_sscl)
+        form_tax.addRow("SSCL Rate:", self.spin_sscl)
 
         self.spin_sscl_turnover = QDoubleSpinBox()
         self.spin_sscl_turnover.setRange(0, 100)
         self.spin_sscl_turnover.setDecimals(1)
         self.spin_sscl_turnover.setSuffix("%")
-        layout.addRow("SSCL Turnover Base:", self.spin_sscl_turnover)
+        form_tax.addRow("SSCL Turnover Base:", self.spin_sscl_turnover)
 
-        main_layout.addWidget(form_widget)
+        main_layout.addWidget(grp_tax)
 
     def load(self, settings: dict):
+        self.combo_search_mode.setCurrentText(settings.get("default_search_mode", "ALL"))
+        self.chk_quick_pay.setChecked(settings.get("quick_pay_enabled", True))
+        self.chk_void_reason.setChecked(settings.get("require_void_reason", True))
+        self.chk_show_receipt_dialog.setChecked(settings.get("show_receipt_dialog", True))
         self.spin_vat.setValue(int(settings.get("tax_vat_rate", 18)))
         self.spin_sscl.setValue(float(settings.get("tax_sscl_rate", 2.5)))
         self.spin_sscl_turnover.setValue(float(settings.get("tax_sscl_turnover_pct", 50.0)))
 
     def save(self) -> dict:
         return {
+            "default_search_mode": self.combo_search_mode.currentText(),
+            "quick_pay_enabled": self.chk_quick_pay.isChecked(),
+            "require_void_reason": self.chk_void_reason.isChecked(),
+            "show_receipt_dialog": self.chk_show_receipt_dialog.isChecked(),
             "tax_vat_rate": self.spin_vat.value(),
             "tax_sscl_rate": self.spin_sscl.value(),
             "tax_sscl_turnover_pct": self.spin_sscl_turnover.value(),
@@ -307,8 +365,14 @@ class InventoryPage(SettingsPage):
 
 
 class DocumentPage(SettingsPage):
+    """Documents + Terminal ID."""
+
     def init_ui(self):
         container, layout, form_widget = self.create_form_container()
+
+        self.input_terminal_id = QLineEdit()
+        self.input_terminal_id.setPlaceholderText("TERM-01")
+        layout.addRow("Terminal ID:", self.input_terminal_id)
 
         self.combo_reset_period = QComboBox()
         self.combo_reset_period.addItems(["YEARLY", "MONTHLY", "NEVER"])
@@ -329,6 +393,7 @@ class DocumentPage(SettingsPage):
         container.addWidget(form_widget)
 
     def load(self, settings: dict):
+        self.input_terminal_id.setText(settings.get("terminal_id", "TERM-01"))
         self.combo_reset_period.setCurrentText(settings.get("doc_reset_period", "YEARLY"))
         self.input_fmt_sale.setText(settings.get("doc_format_sale", "INV-{Y}-{seq:05d}"))
         self.input_fmt_purchase.setText(settings.get("doc_format_purchase", "GRN-{Y}-{seq:05d}"))
@@ -336,6 +401,7 @@ class DocumentPage(SettingsPage):
 
     def save(self) -> dict:
         return {
+            "terminal_id": self.input_terminal_id.text().strip() or "TERM-01",
             "doc_reset_period": self.combo_reset_period.currentText(),
             "doc_format_sale": self.input_fmt_sale.text(),
             "doc_format_purchase": self.input_fmt_purchase.text(),
@@ -344,6 +410,8 @@ class DocumentPage(SettingsPage):
 
 
 class HardwarePage(SettingsPage):
+    """Hardware + Paper Width."""
+
     def init_ui(self):
         main_layout = self.create_group_container()
 
@@ -361,6 +429,10 @@ class HardwarePage(SettingsPage):
         self.combo_a4_printer = QComboBox()
         self.combo_a4_printer.addItems(available_printers)
         form_printer.addRow("A4 Printer:", self.combo_a4_printer)
+
+        self.combo_paper_width = QComboBox()
+        self.combo_paper_width.addItems(["80mm", "58mm"])
+        form_printer.addRow("Paper Width:", self.combo_paper_width)
 
         self.chk_auto_print = QCheckBox()
         form_printer.addRow("Auto-Print Receipt:", self.chk_auto_print)
@@ -399,9 +471,13 @@ class HardwarePage(SettingsPage):
             if idx >= 0:
                 self.combo_a4_printer.setCurrentIndex(idx)
 
+        paper_width = settings.get("paper_width", "80mm")
+        idx = self.combo_paper_width.findText(paper_width)
+        if idx >= 0:
+            self.combo_paper_width.setCurrentIndex(idx)
+
         self.chk_auto_print.setChecked(settings.get("auto_print_receipt", True))
         self.spin_copies.setValue(settings.get("receipt_copies", 1))
-
         self.input_scale_prefix.setText(settings.get("scale_barcode_prefix", "20"))
         self.spin_decimal_places.setValue(settings.get("scale_decimal_places", 3))
 
@@ -413,52 +489,11 @@ class HardwarePage(SettingsPage):
         return {
             "receipt_printer_name": self.combo_receipt_printer.currentText(),
             "a4_printer_name": self.combo_a4_printer.currentText(),
+            "paper_width": self.combo_paper_width.currentText(),
             "auto_print_receipt": self.chk_auto_print.isChecked(),
             "receipt_copies": self.spin_copies.value(),
             "scale_barcode_prefix": prefix,
             "scale_decimal_places": self.spin_decimal_places.value(),
-        }
-
-
-class PaymentPage(SettingsPage):
-    def init_ui(self):
-        main_layout = self.create_group_container()
-
-        form = QFormLayout()
-        self.configure_form_layout(form)
-
-        self.chk_show_receipt_dialog = QCheckBox()
-        form.addRow("Show Receipt Options Dialog after Sale:", self.chk_show_receipt_dialog)
-
-        main_layout.addLayout(form)
-
-        # Banking Details
-        grp_bank = QGroupBox("Banking Details (For Invoices)")
-        form_bank = QFormLayout(grp_bank)
-        self.configure_form_layout(form_bank)
-
-        self.input_bank_name = QLineEdit()
-        self.input_account_no = QLineEdit()
-        self.input_branch = QLineEdit()
-
-        form_bank.addRow("Bank Name:", self.input_bank_name)
-        form_bank.addRow("Account Number:", self.input_account_no)
-        form_bank.addRow("Branch:", self.input_branch)
-
-        main_layout.addWidget(grp_bank)
-
-    def load(self, settings: dict):
-        self.chk_show_receipt_dialog.setChecked(settings.get("show_receipt_dialog", True))
-        self.input_bank_name.setText(settings.get("company_bank_name", ""))
-        self.input_account_no.setText(settings.get("company_account_number", ""))
-        self.input_branch.setText(settings.get("company_bank_branch", ""))
-
-    def save(self) -> dict:
-        return {
-            "show_receipt_dialog": self.chk_show_receipt_dialog.isChecked(),
-            "company_bank_name": self.input_bank_name.text(),
-            "company_account_number": self.input_account_no.text(),
-            "company_bank_branch": self.input_branch.text(),
         }
 
 
@@ -536,7 +571,6 @@ class ReceiptPage(SettingsPage):
     def preview_receipt(self):
         from datetime import datetime
 
-        # Create a dummy sale for preview
         dummy_sale = Sale(
             id=12345,
             date=datetime.now(),
@@ -545,7 +579,6 @@ class ReceiptPage(SettingsPage):
             tax_sscl=decimal.Decimal("37.50"),
             net_revenue=decimal.Decimal("1233.69"),
         )
-        # Dummy items
         p1 = Product(name_en="Test Product 1")
         p2 = Product(name_en="Test Product 2")
         dummy_sale.items = [
@@ -563,7 +596,6 @@ class ReceiptPage(SettingsPage):
             ),
         ]
 
-        # Use current UI settings for preview without saving
         current_settings = self.save()
         commands = ReceiptBuilder.build_receipt(dummy_sale, config_override=current_settings)
 
@@ -571,148 +603,16 @@ class ReceiptPage(SettingsPage):
         dlg.exec()
 
 
-class AutomationPage(SettingsPage):
-    def init_ui(self):
-        container, form_layout, form_widget = self.create_form_container()
-
-        # 1. Auto-Report Scheduler
-        self.chk_auto_report = QCheckBox()
-        form_layout.addRow("Enable Daily Auto-Report:", self.chk_auto_report)
-
-        self.time_auto_report = QTimeEdit()
-        self.time_auto_report.setDisplayFormat("HH:mm")
-        form_layout.addRow("Report Time:", self.time_auto_report)
-
-        self.input_admin_email = QLineEdit()
-        self.input_admin_email.setPlaceholderText("admin@example.com")
-        form_layout.addRow("Admin Email:", self.input_admin_email)
-
-        # Separator
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setFrameShadow(QFrame.Shadow.Sunken)
-        form_layout.addRow(line)
-
-        # 2. Email Settings (SMTP)
-        self.input_smtp_host = QLineEdit()
-        self.input_smtp_host.setPlaceholderText("smtp.gmail.com")
-        form_layout.addRow("SMTP Host:", self.input_smtp_host)
-
-        self.input_smtp_port = QLineEdit()
-        self.input_smtp_port.setPlaceholderText("587")
-        form_layout.addRow("SMTP Port:", self.input_smtp_port)
-
-        self.input_smtp_user = QLineEdit()
-        self.input_smtp_user.setPlaceholderText("email@example.com")
-        form_layout.addRow("SMTP User:", self.input_smtp_user)
-
-        self.input_smtp_pass = QLineEdit()
-        self.input_smtp_pass.setEchoMode(QLineEdit.EchoMode.Password)
-        self.input_smtp_pass.setPlaceholderText("App Password")
-        form_layout.addRow("SMTP Password:", self.input_smtp_pass)
-
-        container.addWidget(form_widget)
-
-    def load(self, settings: dict):
-        self.chk_auto_report.setChecked(settings.get("auto_report_enabled", False))
-        self.time_auto_report.setTime(QTime.fromString(settings.get("auto_report_time", "22:00"), "HH:mm"))
-        self.input_admin_email.setText(settings.get("admin_email", ""))
-
-        self.input_smtp_host.setText(settings.get("smtp_host", ""))
-        self.input_smtp_port.setText(str(settings.get("smtp_port", "587")))
-        self.input_smtp_user.setText(settings.get("smtp_user", ""))
-        self.input_smtp_pass.setText(settings.get("smtp_pass", ""))
-
-    def save(self) -> dict:
-        return {
-            "auto_report_enabled": self.chk_auto_report.isChecked(),
-            "auto_report_time": self.time_auto_report.time().toString("HH:mm"),
-            "admin_email": self.input_admin_email.text(),
-            "smtp_host": self.input_smtp_host.text(),
-            "smtp_port": self.input_smtp_port.text(),
-            "smtp_user": self.input_smtp_user.text(),
-            "smtp_pass": self.input_smtp_pass.text(),
-        }
-
-
-class ProfilePage(SettingsPage):
-    def init_ui(self):
-        main_layout = self.create_group_container()
-
-        form = QFormLayout()
-        self.configure_form_layout(form)
-
-        self.input_name = QLineEdit()
-        form.addRow("Display Name:", self.input_name)
-
-        self.input_current_pin = QLineEdit()
-        self.input_current_pin.setEchoMode(QLineEdit.EchoMode.Password)
-        form.addRow("Current PIN:", self.input_current_pin)
-
-        self.input_new_pin = QLineEdit()
-        self.input_new_pin.setEchoMode(QLineEdit.EchoMode.Password)
-        self.input_new_pin.setPlaceholderText("Leave empty to keep current")
-        form.addRow("New PIN:", self.input_new_pin)
-
-        main_layout.addLayout(form)
-
-        # Update Button
-        self.btn_update = QPushButton("Update Profile")
-        self.btn_update.setStyleSheet("background-color: #007ACC; color: white; padding: 10px;")
-        self.btn_update.clicked.connect(self.update_profile)
-        main_layout.addWidget(self.btn_update)
-
-    def load(self, settings: dict):
-        user = AuthService.get_current_user()
-        if user:
-            self.input_name.setText(user.username)
-        self.input_current_pin.clear()
-        self.input_new_pin.clear()
-
-    def save(self) -> dict:
-        # Profile page handles its own saving via the button
-        return {}
-
-    def update_profile(self):
-        user = AuthService.get_current_user()
-        if not user:
-            return
-
-        current_pin = self.input_current_pin.text()
-        new_pin = self.input_new_pin.text()
-        display_name = self.input_name.text()
-
-        if not current_pin:
-            QMessageBox.warning(self, "Error", "Current PIN is required.")
-            return
-
-        # Verify Current PIN
-        verified_user = AuthService.verify_pin(current_pin)
-        if not verified_user or verified_user.id != user.id:
-            QMessageBox.critical(self, "Error", "Invalid Current PIN.")
-            return
-
-        # Update
-        success = UserService.update_user_profile(user.id, display_name, new_pin if new_pin else None)
-
-        if success:
-            QMessageBox.information(self, "Success", "Profile updated successfully.")
-            self.input_current_pin.clear()
-            self.input_new_pin.clear()
-        else:
-            QMessageBox.critical(self, "Error", "Failed to update profile.")
-
-
 class NetworkPage(SettingsPage):
     """Network database configuration for multi-terminal setup - Connectivity Dashboard."""
 
     def __init__(self):
-        self.connection_tested = False  # Track if connection test passed
+        self.connection_tested = False
         super().__init__()
 
     def init_ui(self):
-        # Main container with card-based layout
-        main_layout = QVBoxLayout(self)
+        inner_widget = self._create_scroll_area()
+        main_layout = QVBoxLayout(inner_widget)
         main_layout.setContentsMargins(30, 30, 30, 30)
         main_layout.setSpacing(25)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -725,11 +625,9 @@ class NetworkPage(SettingsPage):
         status_layout.setContentsMargins(20, 20, 20, 20)
         status_layout.setSpacing(15)
 
-        # Icon/Mode indicator
-        self.lbl_mode_icon = QLabel("💻")  # Will change to 🖥️ for Network
+        self.lbl_mode_icon = QLabel("💻")
         self.lbl_mode_icon.setObjectName("StatusIcon")
 
-        # Status text
         status_text_layout = QVBoxLayout()
         self.lbl_status_title = QLabel("Single Computer Mode")
         self.lbl_status_title.setObjectName("StatusTitle")
@@ -738,7 +636,6 @@ class NetworkPage(SettingsPage):
         status_text_layout.addWidget(self.lbl_status_title)
         status_text_layout.addWidget(self.lbl_status_subtitle)
 
-        # Mode selector (right side)
         mode_selector_layout = QVBoxLayout()
         mode_label = QLabel("Database Mode:")
         mode_label.setObjectName("StatusModeLabel")
@@ -763,33 +660,27 @@ class NetworkPage(SettingsPage):
         config_layout.setContentsMargins(25, 25, 25, 25)
         config_layout.setSpacing(18)
 
-        # Card title
-        config_title = QLabel("📡 Server Configuration")
+        config_title = QLabel("Server Configuration")
         config_title.setObjectName("CardTitle")
         config_layout.addWidget(config_title)
 
-        # Helper: Show this computer's IP (cross-platform UDP socket trick)
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-                # Connect to a public DNS server (Google's) to determine the routing IP
-                # This doesn't actually send a packet
                 s.connect(("8.8.8.8", 80))
                 local_ip = s.getsockname()[0]
         except Exception:
-            local_ip = "127.0.0.1"  # Safe fallback
+            local_ip = "127.0.0.1"
 
-        self.lbl_local_ip = QLabel(f"💡 This Computer's IP: {local_ip}")
+        self.lbl_local_ip = QLabel(f"This Computer's IP: {local_ip}")
         self.lbl_local_ip.setObjectName("IPHelper")
         config_layout.addWidget(self.lbl_local_ip)
 
-        # Compact grid layout for inputs (2 columns: label + input, stacked vertically)
         grid_layout = QGridLayout()
         grid_layout.setVerticalSpacing(12)
         grid_layout.setHorizontalSpacing(10)
-        grid_layout.setColumnStretch(0, 0)  # Label column: fixed width
-        grid_layout.setColumnStretch(1, 1)  # Input column: stretches
+        grid_layout.setColumnStretch(0, 0)
+        grid_layout.setColumnStretch(1, 1)
 
-        # Row 0: Host IP
         lbl_host = QLabel("Host IP:")
         lbl_host.setObjectName("FormLabel")
         self.input_host = QLineEdit()
@@ -798,7 +689,6 @@ class NetworkPage(SettingsPage):
         grid_layout.addWidget(lbl_host, 0, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         grid_layout.addWidget(self.input_host, 0, 1)
 
-        # Row 1: Port
         lbl_port = QLabel("Port:")
         lbl_port.setObjectName("FormLabel")
         self.input_port = QSpinBox()
@@ -808,7 +698,6 @@ class NetworkPage(SettingsPage):
         grid_layout.addWidget(lbl_port, 1, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         grid_layout.addWidget(self.input_port, 1, 1)
 
-        # Row 2: Database Name
         lbl_dbname = QLabel("Database Name:")
         lbl_dbname.setObjectName("FormLabel")
         self.input_dbname = QLineEdit()
@@ -817,7 +706,6 @@ class NetworkPage(SettingsPage):
         grid_layout.addWidget(lbl_dbname, 2, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         grid_layout.addWidget(self.input_dbname, 2, 1)
 
-        # Row 3: Username
         lbl_user = QLabel("Username:")
         lbl_user.setObjectName("FormLabel")
         self.input_user = QLineEdit()
@@ -826,21 +714,19 @@ class NetworkPage(SettingsPage):
         grid_layout.addWidget(lbl_user, 3, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         grid_layout.addWidget(self.input_user, 3, 1)
 
-        # Row 4: Password
         lbl_password = QLabel("Password:")
         lbl_password.setObjectName("FormLabel")
         self.input_password = QLineEdit()
         self.input_password.setObjectName("InputNetwork")
         self.input_password.setEchoMode(QLineEdit.EchoMode.Password)
-        self.input_password.setPlaceholderText("••••••••")
+        self.input_password.setPlaceholderText("password")
         grid_layout.addWidget(lbl_password, 4, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         grid_layout.addWidget(self.input_password, 4, 1)
 
         config_layout.addLayout(grid_layout)
 
-        # Test Connection Button (full width)
         test_btn_layout = QHBoxLayout()
-        self.btn_test = QPushButton("🔌 Test Connection")
+        self.btn_test = QPushButton("Test Connection")
         self.btn_test.setObjectName("BtnTestNetwork")
         self.btn_test.clicked.connect(self._test_connection)
         self.lbl_test_status = QLabel("")
@@ -851,7 +737,7 @@ class NetworkPage(SettingsPage):
 
         main_layout.addWidget(self.config_card)
 
-        # === CARD 3: Data Migration Card (The Magic Section) ===
+        # === CARD 3: Data Migration Card ===
         self.migration_card = QFrame()
         self.migration_card.setObjectName("MigrationCard")
         self.migration_card.setFrameShape(QFrame.Shape.StyledPanel)
@@ -859,54 +745,47 @@ class NetworkPage(SettingsPage):
         migration_layout.setContentsMargins(25, 25, 25, 25)
         migration_layout.setSpacing(18)
 
-        migration_title = QLabel("🚀 First-Time Server Setup")
+        migration_title = QLabel("First-Time Server Setup")
         migration_title.setObjectName("CardTitle")
         migration_layout.addWidget(migration_title)
 
         migration_info = QLabel(
             "Setting up the Main Server? Upload your current data to get started.\n\n"
             "This will transfer all products, customers, and sales history to the network database.\n"
-            "⚠ The target database must be empty."
+            "The target database must be empty."
         )
         migration_info.setWordWrap(True)
         migration_info.setObjectName("MigrationInfo")
         migration_layout.addWidget(migration_info)
 
-        self.btn_migrate = QPushButton("📤 Upload Local Data to Server")
+        self.btn_migrate = QPushButton("Upload Local Data to Server")
         self.btn_migrate.setObjectName("BtnMigrate")
-        self.btn_migrate.setEnabled(False)  # Disabled until connection test passes
+        self.btn_migrate.setEnabled(False)
         self.btn_migrate.clicked.connect(self._migrate_data)
         migration_layout.addWidget(self.btn_migrate)
 
         main_layout.addWidget(self.migration_card)
 
-        # Warning footer
-        self.lbl_warning = QLabel("⚠ Changing database mode requires application restart.")
+        self.lbl_warning = QLabel("Changing database mode requires application restart.")
         self.lbl_warning.setObjectName("NetworkWarning")
         self.lbl_warning.setWordWrap(True)
+        self.lbl_warning.setStyleSheet("color: #FF4136; font-style: italic;")
         main_layout.addWidget(self.lbl_warning)
 
-        # Initialize visibility
         self._on_mode_changed("Standalone")
 
     def load(self, settings: dict):
-        """Load network settings into UI."""
         db_mode = settings.get("db_mode", "standalone")
         self.cmb_db_mode.setCurrentText("Standalone" if db_mode == "standalone" else "Network")
-
         self.input_host.setText(settings.get("network_db_host", "localhost"))
         self.input_port.setValue(settings.get("network_db_port", 5432))
         self.input_dbname.setText(settings.get("network_db_name", "cbpos"))
         self.input_user.setText(settings.get("network_db_user", "postgres"))
         self.input_password.setText(settings.get("network_db_password", ""))
-
-        # Update visibility based on loaded mode
         self._on_mode_changed(self.cmb_db_mode.currentText())
 
     def save(self) -> dict:
-        """Return network settings to save."""
         db_mode = "standalone" if self.cmb_db_mode.currentText() == "Standalone" else "network"
-
         return {
             "db_mode": db_mode,
             "network_db_host": self.input_host.text().strip(),
@@ -917,10 +796,7 @@ class NetworkPage(SettingsPage):
         }
 
     def _on_mode_changed(self, mode: str):
-        """Update UI based on selected mode - show/hide cards and update status."""
         is_network = mode == "Network"
-
-        # Update Hero Status Card
         if is_network:
             self.lbl_mode_icon.setText("🌐")
             self.lbl_status_title.setText("Network Mode")
@@ -929,18 +805,13 @@ class NetworkPage(SettingsPage):
             self.lbl_mode_icon.setText("💻")
             self.lbl_status_title.setText("Single Computer Mode")
             self.lbl_status_subtitle.setText("Standalone • Local Database")
-
-        # Show/hide configuration and migration cards
         self.config_card.setVisible(is_network)
         self.migration_card.setVisible(is_network)
-
-        # Reset connection test status
         self.connection_tested = False
         self.btn_migrate.setEnabled(False)
         self.lbl_test_status.setText("")
 
     def _get_network_config(self):
-        """Extracts and cleans network configuration from UI."""
         return {
             "host": self.input_host.text().strip(),
             "port": self.input_port.value(),
@@ -950,13 +821,9 @@ class NetworkPage(SettingsPage):
         }
 
     def _test_connection(self):
-        """Test database connection with current credentials and update status."""
         from cbpos.core.database import Database
 
-        # Get network config from UI
         cfg = self._get_network_config()
-
-        # Validate inputs
         if not all([cfg["host"], cfg["dbname"], cfg["user"]]):
             QMessageBox.warning(
                 self,
@@ -965,14 +832,10 @@ class NetworkPage(SettingsPage):
             )
             return
 
-        # Show testing state
-        self.lbl_test_status.setText("⏳ Testing...")
+        self.lbl_test_status.setText("Testing...")
         self.btn_test.setEnabled(False)
-
-        # Process events to show the status
         QApplication.processEvents()
 
-        # Test connection
         success, message = Database.test_connection(
             mode="network",
             host=cfg["host"],
@@ -981,29 +844,23 @@ class NetworkPage(SettingsPage):
             user=cfg["user"],
             password=cfg["password"],
         )
-
-        # Update status
         self.btn_test.setEnabled(True)
 
         if success:
             self.connection_tested = True
-            self.lbl_test_status.setText("✅ Connected")
-            self.btn_migrate.setEnabled(True)  # Enable migration button
-            QMessageBox.information(self, "Connection Test", f"✓ {message}\n\nYou can now upload your data.")
+            self.lbl_test_status.setText("Connected")
+            self.btn_migrate.setEnabled(True)
+            QMessageBox.information(self, "Connection Test", f"{message}\n\nYou can now upload your data.")
         else:
             self.connection_tested = False
-            self.lbl_test_status.setText("❌ Failed")
+            self.lbl_test_status.setText("Failed")
             self.btn_migrate.setEnabled(False)
-            QMessageBox.critical(self, "Connection Test", f"✗ {message}")
+            QMessageBox.critical(self, "Connection Test", message)
 
     def _migrate_data(self):
-        """Migrate data from local SQLite to PostgreSQL server."""
         from cbpos.core.services.migration_service import MigrationService
 
-        # Get network config from UI
         cfg = self._get_network_config()
-
-        # Validate inputs
         if not all([cfg["host"], cfg["dbname"], cfg["user"]]):
             QMessageBox.warning(
                 self,
@@ -1012,7 +869,6 @@ class NetworkPage(SettingsPage):
             )
             return
 
-        # Confirm with user
         confirm = QMessageBox.question(
             self,
             "Confirm Data Migration",
@@ -1024,14 +880,10 @@ class NetworkPage(SettingsPage):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
-
         if confirm != QMessageBox.StandardButton.Yes:
             return
 
-        # Build database URLs
         sqlite_url = Config.DB_URI
-
-        # Use SQLAlchemy URL.create to safely handle special characters in password
         url_obj = URL.create(
             drivername="postgresql+psycopg2",
             username=cfg["user"],
@@ -1042,36 +894,28 @@ class NetworkPage(SettingsPage):
         )
         postgres_url = url_obj
 
-        # Show progress dialog
         progress = QProgressDialog("Migrating data to server...\nPlease wait.", None, 0, 0, self)
         progress.setWindowTitle("Data Migration")
         progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.setMinimumDuration(0)
         progress.setValue(0)
         progress.show()
-
-        # Process events to ensure dialog appears
         QApplication.processEvents()
 
         try:
-            # Perform migration
             success, message = MigrationService.migrate_sqlite_to_postgres(sqlite_url, postgres_url)
-
             progress.close()
-
             if success:
                 QMessageBox.information(
                     self,
                     "Migration Successful",
-                    f"{message}\n\n"
-                    f"Next steps:\n"
+                    f"{message}\n\nNext steps:\n"
                     f"1. Save these network settings\n"
                     f"2. Restart the application\n"
                     f"3. All terminals can now connect to the server",
                 )
             else:
                 QMessageBox.critical(self, "Migration Failed", f"Migration error:\n\n{message}")
-
         except Exception as e:
             progress.close()
             QMessageBox.critical(self, "Migration Error", f"Unexpected error during migration:\n\n{str(e)}")

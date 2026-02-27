@@ -356,6 +356,9 @@ class SalesView(QWidget):
         self.cart_table.scrollToBottom()
 
     def setup_shortcuts(self):
+        self.shortcut_f1 = QShortcut(QKeySequence("F1"), self)
+        self.shortcut_f1.activated.connect(self.show_shortcuts_help)
+
         self.shortcut_f5 = QShortcut(QKeySequence("F5"), self)
         self.shortcut_f5.activated.connect(self.process_payment)
 
@@ -366,7 +369,7 @@ class SalesView(QWidget):
         self.shortcut_f7.activated.connect(self.recall_bill)
 
         self.shortcut_f4 = QShortcut(QKeySequence("F4"), self)
-        self.shortcut_f4.activated.connect(self.change_line_quantity)  # Changed to Qty as per grid
+        self.shortcut_f4.activated.connect(self.change_line_quantity)
 
         self.shortcut_f3 = QShortcut(QKeySequence("F3"), self)
         self.shortcut_f3.activated.connect(self.open_advanced_search)
@@ -841,3 +844,10 @@ class SalesView(QWidget):
             # Already empty, just refresh tabs to be sure
             self.order_bar.refresh_tabs()
             self.barcode_input.setFocus()
+
+    def show_shortcuts_help(self):
+        """Show keyboard shortcuts help dialog (F1)."""
+        from cbpos.ui.dialogs.shortcuts_help_dialog import ShortcutsHelpDialog
+
+        dialog = ShortcutsHelpDialog(self)
+        dialog.exec()

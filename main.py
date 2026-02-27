@@ -91,6 +91,26 @@ def main():
     register_all_reports()
     print("[BOOTSTRAP] Reports registered.")
 
+    # First-Run Setup Wizard
+    if not os.path.exists(ConfigService.SETTINGS_FILE):
+        from cbpos.ui.dialogs.setup_wizard import SetupWizard
+
+        print("[BOOTSTRAP] First run detected - launching setup wizard...")
+        wizard = SetupWizard()
+        if not wizard.exec():
+            print("[BOOTSTRAP] Setup wizard cancelled. Exiting.")
+            sys.exit(0)
+
+    # Start scheduler if auto-report is enabled
+    if ConfigService.get("auto_report_enabled"):
+        try:
+            from cbpos.core.services.scheduler_service import SchedulerService
+
+            SchedulerService.start()
+            print("[BOOTSTRAP] Scheduler started.")
+        except Exception as e:
+            print(f"[BOOTSTRAP] Scheduler failed to start: {e}")
+
     # Launch main window
     window = MainWindow()
     window.showMaximized()  # Industrial apps usually run full screen

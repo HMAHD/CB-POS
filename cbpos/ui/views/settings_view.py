@@ -13,16 +13,12 @@ from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.ui.views.settings_pages import (
-    GeneralPage,
-    SalesPage,
-    TaxPage,
+    ShopInfoPage,
+    SalesTaxPage,
     InventoryPage,
     DocumentPage,
     HardwarePage,
-    PaymentPage,
     ReceiptPage,
-    AutomationPage,
-    ProfilePage,
     NetworkPage,
 )
 
@@ -51,21 +47,17 @@ class SettingsView(QWidget):
         self.sidebar.setObjectName("SettingsSidebar")
         self.sidebar.currentRowChanged.connect(self.change_page)
 
-        # Sidebar Items
+        # Sidebar Items (7 consolidated pages)
         import qtawesome as qta
 
         items = [
-            ("General", "fa5s.sliders-h"),
-            ("Sales", "fa5s.shopping-cart"),
-            ("Taxes", "fa5s.percent"),
+            ("Shop Info", "fa5s.store"),
+            ("Sales & Tax", "fa5s.shopping-cart"),
             ("Inventory", "fa5s.boxes"),
             ("Documents", "fa5s.file-invoice"),
-            ("Receipt", "fa5s.receipt"),
             ("Hardware", "fa5s.print"),
-            ("Payments", "fa5s.credit-card"),
-            ("Automation", "fa5s.robot"),
+            ("Receipt", "fa5s.receipt"),
             ("Network", "fa5s.network-wired"),
-            ("My Profile", "fa5s.user-cog"),
         ]
 
         for item_text, icon_name in items:
@@ -81,25 +73,21 @@ class SettingsView(QWidget):
         self.stack = QStackedWidget()
         self.stack.setObjectName("SettingsContent")
 
-        # Initialize Pages
+        # Initialize Pages (7 consolidated)
         self.pages = [
-            GeneralPage(),
-            SalesPage(),
-            TaxPage(),
+            ShopInfoPage(),
+            SalesTaxPage(),
             InventoryPage(),
             DocumentPage(),
-            ReceiptPage(),
             HardwarePage(),
-            PaymentPage(),
-            AutomationPage(),
+            ReceiptPage(),
             NetworkPage(),
-            ProfilePage(),
         ]
 
         for page in self.pages:
             self.stack.addWidget(page)
 
-        body_layout.addWidget(self.stack, 1)  # Stretch factor: content takes remaining space
+        body_layout.addWidget(self.stack, 1)
         main_layout.addLayout(body_layout, 1)
 
         # Footer Bar
@@ -127,10 +115,7 @@ class SettingsView(QWidget):
 
         main_layout.addWidget(footer_frame)
 
-        # Set window title
         self.setWindowTitle("Settings - CB POS")
-
-        # Select first item
         self.sidebar.setCurrentRow(0)
 
     def change_page(self, index):
@@ -142,13 +127,11 @@ class SettingsView(QWidget):
             page.load(settings)
 
     def save_all(self):
-        # Capture current state BEFORE update
         current_config = ConfigService.get_all()
         current_lang = current_config.get("language", "en")
         current_theme = current_config.get("theme", "Dark")
         current_font_size = current_config.get("font_size", 12)
 
-        # Collect settings from all pages
         all_settings = {}
         try:
             for page in self.pages:
@@ -157,19 +140,14 @@ class SettingsView(QWidget):
             QMessageBox.warning(self, "Validation Error", str(e))
             return
 
-        # Persist settings
         ConfigService.update_all(all_settings)
 
-        # Check what changed
         new_theme = all_settings.get("theme", current_theme)
         new_lang = all_settings.get("language", current_lang)
         new_font_size = all_settings.get("font_size", current_font_size)
 
-        # Apply Theme Immediately
         ThemeService.apply_theme(new_theme)
 
-        # Determine if restart is required
-        # Use .get() to avoid KeyErrors if keys are missing
         restart_required = (
             new_lang != current_lang
             or new_font_size != current_font_size

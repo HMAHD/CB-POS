@@ -118,6 +118,10 @@ class PrinterService:
         BOLD_OFF = ESC + b"E\x00"  # Bold off
         CUT = ESC + b"i"  # Cut paper
 
+        # Determine line width from paper_width config
+        paper_width = ConfigService.get("paper_width") or "80mm"
+        line_chars = 32 if paper_width == "58mm" else 42
+
         receipt = INIT
 
         # Header
@@ -134,7 +138,7 @@ class PrinterService:
         receipt += shop_name.encode("utf-8") + b"\n"
         receipt += shop_address.encode("utf-8") + b"\n"
         receipt += shop_phone.encode("utf-8") + b"\n"
-        receipt += b"=" * 42 + b"\n"
+        receipt += b"=" * line_chars + b"\n"
 
         # Sale Info
         receipt += LEFT
@@ -142,18 +146,19 @@ class PrinterService:
         receipt += "Invoice: INV-{0:06d}\n".format(sale.id).encode("utf-8")
         if sale.customer:
             receipt += "Customer: {0}\n".format(sale.customer.name).encode("utf-8")
-        receipt += b"-" * 42 + b"\n"
+        receipt += b"-" * line_chars + b"\n"
 
         # Items
+        name_width = line_chars - 2  # Leave margin
         for item in sale.items:
             product_name = item.product.name if item.product else "Unknown"
             qty = "{0:.3f}".format(item.quantity) if item.quantity % 1 != 0 else "{0}".format(int(item.quantity))
             price = item.unit_price * item.quantity - item.discount
-            receipt += "{0:<25}\n".format(product_name[:25]).encode("utf-8")
+            receipt += "{0}\n".format(product_name[:name_width]).encode("utf-8")
             receipt += "  {0} x Rs.{1:,.2f}".format(qty, item.unit_price).encode("utf-8")
             receipt += "{0:>12,.2f}\n".format(price).encode("utf-8")
 
-        receipt += b"-" * 42 + b"\n"
+        receipt += b"-" * line_chars + b"\n"
 
         # Totals
         receipt += BOLD_ON
@@ -164,7 +169,7 @@ class PrinterService:
             receipt += "Payment: {0}\n".format(sale.payment_method).encode("utf-8")
 
         # Footer
-        receipt += b"=" * 42 + b"\n"
+        receipt += b"=" * line_chars + b"\n"
         receipt += CENTER
         footer = ConfigService.get("receipt_footer") or "Thank You!"
         receipt += footer.encode("utf-8") + b"\n\n"

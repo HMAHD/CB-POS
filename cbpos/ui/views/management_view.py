@@ -107,6 +107,14 @@ class ManagementView(QWidget):
         user_profile_layout.setContentsMargins(0, 0, 0, 0)
         user_profile_layout.setSpacing(0)
 
+        # Edit Profile Button
+        self.btn_profile = SidebarButton("   Edit Profile", "fa5s.user-cog")
+        self.btn_profile.setObjectName("BtnProfile")
+        self.btn_profile.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.btn_profile.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.btn_profile.clicked.connect(self.open_profile_dialog)
+        user_profile_layout.addWidget(self.btn_profile)
+
         # POS Button
         self.btn_pos = SidebarButton("   POS / Sales", "fa5s.cash-register")
         self.btn_pos.setObjectName("BtnPos")  # Special Styling
@@ -265,6 +273,7 @@ class ManagementView(QWidget):
         self.update_sidebar_styles()
 
         # Update Button Style (Icon/Text)
+        self.btn_profile.setToolButtonStyle(style)
         self.btn_pos.setToolButtonStyle(style)
         self.btn_logout.setToolButtonStyle(style)
         for btn in self.nav_buttons:
@@ -278,18 +287,25 @@ class ManagementView(QWidget):
         required for the collapsed 'icon-only' mode vs the expanded 'full-width' mode.
         """
         # Update Property for all buttons
-        buttons = self.nav_buttons + [self.btn_pos, self.btn_logout]
+        buttons = self.nav_buttons + [self.btn_profile, self.btn_pos, self.btn_logout]
         for btn in buttons:
             btn.setProperty("collapsed", self.is_collapsed)
             btn.style().unpolish(btn)
             btn.style().polish(btn)
+
+    def open_profile_dialog(self):
+        """Open standalone profile/PIN change dialog."""
+        from cbpos.ui.dialogs.profile_dialog import ProfileDialog
+
+        dialog = ProfileDialog(self)
+        dialog.exec()
 
     def update_sidebar_icons(self):
         """
         Update all sidebar button icons when theme changes.
         Call this after theme switching to refresh icon colors.
         """
-        buttons = self.nav_buttons + [self.btn_pos, self.btn_logout]
+        buttons = self.nav_buttons + [self.btn_profile, self.btn_pos, self.btn_logout]
         for btn in buttons:
             if hasattr(btn, "update_icon"):
                 btn.update_icon()

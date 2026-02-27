@@ -32,11 +32,12 @@ class ReceiptBuilder:
         def get_conf(key, default=None):
             if config_override and key in config_override:
                 return config_override[key]
-            return (
-                ConfigService.get_str(key, default)
-                if isinstance(default, str)
-                else ConfigService.get_bool(key, default)
-            )
+            val = ConfigService.get(key)
+            return val if val is not None else default
+
+        # Determine line width from paper_width config
+        paper_width = get_conf("paper_width", "80mm")
+        line_chars = 32 if paper_width == "58mm" else 42
 
         # 1. Logo
         logo_path = get_conf("receipt_logo_path", "")
@@ -59,7 +60,7 @@ class ReceiptBuilder:
                 "align": "left",
             }
         )
-        commands.append({"type": "text", "val": "-" * 42, "align": "center"})
+        commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
 
         # 4. Items
         merge = get_conf("merge_items", True)
@@ -77,7 +78,7 @@ class ReceiptBuilder:
             line = "{} x {} = {}".format(qty, format_currency(price), format_currency(total))
             commands.append({"type": "text", "val": line, "align": "right"})
 
-        commands.append({"type": "text", "val": "-" * 42, "align": "center"})
+        commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
 
         # 5. Totals
         commands.append(

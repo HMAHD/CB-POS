@@ -299,11 +299,12 @@ class TransactionService:
         """
         Mark sale as VOID and reverse stock deduction.
         Security: Caller must ensure user has permission.
+        Uses StockService for proper audit trail and handles composites.
         """
         db = Database()
         try:
             with db.get_session() as session:
-                sale = session.query(Sale).get(sale_id)
+                sale = session.query(Sale).options(joinedload(Sale.items)).get(sale_id)
                 if not sale:
                     return False
 
@@ -312,11 +313,37 @@ class TransactionService:
 
                 sale.status = "VOID"
 
-                # Reverse Stock
+                # Pre-fetch composite items for all products in sale
+                product_ids = [item.product_id for item in sale.items]
+                composites = session.query(CompositeItem).filter(CompositeItem.parent_product_id.in_(product_ids)).all()
+                composite_map = {}
+                for comp in composites:
+                    composite_map.setdefault(comp.parent_product_id, []).append(comp)
+
+                # Reverse Stock via StockService
                 for item in sale.items:
-                    product = session.query(Product).with_for_update().get(item.product_id)
-                    if product:
-                        product.stock_qty += item.qty
+                    composite_children = composite_map.get(item.product_id, [])
+
+                    if composite_children:
+                        for comp in composite_children:
+                            restoration = comp.qty * item.qty
+                            StockService.record_movement(
+                                product_id=comp.child_product_id,
+                                qty_change=restoration,
+                                movement_type="VOID",
+                                document_id=sale.id,
+                                user_id=user_id,
+                                session=session,
+                            )
+                    else:
+                        StockService.record_movement(
+                            product_id=item.product_id,
+                            qty_change=item.qty,
+                            movement_type="VOID",
+                            document_id=sale.id,
+                            user_id=user_id,
+                            session=session,
+                        )
 
                 logger.info(f"VOID Sale {sale.document_number} by User {user_id}: {reason}")
             return True

@@ -38,3 +38,17 @@ def register_all_reports():
     from cbpos.core.reports.definitions.audit_reports import StockMovementReport
 
     registry.register(StockMovementReport)
+
+    # Void/Refund & Payment Method
+    from cbpos.core.reports.definitions.void_refund_report import (
+        VoidRefundReport,
+        PaymentMethodSummaryReport,
+    )
+
+    registry.register(VoidRefundReport)
+    registry.register(PaymentMethodSummaryReport)
+
+    # Customer Credit
+    from cbpos.core.reports.definitions.credit_report import CustomerCreditReport
+
+    registry.register(CustomerCreditReport)

@@ -9,8 +9,9 @@ class SessionWatchdog(QObject):
 
     session_expired = pyqtSignal()
 
-    def __init__(self, timeout_minutes=5, parent=None):
+    def __init__(self, timeout_minutes: int = 0, parent=None):
         super().__init__(parent)
+        self.timeout_minutes = timeout_minutes
         self.timeout_ms = timeout_minutes * 60 * 1000
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
@@ -19,7 +20,9 @@ class SessionWatchdog(QObject):
         self._monitoring = False
 
     def start_monitoring(self):
-        """Start monitoring user activity."""
+        """Start monitoring user activity. Does nothing if timeout is 0 (disabled)."""
+        if self.timeout_minutes <= 0:
+            return
         if not self._monitoring:
             QApplication.instance().installEventFilter(self)
             self.timer.start(self.timeout_ms)

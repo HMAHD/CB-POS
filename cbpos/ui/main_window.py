@@ -13,6 +13,7 @@ from cbpos.ui.views.management_view import ManagementView
 from cbpos.ui.views.settings_view import SettingsView
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 from cbpos.infrastructure.session_watchdog import SessionWatchdog
+from cbpos.core.services.config_service import ConfigService
 
 
 class MainWindow(QMainWindow):
@@ -25,8 +26,9 @@ class MainWindow(QMainWindow):
         self.scanner = BarcodeScanner(QApplication.instance())
         self.scanner.barcode_scanned.connect(self.on_barcode_scanned)
 
-        # Session Watchdog
-        self.watchdog = SessionWatchdog(timeout_minutes=5, parent=self)
+        # Session Watchdog (0 = disabled)
+        timeout = int(ConfigService.get("session_timeout_minutes") or 0)
+        self.watchdog = SessionWatchdog(timeout_minutes=max(timeout, 0), parent=self)
         self.watchdog.session_expired.connect(self.logout)
 
         # Central Widget
@@ -53,6 +55,8 @@ class MainWindow(QMainWindow):
         self.sales_view = SalesView()
         # Connect Side Menu Signals
         self.sales_view.side_menu.management_clicked.connect(self.switch_to_management)
+        self.sales_view.side_menu.documents_clicked.connect(self.switch_to_documents)
+        self.sales_view.side_menu.receive_payment_clicked.connect(self.sales_view.open_receive_payment)
         self.sales_view.side_menu.logout_clicked.connect(self.logout)
         self.sales_view.side_menu.settings_clicked.connect(self.switch_to_settings)
         self.sales_view.side_menu.fullscreen_clicked.connect(self.toggle_fullscreen)
@@ -63,6 +67,7 @@ class MainWindow(QMainWindow):
         self.management_view = ManagementView()
         self.management_view.logout_requested.connect(self.logout)
         self.management_view.request_pos_view.connect(lambda: self.stack.setCurrentWidget(self.sales_view))
+        self.management_view.convert_proforma_to_sale.connect(self.on_convert_proforma)
         self.stack.addWidget(self.management_view)
 
         # 3. Settings View (Top Level)
@@ -123,6 +128,11 @@ class MainWindow(QMainWindow):
         # Hide side menu in sales view if open
         self.sales_view.side_menu.setVisible(False)
 
+    def switch_to_documents(self):
+        self.stack.setCurrentWidget(self.management_view)
+        self.management_view.switch_tab(5)  # Documents is index 5
+        self.sales_view.side_menu.setVisible(False)
+
     def switch_to_settings(self):
         # Save current index before switching
         self.last_index = self.stack.currentIndex()
@@ -137,6 +147,38 @@ class MainWindow(QMainWindow):
             self.showFullScreen()
             # Optional: Show notification/toast here
             print("Press Esc to exit fullscreen")
+
+    def on_convert_proforma(self, cart_data: dict) -> None:
+        """Handle proforma-to-sale conversion by loading items into the SalesView cart."""
+        from decimal import Decimal
+
+        # Clear existing cart
+        self.sales_view.cart_service.clear()
+
+        # Load proforma items into cart
+        for item in cart_data.get("items", []):
+            product = item.get("product")
+            qty = Decimal(str(item.get("quantity", 1)))
+            if product:
+                self.sales_view.cart_service.add_item(product, qty)
+
+        # Set customer if specified
+        if cart_data.get("customer_id"):
+            from cbpos.core.database import Database
+            from cbpos.core.models import Customer
+
+            db = Database()
+            with db.get_session() as session:
+                customer = session.query(Customer).filter_by(id=cart_data["customer_id"]).first()
+                if customer:
+                    self.sales_view.cart_service.set_customer(customer)
+
+        # Store proforma_id for marking as converted after sale completes
+        self.sales_view._pending_proforma_id = cart_data.get("proforma_id")
+
+        # Switch to SalesView
+        self.stack.setCurrentWidget(self.sales_view)
+        self.sales_view.update_cart_display()
 
     def exit_fullscreen(self):
         if self.isFullScreen():

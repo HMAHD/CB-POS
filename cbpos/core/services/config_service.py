@@ -81,6 +81,9 @@ class ConfigService:
         "network_db_sslmode": "prefer",  # disable, allow, prefer, require, verify-full
         # Transaction timeout in seconds (0 = no timeout)
         "db_statement_timeout": 30,
+        # System / Security
+        "session_timeout_minutes": 0,  # 0 = disabled (no auto-lock), 1-60 = minutes
+        "auto_select_barcode_match": True,
         # Terminal Identification
         "terminal_id": "TERM-01",
         # Automation / Email

@@ -267,7 +267,7 @@ class ShopInfoPage(SettingsPage):
 
 
 class SalesTaxPage(SettingsPage):
-    """Consolidated: Sales + Tax settings."""
+    """Sales search mode + Tax configuration."""
 
     def init_ui(self):
         main_layout = self.create_group_container()
@@ -280,15 +280,6 @@ class SalesTaxPage(SettingsPage):
         self.combo_search_mode = QComboBox()
         self.combo_search_mode.addItems(["ALL", "BARCODE", "NAME"])
         form_sales.addRow("Default Search Mode:", self.combo_search_mode)
-
-        self.chk_quick_pay = QCheckBox()
-        form_sales.addRow("Enable Quick Pay (F12):", self.chk_quick_pay)
-
-        self.chk_void_reason = QCheckBox()
-        form_sales.addRow("Require Reason for Void:", self.chk_void_reason)
-
-        self.chk_show_receipt_dialog = QCheckBox()
-        form_sales.addRow("Show Receipt Options after Sale:", self.chk_show_receipt_dialog)
 
         main_layout.addWidget(grp_sales)
 
@@ -322,9 +313,6 @@ class SalesTaxPage(SettingsPage):
 
     def load(self, settings: dict):
         self.combo_search_mode.setCurrentText(settings.get("default_search_mode", "ALL"))
-        self.chk_quick_pay.setChecked(settings.get("quick_pay_enabled", True))
-        self.chk_void_reason.setChecked(settings.get("require_void_reason", True))
-        self.chk_show_receipt_dialog.setChecked(settings.get("show_receipt_dialog", True))
         self.spin_vat.setValue(int(settings.get("tax_vat_rate", 18)))
         self.spin_sscl.setValue(float(settings.get("tax_sscl_rate", 2.5)))
         self.spin_sscl_turnover.setValue(float(settings.get("tax_sscl_turnover_pct", 50.0)))
@@ -332,35 +320,9 @@ class SalesTaxPage(SettingsPage):
     def save(self) -> dict:
         return {
             "default_search_mode": self.combo_search_mode.currentText(),
-            "quick_pay_enabled": self.chk_quick_pay.isChecked(),
-            "require_void_reason": self.chk_void_reason.isChecked(),
-            "show_receipt_dialog": self.chk_show_receipt_dialog.isChecked(),
             "tax_vat_rate": self.spin_vat.value(),
             "tax_sscl_rate": self.spin_sscl.value(),
             "tax_sscl_turnover_pct": self.spin_sscl_turnover.value(),
-        }
-
-
-class InventoryPage(SettingsPage):
-    def init_ui(self):
-        container, layout, form_widget = self.create_form_container()
-
-        self.chk_negative_stock = QCheckBox()
-        layout.addRow("Allow Negative Stock (Overselling):", self.chk_negative_stock)
-
-        self.chk_auto_barcodes = QCheckBox()
-        layout.addRow("Auto-Generate Barcodes for New Items:", self.chk_auto_barcodes)
-
-        container.addWidget(form_widget)
-
-    def load(self, settings: dict):
-        self.chk_negative_stock.setChecked(settings.get("allow_negative_stock", False))
-        self.chk_auto_barcodes.setChecked(settings.get("auto_generate_barcodes", True))
-
-    def save(self) -> dict:
-        return {
-            "allow_negative_stock": self.chk_negative_stock.isChecked(),
-            "auto_generate_barcodes": self.chk_auto_barcodes.isChecked(),
         }
 
 
@@ -601,6 +563,103 @@ class ReceiptPage(SettingsPage):
 
         dlg = ReceiptPreviewDialog(commands, self)
         dlg.exec()
+
+
+class SystemPage(SettingsPage):
+    """System settings: session security, feature toggles, and behavior."""
+
+    def init_ui(self):
+        main_layout = self.create_group_container()
+
+        # --- Session / Security ---
+        grp_session = QGroupBox("Session & Security")
+        form_session = QFormLayout(grp_session)
+        self.configure_form_layout(form_session)
+
+        self.spin_timeout = QSpinBox()
+        self.spin_timeout.setRange(0, 60)
+        self.spin_timeout.setSuffix(" min")
+        self.spin_timeout.setSpecialValueText("Disabled (no auto-lock)")
+        self.spin_timeout.setToolTip("Auto-logout after inactivity. 0 = disabled.")
+        form_session.addRow("Inactivity Timeout:", self.spin_timeout)
+
+        self.chk_void_reason = QCheckBox()
+        self.chk_void_reason.setToolTip("Require a reason when voiding a transaction")
+        form_session.addRow("Require Void Reason:", self.chk_void_reason)
+
+        main_layout.addWidget(grp_session)
+
+        # --- POS Behavior ---
+        grp_behavior = QGroupBox("POS Behavior")
+        form_behavior = QFormLayout(grp_behavior)
+        self.configure_form_layout(form_behavior)
+
+        self.chk_quick_pay = QCheckBox()
+        self.chk_quick_pay.setToolTip("Allow instant cash payment with F12")
+        form_behavior.addRow("Enable Quick Pay (F12):", self.chk_quick_pay)
+
+        self.chk_show_receipt_dialog = QCheckBox()
+        self.chk_show_receipt_dialog.setToolTip("Show print/email options after completing a sale")
+        form_behavior.addRow("Show Receipt Options after Sale:", self.chk_show_receipt_dialog)
+
+        self.chk_auto_barcode_select = QCheckBox()
+        self.chk_auto_barcode_select.setToolTip("Automatically select product when barcode matches exactly")
+        form_behavior.addRow("Auto-Select on Barcode Match:", self.chk_auto_barcode_select)
+
+        main_layout.addWidget(grp_behavior)
+
+        # --- Inventory Behavior ---
+        grp_inventory = QGroupBox("Inventory")
+        form_inv = QFormLayout(grp_inventory)
+        self.configure_form_layout(form_inv)
+
+        self.chk_negative_stock = QCheckBox()
+        self.chk_negative_stock.setToolTip("Allow selling items even when stock is zero or negative")
+        form_inv.addRow("Allow Negative Stock:", self.chk_negative_stock)
+
+        self.chk_auto_barcodes = QCheckBox()
+        self.chk_auto_barcodes.setToolTip("Auto-generate barcodes for new products without one")
+        form_inv.addRow("Auto-Generate Barcodes:", self.chk_auto_barcodes)
+
+        main_layout.addWidget(grp_inventory)
+
+        # --- Feature Toggles ---
+        grp_features = QGroupBox("Features")
+        form_features = QFormLayout(grp_features)
+        self.configure_form_layout(form_features)
+
+        self.chk_loyalty = QCheckBox()
+        form_features.addRow("Enable Loyalty Points:", self.chk_loyalty)
+
+        self.chk_touch_mode = QCheckBox()
+        self.chk_touch_mode.setToolTip("Enable touch-friendly UI elements")
+        form_features.addRow("Enable Touch Mode:", self.chk_touch_mode)
+
+        main_layout.addWidget(grp_features)
+
+    def load(self, settings: dict):
+        self.spin_timeout.setValue(int(settings.get("session_timeout_minutes", 0)))
+        self.chk_void_reason.setChecked(settings.get("require_void_reason", True))
+        self.chk_quick_pay.setChecked(settings.get("quick_pay_enabled", True))
+        self.chk_show_receipt_dialog.setChecked(settings.get("show_receipt_dialog", True))
+        self.chk_auto_barcode_select.setChecked(settings.get("auto_select_barcode_match", True))
+        self.chk_negative_stock.setChecked(settings.get("allow_negative_stock", False))
+        self.chk_auto_barcodes.setChecked(settings.get("auto_generate_barcodes", True))
+        self.chk_loyalty.setChecked(settings.get("enable_loyalty", True))
+        self.chk_touch_mode.setChecked(settings.get("enable_touch_mode", True))
+
+    def save(self) -> dict:
+        return {
+            "session_timeout_minutes": self.spin_timeout.value(),
+            "require_void_reason": self.chk_void_reason.isChecked(),
+            "quick_pay_enabled": self.chk_quick_pay.isChecked(),
+            "show_receipt_dialog": self.chk_show_receipt_dialog.isChecked(),
+            "auto_select_barcode_match": self.chk_auto_barcode_select.isChecked(),
+            "allow_negative_stock": self.chk_negative_stock.isChecked(),
+            "auto_generate_barcodes": self.chk_auto_barcodes.isChecked(),
+            "enable_loyalty": self.chk_loyalty.isChecked(),
+            "enable_touch_mode": self.chk_touch_mode.isChecked(),
+        }
 
 
 class NetworkPage(SettingsPage):

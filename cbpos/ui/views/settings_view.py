@@ -15,10 +15,10 @@ from cbpos.core.services.theme_service import ThemeService
 from cbpos.ui.views.settings_pages import (
     ShopInfoPage,
     SalesTaxPage,
-    InventoryPage,
     DocumentPage,
     HardwarePage,
     ReceiptPage,
+    SystemPage,
     NetworkPage,
 )
 
@@ -53,10 +53,10 @@ class SettingsView(QWidget):
         items = [
             ("Shop Info", "fa5s.store"),
             ("Sales & Tax", "fa5s.shopping-cart"),
-            ("Inventory", "fa5s.boxes"),
             ("Documents", "fa5s.file-invoice"),
             ("Hardware", "fa5s.print"),
             ("Receipt", "fa5s.receipt"),
+            ("System", "fa5s.cogs"),
             ("Network", "fa5s.network-wired"),
         ]
 
@@ -77,10 +77,10 @@ class SettingsView(QWidget):
         self.pages = [
             ShopInfoPage(),
             SalesTaxPage(),
-            InventoryPage(),
             DocumentPage(),
             HardwarePage(),
             ReceiptPage(),
+            SystemPage(),
             NetworkPage(),
         ]
 

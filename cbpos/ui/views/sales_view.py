@@ -570,6 +570,17 @@ class SalesView(QWidget):
                 success = TransactionService.process_sale(self.cart_service, payments, customer_id)
                 if success:
                     QMessageBox.information(self, "Success", "Sale processed successfully!")
+
+                    # Mark proforma as converted if this was a proforma-to-sale conversion
+                    proforma_id = getattr(self, "_pending_proforma_id", None)
+                    if proforma_id:
+                        last_sale = TransactionService.get_last_sale()
+                        if last_sale:
+                            from cbpos.core.services.proforma_service import ProformaService
+
+                            ProformaService.mark_converted(proforma_id, last_sale.id)
+                        self._pending_proforma_id = None
+
                     self.cart_service.clear()
                     self.update_cart_display()
                     self.barcode_input.setFocus()
@@ -844,6 +855,13 @@ class SalesView(QWidget):
             # Already empty, just refresh tabs to be sure
             self.order_bar.refresh_tabs()
             self.barcode_input.setFocus()
+
+    def open_receive_payment(self) -> None:
+        """Open Receive Payment dialog from POS (quick payment without sale)."""
+        from cbpos.ui.dialogs.receive_payment_dialog import ReceivePaymentDialog
+
+        dialog = ReceivePaymentDialog(parent=self)
+        dialog.exec()
 
     def show_shortcuts_help(self):
         """Show keyboard shortcuts help dialog (F1)."""

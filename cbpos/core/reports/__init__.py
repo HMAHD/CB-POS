@@ -52,3 +52,8 @@ def register_all_reports():
     from cbpos.core.reports.definitions.credit_report import CustomerCreditReport
 
     registry.register(CustomerCreditReport)
+
+    # Overdue Customers
+    from cbpos.core.reports.definitions.overdue_report import OverdueCustomersReport
+
+    registry.register(OverdueCustomersReport)

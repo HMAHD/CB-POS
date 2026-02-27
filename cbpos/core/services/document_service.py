@@ -18,6 +18,7 @@ class DocumentService:
         "RETURN": "CN",  # Credit Note
         "STOCK_COUNT": "STK",
         "ADJUSTMENT": "ADJ",
+        "PROFORMA": "QUO",
     }
 
     @staticmethod
@@ -39,6 +40,7 @@ class DocumentService:
             "RETURN": "CN-{Y}-{seq:05d}",
             "STOCK_COUNT": "STK-{Y}-{seq:05d}",
             "ADJUSTMENT": "ADJ-{Y}-{seq:05d}",
+            "PROFORMA": "QUO-{Y}-{seq:05d}",
         }
 
         pattern = settings.get(

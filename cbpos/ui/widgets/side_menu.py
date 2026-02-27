@@ -78,6 +78,7 @@ class SideMenu(QWidget):
     management_clicked = pyqtSignal()
     history_clicked = pyqtSignal()
     documents_clicked = pyqtSignal()
+    receive_payment_clicked = pyqtSignal()
     logout_clicked = pyqtSignal()
     settings_clicked = pyqtSignal()
     fullscreen_clicked = pyqtSignal()
@@ -124,6 +125,10 @@ class SideMenu(QWidget):
         self.btn_documents = MenuButton("Documents", "fa5s.file-invoice")
         self.btn_documents.clicked.connect(self.documents_clicked.emit)
         nav_layout.addWidget(self.btn_documents)
+
+        self.btn_receive_payment = MenuButton("Receive Payment", "fa5s.hand-holding-usd")
+        self.btn_receive_payment.clicked.connect(self.receive_payment_clicked.emit)
+        nav_layout.addWidget(self.btn_receive_payment)
 
         nav_layout.addStretch()
         main_layout.addWidget(nav_container)
@@ -226,6 +231,8 @@ class SideMenu(QWidget):
             self.btn_history.update_icon()
         if hasattr(self, "btn_documents"):
             self.btn_documents.update_icon()
+        if hasattr(self, "btn_receive_payment"):
+            self.btn_receive_payment.update_icon()
         if hasattr(self, "btn_logout"):
             self.btn_logout.update_icon()
 

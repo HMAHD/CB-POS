@@ -11,6 +11,18 @@ class DocumentStatus:
     VOID = "VOID"
     DRAFT = "DRAFT"
     SUSPENDED = "SUSPENDED"
+    QUOTE = "QUOTE"
+    EXPIRED = "EXPIRED"
+    CONVERTED = "CONVERTED"
+
+
+class DocumentType:
+    SALE = "SALE"
+    PURCHASE = "PURCHASE"
+    RETURN = "RETURN"
+    PROFORMA = "PROFORMA"
+    STOCK_COUNT = "STOCK_COUNT"
+    ADJUSTMENT = "ADJUSTMENT"
 
 
 class ShiftStatus:

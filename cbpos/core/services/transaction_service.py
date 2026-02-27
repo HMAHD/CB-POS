@@ -20,6 +20,7 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.stock_service import StockService
 from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.core.services.product_service import ProductService
+from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.utils.formatters import escape_like
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 import json
@@ -137,6 +138,8 @@ class TransactionService:
             cashier_id = current_user.id
 
             # Handle Credit Logic
+            credit_amount_for_ledger = None
+            credit_customer_balance = None
             for p in payments:
                 if p["method"] == "CREDIT":
                     if not customer_id:
@@ -146,10 +149,13 @@ class TransactionService:
                     if not customer:
                         raise ValueError("Invalid Customer.")
 
-                    if customer.current_balance + p["amount"] > customer.credit_limit:
+                    if customer.current_debt + p["amount"] > customer.credit_limit:
                         raise ValueError(f"Credit limit exceeded for {customer.name}.")
 
-                    customer.current_balance += p["amount"]
+                    customer.current_debt += p["amount"]
+                    # Ledger entry will be created after sale is flushed (need sale.id)
+                    credit_amount_for_ledger = p["amount"]
+                    credit_customer_balance = customer.current_debt
 
             # 2. Create Sale Header
             tax_info = TaxService.calculate_taxes(total_amount)
@@ -170,6 +176,18 @@ class TransactionService:
             )
             session.add(sale)
             session.flush()
+
+            # Record credit sale in ledger (if applicable)
+            if customer_id and credit_amount_for_ledger is not None:
+                CustomerCreditService.record_credit_sale_in_session(
+                    session=session,
+                    customer_id=customer_id,
+                    sale_id=sale.id,
+                    amount=credit_amount_for_ledger,
+                    doc_number=receipt_no,
+                    balance_after=credit_customer_balance,
+                    user_id=cashier_id,
+                )
 
             # 3. Create Sale Payments
             for p in payments:

@@ -20,6 +20,8 @@ class Icons:
     PURCHASE = "fa5s.truck"
     PRICE_LIST = "fa5s.tags"
     PROMOTION = "fa5s.bullhorn"
+    DOCUMENTS = "fa5s.folder-open"
+    CREDIT_BOOK = "fa5s.book"
 
     # Actions
     ADD = "fa5s.plus"

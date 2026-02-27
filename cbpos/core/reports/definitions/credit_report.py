@@ -32,23 +32,23 @@ class CustomerCreditReport(BaseReport):
                     Customer.name,
                     Customer.phone,
                     Customer.credit_limit,
-                    Customer.current_balance,
+                    Customer.current_debt,
                 )
-                .where(Customer.current_balance > 0)
-                .order_by(Customer.current_balance.desc())
+                .where(Customer.current_debt > 0)
+                .order_by(Customer.current_debt.desc())
             )
 
             results = session.execute(stmt).all()
 
             data = []
             for row in results:
-                available = float(row.credit_limit or 0) - float(row.current_balance or 0)
+                available = float(row.credit_limit or 0) - float(row.current_debt or 0)
                 data.append(
                     {
                         "Customer": row.name,
                         "Phone": row.phone or "",
                         "Credit Limit": float(row.credit_limit or 0),
-                        "Outstanding": float(row.current_balance or 0),
+                        "Outstanding": float(row.current_debt or 0),
                         "Available": available,
                     }
                 )

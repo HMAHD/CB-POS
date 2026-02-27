@@ -6,8 +6,10 @@ from sqlalchemy import (
     Boolean,
     ForeignKey,
     DateTime,
+    Date,
     Numeric,
     Integer,
+    Text,
     UniqueConstraint,
     Table,
     Column,
@@ -171,6 +173,45 @@ class Purchase(Document):
     __mapper_args__ = {
         "polymorphic_identity": "purchase",
     }
+
+
+class Proforma(Document):
+    __tablename__ = "proformas"
+
+    id: Mapped[int] = mapped_column(ForeignKey("documents.id"), primary_key=True)
+    customer_id: Mapped[Optional[int]] = mapped_column(ForeignKey("customers.id"), nullable=True)
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    tax_vat: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    tax_sscl: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    validity_days: Mapped[int] = mapped_column(Integer, default=30)
+    expiry_date: Mapped[Optional[datetime]] = mapped_column(Date, nullable=True)
+    converted_sale_id: Mapped[Optional[int]] = mapped_column(ForeignKey("sales.id"), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    customer: Mapped["Customer"] = relationship("Customer")
+    items: Mapped[List["ProformaItem"]] = relationship(back_populates="proforma", cascade="all, delete-orphan")
+    converted_sale: Mapped["Sale"] = relationship("Sale", foreign_keys=[converted_sale_id])
+
+    __mapper_args__ = {
+        "polymorphic_identity": "proforma",
+    }
+
+
+class ProformaItem(Base):
+    __tablename__ = "proforma_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    proforma_id: Mapped[int] = mapped_column(ForeignKey("proformas.id"))
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    product_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    discount_type: Mapped[str] = mapped_column(String(20), default="NONE")
+    discount_value: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    line_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+
+    proforma: Mapped["Proforma"] = relationship(back_populates="items")
+    product: Mapped["Product"] = relationship("Product")
 
 
 # --- Core Business Entities ---
@@ -416,6 +457,40 @@ class SuspendedTransaction(Base):
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     data: Mapped[str] = mapped_column(String, nullable=False)  # JSON string of cart items
     note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+
+
+class CustomerPayment(Base):
+    __tablename__ = "customer_payments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), index=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    payment_method: Mapped[str] = mapped_column(String(20), nullable=False)  # Cash, Card, Transfer, Cheque
+    reference: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # Cheque#, transfer ref
+    note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)
+
+    customer: Mapped["Customer"] = relationship()
+    user: Mapped["User"] = relationship()
+
+
+class CustomerLedgerEntry(Base):
+    __tablename__ = "customer_ledger"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), index=True)
+    entry_type: Mapped[str] = mapped_column(String(20), nullable=False)  # SALE, PAYMENT, ADJUSTMENT
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)  # positive=debt, negative=payment
+    balance_after: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)  # Running balance
+    reference_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # sale_id or payment_id
+    reference_doc: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # Document number
+    note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)
+
+    customer: Mapped["Customer"] = relationship()
+    user: Mapped["User"] = relationship()
 
 
 class PaymentMethod(Base):

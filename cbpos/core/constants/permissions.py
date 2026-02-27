@@ -20,6 +20,11 @@ class Permissions:
     REPORTS_VIEW_SALES = "reports.view_sales"
     REPORTS_VIEW_PROFIT = "reports.view_profit"
 
+    # Documents
+    DOCUMENTS_VIEW = "documents.view"
+    DOCUMENTS_CREATE_PROFORMA = "documents.create_proforma"
+    DOCUMENTS_CONVERT_PROFORMA = "documents.convert_proforma"
+
     # Admin
     ADMIN_MANAGE_USERS = "admin.manage_users"
     ADMIN_MANAGE_ROLES = "admin.manage_roles"
@@ -45,6 +50,11 @@ class Permissions:
                 cls.INVENTORY_STOCK_ADJUST,
             ],
             "Reports": [cls.REPORTS_VIEW_SALES, cls.REPORTS_VIEW_PROFIT],
+            "Documents": [
+                cls.DOCUMENTS_VIEW,
+                cls.DOCUMENTS_CREATE_PROFORMA,
+                cls.DOCUMENTS_CONVERT_PROFORMA,
+            ],
             "Admin": [
                 cls.ADMIN_MANAGE_USERS,
                 cls.ADMIN_MANAGE_ROLES,

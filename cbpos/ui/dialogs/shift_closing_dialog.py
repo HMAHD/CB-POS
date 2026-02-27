@@ -145,10 +145,38 @@ class ShiftClosingDialog(QDialog):
         try:
             final_summary = self.shift_service.close_shift(self.shift_id, self.counted_cash, reason)
             # Generate Z-Report (printing is delegated to hardware layer)
-            # In a real deployment you would send `report_text` to the printer.
             ReceiptService.print_z_report(final_summary)
 
             QMessageBox.information(self, "Success", "Shift closed and Z-Report generated.")
+
+            # Offer backup after successful shift close
+            self._offer_backup()
+
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to close shift: {e}")
+
+    def _offer_backup(self) -> None:
+        """Prompt user to create a backup after closing the shift."""
+        reply = QMessageBox.question(
+            self,
+            "Backup",
+            "Would you like to create a backup of the database?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        from cbpos.core.services.backup_service import BackupService
+        from PyQt6.QtWidgets import QFileDialog
+
+        default_dir = BackupService.get_default_backup_dir()
+        chosen_dir = QFileDialog.getExistingDirectory(self, "Choose Backup Location", default_dir)
+        if not chosen_dir:
+            return
+
+        try:
+            backup_path = BackupService.create_backup(chosen_dir)
+            QMessageBox.information(self, "Backup Complete", f"Backup saved to:\n{backup_path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Backup Failed", f"Backup failed: {e}")

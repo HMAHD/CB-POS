@@ -1513,6 +1513,47 @@ QPushButton#BtnMigrate:disabled {
     color: #888;
 }
 
+/* ===================================================================
+   CREDIT BOOK VIEW - Transparent Labels
+   ================================================================ */
+
+/* Credit Header Card - All labels transparent */
+QFrame#CreditHeaderCard QLabel {
+    background-color: transparent;
+}
+
+/* Credit Book - Filter bar labels */
+QWidget#CreditBookView QLabel {
+    background-color: transparent;
+}
+
+/* ===================================================================
+   DOCUMENT BROWSER VIEW - Transparent Labels
+   ================================================================ */
+
+/* Filter bar labels */
+QFrame#FilterBar QLabel {
+    background-color: transparent;
+}
+
+/* Details panel labels */
+QFrame#DocDetailsPanel QLabel {
+    background-color: transparent;
+}
+
+/* ===================================================================
+   RECEIVE PAYMENT DIALOG - Transparent Labels
+   ================================================================ */
+
+/* Balance frame labels */
+QFrame#BalanceFrame QLabel {
+    background-color: transparent;
+}
+
+QDialog#ReceivePaymentDialog QLabel {
+    background-color: transparent;
+}
+
 /* Warning Footer */
 QLabel#NetworkWarning {
     background-color: rgba(255, 193, 7, 0.1);

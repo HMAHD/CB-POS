@@ -146,9 +146,9 @@ class InventoryView(QWidget):
             self.load_data()
 
     def open_category_dialog(self):
-        from cbpos.ui.dialogs.category_dialog import CategoryDialog
+        from cbpos.ui.dialogs.category_manager import CategoryManagerDialog
 
-        dialog = CategoryDialog(parent=self)
+        dialog = CategoryManagerDialog(parent=self)
         dialog.exec()
         self.load_data()
 

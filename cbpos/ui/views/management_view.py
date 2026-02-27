@@ -17,12 +17,12 @@ from cbpos.ui.resources.icons import Icons
 from cbpos.ui.views.dashboard_view import DashboardView
 from cbpos.ui.views.inventory_view import InventoryView
 from cbpos.ui.views.purchase_view import PurchaseView
-from cbpos.ui.views.customer_view import CustomerView
+from cbpos.ui.views.credit_book_view import CreditBookView
 from cbpos.ui.views.reports.report_viewer import ReportViewer
 from cbpos.ui.views.user_view import UserView
 from cbpos.ui.views.pricelist_view import PriceListView
 from cbpos.ui.views.promotion_view import PromotionView
-from cbpos.ui.views.history_view import HistoryView
+from cbpos.ui.views.document_view import DocumentBrowserView
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 class ManagementView(QWidget):
     logout_requested = pyqtSignal()
     request_pos_view = pyqtSignal()
+    convert_proforma_to_sale = pyqtSignal(dict)
 
     def __init__(self):
         super().__init__()
@@ -90,9 +91,9 @@ class ManagementView(QWidget):
         self.btn_dashboard = self.create_nav_button("Dashboard", Icons.DASHBOARD, 0)
         self.btn_inventory = self.create_nav_button("Inventory", Icons.INVENTORY, 1)
         self.btn_purchasing = self.create_nav_button("Purchasing", Icons.PURCHASE, 2)
-        self.btn_customers = self.create_nav_button("Customers", Icons.CUSTOMERS, 3)
+        self.btn_customers = self.create_nav_button("Credit Book", Icons.CREDIT_BOOK, 3)
         self.btn_reports = self.create_nav_button("Reports", Icons.REPORTS, 4)
-        self.btn_history = self.create_nav_button("History", Icons.HISTORY, 5)
+        self.btn_documents = self.create_nav_button("Documents", Icons.DOCUMENTS, 5)
         self.btn_users = self.create_nav_button("Users", Icons.USERS, 6)
         self.btn_pricelists = self.create_nav_button("Price Lists", Icons.PRICE_LIST, 7)
         self.btn_promotions = self.create_nav_button("Promotions", Icons.PROMOTION, 8)
@@ -106,14 +107,6 @@ class ManagementView(QWidget):
         user_profile_layout = QVBoxLayout(self.user_profile_widget)
         user_profile_layout.setContentsMargins(0, 0, 0, 0)
         user_profile_layout.setSpacing(0)
-
-        # Edit Profile Button
-        self.btn_profile = SidebarButton("   Edit Profile", "fa5s.user-cog")
-        self.btn_profile.setObjectName("BtnProfile")
-        self.btn_profile.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.btn_profile.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.btn_profile.clicked.connect(self.open_profile_dialog)
-        user_profile_layout.addWidget(self.btn_profile)
 
         # POS Button
         self.btn_pos = SidebarButton("   POS / Sales", "fa5s.cash-register")
@@ -146,7 +139,7 @@ class ManagementView(QWidget):
         self.stack.currentChanged.connect(self.highlight_active_tab)
         self.content_layout.addWidget(self.stack)
 
-        self.main_layout.addWidget(self.content_area)
+        self.main_layout.addWidget(self.content_area, 1)  # stretch to fill remaining space
 
         # Initialize Views
         self.init_views()
@@ -207,17 +200,18 @@ class ManagementView(QWidget):
         self.purchase_view = PurchaseView()
         self.stack.addWidget(self.purchase_view)
 
-        # 3. Customers
-        self.customer_view = CustomerView()
-        self.stack.addWidget(self.customer_view)
+        # 3. Credit Book (replaces Customers)
+        self.credit_book_view = CreditBookView()
+        self.stack.addWidget(self.credit_book_view)
 
         # 4. Reports
         self.reports_view = ReportViewer()
         self.stack.addWidget(self.reports_view)
 
-        # 5. History
-        self.history_view = HistoryView()
-        self.stack.addWidget(self.history_view)
+        # 5. Documents (replaces History)
+        self.document_view = DocumentBrowserView()
+        self.document_view.convert_to_sale_requested.connect(self.convert_proforma_to_sale.emit)
+        self.stack.addWidget(self.document_view)
 
         # 6. Users
         self.user_view = UserView()
@@ -273,7 +267,6 @@ class ManagementView(QWidget):
         self.update_sidebar_styles()
 
         # Update Button Style (Icon/Text)
-        self.btn_profile.setToolButtonStyle(style)
         self.btn_pos.setToolButtonStyle(style)
         self.btn_logout.setToolButtonStyle(style)
         for btn in self.nav_buttons:
@@ -287,25 +280,18 @@ class ManagementView(QWidget):
         required for the collapsed 'icon-only' mode vs the expanded 'full-width' mode.
         """
         # Update Property for all buttons
-        buttons = self.nav_buttons + [self.btn_profile, self.btn_pos, self.btn_logout]
+        buttons = self.nav_buttons + [self.btn_pos, self.btn_logout]
         for btn in buttons:
             btn.setProperty("collapsed", self.is_collapsed)
             btn.style().unpolish(btn)
             btn.style().polish(btn)
-
-    def open_profile_dialog(self):
-        """Open standalone profile/PIN change dialog."""
-        from cbpos.ui.dialogs.profile_dialog import ProfileDialog
-
-        dialog = ProfileDialog(self)
-        dialog.exec()
 
     def update_sidebar_icons(self):
         """
         Update all sidebar button icons when theme changes.
         Call this after theme switching to refresh icon colors.
         """
-        buttons = self.nav_buttons + [self.btn_profile, self.btn_pos, self.btn_logout]
+        buttons = self.nav_buttons + [self.btn_pos, self.btn_logout]
         for btn in buttons:
             if hasattr(btn, "update_icon"):
                 btn.update_icon()

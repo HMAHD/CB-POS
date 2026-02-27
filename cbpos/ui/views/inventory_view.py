@@ -99,10 +99,14 @@ class InventoryView(QWidget):
         self.cat_btn = QPushButton("Manage Categories")
         self.cat_btn.clicked.connect(self.open_category_dialog)
 
+        self.label_btn = QPushButton("Print Labels")
+        self.label_btn.clicked.connect(self.open_label_print)
+
         top_bar.addWidget(self.search_input)
         top_bar.addWidget(self.add_btn)
         top_bar.addWidget(self.import_btn)
         top_bar.addWidget(self.cat_btn)
+        top_bar.addWidget(self.label_btn)
 
         layout.addLayout(top_bar)
 
@@ -151,6 +155,12 @@ class InventoryView(QWidget):
         dialog = CategoryManagerDialog(parent=self)
         dialog.exec()
         self.load_data()
+
+    def open_label_print(self):
+        from cbpos.ui.dialogs.label_print_dialog import LabelPrintDialog
+
+        dialog = LabelPrintDialog(parent=self)
+        dialog.exec()
 
     def open_context_menu(self, position):
         from PyQt6.QtWidgets import QMenu

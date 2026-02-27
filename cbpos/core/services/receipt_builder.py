@@ -132,7 +132,12 @@ class ReceiptBuilder:
                 }
             )
 
-        # 8. Cut
+        # 8. Branding
+        commands.append({"type": "feed", "lines": 1})
+        commands.append({"type": "text", "val": "Powered by CB POS", "align": "center"})
+        commands.append({"type": "text", "val": "ceybyte.com", "align": "center"})
+
+        # 9. Cut
         commands.append({"type": "feed", "lines": 2})
         commands.append({"type": "cut"})
 
@@ -236,6 +241,11 @@ class ReceiptBuilder:
         if footer_text:
             commands.append({"type": "feed", "lines": 1})
             commands.append({"type": "text", "val": footer_text, "align": "center"})
+
+        # Branding
+        commands.append({"type": "feed", "lines": 1})
+        commands.append({"type": "text", "val": "Powered by CB POS", "align": "center"})
+        commands.append({"type": "text", "val": "ceybyte.com", "align": "center"})
 
         commands.append({"type": "feed", "lines": 2})
         commands.append({"type": "cut"})
@@ -342,6 +352,11 @@ class ReceiptBuilder:
         if footer_text:
             commands.append({"type": "feed", "lines": 1})
             commands.append({"type": "text", "val": footer_text, "align": "center"})
+
+        # Branding
+        commands.append({"type": "feed", "lines": 1})
+        commands.append({"type": "text", "val": "Powered by CB POS", "align": "center"})
+        commands.append({"type": "text", "val": "ceybyte.com", "align": "center"})
 
         commands.append({"type": "feed", "lines": 2})
         commands.append({"type": "cut"})

@@ -76,7 +76,9 @@ class SessionWatchdog(QObject):
                     )
                     session.add(log)
                     session.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+
+            logging.getLogger(__name__).error("Failed to log session timeout: %s", e)
 
         self.session_expired.emit()

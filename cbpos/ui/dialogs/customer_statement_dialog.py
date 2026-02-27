@@ -47,12 +47,12 @@ class CustomerStatementDialog(QDialog):
         # Customer header
         header_layout = QHBoxLayout()
         self.lbl_customer = QLabel(f"{self.customer.name}")
-        self.lbl_customer.setStyleSheet("font-size: 16px; font-weight: bold; background: transparent;")
+        self.lbl_customer.setProperty("class", "dialog-title")
         header_layout.addWidget(self.lbl_customer)
 
         if self.customer.phone:
             lbl_phone = QLabel(f"Phone: {self.customer.phone}")
-            lbl_phone.setStyleSheet("color: #aaa; background: transparent;")
+            lbl_phone.setProperty("class", "muted")
             header_layout.addWidget(lbl_phone)
 
         header_layout.addStretch()
@@ -61,7 +61,7 @@ class CustomerStatementDialog(QDialog):
         # Date filter
         filter_layout = QHBoxLayout()
         lbl_from = QLabel("From:")
-        lbl_from.setStyleSheet("background: transparent;")
+        lbl_from.setProperty("class", "transparent")
         filter_layout.addWidget(lbl_from)
         self.date_from = QDateEdit()
         self.date_from.setCalendarPopup(True)
@@ -69,7 +69,7 @@ class CustomerStatementDialog(QDialog):
         filter_layout.addWidget(self.date_from)
 
         lbl_to = QLabel("To:")
-        lbl_to.setStyleSheet("background: transparent;")
+        lbl_to.setProperty("class", "transparent")
         filter_layout.addWidget(lbl_to)
         self.date_to = QDateEdit()
         self.date_to.setCalendarPopup(True)
@@ -77,7 +77,7 @@ class CustomerStatementDialog(QDialog):
         filter_layout.addWidget(self.date_to)
 
         btn_refresh = QPushButton("Refresh")
-        btn_refresh.setStyleSheet("background-color: #00BCEB; color: black; font-weight: bold; padding: 6px 14px;")
+        btn_refresh.setProperty("class", "accent")
         btn_refresh.clicked.connect(self._load_statement)
         filter_layout.addWidget(btn_refresh)
 
@@ -87,13 +87,13 @@ class CustomerStatementDialog(QDialog):
         # Summary labels
         summary_layout = QHBoxLayout()
         self.lbl_opening = QLabel("Opening: ---")
-        self.lbl_opening.setStyleSheet("background: transparent;")
+        self.lbl_opening.setProperty("class", "transparent")
         self.lbl_total_debit = QLabel("Sales: ---")
-        self.lbl_total_debit.setStyleSheet("font-weight: bold; color: #FF4136; background: transparent;")
+        self.lbl_total_debit.setProperty("class", "debit")
         self.lbl_total_credit = QLabel("Payments: ---")
-        self.lbl_total_credit.setStyleSheet("font-weight: bold; color: #39FF14; background: transparent;")
+        self.lbl_total_credit.setProperty("class", "credit")
         self.lbl_closing = QLabel("Closing: ---")
-        self.lbl_closing.setStyleSheet("font-weight: bold; background: transparent;")
+        self.lbl_closing.setProperty("class", "bold")
         summary_layout.addWidget(self.lbl_opening)
         summary_layout.addWidget(self.lbl_total_debit)
         summary_layout.addWidget(self.lbl_total_credit)
@@ -116,12 +116,11 @@ class CustomerStatementDialog(QDialog):
         btn_layout.addStretch()
 
         btn_print = QPushButton("Print Statement")
-        btn_print.setStyleSheet("background-color: #0074D9; color: white; font-weight: bold; padding: 10px 20px;")
+        btn_print.setProperty("class", "accent")
         btn_print.clicked.connect(self._print_thermal)
         btn_layout.addWidget(btn_print)
 
         btn_close = QPushButton("Close")
-        btn_close.setStyleSheet("padding: 10px 20px;")
         btn_close.clicked.connect(self.accept)
         btn_layout.addWidget(btn_close)
 

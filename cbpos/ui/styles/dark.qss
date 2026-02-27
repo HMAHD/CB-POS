@@ -290,11 +290,56 @@ QPushButton#BtnCancel:hover, QPushButton#VoidBtn:hover, QPushButton[class="dange
     background-color: #E0362C;
 }
 
+/* Accent Button (Cyan) */
+QPushButton[class="accent"] {
+    background-color: #00BCEB;
+    color: #001F3F;
+    border: none;
+    font-weight: bold;
+}
+
+QPushButton[class="accent"]:hover {
+    background-color: #00A5D0;
+}
+
 /* Warning Button (Yellow) */
 QPushButton[class="warning"] {
     background-color: #FFDC00;
     color: #001F3F;
     border: none;
+}
+
+/* --- Dialog Label Classes --- */
+QLabel[class="dialog-title"] {
+    font-size: 16px;
+    font-weight: bold;
+    background: transparent;
+}
+
+QLabel[class="muted"] {
+    color: #AAAAAA;
+    background: transparent;
+}
+
+QLabel[class="debit"] {
+    font-weight: bold;
+    color: #FF4136;
+    background: transparent;
+}
+
+QLabel[class="credit"] {
+    font-weight: bold;
+    color: #39FF14;
+    background: transparent;
+}
+
+QLabel[class="bold"] {
+    font-weight: bold;
+    background: transparent;
+}
+
+QLabel[class="transparent"] {
+    background: transparent;
 }
 
 /* Lists & Tables */

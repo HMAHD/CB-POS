@@ -129,8 +129,8 @@ class CategoryTreeDialog(QDialog):
         item.setData(0, Qt.ItemDataRole.UserRole, category.id)
 
         # Set color icon
-        if category.color_hex:
-            color = QColor(category.color_hex)
+        if category.color:
+            color = QColor(category.color)
             brush = QBrush(color)
             item.setForeground(1, brush)
             item.setText(1, "●")  # Color indicator
@@ -171,7 +171,7 @@ class CategoryTreeDialog(QDialog):
         name, ok = QInputDialog.getText(self, "Add Root Category", "Category Name:")
         if ok and name:
             with self.db.get_session() as session:
-                category = Category(name=name, parent_id=None, color_hex="#FFFFFF")
+                category = Category(name=name, parent_id=None, color="#FFFFFF")
                 session.add(category)
                 session.commit()
             self.load_categories()
@@ -183,7 +183,7 @@ class CategoryTreeDialog(QDialog):
         name, ok = QInputDialog.getText(self, "Add Sub-category", "Category Name:")
         if ok and name:
             with self.db.get_session() as session:
-                category = Category(name=name, parent_id=parent_id, color_hex="#FFFFFF")
+                category = Category(name=name, parent_id=parent_id, color="#FFFFFF")
                 session.add(category)
                 session.commit()
             self.load_categories()
@@ -211,7 +211,7 @@ class CategoryTreeDialog(QDialog):
             with self.db.get_session() as session:
                 category = session.get(Category, category_id)
                 if category:
-                    category.color_hex = color.name()
+                    category.color = color.name()
                     session.commit()
             self.load_categories()
 

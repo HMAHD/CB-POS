@@ -237,8 +237,10 @@ class SetupWizard(QDialog):
             from cbpos.core.services.user_service import UserService
 
             UserService.update_admin_pin(self.input_pin.text())
-        except Exception:
-            # If UserService doesn't have this method or DB isn't ready, skip
-            pass
+        except Exception as e:
+            import logging
+
+            logging.getLogger(__name__).error("Failed to update admin PIN: %s", e)
+            QMessageBox.warning(self, "Warning", f"Admin PIN could not be updated: {e}")
 
         self.accept()

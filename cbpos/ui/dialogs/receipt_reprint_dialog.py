@@ -46,7 +46,7 @@ class ReceiptReprintDialog(QDialog):
         search_layout.addWidget(self.search_input, 2)
 
         lbl_from = QLabel("From:")
-        lbl_from.setStyleSheet("background: transparent;")
+        lbl_from.setProperty("class", "transparent")
         search_layout.addWidget(lbl_from)
         self.date_from = QDateEdit()
         self.date_from.setCalendarPopup(True)
@@ -54,7 +54,7 @@ class ReceiptReprintDialog(QDialog):
         search_layout.addWidget(self.date_from)
 
         lbl_to = QLabel("To:")
-        lbl_to.setStyleSheet("background: transparent;")
+        lbl_to.setProperty("class", "transparent")
         search_layout.addWidget(lbl_to)
         self.date_to = QDateEdit()
         self.date_to.setCalendarPopup(True)
@@ -62,7 +62,7 @@ class ReceiptReprintDialog(QDialog):
         search_layout.addWidget(self.date_to)
 
         btn_search = QPushButton("Search")
-        btn_search.setStyleSheet("background-color: #00BCEB; color: black; font-weight: bold; padding: 8px 16px;")
+        btn_search.setProperty("class", "accent")
         btn_search.clicked.connect(self.perform_search)
         search_layout.addWidget(btn_search)
 
@@ -88,12 +88,11 @@ class ReceiptReprintDialog(QDialog):
         btn_layout.addStretch()
 
         btn_reprint = QPushButton("Reprint")
-        btn_reprint.setStyleSheet("background-color: #39FF14; color: black; font-weight: bold; padding: 10px 24px;")
+        btn_reprint.setProperty("class", "primary")
         btn_reprint.clicked.connect(self.reprint_selected)
         btn_layout.addWidget(btn_reprint)
 
         btn_close = QPushButton("Close")
-        btn_close.setStyleSheet("padding: 10px 24px;")
         btn_close.clicked.connect(self.reject)
         btn_layout.addWidget(btn_close)
 

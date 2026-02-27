@@ -150,6 +150,8 @@
     - [x] **Stock Valuation Report:** FIFO/LIFO/Weighted Average
 - [x] **4.5 Category Management**
     - [x] Hierarchical category tree (unlimited depth)
+    - [x] Full Category Manager dialog (tree view CRUD, add/edit/delete, subcategories)
+    - [x] Category color coding with visual indicators
     - [x] Category-based discounts and promotions
     - [x] Visual category icons for touch interface
     - [x] Category-based reporting
@@ -669,79 +671,79 @@
 ## 🏪 Phase 21: Document Management System
 *Goal: Comprehensive transaction documentation .*
 
-- [ ] **21.1 Document Types**
-    - [ ] **Income Documents:**
-        - [ ] Sales (regular transactions)
-        - [ ] Proforma/Quotation (quotes)
+- [x] **21.1 Document Types**
+    - [x] **Income Documents:**
+        - [x] Sales (regular transactions)
+        - [x] Proforma/Quotation (quotes)
         - [ ] Customer Orders
         - [ ] Returns (credit notes)
-    - [ ] **Expense Documents:**
-        - [ ] Purchase (inventory receive)
+    - [x] **Expense Documents:**
+        - [x] Purchase (inventory receive)
         - [ ] Stock Return (return to supplier)
         - [ ] Purchase Orders
     - [ ] **Internal Documents:**
         - [ ] Inventory Count (physical stock take)
         - [ ] Loss and Damage (write-offs)
         - [ ] Transfer (between locations)
-        - [ ] Adjustment (stock corrections)
-- [ ] **21.2 Document Properties**
-    - [ ] **Header Information:**
-        - [ ] Auto-generated document number
-        - [ ] Document type and status
-        - [ ] Date/time tracking
-        - [ ] Customer/Supplier link
-        - [ ] User who created
-        - [ ] Due date (for unpaid)
-    - [ ] **Document Items:**
-        - [ ] Product details snapshot
-        - [ ] Quantity, price, discount, tax
-        - [ ] Line totals
-        - [ ] Cost price (for profit tracking)
-    - [ ] **Document Totals:**
-        - [ ] Subtotal, discount, tax, total
-        - [ ] Paid amount and balance
-    - [ ] **Payment Information:**
-        - [ ] Payment types used
-        - [ ] Amounts per type
-        - [ ] Change given
-- [ ] **21.3 Document Operations**
-    - [ ] **View Documents:**
-        - [ ] List view with filters
-        - [ ] Search by number/customer/date
-        - [ ] Status filtering
-        - [ ] Type filtering
-    - [ ] **Create Document:**
-        - [ ] Select type
-        - [ ] Add header info
-        - [ ] Add items (drag-drop or search)
-        - [ ] Add payments
-        - [ ] Save and commit
+        - [x] Adjustment (stock corrections)
+- [x] **21.2 Document Properties**
+    - [x] **Header Information:**
+        - [x] Auto-generated document number
+        - [x] Document type and status
+        - [x] Date/time tracking
+        - [x] Customer/Supplier link
+        - [x] User who created
+        - [x] Due date (for unpaid)
+    - [x] **Document Items:**
+        - [x] Product details snapshot
+        - [x] Quantity, price, discount, tax
+        - [x] Line totals
+        - [x] Cost price (for profit tracking)
+    - [x] **Document Totals:**
+        - [x] Subtotal, discount, tax, total
+        - [x] Paid amount and balance
+    - [x] **Payment Information:**
+        - [x] Payment types used
+        - [x] Amounts per type
+        - [x] Change given
+- [x] **21.3 Document Operations**
+    - [x] **View Documents:**
+        - [x] List view with filters
+        - [x] Search by number/customer/date
+        - [x] Status filtering
+        - [x] Type filtering
+    - [x] **Create Document:**
+        - [x] Select type
+        - [x] Add header info
+        - [x] Add items (drag-drop or search)
+        - [x] Add payments
+        - [x] Save and commit
     - [ ] **Edit Document:**
         - [ ] Modify allowed fields
         - [ ] Restrictions on closed documents
-    - [ ] **Delete/Void Document:**
-        - [ ] Permission-based
-        - [ ] Cannot delete if referenced
-        - [ ] Void reason tracking
-    - [ ] **Print/Export:**
-        - [ ] Receipt format
-        - [ ] Invoice format (A4)
-        - [ ] Proforma format
-        - [ ] PDF export
-        - [ ] Email to customer
-- [ ] **21.4 Proforma/Quotation System**
-    - [ ] Create quotes for customers
-    - [ ] Does not affect stock
-    - [ ] Convert to actual sale later
-    - [ ] Custom proforma template
+    - [x] **Delete/Void Document:**
+        - [x] Permission-based
+        - [x] Cannot delete if referenced
+        - [x] Void reason tracking
+    - [x] **Print/Export:**
+        - [x] Receipt format
+        - [x] Invoice format (A4)
+        - [x] Proforma format
+        - [x] PDF export
+        - [x] Email to customer
+- [x] **21.4 Proforma/Quotation System**
+    - [x] Create quotes for customers
+    - [x] Does not affect stock
+    - [x] Convert to actual sale later
+    - [x] Custom proforma template
     - [ ] Validity period tracking
-- [ ] **21.5 Document Filters**
-    - [ ] Date range (from/to)
-    - [ ] Document type
-    - [ ] Paid status (paid/unpaid/all)
-    - [ ] Customer/Supplier
-    - [ ] Document number
-    - [ ] User who created
+- [x] **21.5 Document Filters**
+    - [x] Date range (from/to)
+    - [x] Document type
+    - [x] Paid status (paid/unpaid/all)
+    - [x] Customer/Supplier
+    - [x] Document number
+    - [x] User who created
     - [ ] Amount range
 
 ---
@@ -865,67 +867,67 @@
 ## 💳 Phase 25: Credit Management & Accounts Receivable
 *Goal: Manage customer credit sales .*
 
-- [ ] **25.1 Credit Sale Features**
-    - [ ] **Credit Payment Type:**
-        - [ ] Create "Credit" payment method
-        - [ ] Uncheck "Mark transaction as paid"
-        - [ ] Set default due date (days)
-        - [ ] Track unpaid documents
-        - [ ] Outstanding balance monitoring
-    - [ ] **Credit Sale Workflow:**
-        - [ ] Create sale with credit payment
-        - [ ] Document marked "Unpaid"
-        - [ ] Track in Credit Payments screen
-        - [ ] Receive payment later
-        - [ ] Allocate to specific invoices
-        - [ ] Update status to "Paid"
-- [ ] **25.2 Settling Credit Balance**
-    - [ ] **Credit Payments Screen:**
-        - [ ] Select customer
-        - [ ] View outstanding invoices
-        - [ ] Enter paid amount
-        - [ ] Choose payment type (Cash, Card, etc.)
-        - [ ] Automatic distribution (oldest first)
+- [x] **25.1 Credit Sale Features**
+    - [x] **Credit Payment Type:**
+        - [x] Create "Credit" payment method
+        - [x] Uncheck "Mark transaction as paid"
+        - [x] Set default due date (days)
+        - [x] Track unpaid documents
+        - [x] Outstanding balance monitoring
+    - [x] **Credit Sale Workflow:**
+        - [x] Create sale with credit payment
+        - [x] Document marked "Unpaid"
+        - [x] Track in Credit Payments screen
+        - [x] Receive payment later
+        - [x] Allocate to specific invoices
+        - [x] Update status to "Paid"
+- [x] **25.2 Settling Credit Balance**
+    - [x] **Credit Payments Screen:**
+        - [x] Select customer
+        - [x] View outstanding invoices
+        - [x] Enter paid amount
+        - [x] Choose payment type (Cash, Card, etc.)
+        - [x] Automatic distribution (oldest first)
         - [ ] Manual invoice selection
-        - [ ] Partial payments support
-        - [ ] Full balance settlement
-        - [ ] Print payment receipt
-- [ ] **25.3 Credit Management**
-    - [ ] **Customer Credit Settings:**
-        - [ ] Credit limit per customer
-        - [ ] Credit terms (payment days)
-        - [ ] Block sales if over limit
+        - [x] Partial payments support
+        - [x] Full balance settlement
+        - [x] Print payment receipt
+- [x] **25.3 Credit Management**
+    - [x] **Customer Credit Settings:**
+        - [x] Credit limit per customer
+        - [x] Credit terms (payment days)
+        - [x] Block sales if over limit
         - [ ] Credit approval workflow
-    - [ ] **Credit Reports:**
-        - [ ] Outstanding balances report
+    - [x] **Credit Reports:**
+        - [x] Outstanding balances report
         - [ ] Aging analysis (30/60/90 days)
-        - [ ] Customer payment history
-        - [ ] Credit limit utilization
-        - [ ] Overdue accounts
-- [ ] **25.4 Payment Allocation**
-    - [ ] Automatic distribution to oldest invoices
+        - [x] Customer payment history
+        - [x] Credit limit utilization
+        - [x] Overdue accounts
+- [x] **25.4 Payment Allocation**
+    - [x] Automatic distribution to oldest invoices
     - [ ] Manual selection of invoices to pay
-    - [ ] Partial payment recording
-    - [ ] Payment receipt generation
+    - [x] Partial payment recording
+    - [x] Payment receipt generation
 
 ---
 
 ## 🎨 Phase 26: Advanced UI/UX Features
 *Goal: Polish and usability enhancements .*
 
-- [ ] **26.1 Keyboard Shortcuts Enhancement**
-    - [ ] **Complete Shortcut Mapping:**
-        - [ ] Del - Void selected item
-        - [ ] F2 - Open discount dialog
-        - [ ] F3 - Product search screen
-        - [ ] F4 - Change quantity
-        - [ ] F7 - Split order screen
+- [x] **26.1 Keyboard Shortcuts Enhancement**
+    - [x] **Complete Shortcut Mapping:**
+        - [x] Del - Void selected item
+        - [x] F2 - Open discount dialog
+        - [x] F3 - Product search screen
+        - [x] F4 - Change quantity
+        - [x] F7 - Split order screen
         - [ ] F8 - Save current, start new sale
         - [ ] F9 - Create sub-order
         - [ ] F10 - Open payment screen
-        - [ ] F11 - Toggle full screen
+        - [x] F11 - Toggle full screen
         - [ ] F12 - Quick close with default payment
-        - [ ] Esc - Deselect item, focus search
+        - [x] Esc - Deselect item, focus search
         - [ ] Ctrl+D - Open cash drawer
         - [ ] Ctrl+T - Toggle search type
         - [ ] Ctrl++ - Zoom in
@@ -935,7 +937,7 @@
         - [ ] Page Down - Select last item
     - [ ] Customizable shortcut configuration
     - [ ] Shortcut confirmation options
-    - [ ] Display shortcut hints in UI
+    - [x] Display shortcut hints in UI
 - [ ] **26.2 Touch Optimization**
     - [ ] **Large Touch Buttons:**
         - [ ] Minimum button size (60px height)

@@ -193,8 +193,6 @@ class ProductEditor(QDialog):
         grp_unit = QGroupBox("Unit of Measurement")
         unit_layout = QHBoxLayout(grp_unit)
 
-        from PyQt6.QtWidgets import QComboBox
-
         self.unit_combo = QComboBox()
         self.unit_combo.addItem("-- None --", None)
         from cbpos.core.services.unit_service import UnitService

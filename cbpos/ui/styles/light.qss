@@ -12,7 +12,7 @@
 
 /* Global Font Enforcement */
 * {
-    font-family: "{{FONT_FAMILY}}", "Noto Sans", "Segoe UI", sans-serif;
+    font-family: "{{FONT_FAMILY}}", "Noto Sans", sans-serif;
 }
 
 QLabel.PlaceholderLabel {

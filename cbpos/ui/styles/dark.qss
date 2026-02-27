@@ -12,7 +12,7 @@
 
 /* Global Font Enforcement */
 * {
-    font-family: "{{FONT_FAMILY}}", "Noto Sans", "Segoe UI", sans-serif;
+    font-family: "{{FONT_FAMILY}}", "Noto Sans", sans-serif;
 }
 
 QLabel.PlaceholderLabel {
@@ -1562,4 +1562,68 @@ QLabel#NetworkWarning {
     padding: 10px;
     border-radius: 4px;
     font-size: 12px;
+}
+
+/* ===================================================================
+   CRUD MANAGER DIALOGS (Category, Unit)
+   ================================================================ */
+
+QDialog#CategoryManagerDialog,
+QDialog#UnitManagerDialog {
+    background-color: #1E1E1E;
+}
+
+QDialog#CategoryManagerDialog QGroupBox,
+QDialog#UnitManagerDialog QGroupBox {
+    background-color: #252526;
+    border: 1px solid #2A2A2A;
+    border-radius: 6px;
+    margin-top: 16px;
+    padding: 12px;
+    padding-top: 24px;
+}
+
+QDialog#CategoryManagerDialog QGroupBox::title,
+QDialog#UnitManagerDialog QGroupBox::title {
+    color: #00BCEB;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+QDialog#CategoryManagerDialog QGroupBox QLabel,
+QDialog#UnitManagerDialog QGroupBox QLabel {
+    background-color: transparent;
+    color: #CCCCCC;
+}
+
+/* Tree widget in category manager */
+QDialog#CategoryManagerDialog QTreeWidget {
+    background-color: #1A1A1A;
+    alternate-background-color: #202020;
+    border: 1px solid #2A2A2A;
+    border-radius: 6px;
+}
+
+QDialog#CategoryManagerDialog QTreeWidget::item {
+    padding: 6px;
+    border: none;
+}
+
+QDialog#CategoryManagerDialog QTreeWidget::item:selected {
+    background-color: #2A2A2A;
+    color: #00BCEB;
+}
+
+QDialog#CategoryManagerDialog QTreeWidget::item:hover {
+    background-color: #252525;
+}
+
+QDialog#CategoryManagerDialog QTreeWidget QHeaderView::section {
+    background-color: #2A2A2A;
+    color: #00BCEB;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    border: none;
+    padding: 8px;
 }

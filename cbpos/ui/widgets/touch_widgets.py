@@ -84,7 +84,9 @@ class CategoryButton(QToolButton):
         self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
         self.setMinimumHeight(40)
         self.setMinimumWidth(100)
-        self.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+        from cbpos.infrastructure.resource_loader import ResourceLoader
+
+        self.setFont(QFont(ResourceLoader.get_primary_font(), 10, QFont.Weight.Bold))
 
         # Dynamic color if category has one, else default
         color = category.color if category.color else "#00BCEB"

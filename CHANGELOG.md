@@ -2,6 +2,120 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.4.0] - 2026-02-27
+
+### Added
+- **Credit Book & Customer Payments**:
+  - Credit Book view with customer ledger, outstanding balances, and payment history
+  - Receive Payment dialog for recording customer credit payments (Cash, Card, Transfer, Cheque)
+  - Customer Ledger Entry model for double-entry credit tracking
+  - Overdue report for aged receivables
+- **Proforma Invoices**:
+  - Create, edit, and manage proforma/quotation documents
+  - One-click conversion of proforma to sale (loads items into POS cart)
+  - Proforma model with validity/expiry tracking
+- **Document Browser**:
+  - Unified document browser with filtering by type, status, and date range
+  - Document details panel with receipt generation
+  - Accessible from both Management sidebar and POS side menu
+- **Category Manager**:
+  - Full category manager dialog with tree view, color indicators, and product counts
+  - Add/edit/delete categories with subcategory hierarchy support
+  - Delete guard prevents removing categories with assigned products
+- **System Settings Page**:
+  - New "System" section in Settings consolidating session, POS behavior, inventory, and feature toggles
+  - Configurable inactivity timeout (default: disabled, 0 = no auto-lock, 1-60 minutes)
+  - Moved quick pay, void reason, receipt dialog, negative stock, auto barcodes, loyalty, touch mode settings into System page
+- **Setup Wizard**:
+  - First-run setup wizard for shop info, tax, and printer configuration
+- **Keyboard Shortcuts Help**:
+  - Shortcuts help dialog accessible from POS side menu
+
+### Changed
+- **Settings Overhaul**:
+  - Consolidated settings pages: removed standalone Inventory page (merged into System)
+  - Simplified Sales & Tax page to search mode + tax configuration only
+  - Payment method expansion with configurable payment types
+- **Product Editor UX Improvements**:
+  - Reordered fields: product name first, then barcode, category, pricing
+  - Added Rs. currency prefix on price/cost inputs
+  - Grouped inventory fields with QGroupBox sections (Stock, Supplier, Item Type)
+  - Fixed dark theme on image label (was hardcoded light background)
+  - Fixed component remove handler with stable row index pattern
+  - Added Enter key support in composition barcode input
+  - Improved validation messages with field-specific focus navigation
+- **Session Watchdog**:
+  - Now reads timeout from config instead of hardcoded 5 minutes
+  - Disabled by default (0 = no auto-lock) for uninterrupted POS usage
+
+### Fixed
+- Removed redundant "Edit Profile" sidebar button (Users tab provides full user editing)
+- Removed BtnProfile QSS rules from dark theme
+- Removed unused badge UI code and fixed receipt preview crash
+- Security hardening: removed PyQt imports from service layer, standardized Decimal precision
+- Escaped LIKE patterns in search queries, added sale error handling, limited history query size
+- Added pagination, threading for heavy operations, input validation, SSL support, statement timeout
+- Standardized DB session patterns, replaced print statements with proper logging
+- Fixed detached object errors with eager loading
+
+## [0.3.0] - 2026-02-18
+
+### Added
+- **LAN & Multi-Terminal Architecture** (Phase 18):
+  - Network database mode supporting PostgreSQL for multi-terminal shared database
+  - Network settings page with connection testing and server configuration
+  - One-click data migration from SQLite to PostgreSQL
+  - Terminal ID configuration for multi-register identification
+  - Database mode switching (Standalone/Network) with restart handling
+
+### Changed
+- Introduced module-level logging throughout codebase
+- Centralized network config extraction
+- Bound parameters for sequence reset operations
+
+### Fixed
+- Prevented transaction abort on sequence reset
+- Trigger application restart when db_mode changes
+- Network PR review feedback fixes
+- Space-efficient layout improvements
+- Multiple UI fix iterations for settings and management views
+
+## [0.2.0] - 2026-02-17
+
+### Added
+- **Dynamic Theme System**:
+  - Dark theme ("Ceylon Night") and Light theme ("Ceylon Day")
+  - ThemeService for stylesheet application with font variable injection
+  - ResourceLoader for Qt font registration before UI initialization
+- **Localization**:
+  - LanguageService with English, Sinhala, Tamil support
+  - Translation file generation script
+- **Sales View Enhancements**:
+  - ActionPanel with keyboard shortcut grid layout
+  - Horizontal search modes (All, Barcode, Code, Name)
+  - Resizable QSplitter-based layout
+  - Side menu overlay with slide animation
+- **Reporting & Automation** (Phase 14):
+  - Profit & Loss report and Tax Liability report
+  - EmailService with threaded SMTP and PDF attachments
+  - SchedulerService for automated daily sales reports
+  - ReportViewer with direct print and email capabilities
+- **Shift Management**:
+  - Shift closing wizard with blind cash counting
+  - Z-Report generation with variance tracking
+  - DenominationWidget for configurable currency counting
+
+### Changed
+- Refactored MainWindow as mode-switcher (Sales vs Management)
+- Created ManagementView with collapsible sidebar and smooth animations
+- Redesigned settings dialog with VS Code-inspired sidebar
+- Standardized form layouts across all settings pages
+
+### Fixed
+- QPainter warnings from invalid pixmaps
+- Asset paths for logo and user badges using pathlib
+- Linting alignment between Black (120 chars) and Flake8
+
 ## [Unreleased] - 2025-12-01
 
 ### Added

@@ -17,7 +17,9 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QGroupBox,
 )
+from PyQt6.QtCore import Qt
 
 from sqlalchemy import select
 from cbpos.core.models import Product, Category, CompositeItem
@@ -30,9 +32,9 @@ class ProductEditor(QDialog):
         super().__init__(parent)
         self.product = product
         self.inventory_service = InventoryService()
-        self.setWindowTitle("Product Editor" if product else "New Product")
+        self.setWindowTitle("Edit Product" if product else "Add New Product")
         self.setMinimumWidth(600)
-        self.setMinimumHeight(500)
+        self.setMinimumHeight(520)
 
         self.categories = []
         self.suppliers = []
@@ -88,34 +90,49 @@ class ProductEditor(QDialog):
 
     def setup_general_tab(self):
         layout = QFormLayout(self.tab_general)
+        layout.setVerticalSpacing(12)
+
+        self.name_en_input = QLineEdit()
+        self.name_en_input.setPlaceholderText("Product name in English (required)")
+        self.name_si_input = QLineEdit()
+        self.name_si_input.setPlaceholderText("Optional")
+        self.name_ta_input = QLineEdit()
+        self.name_ta_input.setPlaceholderText("Optional")
 
         self.barcode_input = QLineEdit()
-        self.name_en_input = QLineEdit()
-        self.name_si_input = QLineEdit()
-        self.name_ta_input = QLineEdit()
+        self.barcode_input.setPlaceholderText("Scan or type barcode (required)")
 
         self.category_combo = QComboBox()
+        self.category_combo.addItem("-- Select Category --", None)
         for cat in self.categories:
             self.category_combo.addItem(cat.name, cat.id)
 
         self.price_input = QDoubleSpinBox()
         self.price_input.setRange(0, 1000000)
         self.price_input.setDecimals(2)
+        self.price_input.setPrefix("Rs. ")
 
         self.cost_input = QDoubleSpinBox()
         self.cost_input.setRange(0, 1000000)
         self.cost_input.setDecimals(2)
+        self.cost_input.setPrefix("Rs. ")
 
-        layout.addRow("Barcode:", self.barcode_input)
-        layout.addRow("Name (EN):", self.name_en_input)
+        layout.addRow("Name (EN)*:", self.name_en_input)
         layout.addRow("Name (SI):", self.name_si_input)
         layout.addRow("Name (TA):", self.name_ta_input)
+        layout.addRow("Barcode*:", self.barcode_input)
         layout.addRow("Category:", self.category_combo)
-        layout.addRow("Price:", self.price_input)
-        layout.addRow("Cost:", self.cost_input)
+        layout.addRow("Selling Price*:", self.price_input)
+        layout.addRow("Cost Price:", self.cost_input)
 
     def setup_inventory_tab(self):
-        layout = QFormLayout(self.tab_inventory)
+        layout = QVBoxLayout(self.tab_inventory)
+        layout.setSpacing(15)
+
+        # Stock group
+        grp_stock = QGroupBox("Stock")
+        form_stock = QFormLayout(grp_stock)
+        form_stock.setVerticalSpacing(12)
 
         self.stock_input = QDoubleSpinBox()
         self.stock_input.setRange(-10000, 1000000)
@@ -129,22 +146,37 @@ class ProductEditor(QDialog):
         self.preferred_qty_input.setRange(0, 10000)
         self.preferred_qty_input.setDecimals(3)
 
-        self.weighted_check = QCheckBox("Is Weighted Item?")
-        self.service_check = QCheckBox("Is Service Item (No Stock Tracking)")
+        form_stock.addRow("Stock Qty:", self.stock_input)
+        form_stock.addRow("Reorder Point:", self.reorder_input)
+        form_stock.addRow("Preferred Qty:", self.preferred_qty_input)
 
-        layout.addRow("Stock Qty:", self.stock_input)
-        layout.addRow("Reorder Point:", self.reorder_input)
-        layout.addRow("Preferred Qty:", self.preferred_qty_input)
+        layout.addWidget(grp_stock)
 
-        # Default Supplier
+        # Supplier group
+        grp_supplier = QGroupBox("Supplier")
+        form_supplier = QFormLayout(grp_supplier)
+
         self.supplier_combo = QComboBox()
         self.supplier_combo.addItem("-- No Default Supplier --", None)
         for supplier in self.suppliers:
             self.supplier_combo.addItem(supplier.company_name, supplier.id)
-        layout.addRow("Default Supplier:", self.supplier_combo)
+        form_supplier.addRow("Default Supplier:", self.supplier_combo)
 
-        layout.addRow("", self.weighted_check)
-        layout.addRow("", self.service_check)
+        layout.addWidget(grp_supplier)
+
+        # Item type group
+        grp_type = QGroupBox("Item Type")
+        type_layout = QVBoxLayout(grp_type)
+        type_layout.setSpacing(10)
+
+        self.weighted_check = QCheckBox("Weighted Item (sold by kg)")
+        self.service_check = QCheckBox("Service Item (no stock tracking)")
+
+        type_layout.addWidget(self.weighted_check)
+        type_layout.addWidget(self.service_check)
+
+        layout.addWidget(grp_type)
+        layout.addStretch()
 
     def setup_composition_tab(self):
         layout = QVBoxLayout(self.tab_composition)
@@ -158,6 +190,7 @@ class ProductEditor(QDialog):
         self.comp_qty_input.setValue(1)
         add_btn = QPushButton("Add Component")
         add_btn.clicked.connect(self.add_component)
+        self.comp_barcode_input.returnPressed.connect(self.add_component)
 
         add_layout.addWidget(self.comp_barcode_input)
         add_layout.addWidget(self.comp_qty_input)
@@ -181,17 +214,18 @@ class ProductEditor(QDialog):
 
         product = self.inventory_service.get_product_by_barcode(barcode)
         if not product:
-            QMessageBox.warning(self, "Error", "Product not found")
+            QMessageBox.warning(self, "Not Found", f"No product found with barcode '{barcode}'")
+            self.comp_barcode_input.setFocus()
             return
 
         if self.product and product.id == self.product.id:
-            QMessageBox.warning(self, "Error", "Cannot add self as component")
+            QMessageBox.warning(self, "Invalid", "Cannot add self as component")
             return
 
         # Check if already exists in table
         for row in range(self.comp_table.rowCount()):
             if self.comp_table.item(row, 0).text() == str(product.id):
-                QMessageBox.warning(self, "Error", "Component already added")
+                QMessageBox.warning(self, "Duplicate", f"'{product.name_en}' is already added")
                 return
 
         row = self.comp_table.rowCount()
@@ -201,25 +235,33 @@ class ProductEditor(QDialog):
         self.comp_table.setItem(row, 2, QTableWidgetItem(str(qty)))
 
         remove_btn = QPushButton("Remove")
-        remove_btn.clicked.connect(self.create_remove_handler(self.comp_table, remove_btn))
-
+        target_row = row
+        remove_btn.clicked.connect(lambda checked, r=target_row: self._remove_component(r))
         self.comp_table.setCellWidget(row, 3, remove_btn)
+
         self.comp_barcode_input.clear()
+        self.comp_barcode_input.setFocus()
 
-    def create_remove_handler(self, table, button):
-        def handler():
-            index = table.indexAt(button.pos())
-            if index.isValid():
-                table.removeRow(index.row())
-
-        return handler
+    def _remove_component(self, row: int) -> None:
+        """Remove a component row. Re-wire buttons after removal."""
+        if row < self.comp_table.rowCount():
+            self.comp_table.removeRow(row)
+            # Re-wire remove buttons with correct row indices
+            for r in range(self.comp_table.rowCount()):
+                btn = self.comp_table.cellWidget(r, 3)
+                if btn:
+                    btn.clicked.disconnect()
+                    btn.clicked.connect(lambda checked, idx=r: self._remove_component(idx))
 
     def setup_image_tab(self):
         layout = QVBoxLayout(self.tab_image)
 
         self.lbl_image = QLabel("No Image Selected")
         self.lbl_image.setFixedSize(200, 200)
-        self.lbl_image.setStyleSheet("border: 1px solid gray; background: #f0f0f0;")
+        self.lbl_image.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_image.setStyleSheet(
+            "border: 1px solid #3E3E42; background-color: #252526; color: #AAAAAA; border-radius: 4px;"
+        )
         self.lbl_image.setScaledContents(True)
 
         btn_upload = QPushButton("Upload Image")
@@ -320,7 +362,8 @@ class ProductEditor(QDialog):
                 self.comp_table.setItem(row, 2, QTableWidgetItem(str(comp.qty)))
 
                 remove_btn = QPushButton("Remove")
-                remove_btn.clicked.connect(self.create_remove_handler(self.comp_table, remove_btn))
+                target_row = row
+                remove_btn.clicked.connect(lambda checked, r=target_row: self._remove_component(r))
                 self.comp_table.setCellWidget(row, 3, remove_btn)
 
     def save_product(self):
@@ -342,12 +385,22 @@ class ProductEditor(QDialog):
             "is_active": True,
         }
 
-        if not data["barcode"] or not data["name_en"]:
-            QMessageBox.warning(self, "Error", "Barcode and Name are required")
+        if not data["name_en"]:
+            QMessageBox.warning(self, "Validation", "Product name is required.")
+            self.tabs.setCurrentIndex(0)
+            self.name_en_input.setFocus()
+            return
+
+        if not data["barcode"]:
+            QMessageBox.warning(self, "Validation", "Barcode is required.")
+            self.tabs.setCurrentIndex(0)
+            self.barcode_input.setFocus()
             return
 
         if data["price"] <= 0:
-            QMessageBox.warning(self, "Error", "Price must be > 0")
+            QMessageBox.warning(self, "Validation", "Selling price must be greater than 0.")
+            self.tabs.setCurrentIndex(0)
+            self.price_input.setFocus()
             return
 
         components = []
@@ -363,7 +416,9 @@ class ProductEditor(QDialog):
                 self.inventory_service.update_product(self.product.id, data)
             else:
                 if self.inventory_service.get_product_by_barcode(data["barcode"]):
-                    QMessageBox.warning(self, "Error", "Barcode already exists")
+                    QMessageBox.warning(self, "Duplicate", "A product with this barcode already exists.")
+                    self.tabs.setCurrentIndex(0)
+                    self.barcode_input.setFocus()
                     return
                 self.inventory_service.create_product(data)
             self.accept()

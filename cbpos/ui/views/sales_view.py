@@ -626,25 +626,16 @@ class SalesView(QWidget):
             QMessageBox.critical(self, "Error", "Failed to recall bill.")
 
     def void_bill(self):
-        # 1. Check Permission
-        from cbpos.core.services.auth_service import AuthService
-        from cbpos.core.services.permission_service import PermissionService
-        from cbpos.ui.dialogs.manager_override_dialog import ManagerOverrideDialog
-
-        current_user = AuthService.get_current_user()
-        authorized_user = current_user  # noqa: F841
-
         # If cart is empty, nothing to void
         if not self.cart_service.items:
             return
 
-        if not PermissionService.user_has_permission(current_user, "can_void_sale"):
-            # Request Override
-            dialog = ManagerOverrideDialog("can_void_sale", self)
-            if dialog.exec():
-                authorized_user = dialog.authorized_user  # noqa: F841
-            else:
-                return
+        # 1. Check Permission (with manager override)
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        authorized_user = check_permission_with_override("can_void_sale", self)  # noqa: F841
+        if not authorized_user:
+            return
 
         # 2. Confirm Void
         reply = QMessageBox.question(
@@ -764,21 +755,12 @@ class SalesView(QWidget):
         if row < 0:
             return
 
-        # 1. Check Permission
-        from cbpos.core.services.auth_service import AuthService
-        from cbpos.core.services.permission_service import PermissionService
-        from cbpos.ui.dialogs.manager_override_dialog import ManagerOverrideDialog
+        # 1. Check Permission (with manager override)
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
-        current_user = AuthService.get_current_user()
-        authorized_user = current_user
-
-        if not PermissionService.user_has_permission(current_user, "change_price"):
-            # Request Override
-            dialog = ManagerOverrideDialog("change_price", self)
-            if dialog.exec():
-                authorized_user = dialog.authorized_user
-            else:
-                return
+        authorized_user = check_permission_with_override("change_price", self)
+        if not authorized_user:
+            return
 
         # 2. Get New Price
         current_price = self.cart_service.items[row]["unit_price"]

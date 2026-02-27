@@ -421,44 +421,15 @@ class CreditBookView(QWidget):
             self.load_customers()
 
     def print_statement(self) -> None:
-        """Print a customer statement for the selected date range."""
+        """Open customer statement dialog for viewing and printing."""
         if not self.selected_customer:
             QMessageBox.warning(self, "No Customer", "Please select a customer first.")
             return
 
-        date_from = datetime(
-            self.date_from.date().year(),
-            self.date_from.date().month(),
-            self.date_from.date().day(),
-        )
-        date_to = datetime(
-            self.date_to.date().year(),
-            self.date_to.date().month(),
-            self.date_to.date().day(),
-            23,
-            59,
-            59,
-        )
+        from cbpos.ui.dialogs.customer_statement_dialog import CustomerStatementDialog
 
-        entries = CustomerCreditService.get_ledger(
-            self.selected_customer.id,
-            date_from=date_from,
-            date_to=date_to,
-        )
-
-        from cbpos.core.services.receipt_builder import ReceiptBuilder
-        from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
-
-        commands = ReceiptBuilder.build_customer_statement(
-            customer=self.selected_customer,
-            entries=entries,
-            period_from=date_from,
-            period_to=date_to,
-        )
-
-        worker = PrintWorker()
-        worker.add_job("print_commands", commands)
-        QMessageBox.information(self, "Print", "Statement sent to printer.")
+        dialog = CustomerStatementDialog(self.selected_customer, self)
+        dialog.exec()
 
     def adjust_balance(self) -> None:
         """Adjust the customer's balance (correction)."""

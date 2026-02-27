@@ -72,7 +72,7 @@ class LabelPrintDialog(QDialog):
         btn_layout = QHBoxLayout()
 
         self.lbl_total = QLabel("Total labels: 0")
-        self.lbl_total.setStyleSheet("font-weight: bold; background: transparent;")
+        self.lbl_total.setProperty("class", "bold")
         btn_layout.addWidget(self.lbl_total)
 
         btn_layout.addStretch()

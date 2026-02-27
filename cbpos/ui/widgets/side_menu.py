@@ -147,7 +147,7 @@ class SideMenu(QWidget):
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
         line.setFrameShadow(QFrame.Shadow.Sunken)
-        line.setStyleSheet("background-color: #003366; max-height: 1px;")
+        line.setObjectName("MenuSeparator")
         main_layout.addWidget(line)
 
         # 2. Middle Section (User Profile)
@@ -186,7 +186,7 @@ class SideMenu(QWidget):
         line2 = QFrame()
         line2.setFrameShape(QFrame.Shape.HLine)
         line2.setFrameShadow(QFrame.Shadow.Sunken)
-        line2.setStyleSheet("background-color: #003366; max-height: 1px;")
+        line2.setObjectName("MenuSeparator")
         main_layout.addWidget(line2)
 
         # 3. Bottom Section (System Toolbar)

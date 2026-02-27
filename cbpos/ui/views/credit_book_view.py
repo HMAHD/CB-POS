@@ -59,7 +59,7 @@ class CreditBookView(QWidget):
 
         # Title
         lbl_title = QLabel("Credit Book")
-        lbl_title.setStyleSheet("font-size: 18px; font-weight: bold; background: transparent;")
+        lbl_title.setProperty("class", "dialog-title")
         left_layout.addWidget(lbl_title)
 
         # Search
@@ -70,9 +70,7 @@ class CreditBookView(QWidget):
         search_layout.addWidget(self.search_input)
 
         self.btn_add_customer = QPushButton("+ Add")
-        self.btn_add_customer.setStyleSheet(
-            "background-color: #0074D9; color: white; font-weight: bold; padding: 6px 12px;"
-        )
+        self.btn_add_customer.setProperty("class", "accent")
         self.btn_add_customer.clicked.connect(self.open_add_customer)
         search_layout.addWidget(self.btn_add_customer)
         left_layout.addLayout(search_layout)
@@ -100,17 +98,14 @@ class CreditBookView(QWidget):
         # Customer Header Card
         self.header_card = QFrame()
         self.header_card.setObjectName("CreditHeaderCard")
-        self.header_card.setStyleSheet(
-            "QFrame#CreditHeaderCard { background-color: #003366; border-radius: 8px; padding: 12px; }"
-        )
         header_layout = QVBoxLayout(self.header_card)
 
         # Row 1: Name + Phone
         row1 = QHBoxLayout()
         self.lbl_cust_name = QLabel("Select a customer")
-        self.lbl_cust_name.setStyleSheet("font-size: 18px; font-weight: bold; background: transparent;")
+        self.lbl_cust_name.setProperty("class", "bold")
         self.lbl_cust_phone = QLabel("")
-        self.lbl_cust_phone.setStyleSheet("font-size: 13px; color: #aaa; background: transparent;")
+        self.lbl_cust_phone.setProperty("class", "muted")
         row1.addWidget(self.lbl_cust_name)
         row1.addStretch()
         row1.addWidget(self.lbl_cust_phone)
@@ -119,11 +114,11 @@ class CreditBookView(QWidget):
         # Row 2: Debt, Limit, Available, Last Payment
         row2 = QHBoxLayout()
         self.lbl_debt = QLabel("Debt: ---")
-        self.lbl_debt.setStyleSheet("font-size: 14px; font-weight: bold; color: #FF4136; background: transparent;")
+        self.lbl_debt.setProperty("class", "debit")
         self.lbl_available = QLabel("Available: ---")
-        self.lbl_available.setStyleSheet("font-size: 14px; color: #39FF14; background: transparent;")
+        self.lbl_available.setProperty("class", "credit")
         self.lbl_last_payment = QLabel("Last Payment: ---")
-        self.lbl_last_payment.setStyleSheet("font-size: 12px; color: #aaa; background: transparent;")
+        self.lbl_last_payment.setProperty("class", "muted")
         row2.addWidget(self.lbl_debt)
         row2.addWidget(self.lbl_available)
         row2.addStretch()
@@ -136,26 +131,21 @@ class CreditBookView(QWidget):
         action_layout = QHBoxLayout()
 
         self.btn_receive_payment = QPushButton("Receive Payment")
-        self.btn_receive_payment.setStyleSheet(
-            "background-color: #39FF14; color: black; font-weight: bold; padding: 8px 16px;"
-        )
+        self.btn_receive_payment.setProperty("class", "primary")
         self.btn_receive_payment.clicked.connect(self.receive_payment)
         action_layout.addWidget(self.btn_receive_payment)
 
         self.btn_print_statement = QPushButton("Print Statement")
-        self.btn_print_statement.setStyleSheet(
-            "background-color: #0074D9; color: white; font-weight: bold; padding: 8px 16px;"
-        )
+        self.btn_print_statement.setProperty("class", "accent")
         self.btn_print_statement.clicked.connect(self.print_statement)
         action_layout.addWidget(self.btn_print_statement)
 
         self.btn_adjust = QPushButton("Adjust Balance")
-        self.btn_adjust.setStyleSheet("background-color: #FF851B; color: white; font-weight: bold; padding: 8px 16px;")
+        self.btn_adjust.setProperty("class", "warning")
         self.btn_adjust.clicked.connect(self.adjust_balance)
         action_layout.addWidget(self.btn_adjust)
 
         self.btn_edit_customer = QPushButton("Edit Customer")
-        self.btn_edit_customer.setStyleSheet("background-color: #555555; color: white; padding: 8px 16px;")
         self.btn_edit_customer.clicked.connect(self.edit_customer)
         action_layout.addWidget(self.btn_edit_customer)
 
@@ -164,7 +154,7 @@ class CreditBookView(QWidget):
         # Date Filters
         filter_layout = QHBoxLayout()
         lbl_from = QLabel("From:")
-        lbl_from.setStyleSheet("background: transparent;")
+        lbl_from.setProperty("class", "transparent")
         filter_layout.addWidget(lbl_from)
         self.date_from = QDateEdit()
         self.date_from.setCalendarPopup(True)
@@ -173,7 +163,7 @@ class CreditBookView(QWidget):
         filter_layout.addWidget(self.date_from)
 
         lbl_to = QLabel("To:")
-        lbl_to.setStyleSheet("background: transparent;")
+        lbl_to.setProperty("class", "transparent")
         filter_layout.addWidget(lbl_to)
         self.date_to = QDateEdit()
         self.date_to.setCalendarPopup(True)
@@ -182,7 +172,6 @@ class CreditBookView(QWidget):
         filter_layout.addWidget(self.date_to)
 
         self.btn_all_dates = QPushButton("All")
-        self.btn_all_dates.setStyleSheet("padding: 4px 8px;")
         self.btn_all_dates.clicked.connect(self.show_all_dates)
         filter_layout.addWidget(self.btn_all_dates)
 
@@ -208,11 +197,11 @@ class CreditBookView(QWidget):
         # Footer Summary
         footer_layout = QHBoxLayout()
         self.lbl_total_sales = QLabel("Sales: ---")
-        self.lbl_total_sales.setStyleSheet("font-weight: bold; color: #FF4136; background: transparent;")
+        self.lbl_total_sales.setProperty("class", "debit")
         self.lbl_total_payments = QLabel("Payments: ---")
-        self.lbl_total_payments.setStyleSheet("font-weight: bold; color: #39FF14; background: transparent;")
+        self.lbl_total_payments.setProperty("class", "credit")
         self.lbl_closing = QLabel("Closing: ---")
-        self.lbl_closing.setStyleSheet("font-weight: bold; background: transparent;")
+        self.lbl_closing.setProperty("class", "bold")
         footer_layout.addWidget(self.lbl_total_sales)
         footer_layout.addWidget(self.lbl_total_payments)
         footer_layout.addStretch()
@@ -254,10 +243,10 @@ class CreditBookView(QWidget):
             self.customer_table.setItem(row, 2, QTableWidgetItem(customer.phone or ""))
 
             # Debt with color coding
-            debt_item = QTableWidgetItem(f"{customer.current_debt:.2f}")
+            debt_item = QTableWidgetItem(f"{customer.current_debt:.2f}")  # noqa: E231
             debt_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
-            limit_item = QTableWidgetItem(f"{customer.credit_limit:.2f}")
+            limit_item = QTableWidgetItem(f"{customer.credit_limit:.2f}")  # noqa: E231
             limit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
             if customer.credit_limit > 0:
@@ -371,7 +360,7 @@ class CreditBookView(QWidget):
             # Debit / Credit
             if entry.amount > 0:
                 # Debit (sale increases debt)
-                debit_item = QTableWidgetItem(f"{entry.amount:.2f}")
+                debit_item = QTableWidgetItem(f"{entry.amount:.2f}")  # noqa: E231
                 debit_item.setForeground(QColor("#FF4136"))
                 debit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.ledger_table.setItem(row, 3, debit_item)
@@ -380,14 +369,14 @@ class CreditBookView(QWidget):
             else:
                 # Credit (payment reduces debt)
                 self.ledger_table.setItem(row, 3, QTableWidgetItem(""))
-                credit_item = QTableWidgetItem(f"{abs(entry.amount):.2f}")
+                credit_item = QTableWidgetItem(f"{abs(entry.amount):.2f}")  # noqa: E231
                 credit_item.setForeground(QColor("#39FF14"))
                 credit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.ledger_table.setItem(row, 4, credit_item)
                 total_credit += abs(entry.amount)
 
             # Balance
-            balance_item = QTableWidgetItem(f"{entry.balance_after:.2f}")
+            balance_item = QTableWidgetItem(f"{entry.balance_after:.2f}")  # noqa: E231
             balance_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.ledger_table.setItem(row, 5, balance_item)
 

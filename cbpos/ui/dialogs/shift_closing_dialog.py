@@ -8,9 +8,13 @@ from PyQt6.QtWidgets import (
     QWidget,
     QTextEdit,
     QMessageBox,
+    QApplication,
 )
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QCursor
 from decimal import Decimal
 from cbpos.ui.widgets.denomination_widget import DenominationWidget
+from cbpos.ui.workers import BackupWorker
 from cbpos.core.services.shift_service import ShiftService
 from cbpos.core.services.receipt_service import ReceiptService
 
@@ -149,15 +153,20 @@ class ShiftClosingDialog(QDialog):
 
             QMessageBox.information(self, "Success", "Shift closed and Z-Report generated.")
 
-            # Offer backup after successful shift close
-            self._offer_backup()
-
-            self.accept()
+            # Offer backup after successful shift close.
+            # If user starts a backup, accept() is deferred until it finishes.
+            if not self._offer_backup():
+                self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to close shift: {e}")
 
-    def _offer_backup(self) -> None:
-        """Prompt user to create a backup after closing the shift."""
+    def _offer_backup(self) -> bool:
+        """Prompt user to create a backup after closing the shift.
+
+        Returns:
+            True if an async backup was started (caller should NOT call accept()),
+            False if no backup is running (caller should call accept()).
+        """
         reply = QMessageBox.question(
             self,
             "Backup",
@@ -165,7 +174,7 @@ class ShiftClosingDialog(QDialog):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
-            return
+            return False
 
         from cbpos.core.services.backup_service import BackupService
         from PyQt6.QtWidgets import QFileDialog
@@ -173,16 +182,31 @@ class ShiftClosingDialog(QDialog):
         default_dir = BackupService.get_default_backup_dir()
         chosen_dir = QFileDialog.getExistingDirectory(self, "Choose Backup Location", default_dir)
         if not chosen_dir:
-            return
+            return False
 
-        try:
-            backup_path, password = BackupService.create_backup(chosen_dir)
-            QMessageBox.information(
-                self,
-                "Backup Complete",
-                f"Encrypted backup saved to:\n{backup_path}\n\n"
-                f"Password: {password}\n\n"
-                f"Keep this password safe — you need it to restore.",
-            )
-        except Exception as e:
-            QMessageBox.critical(self, "Backup Failed", f"Backup failed: {e}")
+        self.btn_cancel.setEnabled(False)
+        self.btn_next.setEnabled(False)
+        self.btn_next.setText("Creating backup...")
+        QApplication.setOverrideCursor(QCursor(Qt.CursorShape.WaitCursor))
+
+        self._backup_worker = BackupWorker(chosen_dir)
+        self._backup_worker.finished.connect(self._on_backup_finished)
+        self._backup_worker.error.connect(self._on_backup_error)
+        self._backup_worker.start()
+        return True
+
+    def _on_backup_finished(self, backup_path: str, password: str) -> None:
+        QApplication.restoreOverrideCursor()
+        QMessageBox.information(
+            self,
+            "Backup Complete",
+            f"Encrypted backup saved to:\n{backup_path}\n\n"  # noqa: E231
+            f"Password: {password}\n\n"
+            f"Keep this password safe \u2014 you need it to restore.",
+        )
+        self.accept()
+
+    def _on_backup_error(self, error_msg: str) -> None:
+        QApplication.restoreOverrideCursor()
+        QMessageBox.critical(self, "Backup Failed", f"Backup failed: {error_msg}")
+        self.accept()

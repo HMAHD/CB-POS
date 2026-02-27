@@ -23,7 +23,7 @@ class OrderBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedHeight(60)
-        self.setStyleSheet("background-color: #001F3F; border-bottom: 2px solid #003366;")
+        self.setObjectName("OrderBar")
 
         self.init_ui()
         self.refresh_tabs()
@@ -35,14 +35,14 @@ class OrderBar(QWidget):
 
         # 1. Label
         lbl_title = QLabel("ORDERS:")
-        lbl_title.setStyleSheet("color: #AAAAAA; font-weight: bold; background: transparent;")
+        lbl_title.setProperty("class", "muted")
         layout.addWidget(lbl_title)
 
         # 2. Scroll Area for Tabs
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-        self.scroll_area.setStyleSheet("background: transparent;")
+        self.scroll_area.setProperty("class", "transparent")
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
@@ -58,20 +58,7 @@ class OrderBar(QWidget):
         # 3. New Order Button (+)
         self.btn_new = QPushButton("+")
         self.btn_new.setFixedSize(50, 40)
-        self.btn_new.setStyleSheet(
-            """
-            QPushButton {
-                background-color: #39FF14;
-                color: black;
-                font-weight: bold;
-                font-size: 20px;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #32CD32;
-            }
-        """
-        )
+        self.btn_new.setProperty("class", "primary")
         self.btn_new.clicked.connect(self.new_tab_requested.emit)
         layout.addWidget(self.btn_new)
 
@@ -96,22 +83,7 @@ class OrderBar(QWidget):
             btn = QPushButton(label)
             btn.setFixedHeight(40)
             btn.setCheckable(True)
-            # Style
-            btn.setStyleSheet(
-                """
-                QPushButton {
-                    background-color: #0074D9;
-                    color: white;
-                    font-weight: bold;
-                    padding: 5px 15px;
-                    border-radius: 5px;
-                    text-align: left;
-                }
-                QPushButton:hover {
-                    background-color: #005bb5;
-                }
-            """
-            )
+            btn.setProperty("class", "accent")
 
             # Connect
             # Use closure to capture bill.id

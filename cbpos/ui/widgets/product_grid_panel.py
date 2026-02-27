@@ -109,7 +109,7 @@ class ProductGridPanel(QWidget):
         if not products:
             lbl = QLabel("No products in this category")
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lbl.setStyleSheet("color: #aaa; font-size: 14px; background: transparent;")
+            lbl.setProperty("class", "muted")
             self.grid_layout.addWidget(lbl, 0, 0)
             return
 

@@ -44,7 +44,7 @@ class ReceivePaymentDialog(QDialog):
 
         # Title
         title = QLabel("Receive Customer Payment")
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #39FF14; background: transparent;")
+        title.setProperty("class", "dialog-title")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
@@ -54,7 +54,7 @@ class ReceivePaymentDialog(QDialog):
         customer_layout = QHBoxLayout()
         customer_layout.setSpacing(10)
         lbl_customer = QLabel("Customer:")
-        lbl_customer.setStyleSheet("font-size: 14px; font-weight: bold; background: transparent;")
+        lbl_customer.setProperty("class", "bold")
         self.cmb_customer = QComboBox()
         self.cmb_customer.setMinimumWidth(250)
         customer_layout.addWidget(lbl_customer)
@@ -64,17 +64,12 @@ class ReceivePaymentDialog(QDialog):
         # Outstanding Balance Display
         self.balance_frame = QFrame()
         self.balance_frame.setObjectName("BalanceFrame")
-        self.balance_frame.setStyleSheet(
-            "QFrame#BalanceFrame { background-color: #003366; border-radius: 8px; padding: 12px; }"
-        )
         balance_layout = QHBoxLayout(self.balance_frame)
         balance_layout.setContentsMargins(12, 8, 12, 8)
         self.lbl_outstanding = QLabel("Outstanding: ---")
-        self.lbl_outstanding.setStyleSheet(
-            "font-size: 16px; font-weight: bold; color: #FF4136; background: transparent;"
-        )
+        self.lbl_outstanding.setProperty("class", "debit")
         self.lbl_limit = QLabel("Limit: ---")
-        self.lbl_limit.setStyleSheet("font-size: 13px; color: #aaa; background: transparent;")
+        self.lbl_limit.setProperty("class", "muted")
         balance_layout.addWidget(self.lbl_outstanding)
         balance_layout.addStretch()
         balance_layout.addWidget(self.lbl_limit)
@@ -89,13 +84,10 @@ class ReceivePaymentDialog(QDialog):
         amount_layout = QHBoxLayout()
         self.txt_amount = QLineEdit()
         self.txt_amount.setPlaceholderText("0.00")
-        self.txt_amount.setStyleSheet("font-size: 16px; padding: 6px;")
         amount_layout.addWidget(self.txt_amount, 1)
 
         self.btn_pay_full = QPushButton("Pay Full")
-        self.btn_pay_full.setStyleSheet(
-            "background-color: #00BCEB; color: white; font-weight: bold; padding: 6px 12px;"
-        )
+        self.btn_pay_full.setProperty("class", "accent")
         self.btn_pay_full.clicked.connect(self.fill_full_amount)
         amount_layout.addWidget(self.btn_pay_full)
 
@@ -123,14 +115,11 @@ class ReceivePaymentDialog(QDialog):
         btn_layout = QHBoxLayout()
 
         self.btn_record = QPushButton("Record Payment")
-        self.btn_record.setStyleSheet(
-            "background-color: #39FF14; color: black; font-weight: bold; font-size: 14px; padding: 10px;"
-        )
+        self.btn_record.setProperty("class", "primary")
         self.btn_record.clicked.connect(self.validate_and_record)
         btn_layout.addWidget(self.btn_record)
 
         self.btn_cancel = QPushButton("Cancel")
-        self.btn_cancel.setStyleSheet("background-color: #555555; color: white; padding: 10px;")
         self.btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(self.btn_cancel)
 

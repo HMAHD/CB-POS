@@ -631,7 +631,15 @@ class TransactionService:
         """
         db = Database()
         with db.get_session() as session:
-            sale = session.query(Sale).get(sale_id)
+            sale = (
+                session.query(Sale)
+                .options(
+                    joinedload(Sale.items).joinedload(SaleItem.product),
+                    joinedload(Sale.user),
+                    joinedload(Sale.customer),
+                )
+                .get(sale_id)
+            )
             if sale:
                 session.expunge(sale)
             return sale

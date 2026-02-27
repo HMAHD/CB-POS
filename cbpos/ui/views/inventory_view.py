@@ -8,12 +8,14 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QMessageBox,
     QFileDialog,
+    QApplication,
 )
 from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex
-from PyQt6.QtGui import QColor, QBrush
+from PyQt6.QtGui import QColor, QBrush, QCursor
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.services.import_service import ImportService
 from cbpos.ui.dialogs.product_editor import ProductEditor
+from cbpos.ui.workers import CsvImportWorker
 
 
 class InventoryModel(QAbstractTableModel):
@@ -192,12 +194,31 @@ class InventoryView(QWidget):
             dialog = StockHistoryDialog(product, parent=self)
             dialog.exec()
 
-    def import_csv(self):
+    def import_csv(self) -> None:
         file_path, _ = QFileDialog.getOpenFileName(self, "Import CSV", "", "CSV Files (*.csv)")
-        if file_path:
-            results = self.import_service.import_products_from_csv(file_path)
-            message = (
-                f"Success: {results['success']}\n" f"Failed: {results['failed']}\n" f"Skipped: {results['skipped']}"
-            )
-            QMessageBox.information(self, "Import Results", message)
-            self.load_data()
+        if not file_path:
+            return
+
+        self.import_btn.setEnabled(False)
+        self.import_btn.setText("Importing...")
+        QApplication.setOverrideCursor(QCursor(Qt.CursorShape.WaitCursor))
+
+        self._csv_worker = CsvImportWorker(self.import_service, file_path)
+        self._csv_worker.finished.connect(self._on_csv_import_finished)
+        self._csv_worker.error.connect(self._on_csv_import_error)
+        self._csv_worker.start()
+
+    def _on_csv_import_finished(self, results: dict) -> None:
+        QApplication.restoreOverrideCursor()
+        self.import_btn.setEnabled(True)
+        self.import_btn.setText("Import CSV")
+
+        message = f"Success: {results['success']}\n" f"Failed: {results['failed']}\n" f"Skipped: {results['skipped']}"
+        QMessageBox.information(self, "Import Results", message)
+        self.load_data()
+
+    def _on_csv_import_error(self, error_msg: str) -> None:
+        QApplication.restoreOverrideCursor()
+        self.import_btn.setEnabled(True)
+        self.import_btn.setText("Import CSV")
+        QMessageBox.critical(self, "Import Failed", f"CSV import failed: {error_msg}")

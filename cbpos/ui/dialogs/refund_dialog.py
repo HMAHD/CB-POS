@@ -38,7 +38,7 @@ class RefundDialog(QDialog):
         # Search section
         search_layout = QHBoxLayout()
         lbl = QLabel("Receipt #:")
-        lbl.setStyleSheet("background: transparent; font-weight: bold;")
+        lbl.setProperty("class", "bold")
         search_layout.addWidget(lbl)
 
         self.search_input = QLineEdit()
@@ -57,7 +57,7 @@ class RefundDialog(QDialog):
         details_layout = QVBoxLayout(self.details_group)
 
         self.lbl_sale_info = QLabel("No sale loaded.")
-        self.lbl_sale_info.setStyleSheet("background: transparent; font-size: 13px;")
+        self.lbl_sale_info.setProperty("class", "transparent")
         details_layout.addWidget(self.lbl_sale_info)
 
         # Items table
@@ -74,7 +74,7 @@ class RefundDialog(QDialog):
 
         # Reason
         lbl_reason = QLabel("Refund Reason (required):")
-        lbl_reason.setStyleSheet("background: transparent; font-weight: bold;")
+        lbl_reason.setProperty("class", "bold")
         layout.addWidget(lbl_reason)
 
         self.txt_reason = QTextEdit()
@@ -130,8 +130,8 @@ class RefundDialog(QDialog):
         customer_name = sale.customer.name if sale.customer else "Walk-in"
         date_str = sale.date.strftime("%Y-%m-%d %H:%M") if sale.date else "N/A"
         self.lbl_sale_info.setText(
-            f"Receipt: {sale.document_number}  |  Date: {date_str}  |  "
-            f"Customer: {customer_name}  |  Total: {format_currency(sale.total_amount)}  |  "
+            f"Receipt: {sale.document_number}  |  Date: {date_str}  |  "  # noqa: E222,E221
+            f"Customer: {customer_name}  |  Total: {format_currency(sale.total_amount)}  |  "  # noqa: E222,E221
             f"Status: {sale.status}"
         )
 

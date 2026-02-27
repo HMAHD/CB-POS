@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 from decimal import Decimal
-import hashlib
+import bcrypt
 
 # Add project root to python path
 project_root = Path(__file__).parent.parent
@@ -23,11 +23,11 @@ from cbpos.core.models import (  # noqa: E402
     Unit,
 )
 from cbpos.core.constants.permissions import Permissions  # noqa: E402
-import cbpos.core.models  # noqa: F401
+import cbpos.core.models  # noqa: E402,F401
 
 
 def hash_pin(pin: str) -> str:
-    return hashlib.sha256(pin.encode()).hexdigest()
+    return bcrypt.hashpw(pin.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def seed_data():

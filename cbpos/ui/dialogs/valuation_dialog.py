@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from cbpos.core.services.report_service import ReportService
+from cbpos.core.utils.formatters import format_currency
 
 
 class ValuationDialog(QDialog):
@@ -39,15 +40,15 @@ class ValuationDialog(QDialog):
         cards_layout = QHBoxLayout()
 
         # Card 1: Total Cost Value
-        self.card_cost = self.create_value_card("Total Stock Value (Cost)", "Rs. 0.00", "#003366")
+        self.card_cost = self.create_value_card("Total Stock Value (Cost)", format_currency(0), "#003366")
         cards_layout.addWidget(self.card_cost)
 
         # Card 2: Total Retail Value
-        self.card_retail = self.create_value_card("Total Retail Value", "Rs. 0.00", "#003366")
+        self.card_retail = self.create_value_card("Total Retail Value", format_currency(0), "#003366")
         cards_layout.addWidget(self.card_retail)
 
         # Card 3: Potential Profit
-        self.card_profit = self.create_value_card("Potential Profit", "Rs. 0.00", "#39FF14")
+        self.card_profit = self.create_value_card("Potential Profit", format_currency(0), "#39FF14")
         cards_layout.addWidget(self.card_profit)
 
         layout.addLayout(cards_layout)
@@ -119,11 +120,11 @@ class ValuationDialog(QDialog):
         data = self.report_service.get_stock_valuation()
 
         # Update cards
-        self.card_cost.findChild(QLabel, "value_label").setText("Rs. {0:,.2f}".format(data["total_cost_value"]))
-        self.card_retail.findChild(QLabel, "value_label").setText("Rs. {0:,.2f}".format(data["total_retail_value"]))
+        self.card_cost.findChild(QLabel, "value_label").setText(format_currency(data["total_cost_value"]))
+        self.card_retail.findChild(QLabel, "value_label").setText(format_currency(data["total_retail_value"]))
 
         profit_label = self.card_profit.findChild(QLabel, "value_label")
-        profit_label.setText("Rs. {0:,.2f}".format(data["potential_profit"]))
+        profit_label.setText(format_currency(data["potential_profit"]))
 
         # Color profit based on value
         if data["potential_profit"] >= 0:
@@ -145,17 +146,17 @@ class ValuationDialog(QDialog):
             self.table.setItem(row, 1, count_item)
 
             # Cost Value
-            cost_item = QTableWidgetItem("Rs. {0:,.2f}".format(item["cost_value"]))
+            cost_item = QTableWidgetItem(format_currency(item["cost_value"]))
             cost_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.table.setItem(row, 2, cost_item)
 
             # Retail Value
-            retail_item = QTableWidgetItem("Rs. {0:,.2f}".format(item["retail_value"]))
+            retail_item = QTableWidgetItem(format_currency(item["retail_value"]))
             retail_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.table.setItem(row, 3, retail_item)
 
             # Profit
-            profit_item = QTableWidgetItem("Rs. {0:,.2f}".format(item["profit"]))
+            profit_item = QTableWidgetItem(format_currency(item["profit"]))
             profit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
             # Color based on profit

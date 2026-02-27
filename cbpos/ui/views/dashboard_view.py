@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from cbpos.ui.widgets.info_card import InfoCard
 from cbpos.core.services.user_service import UserService
+from cbpos.core.utils.formatters import format_currency
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,9 @@ class DashboardView(QWidget):
         cards_layout.setSpacing(20)
 
         # Card 1: Revenue
-        self.card_revenue = InfoCard("Total Revenue", "Rs. 45,200", "fa5s.rupee-sign", "+12% vs yesterday", True)
+        self.card_revenue = InfoCard(
+            "Total Revenue", format_currency(45200), "fa5s.rupee-sign", "+12% vs yesterday", True
+        )
         cards_layout.addWidget(self.card_revenue, 0, 0)
 
         # Card 2: Transactions

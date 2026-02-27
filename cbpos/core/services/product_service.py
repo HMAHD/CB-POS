@@ -6,6 +6,7 @@ Provides ALL, BARCODE, CODE, and NAME search capabilities.
 import logging
 from typing import List
 from sqlalchemy import select, or_, func
+from sqlalchemy.orm import joinedload
 from cbpos.core.models import Product
 from cbpos.core.database import Database
 from cbpos.core.utils.formatters import escape_like
@@ -107,8 +108,10 @@ class ProductService:
     def get_all_products(self) -> List[Product]:
         """Get all active products."""
         with self.db.get_session() as session:
-            stmt = select(Product).where(Product.is_active).order_by(Product.name_en)
-            results = list(session.scalars(stmt).all())
+            stmt = (
+                select(Product).options(joinedload(Product.category)).where(Product.is_active).order_by(Product.name_en)
+            )
+            results = list(session.scalars(stmt).unique().all())
             for p in results:
                 session.expunge(p)
             return results

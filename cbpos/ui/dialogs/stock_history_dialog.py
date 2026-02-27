@@ -29,7 +29,7 @@ class StockHistoryDialog(QDialog):
 
         # Header
         lbl_header = QLabel(f"Stock Movement History: {self.product.name_en}")
-        lbl_header.setStyleSheet("font-size: 16px; font-weight: bold;")
+        lbl_header.setProperty("class", "dialog-title")
         layout.addWidget(lbl_header)
 
         # Table

@@ -15,6 +15,7 @@ from reportlab.platypus import (
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from cbpos.core.models import Sale
+from cbpos.core.utils.formatters import format_currency
 
 
 class InvoiceService:
@@ -141,9 +142,9 @@ class InvoiceService:
         for item in sale.items:
             item_name = item.product.name if item.product else "Unknown Item"
             qty = "{0: .3f}".format(item.quantity) if item.quantity % 1 != 0 else "{0}".format(int(item.quantity))
-            unit_price = "Rs. {0: ,.2f}".format(item.unit_price)
-            discount = "Rs. {0: ,.2f}".format(item.discount) if item.discount else "Rs. 0.00"
-            net_amount = "Rs. {0: ,.2f}".format(item.unit_price * item.quantity - item.discount)
+            unit_price = format_currency(item.unit_price)
+            discount = format_currency(item.discount) if item.discount else format_currency(Decimal("0.00"))
+            net_amount = format_currency(item.unit_price * item.quantity - item.discount)
 
             items_data.append([item_name, qty, unit_price, discount, net_amount])
 
@@ -179,17 +180,17 @@ class InvoiceService:
         grand_total = sale.total_amount
 
         totals_data = [
-            ["Subtotal:", "Rs. {0: ,.2f}".format(subtotal)],
-            ["Total Discount:", "Rs. {0: ,.2f}".format(total_discount)],
+            ["Subtotal:", format_currency(subtotal)],
+            ["Total Discount:", format_currency(total_discount)],
             [
                 "VAT ({0}%):".format(ConfigService.get("tax_vat_rate") or 18),
-                "Rs. {0: ,.2f}".format(vat_amount),
+                format_currency(vat_amount),
             ],
             [
                 "SSCL ({0}%):".format(ConfigService.get("tax_sscl_rate") or 2.5),
-                "Rs. {0: ,.2f}".format(sscl_amount),
+                format_currency(sscl_amount),
             ],
-            ["Grand Total:", "Rs. {0: ,.2f}".format(grand_total)],
+            ["Grand Total:", format_currency(grand_total)],
         ]
 
         totals_table = Table(totals_data, colWidths=[140 * mm, 45 * mm])

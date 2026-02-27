@@ -18,6 +18,7 @@ from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.core.services.auth_service import AuthService
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.core.utils.formatters import format_currency
 
 
 class HistoryView(QWidget):
@@ -157,7 +158,7 @@ class HistoryView(QWidget):
             self.transaction_table.setItem(row, 2, QTableWidgetItem(cashier_name))
 
             # Total
-            total_item = QTableWidgetItem("Rs. {:.2f}".format(sale.total_amount))
+            total_item = QTableWidgetItem(format_currency(sale.total_amount))
             total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.transaction_table.setItem(row, 3, total_item)
 
@@ -200,7 +201,7 @@ class HistoryView(QWidget):
         <b>Receipt:</b> {sale.document_number}<br>
         <b>Date:</b> {sale.date.strftime("%Y-%m-%d %H:%M:%S")}<br>
         <b>Cashier:</b> {sale.user.username if sale.user else 'Unknown'}<br>
-        <b>Total:</b> Rs. {sale.total_amount:.2f}<br>
+        <b>Total:</b> {format_currency(sale.total_amount)}<br>
         <b>Payment:</b> {sale.payment_method}<br>
         <b>Status:</b> {sale.status}
         """
@@ -279,7 +280,7 @@ class HistoryView(QWidget):
             "Confirm Refund",
             f"<b>Refund Transaction?</b><br><br>"
             f"Receipt: {self.current_sale.document_number}<br>"
-            f"Amount: Rs. {self.current_sale.total_amount:.2f}<br><br>"  # noqa: E231
+            f"Amount: {format_currency(self.current_sale.total_amount)}<br><br>"
             f"<b style='color: #FF4136'>Warning:</b> "  # noqa: E231
             f"Stock will be restored. "
             f"This action cannot be undone.",

@@ -9,14 +9,17 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QFileDialog,
     QSplitter,
+    QApplication,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtGui import QCursor
 import pandas as pd
 
 from cbpos.core.reports.registry import ReportRegistry
 from cbpos.core.services.export_service import ExportService
 from cbpos.ui.views.reports.filter_widget import FilterWidget
 from cbpos.ui.views.reports.pandas_model import PandasModel
+from cbpos.ui.workers import ExportWorker
 
 # Import and register reports (Ideally this happens at app startup)
 from cbpos.core.reports.definitions.sales_report import DailySalesSummaryReport
@@ -188,31 +191,49 @@ class ReportViewer(QWidget):
     def _on_report_error(self, error_msg):
         QMessageBox.critical(self, "Error", f"Failed to generate report: {error_msg}")
 
-    def export_excel(self):
+    def export_excel(self) -> None:
         df = self.table_model.get_dataframe()
         if df.empty:
             return
 
         filename, _ = QFileDialog.getSaveFileName(self, "Save Excel", "", "Excel Files (*.xlsx)")
         if filename:
-            try:
-                self.export_service.export_to_excel(df, filename, self.current_report.name)
-                QMessageBox.information(self, "Success", "Export successful!")
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"Export failed: {str(e)}")
+            self._start_export(df, filename, "excel")
 
-    def export_pdf(self):
+    def export_pdf(self) -> None:
         df = self.table_model.get_dataframe()
         if df.empty:
             return
 
         filename, _ = QFileDialog.getSaveFileName(self, "Save PDF", "", "PDF Files (*.pdf)")
         if filename:
-            try:
-                self.export_service.export_to_pdf(df, filename, self.current_report.name)
-                QMessageBox.information(self, "Success", "Export successful!")
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"Export failed: {str(e)}")
+            self._start_export(df, filename, "pdf")
+
+    def _start_export(self, df: pd.DataFrame, filepath: str, fmt: str) -> None:
+        """Run export in background thread."""
+        self._set_export_buttons_enabled(False)
+        QApplication.setOverrideCursor(QCursor(Qt.CursorShape.WaitCursor))
+
+        self._export_worker = ExportWorker(self.export_service, df, filepath, self.current_report.name, fmt)
+        self._export_worker.finished.connect(self._on_export_finished)
+        self._export_worker.error.connect(self._on_export_error)
+        self._export_worker.start()
+
+    def _on_export_finished(self, message: str) -> None:
+        QApplication.restoreOverrideCursor()
+        self._set_export_buttons_enabled(True)
+        QMessageBox.information(self, "Success", message)
+
+    def _on_export_error(self, error_msg: str) -> None:
+        QApplication.restoreOverrideCursor()
+        self._set_export_buttons_enabled(True)
+        QMessageBox.critical(self, "Error", f"Export failed: {error_msg}")
+
+    def _set_export_buttons_enabled(self, enabled: bool) -> None:
+        self.btn_export_excel.setEnabled(enabled)
+        self.btn_export_pdf.setEnabled(enabled)
+        self.btn_print.setEnabled(enabled)
+        self.btn_email.setEnabled(enabled)
 
     def print_report(self):
         from PyQt6.QtPrintSupport import QPrinter, QPrintDialog

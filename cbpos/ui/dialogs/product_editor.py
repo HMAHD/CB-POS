@@ -27,6 +27,7 @@ from sqlalchemy.orm import joinedload
 from cbpos.core.models import Product, Category, CompositeItem
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.database import Database
+from cbpos.core.utils.formatters import get_currency_symbol
 
 
 def _color_icon(hex_color: str, size: int = 12) -> QIcon:
@@ -133,12 +134,12 @@ class ProductEditor(QDialog):
         self.price_input = QDoubleSpinBox()
         self.price_input.setRange(0, 1000000)
         self.price_input.setDecimals(2)
-        self.price_input.setPrefix("Rs. ")
+        self.price_input.setPrefix(f"{get_currency_symbol()} ")
 
         self.cost_input = QDoubleSpinBox()
         self.cost_input.setRange(0, 1000000)
         self.cost_input.setDecimals(2)
-        self.cost_input.setPrefix("Rs. ")
+        self.cost_input.setPrefix(f"{get_currency_symbol()} ")
 
         layout.addRow("Name (EN)*:", self.name_en_input)
         layout.addRow("Name (SI):", self.name_si_input)

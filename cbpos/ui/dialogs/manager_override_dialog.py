@@ -23,8 +23,6 @@ class ManagerOverrideDialog(QDialog):
         self.setWindowTitle("Manager Override Required")
         self.setFixedSize(300, 200)
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
-        self.setStyleSheet("background-color: #001F3F; color: white;")
-
         self.init_ui()
 
     def init_ui(self):
@@ -33,17 +31,16 @@ class ManagerOverrideDialog(QDialog):
         self.pin_input = QLineEdit()
         self.pin_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.pin_input.setPlaceholderText("Enter Manager PIN")
-        self.pin_input.setStyleSheet("padding: 10px; font-size: 16px; color: black; background-color: white;")
         self.pin_input.returnPressed.connect(self.verify_pin)
         layout.addWidget(self.pin_input)
 
         btn_verify = QPushButton("Verify")
-        btn_verify.setStyleSheet("background-color: #00BCEB; color: black; font-weight: bold; padding: 10px;")
+        btn_verify.setProperty("class", "accent")
         btn_verify.clicked.connect(self.verify_pin)
         layout.addWidget(btn_verify)
 
         btn_cancel = QPushButton("Cancel")
-        btn_cancel.setStyleSheet("background-color: #FF4136; color: white; padding: 10px;")
+        btn_cancel.setProperty("class", "danger")
         btn_cancel.clicked.connect(self.reject)
         layout.addWidget(btn_cancel)
 

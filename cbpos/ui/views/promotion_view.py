@@ -34,12 +34,12 @@ class PromotionView(QWidget):
         # Header
         header = QHBoxLayout()
         lbl_title = QLabel("Promotions & Campaigns")
-        lbl_title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        lbl_title.setProperty("class", "dialog-title")
         header.addWidget(lbl_title)
         header.addStretch()
 
         btn_add = QPushButton("Create Promotion")
-        btn_add.setStyleSheet("background-color: #00BCEB; color: white; font-weight: bold; padding: 8px;")
+        btn_add.setProperty("class", "accent")
         btn_add.clicked.connect(self.add_promotion)
         header.addWidget(btn_add)
 

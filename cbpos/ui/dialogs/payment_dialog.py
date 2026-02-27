@@ -16,9 +16,8 @@ from PyQt6.QtWidgets import (
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QDoubleValidator, QKeySequence, QShortcut
-from cbpos.core.database import Database
-from cbpos.core.models import Customer
 from cbpos.core.services.payment_service import PaymentService
+from cbpos.core.services.customer_service import CustomerService
 
 
 from cbpos.core.utils.formatters import format_currency
@@ -194,11 +193,9 @@ class PaymentDialog(QDialog):
                     logging.getLogger(__name__).warning("Invalid shortcut '%s': %s", method.shortcut, e)
 
     def load_customers(self):
-        db = Database()
-        with db.get_session() as session:
-            customers = session.query(Customer).all()
-            self.customers_map = {c.name: c.id for c in customers}
-            self.cmb_customer.addItems(list(self.customers_map.keys()))
+        customers = CustomerService().get_all_customers()
+        self.customers_map = {c.name: c.id for c in customers}
+        self.cmb_customer.addItems(list(self.customers_map.keys()))
 
     def select_method(self, method):
         self.current_method = method

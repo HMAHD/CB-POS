@@ -30,7 +30,7 @@ class ReceiptPreviewDialog(QDialog):
         # Title
         lbl_title = QLabel("Thermal Receipt Preview (80mm)")
         lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_title.setStyleSheet("font-weight: bold; color: #888;")
+        lbl_title.setProperty("class", "muted")
         layout.addWidget(lbl_title)
 
         # Preview Area
@@ -44,7 +44,7 @@ class ReceiptPreviewDialog(QDialog):
         self.btn_close.clicked.connect(self.accept)
 
         self.btn_print = QPushButton("Close Preview")
-        self.btn_print.setStyleSheet("background-color: #00BCEB; color: white; font-weight: bold;")
+        self.btn_print.setProperty("class", "accent")
         self.btn_print.clicked.connect(self.accept)
 
         btn_layout.addStretch()

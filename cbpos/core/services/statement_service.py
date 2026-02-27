@@ -7,7 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Dict, Any
 from cbpos.core.database import Database
-from cbpos.core.models import Customer
+from cbpos.core.models import Customer, CustomerLedgerEntry
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.config_service import ConfigService
 
@@ -61,8 +61,11 @@ class StatementService:
 
         if entries:
             opening_balance = entries[0].balance_after - entries[0].amount
+            closing_balance = entries[-1].balance_after
         else:
-            opening_balance = customer_data["current_debt"]
+            # No transactions in period — find the last known balance before start date
+            opening_balance = StatementService._get_balance_before(db, customer_id, date_from)
+            closing_balance = opening_balance
 
         rows: List[Dict[str, Any]] = []
         for entry in entries:
@@ -82,8 +85,6 @@ class StatementService:
                 }
             )
 
-        closing_balance = entries[-1].balance_after if entries else customer_data["current_debt"]
-
         return {
             "customer": customer_data,
             "period_from": date_from,
@@ -95,3 +96,22 @@ class StatementService:
             "closing_balance": closing_balance,
             "shop_name": ConfigService.get("shop_name") or "CB POS",
         }
+
+    @staticmethod
+    def _get_balance_before(db: Database, customer_id: int, date: datetime) -> Decimal:
+        """Get the last known balance before a given date."""
+        with db.get_session() as session:
+            last_entry = (
+                session.query(CustomerLedgerEntry)
+                .filter(
+                    CustomerLedgerEntry.customer_id == customer_id,
+                    CustomerLedgerEntry.timestamp < date,
+                )
+                .order_by(CustomerLedgerEntry.timestamp.desc())
+                .first()
+            )
+            if last_entry:
+                balance = last_entry.balance_after
+                session.expunge(last_entry)
+                return balance
+            return Decimal("0")

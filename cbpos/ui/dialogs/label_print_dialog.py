@@ -48,7 +48,7 @@ class LabelPrintDialog(QDialog):
         search_layout.addWidget(self.search_input, 1)
 
         btn_add = QPushButton("Add")
-        btn_add.setStyleSheet("background-color: #00BCEB; color: black; font-weight: bold; padding: 8px 16px;")
+        btn_add.setProperty("class", "primary")
         btn_add.clicked.connect(self._add_product)
         search_layout.addWidget(btn_add)
 
@@ -78,17 +78,15 @@ class LabelPrintDialog(QDialog):
         btn_layout.addStretch()
 
         btn_remove = QPushButton("Remove Selected")
-        btn_remove.setStyleSheet("padding: 8px 16px;")
         btn_remove.clicked.connect(self._remove_selected)
         btn_layout.addWidget(btn_remove)
 
         btn_clear = QPushButton("Clear All")
-        btn_clear.setStyleSheet("padding: 8px 16px;")
         btn_clear.clicked.connect(self._clear_all)
         btn_layout.addWidget(btn_clear)
 
         btn_print = QPushButton("Print Labels")
-        btn_print.setStyleSheet("background-color: #39FF14; color: black; font-weight: bold; padding: 10px 24px;")
+        btn_print.setProperty("class", "primary")
         btn_print.clicked.connect(self._print_labels)
         btn_layout.addWidget(btn_print)
 
@@ -106,7 +104,12 @@ class LabelPrintDialog(QDialog):
             QMessageBox.warning(self, "Not Found", f"No product found for '{query}'.")
             return
 
-        product = products[0]
+        if len(products) == 1:
+            product = products[0]
+        else:
+            product = self._choose_product(products)
+            if product is None:
+                return
 
         # Check if already in list — increment qty
         for item in self.label_items:
@@ -121,6 +124,47 @@ class LabelPrintDialog(QDialog):
         self._refresh_table()
         self.search_input.clear()
         self.search_input.setFocus()
+
+    def _choose_product(self, products) -> object:
+        """Show a selection dialog when multiple products match."""
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Select Product")
+        dlg.setMinimumSize(500, 300)
+        layout = QVBoxLayout(dlg)
+
+        tbl = QTableWidget()
+        tbl.setColumnCount(3)
+        tbl.setHorizontalHeaderLabels(["Name", "Barcode", "Price"])
+        tbl.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        tbl.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+
+        for p in products:
+            row = tbl.rowCount()
+            tbl.insertRow(row)
+            tbl.setItem(row, 0, QTableWidgetItem(p.name_en))
+            tbl.setItem(row, 1, QTableWidgetItem(p.barcode))
+            tbl.setItem(row, 2, QTableWidgetItem(format_currency(p.price)))
+
+        tbl.doubleClicked.connect(dlg.accept)
+        layout.addWidget(tbl)
+
+        btn_layout = QHBoxLayout()
+        btn_select = QPushButton("Select")
+        btn_select.setProperty("class", "primary")
+        btn_select.clicked.connect(dlg.accept)
+        btn_cancel = QPushButton("Cancel")
+        btn_cancel.clicked.connect(dlg.reject)
+        btn_layout.addStretch()
+        btn_layout.addWidget(btn_select)
+        btn_layout.addWidget(btn_cancel)
+        layout.addLayout(btn_layout)
+
+        if dlg.exec() and tbl.currentRow() >= 0:
+            return products[tbl.currentRow()]
+        return None
 
     def _refresh_table(self) -> None:
         """Rebuild the table from label_items."""

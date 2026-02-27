@@ -4,27 +4,42 @@ Full backup system will be implemented in Phase 17.
 """
 
 import logging
-import zipfile
+import secrets
+import string
 from datetime import datetime
 from pathlib import Path
+from typing import Tuple
+
+import pyzipper
+
 from cbpos.config import Config
 
 logger = logging.getLogger(__name__)
 
+# AES-256 encryption for backup archives
+_ZIP_ENCRYPTION = pyzipper.WZ_AES
+
 
 class BackupService:
-    """Creates zip backups of the SQLite database and product images."""
+    """Creates AES-encrypted zip backups of the SQLite database and product images."""
 
     @staticmethod
-    def create_backup(destination_dir: str) -> str:
+    def _generate_password(length: int = 16) -> str:
+        """Generate a random password for backup encryption."""
+        alphabet = string.ascii_letters + string.digits
+        return "".join(secrets.choice(alphabet) for _ in range(length))
+
+    @staticmethod
+    def create_backup(destination_dir: str, password: str = None) -> Tuple[str, str]:
         """
-        Create a zip backup of the database file and product images.
+        Create an AES-encrypted zip backup of the database, images, and settings.
 
         Args:
             destination_dir: Directory where backup zip will be saved.
+            password: Optional encryption password. If None, one is auto-generated.
 
         Returns:
-            str: Path to the created backup file.
+            Tuple of (backup_file_path, password_used).
 
         Raises:
             FileNotFoundError: If database file doesn't exist.
@@ -43,7 +58,14 @@ class BackupService:
         if not db_file.exists():
             raise FileNotFoundError(f"Database file not found: {db_file}")
 
-        with zipfile.ZipFile(backup_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        if password is None:
+            password = BackupService._generate_password()
+
+        password_bytes = password.encode("utf-8")
+
+        with pyzipper.AESZipFile(backup_path, "w", compression=pyzipper.ZIP_DEFLATED, encryption=_ZIP_ENCRYPTION) as zf:
+            zf.setpassword(password_bytes)
+
             # Add database
             zf.write(db_file, "cbpos.db")
             logger.info(f"Added database to backup: {db_file}")
@@ -60,8 +82,8 @@ class BackupService:
             if settings_file.exists():
                 zf.write(settings_file, "settings.json")
 
-        logger.info(f"Backup created: {backup_path}")
-        return str(backup_path)
+        logger.info(f"Encrypted backup created: {backup_path}")
+        return str(backup_path), password
 
     @staticmethod
     def get_default_backup_dir() -> str:

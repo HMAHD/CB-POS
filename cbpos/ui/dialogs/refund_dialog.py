@@ -14,9 +14,8 @@ from PyQt6.QtWidgets import (
     QGroupBox,
 )
 from cbpos.core.services.transaction_service import TransactionService
-from cbpos.core.services.auth_service import AuthService
-from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.permission_helper import check_permission_with_override
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +47,7 @@ class RefundDialog(QDialog):
         search_layout.addWidget(self.search_input, 1)
 
         btn_lookup = QPushButton("Look Up")
-        btn_lookup.setStyleSheet("background-color: #00BCEB; color: black; font-weight: bold; padding: 8px 16px;")
+        btn_lookup.setProperty("class", "primary")
         btn_lookup.clicked.connect(self.lookup_sale)
         search_layout.addWidget(btn_lookup)
         layout.addLayout(search_layout)
@@ -88,13 +87,12 @@ class RefundDialog(QDialog):
         btn_layout.addStretch()
 
         self.btn_refund = QPushButton("Process Refund")
-        self.btn_refund.setStyleSheet("background-color: #FF4136; color: white; font-weight: bold; padding: 10px 24px;")
+        self.btn_refund.setProperty("class", "danger")
         self.btn_refund.setEnabled(False)
         self.btn_refund.clicked.connect(self.process_refund)
         btn_layout.addWidget(self.btn_refund)
 
         btn_cancel = QPushButton("Cancel")
-        btn_cancel.setStyleSheet("padding: 10px 24px;")
         btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(btn_cancel)
 
@@ -171,17 +169,9 @@ class RefundDialog(QDialog):
             return
 
         # Permission check
-        current_user = AuthService.get_current_user()
-        authorized_user = current_user
-
-        if not PermissionService.user_has_permission(current_user, "can_refund"):
-            from cbpos.ui.dialogs.manager_override_dialog import ManagerOverrideDialog
-
-            dialog = ManagerOverrideDialog("can_refund", self)
-            if dialog.exec():
-                authorized_user = dialog.authorized_user
-            else:
-                return
+        authorized_user = check_permission_with_override("can_refund", self)
+        if not authorized_user:
+            return
 
         # Confirm
         reply = QMessageBox.question(

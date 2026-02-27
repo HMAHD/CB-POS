@@ -176,7 +176,13 @@ class ShiftClosingDialog(QDialog):
             return
 
         try:
-            backup_path = BackupService.create_backup(chosen_dir)
-            QMessageBox.information(self, "Backup Complete", f"Backup saved to:\n{backup_path}")
+            backup_path, password = BackupService.create_backup(chosen_dir)
+            QMessageBox.information(
+                self,
+                "Backup Complete",
+                f"Encrypted backup saved to:\n{backup_path}\n\n"
+                f"Password: {password}\n\n"
+                f"Keep this password safe — you need it to restore.",
+            )
         except Exception as e:
             QMessageBox.critical(self, "Backup Failed", f"Backup failed: {e}")

@@ -3,7 +3,6 @@ Service for generating barcode label print commands for thermal printers.
 """
 
 import logging
-from decimal import Decimal
 from typing import List, Dict, Any
 from cbpos.core.models import Product
 from cbpos.core.utils.formatters import format_currency

@@ -5,9 +5,9 @@ Service for generating customer account statements.
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from cbpos.core.database import Database
-from cbpos.core.models import Customer, CustomerLedgerEntry
+from cbpos.core.models import Customer
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.config_service import ConfigService
 

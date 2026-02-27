@@ -10,10 +10,8 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QScrollArea,
     QLabel,
-    QToolButton,
     QFrame,
     QGridLayout,
-    QSizePolicy,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from cbpos.core.services.product_service import ProductService

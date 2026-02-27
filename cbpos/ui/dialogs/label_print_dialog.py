@@ -16,7 +16,6 @@ from PyQt6.QtWidgets import (
     QSpinBox,
     QMessageBox,
 )
-from PyQt6.QtCore import Qt
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.label_service import LabelService
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker

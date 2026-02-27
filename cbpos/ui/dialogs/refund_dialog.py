@@ -13,7 +13,6 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QGroupBox,
 )
-from PyQt6.QtCore import Qt
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.permission_service import PermissionService

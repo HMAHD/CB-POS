@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -13,11 +13,9 @@ from PyQt6.QtWidgets import (
     QDateEdit,
     QMessageBox,
 )
-from PyQt6.QtCore import Qt, QDate
+from PyQt6.QtCore import QDate
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
-from cbpos.core.services.config_service import ConfigService
-from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.core.utils.formatters import format_currency
 

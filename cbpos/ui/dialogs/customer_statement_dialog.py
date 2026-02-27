@@ -4,7 +4,6 @@ Dialog for viewing and printing customer account statements.
 
 import logging
 from datetime import datetime
-from decimal import Decimal
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -17,7 +16,7 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QMessageBox,
 )
-from PyQt6.QtCore import Qt, QDate
+from PyQt6.QtCore import QDate
 from cbpos.core.services.statement_service import StatementService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.customer_credit_service import CustomerCreditService

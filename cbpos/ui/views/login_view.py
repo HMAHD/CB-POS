@@ -76,9 +76,9 @@ class LoginView(QWidget):
         self.pin_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.pin_input.setFixedWidth(300)
 
-        # Validator (Numbers only, max 4 digits)
-        self.pin_input.setValidator(QIntValidator(0, 9999))
-        self.pin_input.setMaxLength(4)
+        # Validator (Numbers only, max 6 digits)
+        self.pin_input.setValidator(QIntValidator(0, 999999))
+        self.pin_input.setMaxLength(6)
 
         # Handle Enter Key
         self.pin_input.returnPressed.connect(self.attempt_login)
@@ -153,7 +153,7 @@ class LoginView(QWidget):
     def append_pin(self, digit):
         """Append digit to PIN input (called by numpad buttons)."""
         current_text = self.pin_input.text()
-        if len(current_text) < 4:
+        if len(current_text) < 6:
             self.pin_input.setText(current_text + digit)
             # Focus is automatically retained because buttons have NoFocus policy
 

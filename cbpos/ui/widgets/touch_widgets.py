@@ -39,7 +39,7 @@ class ProductCard(QToolButton):
         layout.addWidget(icon_label)
 
         # Name Label
-        self.lbl_name = QLabel(self.product.name)
+        self.lbl_name = QLabel(getattr(self.product, "name_en", None) or getattr(self.product, "name", ""))
         self.lbl_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_name.setWordWrap(True)
         self.lbl_name.setStyleSheet("font-size: 12px; color: white; font-weight: bold;")
@@ -84,7 +84,9 @@ class CategoryButton(QToolButton):
         self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
         self.setMinimumHeight(40)
         self.setMinimumWidth(100)
-        self.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+        from cbpos.infrastructure.resource_loader import ResourceLoader
+
+        self.setFont(QFont(ResourceLoader.get_primary_font(), 10, QFont.Weight.Bold))
 
         # Dynamic color if category has one, else default
         color = category.color if category.color else "#00BCEB"

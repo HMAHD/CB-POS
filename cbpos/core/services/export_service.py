@@ -61,6 +61,11 @@ class ExportService:
             if pd.api.types.is_float_dtype(df[col]):
                 worksheet.set_column(i, i, max_len, currency_format)
 
+        # Branding footer row
+        footer_row = len(df) + 2  # +1 for header, +1 for blank row
+        branding_format = workbook.add_format({"italic": True, "font_color": "#999999", "font_size": 8})
+        worksheet.write(footer_row, 0, "Powered by CB POS — ceybyte.com", branding_format)
+
         writer.close()
 
     def export_to_csv(self, df: pd.DataFrame, filepath: str):
@@ -98,6 +103,9 @@ class ExportService:
                 <h1>{title}</h1>
                 <p>Generated on: {timestamp}</p>
                 {table_html}
+                <p style="text-align: center; color: #999; font-size: 9px; margin-top: 30px;">
+                    Powered by CB POS &mdash; ceybyte.com
+                </p>
             </body>
             </html>
             """

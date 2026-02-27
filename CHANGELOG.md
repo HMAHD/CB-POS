@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.5.0] - 2026-02-27
+
+### Added — Phase 31: Polish & Hardening
+- **Returns/Refund UI (31.1)**: RefundDialog for processing returns against original sales with receipt lookup, reason entry, and manager override permission check. Stock automatically restored on refund.
+- **Customer Account Statements (31.2)**: StatementService and CustomerStatementDialog for viewing/printing date-filtered account statements with debit/credit breakdown and running balances.
+- **Barcode Label Printing (31.3)**: LabelService generating CODE128 barcode labels. LabelPrintDialog for batch printing with product search and quantity selection. Print Labels button added to inventory view.
+- **End-of-Day Backup (31.4)**: BackupService that creates timestamped zip backups of the database, product images, and settings. Backup prompt integrated into ShiftClosingDialog after Z-report.
+- **Receipt Reprint (31.5)**: ReceiptReprintDialog for searching past sales by document number or date range and reprinting receipts on thermal printer.
+- **Manager Override Helper (31.7)**: `check_permission_with_override()` utility that checks user permissions and automatically shows ManagerOverrideDialog when access is denied. Refactored void_bill and change_line_price to use it.
+- **Touch Visual Product Grid (31.8)**: ProductGridPanel with scrollable category tabs and product button grid for touch/visual POS mode. Collapsible panel in SalesView toggled via More button.
+- **Branding on All Outputs (31.9)**: "Powered by CB POS — ceybyte.com" footer added to all receipts, invoices, PDF/Excel exports, and Z-reports. Invoice company details now read from ConfigService instead of hardcoded values.
+- **Trilingual Receipt Strings (31.10)**: Receipt labels (Total, Date, Tax Breakdown, etc.) now use translated strings for English, Sinhala, and Tamil based on language configuration.
+- **Units of Measurement CRUD (31.11)**: Unit model with name, abbreviation, and decimal places. UnitManagerDialog for creating, editing, and soft-deleting units with product guard. Unit selector in ProductEditor. Inventory table shows unit abbreviation. 8 default seed units (Piece, Kilogram, Gram, Liter, Meter, Pack, Box, Dozen).
+- **Side Menu Enhancements**: Added Reprint Receipt and Refund buttons to POS side menu for quick access.
+
 ## [0.4.0] - 2026-02-27
 
 ### Added

@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import List, Dict, Any, Optional
+from sqlalchemy.orm import joinedload
 from cbpos.core.models import Purchase, PurchaseItem, Product, StockMovement
 from cbpos.core.database import Database
 from cbpos.core.constants.status import Precision
@@ -128,4 +129,15 @@ class PurchaseService:
     def get_purchase(purchase_id: int) -> Optional[Purchase]:
         db = Database()
         with db.get_session() as session:
-            return session.get(Purchase, purchase_id)
+            purchase = (
+                session.query(Purchase)
+                .options(
+                    joinedload(Purchase.items).joinedload(PurchaseItem.product),
+                    joinedload(Purchase.supplier),
+                    joinedload(Purchase.user),
+                )
+                .get(purchase_id)
+            )
+            if purchase:
+                session.expunge(purchase)
+            return purchase

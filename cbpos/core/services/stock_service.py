@@ -101,7 +101,7 @@ class StockService:
         return movement
 
     @staticmethod
-    def get_history(product_id: int) -> List[StockMovement]:
+    def get_history(product_id: int, limit: int = 500) -> List[StockMovement]:
         """Get stock movement history for a product."""
         db = Database()
         with db.get_session() as session:
@@ -109,8 +109,12 @@ class StockService:
                 select(StockMovement)
                 .where(StockMovement.product_id == product_id)
                 .order_by(StockMovement.timestamp.desc())
+                .limit(limit)
             )
-            return list(session.scalars(stmt).all())
+            results = list(session.scalars(stmt).all())
+            for r in results:
+                session.expunge(r)
+            return results
 
     @staticmethod
     def get_reorder_list() -> List[Product]:

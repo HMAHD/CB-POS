@@ -15,6 +15,7 @@ from reportlab.platypus import (
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from cbpos.core.models import Sale
+from cbpos.core.utils.formatters import format_currency
 
 
 class InvoiceService:
@@ -73,11 +74,31 @@ class InvoiceService:
             elements.append(logo)
             elements.append(Spacer(1, 5 * mm))
 
-        # Company Details
-        elements.append(Paragraph("CEYLON BYTE POS SYSTEM", header_style))
-        elements.append(Paragraph("123 Main Street, Colombo 00700, Sri Lanka", header_style))
-        elements.append(Paragraph("Tel: +94 11 234 5678 | Email: info@ceylonbyte.lk", header_style))
-        elements.append(Paragraph("VAT Reg: 123456789V | SSCL Reg: SSCL/2024/001", header_style))
+        # Company Details (from ConfigService)
+        shop_name = ConfigService.get("shop_name") or "Ceylon Byte POS"
+        shop_address = ConfigService.get("shop_address") or ""
+        shop_phone = ConfigService.get("shop_phone") or ""
+        shop_email = ConfigService.get("shop_email") or ""
+        vat_number = ConfigService.get("shop_vat_number") or ConfigService.get("vat_number") or ""
+        company_tax_id = ConfigService.get("company_tax_id") or ""
+
+        elements.append(Paragraph(shop_name, header_style))
+        if shop_address:
+            elements.append(Paragraph(shop_address, header_style))
+        contact_parts = []
+        if shop_phone:
+            contact_parts.append(f"Tel: {shop_phone}")
+        if shop_email:
+            contact_parts.append(f"Email: {shop_email}")
+        if contact_parts:
+            elements.append(Paragraph(" | ".join(contact_parts), header_style))
+        reg_parts = []
+        if vat_number:
+            reg_parts.append(f"VAT Reg: {vat_number}")
+        if company_tax_id:
+            reg_parts.append(f"Tax ID: {company_tax_id}")
+        if reg_parts:
+            elements.append(Paragraph(" | ".join(reg_parts), header_style))
         elements.append(Spacer(1, 10 * mm))
 
         # Invoice Title
@@ -121,9 +142,9 @@ class InvoiceService:
         for item in sale.items:
             item_name = item.product.name if item.product else "Unknown Item"
             qty = "{0: .3f}".format(item.quantity) if item.quantity % 1 != 0 else "{0}".format(int(item.quantity))
-            unit_price = "Rs. {0: ,.2f}".format(item.unit_price)
-            discount = "Rs. {0: ,.2f}".format(item.discount) if item.discount else "Rs. 0.00"
-            net_amount = "Rs. {0: ,.2f}".format(item.unit_price * item.quantity - item.discount)
+            unit_price = format_currency(item.unit_price)
+            discount = format_currency(item.discount) if item.discount else format_currency(Decimal("0.00"))
+            net_amount = format_currency(item.unit_price * item.quantity - item.discount)
 
             items_data.append([item_name, qty, unit_price, discount, net_amount])
 
@@ -159,17 +180,17 @@ class InvoiceService:
         grand_total = sale.total_amount
 
         totals_data = [
-            ["Subtotal:", "Rs. {0: ,.2f}".format(subtotal)],
-            ["Total Discount:", "Rs. {0: ,.2f}".format(total_discount)],
+            ["Subtotal:", format_currency(subtotal)],
+            ["Total Discount:", format_currency(total_discount)],
             [
                 "VAT ({0}%):".format(ConfigService.get("tax_vat_rate") or 18),
-                "Rs. {0: ,.2f}".format(vat_amount),
+                format_currency(vat_amount),
             ],
             [
                 "SSCL ({0}%):".format(ConfigService.get("tax_sscl_rate") or 2.5),
-                "Rs. {0: ,.2f}".format(sscl_amount),
+                format_currency(sscl_amount),
             ],
-            ["Grand Total:", "Rs. {0: ,.2f}".format(grand_total)],
+            ["Grand Total:", format_currency(grand_total)],
         ]
 
         totals_table = Table(totals_data, colWidths=[140 * mm, 45 * mm])
@@ -192,11 +213,19 @@ class InvoiceService:
         # === FOOTER SECTION ===
         footer_style = ParagraphStyle("Footer", parent=styles["Normal"], fontSize=9, alignment=TA_LEFT)
 
-        elements.append(Paragraph("<b>Banking Details:</b>", footer_style))
-        elements.append(Paragraph("Bank: Commercial Bank of Ceylon", footer_style))
-        elements.append(Paragraph("Account No: 1234567890", footer_style))
-        elements.append(Paragraph("Branch: Colombo Fort", footer_style))
-        elements.append(Spacer(1, 10 * mm))
+        # Banking details (from config)
+        bank_name = ConfigService.get("bank_name") or ""
+        bank_account = ConfigService.get("bank_account") or ""
+        bank_branch = ConfigService.get("bank_branch") or ""
+        if bank_name or bank_account:
+            elements.append(Paragraph("<b>Banking Details:</b>", footer_style))
+            if bank_name:
+                elements.append(Paragraph(f"Bank: {bank_name}", footer_style))
+            if bank_account:
+                elements.append(Paragraph(f"Account No: {bank_account}", footer_style))
+            if bank_branch:
+                elements.append(Paragraph(f"Branch: {bank_branch}", footer_style))
+            elements.append(Spacer(1, 10 * mm))
 
         signature_data = [["Authorized Signature:", "_" * 30, "Company Stamp:", "[STAMP]"]]
         signature_table = Table(signature_data, colWidths=[40 * mm, 50 * mm, 40 * mm, 55 * mm])
@@ -210,6 +239,17 @@ class InvoiceService:
             )
         )
         elements.append(signature_table)
+
+        # Branding footer
+        elements.append(Spacer(1, 5 * mm))
+        branding_style = ParagraphStyle(
+            "Branding",
+            parent=styles["Normal"],
+            fontSize=8,
+            alignment=TA_CENTER,
+            textColor=colors.grey,
+        )
+        elements.append(Paragraph("Powered by CB POS — ceybyte.com", branding_style))
 
         # Build PDF
         doc.build(elements)

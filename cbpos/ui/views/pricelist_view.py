@@ -44,7 +44,7 @@ class PriceListView(QWidget):
         left_layout = QVBoxLayout(left_panel)
 
         lbl_lists = QLabel("Price Lists")
-        lbl_lists.setStyleSheet("font-weight: bold; font-size: 16px;")
+        lbl_lists.setProperty("class", "bold")
         left_layout.addWidget(lbl_lists)
 
         self.list_widget = QListWidget()
@@ -63,7 +63,7 @@ class PriceListView(QWidget):
 
         # Header Info
         self.lbl_list_name = QLabel("Select a Price List")
-        self.lbl_list_name.setStyleSheet("font-weight: bold; font-size: 18px; color: #00BCEB;")
+        self.lbl_list_name.setProperty("class", "dialog-title")
         right_layout.addWidget(self.lbl_list_name)
 
         self.lbl_dates = QLabel("")

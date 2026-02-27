@@ -20,10 +20,10 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QShortcut, QKeySequence
 from decimal import Decimal
-from sqlalchemy import select
 from cbpos.core.services.product_service import ProductService
-from cbpos.core.models import Category, Supplier
-from cbpos.core.database import Database
+from cbpos.core.services.category_service import CategoryService
+from cbpos.core.services.supplier_service import SupplierService
+from cbpos.core.utils.formatters import format_currency, get_currency_symbol
 
 
 class AdvancedSearchDialog(QDialog):
@@ -39,7 +39,6 @@ class AdvancedSearchDialog(QDialog):
         self.setWindowTitle("Advanced Search [F3]")
         self.setMinimumSize(900, 600)
         self.product_service = ProductService()
-        self.db = Database()
         self.init_ui()
         self.load_filters()
 
@@ -48,7 +47,7 @@ class AdvancedSearchDialog(QDialog):
 
         # Title
         title = QLabel("Advanced Product Search")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #00BCEB;")
+        title.setProperty("class", "dialog-title")
         layout.addWidget(title)
 
         # Filters
@@ -76,13 +75,13 @@ class AdvancedSearchDialog(QDialog):
         price_layout = QHBoxLayout()
         self.price_min = QDoubleSpinBox()
         self.price_min.setRange(0, 999999)
-        self.price_min.setPrefix("Rs. ")
+        self.price_min.setPrefix(f"{get_currency_symbol()} ")
         self.price_min.valueChanged.connect(self.perform_search)
 
         self.price_max = QDoubleSpinBox()
         self.price_max.setRange(0, 999999)
         self.price_max.setValue(999999)
-        self.price_max.setPrefix("Rs. ")
+        self.price_max.setPrefix(f"{get_currency_symbol()} ")
         self.price_max.valueChanged.connect(self.perform_search)
 
         price_layout.addWidget(self.price_min)
@@ -100,21 +99,6 @@ class AdvancedSearchDialog(QDialog):
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.doubleClicked.connect(self.on_select)
-        self.table.setStyleSheet(
-            """
-            QTableWidget {
-                background-color: #001F3F;
-                color: white;
-                border: 1px solid #003366;
-            }
-            QHeaderView::section {
-                background-color: #003366;
-                color: white;
-                padding: 8px;
-                font-weight: bold;
-            }
-        """
-        )
         layout.addWidget(self.table)
 
         # Buttons
@@ -122,12 +106,11 @@ class AdvancedSearchDialog(QDialog):
         btn_layout.addStretch()
 
         btn_select = QPushButton("Select [Enter]")
-        btn_select.setStyleSheet("background-color: #39FF14; color: black; padding: 10px; font-weight: bold;")
+        btn_select.setProperty("class", "primary")
         btn_select.clicked.connect(self.on_select)
         btn_layout.addWidget(btn_select)
 
         btn_cancel = QPushButton("Cancel [Esc]")
-        btn_cancel.setStyleSheet("background-color: #003366; color: white; padding: 10px; font-weight: bold;")
         btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(btn_cancel)
 
@@ -142,15 +125,13 @@ class AdvancedSearchDialog(QDialog):
 
     def load_filters(self):
         """Load categories and suppliers for filters."""
-        # Load Categories
-        with self.db.get_session() as session:
-            categories = session.scalars(select(Category)).all()
-            for cat in categories:
-                self.category_combo.addItem(cat.name, cat.id)
+        categories = CategoryService.get_all()
+        for cat in categories:
+            self.category_combo.addItem(cat.name, cat.id)
 
-            suppliers = session.scalars(select(Supplier)).all()
-            for sup in suppliers:
-                self.supplier_combo.addItem(sup.company_name, sup.id)
+        suppliers = SupplierService.get_all_suppliers()
+        for sup in suppliers:
+            self.supplier_combo.addItem(sup.company_name, sup.id)
 
     def perform_search(self):
         """Execute search with filters."""
@@ -187,7 +168,7 @@ class AdvancedSearchDialog(QDialog):
             stock_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.table.setItem(row, 2, stock_item)
 
-            price_item = QTableWidgetItem(f"Rs. {float(product.price): .2f}")
+            price_item = QTableWidgetItem(format_currency(product.price))
             price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.table.setItem(row, 3, price_item)
 

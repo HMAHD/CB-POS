@@ -258,16 +258,24 @@ class SalesView(QWidget):
         self.action_panel.action_f7.connect(self.recall_bill)
         self.action_panel.action_f8.connect(lambda: logger.debug("Drawer action not implemented"))
         self.action_panel.action_del.connect(self.void_bill)
-        self.action_panel.action_ref.connect(lambda: logger.debug("Refund action not implemented"))
-        self.action_panel.action_more.connect(lambda: logger.debug("More action not implemented"))
+        self.action_panel.action_ref.connect(self.open_refund)
+        self.action_panel.action_more.connect(self.toggle_product_grid)
 
         # Context Menu for Customer Button
         self.action_panel.btn_cust_select.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.action_panel.btn_cust_select.customContextMenuRequested.connect(self.show_customer_menu)
         self.btn_cust = self.action_panel.btn_cust_select  # Alias for existing code
 
+        # Product Grid Panel (Touch Mode) — hidden by default
+        from cbpos.ui.widgets.product_grid_panel import ProductGridPanel
+
+        self.product_grid = ProductGridPanel()
+        self.product_grid.product_selected.connect(self.on_visual_item_clicked)
+        self.product_grid.setVisible(False)
+
         # Add panels to splitter
         self.splitter.addWidget(self.container_left)
+        self.splitter.addWidget(self.product_grid)
         self.splitter.addWidget(self.action_panel)
 
         # Set Stretch Factors (75% / 25%)
@@ -626,25 +634,16 @@ class SalesView(QWidget):
             QMessageBox.critical(self, "Error", "Failed to recall bill.")
 
     def void_bill(self):
-        # 1. Check Permission
-        from cbpos.core.services.auth_service import AuthService
-        from cbpos.core.services.permission_service import PermissionService
-        from cbpos.ui.dialogs.manager_override_dialog import ManagerOverrideDialog
-
-        current_user = AuthService.get_current_user()
-        authorized_user = current_user  # noqa: F841
-
         # If cart is empty, nothing to void
         if not self.cart_service.items:
             return
 
-        if not PermissionService.user_has_permission(current_user, "can_void_sale"):
-            # Request Override
-            dialog = ManagerOverrideDialog("can_void_sale", self)
-            if dialog.exec():
-                authorized_user = dialog.authorized_user  # noqa: F841
-            else:
-                return
+        # 1. Check Permission (with manager override)
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        authorized_user = check_permission_with_override("can_void_sale", self)  # noqa: F841
+        if not authorized_user:
+            return
 
         # 2. Confirm Void
         reply = QMessageBox.question(
@@ -764,21 +763,12 @@ class SalesView(QWidget):
         if row < 0:
             return
 
-        # 1. Check Permission
-        from cbpos.core.services.auth_service import AuthService
-        from cbpos.core.services.permission_service import PermissionService
-        from cbpos.ui.dialogs.manager_override_dialog import ManagerOverrideDialog
+        # 1. Check Permission (with manager override)
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
-        current_user = AuthService.get_current_user()
-        authorized_user = current_user
-
-        if not PermissionService.user_has_permission(current_user, "change_price"):
-            # Request Override
-            dialog = ManagerOverrideDialog("change_price", self)
-            if dialog.exec():
-                authorized_user = dialog.authorized_user
-            else:
-                return
+        authorized_user = check_permission_with_override("change_price", self)
+        if not authorized_user:
+            return
 
         # 2. Get New Price
         current_price = self.cart_service.items[row]["unit_price"]
@@ -856,11 +846,34 @@ class SalesView(QWidget):
             self.order_bar.refresh_tabs()
             self.barcode_input.setFocus()
 
+    def toggle_product_grid(self) -> None:
+        """Toggle the visual product grid panel on/off."""
+        is_visible = self.product_grid.isVisible()
+        self.product_grid.setVisible(not is_visible)
+        if not is_visible:
+            # Set splitter sizes: cart 50%, grid 30%, action 20%
+            total = self.splitter.width()
+            self.splitter.setSizes([int(total * 0.5), int(total * 0.3), int(total * 0.2)])
+
     def open_receive_payment(self) -> None:
         """Open Receive Payment dialog from POS (quick payment without sale)."""
         from cbpos.ui.dialogs.receive_payment_dialog import ReceivePaymentDialog
 
         dialog = ReceivePaymentDialog(parent=self)
+        dialog.exec()
+
+    def open_reprint_receipt(self) -> None:
+        """Open Receipt Reprint dialog to search and reprint past receipts."""
+        from cbpos.ui.dialogs.receipt_reprint_dialog import ReceiptReprintDialog
+
+        dialog = ReceiptReprintDialog(parent=self)
+        dialog.exec()
+
+    def open_refund(self) -> None:
+        """Open Refund dialog to process returns."""
+        from cbpos.ui.dialogs.refund_dialog import RefundDialog
+
+        dialog = RefundDialog(parent=self)
         dialog.exec()
 
     def show_shortcuts_help(self):

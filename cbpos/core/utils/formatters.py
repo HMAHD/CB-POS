@@ -23,6 +23,11 @@ def format_currency(value: Union[Decimal, float, int, str]) -> str:
     return f"{symbol} {formatted_number}"
 
 
+def get_currency_symbol() -> str:
+    """Get the configured currency symbol (e.g., 'Rs.' or '$')."""
+    return ConfigService.get("currency_symbol") or "Rs."
+
+
 def format_date(date_obj: Union[datetime, date, str]) -> str:
     """
     Format a date object using the configured date format.

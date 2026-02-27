@@ -66,6 +66,9 @@ class ReceiptService:
 
         # 5. Footer
         lines.append(ReceiptService._center(settings.get("receipt_footer", "Thank You!")))
+        lines.append("")
+        lines.append(ReceiptService._center("Powered by CB POS"))
+        lines.append(ReceiptService._center("ceybyte.com"))
         lines.append("\n\n")
 
         return "\n".join(lines)
@@ -161,6 +164,9 @@ class ReceiptService:
 
         lines.append("-" * ReceiptService.WIDTH_CHARS)
         lines.append(ReceiptService._center("*** END OF REPORT ***"))
+        lines.append("")
+        lines.append(ReceiptService._center("Powered by CB POS"))
+        lines.append(ReceiptService._center("ceybyte.com"))
         lines.append("\n\n")
 
         return "\n".join(lines)

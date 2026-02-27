@@ -20,8 +20,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QStringListModel
 
-from cbpos.core.database import Database
-from cbpos.core.models import Product, Customer
+from cbpos.core.services.product_service import ProductService
+from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.services.proforma_service import ProformaService
 from cbpos.core.utils.formatters import format_currency
 
@@ -36,7 +36,7 @@ class ProformaDialog(QDialog):
         self.setWindowTitle("New Quotation")
         self.setMinimumSize(700, 550)
         self.items: list[dict] = []
-        self.products_cache: dict[str, Product] = {}
+        self.products_cache: dict = {}
         self.init_ui()
         self.load_products()
         self.load_customers()
@@ -98,7 +98,7 @@ class ProformaDialog(QDialog):
         # Footer: Total + Create
         footer = QHBoxLayout()
 
-        self.total_label = QLabel("<b>Total: Rs. 0.00</b>")
+        self.total_label = QLabel(f"<b>Total: {format_currency(0)}</b>")
         self.total_label.setStyleSheet("font-size: 16px;")
         footer.addWidget(self.total_label)
 
@@ -117,26 +117,22 @@ class ProformaDialog(QDialog):
 
     def load_products(self) -> None:
         """Load products for the completer."""
-        db = Database()
-        with db.get_session() as session:
-            products = session.query(Product).filter(Product.is_active.is_(True)).all()
-            names = []
-            for p in products:
-                key = f"{p.name_en} [{p.barcode}]"
-                names.append(key)
-                self.products_cache[key] = p
-                self.products_cache[p.barcode] = p
+        products = ProductService().get_all_products()
+        names = []
+        for p in products:
+            key = f"{p.name_en} [{p.barcode}]"
+            names.append(key)
+            self.products_cache[key] = p
+            self.products_cache[p.barcode] = p
 
-            model = QStringListModel(names)
-            self.product_completer.setModel(model)
+        model = QStringListModel(names)
+        self.product_completer.setModel(model)
 
     def load_customers(self) -> None:
         """Load customers into the combo box."""
-        db = Database()
-        with db.get_session() as session:
-            customers = session.query(Customer).filter(Customer.is_active.is_(True)).all()
-            for c in customers:
-                self.customer_combo.addItem(c.name, c.id)
+        customers = CustomerService().get_all_customers()
+        for c in customers:
+            self.customer_combo.addItem(c.name, c.id)
 
     def add_product(self) -> None:
         """Add selected product to items grid."""
@@ -189,17 +185,17 @@ class ProformaDialog(QDialog):
 
             self.items_table.setItem(row, 0, QTableWidgetItem(item["product_name"]))
 
-            qty_item = QTableWidgetItem(f"{item['quantity']:.3f}")
+            qty_item = QTableWidgetItem(f"{item['quantity']:.3f}")  # noqa: E231
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(row, 1, qty_item)
 
-            price_item = QTableWidgetItem(f"{item['unit_price']:.2f}")
+            price_item = QTableWidgetItem(f"{item['unit_price']:.2f}")  # noqa: E231
             price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(row, 2, price_item)
 
             self.items_table.setItem(row, 3, QTableWidgetItem(item["discount_type"]))
 
-            disc_item = QTableWidgetItem(f"{item['discount_value']:.2f}")
+            disc_item = QTableWidgetItem(f"{item['discount_value']:.2f}")  # noqa: E231
             disc_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(row, 4, disc_item)
 

@@ -70,7 +70,7 @@ class DocumentBrowserView(QWidget):
         # Title
         title = QLabel("Document Browser")
         title.setObjectName("ViewTitle")
-        title.setStyleSheet("font-size: 18px; font-weight: bold; padding: 4px; background: transparent;")
+        title.setProperty("class", "dialog-title")
         layout.addWidget(title)
 
         # Filter Bar
@@ -82,7 +82,7 @@ class DocumentBrowserView(QWidget):
 
         # Document Type
         lbl_type = QLabel("Type:")
-        lbl_type.setStyleSheet("background: transparent;")
+        lbl_type.setProperty("class", "transparent")
         filter_layout.addWidget(lbl_type)
         self.type_combo = QComboBox()
         self.type_combo.addItems(["All", "Sales", "Purchases", "Proforma"])
@@ -91,7 +91,7 @@ class DocumentBrowserView(QWidget):
 
         # Status
         lbl_status = QLabel("Status:")
-        lbl_status.setStyleSheet("background: transparent;")
+        lbl_status.setProperty("class", "transparent")
         filter_layout.addWidget(lbl_status)
         self.status_combo = QComboBox()
         self.status_combo.addItems(["All", "Completed", "Void", "Draft", "Quote", "Expired", "Converted"])
@@ -100,7 +100,7 @@ class DocumentBrowserView(QWidget):
 
         # Date Range
         lbl_from = QLabel("From:")
-        lbl_from.setStyleSheet("background: transparent;")
+        lbl_from.setProperty("class", "transparent")
         filter_layout.addWidget(lbl_from)
         self.from_date = QDateEdit()
         self.from_date.setCalendarPopup(True)
@@ -108,7 +108,7 @@ class DocumentBrowserView(QWidget):
         filter_layout.addWidget(self.from_date)
 
         lbl_to = QLabel("To:")
-        lbl_to.setStyleSheet("background: transparent;")
+        lbl_to.setProperty("class", "transparent")
         filter_layout.addWidget(lbl_to)
         self.to_date = QDateEdit()
         self.to_date.setCalendarPopup(True)
@@ -133,7 +133,7 @@ class DocumentBrowserView(QWidget):
         # New Proforma button
         new_proforma_btn = QPushButton("+ New Quotation")
         new_proforma_btn.setObjectName("BtnSuccess")
-        new_proforma_btn.setStyleSheet("background-color: #00BCEB; color: white; font-weight: bold; padding: 6px 12px;")
+        new_proforma_btn.setProperty("class", "accent")
         new_proforma_btn.clicked.connect(self.open_proforma_dialog)
         filter_layout.addWidget(new_proforma_btn)
 
@@ -169,19 +169,17 @@ class DocumentBrowserView(QWidget):
         details_layout.setSpacing(8)
 
         lbl_details_title = QLabel("<b>Document Details</b>")
-        lbl_details_title.setStyleSheet("background: transparent;")
+        lbl_details_title.setProperty("class", "transparent")
         details_layout.addWidget(lbl_details_title)
 
         self.details_label = QLabel("Select a document to view details")
         self.details_label.setWordWrap(True)
-        self.details_label.setStyleSheet(
-            "padding: 10px; background-color: #002244; border-radius: 4px; color: #FFFFFF;"
-        )
+        self.details_label.setProperty("class", "transparent")
         details_layout.addWidget(self.details_label)
 
         # Line Items
         lbl_items_title = QLabel("<b>Line Items:</b>")
-        lbl_items_title.setStyleSheet("background: transparent;")
+        lbl_items_title.setProperty("class", "transparent")
         details_layout.addWidget(lbl_items_title)
         self.items_table = QTableWidget()
         self.items_table.setColumnCount(5)
@@ -195,7 +193,7 @@ class DocumentBrowserView(QWidget):
         # Payment Info
         self.payment_label = QLabel("")
         self.payment_label.setWordWrap(True)
-        self.payment_label.setStyleSheet("background: transparent;")
+        self.payment_label.setProperty("class", "transparent")
         details_layout.addWidget(self.payment_label)
 
         # Action Buttons
@@ -209,19 +207,19 @@ class DocumentBrowserView(QWidget):
         self.refund_btn = QPushButton("Refund")
         self.refund_btn.clicked.connect(self.process_refund)
         self.refund_btn.setEnabled(False)
-        self.refund_btn.setStyleSheet("background-color: #FF4136; color: white;")
+        self.refund_btn.setProperty("class", "danger")
         action_layout.addWidget(self.refund_btn)
 
         self.convert_btn = QPushButton("Convert to Sale")
         self.convert_btn.clicked.connect(self.convert_proforma)
         self.convert_btn.setEnabled(False)
-        self.convert_btn.setStyleSheet("background-color: #39FF14; color: black; font-weight: bold;")
+        self.convert_btn.setProperty("class", "primary")
         action_layout.addWidget(self.convert_btn)
 
         self.void_btn = QPushButton("Void")
         self.void_btn.clicked.connect(self.void_document)
         self.void_btn.setEnabled(False)
-        self.void_btn.setStyleSheet("background-color: #FF4136; color: white;")
+        self.void_btn.setProperty("class", "danger")
         action_layout.addWidget(self.void_btn)
 
         details_layout.addLayout(action_layout)
@@ -236,7 +234,7 @@ class DocumentBrowserView(QWidget):
         page_layout = QHBoxLayout()
         page_layout.addStretch()
         self.page_label = QLabel("Page 1")
-        self.page_label.setStyleSheet("background: transparent;")
+        self.page_label.setProperty("class", "transparent")
         page_layout.addWidget(self.page_label)
 
         self.prev_btn = QPushButton("< Previous")

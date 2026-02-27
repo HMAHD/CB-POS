@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from cbpos.core.services.email_service import EmailService
 from cbpos.core.models import Sale
+from cbpos.core.utils.formatters import format_currency
 
 
 class ReceiptOptionsDialog(QDialog):
@@ -32,10 +33,7 @@ class ReceiptOptionsDialog(QDialog):
         lbl_title.setObjectName("ReceiptTitle")
         layout.addWidget(lbl_title)
 
-        lbl_info = QLabel(
-            f"Order #{self.sale.document_number}\n"
-            f"Total: Rs. {self.sale.total_amount:,.2f}"  # noqa: E231
-        )
+        lbl_info = QLabel(f"Order #{self.sale.document_number}\n" f"Total: {format_currency(self.sale.total_amount)}")
         lbl_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_info.setObjectName("ReceiptInfo")
         layout.addWidget(lbl_info)

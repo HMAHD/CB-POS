@@ -41,12 +41,12 @@ class ShortcutsHelpDialog(QDialog):
 
         title = QLabel("Keyboard Shortcuts")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #00BCEB;")
+        title.setProperty("class", "dialog-title")
         layout.addWidget(title)
 
         subtitle = QLabel("Press F1 anytime to see this screen")
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle.setStyleSheet("font-size: 11px; color: #999;")
+        subtitle.setProperty("class", "muted")
         layout.addWidget(subtitle)
 
         table = QTableWidget()

@@ -36,7 +36,7 @@ class ResourceLoader:
         Returns:
             str: The name of the primary font family to use as application default.
                  Prefers "Noto Sans" if found, otherwise returns the first loaded font.
-                 Returns "Segoe UI" as fallback if no fonts are loaded.
+                 Returns "sans-serif" as fallback if no fonts are loaded.
 
         Note:
             The returned family name is the EXACT string as registered by Qt,
@@ -48,7 +48,7 @@ class ResourceLoader:
 
         if not fonts_dir.exists():
             print(f"WARNING: Fonts directory not found: {fonts_dir}")
-            return "Segoe UI"
+            return "sans-serif"
 
         print(f"[ResourceLoader] Loading fonts from: {fonts_dir}")
 
@@ -86,7 +86,7 @@ class ResourceLoader:
         elif cls._loaded_font_families:
             cls._primary_font = cls._loaded_font_families[0]
         else:
-            cls._primary_font = "Segoe UI"
+            cls._primary_font = "sans-serif"
 
         print(f"[ResourceLoader] Primary font: '{cls._primary_font}'")
 
@@ -98,9 +98,9 @@ class ResourceLoader:
         Get the primary font family name.
 
         Returns:
-            str: The name of the primary font family, or "Segoe UI" if not yet loaded.
+            str: The name of the primary font family, or "sans-serif" if not yet loaded.
         """
-        return cls._primary_font or "Segoe UI"
+        return cls._primary_font or "sans-serif"
 
     @classmethod
     def get_loaded_families(cls) -> List[str]:

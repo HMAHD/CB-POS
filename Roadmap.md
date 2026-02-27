@@ -14,17 +14,16 @@
 
 ## Remaining Build Order (Ship to First Client)
 
-1. **Phase 31 – Polish & Hardening** — fix gaps in existing features
-2. **Phase 17 – Data Safety** — backup/restore (retailers WILL lose data without this)
-3. **Phase 19 – Testing** — core unit + integration tests for confidence before shipping
-4. **Phase 20 – Deployment** — installer + auto-update for self-install clients
-5. **Phase 22 – Purchase & Stock** — GRN, stock take, complete inventory lifecycle
-6. **Phase 26 – UI Polish** — keyboard shortcuts, sounds, loading spinners
-7. **Phase 27 – Admin Tools** — logs, DB info for support/troubleshooting
-8. **Phase 23 – Promotions** — remaining promo types (nice to have)
-9. **Phase 9 – Tax Extras** — tax breakdown display, exempt sales (nice to have)
-10. **Phase 18 – Multi-Terminal** — built, needs real-world testing (when a client needs it)
-11. **Phase 30 – Simple Reports** — trends, margins (last priority)
+1. **Phase 17 – Data Safety** — backup/restore (retailers WILL lose data without this)
+2. **Phase 19 – Testing** — core unit + integration tests for confidence before shipping
+3. **Phase 20 – Deployment** — installer + auto-update for self-install clients
+4. **Phase 22 – Purchase & Stock** — GRN, stock take, complete inventory lifecycle
+5. **Phase 26 – UI Polish** — keyboard shortcuts, sounds, loading spinners
+6. **Phase 27 – Admin Tools** — logs, DB info for support/troubleshooting
+7. **Phase 23 – Promotions** — remaining promo types (nice to have)
+8. **Phase 9 – Tax Extras** — tax breakdown display, exempt sales (nice to have)
+9. **Phase 18 – Multi-Terminal** — built, needs real-world testing (when a client needs it)
+10. **Phase 30 – Simple Reports** — trends, margins (last priority)
 
 ---
 
@@ -443,48 +442,51 @@
 
 ## Remaining Phases (In Priority Order)
 
-### Phase 31: Polish & Hardening (NEW)
+### Phase 31: Polish & Hardening ✅
 *Goal: Fix gaps in completed features before shipping to first client.*
 
-- [ ] **31.1 Returns/Refund UI Flow**
-    - [ ] Proper return-to-stock workflow (we have void but no structured returns)
-    - [ ] Return against original sale (lookup by receipt number)
-    - [ ] Stock restoration on return
-- [ ] **31.2 Customer Account Statements**
-    - [ ] Printable statement for credit customers
-    - [ ] Date range selection
-    - [ ] Running balance display
-    - [ ] Critical for Sri Lankan retail where shopkeepers extend credit
-- [ ] **31.3 Barcode Label Printing**
-    - [ ] Print shelf price tags / barcode labels
-    - [ ] Batch print for new stock arrivals
-    - [ ] Configurable label size
-- [ ] **31.4 End-of-Day Automation**
-    - [ ] One-click: Z-read + backup + optional number reset
-    - [ ] Prompt at closing time
-- [ ] **31.5 Receipt Reprint**
-    - [ ] Find old sale by number/date
-    - [ ] Reprint receipt
-- [ ] **31.6 Duplicate Barcode Detection**
-    - [ ] Warn on product creation if barcode already exists
-    - [ ] Option to navigate to existing product
-- [ ] **31.7 Manager Override Popup** *(from Phase 3.3)*
-    - [ ] When cashier lacks permission, prompt for manager PIN
-    - [ ] Audit log of overrides
-- [ ] **31.8 Touch Visual Groups** *(from Phase 6.2)*
-    - [ ] Product grid for non-barcoded items (vegetables, loose items)
-    - [ ] Configurable quick-access buttons
-- [ ] **31.9 Branding on All Outputs**
-    - [ ] CB POS name + website on every receipt footer
-    - [ ] CB POS branding on all printed reports and PDF exports
-    - [ ] CB POS branding on A4 invoices
-    - [ ] "Powered by CB POS — ceybyte.com" watermark/footer line
-    - [ ] Consistent across thermal receipts, A4 prints, and email outputs
-- [ ] **31.10 Trilingual UI Completeness**
-    - [ ] Audit all screens for missing Sinhala translations
-    - [ ] Audit all screens for missing Tamil translations
-    - [ ] Ensure receipts/invoices print in selected language
-    - [ ] Language selector prominent in setup wizard and settings
+- [x] **31.1 Returns/Refund UI Flow**
+    - [x] Proper return-to-stock workflow with RefundDialog
+    - [x] Return against original sale (lookup by receipt number)
+    - [x] Stock restoration on return via TransactionService.process_refund()
+- [x] **31.2 Customer Account Statements**
+    - [x] StatementService for generating structured statement data
+    - [x] CustomerStatementDialog with date range selection
+    - [x] Running balance display with debit/credit breakdown
+- [x] **31.3 Barcode Label Printing**
+    - [x] LabelService generating CODE128 barcode label commands
+    - [x] LabelPrintDialog for batch printing with product search
+    - [x] Print Labels button in inventory view
+- [x] **31.4 End-of-Day Automation**
+    - [x] BackupService (zip DB + images + settings)
+    - [x] Backup prompt after shift close in ShiftClosingDialog
+- [x] **31.5 Receipt Reprint**
+    - [x] ReceiptReprintDialog with search by doc number and date range
+    - [x] Reprint via ReceiptBuilder + PrintWorker
+- [x] **31.6 Duplicate Barcode Detection** *(already existed in product_editor.py)*
+    - [x] Warn on product creation if barcode already exists
+- [x] **31.7 Manager Override Integration**
+    - [x] check_permission_with_override() utility helper
+    - [x] Used in void_bill, change_line_price, refund
+    - [x] ManagerOverrideDialog already existed
+- [x] **31.8 Touch Visual Product Grid**
+    - [x] ProductGridPanel with category tabs and product buttons
+    - [x] Collapsible panel in SalesView (More button toggle)
+- [x] **31.9 Branding on All Outputs**
+    - [x] "Powered by CB POS — ceybyte.com" on all receipts
+    - [x] Branding footer on PDF exports and Excel reports
+    - [x] Invoice company details from ConfigService (not hardcoded)
+    - [x] Z-report branding
+- [x] **31.10 Trilingual Receipt Strings**
+    - [x] RECEIPT_STRINGS dictionary with en/si/ta translations
+    - [x] Receipt labels use translated strings based on language config
+- [x] **31.11 Units of Measurement CRUD**
+    - [x] Unit model (name, abbreviation, decimal_places, is_active) with Product FK
+    - [x] UnitService with full CRUD (create, update, soft-delete with product guard)
+    - [x] UnitManagerDialog accessible from Inventory view
+    - [x] Unit selector integrated into ProductEditor
+    - [x] Inventory table shows unit abbreviation from product.unit relationship
+    - [x] Default seed units (Piece, Kilogram, Gram, Liter, Meter, Pack, Box, Dozen)
 
 ---
 

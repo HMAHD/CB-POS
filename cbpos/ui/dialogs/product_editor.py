@@ -27,6 +27,7 @@ from sqlalchemy.orm import joinedload
 from cbpos.core.models import Product, Category, CompositeItem
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.database import Database
+from cbpos.core.utils.formatters import get_currency_symbol
 
 
 def _color_icon(hex_color: str, size: int = 12) -> QIcon:
@@ -128,19 +129,17 @@ class ProductEditor(QDialog):
         for cat in self.categories:
             self.category_combo.addItem(_color_icon(cat.color), cat.name, cat.id)
             for sub in sorted(cat.subcategories, key=lambda c: c.name):
-                self.category_combo.addItem(
-                    _color_icon(sub.color), f"    {sub.name}", sub.id
-                )
+                self.category_combo.addItem(_color_icon(sub.color), f"    {sub.name}", sub.id)
 
         self.price_input = QDoubleSpinBox()
         self.price_input.setRange(0, 1000000)
         self.price_input.setDecimals(2)
-        self.price_input.setPrefix("Rs. ")
+        self.price_input.setPrefix(f"{get_currency_symbol()} ")
 
         self.cost_input = QDoubleSpinBox()
         self.cost_input.setRange(0, 1000000)
         self.cost_input.setDecimals(2)
-        self.cost_input.setPrefix("Rs. ")
+        self.cost_input.setPrefix(f"{get_currency_symbol()} ")
 
         layout.addRow("Name (EN)*:", self.name_en_input)
         layout.addRow("Name (SI):", self.name_si_input)
@@ -190,6 +189,20 @@ class ProductEditor(QDialog):
         form_supplier.addRow("Default Supplier:", self.supplier_combo)
 
         layout.addWidget(grp_supplier)
+
+        # Unit of Measurement
+        grp_unit = QGroupBox("Unit of Measurement")
+        unit_layout = QHBoxLayout(grp_unit)
+
+        self.unit_combo = QComboBox()
+        self.unit_combo.addItem("-- None --", None)
+        from cbpos.core.services.unit_service import UnitService
+
+        for unit in UnitService.get_all():
+            self.unit_combo.addItem(f"{unit.name} ({unit.abbreviation})", unit.id)
+        unit_layout.addWidget(self.unit_combo)
+
+        layout.addWidget(grp_unit)
 
         # Item type group
         grp_type = QGroupBox("Item Type")
@@ -358,6 +371,12 @@ class ProductEditor(QDialog):
         self.weighted_check.setChecked(self.product.is_weighted)
         self.service_check.setChecked(self.product.is_service)
 
+        # Load unit
+        if self.product.unit_id:
+            idx = self.unit_combo.findData(self.product.unit_id)
+            if idx >= 0:
+                self.unit_combo.setCurrentIndex(idx)
+
         # Load supplier
         if hasattr(self.product, "default_supplier_id") and self.product.default_supplier_id:
             idx = self.supplier_combo.findData(self.product.default_supplier_id)
@@ -406,6 +425,7 @@ class ProductEditor(QDialog):
             "reorder_point": Decimal(str(self.reorder_input.value())),
             "preferred_qty": Decimal(str(self.preferred_qty_input.value())),
             "default_supplier_id": self.supplier_combo.currentData(),
+            "unit_id": self.unit_combo.currentData(),
             "is_weighted": self.weighted_check.isChecked(),
             "is_service": self.service_check.isChecked(),
             "image_path": getattr(self, "current_image_path", None),

@@ -8,12 +8,14 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QMessageBox,
     QFileDialog,
+    QApplication,
 )
 from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex
-from PyQt6.QtGui import QColor, QBrush
+from PyQt6.QtGui import QColor, QBrush, QCursor
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.services.import_service import ImportService
 from cbpos.ui.dialogs.product_editor import ProductEditor
+from cbpos.ui.workers import CsvImportWorker
 
 
 class InventoryModel(QAbstractTableModel):
@@ -47,7 +49,9 @@ class InventoryModel(QAbstractTableModel):
             elif col == 4:
                 return "{:.3f}".format(product.stock_qty)
             elif col == 5:
-                return "kg" if product.is_weighted else "unit"
+                if product.unit:
+                    return product.unit.abbreviation
+                return "kg" if product.is_weighted else "pcs"
 
         elif role == Qt.ItemDataRole.BackgroundRole:
             # Low stock warning - theme-aware colors via QSS alternate rows
@@ -99,10 +103,18 @@ class InventoryView(QWidget):
         self.cat_btn = QPushButton("Manage Categories")
         self.cat_btn.clicked.connect(self.open_category_dialog)
 
+        self.unit_btn = QPushButton("Units")
+        self.unit_btn.clicked.connect(self.open_unit_manager)
+
+        self.label_btn = QPushButton("Print Labels")
+        self.label_btn.clicked.connect(self.open_label_print)
+
         top_bar.addWidget(self.search_input)
         top_bar.addWidget(self.add_btn)
         top_bar.addWidget(self.import_btn)
         top_bar.addWidget(self.cat_btn)
+        top_bar.addWidget(self.unit_btn)
+        top_bar.addWidget(self.label_btn)
 
         layout.addLayout(top_bar)
 
@@ -152,6 +164,18 @@ class InventoryView(QWidget):
         dialog.exec()
         self.load_data()
 
+    def open_unit_manager(self):
+        from cbpos.ui.dialogs.unit_manager import UnitManagerDialog
+
+        dialog = UnitManagerDialog(parent=self)
+        dialog.exec()
+
+    def open_label_print(self):
+        from cbpos.ui.dialogs.label_print_dialog import LabelPrintDialog
+
+        dialog = LabelPrintDialog(parent=self)
+        dialog.exec()
+
     def open_context_menu(self, position):
         from PyQt6.QtWidgets import QMenu
         from cbpos.ui.dialogs.stock_history_dialog import StockHistoryDialog
@@ -170,12 +194,31 @@ class InventoryView(QWidget):
             dialog = StockHistoryDialog(product, parent=self)
             dialog.exec()
 
-    def import_csv(self):
+    def import_csv(self) -> None:
         file_path, _ = QFileDialog.getOpenFileName(self, "Import CSV", "", "CSV Files (*.csv)")
-        if file_path:
-            results = self.import_service.import_products_from_csv(file_path)
-            message = (
-                f"Success: {results['success']}\n" f"Failed: {results['failed']}\n" f"Skipped: {results['skipped']}"
-            )
-            QMessageBox.information(self, "Import Results", message)
-            self.load_data()
+        if not file_path:
+            return
+
+        self.import_btn.setEnabled(False)
+        self.import_btn.setText("Importing...")
+        QApplication.setOverrideCursor(QCursor(Qt.CursorShape.WaitCursor))
+
+        self._csv_worker = CsvImportWorker(self.import_service, file_path)
+        self._csv_worker.finished.connect(self._on_csv_import_finished)
+        self._csv_worker.error.connect(self._on_csv_import_error)
+        self._csv_worker.start()
+
+    def _on_csv_import_finished(self, results: dict) -> None:
+        QApplication.restoreOverrideCursor()
+        self.import_btn.setEnabled(True)
+        self.import_btn.setText("Import CSV")
+
+        message = f"Success: {results['success']}\n" f"Failed: {results['failed']}\n" f"Skipped: {results['skipped']}"
+        QMessageBox.information(self, "Import Results", message)
+        self.load_data()
+
+    def _on_csv_import_error(self, error_msg: str) -> None:
+        QApplication.restoreOverrideCursor()
+        self.import_btn.setEnabled(True)
+        self.import_btn.setText("Import CSV")
+        QMessageBox.critical(self, "Import Failed", f"CSV import failed: {error_msg}")

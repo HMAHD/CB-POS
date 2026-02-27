@@ -34,13 +34,12 @@ class SetupWizard(QDialog):
         self.lbl_title = QLabel("Welcome to Ceylon Byte POS")
         self.lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_title.setObjectName("WizardTitle")
-        self.lbl_title.setStyleSheet("font-size: 20px; font-weight: bold; color: #00BCEB;")
         layout.addWidget(self.lbl_title)
 
         # Step indicator
         self.lbl_step = QLabel("Step 1 of 3 - Shop Information")
         self.lbl_step.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_step.setStyleSheet("font-size: 12px; color: #999;")
+        self.lbl_step.setProperty("class", "muted")
         layout.addWidget(self.lbl_step)
 
         # Stacked pages
@@ -109,7 +108,7 @@ class SetupWizard(QDialog):
         sec_form.setHorizontalSpacing(20)
 
         lbl_info = QLabel("Set the admin PIN used to log into the POS system.")
-        lbl_info.setStyleSheet("color: #999; font-style: italic;")
+        lbl_info.setProperty("class", "muted")
         lbl_info.setWordWrap(True)
         sec_layout.addWidget(lbl_info)
 
@@ -237,8 +236,10 @@ class SetupWizard(QDialog):
             from cbpos.core.services.user_service import UserService
 
             UserService.update_admin_pin(self.input_pin.text())
-        except Exception:
-            # If UserService doesn't have this method or DB isn't ready, skip
-            pass
+        except Exception as e:
+            import logging
+
+            logging.getLogger(__name__).error("Failed to update admin PIN: %s", e)
+            QMessageBox.warning(self, "Warning", f"Admin PIN could not be updated: {e}")
 
         self.accept()

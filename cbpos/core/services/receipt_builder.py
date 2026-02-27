@@ -10,6 +10,70 @@ if TYPE_CHECKING:
     from cbpos.core.models import Customer, CustomerLedgerEntry, Proforma
 
 
+RECEIPT_STRINGS = {
+    "en": {
+        "receipt_no": "Receipt #",
+        "date": "Date",
+        "total": "Total",
+        "tax_breakdown": "Tax Breakdown",
+        "vat": "VAT",
+        "sscl": "SSCL",
+        "quotation": "*** QUOTATION ***",
+        "customer": "Customer",
+        "valid_until": "Valid Until",
+        "statement": "*** CUSTOMER STATEMENT ***",
+        "phone": "Phone",
+        "period": "Period",
+        "opening_balance": "Opening Balance",
+        "total_sales": "Total Sales",
+        "total_payments": "Total Payments",
+        "closing_balance": "Closing Balance",
+        "thank_you": "Thank you for your business",
+    },
+    "si": {
+        "receipt_no": "\u0dbb\u0dc3\u0dd2\u0daf\u0db4\u0dad #",
+        "date": "\u0daf\u0dd2\u0db1\u0dba",
+        "total": "\u0d91\u0d9a\u0dad\u0dd4",
+        "tax_breakdown": "\u0db6\u0daf\u0dd4 \u0dc0\u0dd2\u0dc3\u0dca\u0dad\u0dbb\u0dba",
+        "vat": "\u0dc0\u0dd0\u0da7\u0dca",
+        "sscl": "\u0d91\u0dc3\u0dca\u0d91\u0dc3\u0dca\u0dc3\u0dd2\u0d91\u0dca\u0d91\u0dca\u0dbd\u0dca",
+        "quotation": "*** \u0db4\u0dca\u200d\u0dbb\u0dc3\u0dca\u0dad\u0dcf\u0dc0\u0db1\u0dba ***",
+        "customer": "\u0db4\u0dcf\u0dbb\u0dd2\u0db7\u0ddd\u0d9c\u0dd2\u0d9a\u0dba\u0dcf",
+        "valid_until": "\u0dc0\u0dbd\u0d82\u0d9c\u0dd4 \u0daf\u0dd2\u0db1\u0dba",
+        "statement": "*** \u0d9c\u0dd2\u0dab\u0dd4\u0db8\u0dca \u0dc0\u0dd2\u0dc0\u0dbb\u0dab\u0dba ***",
+        "phone": "\u0daf\u0dd4\u0dbb\u0d9a\u0dae\u0db1",
+        "period": "\u0d9a\u0dcf\u0dbd\u0dba",
+        "opening_balance": "\u0d86\u0dbb\u0db8\u0dca\u0db7\u0d9a \u0dc3\u0dd2\u0dbd\u0dca\u0dbd",
+        "total_sales": "\u0d91\u0d9a\u0dad\u0dd4 \u0dc0\u0dd2\u0d9a\u0dd2\u0dab\u0dd3\u0db8\u0dca",
+        "total_payments": "\u0d91\u0d9a\u0dad\u0dd4 \u0d9c\u0dd9\u0dc0\u0dd3\u0db8\u0dca",
+        "closing_balance": "\u0d85\u0dc0\u0dc3\u0db1\u0dca \u0dc3\u0dd2\u0dbd\u0dca\u0dbd",
+        "thank_you": (  # noqa: E501
+            "\u0d94\u0db6\u0d9c\u0dda \u0dc0\u0dca\u200d\u0dba\u0dcf\u0db4\u0dcf\u0dbb\u0dba\u0da7"
+            " \u0dc3\u0dca\u0dad\u0dd4\u0dad\u0dd2\u0dba\u0dd2"
+        ),
+    },
+    "ta": {
+        "receipt_no": "\u0bb0\u0b9a\u0bc0\u0ba4\u0bc1 #",
+        "date": "\u0ba4\u0bc7\u0ba4\u0bbf",
+        "total": "\u0bae\u0bca\u0ba4\u0bcd\u0ba4\u0bae\u0bcd",
+        "tax_breakdown": "\u0bb5\u0bb0\u0bbf \u0bb5\u0bbf\u0baa\u0bb0\u0bae\u0bcd",
+        "vat": "\u0bb5\u0bb0\u0bbf",
+        "sscl": "\u0b8e\u0bb8\u0bcd\u0b8e\u0bb8\u0bcd\u0b9a\u0bbf\u0b8e\u0bb2\u0bcd",
+        "quotation": "*** \u0bae\u0bc7\u0bb1\u0bcd\u0b95\u0bcb\u0bb3\u0bcd ***",
+        "customer": "\u0ba8\u0bc1\u0b95\u0bb0\u0bcd\u0bb5\u0bcb\u0bb0\u0bcd",
+        "valid_until": "\u0b9a\u0bc6\u0bb2\u0bcd\u0bb2\u0bc1\u0baa\u0b9f\u0bbf \u0ba4\u0bc7\u0ba4\u0bbf",
+        "statement": "*** \u0b95\u0ba3\u0b95\u0bcd\u0b95\u0bc1 \u0b85\u0bb1\u0bbf\u0b95\u0bcd\u0b95\u0bc8 ***",
+        "phone": "\u0ba4\u0bca\u0bb2\u0bc8\u0baa\u0bcd\u0baa\u0bc7\u0b9a\u0bbf",
+        "period": "\u0b95\u0bbe\u0bb2\u0bae\u0bcd",
+        "opening_balance": "\u0ba4\u0bca\u0b9f\u0b95\u0bcd\u0b95 \u0b87\u0bb0\u0bc1\u0baa\u0bcd\u0baa\u0bc1",
+        "total_sales": "\u0bae\u0bca\u0ba4\u0bcd\u0ba4 \u0bb5\u0bbf\u0bb1\u0bcd\u0baa\u0ba9\u0bc8",
+        "total_payments": "\u0bae\u0bca\u0ba4\u0bcd\u0ba4 \u0b9a\u0bc6\u0bb2\u0bc1\u0ba4\u0bcd\u0ba4\u0bb2\u0bcd",
+        "closing_balance": "\u0b87\u0bb1\u0bc1\u0ba4\u0bbf \u0b87\u0bb0\u0bc1\u0baa\u0bcd\u0baa\u0bc1",
+        "thank_you": "\u0ba8\u0ba9\u0bcd\u0bb1\u0bbf",
+    },
+}
+
+
 class ReceiptBuilder:
     """
     Builds a list of command objects for printing or previewing receipts.
@@ -20,6 +84,18 @@ class ReceiptBuilder:
     - {'type': 'feed', 'lines': 1}
     - {'type': 'cut'}
     """
+
+    @classmethod
+    def _get_strings(cls, config_override=None):
+        """Get translated receipt strings based on current language."""
+        lang = "en"
+        if config_override and "language" in config_override:
+            lang = config_override["language"]
+        else:
+            val = ConfigService.get("language")
+            if val:
+                lang = val
+        return RECEIPT_STRINGS.get(lang, RECEIPT_STRINGS["en"])
 
     @classmethod
     def build_receipt(cls, sale: Sale, config_override: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
@@ -55,12 +131,13 @@ class ReceiptBuilder:
             commands.append({"type": "feed", "lines": 1})
 
         # 3. Sale Details
-        commands.append({"type": "text", "val": f"Receipt #: {sale.id}", "align": "left"})
+        t = cls._get_strings(config_override)
+        commands.append({"type": "text", "val": f"{t['receipt_no']}: {sale.id}", "align": "left"})
         date_str = sale.date.strftime("%Y-%m-%d %H:%M") if sale.date else "N/A"
         commands.append(
             {
                 "type": "text",
-                "val": f"Date: {date_str}",
+                "val": f"{t['date']}: {date_str}",
                 "align": "left",
             }
         )
@@ -88,7 +165,7 @@ class ReceiptBuilder:
         commands.append(
             {
                 "type": "text",
-                "val": "Total: {}".format(format_currency(sale.total_amount)),
+                "val": "{}: {}".format(t["total"], format_currency(sale.total_amount)),
                 "align": "right",
             }
         )
@@ -96,12 +173,12 @@ class ReceiptBuilder:
         # Tax Breakdown
         if get_conf("show_tax_breakdown", True):
             commands.append({"type": "feed", "lines": 1})
-            commands.append({"type": "text", "val": "Tax Breakdown:", "align": "left"})
+            commands.append({"type": "text", "val": "{}:".format(t["tax_breakdown"]), "align": "left"})
             if sale.tax_vat > 0:
                 commands.append(
                     {
                         "type": "text",
-                        "val": "VAT: {}".format(format_currency(sale.tax_vat)),
+                        "val": "{}: {}".format(t["vat"], format_currency(sale.tax_vat)),
                         "align": "right",
                     }
                 )
@@ -109,7 +186,7 @@ class ReceiptBuilder:
                 commands.append(
                     {
                         "type": "text",
-                        "val": "SSCL: {}".format(format_currency(sale.tax_sscl)),
+                        "val": "{}: {}".format(t["sscl"], format_currency(sale.tax_sscl)),
                         "align": "right",
                     }
                 )
@@ -132,7 +209,12 @@ class ReceiptBuilder:
                 }
             )
 
-        # 8. Cut
+        # 8. Branding
+        commands.append({"type": "feed", "lines": 1})
+        commands.append({"type": "text", "val": "Powered by CB POS", "align": "center"})
+        commands.append({"type": "text", "val": "ceybyte.com", "align": "center"})
+
+        # 9. Cut
         commands.append({"type": "feed", "lines": 2})
         commands.append({"type": "cut"})
 
@@ -236,6 +318,11 @@ class ReceiptBuilder:
         if footer_text:
             commands.append({"type": "feed", "lines": 1})
             commands.append({"type": "text", "val": footer_text, "align": "center"})
+
+        # Branding
+        commands.append({"type": "feed", "lines": 1})
+        commands.append({"type": "text", "val": "Powered by CB POS", "align": "center"})
+        commands.append({"type": "text", "val": "ceybyte.com", "align": "center"})
 
         commands.append({"type": "feed", "lines": 2})
         commands.append({"type": "cut"})
@@ -342,6 +429,11 @@ class ReceiptBuilder:
         if footer_text:
             commands.append({"type": "feed", "lines": 1})
             commands.append({"type": "text", "val": footer_text, "align": "center"})
+
+        # Branding
+        commands.append({"type": "feed", "lines": 1})
+        commands.append({"type": "text", "val": "Powered by CB POS", "align": "center"})
+        commands.append({"type": "text", "val": "ceybyte.com", "align": "center"})
 
         commands.append({"type": "feed", "lines": 2})
         commands.append({"type": "cut"})

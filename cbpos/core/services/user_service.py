@@ -1,7 +1,8 @@
-import hashlib
 import logging
 from typing import Optional
+
 from sqlalchemy.orm import joinedload
+
 from cbpos.core.database import Database
 from cbpos.core.models import User, AuditLog
 from cbpos.core.services.auth_service import AuthService
@@ -33,8 +34,7 @@ class UserService:
                     if len(new_pin) < 4 or not new_pin.isdigit():
                         raise ValueError("PIN must be at least 4 digits")
                     # Hash the new PIN
-                    pin_hash = hashlib.sha256(new_pin.encode()).hexdigest()
-                    user.pin_hash = pin_hash
+                    user.pin_hash = AuthService.hash_pin(new_pin)
 
                 # 3. Audit Log
                 # Log the change for security auditing
@@ -63,7 +63,7 @@ class UserService:
                 admin = session.query(User).filter(User.username == "admin").first()
                 if not admin:
                     return False
-                admin.pin_hash = hashlib.sha256(new_pin.encode()).hexdigest()
+                admin.pin_hash = AuthService.hash_pin(new_pin)
                 session.commit()
                 return True
         except Exception as e:
@@ -130,7 +130,7 @@ class UserService:
                 if session.query(User).filter(User.username == username).first():
                     raise ValueError("Username already exists")
 
-                pin_hash = hashlib.sha256(pin.encode()).hexdigest()
+                pin_hash = AuthService.hash_pin(pin)
 
                 user = User(username=username, pin_hash=pin_hash, role_id=role_id, is_active=True)
                 session.add(user)
@@ -167,7 +167,7 @@ class UserService:
                 user.is_active = is_active
 
                 if pin:
-                    user.pin_hash = hashlib.sha256(pin.encode()).hexdigest()
+                    user.pin_hash = AuthService.hash_pin(pin)
 
                 # Log
                 current_user = AuthService.get_current_user()

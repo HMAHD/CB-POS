@@ -23,8 +23,6 @@ class StockAdjustmentDialog(QDialog):
 
         self.setWindowTitle(f"Adjust Stock: {product.name_en}")
         self.setFixedSize(400, 300)
-        self.setStyleSheet("background-color: #001F3F; color: white;")
-
         self.init_ui()
 
     def init_ui(self):
@@ -33,19 +31,17 @@ class StockAdjustmentDialog(QDialog):
         form_layout = QFormLayout()
 
         self.lbl_current = QLabel(f"{self.product.stock_qty:.3f}")  # noqa: E231
-        self.lbl_current.setStyleSheet("font-weight: bold; color: #39FF14;")
+        self.lbl_current.setProperty("class", "credit")
         form_layout.addRow("Current Stock:", self.lbl_current)
 
         self.txt_change = QLineEdit()
         self.txt_change.setPlaceholderText("+/- Amount (e.g. 10 or -5)")
-        self.txt_change.setStyleSheet("padding: 5px; color: black; background-color: white;")
         # Allow negative numbers
         self.txt_change.setValidator(QDoubleValidator(-99999.99, 99999.99, 3))
         form_layout.addRow("Adjustment:", self.txt_change)
 
         self.cmb_reason = QComboBox()
         self.cmb_reason.addItems(["Inventory Count", "Damage/Spoilage", "Return", "Other"])
-        self.cmb_reason.setStyleSheet("padding: 5px; color: black; background-color: white;")
         form_layout.addRow("Reason:", self.cmb_reason)
 
         layout.addLayout(form_layout)
@@ -53,11 +49,11 @@ class StockAdjustmentDialog(QDialog):
         btn_layout = QHBoxLayout()
 
         btn_cancel = QPushButton("Cancel")
-        btn_cancel.setStyleSheet("background-color: #FF4136; color: white; padding: 10px;")
+        btn_cancel.setProperty("class", "danger")
         btn_cancel.clicked.connect(self.reject)
 
         btn_save = QPushButton("Save Adjustment")
-        btn_save.setStyleSheet("background-color: #00BCEB; color: black; font-weight: bold; padding: 10px;")
+        btn_save.setProperty("class", "accent")
         btn_save.clicked.connect(self.save_adjustment)
 
         btn_layout.addWidget(btn_cancel)

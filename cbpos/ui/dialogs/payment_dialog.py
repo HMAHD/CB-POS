@@ -16,9 +16,8 @@ from PyQt6.QtWidgets import (
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QDoubleValidator, QKeySequence, QShortcut
-from cbpos.core.database import Database
-from cbpos.core.models import Customer
 from cbpos.core.services.payment_service import PaymentService
+from cbpos.core.services.customer_service import CustomerService
 
 
 from cbpos.core.utils.formatters import format_currency
@@ -26,7 +25,6 @@ from cbpos.core.utils.formatters import format_currency
 
 class PaymentDialog(QDialog):
     def __init__(self, total_amount: Decimal, parent=None):
-        print("DEBUG: PaymentDialog.__init__ started")
         super().__init__(parent)
         self.total_amount = total_amount
         self.payments = []  # List of {'method': str, 'amount': Decimal}
@@ -34,19 +32,12 @@ class PaymentDialog(QDialog):
         self.payment_methods = []
 
         self.setWindowTitle("Payment")
-        self.setFixedSize(800, 600)  # Wider for side-by-side layout
-        self.setFixedSize(800, 600)  # Wider for side-by-side layout
+        self.setFixedSize(800, 600)
         self.setObjectName("PaymentDialog")
 
-        print("DEBUG: Loading payment methods...")
         self.load_payment_methods()
-        print(f"DEBUG: Loaded {len(self.payment_methods)} payment methods")
-
-        print("DEBUG: Initializing UI...")
         self.init_ui()
-        print("DEBUG: Setting up shortcuts...")
         self.setup_shortcuts()
-        print("DEBUG: PaymentDialog initialized")
 
     def load_payment_methods(self):
         self.payment_methods = PaymentService.get_active_methods()
@@ -78,7 +69,6 @@ class PaymentDialog(QDialog):
 
         entry_layout.addWidget(QLabel("Amount:"), 1, 0)
         self.txt_amount = QLineEdit()
-        self.txt_amount.setPlaceholderText("Amount")
         self.txt_amount.setPlaceholderText("Amount")
         self.txt_amount.setValidator(QDoubleValidator(0.00, 999999.99, 2))
         self.txt_amount.returnPressed.connect(self.add_payment)
@@ -197,15 +187,15 @@ class PaymentDialog(QDialog):
                 try:
                     sc = QShortcut(QKeySequence(method.shortcut), self)
                     sc.activated.connect(lambda m=method: self.select_method(m))
-                except Exception:
-                    pass
+                except Exception as e:
+                    import logging
+
+                    logging.getLogger(__name__).warning("Invalid shortcut '%s': %s", method.shortcut, e)
 
     def load_customers(self):
-        db = Database()
-        with db.get_session() as session:
-            customers = session.query(Customer).all()
-            self.customers_map = {c.name: c.id for c in customers}
-            self.cmb_customer.addItems(list(self.customers_map.keys()))
+        customers = CustomerService().get_all_customers()
+        self.customers_map = {c.name: c.id for c in customers}
+        self.cmb_customer.addItems(list(self.customers_map.keys()))
 
     def select_method(self, method):
         self.current_method = method
@@ -250,7 +240,8 @@ class PaymentDialog(QDialog):
 
         try:
             amount = Decimal(self.txt_amount.text())
-        except Exception:
+        except (ValueError, ArithmeticError):
+            QMessageBox.warning(self, "Invalid Amount", "Please enter a valid amount.")
             return
 
         if amount <= 0:
@@ -277,20 +268,18 @@ class PaymentDialog(QDialog):
         remaining = self.get_remaining_amount()
 
         if remaining > 0:
-            self.lbl_remaining.setText(f"Remaining: Rs. {remaining:,.2f}")  # noqa: E231
+            self.lbl_remaining.setText(f"Remaining: {format_currency(remaining)}")
             self.lbl_remaining.setProperty("state", "remaining")
             self.lbl_remaining.style().unpolish(self.lbl_remaining)
             self.lbl_remaining.style().polish(self.lbl_remaining)
             self.btn_finish.setEnabled(False)
-            self.btn_finish.setEnabled(False)
             self.txt_amount.setText(str(remaining))
         else:
             change = abs(remaining)
-            self.lbl_remaining.setText(f"Change: Rs. {change:,.2f}")  # noqa: E231
+            self.lbl_remaining.setText(f"Change: {format_currency(change)}")
             self.lbl_remaining.setProperty("state", "change")
             self.lbl_remaining.style().unpolish(self.lbl_remaining)
             self.lbl_remaining.style().polish(self.lbl_remaining)
-            self.btn_finish.setEnabled(True)
             self.btn_finish.setEnabled(True)
             self.btn_finish.setFocus()
 

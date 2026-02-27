@@ -13,9 +13,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QBrush, QAction
-from cbpos.core.database import Database
-from cbpos.core.models import Category
-from sqlalchemy import select
+from cbpos.core.services.category_service import CategoryService
 
 
 class CategoryTreeDialog(QDialog):
@@ -28,7 +26,6 @@ class CategoryTreeDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Category Manager (Tree View)")
         self.setMinimumSize(600, 500)
-        self.db = Database()
         self.init_ui()
         self.load_categories()
 
@@ -37,7 +34,7 @@ class CategoryTreeDialog(QDialog):
 
         # Title
         title = QLabel("Category Manager - Hierarchical View")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #00BCEB;")
+        title.setProperty("class", "dialog-title")
         layout.addWidget(title)
 
         # Tree Widget
@@ -48,47 +45,23 @@ class CategoryTreeDialog(QDialog):
         self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self.show_context_menu)
         self.tree.itemChanged.connect(self.on_item_dropped)
-        self.tree.setStyleSheet(
-            """
-            QTreeWidget {
-                background-color: #001F3F;
-                color: white;
-                border: 1px solid #003366;
-            }
-            QTreeWidget::item {
-                padding: 8px;
-            }
-            QTreeWidget::item:selected {
-                background-color: #00BCEB;
-                color: black;
-            }
-            QHeaderView::section {
-                background-color: #003366;
-                color: white;
-                padding: 8px;
-                font-weight: bold;
-            }
-        """
-        )
         layout.addWidget(self.tree)
 
         # Buttons
         btn_layout = QHBoxLayout()
 
         btn_add_root = QPushButton("Add Root Category")
-        btn_add_root.setStyleSheet("background-color: #39FF14; color: black; padding: 8px; font-weight: bold;")
+        btn_add_root.setProperty("class", "primary")
         btn_add_root.clicked.connect(self.add_root_category)
         btn_layout.addWidget(btn_add_root)
 
         btn_layout.addStretch()
 
         btn_refresh = QPushButton("Refresh")
-        btn_refresh.setStyleSheet("background-color: #003366; color: white; padding: 8px; font-weight: bold;")
         btn_refresh.clicked.connect(self.load_categories)
         btn_layout.addWidget(btn_refresh)
 
         btn_close = QPushButton("Close")
-        btn_close.setStyleSheet("background-color: #003366; color: white; padding: 8px; font-weight: bold;")
         btn_close.clicked.connect(self.close)
         btn_layout.addWidget(btn_close)
 
@@ -98,30 +71,28 @@ class CategoryTreeDialog(QDialog):
         """Load categories and build tree hierarchy."""
         self.tree.clear()
 
-        with self.db.get_session() as session:
-            # Load all categories
-            categories = session.scalars(select(Category)).all()
+        categories = CategoryService.get_tree()
 
-            # Build tree items dict
-            tree_items = {}
+        # Build tree items dict
+        tree_items = {}
 
-            # First pass: Create QTreeWidgetItems for root categories
-            for cat in categories:
-                if cat.parent_id is None:
-                    item = self.create_tree_item(cat)
-                    self.tree.addTopLevelItem(item)
-                    tree_items[cat.id] = item
+        # First pass: Create QTreeWidgetItems for root categories
+        for cat in categories:
+            if cat.parent_id is None:
+                item = self.create_tree_item(cat)
+                self.tree.addTopLevelItem(item)
+                tree_items[cat.id] = item
 
-            # Second pass: Add children
-            for cat in categories:
-                if cat.parent_id is not None and cat.parent_id in tree_items:
-                    item = self.create_tree_item(cat)
-                    tree_items[cat.parent_id].addChild(item)
-                    tree_items[cat.id] = item
+        # Second pass: Add children
+        for cat in categories:
+            if cat.parent_id is not None and cat.parent_id in tree_items:
+                item = self.create_tree_item(cat)
+                tree_items[cat.parent_id].addChild(item)
+                tree_items[cat.id] = item
 
         self.tree.expandAll()
 
-    def create_tree_item(self, category: Category) -> QTreeWidgetItem:
+    def create_tree_item(self, category) -> QTreeWidgetItem:
         """Create a tree widget item for a category."""
         item = QTreeWidgetItem([category.name, ""])
 
@@ -129,11 +100,11 @@ class CategoryTreeDialog(QDialog):
         item.setData(0, Qt.ItemDataRole.UserRole, category.id)
 
         # Set color icon
-        if category.color_hex:
-            color = QColor(category.color_hex)
+        if category.color:
+            color = QColor(category.color)
             brush = QBrush(color)
             item.setForeground(1, brush)
-            item.setText(1, "●")  # Color indicator
+            item.setText(1, "\u25cf")  # Color indicator
             item.setFont(1, item.font(0))
 
         return item
@@ -170,10 +141,11 @@ class CategoryTreeDialog(QDialog):
         """Add a new root category."""
         name, ok = QInputDialog.getText(self, "Add Root Category", "Category Name:")
         if ok and name:
-            with self.db.get_session() as session:
-                category = Category(name=name, parent_id=None, color_hex="#FFFFFF")
-                session.add(category)
-                session.commit()
+            try:
+                CategoryService.create(name=name)
+            except ValueError as e:
+                QMessageBox.warning(self, "Error", str(e))
+                return
             self.load_categories()
 
     def add_subcategory(self, parent_item: QTreeWidgetItem):
@@ -182,10 +154,11 @@ class CategoryTreeDialog(QDialog):
 
         name, ok = QInputDialog.getText(self, "Add Sub-category", "Category Name:")
         if ok and name:
-            with self.db.get_session() as session:
-                category = Category(name=name, parent_id=parent_id, color_hex="#FFFFFF")
-                session.add(category)
-                session.commit()
+            try:
+                CategoryService.create(name=name, parent_id=parent_id)
+            except ValueError as e:
+                QMessageBox.warning(self, "Error", str(e))
+                return
             self.load_categories()
 
     def edit_category(self, item: QTreeWidgetItem):
@@ -195,11 +168,11 @@ class CategoryTreeDialog(QDialog):
 
         name, ok = QInputDialog.getText(self, "Edit Category", "Category Name:", text=current_name)
         if ok and name:
-            with self.db.get_session() as session:
-                category = session.get(Category, category_id)
-                if category:
-                    category.name = name
-                    session.commit()
+            try:
+                CategoryService.update(category_id, name=name)
+            except ValueError as e:
+                QMessageBox.warning(self, "Error", str(e))
+                return
             self.load_categories()
 
     def change_category_color(self, item: QTreeWidgetItem):
@@ -208,11 +181,11 @@ class CategoryTreeDialog(QDialog):
 
         color = QColorDialog.getColor()
         if color.isValid():
-            with self.db.get_session() as session:
-                category = session.get(Category, category_id)
-                if category:
-                    category.color_hex = color.name()
-                    session.commit()
+            try:
+                CategoryService.update(category_id, color=color.name())
+            except ValueError as e:
+                QMessageBox.warning(self, "Error", str(e))
+                return
             self.load_categories()
 
     def delete_category(self, item: QTreeWidgetItem):
@@ -230,12 +203,11 @@ class CategoryTreeDialog(QDialog):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            with self.db.get_session() as session:
-                category = session.get(Category, category_id)
-                if category:
-                    # Note: Products will have category_id set to NULL due to FK constraint
-                    session.delete(category)
-                    session.commit()
+            try:
+                CategoryService.delete(category_id)
+            except ValueError as e:
+                QMessageBox.warning(self, "Error", str(e))
+                return
             self.load_categories()
 
     def on_item_dropped(self, item: QTreeWidgetItem, column: int):

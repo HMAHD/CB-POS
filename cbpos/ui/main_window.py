@@ -57,6 +57,8 @@ class MainWindow(QMainWindow):
         self.sales_view.side_menu.management_clicked.connect(self.switch_to_management)
         self.sales_view.side_menu.documents_clicked.connect(self.switch_to_documents)
         self.sales_view.side_menu.receive_payment_clicked.connect(self.sales_view.open_receive_payment)
+        self.sales_view.side_menu.reprint_receipt_clicked.connect(self.sales_view.open_reprint_receipt)
+        self.sales_view.side_menu.refund_clicked.connect(self.sales_view.open_refund)
         self.sales_view.side_menu.logout_clicked.connect(self.logout)
         self.sales_view.side_menu.settings_clicked.connect(self.switch_to_settings)
         self.sales_view.side_menu.fullscreen_clicked.connect(self.toggle_fullscreen)
@@ -164,14 +166,11 @@ class MainWindow(QMainWindow):
 
         # Set customer if specified
         if cart_data.get("customer_id"):
-            from cbpos.core.database import Database
-            from cbpos.core.models import Customer
+            from cbpos.core.services.customer_service import CustomerService
 
-            db = Database()
-            with db.get_session() as session:
-                customer = session.query(Customer).filter_by(id=cart_data["customer_id"]).first()
-                if customer:
-                    self.sales_view.cart_service.set_customer(customer)
+            customer = CustomerService().get_customer(cart_data["customer_id"])
+            if customer:
+                self.sales_view.cart_service.set_customer(customer)
 
         # Store proforma_id for marking as converted after sale completes
         self.sales_view._pending_proforma_id = cart_data.get("proforma_id")

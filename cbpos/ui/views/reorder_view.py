@@ -33,12 +33,12 @@ class ReorderView(QWidget):
 
         # Title
         title = QLabel("Reorder Report - Low Stock Items")
-        title.setStyleSheet("font-size: 24px; font-weight: bold; color: #00BCEB;")
+        title.setProperty("class", "dialog-title")
         layout.addWidget(title)
 
         # Info text
         info = QLabel("Products that need restocking (Stock ≤ Reorder Point)")
-        info.setStyleSheet("color: #AAAAAA; font-size: 12px; margin-bottom: 10px;")
+        info.setProperty("class", "muted")
         layout.addWidget(info)
 
         # Table
@@ -57,44 +57,19 @@ class ReorderView(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.table.setStyleSheet(
-            """
-            QTableWidget {
-                background-color: #001F3F;
-                color: white;
-                border: 1px solid #003366;
-                gridline-color: #003366;
-            }
-            QTableWidget::item {
-                padding: 8px;
-            }
-            QTableWidget::item:selected {
-                background-color: #00BCEB;
-                color: black;
-            }
-            QHeaderView::section {
-                background-color: #003366;
-                color: white;
-                padding: 8px;
-                border: 1px solid #001F3F;
-                font-weight: bold;
-            }
-        """
-        )
         layout.addWidget(self.table)
 
         # Action Buttons
         btn_layout = QHBoxLayout()
 
         btn_refresh = QPushButton("Refresh")
-        btn_refresh.setStyleSheet("background-color: #003366; color: white; padding: 10px; font-weight: bold;")
         btn_refresh.clicked.connect(self.load_reorder_items)
         btn_layout.addWidget(btn_refresh)
 
         btn_layout.addStretch()
 
         btn_create_po = QPushButton("Create Purchase Order")
-        btn_create_po.setStyleSheet("background-color: #39FF14; color: black; padding: 10px; font-weight: bold;")
+        btn_create_po.setProperty("class", "primary")
         btn_create_po.clicked.connect(self.create_purchase_order)
         btn_layout.addWidget(btn_create_po)
 

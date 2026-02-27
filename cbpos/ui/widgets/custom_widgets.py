@@ -72,6 +72,7 @@ class SidebarButton(QToolButton):
     def update_icon(self):
         """Update icon color based on current theme."""
         from cbpos.core.services.theme_service import ThemeService
+
         icon_color = ThemeService.get_icon_color()
         self.setIcon(Icons.get(self.icon_name, icon_color))
 

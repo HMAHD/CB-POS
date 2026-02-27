@@ -79,6 +79,8 @@ class SideMenu(QWidget):
     history_clicked = pyqtSignal()
     documents_clicked = pyqtSignal()
     receive_payment_clicked = pyqtSignal()
+    reprint_receipt_clicked = pyqtSignal()
+    refund_clicked = pyqtSignal()
     logout_clicked = pyqtSignal()
     settings_clicked = pyqtSignal()
     fullscreen_clicked = pyqtSignal()
@@ -129,6 +131,14 @@ class SideMenu(QWidget):
         self.btn_receive_payment = MenuButton("Receive Payment", "fa5s.hand-holding-usd")
         self.btn_receive_payment.clicked.connect(self.receive_payment_clicked.emit)
         nav_layout.addWidget(self.btn_receive_payment)
+
+        self.btn_reprint = MenuButton("Reprint Receipt", "fa5s.print")
+        self.btn_reprint.clicked.connect(self.reprint_receipt_clicked.emit)
+        nav_layout.addWidget(self.btn_reprint)
+
+        self.btn_refund = MenuButton("Refund", "fa5s.undo")
+        self.btn_refund.clicked.connect(self.refund_clicked.emit)
+        nav_layout.addWidget(self.btn_refund)
 
         nav_layout.addStretch()
         main_layout.addWidget(nav_container)
@@ -233,6 +243,10 @@ class SideMenu(QWidget):
             self.btn_documents.update_icon()
         if hasattr(self, "btn_receive_payment"):
             self.btn_receive_payment.update_icon()
+        if hasattr(self, "btn_reprint"):
+            self.btn_reprint.update_icon()
+        if hasattr(self, "btn_refund"):
+            self.btn_refund.update_icon()
         if hasattr(self, "btn_logout"):
             self.btn_logout.update_icon()
 

@@ -57,6 +57,8 @@ class MainWindow(QMainWindow):
         self.sales_view.side_menu.management_clicked.connect(self.switch_to_management)
         self.sales_view.side_menu.documents_clicked.connect(self.switch_to_documents)
         self.sales_view.side_menu.receive_payment_clicked.connect(self.sales_view.open_receive_payment)
+        self.sales_view.side_menu.reprint_receipt_clicked.connect(self.sales_view.open_reprint_receipt)
+        self.sales_view.side_menu.refund_clicked.connect(self.sales_view.open_refund)
         self.sales_view.side_menu.logout_clicked.connect(self.logout)
         self.sales_view.side_menu.settings_clicked.connect(self.switch_to_settings)
         self.sales_view.side_menu.fullscreen_clicked.connect(self.toggle_fullscreen)

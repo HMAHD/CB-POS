@@ -258,7 +258,7 @@ class SalesView(QWidget):
         self.action_panel.action_f7.connect(self.recall_bill)
         self.action_panel.action_f8.connect(lambda: logger.debug("Drawer action not implemented"))
         self.action_panel.action_del.connect(self.void_bill)
-        self.action_panel.action_ref.connect(lambda: logger.debug("Refund action not implemented"))
+        self.action_panel.action_ref.connect(self.open_refund)
         self.action_panel.action_more.connect(lambda: logger.debug("More action not implemented"))
 
         # Context Menu for Customer Button
@@ -861,6 +861,20 @@ class SalesView(QWidget):
         from cbpos.ui.dialogs.receive_payment_dialog import ReceivePaymentDialog
 
         dialog = ReceivePaymentDialog(parent=self)
+        dialog.exec()
+
+    def open_reprint_receipt(self) -> None:
+        """Open Receipt Reprint dialog to search and reprint past receipts."""
+        from cbpos.ui.dialogs.receipt_reprint_dialog import ReceiptReprintDialog
+
+        dialog = ReceiptReprintDialog(parent=self)
+        dialog.exec()
+
+    def open_refund(self) -> None:
+        """Open Refund dialog to process returns."""
+        from cbpos.ui.dialogs.refund_dialog import RefundDialog
+
+        dialog = RefundDialog(parent=self)
         dialog.exec()
 
     def show_shortcuts_help(self):

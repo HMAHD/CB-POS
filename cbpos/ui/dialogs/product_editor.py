@@ -20,11 +20,20 @@ from PyQt6.QtWidgets import (
     QGroupBox,
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon, QPixmap, QColor
 
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from cbpos.core.models import Product, Category, CompositeItem
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.database import Database
+
+
+def _color_icon(hex_color: str, size: int = 12) -> QIcon:
+    """Create a small colored square icon for category display."""
+    pixmap = QPixmap(size, size)
+    pixmap.fill(QColor(hex_color or "#FFFFFF"))
+    return QIcon(pixmap)
 
 
 class ProductEditor(QDialog):
@@ -33,8 +42,9 @@ class ProductEditor(QDialog):
         self.product = product
         self.inventory_service = InventoryService()
         self.setWindowTitle("Edit Product" if product else "Add New Product")
-        self.setMinimumWidth(600)
+        self.setMinimumWidth(700)
         self.setMinimumHeight(520)
+        self.resize(750, 580)
 
         self.categories = []
         self.suppliers = []
@@ -48,7 +58,17 @@ class ProductEditor(QDialog):
     def load_categories(self):
         db = Database()
         with db.get_session() as session:
-            self.categories = list(session.scalars(select(Category)).all())
+            self.categories = list(
+                session.execute(
+                    select(Category)
+                    .options(joinedload(Category.subcategories))
+                    .where(Category.parent_id.is_(None))
+                    .order_by(Category.name)
+                )
+                .unique()
+                .scalars()
+                .all()
+            )
 
     def load_suppliers(self):
         from cbpos.core.models import Supplier
@@ -91,6 +111,7 @@ class ProductEditor(QDialog):
     def setup_general_tab(self):
         layout = QFormLayout(self.tab_general)
         layout.setVerticalSpacing(12)
+        layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
         self.name_en_input = QLineEdit()
         self.name_en_input.setPlaceholderText("Product name in English (required)")
@@ -105,7 +126,11 @@ class ProductEditor(QDialog):
         self.category_combo = QComboBox()
         self.category_combo.addItem("-- Select Category --", None)
         for cat in self.categories:
-            self.category_combo.addItem(cat.name, cat.id)
+            self.category_combo.addItem(_color_icon(cat.color), cat.name, cat.id)
+            for sub in sorted(cat.subcategories, key=lambda c: c.name):
+                self.category_combo.addItem(
+                    _color_icon(sub.color), f"    {sub.name}", sub.id
+                )
 
         self.price_input = QDoubleSpinBox()
         self.price_input.setRange(0, 1000000)
@@ -133,6 +158,7 @@ class ProductEditor(QDialog):
         grp_stock = QGroupBox("Stock")
         form_stock = QFormLayout(grp_stock)
         form_stock.setVerticalSpacing(12)
+        form_stock.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
         self.stock_input = QDoubleSpinBox()
         self.stock_input.setRange(-10000, 1000000)
@@ -155,6 +181,7 @@ class ProductEditor(QDialog):
         # Supplier group
         grp_supplier = QGroupBox("Supplier")
         form_supplier = QFormLayout(grp_supplier)
+        form_supplier.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
         self.supplier_combo = QComboBox()
         self.supplier_combo.addItem("-- No Default Supplier --", None)

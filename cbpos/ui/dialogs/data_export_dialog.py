@@ -4,6 +4,8 @@ Data Export dialog for CB-POS.
 Allows users to select which data to export (Products, Customers, Sales),
 choose a format (CSV, Excel, PDF), pick a date range for sales,
 and export to a chosen directory.
+
+Uses QSS objectNames/class properties for theme compatibility.
 """
 
 import logging
@@ -29,91 +31,6 @@ from PyQt6.QtGui import QCursor
 
 logger = logging.getLogger(__name__)
 
-_BTN_PRIMARY = """
-    QPushButton {
-        background-color: #00BCEB;
-        color: #001F3F;
-        border: none;
-        border-radius: 6px;
-        padding: 10px 24px;
-        font-weight: bold;
-        font-size: 13px;
-    }
-    QPushButton:hover { background-color: #33CCFF; }
-    QPushButton:pressed { background-color: #0099CC; }
-    QPushButton:disabled { background-color: #555555; color: #999999; }
-"""
-
-_BTN_SECONDARY = """
-    QPushButton {
-        background-color: transparent;
-        color: #00BCEB;
-        border: 1px solid #00BCEB;
-        border-radius: 6px;
-        padding: 10px 24px;
-        font-size: 13px;
-    }
-    QPushButton:hover { background-color: rgba(0, 188, 235, 0.15); }
-    QPushButton:disabled { border-color: #555555; color: #555555; }
-"""
-
-_CARD_STYLE = """
-    QGroupBox {
-        background-color: #003366;
-        border: 1px solid #004080;
-        border-radius: 8px;
-        margin-top: 16px;
-        padding: 20px 16px 16px 16px;
-        font-weight: bold;
-        color: #00BCEB;
-    }
-    QGroupBox::title {
-        subcontrol-origin: margin;
-        left: 16px;
-        padding: 0 8px;
-    }
-"""
-
-_INPUT_STYLE = """
-    QDateEdit, QComboBox {
-        background-color: #002244;
-        border: 1px solid #004080;
-        border-radius: 6px;
-        padding: 8px 12px;
-        color: #E0E0E0;
-        font-size: 13px;
-    }
-    QDateEdit:focus, QComboBox:focus { border-color: #00BCEB; }
-    QComboBox::drop-down {
-        border: none;
-        padding-right: 8px;
-    }
-    QComboBox QAbstractItemView {
-        background-color: #002244;
-        color: #E0E0E0;
-        selection-background-color: #004080;
-    }
-"""
-
-_CHK_STYLE = """
-    QCheckBox {
-        color: #E0E0E0;
-        font-size: 13px;
-        spacing: 8px;
-    }
-    QCheckBox::indicator {
-        width: 20px;
-        height: 20px;
-        border-radius: 4px;
-        border: 2px solid #004080;
-        background-color: #002244;
-    }
-    QCheckBox::indicator:checked {
-        background-color: #00BCEB;
-        border-color: #00BCEB;
-    }
-"""
-
 
 class DataExportDialog(QDialog):
     """Dialog for exporting Products, Customers, and Sales data."""
@@ -123,7 +40,6 @@ class DataExportDialog(QDialog):
         self.setWindowTitle("Export Data")
         self.setMinimumSize(520, 480)
         self.resize(560, 500)
-        self.setStyleSheet("QDialog { background-color: #001F3F; }")
         self._init_ui()
 
     def _init_ui(self) -> None:
@@ -133,31 +49,27 @@ class DataExportDialog(QDialog):
 
         # Title
         title = QLabel("Export Business Data")
-        title.setStyleSheet("color: #00BCEB; font-size: 18px; font-weight: bold;")
+        title.setProperty("class", "dialog-title")
         layout.addWidget(title)
 
         desc = QLabel("Select which data to export and the output format.")
-        desc.setStyleSheet("color: #8899AA; font-size: 12px; margin-bottom: 8px;")
+        desc.setProperty("class", "muted")
         layout.addWidget(desc)
 
         # Data selection
         grp_data = QGroupBox("Select Data")
-        grp_data.setStyleSheet(_CARD_STYLE)
         data_layout = QVBoxLayout(grp_data)
         data_layout.setSpacing(10)
 
         self.chk_products = QCheckBox("Products")
         self.chk_products.setChecked(True)
-        self.chk_products.setStyleSheet(_CHK_STYLE)
         data_layout.addWidget(self.chk_products)
 
         self.chk_customers = QCheckBox("Customers")
-        self.chk_customers.setStyleSheet(_CHK_STYLE)
         data_layout.addWidget(self.chk_customers)
 
         self.chk_sales = QCheckBox("Sales")
         self.chk_sales.setChecked(True)
-        self.chk_sales.setStyleSheet(_CHK_STYLE)
         self.chk_sales.toggled.connect(self._toggle_date_range)
         data_layout.addWidget(self.chk_sales)
 
@@ -165,7 +77,6 @@ class DataExportDialog(QDialog):
 
         # Date range for sales
         self.grp_dates = QGroupBox("Sales Date Range")
-        self.grp_dates.setStyleSheet(_CARD_STYLE + _INPUT_STYLE)
         dates_form = QFormLayout(self.grp_dates)
         dates_form.setVerticalSpacing(10)
         dates_form.setHorizontalSpacing(16)
@@ -174,19 +85,18 @@ class DataExportDialog(QDialog):
         self.date_start.setCalendarPopup(True)
         self.date_start.setDate(QDate.currentDate().addMonths(-1))
         self.date_start.setDisplayFormat("yyyy-MM-dd")
-        dates_form.addRow(self._label("From:"), self.date_start)
+        dates_form.addRow("From:", self.date_start)
 
         self.date_end = QDateEdit()
         self.date_end.setCalendarPopup(True)
         self.date_end.setDate(QDate.currentDate())
         self.date_end.setDisplayFormat("yyyy-MM-dd")
-        dates_form.addRow(self._label("To:"), self.date_end)
+        dates_form.addRow("To:", self.date_end)
 
         layout.addWidget(self.grp_dates)
 
         # Format selector
         grp_format = QGroupBox("Output Format")
-        grp_format.setStyleSheet(_CARD_STYLE + _INPUT_STYLE)
         fmt_layout = QHBoxLayout(grp_format)
 
         self.cmb_format = QComboBox()
@@ -203,7 +113,7 @@ class DataExportDialog(QDialog):
         btn_layout.setSpacing(10)
 
         btn_cancel = QPushButton("Cancel")
-        btn_cancel.setStyleSheet(_BTN_SECONDARY)
+        btn_cancel.setObjectName("BtnCancel")
         btn_cancel.setFixedWidth(100)
         btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(btn_cancel)
@@ -211,17 +121,12 @@ class DataExportDialog(QDialog):
         btn_layout.addStretch()
 
         self.btn_export = QPushButton("Export")
-        self.btn_export.setStyleSheet(_BTN_PRIMARY)
+        self.btn_export.setProperty("class", "accent")
         self.btn_export.setFixedWidth(140)
         self.btn_export.clicked.connect(self._do_export)
         btn_layout.addWidget(self.btn_export)
 
         layout.addLayout(btn_layout)
-
-    def _label(self, text: str) -> QLabel:
-        lbl = QLabel(text)
-        lbl.setStyleSheet("color: #B0B0B0; font-size: 12px;")
-        return lbl
 
     def _toggle_date_range(self, checked: bool) -> None:
         self.grp_dates.setVisible(checked)

@@ -1665,3 +1665,13 @@ QLabel#SmtpGuideStepNum {
     font-weight: bold;
     border-radius: 16px;
 }
+
+/* === DATA SAFETY VIEW === */
+QLabel#RestoreWarning {
+    background-color: rgba(255, 65, 54, 0.12);
+    border: 1px solid #FF4136;
+    border-radius: 6px;
+    padding: 12px;
+    color: #FF8C85;
+    font-size: 12px;
+}

@@ -177,13 +177,14 @@ class ShopInfoPage(SettingsPage):
         btn_gmail.clicked.connect(self._prefill_gmail)
         email_header.addWidget(btn_gmail)
 
-        btn_help = QPushButton("\u24d8")
-        btn_help.setFixedSize(32, 32)
+        btn_help = QPushButton("i")
+        btn_help.setFixedSize(28, 28)
         btn_help.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_help.setStyleSheet(
             "QPushButton { background: transparent; color: #00BCEB;"
-            " border: none; font-size: 20px; }"
-            "QPushButton:hover { color: #00A5D0; }"
+            " border: 2px solid #00BCEB; border-radius: 14px;"
+            " font-size: 15px; font-weight: bold; font-style: italic; }"
+            "QPushButton:hover { color: #00A5D0; border-color: #00A5D0; }"
         )
         btn_help.setToolTip("How to set up Gmail email (step-by-step guide)")
         btn_help.clicked.connect(self._show_smtp_guide)

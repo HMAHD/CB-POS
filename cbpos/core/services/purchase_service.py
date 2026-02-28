@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
-from cbpos.core.models import Purchase, PurchaseItem, Product, StockMovement
+from cbpos.core.models import Purchase, PurchaseItem, Product, StockMovement, Supplier
 from cbpos.core.database import Database
 from cbpos.core.constants.status import Precision
 from cbpos.core.services.document_service import DocumentService
@@ -121,6 +121,24 @@ class PurchaseService:
             # Finalize Purchase
             purchase.total_cost = total_purchase_cost
             purchase.status = "COMPLETED"
+
+            # Update supplier payable
+            supplier = session.get(Supplier, purchase.supplier_id)
+            if supplier:
+                supplier.current_payable += total_purchase_cost
+                from cbpos.core.services.supplier_payable_service import (
+                    SupplierPayableService,
+                )
+
+                SupplierPayableService.record_purchase_in_session(
+                    session,
+                    supplier.id,
+                    purchase.id,
+                    total_purchase_cost,
+                    purchase.document_number,
+                    supplier.current_payable,
+                    purchase.user_id,
+                )
 
             session.commit()
             session.refresh(purchase)

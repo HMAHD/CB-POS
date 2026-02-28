@@ -21,7 +21,12 @@ class ShortcutsHelpDialog(QDialog):
         ("F5", "Process payment"),
         ("F6", "Hold / Suspend bill"),
         ("F7", "Recall suspended bill"),
-        ("F12", "Quick pay (cash)"),
+        ("F8", "Open cash drawer"),
+        ("F10", "Process payment"),
+        ("F12", "Quick close (cash)"),
+        ("Ctrl+D", "Open cash drawer"),
+        ("PgUp", "Select first cart item"),
+        ("PgDn", "Select last cart item"),
         ("Enter", "Add product from search"),
         ("Delete", "Void current bill"),
         ("Esc", "Close dialog / Cancel"),
@@ -30,7 +35,7 @@ class ShortcutsHelpDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Keyboard Shortcuts")
-        self.setFixedSize(450, 480)
+        self.setFixedSize(450, 580)
         self.setObjectName("ShortcutsHelpDialog")
         self.init_ui()
 

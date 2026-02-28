@@ -37,6 +37,7 @@ from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.side_menu import SideMenu
 from cbpos.ui.widgets.action_panel import ActionPanel
 from cbpos.core.utils.formatters import format_currency
+from cbpos.core.services.sound_service import SoundService
 
 logger = logging.getLogger(__name__)
 
@@ -256,7 +257,7 @@ class SalesView(QWidget):
         self.action_panel.action_f4.connect(self.change_line_quantity)
         self.action_panel.action_f6.connect(self.hold_bill)
         self.action_panel.action_f7.connect(self.recall_bill)
-        self.action_panel.action_f8.connect(lambda: logger.debug("Drawer action not implemented"))
+        self.action_panel.action_f8.connect(self.open_cash_drawer)
         self.action_panel.action_del.connect(self.void_bill)
         self.action_panel.action_ref.connect(self.open_refund)
         self.action_panel.action_more.connect(self.toggle_product_grid)
@@ -395,6 +396,30 @@ class SalesView(QWidget):
         self.shortcut_num_enter = QShortcut(QKeySequence(Qt.Key.Key_Enter), self)
         self.shortcut_num_enter.activated.connect(self.process_barcode)
 
+        # F8 — Open Cash Drawer
+        self.shortcut_f8 = QShortcut(QKeySequence("F8"), self)
+        self.shortcut_f8.activated.connect(self.open_cash_drawer)
+
+        # F10 — Open Payment (alias for F5)
+        self.shortcut_f10 = QShortcut(QKeySequence("F10"), self)
+        self.shortcut_f10.activated.connect(self.process_payment)
+
+        # F12 — Quick Pay (cash)
+        self.shortcut_f12 = QShortcut(QKeySequence("F12"), self)
+        self.shortcut_f12.activated.connect(self.quick_pay)
+
+        # Ctrl+D — Open Cash Drawer (alias for F8)
+        self.shortcut_ctrl_d = QShortcut(QKeySequence("Ctrl+D"), self)
+        self.shortcut_ctrl_d.activated.connect(self.open_cash_drawer)
+
+        # Page Up — Select first item in cart
+        self.shortcut_pgup = QShortcut(QKeySequence(Qt.Key.Key_PageUp), self)
+        self.shortcut_pgup.activated.connect(self.select_first_cart_item)
+
+        # Page Down — Select last item in cart
+        self.shortcut_pgdn = QShortcut(QKeySequence(Qt.Key.Key_PageDown), self)
+        self.shortcut_pgdn.activated.connect(self.select_last_cart_item)
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
         # Position menu at right edge
@@ -470,10 +495,12 @@ class SalesView(QWidget):
         products = self.product_service.search_products(query, mode=self.current_search_mode)
 
         if len(products) == 1:
+            SoundService.play("scan_success")
             self.cart_service.add_item(products[0])
             self.update_cart_display()
             self.barcode_input.clear()
         elif len(products) > 1:
+            SoundService.play("scan_success")
             # Open advanced search with pre-filled query
             dialog = AdvancedSearchDialog(self)
             dialog.search_input.setText(query)
@@ -482,6 +509,7 @@ class SalesView(QWidget):
             dialog.exec()
             self.barcode_input.clear()
         else:
+            SoundService.play("scan_error")
             QMessageBox.warning(self, "Not Found", "Product not found.")
 
     def update_cart_display(self):
@@ -577,8 +605,6 @@ class SalesView(QWidget):
             try:
                 success = TransactionService.process_sale(self.cart_service, payments, customer_id)
                 if success:
-                    QMessageBox.information(self, "Success", "Sale processed successfully!")
-
                     # Mark proforma as converted if this was a proforma-to-sale conversion
                     proforma_id = getattr(self, "_pending_proforma_id", None)
                     if proforma_id:
@@ -589,21 +615,7 @@ class SalesView(QWidget):
                             ProformaService.mark_converted(proforma_id, last_sale.id)
                         self._pending_proforma_id = None
 
-                    self.cart_service.clear()
-                    self.update_cart_display()
-                    self.barcode_input.setFocus()
-                    # Reset customer
-                    self.customer = None
-                    self.action_panel.clear_customer_info()
-                    self.order_bar.refresh_tabs()
-
-                    # Show Receipt Options if configured
-                    settings = ConfigService.get_all()
-                    if settings.get("show_receipt_dialog", "True") == "True":
-                        last_sale = TransactionService.get_last_sale()
-                        if last_sale:
-                            dlg = ReceiptOptionsDialog(last_sale, self)
-                            dlg.exec()
+                    self._finalize_sale()
             except ValueError as e:
                 QMessageBox.warning(self, "Validation Error", str(e))
             except Exception as e:
@@ -875,6 +887,70 @@ class SalesView(QWidget):
 
         dialog = RefundDialog(parent=self)
         dialog.exec()
+
+    def open_cash_drawer(self) -> None:
+        """Open the cash drawer via PrintWorker (F8 / Ctrl+D)."""
+        from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+
+        worker = PrintWorker()
+        worker.add_job("kick_drawer")
+        self._drawer_worker = worker  # prevent GC
+
+    def _finalize_sale(self) -> None:
+        """Common post-sale cleanup: sound, message, clear cart, show receipt."""
+        SoundService.play("payment_complete")
+        QMessageBox.information(self, "Success", "Sale processed successfully!")
+        self.cart_service.clear()
+        self.update_cart_display()
+        self.barcode_input.setFocus()
+        self.customer = None
+        self.action_panel.clear_customer_info()
+        self.order_bar.refresh_tabs()
+
+        # Show Receipt Options if configured
+        settings = ConfigService.get_all()
+        if settings.get("show_receipt_dialog", "True") == "True":
+            last_sale = TransactionService.get_last_sale()
+            if last_sale:
+                dlg = ReceiptOptionsDialog(last_sale, self)
+                dlg.exec()
+
+    def quick_pay(self) -> None:
+        """Quick close with full cash payment, skipping the payment dialog (F12)."""
+        # Check if quick pay is enabled in settings
+        if not ConfigService.get("quick_pay_enabled", True):
+            QMessageBox.information(self, "Disabled", "Quick Pay is disabled in settings.")
+            return
+
+        if not self.cart_service.items:
+            return
+
+        totals = self.cart_service.get_totals()
+        if totals["subtotal"] <= 0:
+            return
+
+        payments = [{"method": "CASH", "amount": totals["final_total"]}]
+        customer_id = self.customer.id if self.customer else None
+
+        try:
+            success = TransactionService.process_sale(self.cart_service, payments, customer_id)
+            if success:
+                self._finalize_sale()
+        except ValueError as e:
+            QMessageBox.warning(self, "Validation Error", str(e))
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Transaction failed: {str(e)}")
+
+    def select_first_cart_item(self) -> None:
+        """Select the first item in the cart table (Page Up)."""
+        if self.cart_table.rowCount() > 0:
+            self.cart_table.selectRow(0)
+
+    def select_last_cart_item(self) -> None:
+        """Select the last item in the cart table (Page Down)."""
+        count = self.cart_table.rowCount()
+        if count > 0:
+            self.cart_table.selectRow(count - 1)
 
     def show_shortcuts_help(self):
         """Show keyboard shortcuts help dialog (F1)."""

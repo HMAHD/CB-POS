@@ -35,6 +35,7 @@ class Icons:
     HOLD = "fa5s.hand-paper"
     RECALL = "fa5s.history"
     VOID = "fa5s.ban"
+    DRAWER = "fa5s.cash-register"
 
     # Status
     SUCCESS = "fa5s.check-circle"

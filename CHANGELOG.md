@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file. Never delet
 
 ## [0.6.0] - 2026-02-28
 
+### Added — Phase 26: UI Polish
+- **Keyboard Shortcuts (26.1)**: F8/Ctrl+D to open cash drawer, F10 as payment alias, F12 quick close with full cash payment (skips dialog), PgUp/PgDn to select first/last cart item. F8 action panel button wired to PrintWorker kick_drawer. Updated shortcuts help dialog (F1) with all new shortcuts.
+- **Sound Effects (26.2)**: SoundService with programmatically generated WAV tones — scan_success, scan_error, payment_complete, error. Audio feedback on barcode scan (success/fail), payment completion, and quick pay. Enable/disable toggle in Settings > System > POS Behavior. Graceful fallback when QtMultimedia is unavailable.
+- **Loading Indicators (26.3)**: Reusable LoadingOverlay widget with animated spinner and status text. Integrated into report viewer (generation + export), inventory view (CSV import with row progress), and data safety view (backup/restore/vacuum). Replaces cursor-based wait indicators with visual overlay.
+
 ### Added — Phase 19: Quality Assurance
 - **Math Engine Tests (19.1)**: 16 tests for TaxService (VAT backward calculation, SSCL on turnover, net revenue) and 24 tests for CartService (add/remove items, line discounts, cart discounts, price overrides, totals, rounding).
 - **Transaction Service Tests (19.2)**: 8 new tests for void sale (double-void prevention, stock restoration, VOID movement audit trail) and refund workflow (full refund, voided sale rejection, double-refund prevention, refund-of-refund rejection).

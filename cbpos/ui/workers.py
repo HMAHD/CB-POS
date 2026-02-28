@@ -20,6 +20,7 @@ class CsvImportWorker(QThread):
 
     finished = pyqtSignal(dict)  # {"success": int, "failed": int, "skipped": int}
     error = pyqtSignal(str)
+    progress = pyqtSignal(int, int)  # (current_row, total_rows)
 
     def __init__(self, import_service: object, file_path: str) -> None:
         super().__init__()
@@ -28,7 +29,18 @@ class CsvImportWorker(QThread):
 
     def run(self) -> None:
         try:
-            results: Dict[str, int] = self.import_service.import_products_from_csv(self.file_path)
+            # Count rows with a lightweight line count (skip header)
+            try:
+                with open(self.file_path, "r", encoding="utf-8-sig") as f:
+                    total = max(0, sum(1 for _ in f) - 1)
+            except Exception:
+                total = 0
+
+            results: Dict[str, int] = self.import_service.import_products_from_csv_with_progress(
+                self.file_path,
+                progress_callback=lambda current: self.progress.emit(current, total),
+            )
+
             self.finished.emit(results)
         except Exception as e:
             logger.error("CSV import failed: %s", e)

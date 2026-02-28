@@ -9,6 +9,7 @@ import logging
 from datetime import datetime
 from typing import Dict, Tuple
 
+from cbpos.core.interfaces.iprinter import IPrinter
 from cbpos.core.services.config_service import ConfigService
 
 logger = logging.getLogger(__name__)
@@ -18,12 +19,12 @@ class HardwareTestService:
     """Test hardware connectivity and functionality."""
 
     @staticmethod
-    def test_receipt_printer() -> Tuple[bool, str]:
+    def _get_printer() -> Tuple[IPrinter, str]:
         """
-        Send a test print to the configured receipt printer.
+        Instantiate the correct printer driver based on config.
 
         Returns:
-            Tuple of (success: bool, message: str).
+            Tuple of (printer instance, printer type string).
         """
         settings = ConfigService.get_all()
         p_type = settings.get("printer_type", "MOCK")
@@ -31,11 +32,21 @@ class HardwareTestService:
         if p_type == "MOCK":
             from cbpos.infrastructure.hardware.escpos_driver import MockPrinter
 
-            printer = MockPrinter()
+            return MockPrinter(), p_type
         else:
             from cbpos.infrastructure.hardware.escpos_driver import ESCPOSDriver
 
-            printer = ESCPOSDriver()
+            return ESCPOSDriver(), p_type
+
+    @staticmethod
+    def test_receipt_printer() -> Tuple[bool, str]:
+        """
+        Send a test print to the configured receipt printer.
+
+        Returns:
+            Tuple of (success: bool, message: str).
+        """
+        printer, p_type = HardwareTestService._get_printer()
 
         try:
             if not printer.connect():
@@ -69,17 +80,7 @@ class HardwareTestService:
         Returns:
             Tuple of (success: bool, message: str).
         """
-        settings = ConfigService.get_all()
-        p_type = settings.get("printer_type", "MOCK")
-
-        if p_type == "MOCK":
-            from cbpos.infrastructure.hardware.escpos_driver import MockPrinter
-
-            printer = MockPrinter()
-        else:
-            from cbpos.infrastructure.hardware.escpos_driver import ESCPOSDriver
-
-            printer = ESCPOSDriver()
+        printer, p_type = HardwareTestService._get_printer()
 
         try:
             if not printer.connect():

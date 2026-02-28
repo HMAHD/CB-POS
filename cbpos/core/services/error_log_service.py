@@ -95,8 +95,8 @@ class ErrorLogService:
             except Exception as e:
                 logger.debug("Could not read log file %s: %s", log_file, e)
 
-        # Newest first, limited
-        entries.reverse()
+        # Sort by timestamp descending (newest first)
+        entries.sort(key=lambda e: e["timestamp"], reverse=True)
         return entries[:max_entries]
 
     @classmethod
@@ -115,8 +115,8 @@ class ErrorLogService:
                         parsed = cls._parse_line(line)
                         if parsed and parsed["level"] in stats:
                             stats[parsed["level"]] += 1
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Could not get stats from log file %s: %s", log_file, e)
         return stats
 
     @classmethod

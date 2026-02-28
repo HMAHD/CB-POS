@@ -10,7 +10,7 @@ import sqlite3
 from datetime import datetime
 from typing import Dict, List, Tuple
 
-from sqlalchemy import text
+from sqlalchemy import func, select, table, text
 
 from cbpos.config import Config
 from cbpos.core.database import Database
@@ -78,12 +78,12 @@ class MaintenanceService:
         try:
             with db.get_session() as session:
                 # Use raw SQL for speed — these tables always exist
-                for key, table in [("products", "products"), ("customers", "customers"), ("sales", "sales")]:
+                for key, tbl_name in [("products", "products"), ("customers", "customers"), ("sales", "sales")]:
                     try:
-                        row = session.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
+                        row = session.execute(text(f"SELECT COUNT(*) FROM {tbl_name}")).scalar()
                         info[key] = row or 0
                     except Exception as e:
-                        logger.warning("Could not count records for table '%s': %s", table, e)
+                        logger.warning("Could not count records for table '%s': %s", tbl_name, e)
         except Exception as e:
             logger.warning("Could not query database info: %s", e)
 
@@ -122,7 +122,8 @@ class MaintenanceService:
                 ).fetchall()
                 for (table_name,) in rows:
                     try:
-                        count = session.execute(text(f'SELECT COUNT(*) FROM "{table_name}"')).scalar()
+                        tbl = table(table_name)
+                        count = session.execute(select(func.count()).select_from(tbl)).scalar()
                         tables.append({"name": table_name, "rows": count or 0})
                     except Exception:
                         tables.append({"name": table_name, "rows": "?"})

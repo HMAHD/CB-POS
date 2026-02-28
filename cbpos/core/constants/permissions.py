@@ -25,6 +25,11 @@ class Permissions:
     DOCUMENTS_CREATE_PROFORMA = "documents.create_proforma"
     DOCUMENTS_CONVERT_PROFORMA = "documents.convert_proforma"
 
+    # Data Safety
+    DATA_SAFETY_BACKUP = "data_safety.backup"
+    DATA_SAFETY_RESTORE = "data_safety.restore"
+    DATA_SAFETY_MAINTENANCE = "data_safety.maintenance"
+
     # Admin
     ADMIN_MANAGE_USERS = "admin.manage_users"
     ADMIN_MANAGE_ROLES = "admin.manage_roles"
@@ -54,6 +59,11 @@ class Permissions:
                 cls.DOCUMENTS_VIEW,
                 cls.DOCUMENTS_CREATE_PROFORMA,
                 cls.DOCUMENTS_CONVERT_PROFORMA,
+            ],
+            "Data Safety": [
+                cls.DATA_SAFETY_BACKUP,
+                cls.DATA_SAFETY_RESTORE,
+                cls.DATA_SAFETY_MAINTENANCE,
             ],
             "Admin": [
                 cls.ADMIN_MANAGE_USERS,

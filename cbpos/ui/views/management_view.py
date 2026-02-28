@@ -97,6 +97,7 @@ class ManagementView(QWidget):
         self.btn_users = self.create_nav_button("Users", Icons.USERS, 6)
         self.btn_pricelists = self.create_nav_button("Price Lists", Icons.PRICE_LIST, 7)
         self.btn_promotions = self.create_nav_button("Promotions", Icons.PROMOTION, 8)
+        self.btn_data_safety = self.create_nav_button("Data Safety", "fa5s.shield-alt", 9)
 
         # Push everything else to bottom
         self.sidebar_layout.addStretch()
@@ -225,6 +226,12 @@ class ManagementView(QWidget):
         self.promotion_view = PromotionView()
         self.stack.addWidget(self.promotion_view)
 
+        # 9. Data Safety
+        from cbpos.ui.views.data_safety_view import DataSafetyView
+
+        self.data_safety_view = DataSafetyView()
+        self.stack.addWidget(self.data_safety_view)
+
     def set_user(self, user):
         self.user = user
 
@@ -234,6 +241,7 @@ class ManagementView(QWidget):
         self.btn_users.setVisible(is_admin)
         self.btn_pricelists.setVisible(is_admin)
         self.btn_promotions.setVisible(is_admin)
+        self.btn_data_safety.setVisible(is_admin)
 
         if hasattr(self, "purchase_view"):
             self.purchase_view.set_user(user)

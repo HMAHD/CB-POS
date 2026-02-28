@@ -496,15 +496,15 @@
 - [x] **17.1 CSV Import** *(already built — `import_service.py`)*
     - [x] Products with template and column mapping
     - [x] Duplicate handling and validation
-- [ ] **17.2 Backup System — MUST HAVE**
-    - [ ] **Manual Backup** (zip DB + product images to chosen location)
-    - [ ] **Auto-Backup on App Close**
-    - [ ] **Restore from Backup** (select zip, verify, restore)
-    - [ ] **Backup Retention:** Keep last N backups
-- [ ] **17.3 Database Maintenance**
-    - [ ] Database Optimizer (`VACUUM` on schedule or manual trigger)
-- [ ] **17.4 CSV Export**
-    - [ ] Products, Customers, Sales data export
+- [x] **17.2 Backup System — MUST HAVE**
+    - [x] **Manual Backup** (zip DB + product images to chosen location)
+    - [x] **Auto-Backup on App Close**
+    - [x] **Restore from Backup** (select zip, verify, restore)
+    - [x] **Backup Retention:** Keep last N backups
+- [x] **17.3 Database Maintenance**
+    - [x] Database Optimizer (`VACUUM` on schedule or manual trigger)
+- [x] **17.4 CSV Export**
+    - [x] Products, Customers, Sales data export
 
 ---
 

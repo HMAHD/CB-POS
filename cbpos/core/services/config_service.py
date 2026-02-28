@@ -94,6 +94,10 @@ class ConfigService:
         "smtp_port": "587",
         "smtp_user": "",
         "smtp_pass": "",
+        # Data Safety / Backup
+        "auto_backup_on_close": True,
+        "backup_retention_count": 5,
+        "backup_dir": "",
     }
 
     _settings: Dict[str, Any] = {}

@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.6.0] - 2026-02-28
+
+### Added — Phase 17: Data Safety
+- **Backup System (17.2)**: Complete backup/restore with AES-256 encryption. BackupRestoreDialog with Backup, Restore, Maintenance, and Export tabs. Backup list table, create/verify/restore operations. Auto-backup on app close with configurable retention (keep last N backups). Pre-restore safety snapshots. Data Safety sidebar button in Management view.
+- **Database Maintenance (17.3)**: MaintenanceService with VACUUM (AUTOCOMMIT isolation), integrity check (PRAGMA integrity_check), and database info display (size, record counts). Maintenance tab in Data Safety dialog.
+- **Data Export (17.4)**: DataExportService building pandas DataFrames for Products, Customers, and Sales with date filtering. DataExportDialog with checkboxes, date range pickers, and format selector (CSV/Excel/PDF). Export tab in Data Safety dialog.
+- **Permissions**: DATA_SAFETY_BACKUP, DATA_SAFETY_RESTORE, DATA_SAFETY_MAINTENANCE permission codes.
+- **Settings**: Backup settings group in System page — auto-backup toggle, retention count spinner, backup directory browser.
+- **Tests**: 31 new unit tests covering backup (18), maintenance (5), and data export (8) services.
+
 ## [0.5.0] - 2026-02-27
 
 ### Added — Phase 31: Polish & Hardening

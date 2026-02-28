@@ -765,6 +765,41 @@ class SystemPage(SettingsPage):
 
         main_layout.addWidget(grp_features)
 
+        # --- Backup Settings ---
+        grp_backup = QGroupBox("Backup")
+        form_backup = QFormLayout(grp_backup)
+        self.configure_form_layout(form_backup)
+
+        self.chk_auto_backup = QCheckBox()
+        self.chk_auto_backup.setToolTip("Automatically create a backup when closing the application")
+        form_backup.addRow("Auto-Backup on Close:", self.chk_auto_backup)
+
+        self.spin_retention = QSpinBox()
+        self.spin_retention.setRange(1, 50)
+        self.spin_retention.setSuffix(" backups")
+        self.spin_retention.setToolTip("Number of most recent backups to keep during cleanup")
+        form_backup.addRow("Keep Recent Backups:", self.spin_retention)
+
+        backup_dir_layout = QHBoxLayout()
+        self.input_backup_dir = QLineEdit()
+        self.input_backup_dir.setPlaceholderText("Default: ~/Documents/CB-POS-Backups")
+        self.input_backup_dir.setReadOnly(True)
+        backup_dir_layout.addWidget(self.input_backup_dir, 1)
+
+        self.btn_browse_backup = QPushButton("Browse")
+        self.btn_browse_backup.clicked.connect(self._browse_backup_dir)
+        backup_dir_layout.addWidget(self.btn_browse_backup)
+
+        form_backup.addRow("Backup Folder:", backup_dir_layout)
+
+        main_layout.addWidget(grp_backup)
+
+    def _browse_backup_dir(self) -> None:
+        current = self.input_backup_dir.text() or ""
+        chosen = QFileDialog.getExistingDirectory(self, "Choose Backup Folder", current)
+        if chosen:
+            self.input_backup_dir.setText(chosen)
+
     def load(self, settings: dict):
         self.spin_timeout.setValue(int(settings.get("session_timeout_minutes", 0)))
         self.chk_void_reason.setChecked(settings.get("require_void_reason", True))
@@ -775,6 +810,9 @@ class SystemPage(SettingsPage):
         self.chk_auto_barcodes.setChecked(settings.get("auto_generate_barcodes", True))
         self.chk_loyalty.setChecked(settings.get("enable_loyalty", True))
         self.chk_touch_mode.setChecked(settings.get("enable_touch_mode", True))
+        self.chk_auto_backup.setChecked(settings.get("auto_backup_on_close", True))
+        self.spin_retention.setValue(int(settings.get("backup_retention_count", 5)))
+        self.input_backup_dir.setText(settings.get("backup_dir", ""))
 
     def save(self) -> dict:
         return {
@@ -787,6 +825,9 @@ class SystemPage(SettingsPage):
             "auto_generate_barcodes": self.chk_auto_barcodes.isChecked(),
             "enable_loyalty": self.chk_loyalty.isChecked(),
             "enable_touch_mode": self.chk_touch_mode.isChecked(),
+            "auto_backup_on_close": self.chk_auto_backup.isChecked(),
+            "backup_retention_count": self.spin_retention.value(),
+            "backup_dir": self.input_backup_dir.text(),
         }
 
 

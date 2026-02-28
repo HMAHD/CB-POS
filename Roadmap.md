@@ -574,22 +574,22 @@
 
 ---
 
-### Phase 26: UI Polish
+### Phase 26: UI Polish ✅
 *Goal: Quality-of-life improvements.*
 
-- [ ] **26.1 Remaining Keyboard Shortcuts**
-    - [ ] F8 - Save current, start new sale
-    - [ ] F10 - Open payment screen
-    - [ ] F12 - Quick close with default payment
-    - [ ] Ctrl+D - Open cash drawer
-    - [ ] Page Up/Down - Select first/last item
-- [ ] **26.2 Sound Effects**
-    - [ ] Beep on successful scan
-    - [ ] Error sound on failed operation
-    - [ ] Payment complete sound
-- [ ] **26.3 Loading Indicators**
-    - [ ] Loading spinners for long operations (reports, exports)
-    - [ ] Progress bars for imports/backups
+- [x] **26.1 Remaining Keyboard Shortcuts**
+    - [x] F8/Ctrl+D - Open cash drawer
+    - [x] F10 - Open payment screen
+    - [x] F12 - Quick close with default payment
+    - [x] Page Up/Down - Select first/last item
+- [x] **26.2 Sound Effects**
+    - [x] Beep on successful scan
+    - [x] Error sound on failed operation
+    - [x] Payment complete sound
+    - [x] Enable/disable toggle in Settings
+- [x] **26.3 Loading Indicators**
+    - [x] Loading overlay spinner for long operations (reports, exports)
+    - [x] Progress text for imports/backups
 
 ---
 

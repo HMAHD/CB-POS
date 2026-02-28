@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file. Never delet
 
 ## [0.6.0] - 2026-02-28
 
+### Added — Phase 26: UI Polish
+- **Keyboard Shortcuts (26.1)**: F8/Ctrl+D to open cash drawer, F10 as payment alias, F12 quick close with full cash payment (skips dialog), PgUp/PgDn to select first/last cart item. F8 action panel button wired to PrintWorker kick_drawer. Updated shortcuts help dialog (F1) with all new shortcuts.
+- **Sound Effects (26.2)**: SoundService with programmatically generated WAV tones — scan_success, scan_error, payment_complete, error. Audio feedback on barcode scan (success/fail), payment completion, and quick pay. Enable/disable toggle in Settings > System > POS Behavior. Graceful fallback when QtMultimedia is unavailable.
+- **Loading Indicators (26.3)**: Reusable LoadingOverlay widget with animated spinner and status text. Integrated into report viewer (generation + export), inventory view (CSV import with row progress), and data safety view (backup/restore/vacuum). Replaces cursor-based wait indicators with visual overlay.
+
 ### Added — Phase 17: Data Safety
 - **Backup System (17.2)**: Complete backup/restore with AES-256 encryption. BackupRestoreDialog with Backup, Restore, Maintenance, and Export tabs. Backup list table, create/verify/restore operations. Auto-backup on app close with configurable retention (keep last N backups). Pre-restore safety snapshots. Data Safety sidebar button in Management view.
 - **Database Maintenance (17.3)**: MaintenanceService with VACUUM (AUTOCOMMIT isolation), integrity check (PRAGMA integrity_check), and database info display (size, record counts). Maintenance tab in Data Safety dialog.

@@ -22,6 +22,7 @@ class Icons:
     PROMOTION = "fa5s.bullhorn"
     DOCUMENTS = "fa5s.folder-open"
     CREDIT_BOOK = "fa5s.book"
+    STOCK_TAKE = "fa5s.clipboard-check"
 
     # Actions
     ADD = "fa5s.plus"

@@ -509,6 +509,39 @@ class CustomerLedgerEntry(Base):
     user: Mapped["User"] = relationship()
 
 
+class StockCount(Document):
+    """Physical stock count document using joined table inheritance."""
+
+    __tablename__ = "stock_counts"
+
+    id: Mapped[int] = mapped_column(ForeignKey("documents.id"), primary_key=True)
+    note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    total_variance_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+
+    items: Mapped[List["StockCountItem"]] = relationship(back_populates="stock_count", cascade="all, delete-orphan")
+
+    __mapper_args__ = {
+        "polymorphic_identity": "stock_count",
+    }
+
+
+class StockCountItem(Base):
+    """Individual item line in a stock count."""
+
+    __tablename__ = "stock_count_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    stock_count_id: Mapped[int] = mapped_column(ForeignKey("stock_counts.id"), index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    expected_qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+    counted_qty: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 3), nullable=True)
+    variance_qty: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 3), nullable=True)
+    variance_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
+
+    stock_count: Mapped["StockCount"] = relationship(back_populates="items")
+    product: Mapped["Product"] = relationship()
+
+
 class PaymentMethod(Base):
     __tablename__ = "payment_methods"
 

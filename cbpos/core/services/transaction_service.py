@@ -439,6 +439,7 @@ class TransactionService:
                         product_id=original_item.product_id,
                         qty=-original_item.qty,
                         unit_price=original_item.unit_price,
+                        original_price=original_item.original_price or original_item.unit_price,
                         subtotal=-original_item.subtotal,
                     )
                     session.add(refund_item)

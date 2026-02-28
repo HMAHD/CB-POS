@@ -179,6 +179,22 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentWidget(self.sales_view)
         self.sales_view.update_cart_display()
 
+    def closeEvent(self, event) -> None:
+        """Auto-backup on close if enabled in settings."""
+        if ConfigService.get("auto_backup_on_close"):
+            try:
+                from cbpos.core.services.backup_service import BackupService
+
+                backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
+                BackupService.create_backup(backup_dir)
+                keep = int(ConfigService.get("backup_retention_count") or 5)
+                BackupService.cleanup_old_backups(backup_dir, keep)
+            except Exception:
+                import logging
+
+                logging.getLogger(__name__).exception("Auto-backup on close failed")
+        super().closeEvent(event)
+
     def exit_fullscreen(self):
         if self.isFullScreen():
             self.showNormal()

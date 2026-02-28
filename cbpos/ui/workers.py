@@ -56,6 +56,45 @@ class BackupWorker(QThread):
             self.error.emit(str(e))
 
 
+class RestoreWorker(QThread):
+    """Restores a backup in a background thread."""
+
+    finished = pyqtSignal(bool)  # success
+    error = pyqtSignal(str)
+
+    def __init__(self, backup_path: str, password: str) -> None:
+        super().__init__()
+        self.backup_path = backup_path
+        self.password = password
+
+    def run(self) -> None:
+        try:
+            from cbpos.core.services.backup_service import BackupService
+
+            result = BackupService.restore_backup(self.backup_path, self.password)
+            self.finished.emit(result)
+        except Exception as e:
+            logger.error("Restore failed: %s", e)
+            self.error.emit(str(e))
+
+
+class VacuumWorker(QThread):
+    """Runs database VACUUM in a background thread."""
+
+    finished = pyqtSignal(dict)  # {size_before, size_after, saved}
+    error = pyqtSignal(str)
+
+    def run(self) -> None:
+        try:
+            from cbpos.core.services.maintenance_service import MaintenanceService
+
+            result = MaintenanceService.vacuum_database()
+            self.finished.emit(result)
+        except Exception as e:
+            logger.error("Vacuum failed: %s", e)
+            self.error.emit(str(e))
+
+
 class ExportWorker(QThread):
     """Exports report data to Excel or PDF in a background thread."""
 

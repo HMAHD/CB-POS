@@ -98,6 +98,13 @@ class ManagementView(QWidget):
         self.btn_pricelists = self.create_nav_button("Price Lists", Icons.PRICE_LIST, 7)
         self.btn_promotions = self.create_nav_button("Promotions", Icons.PROMOTION, 8)
 
+        # Data Safety button (opens modal dialog, not a stacked page)
+        self.btn_data_safety = SidebarButton("   Data Safety", "fa5s.shield-alt")
+        self.btn_data_safety.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.btn_data_safety.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.btn_data_safety.clicked.connect(self._open_data_safety)
+        self.sidebar_layout.addWidget(self.btn_data_safety)
+
         # Push everything else to bottom
         self.sidebar_layout.addStretch()
 
@@ -234,6 +241,7 @@ class ManagementView(QWidget):
         self.btn_users.setVisible(is_admin)
         self.btn_pricelists.setVisible(is_admin)
         self.btn_promotions.setVisible(is_admin)
+        self.btn_data_safety.setVisible(is_admin)
 
         if hasattr(self, "purchase_view"):
             self.purchase_view.set_user(user)
@@ -269,6 +277,7 @@ class ManagementView(QWidget):
         # Update Button Style (Icon/Text)
         self.btn_pos.setToolButtonStyle(style)
         self.btn_logout.setToolButtonStyle(style)
+        self.btn_data_safety.setToolButtonStyle(style)
         for btn in self.nav_buttons:
             btn.setToolButtonStyle(style)
 
@@ -280,18 +289,25 @@ class ManagementView(QWidget):
         required for the collapsed 'icon-only' mode vs the expanded 'full-width' mode.
         """
         # Update Property for all buttons
-        buttons = self.nav_buttons + [self.btn_pos, self.btn_logout]
+        buttons = self.nav_buttons + [self.btn_pos, self.btn_logout, self.btn_data_safety]
         for btn in buttons:
             btn.setProperty("collapsed", self.is_collapsed)
             btn.style().unpolish(btn)
             btn.style().polish(btn)
+
+    def _open_data_safety(self) -> None:
+        """Open the Data Safety dialog modally."""
+        from cbpos.ui.dialogs.backup_restore_dialog import BackupRestoreDialog
+
+        dlg = BackupRestoreDialog(self)
+        dlg.exec()
 
     def update_sidebar_icons(self):
         """
         Update all sidebar button icons when theme changes.
         Call this after theme switching to refresh icon colors.
         """
-        buttons = self.nav_buttons + [self.btn_pos, self.btn_logout]
+        buttons = self.nav_buttons + [self.btn_pos, self.btn_logout, self.btn_data_safety]
         for btn in buttons:
             if hasattr(btn, "update_icon"):
                 btn.update_icon()

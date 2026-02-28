@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.7.0] - 2026-02-28
+
+### Added — Phase 22: Advanced Purchase & Inventory
+- **GRN History (22.1)**: Browse all past Goods Received Notes with filters for supplier, status, and date range. Double-click opens read-only GRN detail dialog showing header info and items table with barcodes, quantities, costs, and line totals.
+- **Physical Stock Take (22.2)**: Full count-compare-adjust workflow with StockCount/StockCountItem models. Create stock count, load all products or scan individual items, enter physical counts in editable table with real-time variance calculation (color-coded red/green). Three-stage lifecycle: Draft (counting) → Counted (finalized, pending approval) → Completed (stock adjustments applied via ADJUSTMENT movements). Variance report dialog for completed counts. Stock Take sidebar entry in Management view (admin-only).
+- **Supplier Payment Tracking (22.3)**: Track supplier payables with SupplierPayment and SupplierLedgerEntry models. Automatic payable increase when GRN is committed. Two-panel Payables tab in Purchasing view (mirroring Credit Book pattern): supplier list with color-coded payable status, supplier ledger with debit/credit entries, date filters, and footer summary. Make Payment dialog with Pay Full button, payment method, reference, and note. Balance adjustment support. Payment terms field added to Supplier model and dialog.
+- **Permissions**: Purchase group (purchase.view, purchase.create_grn, purchase.make_payment) and Stock Take group (stock_take.view, stock_take.create, stock_take.approve) permission codes. Admin and Manager roles updated with new permissions.
+- **Migrations**: Alembic migrations for stock_counts, stock_count_items, supplier_payments, and supplier_ledger tables plus supplier column additions.
+
 ## [0.6.0] - 2026-02-28
 
 ### Added — Phase 26: UI Polish

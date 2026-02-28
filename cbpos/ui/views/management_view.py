@@ -98,6 +98,7 @@ class ManagementView(QWidget):
         self.btn_pricelists = self.create_nav_button("Price Lists", Icons.PRICE_LIST, 7)
         self.btn_promotions = self.create_nav_button("Promotions", Icons.PROMOTION, 8)
         self.btn_data_safety = self.create_nav_button("Data Safety", "fa5s.shield-alt", 9)
+        self.btn_stock_take = self.create_nav_button("Stock Take", Icons.STOCK_TAKE, 10)
 
         # Push everything else to bottom
         self.sidebar_layout.addStretch()
@@ -232,6 +233,12 @@ class ManagementView(QWidget):
         self.data_safety_view = DataSafetyView()
         self.stack.addWidget(self.data_safety_view)
 
+        # 10. Stock Take
+        from cbpos.ui.views.stock_take_view import StockTakeView
+
+        self.stock_take_view = StockTakeView()
+        self.stack.addWidget(self.stock_take_view)
+
     def set_user(self, user):
         self.user = user
 
@@ -242,9 +249,12 @@ class ManagementView(QWidget):
         self.btn_pricelists.setVisible(is_admin)
         self.btn_promotions.setVisible(is_admin)
         self.btn_data_safety.setVisible(is_admin)
+        self.btn_stock_take.setVisible(is_admin)
 
         if hasattr(self, "purchase_view"):
             self.purchase_view.set_user(user)
+        if hasattr(self, "stock_take_view"):
+            self.stock_take_view.set_user(user)
 
     def toggle_sidebar(self):
         start_width = self.sidebar.width()

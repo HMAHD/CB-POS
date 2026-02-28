@@ -14,6 +14,7 @@ class DocumentStatus:
     QUOTE = "QUOTE"
     EXPIRED = "EXPIRED"
     CONVERTED = "CONVERTED"
+    COUNTED = "COUNTED"
 
 
 class DocumentType:

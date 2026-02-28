@@ -329,6 +329,8 @@ class Supplier(Base):
     address: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     tax_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     contact_details: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)  # Extra details
+    current_payable: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    payment_terms: Mapped[int] = mapped_column(Integer, default=0)  # Days
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     purchases: Mapped[List["Purchase"]] = relationship(back_populates="supplier")
@@ -506,6 +508,77 @@ class CustomerLedgerEntry(Base):
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)
 
     customer: Mapped["Customer"] = relationship()
+    user: Mapped["User"] = relationship()
+
+
+class StockCount(Document):
+    """Physical stock count document using joined table inheritance."""
+
+    __tablename__ = "stock_counts"
+
+    id: Mapped[int] = mapped_column(ForeignKey("documents.id"), primary_key=True)
+    note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    total_variance_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+
+    items: Mapped[List["StockCountItem"]] = relationship(back_populates="stock_count", cascade="all, delete-orphan")
+
+    __mapper_args__ = {
+        "polymorphic_identity": "stock_count",
+    }
+
+
+class StockCountItem(Base):
+    """Individual item line in a stock count."""
+
+    __tablename__ = "stock_count_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    stock_count_id: Mapped[int] = mapped_column(ForeignKey("stock_counts.id"), index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    expected_qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+    counted_qty: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 3), nullable=True)
+    variance_qty: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 3), nullable=True)
+    variance_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
+
+    stock_count: Mapped["StockCount"] = relationship(back_populates="items")
+    product: Mapped["Product"] = relationship()
+
+
+class SupplierPayment(Base):
+    """Record of a payment made to a supplier."""
+
+    __tablename__ = "supplier_payments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"), index=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    payment_method: Mapped[str] = mapped_column(String(20), nullable=False)
+    reference: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)
+
+    supplier: Mapped["Supplier"] = relationship()
+    user: Mapped["User"] = relationship()
+
+
+class SupplierLedgerEntry(Base):
+    """Ledger entry for supplier payable tracking."""
+
+    __tablename__ = "supplier_ledger"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"), index=True)
+    entry_type: Mapped[str] = mapped_column(String(20), nullable=False)  # PURCHASE, PAYMENT, ADJUSTMENT
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)  # positive=payable, negative=payment
+    balance_after: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    reference_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    reference_doc: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)
+
+    supplier: Mapped["Supplier"] = relationship()
     user: Mapped["User"] = relationship()
 
 

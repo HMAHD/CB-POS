@@ -30,6 +30,16 @@ class Permissions:
     DATA_SAFETY_RESTORE = "data_safety.restore"
     DATA_SAFETY_MAINTENANCE = "data_safety.maintenance"
 
+    # Purchase
+    PURCHASE_VIEW = "purchase.view"
+    PURCHASE_CREATE_GRN = "purchase.create_grn"
+    PURCHASE_MAKE_PAYMENT = "purchase.make_payment"
+
+    # Stock Take
+    STOCK_TAKE_VIEW = "stock_take.view"
+    STOCK_TAKE_CREATE = "stock_take.create"
+    STOCK_TAKE_APPROVE = "stock_take.approve"
+
     # Admin
     ADMIN_MANAGE_USERS = "admin.manage_users"
     ADMIN_MANAGE_ROLES = "admin.manage_roles"
@@ -64,6 +74,16 @@ class Permissions:
                 cls.DATA_SAFETY_BACKUP,
                 cls.DATA_SAFETY_RESTORE,
                 cls.DATA_SAFETY_MAINTENANCE,
+            ],
+            "Purchase": [
+                cls.PURCHASE_VIEW,
+                cls.PURCHASE_CREATE_GRN,
+                cls.PURCHASE_MAKE_PAYMENT,
+            ],
+            "Stock Take": [
+                cls.STOCK_TAKE_VIEW,
+                cls.STOCK_TAKE_CREATE,
+                cls.STOCK_TAKE_APPROVE,
             ],
             "Admin": [
                 cls.ADMIN_MANAGE_USERS,

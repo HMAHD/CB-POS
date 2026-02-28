@@ -33,6 +33,7 @@ from PyQt6.QtGui import QColor
 
 from cbpos.core.services.maintenance_service import MaintenanceService
 from cbpos.core.services.error_log_service import ErrorLogService
+from cbpos.core.services.hardware_test_service import HardwareTestService
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ class AdminToolsView(QWidget):
         super().showEvent(event)
         self._load_db_info()
         self._load_logs()
+        self._load_printer_info()
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -73,8 +75,7 @@ class AdminToolsView(QWidget):
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_database_tab(), "Database")
         self.tabs.addTab(self._build_logs_tab(), "Error Logs")
-        self.tab_hardware_placeholder = QWidget()
-        self.tabs.addTab(self.tab_hardware_placeholder, "Hardware")
+        self.tabs.addTab(self._build_hardware_tab(), "Hardware")
         layout.addWidget(self.tabs, 1)
 
     # ── Database Tab ─────────────────────────────────────────────────────
@@ -366,3 +367,190 @@ class AdminToolsView(QWidget):
             self._load_logs()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Could not clear logs:\n{e}")
+
+    # ── Hardware Tab ─────────────────────────────────────────────────────
+
+    def _build_hardware_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(8, 16, 8, 8)
+        layout.setSpacing(12)
+
+        # Printer Configuration group
+        grp_config = QGroupBox("Printer Configuration")
+        config_layout = QFormLayout(grp_config)
+        config_layout.setVerticalSpacing(10)
+        config_layout.setHorizontalSpacing(20)
+
+        self.lbl_hw_type = QLabel("--")
+        config_layout.addRow("Printer Type:", self.lbl_hw_type)
+
+        self.lbl_hw_path = QLabel("--")
+        config_layout.addRow("Printer Path:", self.lbl_hw_path)
+
+        self.lbl_hw_receipt = QLabel("--")
+        config_layout.addRow("Receipt Printer:", self.lbl_hw_receipt)
+
+        self.lbl_hw_a4 = QLabel("--")
+        config_layout.addRow("A4 Printer:", self.lbl_hw_a4)
+
+        self.lbl_hw_paper = QLabel("--")
+        config_layout.addRow("Paper Width:", self.lbl_hw_paper)
+
+        layout.addWidget(grp_config)
+
+        # Receipt Printer Test group
+        grp_printer = QGroupBox("Receipt Printer Test")
+        printer_layout = QVBoxLayout(grp_printer)
+        printer_layout.setSpacing(8)
+
+        lbl_printer_desc = QLabel(
+            "Send a test page to the configured receipt printer to verify connectivity."
+        )
+        lbl_printer_desc.setProperty("class", "muted")
+        lbl_printer_desc.setWordWrap(True)
+        printer_layout.addWidget(lbl_printer_desc)
+
+        printer_btn_row = QHBoxLayout()
+        self.btn_test_printer = QPushButton("Print Test Page")
+        self.btn_test_printer.setProperty("class", "accent")
+        self.btn_test_printer.setFixedWidth(160)
+        self.btn_test_printer.clicked.connect(self._test_printer)
+        printer_btn_row.addWidget(self.btn_test_printer)
+
+        self.lbl_printer_status = QLabel("")
+        self.lbl_printer_status.setWordWrap(True)
+        printer_btn_row.addWidget(self.lbl_printer_status, 1)
+
+        printer_layout.addLayout(printer_btn_row)
+        layout.addWidget(grp_printer)
+
+        # Cash Drawer Test group
+        grp_drawer = QGroupBox("Cash Drawer Test")
+        drawer_layout = QVBoxLayout(grp_drawer)
+        drawer_layout.setSpacing(8)
+
+        lbl_drawer_desc = QLabel(
+            "Send a kick signal to open the cash drawer via the receipt printer."
+        )
+        lbl_drawer_desc.setProperty("class", "muted")
+        lbl_drawer_desc.setWordWrap(True)
+        drawer_layout.addWidget(lbl_drawer_desc)
+
+        drawer_btn_row = QHBoxLayout()
+        self.btn_test_drawer = QPushButton("Open Drawer")
+        self.btn_test_drawer.setProperty("class", "accent")
+        self.btn_test_drawer.setFixedWidth(160)
+        self.btn_test_drawer.clicked.connect(self._test_drawer)
+        drawer_btn_row.addWidget(self.btn_test_drawer)
+
+        self.lbl_drawer_status = QLabel("")
+        self.lbl_drawer_status.setWordWrap(True)
+        drawer_btn_row.addWidget(self.lbl_drawer_status, 1)
+
+        drawer_layout.addLayout(drawer_btn_row)
+        layout.addWidget(grp_drawer)
+
+        # Barcode Scanner Test group
+        grp_scanner = QGroupBox("Barcode Scanner Test")
+        scanner_layout = QVBoxLayout(grp_scanner)
+        scanner_layout.setSpacing(8)
+
+        lbl_scanner_desc = QLabel(
+            "Click the input field below and scan a barcode to test your scanner."
+        )
+        lbl_scanner_desc.setProperty("class", "muted")
+        lbl_scanner_desc.setWordWrap(True)
+        scanner_layout.addWidget(lbl_scanner_desc)
+
+        scanner_row = QHBoxLayout()
+        self.input_scanner_test = QLineEdit()
+        self.input_scanner_test.setPlaceholderText("Scan a barcode here...")
+        self.input_scanner_test.textChanged.connect(self._on_scanner_input)
+        scanner_row.addWidget(self.input_scanner_test, 1)
+
+        btn_clear_scan = QPushButton("Clear")
+        btn_clear_scan.setFixedWidth(80)
+        btn_clear_scan.clicked.connect(self._clear_scanner)
+        scanner_row.addWidget(btn_clear_scan)
+
+        scanner_layout.addLayout(scanner_row)
+
+        self.lbl_scanner_status = QLabel("")
+        self.lbl_scanner_status.setWordWrap(True)
+        scanner_layout.addWidget(self.lbl_scanner_status)
+
+        layout.addWidget(grp_scanner)
+
+        layout.addStretch()
+
+        return tab
+
+    def _load_printer_info(self) -> None:
+        """Load printer configuration into the Hardware tab."""
+        try:
+            info = HardwareTestService.get_printer_info()
+            self.lbl_hw_type.setText(info.get("type", "--"))
+            self.lbl_hw_path.setText(info.get("path", "--"))
+            self.lbl_hw_receipt.setText(info.get("receipt_printer", "--"))
+            self.lbl_hw_a4.setText(info.get("a4_printer", "--"))
+            self.lbl_hw_paper.setText(info.get("paper_width", "--"))
+        except Exception as e:
+            logger.warning("Could not load printer info: %s", e)
+
+    def _test_printer(self) -> None:
+        """Test the receipt printer in a background thread."""
+        self.btn_test_printer.setEnabled(False)
+        self.btn_test_printer.setText("Testing...")
+        self.lbl_printer_status.setText("")
+
+        from cbpos.ui.workers import PrinterTestWorker
+
+        self._printer_worker = PrinterTestWorker()
+        self._printer_worker.finished.connect(self._on_printer_test_done)
+        self._printer_worker.start()
+
+    def _on_printer_test_done(self, success: bool, message: str) -> None:
+        self.btn_test_printer.setEnabled(True)
+        self.btn_test_printer.setText("Print Test Page")
+        self.lbl_printer_status.setText(message)
+        self.lbl_printer_status.setProperty("class", "credit" if success else "debit")
+        self.lbl_printer_status.style().unpolish(self.lbl_printer_status)
+        self.lbl_printer_status.style().polish(self.lbl_printer_status)
+
+    def _test_drawer(self) -> None:
+        """Test the cash drawer in a background thread."""
+        self.btn_test_drawer.setEnabled(False)
+        self.btn_test_drawer.setText("Testing...")
+        self.lbl_drawer_status.setText("")
+
+        from cbpos.ui.workers import DrawerTestWorker
+
+        self._drawer_worker = DrawerTestWorker()
+        self._drawer_worker.finished.connect(self._on_drawer_test_done)
+        self._drawer_worker.start()
+
+    def _on_drawer_test_done(self, success: bool, message: str) -> None:
+        self.btn_test_drawer.setEnabled(True)
+        self.btn_test_drawer.setText("Open Drawer")
+        self.lbl_drawer_status.setText(message)
+        self.lbl_drawer_status.setProperty("class", "credit" if success else "debit")
+        self.lbl_drawer_status.style().unpolish(self.lbl_drawer_status)
+        self.lbl_drawer_status.style().polish(self.lbl_drawer_status)
+
+    def _on_scanner_input(self, text: str) -> None:
+        """Handle barcode scanner input."""
+        if text.strip():
+            self.lbl_scanner_status.setText(f"Barcode received: {text.strip()}")
+            self.lbl_scanner_status.setProperty("class", "credit")
+        else:
+            self.lbl_scanner_status.setText("")
+            self.lbl_scanner_status.setProperty("class", "")
+        self.lbl_scanner_status.style().unpolish(self.lbl_scanner_status)
+        self.lbl_scanner_status.style().polish(self.lbl_scanner_status)
+
+    def _clear_scanner(self) -> None:
+        """Clear the scanner test input."""
+        self.input_scanner_test.clear()
+        self.lbl_scanner_status.setText("")
+        self.input_scanner_test.setFocus()

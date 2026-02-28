@@ -859,6 +859,30 @@ QLabel[class="SectionHeader"] {
     margin-bottom: 20px;
 }
 
+/* Gmail Setup Buttons */
+QPushButton#BtnUseGmail {
+    background-color: #39FF14;
+    color: #001F3F;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 16px;
+    font-weight: bold;
+}
+QPushButton#BtnUseGmail:hover {
+    background-color: #32E012;
+}
+QPushButton#BtnSmtpHelp {
+    background-color: #00BCEB;
+    color: #001F3F;
+    border: none;
+    border-radius: 16px;
+    font-size: 16px;
+    font-weight: bold;
+}
+QPushButton#BtnSmtpHelp:hover {
+    background-color: #00A5D0;
+}
+
 QFrame#SettingsFooter {
     background-color: #2D2D30;
     border-top: 1px solid #3E3E42;

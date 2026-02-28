@@ -165,14 +165,14 @@ class ShopInfoPage(SettingsPage):
         email_header.addStretch()
 
         btn_gmail = QPushButton("Use Gmail")
-        btn_gmail.setProperty("class", "primary")
+        btn_gmail.setObjectName("BtnUseGmail")
         btn_gmail.setFixedHeight(32)
         btn_gmail.setToolTip("Fill Gmail SMTP settings automatically")
         btn_gmail.clicked.connect(self._prefill_gmail)
         email_header.addWidget(btn_gmail)
 
         btn_help = QPushButton("?")
-        btn_help.setProperty("class", "accent")
+        btn_help.setObjectName("BtnSmtpHelp")
         btn_help.setFixedSize(32, 32)
         btn_help.setToolTip("How to set up Gmail email (step-by-step guide)")
         btn_help.clicked.connect(self._show_smtp_guide)

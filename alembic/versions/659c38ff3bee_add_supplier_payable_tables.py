@@ -35,7 +35,7 @@ def upgrade() -> None:
         sa.Column("reference", sa.String(100), nullable=True),
         sa.Column("note", sa.String(200), nullable=True),
         sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
-        sa.Column("timestamp", sa.DateTime(), nullable=True),
+        sa.Column("timestamp", sa.DateTime(), nullable=False),
     )
     op.create_index("ix_supplier_payments_supplier_id", "supplier_payments", ["supplier_id"])
     op.create_index("ix_supplier_payments_timestamp", "supplier_payments", ["timestamp"])
@@ -52,7 +52,7 @@ def upgrade() -> None:
         sa.Column("reference_doc", sa.String(50), nullable=True),
         sa.Column("note", sa.String(200), nullable=True),
         sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
-        sa.Column("timestamp", sa.DateTime(), nullable=True),
+        sa.Column("timestamp", sa.DateTime(), nullable=False),
     )
     op.create_index("ix_supplier_ledger_supplier_id", "supplier_ledger", ["supplier_id"])
     op.create_index("ix_supplier_ledger_timestamp", "supplier_ledger", ["timestamp"])

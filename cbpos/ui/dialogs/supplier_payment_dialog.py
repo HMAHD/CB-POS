@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QFormLayout,
     QFrame,
+    QWidget,
 )
 from PyQt6.QtCore import Qt
 
@@ -26,7 +27,7 @@ from cbpos.core.utils.formatters import format_currency
 class SupplierPaymentDialog(QDialog):
     """Dialog to record a payment made to a supplier."""
 
-    def __init__(self, supplier_id: int, parent: Optional[object] = None):
+    def __init__(self, supplier_id: int, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.supplier_id = supplier_id
         self.recorded_payment = None

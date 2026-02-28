@@ -7,6 +7,7 @@ from cbpos.core.models import Purchase, PurchaseItem, Product, StockMovement, Su
 from cbpos.core.database import Database
 from cbpos.core.constants.status import Precision
 from cbpos.core.services.document_service import DocumentService
+from cbpos.core.services.supplier_payable_service import SupplierPayableService
 
 
 class PurchaseService:
@@ -126,10 +127,6 @@ class PurchaseService:
             supplier = session.get(Supplier, purchase.supplier_id)
             if supplier:
                 supplier.current_payable += total_purchase_cost
-                from cbpos.core.services.supplier_payable_service import (
-                    SupplierPayableService,
-                )
-
                 SupplierPayableService.record_purchase_in_session(
                     session,
                     supplier.id,

@@ -237,27 +237,41 @@ class SupplierPayableService:
             results = []
             now = datetime.now()
 
-            for supplier in suppliers:
-                last_entry = (
-                    session.query(SupplierLedgerEntry)
-                    .filter(SupplierLedgerEntry.supplier_id == supplier.id)
-                    .order_by(SupplierLedgerEntry.timestamp.desc())
-                    .first()
-                )
+            # Pre-fetch latest ledger entries per supplier to avoid N+1 queries
+            supplier_ids = [s.id for s in suppliers]
 
-                days_since = (now - last_entry.timestamp).days if last_entry else 999
+            # Latest entry timestamp per supplier (single query)
+            latest_entries_subq = (
+                session.query(
+                    SupplierLedgerEntry.supplier_id,
+                    func.max(SupplierLedgerEntry.timestamp).label("last_timestamp"),
+                )
+                .filter(SupplierLedgerEntry.supplier_id.in_(supplier_ids))
+                .group_by(SupplierLedgerEntry.supplier_id)
+                .all()
+            )
+            last_entry_map = {row.supplier_id: row.last_timestamp for row in latest_entries_subq}
+
+            # Latest payment timestamp per supplier (single query)
+            latest_payments_subq = (
+                session.query(
+                    SupplierLedgerEntry.supplier_id,
+                    func.max(SupplierLedgerEntry.timestamp).label("last_payment"),
+                )
+                .filter(
+                    SupplierLedgerEntry.supplier_id.in_(supplier_ids),
+                    SupplierLedgerEntry.entry_type == "PAYMENT",
+                )
+                .group_by(SupplierLedgerEntry.supplier_id)
+                .all()
+            )
+            last_payment_map = {row.supplier_id: row.last_payment for row in latest_payments_subq}
+
+            for supplier in suppliers:
+                last_ts = last_entry_map.get(supplier.id)
+                days_since = (now - last_ts).days if last_ts else 999
 
                 if days_since > supplier.payment_terms:
-                    last_payment = (
-                        session.query(SupplierLedgerEntry)
-                        .filter(
-                            SupplierLedgerEntry.supplier_id == supplier.id,
-                            SupplierLedgerEntry.entry_type == "PAYMENT",
-                        )
-                        .order_by(SupplierLedgerEntry.timestamp.desc())
-                        .first()
-                    )
-
                     results.append(
                         {
                             "id": supplier.id,
@@ -266,7 +280,7 @@ class SupplierPayableService:
                             "outstanding": supplier.current_payable,
                             "payment_terms": supplier.payment_terms,
                             "days_overdue": days_since - supplier.payment_terms,
-                            "last_payment_date": last_payment.timestamp if last_payment else None,
+                            "last_payment_date": last_payment_map.get(supplier.id),
                         }
                     )
 

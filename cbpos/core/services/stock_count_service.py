@@ -67,11 +67,13 @@ class StockCountService:
             if not stock_count or stock_count.status != DocumentStatus.DRAFT:
                 raise ValueError("Stock count not found or not in DRAFT status.")
 
-            # Get existing product IDs in this count
-            existing_ids = {
-                item.product_id
-                for item in session.query(StockCountItem).filter(StockCountItem.stock_count_id == stock_count_id).all()
-            }
+            # Get existing product IDs in this count (select only the column needed)
+            existing_ids = set(
+                row[0]
+                for row in session.query(StockCountItem.product_id)
+                .filter(StockCountItem.stock_count_id == stock_count_id)
+                .all()
+            )
 
             query = session.query(Product).filter(
                 Product.is_active.is_(True),

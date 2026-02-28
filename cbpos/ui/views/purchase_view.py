@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from PyQt6.QtWidgets import (
     QWidget,
@@ -238,7 +238,7 @@ class SupplierDialog(QDialog):
             self.phone_input.setText(self.supplier.phone or "")
             self.tax_input.setText(self.supplier.tax_number or "")
             self.details_input.setText(self.supplier.contact_details or "")
-            self.payment_terms_input.setValue(getattr(self.supplier, "payment_terms", 0) or 0)
+            self.payment_terms_input.setValue(getattr(self.supplier, "payment_terms", 0))
 
         layout.addRow("Company Name:", self.company_input)
         layout.addRow("Contact Person:", self.contact_input)
@@ -770,7 +770,7 @@ class PurchaseView(QWidget):
             self.payable_supplier_table.setItem(row, 1, QTableWidgetItem(supplier.company_name))
             self.payable_supplier_table.setItem(row, 2, QTableWidgetItem(supplier.phone or ""))
 
-            payable = getattr(supplier, "current_payable", Decimal("0.00")) or Decimal("0.00")
+            payable = getattr(supplier, "current_payable", Decimal("0.00"))
             payable_item = QTableWidgetItem(f"{payable:.2f}")  # noqa: E231
             payable_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
@@ -788,7 +788,7 @@ class PurchaseView(QWidget):
             terms_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.payable_supplier_table.setItem(row, 4, terms_item)
 
-    def on_payable_supplier_selected(self, current: QTableWidgetItem, previous: QTableWidgetItem) -> None:
+    def on_payable_supplier_selected(self, current: QTableWidgetItem, _previous: QTableWidgetItem) -> None:
         """Handle supplier selection in payables tab."""
         if not current:
             return
@@ -933,7 +933,7 @@ class PurchaseView(QWidget):
 
         try:
             amount = Decimal(amount_str)
-        except Exception:
+        except (ValueError, InvalidOperation):
             QMessageBox.warning(self, "Invalid", "Invalid amount.")
             return
 

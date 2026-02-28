@@ -34,6 +34,33 @@ from cbpos.config import Config
 import decimal
 import socket
 
+# Gmail SMTP setup guide content — kept separate for maintainability
+_GMAIL_GUIDE_STEPS = [
+    (
+        "1",
+        "Enable 2-Step Verification",
+        "Go to myaccount.google.com \u2192 Security\n" "Turn on 2-Step Verification for your account.",
+    ),
+    (
+        "2",
+        "Create an App Password",
+        "In your Google Account, search for 'App Passwords'.\n"
+        "Select app: 'Other' \u2192 type 'CB POS' \u2192 Generate.",
+    ),
+    (
+        "3",
+        "Copy the password",
+        "Google will show a 16-character password.\n" "Copy it \u2014 you won't be able to see it again.",
+    ),
+    (
+        "4",
+        "Paste in CB POS",
+        "Click 'Use Gmail' to fill Host & Port.\n"
+        "Enter your Gmail as SMTP User.\n"
+        "Paste the App Password as SMTP Password.",
+    ),
+]
+
 
 class SettingsPage(QWidget):
     """Base class for settings pages with standardized layout patterns."""
@@ -273,33 +300,7 @@ class ShopInfoPage(SettingsPage):
         title.setProperty("class", "dialog-title")
         layout.addWidget(title)
 
-        steps = [
-            (
-                "1",
-                "Enable 2-Step Verification",
-                "Go to myaccount.google.com \u2192 Security\nTurn on 2-Step Verification for your account.",
-            ),
-            (
-                "2",
-                "Create an App Password",
-                "In your Google Account, search for 'App Passwords'.\n"
-                "Select app: 'Other' \u2192 type 'CB POS' \u2192 Generate.",
-            ),
-            (
-                "3",
-                "Copy the password",
-                "Google will show a 16-character password.\nCopy it \u2014 you won't be able to see it again.",
-            ),
-            (
-                "4",
-                "Paste in CB POS",
-                "Click 'Use Gmail' to fill Host & Port.\n"
-                "Enter your Gmail as SMTP User.\n"
-                "Paste the App Password as SMTP Password.",
-            ),
-        ]
-
-        for num, heading, detail in steps:
+        for num, heading, detail in _GMAIL_GUIDE_STEPS:
             step_frame = QFrame()
             step_frame.setObjectName("SmtpGuideStep")
             step_layout = QHBoxLayout(step_frame)
@@ -1104,6 +1105,11 @@ class NetworkPage(SettingsPage):
                 QMessageBox.critical(self, "Migration Failed", f"Migration error:\n\n{message}")  # noqa: E231
         except Exception as e:
             progress.close()
+            import logging
+
+            logging.getLogger(__name__).exception("Data migration failed: %s", e)
             QMessageBox.critical(
-                self, "Migration Error", f"Unexpected error during migration:\n\n{str(e)}"  # noqa: E231
+                self,
+                "Migration Error",
+                "An unexpected error occurred during migration.\n" "Please check the application logs for details.",
             )

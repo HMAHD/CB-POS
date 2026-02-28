@@ -107,7 +107,7 @@ def main():
             from PyQt6.QtCore import QTimer
             from cbpos.core.services.scheduler_service import SchedulerService
 
-            scheduler_timer = QTimer()
+            scheduler_timer = QTimer(app)
             scheduler_timer.timeout.connect(SchedulerService.check_automation)
             scheduler_timer.start(60_000)  # Check every 60 seconds
             print("[BOOTSTRAP] Scheduler started.")

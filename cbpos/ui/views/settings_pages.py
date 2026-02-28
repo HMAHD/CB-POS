@@ -22,7 +22,8 @@ from PyQt6.QtWidgets import (
     QScrollArea,
     QDialog,
 )
-from PyQt6.QtCore import Qt, QTime
+from PyQt6.QtCore import Qt, QTime, QSize
+from PyQt6.QtGui import QIcon
 from PyQt6.QtPrintSupport import QPrinterInfo
 from sqlalchemy.engine import URL
 from cbpos.core.services.language_service import LanguageService
@@ -177,14 +178,14 @@ class ShopInfoPage(SettingsPage):
         btn_gmail.clicked.connect(self._prefill_gmail)
         email_header.addWidget(btn_gmail)
 
-        btn_help = QPushButton("i")
+        btn_help = QPushButton()
+        info_icon_path = str(Config.BASE_DIR / "cbpos" / "assets" / "icons" / "info-circle-cyan.svg")
+        btn_help.setIcon(QIcon(info_icon_path))
+        btn_help.setIconSize(QSize(24, 24))
         btn_help.setFixedSize(28, 28)
         btn_help.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_help.setStyleSheet(
-            "QPushButton { background: transparent; color: #00BCEB;"
-            " border: 2px solid #00BCEB; border-radius: 14px;"
-            " font-size: 15px; font-weight: bold; font-style: italic; }"
-            "QPushButton:hover { color: #00A5D0; border-color: #00A5D0; }"
+            "QPushButton { background: transparent; border: none; }" "QPushButton:hover { opacity: 0.7; }"
         )
         btn_help.setToolTip("How to set up Gmail email (step-by-step guide)")
         btn_help.clicked.connect(self._show_smtp_guide)

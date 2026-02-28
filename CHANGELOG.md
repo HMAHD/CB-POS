@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.8.0] - 2026-02-28
+
+### Added — Phase 27: Admin Tools
+- **Database Info (27.1)**: Admin Tools view with Database tab showing file path, size, last modified date, SQLite version, and table row counts. New `MaintenanceService.get_full_database_info()` method. Admin Tools sidebar button in Management view (admin-only).
+- **Error Log Viewer (27.2)**: File-based logging via `RotatingFileHandler` (5 MB, 3 backups) writing WARNING+ to `logs/cbpos.log`. `ErrorLogService` for parsing, filtering, and exporting log entries. Error Logs tab with level/date/search filters, color-coded table (yellow warnings, red errors), stats summary, export to text file, and clear logs.
+- **Hardware Test Page (27.3)**: `HardwareTestService` for testing receipt printer (sends test print), cash drawer (kick signal), and reading printer config. Background workers (`PrinterTestWorker`, `DrawerTestWorker`) keep UI responsive. Hardware tab shows printer configuration, test buttons with success/failure status, and barcode scanner test input field.
+- **Permissions**: `admin.tools` permission code added to Admin group.
+
 ## [0.7.0] - 2026-02-28
 
 ### Added — Phase 22: Advanced Purchase & Inventory

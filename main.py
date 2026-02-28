@@ -1,10 +1,39 @@
+import logging
+import logging.handlers
 import sys
 import os
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QFont
 from PyQt6.QtCore import qInstallMessageHandler, QtMsgType
+from cbpos.config import Config
 from cbpos.infrastructure.resource_loader import ResourceLoader
 from cbpos.ui.main_window import MainWindow
+
+
+def setup_logging() -> None:
+    """
+    Configure file-based logging for the application.
+
+    Writes WARNING+ messages to logs/cbpos.log with rotation
+    (5 MB max, 3 backups). Console output remains unchanged.
+    """
+    log_dir = Config.BASE_DIR / "logs"
+    log_dir.mkdir(exist_ok=True)
+
+    file_handler = logging.handlers.RotatingFileHandler(
+        log_dir / "cbpos.log",
+        maxBytes=5 * 1024 * 1024,
+        backupCount=3,
+        encoding="utf-8",
+    )
+    file_handler.setLevel(logging.WARNING)
+    file_handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"))
+
+    root_logger = logging.getLogger()
+    root_logger.addHandler(file_handler)
+    # Ensure root logger level allows WARNING+ through
+    if root_logger.level > logging.WARNING or root_logger.level == logging.NOTSET:
+        root_logger.setLevel(logging.WARNING)
 
 
 def qt_message_handler(mode: QtMsgType, context, message: str):
@@ -42,6 +71,9 @@ def main():
     Font loading MUST happen before any UI is created to prevent fallback to
     system fonts.
     """
+    # Set up file-based error logging
+    setup_logging()
+
     # Install custom message handler to suppress Qt internal warnings
     qInstallMessageHandler(qt_message_handler)
 

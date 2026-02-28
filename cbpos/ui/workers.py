@@ -107,6 +107,38 @@ class VacuumWorker(QThread):
             self.error.emit(str(e))
 
 
+class PrinterTestWorker(QThread):
+    """Tests receipt printer connectivity in a background thread."""
+
+    finished = pyqtSignal(bool, str)  # (success, message)
+
+    def run(self) -> None:
+        try:
+            from cbpos.core.services.hardware_test_service import HardwareTestService
+
+            success, message = HardwareTestService.test_receipt_printer()
+            self.finished.emit(success, message)
+        except Exception as e:
+            logger.error("Printer test worker failed: %s", e)
+            self.finished.emit(False, str(e))
+
+
+class DrawerTestWorker(QThread):
+    """Tests cash drawer kick in a background thread."""
+
+    finished = pyqtSignal(bool, str)  # (success, message)
+
+    def run(self) -> None:
+        try:
+            from cbpos.core.services.hardware_test_service import HardwareTestService
+
+            success, message = HardwareTestService.test_cash_drawer()
+            self.finished.emit(success, message)
+        except Exception as e:
+            logger.error("Drawer test worker failed: %s", e)
+            self.finished.emit(False, str(e))
+
+
 class ExportWorker(QThread):
     """Exports report data to Excel or PDF in a background thread."""
 

@@ -26,6 +26,9 @@ from cbpos.ui.views.settings_pages import (
 class SettingsView(QWidget):
     close_requested = pyqtSignal()
 
+    # Index where config pages end and operational views begin
+    _CONFIG_PAGE_COUNT = 7
+
     def __init__(self):
         super().__init__()
         self.init_ui()
@@ -47,7 +50,7 @@ class SettingsView(QWidget):
         self.sidebar.setObjectName("SettingsSidebar")
         self.sidebar.currentRowChanged.connect(self.change_page)
 
-        # Sidebar Items (7 consolidated pages)
+        # Sidebar Items — config pages + operational views
         import qtawesome as qta
 
         items = [
@@ -58,6 +61,8 @@ class SettingsView(QWidget):
             ("Receipt", "fa5s.receipt"),
             ("System", "fa5s.cogs"),
             ("Network", "fa5s.network-wired"),
+            ("Data Safety", "fa5s.shield-alt"),
+            ("Admin Tools", "fa5s.toolbox"),
         ]
 
         for item_text, icon_name in items:
@@ -73,7 +78,7 @@ class SettingsView(QWidget):
         self.stack = QStackedWidget()
         self.stack.setObjectName("SettingsContent")
 
-        # Initialize Pages (7 consolidated)
+        # Config pages (participate in load/save)
         self.pages = [
             ShopInfoPage(),
             SalesTaxPage(),
@@ -86,6 +91,16 @@ class SettingsView(QWidget):
 
         for page in self.pages:
             self.stack.addWidget(page)
+
+        # Operational views (self-contained, no load/save)
+        from cbpos.ui.views.data_safety_view import DataSafetyView
+        from cbpos.ui.views.admin_tools_view import AdminToolsView
+
+        self.data_safety_view = DataSafetyView()
+        self.stack.addWidget(self.data_safety_view)
+
+        self.admin_tools_view = AdminToolsView()
+        self.stack.addWidget(self.admin_tools_view)
 
         body_layout.addWidget(self.stack, 1)
         main_layout.addLayout(body_layout, 1)
@@ -120,6 +135,11 @@ class SettingsView(QWidget):
 
     def change_page(self, index):
         self.stack.setCurrentIndex(index)
+
+        # Hide save/cancel for operational views (Data Safety, Admin Tools)
+        is_config_page = index < self._CONFIG_PAGE_COUNT
+        self.btn_save.setVisible(is_config_page)
+        self.btn_cancel.setVisible(is_config_page)
 
     def load_settings(self):
         settings = ConfigService.get_all()

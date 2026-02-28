@@ -19,6 +19,15 @@ class MockPrinter(IPrinter):
     def disconnect(self):
         print("[MockPrinter] Disconnected")
 
+    def print_text(self, text: str):
+        print(f"[MockPrinter] TEXT: {text}")
+
+    def print_line(self, text: str):
+        print(f"[MockPrinter] LINE: {text}")
+
+    def cut(self):
+        print("[MockPrinter] CUT")
+
     def print_commands(self, commands: List[Dict[str, Any]]):
         for cmd in commands:
             c_type = cmd.get("type")
@@ -75,6 +84,18 @@ class ESCPOSDriver(IPrinter):
     def disconnect(self):
         if self.printer:
             self.printer.close()
+
+    def print_text(self, text: str):
+        if self.printer:
+            self.printer.text(text)
+
+    def print_line(self, text: str):
+        if self.printer:
+            self.printer.text(text + "\n")
+
+    def cut(self):
+        if self.printer:
+            self.printer.cut()
 
     def print_commands(self, commands: List[Dict[str, Any]]):
         if not self.printer:

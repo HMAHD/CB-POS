@@ -2,13 +2,15 @@
 Database maintenance service for CB-POS.
 
 Provides VACUUM, integrity checking, and database info
-for the Data Safety dialog.
+for the Data Safety dialog and Admin Tools view.
 """
 
 import logging
-from typing import Dict, Tuple
+import sqlite3
+from datetime import datetime
+from typing import Dict, List, Tuple
 
-from sqlalchemy import text
+from sqlalchemy import func, select, table, text
 
 from cbpos.config import Config
 from cbpos.core.database import Database
@@ -76,16 +78,66 @@ class MaintenanceService:
         try:
             with db.get_session() as session:
                 # Use raw SQL for speed — these tables always exist
-                for key, table in [("products", "products"), ("customers", "customers"), ("sales", "sales")]:
+                for key, tbl_name in [("products", "products"), ("customers", "customers"), ("sales", "sales")]:
                     try:
-                        row = session.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
+                        row = session.execute(text(f"SELECT COUNT(*) FROM {tbl_name}")).scalar()
                         info[key] = row or 0
                     except Exception as e:
-                        logger.warning("Could not count records for table '%s': %s", table, e)
+                        logger.warning("Could not count records for table '%s': %s", tbl_name, e)
         except Exception as e:
             logger.warning("Could not query database info: %s", e)
 
         return info
+
+    @staticmethod
+    def get_full_database_info() -> Dict[str, object]:
+        """
+        Get comprehensive database information for Admin Tools view.
+
+        Returns:
+            Dict with path, size, last_modified, sqlite_version,
+            and tables (list of {name, rows}).
+        """
+        db_path = Config.BASE_DIR / "cbpos.db"
+        size = db_path.stat().st_size if db_path.exists() else 0
+
+        if size >= 1024 * 1024:
+            size_str = f"{size / (1024 * 1024):.1f} MB"
+        else:
+            size_str = f"{size / 1024:.1f} KB"
+
+        last_modified = ""
+        if db_path.exists():
+            mtime = db_path.stat().st_mtime
+            last_modified = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+
+        sqlite_version = sqlite3.sqlite_version
+
+        tables: List[Dict[str, object]] = []
+        db = Database()
+        try:
+            with db.get_session() as session:
+                rows = session.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+                ).fetchall()
+                for (table_name,) in rows:
+                    try:
+                        tbl = table(table_name)
+                        count = session.execute(select(func.count()).select_from(tbl)).scalar()
+                        tables.append({"name": table_name, "rows": count or 0})
+                    except Exception as e:
+                        logger.debug("Could not count rows for table '%s': %s", table_name, e)
+                        tables.append({"name": table_name, "rows": "?"})
+        except Exception as e:
+            logger.warning("Could not query table info: %s", e)
+
+        return {
+            "path": str(db_path),
+            "size": size_str,
+            "last_modified": last_modified,
+            "sqlite_version": sqlite_version,
+            "tables": tables,
+        }
 
     @staticmethod
     def integrity_check() -> Tuple[bool, str]:

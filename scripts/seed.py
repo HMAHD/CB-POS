@@ -54,10 +54,12 @@ def seed_data():
         for perm in perm_map.values():
             admin_role.permissions.append(perm)
 
-        # Manager (Level 5) - Sales + Inventory + Reports + Documents
+        # Manager (Level 5) - Sales + Inventory + Reports + Documents + Purchase + Stock Take
         manager_role = Role(name="Manager", access_level=5)
-        for code in groups["Sales"] + groups["Inventory"] + groups["Reports"] + groups["Documents"]:
-            manager_role.permissions.append(perm_map[code])
+        manager_groups = ["Sales", "Inventory", "Reports", "Documents", "Purchase", "Stock Take"]
+        for grp in manager_groups:
+            for code in groups.get(grp, []):
+                manager_role.permissions.append(perm_map[code])
 
         # Cashier (Level 1) - Sales Only (Restricted)
         cashier_role = Role(name="Cashier", access_level=1)
@@ -129,12 +131,16 @@ def seed_data():
                 contact_person="Kamal Perera",
                 phone="0112223333",
                 tax_number="TAX-MUNCHEE-001",
+                current_payable=Decimal("0.00"),
+                payment_terms=30,
             ),
             Supplier(
                 company_name="City Imports",
                 contact_person="Nimal Silva",
                 phone="0114445555",
                 tax_number="TAX-CITY-002",
+                current_payable=Decimal("0.00"),
+                payment_terms=14,
             ),
         ]
         session.add_all(suppliers)

@@ -183,7 +183,7 @@ class GRNDetailDialog(QDialog):
             table.setItem(row, 0, QTableWidgetItem(product_name))
             table.setItem(row, 1, QTableWidgetItem(barcode))
 
-            qty_item = QTableWidgetItem(f"{item.qty_received:.3f}")
+            qty_item = QTableWidgetItem(f"{item.qty_received:.3f}")  # noqa: E231
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             table.setItem(row, 2, qty_item)
 
@@ -771,7 +771,7 @@ class PurchaseView(QWidget):
             self.payable_supplier_table.setItem(row, 2, QTableWidgetItem(supplier.phone or ""))
 
             payable = getattr(supplier, "current_payable", Decimal("0.00")) or Decimal("0.00")
-            payable_item = QTableWidgetItem(f"{payable:.2f}")
+            payable_item = QTableWidgetItem(f"{payable:.2f}")  # noqa: E231
             payable_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
             terms = getattr(supplier, "payment_terms", 0) or 0
@@ -872,7 +872,7 @@ class PurchaseView(QWidget):
 
             if entry.amount > 0:
                 # Debit (purchase increases payable)
-                debit_item = QTableWidgetItem(f"{entry.amount:.2f}")
+                debit_item = QTableWidgetItem(f"{entry.amount:.2f}")  # noqa: E231
                 debit_item.setForeground(QColor("#FF4136"))
                 debit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.payable_ledger_table.setItem(row, 3, debit_item)
@@ -881,13 +881,13 @@ class PurchaseView(QWidget):
             else:
                 # Credit (payment reduces payable)
                 self.payable_ledger_table.setItem(row, 3, QTableWidgetItem(""))
-                credit_item = QTableWidgetItem(f"{abs(entry.amount):.2f}")
+                credit_item = QTableWidgetItem(f"{abs(entry.amount):.2f}")  # noqa: E231
                 credit_item.setForeground(QColor("#39FF14"))
                 credit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.payable_ledger_table.setItem(row, 4, credit_item)
                 total_credit += abs(entry.amount)
 
-            balance_item = QTableWidgetItem(f"{entry.balance_after:.2f}")
+            balance_item = QTableWidgetItem(f"{entry.balance_after:.2f}")  # noqa: E231
             balance_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.payable_ledger_table.setItem(row, 5, balance_item)
 

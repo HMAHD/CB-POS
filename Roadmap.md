@@ -554,23 +554,24 @@
 
 ---
 
-### Phase 22: Advanced Purchase & Inventory
+### Phase 22: Advanced Purchase & Inventory ✅
 *Goal: Complete the inventory lifecycle for retailers who buy stock from suppliers.*
 
-- [ ] **22.1 Goods Received Note (GRN)**
-    - [ ] Receive stock against purchase order
-    - [ ] Verify quantities against PO
-    - [ ] Update stock on confirmation
-    - [ ] External document reference (supplier invoice number)
-- [ ] **22.2 Physical Stock Take**
-    - [ ] Create stock count document
-    - [ ] Count → Compare → Adjust workflow
-    - [ ] Variance report (expected vs counted)
-    - [ ] Approval before applying adjustments
-- [ ] **22.3 Supplier Payment Tracking**
-    - [ ] Track who we owe and how much
-    - [ ] Payment against purchase invoices
-    - [ ] Outstanding payables report
+- [x] **22.1 Goods Received Note (GRN)**
+    - [x] Receive stock against purchase order
+    - [x] Verify quantities against PO
+    - [x] Update stock on confirmation
+    - [x] External document reference (supplier invoice number)
+    - [x] GRN History tab with filters and detail dialog
+- [x] **22.2 Physical Stock Take**
+    - [x] Create stock count document
+    - [x] Count → Compare → Adjust workflow
+    - [x] Variance report (expected vs counted)
+    - [x] Approval before applying adjustments
+- [x] **22.3 Supplier Payment Tracking**
+    - [x] Track who we owe and how much
+    - [x] Payment against purchase invoices
+    - [x] Outstanding payables report
 
 ---
 

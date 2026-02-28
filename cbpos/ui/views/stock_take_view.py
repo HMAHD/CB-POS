@@ -61,11 +61,11 @@ class StockCountItemModel(QAbstractTableModel):
             if col == 1:
                 return item.product.name_en if item.product else "Unknown"
             if col == 2:
-                return f"{item.expected_qty:.3f}"
+                return f"{item.expected_qty:.3f}"  # noqa: E231
             if col == 3:
-                return f"{item.counted_qty:.3f}" if item.counted_qty is not None else ""
+                return f"{item.counted_qty:.3f}" if item.counted_qty is not None else ""  # noqa: E231
             if col == 4:
-                return f"{item.variance_qty:.3f}" if item.variance_qty is not None else ""
+                return f"{item.variance_qty:.3f}" if item.variance_qty is not None else ""  # noqa: E231
             if col == 5:
                 return format_currency(item.variance_value) if item.variance_value is not None else ""
 
@@ -187,7 +187,7 @@ class StockCountReportDialog(QDialog):
                 (3, item.counted_qty),
                 (4, item.variance_qty),
             ]:
-                text = f"{val:.3f}" if val is not None else ""
+                text = f"{val:.3f}" if val is not None else ""  # noqa: E231
                 cell = QTableWidgetItem(text)
                 cell.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 if col == 4 and val is not None:

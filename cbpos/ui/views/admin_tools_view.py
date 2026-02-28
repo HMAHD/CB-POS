@@ -8,6 +8,7 @@ Provides a tabbed interface for admin diagnostic tools:
 """
 
 import logging
+from datetime import datetime
 
 from PyQt6.QtWidgets import (
     QWidget,
@@ -16,17 +17,31 @@ from PyQt6.QtWidgets import (
     QTabWidget,
     QLabel,
     QPushButton,
+    QLineEdit,
+    QComboBox,
+    QDateEdit,
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
     QGroupBox,
     QFormLayout,
+    QMessageBox,
+    QFileDialog,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QDate
+from PyQt6.QtGui import QColor
 
 from cbpos.core.services.maintenance_service import MaintenanceService
+from cbpos.core.services.error_log_service import ErrorLogService
 
 logger = logging.getLogger(__name__)
+
+# Color coding for log levels
+_LEVEL_COLORS = {
+    "WARNING": QColor("#FFD700"),
+    "ERROR": QColor("#FF4136"),
+    "CRITICAL": QColor("#FF4136"),
+}
 
 
 class AdminToolsView(QWidget):
@@ -40,6 +55,7 @@ class AdminToolsView(QWidget):
         """Refresh data when the view becomes visible."""
         super().showEvent(event)
         self._load_db_info()
+        self._load_logs()
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -56,8 +72,7 @@ class AdminToolsView(QWidget):
 
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_database_tab(), "Database")
-        self.tab_logs_placeholder = QWidget()
-        self.tabs.addTab(self.tab_logs_placeholder, "Error Logs")
+        self.tabs.addTab(self._build_logs_tab(), "Error Logs")
         self.tab_hardware_placeholder = QWidget()
         self.tabs.addTab(self.tab_hardware_placeholder, "Hardware")
         layout.addWidget(self.tabs, 1)
@@ -144,3 +159,210 @@ class AdminToolsView(QWidget):
                 self.table_counts.setItem(row, 1, rows_item)
         except Exception as e:
             logger.warning("Could not load full DB info: %s", e)
+
+    # ── Error Logs Tab ───────────────────────────────────────────────────
+
+    def _build_logs_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(8, 16, 8, 8)
+        layout.setSpacing(12)
+
+        # Filter bar
+        filter_layout = QHBoxLayout()
+        filter_layout.setSpacing(8)
+
+        lbl_level = QLabel("Level:")
+        lbl_level.setProperty("class", "muted")
+        filter_layout.addWidget(lbl_level)
+
+        self.combo_log_level = QComboBox()
+        self.combo_log_level.addItems(["All", "WARNING", "ERROR", "CRITICAL"])
+        self.combo_log_level.setFixedWidth(120)
+        filter_layout.addWidget(self.combo_log_level)
+
+        lbl_from = QLabel("From:")
+        lbl_from.setProperty("class", "muted")
+        filter_layout.addWidget(lbl_from)
+
+        self.date_log_from = QDateEdit()
+        self.date_log_from.setCalendarPopup(True)
+        self.date_log_from.setDate(QDate.currentDate().addDays(-30))
+        self.date_log_from.setFixedWidth(130)
+        filter_layout.addWidget(self.date_log_from)
+
+        lbl_to = QLabel("To:")
+        lbl_to.setProperty("class", "muted")
+        filter_layout.addWidget(lbl_to)
+
+        self.date_log_to = QDateEdit()
+        self.date_log_to.setCalendarPopup(True)
+        self.date_log_to.setDate(QDate.currentDate())
+        self.date_log_to.setFixedWidth(130)
+        filter_layout.addWidget(self.date_log_to)
+
+        self.input_log_search = QLineEdit()
+        self.input_log_search.setPlaceholderText("Search logs...")
+        self.input_log_search.setFixedWidth(200)
+        filter_layout.addWidget(self.input_log_search)
+
+        btn_apply = QPushButton("Apply")
+        btn_apply.setProperty("class", "accent")
+        btn_apply.setFixedWidth(80)
+        btn_apply.clicked.connect(self._load_logs)
+        filter_layout.addWidget(btn_apply)
+
+        filter_layout.addStretch()
+        layout.addLayout(filter_layout)
+
+        # Stats label
+        self.lbl_log_stats = QLabel("")
+        self.lbl_log_stats.setProperty("class", "muted")
+        layout.addWidget(self.lbl_log_stats)
+
+        # Log table
+        self.log_table = QTableWidget()
+        self.log_table.setColumnCount(4)
+        self.log_table.setHorizontalHeaderLabels(["Time", "Level", "Source", "Message"])
+        self.log_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.log_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.log_table.setAlternatingRowColors(True)
+        self.log_table.verticalHeader().setVisible(False)
+
+        log_header = self.log_table.horizontalHeader()
+        log_header.setSectionResizeMode(0, QHeaderView.ResizeMode.Interactive)
+        log_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)
+        log_header.setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive)
+        log_header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        self.log_table.setColumnWidth(0, 160)
+        self.log_table.setColumnWidth(1, 80)
+        self.log_table.setColumnWidth(2, 200)
+
+        layout.addWidget(self.log_table, 1)
+
+        # Bottom buttons
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(10)
+
+        btn_export = QPushButton("Export Logs")
+        btn_export.clicked.connect(self._export_logs)
+        btn_layout.addWidget(btn_export)
+
+        btn_clear = QPushButton("Clear Logs")
+        btn_clear.setProperty("class", "danger")
+        btn_clear.clicked.connect(self._clear_logs)
+        btn_layout.addWidget(btn_clear)
+
+        btn_refresh_logs = QPushButton("Refresh")
+        btn_refresh_logs.clicked.connect(self._load_logs)
+        btn_layout.addWidget(btn_refresh_logs)
+
+        btn_layout.addStretch()
+
+        self.lbl_log_count = QLabel("")
+        self.lbl_log_count.setProperty("class", "muted")
+        btn_layout.addWidget(self.lbl_log_count)
+
+        layout.addLayout(btn_layout)
+
+        return tab
+
+    def _load_logs(self) -> None:
+        """Load and display log entries based on current filters."""
+        try:
+            level = self.combo_log_level.currentText()
+            if level == "All":
+                level = None
+
+            date_from = datetime(
+                self.date_log_from.date().year(),
+                self.date_log_from.date().month(),
+                self.date_log_from.date().day(),
+            )
+            date_to = datetime(
+                self.date_log_to.date().year(),
+                self.date_log_to.date().month(),
+                self.date_log_to.date().day(),
+            )
+            search = self.input_log_search.text().strip() or None
+
+            entries = ErrorLogService.read_logs(
+                level=level, date_from=date_from, date_to=date_to, search=search
+            )
+            self._current_log_entries = entries
+
+            self.log_table.setRowCount(len(entries))
+            for row, entry in enumerate(entries):
+                time_item = QTableWidgetItem(entry["timestamp"])
+                level_item = QTableWidgetItem(entry["level"])
+                source_item = QTableWidgetItem(entry["source"])
+                msg_item = QTableWidgetItem(entry["message"])
+
+                # Color coding
+                color = _LEVEL_COLORS.get(entry["level"])
+                if color:
+                    for item in (time_item, level_item, source_item, msg_item):
+                        item.setForeground(color)
+
+                if entry["level"] == "CRITICAL":
+                    font = level_item.font()
+                    font.setBold(True)
+                    level_item.setFont(font)
+
+                self.log_table.setItem(row, 0, time_item)
+                self.log_table.setItem(row, 1, level_item)
+                self.log_table.setItem(row, 2, source_item)
+                self.log_table.setItem(row, 3, msg_item)
+
+            self.lbl_log_count.setText(f"{len(entries)} entries")
+
+            # Update stats
+            stats = ErrorLogService.get_log_stats()
+            log_size = ErrorLogService.get_total_log_size()
+            self.lbl_log_stats.setText(
+                f"Warnings: {stats['WARNING']}  |  "
+                f"Errors: {stats['ERROR']}  |  "
+                f"Critical: {stats['CRITICAL']}  |  "
+                f"Log size: {log_size}"
+            )
+        except Exception as e:
+            logger.warning("Could not load logs: %s", e)
+
+    def _export_logs(self) -> None:
+        """Export displayed log entries to a text file."""
+        entries = getattr(self, "_current_log_entries", [])
+        if not entries:
+            QMessageBox.information(self, "No Entries", "No log entries to export.")
+            return
+
+        filepath, _ = QFileDialog.getSaveFileName(
+            self, "Export Logs", "cbpos_logs.txt", "Text Files (*.txt)"
+        )
+        if not filepath:
+            return
+
+        try:
+            ErrorLogService.export_logs(filepath, entries)
+            QMessageBox.information(
+                self, "Export Complete", f"Exported {len(entries)} entries to:\n{filepath}"
+            )
+        except Exception as e:
+            QMessageBox.critical(self, "Export Failed", f"Could not export logs:\n{e}")
+
+    def _clear_logs(self) -> None:
+        """Clear all log files after confirmation."""
+        reply = QMessageBox.question(
+            self,
+            "Clear Logs",
+            "This will delete all log entries.\n\nContinue?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            ErrorLogService.clear_logs()
+            self._load_logs()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Could not clear logs:\n{e}")

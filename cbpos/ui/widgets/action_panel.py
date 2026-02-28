@@ -178,7 +178,7 @@ class ActionPanel(QWidget):
         self.btn_f7.clicked.connect(self.action_f7.emit)
         grid_layout.addWidget(self.btn_f7, 1, 1)
 
-        self.btn_f8 = ActionBtn("F8", "Drawer", Icons.INVENTORY)
+        self.btn_f8 = ActionBtn("F8", "Drawer", Icons.DRAWER)
         self.btn_f8.clicked.connect(self.action_f8.emit)
         grid_layout.addWidget(self.btn_f8, 1, 2)
 

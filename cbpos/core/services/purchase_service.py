@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import joinedload
+from sqlalchemy import func
 from cbpos.core.models import Purchase, PurchaseItem, Product, StockMovement
 from cbpos.core.database import Database
 from cbpos.core.constants.status import Precision
@@ -124,6 +125,56 @@ class PurchaseService:
             session.commit()
             session.refresh(purchase)
             return purchase
+
+    @staticmethod
+    def get_all_purchases(
+        status: Optional[str] = None,
+        supplier_id: Optional[int] = None,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
+        limit: int = 500,
+    ) -> List[Purchase]:
+        """
+        Get filtered list of purchases with eager-loaded relationships.
+
+        Args:
+            status: Filter by document status (COMPLETED, DRAFT, VOID).
+            supplier_id: Filter by supplier.
+            date_from: Filter from date.
+            date_to: Filter to date.
+            limit: Max results.
+
+        Returns:
+            List of Purchase objects ordered by date descending.
+        """
+        db = Database()
+        with db.get_session() as session:
+            query = session.query(Purchase).options(
+                joinedload(Purchase.supplier),
+                joinedload(Purchase.items),
+                joinedload(Purchase.user),
+            )
+
+            if status:
+                query = query.filter(Purchase.status == status)
+            if supplier_id:
+                query = query.filter(Purchase.supplier_id == supplier_id)
+            if date_from:
+                query = query.filter(Purchase.date >= date_from)
+            if date_to:
+                query = query.filter(Purchase.date <= date_to)
+
+            purchases = query.order_by(Purchase.date.desc()).limit(limit).all()
+            for p in purchases:
+                session.expunge(p)
+            return purchases
+
+    @staticmethod
+    def get_purchase_count() -> int:
+        """Get total count of purchases."""
+        db = Database()
+        with db.get_session() as session:
+            return session.query(func.count(Purchase.id)).scalar() or 0
 
     @staticmethod
     def get_purchase(purchase_id: int) -> Optional[Purchase]:

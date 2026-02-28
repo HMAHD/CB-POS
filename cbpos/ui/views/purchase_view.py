@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 from PyQt6.QtWidgets import (
     QWidget,
@@ -16,6 +17,8 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QAbstractItemView,
     QCompleter,
+    QTableWidget,
+    QTableWidgetItem,
 )
 from PyQt6.QtCore import Qt, QAbstractTableModel, QDate
 from PyQt6.QtGui import QStandardItemModel, QStandardItem
@@ -23,6 +26,7 @@ from PyQt6.QtGui import QStandardItemModel, QStandardItem
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.services.purchase_service import PurchaseService
 from cbpos.core.services.product_service import ProductService
+from cbpos.core.utils.formatters import format_currency
 
 
 class SupplierTableModel(QAbstractTableModel):
@@ -56,6 +60,144 @@ class SupplierTableModel(QAbstractTableModel):
         if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             return self.headers[section]
         return None
+
+
+class PurchaseHistoryModel(QAbstractTableModel):
+    """Table model for GRN history list."""
+
+    HEADERS = ["GRN #", "Date", "Supplier", "Ref #", "Items", "Total Cost", "Status"]
+
+    def __init__(self, purchases=None):
+        super().__init__()
+        self.purchases = purchases or []
+
+    def rowCount(self, parent=None):
+        return len(self.purchases)
+
+    def columnCount(self, parent=None):
+        return len(self.HEADERS)
+
+    def data(self, index, role):
+        if not index.isValid():
+            return None
+        purchase = self.purchases[index.row()]
+        col = index.column()
+
+        if role == Qt.ItemDataRole.DisplayRole:
+            if col == 0:
+                return purchase.document_number
+            if col == 1:
+                return purchase.date.strftime("%Y-%m-%d %H:%M") if purchase.date else ""
+            if col == 2:
+                return purchase.supplier.company_name if purchase.supplier else ""
+            if col == 3:
+                return purchase.reference_external or ""
+            if col == 4:
+                return str(len(purchase.items)) if purchase.items else "0"
+            if col == 5:
+                return format_currency(purchase.total_cost)
+            if col == 6:
+                return purchase.status
+        elif role == Qt.ItemDataRole.TextAlignmentRole:
+            if col in (4, 5):
+                return Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        return None
+
+    def headerData(self, section, orientation, role):
+        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
+            return self.HEADERS[section]
+        return None
+
+    def get_purchase(self, row: int):
+        """Get purchase object at given row."""
+        if 0 <= row < len(self.purchases):
+            return self.purchases[row]
+        return None
+
+
+class GRNDetailDialog(QDialog):
+    """Read-only detail view of a completed GRN."""
+
+    def __init__(self, purchase_id: int, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("GRN Details")
+        self.setMinimumSize(700, 500)
+        self.resize(800, 550)
+        self.init_ui(purchase_id)
+
+    def init_ui(self, purchase_id: int) -> None:
+        layout = QVBoxLayout(self)
+        layout.setSpacing(12)
+        layout.setContentsMargins(16, 16, 16, 16)
+
+        purchase = PurchaseService.get_purchase(purchase_id)
+        if not purchase:
+            layout.addWidget(QLabel("Purchase not found."))
+            return
+
+        # Header
+        title = QLabel(f"GRN: {purchase.document_number}")
+        title.setProperty("class", "dialog-title")
+        layout.addWidget(title)
+
+        # Info row
+        info_layout = QHBoxLayout()
+        info_layout.addWidget(QLabel(f"Supplier: {purchase.supplier.company_name if purchase.supplier else 'N/A'}"))
+        info_layout.addWidget(QLabel(f"Ref #: {purchase.reference_external or 'N/A'}"))
+        info_layout.addWidget(QLabel(f"Date: {purchase.date.strftime('%Y-%m-%d %H:%M') if purchase.date else 'N/A'}"))
+        info_layout.addWidget(QLabel(f"Status: {purchase.status}"))
+        info_layout.addStretch()
+        layout.addLayout(info_layout)
+
+        # Items table
+        table = QTableWidget()
+        table.setColumnCount(5)
+        table.setHorizontalHeaderLabels(["Product", "Barcode", "Qty", "Unit Cost", "Line Total"])
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        table.setAlternatingRowColors(True)
+
+        for item in purchase.items:
+            row = table.rowCount()
+            table.insertRow(row)
+            product_name = item.product.name_en if item.product else "Unknown"
+            barcode = item.product.barcode if item.product else ""
+            line_total = item.qty_received * item.unit_cost
+
+            table.setItem(row, 0, QTableWidgetItem(product_name))
+            table.setItem(row, 1, QTableWidgetItem(barcode))
+
+            qty_item = QTableWidgetItem(f"{item.qty_received:.3f}")
+            qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            table.setItem(row, 2, qty_item)
+
+            cost_item = QTableWidgetItem(format_currency(item.unit_cost))
+            cost_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            table.setItem(row, 3, cost_item)
+
+            total_item = QTableWidgetItem(format_currency(line_total))
+            total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            table.setItem(row, 4, total_item)
+
+        layout.addWidget(table, 1)
+
+        # Footer
+        footer = QHBoxLayout()
+        footer.addStretch()
+        total_label = QLabel(f"Total Cost: {format_currency(purchase.total_cost)}")
+        total_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        footer.addWidget(total_label)
+        layout.addLayout(footer)
+
+        # Close button
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.accept)
+        layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
 
 class SupplierDialog(QDialog):
@@ -130,6 +272,11 @@ class PurchaseView(QWidget):
         self.grn_tab = QWidget()
         self.setup_grn_tab()
         self.tabs.addTab(self.grn_tab, "New GRN")
+
+        # Tab 3: GRN History
+        self.history_tab = QWidget()
+        self.setup_history_tab()
+        self.tabs.addTab(self.history_tab, "GRN History")
 
     def setup_supplier_tab(self):
         layout = QVBoxLayout(self.supplier_tab)
@@ -212,14 +359,113 @@ class PurchaseView(QWidget):
         # Data
         self.grn_items = []  # List of dicts
 
+    def setup_history_tab(self) -> None:
+        """Setup the GRN History tab with filters and table."""
+        layout = QVBoxLayout(self.history_tab)
+
+        # Filters bar
+        filter_layout = QHBoxLayout()
+
+        filter_layout.addWidget(QLabel("Supplier:"))
+        self.history_supplier_combo = QComboBox()
+        self.history_supplier_combo.addItem("All Suppliers", None)
+        filter_layout.addWidget(self.history_supplier_combo)
+
+        filter_layout.addWidget(QLabel("Status:"))
+        self.history_status_combo = QComboBox()
+        self.history_status_combo.addItem("All", None)
+        self.history_status_combo.addItem("Completed", "COMPLETED")
+        self.history_status_combo.addItem("Draft", "DRAFT")
+        self.history_status_combo.addItem("Void", "VOID")
+        filter_layout.addWidget(self.history_status_combo)
+
+        filter_layout.addWidget(QLabel("From:"))
+        self.history_date_from = QDateEdit()
+        self.history_date_from.setCalendarPopup(True)
+        self.history_date_from.setDate(QDate.currentDate().addMonths(-3))
+        filter_layout.addWidget(self.history_date_from)
+
+        filter_layout.addWidget(QLabel("To:"))
+        self.history_date_to = QDateEdit()
+        self.history_date_to.setCalendarPopup(True)
+        self.history_date_to.setDate(QDate.currentDate())
+        filter_layout.addWidget(self.history_date_to)
+
+        refresh_btn = QPushButton("Refresh")
+        refresh_btn.setProperty("class", "primary")
+        refresh_btn.clicked.connect(self.refresh_history)
+        filter_layout.addWidget(refresh_btn)
+
+        filter_layout.addStretch()
+        layout.addLayout(filter_layout)
+
+        # Table
+        self.history_model = PurchaseHistoryModel()
+        self.history_table = QTableView()
+        self.history_table.setModel(self.history_model)
+        self.history_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.history_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.history_table.setAlternatingRowColors(True)
+        self.history_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self.history_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.history_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.history_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self.history_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        self.history_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        self.history_table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
+        self.history_table.doubleClicked.connect(self.on_history_double_click)
+        layout.addWidget(self.history_table, 1)
+
+    def refresh_history(self) -> None:
+        """Refresh the GRN history table with current filters."""
+        supplier_id = self.history_supplier_combo.currentData()
+        status = self.history_status_combo.currentData()
+
+        qd_from = self.history_date_from.date()
+        date_from = datetime(qd_from.year(), qd_from.month(), qd_from.day())
+
+        qd_to = self.history_date_to.date()
+        date_to = datetime(qd_to.year(), qd_to.month(), qd_to.day(), 23, 59, 59)
+
+        purchases = PurchaseService.get_all_purchases(
+            status=status,
+            supplier_id=supplier_id,
+            date_from=date_from,
+            date_to=date_to,
+        )
+
+        self.history_model = PurchaseHistoryModel(purchases)
+        self.history_table.setModel(self.history_model)
+
+    def on_history_double_click(self, index) -> None:
+        """Open GRN detail dialog on double-click."""
+        purchase = self.history_model.get_purchase(index.row())
+        if purchase:
+            dialog = GRNDetailDialog(purchase.id, self)
+            dialog.exec()
+
     def refresh_suppliers(self):
         self.suppliers = SupplierService.get_all_suppliers()
         self.supplier_table.setModel(SupplierTableModel(self.suppliers))
 
-        # Update Combo
+        # Update GRN Combo
         self.supplier_combo.clear()
         for s in self.suppliers:
             self.supplier_combo.addItem(s.company_name, s.id)
+
+        # Update History Combo
+        if hasattr(self, "history_supplier_combo"):
+            current_data = self.history_supplier_combo.currentData()
+            self.history_supplier_combo.clear()
+            self.history_supplier_combo.addItem("All Suppliers", None)
+            for s in self.suppliers:
+                self.history_supplier_combo.addItem(s.company_name, s.id)
+            # Restore selection
+            if current_data:
+                for i in range(self.history_supplier_combo.count()):
+                    if self.history_supplier_combo.itemData(i) == current_data:
+                        self.history_supplier_combo.setCurrentIndex(i)
+                        break
 
     def add_supplier(self):
         dialog = SupplierDialog(self)

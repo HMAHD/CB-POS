@@ -734,6 +734,10 @@ class SystemPage(SettingsPage):
         self.chk_auto_barcode_select.setToolTip("Automatically select product when barcode matches exactly")
         form_behavior.addRow("Auto-Select on Barcode Match:", self.chk_auto_barcode_select)
 
+        self.chk_enable_sounds = QCheckBox()
+        self.chk_enable_sounds.setToolTip("Play audio feedback on scan, payment, and errors")
+        form_behavior.addRow("Enable Sound Effects:", self.chk_enable_sounds)
+
         main_layout.addWidget(grp_behavior)
 
         # --- Inventory Behavior ---
@@ -806,6 +810,7 @@ class SystemPage(SettingsPage):
         self.chk_quick_pay.setChecked(settings.get("quick_pay_enabled", True))
         self.chk_show_receipt_dialog.setChecked(settings.get("show_receipt_dialog", True))
         self.chk_auto_barcode_select.setChecked(settings.get("auto_select_barcode_match", True))
+        self.chk_enable_sounds.setChecked(settings.get("enable_sounds", True))
         self.chk_negative_stock.setChecked(settings.get("allow_negative_stock", False))
         self.chk_auto_barcodes.setChecked(settings.get("auto_generate_barcodes", True))
         self.chk_loyalty.setChecked(settings.get("enable_loyalty", True))
@@ -821,6 +826,7 @@ class SystemPage(SettingsPage):
             "quick_pay_enabled": self.chk_quick_pay.isChecked(),
             "show_receipt_dialog": self.chk_show_receipt_dialog.isChecked(),
             "auto_select_barcode_match": self.chk_auto_barcode_select.isChecked(),
+            "enable_sounds": self.chk_enable_sounds.isChecked(),
             "allow_negative_stock": self.chk_negative_stock.isChecked(),
             "auto_generate_barcodes": self.chk_auto_barcodes.isChecked(),
             "enable_loyalty": self.chk_loyalty.isChecked(),

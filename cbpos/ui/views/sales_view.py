@@ -37,6 +37,7 @@ from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.side_menu import SideMenu
 from cbpos.ui.widgets.action_panel import ActionPanel
 from cbpos.core.utils.formatters import format_currency
+from cbpos.core.services.sound_service import SoundService
 
 logger = logging.getLogger(__name__)
 
@@ -494,10 +495,12 @@ class SalesView(QWidget):
         products = self.product_service.search_products(query, mode=self.current_search_mode)
 
         if len(products) == 1:
+            SoundService.play("scan_success")
             self.cart_service.add_item(products[0])
             self.update_cart_display()
             self.barcode_input.clear()
         elif len(products) > 1:
+            SoundService.play("scan_success")
             # Open advanced search with pre-filled query
             dialog = AdvancedSearchDialog(self)
             dialog.search_input.setText(query)
@@ -506,6 +509,7 @@ class SalesView(QWidget):
             dialog.exec()
             self.barcode_input.clear()
         else:
+            SoundService.play("scan_error")
             QMessageBox.warning(self, "Not Found", "Product not found.")
 
     def update_cart_display(self):
@@ -601,6 +605,7 @@ class SalesView(QWidget):
             try:
                 success = TransactionService.process_sale(self.cart_service, payments, customer_id)
                 if success:
+                    SoundService.play("payment_complete")
                     QMessageBox.information(self, "Success", "Sale processed successfully!")
 
                     # Mark proforma as converted if this was a proforma-to-sale conversion
@@ -928,6 +933,7 @@ class SalesView(QWidget):
         try:
             success = TransactionService.process_sale(self.cart_service, payments, customer_id)
             if success:
+                SoundService.play("payment_complete")
                 QMessageBox.information(self, "Success", "Sale processed successfully!")
                 self.cart_service.clear()
                 self.update_cart_display()

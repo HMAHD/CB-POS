@@ -153,8 +153,34 @@ class ShopInfoPage(SettingsPage):
         main_layout.addWidget(grp_bank)
 
         # --- Email / Automation ---
-        grp_email = QGroupBox("Email & Auto-Report")
-        form_email = QFormLayout(grp_email)
+        grp_email = QGroupBox()
+        grp_email_layout = QVBoxLayout(grp_email)
+        grp_email_layout.setContentsMargins(10, 10, 10, 10)
+
+        # Custom header row: title on left, buttons on right
+        email_header = QHBoxLayout()
+        lbl_email_title = QLabel("Email & Auto-Report")
+        lbl_email_title.setProperty("class", "SectionHeader")
+        email_header.addWidget(lbl_email_title)
+        email_header.addStretch()
+
+        btn_gmail = QPushButton("Use Gmail")
+        btn_gmail.setProperty("class", "primary")
+        btn_gmail.setFixedHeight(32)
+        btn_gmail.setToolTip("Fill Gmail SMTP settings automatically")
+        btn_gmail.clicked.connect(self._prefill_gmail)
+        email_header.addWidget(btn_gmail)
+
+        btn_help = QPushButton("?")
+        btn_help.setProperty("class", "accent")
+        btn_help.setFixedSize(32, 32)
+        btn_help.setToolTip("How to set up Gmail email (step-by-step guide)")
+        btn_help.clicked.connect(self._show_smtp_guide)
+        email_header.addWidget(btn_help)
+
+        grp_email_layout.addLayout(email_header)
+
+        form_email = QFormLayout()
         self.configure_form_layout(form_email)
 
         self.chk_auto_report = QCheckBox()
@@ -168,27 +194,9 @@ class ShopInfoPage(SettingsPage):
         self.input_admin_email.setPlaceholderText("yourname@gmail.com")
         form_email.addRow("Admin Email:", self.input_admin_email)
 
-        # SMTP Host + Gmail button row
-        smtp_host_row = QHBoxLayout()
         self.input_smtp_host = QLineEdit()
         self.input_smtp_host.setPlaceholderText("smtp.gmail.com")
-        smtp_host_row.addWidget(self.input_smtp_host)
-
-        btn_gmail = QPushButton("Use Gmail")
-        btn_gmail.setProperty("class", "primary")
-        btn_gmail.setFixedWidth(100)
-        btn_gmail.setToolTip("Fill Gmail SMTP settings automatically")
-        btn_gmail.clicked.connect(self._prefill_gmail)
-        smtp_host_row.addWidget(btn_gmail)
-
-        btn_help = QPushButton("?")
-        btn_help.setProperty("class", "accent")
-        btn_help.setFixedSize(36, 36)
-        btn_help.setToolTip("How to set up email")
-        btn_help.clicked.connect(self._show_smtp_guide)
-        smtp_host_row.addWidget(btn_help)
-
-        form_email.addRow("SMTP Host:", smtp_host_row)
+        form_email.addRow("SMTP Host:", self.input_smtp_host)
 
         self.input_smtp_port = QLineEdit()
         self.input_smtp_port.setPlaceholderText("587")
@@ -203,6 +211,7 @@ class ShopInfoPage(SettingsPage):
         self.input_smtp_pass.setPlaceholderText("16-character App Password")
         form_email.addRow("SMTP Password:", self.input_smtp_pass)
 
+        grp_email_layout.addLayout(form_email)
         main_layout.addWidget(grp_email)
 
         # --- Appearance ---

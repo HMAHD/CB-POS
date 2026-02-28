@@ -81,7 +81,8 @@ QComboBox::drop-down {
 }
 
 QComboBox::drop-down:hover {
-    background: #00BCEB;  /* Cyan background on hover */
+    background: #004466;  /* Darker hover */
+    border-left: 1px solid #00BCEB;
 }
 
 QComboBox::down-arrow {

@@ -339,18 +339,21 @@ class SalesTaxPage(SettingsPage):
         self.spin_vat = QSpinBox()
         self.spin_vat.setRange(0, 100)
         self.spin_vat.setSuffix("%")
+        self.spin_vat.setFixedWidth(200)
         form_tax.addRow("VAT Rate:", self.spin_vat)
 
         self.spin_sscl = QDoubleSpinBox()
         self.spin_sscl.setRange(0, 100)
         self.spin_sscl.setDecimals(2)
         self.spin_sscl.setSuffix("%")
+        self.spin_sscl.setFixedWidth(200)
         form_tax.addRow("SSCL Rate:", self.spin_sscl)
 
         self.spin_sscl_turnover = QDoubleSpinBox()
         self.spin_sscl_turnover.setRange(0, 100)
         self.spin_sscl_turnover.setDecimals(1)
         self.spin_sscl_turnover.setSuffix("%")
+        self.spin_sscl_turnover.setFixedWidth(200)
         form_tax.addRow("SSCL Turnover Base:", self.spin_sscl_turnover)
 
         main_layout.addWidget(grp_tax)

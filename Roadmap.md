@@ -511,21 +511,21 @@
 ### Phase 19: Quality Assurance
 *Goal: Confidence before shipping.*
 
-- [ ] **19.1 Unit Tests — Math Engine**
-    - [ ] Tax calculations (VAT backward calc, SSCL)
-    - [ ] Discount calculations (item, cart, customer, group)
-    - [ ] Cart totals and rounding
-- [ ] **19.2 Unit Tests — Transaction Service**
-    - [ ] Create sale (atomic commit, stock deduction)
-    - [ ] Void sale (stock restoration, audit trail)
-    - [ ] Refund workflow
-- [ ] **19.3 Unit Tests — Credit Service**
-    - [ ] Credit ledger entries
-    - [ ] Payment allocation (oldest first)
-    - [ ] Credit limit enforcement
-- [ ] **19.4 Integration Test — Full Sale Workflow**
-    - [ ] Cart → Payment → Receipt → Stock deduction → Shift totals
-    - [ ] End-to-end with database
+- [x] **19.1 Unit Tests — Math Engine**
+    - [x] Tax calculations (VAT backward calc, SSCL)
+    - [x] Discount calculations (item, cart, customer, group)
+    - [x] Cart totals and rounding
+- [x] **19.2 Unit Tests — Transaction Service**
+    - [x] Create sale (atomic commit, stock deduction)
+    - [x] Void sale (stock restoration, audit trail)
+    - [x] Refund workflow
+- [x] **19.3 Unit Tests — Credit Service**
+    - [x] Credit ledger entries
+    - [x] Payment allocation (oldest first)
+    - [x] Credit limit enforcement
+- [x] **19.4 Integration Test — Full Sale Workflow**
+    - [x] Cart → Payment → Receipt → Stock deduction → Shift totals
+    - [x] End-to-end with database
 
 ---
 

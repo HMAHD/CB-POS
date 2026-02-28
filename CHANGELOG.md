@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file. Never delet
 
 ## [0.6.0] - 2026-02-28
 
+### Added — Phase 19: Quality Assurance
+- **Math Engine Tests (19.1)**: 16 tests for TaxService (VAT backward calculation, SSCL on turnover, net revenue) and 24 tests for CartService (add/remove items, line discounts, cart discounts, price overrides, totals, rounding).
+- **Transaction Service Tests (19.2)**: 8 new tests for void sale (double-void prevention, stock restoration, VOID movement audit trail) and refund workflow (full refund, voided sale rejection, double-refund prevention, refund-of-refund rejection).
+- **Credit Service Tests (19.3)**: 19 tests for CustomerCreditService covering payment recording, credit sale ledger entries, balance adjustments (positive/negative/floor-at-zero), ledger querying, and customer summary.
+- **Integration Tests (19.4)**: 8 end-to-end tests with real database: cash sale full workflow, credit sale with ledger, split payment, sale-then-void cycle, sale-then-refund cycle, insufficient payment rejection, credit limit enforcement, and tax breakdown accuracy.
+
+### Fixed
+- **Refund SaleItem missing original_price**: Fixed `process_refund` in TransactionService creating SaleItem without required `original_price` field, causing NOT NULL constraint failures.
+
 ### Added — Phase 17: Data Safety
 - **Backup System (17.2)**: Complete backup/restore with AES-256 encryption. BackupRestoreDialog with Backup, Restore, Maintenance, and Export tabs. Backup list table, create/verify/restore operations. Auto-backup on app close with configurable retention (keep last N backups). Pre-restore safety snapshots. Data Safety sidebar button in Management view.
 - **Database Maintenance (17.3)**: MaintenanceService with VACUUM (AUTOCOMMIT isolation), integrity check (PRAGMA integrity_check), and database info display (size, record counts). Maintenance tab in Data Safety dialog.

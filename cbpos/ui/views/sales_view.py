@@ -605,9 +605,6 @@ class SalesView(QWidget):
             try:
                 success = TransactionService.process_sale(self.cart_service, payments, customer_id)
                 if success:
-                    SoundService.play("payment_complete")
-                    QMessageBox.information(self, "Success", "Sale processed successfully!")
-
                     # Mark proforma as converted if this was a proforma-to-sale conversion
                     proforma_id = getattr(self, "_pending_proforma_id", None)
                     if proforma_id:
@@ -618,21 +615,7 @@ class SalesView(QWidget):
                             ProformaService.mark_converted(proforma_id, last_sale.id)
                         self._pending_proforma_id = None
 
-                    self.cart_service.clear()
-                    self.update_cart_display()
-                    self.barcode_input.setFocus()
-                    # Reset customer
-                    self.customer = None
-                    self.action_panel.clear_customer_info()
-                    self.order_bar.refresh_tabs()
-
-                    # Show Receipt Options if configured
-                    settings = ConfigService.get_all()
-                    if settings.get("show_receipt_dialog", "True") == "True":
-                        last_sale = TransactionService.get_last_sale()
-                        if last_sale:
-                            dlg = ReceiptOptionsDialog(last_sale, self)
-                            dlg.exec()
+                    self._finalize_sale()
             except ValueError as e:
                 QMessageBox.warning(self, "Validation Error", str(e))
             except Exception as e:
@@ -913,6 +896,25 @@ class SalesView(QWidget):
         worker.add_job("kick_drawer")
         self._drawer_worker = worker  # prevent GC
 
+    def _finalize_sale(self) -> None:
+        """Common post-sale cleanup: sound, message, clear cart, show receipt."""
+        SoundService.play("payment_complete")
+        QMessageBox.information(self, "Success", "Sale processed successfully!")
+        self.cart_service.clear()
+        self.update_cart_display()
+        self.barcode_input.setFocus()
+        self.customer = None
+        self.action_panel.clear_customer_info()
+        self.order_bar.refresh_tabs()
+
+        # Show Receipt Options if configured
+        settings = ConfigService.get_all()
+        if settings.get("show_receipt_dialog", "True") == "True":
+            last_sale = TransactionService.get_last_sale()
+            if last_sale:
+                dlg = ReceiptOptionsDialog(last_sale, self)
+                dlg.exec()
+
     def quick_pay(self) -> None:
         """Quick close with full cash payment, skipping the payment dialog (F12)."""
         # Check if quick pay is enabled in settings
@@ -933,22 +935,7 @@ class SalesView(QWidget):
         try:
             success = TransactionService.process_sale(self.cart_service, payments, customer_id)
             if success:
-                SoundService.play("payment_complete")
-                QMessageBox.information(self, "Success", "Sale processed successfully!")
-                self.cart_service.clear()
-                self.update_cart_display()
-                self.barcode_input.setFocus()
-                self.customer = None
-                self.action_panel.clear_customer_info()
-                self.order_bar.refresh_tabs()
-
-                # Show Receipt Options if configured
-                settings = ConfigService.get_all()
-                if settings.get("show_receipt_dialog", "True") == "True":
-                    last_sale = TransactionService.get_last_sale()
-                    if last_sale:
-                        dlg = ReceiptOptionsDialog(last_sale, self)
-                        dlg.exec()
+                self._finalize_sale()
         except ValueError as e:
             QMessageBox.warning(self, "Validation Error", str(e))
         except Exception as e:

@@ -5,6 +5,7 @@ Generates simple WAV tones programmatically (no external audio files needed).
 Respects the ``enable_sounds`` config setting.
 """
 
+import atexit
 import io
 import logging
 import math
@@ -70,6 +71,7 @@ class SoundService:
 
         try:
             cls._temp_dir = Path(tempfile.mkdtemp(prefix="cbpos_sounds_"))
+            atexit.register(cls.shutdown)
 
             for name, tones in _TONE_DEFS.items():
                 wav_path = cls._temp_dir / f"{name}.wav"
@@ -85,6 +87,21 @@ class SoundService:
         except Exception:
             logger.debug("Failed to initialize sounds", exc_info=True)
             return False
+
+    @classmethod
+    def shutdown(cls) -> None:
+        """Remove the temporary sound directory and release resources."""
+        cls._cache.clear()
+        if cls._temp_dir and cls._temp_dir.exists():
+            import shutil
+
+            try:
+                shutil.rmtree(cls._temp_dir)
+                logger.debug("Cleaned up sound temp directory: %s", cls._temp_dir)
+            except Exception:
+                logger.warning("Failed to clean up sound temp dir", exc_info=True)
+        cls._temp_dir = None
+        cls._initialized = False
 
     @classmethod
     def play(cls, sound_name: str) -> None:

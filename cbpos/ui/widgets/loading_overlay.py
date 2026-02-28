@@ -12,7 +12,7 @@ Usage::
     overlay.hide_loading()
 """
 
-from PyQt6.QtCore import Qt, QTimer, QRectF
+from PyQt6.QtCore import Qt, QTimer, QRectF, QEvent
 from PyQt6.QtGui import QPainter, QColor, QPen, QFont
 from PyQt6.QtWidgets import QWidget
 
@@ -35,6 +35,9 @@ class LoadingOverlay(QWidget):
 
         self.setVisible(False)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+
+        if parent:
+            parent.installEventFilter(self)
 
     # -- public API ----------------------------------------------------------
 
@@ -93,6 +96,8 @@ class LoadingOverlay(QWidget):
 
         painter.end()
 
-    def resizeEvent(self, event) -> None:  # noqa: N802
-        """Stay in sync with parent size."""
-        super().resizeEvent(event)
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802
+        """Resize overlay when parent resizes."""
+        if obj is self.parent() and event.type() == QEvent.Type.Resize:
+            self.resize(event.size())
+        return super().eventFilter(obj, event)

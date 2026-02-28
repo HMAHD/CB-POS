@@ -2,7 +2,7 @@ import csv
 import logging
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Dict
+from typing import Callable, Dict, Optional
 from cbpos.core.services.inventory_service import InventoryService
 
 logger = logging.getLogger(__name__)
@@ -28,16 +28,32 @@ class ImportService:
         return resolved
 
     def import_products_from_csv(self, file_path: str) -> Dict[str, int]:
+        return self._import_csv(file_path, progress_callback=None)
+
+    def import_products_from_csv_with_progress(
+        self,
+        file_path: str,
+        progress_callback: Optional[Callable[[int], None]] = None,
+    ) -> Dict[str, int]:
+        """Import products with a progress callback called after each row.
+
+        Args:
+            file_path: Path to the CSV file.
+            progress_callback: Called with the current row number (1-based).
+        """
+        return self._import_csv(file_path, progress_callback=progress_callback)
+
+    def _import_csv(
+        self,
+        file_path: str,
+        progress_callback: Optional[Callable[[int], None]] = None,
+    ) -> Dict[str, int]:
         results = {"success": 0, "failed": 0, "skipped": 0}
 
         try:
             validated_path = self._validate_file_path(file_path)
             with open(validated_path, mode="r", encoding="utf-8-sig", newline="") as csvfile:
                 reader = csv.DictReader(csvfile)
-
-                # Normalize headers if possible, but DictReader uses the first line.
-                # We assume standard headers: barcode, name, price, cost, stock
-                # We will try to match case-insensitively
 
                 field_map = {}
                 if reader.fieldnames:
@@ -54,7 +70,10 @@ class ImportService:
                         elif "stock" in lower_field:
                             field_map["stock"] = field
 
-                for row in reader:
+                for row_num, row in enumerate(reader, start=1):
+                    if progress_callback:
+                        progress_callback(row_num)
+
                     try:
                         barcode = row.get(field_map.get("barcode", "Barcode"), "").strip()
                         name = row.get(field_map.get("name", "Name"), "").strip()
@@ -63,7 +82,6 @@ class ImportService:
                         stock_str = row.get(field_map.get("stock", "Stock"), "0").strip()
 
                         if not barcode:
-                            # Try fallback keys if mapping failed or specific keys used
                             barcode = row.get("barcode", row.get("Barcode", "")).strip()
                         if not name:
                             name = row.get("name", row.get("Name", "")).strip()

@@ -29,24 +29,17 @@ class CsvImportWorker(QThread):
 
     def run(self) -> None:
         try:
-            # Count rows for progress reporting
+            # Count rows with a lightweight line count (skip header)
             try:
-                df = pd.read_csv(self.file_path)
-                total = len(df)
+                with open(self.file_path, "r", encoding="utf-8-sig") as f:
+                    total = max(0, sum(1 for _ in f) - 1)
             except Exception:
                 total = 0
 
-            if total > 0 and hasattr(self.import_service, "import_products_from_csv_with_progress"):
-                results: Dict[str, int] = self.import_service.import_products_from_csv_with_progress(
-                    self.file_path,
-                    progress_callback=lambda current: self.progress.emit(current, total),
-                )
-            else:
-                if total > 0:
-                    self.progress.emit(0, total)
-                results = self.import_service.import_products_from_csv(self.file_path)
-                if total > 0:
-                    self.progress.emit(total, total)
+            results: Dict[str, int] = self.import_service.import_products_from_csv_with_progress(
+                self.file_path,
+                progress_callback=lambda current: self.progress.emit(current, total),
+            )
 
             self.finished.emit(results)
         except Exception as e:

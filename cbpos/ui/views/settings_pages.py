@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
     QApplication,
     QProgressDialog,
     QScrollArea,
+    QDialog,
 )
 from PyQt6.QtCore import Qt, QTime
 from PyQt6.QtPrintSupport import QPrinterInfo
@@ -153,30 +154,7 @@ class ShopInfoPage(SettingsPage):
 
         # --- Email / Automation ---
         grp_email = QGroupBox("Email & Auto-Report")
-        email_layout = QVBoxLayout(grp_email)
-
-        # Gmail setup guide
-        gmail_guide = QLabel(
-            "<b>How to set up with Gmail:</b><br>"
-            "1. Go to <b>myaccount.google.com</b> &rarr; Security<br>"
-            "2. Enable <b>2-Step Verification</b> (required)<br>"
-            "3. Search for <b>App Passwords</b> &rarr; Create one for 'CB POS'<br>"
-            "4. Copy the 16-character password and paste below<br>"
-            "<i>Your regular Gmail password will NOT work — you need an App Password.</i>"
-        )
-        gmail_guide.setWordWrap(True)
-        gmail_guide.setProperty("class", "muted")
-        email_layout.addWidget(gmail_guide)
-
-        # Quick-fill Gmail button
-        btn_gmail_prefill = QPushButton("Quick Setup: Gmail")
-        btn_gmail_prefill.setProperty("class", "accent")
-        btn_gmail_prefill.setToolTip("Pre-fill SMTP settings for Gmail")
-        btn_gmail_prefill.clicked.connect(self._prefill_gmail)
-        btn_gmail_prefill.setMaximumWidth(200)
-        email_layout.addWidget(btn_gmail_prefill)
-
-        form_email = QFormLayout()
+        form_email = QFormLayout(grp_email)
         self.configure_form_layout(form_email)
 
         self.chk_auto_report = QCheckBox()
@@ -190,9 +168,27 @@ class ShopInfoPage(SettingsPage):
         self.input_admin_email.setPlaceholderText("yourname@gmail.com")
         form_email.addRow("Admin Email:", self.input_admin_email)
 
+        # SMTP Host + Gmail button row
+        smtp_host_row = QHBoxLayout()
         self.input_smtp_host = QLineEdit()
         self.input_smtp_host.setPlaceholderText("smtp.gmail.com")
-        form_email.addRow("SMTP Host:", self.input_smtp_host)
+        smtp_host_row.addWidget(self.input_smtp_host)
+
+        btn_gmail = QPushButton("Use Gmail")
+        btn_gmail.setProperty("class", "primary")
+        btn_gmail.setFixedWidth(100)
+        btn_gmail.setToolTip("Fill Gmail SMTP settings automatically")
+        btn_gmail.clicked.connect(self._prefill_gmail)
+        smtp_host_row.addWidget(btn_gmail)
+
+        btn_help = QPushButton("?")
+        btn_help.setProperty("class", "accent")
+        btn_help.setFixedSize(36, 36)
+        btn_help.setToolTip("How to set up email")
+        btn_help.clicked.connect(self._show_smtp_guide)
+        smtp_host_row.addWidget(btn_help)
+
+        form_email.addRow("SMTP Host:", smtp_host_row)
 
         self.input_smtp_port = QLineEdit()
         self.input_smtp_port.setPlaceholderText("587")
@@ -207,7 +203,6 @@ class ShopInfoPage(SettingsPage):
         self.input_smtp_pass.setPlaceholderText("16-character App Password")
         form_email.addRow("SMTP Password:", self.input_smtp_pass)
 
-        email_layout.addLayout(form_email)
         main_layout.addWidget(grp_email)
 
         # --- Appearance ---
@@ -242,19 +237,82 @@ class ShopInfoPage(SettingsPage):
         self.input_smtp_port.setText("587")
         if not self.input_smtp_user.text():
             self.input_smtp_user.setFocus()
-        QMessageBox.information(
-            self,
-            "Gmail Setup",
-            "SMTP Host and Port have been set for Gmail.\n\n"
-            "Now enter:\n"
-            "  1. Your Gmail address as SMTP User\n"
-            "  2. Your 16-character App Password as SMTP Password\n\n"
-            "To get an App Password:\n"
-            "  \u2022 Go to myaccount.google.com \u2192 Security\n"
-            "  \u2022 Enable 2-Step Verification\n"
-            "  \u2022 Search 'App Passwords' \u2192 Create one\n"
-            "  \u2022 Copy and paste the password here",
-        )
+
+    def _show_smtp_guide(self):
+        """Show a clean step-by-step SMTP setup guide dialog."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Email Setup Guide")
+        dlg.setMinimumWidth(480)
+        layout = QVBoxLayout(dlg)
+        layout.setSpacing(16)
+        layout.setContentsMargins(24, 24, 24, 24)
+
+        title = QLabel("How to set up email with Gmail")
+        title.setProperty("class", "dialog-title")
+        layout.addWidget(title)
+
+        steps = [
+            (
+                "1",
+                "Enable 2-Step Verification",
+                "Go to myaccount.google.com \u2192 Security\nTurn on 2-Step Verification for your account.",
+            ),
+            (
+                "2",
+                "Create an App Password",
+                "In your Google Account, search for 'App Passwords'.\n"
+                "Select app: 'Other' \u2192 type 'CB POS' \u2192 Generate.",
+            ),
+            (
+                "3",
+                "Copy the password",
+                "Google will show a 16-character password.\nCopy it \u2014 you won't be able to see it again.",
+            ),
+            (
+                "4",
+                "Paste in CB POS",
+                "Click 'Use Gmail' to fill Host & Port.\n"
+                "Enter your Gmail as SMTP User.\n"
+                "Paste the App Password as SMTP Password.",
+            ),
+        ]
+
+        for num, heading, detail in steps:
+            step_frame = QFrame()
+            step_frame.setObjectName("SmtpGuideStep")
+            step_layout = QHBoxLayout(step_frame)
+            step_layout.setContentsMargins(12, 10, 12, 10)
+
+            num_label = QLabel(num)
+            num_label.setFixedSize(32, 32)
+            num_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            num_label.setObjectName("SmtpGuideStepNum")
+            step_layout.addWidget(num_label)
+
+            text_layout = QVBoxLayout()
+            text_layout.setSpacing(2)
+            h = QLabel(f"<b>{heading}</b>")
+            h.setProperty("class", "transparent")
+            d = QLabel(detail)
+            d.setWordWrap(True)
+            d.setProperty("class", "muted")
+            text_layout.addWidget(h)
+            text_layout.addWidget(d)
+            step_layout.addLayout(text_layout, 1)
+
+            layout.addWidget(step_frame)
+
+        note = QLabel("<b>Important:</b> Your regular Gmail password will NOT work. " "You must use an App Password.")
+        note.setWordWrap(True)
+        note.setProperty("class", "muted")
+        layout.addWidget(note)
+
+        btn_close = QPushButton("Got it")
+        btn_close.setProperty("class", "primary")
+        btn_close.clicked.connect(dlg.accept)
+        layout.addWidget(btn_close, alignment=Qt.AlignmentFlag.AlignRight)
+
+        dlg.exec()
 
     def load(self, settings: dict):
         self.input_shop_name.setText(settings.get("shop_name", ""))
@@ -978,9 +1036,9 @@ class NetworkPage(SettingsPage):
         confirm = QMessageBox.question(
             self,
             "Confirm Data Migration",
-            f"This will upload ALL your local data to:\n\n"
-            f"  Host: {cfg['host']}:{cfg['port']}\n"
-            f"  Database: {cfg['dbname']}\n\n"
+            f"This will upload ALL your local data to:\n\n"  # noqa: E231
+            f"  Host: {cfg['host']}:{cfg['port']}\n"  # noqa: E231
+            f"  Database: {cfg['dbname']}\n\n"  # noqa: E231
             f"The target database must be empty. This operation may take several minutes.\n\n"
             f"Do you want to continue?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -1015,13 +1073,15 @@ class NetworkPage(SettingsPage):
                 QMessageBox.information(
                     self,
                     "Migration Successful",
-                    f"{message}\n\nNext steps:\n"
+                    f"{message}\n\nNext steps:\n"  # noqa: E231
                     f"1. Save these network settings\n"
                     f"2. Restart the application\n"
                     f"3. All terminals can now connect to the server",
                 )
             else:
-                QMessageBox.critical(self, "Migration Failed", f"Migration error:\n\n{message}")
+                QMessageBox.critical(self, "Migration Failed", f"Migration error:\n\n{message}")  # noqa: E231
         except Exception as e:
             progress.close()
-            QMessageBox.critical(self, "Migration Error", f"Unexpected error during migration:\n\n{str(e)}")
+            QMessageBox.critical(
+                self, "Migration Error", f"Unexpected error during migration:\n\n{str(e)}"  # noqa: E231
+            )

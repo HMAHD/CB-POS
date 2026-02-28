@@ -8,6 +8,8 @@ quantity management, price overrides, and total calculations.
 from decimal import Decimal
 from unittest.mock import patch, MagicMock
 
+import pytest
+
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.constants.status import Precision
 
@@ -70,8 +72,6 @@ class TestCartServiceBasics:
         """Cannot add zero or negative quantity."""
         cart = CartService()
         product = _make_product()
-        import pytest
-
         with pytest.raises(ValueError, match="positive"):
             cart.add_item(product, qty=Decimal("0"))
 
@@ -79,8 +79,6 @@ class TestCartServiceBasics:
         """Cannot add negative quantity."""
         cart = CartService()
         product = _make_product()
-        import pytest
-
         with pytest.raises(ValueError, match="positive"):
             cart.add_item(product, qty=Decimal("-1"))
 
@@ -290,8 +288,6 @@ class TestCartPriceOverride:
         """Negative price override raises ValueError."""
         cart = CartService()
         cart.add_item(_make_product(), Decimal("1"))
-        import pytest
-
         with pytest.raises(ValueError, match="negative"):
             cart.override_price(0, Decimal("-10"), MagicMock())
 

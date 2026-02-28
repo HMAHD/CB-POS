@@ -7,6 +7,8 @@ balance adjustments, and ledger querying.
 
 from decimal import Decimal
 
+import pytest
+
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.models import Customer, User, Role, Permission, CustomerLedgerEntry
 
@@ -91,8 +93,6 @@ class TestRecordPayment:
         customer = _setup_customer(db_session, "Zero Pay", current_debt=100)
         db_session.commit()
 
-        import pytest
-
         with pytest.raises(ValueError, match="greater than zero"):
             CustomerCreditService.record_payment(
                 customer_id=customer.id,
@@ -106,8 +106,6 @@ class TestRecordPayment:
         user = _setup_user(db_session, "pay4")
         customer = _setup_customer(db_session, "Over Pay", current_debt=100)
         db_session.commit()
-
-        import pytest
 
         with pytest.raises(ValueError, match="exceeds outstanding debt"):
             CustomerCreditService.record_payment(
@@ -137,8 +135,6 @@ class TestRecordPayment:
         """Payment for non-existent customer raises ValueError."""
         user = _setup_user(db_session, "pay6")
         db_session.commit()
-
-        import pytest
 
         with pytest.raises(ValueError, match="Customer not found"):
             CustomerCreditService.record_payment(
@@ -285,8 +281,6 @@ class TestRecordAdjustment:
         user = _setup_user(db_session, "adj5")
         customer = _setup_customer(db_session, "Adj No Note", current_debt=100)
         db_session.commit()
-
-        import pytest
 
         with pytest.raises(ValueError, match="note is required"):
             CustomerCreditService.record_adjustment(

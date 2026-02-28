@@ -8,6 +8,8 @@ Uses real database (in-memory SQLite) with all services collaborating.
 from decimal import Decimal
 from unittest.mock import patch
 
+import pytest
+
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.tax_service import TaxService
@@ -332,8 +334,6 @@ class TestFullSaleWorkflow:
 
         payments = [{"method": "CASH", "amount": Decimal("100.00")}]  # Not enough
 
-        import pytest
-
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
             patch("cbpos.core.services.transaction_service.PrintWorker"),
@@ -366,8 +366,6 @@ class TestFullSaleWorkflow:
             cart.add_item(product_a, qty=Decimal("1.000"))  # 850 > 100 limit
 
         payments = [{"method": "CREDIT", "amount": Decimal("850.00")}]
-
-        import pytest
 
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),

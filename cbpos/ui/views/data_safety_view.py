@@ -31,12 +31,11 @@ from PyQt6.QtWidgets import (
     QFrame,
     QApplication,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QCursor
 
 from cbpos.core.services.backup_service import BackupService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.ui.workers import BackupWorker, RestoreWorker
+from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +46,7 @@ class DataSafetyView(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self._init_ui()
+        self._overlay = LoadingOverlay(self)
 
     def showEvent(self, event) -> None:
         """Refresh data when the view becomes visible."""
@@ -164,8 +164,7 @@ class DataSafetyView(QWidget):
 
     def _create_backup(self) -> None:
         self.btn_create_backup.setEnabled(False)
-        self.btn_create_backup.setText("Creating backup...")
-        QApplication.setOverrideCursor(QCursor(Qt.CursorShape.WaitCursor))
+        self._overlay.show_loading("Creating backup...")
 
         backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
         self._backup_worker = BackupWorker(backup_dir)
@@ -174,7 +173,7 @@ class DataSafetyView(QWidget):
         self._backup_worker.start()
 
     def _on_backup_finished(self, path: str, password: str) -> None:
-        QApplication.restoreOverrideCursor()
+        self._overlay.hide_loading()
         self.btn_create_backup.setEnabled(True)
         self.btn_create_backup.setText("Create Backup Now")
         self._refresh_backup_list()
@@ -187,7 +186,7 @@ class DataSafetyView(QWidget):
         )
 
     def _on_backup_error(self, error: str) -> None:
-        QApplication.restoreOverrideCursor()
+        self._overlay.hide_loading()
         self.btn_create_backup.setEnabled(True)
         self.btn_create_backup.setText("Create Backup Now")
         QMessageBox.critical(self, "Backup Failed", f"Could not create backup:\n{error}")
@@ -333,9 +332,8 @@ class DataSafetyView(QWidget):
             return
 
         self.btn_restore.setEnabled(False)
-        self.btn_restore.setText("Restoring...")
         self.btn_verify.setEnabled(False)
-        QApplication.setOverrideCursor(QCursor(Qt.CursorShape.WaitCursor))
+        self._overlay.show_loading("Restoring backup...")
 
         self._restore_worker = RestoreWorker(path, password)
         self._restore_worker.finished.connect(self._on_restore_finished)
@@ -343,7 +341,7 @@ class DataSafetyView(QWidget):
         self._restore_worker.start()
 
     def _on_restore_finished(self, success: bool) -> None:
-        QApplication.restoreOverrideCursor()
+        self._overlay.hide_loading()
         self.btn_restore.setEnabled(True)
         self.btn_restore.setText("Restore Backup")
         self.btn_verify.setEnabled(True)
@@ -359,7 +357,7 @@ class DataSafetyView(QWidget):
             QMessageBox.critical(self, "Restore Failed", "Restore did not complete successfully.")
 
     def _on_restore_error(self, error: str) -> None:
-        QApplication.restoreOverrideCursor()
+        self._overlay.hide_loading()
         self.btn_restore.setEnabled(True)
         self.btn_restore.setText("Restore Backup")
         self.btn_verify.setEnabled(True)
@@ -468,9 +466,8 @@ class DataSafetyView(QWidget):
 
     def _run_vacuum(self) -> None:
         self.btn_vacuum.setEnabled(False)
-        self.btn_vacuum.setText("Optimizing...")
         self.lbl_maintenance_status.setText("")
-        QApplication.setOverrideCursor(QCursor(Qt.CursorShape.WaitCursor))
+        self._overlay.show_loading("Optimizing database...")
 
         from cbpos.ui.workers import VacuumWorker
 
@@ -480,7 +477,7 @@ class DataSafetyView(QWidget):
         self._vacuum_worker.start()
 
     def _on_vacuum_finished(self, result: dict) -> None:
-        QApplication.restoreOverrideCursor()
+        self._overlay.hide_loading()
         self.btn_vacuum.setEnabled(True)
         self.btn_vacuum.setText("Optimize")
         saved = result.get("saved", "0 KB")
@@ -491,7 +488,7 @@ class DataSafetyView(QWidget):
         self._load_db_info()
 
     def _on_vacuum_error(self, error: str) -> None:
-        QApplication.restoreOverrideCursor()
+        self._overlay.hide_loading()
         self.btn_vacuum.setEnabled(True)
         self.btn_vacuum.setText("Optimize")
         self.lbl_maintenance_status.setProperty("class", "debit")

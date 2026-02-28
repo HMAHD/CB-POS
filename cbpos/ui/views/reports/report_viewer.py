@@ -9,10 +9,8 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QFileDialog,
     QSplitter,
-    QApplication,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QCursor
 import pandas as pd
 
 from cbpos.core.reports.registry import ReportRegistry
@@ -20,6 +18,7 @@ from cbpos.core.services.export_service import ExportService
 from cbpos.ui.views.reports.filter_widget import FilterWidget
 from cbpos.ui.views.reports.pandas_model import PandasModel
 from cbpos.ui.workers import ExportWorker
+from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 
 # Import and register reports (Ideally this happens at app startup)
 from cbpos.core.reports.definitions.sales_report import DailySalesSummaryReport
@@ -131,6 +130,9 @@ class ReportViewer(QWidget):
 
         main_layout.addWidget(splitter)
 
+        # Loading overlay
+        self._overlay = LoadingOverlay(self)
+
     def populate_report_tree(self):
         self.tree_widget.clear()
         categories = self.registry.get_all_categories()
@@ -171,6 +173,9 @@ class ReportViewer(QWidget):
 
         filters = self.filter_widget.get_filter_values()
 
+        self._overlay.show_loading("Generating report...")
+        self.btn_run.setEnabled(False)
+
         # Run report generation in a background thread
         self._report_worker = ReportWorker(self.current_report, filters)
         self._report_worker.finished.connect(self._on_report_finished)
@@ -178,6 +183,8 @@ class ReportViewer(QWidget):
         self._report_worker.start()
 
     def _on_report_finished(self, df):
+        self._overlay.hide_loading()
+        self.btn_run.setEnabled(True)
         self.table_model.set_data(df)
         has_data = not df.empty
         self.btn_export_excel.setEnabled(has_data)
@@ -189,6 +196,8 @@ class ReportViewer(QWidget):
             QMessageBox.information(self, "Report", "No data found for the selected filters.")
 
     def _on_report_error(self, error_msg):
+        self._overlay.hide_loading()
+        self.btn_run.setEnabled(True)
         QMessageBox.critical(self, "Error", f"Failed to generate report: {error_msg}")
 
     def export_excel(self) -> None:
@@ -212,7 +221,7 @@ class ReportViewer(QWidget):
     def _start_export(self, df: pd.DataFrame, filepath: str, fmt: str) -> None:
         """Run export in background thread."""
         self._set_export_buttons_enabled(False)
-        QApplication.setOverrideCursor(QCursor(Qt.CursorShape.WaitCursor))
+        self._overlay.show_loading("Exporting...")
 
         self._export_worker = ExportWorker(self.export_service, df, filepath, self.current_report.name, fmt)
         self._export_worker.finished.connect(self._on_export_finished)
@@ -220,12 +229,12 @@ class ReportViewer(QWidget):
         self._export_worker.start()
 
     def _on_export_finished(self, message: str) -> None:
-        QApplication.restoreOverrideCursor()
+        self._overlay.hide_loading()
         self._set_export_buttons_enabled(True)
         QMessageBox.information(self, "Success", message)
 
     def _on_export_error(self, error_msg: str) -> None:
-        QApplication.restoreOverrideCursor()
+        self._overlay.hide_loading()
         self._set_export_buttons_enabled(True)
         QMessageBox.critical(self, "Error", f"Export failed: {error_msg}")
 

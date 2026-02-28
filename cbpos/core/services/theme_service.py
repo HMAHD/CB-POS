@@ -54,6 +54,10 @@ class ThemeService:
             except (ValueError, TypeError):
                 font_size = "12px"  # Safe fallback
 
+            # Resolve asset paths for icons (works in dev and packaged exe)
+            assets_path = os.path.join(str(Config.BASE_DIR), "cbpos", "assets").replace("\\", "/")
+            style_content = style_content.replace("url(cbpos/assets/", f"url({assets_path}/")
+
             style_content = style_content.replace("{{FONT_FAMILY}}", font_family)
             style_content = style_content.replace("{{FONT_SIZE}}", font_size)
 

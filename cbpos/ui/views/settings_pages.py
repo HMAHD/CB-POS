@@ -153,7 +153,30 @@ class ShopInfoPage(SettingsPage):
 
         # --- Email / Automation ---
         grp_email = QGroupBox("Email & Auto-Report")
-        form_email = QFormLayout(grp_email)
+        email_layout = QVBoxLayout(grp_email)
+
+        # Gmail setup guide
+        gmail_guide = QLabel(
+            "<b>How to set up with Gmail:</b><br>"
+            "1. Go to <b>myaccount.google.com</b> &rarr; Security<br>"
+            "2. Enable <b>2-Step Verification</b> (required)<br>"
+            "3. Search for <b>App Passwords</b> &rarr; Create one for 'CB POS'<br>"
+            "4. Copy the 16-character password and paste below<br>"
+            "<i>Your regular Gmail password will NOT work — you need an App Password.</i>"
+        )
+        gmail_guide.setWordWrap(True)
+        gmail_guide.setProperty("class", "muted")
+        email_layout.addWidget(gmail_guide)
+
+        # Quick-fill Gmail button
+        btn_gmail_prefill = QPushButton("Quick Setup: Gmail")
+        btn_gmail_prefill.setProperty("class", "accent")
+        btn_gmail_prefill.setToolTip("Pre-fill SMTP settings for Gmail")
+        btn_gmail_prefill.clicked.connect(self._prefill_gmail)
+        btn_gmail_prefill.setMaximumWidth(200)
+        email_layout.addWidget(btn_gmail_prefill)
+
+        form_email = QFormLayout()
         self.configure_form_layout(form_email)
 
         self.chk_auto_report = QCheckBox()
@@ -164,7 +187,7 @@ class ShopInfoPage(SettingsPage):
         form_email.addRow("Report Time:", self.time_auto_report)
 
         self.input_admin_email = QLineEdit()
-        self.input_admin_email.setPlaceholderText("admin@example.com")
+        self.input_admin_email.setPlaceholderText("yourname@gmail.com")
         form_email.addRow("Admin Email:", self.input_admin_email)
 
         self.input_smtp_host = QLineEdit()
@@ -176,14 +199,15 @@ class ShopInfoPage(SettingsPage):
         form_email.addRow("SMTP Port:", self.input_smtp_port)
 
         self.input_smtp_user = QLineEdit()
-        self.input_smtp_user.setPlaceholderText("email@example.com")
-        form_email.addRow("SMTP User:", self.input_smtp_user)
+        self.input_smtp_user.setPlaceholderText("yourname@gmail.com")
+        form_email.addRow("SMTP User (Email):", self.input_smtp_user)
 
         self.input_smtp_pass = QLineEdit()
         self.input_smtp_pass.setEchoMode(QLineEdit.EchoMode.Password)
-        self.input_smtp_pass.setPlaceholderText("App Password")
+        self.input_smtp_pass.setPlaceholderText("16-character App Password")
         form_email.addRow("SMTP Password:", self.input_smtp_pass)
 
+        email_layout.addLayout(form_email)
         main_layout.addWidget(grp_email)
 
         # --- Appearance ---
@@ -211,6 +235,26 @@ class ShopInfoPage(SettingsPage):
         form_appearance.addRow("Language:", self.combo_language)
 
         main_layout.addWidget(grp_appearance)
+
+    def _prefill_gmail(self):
+        """Pre-fill SMTP fields with Gmail defaults."""
+        self.input_smtp_host.setText("smtp.gmail.com")
+        self.input_smtp_port.setText("587")
+        if not self.input_smtp_user.text():
+            self.input_smtp_user.setFocus()
+        QMessageBox.information(
+            self,
+            "Gmail Setup",
+            "SMTP Host and Port have been set for Gmail.\n\n"
+            "Now enter:\n"
+            "  1. Your Gmail address as SMTP User\n"
+            "  2. Your 16-character App Password as SMTP Password\n\n"
+            "To get an App Password:\n"
+            "  \u2022 Go to myaccount.google.com \u2192 Security\n"
+            "  \u2022 Enable 2-Step Verification\n"
+            "  \u2022 Search 'App Passwords' \u2192 Create one\n"
+            "  \u2022 Copy and paste the password here",
+        )
 
     def load(self, settings: dict):
         self.input_shop_name.setText(settings.get("shop_name", ""))

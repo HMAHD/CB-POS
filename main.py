@@ -101,12 +101,15 @@ def main():
             print("[BOOTSTRAP] Setup wizard cancelled. Exiting.")
             sys.exit(0)
 
-    # Start scheduler if auto-report is enabled
+    # Start scheduler timer for auto-report
     if ConfigService.get("auto_report_enabled"):
         try:
+            from PyQt6.QtCore import QTimer
             from cbpos.core.services.scheduler_service import SchedulerService
 
-            SchedulerService.start()
+            scheduler_timer = QTimer()
+            scheduler_timer.timeout.connect(SchedulerService.check_automation)
+            scheduler_timer.start(60_000)  # Check every 60 seconds
             print("[BOOTSTRAP] Scheduler started.")
         except Exception as e:
             print(f"[BOOTSTRAP] Scheduler failed to start: {e}")

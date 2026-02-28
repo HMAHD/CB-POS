@@ -12,7 +12,7 @@
 
 /* Global Font Enforcement */
 * {
-    font-family: "{{FONT_FAMILY}}", "Noto Sans", sans-serif;
+    font-family: "{{FONT_FAMILY}}", "Noto Sans", "Segoe UI", "Arial";
 }
 
 QLabel.PlaceholderLabel {
@@ -85,17 +85,14 @@ QComboBox::drop-down:hover {
 }
 
 QComboBox::down-arrow {
-    image: none;
-    width: 0;
-    height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #0D6EFD;  /* Blue arrow pointing down */
+    image: url(cbpos/assets/icons/chevron-down-blue.svg);
+    width: 14px;
+    height: 14px;
 }
 
 QComboBox::drop-down:hover QComboBox::down-arrow,
 QComboBox:hover::down-arrow {
-    border-top-color: #FFFFFF;  /* White arrow on blue background */
+    image: url(cbpos/assets/icons/chevron-down-white.svg);
 }
 
 QComboBox QAbstractItemView {
@@ -145,12 +142,12 @@ QSpinBox:focus, QDoubleSpinBox:focus {
     background-color: #F8F9FA;
 }
 
-/* UP Button - Wider for easier clicking */
+/* UP Button (+) - Clear plus icon */
 QSpinBox::up-button, QDoubleSpinBox::up-button {
     subcontrol-origin: border;
     subcontrol-position: top right;
-    width: 30px;  /* Much wider target area */
-    height: 18px;  /* Half of total height */
+    width: 30px;
+    height: 18px;
     border-left: 1px solid #CED4DA;
     border-bottom: 1px solid #CED4DA;
     background-color: #E9ECEF;
@@ -158,33 +155,29 @@ QSpinBox::up-button, QDoubleSpinBox::up-button {
 }
 
 QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover {
-    background-color: #0D6EFD;  /* Blue highlight on hover */
+    background-color: #0D6EFD;
 }
 
 QSpinBox::up-button:pressed, QDoubleSpinBox::up-button:pressed {
-    background-color: #0B5ED7;  /* Darker blue when pressed */
+    background-color: #0B5ED7;
 }
 
-/* UP Arrow - Clear dark triangle */
 QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
-    image: none;
-    width: 0;
-    height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-bottom: 6px solid #495057;  /* Dark up-pointing triangle */
+    image: url(cbpos/assets/icons/plus-dark.svg);
+    width: 12px;
+    height: 12px;
 }
 
 QSpinBox::up-button:hover::up-arrow, QDoubleSpinBox::up-button:hover::up-arrow {
-    border-bottom-color: #FFFFFF;  /* White triangle on blue background */
+    image: url(cbpos/assets/icons/plus-white.svg);
 }
 
-/* DOWN Button - Wider for easier clicking */
+/* DOWN Button (-) - Clear minus icon */
 QSpinBox::down-button, QDoubleSpinBox::down-button {
     subcontrol-origin: border;
     subcontrol-position: bottom right;
-    width: 30px;  /* Much wider target area */
-    height: 18px;  /* Half of total height */
+    width: 30px;
+    height: 18px;
     border-left: 1px solid #CED4DA;
     border-top: 1px solid #CED4DA;
     background-color: #E9ECEF;
@@ -192,60 +185,57 @@ QSpinBox::down-button, QDoubleSpinBox::down-button {
 }
 
 QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
-    background-color: #0D6EFD;  /* Blue highlight on hover */
+    background-color: #0D6EFD;
 }
 
 QSpinBox::down-button:pressed, QDoubleSpinBox::down-button:pressed {
-    background-color: #0B5ED7;  /* Darker blue when pressed */
+    background-color: #0B5ED7;
 }
 
-/* DOWN Arrow - Clear dark triangle */
 QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
-    image: none;
-    width: 0;
-    height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #495057;  /* Dark down-pointing triangle */
+    image: url(cbpos/assets/icons/minus-dark.svg);
+    width: 12px;
+    height: 12px;
 }
 
 QSpinBox::down-button:hover::down-arrow, QDoubleSpinBox::down-button:hover::down-arrow {
-    border-top-color: #FFFFFF;  /* White triangle on blue background */
+    image: url(cbpos/assets/icons/minus-white.svg);
 }
 
-/* Checkboxes - Clean Outline Style */
+/* Checkboxes - Toggle Style with Checkmark */
 QCheckBox {
     spacing: 10px;
     color: #212529;
-    background-color: transparent;  /* Fix white background issue */
+    background-color: transparent;
 }
 
 /* Unchecked State - Empty box with visible border */
 QCheckBox::indicator {
     width: 22px;
     height: 22px;
-    border: 2px solid #ADB5BD;  /* Visible border when unchecked */
+    border: 2px solid #ADB5BD;
     border-radius: 4px;
-    background-color: transparent;  /* Empty/outline style */
+    background-color: transparent;
 }
 
 /* Unchecked Hover - Blue glow */
 QCheckBox::indicator:unchecked:hover {
-    border-color: #0D6EFD;  /* Blue border on hover */
-    background-color: rgba(13, 110, 253, 0.1);  /* Subtle blue tint */
-}
-
-/* Checked State - Filled blue box */
-QCheckBox::indicator:checked {
-    background-color: #0D6EFD;  /* Solid blue fill */
     border-color: #0D6EFD;
-    /* Ideally use: image: url(cbpos/assets/icons/check.svg); */
+    background-color: rgba(13, 110, 253, 0.1);
 }
 
-/* Checked Hover - Darker blue */
+/* Checked State - Blue fill with white checkmark */
+QCheckBox::indicator:checked {
+    background-color: #0D6EFD;
+    border-color: #0D6EFD;
+    image: url(cbpos/assets/icons/check-white.svg);
+}
+
+/* Checked Hover - Darker blue with checkmark */
 QCheckBox::indicator:checked:hover {
-    background-color: #0B5ED7;  /* Darker blue on hover */
+    background-color: #0B5ED7;
     border-color: #0B5ED7;
+    image: url(cbpos/assets/icons/check-white.svg);
 }
 
 /* Buttons */

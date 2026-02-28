@@ -23,6 +23,7 @@ class Icons:
     DOCUMENTS = "fa5s.folder-open"
     CREDIT_BOOK = "fa5s.book"
     STOCK_TAKE = "fa5s.clipboard-check"
+    ADMIN_TOOLS = "fa5s.toolbox"
 
     # Actions
     ADD = "fa5s.plus"

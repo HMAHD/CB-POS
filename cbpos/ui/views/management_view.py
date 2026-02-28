@@ -99,6 +99,7 @@ class ManagementView(QWidget):
         self.btn_promotions = self.create_nav_button("Promotions", Icons.PROMOTION, 8)
         self.btn_data_safety = self.create_nav_button("Data Safety", "fa5s.shield-alt", 9)
         self.btn_stock_take = self.create_nav_button("Stock Take", Icons.STOCK_TAKE, 10)
+        self.btn_admin_tools = self.create_nav_button("Admin Tools", Icons.ADMIN_TOOLS, 11)
 
         # Push everything else to bottom
         self.sidebar_layout.addStretch()
@@ -239,6 +240,12 @@ class ManagementView(QWidget):
         self.stock_take_view = StockTakeView()
         self.stack.addWidget(self.stock_take_view)
 
+        # 11. Admin Tools
+        from cbpos.ui.views.admin_tools_view import AdminToolsView
+
+        self.admin_tools_view = AdminToolsView()
+        self.stack.addWidget(self.admin_tools_view)
+
     def set_user(self, user):
         self.user = user
 
@@ -250,6 +257,7 @@ class ManagementView(QWidget):
         self.btn_promotions.setVisible(is_admin)
         self.btn_data_safety.setVisible(is_admin)
         self.btn_stock_take.setVisible(is_admin)
+        self.btn_admin_tools.setVisible(is_admin)
 
         if hasattr(self, "purchase_view"):
             self.purchase_view.set_user(user)

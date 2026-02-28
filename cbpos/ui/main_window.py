@@ -14,6 +14,7 @@ from cbpos.ui.views.settings_view import SettingsView
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 from cbpos.infrastructure.session_watchdog import SessionWatchdog
 from cbpos.core.services.config_service import ConfigService
+import logging
 
 
 class MainWindow(QMainWindow):
@@ -190,8 +191,6 @@ class MainWindow(QMainWindow):
                 keep = int(ConfigService.get("backup_retention_count") or 5)
                 BackupService.cleanup_old_backups(backup_dir, keep)
             except Exception:
-                import logging
-
                 logging.getLogger(__name__).exception("Auto-backup on close failed")
         super().closeEvent(event)
 

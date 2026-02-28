@@ -65,12 +65,7 @@ class DataExportService:
         """
         db = Database()
         with db.get_session() as session:
-            customers = (
-                session.query(Customer)
-                .filter(Customer.is_active.is_(True))
-                .order_by(Customer.name)
-                .all()
-            )
+            customers = session.query(Customer).filter(Customer.is_active.is_(True)).order_by(Customer.name).all()
 
             rows = []
             for c in customers:
@@ -104,11 +99,7 @@ class DataExportService:
         """
         db = Database()
         with db.get_session() as session:
-            query = (
-                session.query(Sale)
-                .options(joinedload(Sale.customer))
-                .order_by(Sale.date.desc())
-            )
+            query = session.query(Sale).options(joinedload(Sale.customer)).order_by(Sale.date.desc())
 
             if start_date:
                 query = query.filter(Sale.date >= start_date)

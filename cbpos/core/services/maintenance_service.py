@@ -80,8 +80,8 @@ class MaintenanceService:
                     try:
                         row = session.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
                         info[key] = row or 0
-                    except Exception:
-                        pass  # Table might not exist yet
+                    except Exception as e:
+                        logger.warning("Could not count records for table '%s': %s", table, e)
         except Exception as e:
             logger.warning("Could not query database info: %s", e)
 

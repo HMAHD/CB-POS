@@ -431,9 +431,7 @@ class BackupRestoreDialog(QDialog):
 
     def _browse_restore_file(self) -> None:
         backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Select Backup File", backup_dir, "Backup Files (*.zip)"
-        )
+        path, _ = QFileDialog.getOpenFileName(self, "Select Backup File", backup_dir, "Backup Files (*.zip)")
         if path:
             self.input_restore_path.setText(path)
             self.lbl_verify_result.setText("")
@@ -452,9 +450,7 @@ class BackupRestoreDialog(QDialog):
         if result["valid"]:
             file_count = len(result["files"])
             self.lbl_verify_result.setStyleSheet(_STATUS_OK)
-            self.lbl_verify_result.setText(
-                f"Backup is valid.  Size: {result['size']}  |  Files: {file_count}"
-            )
+            self.lbl_verify_result.setText(f"Backup is valid.  Size: {result['size']}  |  Files: {file_count}")
         else:
             self.lbl_verify_result.setStyleSheet(_STATUS_ERR)
             self.lbl_verify_result.setText(f"Verification failed: {result['error']}")
@@ -649,9 +645,7 @@ class BackupRestoreDialog(QDialog):
         self.btn_vacuum.setText("Optimize")
         saved = result.get("saved", "0 KB")
         self.lbl_maintenance_status.setStyleSheet(_STATUS_OK)
-        self.lbl_maintenance_status.setText(
-            f"Optimization complete. Space saved: {saved}"
-        )
+        self.lbl_maintenance_status.setText(f"Optimization complete. Space saved: {saved}")
         self._load_db_info()
 
     def _on_vacuum_error(self, error: str) -> None:

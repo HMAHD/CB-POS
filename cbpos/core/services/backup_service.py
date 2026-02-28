@@ -14,7 +14,7 @@ import string
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import pyzipper
 
@@ -140,18 +140,18 @@ class BackupService:
                 # Rename to mark as pre-restore snapshot
                 pre_restore_path = snapshot_path.replace(".zip", ".pre_restore.zip")
                 os.rename(snapshot_path, pre_restore_path)
-                logger.info("Pre-restore snapshot: %s (password: %s)", pre_restore_path, snapshot_pwd)
+                logger.info("Pre-restore snapshot saved: %s", pre_restore_path)
             except Exception as e:
                 logger.warning("Could not create pre-restore snapshot: %s", e)
 
         # Dispose database engine to release file locks
-        try:
-            from cbpos.core.database import Database
+        from cbpos.core.database import Database
 
+        try:
             db = Database()
             db.engine.dispose()
         except Exception as e:
-            logger.warning("Could not dispose database engine: %s", e)
+            logger.error("Could not dispose database engine — restore may fail on Windows: %s", e)
 
         # Extract to temp directory first, then copy
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -270,7 +270,7 @@ class BackupService:
         return deleted
 
     @staticmethod
-    def verify_backup(backup_path: str, password: str) -> Dict[str, Optional[str]]:
+    def verify_backup(backup_path: str, password: str) -> Dict[str, object]:
         """
         Verify a backup file without extracting it.
 
@@ -281,7 +281,7 @@ class BackupService:
         Returns:
             Dict with keys: valid (bool), files (list), size (str), error (str or None).
         """
-        result: Dict[str, Optional[str]] = {
+        result: Dict[str, object] = {
             "valid": False,
             "files": [],
             "size": "0 MB",

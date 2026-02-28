@@ -10,6 +10,7 @@ Uses QSS objectNames/class properties for theme compatibility.
 
 import logging
 from datetime import datetime
+from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QDialog,
@@ -28,6 +29,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtGui import QCursor
+
+from cbpos.core.services.data_export_service import DataExportService
+from cbpos.core.services.export_service import ExportService
 
 logger = logging.getLogger(__name__)
 
@@ -137,8 +141,6 @@ class DataExportDialog(QDialog):
             return
 
         # Ask for output directory
-        from pathlib import Path
-
         default_dir = str(Path.home() / "Documents")
         output_dir = QFileDialog.getExistingDirectory(self, "Choose Export Folder", default_dir)
         if not output_dir:
@@ -149,9 +151,6 @@ class DataExportDialog(QDialog):
         QApplication.setOverrideCursor(QCursor(Qt.CursorShape.WaitCursor))
 
         try:
-            from cbpos.core.services.data_export_service import DataExportService
-            from cbpos.core.services.export_service import ExportService
-
             export_svc = ExportService()
             fmt_text = self.cmb_format.currentText()
 

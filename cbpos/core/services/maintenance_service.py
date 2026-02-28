@@ -125,7 +125,8 @@ class MaintenanceService:
                         tbl = table(table_name)
                         count = session.execute(select(func.count()).select_from(tbl)).scalar()
                         tables.append({"name": table_name, "rows": count or 0})
-                    except Exception:
+                    except Exception as e:
+                        logger.debug("Could not count rows for table '%s': %s", table_name, e)
                         tables.append({"name": table_name, "rows": "?"})
         except Exception as e:
             logger.warning("Could not query table info: %s", e)

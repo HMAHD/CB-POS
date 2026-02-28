@@ -72,9 +72,7 @@ class ErrorLogService:
 
                         # Date filters
                         try:
-                            entry_dt = datetime.strptime(
-                                parsed["timestamp"][:19], "%Y-%m-%d %H:%M:%S"
-                            )
+                            entry_dt = datetime.strptime(parsed["timestamp"][:19], "%Y-%m-%d %H:%M:%S")
                             if date_from and entry_dt.date() < date_from.date():
                                 continue
                             if date_to and entry_dt.date() > date_to.date():
@@ -134,10 +132,7 @@ class ErrorLogService:
             f.write(f"Entries: {len(entries)}\n")
             f.write("=" * 80 + "\n\n")
             for entry in entries:
-                f.write(
-                    f"{entry['timestamp']} | {entry['level']:<8} | "
-                    f"{entry['source']} | {entry['message']}\n"
-                )
+                f.write(f"{entry['timestamp']} | {entry['level']:<8} | " f"{entry['source']} | {entry['message']}\n")
 
     @classmethod
     def get_total_log_size(cls) -> str:

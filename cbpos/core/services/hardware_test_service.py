@@ -63,7 +63,6 @@ class HardwareTestService:
                 {"type": "cut"},
             ]
             printer.print_commands(commands)
-            printer.disconnect()
 
             if p_type == "MOCK":
                 return True, "Test print sent successfully (no real hardware — using mock printer)."
@@ -71,6 +70,8 @@ class HardwareTestService:
         except Exception as e:
             logger.error("Printer test failed: %s", e)
             return False, f"Printer test failed: {e}"
+        finally:
+            printer.disconnect()
 
     @staticmethod
     def test_cash_drawer() -> Tuple[bool, str]:
@@ -87,7 +88,6 @@ class HardwareTestService:
                 return False, "Could not connect to printer (drawer uses printer connection)."
 
             printer.kick_drawer()
-            printer.disconnect()
 
             if p_type == "MOCK":
                 return True, "Drawer kick sent (no real hardware — using mock printer)."
@@ -95,6 +95,8 @@ class HardwareTestService:
         except Exception as e:
             logger.error("Cash drawer test failed: %s", e)
             return False, f"Cash drawer test failed: {e}"
+        finally:
+            printer.disconnect()
 
     @staticmethod
     def get_printer_info() -> Dict[str, str]:

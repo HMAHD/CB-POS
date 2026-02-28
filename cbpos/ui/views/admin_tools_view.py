@@ -154,9 +154,7 @@ class AdminToolsView(QWidget):
             for row, t in enumerate(tables):
                 self.table_counts.setItem(row, 0, QTableWidgetItem(t["name"]))
                 rows_item = QTableWidgetItem(str(t["rows"]))
-                rows_item.setTextAlignment(
-                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-                )
+                rows_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.table_counts.setItem(row, 1, rows_item)
         except Exception as e:
             logger.warning("Could not load full DB info: %s", e)
@@ -287,9 +285,7 @@ class AdminToolsView(QWidget):
             )
             search = self.input_log_search.text().strip() or None
 
-            entries = ErrorLogService.read_logs(
-                level=level, date_from=date_from, date_to=date_to, search=search
-            )
+            entries = ErrorLogService.read_logs(level=level, date_from=date_from, date_to=date_to, search=search)
             self._current_log_entries = entries
 
             self.log_table.setRowCount(len(entries))
@@ -336,17 +332,13 @@ class AdminToolsView(QWidget):
             QMessageBox.information(self, "No Entries", "No log entries to export.")
             return
 
-        filepath, _ = QFileDialog.getSaveFileName(
-            self, "Export Logs", "cbpos_logs.txt", "Text Files (*.txt)"
-        )
+        filepath, _ = QFileDialog.getSaveFileName(self, "Export Logs", "cbpos_logs.txt", "Text Files (*.txt)")
         if not filepath:
             return
 
         try:
             ErrorLogService.export_logs(filepath, entries)
-            QMessageBox.information(
-                self, "Export Complete", f"Exported {len(entries)} entries to:\n{filepath}"
-            )
+            QMessageBox.information(self, "Export Complete", f"Exported {len(entries)} entries to:\n{filepath}")
         except Exception as e:
             QMessageBox.critical(self, "Export Failed", f"Could not export logs:\n{e}")
 
@@ -404,9 +396,7 @@ class AdminToolsView(QWidget):
         printer_layout = QVBoxLayout(grp_printer)
         printer_layout.setSpacing(8)
 
-        lbl_printer_desc = QLabel(
-            "Send a test page to the configured receipt printer to verify connectivity."
-        )
+        lbl_printer_desc = QLabel("Send a test page to the configured receipt printer to verify connectivity.")
         lbl_printer_desc.setProperty("class", "muted")
         lbl_printer_desc.setWordWrap(True)
         printer_layout.addWidget(lbl_printer_desc)
@@ -430,9 +420,7 @@ class AdminToolsView(QWidget):
         drawer_layout = QVBoxLayout(grp_drawer)
         drawer_layout.setSpacing(8)
 
-        lbl_drawer_desc = QLabel(
-            "Send a kick signal to open the cash drawer via the receipt printer."
-        )
+        lbl_drawer_desc = QLabel("Send a kick signal to open the cash drawer via the receipt printer.")
         lbl_drawer_desc.setProperty("class", "muted")
         lbl_drawer_desc.setWordWrap(True)
         drawer_layout.addWidget(lbl_drawer_desc)
@@ -456,9 +444,7 @@ class AdminToolsView(QWidget):
         scanner_layout = QVBoxLayout(grp_scanner)
         scanner_layout.setSpacing(8)
 
-        lbl_scanner_desc = QLabel(
-            "Click the input field below and scan a barcode to test your scanner."
-        )
+        lbl_scanner_desc = QLabel("Click the input field below and scan a barcode to test your scanner.")
         lbl_scanner_desc.setProperty("class", "muted")
         lbl_scanner_desc.setWordWrap(True)
         scanner_layout.addWidget(lbl_scanner_desc)

@@ -27,9 +27,7 @@ def setup_logging() -> None:
         encoding="utf-8",
     )
     file_handler.setLevel(logging.WARNING)
-    file_handler.setFormatter(
-        logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)s | %(message)s")
-    )
+    file_handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"))
 
     root_logger = logging.getLogger()
     root_logger.addHandler(file_handler)

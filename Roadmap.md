@@ -594,18 +594,23 @@
 
 ---
 
-### Phase 27: Admin Tools
+### Phase 27: Admin Tools ✅
 *Goal: Support and troubleshooting for self-install clients.*
 
-- [ ] **27.1 Database Info**
-    - [ ] View database location and file size
-    - [ ] Table row counts (products, sales, customers)
-- [ ] **27.2 Error Log Viewer**
-    - [ ] View application error logs in-app
-    - [ ] Export logs for support
-- [ ] **27.3 Printer Test Page**
-    - [ ] Send test print to configured printer
-    - [ ] Verify printer connectivity
+- [x] **27.1 Database Info**
+    - [x] View database location and file size
+    - [x] Table row counts (products, sales, customers)
+    - [x] SQLite version, last modified date
+- [x] **27.2 Error Log Viewer**
+    - [x] View application error logs in-app
+    - [x] Filter by level, date range, search text
+    - [x] Export logs for support
+    - [x] Clear logs
+- [x] **27.3 Hardware Test Page**
+    - [x] Send test print to configured printer
+    - [x] Verify printer connectivity
+    - [x] Cash drawer kick test
+    - [x] Barcode scanner test input
 
 ---
 

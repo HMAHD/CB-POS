@@ -44,6 +44,7 @@ class Permissions:
     ADMIN_MANAGE_USERS = "admin.manage_users"
     ADMIN_MANAGE_ROLES = "admin.manage_roles"
     ADMIN_SETTINGS = "admin.settings"
+    ADMIN_TOOLS = "admin.tools"
 
     @classmethod
     def get_all(cls):
@@ -89,5 +90,6 @@ class Permissions:
                 cls.ADMIN_MANAGE_USERS,
                 cls.ADMIN_MANAGE_ROLES,
                 cls.ADMIN_SETTINGS,
+                cls.ADMIN_TOOLS,
             ],
         }

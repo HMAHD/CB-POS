@@ -2,7 +2,6 @@ from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QGridLayout,
     QLabel,
     QPushButton,
     QFrame,
@@ -146,41 +145,41 @@ class SideMenu(QWidget):
         self.lbl_section.setContentsMargins(16, 14, 0, 8)
         main_layout.addWidget(self.lbl_section)
 
-        # ── Navigation Tile Grid (2 columns) ─────────────────────
+        # ── Navigation Tiles (single column) ─────────────────────
         nav_container = QWidget()
         nav_container.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        grid = QGridLayout(nav_container)
-        grid.setContentsMargins(10, 4, 10, 4)
-        grid.setSpacing(6)
+        nav_layout = QVBoxLayout(nav_container)
+        nav_layout.setContentsMargins(10, 4, 10, 4)
+        nav_layout.setSpacing(8)
 
         self.btn_management = NavTile("Management", "fa5s.chart-line")
         self.btn_management.clicked.connect(self._on_management)
-        grid.addWidget(self.btn_management, 0, 0)
+        nav_layout.addWidget(self.btn_management)
         self._nav_buttons.append(self.btn_management)
 
         self.btn_history = NavTile("Sales History", "fa5s.history")
         self.btn_history.clicked.connect(self._on_history)
-        grid.addWidget(self.btn_history, 0, 1)
+        nav_layout.addWidget(self.btn_history)
         self._nav_buttons.append(self.btn_history)
 
         self.btn_documents = NavTile("Documents", "fa5s.file-invoice")
         self.btn_documents.clicked.connect(self._on_documents)
-        grid.addWidget(self.btn_documents, 1, 0)
+        nav_layout.addWidget(self.btn_documents)
         self._nav_buttons.append(self.btn_documents)
 
-        self.btn_receive_payment = NavTile("Receive\nPayment", "fa5s.hand-holding-usd")
+        self.btn_receive_payment = NavTile("Receive Payment", "fa5s.hand-holding-usd")
         self.btn_receive_payment.clicked.connect(self._on_receive_payment)
-        grid.addWidget(self.btn_receive_payment, 1, 1)
+        nav_layout.addWidget(self.btn_receive_payment)
         self._nav_buttons.append(self.btn_receive_payment)
 
-        self.btn_reprint = NavTile("Reprint\nReceipt", "fa5s.print")
+        self.btn_reprint = NavTile("Reprint Receipt", "fa5s.print")
         self.btn_reprint.clicked.connect(self._on_reprint)
-        grid.addWidget(self.btn_reprint, 2, 0)
+        nav_layout.addWidget(self.btn_reprint)
         self._nav_buttons.append(self.btn_reprint)
 
         self.btn_refund = NavTile("Refund", "fa5s.undo")
         self.btn_refund.clicked.connect(self._on_refund)
-        grid.addWidget(self.btn_refund, 2, 1)
+        nav_layout.addWidget(self.btn_refund)
         self._nav_buttons.append(self.btn_refund)
 
         main_layout.addWidget(nav_container)

@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.8.3] - 2026-03-02
+
+### Fixed — Side Menu & Action Panel
+
+- **Side Menu Layout**: Changed nav tiles from 2-column grid to single-column vertical list with uniform 8px spacing. Removed QGridLayout in favor of QVBoxLayout for cleaner item-by-item navigation.
+- **Action Panel Visibility**: Fixed action panel not reappearing when returning to POS view from Management/Settings/Documents. `showEvent()` now closes the side menu and restores the action panel automatically.
+
 ## [0.8.2] - 2026-03-01
 
 ### Redesigned — Payment Dialog & Advanced Search

@@ -430,6 +430,11 @@ class SalesView(QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
+        # Restore action panel when returning to POS from other views
+        if self.side_menu.isVisible():
+            self.side_menu.setVisible(False)
+            self.side_menu.clear_active()
+        self.action_panel.setVisible(True)
         self.barcode_input.setFocus()
         self.order_bar.refresh_tabs()
 

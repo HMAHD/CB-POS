@@ -20,37 +20,38 @@ class HardwareTestService:
 
     @staticmethod
     def _get_printer() -> Tuple[IPrinter, str]:
-        """
-        Instantiate the correct printer driver based on config.
+        """Instantiate the correct printer driver based on config.
 
         Returns:
             Tuple of (printer instance, printer type string).
         """
         settings = ConfigService.get_all()
-        p_type = settings.get("printer_type", "MOCK")
+        p_type = settings.get("printer_type", "NONE")
 
-        if p_type == "MOCK":
-            from cbpos.infrastructure.hardware.escpos_driver import MockPrinter
-
-            return MockPrinter(), p_type
-        else:
+        if p_type in ("USB", "NETWORK"):
             from cbpos.infrastructure.hardware.escpos_driver import ESCPOSDriver
 
             return ESCPOSDriver(), p_type
+        else:
+            from cbpos.infrastructure.hardware.escpos_driver import NullPrinter
+
+            return NullPrinter(), p_type
 
     @staticmethod
     def test_receipt_printer() -> Tuple[bool, str]:
-        """
-        Send a test print to the configured receipt printer.
+        """Send a test print to the configured receipt printer.
 
         Returns:
             Tuple of (success: bool, message: str).
         """
         printer, p_type = HardwareTestService._get_printer()
 
+        if p_type not in ("USB", "NETWORK"):
+            return False, "No printer configured. Set printer type in Settings > Hardware."
+
         try:
             if not printer.connect():
-                return False, "Could not connect to printer."
+                return False, "Could not connect to printer. Check cable and settings."
 
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             commands = [
@@ -64,8 +65,6 @@ class HardwareTestService:
             ]
             printer.print_commands(commands)
 
-            if p_type == "MOCK":
-                return True, "Test print sent successfully (no real hardware — using mock printer)."
             return True, "Test print sent successfully."
         except Exception as e:
             logger.error("Printer test failed: %s", e)
@@ -75,13 +74,15 @@ class HardwareTestService:
 
     @staticmethod
     def test_cash_drawer() -> Tuple[bool, str]:
-        """
-        Send a kick signal to the cash drawer.
+        """Send a kick signal to the cash drawer.
 
         Returns:
             Tuple of (success: bool, message: str).
         """
         printer, p_type = HardwareTestService._get_printer()
+
+        if p_type not in ("USB", "NETWORK"):
+            return False, "No printer configured. Cash drawer requires a printer connection."
 
         try:
             if not printer.connect():
@@ -89,8 +90,6 @@ class HardwareTestService:
 
             printer.kick_drawer()
 
-            if p_type == "MOCK":
-                return True, "Drawer kick sent (no real hardware — using mock printer)."
             return True, "Cash drawer opened successfully."
         except Exception as e:
             logger.error("Cash drawer test failed: %s", e)
@@ -100,15 +99,14 @@ class HardwareTestService:
 
     @staticmethod
     def get_printer_info() -> Dict[str, str]:
-        """
-        Read printer configuration from settings.
+        """Read printer configuration from settings.
 
         Returns:
             Dict with type, path, receipt_printer, a4_printer, paper_width.
         """
         settings = ConfigService.get_all()
         return {
-            "type": settings.get("printer_type", "MOCK"),
+            "type": settings.get("printer_type", "NONE"),
             "path": settings.get("printer_path", "") or "(not set)",
             "receipt_printer": settings.get("receipt_printer_name", "") or "(not set)",
             "a4_printer": settings.get("a4_printer_name", "") or "(not set)",

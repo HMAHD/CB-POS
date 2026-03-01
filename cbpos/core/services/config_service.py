@@ -28,7 +28,7 @@ class ConfigService:
         "tax_vat_rate": 18.0,
         "tax_sscl_rate": 2.5,
         "tax_sscl_turnover_pct": 50.0,
-        "printer_type": "USB",  # USB, NETWORK, MOCK
+        "printer_type": "NONE",  # USB, NETWORK, or NONE
         "printer_path": "",  # e.g., COM3, 192.168.1.100, or empty for auto-USB
         "language": "en",  # en, si, ta
         "receipt_header": "Welcome to Ceylon Byte",

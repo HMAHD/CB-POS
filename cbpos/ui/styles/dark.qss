@@ -98,7 +98,7 @@ QComboBox QAbstractItemView {
     selection-color: #000000;
     color: #FFFFFF;
     padding: 4px;
-    outline: none;
+
 }
 
 QComboBox QAbstractItemView::item {
@@ -234,7 +234,6 @@ QPushButton {
     padding: 10px 20px;
     font-weight: bold;
     color: #FFFFFF;
-    text-transform: uppercase;
 }
 
 QPushButton:hover {
@@ -248,13 +247,13 @@ QPushButton:pressed {
 
 /* Primary Action Button (Green) */
 QPushButton#BtnSave, QPushButton#PayBtn, QPushButton[class="primary"] {
-    background-color: #39FF14;
+    background-color: #2ECC40;
     color: #001F3F;
     border: none;
 }
 
 QPushButton#BtnSave:hover, QPushButton#PayBtn:hover, QPushButton[class="primary"]:hover {
-    background-color: #32E012;
+    background-color: #27AE36;
 }
 
 /* Danger Button (Red) */
@@ -324,7 +323,7 @@ QLabel[class="transparent"] {
 QListWidget, QTableWidget {
     background-color: #252526;
     border: 1px solid #3E3E42;
-    outline: none;
+
     gridline-color: #3E3E42;
     alternate-background-color: #2D2D30;
 }
@@ -347,7 +346,6 @@ QHeaderView::section {
     font-weight: bold;
     border: none;
     border-bottom: 2px solid #00BCEB;
-    text-transform: uppercase;
 }
 
 QTableCornerButton::section {
@@ -438,52 +436,86 @@ QFrame#Sidebar {
 QWidget#UserProfileContainer {
     background-color: transparent;  /* Blend with sidebar */
     border: none;  /* Remove all borders */
-    outline: none;  /* Remove outline */
+    border: none;  /* Remove focus outline */
 }
 
-/* POS Side Menu (Hamburger Menu) - Dark Mode */
+/* ── POS Side Menu (Hamburger Panel) ─ Dark ────────────────────── */
 QWidget#POSSideMenu {
-    background-color: #1A1A1A;  /* Flat dark gray */
+    background-color: #1A1A1A;
     border-left: 1px solid #2A2A2A;
 }
 
-/* POS Side Menu - Labels (Username, Role) */
 QWidget#POSSideMenu QLabel {
     background-color: transparent;
-    color: #E0E0E0;  /* Light text for dark background */
-}
-
-/* POS Side Menu - Separator Lines */
-QWidget#POSSideMenu QFrame[frameShape="4"] {
-    background-color: #2A2A2A;  /* Flat gray separator */
-}
-
-/* POS Side Menu - Menu Buttons */
-QPushButton#MenuButton {
-    background-color: transparent;
     color: #E0E0E0;
-    border: none;
-    text-align: left;
-    padding-left: 15px;
+}
+
+QWidget#POSSideMenu QFrame[frameShape="4"] {
+    background-color: #2A2A2A;
+}
+
+/* Section Header */
+QLabel#MenuSectionHeader {
+    color: #555555;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    background: transparent;
+}
+
+/* Nav Tiles — 2-column grid */
+QPushButton#NavTile {
+    background-color: #252526;
+    border: 1px solid #333333;
+    border-radius: 8px;
+}
+
+QPushButton#NavTile:hover {
+    background-color: #2D2D30;
+    border-color: #00BCEB;
+}
+
+QPushButton#NavTile[active="true"] {
+    background-color: rgba(0, 188, 235, 0.10);
+    border-color: #00BCEB;
+}
+
+/* User Profile Row */
+QWidget#UserProfileRow {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+QLabel#MenuUsername {
+    color: #FFFFFF;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: bold;
+    background: transparent;
 }
 
-QPushButton#MenuButton:hover {
-    background-color: #252525;  /* Subtle gray highlight */
-    color: #00BCEB;  /* Cyan highlight */
+QLabel#MenuRole {
+    color: #777777;
+    font-size: 12px;
+    font-weight: normal;
+    background: transparent;
 }
 
-QPushButton#MenuButton[destructive="true"] {
-    color: #FF4136;  /* Red for destructive actions */
+/* Sign Out button */
+QPushButton#SignOutBtn {
+    background: transparent;
+    border: none;
+    color: #999999;
+    font-size: 13px;
+    font-weight: normal;
+    text-align: left;
+    padding: 0;
+
 }
 
-QPushButton#MenuButton[destructive="true"]:hover {
-    background-color: rgba(255, 65, 54, 0.1);
+QPushButton#SignOutBtn:hover {
     color: #FF4136;
 }
 
-/* POS Side Menu - Icon Buttons (Bottom Toolbar) */
+/* Icon Buttons (bottom toolbar) */
 QPushButton#IconButton {
     background-color: transparent;
     border: none;
@@ -491,27 +523,11 @@ QPushButton#IconButton {
 }
 
 QPushButton#IconButton:hover {
-    background-color: #002855;
+    background-color: #2A2A2A;
 }
 
 QPushButton#IconButton:pressed {
-    background-color: #003366;
-}
-
-/* POS Side Menu - Username Label */
-QLabel#MenuUsername {
-    color: #FFFFFF;
-    font-size: 16px;
-    font-weight: bold;
-    background-color: transparent;
-}
-
-/* POS Side Menu - Role Label */
-QLabel#MenuRole {
-    color: #AAAAAA;  /* Muted gray */
-    font-size: 13px;
-    font-weight: normal;
-    background-color: transparent;
+    background-color: #333333;
 }
 
 QLabel#SidebarLogo {
@@ -546,7 +562,7 @@ QToolButton#SidebarButton:checked, QToolButton#SidebarButton[active="true"] {
     background-color: #2A2A2A;  /* Flat gray active state */
     color: #00BCEB;
     border-left: 4px solid #00BCEB;
-    font-weight: 600;
+    font-weight: bold;
 }
 
 /* Collapsed State (via Property) */
@@ -688,7 +704,7 @@ QLabel#SubtotalLabel, QLabel#TaxLabel, QLabel#DiscountLabel {
 QLabel#TotalLabel {
     font-size: 48px;
     font-weight: bold;
-    color: #39FF14;
+    color: #2ECC40;
     background: transparent;
 }
 
@@ -702,10 +718,26 @@ QWidget#ActionPanel QLabel {
     background: transparent;
 }
 
+/* Section Headers */
+QLabel#ActionSectionLabel {
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: bold;
+    background: transparent;
+    padding-left: 2px;
+}
+
+QLabel#CustTitle {
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: bold;
+    background: transparent;
+}
+
 QFrame#CustomerPanel {
-    background-color: #2D2D30;
-    border-radius: 5px;
-    padding: 5px;
+    background-color: #252528;
+    border: 1px solid #3E3E42;
+    border-radius: 8px;
 }
 
 QFrame#CustomerPanel QLabel {
@@ -723,7 +755,17 @@ QPushButton#BtnCustomerSelect {
     background-color: #007ACC;
     color: white;
     border: none;
-    padding: 5px;
+    border-radius: 4px;
+    font-weight: bold;
+    padding: 5px 10px;
+}
+
+QPushButton#BtnCustomerSelect:hover {
+    background-color: #0098E6;
+}
+
+QPushButton#BtnCustomerSelect:pressed {
+    background-color: #005F99;
 }
 
 QLabel#PointsLabel {
@@ -735,16 +777,16 @@ QLabel#PointsLabel {
 
 /* Action Grid Button */
 QPushButton#ActionGridBtn {
-    background-color: #2D2D30;
-    border: 1px solid #3E3E42;
+    background-color: #2A2A2D;
+    border: 1px solid #3A3A3D;
     color: #FFFFFF;
-    border-radius: 8px;
+    border-radius: 6px;
     padding: 0px;
 }
 
 QPushButton#ActionGridBtn:hover {
-    background-color: #3E3E42;
-    border: 1px solid #00BCEB;
+    background-color: #353538;
+    border-color: #00BCEB;
 }
 
 QPushButton#ActionGridBtn:pressed {
@@ -752,29 +794,9 @@ QPushButton#ActionGridBtn:pressed {
     color: #000000;
 }
 
-/* Custom Colors for Action Buttons (Bottom Border) */
-QPushButton#ActionGridBtn[btnColor="#FFDC00"] { border-bottom: 3px solid #FFDC00; }
-QPushButton#ActionGridBtn[btnColor="#FF4136"] { border-bottom: 3px solid #FF4136; }
-
-/* Internal Labels in Grid Buttons */
-QPushButton#ActionGridBtn QLabel {
-    background: transparent;
-    color: #FFFFFF;
-}
-
-QPushButton#ActionGridBtn QLabel#lblShortcut {
-    color: #AAAAAA;
-    font-size: 10px;
-    font-weight: bold;
-    background: transparent;
-}
-
-QPushButton#ActionGridBtn QLabel#lblText {
-    color: #FFFFFF;
-    font-size: 11px;
-    font-weight: bold;
-    background: transparent;
-}
+/* Color accents — bottom border */
+QPushButton#ActionGridBtn[btnColor="#FFDC00"] { border-bottom: 2px solid #FFDC00; }
+QPushButton#ActionGridBtn[btnColor="#FF4136"] { border-bottom: 2px solid #FF4136; }
 
 QPushButton#ActionGridBtn:pressed QLabel,
 QPushButton#ActionGridBtn:pressed QLabel#lblText,
@@ -784,12 +806,12 @@ QPushButton#ActionGridBtn:pressed QLabel#lblShortcut {
 
 /* Pay Button */
 QPushButton#BtnPay {
-    background-color: #39FF14;
-    color: #001F3F;
+    background-color: #2ECC40;
+    color: #FFFFFF;
     font-size: 24px;
     font-weight: bold;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
 }
 
 QPushButton#BtnPay:hover {
@@ -817,7 +839,7 @@ QListWidget#SettingsSidebar {
     background-color: #252526; /* VS Code sidebar color */
     border: none;
     border-right: 1px solid #3E3E42;
-    outline: none;
+
 }
 
 QListWidget#SettingsSidebar::item {
@@ -1053,6 +1075,32 @@ QPushButton#PayMethodBtn QLabel#PayMethodName {
 QPushButton#PayMethodBtn[methodType="cash"] QLabel#PayMethodName,
 QPushButton#PayMethodBtn[methodType="cash"] QLabel#PayMethodShortcut {
     color: #FFFFFF;
+}
+
+/* Quantity Dialog */
+QDialog#QuantityDialog {
+    background-color: #1E1E1E;
+}
+
+QLabel#QtyProductName {
+    color: #FFFFFF;
+    font-size: 16px;
+    font-weight: bold;
+    background: transparent;
+}
+
+QLineEdit#QtyInput {
+    background-color: #2A2A2A;
+    color: #FFFFFF;
+    font-size: 28px;
+    font-weight: bold;
+    border: 2px solid #3E3E42;
+    border-radius: 6px;
+    padding: 8px;
+}
+
+QLineEdit#QtyInput:focus {
+    border: 2px solid #00BCEB;
 }
 
 /* Discount Dialog */
@@ -1334,7 +1382,7 @@ QLabel#ChartPlaceholderText {
 QLabel#SectionTitle {
     color: #FFFFFF;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: bold;
     margin-top: 10px;
     margin-bottom: 8px;
     background-color: transparent;
@@ -1366,7 +1414,7 @@ QTableWidget#ActivityTable::item:hover {
 QTableWidget#ActivityTable QHeaderView::section {
     background-color: #2A2A2A;
     color: #00BCEB;
-    font-weight: 600;
+    font-weight: bold;
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1401,7 +1449,7 @@ QTableView::item:hover {
 QTableView QHeaderView::section {
     background-color: #2A2A2A;
     color: #00BCEB;
-    font-weight: 600;
+    font-weight: bold;
     font-size: 10px;
     text-transform: uppercase;
     border: none;
@@ -1410,27 +1458,27 @@ QTableView QHeaderView::section {
 
 /* === BUTTONS === */
 /* Generic button styling - excludes special buttons with IDs */
-QPushButton:not(#NumpadBtn):not(#ActionGridBtn):not(#MenuButton):not(#IconButton) {
+QPushButton:not(#NumpadBtn):not(#ActionGridBtn):not(#NavTile):not(#SignOutBtn):not(#IconButton) {
     background-color: #2A2A2A;
     color: #E5E5E5;
     border: 1px solid #3A3A3A;
     border-radius: 6px;
     padding: 8px 16px;
-    font-weight: 500;
+    font-weight: bold;
     font-size: 13px;
     min-height: 32px;
 }
 
-QPushButton:not(#NumpadBtn):not(#ActionGridBtn):not(#MenuButton):not(#IconButton):hover {
+QPushButton:not(#NumpadBtn):not(#ActionGridBtn):not(#NavTile):not(#SignOutBtn):not(#IconButton):hover {
     background-color: #353535;
     border-color: #00BCEB;
 }
 
-QPushButton:not(#NumpadBtn):not(#ActionGridBtn):not(#MenuButton):not(#IconButton):pressed {
+QPushButton:not(#NumpadBtn):not(#ActionGridBtn):not(#NavTile):not(#SignOutBtn):not(#IconButton):pressed {
     background-color: #1A1A1A;
 }
 
-QPushButton:not(#NumpadBtn):not(#ActionGridBtn):not(#MenuButton):not(#IconButton):disabled {
+QPushButton:not(#NumpadBtn):not(#ActionGridBtn):not(#NavTile):not(#SignOutBtn):not(#IconButton):disabled {
     background-color: #1A1A1A;
     color: #666666;
     border-color: #2A2A2A;
@@ -1482,7 +1530,7 @@ QGroupBox#NetworkCredentialsGroup {
     border-radius: 8px;
     margin-top: 10px;
     padding-top: 20px;
-    font-weight: 600;
+    font-weight: bold;
     color: #E5E5E5;
 }
 
@@ -1499,7 +1547,7 @@ QPushButton#BtnTestConnection {
     border: 2px solid #00BCEB;
     border-radius: 6px;
     padding: 10px 24px;
-    font-weight: 600;
+    font-weight: bold;
     font-size: 14px;
     min-width: 150px;
 }
@@ -1575,7 +1623,7 @@ QFrame#NetworkCard {
 
 QLabel#CardTitle {
     font-size: 16px;
-    font-weight: 600;
+    font-weight: bold;
     color: white;
     margin-bottom: 10px;
 }
@@ -1592,7 +1640,7 @@ QLabel#IPHelper {
 QLabel#FormLabel {
     color: #CCC;
     font-size: 13px;
-    font-weight: 500;
+    font-weight: bold;
     min-width: 110px;
     padding-right: 8px;
 }
@@ -1604,7 +1652,7 @@ QPushButton#BtnTestNetwork {
     color: #00BCEB;
     padding: 10px 20px;
     border-radius: 6px;
-    font-weight: 600;
+    font-weight: bold;
     font-size: 14px;
 }
 
@@ -1620,7 +1668,7 @@ QPushButton#BtnTestNetwork:disabled {
 
 QLabel#TestStatus {
     font-size: 14px;
-    font-weight: 600;
+    font-weight: bold;
     padding-left: 10px;
 }
 
@@ -1737,7 +1785,7 @@ QDialog#UnitManagerDialog QGroupBox {
 QDialog#CategoryManagerDialog QGroupBox::title,
 QDialog#UnitManagerDialog QGroupBox::title {
     color: #00BCEB;
-    font-weight: 600;
+    font-weight: bold;
     font-size: 13px;
 }
 
@@ -1772,7 +1820,7 @@ QDialog#CategoryManagerDialog QTreeWidget::item:hover {
 QDialog#CategoryManagerDialog QTreeWidget QHeaderView::section {
     background-color: #2A2A2A;
     color: #00BCEB;
-    font-weight: 600;
+    font-weight: bold;
     font-size: 11px;
     text-transform: uppercase;
     border: none;

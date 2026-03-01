@@ -616,6 +616,23 @@ QLabel#LogoLabel {
     background: transparent;
 }
 
+QLabel#HeaderLogo {
+    background: transparent;
+}
+
+QLabel#ItemCountLabel {
+    color: #AAAAAA;
+    font-size: 13px;
+    background: transparent;
+}
+
+QLabel#EmptyCartLabel {
+    color: #555555;
+    font-size: 16px;
+    background: transparent;
+    padding: 40px;
+}
+
 /* Search Bar & Filters */
 QWidget#SearchWidget {
     background-color: transparent;
@@ -1071,6 +1088,13 @@ QLabel#WelcomeText {
     margin-top: 20px;
 }
 
+QLabel#LoginTagline {
+    color: #7FAACC;
+    font-size: 13px;
+    background: transparent;
+    padding: 0 30px;
+}
+
 QLabel#FooterLabel {
     color: #CCCCCC;  /* Lighter gray for better visibility */
     font-size: 12px;
@@ -1080,6 +1104,33 @@ QLabel#LogoText {
     color: white;
     font-size: 36px;
     font-weight: bold;
+}
+
+/* === LOGIN RIGHT PANEL === */
+QWidget#LoginRightPanel {
+    background-color: #1A1A1A;
+}
+
+QLabel#PinHeading {
+    font-size: 22px;
+    font-weight: bold;
+    color: #FFFFFF;
+    margin-bottom: 10px;
+    background: transparent;
+}
+
+QLabel#LoginErrorLabel {
+    color: #FF6B6B;
+    font-size: 14px;
+    font-weight: bold;
+    background: transparent;
+}
+
+QLabel#LoginHelpHint {
+    color: #666666;
+    font-size: 11px;
+    background: transparent;
+    margin-top: 15px;
 }
 
 /* === PIN INPUT FIELD === */
@@ -1108,6 +1159,11 @@ QPushButton#NumpadBtn {
     color: white;
     font-size: 24px;
     font-weight: bold;
+    padding: 0px;
+    min-width: 90px;
+    max-width: 90px;
+    min-height: 90px;
+    max-height: 90px;
 }
 
 QPushButton#NumpadBtn:hover {
@@ -1674,4 +1730,46 @@ QLabel#RestoreWarning {
     padding: 12px;
     color: #FF8C85;
     font-size: 12px;
+}
+
+/* === SETTINGS PAGE SHARED STYLES === */
+
+/* Warning hint text (restart required, tax warning) */
+QLabel[class="warning-hint"] {
+    color: #FF8C85;
+    font-size: 11px;
+    font-style: italic;
+    background: transparent;
+}
+
+/* Link-style text button */
+QPushButton[class="link"] {
+    background: transparent;
+    color: #00BCEB;
+    border: none;
+    padding: 4px 12px;
+    font-weight: bold;
+    font-size: 13px;
+}
+QPushButton[class="link"]:hover {
+    color: #00A5D0;
+}
+
+/* Icon-only transparent button */
+QPushButton#BtnInfoIcon {
+    background: transparent;
+    border: none;
+}
+QPushButton#BtnInfoIcon:hover {
+    background: rgba(0, 188, 235, 0.15);
+    border-radius: 14px;
+}
+
+/* Settings scroll area transparency */
+QScrollArea#SettingsScrollArea {
+    background: transparent;
+    border: none;
+}
+QWidget#SettingsScrollInner {
+    background: transparent;
 }

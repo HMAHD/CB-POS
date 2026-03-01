@@ -6,7 +6,6 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QGridLayout,
-    QMessageBox,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QIntValidator, QKeySequence, QShortcut
@@ -54,6 +53,14 @@ class LoginView(QWidget):
         left_layout.addWidget(welcome_text)
         left_layout.addStretch()
 
+        # Tagline
+        tagline = QLabel("Free POS software built for Sri Lankan businesses")
+        tagline.setObjectName("LoginTagline")
+        tagline.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        tagline.setWordWrap(True)
+        left_layout.addWidget(tagline)
+        left_layout.addSpacing(10)
+
         # Footer
         footer_label = QLabel(f"Version {Config.VERSION} | © 2026 Ceylon Byte")
         footer_label.setObjectName("FooterLabel")  # Style via QSS
@@ -63,9 +70,17 @@ class LoginView(QWidget):
 
         # --- RIGHT PANEL (Interaction) ---
         right_panel = QWidget()
+        right_panel.setObjectName("LoginRightPanel")
         right_layout = QVBoxLayout(right_panel)
         right_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         right_layout.setContentsMargins(50, 50, 50, 50)
+
+        # PIN Heading
+        pin_heading = QLabel("Enter Your PIN")
+        pin_heading.setObjectName("PinHeading")
+        pin_heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        right_layout.addWidget(pin_heading)
+        right_layout.addSpacing(10)
 
         # PIN Display
         self.pin_input = QLineEdit()
@@ -74,7 +89,7 @@ class LoginView(QWidget):
         self.pin_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.pin_input.setReadOnly(False)  # Allow keyboard input
         self.pin_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.pin_input.setFixedWidth(300)
+        self.pin_input.setFixedWidth(294)
 
         # Validator (Numbers only, max 6 digits)
         self.pin_input.setValidator(QIntValidator(0, 999999))
@@ -84,11 +99,21 @@ class LoginView(QWidget):
         self.pin_input.returnPressed.connect(self.attempt_login)
 
         right_layout.addWidget(self.pin_input)
-        right_layout.addSpacing(20)
+
+        # Inline Error Label (replaces QMessageBox for failed login)
+        self.lbl_error = QLabel("")
+        self.lbl_error.setObjectName("LoginErrorLabel")
+        self.lbl_error.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_error.setVisible(False)
+        right_layout.addWidget(self.lbl_error)
+
+        right_layout.addSpacing(15)
 
         # Numpad Grid
         numpad_layout = QGridLayout()
-        numpad_layout.setSpacing(10)
+        numpad_layout.setHorizontalSpacing(12)
+        numpad_layout.setVerticalSpacing(12)
+        numpad_layout.setContentsMargins(0, 0, 0, 0)
 
         buttons = [
             ("1", 0, 0),
@@ -107,7 +132,7 @@ class LoginView(QWidget):
 
         for text, row, col in buttons:
             btn = QPushButton(text)
-            btn.setFixedSize(80, 80)
+            btn.setFixedSize(90, 90)
             btn.setObjectName("NumpadBtn")
 
             # CRITICAL: Prevent buttons from stealing focus from PIN input
@@ -125,6 +150,13 @@ class LoginView(QWidget):
             numpad_layout.addWidget(btn, row, col)
 
         right_layout.addLayout(numpad_layout)
+
+        # Help Hint
+        help_hint = QLabel("Forgot PIN? Contact your administrator.")
+        help_hint.setObjectName("LoginHelpHint")
+        help_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        right_layout.addSpacing(15)
+        right_layout.addWidget(help_hint)
 
         # Add panels to main layout
         main_layout.addWidget(left_panel, 40)
@@ -150,28 +182,32 @@ class LoginView(QWidget):
         super().showEvent(event)
         self.pin_input.setFocus()
 
-    def append_pin(self, digit):
+    def append_pin(self, digit: str) -> None:
         """Append digit to PIN input (called by numpad buttons)."""
+        self.lbl_error.setVisible(False)
         current_text = self.pin_input.text()
         if len(current_text) < 6:
             self.pin_input.setText(current_text + digit)
             # Focus is automatically retained because buttons have NoFocus policy
 
-    def clear_pin(self):
+    def clear_pin(self) -> None:
+        self.lbl_error.setVisible(False)
         self.pin_input.clear()
         self.pin_input.setFocus()
 
-    def attempt_login(self):
+    def attempt_login(self) -> None:
         pin = self.pin_input.text()
         if not pin:
             return
 
         user = AuthService.verify_pin(pin)
         if user:
+            self.lbl_error.setVisible(False)
             self.login_success.emit(user)
         else:
             self.pin_input.clear()
-            QMessageBox.warning(self, "Login Failed", "Invalid PIN. Please try again.")
+            self.lbl_error.setText("Invalid PIN. Please try again.")
+            self.lbl_error.setVisible(True)
 
     def keyPressEvent(self, event):
         # Handle Numpad Numbers explicitly

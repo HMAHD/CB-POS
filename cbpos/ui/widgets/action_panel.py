@@ -56,37 +56,25 @@ class ActionBtn(QPushButton):
         if color:
             self.setProperty("btnColor", color)
 
-    def _apply_theme_styles(self, icon_name=None):
-        """Apply theme-aware colors to labels and icons."""
+    def _apply_theme_styles(self, icon_name: str | None = None) -> None:
+        """Apply theme-aware icon to the button. Colors handled via QSS."""
         from cbpos.core.services.theme_service import ThemeService
 
-        is_dark = ThemeService.current_theme.lower() == "dark"
+        self.lbl_icon.setObjectName("lblIcon")
 
-        # Both themes now use Dark Navy backgrounds, so both use white icons
-        if is_dark:
-            shortcut_color = "#AAAAAA"  # Subtle gray for shortcuts
-            text_color = "#FFFFFF"  # White for text
-            icon_color = "white"
-        else:
-            # Light theme now uses Dark Navy buttons, so white icons/text
-            shortcut_color = "#AAAAAA"  # Light gray for shortcuts
-            text_color = "#FFFFFF"  # White for text
-            icon_color = "white"  # White icons on Navy background
-
-        # Apply styles with transparent background
-        self.lbl_shortcut.setStyleSheet(f"background: transparent; color: {shortcut_color};")
-        self.lbl_text.setStyleSheet(f"background: transparent; color: {text_color};")
-        self.lbl_icon.setStyleSheet("background: transparent;")
-
-        # Set icon with correct color
         if icon_name:
+            is_dark = ThemeService.current_theme.lower() == "dark"
+            icon_color = "white" if is_dark else "#1A1A1A"
             icon = Icons.get(icon_name, color=icon_color)
             self.lbl_icon.setPixmap(icon.pixmap(32, 32))
 
-    def set_icon(self, icon_name):
-        # Both themes use white icons (Dark Navy backgrounds in both)
-        icon_color = "white"
+    def set_icon(self, icon_name: str) -> None:
+        """Set icon with theme-aware color."""
+        from cbpos.core.services.theme_service import ThemeService
+
         if icon_name:
+            is_dark = ThemeService.current_theme.lower() == "dark"
+            icon_color = "white" if is_dark else "#1A1A1A"
             icon = Icons.get(icon_name, color=icon_color)
             self.lbl_icon.setPixmap(icon.pixmap(32, 32))
 
@@ -132,7 +120,6 @@ class ActionPanel(QWidget):
 
         self.lbl_customer = QLabel("Walk-in Customer")
         self.lbl_customer.setObjectName("CustomerLabel")
-        self.lbl_customer.setStyleSheet("background: transparent;")
 
         self.btn_cust_select = QPushButton("Select")
         self.btn_cust_select.setFixedWidth(ACTION_BTN_WIDTH)
@@ -149,7 +136,6 @@ class ActionPanel(QWidget):
         self.lbl_points = QLabel("")
         self.lbl_points.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_points.setObjectName("PointsLabel")
-        self.lbl_points.setStyleSheet("background: transparent;")
         layout.addWidget(self.lbl_points)
 
         # --- 2. Action Grid ---
@@ -191,7 +177,7 @@ class ActionPanel(QWidget):
         self.btn_ref.clicked.connect(self.action_ref.emit)
         grid_layout.addWidget(self.btn_ref, 2, 1)
 
-        self.btn_more = ActionBtn("...", "More", Icons.SETTINGS)
+        self.btn_more = ActionBtn("...", "More", Icons.GRID)
         self.btn_more.clicked.connect(self.action_more.emit)
         grid_layout.addWidget(self.btn_more, 2, 2)
 

@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QFrame,
     QSplitter,
     QButtonGroup,
+    QStackedWidget,
 )
 from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint
 from PyQt6.QtGui import QKeySequence, QShortcut, QAction, QBrush, QColor, QPixmap
@@ -83,7 +84,7 @@ class SalesView(QWidget):
 
         self.update_logo()  # Set initial logo
 
-        self.lbl_logo.setStyleSheet("background: transparent;")
+        self.lbl_logo.setObjectName("HeaderLogo")
         self.lbl_logo.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         header_layout.addWidget(self.lbl_logo)
 
@@ -95,7 +96,6 @@ class SalesView(QWidget):
         # Menu Button
         self.menu_button = QToolButton()
         self.menu_button.setObjectName("menu_button")
-        self.menu_button.setStyleSheet("background: transparent; border: none;")
         # Hamburger menu icon is always white for visibility on dark header
         self.menu_button.setIcon(Icons.get("fa5s.bars", "white"))
 
@@ -194,11 +194,19 @@ class SalesView(QWidget):
         self.cart_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.cart_table.customContextMenuRequested.connect(self.show_cart_context_menu)
         self.cart_table.setAlternatingRowColors(True)
-        # Styling handled in theme.qss, but setting object name for specificity
-        # if needed
-        self.cart_table.setObjectName("CartTable")
 
-        left_layout.addWidget(self.cart_table)
+        # Empty Cart Placeholder
+        self.empty_cart_label = QLabel("Scan or search to add items")
+        self.empty_cart_label.setObjectName("EmptyCartLabel")
+        self.empty_cart_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Stacked widget to swap between cart table and empty placeholder
+        self.cart_stack = QStackedWidget()
+        self.cart_stack.addWidget(self.empty_cart_label)  # index 0
+        self.cart_stack.addWidget(self.cart_table)  # index 1
+        self.cart_stack.setCurrentIndex(0)
+
+        left_layout.addWidget(self.cart_stack)
 
         # 3. Order Bar (Tabs)
         self.order_bar = OrderBar()
@@ -216,15 +224,13 @@ class SalesView(QWidget):
         # Subtotals (Left)
         subtotal_layout = QVBoxLayout()
         self.lbl_item_count = QLabel("Items: 0")
-        self.lbl_item_count.setStyleSheet("background: transparent;")
+        self.lbl_item_count.setObjectName("ItemCountLabel")
         self.lbl_subtotal = QLabel("Subtotal: 0.00")
-        self.lbl_subtotal.setStyleSheet("background: transparent;")
-        self.lbl_discount = QLabel("Disc: 0.00")
-        self.lbl_discount.setStyleSheet("background: transparent;")
-        self.lbl_tax = QLabel("Tax: 0.00")
-        self.lbl_tax.setStyleSheet("background: transparent;")
         self.lbl_subtotal.setObjectName("SubtotalLabel")
+        self.lbl_discount = QLabel("Disc: 0.00")
+        self.lbl_tax = QLabel("Tax: 0.00")
         self.lbl_tax.setObjectName("TaxLabel")
+        subtotal_layout.addWidget(self.lbl_item_count)
         subtotal_layout.addWidget(self.lbl_subtotal)
         subtotal_layout.addWidget(self.lbl_discount)
         subtotal_layout.addWidget(self.lbl_tax)
@@ -234,7 +240,6 @@ class SalesView(QWidget):
 
         # Grand Total (Right)
         self.total_label = QLabel("0.00")
-        self.total_label.setStyleSheet("background: transparent;")
         self.total_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.total_label.setObjectName("TotalLabel")
         total_layout.addWidget(self.total_label)
@@ -279,11 +284,13 @@ class SalesView(QWidget):
         self.splitter.addWidget(self.product_grid)
         self.splitter.addWidget(self.action_panel)
 
-        # Set Stretch Factors (75% / 25%)
-        self.splitter.setStretchFactor(0, 3)
-        self.splitter.setStretchFactor(1, 1)
+        # Stretch: cart expands, product_grid hidden initially, action_panel fixed width
+        self.splitter.setStretchFactor(0, 1)  # container_left — takes remaining space
+        self.splitter.setStretchFactor(1, 0)  # product_grid — hidden by default
+        self.splitter.setStretchFactor(2, 0)  # action_panel — fixed width
         self.splitter.setCollapsible(0, False)
-        self.splitter.setCollapsible(1, False)
+        self.splitter.setCollapsible(1, True)  # product_grid can collapse
+        self.splitter.setCollapsible(2, False)
 
         # Shortcuts
         self.setup_shortcuts()
@@ -315,6 +322,8 @@ class SalesView(QWidget):
 
     def update_cart_ui(self):
         self.cart_table.setRowCount(0)
+        has_items = len(self.cart_service.items) > 0
+        self.cart_stack.setCurrentIndex(1 if has_items else 0)
         for row, item in enumerate(self.cart_service.items):
             self.cart_table.insertRow(row)
 
@@ -515,6 +524,8 @@ class SalesView(QWidget):
     def update_cart_display(self):
         """Update cart display with visual indicators (Phase 6)."""
         self.cart_table.setRowCount(0)
+        has_items = len(self.cart_service.items) > 0
+        self.cart_stack.setCurrentIndex(1 if has_items else 0)
         for row, item in enumerate(self.cart_service.items):
             self.cart_table.insertRow(row)
 
@@ -534,11 +545,13 @@ class SalesView(QWidget):
             else:
                 self.cart_table.setItem(row, 1, QTableWidgetItem(f"{item['unit_price']:.2f}"))  # noqa: E231
 
-            # Highlight if discounted
+            # Highlight if discounted (theme-aware)
             if item.get("discount_type") != "NONE" or item.get("is_manual_price"):
-                bg_color = QColor(0, 50, 0)  # Dark Green for dark mode
-                brush = QBrush(bg_color)
-                name_item.setBackground(brush)
+                from cbpos.core.services.theme_service import ThemeService
+
+                is_dark = ThemeService.current_theme.lower() == "dark"
+                bg_color = QColor(0, 50, 0) if is_dark else QColor(220, 255, 220)
+                name_item.setBackground(QBrush(bg_color))
 
             self.cart_table.setItem(row, 0, name_item)
             # If we didn't set a cell widget for price, we need to set the item
@@ -863,9 +876,12 @@ class SalesView(QWidget):
         is_visible = self.product_grid.isVisible()
         self.product_grid.setVisible(not is_visible)
         if not is_visible:
-            # Set splitter sizes: cart 50%, grid 30%, action 20%
+            # Set splitter sizes: cart gets remaining, grid 350px, action panel keeps fixed width
             total = self.splitter.width()
-            self.splitter.setSizes([int(total * 0.5), int(total * 0.3), int(total * 0.2)])
+            action_w = PAYMENT_PANEL_WIDTH
+            grid_w = 350
+            cart_w = total - grid_w - action_w
+            self.splitter.setSizes([max(cart_w, 200), grid_w, action_w])
 
     def open_receive_payment(self) -> None:
         """Open Receive Payment dialog from POS (quick payment without sale)."""

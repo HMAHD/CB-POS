@@ -633,6 +633,23 @@ QLabel#LogoLabel {
     background: transparent;
 }
 
+QLabel#HeaderLogo {
+    background: transparent;
+}
+
+QLabel#ItemCountLabel {
+    color: #666666;
+    font-size: 13px;
+    background: transparent;
+}
+
+QLabel#EmptyCartLabel {
+    color: #AAAAAA;
+    font-size: 16px;
+    background: transparent;
+    padding: 40px;
+}
+
 /* ===== 5. SEARCH BAR & FILTER BUTTONS ===== */
 QWidget#SearchWidget {
     background-color: transparent;
@@ -779,11 +796,11 @@ QLabel#PointsLabel {
     background: transparent;
 }
 
-/* ===== 3. ACTION BUTTONS (Dark Navy - High Visibility) ===== */
+/* ===== 3. ACTION BUTTONS (Light theme) ===== */
 QPushButton[class="ActionGridBtn"] {
-    background-color: #001F3F;  /* Dark Navy Background */
-    color: white;  /* White Text */
-    border: 1px solid #001F3F;
+    background-color: #E8EDF2;
+    color: #1A1A1A;
+    border: 1px solid #CCD5DE;
     border-radius: 8px;
     padding: 10px;
     font-weight: bold;
@@ -791,13 +808,14 @@ QPushButton[class="ActionGridBtn"] {
 
 /* Hover Effect */
 QPushButton[class="ActionGridBtn"]:hover {
-    background-color: #003366;  /* Lighter Navy Hover */
-    border-color: #00BCEB;  /* Cyan Border Accent */
+    background-color: #D6DEE8;
+    border-color: #00BCEB;
 }
 
 /* Pressed Effect */
 QPushButton[class="ActionGridBtn"]:pressed {
-    background-color: #00BCEB;  /* Cyan Active */
+    background-color: #00BCEB;
+    color: #FFFFFF;
 }
 
 /* Custom Colors for Action Buttons (Bottom Border Accents) */
@@ -811,31 +829,28 @@ QPushButton[class="ActionGridBtn"][btnColor="#FF4136"] {
 /* Internal Labels in Grid Buttons */
 QPushButton[class="ActionGridBtn"] QLabel {
     background: transparent;
-    color: white;  /* White text on Navy */
+    color: #1A1A1A;
 }
 
 QPushButton[class="ActionGridBtn"] QLabel#lblShortcut {
-    color: #AAAAAA;  /* Light gray for shortcuts */
+    color: #777777;
     font-size: 10px;
     font-weight: bold;
     background: transparent;
 }
 
 QPushButton[class="ActionGridBtn"] QLabel#lblText {
-    color: white;  /* White text */
+    color: #1A1A1A;
     font-size: 12px;
     font-weight: bold;
     background: transparent;
 }
 
-/* All labels stay white on hover and press for consistency */
-QPushButton[class="ActionGridBtn"]:hover QLabel,
-QPushButton[class="ActionGridBtn"]:hover QLabel#lblText,
-QPushButton[class="ActionGridBtn"]:hover QLabel#lblShortcut,
+/* Labels go white on press (cyan bg) */
 QPushButton[class="ActionGridBtn"]:pressed QLabel,
 QPushButton[class="ActionGridBtn"]:pressed QLabel#lblText,
 QPushButton[class="ActionGridBtn"]:pressed QLabel#lblShortcut {
-    color: white;
+    color: #FFFFFF;
 }
 
 /* Pay Button */
@@ -1154,6 +1169,13 @@ QLabel#WelcomeText {
     margin-top: 20px;
 }
 
+QLabel#LoginTagline {
+    color: #7FAACC;
+    font-size: 13px;
+    background: transparent;
+    padding: 0 30px;
+}
+
 QLabel#FooterLabel {
     color: #CCCCCC;  /* Lighter gray for better visibility on navy */
     font-size: 12px;
@@ -1163,6 +1185,33 @@ QLabel#LogoText {
     color: white;
     font-size: 36px;
     font-weight: bold;
+}
+
+/* === LOGIN RIGHT PANEL === */
+QWidget#LoginRightPanel {
+    background-color: #F5F5F5;
+}
+
+QLabel#PinHeading {
+    font-size: 22px;
+    font-weight: bold;
+    color: #1A1A1A;
+    margin-bottom: 10px;
+    background: transparent;
+}
+
+QLabel#LoginErrorLabel {
+    color: #DC3545;
+    font-size: 14px;
+    font-weight: bold;
+    background: transparent;
+}
+
+QLabel#LoginHelpHint {
+    color: #999999;
+    font-size: 11px;
+    background: transparent;
+    margin-top: 15px;
 }
 
 /* === PIN INPUT FIELD === */
@@ -1191,6 +1240,11 @@ QPushButton#NumpadBtn {
     color: #001F3F;
     font-size: 24px;
     font-weight: bold;
+    padding: 0px;
+    min-width: 90px;
+    max-width: 90px;
+    min-height: 90px;
+    max-height: 90px;
 }
 
 QPushButton#NumpadBtn:hover {
@@ -1614,4 +1668,46 @@ QLabel#RestoreWarning {
     padding: 12px;
     color: #842029;
     font-size: 12px;
+}
+
+/* === SETTINGS PAGE SHARED STYLES === */
+
+/* Warning hint text (restart required, tax warning) */
+QLabel[class="warning-hint"] {
+    color: #DC3545;
+    font-size: 11px;
+    font-style: italic;
+    background: transparent;
+}
+
+/* Link-style text button */
+QPushButton[class="link"] {
+    background: transparent;
+    color: #0D6EFD;
+    border: none;
+    padding: 4px 12px;
+    font-weight: bold;
+    font-size: 13px;
+}
+QPushButton[class="link"]:hover {
+    color: #0A58CA;
+}
+
+/* Icon-only transparent button */
+QPushButton#BtnInfoIcon {
+    background: transparent;
+    border: none;
+}
+QPushButton#BtnInfoIcon:hover {
+    background: rgba(13, 110, 253, 0.1);
+    border-radius: 14px;
+}
+
+/* Settings scroll area transparency */
+QScrollArea#SettingsScrollArea {
+    background: transparent;
+    border: none;
+}
+QWidget#SettingsScrollInner {
+    background: transparent;
 }

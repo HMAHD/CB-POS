@@ -38,6 +38,7 @@ class Icons:
     RECALL = "fa5s.history"
     VOID = "fa5s.ban"
     DRAWER = "fa5s.cash-register"
+    GRID = "fa5s.th"
 
     # Status
     SUCCESS = "fa5s.check-circle"

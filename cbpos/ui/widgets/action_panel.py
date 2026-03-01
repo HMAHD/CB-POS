@@ -63,13 +63,24 @@ class ActionBtn(QPushButton):
             self.setProperty("btnColor", color)
 
     def _apply_theme_styles(self, icon_name: str | None = None) -> None:
-        """Apply theme-aware icon to the button. Colors handled via QSS."""
+        """Apply theme-aware colors to labels and icon.
+
+        Qt QSS descendant selectors (e.g. QPushButton QLabel) are unreliable
+        for child widgets inside QPushButton, so we set colors directly.
+        """
         from cbpos.core.services.theme_service import ThemeService
 
         self.lbl_icon.setObjectName("lblIcon")
+        is_dark = ThemeService.current_theme.lower() == "dark"
+
+        # Label colors — must be set directly, QSS descendant rules don't cascade
+        text_color = "#FFFFFF" if is_dark else "#1A1A1A"
+        shortcut_color = "#AAAAAA" if is_dark else "#777777"
+        self.lbl_text.setStyleSheet(f"color: {text_color}; background: transparent;")
+        self.lbl_shortcut.setStyleSheet(f"color: {shortcut_color}; background: transparent;")
+        self.lbl_icon.setStyleSheet("background: transparent;")
 
         if icon_name:
-            is_dark = ThemeService.current_theme.lower() == "dark"
             icon_color = "white" if is_dark else "#1A1A1A"
             icon = Icons.get(icon_name, color=icon_color)
             self.lbl_icon.setPixmap(icon.pixmap(28, 28))
@@ -83,6 +94,10 @@ class ActionBtn(QPushButton):
             icon_color = "white" if is_dark else "#1A1A1A"
             icon = Icons.get(icon_name, color=icon_color)
             self.lbl_icon.setPixmap(icon.pixmap(28, 28))
+
+    def refresh_theme(self) -> None:
+        """Re-apply theme colors (called when theme changes)."""
+        self._apply_theme_styles(self._icon_name)
 
 
 class ActionPanel(QWidget):

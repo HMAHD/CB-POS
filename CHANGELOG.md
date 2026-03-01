@@ -14,6 +14,10 @@ All notable changes to this project will be documented in this file. Never delet
 - **ConfigService.get() crashes**: Fixed `TypeError` in `SoundService.play()` and `SalesView.quick_pay()` — removed invalid default argument from `ConfigService.get()` calls.
 - **Receipt dialog bug**: Fixed `show_receipt_dialog` bool-vs-string comparison (`True == "True"` is `False` in Python).
 - **QSS**: Moved ActionGridBtn from `[class=...]` attribute selector to `#ActionGridBtn` objectName selector for reliable specificity. Added NumpadContainer, PayMethodBtn, PaymentSeparator styles.
+- **Action Button Labels (dark theme)**: Set label colors directly in Python (`_apply_theme_styles()`) since Qt QSS descendant selectors don't reliably cascade to child QLabels inside QPushButton. Added `refresh_theme()` method.
+- **Side Menu**: Tightened layout — reduced nav margins (40→16px top), user section (30→20px), avatar (64→52px), spacing (5→2px). Moved Sign Out to separate container. Simplified `update_all_icons()`.
+- **Settings View**: Removed unused `_CONFIG_PAGE_COUNT` and save/cancel visibility toggle.
+- **Scheduler Service**: Fixed `ConfigService.update()` → `ConfigService.set()` method name.
 
 ## [0.8.0] - 2026-02-28
 

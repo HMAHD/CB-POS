@@ -14,27 +14,21 @@ from cbpos.ui.constants import SIDEBAR_WIDTH, SIDEBAR_BUTTON_HEIGHT, ACTION_BTN_
 
 
 class MenuButton(QPushButton):
-    """
-    Flat button for the side menu.
-    """
+    """Flat button for the side menu."""
 
     def __init__(self, text: str, icon_name: str, is_destructive: bool = False):
         super().__init__()
         self.setText(f"  {text}")
-        self.setObjectName("MenuButton")  # For CSS styling
+        self.setObjectName("MenuButton")
 
-        # Store the icon name and destructive flag for theme updates
         self.icon_name = icon_name
         self.is_destructive = is_destructive
 
-        # Set initial icon
         self.update_icon()
-        self.setIconSize(QSize(24, 24))
-
+        self.setIconSize(QSize(22, 22))
         self.setFixedHeight(SIDEBAR_BUTTON_HEIGHT)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        # Set property for CSS targeting
         if is_destructive:
             self.setProperty("destructive", True)
 
@@ -47,22 +41,17 @@ class MenuButton(QPushButton):
 
 
 class IconButton(QPushButton):
-    """
-    Icon-only button for the bottom toolbar.
-    """
+    """Icon-only button for the bottom toolbar."""
 
     def __init__(self, icon_name: str, tooltip: str):
         super().__init__()
-        self.setObjectName("IconButton")  # For CSS styling
+        self.setObjectName("IconButton")
 
-        # Store icon name for theme updates
         self.icon_name = icon_name
-
-        # Set initial icon
         self.update_icon()
-        self.setIconSize(QSize(24, 24))
+        self.setIconSize(QSize(22, 22))
         self.setToolTip(tooltip)
-        self.setFixedSize(50, 50)
+        self.setFixedSize(46, 46)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def update_icon(self):
@@ -90,19 +79,16 @@ class SideMenu(QWidget):
         super().__init__(parent)
         self.setFixedWidth(SIDEBAR_WIDTH)
         self.setVisible(False)
-        self.setObjectName("POSSideMenu")  # For theme-specific styling
+        self.setObjectName("POSSideMenu")
 
-        # Shadow
         shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(20)
+        shadow.setBlurRadius(25)
         shadow.setXOffset(-5)
         shadow.setYOffset(0)
-        shadow.setColor(QColor(0, 0, 0, 100))
+        shadow.setColor(QColor(0, 0, 0, 120))
         self.setGraphicsEffect(shadow)
 
-        # High Z-order to sit on top
         self.raise_()
-
         self.init_ui()
 
     def init_ui(self):
@@ -110,11 +96,11 @@ class SideMenu(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # 1. Top Section (Navigation)
+        # ── Navigation Section ─────────────────────────────────────
         nav_container = QWidget()
         nav_layout = QVBoxLayout(nav_container)
-        nav_layout.setContentsMargins(0, 40, 0, 20)
-        nav_layout.setSpacing(5)
+        nav_layout.setContentsMargins(0, 16, 0, 8)
+        nav_layout.setSpacing(2)
 
         self.btn_management = MenuButton("Management", "fa5s.chart-line")
         self.btn_management.clicked.connect(self.management_clicked.emit)
@@ -143,22 +129,22 @@ class SideMenu(QWidget):
         nav_layout.addStretch()
         main_layout.addWidget(nav_container)
 
-        # Separator
+        # ── Separator ──────────────────────────────────────────────
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
-        line.setFrameShadow(QFrame.Shadow.Sunken)
         line.setObjectName("MenuSeparator")
+        line.setFixedHeight(1)
         main_layout.addWidget(line)
 
-        # 2. Middle Section (User Profile)
+        # ── User Profile Section ───────────────────────────────────
         user_container = QWidget()
         user_layout = QVBoxLayout(user_container)
-        user_layout.setContentsMargins(30, 30, 30, 30)
-        user_layout.setSpacing(10)
+        user_layout.setContentsMargins(20, 20, 20, 12)
+        user_layout.setSpacing(6)
 
         # Avatar
         self.lbl_avatar = QLabel()
-        self.lbl_avatar.setPixmap(Icons.get("fa5s.user-circle", "#00BCEB").pixmap(64, 64))
+        self.lbl_avatar.setPixmap(Icons.get("fa5s.user-circle", "#00BCEB").pixmap(52, 52))
         self.lbl_avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
         user_layout.addWidget(self.lbl_avatar)
 
@@ -173,28 +159,33 @@ class SideMenu(QWidget):
         self.lbl_role.setAlignment(Qt.AlignmentFlag.AlignCenter)
         user_layout.addWidget(self.lbl_role)
 
-        user_layout.addSpacing(20)
-
-        # Logout
-        self.btn_logout = MenuButton("Sign Out", "fa5s.sign-out-alt", is_destructive=True)
-        self.btn_logout.clicked.connect(self.logout_clicked.emit)
-        user_layout.addWidget(self.btn_logout)
-
         main_layout.addWidget(user_container)
 
-        # Separator
+        # ── Sign Out ───────────────────────────────────────────────
+        logout_container = QWidget()
+        logout_layout = QVBoxLayout(logout_container)
+        logout_layout.setContentsMargins(16, 0, 16, 8)
+        logout_layout.setSpacing(0)
+
+        self.btn_logout = MenuButton("Sign Out", "fa5s.sign-out-alt", is_destructive=True)
+        self.btn_logout.clicked.connect(self.logout_clicked.emit)
+        logout_layout.addWidget(self.btn_logout)
+
+        main_layout.addWidget(logout_container)
+
+        # ── Separator ──────────────────────────────────────────────
         line2 = QFrame()
         line2.setFrameShape(QFrame.Shape.HLine)
-        line2.setFrameShadow(QFrame.Shadow.Sunken)
         line2.setObjectName("MenuSeparator")
+        line2.setFixedHeight(1)
         main_layout.addWidget(line2)
 
-        # 3. Bottom Section (System Toolbar)
+        # ── Bottom Toolbar ─────────────────────────────────────────
         toolbar_container = QWidget()
         toolbar_container.setFixedHeight(ACTION_BTN_HEIGHT)
         toolbar_layout = QHBoxLayout(toolbar_container)
         toolbar_layout.setContentsMargins(20, 0, 20, 0)
-        toolbar_layout.setSpacing(20)
+        toolbar_layout.setSpacing(16)
         toolbar_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.btn_settings = IconButton("fa5s.cog", "Settings")
@@ -217,7 +208,6 @@ class SideMenu(QWidget):
             self.lbl_username.setText(user.username)
             self.lbl_role.setText(user.role.name if user.role else "Unknown")
 
-            # Permission Check (Simple role check for now, can be expanded)
             is_admin = user.role and user.role.name.lower() in [
                 "admin",
                 "manager",
@@ -234,30 +224,18 @@ class SideMenu(QWidget):
 
     def update_all_icons(self):
         """Update all icons in the side menu when theme changes."""
-        # Update MenuButtons
-        if hasattr(self, "btn_management"):
-            self.btn_management.update_icon()
-        if hasattr(self, "btn_history"):
-            self.btn_history.update_icon()
-        if hasattr(self, "btn_documents"):
-            self.btn_documents.update_icon()
-        if hasattr(self, "btn_receive_payment"):
-            self.btn_receive_payment.update_icon()
-        if hasattr(self, "btn_reprint"):
-            self.btn_reprint.update_icon()
-        if hasattr(self, "btn_refund"):
-            self.btn_refund.update_icon()
-        if hasattr(self, "btn_logout"):
-            self.btn_logout.update_icon()
+        for btn in [
+            self.btn_management,
+            self.btn_history,
+            self.btn_documents,
+            self.btn_receive_payment,
+            self.btn_reprint,
+            self.btn_refund,
+            self.btn_logout,
+        ]:
+            btn.update_icon()
 
-        # Update IconButtons (toolbar)
-        if hasattr(self, "btn_settings"):
-            self.btn_settings.update_icon()
-        if hasattr(self, "btn_fullscreen"):
-            self.btn_fullscreen.update_icon()
-        if hasattr(self, "btn_power"):
-            self.btn_power.update_icon()
+        for btn in [self.btn_settings, self.btn_fullscreen, self.btn_power]:
+            btn.update_icon()
 
-        # Update avatar icon (always cyan)
-        if hasattr(self, "lbl_avatar"):
-            self.lbl_avatar.setPixmap(Icons.get("fa5s.user-circle", "#00BCEB").pixmap(64, 64))
+        self.lbl_avatar.setPixmap(Icons.get("fa5s.user-circle", "#00BCEB").pixmap(52, 52))

@@ -150,7 +150,7 @@ class SideMenu(QWidget):
         nav_container.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         nav_layout = QVBoxLayout(nav_container)
         nav_layout.setContentsMargins(10, 4, 10, 4)
-        nav_layout.setSpacing(8)
+        nav_layout.setSpacing(20)
 
         self.btn_management = NavTile("Management", "fa5s.chart-line")
         self.btn_management.clicked.connect(self._on_management)

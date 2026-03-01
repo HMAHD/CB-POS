@@ -7,7 +7,6 @@ from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
-    QFormLayout,
     QComboBox,
     QLineEdit,
     QTableWidget,
@@ -18,7 +17,7 @@ from PyQt6.QtWidgets import (
     QHeaderView,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QShortcut, QKeySequence
+from PyQt6.QtGui import QShortcut, QKeySequence, QBrush, QColor
 from decimal import Decimal
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.category_service import CategoryService
@@ -37,88 +36,125 @@ class AdvancedSearchDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Advanced Search [F3]")
-        self.setMinimumSize(900, 600)
+        self.setMinimumSize(950, 620)
+        self.setObjectName("AdvancedSearchDialog")
         self.product_service = ProductService()
         self.init_ui()
         self.load_filters()
 
     def init_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
 
         # Title
         title = QLabel("Advanced Product Search")
-        title.setProperty("class", "dialog-title")
+        title.setObjectName("AdvSearchTitle")
         layout.addWidget(title)
 
-        # Filters
-        filter_layout = QFormLayout()
+        # Filters Row 1: Search + Category + Supplier
+        filter_row1 = QHBoxLayout()
+        filter_row1.setSpacing(10)
 
-        # Search Query
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Enter product name or barcode...")
+        self.search_input.setObjectName("SearchInput")
+        self.search_input.setPlaceholderText(
+            "Search by product name or barcode..."
+        )
         self.search_input.textChanged.connect(self.perform_search)
-        filter_layout.addRow("Search:", self.search_input)
+        filter_row1.addWidget(self.search_input, stretch=2)
 
-        # Category Filter
         self.category_combo = QComboBox()
+        self.category_combo.setObjectName("SearchCategoryCombo")
         self.category_combo.addItem("All Categories", None)
         self.category_combo.currentIndexChanged.connect(self.perform_search)
-        filter_layout.addRow("Category:", self.category_combo)
+        filter_row1.addWidget(self.category_combo, stretch=1)
 
-        # Supplier Filter
         self.supplier_combo = QComboBox()
+        self.supplier_combo.setObjectName("SearchSupplierCombo")
         self.supplier_combo.addItem("All Suppliers", None)
         self.supplier_combo.currentIndexChanged.connect(self.perform_search)
-        filter_layout.addRow("Supplier:", self.supplier_combo)
+        filter_row1.addWidget(self.supplier_combo, stretch=1)
 
-        # Price Range
-        price_layout = QHBoxLayout()
+        layout.addLayout(filter_row1)
+
+        # Filters Row 2: Price Range
+        filter_row2 = QHBoxLayout()
+        filter_row2.setSpacing(10)
+
+        lbl_price = QLabel("Price:")
+        lbl_price.setObjectName("SearchFilterLabel")
+        filter_row2.addWidget(lbl_price)
+
         self.price_min = QDoubleSpinBox()
+        self.price_min.setObjectName("SearchPriceMin")
         self.price_min.setRange(0, 999999)
         self.price_min.setPrefix(f"{get_currency_symbol()} ")
         self.price_min.valueChanged.connect(self.perform_search)
+        filter_row2.addWidget(self.price_min)
+
+        lbl_to = QLabel("to")
+        lbl_to.setObjectName("SearchFilterLabel")
+        filter_row2.addWidget(lbl_to)
 
         self.price_max = QDoubleSpinBox()
+        self.price_max.setObjectName("SearchPriceMax")
         self.price_max.setRange(0, 999999)
         self.price_max.setValue(999999)
         self.price_max.setPrefix(f"{get_currency_symbol()} ")
         self.price_max.valueChanged.connect(self.perform_search)
+        filter_row2.addWidget(self.price_max)
 
-        price_layout.addWidget(self.price_min)
-        price_layout.addWidget(QLabel(" to "))
-        price_layout.addWidget(self.price_max)
-        filter_layout.addRow("Price Range:", price_layout)
-
-        layout.addLayout(filter_layout)
+        filter_row2.addStretch()
+        layout.addLayout(filter_row2)
 
         # Results Table
         self.table = QTableWidget()
+        self.table.setObjectName("SearchResultsTable")
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["Name", "Barcode", "Stock", "Price", "Category"])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.setHorizontalHeaderLabels(
+            ["Name", "Barcode", "Stock", "Price", "Category"]
+        )
+        self.table.horizontalHeader().setSectionResizeMode(
+            0, QHeaderView.ResizeMode.Stretch
+        )
+        self.table.setSelectionBehavior(
+            QTableWidget.SelectionBehavior.SelectRows
+        )
+        self.table.setEditTriggers(
+            QTableWidget.EditTrigger.NoEditTriggers
+        )
         self.table.doubleClicked.connect(self.on_select)
         layout.addWidget(self.table)
 
-        # Buttons
+        # Bottom Bar: Result count + Buttons
         btn_layout = QHBoxLayout()
+
+        self.lbl_count = QLabel("0 results")
+        self.lbl_count.setObjectName("SearchResultCount")
+        btn_layout.addWidget(self.lbl_count)
+
         btn_layout.addStretch()
 
         btn_select = QPushButton("Select [Enter]")
-        btn_select.setProperty("class", "primary")
+        btn_select.setObjectName("BtnSearchSelect")
         btn_select.clicked.connect(self.on_select)
         btn_layout.addWidget(btn_select)
 
         btn_cancel = QPushButton("Cancel [Esc]")
+        btn_cancel.setObjectName("BtnSearchCancel")
         btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(btn_cancel)
 
         layout.addLayout(btn_layout)
 
         # Shortcuts
-        QShortcut(QKeySequence(Qt.Key.Key_Return), self).activated.connect(self.on_select)
-        QShortcut(QKeySequence(Qt.Key.Key_Escape), self).activated.connect(self.reject)
+        QShortcut(
+            QKeySequence(Qt.Key.Key_Return), self
+        ).activated.connect(self.on_select)
+        QShortcut(
+            QKeySequence(Qt.Key.Key_Escape), self
+        ).activated.connect(self.reject)
 
         # Focus
         self.search_input.setFocus()
@@ -132,6 +168,13 @@ class AdvancedSearchDialog(QDialog):
         suppliers = SupplierService.get_all_suppliers()
         for sup in suppliers:
             self.supplier_combo.addItem(sup.company_name, sup.id)
+
+    def _get_text_color(self) -> QColor:
+        """Get theme-aware text color."""
+        from cbpos.core.services.theme_service import ThemeService
+
+        is_dark = ThemeService.current_theme.lower() == "dark"
+        return QColor("#FFFFFF") if is_dark else QColor("#212529")
 
     def perform_search(self):
         """Execute search with filters."""
@@ -147,41 +190,61 @@ class AdvancedSearchDialog(QDialog):
         # Apply filters
         filtered = []
         for p in products:
-            # Category filter
             if category_id and p.category_id != category_id:
                 continue
-            # Supplier filter
             if supplier_id and p.default_supplier_id != supplier_id:
                 continue
-            # Price filter
             if not (min_price <= p.price <= max_price):
                 continue
             filtered.append(p)
 
+        # Theme-aware text brush
+        text_brush = QBrush(self._get_text_color())
+
         # Populate table
         self.table.setRowCount(len(filtered))
         for row, product in enumerate(filtered):
-            self.table.setItem(row, 0, QTableWidgetItem(product.name_en))
-            self.table.setItem(row, 1, QTableWidgetItem(product.barcode))
+            name_item = QTableWidgetItem(product.name_en)
+            name_item.setForeground(text_brush)
+            self.table.setItem(row, 0, name_item)
 
-            stock_item = QTableWidgetItem(f"{float(product.stock_qty): .2f}")
-            stock_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            barcode_item = QTableWidgetItem(product.barcode)
+            barcode_item.setForeground(text_brush)
+            self.table.setItem(row, 1, barcode_item)
+
+            stock_item = QTableWidgetItem(f"{float(product.stock_qty):.2f}")
+            stock_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            )
+            stock_item.setForeground(text_brush)
             self.table.setItem(row, 2, stock_item)
 
             price_item = QTableWidgetItem(format_currency(product.price))
-            price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            price_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            )
+            price_item.setForeground(text_brush)
             self.table.setItem(row, 3, price_item)
 
             cat_name = product.category.name if product.category else "-"
-            self.table.setItem(row, 4, QTableWidgetItem(cat_name))
+            cat_item = QTableWidgetItem(cat_name)
+            cat_item.setForeground(text_brush)
+            self.table.setItem(row, 4, cat_item)
 
             # Store product object
-            self.table.item(row, 0).setData(Qt.ItemDataRole.UserRole, product)
+            self.table.item(row, 0).setData(
+                Qt.ItemDataRole.UserRole, product
+            )
+
+        # Update result count
+        self.lbl_count.setText(f"{len(filtered)} results")
 
     def on_select(self):
         """Emit selected product and close dialog."""
         row = self.table.currentRow()
         if row >= 0:
-            product = self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
+            product = self.table.item(row, 0).data(
+                Qt.ItemDataRole.UserRole
+            )
             self.product_selected.emit(product)
             self.accept()

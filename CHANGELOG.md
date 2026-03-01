@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.8.2] - 2026-03-01
+
+### Redesigned — Payment Dialog & Advanced Search
+- **Payment Dialog**: Full redesign with new two-column layout (920×700). Left column: method tiles (2×3 grid with 12px gap, active tile gets accent border), searchable customer combo (type-to-filter with QCompleter, MatchContains), compact applied payments list with red SVG cross remove buttons. Right column: 28px amount input (auto-fills remaining for all methods), 72px touch-friendly numpad (fixed-size container with uniform 8px spacing), ADD PAYMENT button.
+- **Numpad**: Wrapped in fixed-size container widget to prevent QGridLayout stretching. Buttons use NoFocus policy to avoid stealing focus from amount input. "C" clears, "." adds decimal, digits replace selected text.
+- **Enter Key Fix**: Parent SalesView's QShortcut(Key_Return/Key_Enter) was stealing Enter presses before the dialog could handle them. Fixed by disabling parent shortcuts on dialog open and re-enabling in done() (same pattern as QuantityDialog).
+- **Customer Search**: Made customer combo editable with QCompleter (CaseInsensitive + MatchContains). Placeholder "Type to search..." for quick lookup in large customer lists. Validates typed name exists before accepting credit payment.
+- **Remove Payments**: Each applied payment has a red cross icon button (x-red.svg). Click removes that entry and recalculates balance. Full border visibility with proper margins (14px right, 8px vertical, 48px item height).
+- **Advanced Search Dialog**: Added objectName "AdvancedSearchDialog" for QSS targeting. Replaced QFormLayout with horizontal filter rows (search + category + supplier row, price range row). Added result count label. All table items get explicit theme-aware foreground color (fixes invisible text in dark theme). Min size increased to 950×620.
+- **QSS Themes**: Replaced all navy-blue (#0A1929, #132F4C) Payment Dialog styles with system theme colors (#1E1E1E/#252526 dark, #F8F9FA/#FFFFFF light). Added selected state for method tiles, BtnRemovePayment, PaymentListItemWidget/Label, AdvancedSearchDialog styles for both themes.
+
+### Fixed
+- **Export Path Validation**: `ExportService._validate_export_path()` now uses `tempfile.gettempdir()` instead of hardcoded `/tmp`. Fixes auto-report failure on macOS where temp dir is `/var/folders/.../T/`.
+
 ## [0.8.1] - 2026-03-01
 
 ### Fixed — UI/UX Polish

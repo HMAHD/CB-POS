@@ -971,10 +971,9 @@ QFrame#SettingsFooter {
 
 /* --- Dialogs --- */
 
-/* Payment Dialog */
 /* ── Payment Dialog ── */
 QDialog#PaymentDialog {
-    background-color: #FFFFFF;
+    background-color: #F8F9FA;
     color: #212529;
 }
 
@@ -984,25 +983,19 @@ QDialog#PaymentDialog QLabel {
 }
 
 QLabel#PaymentRemainingLabel {
-    font-size: 22px;
+    font-size: 28px;
     color: #DC3545;
     font-weight: bold;
     background-color: rgba(220, 53, 69, 0.06);
     border: 2px solid #DC3545;
     border-radius: 8px;
-    padding: 12px;
+    padding: 10px;
 }
 
 QLabel#PaymentRemainingLabel[state="change"] {
     color: #198754;
     background-color: rgba(25, 135, 84, 0.06);
     border-color: #198754;
-}
-
-QFrame#PaymentEntryGroup {
-    background-color: #F8F9FA;
-    border: 1px solid #DEE2E6;
-    border-radius: 8px;
 }
 
 QLabel#PaymentFieldLabel {
@@ -1013,7 +1006,7 @@ QLabel#PaymentFieldLabel {
 
 QLabel#PaymentMethodLabel {
     font-weight: bold;
-    font-size: 16px;
+    font-size: 18px;
     color: #0D6EFD;
 }
 
@@ -1021,9 +1014,9 @@ QLineEdit#PaymentAmountInput {
     background-color: #FFFFFF;
     color: #212529;
     border: 1px solid #CED4DA;
-    border-radius: 4px;
-    padding: 6px 8px;
-    font-size: 16px;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 28px;
 }
 
 QLineEdit#PaymentAmountInput:focus {
@@ -1040,17 +1033,18 @@ QComboBox#PaymentCustomerCombo {
 }
 
 QPushButton#BtnAddPayment {
-    background-color: #0D6EFD;
-    color: #FFFFFF;
+    background-color: #E9ECEF;
+    color: #212529;
     font-weight: bold;
-    font-size: 13px;
-    padding: 8px;
-    border: none;
+    font-size: 14px;
+    padding: 10px;
+    border: 1px solid #DEE2E6;
     border-radius: 6px;
 }
 
 QPushButton#BtnAddPayment:hover {
-    background-color: #0B5ED7;
+    background-color: #DEE2E6;
+    border-color: #0D6EFD;
 }
 
 QListWidget#PaymentList {
@@ -1062,8 +1056,31 @@ QListWidget#PaymentList {
 }
 
 QListWidget#PaymentList::item {
-    padding: 6px 8px;
+    padding: 2px 4px;
     border-bottom: 1px solid #F0F0F0;
+    min-height: 44px;
+}
+
+QWidget#PaymentListItemWidget {
+    background: transparent;
+}
+
+QLabel#PaymentListItemLabel {
+    color: #212529;
+    font-size: 14px;
+    background: transparent;
+}
+
+QPushButton#BtnRemovePayment {
+    background-color: transparent;
+    border: 1px solid #DC3545;
+    border-radius: 6px;
+    padding: 4px;
+}
+
+QPushButton#BtnRemovePayment:hover {
+    background-color: rgba(220, 53, 69, 0.15);
+    border-color: #BB2D3B;
 }
 
 QFrame#PaymentSeparator {
@@ -1090,14 +1107,15 @@ QPushButton#BtnFinishSale:enabled:hover {
 }
 
 QLabel#PaymentMethodsHeader {
-    font-size: 16px;
+    font-size: 13px;
     font-weight: bold;
     color: #6C757D;
+    letter-spacing: 1px;
 }
 
 /* Payment Method Buttons */
 QPushButton#PayMethodBtn {
-    background-color: #F8F9FA;
+    background-color: #FFFFFF;
     color: #212529;
     border: 1px solid #DEE2E6;
     border-radius: 8px;
@@ -1109,6 +1127,11 @@ QPushButton#PayMethodBtn:hover {
     border-color: #0D6EFD;
 }
 
+QPushButton#PayMethodBtn[selected="true"] {
+    border: 2px solid #0D6EFD;
+    background-color: #F0F4FF;
+}
+
 QPushButton#PayMethodBtn[methodType="cash"] {
     background-color: #198754;
     border-color: #198754;
@@ -1116,6 +1139,10 @@ QPushButton#PayMethodBtn[methodType="cash"] {
 
 QPushButton#PayMethodBtn[methodType="cash"]:hover {
     background-color: #157347;
+}
+
+QPushButton#PayMethodBtn[methodType="cash"][selected="true"] {
+    border: 2px solid #146C43;
 }
 
 QPushButton#PayMethodBtn QLabel#PayMethodShortcut {
@@ -1135,6 +1162,57 @@ QPushButton#PayMethodBtn QLabel#PayMethodName {
 QPushButton#PayMethodBtn[methodType="cash"] QLabel#PayMethodName,
 QPushButton#PayMethodBtn[methodType="cash"] QLabel#PayMethodShortcut {
     color: #FFFFFF;
+}
+
+/* ── Advanced Search Dialog ── */
+QDialog#AdvancedSearchDialog {
+    background-color: #F8F9FA;
+    color: #212529;
+}
+
+QDialog#AdvancedSearchDialog QLabel {
+    background: transparent;
+    color: #212529;
+}
+
+QLabel#AdvSearchTitle {
+    font-size: 20px;
+    font-weight: bold;
+    color: #212529;
+}
+
+QLabel#SearchFilterLabel {
+    color: #6C757D;
+    font-size: 14px;
+}
+
+QLabel#SearchResultCount {
+    color: #6C757D;
+    font-size: 13px;
+}
+
+QTableWidget#SearchResultsTable {
+    background-color: #FFFFFF;
+    border: 1px solid #DEE2E6;
+    gridline-color: #DEE2E6;
+    color: #212529;
+}
+
+QTableWidget#SearchResultsTable::item:selected {
+    background-color: rgba(13, 110, 253, 0.15);
+}
+
+QPushButton#BtnSearchSelect {
+    background-color: #0D6EFD;
+    color: #FFFFFF;
+    font-weight: bold;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+}
+
+QPushButton#BtnSearchSelect:hover {
+    background-color: #0B5ED7;
 }
 
 /* Quantity Dialog */

@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
     QButtonGroup,
     QStackedWidget,
 )
-from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint
+from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint, QSize
 from PyQt6.QtGui import QKeySequence, QShortcut, QAction, QBrush, QColor, QPixmap
 from decimal import Decimal
 from cbpos.core.services.product_service import ProductService
@@ -93,12 +93,12 @@ class SalesView(QWidget):
 
         header_layout.addStretch()
 
-        # Menu Button
+        # Menu Button (Hamburger)
         self.menu_button = QToolButton()
         self.menu_button.setObjectName("menu_button")
-        # Hamburger menu icon is always white for visibility on dark header
         self.menu_button.setIcon(Icons.get("fa5s.bars", "white"))
-
+        self.menu_button.setIconSize(QSize(24, 24))
+        self.menu_button.setFixedSize(42, 42)
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.menu_button.clicked.connect(self.toggle_side_menu)
         header_layout.addWidget(self.menu_button)
@@ -228,6 +228,7 @@ class SalesView(QWidget):
         self.lbl_subtotal = QLabel("Subtotal: 0.00")
         self.lbl_subtotal.setObjectName("SubtotalLabel")
         self.lbl_discount = QLabel("Disc: 0.00")
+        self.lbl_discount.setObjectName("DiscountLabel")
         self.lbl_tax = QLabel("Tax: 0.00")
         self.lbl_tax.setObjectName("TaxLabel")
         subtotal_layout.addWidget(self.lbl_item_count)
@@ -321,57 +322,8 @@ class SalesView(QWidget):
             self.side_menu.update_all_icons()
 
     def update_cart_ui(self):
-        self.cart_table.setRowCount(0)
-        has_items = len(self.cart_service.items) > 0
-        self.cart_stack.setCurrentIndex(1 if has_items else 0)
-        for row, item in enumerate(self.cart_service.items):
-            self.cart_table.insertRow(row)
-
-            product = item["product"]
-            qty = item["qty"]
-            price = item["price"]
-            discount = item["discount"]
-            total = item["total"]
-
-            self.cart_table.setItem(row, 0, QTableWidgetItem(product.name_en))
-            self.cart_table.setItem(row, 1, QTableWidgetItem(format_currency(price)))
-            self.cart_table.setItem(row, 2, QTableWidgetItem(str(qty)))
-
-            disc_text = f"{discount}%" if discount > 0 else "-"
-            self.cart_table.setItem(row, 3, QTableWidgetItem(disc_text))
-
-            self.cart_table.setItem(row, 4, QTableWidgetItem(format_currency(total)))
-
-        totals = self.cart_service.get_totals()
-
-        # Extract values
-        final_total = totals.get("final_total", 0)
-        subtotal = totals.get("subtotal", 0)
-        cart_discount = totals.get("cart_discount", 0)
-        # Tax is not explicitly in get_totals() top level, but it's calculated in TaxService.
-        # Wait, get_totals() returns subtotal, discount, final_total.
-        # Tax is usually included in the price (MRP).
-        # If we want to show tax breakdown, we might need to calculate it or get it from somewhere.
-        # For now, let's assume TaxService.calculate_taxes(final_total) is needed or just show 0 if not available.
-        # Actually, TaxService.calculate_taxes(total_amount) was used in process_sale.
-        # Let's calculate it here for display.
-        from cbpos.core.services.tax_service import TaxService
-
-        tax_info = TaxService.calculate_taxes(final_total)
-        tax_amount = tax_info["vat"] + tax_info["sscl"]
-
-        item_count = totals.get("item_count", 0)  # Sum of quantities
-        # or totals.get("count", 0) # Number of lines
-        # User asked for "Items: {count}" which usually means item count.
-        # Let's use item_count (qty sum) as it's more useful for retail.
-
-        self.total_label.setText(format_currency(final_total))
-        self.lbl_subtotal.setText(f"Subtotal: {format_currency(subtotal)}")
-        self.lbl_discount.setText(f"Disc: {format_currency(cart_discount)}")
-        self.lbl_tax.setText(f"Tax: {format_currency(tax_amount)}")
-        self.lbl_item_count.setText(f"Items: {item_count}")
-
-        self.cart_table.scrollToBottom()
+        """Initial cart update (delegates to update_cart_display)."""
+        self.update_cart_display()
 
     def setup_shortcuts(self):
         self.shortcut_f1 = QShortcut(QKeySequence("F1"), self)
@@ -543,7 +495,7 @@ class SalesView(QWidget):
                 lbl_price.setProperty("class", "StrikethroughPrice")
                 self.cart_table.setCellWidget(row, 1, lbl_price)
             else:
-                self.cart_table.setItem(row, 1, QTableWidgetItem(f"{item['unit_price']:.2f}"))  # noqa: E231
+                self.cart_table.setItem(row, 1, QTableWidgetItem(format_currency(item["unit_price"])))
 
             # Highlight if discounted (theme-aware)
             if item.get("discount_type") != "NONE" or item.get("is_manual_price"):
@@ -554,17 +506,34 @@ class SalesView(QWidget):
                 name_item.setBackground(QBrush(bg_color))
 
             self.cart_table.setItem(row, 0, name_item)
-            # If we didn't set a cell widget for price, we need to set the item
-            if not self.cart_table.cellWidget(row, 1):
-                self.cart_table.setItem(row, 1, QTableWidgetItem(f"{item['unit_price']:.2f}"))  # noqa: E231
 
-            self.cart_table.setItem(row, 2, QTableWidgetItem(f"{item['qty']:.3f}"))  # noqa: E231
-            self.cart_table.setItem(row, 3, QTableWidgetItem(f"{item['total']:.2f}"))  # noqa: E231
+            # Qty column
+            self.cart_table.setItem(row, 2, QTableWidgetItem(str(item["qty"])))
+
+            # Disc column
+            disc_val = item.get("discount_value", Decimal("0.00"))
+            disc_text = f"{disc_val}%" if disc_val > 0 else "-"
+            self.cart_table.setItem(row, 3, QTableWidgetItem(disc_text))
+
+            # Total column
+            self.cart_table.setItem(row, 4, QTableWidgetItem(format_currency(item["total"])))
 
         totals = self.cart_service.get_totals()
-        self.total_label.setText(f"{totals['final_total']:.2f}")  # noqa: E231
-        self.lbl_subtotal.setText(f"Subtotal: {totals['subtotal']:.2f}")  # noqa: E231
-        self.lbl_tax.setText(f"Tax: {totals['tax']:.2f}")  # noqa: E231
+        final_total = totals.get("final_total", 0)
+        subtotal = totals.get("subtotal", 0)
+        cart_discount = totals.get("cart_discount", 0)
+        item_count = totals.get("item_count", 0)
+
+        from cbpos.core.services.tax_service import TaxService
+
+        tax_info = TaxService.calculate_taxes(final_total)
+        tax_amount = tax_info["vat"] + tax_info["sscl"]
+
+        self.total_label.setText(format_currency(final_total))
+        self.lbl_subtotal.setText(f"Subtotal: {format_currency(subtotal)}")
+        self.lbl_discount.setText(f"Disc: {format_currency(cart_discount)}")
+        self.lbl_tax.setText(f"Tax: {format_currency(tax_amount)}")
+        self.lbl_item_count.setText(f"Items: {item_count}")
         self.cart_table.scrollToBottom()
 
     def select_customer(self):
@@ -924,8 +893,7 @@ class SalesView(QWidget):
         self.order_bar.refresh_tabs()
 
         # Show Receipt Options if configured
-        settings = ConfigService.get_all()
-        if settings.get("show_receipt_dialog", "True") == "True":
+        if ConfigService.get("show_receipt_dialog"):
             last_sale = TransactionService.get_last_sale()
             if last_sale:
                 dlg = ReceiptOptionsDialog(last_sale, self)
@@ -934,7 +902,7 @@ class SalesView(QWidget):
     def quick_pay(self) -> None:
         """Quick close with full cash payment, skipping the payment dialog (F12)."""
         # Check if quick pay is enabled in settings
-        if not ConfigService.get("quick_pay_enabled", True):
+        if not ConfigService.get("quick_pay_enabled"):
             QMessageBox.information(self, "Disabled", "Quick Pay is disabled in settings.")
             return
 

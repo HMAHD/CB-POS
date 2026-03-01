@@ -607,6 +607,12 @@ QWidget#HeaderWidget QLabel {
 QWidget#HeaderWidget QToolButton {
     background: transparent;
     border: none;
+    border-radius: 4px;
+    padding: 6px;
+}
+
+QWidget#HeaderWidget QToolButton:hover {
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 QLabel#LogoLabel {
@@ -673,7 +679,7 @@ QWidget#TotalWidget QLabel {
     background: transparent;
 }
 
-QLabel#SubtotalLabel, QLabel#TaxLabel {
+QLabel#SubtotalLabel, QLabel#TaxLabel, QLabel#DiscountLabel {
     color: #AAAAAA;
     font-size: 14px;
     background: transparent;
@@ -728,50 +734,51 @@ QLabel#PointsLabel {
 }
 
 /* Action Grid Button */
-QPushButton[class="ActionGridBtn"] {
+QPushButton#ActionGridBtn {
     background-color: #2D2D30;
     border: 1px solid #3E3E42;
     color: #FFFFFF;
-    border-radius: 4px;
+    border-radius: 8px;
+    padding: 0px;
 }
 
-QPushButton[class="ActionGridBtn"]:hover {
+QPushButton#ActionGridBtn:hover {
     background-color: #3E3E42;
     border: 1px solid #00BCEB;
 }
 
-QPushButton[class="ActionGridBtn"]:pressed {
+QPushButton#ActionGridBtn:pressed {
     background-color: #00BCEB;
     color: #000000;
 }
 
 /* Custom Colors for Action Buttons (Bottom Border) */
-QPushButton[class="ActionGridBtn"][btnColor="#FFDC00"] { border-bottom: 3px solid #FFDC00; }
-QPushButton[class="ActionGridBtn"][btnColor="#FF4136"] { border-bottom: 3px solid #FF4136; }
+QPushButton#ActionGridBtn[btnColor="#FFDC00"] { border-bottom: 3px solid #FFDC00; }
+QPushButton#ActionGridBtn[btnColor="#FF4136"] { border-bottom: 3px solid #FF4136; }
 
 /* Internal Labels in Grid Buttons */
-QPushButton[class="ActionGridBtn"] QLabel {
+QPushButton#ActionGridBtn QLabel {
     background: transparent;
     color: #FFFFFF;
 }
 
-QPushButton[class="ActionGridBtn"] QLabel#lblShortcut {
-    color: #CCCCCC;
+QPushButton#ActionGridBtn QLabel#lblShortcut {
+    color: #AAAAAA;
     font-size: 10px;
     font-weight: bold;
     background: transparent;
 }
 
-QPushButton[class="ActionGridBtn"] QLabel#lblText {
+QPushButton#ActionGridBtn QLabel#lblText {
     color: #FFFFFF;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: bold;
     background: transparent;
 }
 
-QPushButton[class="ActionGridBtn"]:pressed QLabel,
-QPushButton[class="ActionGridBtn"]:pressed QLabel#lblText,
-QPushButton[class="ActionGridBtn"]:pressed QLabel#lblShortcut {
+QPushButton#ActionGridBtn:pressed QLabel,
+QPushButton#ActionGridBtn:pressed QLabel#lblText,
+QPushButton#ActionGridBtn:pressed QLabel#lblShortcut {
     color: #000000;
 }
 
@@ -883,28 +890,43 @@ QFrame#SettingsFooter {
 
 /* --- Dialogs --- */
 
-/* Payment Dialog */
+/* ── Payment Dialog ── */
 QDialog#PaymentDialog {
-    background-color: #001F3F;
-    color: white;
+    background-color: #0A1929;
+    color: #E0E0E0;
+}
+
+QDialog#PaymentDialog QLabel {
+    background: transparent;
+    color: #E0E0E0;
 }
 
 QLabel#PaymentRemainingLabel {
-    font-size: 24px;
-    color: #FF4136;
+    font-size: 22px;
+    color: #FF6B6B;
     font-weight: bold;
-    border: 1px solid #FF4136;
-    padding: 10px;
+    background-color: rgba(255, 65, 54, 0.1);
+    border: 2px solid #FF4136;
+    border-radius: 8px;
+    padding: 12px;
 }
 
 QLabel#PaymentRemainingLabel[state="change"] {
     color: #39FF14;
-    border: 1px solid #39FF14;
+    background-color: rgba(57, 255, 20, 0.08);
+    border-color: #39FF14;
 }
 
-QWidget#PaymentEntryGroup {
-    background-color: #003366;
+QFrame#PaymentEntryGroup {
+    background-color: #132F4C;
+    border: 1px solid #1E4976;
     border-radius: 8px;
+}
+
+QLabel#PaymentFieldLabel {
+    color: #8899AA;
+    font-size: 13px;
+    font-weight: bold;
 }
 
 QLabel#PaymentMethodLabel {
@@ -913,74 +935,124 @@ QLabel#PaymentMethodLabel {
     color: #00BCEB;
 }
 
+QLineEdit#PaymentAmountInput {
+    background-color: #1A3A5C;
+    color: #FFFFFF;
+    border: 1px solid #2A5A8C;
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-size: 16px;
+}
+
+QLineEdit#PaymentAmountInput:focus {
+    border-color: #00BCEB;
+}
+
 QComboBox#PaymentCustomerCombo {
-    font-size: 18px;
+    font-size: 14px;
     padding: 5px;
-    color: black;
-    background-color: white;
+    color: #E0E0E0;
+    background-color: #1A3A5C;
+    border: 1px solid #2A5A8C;
+    border-radius: 4px;
 }
 
 QPushButton#BtnAddPayment {
     background-color: #00BCEB;
-    color: black;
+    color: #001F3F;
     font-weight: bold;
-    padding: 10px;
+    font-size: 13px;
+    padding: 8px;
+    border: none;
+    border-radius: 6px;
+}
+
+QPushButton#BtnAddPayment:hover {
+    background-color: #33CCFF;
 }
 
 QListWidget#PaymentList {
-    font-size: 16px;
-    color: black;
-    background-color: white;
+    font-size: 14px;
+    color: #E0E0E0;
+    background-color: #132F4C;
+    border: 1px solid #1E4976;
+    border-radius: 6px;
+}
+
+QListWidget#PaymentList::item {
+    padding: 6px 8px;
+    border-bottom: 1px solid #1E4976;
+}
+
+QFrame#PaymentSeparator {
+    background-color: #1E4976;
+    max-height: 1px;
 }
 
 QPushButton#BtnFinishSale {
-    background-color: #AAAAAA;
-    color: black;
-    padding: 15px;
+    background-color: #333333;
+    color: #888888;
+    font-size: 16px;
     font-weight: bold;
+    border: none;
+    border-radius: 8px;
 }
 
 QPushButton#BtnFinishSale:enabled {
     background-color: #39FF14;
+    color: #001F3F;
+}
+
+QPushButton#BtnFinishSale:enabled:hover {
+    background-color: #4DFF33;
 }
 
 QLabel#PaymentMethodsHeader {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: bold;
-    color: #AAAAAA;
+    color: #8899AA;
 }
 
-QWidget#PaymentMethodsScroll {
+/* Payment Method Buttons (new objectName-based) */
+QPushButton#PayMethodBtn {
+    background-color: #132F4C;
+    color: #FFFFFF;
+    border: 1px solid #1E4976;
+    border-radius: 8px;
+    padding: 0px;
+}
+
+QPushButton#PayMethodBtn:hover {
+    background-color: #1A3A5C;
+    border-color: #00BCEB;
+}
+
+QPushButton#PayMethodBtn[methodType="cash"] {
+    background-color: #0D6832;
+    border-color: #39FF14;
+}
+
+QPushButton#PayMethodBtn[methodType="cash"]:hover {
+    background-color: #0F7A3B;
+}
+
+QPushButton#PayMethodBtn QLabel#PayMethodShortcut {
+    color: #66AACC;
+    font-size: 9px;
+    font-weight: bold;
     background: transparent;
-    border: none;
 }
 
-QPushButton[class="PaymentMethodBtn"] {
-    background-color: #003366;
-    color: white;
+QPushButton#PayMethodBtn QLabel#PayMethodName {
+    color: #FFFFFF;
+    font-size: 13px;
     font-weight: bold;
-    font-size: 14px;
-    border: 2px solid #005bb5;
-    border-radius: 8px;
+    background: transparent;
 }
 
-QPushButton[class="PaymentMethodBtn"]:hover {
-    background-color: #004080;
-}
-
-QPushButton[class="PaymentMethodBtnCash"] {
-    background-color: #2ECC40;
-    color: white;
-    font-weight: bold;
-    font-size: 14px;
-    border: 2px solid #2ECC40;
-    border-radius: 8px;
-}
-
-QLabel#PaymentShortcutLabel {
-    background: rgba(0,0,0,0.5);
-    color: white;
-    padding: 2px;
+QPushButton#PayMethodBtn[methodType="cash"] QLabel#PayMethodName,
+QPushButton#PayMethodBtn[methodType="cash"] QLabel#PayMethodShortcut {
+    color: #FFFFFF;
 }
 
 /* Discount Dialog */
@@ -1152,6 +1224,10 @@ QLineEdit#PinInput:focus {
 
 /* === NUMPAD BUTTONS === */
 /* Base styling for all numpad buttons */
+QWidget#NumpadContainer {
+    background: transparent;
+}
+
 QPushButton#NumpadBtn {
     background-color: #2A2A2A;
     border: 2px solid #404040;
@@ -1160,10 +1236,6 @@ QPushButton#NumpadBtn {
     font-size: 24px;
     font-weight: bold;
     padding: 0px;
-    min-width: 90px;
-    max-width: 90px;
-    min-height: 90px;
-    max-height: 90px;
 }
 
 QPushButton#NumpadBtn:hover {

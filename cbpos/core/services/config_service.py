@@ -59,6 +59,7 @@ class ConfigService:
         "auto_generate_barcodes": True,
         # Feature Flags
         "enable_loyalty": True,
+        "enable_sounds": True,
         "enable_touch_mode": True,
         "enable_visual_search": True,
         "auto_select_barcode_match": True,

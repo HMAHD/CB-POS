@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.8.1] - 2026-03-01
+
+### Fixed — UI/UX Polish
+- **Login Screen**: Rewrote numpad layout with fixed-width container (294px) to fix button spacing. Added PIN heading, inline error label, help hint, and tagline. Removed QMessageBox for login errors.
+- **POS Action Panel**: Fixed invisible button text in dark theme — added `setObjectName("ActionGridBtn")` so QSS exclusion rules work. Buttons now use flexible width (`SizePolicy.Expanding`) to prevent clipping.
+- **POS Cart**: Fixed column mismatch in `update_cart_display()` — discount and total now populate correct columns. Merged duplicate `update_cart_ui()`/`update_cart_display()` into single method.
+- **Payment Dialog**: Redesigned with dark-theme-native colors (deep navy palette), proper input/list styling, and two-line method buttons with shortcut labels.
+- **Totals Area**: Added missing `DiscountLabel` objectName so discount label matches Subtotal/Tax styling.
+- **Hamburger Menu**: Increased icon size (24px) and button size (42px) with hover effect.
+- **ConfigService.get() crashes**: Fixed `TypeError` in `SoundService.play()` and `SalesView.quick_pay()` — removed invalid default argument from `ConfigService.get()` calls.
+- **Receipt dialog bug**: Fixed `show_receipt_dialog` bool-vs-string comparison (`True == "True"` is `False` in Python).
+- **QSS**: Moved ActionGridBtn from `[class=...]` attribute selector to `#ActionGridBtn` objectName selector for reliable specificity. Added NumpadContainer, PayMethodBtn, PaymentSeparator styles.
+
 ## [0.8.0] - 2026-02-28
 
 ### Added — Phase 27: Admin Tools

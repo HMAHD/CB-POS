@@ -6,10 +6,11 @@ from PyQt6.QtWidgets import (
     QLabel,
     QFrame,
     QHBoxLayout,
+    QSizePolicy,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from cbpos.ui.resources.icons import Icons
-from cbpos.ui.constants import ACTION_BTN_WIDTH, ACTION_BTN_HEIGHT
+from cbpos.ui.constants import ACTION_BTN_HEIGHT
 
 
 class ActionBtn(QPushButton):
@@ -22,13 +23,18 @@ class ActionBtn(QPushButton):
 
     def __init__(self, shortcut_text, label_text, icon_name=None, color=None, parent=None):
         super().__init__(parent)
-        self.setFixedSize(100, 80)
+        self.setObjectName("ActionGridBtn")
         self.setProperty("class", "ActionGridBtn")
-        self._icon_name = icon_name  # Store for theme updates
+        self._icon_name = icon_name
+
+        # Flexible width, fixed height — let grid distribute column widths
+        self.setMinimumHeight(72)
+        self.setMaximumHeight(80)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         # Main Layout
         layout = QGridLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(0)
 
         # 1. Shortcut Label (Top-Left)
@@ -66,7 +72,7 @@ class ActionBtn(QPushButton):
             is_dark = ThemeService.current_theme.lower() == "dark"
             icon_color = "white" if is_dark else "#1A1A1A"
             icon = Icons.get(icon_name, color=icon_color)
-            self.lbl_icon.setPixmap(icon.pixmap(32, 32))
+            self.lbl_icon.setPixmap(icon.pixmap(28, 28))
 
     def set_icon(self, icon_name: str) -> None:
         """Set icon with theme-aware color."""
@@ -76,7 +82,7 @@ class ActionBtn(QPushButton):
             is_dark = ThemeService.current_theme.lower() == "dark"
             icon_color = "white" if is_dark else "#1A1A1A"
             icon = Icons.get(icon_name, color=icon_color)
-            self.lbl_icon.setPixmap(icon.pixmap(32, 32))
+            self.lbl_icon.setPixmap(icon.pixmap(28, 28))
 
 
 class ActionPanel(QWidget):
@@ -101,7 +107,7 @@ class ActionPanel(QWidget):
     action_f8 = pyqtSignal()  # Drawer
     action_del = pyqtSignal()  # Void
     action_ref = pyqtSignal()  # Refund
-    action_more = pyqtSignal()  # More
+    action_more = pyqtSignal()  # Touch Grid
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -109,21 +115,21 @@ class ActionPanel(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(8)
 
         # --- 1. Customer Section ---
         customer_frame = QFrame()
         customer_frame.setObjectName("CustomerPanel")
         cust_layout = QHBoxLayout(customer_frame)
-        cust_layout.setContentsMargins(5, 5, 5, 5)
+        cust_layout.setContentsMargins(8, 6, 8, 6)
 
         self.lbl_customer = QLabel("Walk-in Customer")
         self.lbl_customer.setObjectName("CustomerLabel")
 
-        self.btn_cust_select = QPushButton("Select")
-        self.btn_cust_select.setFixedWidth(ACTION_BTN_WIDTH)
+        self.btn_cust_select = QPushButton("SELECT")
         self.btn_cust_select.setObjectName("BtnCustomerSelect")
+        self.btn_cust_select.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_cust_select.clicked.connect(self.customer_clicked.emit)
 
         cust_layout.addWidget(self.lbl_customer)
@@ -140,7 +146,7 @@ class ActionPanel(QWidget):
 
         # --- 2. Action Grid ---
         grid_layout = QGridLayout()
-        grid_layout.setSpacing(10)
+        grid_layout.setSpacing(6)
 
         # Row 0
         self.btn_f2 = ActionBtn("F2", "Customer", Icons.CUSTOMERS)
@@ -177,7 +183,7 @@ class ActionPanel(QWidget):
         self.btn_ref.clicked.connect(self.action_ref.emit)
         grid_layout.addWidget(self.btn_ref, 2, 1)
 
-        self.btn_more = ActionBtn("...", "More", Icons.GRID)
+        self.btn_more = ActionBtn("...", "Touch", Icons.GRID)
         self.btn_more.clicked.connect(self.action_more.emit)
         grid_layout.addWidget(self.btn_more, 2, 2)
 

@@ -71,7 +71,7 @@ class ConfigService:
         "doc_format_purchase": "GRN-{Y}-{seq:05d}",
         "doc_format_return": "CN-{Y}-{seq:05d}",
         "doc_reset_period": "YEARLY",
-        "show_receipt_dialog": True,
+        "show_receipt_dialog": False,
         # Network Database Configuration
         "db_mode": "standalone",  # standalone (SQLite) or network (PostgreSQL)
         "network_db_host": "localhost",

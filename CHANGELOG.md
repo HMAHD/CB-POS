@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.8.4] - 2026-03-02
+
+### Changed — Streamlined Sale Completion Flow
+- **Removed success popup**: Eliminated blocking "Sale processed successfully!" QMessageBox that required an OK click after every sale.
+- **Conditional receipt printing**: When receipt dialog is OFF (new default), receipt auto-prints and sale completes instantly with zero popups. When receipt dialog is ON, auto-print is skipped and the dialog handles printing.
+- **Receipt dialog default OFF**: `show_receipt_dialog` default changed from `True` to `False` for frictionless checkout flow.
+- **process_sale() returns Sale object**: `TransactionService.process_sale()` now returns the `Sale` object (or `None` on failure) instead of `bool`, eliminating an extra `get_last_sale()` DB query.
+- **Print Receipt button works**: Receipt Options Dialog "Print Receipt" button now actually prints via `PrintWorker` (text or image based on language) and closes the dialog. Previously was a placeholder.
+
+### Fixed
+- **DetachedInstanceError in receipt dialog**: Fixed crash when clicking "Email Receipt" — `sale.customer` is now eager-loaded before session closes, with a fallback try/except in the dialog.
+
 ## [0.8.3] - 2026-03-02
 
 ### Redesigned — Receipt Options Dialog

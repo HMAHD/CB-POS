@@ -68,9 +68,7 @@ class ESCPOSDriver(IPrinter):
                 if p_path:
                     self.printer = Network(p_path)
                 else:
-                    logger.warning(
-                        "Network printer requires an IP address. Configure in Settings > Hardware."
-                    )
+                    logger.warning("Network printer requires an IP address. Configure in Settings > Hardware.")
                     return False
             else:
                 return False
@@ -188,8 +186,7 @@ class PrintWorker(QThread):
             try:
                 if not current_printer.connect():
                     logger.warning(
-                        "Printer not available — skipping %s job. "
-                        "Check printer settings in Settings > Hardware.",
+                        "Printer not available — skipping %s job. " "Check printer settings in Settings > Hardware.",
                         job_type,
                     )
                     continue

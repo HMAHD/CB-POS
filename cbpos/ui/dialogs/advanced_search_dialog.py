@@ -58,9 +58,7 @@ class AdvancedSearchDialog(QDialog):
 
         self.search_input = QLineEdit()
         self.search_input.setObjectName("SearchInput")
-        self.search_input.setPlaceholderText(
-            "Search by product name or barcode..."
-        )
+        self.search_input.setPlaceholderText("Search by product name or barcode...")
         self.search_input.textChanged.connect(self.perform_search)
         filter_row1.addWidget(self.search_input, stretch=2)
 
@@ -112,18 +110,10 @@ class AdvancedSearchDialog(QDialog):
         self.table = QTableWidget()
         self.table.setObjectName("SearchResultsTable")
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(
-            ["Name", "Barcode", "Stock", "Price", "Category"]
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.Stretch
-        )
-        self.table.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
-        )
-        self.table.setEditTriggers(
-            QTableWidget.EditTrigger.NoEditTriggers
-        )
+        self.table.setHorizontalHeaderLabels(["Name", "Barcode", "Stock", "Price", "Category"])
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.doubleClicked.connect(self.on_select)
         layout.addWidget(self.table)
 
@@ -149,12 +139,8 @@ class AdvancedSearchDialog(QDialog):
         layout.addLayout(btn_layout)
 
         # Shortcuts
-        QShortcut(
-            QKeySequence(Qt.Key.Key_Return), self
-        ).activated.connect(self.on_select)
-        QShortcut(
-            QKeySequence(Qt.Key.Key_Escape), self
-        ).activated.connect(self.reject)
+        QShortcut(QKeySequence(Qt.Key.Key_Return), self).activated.connect(self.on_select)
+        QShortcut(QKeySequence(Qt.Key.Key_Escape), self).activated.connect(self.reject)
 
         # Focus
         self.search_input.setFocus()
@@ -213,16 +199,12 @@ class AdvancedSearchDialog(QDialog):
             self.table.setItem(row, 1, barcode_item)
 
             stock_item = QTableWidgetItem(f"{float(product.stock_qty):.2f}")
-            stock_item.setTextAlignment(
-                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-            )
+            stock_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             stock_item.setForeground(text_brush)
             self.table.setItem(row, 2, stock_item)
 
             price_item = QTableWidgetItem(format_currency(product.price))
-            price_item.setTextAlignment(
-                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-            )
+            price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             price_item.setForeground(text_brush)
             self.table.setItem(row, 3, price_item)
 
@@ -232,9 +214,7 @@ class AdvancedSearchDialog(QDialog):
             self.table.setItem(row, 4, cat_item)
 
             # Store product object
-            self.table.item(row, 0).setData(
-                Qt.ItemDataRole.UserRole, product
-            )
+            self.table.item(row, 0).setData(Qt.ItemDataRole.UserRole, product)
 
         # Update result count
         self.lbl_count.setText(f"{len(filtered)} results")
@@ -243,8 +223,6 @@ class AdvancedSearchDialog(QDialog):
         """Emit selected product and close dialog."""
         row = self.table.currentRow()
         if row >= 0:
-            product = self.table.item(row, 0).data(
-                Qt.ItemDataRole.UserRole
-            )
+            product = self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
             self.product_selected.emit(product)
             self.accept()

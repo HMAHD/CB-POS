@@ -1,3 +1,4 @@
+import logging
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -11,9 +12,14 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QSize
 from cbpos.core.services.email_service import EmailService
 from cbpos.core.services.theme_service import ThemeService
+from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.receipt_service import ReceiptService
+from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.core.models import Sale
 from cbpos.core.utils.formatters import format_currency
 from cbpos.ui.resources.icons import Icons
+
+logger = logging.getLogger(__name__)
 
 
 class ReceiptOptionsDialog(QDialog):
@@ -106,12 +112,31 @@ class ReceiptOptionsDialog(QDialog):
         layout.addLayout(close_row)
 
     def print_thermal(self) -> None:
-        QMessageBox.information(self, "Printing", "Sending to Thermal Printer...")
+        """Print receipt via thermal printer and close dialog."""
+        try:
+            worker = PrintWorker()
+            language = ConfigService.get("language") or "en"
+
+            if language == "en":
+                receipt_text = ReceiptService.build_receipt_text(self.sale)
+                worker.add_job("print_receipt", receipt_text)
+            else:
+                receipt_image = ReceiptService.build_receipt_image(self.sale)
+                worker.add_job("print_image", receipt_image)
+
+            self._print_worker = worker  # prevent GC
+            self.accept()
+        except Exception as e:
+            logger.error("Receipt print failed: %s", e)
+            QMessageBox.warning(self, "Print Error", f"Failed to print receipt: {e}")
 
     def email_receipt(self) -> None:
         default_email = ""
-        if self.sale.customer and self.sale.customer.email:
-            default_email = self.sale.customer.email
+        try:
+            if self.sale.customer and self.sale.customer.email:
+                default_email = self.sale.customer.email
+        except Exception:
+            pass  # Sale may be detached; skip customer email pre-fill
 
         email, ok = QInputDialog.getText(self, "Email Receipt", "Enter Email Address:", text=default_email)
 

@@ -65,9 +65,7 @@ class PaymentDialog(QDialog):
         main_layout.setSpacing(12)
 
         # ── Top Banner ───────────────────────────────────────────
-        self.lbl_remaining = QLabel(
-            f"Remaining: {format_currency(self.total_amount)}"
-        )
+        self.lbl_remaining = QLabel(f"Remaining: {format_currency(self.total_amount)}")
         self.lbl_remaining.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_remaining.setObjectName("PaymentRemainingLabel")
         main_layout.addWidget(self.lbl_remaining)
@@ -100,9 +98,7 @@ class PaymentDialog(QDialog):
             btn.setFixedHeight(56)
             btn.setObjectName("PayMethodBtn")
             btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-            btn.setSizePolicy(
-                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-            )
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
             if method.is_cash:
                 btn.setProperty("methodType", "cash")
@@ -124,9 +120,7 @@ class PaymentDialog(QDialog):
             lbl_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
             btn_inner.addWidget(lbl_name)
 
-            btn.clicked.connect(
-                lambda checked, m=method, b=btn: self.select_method(m, b)
-            )
+            btn.clicked.connect(lambda checked, m=method, b=btn: self.select_method(m, b))
             current_row_layout.addWidget(btn)
             self._method_buttons.append((btn, method))
 
@@ -154,9 +148,7 @@ class PaymentDialog(QDialog):
         self.list_payments = QListWidget()
         self.list_payments.setObjectName("PaymentList")
         self.list_payments.setMaximumHeight(140)
-        self.list_payments.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
-        )
+        self.list_payments.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         left_layout.addWidget(self.list_payments)
 
         left_layout.addStretch()
@@ -188,8 +180,8 @@ class PaymentDialog(QDialog):
         _SPACING = 8
         numpad_widget = QWidget()
         numpad_widget.setObjectName("PaymentListItemWidget")
-        numpad_w = _BTN_SIZE * 3 + _SPACING * 2   # 3 cols + 2 gaps = 232
-        numpad_h = _BTN_SIZE * 4 + _SPACING * 3   # 4 rows + 3 gaps = 312
+        numpad_w = _BTN_SIZE * 3 + _SPACING * 2  # 3 cols + 2 gaps = 232
+        numpad_h = _BTN_SIZE * 4 + _SPACING * 3  # 4 rows + 3 gaps = 312
         numpad_widget.setFixedSize(numpad_w, numpad_h)
         numpad_grid = QGridLayout(numpad_widget)
         numpad_grid.setContentsMargins(0, 0, 0, 0)
@@ -197,10 +189,18 @@ class PaymentDialog(QDialog):
         numpad_grid.setVerticalSpacing(_SPACING)
 
         numpad_keys = [
-            ("7", 0, 0), ("8", 0, 1), ("9", 0, 2),
-            ("4", 1, 0), ("5", 1, 1), ("6", 1, 2),
-            ("1", 2, 0), ("2", 2, 1), ("3", 2, 2),
-            ("C", 3, 0), ("0", 3, 1), (".", 3, 2),
+            ("7", 0, 0),
+            ("8", 0, 1),
+            ("9", 0, 2),
+            ("4", 1, 0),
+            ("5", 1, 1),
+            ("6", 1, 2),
+            ("1", 2, 0),
+            ("2", 2, 1),
+            ("3", 2, 2),
+            ("C", 3, 0),
+            ("0", 3, 1),
+            (".", 3, 2),
         ]
 
         for key, r, c in numpad_keys:
@@ -215,9 +215,7 @@ class PaymentDialog(QDialog):
             elif key == ".":
                 btn.clicked.connect(self._on_numpad_dot)
             else:
-                btn.clicked.connect(
-                    lambda checked, d=key: self._on_numpad_digit(d)
-                )
+                btn.clicked.connect(lambda checked, d=key: self._on_numpad_digit(d))
 
             numpad_grid.addWidget(btn, r, c)
 
@@ -274,12 +272,8 @@ class PaymentDialog(QDialog):
 
     def setup_shortcuts(self):
         # Dialog-scoped Enter shortcut to add payment
-        QShortcut(
-            QKeySequence(Qt.Key.Key_Return), self
-        ).activated.connect(self.add_payment)
-        QShortcut(
-            QKeySequence(Qt.Key.Key_Enter), self
-        ).activated.connect(self.add_payment)
+        QShortcut(QKeySequence(Qt.Key.Key_Return), self).activated.connect(self.add_payment)
+        QShortcut(QKeySequence(Qt.Key.Key_Enter), self).activated.connect(self.add_payment)
 
         # F12 Quick Pay (Cash)
         self.shortcut_f12 = QShortcut(QKeySequence("F12"), self)
@@ -290,15 +284,11 @@ class PaymentDialog(QDialog):
             if method.shortcut:
                 try:
                     sc = QShortcut(QKeySequence(method.shortcut), self)
-                    sc.activated.connect(
-                        lambda m=method, b=btn: self.select_method(m, b)
-                    )
+                    sc.activated.connect(lambda m=method, b=btn: self.select_method(m, b))
                 except Exception as e:
                     import logging
 
-                    logging.getLogger(__name__).warning(
-                        "Invalid shortcut '%s': %s", method.shortcut, e
-                    )
+                    logging.getLogger(__name__).warning("Invalid shortcut '%s': %s", method.shortcut, e)
 
     def load_customers(self):
         customers = CustomerService().get_all_customers()
@@ -379,9 +369,7 @@ class PaymentDialog(QDialog):
         try:
             amount = Decimal(text)
         except (ValueError, ArithmeticError):
-            QMessageBox.warning(
-                self, "Invalid Amount", "Please enter a valid amount."
-            )
+            QMessageBox.warning(self, "Invalid Amount", "Please enter a valid amount.")
             return
 
         if amount <= 0:
@@ -390,24 +378,15 @@ class PaymentDialog(QDialog):
         if self.current_method.name.upper() == "CREDIT":
             cust_name = self.cmb_customer.currentText().strip()
             if not cust_name:
-                QMessageBox.warning(
-                    self, "Error",
-                    "Please select a customer for Credit sale."
-                )
+                QMessageBox.warning(self, "Error", "Please select a customer for Credit sale.")
                 return
             cust_id = self.customers_map.get(cust_name)
             if cust_id is None:
-                QMessageBox.warning(
-                    self, "Error",
-                    f"Customer '{cust_name}' not found. "
-                    "Please select from the list."
-                )
+                QMessageBox.warning(self, "Error", f"Customer '{cust_name}' not found. " "Please select from the list.")
                 return
             self.customer_id = cust_id
 
-        self.payments.append(
-            {"method": self.current_method.name, "amount": amount}
-        )
+        self.payments.append({"method": self.current_method.name, "amount": amount})
         self._add_payment_list_item(
             len(self.payments) - 1,
             self.current_method.name,
@@ -418,9 +397,7 @@ class PaymentDialog(QDialog):
         self.txt_amount.clear()
         self.txt_amount.setFocus()
 
-    def _add_payment_list_item(
-        self, index: int, method_name: str, amount: Decimal
-    ):
+    def _add_payment_list_item(self, index: int, method_name: str, amount: Decimal):
         """Add a payment entry to the list with a remove button."""
         from pathlib import Path
 
@@ -442,9 +419,7 @@ class PaymentDialog(QDialog):
         btn_remove.setFixedSize(32, 32)
         btn_remove.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         btn_remove.setToolTip("Remove payment")
-        btn_remove.clicked.connect(
-            lambda: self._remove_payment(item)
-        )
+        btn_remove.clicked.connect(lambda: self._remove_payment(item))
         item_layout.addWidget(btn_remove)
 
         item = QListWidgetItem()
@@ -466,9 +441,7 @@ class PaymentDialog(QDialog):
 
         # Reset to initial state if no payments left
         if not self.payments:
-            self.lbl_remaining.setText(
-                f"Remaining: {format_currency(self.total_amount)}"
-            )
+            self.lbl_remaining.setText(f"Remaining: {format_currency(self.total_amount)}")
             self.lbl_remaining.setProperty("state", "remaining")
             self.lbl_remaining.style().unpolish(self.lbl_remaining)
             self.lbl_remaining.style().polish(self.lbl_remaining)
@@ -478,9 +451,7 @@ class PaymentDialog(QDialog):
         remaining = self.get_remaining_amount()
 
         if remaining > 0:
-            self.lbl_remaining.setText(
-                f"Remaining: {format_currency(remaining)}"
-            )
+            self.lbl_remaining.setText(f"Remaining: {format_currency(remaining)}")
             self.lbl_remaining.setProperty("state", "remaining")
             self.lbl_remaining.style().unpolish(self.lbl_remaining)
             self.lbl_remaining.style().polish(self.lbl_remaining)
@@ -488,9 +459,7 @@ class PaymentDialog(QDialog):
             self.txt_amount.setText(str(remaining))
         else:
             change = abs(remaining)
-            self.lbl_remaining.setText(
-                f"Change: {format_currency(change)}"
-            )
+            self.lbl_remaining.setText(f"Change: {format_currency(change)}")
             self.lbl_remaining.setProperty("state", "change")
             self.lbl_remaining.style().unpolish(self.lbl_remaining)
             self.lbl_remaining.style().polish(self.lbl_remaining)

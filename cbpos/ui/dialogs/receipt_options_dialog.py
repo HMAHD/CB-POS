@@ -1,15 +1,19 @@
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
+    QHBoxLayout,
     QLabel,
     QPushButton,
     QMessageBox,
     QInputDialog,
+    QWidget,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
 from cbpos.core.services.email_service import EmailService
+from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.models import Sale
 from cbpos.core.utils.formatters import format_currency
+from cbpos.ui.resources.icons import Icons
 
 
 class ReceiptOptionsDialog(QDialog):
@@ -17,61 +21,94 @@ class ReceiptOptionsDialog(QDialog):
         super().__init__(parent)
         self.sale = sale
         self.setWindowTitle("Receipt Options")
-        self.setFixedSize(500, 300)
-        self.setFixedSize(500, 300)
+        self.setFixedSize(440, 420)
         self.setObjectName("ReceiptOptionsDialog")
         self.init_ui()
 
-    def init_ui(self):
+    def init_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setSpacing(20)
-        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setSpacing(0)
+        layout.setContentsMargins(32, 28, 32, 24)
 
-        # Title
+        # ── Success Icon ───────────────────────────────────────────
+        icon_label = QLabel()
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_label.setObjectName("ReceiptSuccessIcon")
+        icon_label.setPixmap(Icons.get("fa5s.check-circle", "#39FF14").pixmap(48, 48))
+        layout.addWidget(icon_label)
+        layout.addSpacing(12)
+
+        # ── Title ──────────────────────────────────────────────────
         lbl_title = QLabel("Transaction Completed!")
         lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_title.setObjectName("ReceiptTitle")
         layout.addWidget(lbl_title)
+        layout.addSpacing(16)
 
-        lbl_info = QLabel(f"Order #{self.sale.document_number}\n" f"Total: {format_currency(self.sale.total_amount)}")
-        lbl_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_info.setObjectName("ReceiptInfo")
-        layout.addWidget(lbl_info)
+        # ── Order Info Card ────────────────────────────────────────
+        info_card = QWidget()
+        info_card.setObjectName("ReceiptInfoCard")
+        info_card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        info_layout = QVBoxLayout(info_card)
+        info_layout.setContentsMargins(16, 12, 16, 12)
+        info_layout.setSpacing(4)
 
-        # Buttons
-        btn_layout = QVBoxLayout()
-        btn_layout.setSpacing(10)
+        lbl_order = QLabel(f"Order  #{self.sale.document_number}")
+        lbl_order.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_order.setObjectName("ReceiptInfoOrder")
+        info_layout.addWidget(lbl_order)
 
-        # Print Thermal
-        btn_print = QPushButton("Print Receipt (Thermal)")
-        btn_print.setProperty("class", "ReceiptOptionBtn")
-        btn_print.setProperty("btnColor", "cyan")
+        lbl_total = QLabel(format_currency(self.sale.total_amount))
+        lbl_total.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_total.setObjectName("ReceiptInfoTotal")
+        info_layout.addWidget(lbl_total)
+
+        layout.addWidget(info_card)
+        layout.addSpacing(24)
+
+        # ── Action Buttons ─────────────────────────────────────────
+        is_dark = ThemeService.current_theme.lower() == "dark"
+        icon_clr = "#FFFFFF" if is_dark else "#212529"
+
+        btn_print = QPushButton("  Print Receipt")
+        btn_print.setObjectName("ReceiptBtnPrint")
+        btn_print.setIcon(Icons.get("fa5s.print", icon_clr))
+        btn_print.setIconSize(QSize(18, 18))
+        btn_print.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_print.setFixedHeight(44)
         btn_print.clicked.connect(self.print_thermal)
-        btn_layout.addWidget(btn_print)
+        layout.addWidget(btn_print)
+        layout.addSpacing(10)
 
-        # Email
-        btn_email = QPushButton("Email Receipt")
-        btn_email.setProperty("class", "ReceiptOptionBtn")
-        btn_email.setProperty("btnColor", "orange")
+        btn_email = QPushButton("  Email Receipt")
+        btn_email.setObjectName("ReceiptBtnEmail")
+        btn_email.setIcon(Icons.get("fa5s.envelope", icon_clr))
+        btn_email.setIconSize(QSize(18, 18))
+        btn_email.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_email.setFixedHeight(44)
         btn_email.clicked.connect(self.email_receipt)
-        btn_layout.addWidget(btn_email)
+        layout.addWidget(btn_email)
 
-        # Close
+        layout.addStretch(1)
+
+        # ── Close Button (centered, subtle) ────────────────────────
+        close_row = QHBoxLayout()
+        close_row.addStretch()
+
         btn_close = QPushButton("Close")
-        btn_close.setProperty("class", "ReceiptOptionBtn")
-        btn_close.setProperty("btnColor", "gray")
+        btn_close.setObjectName("ReceiptBtnClose")
+        btn_close.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_close.setFixedSize(120, 36)
         btn_close.clicked.connect(self.accept)
-        btn_layout.addWidget(btn_close)
+        close_row.addWidget(btn_close)
 
-        layout.addLayout(btn_layout)
+        close_row.addStretch()
+        layout.addLayout(close_row)
 
-    def print_thermal(self):
-        # In a real app, this would trigger the printer
-        # For now, we just simulate
+    def print_thermal(self) -> None:
         QMessageBox.information(self, "Printing", "Sending to Thermal Printer...")
 
-    def email_receipt(self):
-        # Pre-fill email if customer exists
+    def email_receipt(self) -> None:
         default_email = ""
         if self.sale.customer and self.sale.customer.email:
             default_email = self.sale.customer.email
@@ -79,11 +116,10 @@ class ReceiptOptionsDialog(QDialog):
         email, ok = QInputDialog.getText(self, "Email Receipt", "Enter Email Address:", text=default_email)
 
         if ok and email:
-            # Send in background
             self.worker = EmailService.send_receipt(email, self.sale.document_number)
             self.worker.finished.connect(self.on_email_finished)
             QMessageBox.information(self, "Sending", "Email is being sent in the background.")
 
-    def on_email_finished(self, success, message):
+    def on_email_finished(self, success: bool, message: str) -> None:
         if not success:
             QMessageBox.warning(self, "Email Failed", f"Failed to send email: {message}")

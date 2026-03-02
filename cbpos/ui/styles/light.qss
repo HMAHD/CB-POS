@@ -1293,38 +1293,95 @@ QDialog#CustomerEditor, QDialog#CustomerQuickAddDialog {
     color: #212529;
 }
 
-/* Receipt Options */
+/* ── Receipt Options Dialog — Light ─────────────────────────────── */
 QDialog#ReceiptOptionsDialog {
-    background-color: #FFFFFF;
+    background-color: #F8F9FA;
     color: #212529;
+}
+
+QLabel#ReceiptSuccessIcon {
+    background: transparent;
 }
 
 QLabel#ReceiptTitle {
-    font-size: 24px;
+    font-size: 20px;
     font-weight: bold;
     color: #198754;
+    background: transparent;
 }
 
-QLabel#ReceiptInfo {
-    font-size: 16px;
+QWidget#ReceiptInfoCard {
+    background-color: #FFFFFF;
+    border: 1px solid #DEE2E6;
+    border-radius: 8px;
+}
+
+QLabel#ReceiptInfoOrder {
+    font-size: 13px;
     color: #6C757D;
+    background: transparent;
 }
 
-QPushButton[class="ReceiptOptionBtn"] {
-    color: #212529;
+QLabel#ReceiptInfoTotal {
+    font-size: 22px;
     font-weight: bold;
-    font-size: 16px;
-    padding: 10px;
-    border-radius: 5px;
+    color: #212529;
+    background: transparent;
 }
 
-QPushButton[class="ReceiptOptionBtn"]:hover {
+QPushButton#ReceiptBtnPrint {
+    background-color: #FFFFFF;
+    color: #212529;
+    border: 1px solid #0D6EFD;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    padding-left: 16px;
+    text-align: left;
+}
+
+QPushButton#ReceiptBtnPrint:hover {
+    background-color: rgba(13, 110, 253, 0.08);
+    border-color: #0D6EFD;
+}
+
+QPushButton#ReceiptBtnPrint:pressed {
+    background-color: rgba(13, 110, 253, 0.16);
+}
+
+QPushButton#ReceiptBtnEmail {
+    background-color: #FFFFFF;
+    color: #212529;
+    border: 1px solid #DEE2E6;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    padding-left: 16px;
+    text-align: left;
+}
+
+QPushButton#ReceiptBtnEmail:hover {
+    background-color: #F0F0F0;
+    border-color: #ADB5BD;
+}
+
+QPushButton#ReceiptBtnEmail:pressed {
     background-color: #E9ECEF;
 }
 
-QPushButton[class="ReceiptOptionBtn"][btnColor="cyan"] { background-color: #0D6EFD; color: #FFFFFF; }
-QPushButton[class="ReceiptOptionBtn"][btnColor="orange"] { background-color: #FFC107; color: #212529; }
-QPushButton[class="ReceiptOptionBtn"][btnColor="gray"] { background-color: #6C757D; color: #FFFFFF; }
+QPushButton#ReceiptBtnClose {
+    background-color: transparent;
+    color: #6C757D;
+    border: 1px solid #DEE2E6;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+QPushButton#ReceiptBtnClose:hover {
+    color: #212529;
+    border-color: #ADB5BD;
+    background-color: #E9ECEF;
+}
 
 /* ===================================================================
    LOGIN VIEW STYLES - Light Theme

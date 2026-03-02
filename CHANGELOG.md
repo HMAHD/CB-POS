@@ -4,9 +4,11 @@ All notable changes to this project will be documented in this file. Never delet
 
 ## [0.8.3] - 2026-03-02
 
-### Fixed — Side Menu & Action Panel
+### Redesigned — Receipt Options Dialog
+- **Receipt Options Dialog**: Full redesign to match system dark/light theme. Replaced old navy-blue background and garish cyan/orange/gray buttons with proper theme surfaces (#1E1E1E dark, #F8F9FA light). New layout: success checkmark icon (48px), "Transaction Completed!" title, order info card with document number and bold total, icon-prefixed action buttons (Print with cyan accent border, Email with subtle border), centered ghost Close button. All selectors use objectName IDs instead of property-based class selectors.
 
-- **Side Menu Layout**: Changed nav tiles from 2-column grid to single-column vertical list with uniform 8px spacing. Removed QGridLayout in favor of QVBoxLayout for cleaner item-by-item navigation.
+### Fixed — Side Menu & Action Panel
+- **Side Menu Layout**: Changed nav tiles from 2-column grid to single-column vertical list with uniform 20px spacing. Removed QGridLayout in favor of QVBoxLayout for cleaner item-by-item navigation.
 - **Action Panel Visibility**: Fixed action panel not reappearing when returning to POS view from Management/Settings/Documents. `showEvent()` now closes the side menu and restores the action panel automatically.
 
 ## [0.8.2] - 2026-03-01

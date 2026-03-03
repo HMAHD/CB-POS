@@ -187,7 +187,9 @@ class PrintWorker(QThread):
             try:
                 job_type, data = self._queue.get(timeout=1)
             except queue.Empty:
-                break
+                if not self.running:
+                    break
+                continue
 
             current_printer = self._resolve_printer()
 

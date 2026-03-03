@@ -259,7 +259,7 @@ class Product(Base):
     reorder_point: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=0)
     preferred_qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=0)
     image_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"))
+    category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), index=True)
     parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("products.id"), nullable=True)
     default_supplier_id: Mapped[Optional[int]] = mapped_column(ForeignKey("suppliers.id"), nullable=True)
     unit_id: Mapped[Optional[int]] = mapped_column(ForeignKey("units.id"), nullable=True)

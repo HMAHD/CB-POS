@@ -190,13 +190,58 @@ class BackupRestoreDialog(QDialog):
         self.btn_create_backup.setEnabled(True)
         self.btn_create_backup.setText("Create Backup Now")
         self._refresh_backup_list()
-        QMessageBox.information(
-            self,
-            "Backup Complete",
-            f"Backup saved to:\n{path}\n\n"  # noqa: E231
-            f"Password: {password}\n\n"
-            "Keep this password safe \u2014 you need it to restore.",
-        )
+
+        # Secure password dialog with show/hide toggle and copy button
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Backup Complete")
+        dlg.setMinimumWidth(450)
+        dlg_layout = QVBoxLayout(dlg)
+        dlg_layout.setContentsMargins(20, 20, 20, 20)
+        dlg_layout.setSpacing(12)
+
+        lbl_success = QLabel(f"Backup saved to:\n{path}")  # noqa: E231
+        lbl_success.setWordWrap(True)
+        dlg_layout.addWidget(lbl_success)
+
+        lbl_pwd_info = QLabel("Keep this password safe \u2014 you need it to restore.")
+        lbl_pwd_info.setProperty("class", "muted")
+        lbl_pwd_info.setWordWrap(True)
+        dlg_layout.addWidget(lbl_pwd_info)
+
+        pwd_row = QHBoxLayout()
+        pwd_input = QLineEdit(password)
+        pwd_input.setEchoMode(QLineEdit.EchoMode.Password)
+        pwd_input.setReadOnly(True)
+        pwd_row.addWidget(pwd_input, 1)
+
+        btn_toggle = QPushButton("Show")
+        btn_toggle.setFixedWidth(60)
+
+        def toggle_visibility() -> None:
+            if pwd_input.echoMode() == QLineEdit.EchoMode.Password:
+                pwd_input.setEchoMode(QLineEdit.EchoMode.Normal)
+                btn_toggle.setText("Hide")
+            else:
+                pwd_input.setEchoMode(QLineEdit.EchoMode.Password)
+                btn_toggle.setText("Show")
+
+        btn_toggle.clicked.connect(toggle_visibility)
+        pwd_row.addWidget(btn_toggle)
+        dlg_layout.addLayout(pwd_row)
+
+        btn_row = QHBoxLayout()
+        btn_copy = QPushButton("Copy Password")
+        btn_copy.clicked.connect(lambda: QApplication.clipboard().setText(password))
+        btn_row.addWidget(btn_copy)
+        btn_row.addStretch()
+        btn_ok = QPushButton("OK")
+        btn_ok.setProperty("class", "accent")
+        btn_ok.setFixedWidth(80)
+        btn_ok.clicked.connect(dlg.accept)
+        btn_row.addWidget(btn_ok)
+        dlg_layout.addLayout(btn_row)
+
+        dlg.exec()
 
     def _on_backup_error(self, error: str) -> None:
         QApplication.restoreOverrideCursor()

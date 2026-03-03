@@ -112,13 +112,30 @@ class ConfigService:
     _SENSITIVE_KEYS = {"network_db_password", "smtp_pass"}
     _fernet: Fernet | None = None
 
+    _KEY_FILE = os.path.join(Config.BASE_DIR, ".encryption_key")
+
     @classmethod
     def _get_fernet(cls) -> Fernet:
-        """Return a Fernet instance derived from a machine-stable key."""
+        """Return a Fernet instance using a persistent key file.
+
+        The key is stored in a file so it survives hostname changes and
+        machine migrations.  On first run the key is derived from machine
+        identity for backwards compatibility with existing encrypted values.
+        """
         if cls._fernet is None:
-            # Derive a stable key from machine identity (hostname + OS)
-            seed = f"cbpos-{platform.node()}-{platform.system()}".encode()
-            key = base64.urlsafe_b64encode(hashlib.sha256(seed).digest())
+            if os.path.exists(cls._KEY_FILE):
+                with open(cls._KEY_FILE, "r", encoding="ascii") as f:
+                    key = f.read().strip().encode("ascii")
+            else:
+                # First run — derive from machine identity (matches old behaviour)
+                seed = f"cbpos-{platform.node()}-{platform.system()}".encode()
+                key = base64.urlsafe_b64encode(hashlib.sha256(seed).digest())
+                # Persist the key so it stays stable across hostname changes
+                try:
+                    with open(cls._KEY_FILE, "w", encoding="ascii") as f:
+                        f.write(key.decode("ascii"))
+                except OSError as e:
+                    logger.warning("Could not persist encryption key: %s", e)
             cls._fernet = Fernet(key)
         return cls._fernet
 
@@ -142,8 +159,9 @@ class ConfigService:
                 return base64.b64decode(value.encode("ascii")).decode("utf-8")
             except Exception:
                 return value
-        except Exception:
-            return value
+        except Exception as e:
+            logger.error("Failed to decrypt sensitive value: %s. Returning empty string for security.", e)
+            return ""
 
     @classmethod
     def load(cls):

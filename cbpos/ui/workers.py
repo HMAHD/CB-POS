@@ -207,6 +207,8 @@ class ExportWorker(QThread):
                 self.export_service.export_to_excel(self.df, self.filepath, self.report_name)
             elif self.fmt == "pdf":
                 self.export_service.export_to_pdf(self.df, self.filepath, self.report_name)
+            elif self.fmt == "csv":
+                self.export_service.export_to_csv(self.df, self.filepath)
             self.finished.emit("Export successful!")
         except Exception as e:
             logger.error("Export failed: %s", e)

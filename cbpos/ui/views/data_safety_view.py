@@ -34,8 +34,8 @@ from PyQt6.QtWidgets import (
     QDateEdit,
     QApplication,
 )
-from PyQt6.QtCore import Qt, QDate
-from PyQt6.QtGui import QCursor
+from PyQt6.QtCore import QDate
+
 
 from cbpos.core.services.backup_service import BackupService
 from cbpos.core.services.config_service import ConfigService
@@ -679,9 +679,13 @@ class DataSafetyView(QWidget):
         self.grp_export_dates.setVisible(text == "Sales")
 
     def _do_inline_export(self) -> None:
-        """Export selected data type in the chosen format."""
+        """Export selected data type in the chosen format using a background thread."""
         from datetime import datetime
         from pathlib import Path
+
+        from cbpos.core.services.data_export_service import DataExportService
+        from cbpos.core.services.export_service import ExportService
+        from cbpos.ui.workers import ExportWorker
 
         # Ask for output directory
         default_dir = str(Path.home() / "Documents")
@@ -692,25 +696,20 @@ class DataSafetyView(QWidget):
         self.btn_do_export.setEnabled(False)
         self.btn_do_export.setText("Exporting...")
         self.lbl_export_status.setText("")
-        QApplication.setOverrideCursor(QCursor(Qt.CursorShape.WaitCursor))
+
+        data_type = self.cmb_export_data.currentText()
+        fmt_text = self.cmb_export_format.currentText()
+
+        if "Excel" in fmt_text:
+            ext = ".xlsx"
+            fmt = "excel"
+        else:
+            ext = ".csv"
+            fmt = "csv"
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         try:
-            from cbpos.core.services.data_export_service import DataExportService
-            from cbpos.core.services.export_service import ExportService
-
-            export_svc = ExportService()
-            data_type = self.cmb_export_data.currentText()
-            fmt_text = self.cmb_export_format.currentText()
-
-            if "Excel" in fmt_text:
-                ext = ".xlsx"
-                fmt = "excel"
-            else:
-                ext = ".csv"
-                fmt = "csv"
-
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
             if data_type == "Products":
                 df = DataExportService.get_products_dataframe()
                 filepath = f"{output_dir}/products_{timestamp}{ext}"
@@ -727,27 +726,40 @@ class DataSafetyView(QWidget):
                 df = DataExportService.get_sales_dataframe(start_dt, end_dt)
                 filepath = f"{output_dir}/sales_{timestamp}{ext}"
                 title = "Sales"
-
-            if fmt == "excel":
-                export_svc.export_to_excel(df, filepath, title)
-            else:
-                export_svc.export_to_csv(df, filepath)
-
-            QApplication.restoreOverrideCursor()
-            self.btn_do_export.setEnabled(True)
-            self.btn_do_export.setText("Export")
-
-            self.lbl_export_status.setProperty("class", "credit")
-            self.lbl_export_status.setText(f"Exported {len(df)} {data_type.lower()} rows to {filepath}")
-            self.lbl_export_status.style().unpolish(self.lbl_export_status)
-            self.lbl_export_status.style().polish(self.lbl_export_status)
-
         except Exception as e:
-            QApplication.restoreOverrideCursor()
+            logger.exception("Export data fetch failed: %s", e)
             self.btn_do_export.setEnabled(True)
             self.btn_do_export.setText("Export")
-            logger.exception("Export failed: %s", e)
-            self.lbl_export_status.setProperty("class", "debit")
-            self.lbl_export_status.setText(f"Export failed: {e}")
-            self.lbl_export_status.style().unpolish(self.lbl_export_status)
-            self.lbl_export_status.style().polish(self.lbl_export_status)
+            self._set_export_status("debit", f"Export failed: {e}")
+            return
+
+        self._export_filepath = filepath
+        self._export_data_type = data_type
+        self._export_row_count = len(df)
+
+        self._export_worker = ExportWorker(ExportService(), df, filepath, title, fmt)
+        self._export_worker.finished.connect(self._on_export_finished)
+        self._export_worker.error.connect(self._on_export_error)
+        self._export_worker.start()
+
+    def _on_export_finished(self, _msg: str) -> None:
+        """Handle successful export from background thread."""
+        self.btn_do_export.setEnabled(True)
+        self.btn_do_export.setText("Export")
+        data_type = getattr(self, "_export_data_type", "")
+        row_count = getattr(self, "_export_row_count", 0)
+        filepath = getattr(self, "_export_filepath", "")
+        self._set_export_status("credit", f"Exported {row_count} {data_type.lower()} rows to {filepath}")
+
+    def _on_export_error(self, error: str) -> None:
+        """Handle export failure from background thread."""
+        self.btn_do_export.setEnabled(True)
+        self.btn_do_export.setText("Export")
+        self._set_export_status("debit", f"Export failed: {error}")
+
+    def _set_export_status(self, css_class: str, text: str) -> None:
+        """Update the export status label with the given class and text."""
+        self.lbl_export_status.setProperty("class", css_class)
+        self.lbl_export_status.setText(text)
+        self.lbl_export_status.style().unpolish(self.lbl_export_status)
+        self.lbl_export_status.style().polish(self.lbl_export_status)

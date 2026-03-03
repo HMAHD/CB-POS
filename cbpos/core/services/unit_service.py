@@ -32,7 +32,7 @@ class UnitService:
         """Get a single unit by ID."""
         db = Database()
         with db.get_session() as session:
-            unit = session.query(Unit).get(unit_id)
+            unit = session.get(Unit, unit_id)
             if unit:
                 session.expunge(unit)
             return unit
@@ -61,7 +61,7 @@ class UnitService:
         """Update an existing unit."""
         db = Database()
         with db.get_session() as session:
-            unit = session.query(Unit).get(unit_id)
+            unit = session.get(Unit, unit_id)
             if not unit:
                 raise ValueError(f"Unit ID {unit_id} not found.")
 
@@ -82,7 +82,7 @@ class UnitService:
         """Deactivate a unit (soft delete). Prevents deletion if products use it."""
         db = Database()
         with db.get_session() as session:
-            unit = session.query(Unit).get(unit_id)
+            unit = session.get(Unit, unit_id)
             if not unit:
                 raise ValueError(f"Unit ID {unit_id} not found.")
 

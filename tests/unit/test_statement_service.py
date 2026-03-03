@@ -17,7 +17,7 @@ class TestStatementService:
         TestStatementService._phone_counter += 1
         customer = Customer(
             name="Test Customer",
-            phone=f"077{TestStatementService._phone_counter:07d}",
+            phone=f"077{TestStatementService._phone_counter:07d}",  # noqa: E231
             current_debt=debt,
             credit_limit=Decimal("10000"),
         )

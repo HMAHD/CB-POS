@@ -148,7 +148,7 @@ class TransactionService:
                     if not customer_id:
                         raise ValueError("Customer required for Credit sale.")
 
-                    customer = session.query(Customer).with_for_update().get(customer_id)
+                    customer = session.get(Customer, customer_id, with_for_update=True)
                     if not customer:
                         raise ValueError("Invalid Customer.")
 
@@ -282,7 +282,7 @@ class TransactionService:
                 session.add(suspended)
             return True
         except Exception as e:
-            logger.error(f"Hold Bill Failed: {e}")
+            logger.error("Hold Bill Failed: %s", e)
             return False
 
     @staticmethod
@@ -302,7 +302,7 @@ class TransactionService:
         db = Database()
         try:
             with db.get_session() as session:
-                suspended = session.query(SuspendedTransaction).get(suspended_id)
+                suspended = session.get(SuspendedTransaction, suspended_id)
                 if not suspended:
                     return False
 
@@ -317,7 +317,7 @@ class TransactionService:
                 session.delete(suspended)
             return True
         except Exception as e:
-            logger.error(f"Recall Bill Failed: {e}")
+            logger.error("Recall Bill Failed: %s", e)
             return False
 
     @staticmethod
@@ -330,7 +330,7 @@ class TransactionService:
         db = Database()
         try:
             with db.get_session() as session:
-                sale = session.query(Sale).options(joinedload(Sale.items)).get(sale_id)
+                sale = session.get(Sale, sale_id, options=[joinedload(Sale.items)])
                 if not sale:
                     return False
 
@@ -371,10 +371,10 @@ class TransactionService:
                             session=session,
                         )
 
-                logger.info(f"VOID Sale {sale.document_number} by User {user_id}: {reason}")
+                logger.info("VOID Sale %s by User %s: %s", sale.document_number, user_id, reason)
             return True
         except Exception as e:
-            logger.error(f"Void Sale Failed: {e}")
+            logger.error("Void Sale Failed: %s", e)
             return False
 
     @staticmethod
@@ -395,7 +395,7 @@ class TransactionService:
         try:
             with db.get_session() as session:
                 # 1. Validate original sale
-                original_sale = session.query(Sale).options(joinedload(Sale.items)).get(original_sale_id)
+                original_sale = session.get(Sale, original_sale_id, options=[joinedload(Sale.items)])
                 if not original_sale:
                     raise ValueError(f"Sale ID {original_sale_id} not found.")
 
@@ -453,14 +453,14 @@ class TransactionService:
                     session.add(refund_item)
 
                     # 4. RESTORE stock (increase)
-                    product = session.query(Product).with_for_update().get(original_item.product_id)
+                    product = session.get(Product, original_item.product_id, with_for_update=True)
                     if product:
                         composite_children = composite_map.get(product.id, [])
 
                         if composite_children:
                             # Restore child product stock
                             for comp in composite_children:
-                                child_product = session.query(Product).with_for_update().get(comp.child_product_id)
+                                child_product = session.get(Product, comp.child_product_id, with_for_update=True)
                                 if child_product:
                                     restoration = comp.qty * original_item.qty
                                     child_product.stock_qty += restoration
@@ -477,8 +477,11 @@ class TransactionService:
                 session.add(refund_payment)
 
                 logger.info(
-                    f"REFUND: {original_sale.document_number} -> "
-                    f"{refund_receipt_no} by User {user_id}: {refund_reason}"
+                    "REFUND: %s -> %s by User %s: %s",
+                    original_sale.document_number,
+                    refund_receipt_no,
+                    user_id,
+                    refund_reason,
                 )
 
                 # 6. Print refund voucher (after commit via context manager)
@@ -496,7 +499,7 @@ class TransactionService:
             return True
 
         except Exception as e:
-            logger.error(f"Refund Failed: {e}")
+            logger.error("Refund Failed: %s", e)
             return False
 
     @staticmethod
@@ -508,14 +511,14 @@ class TransactionService:
         db = Database()
         try:
             with db.get_session() as session:
-                sale = session.query(Sale).get(sale_id)
+                sale = session.get(Sale, sale_id)
                 if not sale:
                     return False
 
                 sale.status = "LOCKED"
             return True
         except Exception as e:
-            logger.error(f"Lock Order Failed: {e}")
+            logger.error("Lock Order Failed: %s", e)
             return False
 
     @staticmethod
@@ -528,8 +531,8 @@ class TransactionService:
         db = Database()
         try:
             with db.get_session() as session:
-                sale = session.query(Sale).get(sale_id)
-                target_user = session.query(User).get(target_user_id)
+                sale = session.get(Sale, sale_id)
+                target_user = session.get(User, target_user_id)
 
                 if not sale or not target_user:
                     return False
@@ -547,7 +550,7 @@ class TransactionService:
                 session.add(log)
             return True
         except Exception as e:
-            logger.error(f"Transfer Order Failed: {e}")
+            logger.error("Transfer Order Failed: %s", e)
             return False
 
     @staticmethod
@@ -640,14 +643,14 @@ class TransactionService:
         """
         db = Database()
         with db.get_session() as session:
-            sale = (
-                session.query(Sale)
-                .options(
+            sale = session.get(
+                Sale,
+                sale_id,
+                options=[
                     joinedload(Sale.items).joinedload(SaleItem.product),
                     joinedload(Sale.user),
                     joinedload(Sale.customer),
-                )
-                .get(sale_id)
+                ],
             )
             if sale:
                 session.expunge(sale)

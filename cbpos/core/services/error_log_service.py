@@ -132,15 +132,18 @@ class ErrorLogService:
             f.write(f"Entries: {len(entries)}\n")
             f.write("=" * 80 + "\n\n")
             for entry in entries:
-                f.write(f"{entry['timestamp']} | {entry['level']:<8} | " f"{entry['source']} | {entry['message']}\n")
+                f.write(
+                    f"{entry['timestamp']} | {entry['level']:<8} | "  # noqa: E231
+                    f"{entry['source']} | {entry['message']}\n"
+                )
 
     @classmethod
     def get_total_log_size(cls) -> str:
         """Return human-readable combined size of all log files."""
         total = sum(f.stat().st_size for f in cls.get_log_files() if f.exists())
         if total >= 1024 * 1024:
-            return f"{total / (1024 * 1024):.1f} MB"
-        return f"{total / 1024:.1f} KB"
+            return f"{total / (1024 * 1024):.1f} MB"  # noqa: E231
+        return f"{total / 1024:.1f} KB"  # noqa: E231
 
     @classmethod
     def clear_logs(cls) -> None:

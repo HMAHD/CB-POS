@@ -47,8 +47,8 @@ class MaintenanceService:
 
         def _fmt(size: int) -> str:
             if size >= 1024 * 1024:
-                return f"{size / (1024 * 1024):.1f} MB"
-            return f"{size / 1024:.1f} KB"
+                return f"{size / (1024 * 1024):.1f} MB"  # noqa: E231
+            return f"{size / 1024:.1f} KB"  # noqa: E231
 
         return {
             "size_before": _fmt(size_before),
@@ -68,9 +68,9 @@ class MaintenanceService:
         size = db_path.stat().st_size if db_path.exists() else 0
 
         if size >= 1024 * 1024:
-            size_str = f"{size / (1024 * 1024):.1f} MB"
+            size_str = f"{size / (1024 * 1024):.1f} MB"  # noqa: E231
         else:
-            size_str = f"{size / 1024:.1f} KB"
+            size_str = f"{size / 1024:.1f} KB"  # noqa: E231
 
         info: Dict[str, object] = {"size": size_str, "products": 0, "customers": 0, "sales": 0}
 
@@ -102,9 +102,9 @@ class MaintenanceService:
         size = db_path.stat().st_size if db_path.exists() else 0
 
         if size >= 1024 * 1024:
-            size_str = f"{size / (1024 * 1024):.1f} MB"
+            size_str = f"{size / (1024 * 1024):.1f} MB"  # noqa: E231
         else:
-            size_str = f"{size / 1024:.1f} KB"
+            size_str = f"{size / 1024:.1f} KB"  # noqa: E231
 
         last_modified = ""
         if db_path.exists():

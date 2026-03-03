@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.models import Sale, SaleItem
@@ -395,18 +396,18 @@ class ReceiptBuilder:
         commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
 
         # Entries
-        total_debit = 0
-        total_credit = 0
+        total_debit = Decimal("0.00")
+        total_credit = Decimal("0.00")
         for entry in entries:
             date_str = entry.timestamp.strftime("%m/%d") if entry.timestamp else ""
             doc = entry.reference_doc or entry.note or entry.entry_type
 
             if entry.amount > 0:
-                line = f"{date_str} {doc:<20} +{entry.amount:.2f}"
-                total_debit += float(entry.amount)
+                line = f"{date_str} {doc:<20} +{entry.amount:.2f}"  # noqa: E231
+                total_debit += entry.amount
             else:
-                line = f"{date_str} {doc:<20} {entry.amount:.2f}"
-                total_credit += abs(float(entry.amount))
+                line = f"{date_str} {doc:<20} {entry.amount:.2f}"  # noqa: E231
+                total_credit += abs(entry.amount)
 
             commands.append({"type": "text", "val": line, "align": "left"})
 

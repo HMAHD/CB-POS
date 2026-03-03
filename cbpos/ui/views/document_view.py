@@ -369,37 +369,37 @@ class DocumentBrowserView(QWidget):
         """Display document details in the details panel."""
         type_labels = {"sale": "Sale", "purchase": "Purchase", "proforma": "Quotation"}
 
-        html = f"""
-        <b>Document:</b> {doc['document_number']}<br>
-        <b>Type:</b> {type_labels.get(doc['type'], doc['type'])}<br>
-        <b>Date:</b> {doc['date'].strftime('%Y-%m-%d %H:%M:%S') if doc['date'] else 'N/A'}<br>
-        <b>Status:</b> {doc['status']}<br>
-        <b>User:</b> {doc.get('username', '')}<br>
-        """
+        html = (
+            f"<b>Document:</b> {doc['document_number']}<br>"  # noqa: E231
+            f"<b>Type:</b> {type_labels.get(doc['type'], doc['type'])}<br>"  # noqa: E231
+            f"<b>Date:</b> {doc['date'].strftime('%Y-%m-%d %H:%M:%S') if doc['date'] else 'N/A'}<br>"  # noqa: E231
+            f"<b>Status:</b> {doc['status']}<br>"  # noqa: E231
+            f"<b>User:</b> {doc.get('username', '')}<br>"  # noqa: E231
+        )
 
         entity = doc.get("entity_name", "")
         if entity:
             label = "Supplier" if doc["type"] == "purchase" else "Customer"
-            html += f"<b>{label}:</b> {entity}<br>"
+            html += f"<b>{label}:</b> {entity}<br>"  # noqa: E231
 
         total = doc.get("total_amount")
         if total is not None:
-            html += f"<b>Total:</b> {format_currency(total)}<br>"
+            html += f"<b>Total:</b> {format_currency(total)}<br>"  # noqa: E231
 
         # Proforma-specific info
         if doc["type"] == "proforma":
             if doc.get("validity_days"):
-                html += f"<b>Validity:</b> {doc['validity_days']} days<br>"
+                html += f"<b>Validity:</b> {doc['validity_days']} days<br>"  # noqa: E231
             if doc.get("expiry_date"):
-                html += f"<b>Expiry:</b> {doc['expiry_date']}<br>"
+                html += f"<b>Expiry:</b> {doc['expiry_date']}<br>"  # noqa: E231
             if doc.get("notes"):
-                html += f"<b>Notes:</b> {doc['notes']}<br>"
+                html += f"<b>Notes:</b> {doc['notes']}<br>"  # noqa: E231
             if doc.get("converted_sale_id"):
-                html += f"<b>Converted to Sale:</b> #{doc['converted_sale_id']}<br>"
+                html += f"<b>Converted to Sale:</b> #{doc['converted_sale_id']}<br>"  # noqa: E231
 
         # Refund info
         if doc.get("refund_of_sale_id"):
-            html += f"<b>Refund of Sale:</b> #{doc['refund_of_sale_id']}<br>"
+            html += f"<b>Refund of Sale:</b> #{doc['refund_of_sale_id']}<br>"  # noqa: E231
 
         self.details_label.setText(html)
 
@@ -410,7 +410,7 @@ class DocumentBrowserView(QWidget):
             self.items_table.insertRow(idx)
             self.items_table.setItem(idx, 0, QTableWidgetItem(item.get("product_name", "")))
 
-            qty_item = QTableWidgetItem(f"{item['quantity']:.3f}")
+            qty_item = QTableWidgetItem(f"{item['quantity']:.3f}")  # noqa: E231
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(idx, 1, qty_item)
 
@@ -522,7 +522,7 @@ class DocumentBrowserView(QWidget):
             f"<b>Refund Transaction?</b><br><br>"
             f"Receipt: {self.current_doc['document_number']}<br>"
             f"Amount: {format_currency(self.current_doc['total_amount'])}<br><br>"
-            f"<b style='color: #FF4136'>Warning:</b> "
+            f"<b style='color: #FF4136'>Warning:</b> "  # noqa: E231
             f"Stock will be restored. This action cannot be undone.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,

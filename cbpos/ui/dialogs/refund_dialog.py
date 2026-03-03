@@ -185,6 +185,7 @@ class RefundDialog(QDialog):
         if reply != QMessageBox.StandardButton.Yes:
             return
 
+        self.btn_refund.setEnabled(False)
         try:
             success = TransactionService.process_refund(
                 original_sale_id=self.found_sale.id,
@@ -200,8 +201,11 @@ class RefundDialog(QDialog):
                 self.accept()
             else:
                 QMessageBox.critical(self, "Error", "Refund failed. Check logs for details.")
+                self.btn_refund.setEnabled(True)
         except ValueError as e:
             QMessageBox.warning(self, "Validation Error", str(e))
+            self.btn_refund.setEnabled(True)
         except Exception as e:
-            logger.error(f"Refund failed: {e}")
+            logger.error("Refund failed: %s", e)
             QMessageBox.critical(self, "Error", f"Refund failed: {e}")
+            self.btn_refund.setEnabled(True)

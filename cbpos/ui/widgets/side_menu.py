@@ -68,7 +68,10 @@ class NavTile(QPushButton):
         pixmap = Icons.get(self.icon_name, icon_color).pixmap(28, 28)
         self.lbl_icon.setPixmap(pixmap)
         self.lbl_icon.setStyleSheet("background: transparent;")
-        self.lbl_text.setStyleSheet(f"color: {text_color}; background: transparent; font-size: 12px;")
+        self.lbl_text.setStyleSheet(
+            f"color: {text_color}; background: transparent;"  # noqa: E702, E231
+            " font-size: 12px;"
+        )
 
     def update_icon(self) -> None:
         """Public API for theme change callbacks."""

@@ -603,6 +603,8 @@ class SalesView(QWidget):
         self.action_panel.clear_customer_info()
 
     def process_payment(self):
+        if getattr(self, "_processing", False):
+            return
         totals = self.cart_service.get_totals()
         if totals["subtotal"] <= 0:
             return
@@ -612,6 +614,7 @@ class SalesView(QWidget):
             payments, _ = dialog.payment_data
             customer_id = self.customer.id if self.customer else None
 
+            self._processing = True
             try:
                 sale = TransactionService.process_sale(self.cart_service, payments, customer_id)
                 if sale:
@@ -628,6 +631,8 @@ class SalesView(QWidget):
                 QMessageBox.warning(self, "Validation Error", str(e))
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Transaction failed: {str(e)}")
+            finally:
+                self._processing = False
 
     def hold_bill(self):
         if not self.cart_service.items:
@@ -926,6 +931,8 @@ class SalesView(QWidget):
 
     def quick_pay(self) -> None:
         """Quick close with full cash payment, skipping the payment dialog (F12)."""
+        if getattr(self, "_processing", False):
+            return
         # Check if quick pay is enabled in settings
         if not ConfigService.get("quick_pay_enabled"):
             QMessageBox.information(self, "Disabled", "Quick Pay is disabled in settings.")
@@ -941,6 +948,7 @@ class SalesView(QWidget):
         payments = [{"method": "CASH", "amount": totals["final_total"]}]
         customer_id = self.customer.id if self.customer else None
 
+        self._processing = True
         try:
             sale = TransactionService.process_sale(self.cart_service, payments, customer_id)
             if sale:
@@ -949,6 +957,8 @@ class SalesView(QWidget):
             QMessageBox.warning(self, "Validation Error", str(e))
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Transaction failed: {str(e)}")
+        finally:
+            self._processing = False
 
     def select_first_cart_item(self) -> None:
         """Select the first item in the cart table (Page Up)."""

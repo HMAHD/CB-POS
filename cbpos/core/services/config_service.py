@@ -1,8 +1,13 @@
 import base64
+import hashlib
 import json
 import logging
 import os
+import platform
 from typing import Dict, Any
+
+from cryptography.fernet import Fernet, InvalidToken
+
 from cbpos.config import Config
 
 logger = logging.getLogger(__name__)
@@ -103,26 +108,60 @@ class ConfigService:
 
     _settings: Dict[str, Any] = {}
 
-    # Keys that should be obfuscated (base64-encoded) in the settings file
+    # Keys that should be encrypted in the settings file
     _SENSITIVE_KEYS = {"network_db_password", "smtp_pass"}
+    _fernet: Fernet | None = None
+
+    _KEY_FILE = os.path.join(Config.BASE_DIR, ".encryption_key")
+
+    @classmethod
+    def _get_fernet(cls) -> Fernet:
+        """Return a Fernet instance using a persistent key file.
+
+        The key is stored in a file so it survives hostname changes and
+        machine migrations.  On first run the key is derived from machine
+        identity for backwards compatibility with existing encrypted values.
+        """
+        if cls._fernet is None:
+            if os.path.exists(cls._KEY_FILE):
+                with open(cls._KEY_FILE, "r", encoding="ascii") as f:
+                    key = f.read().strip().encode("ascii")
+            else:
+                # First run — derive from machine identity (matches old behaviour)
+                seed = f"cbpos-{platform.node()}-{platform.system()}".encode()
+                key = base64.urlsafe_b64encode(hashlib.sha256(seed).digest())
+                # Persist the key so it stays stable across hostname changes
+                try:
+                    with open(cls._KEY_FILE, "w", encoding="ascii") as f:
+                        f.write(key.decode("ascii"))
+                except OSError as e:
+                    logger.warning("Could not persist encryption key: %s", e)
+            cls._fernet = Fernet(key)
+        return cls._fernet
 
     @classmethod
     def _encode_sensitive(cls, value: str) -> str:
-        """Encode a sensitive value for storage."""
+        """Encrypt a sensitive value for storage."""
         if not value:
             return ""
-        return base64.b64encode(value.encode("utf-8")).decode("ascii")
+        return cls._get_fernet().encrypt(value.encode("utf-8")).decode("ascii")
 
     @classmethod
     def _decode_sensitive(cls, value: str) -> str:
-        """Decode a sensitive value from storage."""
+        """Decrypt a sensitive value from storage."""
         if not value:
             return ""
         try:
-            return base64.b64decode(value.encode("ascii")).decode("utf-8")
-        except Exception:
-            # If decoding fails, treat as plaintext (migration from old format)
-            return value
+            return cls._get_fernet().decrypt(value.encode("ascii")).decode("utf-8")
+        except InvalidToken:
+            # Try legacy base64 decode for migration
+            try:
+                return base64.b64decode(value.encode("ascii")).decode("utf-8")
+            except Exception:
+                return value
+        except Exception as e:
+            logger.error("Failed to decrypt sensitive value: %s. Returning empty string for security.", e)
+            return ""
 
     @classmethod
     def load(cls):

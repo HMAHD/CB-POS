@@ -70,7 +70,7 @@ class PaymentService:
         """
         db = Database()
         with db.get_session() as session:
-            method = session.query(PaymentMethod).get(method_id)
+            method = session.get(PaymentMethod, method_id)
             if not method:
                 return None
 
@@ -98,7 +98,7 @@ class PaymentService:
         """
         db = Database()
         with db.get_session() as session:
-            method = session.query(PaymentMethod).get(method_id)
+            method = session.get(PaymentMethod, method_id)
             if method:
                 session.delete(method)
                 session.commit()

@@ -196,7 +196,7 @@ class AuthService:
                         session.add(log)
                         session.commit()
                     except Exception as e:
-                        logger.error(f"Failed to write login audit log: {e}")
+                        logger.error("Failed to write login audit log: %s", e)
 
                     return user
 
@@ -287,6 +287,6 @@ class AuthService:
                     session.add(log)
                     session.commit()
             except Exception as e:
-                logger.error(f"Failed to write logout audit log: {e}")
+                logger.error("Failed to write logout audit log: %s", e)
 
         AuthService._current_user = None

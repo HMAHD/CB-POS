@@ -1,4 +1,5 @@
 import logging
+import queue
 import time
 from typing import List, Dict, Any
 
@@ -163,7 +164,7 @@ class PrintWorker(QThread):
     def __init__(self, printer: IPrinter | None = None) -> None:
         super().__init__()
         self.printer = printer
-        self.queue: list[tuple[str, Any]] = []
+        self._queue: queue.Queue[tuple[str, Any]] = queue.Queue()
         self.running = True
 
     def add_job(self, job_type: str, data: Any = None) -> None:
@@ -173,13 +174,22 @@ class PrintWorker(QThread):
             job_type: 'print_receipt' or 'kick_drawer'
             data: Command list for print_receipt, None for kick_drawer
         """
-        self.queue.append((job_type, data))
+        self._queue.put((job_type, data))
         if not self.isRunning():
             self.start()
 
+    def stop(self) -> None:
+        """Signal the worker to stop after current job completes."""
+        self.running = False
+
     def run(self) -> None:
-        while self.running and self.queue:
-            job_type, data = self.queue.pop(0)
+        while self.running:
+            try:
+                job_type, data = self._queue.get(timeout=1)
+            except queue.Empty:
+                if not self.running:
+                    break
+                continue
 
             current_printer = self._resolve_printer()
 

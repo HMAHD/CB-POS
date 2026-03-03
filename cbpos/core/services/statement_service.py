@@ -36,7 +36,7 @@ class StatementService:
         """
         db = Database()
         with db.get_session() as session:
-            customer = session.query(Customer).get(customer_id)
+            customer = session.get(Customer, customer_id)
             if not customer:
                 raise ValueError(f"Customer ID {customer_id} not found.")
 

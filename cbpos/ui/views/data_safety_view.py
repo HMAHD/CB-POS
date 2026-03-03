@@ -1,5 +1,5 @@
 """
-Data Safety view — embedded in Management stack.
+Data Safety view — embedded in Settings view.
 
 Provides a tabbed interface for all data safety operations:
 - Backup: list, create, clean old backups
@@ -29,8 +29,13 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QFormLayout,
     QFrame,
+    QDialog,
+    QComboBox,
+    QDateEdit,
     QApplication,
 )
+from PyQt6.QtCore import QDate
+
 
 from cbpos.core.services.backup_service import BackupService
 from cbpos.core.services.config_service import ConfigService
@@ -177,19 +182,66 @@ class DataSafetyView(QWidget):
         self.btn_create_backup.setEnabled(True)
         self.btn_create_backup.setText("Create Backup Now")
         self._refresh_backup_list()
-        QMessageBox.information(
-            self,
-            "Backup Complete",
-            f"Backup saved to:\n{path}\n\n"
-            f"Password: {password}\n\n"
-            "Keep this password safe \u2014 you need it to restore.",
-        )
+
+        # Custom dialog to show password securely
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Backup Complete")
+        dlg.setMinimumWidth(450)
+        dlg_layout = QVBoxLayout(dlg)
+        dlg_layout.setContentsMargins(20, 20, 20, 20)
+        dlg_layout.setSpacing(12)
+
+        lbl_success = QLabel(f"Backup saved to:\n{path}")  # noqa: E231
+        lbl_success.setWordWrap(True)
+        dlg_layout.addWidget(lbl_success)
+
+        lbl_pwd_info = QLabel("Keep this password safe — you need it to restore.")
+        lbl_pwd_info.setProperty("class", "muted")
+        lbl_pwd_info.setWordWrap(True)
+        dlg_layout.addWidget(lbl_pwd_info)
+
+        pwd_row = QHBoxLayout()
+        pwd_input = QLineEdit(password)
+        pwd_input.setEchoMode(QLineEdit.EchoMode.Password)
+        pwd_input.setReadOnly(True)
+        pwd_row.addWidget(pwd_input, 1)
+
+        btn_toggle = QPushButton("Show")
+        btn_toggle.setFixedWidth(60)
+
+        def toggle_visibility():
+            if pwd_input.echoMode() == QLineEdit.EchoMode.Password:
+                pwd_input.setEchoMode(QLineEdit.EchoMode.Normal)
+                btn_toggle.setText("Hide")
+            else:
+                pwd_input.setEchoMode(QLineEdit.EchoMode.Password)
+                btn_toggle.setText("Show")
+
+        btn_toggle.clicked.connect(toggle_visibility)
+        pwd_row.addWidget(btn_toggle)
+        dlg_layout.addLayout(pwd_row)
+
+        btn_row = QHBoxLayout()
+        btn_copy = QPushButton("Copy Password")
+        btn_copy.clicked.connect(lambda: QApplication.clipboard().setText(password))
+        btn_row.addWidget(btn_copy)
+
+        btn_row.addStretch()
+
+        btn_ok = QPushButton("OK")
+        btn_ok.setProperty("class", "accent")
+        btn_ok.setFixedWidth(80)
+        btn_ok.clicked.connect(dlg.accept)
+        btn_row.addWidget(btn_ok)
+        dlg_layout.addLayout(btn_row)
+
+        dlg.exec()
 
     def _on_backup_error(self, error: str) -> None:
         self._overlay.hide_loading()
         self.btn_create_backup.setEnabled(True)
         self.btn_create_backup.setText("Create Backup Now")
-        QMessageBox.critical(self, "Backup Failed", f"Could not create backup:\n{error}")
+        QMessageBox.critical(self, "Backup Failed", f"Could not create backup:\n{error}")  # noqa: E231
 
     def _clean_old_backups(self) -> None:
         keep = ConfigService.get("backup_retention_count") or 5
@@ -249,6 +301,11 @@ class DataSafetyView(QWidget):
         self.input_restore_password.setPlaceholderText("Enter backup password...")
         self.input_restore_password.setEchoMode(QLineEdit.EchoMode.Password)
         pwd_row.addWidget(self.input_restore_password, 1)
+
+        self.btn_toggle_restore_pwd = QPushButton("Show")
+        self.btn_toggle_restore_pwd.setFixedWidth(60)
+        self.btn_toggle_restore_pwd.clicked.connect(self._toggle_restore_password_visibility)
+        pwd_row.addWidget(self.btn_toggle_restore_pwd)
         file_layout.addLayout(pwd_row)
 
         layout.addWidget(grp_file)
@@ -300,7 +357,7 @@ class DataSafetyView(QWidget):
         if result["valid"]:
             file_count = len(result["files"])
             self.lbl_verify_result.setProperty("class", "credit")
-            self.lbl_verify_result.setText(f"Backup is valid.  Size: {result['size']}  |  Files: {file_count}")
+            self.lbl_verify_result.setText(f"Backup is valid. Size: {result['size']} | Files: {file_count}")
         else:
             self.lbl_verify_result.setProperty("class", "debit")
             self.lbl_verify_result.setText(f"Verification failed: {result['error']}")
@@ -361,7 +418,16 @@ class DataSafetyView(QWidget):
         self.btn_restore.setEnabled(True)
         self.btn_restore.setText("Restore Backup")
         self.btn_verify.setEnabled(True)
-        QMessageBox.critical(self, "Restore Failed", f"Could not restore backup:\n{error}")
+        QMessageBox.critical(self, "Restore Failed", f"Could not restore backup:\n{error}")  # noqa: E231
+
+    def _toggle_restore_password_visibility(self) -> None:
+        """Toggle visibility of the restore password input."""
+        if self.input_restore_password.echoMode() == QLineEdit.EchoMode.Password:
+            self.input_restore_password.setEchoMode(QLineEdit.EchoMode.Normal)
+            self.btn_toggle_restore_pwd.setText("Hide")
+        else:
+            self.input_restore_password.setEchoMode(QLineEdit.EchoMode.Password)
+            self.btn_toggle_restore_pwd.setText("Show")
 
     # ── Maintenance Tab ───────────────────────────────────────────────────
 
@@ -498,27 +564,27 @@ class DataSafetyView(QWidget):
 
     def _run_integrity_check(self) -> None:
         self.btn_integrity.setEnabled(False)
-        self.btn_integrity.setText("Checking...")
-        QApplication.processEvents()
+        self.lbl_maintenance_status.setText("")
+        self._overlay.show_loading("Checking database integrity...")
 
-        try:
-            from cbpos.core.services.maintenance_service import MaintenanceService
+        from cbpos.ui.workers import IntegrityCheckWorker
 
-            ok, message = MaintenanceService.integrity_check()
-            if ok:
-                self.lbl_maintenance_status.setProperty("class", "credit")
-                self.lbl_maintenance_status.setText("Database integrity check passed.")
-            else:
-                self.lbl_maintenance_status.setProperty("class", "debit")
-                self.lbl_maintenance_status.setText(f"Integrity issues found: {message}")
-        except Exception as e:
+        self._integrity_worker = IntegrityCheckWorker()
+        self._integrity_worker.finished.connect(self._on_integrity_finished)
+        self._integrity_worker.start()
+
+    def _on_integrity_finished(self, ok: bool, message: str) -> None:
+        self._overlay.hide_loading()
+        self.btn_integrity.setEnabled(True)
+        self.btn_integrity.setText("Check")
+        if ok:
+            self.lbl_maintenance_status.setProperty("class", "credit")
+            self.lbl_maintenance_status.setText("Database integrity check passed.")
+        else:
             self.lbl_maintenance_status.setProperty("class", "debit")
-            self.lbl_maintenance_status.setText(f"Check failed: {e}")
-        finally:
-            self.lbl_maintenance_status.style().unpolish(self.lbl_maintenance_status)
-            self.lbl_maintenance_status.style().polish(self.lbl_maintenance_status)
-            self.btn_integrity.setEnabled(True)
-            self.btn_integrity.setText("Check")
+            self.lbl_maintenance_status.setText(f"Integrity issues found: {message}")
+        self.lbl_maintenance_status.style().unpolish(self.lbl_maintenance_status)
+        self.lbl_maintenance_status.style().polish(self.lbl_maintenance_status)
 
     # ── Export Data Tab ───────────────────────────────────────────────────
 
@@ -528,36 +594,172 @@ class DataSafetyView(QWidget):
         layout.setContentsMargins(8, 16, 8, 8)
         layout.setSpacing(16)
 
-        # Info card
-        grp_export = QGroupBox("Export Your Data")
-        export_layout = QVBoxLayout(grp_export)
-        export_layout.setSpacing(12)
-
         desc = QLabel(
-            "Export your business data to CSV, Excel, or PDF files.\n"
+            "Export your business data to CSV or Excel files.\n"
             "Useful for accounting, analysis, or sharing data with other systems."
         )
         desc.setProperty("class", "muted")
         desc.setWordWrap(True)
-        export_layout.addWidget(desc)
+        layout.addWidget(desc)
 
-        btn_open_export = QPushButton("Open Export Dialog")
-        btn_open_export.setProperty("class", "accent")
-        btn_open_export.setFixedWidth(200)
-        btn_open_export.clicked.connect(self._open_export_dialog)
-        export_layout.addWidget(btn_open_export)
+        # Data type selection
+        grp_data = QGroupBox("Data Type")
+        data_layout = QHBoxLayout(grp_data)
+        data_layout.setSpacing(12)
+        lbl_data = QLabel("Export:")
+        data_layout.addWidget(lbl_data)
+        self.cmb_export_data = QComboBox()
+        self.cmb_export_data.addItems(["Products", "Customers", "Sales"])
+        self.cmb_export_data.setFixedWidth(200)
+        self.cmb_export_data.currentTextChanged.connect(self._on_export_data_changed)
+        data_layout.addWidget(self.cmb_export_data)
+        data_layout.addStretch()
+        layout.addWidget(grp_data)
 
-        layout.addWidget(grp_export)
+        # Format selection
+        grp_format = QGroupBox("Output Format")
+        fmt_layout = QHBoxLayout(grp_format)
+        fmt_layout.setSpacing(12)
+        lbl_fmt = QLabel("Format:")
+        fmt_layout.addWidget(lbl_fmt)
+        self.cmb_export_format = QComboBox()
+        self.cmb_export_format.addItems(["Excel (.xlsx)", "CSV (.csv)"])
+        self.cmb_export_format.setFixedWidth(200)
+        fmt_layout.addWidget(self.cmb_export_format)
+        fmt_layout.addStretch()
+        layout.addWidget(grp_format)
+
+        # Date range (visible only for Sales)
+        self.grp_export_dates = QGroupBox("Date Range (Sales only)")
+        dates_layout = QHBoxLayout(self.grp_export_dates)
+        dates_layout.setSpacing(12)
+        lbl_from = QLabel("From:")
+        dates_layout.addWidget(lbl_from)
+        self.date_export_from = QDateEdit()
+        self.date_export_from.setCalendarPopup(True)
+        self.date_export_from.setDate(QDate.currentDate().addMonths(-1))
+        self.date_export_from.setDisplayFormat("yyyy-MM-dd")
+        self.date_export_from.setFixedWidth(150)
+        dates_layout.addWidget(self.date_export_from)
+        lbl_to = QLabel("To:")
+        dates_layout.addWidget(lbl_to)
+        self.date_export_to = QDateEdit()
+        self.date_export_to.setCalendarPopup(True)
+        self.date_export_to.setDate(QDate.currentDate())
+        self.date_export_to.setDisplayFormat("yyyy-MM-dd")
+        self.date_export_to.setFixedWidth(150)
+        dates_layout.addWidget(self.date_export_to)
+        dates_layout.addStretch()
+        layout.addWidget(self.grp_export_dates)
+        # Show date range only for Sales
+        self.grp_export_dates.setVisible(self.cmb_export_data.currentText() == "Sales")
+
         layout.addStretch()
+
+        # Export button and status
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(10)
+        self.btn_do_export = QPushButton("Export")
+        self.btn_do_export.setProperty("class", "accent")
+        self.btn_do_export.setFixedWidth(140)
+        self.btn_do_export.clicked.connect(self._do_inline_export)
+        btn_row.addWidget(self.btn_do_export)
+
+        self.lbl_export_status = QLabel("")
+        self.lbl_export_status.setWordWrap(True)
+        btn_row.addWidget(self.lbl_export_status, 1)
+
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
 
         return tab
 
-    def _open_export_dialog(self) -> None:
-        try:
-            from cbpos.ui.dialogs.data_export_dialog import DataExportDialog
+    def _on_export_data_changed(self, text: str) -> None:
+        """Show/hide date range based on selected data type."""
+        self.grp_export_dates.setVisible(text == "Sales")
 
-            dlg = DataExportDialog(self)
-            dlg.exec()
+    def _do_inline_export(self) -> None:
+        """Export selected data type in the chosen format using a background thread."""
+        from datetime import datetime
+        from pathlib import Path
+
+        from cbpos.core.services.data_export_service import DataExportService
+        from cbpos.core.services.export_service import ExportService
+        from cbpos.ui.workers import ExportWorker
+
+        # Ask for output directory
+        default_dir = str(Path.home() / "Documents")
+        output_dir = QFileDialog.getExistingDirectory(self, "Choose Export Folder", default_dir)
+        if not output_dir:
+            return
+
+        self.btn_do_export.setEnabled(False)
+        self.btn_do_export.setText("Exporting...")
+        self.lbl_export_status.setText("")
+
+        data_type = self.cmb_export_data.currentText()
+        fmt_text = self.cmb_export_format.currentText()
+
+        if "Excel" in fmt_text:
+            ext = ".xlsx"
+            fmt = "excel"
+        else:
+            ext = ".csv"
+            fmt = "csv"
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        try:
+            if data_type == "Products":
+                df = DataExportService.get_products_dataframe()
+                filepath = f"{output_dir}/products_{timestamp}{ext}"
+                title = "Products"
+            elif data_type == "Customers":
+                df = DataExportService.get_customers_dataframe()
+                filepath = f"{output_dir}/customers_{timestamp}{ext}"
+                title = "Customers"
+            else:
+                start = self.date_export_from.date().toPyDate()
+                end = self.date_export_to.date().toPyDate()
+                start_dt = datetime(start.year, start.month, start.day, 0, 0, 0)
+                end_dt = datetime(end.year, end.month, end.day, 23, 59, 59)
+                df = DataExportService.get_sales_dataframe(start_dt, end_dt)
+                filepath = f"{output_dir}/sales_{timestamp}{ext}"
+                title = "Sales"
         except Exception as e:
-            logger.error("Could not open export dialog: %s", e)
-            QMessageBox.critical(self, "Error", f"Could not open export dialog:\n{e}")
+            logger.exception("Export data fetch failed: %s", e)
+            self.btn_do_export.setEnabled(True)
+            self.btn_do_export.setText("Export")
+            self._set_export_status("debit", f"Export failed: {e}")
+            return
+
+        self._export_filepath = filepath
+        self._export_data_type = data_type
+        self._export_row_count = len(df)
+
+        self._export_worker = ExportWorker(ExportService(), df, filepath, title, fmt)
+        self._export_worker.finished.connect(self._on_export_finished)
+        self._export_worker.error.connect(self._on_export_error)
+        self._export_worker.start()
+
+    def _on_export_finished(self, _msg: str) -> None:
+        """Handle successful export from background thread."""
+        self.btn_do_export.setEnabled(True)
+        self.btn_do_export.setText("Export")
+        data_type = getattr(self, "_export_data_type", "")
+        row_count = getattr(self, "_export_row_count", 0)
+        filepath = getattr(self, "_export_filepath", "")
+        self._set_export_status("credit", f"Exported {row_count} {data_type.lower()} rows to {filepath}")
+
+    def _on_export_error(self, error: str) -> None:
+        """Handle export failure from background thread."""
+        self.btn_do_export.setEnabled(True)
+        self.btn_do_export.setText("Export")
+        self._set_export_status("debit", f"Export failed: {error}")
+
+    def _set_export_status(self, css_class: str, text: str) -> None:
+        """Update the export status label with the given class and text."""
+        self.lbl_export_status.setProperty("class", css_class)
+        self.lbl_export_status.setText(text)
+        self.lbl_export_status.style().unpolish(self.lbl_export_status)
+        self.lbl_export_status.style().polish(self.lbl_export_status)

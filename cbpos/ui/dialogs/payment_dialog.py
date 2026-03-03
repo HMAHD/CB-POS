@@ -257,7 +257,7 @@ class PaymentDialog(QDialog):
         self.btn_finish.setObjectName("BtnFinishSale")
         self.btn_finish.setFixedHeight(48)
         self.btn_finish.setEnabled(False)
-        self.btn_finish.clicked.connect(self.accept)
+        self.btn_finish.clicked.connect(self._finish_sale)
 
         action_layout.addWidget(btn_cancel, stretch=1)
         action_layout.addWidget(self.btn_finish, stretch=2)
@@ -328,7 +328,7 @@ class PaymentDialog(QDialog):
         # Auto-fill remaining amount for all methods
         remaining = self.get_remaining_amount()
         if remaining > 0:
-            self.txt_amount.setText(f"{remaining:.2f}")
+            self.txt_amount.setText(f"{remaining:.2f}")  # noqa: E231
         else:
             self.txt_amount.clear()
 
@@ -349,7 +349,7 @@ class PaymentDialog(QDialog):
             self.select_method(cash_method, cash_btn)
             remaining = self.get_remaining_amount()
             if remaining > 0:
-                self.txt_amount.setText(f"{remaining:.2f}")
+                self.txt_amount.setText(f"{remaining:.2f}")  # noqa: E231
                 self.add_payment()
                 if self.get_remaining_amount() <= 0:
                     self.accept()
@@ -489,6 +489,11 @@ class PaymentDialog(QDialog):
             current = ""
         if "." not in current:
             self.txt_amount.setText(current + ".")
+
+    def _finish_sale(self) -> None:
+        """Disable finish button to prevent double-click, then accept."""
+        self.btn_finish.setEnabled(False)
+        self.accept()
 
     @property
     def payment_data(self):

@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.8.5] - 2026-03-03
+
+### Fixed — Code Review Issues (#83–#96)
+
+#### Critical
+- **Double-click duplicate sale prevention (#83)**: Added `_processing` guard flag with try/finally in `process_payment()` and `quick_pay()`. Disabled FINISH SALE and PROCESS REFUND buttons during processing.
+- **Thread-safe print queue (#84)**: Replaced plain `list` with `queue.Queue` in `PrintWorker` to prevent race conditions. Added `stop()` method and timeout-based dequeuing.
+- **SQLite WAL mode + busy_timeout (#85)**: Added SQLAlchemy `connect` event listener to set `PRAGMA journal_mode=WAL`, `busy_timeout=30000`, and `foreign_keys=ON` for safe concurrent access.
+
+#### High
+- **Document number race condition (#86)**: Added `IntegrityError` retry loop with sequence increment for document number collisions.
+- **Theme-aware dialog styles (#87)**: Removed all hardcoded navy-blue `setStyleSheet()` calls from BackupRestoreDialog and ValuationDialog. Replaced with `setObjectName()`/`setProperty("class", ...)` and QSS selectors in both dark.qss and light.qss.
+- **Loading indicators (#88)**: Already implemented in Phase 26 — verified existing LoadingOverlay coverage.
+- **Database indexes (#89)**: Added `index=True` to 12 frequently queried columns: Document.type/status/user_id, Sale.customer_id, SaleItem.sale_id/product_id, SalePayment.sale_id, PurchaseItem.purchase_id/product_id, Shift.user_id/status, CashMovement.shift_id.
+
+#### Medium
+- **Numeric precision (#90)**: Standardized all money columns from `Numeric(10,2)` to `Numeric(12,2)` across Sale, SaleItem, SalePayment, Purchase, PurchaseItem, Product, Customer, Shift, CashMovement, PriceListItem, Promotion, Proforma, ProformaItem.
+- **Logger lazy formatting (#91)**: Converted 20+ `logger.error(f"...{e}")` calls to `logger.error("...%s", e)` across transaction_service, auth_service, user_service, and migration_service.
+- **Legacy Query.get() → session.get() (#92)**: Replaced 24+ `session.query(Model).get(id)` calls with `session.get()` across 8 service files, including `joinedload` and `with_for_update` variants.
+- **Proforma tax centralization (#93)**: Replaced hardcoded `Decimal("1.18")` tax math with `TaxService.calculate_taxes()` in proforma_service.
+- **QThread memory cleanup (#94)**: Added `self.finished.connect(self.deleteLater)` to all 8 QThread workers.
+
+#### Low
+- **Decimal precision in receipts (#95)**: Replaced `float(entry.amount)` with `entry.amount` in receipt_builder to preserve Decimal precision.
+- **Fernet encryption for credentials (#96)**: Replaced base64 encoding with `cryptography.fernet.Fernet` encryption using machine-derived key for stored passwords. Added legacy base64 migration fallback.
+
+### Fixed — UI/UX Issues (#72–#81)
+- **Integrity check async (#72)**: Replaced blocking `integrity_check()` with background `IntegrityCheckWorker` thread in Data Safety view.
+- **Log row color coding (#73)**: Added background colors for WARNING (amber), ERROR (red), and CRITICAL (dark red) rows in error log table.
+- **Secure backup password display (#74)**: Replaced plain `QMessageBox` with custom dialog featuring show/hide toggle and copy-to-clipboard button.
+- **Hardware test timeout (#75)**: Added 15-second `QTimer.singleShot` timeout for printer and drawer test workers to prevent indefinite hangs.
+- **Restore password visibility (#76)**: Added eye icon toggle button for password field in backup restore tab.
+- **Docstring corrections (#77)**: Updated admin_tools_view and data_safety_view docstrings from "Management stack" to "Settings view".
+- **Settings sidebar separator (#78)**: Added non-selectable visual separator between configuration pages and operational views in settings sidebar.
+- **Log filter Enter key (#79)**: Connected `returnPressed` signal on log filter inputs for instant filtering on Enter.
+- **Barcode scanner timing detection (#80)**: Added character timing analysis to distinguish scanner input (<50ms avg) from manual typing.
+- **Inline data export (#81)**: Replaced stub Export Data tab with inline export UI featuring data type selector, format picker, date range, and direct export functionality.
+
 ## [0.8.4] - 2026-03-02
 
 ### Changed — Streamlined Sale Completion Flow

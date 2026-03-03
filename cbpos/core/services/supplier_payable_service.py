@@ -47,7 +47,7 @@ class SupplierPayableService:
 
         db = Database()
         with db.get_session() as session:
-            supplier = session.query(Supplier).with_for_update().get(supplier_id)
+            supplier = session.get(Supplier, supplier_id, with_for_update=True)
             if not supplier:
                 raise ValueError("Supplier not found.")
 
@@ -156,7 +156,7 @@ class SupplierPayableService:
 
         db = Database()
         with db.get_session() as session:
-            supplier = session.query(Supplier).with_for_update().get(supplier_id)
+            supplier = session.get(Supplier, supplier_id, with_for_update=True)
             if not supplier:
                 raise ValueError("Supplier not found.")
 
@@ -298,7 +298,7 @@ class SupplierPayableService:
         """
         db = Database()
         with db.get_session() as session:
-            supplier = session.query(Supplier).get(supplier_id)
+            supplier = session.get(Supplier, supplier_id)
             if not supplier:
                 return {}
 

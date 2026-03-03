@@ -62,7 +62,14 @@ class SettingsView(QWidget):
             ("Admin Tools", "fa5s.toolbox"),
         ]
 
-        for item_text, icon_name in items:
+        for idx, (item_text, icon_name) in enumerate(items):
+            # Insert separator after the last config page (Network, index 6)
+            if idx == 7:
+                separator = QListWidgetItem()
+                separator.setFlags(Qt.ItemFlag.NoItemFlags)
+                separator.setSizeHint(QSize(0, 10))
+                self.sidebar.addItem(separator)
+
             item = QListWidgetItem(item_text)
             item.setIcon(qta.icon(icon_name, color="#CCCCCC"))
             item.setSizeHint(QSize(0, 50))
@@ -131,7 +138,14 @@ class SettingsView(QWidget):
         self.sidebar.setCurrentRow(0)
 
     def change_page(self, index):
-        self.stack.setCurrentIndex(index)
+        # Account for the non-selectable separator item at sidebar index 7
+        if index < 0:
+            return
+        if index <= 6:
+            self.stack.setCurrentIndex(index)
+        elif index >= 8:
+            # Items after separator: subtract 1 to skip the separator
+            self.stack.setCurrentIndex(index - 1)
 
     def load_settings(self):
         settings = ConfigService.get_all()

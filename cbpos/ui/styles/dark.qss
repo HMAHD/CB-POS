@@ -2029,3 +2029,52 @@ QScrollArea#SettingsScrollArea {
 QWidget#SettingsScrollInner {
     background: transparent;
 }
+
+/* ── BackupRestoreDialog & ValuationDialog (theme-aware) ───────── */
+QDialog#BackupRestoreDialog {
+    background-color: #001F3F;
+}
+QDialog#BackupRestoreDialog QTabWidget::pane { border: none; background: #001F3F; }
+QDialog#BackupRestoreDialog QTabBar::tab {
+    background: #003366; color: #B0B0B0; padding: 10px 22px;
+    border-top-left-radius: 6px; border-top-right-radius: 6px;
+    margin-right: 2px; font-size: 13px;
+}
+QDialog#BackupRestoreDialog QTabBar::tab:selected { background: #004080; color: #00BCEB; font-weight: bold; }
+QDialog#BackupRestoreDialog QTabBar::tab:hover { background: #004080; color: #FFFFFF; }
+
+QLabel#DialogTitle { color: #00BCEB; font-size: 20px; font-weight: bold; margin-bottom: 8px; }
+QLabel#DialogSubtitle { color: #8899AA; font-size: 12px; margin-bottom: 16px; }
+QLabel#SectionTitle { font-size: 16px; font-weight: bold; color: white; margin-top: 20px; }
+
+QLabel[class="muted"] { color: #B0B0B0; font-size: 12px; }
+QLabel[class="value"] { color: #E0E0E0; font-size: 13px; font-weight: bold; }
+QLabel[class="status-ok"] { color: #39FF14; font-weight: bold; font-size: 13px; }
+QLabel[class="status-err"] { color: #FF4136; font-weight: bold; font-size: 13px; }
+QLabel[class="card-value"] { color: white; font-size: 28px; font-weight: bold; }
+QLabel[class="card-value-positive"] { color: #39FF14; font-size: 28px; font-weight: bold; }
+QLabel[class="card-value-negative"] { color: #FF4136; font-size: 28px; font-weight: bold; }
+
+QGroupBox[class="card"] {
+    background-color: #003366; border: 1px solid #004080; border-radius: 8px;
+    margin-top: 16px; padding: 20px 16px 16px 16px; font-weight: bold; color: #00BCEB;
+}
+QGroupBox[class="card"]::title { subcontrol-origin: margin; left: 16px; padding: 0 8px; }
+
+QFrame#ValueCard { background-color: #003366; border-radius: 8px; padding: 15px; }
+QFrame#Separator { background-color: #004080; }
+
+QTableWidget#BackupTable, QTableWidget#ValuationTable {
+    background-color: #002244; border: 1px solid #004080; border-radius: 6px;
+    gridline-color: #003366; color: #E0E0E0; selection-background-color: #004080; font-size: 12px;
+}
+QTableWidget#BackupTable::item, QTableWidget#ValuationTable::item { padding: 6px; }
+QTableWidget#BackupTable QHeaderView::section, QTableWidget#ValuationTable QHeaderView::section {
+    background-color: #003366; color: #00BCEB; padding: 8px;
+    border: none; border-bottom: 2px solid #00BCEB; font-weight: bold; font-size: 12px;
+}
+
+QLabel#RestoreWarning {
+    background-color: rgba(255, 65, 54, 0.12); border: 1px solid #FF4136;
+    border-radius: 6px; padding: 12px; color: #FF8C85; font-size: 12px;
+}

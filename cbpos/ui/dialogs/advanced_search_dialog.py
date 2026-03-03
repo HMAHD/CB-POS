@@ -198,7 +198,7 @@ class AdvancedSearchDialog(QDialog):
             barcode_item.setForeground(text_brush)
             self.table.setItem(row, 1, barcode_item)
 
-            stock_item = QTableWidgetItem(f"{float(product.stock_qty):.2f}")
+            stock_item = QTableWidgetItem(f"{float(product.stock_qty):.2f}")  # noqa: E231
             stock_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             stock_item.setForeground(text_brush)
             self.table.setItem(row, 2, stock_item)

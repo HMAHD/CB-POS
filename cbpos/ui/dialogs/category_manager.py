@@ -335,7 +335,8 @@ class CategoryManagerDialog(QDialog):
     def _update_color_preview(self) -> None:
         """Update the color swatch label."""
         self.lbl_color.setStyleSheet(
-            f"background-color: {self.selected_color}; " f"border: 1px solid #3E3E42; border-radius: 4px;"
+            f"background-color: {self.selected_color}; "  # noqa: E702
+            f"border: 1px solid #3E3E42; border-radius: 4px;"  # noqa: E702, E231
         )
 
     def _clear_form(self) -> None:

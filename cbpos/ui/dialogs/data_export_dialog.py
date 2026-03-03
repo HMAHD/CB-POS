@@ -204,7 +204,7 @@ class DataExportDialog(QDialog):
             self.btn_export.setEnabled(True)
             self.btn_export.setText("Export")
             logger.exception("Export failed: %s", e)
-            QMessageBox.critical(self, "Export Failed", f"Could not export data:\n{e}")
+            QMessageBox.critical(self, "Export Failed", f"Could not export data:\n{e}")  # noqa: E231
 
     def _write_export(self, svc: object, df, filepath: str, title: str, fmt: str) -> None:
         """Write a DataFrame to the specified format."""

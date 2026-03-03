@@ -34,6 +34,8 @@ class ReportWorker(QThread):
 
     def __init__(self, report, filters):
         super().__init__()
+        self.finished.connect(self.deleteLater)
+        self.error.connect(self.deleteLater)
         self.report = report
         self.filters = filters
 

@@ -10,6 +10,7 @@ from cbpos.core.models import Proforma, ProformaItem
 from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.services.document_service import DocumentService
 from cbpos.core.services.auth_service import AuthService
+from cbpos.core.services.tax_service import TaxService
 
 logger = logging.getLogger(__name__)
 
@@ -54,9 +55,10 @@ class ProformaService:
                 for item in items:
                     total += Decimal(str(item["line_total"]))
 
-                # Sri Lankan backward tax calc from MRP
-                tax_vat = total - (total / Decimal("1.18"))
-                tax_sscl = (total * Decimal("0.5")) * Decimal("0.025")
+                # Sri Lankan backward tax calc from MRP (via TaxService)
+                taxes = TaxService.calculate_taxes(total)
+                tax_vat = taxes["vat"]
+                tax_sscl = taxes["sscl"]
 
                 proforma = Proforma(
                     document_number=doc_number,

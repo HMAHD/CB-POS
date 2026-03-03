@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.8.6] - 2026-03-03
+
+### Changed — Unified Settings Sidebar & Dashboard Redesign
+
+#### Settings View
+- **Rebuilt sidebar to match Management view**: Replaced QListWidget with QFrame + SidebarButton pattern — CB POS logo, hamburger collapse/expand animation (250px ↔ 70px), theme-aware icons.
+- **Admin-only buttons**: Data Safety and Admin Tools hidden for non-admin users via `set_user()`.
+- **Theme callback**: Sidebar icons and logo update on theme switch.
+
+#### Dashboard View
+- **Real-time KPI cards**: Today's Sales, Transactions, Average Sale, Items Sold — with yesterday % trend comparison.
+- **Recent Transactions panel**: Last 10 sales with time, doc#, customer, payment method, total.
+- **Top Selling Today panel**: Top 5 products by quantity with revenue.
+- **Payment Methods panel**: Breakdown of payment method totals for today.
+- **Removed**: Chart placeholder and hardcoded activity table.
+- **Auto-refresh**: Dashboard refreshes on every `showEvent`.
+
+#### Dashboard Service
+- Added `get_yesterday_kpis()`, `get_recent_sales()`, `get_top_selling_today()`, `get_payment_breakdown()`.
+- Extended `get_kpis()` with `items_sold` and `avg_sale`.
+
+#### InfoCard Widget
+- Changed from fixed 280×140 to responsive sizing (min 250×140, max height 160, expanding width).
+
+#### QSS
+- Added `RecentSalesPanel`, `TopProductsPanel`, `PaymentBreakdownPanel` + matching table styles.
+- Removed dead `QListWidget#SettingsSidebar`, `QFrame#ChartPlaceholder`, `QTableWidget#ActivityTable` rules.
+
 ## [0.8.5] - 2026-03-03
 
 ### Fixed — Code Review Issues (#83–#96)

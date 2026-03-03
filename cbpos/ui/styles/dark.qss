@@ -834,35 +834,7 @@ QLabel#InfoCardTitle {
     color: #AAAAAA;
 }
 
-/* Settings View */
-QListWidget#SettingsSidebar {
-    background-color: #252526; /* VS Code sidebar color */
-    border: none;
-    border-right: 1px solid #3E3E42;
-
-}
-
-QListWidget#SettingsSidebar::item {
-    color: #CCCCCC;
-    padding: 12px 20px;
-    padding-left: 20px;
-    border: none;
-    border-left: 3px solid transparent;
-    background-color: transparent;
-}
-
-QListWidget#SettingsSidebar::item:hover {
-    background-color: #2D2D30;
-    color: #FFFFFF;
-}
-
-QListWidget#SettingsSidebar::item:selected {
-    background-color: #37373D;
-    color: #00BCEB;
-    border-left: 3px solid #00BCEB;
-    font-weight: bold;
-}
-
+/* Settings View — sidebar uses SidebarContainer + SidebarButton (shared with Management) */
 QWidget#SettingsContent {
     background-color: #1E1E1E;
     color: #FFFFFF;
@@ -1500,18 +1472,11 @@ QLabel#CardTrend[trendType="negative"] {
     color: #EF4444;  /* Clean red */
 }
 
-/* === CHART PLACEHOLDER === */
-QFrame#ChartPlaceholder {
-    background-color: #1A1A1A;  /* Same as cards */
+/* === DASHBOARD PANELS === */
+QFrame#RecentSalesPanel, QFrame#TopProductsPanel, QFrame#PaymentBreakdownPanel {
+    background-color: #1A1A1A;
     border: 1px solid #2A2A2A;
     border-radius: 8px;
-}
-
-QLabel#ChartPlaceholderText {
-    color: #666666;
-    font-size: 14px;
-    font-weight: normal;
-    background-color: transparent;
 }
 
 /* === SECTION TITLES === */
@@ -1524,30 +1489,29 @@ QLabel#SectionTitle {
     background-color: transparent;
 }
 
-/* === ACTIVITY TABLE === */
-QTableWidget#ActivityTable {
+/* === DASHBOARD TABLES === */
+QTableWidget#RecentSalesTable, QTableWidget#TopProductsTable, QTableWidget#PaymentBreakdownTable {
     background-color: #1A1A1A;
-    border: 1px solid #2A2A2A;
-    border-radius: 8px;
+    border: none;
     gridline-color: transparent;
 }
 
-QTableWidget#ActivityTable::item {
+QTableWidget#RecentSalesTable::item, QTableWidget#TopProductsTable::item, QTableWidget#PaymentBreakdownTable::item {
     padding: 10px;
     border-bottom: 1px solid #2A2A2A;
     color: #E5E5E5;
 }
 
-QTableWidget#ActivityTable::item:selected {
+QTableWidget#RecentSalesTable::item:selected, QTableWidget#TopProductsTable::item:selected, QTableWidget#PaymentBreakdownTable::item:selected {
     background-color: #2A2A2A;
     color: white;
 }
 
-QTableWidget#ActivityTable::item:hover {
+QTableWidget#RecentSalesTable::item:hover, QTableWidget#TopProductsTable::item:hover, QTableWidget#PaymentBreakdownTable::item:hover {
     background-color: #252525;
 }
 
-QTableWidget#ActivityTable QHeaderView::section {
+QTableWidget#RecentSalesTable QHeaderView::section, QTableWidget#TopProductsTable QHeaderView::section, QTableWidget#PaymentBreakdownTable QHeaderView::section {
     background-color: #2A2A2A;
     color: #00BCEB;
     font-weight: bold;

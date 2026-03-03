@@ -106,6 +106,9 @@ class MainWindow(QMainWindow):
         if hasattr(self.management_view, "set_user"):
             self.management_view.set_user(user)
 
+        if hasattr(self.settings_view, "set_user"):
+            self.settings_view.set_user(user)
+
         if hasattr(self.sales_view, "side_menu"):
             self.sales_view.side_menu.set_user(user)
 

@@ -113,9 +113,9 @@ class UserService:
             with Database().get_session() as session:
                 from cbpos.core.models import Role
 
-                roles = session.query(Role).all()
-                for role in roles:
-                    session.expunge(role)
+                from sqlalchemy.orm import joinedload
+
+                roles = session.query(Role).options(joinedload(Role.permissions)).all()
                 return roles
         except Exception as e:
             logging.error("Failed to fetch roles: %s", e)

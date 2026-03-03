@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from typing import Generator, Optional
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import URL
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
 from sqlalchemy.pool import QueuePool
@@ -56,6 +56,18 @@ class Database:
             connect_args=connect_args,
             **pool_args,
         )
+
+        # Configure SQLite PRAGMAs for performance and safety
+        if db_mode == "standalone":
+
+            @event.listens_for(self.engine, "connect")
+            def _set_sqlite_pragmas(dbapi_conn, connection_record):
+                cursor = dbapi_conn.cursor()
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA busy_timeout=30000")
+                cursor.execute("PRAGMA foreign_keys=ON")
+                cursor.close()
+
         self.SessionLocal = sessionmaker(bind=self.engine, autocommit=False, autoflush=False, expire_on_commit=False)
 
     def _get_sqlite_uri(self) -> str:

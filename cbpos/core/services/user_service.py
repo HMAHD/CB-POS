@@ -52,7 +52,7 @@ class UserService:
                 return True
 
         except Exception as e:
-            logging.error(f"Profile Update Failed: {e}")
+            logging.error("Profile Update Failed: %s", e)
             return False
 
     @staticmethod
@@ -67,7 +67,7 @@ class UserService:
                 session.commit()
                 return True
         except Exception as e:
-            logging.error(f"Update Admin PIN Failed: {e}")
+            logging.error("Update Admin PIN Failed: %s", e)
             return False
 
     @staticmethod
@@ -90,7 +90,7 @@ class UserService:
                 return logs
 
         except Exception as e:
-            logging.error(f"Failed to fetch activity: {e}")
+            logging.error("Failed to fetch activity: %s", e)
             return []
 
     @staticmethod
@@ -103,7 +103,7 @@ class UserService:
                     session.expunge(user)
                 return users
         except Exception as e:
-            logging.error(f"Failed to fetch users: {e}")
+            logging.error("Failed to fetch users: %s", e)
             return []
 
     @staticmethod
@@ -118,7 +118,7 @@ class UserService:
                     session.expunge(role)
                 return roles
         except Exception as e:
-            logging.error(f"Failed to fetch roles: {e}")
+            logging.error("Failed to fetch roles: %s", e)
             return []
 
     @staticmethod
@@ -150,7 +150,7 @@ class UserService:
                 session.commit()
                 return True
         except Exception as e:
-            logging.error(f"Create User Failed: {e}")
+            logging.error("Create User Failed: %s", e)
             raise e
 
     @staticmethod
@@ -183,5 +183,5 @@ class UserService:
                 session.commit()
                 return True
         except Exception as e:
-            logging.error(f"Update User Failed: {e}")
+            logging.error("Update User Failed: %s", e)
             raise e

@@ -23,6 +23,7 @@ class ValuationDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Stock Valuation Report")
+        self.setObjectName("ValuationDialog")
         self.setMinimumSize(800, 600)
         self.report_service = ReportService()
         self.init_ui()
@@ -33,7 +34,7 @@ class ValuationDialog(QDialog):
 
         # Title
         title = QLabel("Stock Valuation Report")
-        title.setStyleSheet("font-size: 24px; font-weight: bold; color: #00BCEB;")
+        title.setObjectName("DialogTitle")
         layout.addWidget(title)
 
         # Cards Layout
@@ -55,7 +56,7 @@ class ValuationDialog(QDialog):
 
         # Category Breakdown Label
         breakdown_label = QLabel("Category Breakdown")
-        breakdown_label.setStyleSheet("font-size: 16px; font-weight: bold; color: white; margin-top: 20px;")
+        breakdown_label.setObjectName("SectionTitle")
         layout.addWidget(breakdown_label)
 
         # Breakdown Table
@@ -64,51 +65,32 @@ class ValuationDialog(QDialog):
         self.table.setHorizontalHeaderLabels(["Category", "Products", "Cost Value", "Retail Value", "Profit"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.table.setStyleSheet(
-            """
-            QTableWidget {
-                background-color: #001F3F;
-                color: white;
-                border: 1px solid #003366;
-                gridline-color: #003366;
-            }
-            QTableWidget::item {
-                padding: 8px;
-            }
-            QHeaderView::section {
-                background-color: #003366;
-                color: white;
-                padding: 8px;
-                border: 1px solid #001F3F;
-                font-weight: bold;
-            }
-        """
-        )
+        self.table.setObjectName("ValuationTable")
         layout.addWidget(self.table)
 
         # Close Button
         btn_close = QPushButton("Close")
-        btn_close.setStyleSheet("background-color: #003366; color: white; padding: 10px; font-weight: bold;")
+        btn_close.setProperty("class", "secondary")
         btn_close.clicked.connect(self.close)
         layout.addWidget(btn_close, alignment=Qt.AlignmentFlag.AlignRight)
 
     def create_value_card(self, title: str, value: str, bg_color: str) -> QFrame:
         """Create a value display card."""
         card = QFrame()
-        card.setStyleSheet("QFrame {{ background-color: {0}; border-radius: 8px; " "padding: 15px; }}".format(bg_color))
+        card.setObjectName("ValueCard")
         card.setMinimumHeight(120)
 
         card_layout = QVBoxLayout(card)
 
         # Title
         title_label = QLabel(title)
-        title_label.setStyleSheet("color: #AAAAAA; font-size: 12px; font-weight: bold;")
+        title_label.setProperty("class", "muted")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         card_layout.addWidget(title_label)
 
         # Value
         value_label = QLabel(value)
-        value_label.setStyleSheet("color: white; font-size: 28px; font-weight: bold;")
+        value_label.setProperty("class", "card-value")
         value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         value_label.setObjectName("value_label")
         card_layout.addWidget(value_label)
@@ -128,9 +110,9 @@ class ValuationDialog(QDialog):
 
         # Color profit based on value
         if data["potential_profit"] >= 0:
-            profit_label.setStyleSheet("color: #39FF14; font-size: 28px; font-weight: bold;")
+            profit_label.setProperty("class", "card-value-positive")
         else:
-            profit_label.setStyleSheet("color: #FF4136; font-size: 28px; font-weight: bold;")
+            profit_label.setProperty("class", "card-value-negative")
 
         # Update breakdown table
         breakdown = data["category_breakdown"]

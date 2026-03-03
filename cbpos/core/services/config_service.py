@@ -1,8 +1,13 @@
 import base64
+import hashlib
 import json
 import logging
 import os
+import platform
 from typing import Dict, Any
+
+from cryptography.fernet import Fernet, InvalidToken
+
 from cbpos.config import Config
 
 logger = logging.getLogger(__name__)
@@ -103,25 +108,41 @@ class ConfigService:
 
     _settings: Dict[str, Any] = {}
 
-    # Keys that should be obfuscated (base64-encoded) in the settings file
+    # Keys that should be encrypted in the settings file
     _SENSITIVE_KEYS = {"network_db_password", "smtp_pass"}
+    _fernet: Fernet | None = None
+
+    @classmethod
+    def _get_fernet(cls) -> Fernet:
+        """Return a Fernet instance derived from a machine-stable key."""
+        if cls._fernet is None:
+            # Derive a stable key from machine identity (hostname + OS)
+            seed = f"cbpos-{platform.node()}-{platform.system()}".encode()
+            key = base64.urlsafe_b64encode(hashlib.sha256(seed).digest())
+            cls._fernet = Fernet(key)
+        return cls._fernet
 
     @classmethod
     def _encode_sensitive(cls, value: str) -> str:
-        """Encode a sensitive value for storage."""
+        """Encrypt a sensitive value for storage."""
         if not value:
             return ""
-        return base64.b64encode(value.encode("utf-8")).decode("ascii")
+        return cls._get_fernet().encrypt(value.encode("utf-8")).decode("ascii")
 
     @classmethod
     def _decode_sensitive(cls, value: str) -> str:
-        """Decode a sensitive value from storage."""
+        """Decrypt a sensitive value from storage."""
         if not value:
             return ""
         try:
-            return base64.b64decode(value.encode("ascii")).decode("utf-8")
+            return cls._get_fernet().decrypt(value.encode("ascii")).decode("utf-8")
+        except InvalidToken:
+            # Try legacy base64 decode for migration
+            try:
+                return base64.b64decode(value.encode("ascii")).decode("utf-8")
+            except Exception:
+                return value
         except Exception:
-            # If decoding fails, treat as plaintext (migration from old format)
             return value
 
     @classmethod

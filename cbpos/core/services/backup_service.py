@@ -224,7 +224,7 @@ class BackupService:
                     "path": str(f),
                     "filename": f.name,
                     "date": date_str,
-                    "size": f"{size_mb:.1f} MB",
+                    "size": f"{size_mb:.1f} MB",  # noqa: E231
                     "is_pre_restore": ".pre_restore" in f.name,
                 }
             )
@@ -294,7 +294,7 @@ class BackupService:
             return result
 
         size_mb = backup_file.stat().st_size / (1024 * 1024)
-        result["size"] = f"{size_mb:.1f} MB"
+        result["size"] = f"{size_mb:.1f} MB"  # noqa: E231
 
         try:
             with pyzipper.AESZipFile(backup_file, "r") as zf:

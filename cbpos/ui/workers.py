@@ -24,6 +24,8 @@ class CsvImportWorker(QThread):
 
     def __init__(self, import_service: object, file_path: str) -> None:
         super().__init__()
+        self.finished.connect(self.deleteLater)
+        self.error.connect(self.deleteLater)
         self.import_service = import_service
         self.file_path = file_path
 
@@ -55,6 +57,8 @@ class BackupWorker(QThread):
 
     def __init__(self, destination_dir: str) -> None:
         super().__init__()
+        self.finished.connect(self.deleteLater)
+        self.error.connect(self.deleteLater)
         self.destination_dir = destination_dir
 
     def run(self) -> None:
@@ -76,6 +80,8 @@ class RestoreWorker(QThread):
 
     def __init__(self, backup_path: str, password: str) -> None:
         super().__init__()
+        self.finished.connect(self.deleteLater)
+        self.error.connect(self.deleteLater)
         self.backup_path = backup_path
         self.password = password
 
@@ -96,6 +102,11 @@ class VacuumWorker(QThread):
     finished = pyqtSignal(dict)  # {size_before, size_after, saved}
     error = pyqtSignal(str)
 
+    def __init__(self) -> None:
+        super().__init__()
+        self.finished.connect(self.deleteLater)
+        self.error.connect(self.deleteLater)
+
     def run(self) -> None:
         try:
             from cbpos.core.services.maintenance_service import MaintenanceService
@@ -111,6 +122,10 @@ class PrinterTestWorker(QThread):
     """Tests receipt printer connectivity in a background thread."""
 
     finished = pyqtSignal(bool, str)  # (success, message)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.finished.connect(self.deleteLater)
 
     def run(self) -> None:
         try:
@@ -128,6 +143,10 @@ class DrawerTestWorker(QThread):
 
     finished = pyqtSignal(bool, str)  # (success, message)
 
+    def __init__(self) -> None:
+        super().__init__()
+        self.finished.connect(self.deleteLater)
+
     def run(self) -> None:
         try:
             from cbpos.core.services.hardware_test_service import HardwareTestService
@@ -136,6 +155,26 @@ class DrawerTestWorker(QThread):
             self.finished.emit(success, message)
         except Exception as e:
             logger.error("Drawer test worker failed: %s", e)
+            self.finished.emit(False, str(e))
+
+
+class IntegrityCheckWorker(QThread):
+    """Runs database integrity check in a background thread."""
+
+    finished = pyqtSignal(bool, str)  # (ok, message)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.finished.connect(self.deleteLater)
+
+    def run(self) -> None:
+        try:
+            from cbpos.core.services.maintenance_service import MaintenanceService
+
+            ok, message = MaintenanceService.integrity_check()
+            self.finished.emit(ok, message)
+        except Exception as e:
+            logger.error("Integrity check failed: %s", e)
             self.finished.emit(False, str(e))
 
 
@@ -154,6 +193,8 @@ class ExportWorker(QThread):
         fmt: str = "excel",
     ) -> None:
         super().__init__()
+        self.finished.connect(self.deleteLater)
+        self.error.connect(self.deleteLater)
         self.export_service = export_service
         self.df = df
         self.filepath = filepath

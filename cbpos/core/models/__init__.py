@@ -87,7 +87,7 @@ class PriceListItem(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     price_list_id: Mapped[int] = mapped_column(ForeignKey("price_lists.id"))
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
-    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 
     price_list: Mapped["PriceList"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship()
@@ -102,7 +102,7 @@ class Promotion(Base):
     end_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     days_of_week: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # JSON or CSV: "0,1,2" (Mon,Tue,Wed)
     type: Mapped[str] = mapped_column(String(20), nullable=False)  # PERCENTAGE, FIXED_AMOUNT, BOGO
-    value: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    value: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
@@ -120,10 +120,10 @@ class Document(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     document_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
-    type: Mapped[str] = mapped_column(String(20), nullable=False)
+    type: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     date: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    status: Mapped[str] = mapped_column(String(20), default="COMPLETED")  # COMPLETED, VOID, DRAFT
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="COMPLETED", index=True)  # COMPLETED, VOID, DRAFT
     reference_external: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     void_reason_id: Mapped[Optional[int]] = mapped_column(ForeignKey("void_reasons.id"), nullable=True)
 
@@ -140,13 +140,13 @@ class Sale(Document):
     __tablename__ = "sales"
 
     id: Mapped[int] = mapped_column(ForeignKey("documents.id"), primary_key=True)
-    customer_id: Mapped[Optional[int]] = mapped_column(ForeignKey("customers.id"), nullable=True)
-    total_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    tax_vat: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
-    tax_sscl: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
-    net_revenue: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    customer_id: Mapped[Optional[int]] = mapped_column(ForeignKey("customers.id"), nullable=True, index=True)
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    tax_vat: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    tax_sscl: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    net_revenue: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     additional_discount_type: Mapped[str] = mapped_column(String(20), default="NONE")
-    additional_discount_value: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    additional_discount_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     payment_method: Mapped[str] = mapped_column(String(20), nullable=False)  # Primary method
     refund_of_sale_id: Mapped[Optional[int]] = mapped_column(ForeignKey("sales.id"), nullable=True)
 
@@ -165,7 +165,7 @@ class Purchase(Document):
 
     id: Mapped[int] = mapped_column(ForeignKey("documents.id"), primary_key=True)
     supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"))
-    total_cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    total_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
 
     supplier: Mapped["Supplier"] = relationship(back_populates="purchases")
     items: Mapped[List["PurchaseItem"]] = relationship(back_populates="purchase", cascade="all, delete-orphan")
@@ -181,8 +181,8 @@ class Proforma(Document):
     id: Mapped[int] = mapped_column(ForeignKey("documents.id"), primary_key=True)
     customer_id: Mapped[Optional[int]] = mapped_column(ForeignKey("customers.id"), nullable=True)
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=0)
-    tax_vat: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
-    tax_sscl: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    tax_vat: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    tax_sscl: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     validity_days: Mapped[int] = mapped_column(Integer, default=30)
     expiry_date: Mapped[Optional[datetime]] = mapped_column(Date, nullable=True)
     converted_sale_id: Mapped[Optional[int]] = mapped_column(ForeignKey("sales.id"), nullable=True)
@@ -207,7 +207,7 @@ class ProformaItem(Base):
     quantity: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     discount_type: Mapped[str] = mapped_column(String(20), default="NONE")
-    discount_value: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    discount_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     line_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 
     proforma: Mapped["Proforma"] = relationship(back_populates="items")
@@ -250,8 +250,8 @@ class Product(Base):
     name_en: Mapped[str] = mapped_column(String(200), nullable=False)
     name_si: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     name_ta: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
-    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     stock_qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=0)
     is_weighted: Mapped[bool] = mapped_column(Boolean, default=False)
     is_composite: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -292,8 +292,8 @@ class Customer(Base):
     email: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     vat_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    credit_limit: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
-    current_debt: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    credit_limit: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    current_debt: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     payment_terms: Mapped[int] = mapped_column(Integer, default=0)  # Days
     loyalty_points: Mapped[int] = mapped_column(default=0)
     loyalty_card_code: Mapped[Optional[str]] = mapped_column(String(50), unique=True, index=True, nullable=True)
@@ -342,15 +342,15 @@ class SaleItem(Base):
     __tablename__ = "sale_items"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    sale_id: Mapped[int] = mapped_column(ForeignKey("sales.id"))
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    sale_id: Mapped[int] = mapped_column(ForeignKey("sales.id"), index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
     qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
-    unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    original_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    original_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     discount_type: Mapped[str] = mapped_column(String(20), default="NONE")  # NONE, PERCENTAGE, FIXED
-    discount_value: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    discount_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     is_manual_price: Mapped[bool] = mapped_column(Boolean, default=False)
-    subtotal: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 
     sale: Mapped["Sale"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship("Product")
@@ -360,9 +360,9 @@ class SalePayment(Base):
     __tablename__ = "sale_payments"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    sale_id: Mapped[int] = mapped_column(ForeignKey("sales.id"))
+    sale_id: Mapped[int] = mapped_column(ForeignKey("sales.id"), index=True)
     payment_method: Mapped[str] = mapped_column(String(20), nullable=False)  # Cash, Card, Credit
-    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 
     sale: Mapped["Sale"] = relationship(back_populates="payments")
 
@@ -371,10 +371,10 @@ class PurchaseItem(Base):
     __tablename__ = "purchase_items"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    purchase_id: Mapped[int] = mapped_column(ForeignKey("purchases.id"))
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    purchase_id: Mapped[int] = mapped_column(ForeignKey("purchases.id"), index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
     qty_received: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
-    unit_cost: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    unit_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 
     purchase: Mapped["Purchase"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship("Product")
@@ -442,13 +442,13 @@ class Shift(Base):
     __tablename__ = "shifts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     start_time: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     end_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    starting_cash: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
-    expected_cash: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
-    actual_cash: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
-    status: Mapped[str] = mapped_column(String(20), default="OPEN")  # OPEN, CLOSED
+    starting_cash: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    expected_cash: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
+    actual_cash: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="OPEN", index=True)  # OPEN, CLOSED
 
     user: Mapped["User"] = relationship()
 
@@ -457,10 +457,10 @@ class CashMovement(Base):
     __tablename__ = "cash_movements"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    shift_id: Mapped[Optional[int]] = mapped_column(ForeignKey("shifts.id"), nullable=True)
+    shift_id: Mapped[Optional[int]] = mapped_column(ForeignKey("shifts.id"), nullable=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     type: Mapped[str] = mapped_column(String(20), nullable=False)  # IN, OUT, DROP, PAYOUT
-    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     reason: Mapped[str] = mapped_column(String(200), nullable=False)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 

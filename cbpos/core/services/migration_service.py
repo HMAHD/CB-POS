@@ -202,7 +202,7 @@ class MigrationService:
                         except Exception as e:
                             # Log the error instead of silencing it
                             # This helps debug why a specific table might have failed
-                            logger.warning(f"Skipping sequence reset for table '{table_name}': {e}")
+                            logger.warning("Skipping sequence reset for table '%s': %s", table_name, e)
 
                 tgt_session.commit()
 

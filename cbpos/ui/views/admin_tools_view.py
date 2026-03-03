@@ -1,5 +1,5 @@
 """
-Admin Tools view — embedded in Management stack.
+Admin Tools view — embedded in Settings view.
 
 Provides a tabbed interface for admin diagnostic tools:
 - Database: file info, SQLite version, table row counts
@@ -8,6 +8,7 @@ Provides a tabbed interface for admin diagnostic tools:
 """
 
 import logging
+import time
 from datetime import datetime
 
 from PyQt6.QtWidgets import (
@@ -28,7 +29,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QFileDialog,
 )
-from PyQt6.QtCore import Qt, QDate
+from PyQt6.QtCore import Qt, QDate, QTimer
 from PyQt6.QtGui import QColor
 
 from cbpos.core.services.maintenance_service import MaintenanceService
@@ -42,6 +43,13 @@ _LEVEL_COLORS = {
     "WARNING": QColor("#FFD700"),
     "ERROR": QColor("#FF4136"),
     "CRITICAL": QColor("#FF4136"),
+}
+
+# Background tinting for log levels
+_LEVEL_BG_COLORS = {
+    "WARNING": QColor(255, 215, 0, 30),
+    "ERROR": QColor(255, 65, 54, 30),
+    "CRITICAL": QColor(255, 65, 54, 50),
 }
 
 
@@ -203,6 +211,7 @@ class AdminToolsView(QWidget):
         self.input_log_search = QLineEdit()
         self.input_log_search.setPlaceholderText("Search logs...")
         self.input_log_search.setFixedWidth(200)
+        self.input_log_search.returnPressed.connect(self._load_logs)
         filter_layout.addWidget(self.input_log_search)
 
         btn_apply = QPushButton("Apply")
@@ -297,9 +306,13 @@ class AdminToolsView(QWidget):
 
                 # Color coding
                 color = _LEVEL_COLORS.get(entry["level"])
+                bg_color = _LEVEL_BG_COLORS.get(entry["level"])
                 if color:
                     for item in (time_item, level_item, source_item, msg_item):
                         item.setForeground(color)
+                if bg_color:
+                    for item in (time_item, level_item, source_item, msg_item):
+                        item.setBackground(bg_color)
 
                 if entry["level"] == "CRITICAL":
                     font = level_item.font()
@@ -317,9 +330,9 @@ class AdminToolsView(QWidget):
             stats = ErrorLogService.get_log_stats()
             log_size = ErrorLogService.get_total_log_size()
             self.lbl_log_stats.setText(
-                f"Warnings: {stats['WARNING']}  |  "
-                f"Errors: {stats['ERROR']}  |  "
-                f"Critical: {stats['CRITICAL']}  |  "
+                f"Warnings: {stats['WARNING']} | "
+                f"Errors: {stats['ERROR']} | "
+                f"Critical: {stats['CRITICAL']} | "
                 f"Log size: {log_size}"
             )
         except Exception as e:
@@ -338,9 +351,13 @@ class AdminToolsView(QWidget):
 
         try:
             ErrorLogService.export_logs(filepath, entries)
-            QMessageBox.information(self, "Export Complete", f"Exported {len(entries)} entries to:\n{filepath}")
+            QMessageBox.information(
+                self,
+                "Export Complete",
+                f"Exported {len(entries)} entries to:\n{filepath}",  # noqa: E231
+            )
         except Exception as e:
-            QMessageBox.critical(self, "Export Failed", f"Could not export logs:\n{e}")
+            QMessageBox.critical(self, "Export Failed", f"Could not export logs:\n{e}")  # noqa: E231
 
     def _clear_logs(self) -> None:
         """Clear all log files after confirmation."""
@@ -358,7 +375,7 @@ class AdminToolsView(QWidget):
             ErrorLogService.clear_logs()
             self._load_logs()
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Could not clear logs:\n{e}")
+            QMessageBox.critical(self, "Error", f"Could not clear logs:\n{e}")  # noqa: E231
 
     # ── Hardware Tab ─────────────────────────────────────────────────────
 
@@ -453,6 +470,7 @@ class AdminToolsView(QWidget):
         self.input_scanner_test = QLineEdit()
         self.input_scanner_test.setPlaceholderText("Scan a barcode here...")
         self.input_scanner_test.textChanged.connect(self._on_scanner_input)
+        self.input_scanner_test.returnPressed.connect(self._on_scanner_enter)
         scanner_row.addWidget(self.input_scanner_test, 1)
 
         btn_clear_scan = QPushButton("Clear")
@@ -465,6 +483,14 @@ class AdminToolsView(QWidget):
         self.lbl_scanner_status = QLabel("")
         self.lbl_scanner_status.setWordWrap(True)
         scanner_layout.addWidget(self.lbl_scanner_status)
+
+        self.lbl_scanner_detection = QLabel("")
+        self.lbl_scanner_detection.setWordWrap(True)
+        self.lbl_scanner_detection.setProperty("class", "muted")
+        scanner_layout.addWidget(self.lbl_scanner_detection)
+
+        # Timing tracking for scanner detection
+        self._scanner_keystroke_times: list[float] = []
 
         layout.addWidget(grp_scanner)
 
@@ -495,6 +521,17 @@ class AdminToolsView(QWidget):
         self._printer_worker = PrinterTestWorker()
         self._printer_worker.finished.connect(self._on_printer_test_done)
         self._printer_worker.start()
+        QTimer.singleShot(15000, self._on_printer_test_timeout)
+
+    def _on_printer_test_timeout(self) -> None:
+        """Handle printer test timeout after 15 seconds."""
+        if hasattr(self, "_printer_worker") and self._printer_worker.isRunning():
+            self.btn_test_printer.setEnabled(True)
+            self.btn_test_printer.setText("Print Test Page")
+            self.lbl_printer_status.setText("Printer test timed out after 15 seconds.")
+            self.lbl_printer_status.setProperty("class", "debit")
+            self.lbl_printer_status.style().unpolish(self.lbl_printer_status)
+            self.lbl_printer_status.style().polish(self.lbl_printer_status)
 
     def _on_printer_test_done(self, success: bool, message: str) -> None:
         self.btn_test_printer.setEnabled(True)
@@ -515,6 +552,17 @@ class AdminToolsView(QWidget):
         self._drawer_worker = DrawerTestWorker()
         self._drawer_worker.finished.connect(self._on_drawer_test_done)
         self._drawer_worker.start()
+        QTimer.singleShot(15000, self._on_drawer_test_timeout)
+
+    def _on_drawer_test_timeout(self) -> None:
+        """Handle drawer test timeout after 15 seconds."""
+        if hasattr(self, "_drawer_worker") and self._drawer_worker.isRunning():
+            self.btn_test_drawer.setEnabled(True)
+            self.btn_test_drawer.setText("Open Drawer")
+            self.lbl_drawer_status.setText("Drawer test timed out after 15 seconds.")
+            self.lbl_drawer_status.setProperty("class", "debit")
+            self.lbl_drawer_status.style().unpolish(self.lbl_drawer_status)
+            self.lbl_drawer_status.style().polish(self.lbl_drawer_status)
 
     def _on_drawer_test_done(self, success: bool, message: str) -> None:
         self.btn_test_drawer.setEnabled(True)
@@ -525,18 +573,51 @@ class AdminToolsView(QWidget):
         self.lbl_drawer_status.style().polish(self.lbl_drawer_status)
 
     def _on_scanner_input(self, text: str) -> None:
-        """Handle barcode scanner input."""
+        """Handle barcode scanner input and record keystroke timing."""
+        self._scanner_keystroke_times.append(time.monotonic())
+
         if text.strip():
             self.lbl_scanner_status.setText(f"Barcode received: {text.strip()}")
             self.lbl_scanner_status.setProperty("class", "credit")
         else:
             self.lbl_scanner_status.setText("")
             self.lbl_scanner_status.setProperty("class", "")
+            self._scanner_keystroke_times.clear()
+            self.lbl_scanner_detection.setText("")
         self.lbl_scanner_status.style().unpolish(self.lbl_scanner_status)
         self.lbl_scanner_status.style().polish(self.lbl_scanner_status)
+
+    def _on_scanner_enter(self) -> None:
+        """Evaluate keystroke timing when Enter is pressed to detect scanner vs manual input."""
+        self._evaluate_scanner_timing()
+
+    def _evaluate_scanner_timing(self) -> None:
+        """Check average time between keystrokes to determine input source."""
+        times = self._scanner_keystroke_times
+        if len(times) < 2:
+            self.lbl_scanner_detection.setText("")
+            return
+
+        intervals = [times[i] - times[i - 1] for i in range(1, len(times))]
+        avg_ms = (sum(intervals) / len(intervals)) * 1000
+
+        if avg_ms < 50:
+            detection_text = f"Scanner detected (avg {avg_ms:.0f}ms between characters)"  # noqa: E231
+            self.lbl_scanner_detection.setProperty("class", "credit")
+        else:
+            detection_text = (
+                f"Manual input detected, not a scanner (avg {avg_ms:.0f}ms between characters)"  # noqa: E231
+            )
+            self.lbl_scanner_detection.setProperty("class", "debit")
+
+        self.lbl_scanner_detection.setText(detection_text)
+        self.lbl_scanner_detection.style().unpolish(self.lbl_scanner_detection)
+        self.lbl_scanner_detection.style().polish(self.lbl_scanner_detection)
 
     def _clear_scanner(self) -> None:
         """Clear the scanner test input."""
         self.input_scanner_test.clear()
         self.lbl_scanner_status.setText("")
+        self.lbl_scanner_detection.setText("")
+        self._scanner_keystroke_times.clear()
         self.input_scanner_test.setFocus()

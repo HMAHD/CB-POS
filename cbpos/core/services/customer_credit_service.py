@@ -43,7 +43,7 @@ class CustomerCreditService:
 
         db = Database()
         with db.get_session() as session:
-            customer = session.query(Customer).with_for_update().get(customer_id)
+            customer = session.get(Customer, customer_id, with_for_update=True)
             if not customer:
                 raise ValueError("Customer not found.")
 
@@ -112,7 +112,7 @@ class CustomerCreditService:
         """
         db = Database()
         with db.get_session() as session:
-            customer = session.query(Customer).get(customer_id)
+            customer = session.get(Customer, customer_id)
             if not customer:
                 logger.warning("record_credit_sale: Customer %d not found", customer_id)
                 return
@@ -182,7 +182,7 @@ class CustomerCreditService:
 
         db = Database()
         with db.get_session() as session:
-            customer = session.query(Customer).with_for_update().get(customer_id)
+            customer = session.get(Customer, customer_id, with_for_update=True)
             if not customer:
                 raise ValueError("Customer not found.")
 
@@ -315,7 +315,7 @@ class CustomerCreditService:
         """
         db = Database()
         with db.get_session() as session:
-            customer = session.query(Customer).get(customer_id)
+            customer = session.get(Customer, customer_id)
             if not customer:
                 return {}
 

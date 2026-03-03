@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 from sqlalchemy import desc
+from sqlalchemy.exc import IntegrityError
 from cbpos.core.database import Database
 from cbpos.core.models import Document
 
@@ -156,9 +157,14 @@ class DocumentService:
                     if not exists:
                         return final_number
 
-                    # If exists, loop will retry and find this one as 'last_doc' next time
+                    # Increment sequence and retry within same session
+                    new_seq += 1
                     time.sleep(0.05)  # Small backoff
 
+            except IntegrityError:
+                # Another transaction inserted the same number concurrently
+                logger.warning("Document number collision on attempt %d, retrying...", attempt + 1)
+                time.sleep(0.05)
             except Exception as e:
                 logger.error("Error generating document number: %s", e)
                 if attempt == max_retries - 1:

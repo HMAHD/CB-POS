@@ -56,7 +56,7 @@ class PermissionService:
 
         db = Database()
         with db.get_session() as session:
-            role = session.query(Role).get(role_id)
+            role = session.get(Role, role_id)
             if not role:
                 return False
 

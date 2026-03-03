@@ -38,124 +38,6 @@ from cbpos.ui.workers import BackupWorker, RestoreWorker
 
 logger = logging.getLogger(__name__)
 
-# Shared inline styles for the navy theme
-_CARD_STYLE = """
-    QGroupBox {
-        background-color: #003366;
-        border: 1px solid #004080;
-        border-radius: 8px;
-        margin-top: 16px;
-        padding: 20px 16px 16px 16px;
-        font-weight: bold;
-        color: #00BCEB;
-    }
-    QGroupBox::title {
-        subcontrol-origin: margin;
-        left: 16px;
-        padding: 0 8px;
-    }
-"""
-
-_BTN_PRIMARY = """
-    QPushButton {
-        background-color: #00BCEB;
-        color: #001F3F;
-        border: none;
-        border-radius: 6px;
-        padding: 10px 24px;
-        font-weight: bold;
-        font-size: 13px;
-    }
-    QPushButton:hover { background-color: #33CCFF; }
-    QPushButton:pressed { background-color: #0099CC; }
-    QPushButton:disabled { background-color: #555555; color: #999999; }
-"""
-
-_BTN_DANGER = """
-    QPushButton {
-        background-color: #FF4136;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 10px 24px;
-        font-weight: bold;
-        font-size: 13px;
-    }
-    QPushButton:hover { background-color: #FF6B63; }
-    QPushButton:pressed { background-color: #CC3329; }
-    QPushButton:disabled { background-color: #555555; color: #999999; }
-"""
-
-_BTN_SUCCESS = """
-    QPushButton {
-        background-color: #39FF14;
-        color: #001F3F;
-        border: none;
-        border-radius: 6px;
-        padding: 10px 24px;
-        font-weight: bold;
-        font-size: 13px;
-    }
-    QPushButton:hover { background-color: #66FF44; }
-    QPushButton:pressed { background-color: #2BCC10; }
-    QPushButton:disabled { background-color: #555555; color: #999999; }
-"""
-
-_BTN_SECONDARY = """
-    QPushButton {
-        background-color: transparent;
-        color: #00BCEB;
-        border: 1px solid #00BCEB;
-        border-radius: 6px;
-        padding: 10px 24px;
-        font-size: 13px;
-    }
-    QPushButton:hover { background-color: rgba(0, 188, 235, 0.15); }
-    QPushButton:pressed { background-color: rgba(0, 188, 235, 0.25); }
-    QPushButton:disabled { border-color: #555555; color: #555555; }
-"""
-
-_TABLE_STYLE = """
-    QTableWidget {
-        background-color: #002244;
-        border: 1px solid #004080;
-        border-radius: 6px;
-        gridline-color: #003366;
-        color: #E0E0E0;
-        selection-background-color: #004080;
-        font-size: 12px;
-    }
-    QTableWidget::item { padding: 6px; }
-    QHeaderView::section {
-        background-color: #003366;
-        color: #00BCEB;
-        padding: 8px;
-        border: none;
-        border-bottom: 2px solid #00BCEB;
-        font-weight: bold;
-        font-size: 12px;
-    }
-"""
-
-_INPUT_STYLE = """
-    QLineEdit {
-        background-color: #002244;
-        border: 1px solid #004080;
-        border-radius: 6px;
-        padding: 10px 14px;
-        color: #E0E0E0;
-        font-size: 13px;
-    }
-    QLineEdit:focus {
-        border-color: #00BCEB;
-    }
-"""
-
-_LABEL_STYLE = "color: #B0B0B0; font-size: 12px;"
-_LABEL_VALUE_STYLE = "color: #E0E0E0; font-size: 13px; font-weight: bold;"
-_STATUS_OK = "color: #39FF14; font-weight: bold; font-size: 13px;"
-_STATUS_ERR = "color: #FF4136; font-weight: bold; font-size: 13px;"
-
 
 class BackupRestoreDialog(QDialog):
     """Tabbed dialog for backup, restore, maintenance, and export operations."""
@@ -163,19 +45,9 @@ class BackupRestoreDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Data Safety")
+        self.setObjectName("BackupRestoreDialog")
         self.setMinimumSize(780, 560)
         self.resize(840, 600)
-        self.setStyleSheet(
-            "QDialog { background-color: #001F3F; }"
-            "QTabWidget::pane { border: none; background: #001F3F; }"
-            "QTabBar::tab {"
-            "  background: #003366; color: #B0B0B0; padding: 10px 22px;"
-            "  border-top-left-radius: 6px; border-top-right-radius: 6px;"
-            "  margin-right: 2px; font-size: 13px;"
-            "}"
-            "QTabBar::tab:selected { background: #004080; color: #00BCEB; font-weight: bold; }"
-            "QTabBar::tab:hover { background: #004080; color: #FFFFFF; }"
-        )
         self._init_ui()
         self._refresh_backup_list()
 
@@ -186,11 +58,11 @@ class BackupRestoreDialog(QDialog):
 
         # Title
         title = QLabel("Data Safety")
-        title.setStyleSheet("color: #00BCEB; font-size: 20px; font-weight: bold; margin-bottom: 8px;")
+        title.setObjectName("DialogTitle")
         layout.addWidget(title)
 
         subtitle = QLabel("Protect your business data with backups, restore, and maintenance tools.")
-        subtitle.setStyleSheet("color: #8899AA; font-size: 12px; margin-bottom: 16px;")
+        subtitle.setObjectName("DialogSubtitle")
         layout.addWidget(subtitle)
 
         # Tabs
@@ -205,7 +77,7 @@ class BackupRestoreDialog(QDialog):
         close_layout = QHBoxLayout()
         close_layout.addStretch()
         btn_close = QPushButton("Close")
-        btn_close.setStyleSheet(_BTN_SECONDARY)
+        btn_close.setProperty("class", "secondary")
         btn_close.setFixedWidth(120)
         btn_close.clicked.connect(self.accept)
         close_layout.addWidget(btn_close)
@@ -223,17 +95,17 @@ class BackupRestoreDialog(QDialog):
         dir_layout = QHBoxLayout()
         dir_layout.setSpacing(8)
         lbl_dir = QLabel("Backup Folder:")
-        lbl_dir.setStyleSheet(_LABEL_STYLE)
+        lbl_dir.setProperty("class", "muted")
         dir_layout.addWidget(lbl_dir)
 
         backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
         self.lbl_backup_dir = QLabel(backup_dir)
-        self.lbl_backup_dir.setStyleSheet("color: #E0E0E0; font-size: 12px;")
+        self.lbl_backup_dir.setProperty("class", "value")
         self.lbl_backup_dir.setWordWrap(True)
         dir_layout.addWidget(self.lbl_backup_dir, 1)
 
         btn_change_dir = QPushButton("Change")
-        btn_change_dir.setStyleSheet(_BTN_SECONDARY)
+        btn_change_dir.setProperty("class", "secondary")
         btn_change_dir.setFixedWidth(80)
         btn_change_dir.clicked.connect(self._change_backup_dir)
         dir_layout.addWidget(btn_change_dir)
@@ -243,7 +115,7 @@ class BackupRestoreDialog(QDialog):
         self.backup_table = QTableWidget()
         self.backup_table.setColumnCount(4)
         self.backup_table.setHorizontalHeaderLabels(["Filename", "Date", "Size", "Type"])
-        self.backup_table.setStyleSheet(_TABLE_STYLE)
+        self.backup_table.setObjectName("BackupTable")
         self.backup_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.backup_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.backup_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -262,17 +134,17 @@ class BackupRestoreDialog(QDialog):
         btn_layout.setSpacing(10)
 
         self.btn_create_backup = QPushButton("Create Backup Now")
-        self.btn_create_backup.setStyleSheet(_BTN_SUCCESS)
+        self.btn_create_backup.setProperty("class", "success")
         self.btn_create_backup.clicked.connect(self._create_backup)
         btn_layout.addWidget(self.btn_create_backup)
 
         self.btn_clean_old = QPushButton("Clean Old Backups")
-        self.btn_clean_old.setStyleSheet(_BTN_SECONDARY)
+        self.btn_clean_old.setProperty("class", "secondary")
         self.btn_clean_old.clicked.connect(self._clean_old_backups)
         btn_layout.addWidget(self.btn_clean_old)
 
         btn_refresh = QPushButton("Refresh")
-        btn_refresh.setStyleSheet(_BTN_SECONDARY)
+        btn_refresh.setProperty("class", "secondary")
         btn_refresh.clicked.connect(self._refresh_backup_list)
         btn_layout.addWidget(btn_refresh)
 
@@ -321,7 +193,7 @@ class BackupRestoreDialog(QDialog):
         QMessageBox.information(
             self,
             "Backup Complete",
-            f"Backup saved to:\n{path}\n\n"
+            f"Backup saved to:\n{path}\n\n"  # noqa: E231
             f"Password: {password}\n\n"
             "Keep this password safe \u2014 you need it to restore.",
         )
@@ -330,7 +202,7 @@ class BackupRestoreDialog(QDialog):
         QApplication.restoreOverrideCursor()
         self.btn_create_backup.setEnabled(True)
         self.btn_create_backup.setText("Create Backup Now")
-        QMessageBox.critical(self, "Backup Failed", f"Could not create backup:\n{error}")
+        QMessageBox.critical(self, "Backup Failed", f"Could not create backup:\n{error}")  # noqa: E231
 
     def _clean_old_backups(self) -> None:
         keep = ConfigService.get("backup_retention_count") or 5
@@ -362,27 +234,24 @@ class BackupRestoreDialog(QDialog):
             "Restoring a backup will replace your current database and settings.\n"
             "A safety snapshot will be created automatically before restoring."
         )
-        warning.setStyleSheet(
-            "background-color: rgba(255, 65, 54, 0.12); border: 1px solid #FF4136;"
-            " border-radius: 6px; padding: 12px; color: #FF8C85; font-size: 12px;"
-        )
+        warning.setObjectName("RestoreWarning")
         warning.setWordWrap(True)
         layout.addWidget(warning)
 
         # File selection
         grp_file = QGroupBox("Select Backup File")
-        grp_file.setStyleSheet(_CARD_STYLE)
+        grp_file.setProperty("class", "card")
         file_layout = QVBoxLayout(grp_file)
 
         file_row = QHBoxLayout()
         self.input_restore_path = QLineEdit()
         self.input_restore_path.setPlaceholderText("Choose a backup file (.zip)...")
-        self.input_restore_path.setStyleSheet(_INPUT_STYLE)
+        self.input_restore_path.setProperty("class", "dialog-input")
         self.input_restore_path.setReadOnly(True)
         file_row.addWidget(self.input_restore_path, 1)
 
         btn_browse = QPushButton("Browse")
-        btn_browse.setStyleSheet(_BTN_SECONDARY)
+        btn_browse.setProperty("class", "secondary")
         btn_browse.clicked.connect(self._browse_restore_file)
         file_row.addWidget(btn_browse)
         file_layout.addLayout(file_row)
@@ -390,13 +259,13 @@ class BackupRestoreDialog(QDialog):
         # Password
         pwd_row = QHBoxLayout()
         lbl_pwd = QLabel("Password:")
-        lbl_pwd.setStyleSheet(_LABEL_STYLE)
+        lbl_pwd.setProperty("class", "muted")
         lbl_pwd.setFixedWidth(80)
         pwd_row.addWidget(lbl_pwd)
         self.input_restore_password = QLineEdit()
         self.input_restore_password.setPlaceholderText("Enter backup password...")
         self.input_restore_password.setEchoMode(QLineEdit.EchoMode.Password)
-        self.input_restore_password.setStyleSheet(_INPUT_STYLE)
+        self.input_restore_password.setProperty("class", "dialog-input")
         pwd_row.addWidget(self.input_restore_password, 1)
         file_layout.addLayout(pwd_row)
 
@@ -405,7 +274,7 @@ class BackupRestoreDialog(QDialog):
         # Verification result
         self.lbl_verify_result = QLabel("")
         self.lbl_verify_result.setWordWrap(True)
-        self.lbl_verify_result.setStyleSheet(_LABEL_STYLE)
+        self.lbl_verify_result.setProperty("class", "muted")
         layout.addWidget(self.lbl_verify_result)
 
         layout.addStretch()
@@ -415,12 +284,12 @@ class BackupRestoreDialog(QDialog):
         btn_layout.setSpacing(10)
 
         self.btn_verify = QPushButton("Verify Backup")
-        self.btn_verify.setStyleSheet(_BTN_PRIMARY)
+        self.btn_verify.setProperty("class", "primary")
         self.btn_verify.clicked.connect(self._verify_backup)
         btn_layout.addWidget(self.btn_verify)
 
         self.btn_restore = QPushButton("Restore Backup")
-        self.btn_restore.setStyleSheet(_BTN_DANGER)
+        self.btn_restore.setProperty("class", "danger")
         self.btn_restore.clicked.connect(self._restore_backup)
         btn_layout.addWidget(self.btn_restore)
 
@@ -449,10 +318,10 @@ class BackupRestoreDialog(QDialog):
         result = BackupService.verify_backup(path, password)
         if result["valid"]:
             file_count = len(result["files"])
-            self.lbl_verify_result.setStyleSheet(_STATUS_OK)
-            self.lbl_verify_result.setText(f"Backup is valid.  Size: {result['size']}  |  Files: {file_count}")
+            self.lbl_verify_result.setProperty("class", "status-ok")
+            self.lbl_verify_result.setText(f"Backup is valid. Size: {result['size']} | Files: {file_count}")
         else:
-            self.lbl_verify_result.setStyleSheet(_STATUS_ERR)
+            self.lbl_verify_result.setProperty("class", "status-err")
             self.lbl_verify_result.setText(f"Verification failed: {result['error']}")
 
     def _restore_backup(self) -> None:
@@ -511,7 +380,7 @@ class BackupRestoreDialog(QDialog):
         self.btn_restore.setEnabled(True)
         self.btn_restore.setText("Restore Backup")
         self.btn_verify.setEnabled(True)
-        QMessageBox.critical(self, "Restore Failed", f"Could not restore backup:\n{error}")
+        QMessageBox.critical(self, "Restore Failed", f"Could not restore backup:\n{error}")  # noqa: E231
 
     # ── Maintenance Tab ───────────────────────────────────────────────────
 
@@ -523,32 +392,32 @@ class BackupRestoreDialog(QDialog):
 
         # Database info card
         grp_info = QGroupBox("Database Information")
-        grp_info.setStyleSheet(_CARD_STYLE)
+        grp_info.setProperty("class", "card")
         info_layout = QFormLayout(grp_info)
         info_layout.setVerticalSpacing(10)
         info_layout.setHorizontalSpacing(20)
 
         self.lbl_db_size = QLabel("--")
-        self.lbl_db_size.setStyleSheet(_LABEL_VALUE_STYLE)
+        self.lbl_db_size.setProperty("class", "value")
         info_layout.addRow(self._info_label("Database Size:"), self.lbl_db_size)
 
         self.lbl_products_count = QLabel("--")
-        self.lbl_products_count.setStyleSheet(_LABEL_VALUE_STYLE)
+        self.lbl_products_count.setProperty("class", "value")
         info_layout.addRow(self._info_label("Products:"), self.lbl_products_count)
 
         self.lbl_customers_count = QLabel("--")
-        self.lbl_customers_count.setStyleSheet(_LABEL_VALUE_STYLE)
+        self.lbl_customers_count.setProperty("class", "value")
         info_layout.addRow(self._info_label("Customers:"), self.lbl_customers_count)
 
         self.lbl_sales_count = QLabel("--")
-        self.lbl_sales_count.setStyleSheet(_LABEL_VALUE_STYLE)
+        self.lbl_sales_count.setProperty("class", "value")
         info_layout.addRow(self._info_label("Sales:"), self.lbl_sales_count)
 
         layout.addWidget(grp_info)
 
         # Actions card
         grp_actions = QGroupBox("Maintenance Tools")
-        grp_actions.setStyleSheet(_CARD_STYLE)
+        grp_actions.setProperty("class", "card")
         actions_layout = QVBoxLayout(grp_actions)
         actions_layout.setSpacing(12)
 
@@ -556,16 +425,16 @@ class BackupRestoreDialog(QDialog):
         optimize_row = QHBoxLayout()
         optimize_info = QVBoxLayout()
         lbl_opt_title = QLabel("Optimize Database")
-        lbl_opt_title.setStyleSheet("color: #E0E0E0; font-weight: bold; font-size: 13px;")
+        lbl_opt_title.setProperty("class", "value")
         optimize_info.addWidget(lbl_opt_title)
         lbl_opt_desc = QLabel("Reclaims unused space and defragments the database file.")
-        lbl_opt_desc.setStyleSheet(_LABEL_STYLE)
+        lbl_opt_desc.setProperty("class", "muted")
         lbl_opt_desc.setWordWrap(True)
         optimize_info.addWidget(lbl_opt_desc)
         optimize_row.addLayout(optimize_info, 1)
 
         self.btn_vacuum = QPushButton("Optimize")
-        self.btn_vacuum.setStyleSheet(_BTN_PRIMARY)
+        self.btn_vacuum.setProperty("class", "primary")
         self.btn_vacuum.setFixedWidth(140)
         self.btn_vacuum.clicked.connect(self._run_vacuum)
         optimize_row.addWidget(self.btn_vacuum)
@@ -574,7 +443,7 @@ class BackupRestoreDialog(QDialog):
         # Separator
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet("background-color: #004080;")
+        sep.setObjectName("Separator")
         sep.setFixedHeight(1)
         actions_layout.addWidget(sep)
 
@@ -582,16 +451,16 @@ class BackupRestoreDialog(QDialog):
         integrity_row = QHBoxLayout()
         integrity_info = QVBoxLayout()
         lbl_int_title = QLabel("Check Integrity")
-        lbl_int_title.setStyleSheet("color: #E0E0E0; font-weight: bold; font-size: 13px;")
+        lbl_int_title.setProperty("class", "value")
         integrity_info.addWidget(lbl_int_title)
         lbl_int_desc = QLabel("Verifies the database structure is healthy and not corrupted.")
-        lbl_int_desc.setStyleSheet(_LABEL_STYLE)
+        lbl_int_desc.setProperty("class", "muted")
         lbl_int_desc.setWordWrap(True)
         integrity_info.addWidget(lbl_int_desc)
         integrity_row.addLayout(integrity_info, 1)
 
         self.btn_integrity = QPushButton("Check")
-        self.btn_integrity.setStyleSheet(_BTN_SECONDARY)
+        self.btn_integrity.setProperty("class", "secondary")
         self.btn_integrity.setFixedWidth(140)
         self.btn_integrity.clicked.connect(self._run_integrity_check)
         integrity_row.addWidget(self.btn_integrity)
@@ -611,7 +480,7 @@ class BackupRestoreDialog(QDialog):
 
     def _info_label(self, text: str) -> QLabel:
         lbl = QLabel(text)
-        lbl.setStyleSheet(_LABEL_STYLE)
+        lbl.setProperty("class", "muted")
         return lbl
 
     def _load_db_info(self) -> None:
@@ -644,7 +513,7 @@ class BackupRestoreDialog(QDialog):
         self.btn_vacuum.setEnabled(True)
         self.btn_vacuum.setText("Optimize")
         saved = result.get("saved", "0 KB")
-        self.lbl_maintenance_status.setStyleSheet(_STATUS_OK)
+        self.lbl_maintenance_status.setProperty("class", "status-ok")
         self.lbl_maintenance_status.setText(f"Optimization complete. Space saved: {saved}")
         self._load_db_info()
 
@@ -652,7 +521,7 @@ class BackupRestoreDialog(QDialog):
         QApplication.restoreOverrideCursor()
         self.btn_vacuum.setEnabled(True)
         self.btn_vacuum.setText("Optimize")
-        self.lbl_maintenance_status.setStyleSheet(_STATUS_ERR)
+        self.lbl_maintenance_status.setProperty("class", "status-err")
         self.lbl_maintenance_status.setText(f"Optimization failed: {error}")
 
     def _run_integrity_check(self) -> None:
@@ -665,13 +534,13 @@ class BackupRestoreDialog(QDialog):
 
             ok, message = MaintenanceService.integrity_check()
             if ok:
-                self.lbl_maintenance_status.setStyleSheet(_STATUS_OK)
+                self.lbl_maintenance_status.setProperty("class", "status-ok")
                 self.lbl_maintenance_status.setText("Database integrity check passed.")
             else:
-                self.lbl_maintenance_status.setStyleSheet(_STATUS_ERR)
+                self.lbl_maintenance_status.setProperty("class", "status-err")
                 self.lbl_maintenance_status.setText(f"Integrity issues found: {message}")
         except Exception as e:
-            self.lbl_maintenance_status.setStyleSheet(_STATUS_ERR)
+            self.lbl_maintenance_status.setProperty("class", "status-err")
             self.lbl_maintenance_status.setText(f"Check failed: {e}")
         finally:
             self.btn_integrity.setEnabled(True)
@@ -687,7 +556,7 @@ class BackupRestoreDialog(QDialog):
 
         # Info card
         grp_export = QGroupBox("Export Your Data")
-        grp_export.setStyleSheet(_CARD_STYLE)
+        grp_export.setProperty("class", "card")
         export_layout = QVBoxLayout(grp_export)
         export_layout.setSpacing(12)
 
@@ -695,12 +564,12 @@ class BackupRestoreDialog(QDialog):
             "Export your business data to CSV, Excel, or PDF files.\n"
             "Useful for accounting, analysis, or sharing data with other systems."
         )
-        desc.setStyleSheet("color: #B0B0B0; font-size: 12px;")
+        desc.setProperty("class", "muted")
         desc.setWordWrap(True)
         export_layout.addWidget(desc)
 
         btn_open_export = QPushButton("Open Export Dialog")
-        btn_open_export.setStyleSheet(_BTN_PRIMARY)
+        btn_open_export.setProperty("class", "primary")
         btn_open_export.setFixedWidth(200)
         btn_open_export.clicked.connect(self._open_export_dialog)
         export_layout.addWidget(btn_open_export)
@@ -718,4 +587,4 @@ class BackupRestoreDialog(QDialog):
             dlg.exec()
         except Exception as e:
             logger.error("Could not open export dialog: %s", e)
-            QMessageBox.critical(self, "Error", f"Could not open export dialog:\n{e}")
+            QMessageBox.critical(self, "Error", f"Could not open export dialog:\n{e}")  # noqa: E231

@@ -42,7 +42,7 @@ def test_product(db_session):
         name_en=f"Product_{_counter}",
         price=100.0,
         stock_qty=10.0,
-        barcode=f"TST{_counter:04d}",
+        barcode=f"TST{_counter:04d}",  # noqa: E231
     )
     db_session.add(product)
     db_session.flush()

@@ -220,10 +220,10 @@ class StockCountService:
         """
         db = Database()
         with db.get_session() as session:
-            stock_count = (
-                session.query(StockCount)
-                .options(joinedload(StockCount.items).joinedload(StockCountItem.product))
-                .get(stock_count_id)
+            stock_count = session.get(
+                StockCount,
+                stock_count_id,
+                options=[joinedload(StockCount.items).joinedload(StockCountItem.product)],
             )
             if not stock_count:
                 raise ValueError("Stock count not found.")
@@ -275,7 +275,7 @@ class StockCountService:
         """
         db = Database()
         with db.get_session() as session:
-            stock_count = session.query(StockCount).options(joinedload(StockCount.items)).get(stock_count_id)
+            stock_count = session.get(StockCount, stock_count_id, options=[joinedload(StockCount.items)])
             if not stock_count:
                 raise ValueError("Stock count not found.")
             if stock_count.status != DocumentStatus.COUNTED:
@@ -339,13 +339,13 @@ class StockCountService:
         """Get a stock count with eager-loaded items and products."""
         db = Database()
         with db.get_session() as session:
-            stock_count = (
-                session.query(StockCount)
-                .options(
+            stock_count = session.get(
+                StockCount,
+                stock_count_id,
+                options=[
                     joinedload(StockCount.items).joinedload(StockCountItem.product),
                     joinedload(StockCount.user),
-                )
-                .get(stock_count_id)
+                ],
             )
             if stock_count:
                 session.expunge(stock_count)

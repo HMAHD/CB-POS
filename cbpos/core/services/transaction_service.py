@@ -35,7 +35,7 @@ class TransactionService:
     """
 
     @staticmethod
-    def process_sale(cart_service: CartService, payments: list, customer_id: int = None) -> bool:
+    def process_sale(cart_service: CartService, payments: list, customer_id: int = None) -> Sale | None:
         """
         Process the sale with multiple payments.
 
@@ -43,6 +43,9 @@ class TransactionService:
             cart_service: The cart containing items.
             payments: List of dicts [{'method': 'CASH', 'amount': 500}, ...]
             customer_id: Optional Customer ID for credit sales.
+
+        Returns:
+            Sale object on success, None on failure.
 
         Raises:
             ValueError: If validation fails or insufficient stock.
@@ -53,10 +56,10 @@ class TransactionService:
             raise
         except Exception as e:
             logger.error("Failed to process sale: %s", e)
-            return False
+            return None
 
     @staticmethod
-    def _execute_sale(cart_service: CartService, payments: list, customer_id: int = None) -> bool:
+    def _execute_sale(cart_service: CartService, payments: list, customer_id: int = None) -> Sale:
         """Internal method that executes the sale transaction."""
         db = Database()
         with db.get_session() as session:
@@ -235,27 +238,32 @@ class TransactionService:
                         session=session,
                     )
 
-            # 5. Context manager handles commit
+            # 5. Eager-load relationships before session closes (prevents DetachedInstanceError)
+            if sale.customer_id:
+                _ = sale.customer  # Force load while session is open
 
-            # 6. Hardware Output (after successful commit)
+            # 6. Context manager handles commit
+
+            # 7. Hardware Output (after successful commit)
             worker = PrintWorker()
 
-            # Check language for Unicode support
-            settings = ConfigService.get_all()
-            language = settings.get("language", "en")
+            # If receipt dialog is enabled, skip auto-print (dialog handles it).
+            # Otherwise, print receipt automatically for frictionless flow.
+            show_dialog = ConfigService.get("show_receipt_dialog")
+            if not show_dialog:
+                settings = ConfigService.get_all()
+                language = settings.get("language", "en")
 
-            if language == "en":
-                # Text Mode
-                receipt_text = ReceiptService.build_receipt_text(sale)
-                worker.add_job("print_receipt", receipt_text)
-            else:
-                # Image Mode (Unicode)
-                receipt_image = ReceiptService.build_receipt_image(sale)
-                worker.add_job("print_image", receipt_image)
+                if language == "en":
+                    receipt_text = ReceiptService.build_receipt_text(sale)
+                    worker.add_job("print_receipt", receipt_text)
+                else:
+                    receipt_image = ReceiptService.build_receipt_image(sale)
+                    worker.add_job("print_image", receipt_image)
 
             worker.add_job("kick_drawer")
 
-            return True
+            return sale
 
     @staticmethod
     def hold_bill(cart_service: CartService, note: str = None) -> bool:

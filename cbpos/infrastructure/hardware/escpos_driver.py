@@ -1,62 +1,56 @@
+import logging
 import time
 from typing import List, Dict, Any
-from PyQt6.QtCore import QThread
+
+from PyQt6.QtCore import QThread, pyqtSignal
+
 from cbpos.core.interfaces.iprinter import IPrinter
 from cbpos.core.services.config_service import ConfigService
 from escpos.printer import Usb, Network
 from PIL import Image
 
+logger = logging.getLogger(__name__)
 
-class MockPrinter(IPrinter):
+
+class NullPrinter(IPrinter):
     """
-    Mock Printer for development/testing without hardware.
+    No-op printer used when no hardware is configured.
+
+    Silently discards all commands — no console output, no side effects.
+    Used during development or when the shop has not yet set up a printer.
     """
 
     def connect(self) -> bool:
-        print("[MockPrinter] Connected")
         return True
 
-    def disconnect(self):
-        print("[MockPrinter] Disconnected")
+    def disconnect(self) -> None:
+        pass
 
-    def print_text(self, text: str):
-        print(f"[MockPrinter] TEXT: {text}")
+    def print_text(self, text: str) -> None:
+        pass
 
-    def print_line(self, text: str):
-        print(f"[MockPrinter] LINE: {text}")
+    def print_line(self, text: str) -> None:
+        pass
 
-    def cut(self):
-        print("[MockPrinter] CUT")
+    def cut(self) -> None:
+        pass
 
-    def print_commands(self, commands: List[Dict[str, Any]]):
-        for cmd in commands:
-            c_type = cmd.get("type")
-            if c_type == "text":
-                print(f"[MockPrinter] TEXT ({cmd.get('align', 'left')}): {cmd.get('val')}")
-            elif c_type == "image":
-                print(f"[MockPrinter] IMAGE: {cmd.get('path')}")
-            elif c_type == "barcode":
-                print(f"[MockPrinter] BARCODE: {cmd.get('val')} ({cmd.get('code')})")
-            elif c_type == "feed":
-                print(f"[MockPrinter] FEED: {cmd.get('lines')} lines")
-            elif c_type == "cut":
-                print("[MockPrinter] CUT")
+    def print_commands(self, commands: List[Dict[str, Any]]) -> None:
+        pass
 
-    def kick_drawer(self):
-        print("[MockPrinter] KICK DRAWER")
+    def kick_drawer(self) -> None:
+        pass
 
 
 class ESCPOSDriver(IPrinter):
-    """
-    Real implementation using python-escpos.
-    """
+    """Real ESC/POS implementation using python-escpos for USB and Network printers."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.printer = None
 
     def connect(self) -> bool:
         settings = ConfigService.get_all()
-        p_type = settings.get("printer_type", "MOCK")
+        p_type = settings.get("printer_type", "NONE")
         p_path = settings.get("printer_path", "")
 
         try:
@@ -65,39 +59,45 @@ class ESCPOSDriver(IPrinter):
                     vid, pid = p_path.split(":")
                     self.printer = Usb(int(vid, 16), int(pid, 16))
                 else:
-                    print("USB Printer requires VID:PID in settings (e.g., 0x04b8:0x0202)")
+                    logger.warning(
+                        "USB printer requires VID:PID in settings (e.g. 0x04b8:0x0202). "
+                        "Configure in Settings > Hardware."
+                    )
                     return False
             elif p_type == "NETWORK":
                 if p_path:
                     self.printer = Network(p_path)
                 else:
-                    print("Network Printer requires IP address")
+                    logger.warning("Network printer requires an IP address. Configure in Settings > Hardware.")
                     return False
             else:
                 return False
 
             return True
         except Exception as e:
-            print(f"Printer Connection Failed: {e}")
+            logger.error("Printer connection failed: %s", e)
             return False
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         if self.printer:
-            self.printer.close()
+            try:
+                self.printer.close()
+            except Exception as e:
+                logger.debug("Printer disconnect error (non-critical): %s", e)
 
-    def print_text(self, text: str):
+    def print_text(self, text: str) -> None:
         if self.printer:
             self.printer.text(text)
 
-    def print_line(self, text: str):
+    def print_line(self, text: str) -> None:
         if self.printer:
             self.printer.text(text + "\n")
 
-    def cut(self):
+    def cut(self) -> None:
         if self.printer:
             self.printer.cut()
 
-    def print_commands(self, commands: List[Dict[str, Any]]):
+    def print_commands(self, commands: List[Dict[str, Any]]) -> None:
         if not self.printer:
             return
 
@@ -115,7 +115,6 @@ class ESCPOSDriver(IPrinter):
                     if path:
                         try:
                             img = Image.open(path)
-                            # Resize if too wide (max 500px usually safe for 80mm)
                             max_width = ConfigService.get_int("printer_image_max_width", 500)
                             if img.width > max_width:
                                 ratio = max_width / img.width
@@ -123,7 +122,7 @@ class ESCPOSDriver(IPrinter):
                                 img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
                             self.printer.image(img)
                         except Exception as e:
-                            print(f"Failed to print image: {e}")
+                            logger.error("Failed to print image: %s", e)
 
                 elif c_type == "barcode":
                     code = cmd.get("val")
@@ -131,7 +130,7 @@ class ESCPOSDriver(IPrinter):
                     try:
                         self.printer.barcode(code, bc_type, function_type="B")
                     except Exception as e:
-                        print(f"Failed to print barcode: {e}")
+                        logger.error("Failed to print barcode: %s", e)
 
                 elif c_type == "feed":
                     lines = cmd.get("lines", 1)
@@ -141,70 +140,79 @@ class ESCPOSDriver(IPrinter):
                     self.printer.cut()
 
             except Exception as e:
-                print(f"Error processing command {cmd}: {e}")
+                logger.error("Error processing print command %s: %s", cmd.get("type"), e)
 
-    def kick_drawer(self):
+    def kick_drawer(self) -> None:
         if self.printer:
             self.printer.cashdraw(2)
 
 
 class PrintWorker(QThread):
-    """
-    Worker thread to handle printing tasks asynchronously.
+    """Background thread for asynchronous print job processing.
+
+    Resolves the printer once per run cycle from application settings:
+    - printer_type == "NONE" → NullPrinter (silent no-op)
+    - printer_type == "USB" / "NETWORK" → ESCPOSDriver (real hardware)
+
+    If the real printer fails to connect, the job is skipped and the failure
+    is logged — no silent fallback to a mock that pollutes stdout.
     """
 
-    def __init__(self, printer: IPrinter = None):
+    error_occurred = pyqtSignal(str)  # Emitted when a print job fails
+
+    def __init__(self, printer: IPrinter | None = None) -> None:
         super().__init__()
         self.printer = printer
-        self.queue = []
+        self.queue: list[tuple[str, Any]] = []
         self.running = True
 
-    def add_job(self, job_type: str, data: any = None):
-        """
-        Add a job to the queue.
-        job_type: 'print_receipt' (data=commands), 'kick_drawer'
+    def add_job(self, job_type: str, data: Any = None) -> None:
+        """Queue a print job. Starts the thread if not already running.
+
+        Args:
+            job_type: 'print_receipt' or 'kick_drawer'
+            data: Command list for print_receipt, None for kick_drawer
         """
         self.queue.append((job_type, data))
         if not self.isRunning():
             self.start()
 
-    def run(self):
+    def run(self) -> None:
         while self.running and self.queue:
             job_type, data = self.queue.pop(0)
 
-            # Determine printer to use
-            settings = ConfigService.get_all()
-            p_type = settings.get("printer_type", "MOCK")
-
-            current_printer = self.printer
-
-            if not current_printer:
-                if p_type == "MOCK":
-                    current_printer = MockPrinter()
-                else:
-                    current_printer = ESCPOSDriver()
+            current_printer = self._resolve_printer()
 
             try:
-                if current_printer.connect():
-                    if job_type == "kick_drawer":
-                        current_printer.kick_drawer()
-                    elif job_type == "print_receipt":
-                        # data is now a list of commands
-                        current_printer.print_commands(data)
+                if not current_printer.connect():
+                    logger.warning(
+                        "Printer not available — skipping %s job. " "Check printer settings in Settings > Hardware.",
+                        job_type,
+                    )
+                    continue
 
-                    current_printer.disconnect()
-                else:
-                    # Fallback to Mock if real printer fails
-                    print("Real printer failed. Falling back to Mock.")
-                    mock = MockPrinter()
-                    mock.connect()
-                    if job_type == "print_receipt":
-                        mock.print_commands(data)
-                    elif job_type == "kick_drawer":
-                        mock.kick_drawer()
-                    mock.disconnect()
+                if job_type == "kick_drawer":
+                    current_printer.kick_drawer()
+                elif job_type == "print_receipt":
+                    current_printer.print_commands(data)
+
+                current_printer.disconnect()
 
             except Exception as e:
-                print(f"Print Job Failed: {e}")
+                logger.error("Print job '%s' failed: %s", job_type, e)
+                self.error_occurred.emit(str(e))
 
-            time.sleep(0.1)  # Small delay between jobs
+            time.sleep(0.1)
+
+    def _resolve_printer(self) -> IPrinter:
+        """Determine which printer implementation to use from settings."""
+        if self.printer:
+            return self.printer
+
+        settings = ConfigService.get_all()
+        p_type = settings.get("printer_type", "NONE")
+
+        if p_type in ("USB", "NETWORK"):
+            return ESCPOSDriver()
+
+        return NullPrinter()

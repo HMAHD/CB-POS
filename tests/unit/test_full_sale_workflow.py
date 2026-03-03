@@ -96,7 +96,7 @@ class TestFullSaleWorkflow:
         ):
             result = TransactionService.process_sale(cart, payments)
 
-        assert result is True
+        assert result is not None
 
         # 3. Verify Sale Record
         sale = db_session.query(Sale).order_by(Sale.id.desc()).first()
@@ -171,7 +171,7 @@ class TestFullSaleWorkflow:
         ):
             result = TransactionService.process_sale(cart, payments, customer_id=customer.id)
 
-        assert result is True
+        assert result is not None
 
         # Verify customer debt increased
         db_session.refresh(customer)
@@ -217,7 +217,7 @@ class TestFullSaleWorkflow:
         ):
             result = TransactionService.process_sale(cart, payments)
 
-        assert result is True
+        assert result is not None
 
         sale = db_session.query(Sale).order_by(Sale.id.desc()).first()
         assert sale.payment_method == "SPLIT"

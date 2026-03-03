@@ -28,7 +28,7 @@ class ConfigService:
         "tax_vat_rate": 18.0,
         "tax_sscl_rate": 2.5,
         "tax_sscl_turnover_pct": 50.0,
-        "printer_type": "USB",  # USB, NETWORK, MOCK
+        "printer_type": "NONE",  # USB, NETWORK, or NONE
         "printer_path": "",  # e.g., COM3, 192.168.1.100, or empty for auto-USB
         "language": "en",  # en, si, ta
         "receipt_header": "Welcome to Ceylon Byte",
@@ -59,6 +59,7 @@ class ConfigService:
         "auto_generate_barcodes": True,
         # Feature Flags
         "enable_loyalty": True,
+        "enable_sounds": True,
         "enable_touch_mode": True,
         "enable_visual_search": True,
         "auto_select_barcode_match": True,
@@ -70,7 +71,7 @@ class ConfigService:
         "doc_format_purchase": "GRN-{Y}-{seq:05d}",
         "doc_format_return": "CN-{Y}-{seq:05d}",
         "doc_reset_period": "YEARLY",
-        "show_receipt_dialog": True,
+        "show_receipt_dialog": False,
         # Network Database Configuration
         "db_mode": "standalone",  # standalone (SQLite) or network (PostgreSQL)
         "network_db_host": "localhost",

@@ -2,6 +2,58 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.8.4] - 2026-03-02
+
+### Changed — Streamlined Sale Completion Flow
+- **Removed success popup**: Eliminated blocking "Sale processed successfully!" QMessageBox that required an OK click after every sale.
+- **Conditional receipt printing**: When receipt dialog is OFF (new default), receipt auto-prints and sale completes instantly with zero popups. When receipt dialog is ON, auto-print is skipped and the dialog handles printing.
+- **Receipt dialog default OFF**: `show_receipt_dialog` default changed from `True` to `False` for frictionless checkout flow.
+- **process_sale() returns Sale object**: `TransactionService.process_sale()` now returns the `Sale` object (or `None` on failure) instead of `bool`, eliminating an extra `get_last_sale()` DB query.
+- **Print Receipt button works**: Receipt Options Dialog "Print Receipt" button now actually prints via `PrintWorker` (text or image based on language) and closes the dialog. Previously was a placeholder.
+
+### Fixed
+- **DetachedInstanceError in receipt dialog**: Fixed crash when clicking "Email Receipt" — `sale.customer` is now eager-loaded before session closes, with a fallback try/except in the dialog.
+
+## [0.8.3] - 2026-03-02
+
+### Redesigned — Receipt Options Dialog
+- **Receipt Options Dialog**: Full redesign to match system dark/light theme. Replaced old navy-blue background and garish cyan/orange/gray buttons with proper theme surfaces (#1E1E1E dark, #F8F9FA light). New layout: success checkmark icon (48px), "Transaction Completed!" title, order info card with document number and bold total, icon-prefixed action buttons (Print with cyan accent border, Email with subtle border), centered ghost Close button. All selectors use objectName IDs instead of property-based class selectors.
+
+### Fixed — Side Menu & Action Panel
+- **Side Menu Layout**: Changed nav tiles from 2-column grid to single-column vertical list with uniform 20px spacing. Removed QGridLayout in favor of QVBoxLayout for cleaner item-by-item navigation.
+- **Action Panel Visibility**: Fixed action panel not reappearing when returning to POS view from Management/Settings/Documents. `showEvent()` now closes the side menu and restores the action panel automatically.
+
+## [0.8.2] - 2026-03-01
+
+### Redesigned — Payment Dialog & Advanced Search
+- **Payment Dialog**: Full redesign with new two-column layout (920×700). Left column: method tiles (2×3 grid with 12px gap, active tile gets accent border), searchable customer combo (type-to-filter with QCompleter, MatchContains), compact applied payments list with red SVG cross remove buttons. Right column: 28px amount input (auto-fills remaining for all methods), 72px touch-friendly numpad (fixed-size container with uniform 8px spacing), ADD PAYMENT button.
+- **Numpad**: Wrapped in fixed-size container widget to prevent QGridLayout stretching. Buttons use NoFocus policy to avoid stealing focus from amount input. "C" clears, "." adds decimal, digits replace selected text.
+- **Enter Key Fix**: Parent SalesView's QShortcut(Key_Return/Key_Enter) was stealing Enter presses before the dialog could handle them. Fixed by disabling parent shortcuts on dialog open and re-enabling in done() (same pattern as QuantityDialog).
+- **Customer Search**: Made customer combo editable with QCompleter (CaseInsensitive + MatchContains). Placeholder "Type to search..." for quick lookup in large customer lists. Validates typed name exists before accepting credit payment.
+- **Remove Payments**: Each applied payment has a red cross icon button (x-red.svg). Click removes that entry and recalculates balance. Full border visibility with proper margins (14px right, 8px vertical, 48px item height).
+- **Advanced Search Dialog**: Added objectName "AdvancedSearchDialog" for QSS targeting. Replaced QFormLayout with horizontal filter rows (search + category + supplier row, price range row). Added result count label. All table items get explicit theme-aware foreground color (fixes invisible text in dark theme). Min size increased to 950×620.
+- **QSS Themes**: Replaced all navy-blue (#0A1929, #132F4C) Payment Dialog styles with system theme colors (#1E1E1E/#252526 dark, #F8F9FA/#FFFFFF light). Added selected state for method tiles, BtnRemovePayment, PaymentListItemWidget/Label, AdvancedSearchDialog styles for both themes.
+
+### Fixed
+- **Export Path Validation**: `ExportService._validate_export_path()` now uses `tempfile.gettempdir()` instead of hardcoded `/tmp`. Fixes auto-report failure on macOS where temp dir is `/var/folders/.../T/`.
+
+## [0.8.1] - 2026-03-01
+
+### Fixed — UI/UX Polish
+- **Login Screen**: Rewrote numpad layout with fixed-width container (294px) to fix button spacing. Added PIN heading, inline error label, help hint, and tagline. Removed QMessageBox for login errors.
+- **POS Action Panel**: Fixed invisible button text in dark theme — added `setObjectName("ActionGridBtn")` so QSS exclusion rules work. Buttons now use flexible width (`SizePolicy.Expanding`) to prevent clipping.
+- **POS Cart**: Fixed column mismatch in `update_cart_display()` — discount and total now populate correct columns. Merged duplicate `update_cart_ui()`/`update_cart_display()` into single method.
+- **Payment Dialog**: Redesigned with dark-theme-native colors (deep navy palette), proper input/list styling, and two-line method buttons with shortcut labels.
+- **Totals Area**: Added missing `DiscountLabel` objectName so discount label matches Subtotal/Tax styling.
+- **Hamburger Menu**: Increased icon size (24px) and button size (42px) with hover effect.
+- **ConfigService.get() crashes**: Fixed `TypeError` in `SoundService.play()` and `SalesView.quick_pay()` — removed invalid default argument from `ConfigService.get()` calls.
+- **Receipt dialog bug**: Fixed `show_receipt_dialog` bool-vs-string comparison (`True == "True"` is `False` in Python).
+- **QSS**: Moved ActionGridBtn from `[class=...]` attribute selector to `#ActionGridBtn` objectName selector for reliable specificity. Added NumpadContainer, PayMethodBtn, PaymentSeparator styles.
+- **Action Button Labels (dark theme)**: Set label colors directly in Python (`_apply_theme_styles()`) since Qt QSS descendant selectors don't reliably cascade to child QLabels inside QPushButton. Added `refresh_theme()` method.
+- **Side Menu**: Tightened layout — reduced nav margins (40→16px top), user section (30→20px), avatar (64→52px), spacing (5→2px). Moved Sign Out to separate container. Simplified `update_all_icons()`.
+- **Settings View**: Removed unused `_CONFIG_PAGE_COUNT` and save/cancel visibility toggle.
+- **Scheduler Service**: Fixed `ConfigService.update()` → `ConfigService.set()` method name.
+
 ## [0.8.0] - 2026-02-28
 
 ### Added — Phase 27: Admin Tools

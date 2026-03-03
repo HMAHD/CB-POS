@@ -50,7 +50,6 @@ class OrderBar(QWidget):
         self.tabs_layout = QHBoxLayout(self.tabs_container)
         self.tabs_layout.setContentsMargins(0, 0, 0, 0)
         self.tabs_layout.setSpacing(5)
-        self.tabs_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
         self.scroll_area.setWidget(self.tabs_container)
         layout.addWidget(self.scroll_area)
@@ -64,11 +63,11 @@ class OrderBar(QWidget):
 
     def refresh_tabs(self):
         """Fetch held bills and rebuild tabs."""
-        # Clear existing
-        for i in reversed(range(self.tabs_layout.count())):
-            widget = self.tabs_layout.itemAt(i).widget()
-            if widget:
-                widget.setParent(None)
+        # Clear existing (widgets and spacers)
+        while self.tabs_layout.count():
+            item = self.tabs_layout.takeAt(0)
+            if item.widget():
+                item.widget().setParent(None)
 
         # Fetch from DB
         held_bills = TransactionService.get_held_bills()

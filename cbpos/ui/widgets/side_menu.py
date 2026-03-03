@@ -6,70 +6,98 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QFrame,
     QGraphicsDropShadowEffect,
+    QSizePolicy,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QColor
 from cbpos.ui.resources.icons import Icons
-from cbpos.ui.constants import SIDEBAR_WIDTH, SIDEBAR_BUTTON_HEIGHT, ACTION_BTN_HEIGHT
+from cbpos.ui.constants import SIDEBAR_WIDTH, ACTION_BTN_HEIGHT
 
 
-class MenuButton(QPushButton):
-    """
-    Flat button for the side menu.
-    """
+class NavTile(QPushButton):
+    """Large navigation tile — icon above text, 2-column grid layout."""
 
-    def __init__(self, text: str, icon_name: str, is_destructive: bool = False):
-        super().__init__()
-        self.setText(f"  {text}")
-        self.setObjectName("MenuButton")  # For CSS styling
-
-        # Store the icon name and destructive flag for theme updates
+    def __init__(self, text: str, icon_name: str, parent=None):
+        super().__init__(parent)
+        self.setObjectName("NavTile")
         self.icon_name = icon_name
-        self.is_destructive = is_destructive
-
-        # Set initial icon
-        self.update_icon()
-        self.setIconSize(QSize(24, 24))
-
-        self.setFixedHeight(SIDEBAR_BUTTON_HEIGHT)
+        self._active = False
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setMinimumHeight(80)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-        # Set property for CSS targeting
-        if is_destructive:
-            self.setProperty("destructive", True)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(6, 12, 6, 8)
+        layout.setSpacing(6)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-    def update_icon(self):
-        """Update icon color based on current theme."""
+        # Icon
+        self.lbl_icon = QLabel()
+        self.lbl_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.lbl_icon)
+
+        # Text
+        self.lbl_text = QLabel(text)
+        self.lbl_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_text.setWordWrap(True)
+        layout.addWidget(self.lbl_text)
+
+        self._apply_theme()
+
+    def set_active(self, active: bool) -> None:
+        """Toggle active state (highlighted border + accent color)."""
+        self._active = active
+        self.setProperty("active", active)
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self._apply_theme()
+
+    def _apply_theme(self) -> None:
+        """Set icon and label colors directly — QSS can't cascade into QPushButton children."""
         from cbpos.core.services.theme_service import ThemeService
 
-        icon_color = "#FF4136" if self.is_destructive else ThemeService.get_icon_color()
-        self.setIcon(Icons.get(self.icon_name, icon_color))
+        is_dark = ThemeService.current_theme.lower() == "dark"
+
+        if self._active:
+            icon_color = "#00BCEB" if is_dark else "#0D6EFD"
+            text_color = "#00BCEB" if is_dark else "#0D6EFD"
+        else:
+            icon_color = ThemeService.get_icon_color()
+            text_color = "#CCCCCC" if is_dark else "#333333"
+
+        pixmap = Icons.get(self.icon_name, icon_color).pixmap(28, 28)
+        self.lbl_icon.setPixmap(pixmap)
+        self.lbl_icon.setStyleSheet("background: transparent;")
+        self.lbl_text.setStyleSheet(f"color: {text_color}; background: transparent; font-size: 12px;")
+
+    def update_icon(self) -> None:
+        """Public API for theme change callbacks."""
+        self._apply_theme()
 
 
 class IconButton(QPushButton):
-    """
-    Icon-only button for the bottom toolbar.
-    """
+    """Icon-only button for the bottom toolbar."""
 
-    def __init__(self, icon_name: str, tooltip: str):
+    def __init__(self, icon_name: str, tooltip: str, color: str | None = None):
         super().__init__()
-        self.setObjectName("IconButton")  # For CSS styling
+        self.setObjectName("IconButton")
 
-        # Store icon name for theme updates
         self.icon_name = icon_name
-
-        # Set initial icon
+        self._fixed_color = color
         self.update_icon()
-        self.setIconSize(QSize(24, 24))
+        self.setIconSize(QSize(20, 20))
         self.setToolTip(tooltip)
-        self.setFixedSize(50, 50)
+        self.setFixedSize(40, 40)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
-    def update_icon(self):
+    def update_icon(self) -> None:
         """Update icon color based on current theme."""
         from cbpos.core.services.theme_service import ThemeService
 
-        icon_color = ThemeService.get_icon_color()
+        if self._fixed_color:
+            icon_color = self._fixed_color
+        else:
+            icon_color = ThemeService.get_icon_color()
         self.setIcon(Icons.get(self.icon_name, icon_color))
 
 
@@ -90,134 +118,218 @@ class SideMenu(QWidget):
         super().__init__(parent)
         self.setFixedWidth(SIDEBAR_WIDTH)
         self.setVisible(False)
-        self.setObjectName("POSSideMenu")  # For theme-specific styling
+        self.setObjectName("POSSideMenu")
 
-        # Shadow
+        # Critical: QWidget doesn't paint QSS background without this
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+
         shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(20)
+        shadow.setBlurRadius(30)
         shadow.setXOffset(-5)
         shadow.setYOffset(0)
-        shadow.setColor(QColor(0, 0, 0, 100))
+        shadow.setColor(QColor(0, 0, 0, 140))
         self.setGraphicsEffect(shadow)
 
-        # High Z-order to sit on top
         self.raise_()
-
+        self._nav_buttons: list[NavTile] = []
         self.init_ui()
 
-    def init_ui(self):
+    def init_ui(self) -> None:
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # 1. Top Section (Navigation)
+        # ── Section Header ────────────────────────────────────────
+        self.lbl_section = QLabel("MENU")
+        self.lbl_section.setObjectName("MenuSectionHeader")
+        self.lbl_section.setContentsMargins(16, 14, 0, 8)
+        main_layout.addWidget(self.lbl_section)
+
+        # ── Navigation Tiles (single column) ─────────────────────
         nav_container = QWidget()
+        nav_container.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         nav_layout = QVBoxLayout(nav_container)
-        nav_layout.setContentsMargins(0, 40, 0, 20)
-        nav_layout.setSpacing(5)
+        nav_layout.setContentsMargins(10, 4, 10, 4)
+        nav_layout.setSpacing(20)
 
-        self.btn_management = MenuButton("Management", "fa5s.chart-line")
-        self.btn_management.clicked.connect(self.management_clicked.emit)
+        self.btn_management = NavTile("Management", "fa5s.chart-line")
+        self.btn_management.clicked.connect(self._on_management)
         nav_layout.addWidget(self.btn_management)
+        self._nav_buttons.append(self.btn_management)
 
-        self.btn_history = MenuButton("Sales History", "fa5s.history")
-        self.btn_history.clicked.connect(self.history_clicked.emit)
+        self.btn_history = NavTile("Sales History", "fa5s.history")
+        self.btn_history.clicked.connect(self._on_history)
         nav_layout.addWidget(self.btn_history)
+        self._nav_buttons.append(self.btn_history)
 
-        self.btn_documents = MenuButton("Documents", "fa5s.file-invoice")
-        self.btn_documents.clicked.connect(self.documents_clicked.emit)
+        self.btn_documents = NavTile("Documents", "fa5s.file-invoice")
+        self.btn_documents.clicked.connect(self._on_documents)
         nav_layout.addWidget(self.btn_documents)
+        self._nav_buttons.append(self.btn_documents)
 
-        self.btn_receive_payment = MenuButton("Receive Payment", "fa5s.hand-holding-usd")
-        self.btn_receive_payment.clicked.connect(self.receive_payment_clicked.emit)
+        self.btn_receive_payment = NavTile("Receive Payment", "fa5s.hand-holding-usd")
+        self.btn_receive_payment.clicked.connect(self._on_receive_payment)
         nav_layout.addWidget(self.btn_receive_payment)
+        self._nav_buttons.append(self.btn_receive_payment)
 
-        self.btn_reprint = MenuButton("Reprint Receipt", "fa5s.print")
-        self.btn_reprint.clicked.connect(self.reprint_receipt_clicked.emit)
+        self.btn_reprint = NavTile("Reprint Receipt", "fa5s.print")
+        self.btn_reprint.clicked.connect(self._on_reprint)
         nav_layout.addWidget(self.btn_reprint)
+        self._nav_buttons.append(self.btn_reprint)
 
-        self.btn_refund = MenuButton("Refund", "fa5s.undo")
-        self.btn_refund.clicked.connect(self.refund_clicked.emit)
+        self.btn_refund = NavTile("Refund", "fa5s.undo")
+        self.btn_refund.clicked.connect(self._on_refund)
         nav_layout.addWidget(self.btn_refund)
+        self._nav_buttons.append(self.btn_refund)
 
-        nav_layout.addStretch()
         main_layout.addWidget(nav_container)
 
-        # Separator
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setFrameShadow(QFrame.Shadow.Sunken)
-        line.setObjectName("MenuSeparator")
-        main_layout.addWidget(line)
+        # ── Spacer ────────────────────────────────────────────────
+        main_layout.addStretch(1)
 
-        # 2. Middle Section (User Profile)
-        user_container = QWidget()
-        user_layout = QVBoxLayout(user_container)
-        user_layout.setContentsMargins(30, 30, 30, 30)
-        user_layout.setSpacing(10)
+        # ── Separator ─────────────────────────────────────────────
+        main_layout.addWidget(self._make_separator())
 
-        # Avatar
+        # ── User Profile + Sign Out (centered block) ────────────
+        bottom_block = QWidget()
+        bottom_block.setObjectName("UserProfileRow")
+        bottom_block.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        block_layout = QVBoxLayout(bottom_block)
+        block_layout.setContentsMargins(0, 12, 0, 8)
+        block_layout.setSpacing(8)
+
+        # Avatar + Name + Role — centered horizontally
+        profile_row = QHBoxLayout()
+        profile_row.setSpacing(10)
+        profile_row.addStretch()
+
         self.lbl_avatar = QLabel()
-        self.lbl_avatar.setPixmap(Icons.get("fa5s.user-circle", "#00BCEB").pixmap(64, 64))
+        self.lbl_avatar.setFixedSize(36, 36)
+        self.lbl_avatar.setPixmap(Icons.get("fa5s.user-circle", "#00BCEB").pixmap(36, 36))
         self.lbl_avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        user_layout.addWidget(self.lbl_avatar)
+        profile_row.addWidget(self.lbl_avatar)
 
-        # Name & Role
+        info_layout = QVBoxLayout()
+        info_layout.setContentsMargins(0, 0, 0, 0)
+        info_layout.setSpacing(1)
+
         self.lbl_username = QLabel("Guest")
         self.lbl_username.setObjectName("MenuUsername")
-        self.lbl_username.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        user_layout.addWidget(self.lbl_username)
+        info_layout.addWidget(self.lbl_username)
 
         self.lbl_role = QLabel("No Role")
         self.lbl_role.setObjectName("MenuRole")
-        self.lbl_role.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        user_layout.addWidget(self.lbl_role)
+        info_layout.addWidget(self.lbl_role)
 
-        user_layout.addSpacing(20)
+        profile_row.addLayout(info_layout)
+        profile_row.addStretch()
 
-        # Logout
-        self.btn_logout = MenuButton("Sign Out", "fa5s.sign-out-alt", is_destructive=True)
+        block_layout.addLayout(profile_row)
+
+        # Sign Out — centered horizontally
+        signout_row = QHBoxLayout()
+        signout_row.setSpacing(6)
+        signout_row.addStretch()
+
+        self.btn_logout_icon = QLabel()
+        self.btn_logout_icon.setFixedSize(18, 18)
+        self.btn_logout_icon.setPixmap(Icons.get("fa5s.sign-out-alt", "#FF4136").pixmap(16, 16))
+        self.btn_logout_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.btn_logout_icon.setCursor(Qt.CursorShape.PointingHandCursor)
+        signout_row.addWidget(self.btn_logout_icon)
+
+        self.btn_logout = QPushButton("Sign Out")
+        self.btn_logout.setObjectName("SignOutBtn")
+        self.btn_logout.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_logout.setFixedHeight(28)
         self.btn_logout.clicked.connect(self.logout_clicked.emit)
-        user_layout.addWidget(self.btn_logout)
+        signout_row.addWidget(self.btn_logout)
 
-        main_layout.addWidget(user_container)
+        signout_row.addStretch()
 
-        # Separator
-        line2 = QFrame()
-        line2.setFrameShape(QFrame.Shape.HLine)
-        line2.setFrameShadow(QFrame.Shadow.Sunken)
-        line2.setObjectName("MenuSeparator")
-        main_layout.addWidget(line2)
+        block_layout.addLayout(signout_row)
 
-        # 3. Bottom Section (System Toolbar)
-        toolbar_container = QWidget()
-        toolbar_container.setFixedHeight(ACTION_BTN_HEIGHT)
-        toolbar_layout = QHBoxLayout(toolbar_container)
+        main_layout.addWidget(bottom_block)
+
+        # ── Separator ─────────────────────────────────────────────
+        main_layout.addWidget(self._make_separator())
+
+        # ── Bottom Toolbar ────────────────────────────────────────
+        toolbar = QWidget()
+        toolbar.setObjectName("SideMenuToolbar")
+        toolbar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        toolbar.setFixedHeight(ACTION_BTN_HEIGHT)
+        toolbar_layout = QHBoxLayout(toolbar)
         toolbar_layout.setContentsMargins(20, 0, 20, 0)
-        toolbar_layout.setSpacing(20)
-        toolbar_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        toolbar_layout.setSpacing(0)
 
         self.btn_settings = IconButton("fa5s.cog", "Settings")
         self.btn_settings.clicked.connect(self.settings_clicked.emit)
         toolbar_layout.addWidget(self.btn_settings)
 
+        toolbar_layout.addStretch()
+
         self.btn_fullscreen = IconButton("fa5s.expand", "Toggle Fullscreen")
         self.btn_fullscreen.clicked.connect(self.fullscreen_clicked.emit)
         toolbar_layout.addWidget(self.btn_fullscreen)
 
-        self.btn_power = IconButton("fa5s.power-off", "Exit Application")
+        toolbar_layout.addStretch()
+
+        self.btn_power = IconButton("fa5s.power-off", "Exit Application", color="#FF4136")
         self.btn_power.clicked.connect(self.power_clicked.emit)
         toolbar_layout.addWidget(self.btn_power)
 
-        main_layout.addWidget(toolbar_container)
+        main_layout.addWidget(toolbar)
 
-    def set_user(self, user):
+    # ── Helpers ───────────────────────────────────────────────────
+
+    @staticmethod
+    def _make_separator() -> QFrame:
+        line = QFrame()
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setObjectName("MenuSeparator")
+        line.setFixedHeight(1)
+        return line
+
+    def _set_active(self, btn: NavTile) -> None:
+        """Highlight the clicked nav tile, clear others."""
+        for b in self._nav_buttons:
+            b.set_active(b is btn)
+
+    # ── Click handlers (set active + emit signal) ────────────────
+
+    def _on_management(self) -> None:
+        self._set_active(self.btn_management)
+        self.management_clicked.emit()
+
+    def _on_history(self) -> None:
+        self._set_active(self.btn_history)
+        self.history_clicked.emit()
+
+    def _on_documents(self) -> None:
+        self._set_active(self.btn_documents)
+        self.documents_clicked.emit()
+
+    def _on_receive_payment(self) -> None:
+        self._set_active(self.btn_receive_payment)
+        self.receive_payment_clicked.emit()
+
+    def _on_reprint(self) -> None:
+        self._set_active(self.btn_reprint)
+        self.reprint_receipt_clicked.emit()
+
+    def _on_refund(self) -> None:
+        self._set_active(self.btn_refund)
+        self.refund_clicked.emit()
+
+    # ── Public API ────────────────────────────────────────────────
+
+    def set_user(self, user) -> None:
         """Update user info and permissions."""
         if user:
             self.lbl_username.setText(user.username)
             self.lbl_role.setText(user.role.name if user.role else "Unknown")
 
-            # Permission Check (Simple role check for now, can be expanded)
             is_admin = user.role and user.role.name.lower() in [
                 "admin",
                 "manager",
@@ -232,32 +344,20 @@ class SideMenu(QWidget):
             self.btn_management.setVisible(False)
             self.btn_settings.setVisible(False)
 
-    def update_all_icons(self):
+    def clear_active(self) -> None:
+        """Reset all nav tiles to inactive state."""
+        for b in self._nav_buttons:
+            b.set_active(False)
+
+    def update_all_icons(self) -> None:
         """Update all icons in the side menu when theme changes."""
-        # Update MenuButtons
-        if hasattr(self, "btn_management"):
-            self.btn_management.update_icon()
-        if hasattr(self, "btn_history"):
-            self.btn_history.update_icon()
-        if hasattr(self, "btn_documents"):
-            self.btn_documents.update_icon()
-        if hasattr(self, "btn_receive_payment"):
-            self.btn_receive_payment.update_icon()
-        if hasattr(self, "btn_reprint"):
-            self.btn_reprint.update_icon()
-        if hasattr(self, "btn_refund"):
-            self.btn_refund.update_icon()
-        if hasattr(self, "btn_logout"):
-            self.btn_logout.update_icon()
+        for btn in self._nav_buttons:
+            btn.update_icon()
 
-        # Update IconButtons (toolbar)
-        if hasattr(self, "btn_settings"):
-            self.btn_settings.update_icon()
-        if hasattr(self, "btn_fullscreen"):
-            self.btn_fullscreen.update_icon()
-        if hasattr(self, "btn_power"):
-            self.btn_power.update_icon()
+        # Sign out icon
+        self.btn_logout_icon.setPixmap(Icons.get("fa5s.sign-out-alt", "#FF4136").pixmap(16, 16))
 
-        # Update avatar icon (always cyan)
-        if hasattr(self, "lbl_avatar"):
-            self.lbl_avatar.setPixmap(Icons.get("fa5s.user-circle", "#00BCEB").pixmap(64, 64))
+        for btn in [self.btn_settings, self.btn_fullscreen, self.btn_power]:
+            btn.update_icon()
+
+        self.lbl_avatar.setPixmap(Icons.get("fa5s.user-circle", "#00BCEB").pixmap(36, 36))

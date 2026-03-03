@@ -26,9 +26,6 @@ from cbpos.ui.views.settings_pages import (
 class SettingsView(QWidget):
     close_requested = pyqtSignal()
 
-    # Index where config pages end and operational views begin
-    _CONFIG_PAGE_COUNT = 7
-
     def __init__(self):
         super().__init__()
         self.init_ui()
@@ -135,11 +132,6 @@ class SettingsView(QWidget):
 
     def change_page(self, index):
         self.stack.setCurrentIndex(index)
-
-        # Hide save/cancel for operational views (Data Safety, Admin Tools)
-        is_config_page = index < self._CONFIG_PAGE_COUNT
-        self.btn_save.setVisible(is_config_page)
-        self.btn_cancel.setVisible(is_config_page)
 
     def load_settings(self):
         settings = ConfigService.get_all()

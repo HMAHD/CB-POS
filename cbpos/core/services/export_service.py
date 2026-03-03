@@ -18,8 +18,11 @@ class ExportService:
         resolved = Path(filepath).resolve()
         if ".." in Path(filepath).parts:
             raise ValueError(f"Path traversal detected: {filepath}")
+        import tempfile
+
         home = Path.home().resolve()
-        if not str(resolved).startswith(str(home)) and not str(resolved).startswith("/tmp"):
+        temp_dir = Path(tempfile.gettempdir()).resolve()
+        if not any(str(resolved).startswith(str(d)) for d in (home, temp_dir)):
             raise ValueError(f"Export path outside allowed directories: {filepath}")
         return resolved
 

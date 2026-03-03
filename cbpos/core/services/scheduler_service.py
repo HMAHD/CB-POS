@@ -77,7 +77,7 @@ class SchedulerService:
                     logger.info("Auto-Report sent to %s", admin_email)
 
                 # Update Last Run (even if empty, to avoid retrying every minute)
-                ConfigService.update("auto_report_last_run", today_str)
+                ConfigService.set("auto_report_last_run", today_str)
 
             except Exception as e:
                 logger.error("Auto-Report Failed: %s", e)

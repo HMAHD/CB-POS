@@ -16,8 +16,9 @@ from PyQt6.QtWidgets import (
     QFrame,
     QSplitter,
     QButtonGroup,
+    QStackedWidget,
 )
-from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint
+from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint, QSize
 from PyQt6.QtGui import QKeySequence, QShortcut, QAction, QBrush, QColor, QPixmap
 from decimal import Decimal
 from cbpos.core.services.product_service import ProductService
@@ -25,6 +26,7 @@ from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.ui.dialogs.payment_dialog import PaymentDialog
 from cbpos.ui.dialogs.discount_dialog import DiscountDialog
+from cbpos.ui.dialogs.quantity_dialog import QuantityDialog
 from cbpos.ui.dialogs.receipt_options_dialog import ReceiptOptionsDialog
 from cbpos.core.services.config_service import ConfigService
 from cbpos.ui.constants import SEARCH_BAR_HEIGHT, CART_TABLE_ROW_HEIGHT, PAYMENT_PANEL_WIDTH
@@ -83,7 +85,7 @@ class SalesView(QWidget):
 
         self.update_logo()  # Set initial logo
 
-        self.lbl_logo.setStyleSheet("background: transparent;")
+        self.lbl_logo.setObjectName("HeaderLogo")
         self.lbl_logo.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         header_layout.addWidget(self.lbl_logo)
 
@@ -92,13 +94,12 @@ class SalesView(QWidget):
 
         header_layout.addStretch()
 
-        # Menu Button
+        # Menu Button (Hamburger)
         self.menu_button = QToolButton()
         self.menu_button.setObjectName("menu_button")
-        self.menu_button.setStyleSheet("background: transparent; border: none;")
-        # Hamburger menu icon is always white for visibility on dark header
         self.menu_button.setIcon(Icons.get("fa5s.bars", "white"))
-
+        self.menu_button.setIconSize(QSize(24, 24))
+        self.menu_button.setFixedSize(42, 42)
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.menu_button.clicked.connect(self.toggle_side_menu)
         header_layout.addWidget(self.menu_button)
@@ -194,11 +195,19 @@ class SalesView(QWidget):
         self.cart_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.cart_table.customContextMenuRequested.connect(self.show_cart_context_menu)
         self.cart_table.setAlternatingRowColors(True)
-        # Styling handled in theme.qss, but setting object name for specificity
-        # if needed
-        self.cart_table.setObjectName("CartTable")
 
-        left_layout.addWidget(self.cart_table)
+        # Empty Cart Placeholder
+        self.empty_cart_label = QLabel("Scan or search to add items")
+        self.empty_cart_label.setObjectName("EmptyCartLabel")
+        self.empty_cart_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Stacked widget to swap between cart table and empty placeholder
+        self.cart_stack = QStackedWidget()
+        self.cart_stack.addWidget(self.empty_cart_label)  # index 0
+        self.cart_stack.addWidget(self.cart_table)  # index 1
+        self.cart_stack.setCurrentIndex(0)
+
+        left_layout.addWidget(self.cart_stack)
 
         # 3. Order Bar (Tabs)
         self.order_bar = OrderBar()
@@ -216,15 +225,14 @@ class SalesView(QWidget):
         # Subtotals (Left)
         subtotal_layout = QVBoxLayout()
         self.lbl_item_count = QLabel("Items: 0")
-        self.lbl_item_count.setStyleSheet("background: transparent;")
+        self.lbl_item_count.setObjectName("ItemCountLabel")
         self.lbl_subtotal = QLabel("Subtotal: 0.00")
-        self.lbl_subtotal.setStyleSheet("background: transparent;")
-        self.lbl_discount = QLabel("Disc: 0.00")
-        self.lbl_discount.setStyleSheet("background: transparent;")
-        self.lbl_tax = QLabel("Tax: 0.00")
-        self.lbl_tax.setStyleSheet("background: transparent;")
         self.lbl_subtotal.setObjectName("SubtotalLabel")
+        self.lbl_discount = QLabel("Disc: 0.00")
+        self.lbl_discount.setObjectName("DiscountLabel")
+        self.lbl_tax = QLabel("Tax: 0.00")
         self.lbl_tax.setObjectName("TaxLabel")
+        subtotal_layout.addWidget(self.lbl_item_count)
         subtotal_layout.addWidget(self.lbl_subtotal)
         subtotal_layout.addWidget(self.lbl_discount)
         subtotal_layout.addWidget(self.lbl_tax)
@@ -234,7 +242,6 @@ class SalesView(QWidget):
 
         # Grand Total (Right)
         self.total_label = QLabel("0.00")
-        self.total_label.setStyleSheet("background: transparent;")
         self.total_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.total_label.setObjectName("TotalLabel")
         total_layout.addWidget(self.total_label)
@@ -279,11 +286,13 @@ class SalesView(QWidget):
         self.splitter.addWidget(self.product_grid)
         self.splitter.addWidget(self.action_panel)
 
-        # Set Stretch Factors (75% / 25%)
-        self.splitter.setStretchFactor(0, 3)
-        self.splitter.setStretchFactor(1, 1)
+        # Stretch: cart expands, product_grid hidden initially, action_panel fixed width
+        self.splitter.setStretchFactor(0, 1)  # container_left — takes remaining space
+        self.splitter.setStretchFactor(1, 0)  # product_grid — hidden by default
+        self.splitter.setStretchFactor(2, 0)  # action_panel — fixed width
         self.splitter.setCollapsible(0, False)
-        self.splitter.setCollapsible(1, False)
+        self.splitter.setCollapsible(1, True)  # product_grid can collapse
+        self.splitter.setCollapsible(2, False)
 
         # Shortcuts
         self.setup_shortcuts()
@@ -314,55 +323,8 @@ class SalesView(QWidget):
             self.side_menu.update_all_icons()
 
     def update_cart_ui(self):
-        self.cart_table.setRowCount(0)
-        for row, item in enumerate(self.cart_service.items):
-            self.cart_table.insertRow(row)
-
-            product = item["product"]
-            qty = item["qty"]
-            price = item["price"]
-            discount = item["discount"]
-            total = item["total"]
-
-            self.cart_table.setItem(row, 0, QTableWidgetItem(product.name_en))
-            self.cart_table.setItem(row, 1, QTableWidgetItem(format_currency(price)))
-            self.cart_table.setItem(row, 2, QTableWidgetItem(str(qty)))
-
-            disc_text = f"{discount}%" if discount > 0 else "-"
-            self.cart_table.setItem(row, 3, QTableWidgetItem(disc_text))
-
-            self.cart_table.setItem(row, 4, QTableWidgetItem(format_currency(total)))
-
-        totals = self.cart_service.get_totals()
-
-        # Extract values
-        final_total = totals.get("final_total", 0)
-        subtotal = totals.get("subtotal", 0)
-        cart_discount = totals.get("cart_discount", 0)
-        # Tax is not explicitly in get_totals() top level, but it's calculated in TaxService.
-        # Wait, get_totals() returns subtotal, discount, final_total.
-        # Tax is usually included in the price (MRP).
-        # If we want to show tax breakdown, we might need to calculate it or get it from somewhere.
-        # For now, let's assume TaxService.calculate_taxes(final_total) is needed or just show 0 if not available.
-        # Actually, TaxService.calculate_taxes(total_amount) was used in process_sale.
-        # Let's calculate it here for display.
-        from cbpos.core.services.tax_service import TaxService
-
-        tax_info = TaxService.calculate_taxes(final_total)
-        tax_amount = tax_info["vat"] + tax_info["sscl"]
-
-        item_count = totals.get("item_count", 0)  # Sum of quantities
-        # or totals.get("count", 0) # Number of lines
-        # User asked for "Items: {count}" which usually means item count.
-        # Let's use item_count (qty sum) as it's more useful for retail.
-
-        self.total_label.setText(format_currency(final_total))
-        self.lbl_subtotal.setText(f"Subtotal: {format_currency(subtotal)}")
-        self.lbl_discount.setText(f"Disc: {format_currency(cart_discount)}")
-        self.lbl_tax.setText(f"Tax: {format_currency(tax_amount)}")
-        self.lbl_item_count.setText(f"Items: {item_count}")
-
-        self.cart_table.scrollToBottom()
+        """Initial cart update (delegates to update_cart_display)."""
+        self.update_cart_display()
 
     def setup_shortcuts(self):
         self.shortcut_f1 = QShortcut(QKeySequence("F1"), self)
@@ -422,7 +384,6 @@ class SalesView(QWidget):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        # Position menu at right edge
         menu_width = self.side_menu.width()
         if self.side_menu.isVisible():
             self.side_menu.setGeometry(self.width() - menu_width, 0, menu_width, self.height())
@@ -438,16 +399,22 @@ class SalesView(QWidget):
             end_pos = QPoint(self.width(), 0)
             self.menu_animation.setStartValue(start_pos)
             self.menu_animation.setEndValue(end_pos)
-            self.menu_animation.finished.connect(lambda: self.side_menu.setVisible(False))
-            self.menu_animation.finished.connect(self.menu_animation.finished.disconnect)  # Disconnect after run
+
+            def _on_hidden():
+                self.side_menu.setVisible(False)
+                self.action_panel.setVisible(True)
+                self.menu_animation.finished.disconnect(_on_hidden)
+
+            self.menu_animation.finished.connect(_on_hidden)
             self.menu_animation.start()
         else:
-            # Slide In (Show)
+            # Hide action panel so PAY button doesn't show behind menu
+            self.action_panel.setVisible(False)
             self.side_menu.setVisible(True)
             self.side_menu.raise_()
             start_pos = QPoint(self.width(), 0)
             end_pos = QPoint(self.width() - menu_width, 0)
-            self.side_menu.setGeometry(self.width(), 0, menu_width, self.height())  # Ensure start pos
+            self.side_menu.setGeometry(self.width(), 0, menu_width, self.height())
 
             self.menu_animation.setStartValue(start_pos)
             self.menu_animation.setEndValue(end_pos)
@@ -463,13 +430,20 @@ class SalesView(QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
+        # Restore action panel when returning to POS from other views
+        if self.side_menu.isVisible():
+            self.side_menu.setVisible(False)
+            self.side_menu.clear_active()
+        self.action_panel.setVisible(True)
         self.barcode_input.setFocus()
         self.order_bar.refresh_tabs()
 
     def on_visual_item_clicked(self, product):
         """Handle item click from Visual POS."""
-        self.cart_service.add_item(product)
-        self.update_cart_display()
+        dialog = QuantityDialog(product, self)
+        if dialog.exec():
+            self.cart_service.add_item(product, qty=dialog.get_quantity())
+            self.update_cart_display()
 
     def process_barcode_external(self, barcode):
         """Handle barcode from global scanner hook."""
@@ -496,8 +470,10 @@ class SalesView(QWidget):
 
         if len(products) == 1:
             SoundService.play("scan_success")
-            self.cart_service.add_item(products[0])
-            self.update_cart_display()
+            dialog = QuantityDialog(products[0], self)
+            if dialog.exec():
+                self.cart_service.add_item(products[0], qty=dialog.get_quantity())
+                self.update_cart_display()
             self.barcode_input.clear()
         elif len(products) > 1:
             SoundService.play("scan_success")
@@ -514,15 +490,25 @@ class SalesView(QWidget):
 
     def update_cart_display(self):
         """Update cart display with visual indicators (Phase 6)."""
+        from cbpos.core.services.theme_service import ThemeService
+
+        is_dark = ThemeService.current_theme.lower() == "dark"
+        text_color = QColor("#FFFFFF") if is_dark else QColor("#212529")
+        text_brush = QBrush(text_color)
+
         self.cart_table.setRowCount(0)
+        has_items = len(self.cart_service.items) > 0
+        self.cart_stack.setCurrentIndex(1 if has_items else 0)
         for row, item in enumerate(self.cart_service.items):
             self.cart_table.insertRow(row)
+            self.cart_table.setRowHeight(row, CART_TABLE_ROW_HEIGHT)
 
             # Product Name (with note indicator)
             name = item["product"].name_en
             if item.get("note"):
                 name = f"📝 {name}"
             name_item = QTableWidgetItem(name)
+            name_item.setForeground(text_brush)
 
             # Price Display (Strikethrough if discounted/overridden)
             if item.get("original_price") and item["unit_price"] < item["original_price"]:
@@ -532,26 +518,50 @@ class SalesView(QWidget):
                 lbl_price.setProperty("class", "StrikethroughPrice")
                 self.cart_table.setCellWidget(row, 1, lbl_price)
             else:
-                self.cart_table.setItem(row, 1, QTableWidgetItem(f"{item['unit_price']:.2f}"))  # noqa: E231
+                price_item = QTableWidgetItem(format_currency(item["unit_price"]))
+                price_item.setForeground(text_brush)
+                self.cart_table.setItem(row, 1, price_item)
 
-            # Highlight if discounted
+            # Highlight if discounted (theme-aware)
             if item.get("discount_type") != "NONE" or item.get("is_manual_price"):
-                bg_color = QColor(0, 50, 0)  # Dark Green for dark mode
-                brush = QBrush(bg_color)
-                name_item.setBackground(brush)
+                bg_color = QColor(0, 50, 0) if is_dark else QColor(220, 255, 220)
+                name_item.setBackground(QBrush(bg_color))
 
             self.cart_table.setItem(row, 0, name_item)
-            # If we didn't set a cell widget for price, we need to set the item
-            if not self.cart_table.cellWidget(row, 1):
-                self.cart_table.setItem(row, 1, QTableWidgetItem(f"{item['unit_price']:.2f}"))  # noqa: E231
 
-            self.cart_table.setItem(row, 2, QTableWidgetItem(f"{item['qty']:.3f}"))  # noqa: E231
-            self.cart_table.setItem(row, 3, QTableWidgetItem(f"{item['total']:.2f}"))  # noqa: E231
+            # Qty column
+            qty_item = QTableWidgetItem(str(item["qty"]))
+            qty_item.setForeground(text_brush)
+            self.cart_table.setItem(row, 2, qty_item)
+
+            # Disc column
+            disc_val = item.get("discount_value", Decimal("0.00"))
+            disc_text = f"{disc_val}%" if disc_val > 0 else "-"
+            disc_item = QTableWidgetItem(disc_text)
+            disc_item.setForeground(text_brush)
+            self.cart_table.setItem(row, 3, disc_item)
+
+            # Total column
+            total_item = QTableWidgetItem(format_currency(item["total"]))
+            total_item.setForeground(text_brush)
+            self.cart_table.setItem(row, 4, total_item)
 
         totals = self.cart_service.get_totals()
-        self.total_label.setText(f"{totals['final_total']:.2f}")  # noqa: E231
-        self.lbl_subtotal.setText(f"Subtotal: {totals['subtotal']:.2f}")  # noqa: E231
-        self.lbl_tax.setText(f"Tax: {totals['tax']:.2f}")  # noqa: E231
+        final_total = totals.get("final_total", 0)
+        subtotal = totals.get("subtotal", 0)
+        cart_discount = totals.get("cart_discount", 0)
+        item_count = totals.get("item_count", 0)
+
+        from cbpos.core.services.tax_service import TaxService
+
+        tax_info = TaxService.calculate_taxes(final_total)
+        tax_amount = tax_info["vat"] + tax_info["sscl"]
+
+        self.total_label.setText(format_currency(final_total))
+        self.lbl_subtotal.setText(f"Subtotal: {format_currency(subtotal)}")
+        self.lbl_discount.setText(f"Disc: {format_currency(cart_discount)}")
+        self.lbl_tax.setText(f"Tax: {format_currency(tax_amount)}")
+        self.lbl_item_count.setText(f"Items: {item_count}")
         self.cart_table.scrollToBottom()
 
     def select_customer(self):
@@ -603,19 +613,17 @@ class SalesView(QWidget):
             customer_id = self.customer.id if self.customer else None
 
             try:
-                success = TransactionService.process_sale(self.cart_service, payments, customer_id)
-                if success:
+                sale = TransactionService.process_sale(self.cart_service, payments, customer_id)
+                if sale:
                     # Mark proforma as converted if this was a proforma-to-sale conversion
                     proforma_id = getattr(self, "_pending_proforma_id", None)
                     if proforma_id:
-                        last_sale = TransactionService.get_last_sale()
-                        if last_sale:
-                            from cbpos.core.services.proforma_service import ProformaService
+                        from cbpos.core.services.proforma_service import ProformaService
 
-                            ProformaService.mark_converted(proforma_id, last_sale.id)
+                        ProformaService.mark_converted(proforma_id, sale.id)
                         self._pending_proforma_id = None
 
-                    self._finalize_sale()
+                    self._finalize_sale(sale)
             except ValueError as e:
                 QMessageBox.warning(self, "Validation Error", str(e))
             except Exception as e:
@@ -814,8 +822,10 @@ class SalesView(QWidget):
 
     def on_advanced_search_product_selected(self, product):
         """Handle product selection from advanced search."""
-        self.cart_service.add_item(product)
-        self.update_cart_display()
+        dialog = QuantityDialog(product, self)
+        if dialog.exec():
+            self.cart_service.add_item(product, qty=dialog.get_quantity())
+            self.update_cart_display()
         self.barcode_input.setFocus()
 
     def switch_to_order(self, suspended_id):
@@ -863,9 +873,12 @@ class SalesView(QWidget):
         is_visible = self.product_grid.isVisible()
         self.product_grid.setVisible(not is_visible)
         if not is_visible:
-            # Set splitter sizes: cart 50%, grid 30%, action 20%
+            # Set splitter sizes: cart gets remaining, grid 350px, action panel keeps fixed width
             total = self.splitter.width()
-            self.splitter.setSizes([int(total * 0.5), int(total * 0.3), int(total * 0.2)])
+            action_w = PAYMENT_PANEL_WIDTH
+            grid_w = 350
+            cart_w = total - grid_w - action_w
+            self.splitter.setSizes([max(cart_w, 200), grid_w, action_w])
 
     def open_receive_payment(self) -> None:
         """Open Receive Payment dialog from POS (quick payment without sale)."""
@@ -896,10 +909,9 @@ class SalesView(QWidget):
         worker.add_job("kick_drawer")
         self._drawer_worker = worker  # prevent GC
 
-    def _finalize_sale(self) -> None:
-        """Common post-sale cleanup: sound, message, clear cart, show receipt."""
+    def _finalize_sale(self, sale) -> None:
+        """Common post-sale cleanup: sound, clear cart, optionally show receipt dialog."""
         SoundService.play("payment_complete")
-        QMessageBox.information(self, "Success", "Sale processed successfully!")
         self.cart_service.clear()
         self.update_cart_display()
         self.barcode_input.setFocus()
@@ -907,18 +919,15 @@ class SalesView(QWidget):
         self.action_panel.clear_customer_info()
         self.order_bar.refresh_tabs()
 
-        # Show Receipt Options if configured
-        settings = ConfigService.get_all()
-        if settings.get("show_receipt_dialog", "True") == "True":
-            last_sale = TransactionService.get_last_sale()
-            if last_sale:
-                dlg = ReceiptOptionsDialog(last_sale, self)
-                dlg.exec()
+        # Show Receipt Options if configured (dialog handles printing)
+        if ConfigService.get("show_receipt_dialog"):
+            dlg = ReceiptOptionsDialog(sale, self)
+            dlg.exec()
 
     def quick_pay(self) -> None:
         """Quick close with full cash payment, skipping the payment dialog (F12)."""
         # Check if quick pay is enabled in settings
-        if not ConfigService.get("quick_pay_enabled", True):
+        if not ConfigService.get("quick_pay_enabled"):
             QMessageBox.information(self, "Disabled", "Quick Pay is disabled in settings.")
             return
 
@@ -933,9 +942,9 @@ class SalesView(QWidget):
         customer_id = self.customer.id if self.customer else None
 
         try:
-            success = TransactionService.process_sale(self.cart_service, payments, customer_id)
-            if success:
-                self._finalize_sale()
+            sale = TransactionService.process_sale(self.cart_service, payments, customer_id)
+            if sale:
+                self._finalize_sale(sale)
         except ValueError as e:
             QMessageBox.warning(self, "Validation Error", str(e))
         except Exception as e:

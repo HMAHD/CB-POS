@@ -5,7 +5,7 @@ Centralizes magic numbers from across the UI layer.
 
 # Sidebar
 SIDEBAR_WIDTH = 300
-SIDEBAR_BUTTON_HEIGHT = 60
+SIDEBAR_BUTTON_HEIGHT = 46
 
 # Action Panel
 ACTION_BTN_WIDTH = 70

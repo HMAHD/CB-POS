@@ -111,7 +111,7 @@ class SoundService:
             sound_name: One of ``scan_success``, ``scan_error``,
                         ``payment_complete``, ``error``.
         """
-        if not ConfigService.get("enable_sounds", True):
+        if not ConfigService.get("enable_sounds"):
             return
 
         if not cls._ensure_init():

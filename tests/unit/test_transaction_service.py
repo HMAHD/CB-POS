@@ -96,7 +96,7 @@ def test_process_sale_atomic(db_session, test_user, test_product):
 
         result = TransactionService.process_sale(cart_service, payments)
 
-        assert result is True
+        assert result is not None
 
         db_session.refresh(test_product)
         assert test_product.stock_qty == 8.0
@@ -125,7 +125,7 @@ def test_process_sale_rollback_on_error(db_session, test_user, test_product):
         ):
             result = TransactionService.process_sale(cart_service, payments)
 
-            assert result is False
+            assert result is None
 
             db_session.refresh(test_product)
             assert test_product.stock_qty == 10.0

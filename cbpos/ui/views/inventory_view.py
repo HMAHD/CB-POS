@@ -6,16 +6,12 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QTableView,
     QHeaderView,
-    QMessageBox,
-    QFileDialog,
 )
 from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex
 from PyQt6.QtGui import QColor, QBrush
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.services.import_service import ImportService
 from cbpos.ui.dialogs.product_editor import ProductEditor
-from cbpos.ui.workers import CsvImportWorker
-from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 
 
 class InventoryModel(QAbstractTableModel):
@@ -133,9 +129,6 @@ class InventoryView(QWidget):
 
         layout.addWidget(self.table)
 
-        # Loading overlay
-        self._overlay = LoadingOverlay(self)
-
     def load_data(self):
         self.all_products = self.inventory_service.get_all_products()
         self.model.update_data(self.all_products)
@@ -198,31 +191,8 @@ class InventoryView(QWidget):
             dialog.exec()
 
     def import_csv(self) -> None:
-        file_path, _ = QFileDialog.getOpenFileName(self, "Import CSV", "", "CSV Files (*.csv)")
-        if not file_path:
-            return
+        from cbpos.ui.dialogs.csv_import_dialog import CsvImportDialog
 
-        self.import_btn.setEnabled(False)
-        self._overlay.show_loading("Importing products...")
-
-        self._csv_worker = CsvImportWorker(self.import_service, file_path)
-        self._csv_worker.progress.connect(self._on_csv_progress)
-        self._csv_worker.finished.connect(self._on_csv_import_finished)
-        self._csv_worker.error.connect(self._on_csv_import_error)
-        self._csv_worker.start()
-
-    def _on_csv_progress(self, current: int, total: int) -> None:
-        self._overlay.set_text(f"Importing row {current} of {total}...")
-
-    def _on_csv_import_finished(self, results: dict) -> None:
-        self._overlay.hide_loading()
-        self.import_btn.setEnabled(True)
-
-        message = f"Success: {results['success']}\n" f"Failed: {results['failed']}\n" f"Skipped: {results['skipped']}"
-        QMessageBox.information(self, "Import Results", message)
-        self.load_data()
-
-    def _on_csv_import_error(self, error_msg: str) -> None:
-        self._overlay.hide_loading()
-        self.import_btn.setEnabled(True)
-        QMessageBox.critical(self, "Import Failed", f"CSV import failed: {error_msg}")
+        dialog = CsvImportDialog(self.import_service, parent=self)
+        if dialog.exec():
+            self.load_data()

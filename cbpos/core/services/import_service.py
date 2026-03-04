@@ -123,3 +123,8 @@ class ImportService:
             return results
 
         return results
+
+    @staticmethod
+    def generate_template() -> str:
+        """Return CSV template content with headers and example row."""
+        return "Barcode,Name,Price,Cost,Stock\n8901234567890,Sample Product,150.00,100.00,50\n"

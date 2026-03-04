@@ -30,14 +30,20 @@ def register_all_reports():
         ProfitLossReport,
         TaxLiabilityReport,
     )
+    from cbpos.core.reports.definitions.cash_flow_report import CashFlowReport
 
     registry.register(ProfitLossReport)
     registry.register(TaxLiabilityReport)
+    registry.register(CashFlowReport)
 
     # Audit
-    from cbpos.core.reports.definitions.audit_reports import StockMovementReport
+    from cbpos.core.reports.definitions.audit_reports import (
+        StockMovementReport,
+        CashMovementAuditReport,
+    )
 
     registry.register(StockMovementReport)
+    registry.register(CashMovementAuditReport)
 
     # Void/Refund & Payment Method
     from cbpos.core.reports.definitions.void_refund_report import (

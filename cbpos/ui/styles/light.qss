@@ -2142,3 +2142,286 @@ QLabel#ProductImagePreview {
     border-radius: 4px;
     font-size: 12px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   REPORT VIEWER — Data Observatory (Light)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+#ReportViewer {
+    background-color: #F5F7FA;
+}
+
+/* ── Splitter ── */
+#ReportSplitter::handle {
+    background-color: #E2E8F0;
+    width: 1px;
+}
+
+/* ── Sidebar ── */
+#ReportSidebarPanel {
+    background-color: #FFFFFF;
+    border-right: 1px solid #E2E8F0;
+}
+
+#ReportSidebarTitle {
+    color: #0D6EFD;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    padding: 18px 20px 14px 20px;
+    background: transparent;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+#ReportSidebarScroll {
+    background: transparent;
+    border: none;
+}
+
+#ReportNavContainer {
+    background: transparent;
+}
+
+/* Category header */
+#ReportCategoryLabel {
+    color: #94A3B8;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    background: transparent;
+}
+
+#ReportCategoryCount {
+    color: #94A3B8;
+    background-color: #F1F5F9;
+    font-size: 10px;
+    font-weight: bold;
+    border-radius: 8px;
+    min-height: 16px;
+    max-height: 16px;
+}
+
+/* Report nav items */
+QPushButton#ReportNavItem {
+    background-color: transparent;
+    color: #64748B;
+    border: none;
+    border-left: 3px solid transparent;
+    border-radius: 0px;
+    font-size: 14px;
+    text-align: left;
+    padding: 11px 12px 11px 14px;
+}
+
+QPushButton#ReportNavItem:hover {
+    background-color: #F0F4FF;
+    color: #1E293B;
+    border-left: 3px solid #CBD5E1;
+}
+
+QPushButton#ReportNavItem:checked {
+    background-color: #EBF2FF;
+    color: #0D6EFD;
+    border-left: 3px solid #0D6EFD;
+    font-weight: bold;
+}
+
+/* ── Content Panel ── */
+#ReportContentPanel {
+    background-color: #F5F7FA;
+}
+
+/* ── Report Header ── */
+#ReportHeader {
+    background-color: #FFFFFF;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+#ReportTitle {
+    color: #1E293B;
+    font-size: 20px;
+    font-weight: bold;
+    background: transparent;
+}
+
+#ReportDescription {
+    color: #0D6EFD;
+    font-size: 13px;
+    background: transparent;
+}
+
+/* ── Filter Bar ── */
+#ReportFilterBar {
+    background-color: #FFFFFF;
+    border-bottom: 1px solid #E2E8F0;
+    min-height: 48px;
+}
+
+#ReportFilterWidget {
+    background: transparent;
+}
+
+#ReportFilterLabel {
+    color: #64748B;
+    font-size: 13px;
+    background: transparent;
+}
+
+#ReportDateEdit {
+    background-color: #F8FAFC;
+    color: #1E293B;
+    border: 1px solid #CBD5E1;
+    border-radius: 4px;
+    padding: 6px 10px;
+    min-width: 120px;
+    font-size: 13px;
+}
+
+#ReportDateEdit:focus {
+    border: 1px solid #0D6EFD;
+}
+
+#ReportDateEdit::drop-down {
+    border: none;
+    width: 20px;
+}
+
+#ReportFilterCombo {
+    background-color: #F8FAFC;
+    color: #1E293B;
+    border: 1px solid #CBD5E1;
+    border-radius: 4px;
+    padding: 6px 10px;
+    min-width: 130px;
+    font-size: 13px;
+}
+
+#ReportFilterCombo:focus {
+    border: 1px solid #0D6EFD;
+}
+
+#RunReportBtn {
+    background-color: #0D6EFD;
+    color: #FFFFFF;
+    font-weight: bold;
+    font-size: 13px;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 28px;
+    min-width: 130px;
+}
+
+#RunReportBtn:hover {
+    background-color: #0B5ED7;
+}
+
+#RunReportBtn:pressed {
+    background-color: #0A58CA;
+}
+
+#RunReportBtn:disabled {
+    background-color: #E2E8F0;
+    color: #94A3B8;
+}
+
+/* ── Empty State ── */
+#ReportEmptyState {
+    background-color: #F5F7FA;
+}
+
+#ReportEmptyIcon {
+    color: #CBD5E1;
+    font-size: 56px;
+    background: transparent;
+    padding-bottom: 4px;
+}
+
+#ReportEmptyText {
+    color: #64748B;
+    font-size: 20px;
+    font-weight: bold;
+    background: transparent;
+    padding-top: 12px;
+}
+
+#ReportEmptySubtext {
+    color: #94A3B8;
+    font-size: 14px;
+    background: transparent;
+    padding-top: 4px;
+}
+
+/* ── Data Table ── */
+#ReportDataView {
+    background-color: #FFFFFF;
+    alternate-background-color: #F8FAFC;
+    color: #1E293B;
+    border: none;
+    gridline-color: #E2E8F0;
+    selection-background-color: #EBF2FF;
+    selection-color: #0D6EFD;
+    font-size: 13px;
+}
+
+#ReportDataView::item {
+    padding: 6px 12px;
+    min-height: 18px;
+}
+
+#ReportDataView QHeaderView::section {
+    background-color: #F8FAFC;
+    color: #0D6EFD;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 10px 12px;
+    border: none;
+    border-right: 1px solid #E2E8F0;
+    border-bottom: 2px solid #0D6EFD;
+}
+
+#ReportDataView QHeaderView::section:hover {
+    background-color: #EBF2FF;
+}
+
+/* ── Action Bar ── */
+#ReportActionBar {
+    background-color: #FFFFFF;
+    border-top: 1px solid #E2E8F0;
+    min-height: 44px;
+}
+
+#ReportRowCount {
+    color: #64748B;
+    font-size: 13px;
+    background: transparent;
+    font-weight: bold;
+}
+
+#ReportPrintBtn,
+#ReportExportExcelBtn,
+#ReportExportPdfBtn,
+#ReportEmailBtn {
+    background-color: #F8FAFC;
+    color: #64748B;
+    border: 1px solid #CBD5E1;
+    border-radius: 4px;
+    padding: 7px 18px;
+    font-size: 13px;
+}
+
+#ReportPrintBtn:hover,
+#ReportExportExcelBtn:hover,
+#ReportExportPdfBtn:hover,
+#ReportEmailBtn:hover {
+    background-color: #EBF2FF;
+    color: #1E293B;
+    border-color: #0D6EFD;
+}
+
+#ReportPrintBtn:pressed,
+#ReportExportExcelBtn:pressed,
+#ReportExportPdfBtn:pressed,
+#ReportEmailBtn:pressed {
+    background-color: #0D6EFD;
+    color: #FFFFFF;
+}

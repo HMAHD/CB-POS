@@ -2,15 +2,20 @@ from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QTreeWidget,
-    QTreeWidgetItem,
     QTableView,
     QPushButton,
     QMessageBox,
     QFileDialog,
     QSplitter,
+    QLabel,
+    QStackedWidget,
+    QHeaderView,
+    QScrollArea,
+    QFrame,
+    QSizePolicy,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QRectF
+from PyQt6.QtGui import QPainter, QColor, QPen
 import pandas as pd
 
 from cbpos.core.reports.registry import ReportRegistry
@@ -20,16 +25,11 @@ from cbpos.ui.views.reports.pandas_model import PandasModel
 from cbpos.ui.workers import ExportWorker
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 
-# Import and register reports (Ideally this happens at app startup)
-from cbpos.core.reports.definitions.sales_report import DailySalesSummaryReport
-from cbpos.core.reports.definitions.financial_reports import ProfitLossReport, TaxLiabilityReport
-from cbpos.core.reports.definitions.audit_reports import CashMovementAuditReport
-
 
 class ReportWorker(QThread):
     """Background thread for report generation to avoid freezing the UI."""
 
-    finished = pyqtSignal(object)  # emits DataFrame
+    finished = pyqtSignal(object)
     error = pyqtSignal(str)
 
     def __init__(self, report, filters):
@@ -47,127 +47,305 @@ class ReportWorker(QThread):
             self.error.emit(str(e))
 
 
+class _ReportPlaceholderIcon(QWidget):
+    """Painted bar-chart icon for the empty state."""
+
+    _SIZE = 64
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.setFixedSize(self._SIZE, self._SIZE)
+        self.setObjectName("ReportEmptyIcon")
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        bar_color = QColor("#1A3A5C")
+        line_color = QColor("#1A3A5C")
+
+        s = self._SIZE
+        margin = 8
+        base_y = s - margin
+        bar_w = 8
+        gap = 6
+        bars = [0.35, 0.6, 0.45, 0.85, 0.55]
+        max_h = s - margin * 2 - 4
+
+        p.setPen(QPen(line_color, 1.5))
+        p.drawLine(margin, base_y, s - margin, base_y)
+
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(bar_color)
+        total_w = len(bars) * bar_w + (len(bars) - 1) * gap
+        x_start = (s - total_w) / 2
+        for i, ratio in enumerate(bars):
+            bh = max_h * ratio
+            x = x_start + i * (bar_w + gap)
+            p.drawRoundedRect(QRectF(x, base_y - bh, bar_w, bh), 2, 2)
+
+        p.end()
+
+
 class ReportViewer(QWidget):
     def __init__(self):
         super().__init__()
+        self.setObjectName("ReportViewer")
         self.registry = ReportRegistry()
         self.export_service = ExportService()
         self.current_report = None
-        # Register reports (Temporary location, should be in main app init)
-        self.registry.register(DailySalesSummaryReport)
-        self.registry.register(ProfitLossReport)
-        self.registry.register(TaxLiabilityReport)
-        self.registry.register(CashMovementAuditReport)
-
+        self._report_buttons: list[QPushButton] = []
+        self._active_button: QPushButton | None = None
         self.init_ui()
 
     def init_ui(self):
-        main_layout = QHBoxLayout(self)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setObjectName("ReportSplitter")
 
-        # --- Left Sidebar (Report List) ---
-        self.tree_widget = QTreeWidget()
-        self.tree_widget.setHeaderLabel("Reports")
-        self.tree_widget.itemClicked.connect(self.on_report_selected)
-        self.populate_report_tree()
-        splitter.addWidget(self.tree_widget)
+        # ── LEFT: Sidebar Panel ──
+        sidebar = QWidget()
+        sidebar.setObjectName("ReportSidebarPanel")
+        sidebar_layout = QVBoxLayout(sidebar)
+        sidebar_layout.setContentsMargins(0, 0, 0, 0)
+        sidebar_layout.setSpacing(0)
 
-        # --- Right Side (Content) ---
-        right_widget = QWidget()
-        right_layout = QVBoxLayout(right_widget)
+        sidebar_title = QLabel("REPORTS")
+        sidebar_title.setObjectName("ReportSidebarTitle")
+        sidebar_layout.addWidget(sidebar_title)
 
-        # Initialize Buttons FIRST
+        # Scrollable report navigation
+        scroll = QScrollArea()
+        scroll.setObjectName("ReportSidebarScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+
+        nav_container = QWidget()
+        nav_container.setObjectName("ReportNavContainer")
+        self._nav_layout = QVBoxLayout(nav_container)
+        self._nav_layout.setContentsMargins(12, 8, 12, 12)
+        self._nav_layout.setSpacing(4)
+
+        self._populate_sidebar()
+        self._nav_layout.addStretch()
+
+        scroll.setWidget(nav_container)
+        sidebar_layout.addWidget(scroll)
+
+        splitter.addWidget(sidebar)
+
+        # ── RIGHT: Content Panel ──
+        content = QWidget()
+        content.setObjectName("ReportContentPanel")
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+
+        # Report Header (hidden until report selected)
+        self.report_header = QWidget()
+        self.report_header.setObjectName("ReportHeader")
+        header_layout = QVBoxLayout(self.report_header)
+        header_layout.setContentsMargins(24, 16, 24, 16)
+        header_layout.setSpacing(2)
+
+        self.report_title = QLabel()
+        self.report_title.setObjectName("ReportTitle")
+        header_layout.addWidget(self.report_title)
+
+        self.report_description = QLabel()
+        self.report_description.setObjectName("ReportDescription")
+        header_layout.addWidget(self.report_description)
+
+        self.report_header.setVisible(False)
+        content_layout.addWidget(self.report_header)
+
+        # Filter Bar (hidden until report selected)
+        self.filter_bar = QWidget()
+        self.filter_bar.setObjectName("ReportFilterBar")
+        filter_layout = QHBoxLayout(self.filter_bar)
+        filter_layout.setContentsMargins(24, 10, 24, 10)
+
+        self.filter_widget = FilterWidget()
+        filter_layout.addWidget(self.filter_widget)
+
         self.btn_run = QPushButton("Run Report")
-        self.btn_print = QPushButton("Print")
-        self.btn_export_excel = QPushButton("Export Excel")
-        self.btn_export_pdf = QPushButton("Export PDF")
-
-        # Configure Buttons
+        self.btn_run.setObjectName("RunReportBtn")
         self.btn_run.clicked.connect(self.run_report)
         self.btn_run.setEnabled(False)
-        self.btn_run.setStyleSheet("background-color: #00BCEB; color: white; " "font-weight: bold; padding: 5px 15px;")
+        self.btn_run.setCursor(Qt.CursorShape.PointingHandCursor)
+        filter_layout.addWidget(self.btn_run)
 
-        self.btn_print.setIcon(self.style().standardIcon(self.style().StandardPixmap.SP_FileIcon))
-        self.btn_print.clicked.connect(self.print_report)
-        self.btn_print.setEnabled(False)
+        self.filter_bar.setVisible(False)
+        content_layout.addWidget(self.filter_bar)
 
-        self.btn_export_excel.clicked.connect(self.export_excel)
-        self.btn_export_excel.setEnabled(False)
+        # Content Stack (empty state / data table)
+        self.content_stack = QStackedWidget()
+        self.content_stack.setObjectName("ReportContentStack")
 
-        self.btn_export_pdf.clicked.connect(self.export_pdf)
-        self.btn_export_pdf.setEnabled(False)
+        # Page 0: Empty State
+        empty_state = QWidget()
+        empty_state.setObjectName("ReportEmptyState")
+        empty_layout = QVBoxLayout(empty_state)
+        empty_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.btn_email = QPushButton("Email")
-        self.btn_email.clicked.connect(self.email_report)
-        self.btn_email.setEnabled(False)
+        icon_container = QHBoxLayout()
+        icon_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        empty_icon = _ReportPlaceholderIcon()
+        icon_container.addWidget(empty_icon)
+        empty_layout.addLayout(icon_container)
 
-        # Top Bar: Filters & Actions
-        top_bar = QHBoxLayout()
-        self.filter_widget = FilterWidget()
+        empty_text = QLabel("Select a Report")
+        empty_text.setObjectName("ReportEmptyText")
+        empty_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        empty_layout.addWidget(empty_text)
 
-        top_bar.addWidget(self.filter_widget)
-        top_bar.addWidget(self.btn_run)
-        right_layout.addLayout(top_bar)
+        empty_subtext = QLabel("Choose a report from the sidebar, " "configure filters, and run")
+        empty_subtext.setObjectName("ReportEmptySubtext")
+        empty_subtext.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        empty_layout.addWidget(empty_subtext)
 
-        # Center: Table View
+        self.content_stack.addWidget(empty_state)
+
+        # Page 1: Data Table
         self.table_view = QTableView()
+        self.table_view.setObjectName("ReportDataView")
         self.table_model = PandasModel()
         self.table_view.setModel(self.table_model)
         self.table_view.horizontalHeader().setStretchLastSection(True)
+        self.table_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self.table_view.setAlternatingRowColors(True)
-        right_layout.addWidget(self.table_view)
+        self.table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
+        self.table_view.verticalHeader().setVisible(False)
+        self.content_stack.addWidget(self.table_view)
 
-        # Bottom Bar: Exports
-        bottom_bar = QHBoxLayout()
-        bottom_bar.addStretch()
-        bottom_bar.addWidget(self.btn_print)
-        bottom_bar.addWidget(self.btn_export_excel)
-        bottom_bar.addWidget(self.btn_export_pdf)
-        bottom_bar.addWidget(self.btn_email)
-        right_layout.addLayout(bottom_bar)
+        self.content_stack.setCurrentIndex(0)
+        content_layout.addWidget(self.content_stack, 1)
 
-        splitter.addWidget(right_widget)
-        splitter.setSizes([200, 800])  # Initial sizes
+        # Action Bar (hidden until data exists)
+        self.action_bar = QWidget()
+        self.action_bar.setObjectName("ReportActionBar")
+        action_layout = QHBoxLayout(self.action_bar)
+        action_layout.setContentsMargins(24, 10, 24, 10)
+
+        self.row_count_label = QLabel()
+        self.row_count_label.setObjectName("ReportRowCount")
+        action_layout.addWidget(self.row_count_label)
+
+        action_layout.addStretch()
+
+        self.btn_print = QPushButton("Print")
+        self.btn_print.setObjectName("ReportPrintBtn")
+        self.btn_print.clicked.connect(self.print_report)
+        self.btn_print.setCursor(Qt.CursorShape.PointingHandCursor)
+        action_layout.addWidget(self.btn_print)
+
+        self.btn_export_excel = QPushButton("Excel")
+        self.btn_export_excel.setObjectName("ReportExportExcelBtn")
+        self.btn_export_excel.clicked.connect(self.export_excel)
+        self.btn_export_excel.setCursor(Qt.CursorShape.PointingHandCursor)
+        action_layout.addWidget(self.btn_export_excel)
+
+        self.btn_export_pdf = QPushButton("PDF")
+        self.btn_export_pdf.setObjectName("ReportExportPdfBtn")
+        self.btn_export_pdf.clicked.connect(self.export_pdf)
+        self.btn_export_pdf.setCursor(Qt.CursorShape.PointingHandCursor)
+        action_layout.addWidget(self.btn_export_pdf)
+
+        self.btn_email = QPushButton("Email")
+        self.btn_email.setObjectName("ReportEmailBtn")
+        self.btn_email.clicked.connect(self.email_report)
+        self.btn_email.setCursor(Qt.CursorShape.PointingHandCursor)
+        action_layout.addWidget(self.btn_email)
+
+        self.action_bar.setVisible(False)
+        content_layout.addWidget(self.action_bar)
+
+        splitter.addWidget(content)
+        splitter.setSizes([280, 720])
+        splitter.setHandleWidth(1)
+        sidebar.setMinimumWidth(260)
 
         main_layout.addWidget(splitter)
 
         # Loading overlay
         self._overlay = LoadingOverlay(self)
 
-    def populate_report_tree(self):
-        self.tree_widget.clear()
+    # ------------------------------------------------------------------
+    # Sidebar construction
+    # ------------------------------------------------------------------
+
+    def _populate_sidebar(self) -> None:
+        """Build category sections with report buttons."""
+        self._report_buttons.clear()
         categories = self.registry.get_all_categories()
 
-        for category in categories:
-            cat_item = QTreeWidgetItem(self.tree_widget)
-            cat_item.setText(0, category)
-            cat_item.setExpanded(True)
-
+        for idx, category in enumerate(categories):
             reports = self.registry.get_reports_by_category(category)
-            for report in reports:
-                rep_item = QTreeWidgetItem(cat_item)
-                rep_item.setText(0, report.name)
-                rep_item.setData(0, Qt.ItemDataRole.UserRole, report.id)
 
-    def on_report_selected(self, item, column):
-        report_id = item.data(0, Qt.ItemDataRole.UserRole)
-        if not report_id:
-            self.current_report = None
-            self.filter_widget.clear_filters()
-            self.btn_run.setEnabled(False)
+            # Category header row: label + count badge
+            if idx > 0:
+                self._nav_layout.addSpacing(8)
+
+            cat_row = QHBoxLayout()
+            cat_row.setContentsMargins(6, 8, 6, 4)
+
+            cat_label = QLabel(category.upper())
+            cat_label.setObjectName("ReportCategoryLabel")
+            cat_row.addWidget(cat_label)
+
+            cat_row.addStretch()
+
+            count_badge = QLabel(str(len(reports)))
+            count_badge.setObjectName("ReportCategoryCount")
+            count_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            count_badge.setFixedWidth(24)
+            cat_row.addWidget(count_badge)
+
+            self._nav_layout.addLayout(cat_row)
+
+            # Report item buttons
+            for report in reports:
+                btn = QPushButton(report.name)
+                btn.setObjectName("ReportNavItem")
+                btn.setCursor(Qt.CursorShape.PointingHandCursor)
+                btn.setSizePolicy(
+                    QSizePolicy.Policy.Expanding,
+                    QSizePolicy.Policy.Fixed,
+                )
+                btn.setProperty("report_id", report.id)
+                btn.setCheckable(True)
+                btn.setAutoExclusive(True)
+                btn.clicked.connect(lambda checked, r=report.id: self._on_nav_clicked(r))
+                self._nav_layout.addWidget(btn)
+                self._report_buttons.append(btn)
+
+    def _on_nav_clicked(self, report_id: str) -> None:
+        """Handle sidebar report button click."""
+        self.current_report = self.registry.get_report_by_id(report_id)
+        if not self.current_report:
             return
 
-        self.current_report = self.registry.get_report_by_id(report_id)
-        if self.current_report:
-            self.filter_widget.build_filters(self.current_report.get_filter_definitions())
-            self.btn_run.setEnabled(True)
-            # Clear previous results
-            self.table_model.set_data(pd.DataFrame())
-            self.btn_export_excel.setEnabled(False)
-            self.btn_export_pdf.setEnabled(False)
-            self.btn_print.setEnabled(False)
-            self.btn_email.setEnabled(False)
+        # Show header
+        self.report_title.setText(self.current_report.name)
+        self.report_description.setText(self.current_report.category)
+        self.report_header.setVisible(True)
+
+        # Show filter bar
+        self.filter_widget.build_filters(self.current_report.get_filter_definitions())
+        self.btn_run.setEnabled(True)
+        self.filter_bar.setVisible(True)
+
+        # Reset content to empty state
+        self.table_model.set_data(pd.DataFrame())
+        self.content_stack.setCurrentIndex(0)
+        self.action_bar.setVisible(False)
+
+    # ------------------------------------------------------------------
+    # Report execution
+    # ------------------------------------------------------------------
 
     def run_report(self):
         if not self.current_report:
@@ -178,29 +356,39 @@ class ReportViewer(QWidget):
         self._overlay.show_loading("Generating report...")
         self.btn_run.setEnabled(False)
 
-        # Run report generation in a background thread
         self._report_worker = ReportWorker(self.current_report, filters)
         self._report_worker.finished.connect(self._on_report_finished)
         self._report_worker.error.connect(self._on_report_error)
         self._report_worker.start()
 
-    def _on_report_finished(self, df):
+    def _on_report_finished(self, df: pd.DataFrame):
         self._overlay.hide_loading()
         self.btn_run.setEnabled(True)
         self.table_model.set_data(df)
         has_data = not df.empty
-        self.btn_export_excel.setEnabled(has_data)
-        self.btn_export_pdf.setEnabled(has_data)
-        self.btn_print.setEnabled(has_data)
-        self.btn_email.setEnabled(has_data)
 
-        if not has_data:
-            QMessageBox.information(self, "Report", "No data found for the selected filters.")
+        if has_data:
+            self.content_stack.setCurrentIndex(1)
+            row_count = len(df)
+            self.row_count_label.setText(f"{row_count} row{'s' if row_count != 1 else ''}")
+            self.action_bar.setVisible(True)
+        else:
+            self.content_stack.setCurrentIndex(0)
+            self.action_bar.setVisible(False)
+            QMessageBox.information(
+                self,
+                "Report",
+                "No data found for the selected filters.",
+            )
 
-    def _on_report_error(self, error_msg):
+    def _on_report_error(self, error_msg: str):
         self._overlay.hide_loading()
         self.btn_run.setEnabled(True)
         QMessageBox.critical(self, "Error", f"Failed to generate report: {error_msg}")
+
+    # ------------------------------------------------------------------
+    # Export / Print / Email
+    # ------------------------------------------------------------------
 
     def export_excel(self) -> None:
         df = self.table_model.get_dataframe()
@@ -225,7 +413,13 @@ class ReportViewer(QWidget):
         self._set_export_buttons_enabled(False)
         self._overlay.show_loading("Exporting...")
 
-        self._export_worker = ExportWorker(self.export_service, df, filepath, self.current_report.name, fmt)
+        self._export_worker = ExportWorker(
+            self.export_service,
+            df,
+            filepath,
+            self.current_report.name,
+            fmt,
+        )
         self._export_worker.finished.connect(self._on_export_finished)
         self._export_worker.error.connect(self._on_export_error)
         self._export_worker.start()
@@ -258,7 +452,6 @@ class ReportViewer(QWidget):
         dialog = QPrintDialog(printer, self)
 
         if dialog.exec() == QPrintDialog.DialogCode.Accepted:
-            # Create HTML content for printing
             import textwrap
 
             html_content = textwrap.dedent(
@@ -290,7 +483,9 @@ class ReportViewer(QWidget):
             </head>
             <body>
                 <h1>CB POS - {report_name}</h1>
-                <p style="text-align: center;">Generated on: {generated_on}</p>
+                <p style="text-align: center;">
+                    Generated on: {generated_on}
+                </p>
                 {table_html}
             </body>
             </html>
@@ -316,30 +511,26 @@ class ReportViewer(QWidget):
         if df.empty:
             return
 
-        # Get Recipient
         config = ConfigService.get_all()
         default_email = config.get("admin_email", "")
 
-        email, ok = QInputDialog.getText(self, "Email Report", "Recipient Email:", text=default_email)
+        email, ok = QInputDialog.getText(
+            self,
+            "Email Report",
+            "Recipient Email:",
+            text=default_email,
+        )
 
         if ok and email:
             try:
-                # Generate PDF to temp file
                 temp_dir = tempfile.gettempdir()
                 filename = f"{self.current_report.name.replace(' ', '_')}.pdf"
                 filepath = os.path.join(temp_dir, filename)
 
                 self.export_service.export_to_pdf(df, filepath, self.current_report.name)
 
-                # Send Email
-                body = f"Please find attached the {self.current_report.name}."
+                body = f"Please find attached the " f"{self.current_report.name}."
 
-                # Create worker and thread (fire and forget for now, but ideally track
-                # it)
-                # Note: In a real app, we should keep a reference to the worker/thread
-                # to prevent premature garbage collection if the local variable goes
-                # out of scope.
-                # The EmailService.send_email returns the thread, so we can store it.
                 self._email_thread = EmailService.send_email(
                     email,
                     f"Report: {self.current_report.name}",
@@ -352,7 +543,15 @@ class ReportViewer(QWidget):
                     ),
                 )
 
-                QMessageBox.information(self, "Email", "Email sending started in background...")
+                QMessageBox.information(
+                    self,
+                    "Email",
+                    "Email sending started in background...",
+                )
 
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to prepare email: {str(e)}")
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"Failed to prepare email: {str(e)}",
+                )

@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QHBoxLayout,
     QGraphicsDropShadowEffect,
+    QSizePolicy,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
@@ -22,7 +23,9 @@ class InfoCard(QFrame):
     ):
         super().__init__(parent)
         self.setObjectName("InfoCard")  # For QSS styling
-        self.setFixedSize(280, 140)  # Wider for better spacing
+        self.setMinimumSize(250, 140)
+        self.setMaximumHeight(160)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         # Store icon name for theme updates
         self.icon_name = icon_name

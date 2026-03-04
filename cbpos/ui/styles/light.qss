@@ -893,35 +893,7 @@ QLabel#InfoCardTitle {
     color: #6C757D;
 }
 
-/* Settings View */
-QListWidget#SettingsSidebar {
-    background-color: #F3F4F6;
-    border: none;
-    border-right: 1px solid #DEE2E6;
-
-}
-
-QListWidget#SettingsSidebar::item {
-    color: #495057;
-    padding: 12px 20px;
-    padding-left: 20px;
-    border: none;
-    border-left: 3px solid transparent;
-    background-color: transparent;
-}
-
-QListWidget#SettingsSidebar::item:hover {
-    background-color: #E9ECEF;
-    color: #212529;
-}
-
-QListWidget#SettingsSidebar::item:selected {
-    background-color: #E3F2FD;
-    color: #0D6EFD;
-    border-left: 3px solid #0D6EFD;
-    font-weight: bold;
-}
-
+/* Settings View — sidebar uses SidebarContainer + SidebarButton (shared with Management) */
 QWidget#SettingsContent {
     background-color: #FFFFFF;
     color: #212529;
@@ -1560,21 +1532,135 @@ QLabel#CardTrend[trendType="negative"] {
     color: #EF4444;  /* Clean red */
 }
 
-/* === CHART PLACEHOLDER === */
-QFrame#ChartPlaceholder {
-    background-color: #FFFFFF;  /* Same as cards */
+/* === DASHBOARD PANELS === */
+QFrame#MonthlyChartPanel, QFrame#YearlySummaryPanel,
+QFrame#TopProductsPanel, QFrame#HourlySalesPanel, QFrame#QuickStatsPanel,
+QFrame#TopCategoriesPanel, QFrame#TopCustomersPanel {
+    background-color: #FFFFFF;
     border: 1px solid #E5E7EB;
     border-radius: 8px;
 }
 
-QLabel#ChartPlaceholderText {
-    color: #9CA3AF;
+QFrame#PeriodHeader {
+    background-color: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+}
+
+QScrollArea#DashboardScroll {
+    background-color: transparent;
+    border: none;
+}
+
+/* === PANEL TITLES === */
+QLabel#PanelTitle {
+    color: #111827;
     font-size: 14px;
-    font-weight: normal;
+    font-weight: bold;
     background-color: transparent;
 }
 
-/* === SECTION TITLES === */
+QLabel#PanelSubtitle {
+    color: #9CA3AF;
+    font-size: 10px;
+    background-color: transparent;
+}
+
+/* === YEARLY SUMMARY === */
+QLabel#SummaryLabel {
+    color: #6B7280;
+    font-size: 11px;
+    text-transform: uppercase;
+    background-color: transparent;
+}
+
+QLabel#SummaryBigValue {
+    color: #111827;
+    font-size: 32px;
+    font-weight: bold;
+    background-color: transparent;
+}
+
+QLabel#SummaryHighlight {
+    color: #0066CC;
+    font-size: 18px;
+    font-weight: bold;
+    background-color: transparent;
+}
+
+QLabel#SummarySubValue {
+    color: #374151;
+    font-size: 14px;
+    background-color: transparent;
+}
+
+/* === QUICK STATS === */
+QLabel#StatLabel {
+    color: #6B7280;
+    font-size: 10px;
+    text-transform: uppercase;
+    background-color: transparent;
+}
+
+QLabel#StatBigValue {
+    color: #111827;
+    font-size: 26px;
+    font-weight: bold;
+    background-color: transparent;
+}
+
+QLabel#StatValue {
+    color: #111827;
+    font-size: 20px;
+    font-weight: bold;
+    background-color: transparent;
+}
+
+/* === YEAR NAV & PERIOD CONTROLS === */
+QToolButton#YearNavButton {
+    background-color: #F3F4F6;
+    color: #374151;
+    border: 1px solid #DEE2E6;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+QToolButton#YearNavButton:hover {
+    background-color: #E5E7EB;
+    color: #111827;
+}
+
+QDateEdit#PeriodDateEdit {
+    background-color: #F9FAFB;
+    color: #374151;
+    border: 1px solid #DEE2E6;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+QLabel#PeriodDash {
+    color: #9CA3AF;
+    font-size: 14px;
+    background-color: transparent;
+}
+
+QToolButton#PeriodRefreshBtn {
+    background-color: #F3F4F6;
+    color: #0066CC;
+    border: 1px solid #DEE2E6;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+QToolButton#PeriodRefreshBtn:hover {
+    background-color: #E5E7EB;
+}
+
+/* === SECTION TITLES (legacy compat) === */
 QLabel#SectionTitle {
     color: #111827;
     font-size: 14px;
@@ -1584,30 +1670,29 @@ QLabel#SectionTitle {
     background-color: transparent;
 }
 
-/* === ACTIVITY TABLE === */
-QTableWidget#ActivityTable {
+/* === DASHBOARD TABLES === */
+QTableWidget#DashboardTable {
     background-color: #FFFFFF;
-    border: 1px solid #E5E7EB;
-    border-radius: 8px;
+    border: none;
     gridline-color: transparent;
 }
 
-QTableWidget#ActivityTable::item {
+QTableWidget#DashboardTable::item {
     padding: 10px;
     border-bottom: 1px solid #F3F4F6;
     color: #374151;
 }
 
-QTableWidget#ActivityTable::item:selected {
+QTableWidget#DashboardTable::item:selected {
     background-color: #EFF6FF;
     color: #1E40AF;
 }
 
-QTableWidget#ActivityTable::item:hover {
+QTableWidget#DashboardTable::item:hover {
     background-color: #F9FAFB;
 }
 
-QTableWidget#ActivityTable QHeaderView::section {
+QTableWidget#DashboardTable QHeaderView::section {
     background-color: #F9FAFB;
     color: #4B5563;
     font-weight: bold;
@@ -1994,4 +2079,66 @@ QTableWidget#BackupTable QHeaderView::section, QTableWidget#ValuationTable QHead
 QLabel#RestoreWarning {
     background-color: rgba(220, 53, 69, 0.08); border: 1px solid #DC3545;
     border-radius: 6px; padding: 12px; color: #842029; font-size: 12px;
+}
+
+/* ── Label Print Dialog ── */
+QDialog#LabelPrintDialog {
+    background-color: #F8F9FA;
+}
+
+QTableWidget#LabelQueueTable {
+    font-size: 14px;
+}
+
+QTableWidget#LabelQueueTable::item {
+    padding: 8px;
+}
+
+/* ── Label Preview Dialog ── */
+QDialog#LabelPreviewDialog {
+    background-color: #E9ECEF;
+}
+
+QDialog#LabelPreviewDialog QLabel {
+    background: transparent;
+}
+
+QLabel#LabelPreviewHeader {
+    font-size: 14px;
+    font-weight: bold;
+    color: #0D6EFD;
+}
+
+QLabel#LabelPreviewHint {
+    font-size: 11px;
+    color: #6C757D;
+    font-style: italic;
+}
+
+/* ── CSV Import Dialog ── */
+QDialog#CsvImportDialog {
+    background-color: #F8F9FA;
+}
+
+QDialog#CsvImportDialog QLabel {
+    background: transparent;
+    color: #212529;
+}
+
+/* ── Toggle Hint — compact inline description below checkboxes ── */
+/* Reusable: set objectName("ToggleHint") on any QLabel used as a toggle hint */
+QLabel#ToggleHint {
+    color: #8C959F;
+    font-size: 11px;
+    background: transparent;
+    padding: 0px;
+}
+
+/* ── Product Image Preview placeholder ── */
+QLabel#ProductImagePreview {
+    border: 1px solid #DEE2E6;
+    background-color: #FFFFFF;
+    color: #8C959F;
+    border-radius: 4px;
+    font-size: 12px;
 }

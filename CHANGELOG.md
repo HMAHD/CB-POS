@@ -2,6 +2,100 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.8.8] - 2026-03-04
+
+### Changed — Label Print Dialog, Product Editor & CSV Import UX Overhaul
+
+#### Label Print Dialog (`label_print_dialog.py`)
+- **QCompleter autocomplete**: Type-ahead search by product name or barcode (MatchContains, case-insensitive, max 10 items).
+- **QStyledItemDelegate for Qty column**: Replaced setCellWidget approach with delegate — proper QSS rendering, validated integer input (1–999), centered bold text.
+- **Preview Label button**: Opens thermal-label preview for selected product.
+- **Completer + Enter key fix**: `activated` signal flag prevents double-add when selecting with arrow keys + Enter.
+
+#### Label Preview Dialog (`label_preview_dialog.py`) — New
+- **Thermal-label style preview**: White card on dark background, QPainter-rendered product name (bold), CODE128-style barcode bars (SHA256-based pattern), barcode text, and large price.
+- **Theme-aware**: Uses `_get_text_color()` for dialog chrome; label card is always white.
+- ObjectNames: `LabelPreviewDialog`, `LabelPreviewHeader`, `LabelPreviewHint`, `LabelCard`.
+
+#### CSV Import Dialog (`csv_import_dialog.py`) — New
+- **Two-step flow**: Step 1 downloads CSV template (headers + example row) via Save dialog; Step 2 picks and imports filled CSV with progress bar and results summary.
+- **Background import**: Uses `CsvImportWorker` thread with progress/finished/error signals.
+- Replaced direct `QFileDialog.getOpenFileName` in `inventory_view.py`.
+
+#### Product Editor (`product_editor.py`)
+- **Stock fields**: Replaced broken QDoubleSpinBox (buttons overlap under QSS) with QLineEdit + QDoubleValidator for Stock Qty, Reorder Point, Preferred Qty.
+- **Supplier + Unit side-by-side**: Horizontal layout saves vertical space; works at small window sizes.
+- **Item Type inline hints**: Checkbox + em-dash hint on same row (e.g. `☐ Weighted Item — sold by weight, cashier enters kg at checkout`). Reusable `ToggleHint` objectName pattern.
+- **Image tab centered**: Placeholder and buttons centered both vertically and horizontally. Removed inline style — uses `ProductImagePreview` QSS objectName.
+
+#### QSS (dark.qss + light.qss)
+- Added styles for: `LabelPrintDialog`, `LabelQueueTable`, `LabelPreviewDialog`, `LabelPreviewHeader`, `LabelPreviewHint`, `CsvImportDialog`, `CsvImportSeparator`, `ToggleHint`, `ProductImagePreview`.
+
+#### Import Service (`import_service.py`)
+- Added `generate_template()` static method returning CSV headers + example row.
+
+## [0.8.7] - 2026-03-04
+
+### Changed — Comprehensive Dashboard with Animated Charts
+
+#### Dashboard View — Full Redesign
+- **Monthly Sales bar chart**: 12-month bar chart with per-month colors, year navigation arrows (◀ ▶), animated bar growth.
+- **Yearly Summary panel**: Total Sales (large display) + Top Performing Month name and amount.
+- **Date range selector**: Periodic Reports header with from/to date pickers and refresh button.
+- **Top Products table**: Top 5 products by revenue within selected date range.
+- **Hourly Sales bar chart**: Business hours (6AM–10PM) distribution with animated bars.
+- **Quick Stats panel**: Average Order Value, Items Sold, Unique Customers, Transactions — all for selected period.
+- **Top Selling Groups donut chart**: Category revenue breakdown with animated sweep, legend with percentages.
+- **Top Customers horizontal bar chart**: Top 5 customers by spend with animated bars.
+- **Auto-refresh on view switch**: `showEvent` triggers data reload.
+
+#### Custom Chart Widgets (`cbpos/ui/widgets/charts.py`)
+- **VerticalBarChart**: QPainter-rendered with rounded-top bars, Y-axis labels, grid lines, value labels on hover, grow animation (800ms OutCubic).
+- **DonutChart**: Annular segments with sweep animation (900ms), center total, right-side legend with color swatches and percentages.
+- **HorizontalBarChart**: Horizontal bars with labels, value text, grow animation (700ms).
+- All charts are theme-aware via ThemeService (text/grid colors adapt to dark/light).
+
+#### Dashboard Service — 7 New Methods
+- `get_monthly_sales(year)` — 12-month totals using SQLite strftime.
+- `get_yearly_summary(year)` — Total + top performing month.
+- `get_period_top_products(start, end)` — Products by revenue in date range.
+- `get_hourly_sales(start, end)` — Hourly distribution (6AM–10PM).
+- `get_period_stats(start, end)` — Avg order, items sold, unique customers, txn count.
+- `get_top_categories(start, end)` — Categories by revenue.
+- `get_top_customers(start, end)` — Customers by spend.
+
+#### QSS
+- Added styles for 7 dashboard panels, yearly summary labels, quick stats, year nav buttons, period controls, and DashboardTable.
+- Both dark.qss and light.qss fully themed.
+
+## [0.8.6] - 2026-03-03
+
+### Changed — Unified Settings Sidebar & Dashboard Redesign
+
+#### Settings View
+- **Rebuilt sidebar to match Management view**: Replaced QListWidget with QFrame + SidebarButton pattern — CB POS logo, hamburger collapse/expand animation (250px ↔ 70px), theme-aware icons.
+- **Admin-only buttons**: Data Safety and Admin Tools hidden for non-admin users via `set_user()`.
+- **Theme callback**: Sidebar icons and logo update on theme switch.
+
+#### Dashboard View
+- **Real-time KPI cards**: Today's Sales, Transactions, Average Sale, Items Sold — with yesterday % trend comparison.
+- **Recent Transactions panel**: Last 10 sales with time, doc#, customer, payment method, total.
+- **Top Selling Today panel**: Top 5 products by quantity with revenue.
+- **Payment Methods panel**: Breakdown of payment method totals for today.
+- **Removed**: Chart placeholder and hardcoded activity table.
+- **Auto-refresh**: Dashboard refreshes on every `showEvent`.
+
+#### Dashboard Service
+- Added `get_yesterday_kpis()`, `get_recent_sales()`, `get_top_selling_today()`, `get_payment_breakdown()`.
+- Extended `get_kpis()` with `items_sold` and `avg_sale`.
+
+#### InfoCard Widget
+- Changed from fixed 280×140 to responsive sizing (min 250×140, max height 160, expanding width).
+
+#### QSS
+- Added `RecentSalesPanel`, `TopProductsPanel`, `PaymentBreakdownPanel` + matching table styles.
+- Removed dead `QListWidget#SettingsSidebar`, `QFrame#ChartPlaceholder`, `QTableWidget#ActivityTable` rules.
+
 ## [0.8.5] - 2026-03-03
 
 ### Fixed — Code Review Issues (#83–#96)

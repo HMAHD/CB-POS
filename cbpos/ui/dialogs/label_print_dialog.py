@@ -1,5 +1,8 @@
 """
 Dialog for selecting products and printing barcode labels.
+
+Uses QStyledItemDelegate for the Qty column so that editing and rendering
+go through Qt's model/view pipeline — QSS styling applies correctly.
 """
 
 import logging
@@ -15,6 +18,8 @@ from PyQt6.QtWidgets import (
     QLabel,
     QMessageBox,
     QCompleter,
+    QStyledItemDelegate,
+    QWidget,
 )
 from PyQt6.QtCore import Qt, QStringListModel
 from PyQt6.QtGui import QIntValidator
@@ -25,7 +30,56 @@ from cbpos.core.utils.formatters import format_currency
 
 logger = logging.getLogger(__name__)
 
-TABLE_ROW_HEIGHT = 44
+
+class _QtyDelegate(QStyledItemDelegate):
+    """Delegate that renders Qty cells as centered bold text and provides
+    a validated QLineEdit editor accepting integers 1-999."""
+
+    def createEditor(self, parent: QWidget, option, index) -> QLineEdit:
+        editor = QLineEdit(parent)
+        editor.setValidator(QIntValidator(1, 999))
+        editor.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        editor.setFrame(False)
+
+        # Delegate editors inside a globally-styled QTableWidget cannot
+        # be reached by QSS selectors or QPalette (Qt ignores palette
+        # when a stylesheet is active on any ancestor).  setStyleSheet
+        # on the editor itself is the only reliable override — this is
+        # the standard Qt pattern for delegate editors.
+        from cbpos.core.services.theme_service import ThemeService
+
+        if ThemeService.current_theme.lower() == "light":
+            editor.setStyleSheet(
+                "QLineEdit { color: #212529; background: #FFFFFF;"
+                " font-size: 15px; font-weight: bold;"
+                " padding: 2px 4px; }"
+            )
+        else:
+            editor.setStyleSheet(
+                "QLineEdit { color: #FFFFFF; background: #252526;"
+                " font-size: 15px; font-weight: bold;"
+                " padding: 2px 4px; }"
+            )
+        return editor
+
+    def setEditorData(self, editor: QLineEdit, index) -> None:
+        value = index.data(Qt.ItemDataRole.DisplayRole)
+        editor.setText(value if value else "1")
+        editor.selectAll()
+
+    def setModelData(self, editor: QLineEdit, model, index) -> None:
+        text = editor.text().strip()
+        try:
+            val = max(1, int(text)) if text else 1
+        except ValueError:
+            val = 1
+        model.setData(index, str(val), Qt.ItemDataRole.EditRole)
+
+    def displayText(self, value, locale) -> str:
+        try:
+            return str(max(1, int(value))) if value else "1"
+        except (ValueError, TypeError):
+            return "1"
 
 
 class LabelPrintDialog(QDialog):
@@ -37,7 +91,7 @@ class LabelPrintDialog(QDialog):
         self.setMinimumSize(700, 500)
         self.setObjectName("LabelPrintDialog")
         self.product_service = ProductService()
-        self.label_items = []  # List of {'product': Product, 'quantity': int}
+        self.label_items: list[dict] = []
         self.products_cache: dict = {}
         self._completer_activated = False
         self._init_ui()
@@ -58,7 +112,6 @@ class LabelPrintDialog(QDialog):
         self.product_completer.setMaxVisibleItems(10)
         self.search_input.setCompleter(self.product_completer)
 
-        # Connect completer activated (user picked from dropdown)
         self.product_completer.activated.connect(self._on_completer_activated)
         self.search_input.returnPressed.connect(self._on_return_pressed)
         search_layout.addWidget(self.search_input, 1)
@@ -75,22 +128,20 @@ class LabelPrintDialog(QDialog):
         self.table.setObjectName("LabelQueueTable")
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["Product", "Barcode", "Price", "Qty"])
-        self.table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.Stretch
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            1, QHeaderView.ResizeMode.ResizeToContents
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            2, QHeaderView.ResizeMode.ResizeToContents
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            3, QHeaderView.ResizeMode.Fixed
-        )
-        self.table.setColumnWidth(3, 80)
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(3, 100)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
+
+        # Qty column: editable via delegate; other columns: read-only
+        self._qty_delegate = _QtyDelegate(self.table)
+        self.table.setItemDelegateForColumn(3, self._qty_delegate)
+        self.table.cellChanged.connect(self._on_cell_changed)
+
         layout.addWidget(self.table)
 
         # Summary + actions
@@ -121,10 +172,12 @@ class LabelPrintDialog(QDialog):
 
         layout.addLayout(btn_layout)
 
+    # ── Product loading & autocomplete ──
+
     def _load_products(self) -> None:
         """Load all active products into cache and completer."""
         products = self.product_service.get_all_products()
-        names = []
+        names: list[str] = []
         for p in products:
             key = f"{p.name_en} [{p.barcode}]"
             names.append(key)
@@ -135,17 +188,19 @@ class LabelPrintDialog(QDialog):
         self.product_completer.setModel(model)
 
     def _on_completer_activated(self, text: str) -> None:
-        """Called when user selects an item from the completer dropdown."""
+        """User picked from dropdown — add immediately."""
         self._completer_activated = True
         self.search_input.setText(text)
         self._add_product()
 
     def _on_return_pressed(self) -> None:
-        """Handle Enter key — skip if completer just activated (already handled)."""
+        """Handle Enter — skip if completer already handled it."""
         if self._completer_activated:
             self._completer_activated = False
             return
         self._add_product()
+
+    # ── Add / choose product ──
 
     def _add_product(self) -> None:
         """Search for product and add to label queue."""
@@ -153,19 +208,17 @@ class LabelPrintDialog(QDialog):
         if not query:
             return
 
-        # Check cache first (exact match from completer or barcode)
         product = self.products_cache.get(query)
 
         if not product:
-            # Fall back to service search
             products = self.product_service.search_products(query, mode="ALL")
-
             if not products:
                 QMessageBox.warning(
-                    self, "Not Found", f"No product found for '{query}'."
+                    self,
+                    "Not Found",
+                    f"No product found for '{query}'.",
                 )
                 return
-
             if len(products) == 1:
                 product = products[0]
             else:
@@ -173,7 +226,7 @@ class LabelPrintDialog(QDialog):
                 if product is None:
                     return
 
-        # Check if already in list — increment qty
+        # Already in list → increment qty
         for item in self.label_items:
             if item["product"].id == product.id:
                 item["quantity"] += 1
@@ -188,26 +241,16 @@ class LabelPrintDialog(QDialog):
         self.search_input.setFocus()
 
     def _choose_product(self, products) -> object:
-        """Show a selection dialog when multiple products match."""
-        from PyQt6.QtWidgets import (
-            QDialog,
-            QVBoxLayout,
-            QTableWidget,
-            QTableWidgetItem,
-            QHeaderView,
-        )
-
+        """Show selection dialog when multiple products match."""
         dlg = QDialog(self)
         dlg.setWindowTitle("Select Product")
         dlg.setMinimumSize(500, 300)
-        layout = QVBoxLayout(dlg)
+        lay = QVBoxLayout(dlg)
 
         tbl = QTableWidget()
         tbl.setColumnCount(3)
         tbl.setHorizontalHeaderLabels(["Name", "Barcode", "Price"])
-        tbl.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.Stretch
-        )
+        tbl.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         tbl.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
@@ -219,68 +262,69 @@ class LabelPrintDialog(QDialog):
             tbl.setItem(row, 2, QTableWidgetItem(format_currency(p.price)))
 
         tbl.doubleClicked.connect(dlg.accept)
-        layout.addWidget(tbl)
+        lay.addWidget(tbl)
 
-        btn_layout = QHBoxLayout()
+        btn_lay = QHBoxLayout()
         btn_select = QPushButton("Select")
         btn_select.setProperty("class", "primary")
         btn_select.clicked.connect(dlg.accept)
         btn_cancel = QPushButton("Cancel")
         btn_cancel.clicked.connect(dlg.reject)
-        btn_layout.addStretch()
-        btn_layout.addWidget(btn_select)
-        btn_layout.addWidget(btn_cancel)
-        layout.addLayout(btn_layout)
+        btn_lay.addStretch()
+        btn_lay.addWidget(btn_select)
+        btn_lay.addWidget(btn_cancel)
+        lay.addLayout(btn_lay)
 
         if dlg.exec() and tbl.currentRow() >= 0:
             return products[tbl.currentRow()]
         return None
 
-    def _refresh_table(self) -> None:
-        """Rebuild the table from label_items."""
-        self.table.setRowCount(0)
-        total_labels = 0
+    # ── Table management ──
 
-        for i, item in enumerate(self.label_items):
+    def _refresh_table(self) -> None:
+        """Rebuild table from label_items."""
+        self.table.blockSignals(True)
+        self.table.setRowCount(0)
+
+        for item in self.label_items:
             row = self.table.rowCount()
             self.table.insertRow(row)
-            self.table.setRowHeight(row, TABLE_ROW_HEIGHT)
+            self.table.setRowHeight(row, 44)
 
-            self.table.setItem(
-                row, 0, QTableWidgetItem(item["product"].name_en)
-            )
-            self.table.setItem(
-                row, 1, QTableWidgetItem(item["product"].barcode)
-            )
-            self.table.setItem(
-                row, 2, QTableWidgetItem(format_currency(item["product"].price))
-            )
+            # Read-only columns
+            for col, text in (
+                (0, item["product"].name_en),
+                (1, item["product"].barcode),
+                (2, format_currency(item["product"].price)),
+            ):
+                cell = QTableWidgetItem(text)
+                cell.setFlags(cell.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.table.setItem(row, col, cell)
 
-            # Qty input (simple text field with proper height)
-            qty_input = QLineEdit()
-            qty_input.setObjectName("LabelQtyInput")
-            qty_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            qty_input.setValidator(QIntValidator(1, 999))
-            qty_input.setText(str(item["quantity"]))
-            qty_input.textChanged.connect(
-                lambda text, idx=i: self._update_qty(idx, text)
-            )
-            self.table.setCellWidget(row, 3, qty_input)
+            # Editable Qty column — plain QTableWidgetItem,
+            # rendered and edited via _QtyDelegate
+            qty_item = QTableWidgetItem(str(item["quantity"]))
+            qty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
+            self.table.setItem(row, 3, qty_item)
 
-            total_labels += item["quantity"]
+        self.table.blockSignals(False)
+        self._update_total()
 
-        self.lbl_total.setText(f"Total labels: {total_labels}")
+    def _on_cell_changed(self, row: int, col: int) -> None:
+        """Sync edited Qty cell back to label_items."""
+        if col != 3 or row >= len(self.label_items):
+            return
+        text = self.table.item(row, 3).text()
+        try:
+            value = max(1, int(text)) if text else 1
+        except ValueError:
+            value = 1
+        self.label_items[row]["quantity"] = value
+        self._update_total()
 
-    def _update_qty(self, index: int, text: str) -> None:
-        """Update quantity for item at index."""
-        if 0 <= index < len(self.label_items):
-            try:
-                value = int(text) if text else 1
-            except ValueError:
-                value = 1
-            self.label_items[index]["quantity"] = max(1, value)
-            total = sum(item["quantity"] for item in self.label_items)
-            self.lbl_total.setText(f"Total labels: {total}")
+    def _update_total(self) -> None:
+        total = sum(item["quantity"] for item in self.label_items)
+        self.lbl_total.setText(f"Total labels: {total}")
 
     def _remove_selected(self) -> None:
         """Remove selected product from label queue."""
@@ -294,21 +338,26 @@ class LabelPrintDialog(QDialog):
         self.label_items.clear()
         self._refresh_table()
 
+    # ── Preview & Print ──
+
     def _preview_label(self) -> None:
         """Show a visual preview of a label for the selected product."""
         if not self.label_items:
             QMessageBox.warning(
-                self, "No Items", "Add a product first to preview its label."
+                self,
+                "No Items",
+                "Add a product first to preview its label.",
             )
             return
 
         row = self.table.currentRow()
         if row < 0:
             row = 0
-
         product = self.label_items[row]["product"]
 
-        from cbpos.ui.dialogs.label_preview_dialog import LabelPreviewDialog
+        from cbpos.ui.dialogs.label_preview_dialog import (
+            LabelPreviewDialog,
+        )
 
         dlg = LabelPreviewDialog(product, parent=self)
         dlg.exec()
@@ -317,7 +366,9 @@ class LabelPrintDialog(QDialog):
         """Generate and send label print commands."""
         if not self.label_items:
             QMessageBox.warning(
-                self, "Empty", "No products to print labels for."
+                self,
+                "Empty",
+                "No products to print labels for.",
             )
             return
 
@@ -328,7 +379,9 @@ class LabelPrintDialog(QDialog):
 
             total = sum(item["quantity"] for item in self.label_items)
             QMessageBox.information(
-                self, "Printing", f"Sending {total} labels to printer..."
+                self,
+                "Printing",
+                f"Sending {total} labels to printer...",
             )
         except Exception as e:
             logger.error(f"Label printing failed: {e}")

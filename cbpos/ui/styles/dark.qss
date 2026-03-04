@@ -2163,3 +2163,65 @@ QLabel#RestoreWarning {
     background-color: rgba(255, 65, 54, 0.12); border: 1px solid #FF4136;
     border-radius: 6px; padding: 12px; color: #FF8C85; font-size: 12px;
 }
+
+/* ── Label Print Dialog ── */
+QDialog#LabelPrintDialog {
+    background-color: #1E1E1E;
+}
+
+QTableWidget#LabelQueueTable {
+    font-size: 14px;
+}
+
+QTableWidget#LabelQueueTable::item {
+    padding: 8px;
+}
+
+/* ── Label Preview Dialog ── */
+QDialog#LabelPreviewDialog {
+    background-color: #001F3F;
+}
+
+QDialog#LabelPreviewDialog QLabel {
+    background: transparent;
+}
+
+QLabel#LabelPreviewHeader {
+    font-size: 14px;
+    font-weight: bold;
+    color: #00BCEB;
+}
+
+QLabel#LabelPreviewHint {
+    font-size: 11px;
+    color: #888888;
+    font-style: italic;
+}
+
+/* ── CSV Import Dialog ── */
+QDialog#CsvImportDialog {
+    background-color: #1E1E1E;
+}
+
+QDialog#CsvImportDialog QLabel {
+    background: transparent;
+    color: #E0E0E0;
+}
+
+/* ── Toggle Hint — compact inline description below checkboxes ── */
+/* Reusable: set objectName("ToggleHint") on any QLabel used as a toggle hint */
+QLabel#ToggleHint {
+    color: #6E6E6E;
+    font-size: 11px;
+    background: transparent;
+    padding: 0px;
+}
+
+/* ── Product Image Preview placeholder ── */
+QLabel#ProductImagePreview {
+    border: 1px solid #3E3E42;
+    background-color: #252526;
+    color: #6E6E6E;
+    border-radius: 4px;
+    font-size: 12px;
+}

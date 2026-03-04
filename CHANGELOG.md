@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.8.8] - 2026-03-04
+
+### Changed — Label Print Dialog, Product Editor & CSV Import UX Overhaul
+
+#### Label Print Dialog (`label_print_dialog.py`)
+- **QCompleter autocomplete**: Type-ahead search by product name or barcode (MatchContains, case-insensitive, max 10 items).
+- **QStyledItemDelegate for Qty column**: Replaced setCellWidget approach with delegate — proper QSS rendering, validated integer input (1–999), centered bold text.
+- **Preview Label button**: Opens thermal-label preview for selected product.
+- **Completer + Enter key fix**: `activated` signal flag prevents double-add when selecting with arrow keys + Enter.
+
+#### Label Preview Dialog (`label_preview_dialog.py`) — New
+- **Thermal-label style preview**: White card on dark background, QPainter-rendered product name (bold), CODE128-style barcode bars (SHA256-based pattern), barcode text, and large price.
+- **Theme-aware**: Uses `_get_text_color()` for dialog chrome; label card is always white.
+- ObjectNames: `LabelPreviewDialog`, `LabelPreviewHeader`, `LabelPreviewHint`, `LabelCard`.
+
+#### CSV Import Dialog (`csv_import_dialog.py`) — New
+- **Two-step flow**: Step 1 downloads CSV template (headers + example row) via Save dialog; Step 2 picks and imports filled CSV with progress bar and results summary.
+- **Background import**: Uses `CsvImportWorker` thread with progress/finished/error signals.
+- Replaced direct `QFileDialog.getOpenFileName` in `inventory_view.py`.
+
+#### Product Editor (`product_editor.py`)
+- **Stock fields**: Replaced broken QDoubleSpinBox (buttons overlap under QSS) with QLineEdit + QDoubleValidator for Stock Qty, Reorder Point, Preferred Qty.
+- **Supplier + Unit side-by-side**: Horizontal layout saves vertical space; works at small window sizes.
+- **Item Type inline hints**: Checkbox + em-dash hint on same row (e.g. `☐ Weighted Item — sold by weight, cashier enters kg at checkout`). Reusable `ToggleHint` objectName pattern.
+- **Image tab centered**: Placeholder and buttons centered both vertically and horizontally. Removed inline style — uses `ProductImagePreview` QSS objectName.
+
+#### QSS (dark.qss + light.qss)
+- Added styles for: `LabelPrintDialog`, `LabelQueueTable`, `LabelPreviewDialog`, `LabelPreviewHeader`, `LabelPreviewHint`, `CsvImportDialog`, `CsvImportSeparator`, `ToggleHint`, `ProductImagePreview`.
+
+#### Import Service (`import_service.py`)
+- Added `generate_template()` static method returning CSV headers + example row.
+
 ## [0.8.7] - 2026-03-04
 
 ### Changed — Comprehensive Dashboard with Animated Charts

@@ -14,8 +14,8 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QProgressBar,
     QMessageBox,
+    QFrame,
 )
-from PyQt6.QtCore import Qt
 from cbpos.core.services.import_service import ImportService
 from cbpos.ui.workers import CsvImportWorker
 
@@ -44,10 +44,7 @@ class CsvImportDialog(QDialog):
         step1_label.setProperty("class", "bold")
         layout.addWidget(step1_label)
 
-        desc = QLabel(
-            "Download the CSV template, fill in your product data,\n"
-            "then import the completed file below."
-        )
+        desc = QLabel("Download the CSV template, fill in your product data,\n" "then import the completed file below.")
         desc.setWordWrap(True)
         layout.addWidget(desc)
 
@@ -56,9 +53,9 @@ class CsvImportDialog(QDialog):
         layout.addWidget(btn_download)
 
         # Separator
-        sep = QLabel("")
-        sep.setFixedHeight(1)
-        sep.setStyleSheet("background-color: #555;")
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setObjectName("CsvImportSeparator")
         layout.addWidget(sep)
 
         # --- Step 2: Import ---
@@ -72,7 +69,7 @@ class CsvImportDialog(QDialog):
         file_layout.addWidget(self.btn_choose)
 
         self.file_label = QLabel("No file selected")
-        self.file_label.setStyleSheet("color: #888;")
+        self.file_label.setProperty("class", "muted")
         file_layout.addWidget(self.file_label, 1)
         layout.addLayout(file_layout)
 
@@ -115,7 +112,8 @@ class CsvImportDialog(QDialog):
             content = ImportService.generate_template()
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(content)
-            QMessageBox.information(self, "Saved", f"Template saved to:\n{file_path}")
+            msg = "Template saved to:\n" + str(file_path)
+            QMessageBox.information(self, "Saved", msg)
         except Exception as e:
             logger.error("Failed to save template: %s", e)
             QMessageBox.critical(self, "Error", f"Could not save template: {e}")
@@ -126,7 +124,7 @@ class CsvImportDialog(QDialog):
         if file_path:
             self._selected_file = file_path
             self.file_label.setText(Path(file_path).name)
-            self.file_label.setStyleSheet("")
+            self.file_label.setProperty("class", "")
             self.btn_import.setEnabled(True)
 
     def _start_import(self) -> None:
@@ -157,19 +155,17 @@ class CsvImportDialog(QDialog):
         self.progress_bar.setVisible(False)
         self.btn_choose.setEnabled(True)
 
-        self.result_label.setText(
-            f"Success: {results['success']}  |  "
-            f"Failed: {results['failed']}  |  "
-            f"Skipped: {results['skipped']}"
-        )
+        success = results["success"]
+        failed = results["failed"]
+        skipped = results["skipped"]
+        summary = f"Success: {success} | Failed: {failed} | Skipped: {skipped}"
+        self.result_label.setText(summary)
         self.result_label.setVisible(True)
 
         QMessageBox.information(
             self,
             "Import Complete",
-            f"Success: {results['success']}\n"
-            f"Failed: {results['failed']}\n"
-            f"Skipped (duplicates): {results['skipped']}",
+            f"Success: {success}\n" f"Failed: {failed}\n" f"Skipped (duplicates): {skipped}",
         )
         self.accept()
 
@@ -177,4 +173,5 @@ class CsvImportDialog(QDialog):
         self.progress_bar.setVisible(False)
         self.btn_import.setEnabled(True)
         self.btn_choose.setEnabled(True)
-        QMessageBox.critical(self, "Import Failed", f"CSV import failed:\n{error_msg}")
+        msg = "CSV import failed:\n" + error_msg
+        QMessageBox.critical(self, "Import Failed", msg)

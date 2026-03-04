@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.8.7] - 2026-03-04
+
+### Changed — Comprehensive Dashboard with Animated Charts
+
+#### Dashboard View — Full Redesign
+- **Monthly Sales bar chart**: 12-month bar chart with per-month colors, year navigation arrows (◀ ▶), animated bar growth.
+- **Yearly Summary panel**: Total Sales (large display) + Top Performing Month name and amount.
+- **Date range selector**: Periodic Reports header with from/to date pickers and refresh button.
+- **Top Products table**: Top 5 products by revenue within selected date range.
+- **Hourly Sales bar chart**: Business hours (6AM–10PM) distribution with animated bars.
+- **Quick Stats panel**: Average Order Value, Items Sold, Unique Customers, Transactions — all for selected period.
+- **Top Selling Groups donut chart**: Category revenue breakdown with animated sweep, legend with percentages.
+- **Top Customers horizontal bar chart**: Top 5 customers by spend with animated bars.
+- **Auto-refresh on view switch**: `showEvent` triggers data reload.
+
+#### Custom Chart Widgets (`cbpos/ui/widgets/charts.py`)
+- **VerticalBarChart**: QPainter-rendered with rounded-top bars, Y-axis labels, grid lines, value labels on hover, grow animation (800ms OutCubic).
+- **DonutChart**: Annular segments with sweep animation (900ms), center total, right-side legend with color swatches and percentages.
+- **HorizontalBarChart**: Horizontal bars with labels, value text, grow animation (700ms).
+- All charts are theme-aware via ThemeService (text/grid colors adapt to dark/light).
+
+#### Dashboard Service — 7 New Methods
+- `get_monthly_sales(year)` — 12-month totals using SQLite strftime.
+- `get_yearly_summary(year)` — Total + top performing month.
+- `get_period_top_products(start, end)` — Products by revenue in date range.
+- `get_hourly_sales(start, end)` — Hourly distribution (6AM–10PM).
+- `get_period_stats(start, end)` — Avg order, items sold, unique customers, txn count.
+- `get_top_categories(start, end)` — Categories by revenue.
+- `get_top_customers(start, end)` — Customers by spend.
+
+#### QSS
+- Added styles for 7 dashboard panels, yearly summary labels, quick stats, year nav buttons, period controls, and DashboardTable.
+- Both dark.qss and light.qss fully themed.
+
 ## [0.8.6] - 2026-03-03
 
 ### Changed — Unified Settings Sidebar & Dashboard Redesign

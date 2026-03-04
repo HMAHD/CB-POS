@@ -1,5 +1,15 @@
+"""
+Dashboard view — real-time business insights with animated charts.
+
+Layout:
+  Row 1: Monthly Sales bar chart + Yearly Summary panel
+  Row 2: Periodic Reports header with date range selector
+  Row 3: Top Products table + Hourly Sales chart + Quick Stats
+  Row 4: Top Categories donut + Top Customers horizontal bars
+"""
+
 import logging
-from decimal import Decimal
+from datetime import date
 
 from PyQt6.QtWidgets import (
     QWidget,
@@ -10,10 +20,19 @@ from PyQt6.QtWidgets import (
     QTableWidget,
     QHeaderView,
     QTableWidgetItem,
-    QGridLayout,
+    QToolButton,
+    QDateEdit,
+    QScrollArea,
 )
-from PyQt6.QtCore import Qt
-from cbpos.ui.widgets.info_card import InfoCard
+from PyQt6.QtCore import Qt, QDate
+
+from cbpos.ui.widgets.charts import (
+    VerticalBarChart,
+    DonutChart,
+    HorizontalBarChart,
+    MONTH_COLORS,
+    HOURLY_COLORS,
+)
 from cbpos.core.utils.formatters import format_currency
 
 logger = logging.getLogger(__name__)
@@ -22,202 +41,412 @@ logger = logging.getLogger(__name__)
 class DashboardView(QWidget):
     def __init__(self):
         super().__init__()
+        self._current_year = date.today().year
         self.init_ui()
 
-    def init_ui(self):
-        layout = QVBoxLayout(self)
+    # ------------------------------------------------------------------
+    # UI construction
+    # ------------------------------------------------------------------
+
+    def init_ui(self) -> None:
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        # Scroll area for the dashboard content
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setObjectName("DashboardScroll")
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+
+        container = QWidget()
+        layout = QVBoxLayout(container)
         layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(20)
+        layout.setSpacing(16)
 
-        # --- KPI Cards Row ---
-        cards_layout = QGridLayout()
-        cards_layout.setSpacing(20)
+        # === ROW 1: Monthly Chart + Yearly Summary ===
+        row1 = QHBoxLayout()
+        row1.setSpacing(16)
+        self._build_monthly_panel(row1)
+        self._build_yearly_summary(row1)
+        layout.addLayout(row1, 3)
 
-        self.card_sales = InfoCard(
-            "Today's Sales",
-            format_currency(0),
-            "fa5s.rupee-sign",
-            "Loading...",
-            True,
-        )
-        cards_layout.addWidget(self.card_sales, 0, 0)
+        # === ROW 2: Periodic Reports Header ===
+        self._build_period_header(layout)
 
-        self.card_transactions = InfoCard("Transactions", "0", "fa5s.receipt", "Loading...", True)
-        cards_layout.addWidget(self.card_transactions, 0, 1)
+        # === ROW 3: Top Products + Hourly Sales + Quick Stats ===
+        row3 = QHBoxLayout()
+        row3.setSpacing(16)
+        self._build_top_products_panel(row3)
+        self._build_hourly_panel(row3)
+        self._build_quick_stats_panel(row3)
+        layout.addLayout(row3, 3)
 
-        self.card_avg_sale = InfoCard(
-            "Average Sale",
-            format_currency(0),
-            "fa5s.calculator",
-            "Loading...",
-            True,
-        )
-        cards_layout.addWidget(self.card_avg_sale, 0, 2)
+        # === ROW 4: Categories Donut + Top Customers ===
+        row4 = QHBoxLayout()
+        row4.setSpacing(16)
+        self._build_categories_panel(row4)
+        self._build_customers_panel(row4)
+        layout.addLayout(row4, 3)
 
-        self.card_items_sold = InfoCard("Items Sold", "0", "fa5s.boxes", "Loading...", True)
-        cards_layout.addWidget(self.card_items_sold, 0, 3)
+        scroll.setWidget(container)
+        outer.addWidget(scroll)
 
-        layout.addLayout(cards_layout)
+    # --- Row 1: Monthly Chart ---
+    def _build_monthly_panel(self, parent_layout: QHBoxLayout) -> None:
+        panel = QFrame()
+        panel.setObjectName("MonthlyChartPanel")
+        vbox = QVBoxLayout(panel)
+        vbox.setContentsMargins(16, 12, 16, 12)
+        vbox.setSpacing(8)
 
-        # --- Body: Recent Sales (left) + Right Column ---
-        body_layout = QHBoxLayout()
-        body_layout.setSpacing(20)
+        # Header: title + year nav
+        header = QHBoxLayout()
+        self.lbl_monthly_title = QLabel()
+        self.lbl_monthly_title.setObjectName("PanelTitle")
+        header.addWidget(self.lbl_monthly_title)
+        header.addStretch()
 
-        # Left: Recent Transactions Panel
-        recent_panel = QFrame()
-        recent_panel.setObjectName("RecentSalesPanel")
-        recent_layout = QVBoxLayout(recent_panel)
-        recent_layout.setContentsMargins(16, 16, 16, 16)
-        recent_layout.setSpacing(12)
+        self.btn_prev_year = QToolButton()
+        self.btn_prev_year.setText("\u25C0")
+        self.btn_prev_year.setObjectName("YearNavButton")
+        self.btn_prev_year.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_prev_year.clicked.connect(lambda: self._change_year(-1))
+        header.addWidget(self.btn_prev_year)
 
-        lbl_recent = QLabel("Recent Transactions")
-        lbl_recent.setObjectName("SectionTitle")
-        recent_layout.addWidget(lbl_recent)
+        self.btn_next_year = QToolButton()
+        self.btn_next_year.setText("\u25B6")
+        self.btn_next_year.setObjectName("YearNavButton")
+        self.btn_next_year.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_next_year.clicked.connect(lambda: self._change_year(1))
+        header.addWidget(self.btn_next_year)
 
-        self.recent_table = QTableWidget()
-        self.recent_table.setObjectName("RecentSalesTable")
-        self.recent_table.setColumnCount(5)
-        self.recent_table.setHorizontalHeaderLabels(["TIME", "DOC #", "CUSTOMER", "PAYMENT", "TOTAL"])
-        self.recent_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.recent_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.recent_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.recent_table.verticalHeader().setVisible(False)
-        self.recent_table.setShowGrid(False)
-        recent_layout.addWidget(self.recent_table)
+        vbox.addLayout(header)
 
-        body_layout.addWidget(recent_panel, 3)
+        self.monthly_chart = VerticalBarChart()
+        vbox.addWidget(self.monthly_chart, 1)
 
-        # Right Column: Top Products + Payment Breakdown
-        right_column = QVBoxLayout()
-        right_column.setSpacing(20)
+        parent_layout.addWidget(panel, 4)
 
-        # Top Selling Today
-        top_panel = QFrame()
-        top_panel.setObjectName("TopProductsPanel")
-        top_layout = QVBoxLayout(top_panel)
-        top_layout.setContentsMargins(16, 16, 16, 16)
-        top_layout.setSpacing(12)
+    # --- Row 1: Yearly Summary ---
+    def _build_yearly_summary(self, parent_layout: QHBoxLayout) -> None:
+        panel = QFrame()
+        panel.setObjectName("YearlySummaryPanel")
+        vbox = QVBoxLayout(panel)
+        vbox.setContentsMargins(20, 20, 20, 20)
+        vbox.setSpacing(6)
 
-        lbl_top = QLabel("Top Selling Today")
-        lbl_top.setObjectName("SectionTitle")
-        top_layout.addWidget(lbl_top)
+        lbl_title = QLabel("Total Sales")
+        lbl_title.setObjectName("SummaryLabel")
+        vbox.addWidget(lbl_title)
 
-        self.top_table = QTableWidget()
-        self.top_table.setObjectName("TopProductsTable")
-        self.top_table.setColumnCount(3)
-        self.top_table.setHorizontalHeaderLabels(["PRODUCT", "QTY", "REVENUE"])
-        self.top_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.top_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.top_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.top_table.verticalHeader().setVisible(False)
-        self.top_table.setShowGrid(False)
-        top_layout.addWidget(self.top_table)
+        self.lbl_yearly_total = QLabel("Rs. 0")
+        self.lbl_yearly_total.setObjectName("SummaryBigValue")
+        vbox.addWidget(self.lbl_yearly_total)
 
-        right_column.addWidget(top_panel, 1)
+        vbox.addSpacing(16)
 
-        # Payment Breakdown
-        pay_panel = QFrame()
-        pay_panel.setObjectName("PaymentBreakdownPanel")
-        pay_layout = QVBoxLayout(pay_panel)
-        pay_layout.setContentsMargins(16, 16, 16, 16)
-        pay_layout.setSpacing(12)
+        lbl_top_title = QLabel("Top performing month")
+        lbl_top_title.setObjectName("SummaryLabel")
+        vbox.addWidget(lbl_top_title)
 
-        lbl_pay = QLabel("Payment Methods")
-        lbl_pay.setObjectName("SectionTitle")
-        pay_layout.addWidget(lbl_pay)
+        self.lbl_top_month = QLabel("-")
+        self.lbl_top_month.setObjectName("SummaryHighlight")
+        vbox.addWidget(self.lbl_top_month)
 
-        self.payment_table = QTableWidget()
-        self.payment_table.setObjectName("PaymentBreakdownTable")
-        self.payment_table.setColumnCount(2)
-        self.payment_table.setHorizontalHeaderLabels(["METHOD", "TOTAL"])
-        self.payment_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.payment_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.payment_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.payment_table.verticalHeader().setVisible(False)
-        self.payment_table.setShowGrid(False)
-        pay_layout.addWidget(self.payment_table)
+        self.lbl_top_month_total = QLabel("Rs. 0")
+        self.lbl_top_month_total.setObjectName("SummarySubValue")
+        vbox.addWidget(self.lbl_top_month_total)
 
-        right_column.addWidget(pay_panel, 1)
+        vbox.addStretch()
+        parent_layout.addWidget(panel, 1)
 
-        body_layout.addLayout(right_column, 2)
+    # --- Row 2: Period Header ---
+    def _build_period_header(self, parent_layout: QVBoxLayout) -> None:
+        header = QFrame()
+        header.setObjectName("PeriodHeader")
+        header.setFixedHeight(50)
+        hbox = QHBoxLayout(header)
+        hbox.setContentsMargins(16, 8, 16, 8)
+        hbox.setSpacing(12)
 
-        layout.addLayout(body_layout, 1)
+        self.lbl_period = QLabel("Periodic Reports")
+        self.lbl_period.setObjectName("PanelTitle")
+        hbox.addWidget(self.lbl_period)
 
-    def showEvent(self, event):
-        """Auto-refresh data when the dashboard becomes visible."""
+        hbox.addStretch()
+
+        self.date_from = QDateEdit()
+        self.date_from.setObjectName("PeriodDateEdit")
+        self.date_from.setCalendarPopup(True)
+        self.date_from.setDisplayFormat("dd.MM.yyyy")
+        self.date_from.setDate(QDate(date.today().year, 1, 1))
+        hbox.addWidget(self.date_from)
+
+        dash = QLabel("\u2014")
+        dash.setObjectName("PeriodDash")
+        hbox.addWidget(dash)
+
+        self.date_to = QDateEdit()
+        self.date_to.setObjectName("PeriodDateEdit")
+        self.date_to.setCalendarPopup(True)
+        self.date_to.setDisplayFormat("dd.MM.yyyy")
+        self.date_to.setDate(QDate.currentDate())
+        hbox.addWidget(self.date_to)
+
+        self.btn_refresh = QToolButton()
+        self.btn_refresh.setText("\u21BB")
+        self.btn_refresh.setObjectName("PeriodRefreshBtn")
+        self.btn_refresh.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_refresh.clicked.connect(self.refresh_periodic)
+        hbox.addWidget(self.btn_refresh)
+
+        parent_layout.addWidget(header)
+
+    # --- Row 3: Top Products Table ---
+    def _build_top_products_panel(self, parent_layout: QHBoxLayout) -> None:
+        panel = QFrame()
+        panel.setObjectName("TopProductsPanel")
+        vbox = QVBoxLayout(panel)
+        vbox.setContentsMargins(16, 12, 16, 12)
+        vbox.setSpacing(8)
+
+        header = QHBoxLayout()
+        lbl = QLabel("Top Products")
+        lbl.setObjectName("PanelTitle")
+        header.addWidget(lbl)
+        header.addStretch()
+
+        lbl_sub = QLabel("by revenue in selected period")
+        lbl_sub.setObjectName("PanelSubtitle")
+        header.addWidget(lbl_sub)
+        vbox.addLayout(header)
+
+        self.products_table = QTableWidget()
+        self.products_table.setObjectName("DashboardTable")
+        self.products_table.setColumnCount(2)
+        self.products_table.setHorizontalHeaderLabels(["Product", "Total"])
+        self.products_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.products_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        self.products_table.setColumnWidth(1, 110)
+        self.products_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.products_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.products_table.verticalHeader().setVisible(False)
+        self.products_table.setShowGrid(False)
+        vbox.addWidget(self.products_table, 1)
+
+        parent_layout.addWidget(panel, 2)
+
+    # --- Row 3: Hourly Sales Chart ---
+    def _build_hourly_panel(self, parent_layout: QHBoxLayout) -> None:
+        panel = QFrame()
+        panel.setObjectName("HourlySalesPanel")
+        vbox = QVBoxLayout(panel)
+        vbox.setContentsMargins(16, 12, 16, 12)
+        vbox.setSpacing(8)
+
+        lbl = QLabel("Hourly Sales")
+        lbl.setObjectName("PanelTitle")
+        vbox.addWidget(lbl)
+
+        self.hourly_chart = VerticalBarChart()
+        vbox.addWidget(self.hourly_chart, 1)
+
+        parent_layout.addWidget(panel, 2)
+
+    # --- Row 3: Quick Stats ---
+    def _build_quick_stats_panel(self, parent_layout: QHBoxLayout) -> None:
+        panel = QFrame()
+        panel.setObjectName("QuickStatsPanel")
+        vbox = QVBoxLayout(panel)
+        vbox.setContentsMargins(20, 16, 20, 16)
+        vbox.setSpacing(4)
+
+        # Avg Order
+        lbl = QLabel("Avg Order Value")
+        lbl.setObjectName("StatLabel")
+        vbox.addWidget(lbl)
+
+        self.lbl_avg_order = QLabel("Rs. 0")
+        self.lbl_avg_order.setObjectName("StatBigValue")
+        vbox.addWidget(self.lbl_avg_order)
+
+        vbox.addSpacing(14)
+
+        # Items Sold
+        lbl2 = QLabel("Items Sold")
+        lbl2.setObjectName("StatLabel")
+        vbox.addWidget(lbl2)
+
+        self.lbl_items_sold = QLabel("0")
+        self.lbl_items_sold.setObjectName("StatValue")
+        vbox.addWidget(self.lbl_items_sold)
+
+        vbox.addSpacing(14)
+
+        # Unique Customers
+        lbl3 = QLabel("Unique Customers")
+        lbl3.setObjectName("StatLabel")
+        vbox.addWidget(lbl3)
+
+        self.lbl_unique_customers = QLabel("0")
+        self.lbl_unique_customers.setObjectName("StatValue")
+        vbox.addWidget(self.lbl_unique_customers)
+
+        vbox.addSpacing(14)
+
+        # Transactions
+        lbl4 = QLabel("Transactions")
+        lbl4.setObjectName("StatLabel")
+        vbox.addWidget(lbl4)
+
+        self.lbl_txn_count = QLabel("0")
+        self.lbl_txn_count.setObjectName("StatValue")
+        vbox.addWidget(self.lbl_txn_count)
+
+        vbox.addStretch()
+        parent_layout.addWidget(panel, 1)
+
+    # --- Row 4: Categories Donut ---
+    def _build_categories_panel(self, parent_layout: QHBoxLayout) -> None:
+        panel = QFrame()
+        panel.setObjectName("TopCategoriesPanel")
+        vbox = QVBoxLayout(panel)
+        vbox.setContentsMargins(16, 12, 16, 12)
+        vbox.setSpacing(8)
+
+        header = QHBoxLayout()
+        lbl = QLabel("Top Selling Groups")
+        lbl.setObjectName("PanelTitle")
+        header.addWidget(lbl)
+        header.addStretch()
+        lbl_sub = QLabel("categories in selected period")
+        lbl_sub.setObjectName("PanelSubtitle")
+        header.addWidget(lbl_sub)
+        vbox.addLayout(header)
+
+        self.category_chart = DonutChart()
+        vbox.addWidget(self.category_chart, 1)
+
+        parent_layout.addWidget(panel, 1)
+
+    # --- Row 4: Top Customers ---
+    def _build_customers_panel(self, parent_layout: QHBoxLayout) -> None:
+        panel = QFrame()
+        panel.setObjectName("TopCustomersPanel")
+        vbox = QVBoxLayout(panel)
+        vbox.setContentsMargins(16, 12, 16, 12)
+        vbox.setSpacing(8)
+
+        header = QHBoxLayout()
+        lbl = QLabel("Top Customers")
+        lbl.setObjectName("PanelTitle")
+        header.addWidget(lbl)
+        header.addStretch()
+        lbl_sub = QLabel("by spend in selected period")
+        lbl_sub.setObjectName("PanelSubtitle")
+        header.addWidget(lbl_sub)
+        vbox.addLayout(header)
+
+        self.customer_chart = HorizontalBarChart()
+        vbox.addWidget(self.customer_chart, 1)
+
+        parent_layout.addWidget(panel, 1)
+
+    # ------------------------------------------------------------------
+    # Data loading
+    # ------------------------------------------------------------------
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        """Auto-refresh when dashboard becomes visible."""
         super().showEvent(event)
-        self.refresh_data()
+        self.refresh_all()
 
-    def refresh_data(self):
+    def refresh_all(self) -> None:
+        """Refresh both yearly and periodic data."""
+        self._refresh_yearly()
+        self.refresh_periodic()
+
+    def _change_year(self, delta: int) -> None:
+        self._current_year += delta
+        self._refresh_yearly()
+
+    def _refresh_yearly(self) -> None:
         from cbpos.core.services.dashboard_service import DashboardService
 
         try:
-            kpis = DashboardService.get_kpis()
-            yesterday = DashboardService.get_yesterday_kpis()
+            year = self._current_year
+            self.lbl_monthly_title.setText(f"Monthly Sales \u2014 {year}")
 
-            # Update KPI cards
-            self.card_sales.set_value(format_currency(kpis["total_sales"]))
-            self._update_trend(self.card_sales, kpis["total_sales"], yesterday["total_sales"])
+            monthly = DashboardService.get_monthly_sales(year)
+            chart_data = [
+                {
+                    "label": m["label"],
+                    "value": m["total"],
+                    "color": MONTH_COLORS[m["month"] - 1],
+                }
+                for m in monthly
+            ]
+            self.monthly_chart.set_data(chart_data)
 
-            self.card_transactions.set_value(str(kpis["txn_count"]))
-            self._update_trend(self.card_transactions, kpis["txn_count"], yesterday["txn_count"])
+            summary = DashboardService.get_yearly_summary(year)
+            self.lbl_yearly_total.setText(format_currency(summary["total"]))
+            self.lbl_top_month.setText(summary["top_month_name"].upper())
+            self.lbl_top_month_total.setText(format_currency(summary["top_month_total"]))
+        except Exception:
+            logger.exception("Failed to refresh yearly dashboard data")
 
-            self.card_avg_sale.set_value(format_currency(kpis["avg_sale"]))
-            self._update_trend(self.card_avg_sale, kpis["avg_sale"], yesterday["avg_sale"])
+    def refresh_periodic(self) -> None:
+        """Refresh all periodic (date-range) panels."""
+        from cbpos.core.services.dashboard_service import DashboardService
 
-            self.card_items_sold.set_value(str(kpis["items_sold"]))
-            self._update_trend(self.card_items_sold, kpis["items_sold"], yesterday["items_sold"])
+        try:
+            sd = self.date_from.date().toPyDate()
+            ed = self.date_to.date().toPyDate()
 
-            # Recent sales table
-            recent = DashboardService.get_recent_sales(limit=10)
-            self.recent_table.setRowCount(len(recent))
-            for row, sale in enumerate(recent):
-                self.recent_table.setItem(row, 0, QTableWidgetItem(sale["time"]))
-                self.recent_table.setItem(row, 1, QTableWidgetItem(sale["doc_number"]))
-                self.recent_table.setItem(row, 2, QTableWidgetItem(sale["customer"]))
-                self.recent_table.setItem(row, 3, QTableWidgetItem(sale["payment"]))
-                total_item = QTableWidgetItem(format_currency(sale["total"]))
-                total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                self.recent_table.setItem(row, 4, total_item)
+            self.lbl_period.setText(
+                f"Periodic Reports  ({sd.strftime('%d.%m.%Y')}" f" \u2013 {ed.strftime('%d.%m.%Y')})"
+            )
 
-            # Top selling products
-            top = DashboardService.get_top_selling_today(limit=5)
-            self.top_table.setRowCount(len(top))
-            for row, product in enumerate(top):
-                self.top_table.setItem(row, 0, QTableWidgetItem(product["name"]))
-                qty_item = QTableWidgetItem(str(product["qty"]))
-                qty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                self.top_table.setItem(row, 1, qty_item)
-                rev_item = QTableWidgetItem(format_currency(product["revenue"]))
-                rev_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                self.top_table.setItem(row, 2, rev_item)
+            # Top Products table
+            products = DashboardService.get_period_top_products(sd, ed)
+            self.products_table.setRowCount(len(products))
+            for row, p in enumerate(products):
+                self.products_table.setItem(row, 0, QTableWidgetItem(p["name"]))
+                item = QTableWidgetItem(format_currency(p["total"]))
+                item.setTextAlignment(int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter))
+                self.products_table.setItem(row, 1, item)
 
-            # Payment breakdown
-            payments = DashboardService.get_payment_breakdown()
-            self.payment_table.setRowCount(len(payments))
-            for row, pay in enumerate(payments):
-                self.payment_table.setItem(row, 0, QTableWidgetItem(pay["method"]))
-                total_item = QTableWidgetItem(format_currency(pay["total"]))
-                total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-                self.payment_table.setItem(row, 1, total_item)
+            # Hourly Sales chart
+            hourly = DashboardService.get_hourly_sales(sd, ed)
+            # Filter to only hours with data for a cleaner chart
+            hourly_with_data = [h for h in hourly if h["total"] > 0]
+            if not hourly_with_data:
+                hourly_with_data = hourly  # Show all if no data
+            hourly_chart_data = [
+                {
+                    "label": h["label"],
+                    "value": h["total"],
+                    "color": HOURLY_COLORS[i % len(HOURLY_COLORS)],
+                }
+                for i, h in enumerate(hourly_with_data)
+            ]
+            self.hourly_chart.set_data(hourly_chart_data)
+
+            # Quick Stats
+            stats = DashboardService.get_period_stats(sd, ed)
+            self.lbl_avg_order.setText(format_currency(stats["avg_order"]))
+            self.lbl_items_sold.setText(f'{stats["items_sold"]:,}')  # noqa: E231
+            self.lbl_unique_customers.setText(str(stats["unique_customers"]))
+            self.lbl_txn_count.setText(f'{stats["txn_count"]:,}')  # noqa: E231
+
+            # Categories donut
+            categories = DashboardService.get_top_categories(sd, ed)
+            self.category_chart.set_data([{"label": c["name"], "value": c["total"]} for c in categories])
+
+            # Top Customers
+            customers = DashboardService.get_top_customers(sd, ed)
+            self.customer_chart.set_data([{"label": c["name"], "value": c["total"]} for c in customers])
 
         except Exception:
-            logger.exception("Failed to refresh dashboard data")
-
-    @staticmethod
-    def _update_trend(card: InfoCard, today_val, yesterday_val) -> None:
-        """Compute % change between today and yesterday and update card trend."""
-        today = Decimal(str(today_val))
-        yesterday = Decimal(str(yesterday_val))
-
-        if yesterday == 0:
-            if today > 0:
-                card.set_trend("New today", True)
-            else:
-                card.set_trend("No data", True)
-            return
-
-        change = ((today - yesterday) / yesterday) * Decimal("100")
-        positive = change >= 0
-        sign = "+" if positive else ""
-        card.set_trend(f"{sign}{change:.0f}% vs yesterday", positive)  # noqa: E231
+            logger.exception("Failed to refresh periodic dashboard data")

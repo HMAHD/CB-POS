@@ -1473,13 +1473,134 @@ QLabel#CardTrend[trendType="negative"] {
 }
 
 /* === DASHBOARD PANELS === */
-QFrame#RecentSalesPanel, QFrame#TopProductsPanel, QFrame#PaymentBreakdownPanel {
+QFrame#MonthlyChartPanel, QFrame#YearlySummaryPanel,
+QFrame#TopProductsPanel, QFrame#HourlySalesPanel, QFrame#QuickStatsPanel,
+QFrame#TopCategoriesPanel, QFrame#TopCustomersPanel {
     background-color: #1A1A1A;
     border: 1px solid #2A2A2A;
     border-radius: 8px;
 }
 
-/* === SECTION TITLES === */
+QFrame#PeriodHeader {
+    background-color: #1A1A1A;
+    border: 1px solid #2A2A2A;
+    border-radius: 8px;
+}
+
+QScrollArea#DashboardScroll {
+    background-color: transparent;
+    border: none;
+}
+
+/* === PANEL TITLES === */
+QLabel#PanelTitle {
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: bold;
+    background-color: transparent;
+}
+
+QLabel#PanelSubtitle {
+    color: #666666;
+    font-size: 10px;
+    background-color: transparent;
+}
+
+/* === YEARLY SUMMARY === */
+QLabel#SummaryLabel {
+    color: #888888;
+    font-size: 11px;
+    text-transform: uppercase;
+    background-color: transparent;
+}
+
+QLabel#SummaryBigValue {
+    color: #FFFFFF;
+    font-size: 32px;
+    font-weight: bold;
+    background-color: transparent;
+}
+
+QLabel#SummaryHighlight {
+    color: #00BCEB;
+    font-size: 18px;
+    font-weight: bold;
+    background-color: transparent;
+}
+
+QLabel#SummarySubValue {
+    color: #CCCCCC;
+    font-size: 14px;
+    background-color: transparent;
+}
+
+/* === QUICK STATS === */
+QLabel#StatLabel {
+    color: #888888;
+    font-size: 10px;
+    text-transform: uppercase;
+    background-color: transparent;
+}
+
+QLabel#StatBigValue {
+    color: #FFFFFF;
+    font-size: 26px;
+    font-weight: bold;
+    background-color: transparent;
+}
+
+QLabel#StatValue {
+    color: #FFFFFF;
+    font-size: 20px;
+    font-weight: bold;
+    background-color: transparent;
+}
+
+/* === YEAR NAV & PERIOD CONTROLS === */
+QToolButton#YearNavButton {
+    background-color: #2A2A2A;
+    color: #CCCCCC;
+    border: 1px solid #333333;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+QToolButton#YearNavButton:hover {
+    background-color: #333333;
+    color: #FFFFFF;
+}
+
+QDateEdit#PeriodDateEdit {
+    background-color: #2A2A2A;
+    color: #CCCCCC;
+    border: 1px solid #333333;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+QLabel#PeriodDash {
+    color: #666666;
+    font-size: 14px;
+    background-color: transparent;
+}
+
+QToolButton#PeriodRefreshBtn {
+    background-color: #2A2A2A;
+    color: #00BCEB;
+    border: 1px solid #333333;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+QToolButton#PeriodRefreshBtn:hover {
+    background-color: #333333;
+}
+
+/* === SECTION TITLES (legacy compat) === */
 QLabel#SectionTitle {
     color: #FFFFFF;
     font-size: 14px;
@@ -1490,28 +1611,28 @@ QLabel#SectionTitle {
 }
 
 /* === DASHBOARD TABLES === */
-QTableWidget#RecentSalesTable, QTableWidget#TopProductsTable, QTableWidget#PaymentBreakdownTable {
+QTableWidget#DashboardTable {
     background-color: #1A1A1A;
     border: none;
     gridline-color: transparent;
 }
 
-QTableWidget#RecentSalesTable::item, QTableWidget#TopProductsTable::item, QTableWidget#PaymentBreakdownTable::item {
+QTableWidget#DashboardTable::item {
     padding: 10px;
     border-bottom: 1px solid #2A2A2A;
     color: #E5E5E5;
 }
 
-QTableWidget#RecentSalesTable::item:selected, QTableWidget#TopProductsTable::item:selected, QTableWidget#PaymentBreakdownTable::item:selected {
+QTableWidget#DashboardTable::item:selected {
     background-color: #2A2A2A;
     color: white;
 }
 
-QTableWidget#RecentSalesTable::item:hover, QTableWidget#TopProductsTable::item:hover, QTableWidget#PaymentBreakdownTable::item:hover {
+QTableWidget#DashboardTable::item:hover {
     background-color: #252525;
 }
 
-QTableWidget#RecentSalesTable QHeaderView::section, QTableWidget#TopProductsTable QHeaderView::section, QTableWidget#PaymentBreakdownTable QHeaderView::section {
+QTableWidget#DashboardTable QHeaderView::section {
     background-color: #2A2A2A;
     color: #00BCEB;
     font-weight: bold;

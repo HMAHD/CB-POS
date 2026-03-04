@@ -24,7 +24,7 @@ from PyQt6.QtWidgets import (
     QDateEdit,
     QScrollArea,
 )
-from PyQt6.QtCore import Qt, QDate
+from PyQt6.QtCore import Qt, QDate, QThread, pyqtSignal
 
 from cbpos.ui.widgets.charts import (
     VerticalBarChart,
@@ -36,6 +36,39 @@ from cbpos.ui.widgets.charts import (
 from cbpos.core.utils.formatters import format_currency
 
 logger = logging.getLogger(__name__)
+
+
+class _DashboardWorker(QThread):
+    """Runs dashboard DB queries off the UI thread."""
+
+    yearly_ready = pyqtSignal(list, dict)  # monthly, summary
+    periodic_ready = pyqtSignal(list, list, dict, list, list)  # products, hourly, stats, cats, customers
+
+    def __init__(self, year: int, start_date: date, end_date: date) -> None:
+        super().__init__()
+        self._year = year
+        self._start = start_date
+        self._end = end_date
+
+    def run(self) -> None:
+        from cbpos.core.services.dashboard_service import DashboardService
+
+        try:
+            monthly = DashboardService.get_monthly_sales(self._year)
+            summary = DashboardService.get_yearly_summary(self._year)
+            self.yearly_ready.emit(monthly, summary)
+        except Exception:
+            logger.exception("Failed to load yearly dashboard data")
+
+        try:
+            products = DashboardService.get_period_top_products(self._start, self._end)
+            hourly = DashboardService.get_hourly_sales(self._start, self._end)
+            stats = DashboardService.get_period_stats(self._start, self._end)
+            categories = DashboardService.get_top_categories(self._start, self._end)
+            customers = DashboardService.get_top_customers(self._start, self._end)
+            self.periodic_ready.emit(products, hourly, stats, categories, customers)
+        except Exception:
+            logger.exception("Failed to load periodic dashboard data")
 
 
 class DashboardView(QWidget):
@@ -363,90 +396,72 @@ class DashboardView(QWidget):
         self.refresh_all()
 
     def refresh_all(self) -> None:
-        """Refresh both yearly and periodic data."""
-        self._refresh_yearly()
-        self.refresh_periodic()
+        """Refresh both yearly and periodic data in a background thread."""
+        sd = self.date_from.date().toPyDate()
+        ed = self.date_to.date().toPyDate()
+
+        self.lbl_monthly_title.setText(f"Monthly Sales \u2014 {self._current_year}")
+        self.lbl_period.setText(f"Periodic Reports  ({sd.strftime('%d.%m.%Y')}" f" \u2013 {ed.strftime('%d.%m.%Y')})")
+
+        self._worker = _DashboardWorker(self._current_year, sd, ed)
+        self._worker.yearly_ready.connect(self._on_yearly_ready)
+        self._worker.periodic_ready.connect(self._on_periodic_ready)
+        self._worker.start()
 
     def _change_year(self, delta: int) -> None:
         self._current_year += delta
-        self._refresh_yearly()
+        self.refresh_all()
 
-    def _refresh_yearly(self) -> None:
-        from cbpos.core.services.dashboard_service import DashboardService
+    def _on_yearly_ready(self, monthly: list, summary: dict) -> None:
+        """Handle yearly data from worker thread."""
+        chart_data = [
+            {
+                "label": m["label"],
+                "value": m["total"],
+                "color": MONTH_COLORS[m["month"] - 1],
+            }
+            for m in monthly
+        ]
+        self.monthly_chart.set_data(chart_data)
 
-        try:
-            year = self._current_year
-            self.lbl_monthly_title.setText(f"Monthly Sales \u2014 {year}")
+        self.lbl_yearly_total.setText(format_currency(summary["total"]))
+        self.lbl_top_month.setText(summary["top_month_name"].upper())
+        self.lbl_top_month_total.setText(format_currency(summary["top_month_total"]))
 
-            monthly = DashboardService.get_monthly_sales(year)
-            chart_data = [
-                {
-                    "label": m["label"],
-                    "value": m["total"],
-                    "color": MONTH_COLORS[m["month"] - 1],
-                }
-                for m in monthly
-            ]
-            self.monthly_chart.set_data(chart_data)
+    def _on_periodic_ready(self, products: list, hourly: list, stats: dict, categories: list, customers: list) -> None:
+        """Handle periodic data from worker thread."""
+        # Top Products table
+        self.products_table.setRowCount(len(products))
+        for row, p in enumerate(products):
+            self.products_table.setItem(row, 0, QTableWidgetItem(p["name"]))
+            item = QTableWidgetItem(format_currency(p["total"]))
+            item.setTextAlignment(int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter))
+            self.products_table.setItem(row, 1, item)
 
-            summary = DashboardService.get_yearly_summary(year)
-            self.lbl_yearly_total.setText(format_currency(summary["total"]))
-            self.lbl_top_month.setText(summary["top_month_name"].upper())
-            self.lbl_top_month_total.setText(format_currency(summary["top_month_total"]))
-        except Exception:
-            logger.exception("Failed to refresh yearly dashboard data")
+        # Hourly Sales chart
+        hourly_with_data = [h for h in hourly if h["total"] > 0]
+        if not hourly_with_data:
+            hourly_with_data = hourly
+        hourly_chart_data = [
+            {
+                "label": h["label"],
+                "value": h["total"],
+                "color": HOURLY_COLORS[i % len(HOURLY_COLORS)],
+            }
+            for i, h in enumerate(hourly_with_data)
+        ]
+        self.hourly_chart.set_data(hourly_chart_data)
 
-    def refresh_periodic(self) -> None:
-        """Refresh all periodic (date-range) panels."""
-        from cbpos.core.services.dashboard_service import DashboardService
+        # Quick Stats — items_sold is now Decimal, format with commas
+        self.lbl_avg_order.setText(format_currency(stats["avg_order"]))
+        items = stats["items_sold"]
+        items_text = format(items, ",.3f") if items % 1 else format(int(items), ",")
+        self.lbl_items_sold.setText(items_text)
+        self.lbl_unique_customers.setText(str(stats["unique_customers"]))
+        self.lbl_txn_count.setText(f'{stats["txn_count"]:,}')  # noqa: E231
 
-        try:
-            sd = self.date_from.date().toPyDate()
-            ed = self.date_to.date().toPyDate()
+        # Categories donut
+        self.category_chart.set_data([{"label": c["name"], "value": c["total"]} for c in categories])
 
-            self.lbl_period.setText(
-                f"Periodic Reports  ({sd.strftime('%d.%m.%Y')}" f" \u2013 {ed.strftime('%d.%m.%Y')})"
-            )
-
-            # Top Products table
-            products = DashboardService.get_period_top_products(sd, ed)
-            self.products_table.setRowCount(len(products))
-            for row, p in enumerate(products):
-                self.products_table.setItem(row, 0, QTableWidgetItem(p["name"]))
-                item = QTableWidgetItem(format_currency(p["total"]))
-                item.setTextAlignment(int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter))
-                self.products_table.setItem(row, 1, item)
-
-            # Hourly Sales chart
-            hourly = DashboardService.get_hourly_sales(sd, ed)
-            # Filter to only hours with data for a cleaner chart
-            hourly_with_data = [h for h in hourly if h["total"] > 0]
-            if not hourly_with_data:
-                hourly_with_data = hourly  # Show all if no data
-            hourly_chart_data = [
-                {
-                    "label": h["label"],
-                    "value": h["total"],
-                    "color": HOURLY_COLORS[i % len(HOURLY_COLORS)],
-                }
-                for i, h in enumerate(hourly_with_data)
-            ]
-            self.hourly_chart.set_data(hourly_chart_data)
-
-            # Quick Stats
-            stats = DashboardService.get_period_stats(sd, ed)
-            self.lbl_avg_order.setText(format_currency(stats["avg_order"]))
-            self.lbl_items_sold.setText(f'{stats["items_sold"]:,}')  # noqa: E231
-            self.lbl_unique_customers.setText(str(stats["unique_customers"]))
-            self.lbl_txn_count.setText(f'{stats["txn_count"]:,}')  # noqa: E231
-
-            # Categories donut
-            categories = DashboardService.get_top_categories(sd, ed)
-            self.category_chart.set_data([{"label": c["name"], "value": c["total"]} for c in categories])
-
-            # Top Customers
-            customers = DashboardService.get_top_customers(sd, ed)
-            self.customer_chart.set_data([{"label": c["name"], "value": c["total"]} for c in customers])
-
-        except Exception:
-            logger.exception("Failed to refresh periodic dashboard data")
+        # Top Customers
+        self.customer_chart.set_data([{"label": c["name"], "value": c["total"]} for c in customers])

@@ -181,7 +181,7 @@ class SettingsView(QWidget):
         btn = SidebarButton(f"   {text}", icon)
         btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        btn.clicked.connect(lambda: self.switch_page(index))
+        btn.clicked.connect(lambda checked=False, idx=index: self.switch_page(idx))
         self.sidebar_layout.addWidget(btn)
         self.nav_buttons.append(btn)
         return btn

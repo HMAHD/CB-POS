@@ -1,5 +1,6 @@
 """Dashboard data service for KPIs, charts, and periodic reports."""
 
+from contextlib import contextmanager
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -34,6 +35,19 @@ MONTH_NAMES = [
 ]
 
 
+@contextmanager
+def _session():
+    """Yield a DB session via the Database singleton."""
+    db = Database()
+    with db.get_session() as session:
+        yield session
+
+
+def _decimal(value) -> Decimal:
+    """Safely convert a query scalar to Decimal."""
+    return Decimal(str(value)) if value else Decimal("0")
+
+
 class DashboardService:
     # ------------------------------------------------------------------
     # Today / Yesterday KPIs (kept for backward compatibility)
@@ -43,21 +57,23 @@ class DashboardService:
     def get_kpis() -> dict:
         """Today's KPIs: total_sales, txn_count, items_sold, avg_sale,
         low_stock_count, active_staff."""
-        db = Database()
-        with db.get_session() as session:
+        with _session() as session:
             today = date.today()
 
-            total_sales = session.query(func.sum(Sale.total_amount)).filter(
-                func.date(Sale.date) == today
-            ).scalar() or Decimal("0")
+            total_sales = _decimal(
+                session.query(func.sum(Sale.total_amount)).filter(func.date(Sale.date) == today).scalar()
+            )
 
             txn_count = session.query(func.count(Sale.id)).filter(func.date(Sale.date) == today).scalar() or 0
 
-            items_sold = session.query(func.sum(SaleItem.qty)).join(Sale, SaleItem.sale_id == Sale.id).filter(
-                func.date(Sale.date) == today
-            ).scalar() or Decimal("0")
+            items_sold = _decimal(
+                session.query(func.sum(SaleItem.qty))
+                .join(Sale, SaleItem.sale_id == Sale.id)
+                .filter(func.date(Sale.date) == today)
+                .scalar()
+            )
 
-            avg_sale = Decimal(str(total_sales)) / Decimal(str(txn_count)) if txn_count > 0 else Decimal("0")
+            avg_sale = total_sales / Decimal(str(txn_count)) if txn_count > 0 else Decimal("0")
 
             low_stock_count = (
                 session.query(func.count(Product.id))
@@ -70,9 +86,9 @@ class DashboardService:
             active_staff = session.query(func.count(Shift.id)).filter(Shift.status == ShiftStatus.OPEN).scalar() or 0
 
             return {
-                "total_sales": Decimal(str(total_sales)),
+                "total_sales": total_sales,
                 "txn_count": txn_count,
-                "items_sold": int(items_sold),
+                "items_sold": items_sold,
                 "avg_sale": avg_sale,
                 "low_stock_count": low_stock_count,
                 "active_staff": active_staff,
@@ -81,26 +97,28 @@ class DashboardService:
     @staticmethod
     def get_yesterday_kpis() -> dict:
         """Yesterday's KPIs for trend calculation."""
-        db = Database()
-        with db.get_session() as session:
+        with _session() as session:
             yesterday = date.today() - timedelta(days=1)
 
-            total_sales = session.query(func.sum(Sale.total_amount)).filter(
-                func.date(Sale.date) == yesterday
-            ).scalar() or Decimal("0")
+            total_sales = _decimal(
+                session.query(func.sum(Sale.total_amount)).filter(func.date(Sale.date) == yesterday).scalar()
+            )
 
             txn_count = session.query(func.count(Sale.id)).filter(func.date(Sale.date) == yesterday).scalar() or 0
 
-            items_sold = session.query(func.sum(SaleItem.qty)).join(Sale, SaleItem.sale_id == Sale.id).filter(
-                func.date(Sale.date) == yesterday
-            ).scalar() or Decimal("0")
+            items_sold = _decimal(
+                session.query(func.sum(SaleItem.qty))
+                .join(Sale, SaleItem.sale_id == Sale.id)
+                .filter(func.date(Sale.date) == yesterday)
+                .scalar()
+            )
 
-            avg_sale = Decimal(str(total_sales)) / Decimal(str(txn_count)) if txn_count > 0 else Decimal("0")
+            avg_sale = total_sales / Decimal(str(txn_count)) if txn_count > 0 else Decimal("0")
 
             return {
-                "total_sales": Decimal(str(total_sales)),
+                "total_sales": total_sales,
                 "txn_count": txn_count,
-                "items_sold": int(items_sold),
+                "items_sold": items_sold,
                 "avg_sale": avg_sale,
             }
 
@@ -111,8 +129,7 @@ class DashboardService:
     @staticmethod
     def get_monthly_sales(year: int) -> list[dict]:
         """Monthly sales totals for a given year (12 entries)."""
-        db = Database()
-        with db.get_session() as session:
+        with _session() as session:
             rows = (
                 session.query(
                     func.cast(func.strftime("%m", Sale.date), Integer).label("month"),
@@ -123,7 +140,7 @@ class DashboardService:
                 .all()
             )
 
-            month_map = {r.month: Decimal(str(r.total or 0)) for r in rows}
+            month_map = {r.month: _decimal(r.total) for r in rows}
             return [
                 {
                     "month": i,
@@ -153,8 +170,7 @@ class DashboardService:
     @staticmethod
     def get_period_top_products(start_date: date, end_date: date, limit: int = 5) -> list[dict]:
         """Top products by revenue within a date range."""
-        db = Database()
-        with db.get_session() as session:
+        with _session() as session:
             rows = (
                 session.query(
                     Product.name_en,
@@ -172,13 +188,12 @@ class DashboardService:
                 .all()
             )
 
-            return [{"name": r[0], "total": Decimal(str(r[1] or 0))} for r in rows]
+            return [{"name": r[0], "total": _decimal(r[1])} for r in rows]
 
     @staticmethod
     def get_hourly_sales(start_date: date, end_date: date) -> list[dict]:
         """Hourly sales distribution within a date range (hours 6-22)."""
-        db = Database()
-        with db.get_session() as session:
+        with _session() as session:
             rows = (
                 session.query(
                     func.cast(func.strftime("%H", Sale.date), Integer).label("hour"),
@@ -192,7 +207,7 @@ class DashboardService:
                 .all()
             )
 
-            hour_map = {r.hour: Decimal(str(r.total or 0)) for r in rows}
+            hour_map = {r.hour: _decimal(r.total) for r in rows}
 
             # Return business hours 6AM-10PM, filling gaps with zero
             results = []
@@ -212,12 +227,15 @@ class DashboardService:
     def get_period_stats(start_date: date, end_date: date) -> dict:
         """Quick stats for a date range: avg_order, items_sold,
         unique_customers, txn_count."""
-        db = Database()
-        with db.get_session() as session:
-            total_sales = session.query(func.sum(Sale.total_amount)).filter(
-                func.date(Sale.date) >= start_date,
-                func.date(Sale.date) <= end_date,
-            ).scalar() or Decimal("0")
+        with _session() as session:
+            total_sales = _decimal(
+                session.query(func.sum(Sale.total_amount))
+                .filter(
+                    func.date(Sale.date) >= start_date,
+                    func.date(Sale.date) <= end_date,
+                )
+                .scalar()
+            )
 
             txn_count = (
                 session.query(func.count(Sale.id))
@@ -229,10 +247,15 @@ class DashboardService:
                 or 0
             )
 
-            items_sold = session.query(func.sum(SaleItem.qty)).join(Sale, SaleItem.sale_id == Sale.id).filter(
-                func.date(Sale.date) >= start_date,
-                func.date(Sale.date) <= end_date,
-            ).scalar() or Decimal("0")
+            items_sold = _decimal(
+                session.query(func.sum(SaleItem.qty))
+                .join(Sale, SaleItem.sale_id == Sale.id)
+                .filter(
+                    func.date(Sale.date) >= start_date,
+                    func.date(Sale.date) <= end_date,
+                )
+                .scalar()
+            )
 
             unique_customers = (
                 session.query(func.count(func.distinct(Sale.customer_id)))
@@ -245,21 +268,20 @@ class DashboardService:
                 or 0
             )
 
-            avg_order = Decimal(str(total_sales)) / Decimal(str(txn_count)) if txn_count > 0 else Decimal("0")
+            avg_order = total_sales / Decimal(str(txn_count)) if txn_count > 0 else Decimal("0")
 
             return {
-                "total_sales": Decimal(str(total_sales)),
+                "total_sales": total_sales,
                 "txn_count": txn_count,
                 "avg_order": avg_order,
-                "items_sold": int(items_sold),
+                "items_sold": items_sold,
                 "unique_customers": unique_customers,
             }
 
     @staticmethod
     def get_top_categories(start_date: date, end_date: date, limit: int = 6) -> list[dict]:
         """Top selling categories by revenue within a date range."""
-        db = Database()
-        with db.get_session() as session:
+        with _session() as session:
             rows = (
                 session.query(
                     Category.name,
@@ -278,13 +300,12 @@ class DashboardService:
                 .all()
             )
 
-            return [{"name": r[0] or "Uncategorized", "total": Decimal(str(r[1] or 0))} for r in rows]
+            return [{"name": r[0] or "Uncategorized", "total": _decimal(r[1])} for r in rows]
 
     @staticmethod
     def get_top_customers(start_date: date, end_date: date, limit: int = 5) -> list[dict]:
         """Top customers by spend within a date range."""
-        db = Database()
-        with db.get_session() as session:
+        with _session() as session:
             rows = (
                 session.query(
                     Customer.name,
@@ -301,7 +322,7 @@ class DashboardService:
                 .all()
             )
 
-            return [{"name": r[0], "total": Decimal(str(r[1] or 0))} for r in rows]
+            return [{"name": r[0], "total": _decimal(r[1])} for r in rows]
 
     # ------------------------------------------------------------------
     # Legacy helpers (kept for backward compatibility)
@@ -310,8 +331,7 @@ class DashboardService:
     @staticmethod
     def get_recent_sales(limit: int = 10) -> list:
         """Last N completed sales with time, doc#, customer, payment, total."""
-        db = Database()
-        with db.get_session() as session:
+        with _session() as session:
             sales = (
                 session.query(Sale)
                 .options(
@@ -333,7 +353,7 @@ class DashboardService:
                         "doc_number": sale.document_number or "",
                         "customer": customer_name,
                         "payment": payment_methods,
-                        "total": Decimal(str(sale.total_amount)),
+                        "total": _decimal(sale.total_amount),
                     }
                 )
             return results
@@ -341,8 +361,7 @@ class DashboardService:
     @staticmethod
     def get_top_selling_today(limit: int = 5) -> list:
         """Top products by quantity sold today."""
-        db = Database()
-        with db.get_session() as session:
+        with _session() as session:
             today = date.today()
 
             rows = (
@@ -363,8 +382,8 @@ class DashboardService:
             return [
                 {
                     "name": row[0],
-                    "qty": int(row[1] or 0),
-                    "revenue": Decimal(str(row[2] or 0)),
+                    "qty": _decimal(row[1]),
+                    "revenue": _decimal(row[2]),
                 }
                 for row in rows
             ]
@@ -372,8 +391,7 @@ class DashboardService:
     @staticmethod
     def get_payment_breakdown() -> list:
         """Payment method totals for today."""
-        db = Database()
-        with db.get_session() as session:
+        with _session() as session:
             today = date.today()
 
             rows = (
@@ -391,7 +409,7 @@ class DashboardService:
             return [
                 {
                     "method": row[0],
-                    "total": Decimal(str(row[1] or 0)),
+                    "total": _decimal(row[1]),
                 }
                 for row in rows
             ]

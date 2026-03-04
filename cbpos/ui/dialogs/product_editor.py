@@ -391,9 +391,16 @@ class ProductEditor(QDialog):
         self.price_input.setValue(float(self.product.price))
         self.cost_input.setValue(float(self.product.cost))
 
-        self.stock_input.setText(str(float(self.product.stock_qty)))
-        self.reorder_input.setText(str(float(self.product.reorder_point)))
-        self.preferred_qty_input.setText(str(float(self.product.preferred_qty)))
+        _q = Decimal("0.001")
+        self.stock_input.setText(
+            "" if self.product.stock_qty is None else format(self.product.stock_qty.quantize(_q), "f")
+        )
+        self.reorder_input.setText(
+            "" if self.product.reorder_point is None else format(self.product.reorder_point.quantize(_q), "f")
+        )
+        self.preferred_qty_input.setText(
+            "" if self.product.preferred_qty is None else format(self.product.preferred_qty.quantize(_q), "f")
+        )
         self.weighted_check.setChecked(self.product.is_weighted)
         self.service_check.setChecked(self.product.is_service)
 
@@ -438,7 +445,24 @@ class ProductEditor(QDialog):
                 remove_btn.clicked.connect(lambda checked, r=target_row: self._remove_component(r))
                 self.comp_table.setCellWidget(row, 3, remove_btn)
 
+    def _parse_decimal(self, text: str, fallback: str = "0") -> Decimal:
+        """Safely parse a QLineEdit value to Decimal."""
+        cleaned = text.strip()
+        if not cleaned or cleaned in ("-", "."):
+            return Decimal(fallback)
+        return Decimal(cleaned)
+
     def save_product(self):
+        try:
+            stock_qty = self._parse_decimal(self.stock_input.text())
+            reorder_point = self._parse_decimal(self.reorder_input.text())
+            preferred_qty = self._parse_decimal(self.preferred_qty_input.text())
+        except Exception:
+            QMessageBox.warning(self, "Validation", "Invalid number in stock fields.")
+            self.tabs.setCurrentIndex(1)
+            self.stock_input.setFocus()
+            return
+
         data = {
             "barcode": self.barcode_input.text().strip(),
             "name_en": self.name_en_input.text().strip(),
@@ -447,9 +471,9 @@ class ProductEditor(QDialog):
             "category_id": self.category_combo.currentData(),
             "price": Decimal(str(self.price_input.value())),
             "cost": Decimal(str(self.cost_input.value())),
-            "stock_qty": Decimal(self.stock_input.text() or "0"),
-            "reorder_point": Decimal(self.reorder_input.text() or "0"),
-            "preferred_qty": Decimal(self.preferred_qty_input.text() or "0"),
+            "stock_qty": stock_qty,
+            "reorder_point": reorder_point,
+            "preferred_qty": preferred_qty,
             "default_supplier_id": self.supplier_combo.currentData(),
             "unit_id": self.unit_combo.currentData(),
             "is_weighted": self.weighted_check.isChecked(),

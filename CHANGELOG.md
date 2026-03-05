@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.8.11] - 2026-03-05
+
+### Improved — Touch Product Grid UX Overhaul
+
+- **Responsive card sizing**: Removed fixed 110×110px cards — cards now expand to fill available grid width with `MinimumSize(90, 100)` and `Expanding` size policy.
+- **Product images**: Cards display product image (scaled 60×60) when `image_path` is set; gracefully omitted when no image exists.
+- **Removed generic box icon**: Eliminated the identical box icon that wasted space on every card.
+- **QSS-driven theming**: Removed all inline `setStyleSheet` calls from `ProductCard` and `CategoryButton` — styling now handled via `dark.qss` / `light.qss` using object names (`ProductCard`, `ProductCardName`, `ProductCardPrice`, `ProductCardImage`, `CategoryTab`).
+- **Larger readable fonts**: Name 13px bold, price 15px bold (up from 12px/14px).
+- **Wider grid panel**: Increased from 350px to 420px — fits 3 columns at ~130px each.
+- **Dynamic column reflow**: Grid recalculates columns on resize (`max(2, width // 130)`) with even column stretch distribution.
+- **Focus protection**: All card/button widgets set `NoFocus` policy to prevent stealing focus from barcode input.
+- **CategoryButton**: Only minimal inline style retained for per-category dynamic checked background color.
+
 ## [0.8.10] - 2026-03-05
 
 ### Fixed — QFormLayout Field Growth Across All Dialogs

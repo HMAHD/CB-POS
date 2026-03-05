@@ -1,16 +1,23 @@
+import os
+from pathlib import Path
+
 from PyQt6.QtWidgets import (
     QToolButton,
     QVBoxLayout,
     QLabel,
+    QSizePolicy,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QPixmap
+
+# Base directory for product images
+_ASSETS_DIR = Path(__file__).resolve().parent.parent.parent / "assets"
 
 
 class ProductCard(QToolButton):
     """
     A touch-friendly button representing a product.
-    Displays image/icon, name, and price.
+    Displays product image (if available), name, and price — styled via QSS.
     """
 
     clicked_product = pyqtSignal(object)  # Emits the product object
@@ -18,56 +25,53 @@ class ProductCard(QToolButton):
     def __init__(self, product, parent=None):
         super().__init__(parent)
         self.product = product
-        self.setFixedSize(110, 110)
+        self.setObjectName("ProductCard")
+        self.setMinimumSize(90, 100)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setup_ui()
 
     def setup_ui(self):
-        # Layout
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(2)
+        layout.setContentsMargins(8, 6, 8, 8)
+        layout.setSpacing(4)
 
-        # Icon/Image
-        icon_label = QLabel()
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Product image support deferred; using default box icon
-        from cbpos.ui.resources.icons import Icons
-
-        icon_label.setPixmap(Icons.get("fa5s.box").pixmap(40, 40))
-        layout.addWidget(icon_label)
+        # Product image (shown only if image_path exists and file is valid)
+        image_path = getattr(self.product, "image_path", None)
+        if image_path:
+            full_path = os.path.join(str(_ASSETS_DIR), image_path)
+            if os.path.isfile(full_path):
+                pixmap = QPixmap(full_path)
+                if not pixmap.isNull():
+                    self.lbl_image = QLabel()
+                    self.lbl_image.setObjectName("ProductCardImage")
+                    self.lbl_image.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                    self.lbl_image.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+                    self.lbl_image.setPixmap(
+                        pixmap.scaled(
+                            60,
+                            60,
+                            Qt.AspectRatioMode.KeepAspectRatio,
+                            Qt.TransformationMode.SmoothTransformation,
+                        )
+                    )
+                    layout.addWidget(self.lbl_image)
 
         # Name Label
         self.lbl_name = QLabel(getattr(self.product, "name_en", None) or getattr(self.product, "name", ""))
+        self.lbl_name.setObjectName("ProductCardName")
         self.lbl_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_name.setWordWrap(True)
-        self.lbl_name.setStyleSheet("font-size: 12px; color: white; font-weight: bold;")
+        self.lbl_name.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         layout.addWidget(self.lbl_name)
 
         # Price Label
         self.lbl_price = QLabel(f"{self.product.price:,.2f}")  # noqa: E231
+        self.lbl_price.setObjectName("ProductCardPrice")
         self.lbl_price.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_price.setStyleSheet("font-size: 14px; color: #00BCEB; font-weight: bold;")
+        self.lbl_price.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         layout.addWidget(self.lbl_price)
-
-        # Style
-        self.setStyleSheet(
-            """
-            QToolButton {
-                background-color: #003366;
-                border: 1px solid #00509E;
-                border-radius: 8px;
-            }
-            QToolButton:hover {
-                background-color: #004080;
-                border: 1px solid #00BCEB;
-            }
-            QToolButton:pressed {
-                background-color: #002855;
-            }
-            """
-        )
 
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
@@ -78,34 +82,15 @@ class CategoryButton(QToolButton):
     def __init__(self, category, parent=None):
         super().__init__(parent)
         self.category = category
+        self.setObjectName("CategoryTab")
         self.setText(category.name)
         self.setCheckable(True)
         self.setAutoExclusive(True)
         self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
         self.setMinimumHeight(40)
         self.setMinimumWidth(100)
-        from cbpos.infrastructure.resource_loader import ResourceLoader
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
-        self.setFont(QFont(ResourceLoader.get_primary_font(), 10, QFont.Weight.Bold))
-
-        # Dynamic color if category has one, else default
+        # Dynamic checked background color (varies per category, can't be pure QSS)
         color = category.color if category.color else "#00BCEB"
-
-        self.setStyleSheet(
-            """
-            QToolButton {{
-                background-color: #003366;
-                color: white;
-                border: 1px solid #00509E;
-                border-radius: 4px;
-                padding: 5px;
-            }}
-            QToolButton:checked {{
-                background-color: {color};
-                color: black;
-                border: 1px solid white;
-            }}
-            """.format(
-                color=color
-            )
-        )
+        self.setStyleSheet("QToolButton#CategoryTab:checked { background-color: %s; }" % color)

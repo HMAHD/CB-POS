@@ -881,7 +881,7 @@ class SalesView(QWidget):
             # Set splitter sizes: cart gets remaining, grid 350px, action panel keeps fixed width
             total = self.splitter.width()
             action_w = PAYMENT_PANEL_WIDTH
-            grid_w = 350
+            grid_w = 420
             cart_w = total - grid_w - action_w
             self.splitter.setSizes([max(cart_w, 200), grid_w, action_w])
 

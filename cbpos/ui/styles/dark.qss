@@ -2508,3 +2508,761 @@ QPushButton#ReportNavItem:checked {
     background-color: #00BCEB;
     color: #001F3F;
 }
+
+/* ===================================================================
+   CREDIT BOOK VIEW — Drill-down Navigation
+   ================================================================ */
+
+QLabel#CreditPageTitle, QLabel#PayablePageTitle {
+    font-size: 22px;
+    font-weight: bold;
+    color: #00BCEB;
+    background-color: transparent;
+}
+
+QLineEdit#CreditSearchInput, QLineEdit#PayableSearchInput {
+    padding: 8px 12px;
+    font-size: 13px;
+    border: 1px solid #003366;
+    border-radius: 6px;
+    background-color: #002B4D;
+    color: #E0E0E0;
+}
+
+QLineEdit#CreditSearchInput:focus, QLineEdit#PayableSearchInput:focus {
+    border-color: #00BCEB;
+}
+
+QPushButton#CreditAddBtn {
+    background-color: #00BCEB;
+    color: #001F3F;
+    font-weight: bold;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+}
+
+QPushButton#CreditAddBtn:hover {
+    background-color: #33CBF0;
+}
+
+QTableWidget#CreditCustomerTable, QTableWidget#CreditLedgerTable,
+QTableWidget#PayableSupplierTable, QTableWidget#PayableLedgerTable {
+    background-color: #0A1929;
+    alternate-background-color: #0D2137;
+    color: #E0E0E0;
+    gridline-color: #112240;
+    border: 1px solid #112240;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+QTableWidget#CreditCustomerTable::item:selected, QTableWidget#CreditLedgerTable::item:selected,
+QTableWidget#PayableSupplierTable::item:selected, QTableWidget#PayableLedgerTable::item:selected {
+    background-color: #003366;
+    color: #FFFFFF;
+}
+
+QTableWidget#CreditCustomerTable QHeaderView::section, QTableWidget#CreditLedgerTable QHeaderView::section,
+QTableWidget#PayableSupplierTable QHeaderView::section, QTableWidget#PayableLedgerTable QHeaderView::section {
+    background-color: #0D2137;
+    color: #00BCEB;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 6px 8px;
+    border: none;
+    border-bottom: 2px solid #00BCEB;
+}
+
+QFrame#CreditListFooter, QFrame#CreditLedgerFooter,
+QFrame#PayableLedgerFooter {
+    background-color: #0D2137;
+    border: 1px solid #112240;
+    border-radius: 6px;
+}
+
+QLabel#CreditFooterLabel, QLabel#CreditFooterDebt,
+QLabel#PayableLedgerDebit, QLabel#PayableLedgerCredit, QLabel#PayableLedgerClosing {
+    background-color: transparent;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+QLabel#CreditFooterDebt, QLabel#PayableLedgerDebit {
+    color: #FF4136;
+}
+
+QLabel#CreditLedgerDebit {
+    color: #FF4136;
+    background-color: transparent;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+QLabel#CreditLedgerCredit, QLabel#PayableLedgerCredit {
+    color: #39FF14;
+    background-color: transparent;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+QLabel#CreditLedgerClosing, QLabel#PayableLedgerClosing {
+    color: #FFFFFF;
+    background-color: transparent;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+/* Back button */
+QPushButton#CreditBackBtn, QPushButton#PayableBackBtn {
+    background-color: transparent;
+    color: #00BCEB;
+    border: none;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 4px 8px;
+}
+
+QPushButton#CreditBackBtn:hover, QPushButton#PayableBackBtn:hover {
+    color: #33CBF0;
+    text-decoration: underline;
+}
+
+/* Header Card */
+QFrame#CreditHeaderCard, QFrame#PayableHeaderCard {
+    background-color: #0D2137;
+    border: 1px solid #112240;
+    border-radius: 8px;
+}
+
+QFrame#CreditHeaderCard QLabel, QFrame#PayableHeaderCard QLabel {
+    background-color: transparent;
+}
+
+QLabel#CreditCustName, QLabel#PayableCustName {
+    font-size: 18px;
+    font-weight: bold;
+    color: #FFFFFF;
+}
+
+QLabel#CreditCustPhone, QLabel#PayableCustPhone {
+    font-size: 13px;
+    color: #5A7A9A;
+}
+
+QLabel#CreditMetricDebt, QLabel#PayableMetricDebt {
+    font-size: 14px;
+    font-weight: bold;
+    color: #FF4136;
+}
+
+QLabel#CreditMetricAvail {
+    font-size: 14px;
+    font-weight: bold;
+    color: #39FF14;
+}
+
+QLabel#CreditMetricLast, QLabel#PayableMetricLast {
+    font-size: 13px;
+    color: #5A7A9A;
+}
+
+/* Action buttons */
+QPushButton#CreditPayBtn, QPushButton#PayablePayBtn {
+    background-color: #00BCEB;
+    color: #001F3F;
+    font-weight: bold;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+}
+
+QPushButton#CreditPayBtn:hover, QPushButton#PayablePayBtn:hover {
+    background-color: #33CBF0;
+}
+
+QPushButton#CreditPrintBtn {
+    background-color: #003366;
+    color: #E0E0E0;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid #112240;
+    font-size: 13px;
+}
+
+QPushButton#CreditPrintBtn:hover {
+    border-color: #00BCEB;
+    color: #00BCEB;
+}
+
+QPushButton#CreditAdjustBtn, QPushButton#PayableAdjustBtn {
+    background-color: #332800;
+    color: #FFDC00;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid #554400;
+    font-size: 13px;
+}
+
+QPushButton#CreditAdjustBtn:hover, QPushButton#PayableAdjustBtn:hover {
+    background-color: #443600;
+    border-color: #FFDC00;
+}
+
+QPushButton#CreditEditBtn {
+    background-color: #003366;
+    color: #E0E0E0;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid #112240;
+    font-size: 13px;
+}
+
+QPushButton#CreditEditBtn:hover {
+    border-color: #00BCEB;
+    color: #00BCEB;
+}
+
+/* Filter bar labels */
+QLabel#CreditFilterLabel, QLabel#PayableFilterLabel {
+    background-color: transparent;
+    color: #5A7A9A;
+    font-size: 13px;
+}
+
+QPushButton#CreditAllDatesBtn, QPushButton#PayableAllDatesBtn {
+    background-color: #003366;
+    color: #E0E0E0;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid #112240;
+    font-size: 12px;
+}
+
+QPushButton#CreditAllDatesBtn:hover, QPushButton#PayableAllDatesBtn:hover {
+    border-color: #00BCEB;
+}
+
+/* ===================================================================
+   DOCUMENT BROWSER VIEW — Full-width with Detail Panel
+   ================================================================ */
+
+QLabel#DocBrowserTitle {
+    font-size: 22px;
+    font-weight: bold;
+    color: #00BCEB;
+    background-color: transparent;
+}
+
+QPushButton#DocNewQuotationBtn {
+    background-color: #00BCEB;
+    color: #001F3F;
+    font-weight: bold;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+}
+
+QPushButton#DocNewQuotationBtn:hover {
+    background-color: #33CBF0;
+}
+
+QFrame#DocFilterBar {
+    background-color: #0D2137;
+    border: 1px solid #112240;
+    border-radius: 6px;
+}
+
+QLabel#DocFilterLabel {
+    background-color: transparent;
+    color: #5A7A9A;
+    font-size: 13px;
+}
+
+QLineEdit#DocSearchInput {
+    padding: 6px 10px;
+    font-size: 13px;
+    border: 1px solid #003366;
+    border-radius: 4px;
+    background-color: #002B4D;
+    color: #E0E0E0;
+}
+
+QLineEdit#DocSearchInput:focus {
+    border-color: #00BCEB;
+}
+
+QPushButton#DocFilterBtn {
+    background-color: #003366;
+    color: #E0E0E0;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid #112240;
+    font-size: 13px;
+}
+
+QPushButton#DocFilterBtn:hover {
+    border-color: #00BCEB;
+    color: #00BCEB;
+}
+
+QPushButton#DocClearBtn {
+    background-color: transparent;
+    color: #5A7A9A;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid #112240;
+    font-size: 13px;
+}
+
+QPushButton#DocClearBtn:hover {
+    color: #E0E0E0;
+    border-color: #5A7A9A;
+}
+
+QTableWidget#DocTable {
+    background-color: #0A1929;
+    alternate-background-color: #0D2137;
+    color: #E0E0E0;
+    gridline-color: #112240;
+    border: 1px solid #112240;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+QTableWidget#DocTable::item:selected {
+    background-color: #003366;
+    color: #FFFFFF;
+}
+
+QTableWidget#DocTable QHeaderView::section {
+    background-color: #0D2137;
+    color: #00BCEB;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 6px 8px;
+    border: none;
+    border-bottom: 2px solid #00BCEB;
+}
+
+/* Detail Panel */
+QFrame#DocDetailPanel {
+    background-color: #0D2137;
+    border: 1px solid #112240;
+    border-radius: 8px;
+}
+
+QLabel#DocDetailTitle {
+    font-size: 16px;
+    font-weight: bold;
+    color: #00BCEB;
+    background-color: transparent;
+}
+
+QPushButton#DocDetailCloseBtn {
+    background-color: transparent;
+    color: #5A7A9A;
+    border: 1px solid #112240;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: 12px;
+}
+
+QPushButton#DocDetailCloseBtn:hover {
+    color: #E0E0E0;
+    border-color: #5A7A9A;
+}
+
+QLabel#DocInfoLabel, QLabel#DocPaymentLabel, QLabel#DocItemsTitle {
+    background-color: transparent;
+    color: #E0E0E0;
+    font-size: 13px;
+}
+
+QLabel#DocItemsTitle {
+    font-weight: bold;
+    color: #00BCEB;
+}
+
+QTableWidget#DocItemsTable {
+    background-color: #0A1929;
+    alternate-background-color: #0D2137;
+    color: #E0E0E0;
+    gridline-color: #112240;
+    border: 1px solid #112240;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+QTableWidget#DocItemsTable QHeaderView::section {
+    background-color: #0D2137;
+    color: #00BCEB;
+    font-weight: bold;
+    font-size: 11px;
+    padding: 4px 6px;
+    border: none;
+    border-bottom: 1px solid #00BCEB;
+}
+
+/* Action buttons */
+QPushButton#DocReprintBtn, QPushButton#DocConvertBtn {
+    background-color: #003366;
+    color: #E0E0E0;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid #112240;
+    font-size: 13px;
+}
+
+QPushButton#DocReprintBtn:hover, QPushButton#DocConvertBtn:hover {
+    border-color: #00BCEB;
+    color: #00BCEB;
+}
+
+QPushButton#DocConvertBtn:enabled {
+    background-color: #00BCEB;
+    color: #001F3F;
+    font-weight: bold;
+    border: none;
+}
+
+QPushButton#DocRefundBtn, QPushButton#DocVoidBtn {
+    background-color: #330A08;
+    color: #FF4136;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid #551A18;
+    font-size: 13px;
+}
+
+QPushButton#DocRefundBtn:hover, QPushButton#DocVoidBtn:hover {
+    background-color: #441210;
+    border-color: #FF4136;
+}
+
+/* Pagination */
+QLabel#DocPageLabel {
+    background-color: transparent;
+    color: #5A7A9A;
+    font-size: 12px;
+}
+
+QPushButton#DocPrevBtn, QPushButton#DocNextBtn {
+    background-color: #003366;
+    color: #E0E0E0;
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px solid #112240;
+    font-size: 12px;
+}
+
+QPushButton#DocPrevBtn:hover, QPushButton#DocNextBtn:hover {
+    border-color: #00BCEB;
+    color: #00BCEB;
+}
+
+/* ===================================================================
+   PRICE LIST VIEW — Sidebar Navigation
+   ================================================================ */
+
+QWidget#PriceListSidebarPanel {
+    background-color: #0A1929;
+    border-right: 1px solid #112240;
+}
+
+QLabel#PriceListSidebarTitle {
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: #00BCEB;
+    background-color: transparent;
+    padding-bottom: 4px;
+}
+
+QScrollArea#PriceListSidebarScroll {
+    background-color: transparent;
+    border: none;
+}
+
+QWidget#PriceListNavContainer {
+    background-color: transparent;
+}
+
+QPushButton#PriceListNavItem {
+    text-align: left;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: #8DA4BF;
+    background-color: transparent;
+    border: none;
+    border-left: 3px solid transparent;
+    border-radius: 0px;
+}
+
+QPushButton#PriceListNavItem:hover {
+    background-color: #112240;
+    color: #E0E0E0;
+}
+
+QPushButton#PriceListNavItem:checked {
+    background-color: #112240;
+    color: #00BCEB;
+    font-weight: bold;
+    border-left: 3px solid #00BCEB;
+}
+
+QPushButton#PriceListAddBtn {
+    background-color: #00BCEB;
+    color: #001F3F;
+    font-weight: bold;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+}
+
+QPushButton#PriceListAddBtn:hover {
+    background-color: #33CBF0;
+}
+
+QWidget#PriceListContentPanel {
+    background-color: #001F3F;
+}
+
+/* Empty state */
+QLabel#PriceListEmptyText {
+    font-size: 18px;
+    font-weight: bold;
+    color: #5A7A9A;
+    background-color: transparent;
+}
+
+QLabel#PriceListEmptySubtext {
+    font-size: 13px;
+    color: #3D5A7A;
+    background-color: transparent;
+}
+
+/* Header */
+QFrame#PriceListHeader {
+    background-color: #0D2137;
+    border: 1px solid #112240;
+    border-radius: 6px;
+}
+
+QLabel#PriceListTitle {
+    font-size: 18px;
+    font-weight: bold;
+    color: #FFFFFF;
+    background-color: transparent;
+}
+
+QLabel#PriceListDates {
+    font-size: 13px;
+    color: #5A7A9A;
+    background-color: transparent;
+}
+
+/* Data table */
+QTableWidget#PriceListDataTable {
+    background-color: #0A1929;
+    alternate-background-color: #0D2137;
+    color: #E0E0E0;
+    gridline-color: #112240;
+    border: 1px solid #112240;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+QTableWidget#PriceListDataTable::item:selected {
+    background-color: #003366;
+    color: #FFFFFF;
+}
+
+QTableWidget#PriceListDataTable QHeaderView::section {
+    background-color: #0D2137;
+    color: #00BCEB;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 6px 8px;
+    border: none;
+    border-bottom: 2px solid #00BCEB;
+}
+
+/* Footer */
+QFrame#PriceListFooter {
+    background-color: #0D2137;
+    border: 1px solid #112240;
+    border-radius: 6px;
+}
+
+QLabel#PriceListFooterLabel {
+    background-color: transparent;
+    color: #5A7A9A;
+    font-size: 12px;
+}
+
+QLabel#PriceListFooterHint {
+    background-color: transparent;
+    color: #3D5A7A;
+    font-size: 11px;
+    font-style: italic;
+}
+
+/* Splitter handle */
+QSplitter#PriceListSplitter::handle {
+    background-color: #112240;
+    width: 1px;
+}
+
+/* ── Touch Product Grid ── */
+#ProductGridPanel {
+    background: #001F3F;
+}
+
+QToolButton#CategoryTab {
+    background-color: #003366;
+    color: white;
+    border: 1px solid #00509E;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+QToolButton#CategoryTab:checked {
+    color: black;
+    border: 1px solid white;
+}
+
+QToolButton#CategoryTab:hover {
+    border-color: #00BCEB;
+}
+
+QToolButton#ProductCard {
+    background-color: #003366;
+    border: 1px solid #00509E;
+    border-radius: 8px;
+}
+
+QToolButton#ProductCard:hover {
+    background-color: #004080;
+    border: 1px solid #00BCEB;
+}
+
+QToolButton#ProductCard:pressed {
+    background-color: #002855;
+}
+
+QLabel#ProductCardImage {
+    background: transparent;
+}
+
+QLabel#ProductCardName {
+    font-size: 13px;
+    font-weight: bold;
+    color: white;
+    background: transparent;
+}
+
+QLabel#ProductCardPrice {
+    font-size: 15px;
+    font-weight: bold;
+    color: #00BCEB;
+    background: transparent;
+}
+
+/* ── Payment Methods Card List ── */
+#PMCardScroll {
+    background: transparent;
+}
+
+#PMCard {
+    background-color: #112240;
+    border: 1px solid #1E3A5F;
+    border-radius: 6px;
+}
+
+#PMCard:hover {
+    border-color: #00BCEB;
+}
+
+QLabel#PMCardName {
+    font-size: 14px;
+    font-weight: bold;
+    color: #FFFFFF;
+    background: transparent;
+}
+
+QLabel#PMCardTags {
+    font-size: 11px;
+    color: #8892B0;
+    background: transparent;
+}
+
+QLabel#PMCardStatus {
+    font-size: 11px;
+    font-weight: bold;
+    border-radius: 10px;
+    padding: 3px 10px;
+}
+
+QLabel#PMCardStatus[class="pm-active"] {
+    background-color: #0D3B1E;
+    color: #39FF14;
+    border: 1px solid #39FF14;
+}
+
+QLabel#PMCardStatus[class="pm-inactive"] {
+    background-color: #3B1A1A;
+    color: #FF6B6B;
+    border: 1px solid #FF6B6B;
+}
+
+QPushButton#PMCardBtn {
+    padding: 5px 16px;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 4px;
+    color: #FFFFFF;
+    background-color: #1E3A5F;
+    border: 1px solid #2A4A6F;
+}
+
+QPushButton#PMCardBtn:hover {
+    background-color: #2A4A6F;
+    border-color: #3A5A7F;
+}
+
+QPushButton#PMCardBtn[class="danger"] {
+    background-color: #FF4136;
+    color: #FFFFFF;
+    border: none;
+}
+
+QPushButton#PMCardBtn[class="danger"]:hover {
+    background-color: #E0362C;
+}
+
+QPushButton#PMCardBtn[class="warning"] {
+    background-color: #FFDC00;
+    color: #001F3F;
+    border: none;
+}
+
+QPushButton#PMCardBtn[class="warning"]:hover {
+    background-color: #E6C600;
+}
+
+QPushButton#PMCardBtn[class="accent"] {
+    background-color: #00BCEB;
+    color: #001F3F;
+    border: none;
+}
+
+QPushButton#PMCardBtn[class="accent"]:hover {
+    background-color: #00A5D0;
+}

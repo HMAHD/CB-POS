@@ -2,6 +2,77 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.9.1] - 2026-03-05
+
+### Added — Receipt Printing Overhaul (Phase 31D)
+
+- **Hardware settings controls**: Test Print and Open Drawer buttons in Settings > Hardware > Printers tab. New "Cut & Drawer" tab with auto-cut toggle, partial/full cut type, feed lines before cut (1-8), and drawer-on-cash-only setting (default: enabled).
+- **Receipt content — Sri Lanka compliance**: Shop TIN/VAT number printed on receipts from existing `company_tax_id` config. Cashier name (from current session) and Terminal ID now printed when enabled.
+- **QR code on receipt**: Configurable QR code (e.g. shop WhatsApp/website URL) — toggle + URL field in Settings > Receipt > Display.
+- **VOID receipt template**: `build_void_receipt()` generates receipts with `*** VOIDED ***` header/footer, original sale reference, void reason, authorizer, and timestamp. Visually distinct with `===` border.
+- **REFUND receipt template**: `build_refund_receipt()` generates receipts with `*** REFUND ***` header/footer, original sale reference, refund amount, authorizer, and timestamp.
+- **Duplicate marking on reprints**: Reprinted receipts show `*** DUPLICATE — NOT FOR PAYMENT ***` at top and bottom. Reprint dialog passes `is_reprint=True` to ReceiptBuilder.
+- **Printer error feedback**: `PrintWorker.error_occurred` signal connected to `SalesView` — shows non-blocking warning dialog with error message and "Check Settings > Hardware" guidance.
+- **Receipt display toggles**: New settings in Receipt > Display: Show Cashier Name (default on), Show Terminal ID, Show QR Code, QR Content URL.
+
+### Fixed — Printing Dead Code & ESC/POS Bugs
+
+- **Removed duplicate `PrinterService._format_receipt()`**: Dead code that built raw ESC/POS bytes with hardcoded commands, wrong cut command (`ESC i` instead of `GS V`), and Windows-only `cmd /c copy` dispatch. `PrinterService` now routes through `ReceiptBuilder` + `PrintWorker`.
+- **Partial/full cut support**: `ESCPOSDriver.print_commands()` handles `cut` command with `mode="PART"` or `mode="FULL"` based on config.
+- **Cash drawer filtering**: Drawer kick passes payment methods; case-insensitive `CASH` comparison prevents drawer opening for card/credit-only transactions when `drawer_on_cash_only` is enabled.
+
+### Improved — Code Quality (Review Feedback)
+
+- **Logged broad exception handlers**: All `except Exception` fallbacks in `auth_service.py`, `cart_service.py`, and `receipt_builder.py` now log at `debug` level for troubleshooting.
+- **Deterministic timestamps**: `build_void_receipt()` and `build_refund_receipt()` accept optional `void_timestamp` / `refund_timestamp` parameters — defaults to `datetime.now()` but injectable for testing.
+- **Extracted shared receipt helpers**: `_append_header_block()`, `_append_branding()`, `_append_cut()`, `_get_conf()` reduce duplication across receipt builders.
+
+## [0.9.0] - 2026-03-05
+
+### Security — Permission System Enforcement (Phase 31A)
+
+- **Fixed 3 mismatched permission codes**: `can_void_sale` → `sales.void_item`, `change_price` → `sales.change_price`, `can_refund` → `sales.refund` — previous codes silently failed, allowing anyone to void/refund/change prices.
+- **Added 8 new permission codes**: `sales.refund`, `credit.receive_payment`, `credit.adjust_balance`, `purchase.adjust_payable`, `documents.void`, `inventory.delete`, `cash.open_drawer`, `reports.export`.
+- **Enforced permission checks on 20+ critical operations**: discounts, user management, settings, backup/restore, inventory editing, credit adjustments, supplier payments, document voiding, stock take voiding, and data exports — all now gated via `check_permission_with_override()`.
+- **Updated role seeds**: Manager gets Credit + Cash groups; Cashier gets `credit.receive_payment` and `cash.open_drawer`.
+
+### Added — Payment & Settings Configuration (Phase 31B)
+
+- **Payment Methods settings page**: Full CRUD management (add/edit/delete/toggle) for payment methods in Settings → Payments. Inline activate/deactivate toggle, compact action buttons, and QSS-themed table UI with proper row sizing.
+- **Max Discount % setting**: New `max_discount_percent` (default 15%) in Sales & Tax → Sales. Enforced in `CartService` — raises `ValueError` when exceeded; UI catches and displays message.
+- **Configurable login lockout**: `max_login_attempts` (default 5) and `lockout_duration_seconds` (default 300) in System → Security — `auth_service.py` now reads from config.
+- **Loyalty points ratio setting**: `loyalty_points_ratio` (default Rs.100 per point) in Sales & Tax → Sales — `customer_service.py` reads from config.
+- **Default credit limit setting**: `default_credit_limit` (default 0) in Sales & Tax → Sales.
+
+### Fixed — Hardcoded Values & Polish (Phase 31C)
+
+- **Replaced hardcoded payment lists**: `receive_payment_dialog.py` and `supplier_payment_dialog.py` now load methods from DB via `PaymentService.get_active_methods()` (excluding Credit).
+- **Replaced CREDIT string comparisons**: 3 locations in `payment_dialog.py` and `transaction_service.py` now use `PaymentMethodType.CREDIT` constant instead of raw `"CREDIT"` string.
+- **Payment method on receipts**: Receipt builder now shows payment breakdown (method + amount for each payment) with change calculation for cash overpayments.
+
+## [0.8.11] - 2026-03-05
+
+### Improved — Touch Product Grid UX Overhaul
+
+- **Responsive card sizing**: Removed fixed 110×110px cards — cards now expand to fill available grid width with `MinimumSize(90, 100)` and `Expanding` size policy.
+- **Product images**: Cards display product image (scaled 60×60) when `image_path` is set; gracefully omitted when no image exists.
+- **Removed generic box icon**: Eliminated the identical box icon that wasted space on every card.
+- **QSS-driven theming**: Removed all inline `setStyleSheet` calls from `ProductCard` and `CategoryButton` — styling now handled via `dark.qss` / `light.qss` using object names (`ProductCard`, `ProductCardName`, `ProductCardPrice`, `ProductCardImage`, `CategoryTab`).
+- **Larger readable fonts**: Name 13px bold, price 15px bold (up from 12px/14px).
+- **Wider grid panel**: Increased from 350px to 420px — fits 3 columns at ~130px each.
+- **Dynamic column reflow**: Grid recalculates columns on resize (`max(2, width // 130)`) with even column stretch distribution.
+- **Focus protection**: All card/button widgets set `NoFocus` policy to prevent stealing focus from barcode input.
+- **CategoryButton**: Only minimal inline style retained for per-category dynamic checked background color.
+
+## [0.8.10] - 2026-03-05
+
+### Fixed — QFormLayout Field Growth Across All Dialogs
+
+- **All QFormLayout instances** now use `ExpandingFieldsGrow` policy — input fields stretch to fill available dialog width instead of being narrow and centered.
+- **Right-aligned labels** (`AlignRight`) applied globally for consistent visual alignment.
+- **13 forms fixed across 13 files**: `customer_quick_add.py`, `category_dialog.py`, `profile_dialog.py`, `proforma_dialog.py`, `supplier_payment_dialog.py`, `receive_payment_dialog.py`, `stock_adjustment_dialog.py`, `setup_wizard.py` (3 forms), `data_export_dialog.py`, `backup_restore_dialog.py`, `category_manager.py`, `unit_manager.py`, `pricelist_view.py` (PriceListDialog).
+- Previously fixed in `customer_editor.py` (3 forms) and `product_editor.py` (2 forms).
+
 ## [0.8.9] - 2026-03-04
 
 ### Changed — Report Viewer Redesign ("Data Observatory")

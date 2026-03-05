@@ -50,6 +50,8 @@ class SetupWizard(QDialog):
         self.page_shop = QWidget()
         shop_layout = QVBoxLayout(self.page_shop)
         shop_form = QFormLayout()
+        shop_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        shop_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         shop_form.setVerticalSpacing(15)
         shop_form.setHorizontalSpacing(20)
 
@@ -77,6 +79,8 @@ class SetupWizard(QDialog):
         self.page_hardware = QWidget()
         hw_layout = QVBoxLayout(self.page_hardware)
         hw_form = QFormLayout()
+        hw_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        hw_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         hw_form.setVerticalSpacing(15)
         hw_form.setHorizontalSpacing(20)
 
@@ -104,6 +108,8 @@ class SetupWizard(QDialog):
         self.page_security = QWidget()
         sec_layout = QVBoxLayout(self.page_security)
         sec_form = QFormLayout()
+        sec_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        sec_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         sec_form.setVerticalSpacing(15)
         sec_form.setHorizontalSpacing(20)
 

@@ -143,11 +143,23 @@ class InventoryView(QWidget):
         self.model.update_data(filtered)
 
     def open_add_dialog(self):
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.INVENTORY_EDIT, self):
+            return
+
         dialog = ProductEditor(parent=self)
         if dialog.exec():
             self.load_data()
 
     def open_edit_dialog(self, index):
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.INVENTORY_EDIT, self):
+            return
+
         product = self.model.products[index.row()]
         dialog = ProductEditor(product=product, parent=self)
         if dialog.exec():

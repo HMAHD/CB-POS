@@ -12,7 +12,6 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QLabel,
     QMessageBox,
-    QSplitter,
     QComboBox,
     QFrame,
     QSizePolicy,
@@ -34,13 +33,12 @@ logger = logging.getLogger(__name__)
 
 class DocumentBrowserView(QWidget):
     """
-    Unified document browser that consolidates Sales, Purchases,
-    Proformas, and other document types into a single searchable view.
+    Unified document browser with full-width table and expandable detail panel.
+    No splitter — details appear below the table when a document is selected.
     """
 
     convert_to_sale_requested = pyqtSignal(dict)
 
-    # Status color map
     STATUS_COLORS = {
         "COMPLETED": QColor("#39FF14"),
         "VOID": QColor("#FF4136"),
@@ -53,6 +51,7 @@ class DocumentBrowserView(QWidget):
 
     def __init__(self) -> None:
         super().__init__()
+        self.setObjectName("DocumentBrowserView")
         self.current_doc: dict | None = None
         self.current_page = 1
         self.total_docs = 0
@@ -64,87 +63,86 @@ class DocumentBrowserView(QWidget):
 
     def init_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(8)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
 
-        # Title
+        # Title row
+        title_row = QHBoxLayout()
         title = QLabel("Document Browser")
-        title.setObjectName("ViewTitle")
-        title.setProperty("class", "dialog-title")
-        layout.addWidget(title)
+        title.setObjectName("DocBrowserTitle")
+        title_row.addWidget(title)
+        title_row.addStretch()
+
+        new_proforma_btn = QPushButton("+ New Quotation")
+        new_proforma_btn.setObjectName("DocNewQuotationBtn")
+        new_proforma_btn.clicked.connect(self.open_proforma_dialog)
+        title_row.addWidget(new_proforma_btn)
+        layout.addLayout(title_row)
 
         # Filter Bar
         filter_frame = QFrame()
-        filter_frame.setObjectName("FilterBar")
+        filter_frame.setObjectName("DocFilterBar")
         filter_layout = QHBoxLayout(filter_frame)
-        filter_layout.setContentsMargins(8, 8, 8, 8)
+        filter_layout.setContentsMargins(10, 8, 10, 8)
         filter_layout.setSpacing(8)
 
-        # Document Type
         lbl_type = QLabel("Type:")
-        lbl_type.setProperty("class", "transparent")
+        lbl_type.setObjectName("DocFilterLabel")
         filter_layout.addWidget(lbl_type)
         self.type_combo = QComboBox()
+        self.type_combo.setObjectName("DocFilterCombo")
         self.type_combo.addItems(["All", "Sales", "Purchases", "Proforma"])
         self.type_combo.setMinimumWidth(110)
         filter_layout.addWidget(self.type_combo)
 
-        # Status
         lbl_status = QLabel("Status:")
-        lbl_status.setProperty("class", "transparent")
+        lbl_status.setObjectName("DocFilterLabel")
         filter_layout.addWidget(lbl_status)
         self.status_combo = QComboBox()
+        self.status_combo.setObjectName("DocFilterCombo")
         self.status_combo.addItems(["All", "Completed", "Void", "Draft", "Quote", "Expired", "Converted"])
         self.status_combo.setMinimumWidth(110)
         filter_layout.addWidget(self.status_combo)
 
-        # Date Range
         lbl_from = QLabel("From:")
-        lbl_from.setProperty("class", "transparent")
+        lbl_from.setObjectName("DocFilterLabel")
         filter_layout.addWidget(lbl_from)
         self.from_date = QDateEdit()
+        self.from_date.setObjectName("DocDateEdit")
         self.from_date.setCalendarPopup(True)
         self.from_date.setDate(QDate.currentDate().addMonths(-1))
         filter_layout.addWidget(self.from_date)
 
         lbl_to = QLabel("To:")
-        lbl_to.setProperty("class", "transparent")
+        lbl_to.setObjectName("DocFilterLabel")
         filter_layout.addWidget(lbl_to)
         self.to_date = QDateEdit()
+        self.to_date.setObjectName("DocDateEdit")
         self.to_date.setCalendarPopup(True)
         self.to_date.setDate(QDate.currentDate())
         filter_layout.addWidget(self.to_date)
 
-        # Search
         self.search_input = QLineEdit()
+        self.search_input.setObjectName("DocSearchInput")
         self.search_input.setPlaceholderText("Search document number...")
         self.search_input.returnPressed.connect(self.apply_filter)
         filter_layout.addWidget(self.search_input, 1)
 
-        # Buttons
         filter_btn = QPushButton("Filter")
+        filter_btn.setObjectName("DocFilterBtn")
         filter_btn.clicked.connect(self.apply_filter)
         filter_layout.addWidget(filter_btn)
 
         clear_btn = QPushButton("Clear")
+        clear_btn.setObjectName("DocClearBtn")
         clear_btn.clicked.connect(self.clear_filter)
         filter_layout.addWidget(clear_btn)
 
-        # New Proforma button
-        new_proforma_btn = QPushButton("+ New Quotation")
-        new_proforma_btn.setObjectName("BtnSuccess")
-        new_proforma_btn.setProperty("class", "accent")
-        new_proforma_btn.clicked.connect(self.open_proforma_dialog)
-        filter_layout.addWidget(new_proforma_btn)
-
         layout.addWidget(filter_frame)
 
-        # Main Content: Splitter with table and details — stretch=1 so it fills remaining space
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setChildrenCollapsible(False)
-
-        # Document Table
+        # Document Table (full width)
         self.doc_table = QTableWidget()
+        self.doc_table.setObjectName("DocTable")
         self.doc_table.setColumnCount(7)
         self.doc_table.setHorizontalHeaderLabels(
             ["Date", "Doc #", "Type", "Customer/Supplier", "Total", "Status", "User"]
@@ -159,95 +157,144 @@ class DocumentBrowserView(QWidget):
         self.doc_table.setAlternatingRowColors(True)
         self.doc_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.doc_table.itemSelectionChanged.connect(self.on_selection_changed)
-        splitter.addWidget(self.doc_table)
+        layout.addWidget(self.doc_table, 3)
 
-        # Details Panel
-        details_widget = QFrame()
-        details_widget.setObjectName("DocDetailsPanel")
-        details_layout = QVBoxLayout(details_widget)
-        details_layout.setContentsMargins(10, 10, 10, 10)
-        details_layout.setSpacing(8)
+        # Detail Panel (below table, initially hidden)
+        self.detail_panel = QFrame()
+        self.detail_panel.setObjectName("DocDetailPanel")
+        self.detail_panel.setVisible(False)
+        detail_layout = QVBoxLayout(self.detail_panel)
+        detail_layout.setContentsMargins(12, 10, 12, 10)
+        detail_layout.setSpacing(8)
 
-        lbl_details_title = QLabel("<b>Document Details</b>")
-        lbl_details_title.setProperty("class", "transparent")
-        details_layout.addWidget(lbl_details_title)
+        # Detail header row
+        detail_header = QHBoxLayout()
+        self.detail_title = QLabel("Document Details")
+        self.detail_title.setObjectName("DocDetailTitle")
+        detail_header.addWidget(self.detail_title)
+        detail_header.addStretch()
 
+        self.btn_close_detail = QPushButton("Close")
+        self.btn_close_detail.setObjectName("DocDetailCloseBtn")
+        self.btn_close_detail.clicked.connect(self._close_detail)
+        detail_header.addWidget(self.btn_close_detail)
+        detail_layout.addLayout(detail_header)
+
+        # Detail content: info + items side by side
+        detail_content = QHBoxLayout()
+        detail_content.setSpacing(16)
+
+        # Left: document info
+        info_frame = QFrame()
+        info_frame.setObjectName("DocInfoFrame")
+        info_layout = QVBoxLayout(info_frame)
+        info_layout.setContentsMargins(0, 0, 0, 0)
         self.details_label = QLabel("Select a document to view details")
+        self.details_label.setObjectName("DocInfoLabel")
         self.details_label.setWordWrap(True)
-        self.details_label.setProperty("class", "transparent")
-        details_layout.addWidget(self.details_label)
+        info_layout.addWidget(self.details_label)
 
-        # Line Items
-        lbl_items_title = QLabel("<b>Line Items:</b>")
-        lbl_items_title.setProperty("class", "transparent")
-        details_layout.addWidget(lbl_items_title)
+        self.payment_label = QLabel("")
+        self.payment_label.setObjectName("DocPaymentLabel")
+        self.payment_label.setWordWrap(True)
+        info_layout.addWidget(self.payment_label)
+        info_layout.addStretch()
+        detail_content.addWidget(info_frame, 1)
+
+        # Right: line items table
+        items_frame = QWidget()
+        items_layout = QVBoxLayout(items_frame)
+        items_layout.setContentsMargins(0, 0, 0, 0)
+        lbl_items_title = QLabel("Line Items")
+        lbl_items_title.setObjectName("DocItemsTitle")
+        items_layout.addWidget(lbl_items_title)
+
         self.items_table = QTableWidget()
+        self.items_table.setObjectName("DocItemsTable")
         self.items_table.setColumnCount(5)
         self.items_table.setHorizontalHeaderLabels(["Product", "Qty", "Unit Price", "Discount", "Total"])
         self.items_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.items_table.verticalHeader().setVisible(False)
         self.items_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.items_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        details_layout.addWidget(self.items_table, 1)  # stretch so items table fills details panel
+        self.items_table.setMaximumHeight(200)
+        items_layout.addWidget(self.items_table)
+        detail_content.addWidget(items_frame, 2)
 
-        # Payment Info
-        self.payment_label = QLabel("")
-        self.payment_label.setWordWrap(True)
-        self.payment_label.setProperty("class", "transparent")
-        details_layout.addWidget(self.payment_label)
+        detail_layout.addLayout(detail_content)
 
-        # Action Buttons
-        action_layout = QHBoxLayout()
+        # Action buttons row
+        action_row = QHBoxLayout()
+        action_row.addStretch()
 
         self.reprint_btn = QPushButton("Reprint")
+        self.reprint_btn.setObjectName("DocReprintBtn")
         self.reprint_btn.clicked.connect(self.reprint_document)
         self.reprint_btn.setEnabled(False)
-        action_layout.addWidget(self.reprint_btn)
-
-        self.refund_btn = QPushButton("Refund")
-        self.refund_btn.clicked.connect(self.process_refund)
-        self.refund_btn.setEnabled(False)
-        self.refund_btn.setProperty("class", "danger")
-        action_layout.addWidget(self.refund_btn)
+        action_row.addWidget(self.reprint_btn)
 
         self.convert_btn = QPushButton("Convert to Sale")
+        self.convert_btn.setObjectName("DocConvertBtn")
         self.convert_btn.clicked.connect(self.convert_proforma)
         self.convert_btn.setEnabled(False)
-        self.convert_btn.setProperty("class", "primary")
-        action_layout.addWidget(self.convert_btn)
+        action_row.addWidget(self.convert_btn)
+
+        self.refund_btn = QPushButton("Refund")
+        self.refund_btn.setObjectName("DocRefundBtn")
+        self.refund_btn.clicked.connect(self.process_refund)
+        self.refund_btn.setEnabled(False)
+        action_row.addWidget(self.refund_btn)
 
         self.void_btn = QPushButton("Void")
+        self.void_btn.setObjectName("DocVoidBtn")
         self.void_btn.clicked.connect(self.void_document)
         self.void_btn.setEnabled(False)
-        self.void_btn.setProperty("class", "danger")
-        action_layout.addWidget(self.void_btn)
+        action_row.addWidget(self.void_btn)
 
-        details_layout.addLayout(action_layout)
+        detail_layout.addLayout(action_row)
+        layout.addWidget(self.detail_panel, 2)
 
-        splitter.addWidget(details_widget)
-        splitter.setStretchFactor(0, 2)
-        splitter.setStretchFactor(1, 1)
-
-        layout.addWidget(splitter, 1)  # stretch=1 so splitter fills all remaining vertical space
-
-        # Pagination
-        page_layout = QHBoxLayout()
+        # Pagination bar
+        page_bar = QFrame()
+        page_bar.setObjectName("DocPaginationBar")
+        page_layout = QHBoxLayout(page_bar)
+        page_layout.setContentsMargins(0, 4, 0, 4)
         page_layout.addStretch()
+
         self.page_label = QLabel("Page 1")
-        self.page_label.setProperty("class", "transparent")
+        self.page_label.setObjectName("DocPageLabel")
         page_layout.addWidget(self.page_label)
 
         self.prev_btn = QPushButton("< Previous")
+        self.prev_btn.setObjectName("DocPrevBtn")
         self.prev_btn.clicked.connect(self.prev_page)
         self.prev_btn.setEnabled(False)
         page_layout.addWidget(self.prev_btn)
 
         self.next_btn = QPushButton("Next >")
+        self.next_btn.setObjectName("DocNextBtn")
         self.next_btn.clicked.connect(self.next_page)
         self.next_btn.setEnabled(False)
         page_layout.addWidget(self.next_btn)
 
-        layout.addLayout(page_layout)
+        layout.addWidget(page_bar)
+
+    # ------------------------------------------------------------------
+    # Detail Panel
+    # ------------------------------------------------------------------
+
+    def _close_detail(self) -> None:
+        """Hide the detail panel."""
+        self.detail_panel.setVisible(False)
+        self.current_doc = None
+        self.reset_action_buttons()
+
+    def _show_detail(self) -> None:
+        """Show the detail panel."""
+        self.detail_panel.setVisible(True)
+
+    # ------------------------------------------------------------------
+    # Filters
+    # ------------------------------------------------------------------
 
     def apply_filter(self) -> None:
         """Apply filters and reload documents."""
@@ -264,10 +311,18 @@ class DocumentBrowserView(QWidget):
         self.current_page = 1
         self.load_documents()
 
+    # ------------------------------------------------------------------
+    # Data Loading
+    # ------------------------------------------------------------------
+
     def load_documents(self) -> None:
         """Load documents from service with current filters."""
-        # Map combo selections to service params
-        type_map = {"All": None, "Sales": "SALE", "Purchases": "PURCHASE", "Proforma": "PROFORMA"}
+        type_map = {
+            "All": None,
+            "Sales": "SALE",
+            "Purchases": "PURCHASE",
+            "Proforma": "PROFORMA",
+        }
         status_map = {
             "All": None,
             "Completed": "COMPLETED",
@@ -305,20 +360,18 @@ class DocumentBrowserView(QWidget):
         self.doc_table.setRowCount(0)
         self.current_doc = None
         self.reset_action_buttons()
+        self.detail_panel.setVisible(False)
 
         for row, doc in enumerate(documents):
             self.doc_table.insertRow(row)
 
-            # Date
             dt_item = QTableWidgetItem(doc["date"].strftime("%Y-%m-%d %H:%M") if doc["date"] else "")
             dt_item.setData(Qt.ItemDataRole.UserRole, doc["id"])
             dt_item.setData(Qt.ItemDataRole.UserRole + 1, doc["type"])
             self.doc_table.setItem(row, 0, dt_item)
 
-            # Doc #
             self.doc_table.setItem(row, 1, QTableWidgetItem(doc["document_number"]))
 
-            # Type
             type_display = {
                 "SALE": "Sale",
                 "PURCHASE": "Purchase",
@@ -326,28 +379,24 @@ class DocumentBrowserView(QWidget):
             }
             self.doc_table.setItem(row, 2, QTableWidgetItem(type_display.get(doc["type"], doc["type"])))
 
-            # Customer/Supplier
             self.doc_table.setItem(row, 3, QTableWidgetItem(doc.get("entity_name", "")))
 
-            # Total
             total = doc.get("total_amount")
             total_text = format_currency(total) if total is not None else ""
             total_item = QTableWidgetItem(total_text)
             total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.doc_table.setItem(row, 4, total_item)
 
-            # Status (color-coded)
             status_item = QTableWidgetItem(doc["status"])
             color = self.STATUS_COLORS.get(doc["status"])
             if color:
                 status_item.setForeground(color)
             self.doc_table.setItem(row, 5, status_item)
 
-            # User
             self.doc_table.setItem(row, 6, QTableWidgetItem(doc.get("username", "")))
 
     def on_selection_changed(self) -> None:
-        """Handle row selection — load full details."""
+        """Handle row selection — load full details in the panel below."""
         selected = self.doc_table.selectedItems()
         if not selected:
             self.current_doc = None
@@ -364,14 +413,19 @@ class DocumentBrowserView(QWidget):
             self.current_doc = details
             self.display_details(details)
             self.update_action_buttons(details)
+            self._show_detail()
 
     def display_details(self, doc: dict) -> None:
-        """Display document details in the details panel."""
-        type_labels = {"sale": "Sale", "purchase": "Purchase", "proforma": "Quotation"}
+        """Display document details in the detail panel."""
+        type_labels = {
+            "sale": "Sale",
+            "purchase": "Purchase",
+            "proforma": "Quotation",
+        }
+
+        self.detail_title.setText(f"{type_labels.get(doc['type'], doc['type'])} — {doc['document_number']}")
 
         html = (
-            f"<b>Document:</b> {doc['document_number']}<br>"  # noqa: E231
-            f"<b>Type:</b> {type_labels.get(doc['type'], doc['type'])}<br>"  # noqa: E231
             f"<b>Date:</b> {doc['date'].strftime('%Y-%m-%d %H:%M:%S') if doc['date'] else 'N/A'}<br>"  # noqa: E231
             f"<b>Status:</b> {doc['status']}<br>"  # noqa: E231
             f"<b>User:</b> {doc.get('username', '')}<br>"  # noqa: E231
@@ -386,7 +440,6 @@ class DocumentBrowserView(QWidget):
         if total is not None:
             html += f"<b>Total:</b> {format_currency(total)}<br>"  # noqa: E231
 
-        # Proforma-specific info
         if doc["type"] == "proforma":
             if doc.get("validity_days"):
                 html += f"<b>Validity:</b> {doc['validity_days']} days<br>"  # noqa: E231
@@ -397,7 +450,6 @@ class DocumentBrowserView(QWidget):
             if doc.get("converted_sale_id"):
                 html += f"<b>Converted to Sale:</b> #{doc['converted_sale_id']}<br>"  # noqa: E231
 
-        # Refund info
         if doc.get("refund_of_sale_id"):
             html += f"<b>Refund of Sale:</b> #{doc['refund_of_sale_id']}<br>"  # noqa: E231
 
@@ -437,6 +489,10 @@ class DocumentBrowserView(QWidget):
         else:
             self.payment_label.setText("")
 
+    # ------------------------------------------------------------------
+    # Action Buttons
+    # ------------------------------------------------------------------
+
     def reset_action_buttons(self) -> None:
         """Disable all action buttons."""
         self.reprint_btn.setEnabled(False)
@@ -449,18 +505,21 @@ class DocumentBrowserView(QWidget):
         doc_type = doc.get("type", "")
         status = doc.get("status", "")
 
-        # Reprint — for completed sales/purchases
         self.reprint_btn.setEnabled(doc_type in ("sale", "purchase", "proforma") and status != DocumentStatus.VOID)
 
-        # Refund — only completed sales (not refunds themselves)
         is_refundable = doc_type == "sale" and status == DocumentStatus.COMPLETED and not doc.get("refund_of_sale_id")
         self.refund_btn.setEnabled(is_refundable)
 
-        # Convert to Sale — only QUOTE proformas
         self.convert_btn.setEnabled(doc_type == "proforma" and status == DocumentStatus.QUOTE)
 
-        # Void — any non-void, non-converted document
-        self.void_btn.setEnabled(status not in (DocumentStatus.VOID, DocumentStatus.CONVERTED, DocumentStatus.EXPIRED))
+        self.void_btn.setEnabled(
+            status
+            not in (
+                DocumentStatus.VOID,
+                DocumentStatus.CONVERTED,
+                DocumentStatus.EXPIRED,
+            )
+        )
 
     def reprint_document(self) -> None:
         """Reprint the selected document."""
@@ -471,7 +530,6 @@ class DocumentBrowserView(QWidget):
 
         try:
             if doc_type == "sale":
-                # Use existing receipt reprint flow
                 sale = TransactionService.get_sale_details(self.current_doc["id"])
                 if sale:
                     from cbpos.core.services.config_service import ConfigService
@@ -506,7 +564,11 @@ class DocumentBrowserView(QWidget):
                         f"Quotation {self.current_doc['document_number']} sent to printer.",
                     )
             else:
-                QMessageBox.information(self, "Info", "Reprint is not yet supported for this document type.")
+                QMessageBox.information(
+                    self,
+                    "Info",
+                    "Reprint is not yet supported for this document type.",
+                )
 
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to reprint: {e}")
@@ -540,7 +602,11 @@ class DocumentBrowserView(QWidget):
                     QMessageBox.information(self, "Success", "Refund processed successfully.")
                     self.load_documents()
                 else:
-                    QMessageBox.critical(self, "Error", "Failed to process refund. Check logs.")
+                    QMessageBox.critical(
+                        self,
+                        "Error",
+                        "Failed to process refund. Check logs.",
+                    )
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Refund failed: {e}")
 
@@ -563,10 +629,20 @@ class DocumentBrowserView(QWidget):
             if cart_data:
                 self.convert_to_sale_requested.emit(cart_data)
             else:
-                QMessageBox.critical(self, "Error", "Failed to prepare proforma for conversion.")
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    "Failed to prepare proforma for conversion.",
+                )
 
     def void_document(self) -> None:
         """Void the selected document."""
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.DOCUMENTS_VOID, self):
+            return
+
         if not self.current_doc:
             return
 
@@ -595,7 +671,11 @@ class DocumentBrowserView(QWidget):
                     return
                 success = TransactionService.void_sale(self.current_doc["id"], current_user.id)
             else:
-                QMessageBox.information(self, "Info", "Void not supported for this document type.")
+                QMessageBox.information(
+                    self,
+                    "Info",
+                    "Void not supported for this document type.",
+                )
                 return
 
             if success:
@@ -613,6 +693,10 @@ class DocumentBrowserView(QWidget):
         dialog = ProformaDialog(self)
         if dialog.exec():
             self.load_documents()
+
+    # ------------------------------------------------------------------
+    # Pagination
+    # ------------------------------------------------------------------
 
     def update_pagination(self) -> None:
         """Update pagination controls."""

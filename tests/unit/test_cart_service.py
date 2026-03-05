@@ -147,8 +147,9 @@ class TestCartLineDiscounts:
         item = cart.items[0]
         assert item["total"] == Decimal("0.00")
 
-    def test_100_percent_discount(self, mock_pricing):
-        """100% discount yields zero total."""
+    @patch("cbpos.core.services.cart_service.CartService._validate_discount_cap")
+    def test_100_percent_discount(self, mock_cap, mock_pricing):
+        """100% discount yields zero total (cap bypassed via manager override)."""
         cart = CartService()
         product = _make_product(price="250.00")
         cart.add_item(product, qty=Decimal("1"))

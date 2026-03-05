@@ -168,6 +168,12 @@ class DataSafetyView(QWidget):
             self._refresh_backup_list()
 
     def _create_backup(self) -> None:
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.DATA_SAFETY_BACKUP, self):
+            return
+
         self.btn_create_backup.setEnabled(False)
         self._overlay.show_loading("Creating backup...")
 
@@ -366,6 +372,12 @@ class DataSafetyView(QWidget):
         self.lbl_verify_result.style().polish(self.lbl_verify_result)
 
     def _restore_backup(self) -> None:
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.DATA_SAFETY_RESTORE, self):
+            return
+
         path = self.input_restore_path.text().strip()
         password = self.input_restore_password.text()
         if not path:

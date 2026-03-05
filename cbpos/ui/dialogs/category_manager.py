@@ -79,6 +79,8 @@ class CategoryManagerDialog(QDialog):
         # Form
         form_group = QGroupBox("Category Details")
         form_layout = QFormLayout(form_group)
+        form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         form_layout.setSpacing(10)
 
         self.txt_name = QLineEdit()

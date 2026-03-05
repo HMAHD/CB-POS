@@ -666,7 +666,9 @@ class SalesView(QWidget):
         # 1. Check Permission (with manager override)
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
-        authorized_user = check_permission_with_override("can_void_sale", self)  # noqa: F841
+        from cbpos.core.constants.permissions import Permissions
+
+        authorized_user = check_permission_with_override(Permissions.SALES_VOID, self)  # noqa: F841
         if not authorized_user:
             return
 
@@ -775,12 +777,25 @@ class SalesView(QWidget):
     def apply_line_discount(self):
         """Apply discount to selected cart line."""
         row = self.cart_table.currentRow()
-        if row >= 0:
-            dialog = DiscountDialog(self)
-            if dialog.exec():
-                disc_type, disc_value = dialog.get_data()
+        if row < 0:
+            return
+
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        authorized_user = check_permission_with_override(Permissions.SALES_DISCOUNT, self)
+        if not authorized_user:
+            return
+
+        dialog = DiscountDialog(self)
+        if dialog.exec():
+            disc_type, disc_value = dialog.get_data()
+            try:
                 self.cart_service.apply_line_discount(row, disc_type, disc_value)
-                self.update_cart_display()
+            except ValueError:
+                QMessageBox.warning(self, "Discount Limit", str(disc_value) + "% exceeds the allowed discount limit.")
+                return
+            self.update_cart_display()
 
     def change_line_price(self):
         """Override price of selected cart line (Manager Only)."""
@@ -791,7 +806,9 @@ class SalesView(QWidget):
         # 1. Check Permission (with manager override)
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
-        authorized_user = check_permission_with_override("change_price", self)
+        from cbpos.core.constants.permissions import Permissions
+
+        authorized_user = check_permission_with_override(Permissions.SALES_CHANGE_PRICE, self)
         if not authorized_user:
             return
 
@@ -881,7 +898,7 @@ class SalesView(QWidget):
             # Set splitter sizes: cart gets remaining, grid 350px, action panel keeps fixed width
             total = self.splitter.width()
             action_w = PAYMENT_PANEL_WIDTH
-            grid_w = 350
+            grid_w = 420
             cart_w = total - grid_w - action_w
             self.splitter.setSizes([max(cart_w, 200), grid_w, action_w])
 
@@ -911,8 +928,17 @@ class SalesView(QWidget):
         from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
         worker = PrintWorker()
+        worker.error_occurred.connect(self._on_print_error)
         worker.add_job("kick_drawer")
         self._drawer_worker = worker  # prevent GC
+
+    def _on_print_error(self, message: str) -> None:
+        """Show printer error to user."""
+        QMessageBox.warning(
+            self,
+            "Printer Error",
+            f"{message}\n\nCheck Settings > Hardware.",
+        )
 
     def _finalize_sale(self, sale) -> None:
         """Common post-sale cleanup: sound, clear cart, optionally show receipt dialog."""

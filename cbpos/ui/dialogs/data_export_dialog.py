@@ -82,6 +82,8 @@ class DataExportDialog(QDialog):
         # Date range for sales
         self.grp_dates = QGroupBox("Sales Date Range")
         dates_form = QFormLayout(self.grp_dates)
+        dates_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        dates_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         dates_form.setVerticalSpacing(10)
         dates_form.setHorizontalSpacing(16)
 
@@ -136,6 +138,12 @@ class DataExportDialog(QDialog):
         self.grp_dates.setVisible(checked)
 
     def _do_export(self) -> None:
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.REPORTS_EXPORT, self):
+            return
+
         if not any([self.chk_products.isChecked(), self.chk_customers.isChecked(), self.chk_sales.isChecked()]):
             QMessageBox.warning(self, "No Data Selected", "Please select at least one data type to export.")
             return

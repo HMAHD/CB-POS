@@ -390,6 +390,12 @@ class ReportViewer(QWidget):
     # ------------------------------------------------------------------
 
     def export_excel(self) -> None:
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.REPORTS_EXPORT, self):
+            return
+
         df = self.table_model.get_dataframe()
         if df.empty:
             return
@@ -399,6 +405,12 @@ class ReportViewer(QWidget):
             self._start_export(df, filename, "excel")
 
     def export_pdf(self) -> None:
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.REPORTS_EXPORT, self):
+            return
+
         df = self.table_model.get_dataframe()
         if df.empty:
             return

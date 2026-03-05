@@ -66,7 +66,7 @@ class ProductGridPanel(QWidget):
         self.grid_container = QWidget()
         self.grid_layout = QGridLayout(self.grid_container)
         self.grid_layout.setContentsMargins(5, 5, 5, 5)
-        self.grid_layout.setSpacing(8)
+        self.grid_layout.setSpacing(6)
 
         self.product_scroll.setWidget(self.grid_container)
         layout.addWidget(self.product_scroll)
@@ -93,6 +93,10 @@ class ProductGridPanel(QWidget):
         self.current_category_id = category_id
         self._load_products(category_id)
 
+    def _calculate_columns(self) -> int:
+        """Calculate number of grid columns based on available width."""
+        return max(2, self.width() // 130) if self.width() > 0 else 3
+
     def _load_products(self, category_id) -> None:
         """Load products into the grid for the selected category."""
         # Clear existing grid
@@ -100,6 +104,10 @@ class ProductGridPanel(QWidget):
             child = self.grid_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
+
+        # Reset column stretches
+        for c in range(self.grid_layout.columnCount()):
+            self.grid_layout.setColumnStretch(c, 0)
 
         if category_id is not None:
             products = self.product_service.get_by_category(category_id)
@@ -113,8 +121,7 @@ class ProductGridPanel(QWidget):
             self.grid_layout.addWidget(lbl, 0, 0)
             return
 
-        # Calculate columns based on available width
-        cols = max(3, self.width() // 120) if self.width() > 0 else 4
+        cols = self._calculate_columns()
 
         for i, product in enumerate(products):
             card = ProductCard(product)
@@ -122,6 +129,16 @@ class ProductGridPanel(QWidget):
             row = i // cols
             col = i % cols
             self.grid_layout.addWidget(card, row, col)
+
+        # Distribute width evenly across columns
+        for c in range(cols):
+            self.grid_layout.setColumnStretch(c, 1)
+
+    def resizeEvent(self, event) -> None:
+        """Recalculate grid layout when panel is resized."""
+        super().resizeEvent(event)
+        if self._categories_loaded:
+            self._load_products(self.current_category_id)
 
     def showEvent(self, event):
         """Load categories on first show."""

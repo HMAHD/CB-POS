@@ -439,6 +439,8 @@ class BackupRestoreDialog(QDialog):
         grp_info = QGroupBox("Database Information")
         grp_info.setProperty("class", "card")
         info_layout = QFormLayout(grp_info)
+        info_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        info_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         info_layout.setVerticalSpacing(10)
         info_layout.setHorizontalSpacing(20)
 

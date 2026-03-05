@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QMessageBox,
 )
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 from sqlalchemy import select
 from cbpos.core.database import Database
@@ -35,6 +36,10 @@ class CategoryDialog(QDialog):
     def setup_ui(self):
         layout = QVBoxLayout(self)
         form = QFormLayout()
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        form.setContentsMargins(16, 16, 16, 16)
+        form.setSpacing(12)
 
         self.name_input = QLineEdit()
 

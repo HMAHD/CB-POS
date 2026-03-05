@@ -77,6 +77,8 @@ class ReceivePaymentDialog(QDialog):
 
         # Form Fields
         form_layout = QFormLayout()
+        form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         form_layout.setSpacing(12)
         form_layout.setContentsMargins(0, 4, 0, 4)
 
@@ -93,9 +95,14 @@ class ReceivePaymentDialog(QDialog):
 
         form_layout.addRow("Amount:", amount_layout)
 
-        # Payment Method
+        # Payment Method (loaded from DB, excluding Credit)
         self.cmb_method = QComboBox()
-        self.cmb_method.addItems(["Cash", "Card", "Transfer", "Cheque"])
+        from cbpos.core.services.payment_service import PaymentService
+        from cbpos.core.constants.status import PaymentMethodType
+
+        for m in PaymentService.get_active_methods():
+            if m.name.upper() != PaymentMethodType.CREDIT.upper():
+                self.cmb_method.addItem(m.name)
         form_layout.addRow("Method:", self.cmb_method)
 
         # Reference

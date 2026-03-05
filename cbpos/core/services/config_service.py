@@ -46,12 +46,17 @@ class ConfigService:
         "default_search_mode": "ALL",  # ALL, BARCODE, NAME
         "quick_pay_enabled": True,
         "require_void_reason": True,
+        "max_discount_percent": 15.0,
         # Hardware Configuration
         "receipt_printer_name": "",  # System printer name for thermal receipts
         "a4_printer_name": "",  # System printer name for A4 invoices
         "receipt_copies": 1,  # Number of receipt copies to print
         "paper_width": "80mm",  # 58mm or 80mm
         "auto_print_receipt": True,  # Auto-print receipt after sale
+        "auto_cut_paper": True,  # Disable for tear-bar printers
+        "cut_type": "partial",  # "full" or "partial"
+        "feed_lines_before_cut": 3,  # 1-8 lines feed before cut
+        "drawer_on_cash_only": True,  # Only kick drawer for cash payments
         # Scale Barcode Configuration
         "scale_barcode_prefix": "20",  # Prefix for scale barcodes
         "scale_decimal_places": 3,  # Decimal places for weight
@@ -77,6 +82,10 @@ class ConfigService:
         "doc_format_return": "CN-{Y}-{seq:05d}",
         "doc_reset_period": "YEARLY",
         "show_receipt_dialog": False,
+        "show_cashier_on_receipt": True,
+        "show_terminal_on_receipt": False,
+        "show_qr_on_receipt": False,
+        "receipt_qr_content": "",  # Shop WhatsApp/website URL for QR
         # Network Database Configuration
         "db_mode": "standalone",  # standalone (SQLite) or network (PostgreSQL)
         "network_db_host": "localhost",
@@ -89,6 +98,11 @@ class ConfigService:
         "db_statement_timeout": 30,
         # System / Security
         "session_timeout_minutes": 0,  # 0 = disabled (no auto-lock), 1-60 = minutes
+        "max_login_attempts": 5,  # Failed attempts before lockout
+        "lockout_duration_seconds": 300,  # Lockout duration in seconds (5 min default)
+        # Customer Defaults
+        "default_credit_limit": 0,  # Default credit limit for new customers (0 = no credit)
+        "loyalty_points_ratio": 100,  # Spend this much to earn 1 loyalty point
         "auto_select_barcode_match": True,
         # Terminal Identification
         "terminal_id": "TERM-01",

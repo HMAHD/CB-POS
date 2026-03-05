@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
     QFormLayout,
 )
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QDoubleValidator
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.models import Product
@@ -29,6 +30,10 @@ class StockAdjustmentDialog(QDialog):
         layout = QVBoxLayout(self)
 
         form_layout = QFormLayout()
+        form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        form_layout.setContentsMargins(16, 16, 16, 16)
+        form_layout.setSpacing(12)
 
         self.lbl_current = QLabel(f"{self.product.stock_qty:.3f}")  # noqa: E231
         self.lbl_current.setProperty("class", "credit")
@@ -62,6 +67,12 @@ class StockAdjustmentDialog(QDialog):
         layout.addLayout(btn_layout)
 
     def save_adjustment(self):
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.INVENTORY_STOCK_ADJUST, self):
+            return
+
         try:
             change = Decimal(self.txt_change.text())
         except Exception:

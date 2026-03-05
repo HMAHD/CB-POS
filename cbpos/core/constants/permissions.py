@@ -10,20 +10,28 @@ class Permissions:
     SALES_VOID = "sales.void_item"
     SALES_DISCOUNT = "sales.discount"
     SALES_CHANGE_PRICE = "sales.change_price"
+    SALES_REFUND = "sales.refund"
 
     # Inventory Group
     INVENTORY_VIEW = "inventory.view"
     INVENTORY_EDIT = "inventory.edit"
+    INVENTORY_DELETE = "inventory.delete"
     INVENTORY_STOCK_ADJUST = "inventory.stock_adjust"
 
     # Reports
     REPORTS_VIEW_SALES = "reports.view_sales"
     REPORTS_VIEW_PROFIT = "reports.view_profit"
+    REPORTS_EXPORT = "reports.export"
 
     # Documents
     DOCUMENTS_VIEW = "documents.view"
     DOCUMENTS_CREATE_PROFORMA = "documents.create_proforma"
     DOCUMENTS_CONVERT_PROFORMA = "documents.convert_proforma"
+    DOCUMENTS_VOID = "documents.void"
+
+    # Credit
+    CREDIT_RECEIVE_PAYMENT = "credit.receive_payment"
+    CREDIT_ADJUST_BALANCE = "credit.adjust_balance"
 
     # Data Safety
     DATA_SAFETY_BACKUP = "data_safety.backup"
@@ -34,11 +42,15 @@ class Permissions:
     PURCHASE_VIEW = "purchase.view"
     PURCHASE_CREATE_GRN = "purchase.create_grn"
     PURCHASE_MAKE_PAYMENT = "purchase.make_payment"
+    PURCHASE_ADJUST_PAYABLE = "purchase.adjust_payable"
 
     # Stock Take
     STOCK_TAKE_VIEW = "stock_take.view"
     STOCK_TAKE_CREATE = "stock_take.create"
     STOCK_TAKE_APPROVE = "stock_take.approve"
+
+    # Cash
+    CASH_OPEN_DRAWER = "cash.open_drawer"
 
     # Admin
     ADMIN_MANAGE_USERS = "admin.manage_users"
@@ -59,17 +71,24 @@ class Permissions:
                 cls.SALES_VOID,
                 cls.SALES_DISCOUNT,
                 cls.SALES_CHANGE_PRICE,
+                cls.SALES_REFUND,
             ],
             "Inventory": [
                 cls.INVENTORY_VIEW,
                 cls.INVENTORY_EDIT,
+                cls.INVENTORY_DELETE,
                 cls.INVENTORY_STOCK_ADJUST,
             ],
-            "Reports": [cls.REPORTS_VIEW_SALES, cls.REPORTS_VIEW_PROFIT],
+            "Reports": [cls.REPORTS_VIEW_SALES, cls.REPORTS_VIEW_PROFIT, cls.REPORTS_EXPORT],
             "Documents": [
                 cls.DOCUMENTS_VIEW,
                 cls.DOCUMENTS_CREATE_PROFORMA,
                 cls.DOCUMENTS_CONVERT_PROFORMA,
+                cls.DOCUMENTS_VOID,
+            ],
+            "Credit": [
+                cls.CREDIT_RECEIVE_PAYMENT,
+                cls.CREDIT_ADJUST_BALANCE,
             ],
             "Data Safety": [
                 cls.DATA_SAFETY_BACKUP,
@@ -80,11 +99,15 @@ class Permissions:
                 cls.PURCHASE_VIEW,
                 cls.PURCHASE_CREATE_GRN,
                 cls.PURCHASE_MAKE_PAYMENT,
+                cls.PURCHASE_ADJUST_PAYABLE,
             ],
             "Stock Take": [
                 cls.STOCK_TAKE_VIEW,
                 cls.STOCK_TAKE_CREATE,
                 cls.STOCK_TAKE_APPROVE,
+            ],
+            "Cash": [
+                cls.CASH_OPEN_DRAWER,
             ],
             "Admin": [
                 cls.ADMIN_MANAGE_USERS,

@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QFrame,
 )
+from PyQt6.QtCore import Qt
 from cbpos.core.services.unit_service import UnitService
 
 logger = logging.getLogger(__name__)
@@ -66,6 +67,8 @@ class UnitManagerDialog(QDialog):
         # Form
         form_group = QGroupBox("Unit Details")
         form_layout = QFormLayout(form_group)
+        form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         form_layout.setSpacing(10)
 
         self.txt_name = QLineEdit()

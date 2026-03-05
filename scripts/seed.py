@@ -54,19 +54,29 @@ def seed_data():
         for perm in perm_map.values():
             admin_role.permissions.append(perm)
 
-        # Manager (Level 5) - Sales + Inventory + Reports + Documents + Purchase + Stock Take
+        # Manager (Level 5) - Sales + Inventory + Reports + Documents + Credit + Purchase + Stock Take + Cash
         manager_role = Role(name="Manager", access_level=5)
-        manager_groups = ["Sales", "Inventory", "Reports", "Documents", "Purchase", "Stock Take"]
+        manager_groups = [
+            "Sales",
+            "Inventory",
+            "Reports",
+            "Documents",
+            "Credit",
+            "Purchase",
+            "Stock Take",
+            "Cash",
+        ]
         for grp in manager_groups:
             for code in groups.get(grp, []):
                 manager_role.permissions.append(perm_map[code])
 
-        # Cashier (Level 1) - Sales Only (Restricted)
+        # Cashier (Level 1) - Basic sales, view documents, receive credit payments, cash drawer
         cashier_role = Role(name="Cashier", access_level=1)
-        # Cashier gets basic sales view and add item, but maybe not void/discount
         cashier_role.permissions.append(perm_map[Permissions.SALES_VIEW])
         cashier_role.permissions.append(perm_map[Permissions.SALES_ADD_ITEM])
         cashier_role.permissions.append(perm_map[Permissions.DOCUMENTS_VIEW])
+        cashier_role.permissions.append(perm_map[Permissions.CREDIT_RECEIVE_PAYMENT])
+        cashier_role.permissions.append(perm_map[Permissions.CASH_OPEN_DRAWER])
 
         session.add_all([admin_role, manager_role, cashier_role])
         session.flush()

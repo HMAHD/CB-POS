@@ -92,10 +92,11 @@ class SettingsView(QWidget):
         self.btn_receipt = self.create_nav_button("Receipt", "fa5s.receipt", 4)
         self.btn_system = self.create_nav_button("System", "fa5s.cogs", 5)
         self.btn_network = self.create_nav_button("Network", "fa5s.network-wired", 6)
+        self.btn_payment_methods = self.create_nav_button("Payments", "fa5s.credit-card", 7)
 
         # Operational buttons (same list, no gap)
-        self.btn_data_safety = self.create_nav_button("Data Safety", "fa5s.shield-alt", 7)
-        self.btn_admin_tools = self.create_nav_button("Admin Tools", "fa5s.toolbox", 8)
+        self.btn_data_safety = self.create_nav_button("Data Safety", "fa5s.shield-alt", 8)
+        self.btn_admin_tools = self.create_nav_button("Admin Tools", "fa5s.toolbox", 9)
 
         self.sidebar_layout.addStretch()
 
@@ -121,8 +122,12 @@ class SettingsView(QWidget):
             self.stack.addWidget(page)
 
         # Operational views (self-contained, no load/save)
+        from cbpos.ui.views.payment_methods_view import PaymentMethodsView
         from cbpos.ui.views.data_safety_view import DataSafetyView
         from cbpos.ui.views.admin_tools_view import AdminToolsView
+
+        self.payment_methods_view = PaymentMethodsView()
+        self.stack.addWidget(self.payment_methods_view)
 
         self.data_safety_view = DataSafetyView()
         self.stack.addWidget(self.data_safety_view)
@@ -263,6 +268,12 @@ class SettingsView(QWidget):
             page.load(settings)
 
     def save_all(self):
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.ADMIN_SETTINGS, self):
+            return
+
         current_config = ConfigService.get_all()
         current_lang = current_config.get("language", "en")
         current_theme = current_config.get("theme", "Dark")

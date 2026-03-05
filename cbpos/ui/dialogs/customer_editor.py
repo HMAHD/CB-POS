@@ -76,6 +76,10 @@ class CustomerEditor(QDialog):
     def create_general_tab(self):
         widget = QWidget()
         form = QFormLayout(widget)
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        form.setContentsMargins(16, 16, 16, 16)
+        form.setSpacing(12)
 
         self.name_input = QLineEdit()
         self.phone_input = QLineEdit()
@@ -100,6 +104,10 @@ class CustomerEditor(QDialog):
     def create_commercial_tab(self):
         widget = QWidget()
         form = QFormLayout(widget)
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        form.setContentsMargins(16, 16, 16, 16)
+        form.setSpacing(12)
 
         self.vat_input = QLineEdit()
 
@@ -151,6 +159,10 @@ class CustomerEditor(QDialog):
     def create_loyalty_tab(self):
         widget = QWidget()
         form = QFormLayout(widget)
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        form.setContentsMargins(16, 16, 16, 16)
+        form.setSpacing(12)
 
         self.loyalty_code_input = QLineEdit()
         self.loyalty_code_input.setPlaceholderText("Scan Card Here...")

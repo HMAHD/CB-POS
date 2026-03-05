@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QRectF
-from PyQt6.QtGui import QPainter, QColor, QPen
+from PyQt6.QtGui import QPainter, QPen
 import pandas as pd
 
 from cbpos.core.reports.registry import ReportRegistry
@@ -61,8 +61,11 @@ class _ReportPlaceholderIcon(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        bar_color = QColor("#1A3A5C")
-        line_color = QColor("#1A3A5C")
+        # Use palette foreground so the icon adapts to dark/light theme
+        theme_color = self.palette().color(self.foregroundRole())
+        theme_color.setAlpha(120)
+        bar_color = theme_color
+        line_color = theme_color
 
         s = self._SIZE
         margin = 8
@@ -94,8 +97,6 @@ class ReportViewer(QWidget):
         self.registry = ReportRegistry()
         self.export_service = ExportService()
         self.current_report = None
-        self._report_buttons: list[QPushButton] = []
-        self._active_button: QPushButton | None = None
         self.init_ui()
 
     def init_ui(self):
@@ -279,7 +280,6 @@ class ReportViewer(QWidget):
 
     def _populate_sidebar(self) -> None:
         """Build category sections with report buttons."""
-        self._report_buttons.clear()
         categories = self.registry.get_all_categories()
 
         for idx, category in enumerate(categories):
@@ -320,7 +320,6 @@ class ReportViewer(QWidget):
                 btn.setAutoExclusive(True)
                 btn.clicked.connect(lambda checked, r=report.id: self._on_nav_clicked(r))
                 self._nav_layout.addWidget(btn)
-                self._report_buttons.append(btn)
 
     def _on_nav_clicked(self, report_id: str) -> None:
         """Handle sidebar report button click."""

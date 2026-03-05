@@ -10,6 +10,7 @@ class FilterWidget(QWidget):
 
     def __init__(self):
         super().__init__()
+        self.setObjectName("ReportFilterWidget")
         self.layout = QHBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.inputs = {}
@@ -50,9 +51,12 @@ class FilterWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         lbl = QLabel("{}:".format(label))
+        lbl.setObjectName("ReportFilterLabel")
         start_edit = QDateEdit()
+        start_edit.setObjectName("ReportDateEdit")
         start_edit.setCalendarPopup(True)
         end_edit = QDateEdit()
+        end_edit.setObjectName("ReportDateEdit")
         end_edit.setCalendarPopup(True)
 
         default_start = definition.get("default_start", date.today())
@@ -75,7 +79,9 @@ class FilterWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         lbl = QLabel("{}:".format(label))
+        lbl.setObjectName("ReportFilterLabel")
         combo = QComboBox()
+        combo.setObjectName("ReportFilterCombo")
 
         options = definition.get("options", [])
         for opt in options:

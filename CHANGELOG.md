@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.8.9] - 2026-03-04
+
+### Changed — Report Viewer Redesign ("Data Observatory")
+
+#### Bug Fixes
+- **Duplicate report registration**: Added duplicate guard in `ReportRegistry.register()` — skips if `report_instance.id` already exists.
+- **Missing reports**: Registered `CashMovementAuditReport` (Audit) and `CashFlowReport` (Financial) in `register_all_reports()`.
+- **Duplicate viewer registrations**: Removed 4 duplicate `registry.register()` calls and stale imports from `report_viewer.py`.
+
+#### Report Viewer — Full Rewrite (`report_viewer.py`)
+- **Custom navigation sidebar**: Replaced generic QTreeWidget with a scrollable panel of styled QPushButtons grouped under category sections — full-width items with 40px+ click targets, cyan left-border accent on selection, count badges per category.
+- **Empty state**: QPainter-rendered geometric bar chart icon (no emojis), centered text guidance.
+- **Report header**: Shows report name + category when a report is selected, hidden until selection.
+- **Filter bar**: Date edits and combo filters with Run Report button, hidden until report selected.
+- **Data table**: QTableView with alternating rows, styled headers with cyan accent border, interactive column resize.
+- **Action bar**: Row count label + Print/Excel/PDF/Email export buttons, hidden until data exists.
+- **All inline setStyleSheet calls removed** — fully QSS-driven.
+
+#### Filter Widget (`filter_widget.py`)
+- Added objectNames: `ReportFilterWidget`, `ReportFilterLabel`, `ReportDateEdit`, `ReportFilterCombo`.
+
+#### Dashboard View (`dashboard_view.py`)
+- **SRP worker split**: Replaced monolithic `_DashboardWorker` with `_YearlyWorker` (Row 1) and `_PeriodicWorker` (Rows 3-4).
+- **Added `refresh_periodic()` method**: Period refresh button now only re-fetches date-range data, not yearly data.
+- **Year navigation optimized**: `_change_year()` now calls `_refresh_yearly()` only, not `refresh_all()`.
+
+#### QSS (dark.qss + light.qss)
+- Added ~150 lines per theme for Report Viewer: sidebar nav items, category labels, count badges, report header, filter bar, date edits, Run button, empty state, data table, action bar, export buttons.
+- Dark: deep navy layers (`#0A1929` → `#112240` → `#0D2847`), cyan accents.
+- Light: clean white/slate palette (`#FFFFFF` → `#F8FAFC` → `#EBF2FF`), blue accents.
+
 ## [0.8.8] - 2026-03-04
 
 ### Changed — Label Print Dialog, Product Editor & CSV Import UX Overhaul

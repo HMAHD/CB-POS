@@ -38,17 +38,14 @@ from cbpos.core.utils.formatters import format_currency
 logger = logging.getLogger(__name__)
 
 
-class _DashboardWorker(QThread):
-    """Runs dashboard DB queries off the UI thread."""
+class _YearlyWorker(QThread):
+    """Fetches yearly dashboard data (monthly chart + summary) off the UI thread."""
 
-    yearly_ready = pyqtSignal(list, dict)  # monthly, summary
-    periodic_ready = pyqtSignal(list, list, dict, list, list)  # products, hourly, stats, cats, customers
+    finished = pyqtSignal(list, dict)  # monthly, summary
 
-    def __init__(self, year: int, start_date: date, end_date: date) -> None:
+    def __init__(self, year: int) -> None:
         super().__init__()
         self._year = year
-        self._start = start_date
-        self._end = end_date
 
     def run(self) -> None:
         from cbpos.core.services.dashboard_service import DashboardService
@@ -56,9 +53,23 @@ class _DashboardWorker(QThread):
         try:
             monthly = DashboardService.get_monthly_sales(self._year)
             summary = DashboardService.get_yearly_summary(self._year)
-            self.yearly_ready.emit(monthly, summary)
+            self.finished.emit(monthly, summary)
         except Exception:
             logger.exception("Failed to load yearly dashboard data")
+
+
+class _PeriodicWorker(QThread):
+    """Fetches period-scoped data (products, hourly, stats, categories, customers)."""
+
+    finished = pyqtSignal(list, list, dict, list, list)
+
+    def __init__(self, start_date: date, end_date: date) -> None:
+        super().__init__()
+        self._start = start_date
+        self._end = end_date
+
+    def run(self) -> None:
+        from cbpos.core.services.dashboard_service import DashboardService
 
         try:
             products = DashboardService.get_period_top_products(self._start, self._end)
@@ -66,7 +77,7 @@ class _DashboardWorker(QThread):
             stats = DashboardService.get_period_stats(self._start, self._end)
             categories = DashboardService.get_top_categories(self._start, self._end)
             customers = DashboardService.get_top_customers(self._start, self._end)
-            self.periodic_ready.emit(products, hourly, stats, categories, customers)
+            self.finished.emit(products, hourly, stats, categories, customers)
         except Exception:
             logger.exception("Failed to load periodic dashboard data")
 
@@ -396,21 +407,32 @@ class DashboardView(QWidget):
         self.refresh_all()
 
     def refresh_all(self) -> None:
-        """Refresh both yearly and periodic data in a background thread."""
+        """Refresh both yearly and periodic data."""
+        self._refresh_yearly()
+        self.refresh_periodic()
+
+    def _refresh_yearly(self) -> None:
+        """Refresh yearly data (Row 1: monthly chart + summary)."""
+        self.lbl_monthly_title.setText(f"Monthly Sales \u2014 {self._current_year}")
+
+        self._yearly_worker = _YearlyWorker(self._current_year)
+        self._yearly_worker.finished.connect(self._on_yearly_ready)
+        self._yearly_worker.start()
+
+    def refresh_periodic(self) -> None:
+        """Refresh period-scoped data (Rows 3-4) based on the date range."""
         sd = self.date_from.date().toPyDate()
         ed = self.date_to.date().toPyDate()
 
-        self.lbl_monthly_title.setText(f"Monthly Sales \u2014 {self._current_year}")
         self.lbl_period.setText(f"Periodic Reports  ({sd.strftime('%d.%m.%Y')}" f" \u2013 {ed.strftime('%d.%m.%Y')})")
 
-        self._worker = _DashboardWorker(self._current_year, sd, ed)
-        self._worker.yearly_ready.connect(self._on_yearly_ready)
-        self._worker.periodic_ready.connect(self._on_periodic_ready)
-        self._worker.start()
+        self._periodic_worker = _PeriodicWorker(sd, ed)
+        self._periodic_worker.finished.connect(self._on_periodic_ready)
+        self._periodic_worker.start()
 
     def _change_year(self, delta: int) -> None:
         self._current_year += delta
-        self.refresh_all()
+        self._refresh_yearly()
 
     def _on_yearly_ready(self, monthly: list, summary: dict) -> None:
         """Handle yearly data from worker thread."""

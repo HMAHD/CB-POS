@@ -20,9 +20,13 @@ class ReportRegistry:
 
     def register(self, report_cls: Type[BaseReport]):
         """
-        Registers a report class.
+        Registers a report class. Skips if already registered (duplicate guard).
         """
         report_instance = report_cls()
+
+        if report_instance.id in self._all_reports:
+            return
+
         category = report_instance.category
 
         if category not in self._reports:

@@ -3061,3 +3061,47 @@ QLabel#ProductCardPrice {
     color: #0D6EFD;
     background: transparent;
 }
+
+/* ── Payment Methods Table Actions ── */
+#PaymentMethodActions {
+    background: transparent;
+}
+
+QPushButton#PMActionBtn {
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 3px;
+    min-height: 24px;
+    max-height: 28px;
+}
+
+QPushButton#PMActionBtn[class="danger"] {
+    background-color: #DC3545;
+    color: #FFFFFF;
+    border: none;
+}
+
+QPushButton#PMActionBtn[class="danger"]:hover {
+    background-color: #C82333;
+}
+
+QPushButton#PMActionBtn[class="warning"] {
+    background-color: #FFC107;
+    color: #212529;
+    border: none;
+}
+
+QPushButton#PMActionBtn[class="warning"]:hover {
+    background-color: #E0A800;
+}
+
+QPushButton#PMActionBtn[class="accent"] {
+    background-color: #0D6EFD;
+    color: #FFFFFF;
+    border: none;
+}
+
+QPushButton#PMActionBtn[class="accent"]:hover {
+    background-color: #0B5ED7;
+}

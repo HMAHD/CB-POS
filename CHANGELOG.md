@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file. Never delet
 
 ### Added — Payment & Settings Configuration (Phase 31B)
 
-- **Payment Methods settings page**: Full CRUD management (add/edit/delete/toggle) for payment methods in Settings → Payments. Uses `PaymentService` and QSS-styled table UI.
+- **Payment Methods settings page**: Full CRUD management (add/edit/delete/toggle) for payment methods in Settings → Payments. Inline activate/deactivate toggle, compact action buttons, and QSS-themed table UI with proper row sizing.
 - **Max Discount % setting**: New `max_discount_percent` (default 15%) in Sales & Tax → Sales. Enforced in `CartService` — raises `ValueError` when exceeded; UI catches and displays message.
 - **Configurable login lockout**: `max_login_attempts` (default 5) and `lockout_duration_seconds` (default 300) in System → Security — `auth_service.py` now reads from config.
 - **Loyalty points ratio setting**: `loyalty_points_ratio` (default Rs.100 per point) in Sales & Tax → Sales — `customer_service.py` reads from config.

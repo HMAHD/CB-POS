@@ -1,6 +1,6 @@
 """
 Payment Methods management view for Settings.
-Full CRUD for payment methods with table display.
+Full CRUD with inline toggle for active/inactive state.
 """
 
 import logging
@@ -25,6 +25,9 @@ from PyQt6.QtCore import Qt
 from cbpos.core.services.payment_service import PaymentService
 
 logger = logging.getLogger(__name__)
+
+# Row height must accommodate compact buttons comfortably
+_ROW_HEIGHT = 44
 
 
 class PaymentMethodDialog(QDialog):
@@ -63,10 +66,6 @@ class PaymentMethodDialog(QDialog):
         self.chk_drawer = QCheckBox("Open cash drawer on payment")
         form.addRow("Open Drawer:", self.chk_drawer)
 
-        self.chk_active = QCheckBox("Method is active and available")
-        self.chk_active.setChecked(True)
-        form.addRow("Active:", self.chk_active)
-
         layout.addLayout(form)
 
         # Buttons
@@ -92,7 +91,6 @@ class PaymentMethodDialog(QDialog):
             self.txt_shortcut.setText(self.method.shortcut or "")
             self.chk_cash.setChecked(self.method.is_cash)
             self.chk_drawer.setChecked(self.method.open_drawer)
-            self.chk_active.setChecked(self.method.is_active)
 
     def _save(self) -> None:
         name = self.txt_name.text().strip()
@@ -106,17 +104,17 @@ class PaymentMethodDialog(QDialog):
             "shortcut": self.txt_shortcut.text().strip() or None,
             "is_cash": self.chk_cash.isChecked(),
             "open_drawer": self.chk_drawer.isChecked(),
-            "is_active": self.chk_active.isChecked(),
         }
         self.accept()
 
 
 class PaymentMethodsView(QWidget):
-    """Payment Methods management — table with add/edit/toggle actions."""
+    """Payment Methods management — table with edit, toggle, delete actions."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("PaymentMethodsView")
+        self._methods = []
         self._init_ui()
 
     def _init_ui(self) -> None:
@@ -137,7 +135,7 @@ class PaymentMethodsView(QWidget):
         action_bar = QHBoxLayout()
         action_bar.addStretch()
 
-        self.btn_add = QPushButton("Add Method")
+        self.btn_add = QPushButton("  Add Method  ")
         self.btn_add.setObjectName("PaymentMethodAddBtn")
         self.btn_add.setProperty("class", "primary")
         self.btn_add.clicked.connect(self._add_method)
@@ -145,14 +143,19 @@ class PaymentMethodsView(QWidget):
 
         layout.addLayout(action_bar)
 
-        # Table
+        # Table — 6 columns: Name, Shortcut, Cash, Drawer, Status, Actions
         self.table = QTableWidget()
         self.table.setObjectName("PaymentMethodsTable")
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["Name", "Shortcut", "Cash", "Drawer", "Active", "Actions"])
+        self.table.setHorizontalHeaderLabels(["Name", "Shortcut", "Cash", "Drawer", "Status", ""])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        for col in range(1, 6):
-            self.table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        # Fixed width for actions column to fit 3 buttons
+        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(5, 260)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
@@ -160,7 +163,7 @@ class PaymentMethodsView(QWidget):
         layout.addWidget(self.table, 1)
 
         # Hint
-        hint = QLabel("Cash method cannot be deleted. Deactivate methods to hide from checkout.")
+        hint = QLabel("Deactivate methods to hide from checkout. Cash method cannot be deleted.")
         hint.setProperty("class", "muted")
         layout.addWidget(hint)
 
@@ -168,45 +171,69 @@ class PaymentMethodsView(QWidget):
         super().showEvent(event)
         self._load_methods()
 
+    def _make_action_btn(self, text: str, object_name: str, css_class: str = "") -> QPushButton:
+        """Create a compact action button for table cells."""
+        btn = QPushButton(text)
+        btn.setObjectName(object_name)
+        btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        if css_class:
+            btn.setProperty("class", css_class)
+        return btn
+
     def _load_methods(self) -> None:
         """Reload all payment methods into the table."""
-        methods = PaymentService.get_all_methods()
-        self.table.setRowCount(len(methods))
+        self._methods = PaymentService.get_all_methods()
+        self.table.setRowCount(len(self._methods))
 
-        for row, method in enumerate(methods):
-            self.table.setItem(row, 0, QTableWidgetItem(method.name))
-            self.table.setItem(row, 1, QTableWidgetItem(method.shortcut or ""))
+        for row, method in enumerate(self._methods):
+            self.table.setRowHeight(row, _ROW_HEIGHT)
 
-            cash_item = QTableWidgetItem("Yes" if method.is_cash else "")
+            # Name
+            name_item = QTableWidgetItem(method.name)
+            name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.table.setItem(row, 0, name_item)
+
+            # Shortcut
+            shortcut_item = QTableWidgetItem(method.shortcut or "—")
+            shortcut_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.table.setItem(row, 1, shortcut_item)
+
+            # Cash
+            cash_item = QTableWidgetItem("Yes" if method.is_cash else "—")
             cash_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table.setItem(row, 2, cash_item)
 
-            drawer_item = QTableWidgetItem("Yes" if method.open_drawer else "")
+            # Drawer
+            drawer_item = QTableWidgetItem("Yes" if method.open_drawer else "—")
             drawer_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.table.setItem(row, 3, drawer_item)
 
-            active_item = QTableWidgetItem("Active" if method.is_active else "Inactive")
-            active_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(row, 4, active_item)
+            # Status — styled text
+            status_item = QTableWidgetItem("Active" if method.is_active else "Inactive")
+            status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.table.setItem(row, 4, status_item)
 
-            # Action buttons
+            # Action buttons — Edit | Toggle | Delete
             action_widget = QWidget()
+            action_widget.setObjectName("PaymentMethodActions")
             action_layout = QHBoxLayout(action_widget)
-            action_layout.setContentsMargins(4, 2, 4, 2)
-            action_layout.setSpacing(4)
+            action_layout.setContentsMargins(4, 4, 4, 4)
+            action_layout.setSpacing(6)
 
-            btn_edit = QPushButton("Edit")
-            btn_edit.setObjectName("PaymentMethodEditBtn")
-            btn_edit.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            btn_edit = self._make_action_btn("Edit", "PMActionBtn")
             btn_edit.clicked.connect(lambda _, m=method: self._edit_method(m))
             action_layout.addWidget(btn_edit)
 
-            # Prevent deleting Cash method
+            # Toggle active/inactive
+            toggle_text = "Deactivate" if method.is_active else "Activate"
+            toggle_class = "warning" if method.is_active else "accent"
+            btn_toggle = self._make_action_btn(toggle_text, "PMActionBtn", toggle_class)
+            btn_toggle.clicked.connect(lambda _, m=method: self._toggle_method(m))
+            action_layout.addWidget(btn_toggle)
+
+            # Delete — not allowed for Cash method
             if not method.is_cash:
-                btn_delete = QPushButton("Delete")
-                btn_delete.setObjectName("PaymentMethodDeleteBtn")
-                btn_delete.setProperty("class", "danger")
-                btn_delete.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+                btn_delete = self._make_action_btn("Delete", "PMActionBtn", "danger")
                 btn_delete.clicked.connect(lambda _, m=method: self._delete_method(m))
                 action_layout.addWidget(btn_delete)
 
@@ -238,11 +265,21 @@ class PaymentMethodsView(QWidget):
                     is_cash=data["is_cash"],
                     open_drawer=data["open_drawer"],
                     shortcut=data["shortcut"],
-                    is_active=data["is_active"],
                 )
                 self._load_methods()
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to update payment method: {e}")
+
+    def _toggle_method(self, method) -> None:
+        """Toggle active/inactive state."""
+        new_state = not method.is_active
+        action = "activate" if new_state else "deactivate"
+        try:
+            PaymentService.update_method(method_id=method.id, is_active=new_state)
+            self._load_methods()
+            logger.info("Payment method '%s' %sd", method.name, action)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to {action} payment method: {e}")
 
     def _delete_method(self, method) -> None:
         if method.is_cash:
@@ -253,7 +290,7 @@ class PaymentMethodsView(QWidget):
             self,
             "Delete Payment Method",
             f'Are you sure you want to delete "{method.name}"?\n\n'
-            "Tip: You can deactivate it instead to keep history.",
+            "Tip: You can deactivate it instead to keep transaction history.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:

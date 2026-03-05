@@ -3181,12 +3181,18 @@ QLabel#ProductCardPrice {
 }
 
 QPushButton#PMActionBtn {
-    padding: 4px 12px;
+    padding: 4px 14px;
     font-size: 12px;
     font-weight: bold;
     border-radius: 3px;
-    min-height: 24px;
-    max-height: 28px;
+    color: #FFFFFF;
+    background-color: #2D2D30;
+    border: 1px solid #3E3E42;
+}
+
+QPushButton#PMActionBtn:hover {
+    background-color: #3E3E42;
+    border-color: #555;
 }
 
 QPushButton#PMActionBtn[class="danger"] {

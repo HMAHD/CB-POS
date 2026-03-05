@@ -11,9 +11,25 @@ from cbpos.core.models import User
 
 logger = logging.getLogger(__name__)
 
-# Brute-force protection constants
-MAX_FAILED_ATTEMPTS: int = 5
-LOCKOUT_DURATION_SECONDS: int = 300  # 5 minutes
+
+def _get_max_attempts() -> int:
+    """Get max failed login attempts from config (fallback: 5)."""
+    try:
+        from cbpos.core.services.config_service import ConfigService
+
+        return int(ConfigService.get("max_login_attempts") or 5)
+    except Exception:
+        return 5
+
+
+def _get_lockout_duration() -> int:
+    """Get lockout duration in seconds from config (fallback: 300)."""
+    try:
+        from cbpos.core.services.config_service import ConfigService
+
+        return int(ConfigService.get("lockout_duration_seconds") or 300)
+    except Exception:
+        return 300
 
 
 class AuthService:
@@ -22,7 +38,7 @@ class AuthService:
 
     Security features:
     - bcrypt PIN hashing with automatic migration from legacy SHA-256
-    - Brute-force protection: accounts lock for 5 minutes after 5 failed attempts
+    - Brute-force protection: configurable lockout (default 5 min after 5 failed attempts)
     """
 
     _current_user: Optional[User] = None
@@ -83,7 +99,7 @@ class AuthService:
         info = AuthService._failed_attempts.get(username)
         if not info:
             return False
-        if info["attempts"] >= MAX_FAILED_ATTEMPTS:
+        if info["attempts"] >= _get_max_attempts():
             if time.monotonic() < info["locked_until"]:
                 return True
             # Lockout period expired — reset
@@ -98,13 +114,13 @@ class AuthService:
             info = {"attempts": 0, "locked_until": 0.0}
             AuthService._failed_attempts[username] = info
         info["attempts"] += 1
-        if info["attempts"] >= MAX_FAILED_ATTEMPTS:
-            info["locked_until"] = time.monotonic() + LOCKOUT_DURATION_SECONDS
+        if info["attempts"] >= _get_max_attempts():
+            info["locked_until"] = time.monotonic() + _get_lockout_duration()
             logger.warning(
                 "Account '%s' locked for %d seconds after %d failed attempts",
                 username,
-                LOCKOUT_DURATION_SECONDS,
-                MAX_FAILED_ATTEMPTS,
+                _get_lockout_duration(),
+                _get_max_attempts(),
             )
 
     @staticmethod
@@ -124,7 +140,7 @@ class AuthService:
             Remaining lockout seconds (0 if not locked out).
         """
         info = AuthService._failed_attempts.get(username)
-        if not info or info["attempts"] < MAX_FAILED_ATTEMPTS:
+        if not info or info["attempts"] < _get_max_attempts():
             return 0
         remaining = info["locked_until"] - time.monotonic()
         return max(0, int(remaining))

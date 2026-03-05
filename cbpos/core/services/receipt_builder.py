@@ -192,7 +192,36 @@ class ReceiptBuilder:
                     }
                 )
 
-        # 6. Footer
+        # 6. Payment Breakdown
+        if hasattr(sale, "payments") and sale.payments:
+            commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
+            for pmt in sale.payments:
+                label = pmt.payment_method
+                amt = format_currency(pmt.amount)
+                pad = line_chars - len(label) - len(amt)
+                commands.append(
+                    {
+                        "type": "text",
+                        "val": "{}{}{}".format(label, " " * max(pad, 1), amt),
+                        "align": "left",
+                    }
+                )
+            # Calculate and show change if cash overpayment
+            total_paid = sum(p.amount for p in sale.payments)
+            if total_paid > sale.total_amount:
+                change = total_paid - sale.total_amount
+                label = "Change"
+                amt = format_currency(change)
+                pad = line_chars - len(label) - len(amt)
+                commands.append(
+                    {
+                        "type": "text",
+                        "val": "{}{}{}".format(label, " " * max(pad, 1), amt),
+                        "align": "left",
+                    }
+                )
+
+        # 7. Footer
         commands.append({"type": "feed", "lines": 1})
         footer_text = get_conf("receipt_footer", "")
         if footer_text:

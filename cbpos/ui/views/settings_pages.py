@@ -419,6 +419,26 @@ class SalesTaxPage(SettingsPage):
         self.combo_search_mode.addItems(["ALL", "BARCODE", "NAME"])
         form_sales.addRow("Default Search Mode:", self.combo_search_mode)
 
+        self.spin_max_discount = QDoubleSpinBox()
+        self.spin_max_discount.setRange(0, 100)
+        self.spin_max_discount.setDecimals(1)
+        self.spin_max_discount.setSuffix("%")
+        self.spin_max_discount.setFixedWidth(200)
+        self.spin_max_discount.setToolTip("Maximum discount % a cashier can apply. 0 = no limit.")
+        form_sales.addRow("Max Discount:", self.spin_max_discount)
+
+        self.spin_loyalty_ratio = QSpinBox()
+        self.spin_loyalty_ratio.setRange(1, 10000)
+        self.spin_loyalty_ratio.setPrefix("Rs. ")
+        self.spin_loyalty_ratio.setToolTip("Spend this amount to earn 1 loyalty point")
+        form_sales.addRow("Loyalty Points Ratio:", self.spin_loyalty_ratio)
+
+        self.spin_default_credit = QSpinBox()
+        self.spin_default_credit.setRange(0, 1000000)
+        self.spin_default_credit.setPrefix("Rs. ")
+        self.spin_default_credit.setToolTip("Default credit limit for new customers. 0 = no credit.")
+        form_sales.addRow("Default Credit Limit:", self.spin_default_credit)
+
         self.tabs.addTab(tab_sales, "Sales")
 
         # --- Tab 2: Tax ---
@@ -452,6 +472,9 @@ class SalesTaxPage(SettingsPage):
 
     def load(self, settings: dict):
         self.combo_search_mode.setCurrentText(settings.get("default_search_mode", "ALL"))
+        self.spin_max_discount.setValue(float(settings.get("max_discount_percent", 15.0)))
+        self.spin_loyalty_ratio.setValue(int(settings.get("loyalty_points_ratio", 100)))
+        self.spin_default_credit.setValue(int(settings.get("default_credit_limit", 0)))
         self.spin_vat.setValue(int(settings.get("tax_vat_rate", 18)))
         self.spin_sscl.setValue(float(settings.get("tax_sscl_rate", 2.5)))
         self.spin_sscl_turnover.setValue(float(settings.get("tax_sscl_turnover_pct", 50.0)))
@@ -459,6 +482,9 @@ class SalesTaxPage(SettingsPage):
     def save(self) -> dict:
         return {
             "default_search_mode": self.combo_search_mode.currentText(),
+            "max_discount_percent": self.spin_max_discount.value(),
+            "loyalty_points_ratio": self.spin_loyalty_ratio.value(),
+            "default_credit_limit": self.spin_default_credit.value(),
             "tax_vat_rate": self.spin_vat.value(),
             "tax_sscl_rate": self.spin_sscl.value(),
             "tax_sscl_turnover_pct": self.spin_sscl_turnover.value(),
@@ -735,6 +761,17 @@ class SystemPage(SettingsPage):
         self.chk_void_reason.setToolTip("Require a reason when voiding a transaction")
         form_sec.addRow("Require Void Reason:", self.chk_void_reason)
 
+        self.spin_max_login = QSpinBox()
+        self.spin_max_login.setRange(1, 20)
+        self.spin_max_login.setToolTip("Failed login attempts before account lockout")
+        form_sec.addRow("Max Login Attempts:", self.spin_max_login)
+
+        self.spin_lockout = QSpinBox()
+        self.spin_lockout.setRange(30, 3600)
+        self.spin_lockout.setSuffix(" sec")
+        self.spin_lockout.setToolTip("How long an account is locked after too many failed attempts")
+        form_sec.addRow("Lockout Duration:", self.spin_lockout)
+
         self.tabs.addTab(tab_sec, "Security")
 
         # --- Tab 2: POS Behavior ---
@@ -814,6 +851,8 @@ class SystemPage(SettingsPage):
     def load(self, settings: dict):
         self.spin_timeout.setValue(int(settings.get("session_timeout_minutes", 0)))
         self.chk_void_reason.setChecked(settings.get("require_void_reason", True))
+        self.spin_max_login.setValue(int(settings.get("max_login_attempts", 5)))
+        self.spin_lockout.setValue(int(settings.get("lockout_duration_seconds", 300)))
         self.chk_quick_pay.setChecked(settings.get("quick_pay_enabled", True))
         self.chk_show_receipt_dialog.setChecked(settings.get("show_receipt_dialog", True))
         self.chk_auto_barcode_select.setChecked(settings.get("auto_select_barcode_match", True))
@@ -830,6 +869,8 @@ class SystemPage(SettingsPage):
         return {
             "session_timeout_minutes": self.spin_timeout.value(),
             "require_void_reason": self.chk_void_reason.isChecked(),
+            "max_login_attempts": self.spin_max_login.value(),
+            "lockout_duration_seconds": self.spin_lockout.value(),
             "quick_pay_enabled": self.chk_quick_pay.isChecked(),
             "show_receipt_dialog": self.chk_show_receipt_dialog.isChecked(),
             "auto_select_barcode_match": self.chk_auto_barcode_select.isChecked(),

@@ -79,6 +79,7 @@ class CartService:
     def apply_line_discount(self, index: int, type: str, value: Decimal):
         """Apply discount to a specific line item."""
         if 0 <= index < len(self.items):
+            self._validate_discount_cap(type, value)
             item = self.items[index]
             item["discount_type"] = type
             item["discount_value"] = Decimal(str(value))
@@ -86,6 +87,7 @@ class CartService:
 
     def apply_cart_discount(self, type: str, value: Decimal):
         """Apply discount to the entire cart."""
+        self._validate_discount_cap(type, value)
         self.cart_discount_type = type
         self.cart_discount_value = Decimal(str(value))
         # No line recalculation needed, just totals
@@ -107,6 +109,21 @@ class CartService:
             self._recalculate_line(item)
 
             logger.info("Price override by %s - Item %s to %s", user.username, item["product"].name_en, new_price)
+
+    def _validate_discount_cap(self, discount_type: str, discount_value: Decimal) -> None:
+        """Validate discount does not exceed the configured max_discount_percent."""
+        try:
+            from cbpos.core.services.config_service import ConfigService
+
+            max_pct = Decimal(str(ConfigService.get("max_discount_percent") or 0))
+        except Exception:
+            return  # Config not available (e.g. test environment)
+
+        if max_pct <= 0:
+            return  # No cap configured (0 = unlimited)
+
+        if discount_type == "PERCENTAGE" and Decimal(str(discount_value)) > max_pct:
+            raise ValueError(f"Discount cannot exceed {max_pct}%. Manager override required.")
 
     def _recalculate_line(self, item: Dict[str, Any]):
         """Recalculate the total for a single line item."""

@@ -637,6 +637,12 @@ class DocumentBrowserView(QWidget):
 
     def void_document(self) -> None:
         """Void the selected document."""
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.DOCUMENTS_VOID, self):
+            return
+
         if not self.current_doc:
             return
 

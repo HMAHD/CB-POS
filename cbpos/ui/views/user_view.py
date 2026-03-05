@@ -207,11 +207,23 @@ class UserView(QWidget):
             self.load_logs()
 
     def add_user(self):
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.ADMIN_MANAGE_USERS, self):
+            return
+
         dialog = UserDialog(parent=self)
         if dialog.exec():
             self.load_users()
 
     def edit_user(self):
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.ADMIN_MANAGE_USERS, self):
+            return
+
         row = self.table.currentRow()
         if row < 0:
             return
@@ -222,5 +234,11 @@ class UserView(QWidget):
             self.load_users()
 
     def manage_permissions(self):
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.ADMIN_MANAGE_ROLES, self):
+            return
+
         dialog = PermissionDialog(parent=self)
         dialog.exec()

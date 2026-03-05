@@ -138,6 +138,12 @@ class DataExportDialog(QDialog):
         self.grp_dates.setVisible(checked)
 
     def _do_export(self) -> None:
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.REPORTS_EXPORT, self):
+            return
+
         if not any([self.chk_products.isChecked(), self.chk_customers.isChecked(), self.chk_sales.isChecked()]):
             QMessageBox.warning(self, "No Data Selected", "Please select at least one data type to export.")
             return

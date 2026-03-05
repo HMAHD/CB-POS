@@ -169,7 +169,9 @@ class RefundDialog(QDialog):
             return
 
         # Permission check
-        authorized_user = check_permission_with_override("can_refund", self)
+        from cbpos.core.constants.permissions import Permissions
+
+        authorized_user = check_permission_with_override(Permissions.SALES_REFUND, self)
         if not authorized_user:
             return
 

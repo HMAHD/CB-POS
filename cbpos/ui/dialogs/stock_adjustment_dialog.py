@@ -67,6 +67,12 @@ class StockAdjustmentDialog(QDialog):
         layout.addLayout(btn_layout)
 
     def save_adjustment(self):
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.INVENTORY_STOCK_ADJUST, self):
+            return
+
         try:
             change = Decimal(self.txt_change.text())
         except Exception:

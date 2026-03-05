@@ -950,6 +950,12 @@ class PurchaseView(QWidget):
 
     def make_payment(self) -> None:
         """Open supplier payment dialog."""
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.PURCHASE_MAKE_PAYMENT, self):
+            return
+
         if not self.selected_payable_supplier:
             QMessageBox.warning(self, "No Supplier", "Please select a supplier first.")
             return
@@ -970,6 +976,12 @@ class PurchaseView(QWidget):
 
     def adjust_payable(self) -> None:
         """Adjust supplier payable balance."""
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.PURCHASE_ADJUST_PAYABLE, self):
+            return
+
         if not self.selected_payable_supplier:
             QMessageBox.warning(self, "No Supplier", "Please select a supplier first.")
             return

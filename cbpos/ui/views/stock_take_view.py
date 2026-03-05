@@ -536,6 +536,12 @@ class StockTakeView(QWidget):
 
     def void_count(self) -> None:
         """Void the current stock count."""
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.STOCK_TAKE_APPROVE, self):
+            return
+
         if not self.current_stock_count:
             return
 

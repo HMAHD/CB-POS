@@ -469,6 +469,12 @@ class CreditBookView(QWidget):
 
     def receive_payment(self) -> None:
         """Open the Receive Payment dialog for the selected customer."""
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.CREDIT_RECEIVE_PAYMENT, self):
+            return
+
         if not self.selected_customer:
             QMessageBox.warning(self, "No Customer", "Please select a customer first.")
             return
@@ -500,6 +506,12 @@ class CreditBookView(QWidget):
 
     def adjust_balance(self) -> None:
         """Adjust the customer's balance (correction)."""
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.CREDIT_ADJUST_BALANCE, self):
+            return
+
         if not self.selected_customer:
             QMessageBox.warning(self, "No Customer", "Please select a customer first.")
             return

@@ -141,10 +141,12 @@ class TransactionService:
             cashier_id = current_user.id
 
             # Handle Credit Logic
+            from cbpos.core.constants.status import PaymentMethodType
+
             credit_amount_for_ledger = None
             credit_customer_balance = None
             for p in payments:
-                if p["method"] == "CREDIT":
+                if p["method"].upper() == PaymentMethodType.CREDIT.upper():
                     if not customer_id:
                         raise ValueError("Customer required for Credit sale.")
 

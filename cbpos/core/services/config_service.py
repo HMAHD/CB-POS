@@ -46,6 +46,7 @@ class ConfigService:
         "default_search_mode": "ALL",  # ALL, BARCODE, NAME
         "quick_pay_enabled": True,
         "require_void_reason": True,
+        "max_discount_percent": 15.0,
         # Hardware Configuration
         "receipt_printer_name": "",  # System printer name for thermal receipts
         "a4_printer_name": "",  # System printer name for A4 invoices
@@ -89,6 +90,11 @@ class ConfigService:
         "db_statement_timeout": 30,
         # System / Security
         "session_timeout_minutes": 0,  # 0 = disabled (no auto-lock), 1-60 = minutes
+        "max_login_attempts": 5,  # Failed attempts before lockout
+        "lockout_duration_seconds": 300,  # Lockout duration in seconds (5 min default)
+        # Customer Defaults
+        "default_credit_limit": 0,  # Default credit limit for new customers (0 = no credit)
+        "loyalty_points_ratio": 100,  # Spend this much to earn 1 loyalty point
         "auto_select_barcode_match": True,
         # Terminal Identification
         "terminal_id": "TERM-01",

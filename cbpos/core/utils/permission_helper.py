@@ -17,7 +17,7 @@ def check_permission_with_override(permission_code: str, parent_widget=None) -> 
     If not, show ManagerOverrideDialog to request manager PIN.
 
     Args:
-        permission_code: The permission code to check (e.g. 'can_void_sale').
+        permission_code: The permission code to check (e.g. 'sales.void_item').
         parent_widget: Parent QWidget for the override dialog.
 
     Returns:

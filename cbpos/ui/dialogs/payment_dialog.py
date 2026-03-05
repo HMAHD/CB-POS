@@ -321,7 +321,9 @@ class PaymentDialog(QDialog):
             self._active_btn = btn
 
         # Show customer combo for CREDIT only
-        is_credit = method.name.upper() == "CREDIT"
+        from cbpos.core.constants.status import PaymentMethodType
+
+        is_credit = method.name.upper() == PaymentMethodType.CREDIT.upper()
         self.lbl_customer.setVisible(is_credit)
         self.cmb_customer.setVisible(is_credit)
 
@@ -359,6 +361,8 @@ class PaymentDialog(QDialog):
         return self.total_amount - paid
 
     def add_payment(self):
+        from cbpos.core.constants.status import PaymentMethodType
+
         if not self.current_method:
             return
 
@@ -375,7 +379,7 @@ class PaymentDialog(QDialog):
         if amount <= 0:
             return
 
-        if self.current_method.name.upper() == "CREDIT":
+        if self.current_method.name.upper() == PaymentMethodType.CREDIT.upper():
             cust_name = self.cmb_customer.currentText().strip()
             if not cust_name:
                 QMessageBox.warning(self, "Error", "Please select a customer for Credit sale.")

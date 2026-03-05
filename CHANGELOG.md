@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.9.0] - 2026-03-05
+
+### Security — Permission System Enforcement (Phase 31A)
+
+- **Fixed 3 mismatched permission codes**: `can_void_sale` → `sales.void_item`, `change_price` → `sales.change_price`, `can_refund` → `sales.refund` — previous codes silently failed, allowing anyone to void/refund/change prices.
+- **Added 8 new permission codes**: `sales.refund`, `credit.receive_payment`, `credit.adjust_balance`, `purchase.adjust_payable`, `documents.void`, `inventory.delete`, `cash.open_drawer`, `reports.export`.
+- **Enforced permission checks on 20+ critical operations**: discounts, user management, settings, backup/restore, inventory editing, credit adjustments, supplier payments, document voiding, stock take voiding, and data exports — all now gated via `check_permission_with_override()`.
+- **Updated role seeds**: Manager gets Credit + Cash groups; Cashier gets `credit.receive_payment` and `cash.open_drawer`.
+
+### Added — Payment & Settings Configuration (Phase 31B)
+
+- **Payment Methods settings page**: Full CRUD management (add/edit/delete/toggle) for payment methods in Settings → Payments. Uses `PaymentService` and QSS-styled table UI.
+- **Max Discount % setting**: New `max_discount_percent` (default 15%) in Sales & Tax → Sales. Enforced in `CartService` — raises `ValueError` when exceeded; UI catches and displays message.
+- **Configurable login lockout**: `max_login_attempts` (default 5) and `lockout_duration_seconds` (default 300) in System → Security — `auth_service.py` now reads from config.
+- **Loyalty points ratio setting**: `loyalty_points_ratio` (default Rs.100 per point) in Sales & Tax → Sales — `customer_service.py` reads from config.
+- **Default credit limit setting**: `default_credit_limit` (default 0) in Sales & Tax → Sales.
+
+### Fixed — Hardcoded Values & Polish (Phase 31C)
+
+- **Replaced hardcoded payment lists**: `receive_payment_dialog.py` and `supplier_payment_dialog.py` now load methods from DB via `PaymentService.get_active_methods()` (excluding Credit).
+- **Replaced CREDIT string comparisons**: 3 locations in `payment_dialog.py` and `transaction_service.py` now use `PaymentMethodType.CREDIT` constant instead of raw `"CREDIT"` string.
+- **Payment method on receipts**: Receipt builder now shows payment breakdown (method + amount for each payment) with change calculation for cash overpayments.
+
 ## [0.8.11] - 2026-03-05
 
 ### Improved — Touch Product Grid UX Overhaul

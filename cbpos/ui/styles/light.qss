@@ -2032,6 +2032,33 @@ QWidget#SettingsScrollInner {
     background: transparent;
 }
 
+/* Settings page section headers */
+QLabel#SettingsSectionTitle {
+    color: #0D6EFD;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    background: transparent;
+}
+QFrame#SettingsSectionLine {
+    background-color: #CCCCCC;
+    max-height: 1px;
+    min-height: 1px;
+}
+
+/* Receipt live preview */
+QLabel#ReceiptPreviewTitle {
+    color: #888888;
+    font-size: 11px;
+    background: transparent;
+    padding: 4px 0;
+}
+QTextBrowser#ReceiptPreviewBrowser {
+    background-color: #F5F5F0;
+    border: 1px solid #CCCCCC;
+    border-radius: 6px;
+}
+
 /* ── BackupRestoreDialog & ValuationDialog (light theme) ───────── */
 QDialog#BackupRestoreDialog {
     background-color: #F8F9FA;

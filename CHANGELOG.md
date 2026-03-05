@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.9.2] - 2026-03-05
+
+### Added — Receipt Settings Live Preview & UI Overhaul
+
+- **Live receipt preview in settings**: Receipt settings page now uses a split-pane layout — settings on the left, live receipt preview on the right. Preview auto-updates on every change with 300ms debounce.
+- **Reusable `ReceiptPreviewWidget`**: Extracted receipt rendering into `cbpos/ui/widgets/receipt_preview_widget.py` — accurate thermal paper simulation with monospace font, dashed separators, barcode/QR placeholders, and 80mm/58mm paper width support.
+- **Section headers in settings pages**: New `_make_section_header()` base class helper with styled dividers (`SettingsSectionTitle` + `SettingsSectionLine`). Applied to Receipt and Hardware settings pages for visual grouping.
+- **Realistic sample data**: Receipt preview uses 3 products (Paracetamol, Vitamin C, Hand Sanitizer) with realistic Sri Lankan pricing and document number format.
+
+### Improved — Settings Page Layout
+
+- **Receipt page redesign**: Replaced sparse QFormLayout with sectioned VBox layout — "Shop Logo", "Header & Footer" sections in Content tab; "Receipt Elements", "Staff & Terminal", "QR Code" sections in Display tab.
+- **Hardware page redesign**: Applied same section-header pattern — "Printer Selection", "Print Behavior", "Test Hardware" in Printers tab; "Paper Cut", "Cash Drawer" in Cut & Drawer tab.
+- **DRY preview rendering**: `ReceiptPreviewDialog` refactored to use `ReceiptPreviewWidget`, eliminating duplicate HTML rendering logic.
+- **QSS theming**: Added styles for `ReceiptPreviewBrowser`, `ReceiptPreviewTitle`, `SettingsSectionTitle`, `SettingsSectionLine` in both dark and light themes.
+
 ## [0.9.1] - 2026-03-05
 
 ### Added — Receipt Printing Overhaul (Phase 31D)

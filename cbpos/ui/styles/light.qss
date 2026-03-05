@@ -2425,3 +2425,582 @@ QPushButton#ReportNavItem:checked {
     background-color: #0D6EFD;
     color: #FFFFFF;
 }
+
+/* ===================================================================
+   CREDIT BOOK VIEW — Drill-down Navigation (Light)
+   ================================================================ */
+
+QLabel#CreditPageTitle, QLabel#PayablePageTitle {
+    font-size: 22px;
+    font-weight: bold;
+    color: #0D6EFD;
+    background-color: transparent;
+}
+
+QLineEdit#CreditSearchInput, QLineEdit#PayableSearchInput {
+    padding: 8px 12px;
+    font-size: 13px;
+    border: 1px solid #CED4DA;
+    border-radius: 6px;
+    background-color: #FFFFFF;
+    color: #212529;
+}
+
+QLineEdit#CreditSearchInput:focus, QLineEdit#PayableSearchInput:focus {
+    border-color: #0D6EFD;
+}
+
+QPushButton#CreditAddBtn {
+    background-color: #0D6EFD;
+    color: #FFFFFF;
+    font-weight: bold;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+}
+
+QPushButton#CreditAddBtn:hover {
+    background-color: #0B5ED7;
+}
+
+QTableWidget#CreditCustomerTable, QTableWidget#CreditLedgerTable,
+QTableWidget#PayableSupplierTable, QTableWidget#PayableLedgerTable {
+    background-color: #FFFFFF;
+    alternate-background-color: #F8F9FA;
+    color: #212529;
+    gridline-color: #E9ECEF;
+    border: 1px solid #DEE2E6;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+QTableWidget#CreditCustomerTable::item:selected, QTableWidget#CreditLedgerTable::item:selected,
+QTableWidget#PayableSupplierTable::item:selected, QTableWidget#PayableLedgerTable::item:selected {
+    background-color: #E7F1FF;
+    color: #0D6EFD;
+}
+
+QTableWidget#CreditCustomerTable QHeaderView::section, QTableWidget#CreditLedgerTable QHeaderView::section,
+QTableWidget#PayableSupplierTable QHeaderView::section, QTableWidget#PayableLedgerTable QHeaderView::section {
+    background-color: #F8F9FA;
+    color: #0D6EFD;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 6px 8px;
+    border: none;
+    border-bottom: 2px solid #0D6EFD;
+}
+
+QFrame#CreditListFooter, QFrame#CreditLedgerFooter,
+QFrame#PayableLedgerFooter {
+    background-color: #F8F9FA;
+    border: 1px solid #DEE2E6;
+    border-radius: 6px;
+}
+
+QLabel#CreditFooterLabel {
+    background-color: transparent;
+    font-size: 13px;
+    font-weight: bold;
+    color: #495057;
+}
+
+QLabel#CreditFooterDebt, QLabel#CreditLedgerDebit,
+QLabel#PayableLedgerDebit {
+    color: #DC3545;
+    background-color: transparent;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+QLabel#CreditLedgerCredit, QLabel#PayableLedgerCredit {
+    color: #198754;
+    background-color: transparent;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+QLabel#CreditLedgerClosing, QLabel#PayableLedgerClosing {
+    color: #212529;
+    background-color: transparent;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+QPushButton#CreditBackBtn, QPushButton#PayableBackBtn {
+    background-color: transparent;
+    color: #0D6EFD;
+    border: none;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 4px 8px;
+}
+
+QPushButton#CreditBackBtn:hover, QPushButton#PayableBackBtn:hover {
+    color: #0B5ED7;
+}
+
+QFrame#CreditHeaderCard, QFrame#PayableHeaderCard {
+    background-color: #F8F9FA;
+    border: 1px solid #DEE2E6;
+    border-radius: 8px;
+}
+
+QFrame#CreditHeaderCard QLabel, QFrame#PayableHeaderCard QLabel {
+    background-color: transparent;
+}
+
+QLabel#CreditCustName, QLabel#PayableCustName {
+    font-size: 18px;
+    font-weight: bold;
+    color: #212529;
+}
+
+QLabel#CreditCustPhone, QLabel#PayableCustPhone {
+    font-size: 13px;
+    color: #6C757D;
+}
+
+QLabel#CreditMetricDebt, QLabel#PayableMetricDebt {
+    font-size: 14px;
+    font-weight: bold;
+    color: #DC3545;
+}
+
+QLabel#CreditMetricAvail {
+    font-size: 14px;
+    font-weight: bold;
+    color: #198754;
+}
+
+QLabel#CreditMetricLast, QLabel#PayableMetricLast {
+    font-size: 13px;
+    color: #6C757D;
+}
+
+QPushButton#CreditPayBtn, QPushButton#PayablePayBtn {
+    background-color: #0D6EFD;
+    color: #FFFFFF;
+    font-weight: bold;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+}
+
+QPushButton#CreditPayBtn:hover, QPushButton#PayablePayBtn:hover {
+    background-color: #0B5ED7;
+}
+
+QPushButton#CreditPrintBtn, QPushButton#CreditEditBtn {
+    background-color: #F8F9FA;
+    color: #495057;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid #CED4DA;
+    font-size: 13px;
+}
+
+QPushButton#CreditPrintBtn:hover, QPushButton#CreditEditBtn:hover {
+    border-color: #0D6EFD;
+    color: #0D6EFD;
+}
+
+QPushButton#CreditAdjustBtn, QPushButton#PayableAdjustBtn {
+    background-color: #FFF3CD;
+    color: #856404;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid #FFE69C;
+    font-size: 13px;
+}
+
+QPushButton#CreditAdjustBtn:hover, QPushButton#PayableAdjustBtn:hover {
+    background-color: #FFECB5;
+    border-color: #FFD666;
+}
+
+QLabel#CreditFilterLabel, QLabel#PayableFilterLabel {
+    background-color: transparent;
+    color: #6C757D;
+    font-size: 13px;
+}
+
+QPushButton#CreditAllDatesBtn, QPushButton#PayableAllDatesBtn {
+    background-color: #F8F9FA;
+    color: #495057;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid #CED4DA;
+    font-size: 12px;
+}
+
+QPushButton#CreditAllDatesBtn:hover, QPushButton#PayableAllDatesBtn:hover {
+    border-color: #0D6EFD;
+}
+
+/* ===================================================================
+   DOCUMENT BROWSER VIEW — Full-width with Detail Panel (Light)
+   ================================================================ */
+
+QLabel#DocBrowserTitle {
+    font-size: 22px;
+    font-weight: bold;
+    color: #0D6EFD;
+    background-color: transparent;
+}
+
+QPushButton#DocNewQuotationBtn {
+    background-color: #0D6EFD;
+    color: #FFFFFF;
+    font-weight: bold;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+}
+
+QPushButton#DocNewQuotationBtn:hover {
+    background-color: #0B5ED7;
+}
+
+QFrame#DocFilterBar {
+    background-color: #F8F9FA;
+    border: 1px solid #DEE2E6;
+    border-radius: 6px;
+}
+
+QLabel#DocFilterLabel {
+    background-color: transparent;
+    color: #6C757D;
+    font-size: 13px;
+}
+
+QLineEdit#DocSearchInput {
+    padding: 6px 10px;
+    font-size: 13px;
+    border: 1px solid #CED4DA;
+    border-radius: 4px;
+    background-color: #FFFFFF;
+    color: #212529;
+}
+
+QLineEdit#DocSearchInput:focus {
+    border-color: #0D6EFD;
+}
+
+QPushButton#DocFilterBtn {
+    background-color: #F8F9FA;
+    color: #495057;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid #CED4DA;
+    font-size: 13px;
+}
+
+QPushButton#DocFilterBtn:hover {
+    border-color: #0D6EFD;
+    color: #0D6EFD;
+}
+
+QPushButton#DocClearBtn {
+    background-color: transparent;
+    color: #6C757D;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid #CED4DA;
+    font-size: 13px;
+}
+
+QPushButton#DocClearBtn:hover {
+    color: #212529;
+    border-color: #6C757D;
+}
+
+QTableWidget#DocTable {
+    background-color: #FFFFFF;
+    alternate-background-color: #F8F9FA;
+    color: #212529;
+    gridline-color: #E9ECEF;
+    border: 1px solid #DEE2E6;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+QTableWidget#DocTable::item:selected {
+    background-color: #E7F1FF;
+    color: #0D6EFD;
+}
+
+QTableWidget#DocTable QHeaderView::section {
+    background-color: #F8F9FA;
+    color: #0D6EFD;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 6px 8px;
+    border: none;
+    border-bottom: 2px solid #0D6EFD;
+}
+
+QFrame#DocDetailPanel {
+    background-color: #F8F9FA;
+    border: 1px solid #DEE2E6;
+    border-radius: 8px;
+}
+
+QLabel#DocDetailTitle {
+    font-size: 16px;
+    font-weight: bold;
+    color: #0D6EFD;
+    background-color: transparent;
+}
+
+QPushButton#DocDetailCloseBtn {
+    background-color: transparent;
+    color: #6C757D;
+    border: 1px solid #CED4DA;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: 12px;
+}
+
+QPushButton#DocDetailCloseBtn:hover {
+    color: #212529;
+    border-color: #6C757D;
+}
+
+QLabel#DocInfoLabel, QLabel#DocPaymentLabel, QLabel#DocItemsTitle {
+    background-color: transparent;
+    color: #212529;
+    font-size: 13px;
+}
+
+QLabel#DocItemsTitle {
+    font-weight: bold;
+    color: #0D6EFD;
+}
+
+QTableWidget#DocItemsTable {
+    background-color: #FFFFFF;
+    alternate-background-color: #F8F9FA;
+    color: #212529;
+    gridline-color: #E9ECEF;
+    border: 1px solid #DEE2E6;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+QTableWidget#DocItemsTable QHeaderView::section {
+    background-color: #F8F9FA;
+    color: #0D6EFD;
+    font-weight: bold;
+    font-size: 11px;
+    padding: 4px 6px;
+    border: none;
+    border-bottom: 1px solid #0D6EFD;
+}
+
+QPushButton#DocReprintBtn, QPushButton#DocConvertBtn {
+    background-color: #F8F9FA;
+    color: #495057;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid #CED4DA;
+    font-size: 13px;
+}
+
+QPushButton#DocReprintBtn:hover, QPushButton#DocConvertBtn:hover {
+    border-color: #0D6EFD;
+    color: #0D6EFD;
+}
+
+QPushButton#DocConvertBtn:enabled {
+    background-color: #0D6EFD;
+    color: #FFFFFF;
+    font-weight: bold;
+    border: none;
+}
+
+QPushButton#DocRefundBtn, QPushButton#DocVoidBtn {
+    background-color: #FFF5F5;
+    color: #DC3545;
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px solid #F5C2C7;
+    font-size: 13px;
+}
+
+QPushButton#DocRefundBtn:hover, QPushButton#DocVoidBtn:hover {
+    background-color: #F8D7DA;
+    border-color: #DC3545;
+}
+
+QLabel#DocPageLabel {
+    background-color: transparent;
+    color: #6C757D;
+    font-size: 12px;
+}
+
+QPushButton#DocPrevBtn, QPushButton#DocNextBtn {
+    background-color: #F8F9FA;
+    color: #495057;
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px solid #CED4DA;
+    font-size: 12px;
+}
+
+QPushButton#DocPrevBtn:hover, QPushButton#DocNextBtn:hover {
+    border-color: #0D6EFD;
+    color: #0D6EFD;
+}
+
+/* ===================================================================
+   PRICE LIST VIEW — Sidebar Navigation (Light)
+   ================================================================ */
+
+QWidget#PriceListSidebarPanel {
+    background-color: #FFFFFF;
+    border-right: 1px solid #DEE2E6;
+}
+
+QLabel#PriceListSidebarTitle {
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: #0D6EFD;
+    background-color: transparent;
+    padding-bottom: 4px;
+}
+
+QScrollArea#PriceListSidebarScroll {
+    background-color: transparent;
+    border: none;
+}
+
+QWidget#PriceListNavContainer {
+    background-color: transparent;
+}
+
+QPushButton#PriceListNavItem {
+    text-align: left;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: #6C757D;
+    background-color: transparent;
+    border: none;
+    border-left: 3px solid transparent;
+    border-radius: 0px;
+}
+
+QPushButton#PriceListNavItem:hover {
+    background-color: #F8F9FA;
+    color: #212529;
+}
+
+QPushButton#PriceListNavItem:checked {
+    background-color: #E7F1FF;
+    color: #0D6EFD;
+    font-weight: bold;
+    border-left: 3px solid #0D6EFD;
+}
+
+QPushButton#PriceListAddBtn {
+    background-color: #0D6EFD;
+    color: #FFFFFF;
+    font-weight: bold;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+}
+
+QPushButton#PriceListAddBtn:hover {
+    background-color: #0B5ED7;
+}
+
+QWidget#PriceListContentPanel {
+    background-color: #F5F7FA;
+}
+
+QLabel#PriceListEmptyText {
+    font-size: 18px;
+    font-weight: bold;
+    color: #6C757D;
+    background-color: transparent;
+}
+
+QLabel#PriceListEmptySubtext {
+    font-size: 13px;
+    color: #ADB5BD;
+    background-color: transparent;
+}
+
+QFrame#PriceListHeader {
+    background-color: #FFFFFF;
+    border: 1px solid #DEE2E6;
+    border-radius: 6px;
+}
+
+QLabel#PriceListTitle {
+    font-size: 18px;
+    font-weight: bold;
+    color: #212529;
+    background-color: transparent;
+}
+
+QLabel#PriceListDates {
+    font-size: 13px;
+    color: #6C757D;
+    background-color: transparent;
+}
+
+QTableWidget#PriceListDataTable {
+    background-color: #FFFFFF;
+    alternate-background-color: #F8F9FA;
+    color: #212529;
+    gridline-color: #E9ECEF;
+    border: 1px solid #DEE2E6;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+QTableWidget#PriceListDataTable::item:selected {
+    background-color: #E7F1FF;
+    color: #0D6EFD;
+}
+
+QTableWidget#PriceListDataTable QHeaderView::section {
+    background-color: #F8F9FA;
+    color: #0D6EFD;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 6px 8px;
+    border: none;
+    border-bottom: 2px solid #0D6EFD;
+}
+
+QFrame#PriceListFooter {
+    background-color: #FFFFFF;
+    border: 1px solid #DEE2E6;
+    border-radius: 6px;
+}
+
+QLabel#PriceListFooterLabel {
+    background-color: transparent;
+    color: #6C757D;
+    font-size: 12px;
+}
+
+QLabel#PriceListFooterHint {
+    background-color: transparent;
+    color: #ADB5BD;
+    font-size: 11px;
+    font-style: italic;
+}
+
+QSplitter#PriceListSplitter::handle {
+    background-color: #DEE2E6;
+    width: 1px;
+}

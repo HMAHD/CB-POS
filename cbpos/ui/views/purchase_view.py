@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (
     QCompleter,
     QTableWidget,
     QTableWidgetItem,
-    QSplitter,
+    QStackedWidget,
     QFrame,
     QInputDialog,
     QSpinBox,
@@ -593,116 +593,168 @@ class PurchaseView(QWidget):
     # ========== Payables Tab ==========
 
     def setup_payables_tab(self) -> None:
-        """Setup the Payables tab with two-panel splitter layout."""
+        """Setup the Payables tab with drill-down navigation (no splitter)."""
         layout = QVBoxLayout(self.payables_tab)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setHandleWidth(3)
-        splitter.setChildrenCollapsible(False)
+        self.payable_stack = QStackedWidget()
+        self.payable_stack.setObjectName("PayableStack")
+        layout.addWidget(self.payable_stack)
 
-        # ===== LEFT PANEL: Supplier List =====
-        left_panel = QWidget()
-        left_layout = QVBoxLayout(left_panel)
-        left_layout.setContentsMargins(10, 10, 5, 10)
+        # State
+        self.selected_payable_supplier = None
 
-        lbl_title = QLabel("Supplier Payables")
-        lbl_title.setProperty("class", "dialog-title")
-        left_layout.addWidget(lbl_title)
+        # ===== PAGE 0: Supplier List =====
+        self._build_payable_list_page()
 
+        # ===== PAGE 1: Supplier Ledger Detail =====
+        self._build_payable_detail_page()
+
+    def _build_payable_list_page(self) -> None:
+        """Build the supplier list page for payables."""
+        page = QWidget()
+        page.setObjectName("PayableListPage")
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(16, 16, 16, 16)
+        page_layout.setSpacing(12)
+
+        # Header
+        header_row = QHBoxLayout()
+        title = QLabel("Supplier Payables")
+        title.setObjectName("PayablePageTitle")
+        header_row.addWidget(title)
+        header_row.addStretch()
+        page_layout.addLayout(header_row)
+
+        # Search
         self.payable_search = QLineEdit()
+        self.payable_search.setObjectName("PayableSearchInput")
         self.payable_search.setPlaceholderText("Search supplier...")
         self.payable_search.textChanged.connect(self.filter_payable_suppliers)
-        left_layout.addWidget(self.payable_search)
+        page_layout.addWidget(self.payable_search)
 
+        # Supplier Table (full width)
         self.payable_supplier_table = QTableWidget()
+        self.payable_supplier_table.setObjectName("PayableSupplierTable")
         self.payable_supplier_table.setColumnCount(5)
         self.payable_supplier_table.setHorizontalHeaderLabels(["ID", "Supplier", "Phone", "Payable", "Terms"])
         self.payable_supplier_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.payable_supplier_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.payable_supplier_table.setColumnHidden(0, True)
         self.payable_supplier_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.payable_supplier_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.payable_supplier_table.currentItemChanged.connect(self.on_payable_supplier_selected)
         self.payable_supplier_table.setAlternatingRowColors(True)
+        self.payable_supplier_table.verticalHeader().setVisible(False)
         self.payable_supplier_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        left_layout.addWidget(self.payable_supplier_table, 1)
+        self.payable_supplier_table.doubleClicked.connect(self._on_payable_supplier_double_click)
+        page_layout.addWidget(self.payable_supplier_table, 1)
 
-        splitter.addWidget(left_panel)
+        self.payable_stack.addWidget(page)
 
-        # ===== RIGHT PANEL: Ledger & Actions =====
-        right_panel = QWidget()
-        self.payable_right_layout = QVBoxLayout(right_panel)
-        self.payable_right_layout.setContentsMargins(5, 10, 10, 10)
+    def _build_payable_detail_page(self) -> None:
+        """Build the supplier ledger detail page for payables."""
+        page = QWidget()
+        page.setObjectName("PayableDetailPage")
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(16, 16, 16, 16)
+        page_layout.setSpacing(12)
+
+        # Back button
+        nav_row = QHBoxLayout()
+        self.btn_payable_back = QPushButton("< Back to Suppliers")
+        self.btn_payable_back.setObjectName("PayableBackBtn")
+        self.btn_payable_back.clicked.connect(self._payable_go_back)
+        nav_row.addWidget(self.btn_payable_back)
+        nav_row.addStretch()
+        page_layout.addLayout(nav_row)
 
         # Header Card
         self.payable_header = QFrame()
-        self.payable_header.setObjectName("CreditHeaderCard")
+        self.payable_header.setObjectName("PayableHeaderCard")
         header_layout = QVBoxLayout(self.payable_header)
+        header_layout.setContentsMargins(16, 12, 16, 12)
+        header_layout.setSpacing(8)
 
         row1 = QHBoxLayout()
-        self.lbl_pay_name = QLabel("Select a supplier")
-        self.lbl_pay_name.setProperty("class", "bold")
+        self.lbl_pay_name = QLabel("Supplier Name")
+        self.lbl_pay_name.setObjectName("PayableCustName")
         self.lbl_pay_phone = QLabel("")
-        self.lbl_pay_phone.setProperty("class", "muted")
+        self.lbl_pay_phone.setObjectName("PayableCustPhone")
         row1.addWidget(self.lbl_pay_name)
         row1.addStretch()
         row1.addWidget(self.lbl_pay_phone)
         header_layout.addLayout(row1)
 
         row2 = QHBoxLayout()
+        row2.setSpacing(16)
         self.lbl_pay_balance = QLabel("Payable: ---")
-        self.lbl_pay_balance.setProperty("class", "debit")
+        self.lbl_pay_balance.setObjectName("PayableMetricDebt")
         self.lbl_pay_last = QLabel("Last Payment: ---")
-        self.lbl_pay_last.setProperty("class", "muted")
+        self.lbl_pay_last.setObjectName("PayableMetricLast")
         row2.addWidget(self.lbl_pay_balance)
         row2.addStretch()
         row2.addWidget(self.lbl_pay_last)
         header_layout.addLayout(row2)
 
-        self.payable_right_layout.addWidget(self.payable_header)
+        page_layout.addWidget(self.payable_header)
 
         # Action Buttons
-        action_layout = QHBoxLayout()
+        action_bar = QFrame()
+        action_bar.setObjectName("PayableActionBar")
+        action_layout = QHBoxLayout(action_bar)
+        action_layout.setContentsMargins(0, 0, 0, 0)
+        action_layout.setSpacing(8)
+
         self.btn_make_payment = QPushButton("Make Payment")
-        self.btn_make_payment.setProperty("class", "primary")
+        self.btn_make_payment.setObjectName("PayablePayBtn")
         self.btn_make_payment.clicked.connect(self.make_payment)
         action_layout.addWidget(self.btn_make_payment)
 
         self.btn_adjust_payable = QPushButton("Adjust Balance")
-        self.btn_adjust_payable.setProperty("class", "warning")
+        self.btn_adjust_payable.setObjectName("PayableAdjustBtn")
         self.btn_adjust_payable.clicked.connect(self.adjust_payable)
         action_layout.addWidget(self.btn_adjust_payable)
 
-        self.payable_right_layout.addLayout(action_layout)
+        action_layout.addStretch()
+        page_layout.addWidget(action_bar)
 
         # Date Filters
-        filter_layout = QHBoxLayout()
+        filter_bar = QFrame()
+        filter_bar.setObjectName("PayableFilterBar")
+        filter_layout = QHBoxLayout(filter_bar)
+        filter_layout.setContentsMargins(0, 0, 0, 0)
+        filter_layout.setSpacing(8)
+
         lbl_from = QLabel("From:")
-        lbl_from.setProperty("class", "transparent")
+        lbl_from.setObjectName("PayableFilterLabel")
         filter_layout.addWidget(lbl_from)
         self.pay_date_from = QDateEdit()
+        self.pay_date_from.setObjectName("PayableDateEdit")
         self.pay_date_from.setCalendarPopup(True)
         self.pay_date_from.setDate(QDate.currentDate().addMonths(-1))
         self.pay_date_from.dateChanged.connect(self.reload_payable_ledger)
         filter_layout.addWidget(self.pay_date_from)
 
         lbl_to = QLabel("To:")
-        lbl_to.setProperty("class", "transparent")
+        lbl_to.setObjectName("PayableFilterLabel")
         filter_layout.addWidget(lbl_to)
         self.pay_date_to = QDateEdit()
+        self.pay_date_to.setObjectName("PayableDateEdit")
         self.pay_date_to.setCalendarPopup(True)
         self.pay_date_to.setDate(QDate.currentDate())
         self.pay_date_to.dateChanged.connect(self.reload_payable_ledger)
         filter_layout.addWidget(self.pay_date_to)
 
         btn_all = QPushButton("All")
+        btn_all.setObjectName("PayableAllDatesBtn")
         btn_all.clicked.connect(self.show_all_payable_dates)
         filter_layout.addWidget(btn_all)
         filter_layout.addStretch()
-        self.payable_right_layout.addLayout(filter_layout)
+        page_layout.addWidget(filter_bar)
 
-        # Ledger Table
+        # Ledger Table (full width)
         self.payable_ledger_table = QTableWidget()
+        self.payable_ledger_table.setObjectName("PayableLedgerTable")
         self.payable_ledger_table.setColumnCount(6)
         self.payable_ledger_table.setHorizontalHeaderLabels(["Date", "Type", "Doc #", "Debit", "Credit", "Balance"])
         self.payable_ledger_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
@@ -714,33 +766,28 @@ class PurchaseView(QWidget):
         self.payable_ledger_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.payable_ledger_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.payable_ledger_table.setAlternatingRowColors(True)
+        self.payable_ledger_table.verticalHeader().setVisible(False)
         self.payable_ledger_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.payable_right_layout.addWidget(self.payable_ledger_table, 1)
+        page_layout.addWidget(self.payable_ledger_table, 1)
 
         # Footer Summary
-        footer_layout = QHBoxLayout()
+        footer = QFrame()
+        footer.setObjectName("PayableLedgerFooter")
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(8, 8, 8, 8)
         self.lbl_total_purchases = QLabel("Purchases: ---")
-        self.lbl_total_purchases.setProperty("class", "debit")
+        self.lbl_total_purchases.setObjectName("PayableLedgerDebit")
         self.lbl_total_payments = QLabel("Payments: ---")
-        self.lbl_total_payments.setProperty("class", "credit")
+        self.lbl_total_payments.setObjectName("PayableLedgerCredit")
         self.lbl_closing = QLabel("Closing: ---")
-        self.lbl_closing.setProperty("class", "bold")
+        self.lbl_closing.setObjectName("PayableLedgerClosing")
         footer_layout.addWidget(self.lbl_total_purchases)
         footer_layout.addWidget(self.lbl_total_payments)
         footer_layout.addStretch()
         footer_layout.addWidget(self.lbl_closing)
-        self.payable_right_layout.addLayout(footer_layout)
+        page_layout.addWidget(footer)
 
-        splitter.addWidget(right_panel)
-
-        # Splitter proportions: 35% / 65%
-        splitter.setStretchFactor(0, 35)
-        splitter.setStretchFactor(1, 65)
-
-        layout.addWidget(splitter)
-
-        # State
-        self.selected_payable_supplier = None
+        self.payable_stack.addWidget(page)
 
     def load_payable_suppliers(self) -> None:
         """Load suppliers into the payables table."""
@@ -788,11 +835,9 @@ class PurchaseView(QWidget):
             terms_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.payable_supplier_table.setItem(row, 4, terms_item)
 
-    def on_payable_supplier_selected(self, current: QTableWidgetItem, _previous: QTableWidgetItem) -> None:
-        """Handle supplier selection in payables tab."""
-        if not current:
-            return
-        row = current.row()
+    def _on_payable_supplier_double_click(self, index) -> None:
+        """Drill into the selected supplier's payable ledger."""
+        row = index.row()
         id_item = self.payable_supplier_table.item(row, 0)
         if not id_item:
             return
@@ -803,6 +848,12 @@ class PurchaseView(QWidget):
             self.selected_payable_supplier = supplier
             self._update_payable_header(supplier)
             self.reload_payable_ledger()
+            self.payable_stack.setCurrentIndex(1)
+
+    def _payable_go_back(self) -> None:
+        """Return to the supplier list."""
+        self.payable_stack.setCurrentIndex(0)
+        self.load_payable_suppliers()
 
     def _update_payable_header(self, supplier) -> None:
         """Update the payable header card."""

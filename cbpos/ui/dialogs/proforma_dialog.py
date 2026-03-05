@@ -47,6 +47,10 @@ class ProformaDialog(QDialog):
 
         # Header Section
         form = QFormLayout()
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        form.setContentsMargins(16, 16, 16, 16)
+        form.setSpacing(12)
 
         self.customer_combo = QComboBox()
         self.customer_combo.setEditable(True)

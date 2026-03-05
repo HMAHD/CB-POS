@@ -84,6 +84,8 @@ class SupplierPaymentDialog(QDialog):
 
         # Form Fields
         form_layout = QFormLayout()
+        form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         form_layout.setSpacing(12)
         form_layout.setContentsMargins(0, 4, 0, 4)
 

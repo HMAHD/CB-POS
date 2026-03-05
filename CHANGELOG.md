@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.8.10] - 2026-03-05
+
+### Fixed — QFormLayout Field Growth Across All Dialogs
+
+- **All QFormLayout instances** now use `ExpandingFieldsGrow` policy — input fields stretch to fill available dialog width instead of being narrow and centered.
+- **Right-aligned labels** (`AlignRight`) applied globally for consistent visual alignment.
+- **13 forms fixed across 13 files**: `customer_quick_add.py`, `category_dialog.py`, `profile_dialog.py`, `proforma_dialog.py`, `supplier_payment_dialog.py`, `receive_payment_dialog.py`, `stock_adjustment_dialog.py`, `setup_wizard.py` (3 forms), `data_export_dialog.py`, `backup_restore_dialog.py`, `category_manager.py`, `unit_manager.py`, `pricelist_view.py` (PriceListDialog).
+- Previously fixed in `customer_editor.py` (3 forms) and `product_editor.py` (2 forms).
+
 ## [0.8.9] - 2026-03-04
 
 ### Changed — Report Viewer Redesign ("Data Observatory")

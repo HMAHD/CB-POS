@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
     QFormLayout,
 )
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QDoubleValidator
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.models import Product
@@ -29,6 +30,10 @@ class StockAdjustmentDialog(QDialog):
         layout = QVBoxLayout(self)
 
         form_layout = QFormLayout()
+        form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        form_layout.setContentsMargins(16, 16, 16, 16)
+        form_layout.setSpacing(12)
 
         self.lbl_current = QLabel(f"{self.product.stock_qty:.3f}")  # noqa: E231
         self.lbl_current.setProperty("class", "credit")

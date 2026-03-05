@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox,
     QMessageBox,
 )
+from PyQt6.QtCore import Qt
 from cbpos.core.services.customer_service import CustomerService
 
 
@@ -23,6 +24,10 @@ class CustomerQuickAddDialog(QDialog):
     def setup_ui(self):
         layout = QVBoxLayout(self)
         form = QFormLayout()
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        form.setContentsMargins(16, 16, 16, 16)
+        form.setSpacing(12)
 
         self.name_input = QLineEdit()
         self.phone_input = QLineEdit()

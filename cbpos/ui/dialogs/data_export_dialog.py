@@ -82,6 +82,8 @@ class DataExportDialog(QDialog):
         # Date range for sales
         self.grp_dates = QGroupBox("Sales Date Range")
         dates_form = QFormLayout(self.grp_dates)
+        dates_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        dates_form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         dates_form.setVerticalSpacing(10)
         dates_form.setHorizontalSpacing(16)
 

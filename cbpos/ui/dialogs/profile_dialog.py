@@ -34,6 +34,8 @@ class ProfileDialog(QDialog):
         layout.addWidget(title)
 
         form = QFormLayout()
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         form.setVerticalSpacing(15)
         form.setHorizontalSpacing(20)
 

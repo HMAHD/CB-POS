@@ -1,6 +1,6 @@
 """
 Payment Methods management view for Settings.
-Full CRUD with inline toggle for active/inactive state.
+Card-based list with inline toggle, edit, and delete actions.
 """
 
 import logging
@@ -9,9 +9,6 @@ from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
     QPushButton,
     QLabel,
     QDialog,
@@ -19,15 +16,14 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QCheckBox,
     QMessageBox,
+    QScrollArea,
+    QFrame,
 )
 from PyQt6.QtCore import Qt
 
 from cbpos.core.services.payment_service import PaymentService
 
 logger = logging.getLogger(__name__)
-
-# Row height must accommodate compact buttons comfortably
-_ROW_HEIGHT = 44
 
 
 class PaymentMethodDialog(QDialog):
@@ -108,8 +104,88 @@ class PaymentMethodDialog(QDialog):
         self.accept()
 
 
+class _MethodCard(QFrame):
+    """A single payment method row card."""
+
+    def __init__(self, method, parent_view: "PaymentMethodsView", parent=None):
+        super().__init__(parent)
+        self.method = method
+        self._parent_view = parent_view
+        self.setObjectName("PMCard")
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self._init_ui()
+
+    def _init_ui(self) -> None:
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(12)
+
+        # --- Left: Name + tags ---
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(4)
+
+        name_label = QLabel(self.method.name)
+        name_label.setObjectName("PMCardName")
+        info_layout.addWidget(name_label)
+
+        # Tags line: properties as small text
+        tags = []
+        if self.method.is_cash:
+            tags.append("Cash")
+        if self.method.open_drawer:
+            tags.append("Opens Drawer")
+        if self.method.shortcut:
+            tags.append(self.method.shortcut)
+
+        if tags:
+            tag_label = QLabel(" \u00b7 ".join(tags))
+            tag_label.setObjectName("PMCardTags")
+            info_layout.addWidget(tag_label)
+
+        layout.addLayout(info_layout, 1)
+
+        # --- Center: Status badge ---
+        status_text = "Active" if self.method.is_active else "Inactive"
+        status_class = "pm-active" if self.method.is_active else "pm-inactive"
+        status_label = QLabel(status_text)
+        status_label.setObjectName("PMCardStatus")
+        status_label.setProperty("class", status_class)
+        status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        status_label.setFixedWidth(80)
+        layout.addWidget(status_label)
+
+        # --- Right: Action buttons ---
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+
+        btn_edit = QPushButton("Edit")
+        btn_edit.setObjectName("PMCardBtn")
+        btn_edit.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        btn_edit.clicked.connect(lambda: self._parent_view._edit_method(self.method))
+        btn_layout.addWidget(btn_edit)
+
+        toggle_text = "Deactivate" if self.method.is_active else "Activate"
+        toggle_class = "warning" if self.method.is_active else "accent"
+        btn_toggle = QPushButton(toggle_text)
+        btn_toggle.setObjectName("PMCardBtn")
+        btn_toggle.setProperty("class", toggle_class)
+        btn_toggle.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        btn_toggle.clicked.connect(lambda: self._parent_view._toggle_method(self.method))
+        btn_layout.addWidget(btn_toggle)
+
+        if not self.method.is_cash:
+            btn_delete = QPushButton("Delete")
+            btn_delete.setObjectName("PMCardBtn")
+            btn_delete.setProperty("class", "danger")
+            btn_delete.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            btn_delete.clicked.connect(lambda: self._parent_view._delete_method(self.method))
+            btn_layout.addWidget(btn_delete)
+
+        layout.addLayout(btn_layout)
+
+
 class PaymentMethodsView(QWidget):
-    """Payment Methods management — table with edit, toggle, delete actions."""
+    """Payment Methods management — card-based list with actions."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -143,24 +219,21 @@ class PaymentMethodsView(QWidget):
 
         layout.addLayout(action_bar)
 
-        # Table — 6 columns: Name, Shortcut, Cash, Drawer, Status, Actions
-        self.table = QTableWidget()
-        self.table.setObjectName("PaymentMethodsTable")
-        self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["Name", "Shortcut", "Cash", "Drawer", "Status", ""])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        # Fixed width for actions column to fit 3 buttons
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(5, 260)
-        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.table.verticalHeader().setVisible(False)
-        self.table.setAlternatingRowColors(True)
-        layout.addWidget(self.table, 1)
+        # Scrollable card list
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll.setObjectName("PMCardScroll")
+
+        self._list_container = QWidget()
+        self._list_layout = QVBoxLayout(self._list_container)
+        self._list_layout.setContentsMargins(0, 0, 0, 0)
+        self._list_layout.setSpacing(2)
+        self._list_layout.addStretch()
+
+        self.scroll.setWidget(self._list_container)
+        layout.addWidget(self.scroll, 1)
 
         # Hint
         hint = QLabel("Deactivate methods to hide from checkout. Cash method cannot be deleted.")
@@ -171,73 +244,20 @@ class PaymentMethodsView(QWidget):
         super().showEvent(event)
         self._load_methods()
 
-    def _make_action_btn(self, text: str, object_name: str, css_class: str = "") -> QPushButton:
-        """Create a compact action button for table cells."""
-        btn = QPushButton(text)
-        btn.setObjectName(object_name)
-        btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        if css_class:
-            btn.setProperty("class", css_class)
-        return btn
-
     def _load_methods(self) -> None:
-        """Reload all payment methods into the table."""
+        """Rebuild the card list from database."""
         self._methods = PaymentService.get_all_methods()
-        self.table.setRowCount(len(self._methods))
 
-        for row, method in enumerate(self._methods):
-            self.table.setRowHeight(row, _ROW_HEIGHT)
+        # Clear existing cards
+        while self._list_layout.count() > 1:
+            item = self._list_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
 
-            # Name
-            name_item = QTableWidgetItem(method.name)
-            name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            self.table.setItem(row, 0, name_item)
-
-            # Shortcut
-            shortcut_item = QTableWidgetItem(method.shortcut or "—")
-            shortcut_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(row, 1, shortcut_item)
-
-            # Cash
-            cash_item = QTableWidgetItem("Yes" if method.is_cash else "—")
-            cash_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(row, 2, cash_item)
-
-            # Drawer
-            drawer_item = QTableWidgetItem("Yes" if method.open_drawer else "—")
-            drawer_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(row, 3, drawer_item)
-
-            # Status — styled text
-            status_item = QTableWidgetItem("Active" if method.is_active else "Inactive")
-            status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(row, 4, status_item)
-
-            # Action buttons — Edit | Toggle | Delete
-            action_widget = QWidget()
-            action_widget.setObjectName("PaymentMethodActions")
-            action_layout = QHBoxLayout(action_widget)
-            action_layout.setContentsMargins(4, 4, 4, 4)
-            action_layout.setSpacing(6)
-
-            btn_edit = self._make_action_btn("Edit", "PMActionBtn")
-            btn_edit.clicked.connect(lambda _, m=method: self._edit_method(m))
-            action_layout.addWidget(btn_edit)
-
-            # Toggle active/inactive
-            toggle_text = "Deactivate" if method.is_active else "Activate"
-            toggle_class = "warning" if method.is_active else "accent"
-            btn_toggle = self._make_action_btn(toggle_text, "PMActionBtn", toggle_class)
-            btn_toggle.clicked.connect(lambda _, m=method: self._toggle_method(m))
-            action_layout.addWidget(btn_toggle)
-
-            # Delete — not allowed for Cash method
-            if not method.is_cash:
-                btn_delete = self._make_action_btn("Delete", "PMActionBtn", "danger")
-                btn_delete.clicked.connect(lambda _, m=method: self._delete_method(m))
-                action_layout.addWidget(btn_delete)
-
-            self.table.setCellWidget(row, 5, action_widget)
+        # Add cards
+        for i, method in enumerate(self._methods):
+            card = _MethodCard(method, parent_view=self)
+            self._list_layout.insertWidget(i, card)
 
     def _add_method(self) -> None:
         dialog = PaymentMethodDialog(parent=self)

@@ -3062,52 +3062,94 @@ QLabel#ProductCardPrice {
     background: transparent;
 }
 
-/* ── Payment Methods Table Actions ── */
-#PaymentMethodActions {
+/* ── Payment Methods Card List ── */
+#PMCardScroll {
     background: transparent;
 }
 
-QPushButton#PMActionBtn {
-    padding: 4px 14px;
+#PMCard {
+    background-color: #FFFFFF;
+    border: 1px solid #DEE2E6;
+    border-radius: 6px;
+}
+
+#PMCard:hover {
+    border-color: #0D6EFD;
+}
+
+QLabel#PMCardName {
+    font-size: 14px;
+    font-weight: bold;
+    color: #212529;
+    background: transparent;
+}
+
+QLabel#PMCardTags {
+    font-size: 11px;
+    color: #6C757D;
+    background: transparent;
+}
+
+QLabel#PMCardStatus {
+    font-size: 11px;
+    font-weight: bold;
+    border-radius: 10px;
+    padding: 3px 10px;
+}
+
+QLabel#PMCardStatus[class="pm-active"] {
+    background-color: #D1E7DD;
+    color: #0F5132;
+    border: 1px solid #BADBCC;
+}
+
+QLabel#PMCardStatus[class="pm-inactive"] {
+    background-color: #F8D7DA;
+    color: #842029;
+    border: 1px solid #F5C2C7;
+}
+
+QPushButton#PMCardBtn {
+    padding: 5px 16px;
     font-size: 12px;
     font-weight: bold;
-    border-radius: 3px;
+    border-radius: 4px;
     color: #495057;
-    background-color: #FFFFFF;
+    background-color: #F8F9FA;
     border: 1px solid #CED4DA;
 }
 
-QPushButton#PMActionBtn:hover {
+QPushButton#PMCardBtn:hover {
     background-color: #E9ECEF;
     border-color: #ADB5BD;
 }
 
-QPushButton#PMActionBtn[class="danger"] {
+QPushButton#PMCardBtn[class="danger"] {
     background-color: #DC3545;
     color: #FFFFFF;
     border: none;
 }
 
-QPushButton#PMActionBtn[class="danger"]:hover {
+QPushButton#PMCardBtn[class="danger"]:hover {
     background-color: #C82333;
 }
 
-QPushButton#PMActionBtn[class="warning"] {
+QPushButton#PMCardBtn[class="warning"] {
     background-color: #FFC107;
     color: #212529;
     border: none;
 }
 
-QPushButton#PMActionBtn[class="warning"]:hover {
+QPushButton#PMCardBtn[class="warning"]:hover {
     background-color: #E0A800;
 }
 
-QPushButton#PMActionBtn[class="accent"] {
+QPushButton#PMCardBtn[class="accent"] {
     background-color: #0D6EFD;
     color: #FFFFFF;
     border: none;
 }
 
-QPushButton#PMActionBtn[class="accent"]:hover {
+QPushButton#PMCardBtn[class="accent"]:hover {
     background-color: #0B5ED7;
 }

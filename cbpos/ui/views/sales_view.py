@@ -928,8 +928,17 @@ class SalesView(QWidget):
         from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
         worker = PrintWorker()
+        worker.error_occurred.connect(self._on_print_error)
         worker.add_job("kick_drawer")
         self._drawer_worker = worker  # prevent GC
+
+    def _on_print_error(self, message: str) -> None:
+        """Show printer error to user."""
+        QMessageBox.warning(
+            self,
+            "Printer Error",
+            f"{message}\n\nCheck Settings > Hardware.",
+        )
 
     def _finalize_sale(self, sale) -> None:
         """Common post-sale cleanup: sound, clear cart, optionally show receipt dialog."""

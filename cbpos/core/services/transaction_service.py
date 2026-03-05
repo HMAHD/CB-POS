@@ -263,7 +263,8 @@ class TransactionService:
                     receipt_image = ReceiptService.build_receipt_image(sale)
                     worker.add_job("print_image", receipt_image)
 
-            worker.add_job("kick_drawer")
+            payment_methods = [p.payment_method for p in sale.payments] if sale.payments else []
+            worker.add_job("kick_drawer", payment_methods)
 
             return sale
 

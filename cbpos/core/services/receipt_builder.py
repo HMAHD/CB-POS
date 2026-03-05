@@ -30,6 +30,12 @@ RECEIPT_STRINGS = {
         "total_payments": "Total Payments",
         "closing_balance": "Closing Balance",
         "thank_you": "Thank you for your business",
+        "cashier": "Cashier",
+        "terminal": "Terminal",
+        "tin": "TIN",
+        "authorized_by": "Authorized by",
+        "void_reason": "Reason",
+        "original_receipt": "Original Receipt",
     },
     "si": {
         "receipt_no": "\u0dbb\u0dc3\u0dd2\u0daf\u0db4\u0dad #",
@@ -52,6 +58,12 @@ RECEIPT_STRINGS = {
             "\u0d94\u0db6\u0d9c\u0dda \u0dc0\u0dca\u200d\u0dba\u0dcf\u0db4\u0dcf\u0dbb\u0dba\u0da7"
             " \u0dc3\u0dca\u0dad\u0dd4\u0dad\u0dd2\u0dba\u0dd2"
         ),
+        "cashier": "\u0db8\u0dd4\u0daf\u0dbd\u0dca\u0d9a\u0dbb\u0dd4",
+        "terminal": "\u0da7\u0dd6\u0dbb\u0dca\u0db8\u0dd2\u0db1\u0dbd\u0dca",
+        "tin": "TIN",
+        "authorized_by": "\u0d85\u0db0\u0dd2\u0d9a\u0dcf\u0dbb\u0dba",
+        "void_reason": "\u0dc4\u0dda\u0dad\u0dd4\u0dc0",
+        "original_receipt": "\u0db8\u0dd6\u0dbd\u0dd2\u0d9a \u0dbb\u0dc3\u0dd2\u0daf\u0db4\u0dad",
     },
     "ta": {
         "receipt_no": "\u0bb0\u0b9a\u0bc0\u0ba4\u0bc1 #",
@@ -71,6 +83,12 @@ RECEIPT_STRINGS = {
         "total_payments": "\u0bae\u0bca\u0ba4\u0bcd\u0ba4 \u0b9a\u0bc6\u0bb2\u0bc1\u0ba4\u0bcd\u0ba4\u0bb2\u0bcd",
         "closing_balance": "\u0b87\u0bb1\u0bc1\u0ba4\u0bbf \u0b87\u0bb0\u0bc1\u0baa\u0bcd\u0baa\u0bc1",
         "thank_you": "\u0ba8\u0ba9\u0bcd\u0bb1\u0bbf",
+        "cashier": "\u0b95\u0bbe\u0b9a\u0bbf\u0baf\u0bb0\u0bcd",
+        "terminal": "\u0b9f\u0bc6\u0bb0\u0bcd\u0bae\u0bbf\u0ba9\u0bb2\u0bcd",
+        "tin": "TIN",
+        "authorized_by": "\u0b85\u0ba9\u0bc1\u0bae\u0ba4\u0bbf",
+        "void_reason": "\u0b95\u0bbe\u0bb0\u0ba3\u0bae\u0bcd",
+        "original_receipt": "\u0b85\u0b9a\u0bb2\u0bcd \u0bb0\u0b9a\u0bc0\u0ba4\u0bc1",
     },
 }
 
@@ -83,11 +101,11 @@ class ReceiptBuilder:
     - {'type': 'image', 'path': '...'}
     - {'type': 'barcode', 'val': '...', 'code': 'CODE39|QR'}
     - {'type': 'feed', 'lines': 1}
-    - {'type': 'cut'}
+    - {'type': 'cut', 'partial': True}
     """
 
     @classmethod
-    def _get_strings(cls, config_override=None):
+    def _get_strings(cls, config_override: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
         """Get translated receipt strings based on current language."""
         lang = "en"
         if config_override and "language" in config_override:
@@ -99,61 +117,117 @@ class ReceiptBuilder:
         return RECEIPT_STRINGS.get(lang, RECEIPT_STRINGS["en"])
 
     @classmethod
-    def build_receipt(cls, sale: Sale, config_override: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    def _get_conf(cls, key: str, default: Any = None, config_override: Optional[Dict[str, Any]] = None) -> Any:
+        """Helper to get config value with override support."""
+        if config_override and key in config_override:
+            return config_override[key]
+        val = ConfigService.get(key)
+        return val if val is not None else default
+
+    @classmethod
+    def _append_branding(cls, commands: List[Dict[str, Any]]) -> None:
+        """Append CB POS branding to receipt."""
+        commands.append({"type": "feed", "lines": 1})
+        commands.append({"type": "text", "val": "Powered by CB POS", "align": "center"})
+        commands.append({"type": "text", "val": "ceybyte.com", "align": "center"})
+
+    @classmethod
+    def _append_cut(cls, commands: List[Dict[str, Any]], config_override: Optional[Dict[str, Any]] = None) -> None:
+        """Append configurable feed + cut commands."""
+        auto_cut = cls._get_conf("auto_cut_paper", True, config_override)
+        feed_lines = cls._get_conf("feed_lines_before_cut", 3, config_override)
+        cut_type = cls._get_conf("cut_type", "partial", config_override)
+
+        commands.append({"type": "feed", "lines": feed_lines})
+        if auto_cut:
+            commands.append({"type": "cut", "partial": cut_type == "partial"})
+
+    @classmethod
+    def _append_header_block(
+        cls,
+        commands: List[Dict[str, Any]],
+        config_override: Optional[Dict[str, Any]] = None,
+    ) -> int:
+        """Append logo + header + TIN. Returns line_chars for the paper width."""
+        paper_width = cls._get_conf("paper_width", "80mm", config_override)
+        line_chars = 32 if paper_width == "58mm" else 42
+
+        # Logo
+        logo_path = cls._get_conf("receipt_logo_path", "", config_override)
+        if logo_path:
+            commands.append({"type": "image", "path": logo_path})
+
+        # Header text
+        header_text = cls._get_conf("receipt_header", "", config_override)
+        if header_text:
+            commands.append({"type": "text", "val": header_text, "align": "center"})
+
+        # Shop TIN / VAT number
+        tax_id = cls._get_conf("company_tax_id", "", config_override)
+        if tax_id:
+            t = cls._get_strings(config_override)
+            commands.append({"type": "text", "val": f"{t['tin']}: {tax_id}", "align": "center"})
+
+        if header_text or tax_id:
+            commands.append({"type": "feed", "lines": 1})
+
+        return line_chars
+
+    @classmethod
+    def build_receipt(
+        cls,
+        sale: Sale,
+        config_override: Optional[Dict[str, Any]] = None,
+        is_reprint: bool = False,
+    ) -> List[Dict[str, Any]]:
         """
         Generates receipt commands for a given Sale.
 
         Args:
             sale: The Sale model instance.
             config_override: Optional dictionary to override ConfigService values.
+            is_reprint: If True, adds DUPLICATE marking.
         """
-        commands = []
+        commands: List[Dict[str, Any]] = []
+        gc = cls._get_conf
 
-        # Helper to get config value with override support
-        def get_conf(key, default=None):
-            if config_override and key in config_override:
-                return config_override[key]
-            val = ConfigService.get(key)
-            return val if val is not None else default
-
-        # Determine line width from paper_width config
-        paper_width = get_conf("paper_width", "80mm")
-        line_chars = 32 if paper_width == "58mm" else 42
-
-        # 1. Logo
-        logo_path = get_conf("receipt_logo_path", "")
-        if logo_path:
-            commands.append({"type": "image", "path": logo_path})
-
-        # 2. Header
-        header_text = get_conf("receipt_header", "")
-        if header_text:
-            commands.append({"type": "text", "val": header_text, "align": "center"})
+        # Duplicate marking (top)
+        if is_reprint:
+            commands.append({"type": "text", "val": "*** DUPLICATE — NOT FOR PAYMENT ***", "align": "center"})
             commands.append({"type": "feed", "lines": 1})
 
-        # 3. Sale Details
+        # Header block (logo, header text, TIN)
+        line_chars = cls._append_header_block(commands, config_override)
+
+        # Sale Details
         t = cls._get_strings(config_override)
-        commands.append({"type": "text", "val": f"{t['receipt_no']}: {sale.id}", "align": "left"})
+        doc_num = getattr(sale, "document_number", None) or str(sale.id)
+        commands.append({"type": "text", "val": f"{t['receipt_no']}: {doc_num}", "align": "left"})
         date_str = sale.date.strftime("%Y-%m-%d %H:%M") if sale.date else "N/A"
-        commands.append(
-            {
-                "type": "text",
-                "val": f"{t['date']}: {date_str}",
-                "align": "left",
-            }
-        )
+        commands.append({"type": "text", "val": f"{t['date']}: {date_str}", "align": "left"})
+
+        # Cashier name
+        if gc("show_cashier_on_receipt", True, config_override):
+            cashier_name = cls._get_current_cashier_name()
+            if cashier_name:
+                commands.append({"type": "text", "val": f"{t['cashier']}: {cashier_name}", "align": "left"})
+
+        # Terminal ID
+        if gc("show_terminal_on_receipt", False, config_override):
+            terminal_id = gc("terminal_id", "", config_override)
+            if terminal_id:
+                commands.append({"type": "text", "val": f"{t['terminal']}: {terminal_id}", "align": "left"})
+
         commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
 
-        # 4. Items
-        merge = get_conf("merge_items", True)
+        # Items
+        merge = gc("merge_items", True, config_override)
         display_items = cls._merge_items(sale.items) if merge else sale.items
 
         for item in display_items:
-            # Name line
             product_name = item.product.name_en if hasattr(item, "product") else item.name
             commands.append({"type": "text", "val": product_name, "align": "left"})
 
-            # Qty x Price = Total line
             qty = item.qty
             price = item.unit_price
             total = item.subtotal
@@ -162,7 +236,7 @@ class ReceiptBuilder:
 
         commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
 
-        # 5. Totals
+        # Totals
         commands.append(
             {
                 "type": "text",
@@ -172,7 +246,7 @@ class ReceiptBuilder:
         )
 
         # Tax Breakdown
-        if get_conf("show_tax_breakdown", True):
+        if gc("show_tax_breakdown", True, config_override):
             commands.append({"type": "feed", "lines": 1})
             commands.append({"type": "text", "val": "{}:".format(t["tax_breakdown"]), "align": "left"})
             if sale.tax_vat > 0:
@@ -192,7 +266,7 @@ class ReceiptBuilder:
                     }
                 )
 
-        # 6. Payment Breakdown
+        # Payment Breakdown
         if hasattr(sale, "payments") and sale.payments:
             commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
             for pmt in sale.payments:
@@ -206,7 +280,7 @@ class ReceiptBuilder:
                         "align": "left",
                     }
                 )
-            # Calculate and show change if cash overpayment
+            # Change
             total_paid = sum(p.amount for p in sale.payments)
             if total_paid > sale.total_amount:
                 change = total_paid - sale.total_amount
@@ -221,14 +295,14 @@ class ReceiptBuilder:
                     }
                 )
 
-        # 7. Footer
+        # Footer
         commands.append({"type": "feed", "lines": 1})
-        footer_text = get_conf("receipt_footer", "")
+        footer_text = gc("receipt_footer", "", config_override)
         if footer_text:
             commands.append({"type": "text", "val": footer_text, "align": "center"})
 
-        # 7. Barcode
-        if get_conf("show_barcode", True):
+        # Barcode
+        if gc("show_barcode", True, config_override):
             commands.append({"type": "feed", "lines": 1})
             commands.append(
                 {
@@ -239,14 +313,164 @@ class ReceiptBuilder:
                 }
             )
 
-        # 8. Branding
-        commands.append({"type": "feed", "lines": 1})
-        commands.append({"type": "text", "val": "Powered by CB POS", "align": "center"})
-        commands.append({"type": "text", "val": "ceybyte.com", "align": "center"})
+        # QR Code
+        if gc("show_qr_on_receipt", False, config_override):
+            qr_content = gc("receipt_qr_content", "", config_override)
+            if qr_content:
+                commands.append({"type": "feed", "lines": 1})
+                commands.append(
+                    {
+                        "type": "barcode",
+                        "val": qr_content,
+                        "code": "QR",
+                        "align": "center",
+                    }
+                )
 
-        # 9. Cut
-        commands.append({"type": "feed", "lines": 2})
-        commands.append({"type": "cut"})
+        # Duplicate marking (bottom)
+        if is_reprint:
+            commands.append({"type": "feed", "lines": 1})
+            commands.append({"type": "text", "val": "*** DUPLICATE — NOT FOR PAYMENT ***", "align": "center"})
+
+        # Branding + Cut
+        cls._append_branding(commands)
+        cls._append_cut(commands, config_override)
+
+        return commands
+
+    @classmethod
+    def build_void_receipt(
+        cls,
+        sale: Sale,
+        void_reason: str = "",
+        authorized_by: str = "",
+        config_override: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Generates a VOID receipt with distinct visual treatment.
+
+        Args:
+            sale: The voided Sale.
+            void_reason: Human-readable void reason.
+            authorized_by: Username who authorized the void.
+            config_override: Optional config overrides.
+        """
+        commands: List[Dict[str, Any]] = []
+        t = cls._get_strings(config_override)
+
+        line_chars = cls._append_header_block(commands, config_override)
+
+        # VOID header
+        commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
+        commands.append({"type": "text", "val": "*** VOIDED ***", "align": "center"})
+        commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
+        commands.append({"type": "feed", "lines": 1})
+
+        # Original sale reference
+        doc_num = getattr(sale, "document_number", None) or str(sale.id)
+        commands.append({"type": "text", "val": f"{t['original_receipt']}: {doc_num}", "align": "left"})
+        date_str = sale.date.strftime("%Y-%m-%d %H:%M") if sale.date else "N/A"
+        commands.append({"type": "text", "val": f"{t['date']}: {date_str}", "align": "left"})
+        commands.append(
+            {
+                "type": "text",
+                "val": "{}: {}".format(t["total"], format_currency(sale.total_amount)),
+                "align": "left",
+            }
+        )
+
+        if void_reason:
+            commands.append({"type": "text", "val": f"{t['void_reason']}: {void_reason}", "align": "left"})
+        if authorized_by:
+            commands.append({"type": "text", "val": f"{t['authorized_by']}: {authorized_by}", "align": "left"})
+
+        void_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+        commands.append({"type": "text", "val": f"Void Time: {void_time}", "align": "left"})
+
+        commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
+
+        # Items (for reference)
+        for item in sale.items:
+            product_name = item.product.name_en if hasattr(item, "product") and item.product else "Unknown"
+            line = "{} x {} = {}".format(item.qty, format_currency(item.unit_price), format_currency(item.subtotal))
+            commands.append({"type": "text", "val": product_name, "align": "left"})
+            commands.append({"type": "text", "val": line, "align": "right"})
+
+        commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
+        commands.append({"type": "text", "val": "*** VOIDED ***", "align": "center"})
+        commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
+
+        cls._append_branding(commands)
+        cls._append_cut(commands, config_override)
+
+        return commands
+
+    @classmethod
+    def build_refund_receipt(
+        cls,
+        sale: Sale,
+        refund_amount: Optional[Decimal] = None,
+        authorized_by: str = "",
+        config_override: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Generates a REFUND receipt with distinct visual treatment.
+
+        Args:
+            sale: The original Sale being refunded.
+            refund_amount: Amount refunded (defaults to sale total).
+            authorized_by: Username who authorized the refund.
+            config_override: Optional config overrides.
+        """
+        commands: List[Dict[str, Any]] = []
+        t = cls._get_strings(config_override)
+
+        line_chars = cls._append_header_block(commands, config_override)
+
+        # REFUND header
+        commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
+        commands.append({"type": "text", "val": "*** REFUND ***", "align": "center"})
+        commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
+        commands.append({"type": "feed", "lines": 1})
+
+        # Original sale reference
+        doc_num = getattr(sale, "document_number", None) or str(sale.id)
+        commands.append({"type": "text", "val": f"{t['original_receipt']}: {doc_num}", "align": "left"})
+        date_str = sale.date.strftime("%Y-%m-%d %H:%M") if sale.date else "N/A"
+        commands.append({"type": "text", "val": f"{t['date']}: {date_str}", "align": "left"})
+
+        if authorized_by:
+            commands.append({"type": "text", "val": f"{t['authorized_by']}: {authorized_by}", "align": "left"})
+
+        refund_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+        commands.append({"type": "text", "val": f"Refund Time: {refund_time}", "align": "left"})
+
+        commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
+
+        # Items
+        for item in sale.items:
+            product_name = item.product.name_en if hasattr(item, "product") and item.product else "Unknown"
+            line = "{} x {} = {}".format(item.qty, format_currency(item.unit_price), format_currency(item.subtotal))
+            commands.append({"type": "text", "val": product_name, "align": "left"})
+            commands.append({"type": "text", "val": line, "align": "right"})
+
+        commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
+
+        amount = refund_amount if refund_amount is not None else sale.total_amount
+        commands.append(
+            {
+                "type": "text",
+                "val": "Refund {}: {}".format(t["total"], format_currency(amount)),
+                "align": "right",
+            }
+        )
+
+        commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
+        commands.append({"type": "text", "val": "*** REFUND ***", "align": "center"})
+        commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
+
+        cls._append_branding(commands)
+        cls._append_cut(commands, config_override)
 
         return commands
 
@@ -262,26 +486,9 @@ class ReceiptBuilder:
             config_override: Optional dictionary to override ConfigService values.
         """
         commands: List[Dict[str, Any]] = []
+        gc = cls._get_conf
 
-        def get_conf(key: str, default: Any = None) -> Any:
-            if config_override and key in config_override:
-                return config_override[key]
-            val = ConfigService.get(key)
-            return val if val is not None else default
-
-        paper_width = get_conf("paper_width", "80mm")
-        line_chars = 32 if paper_width == "58mm" else 42
-
-        # Logo
-        logo_path = get_conf("receipt_logo_path", "")
-        if logo_path:
-            commands.append({"type": "image", "path": logo_path})
-
-        # Header
-        header_text = get_conf("receipt_header", "")
-        if header_text:
-            commands.append({"type": "text", "val": header_text, "align": "center"})
-            commands.append({"type": "feed", "lines": 1})
+        line_chars = cls._append_header_block(commands, config_override)
 
         # Title
         commands.append({"type": "text", "val": "*** QUOTATION ***", "align": "center"})
@@ -322,7 +529,7 @@ class ReceiptBuilder:
         )
 
         # Tax Breakdown
-        if get_conf("show_tax_breakdown", True):
+        if gc("show_tax_breakdown", True, config_override):
             commands.append({"type": "feed", "lines": 1})
             commands.append({"type": "text", "val": "Tax Breakdown:", "align": "left"})
             if proforma.tax_vat and proforma.tax_vat > 0:
@@ -344,18 +551,13 @@ class ReceiptBuilder:
         commands.append({"type": "text", "val": "This is a quotation, not a tax invoice.", "align": "center"})
         commands.append({"type": "text", "val": f"Valid for {proforma.validity_days} days.", "align": "center"})
 
-        footer_text = get_conf("receipt_footer", "")
+        footer_text = gc("receipt_footer", "", config_override)
         if footer_text:
             commands.append({"type": "feed", "lines": 1})
             commands.append({"type": "text", "val": footer_text, "align": "center"})
 
-        # Branding
-        commands.append({"type": "feed", "lines": 1})
-        commands.append({"type": "text", "val": "Powered by CB POS", "align": "center"})
-        commands.append({"type": "text", "val": "ceybyte.com", "align": "center"})
-
-        commands.append({"type": "feed", "lines": 2})
-        commands.append({"type": "cut"})
+        cls._append_branding(commands)
+        cls._append_cut(commands, config_override)
 
         return commands
 
@@ -379,26 +581,9 @@ class ReceiptBuilder:
             config_override: Optional dictionary to override ConfigService values.
         """
         commands: List[Dict[str, Any]] = []
+        gc = cls._get_conf
 
-        def get_conf(key: str, default: Any = None) -> Any:
-            if config_override and key in config_override:
-                return config_override[key]
-            val = ConfigService.get(key)
-            return val if val is not None else default
-
-        paper_width = get_conf("paper_width", "80mm")
-        line_chars = 32 if paper_width == "58mm" else 42
-
-        # Logo
-        logo_path = get_conf("receipt_logo_path", "")
-        if logo_path:
-            commands.append({"type": "image", "path": logo_path})
-
-        # Header
-        header_text = get_conf("receipt_header", "")
-        if header_text:
-            commands.append({"type": "text", "val": header_text, "align": "center"})
-            commands.append({"type": "feed", "lines": 1})
+        line_chars = cls._append_header_block(commands, config_override)
 
         # Title
         commands.append({"type": "text", "val": "*** CUSTOMER STATEMENT ***", "align": "center"})
@@ -415,7 +600,7 @@ class ReceiptBuilder:
         commands.append({"type": "text", "val": f"Period: {from_str} to {to_str}", "align": "left"})
         commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
 
-        # Opening Balance (balance before first entry, or 0)
+        # Opening Balance
         if entries:
             opening = entries[0].balance_after - entries[0].amount
         else:
@@ -455,20 +640,26 @@ class ReceiptBuilder:
         commands.append({"type": "feed", "lines": 1})
         commands.append({"type": "text", "val": "Thank you for your business", "align": "center"})
 
-        footer_text = get_conf("receipt_footer", "")
+        footer_text = gc("receipt_footer", "", config_override)
         if footer_text:
             commands.append({"type": "feed", "lines": 1})
             commands.append({"type": "text", "val": footer_text, "align": "center"})
 
-        # Branding
-        commands.append({"type": "feed", "lines": 1})
-        commands.append({"type": "text", "val": "Powered by CB POS", "align": "center"})
-        commands.append({"type": "text", "val": "ceybyte.com", "align": "center"})
-
-        commands.append({"type": "feed", "lines": 2})
-        commands.append({"type": "cut"})
+        cls._append_branding(commands)
+        cls._append_cut(commands, config_override)
 
         return commands
+
+    @staticmethod
+    def _get_current_cashier_name() -> str:
+        """Get current logged-in user's username, or empty string."""
+        try:
+            from cbpos.core.services.auth_service import AuthService
+
+            user = AuthService.get_current_user()
+            return user.username if user else ""
+        except Exception:
+            return ""
 
     @staticmethod
     def _merge_items(items: List[SaleItem]) -> List[Any]:
@@ -483,8 +674,6 @@ class ReceiptBuilder:
                 merged[pid].qty += item.qty
                 merged[pid].subtotal += item.subtotal
             else:
-                # Create a simple object or clone to avoid modifying original SaleItems
-                # We use a simple class or dict wrapper for display
                 merged[pid] = ItemDisplay(
                     product=item.product,
                     qty=item.qty,
@@ -498,7 +687,7 @@ class ReceiptBuilder:
 class ItemDisplay:
     """Helper class for merged items display"""
 
-    def __init__(self, product, qty, unit_price, subtotal, name):
+    def __init__(self, product: Any, qty: Any, unit_price: Any, subtotal: Any, name: str) -> None:
         self.product = product
         self.qty = qty
         self.unit_price = unit_price

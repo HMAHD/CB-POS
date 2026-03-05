@@ -138,7 +138,11 @@ class ESCPOSDriver(IPrinter):
                     self.printer.text("\n" * lines)
 
                 elif c_type == "cut":
-                    self.printer.cut()
+                    partial = cmd.get("partial", True)
+                    if partial:
+                        self.printer.cut(mode="PART")
+                    else:
+                        self.printer.cut(mode="FULL")
 
             except Exception as e:
                 logger.error("Error processing print command %s: %s", cmd.get("type"), e)
@@ -172,7 +176,9 @@ class PrintWorker(QThread):
 
         Args:
             job_type: 'print_receipt' or 'kick_drawer'
-            data: Command list for print_receipt, None for kick_drawer
+            data: Command list for print_receipt; for kick_drawer, optionally
+                  a list of payment method strings (e.g. ['CASH']) to allow
+                  drawer_on_cash_only filtering.
         """
         self._queue.put((job_type, data))
         if not self.isRunning():
@@ -202,6 +208,13 @@ class PrintWorker(QThread):
                     continue
 
                 if job_type == "kick_drawer":
+                    # Check drawer_on_cash_only config
+                    drawer_cash_only = ConfigService.get("drawer_on_cash_only") or False
+                    if drawer_cash_only and data:
+                        # data = list of payment method strings
+                        if "CASH" not in data:
+                            logger.info("Drawer skipped — no cash payment (drawer_on_cash_only=True)")
+                            continue
                     current_printer.kick_drawer()
                 elif job_type == "print_receipt":
                     current_printer.print_commands(data)

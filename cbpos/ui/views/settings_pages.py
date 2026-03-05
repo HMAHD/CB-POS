@@ -574,7 +574,43 @@ class HardwarePage(SettingsPage):
         self.spin_copies.setRange(1, 5)
         form_printer.addRow("Copies:", self.spin_copies)
 
+        # --- Test Buttons ---
+        test_row = QHBoxLayout()
+        self.btn_test_print = QPushButton("Test Print")
+        self.btn_test_print.setProperty("class", "accent")
+        self.btn_test_print.clicked.connect(self._test_print)
+        test_row.addWidget(self.btn_test_print)
+
+        self.btn_open_drawer = QPushButton("Open Drawer")
+        self.btn_open_drawer.clicked.connect(self._test_drawer)
+        test_row.addWidget(self.btn_open_drawer)
+        test_row.addStretch()
+        form_printer.addRow("", test_row)
+
         self.tabs.addTab(tab_printer, "Printers")
+
+        # --- Tab: Paper Cut & Drawer ---
+        tab_cut, form_cut = self._build_form_tab()
+
+        self.chk_auto_cut = QCheckBox()
+        self.chk_auto_cut.setToolTip("Disable for tear-bar printers")
+        form_cut.addRow("Auto-Cut Paper:", self.chk_auto_cut)
+
+        self.combo_cut_type = QComboBox()
+        self.combo_cut_type.addItems(["partial", "full"])
+        self.combo_cut_type.setToolTip("Partial is safer for cheap cutters")
+        form_cut.addRow("Cut Type:", self.combo_cut_type)
+
+        self.spin_feed_lines = QSpinBox()
+        self.spin_feed_lines.setRange(1, 8)
+        self.spin_feed_lines.setToolTip("Lines of blank paper before cut")
+        form_cut.addRow("Feed Lines Before Cut:", self.spin_feed_lines)
+
+        self.chk_drawer_cash_only = QCheckBox()
+        self.chk_drawer_cash_only.setToolTip("Only open drawer for cash payments")
+        form_cut.addRow("Drawer on Cash Only:", self.chk_drawer_cash_only)
+
+        self.tabs.addTab(tab_cut, "Cut & Drawer")
 
         # --- Tab 2: Scale ---
         tab_scale, form_scale = self._build_form_tab()
@@ -612,6 +648,15 @@ class HardwarePage(SettingsPage):
         self.input_scale_prefix.setText(settings.get("scale_barcode_prefix", "20"))
         self.spin_decimal_places.setValue(settings.get("scale_decimal_places", 3))
 
+        # Cut & Drawer
+        self.chk_auto_cut.setChecked(settings.get("auto_cut_paper", True))
+        cut_type = settings.get("cut_type", "partial")
+        idx = self.combo_cut_type.findText(cut_type)
+        if idx >= 0:
+            self.combo_cut_type.setCurrentIndex(idx)
+        self.spin_feed_lines.setValue(settings.get("feed_lines_before_cut", 3))
+        self.chk_drawer_cash_only.setChecked(settings.get("drawer_on_cash_only", False))
+
     def save(self) -> dict:
         prefix = self.input_scale_prefix.text()
         if len(prefix) != 2 or not prefix.isdigit():
@@ -625,7 +670,31 @@ class HardwarePage(SettingsPage):
             "receipt_copies": self.spin_copies.value(),
             "scale_barcode_prefix": prefix,
             "scale_decimal_places": self.spin_decimal_places.value(),
+            "auto_cut_paper": self.chk_auto_cut.isChecked(),
+            "cut_type": self.combo_cut_type.currentText(),
+            "feed_lines_before_cut": self.spin_feed_lines.value(),
+            "drawer_on_cash_only": self.chk_drawer_cash_only.isChecked(),
         }
+
+    def _test_print(self) -> None:
+        """Send a test print to the configured printer."""
+        from cbpos.core.services.hardware_test_service import HardwareTestService
+
+        success, message = HardwareTestService.test_receipt_printer()
+        if success:
+            QMessageBox.information(self, "Test Print", message)
+        else:
+            QMessageBox.warning(self, "Test Print", message)
+
+    def _test_drawer(self) -> None:
+        """Send a kick signal to the cash drawer."""
+        from cbpos.core.services.hardware_test_service import HardwareTestService
+
+        success, message = HardwareTestService.test_cash_drawer()
+        if success:
+            QMessageBox.information(self, "Cash Drawer", message)
+        else:
+            QMessageBox.warning(self, "Cash Drawer", message)
 
 
 class ReceiptPage(SettingsPage):
@@ -667,10 +736,24 @@ class ReceiptPage(SettingsPage):
         self.chk_show_barcode = QCheckBox()
         self.chk_merge_items = QCheckBox()
         self.chk_show_tax = QCheckBox()
+        self.chk_show_cashier = QCheckBox()
+        self.chk_show_cashier.setToolTip("Print cashier username on receipt")
+        self.chk_show_terminal = QCheckBox()
+        self.chk_show_terminal.setToolTip("Print terminal ID on receipt")
+        self.chk_show_qr = QCheckBox()
+        self.chk_show_qr.setToolTip("Print QR code (e.g. shop website/WhatsApp)")
+
+        self.input_qr_content = QLineEdit()
+        self.input_qr_content.setPlaceholderText("https://wa.me/94767378901")
+        self.input_qr_content.setToolTip("URL or text encoded in QR code")
 
         form_display.addRow("Show Barcode:", self.chk_show_barcode)
         form_display.addRow("Merge Duplicate Items:", self.chk_merge_items)
         form_display.addRow("Show Tax Breakdown:", self.chk_show_tax)
+        form_display.addRow("Show Cashier Name:", self.chk_show_cashier)
+        form_display.addRow("Show Terminal ID:", self.chk_show_terminal)
+        form_display.addRow("Show QR Code:", self.chk_show_qr)
+        form_display.addRow("QR Content (URL):", self.input_qr_content)
 
         # Preview Button
         self.btn_preview = QPushButton("Preview Receipt")
@@ -692,6 +775,10 @@ class ReceiptPage(SettingsPage):
         self.chk_show_barcode.setChecked(settings.get("show_barcode", True))
         self.chk_merge_items.setChecked(settings.get("merge_items", True))
         self.chk_show_tax.setChecked(settings.get("show_tax_breakdown", True))
+        self.chk_show_cashier.setChecked(settings.get("show_cashier_on_receipt", True))
+        self.chk_show_terminal.setChecked(settings.get("show_terminal_on_receipt", False))
+        self.chk_show_qr.setChecked(settings.get("show_qr_on_receipt", False))
+        self.input_qr_content.setText(settings.get("receipt_qr_content", ""))
 
     def save(self) -> dict:
         return {
@@ -701,6 +788,10 @@ class ReceiptPage(SettingsPage):
             "show_barcode": self.chk_show_barcode.isChecked(),
             "merge_items": self.chk_merge_items.isChecked(),
             "show_tax_breakdown": self.chk_show_tax.isChecked(),
+            "show_cashier_on_receipt": self.chk_show_cashier.isChecked(),
+            "show_terminal_on_receipt": self.chk_show_terminal.isChecked(),
+            "show_qr_on_receipt": self.chk_show_qr.isChecked(),
+            "receipt_qr_content": self.input_qr_content.text(),
         }
 
     def preview_receipt(self):

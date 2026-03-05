@@ -56,7 +56,7 @@ class ConfigService:
         "auto_cut_paper": True,  # Disable for tear-bar printers
         "cut_type": "partial",  # "full" or "partial"
         "feed_lines_before_cut": 3,  # 1-8 lines feed before cut
-        "drawer_on_cash_only": False,  # Only kick drawer for cash payments
+        "drawer_on_cash_only": True,  # Only kick drawer for cash payments
         # Scale Barcode Configuration
         "scale_barcode_prefix": "20",  # Prefix for scale barcodes
         "scale_decimal_places": 3,  # Decimal places for weight

@@ -655,7 +655,7 @@ class HardwarePage(SettingsPage):
         if idx >= 0:
             self.combo_cut_type.setCurrentIndex(idx)
         self.spin_feed_lines.setValue(settings.get("feed_lines_before_cut", 3))
-        self.chk_drawer_cash_only.setChecked(settings.get("drawer_on_cash_only", False))
+        self.chk_drawer_cash_only.setChecked(settings.get("drawer_on_cash_only", True))
 
     def save(self) -> dict:
         prefix = self.input_scale_prefix.text()

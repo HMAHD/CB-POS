@@ -18,7 +18,8 @@ def _get_max_attempts() -> int:
         from cbpos.core.services.config_service import ConfigService
 
         return int(ConfigService.get("max_login_attempts") or 5)
-    except Exception:
+    except Exception as e:
+        logger.debug("Could not read 'max_login_attempts' from config, using fallback. Error: %s", e)
         return 5
 
 
@@ -28,7 +29,8 @@ def _get_lockout_duration() -> int:
         from cbpos.core.services.config_service import ConfigService
 
         return int(ConfigService.get("lockout_duration_seconds") or 300)
-    except Exception:
+    except Exception as e:
+        logger.debug("Could not read 'lockout_duration_seconds' from config, using fallback. Error: %s", e)
         return 300
 
 

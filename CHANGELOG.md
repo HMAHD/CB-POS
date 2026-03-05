@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.9.1] - 2026-03-05
+
+### Added — Receipt Printing Overhaul (Phase 31D)
+
+- **Hardware settings controls**: Test Print and Open Drawer buttons in Settings > Hardware > Printers tab. New "Cut & Drawer" tab with auto-cut toggle, partial/full cut type, feed lines before cut (1-8), and drawer-on-cash-only setting (default: enabled).
+- **Receipt content — Sri Lanka compliance**: Shop TIN/VAT number printed on receipts from existing `company_tax_id` config. Cashier name (from current session) and Terminal ID now printed when enabled.
+- **QR code on receipt**: Configurable QR code (e.g. shop WhatsApp/website URL) — toggle + URL field in Settings > Receipt > Display.
+- **VOID receipt template**: `build_void_receipt()` generates receipts with `*** VOIDED ***` header/footer, original sale reference, void reason, authorizer, and timestamp. Visually distinct with `===` border.
+- **REFUND receipt template**: `build_refund_receipt()` generates receipts with `*** REFUND ***` header/footer, original sale reference, refund amount, authorizer, and timestamp.
+- **Duplicate marking on reprints**: Reprinted receipts show `*** DUPLICATE — NOT FOR PAYMENT ***` at top and bottom. Reprint dialog passes `is_reprint=True` to ReceiptBuilder.
+- **Printer error feedback**: `PrintWorker.error_occurred` signal connected to `SalesView` — shows non-blocking warning dialog with error message and "Check Settings > Hardware" guidance.
+- **Receipt display toggles**: New settings in Receipt > Display: Show Cashier Name (default on), Show Terminal ID, Show QR Code, QR Content URL.
+
+### Fixed — Printing Dead Code & ESC/POS Bugs
+
+- **Removed duplicate `PrinterService._format_receipt()`**: Dead code that built raw ESC/POS bytes with hardcoded commands, wrong cut command (`ESC i` instead of `GS V`), and Windows-only `cmd /c copy` dispatch. `PrinterService` now routes through `ReceiptBuilder` + `PrintWorker`.
+- **Partial/full cut support**: `ESCPOSDriver.print_commands()` handles `cut` command with `mode="PART"` or `mode="FULL"` based on config.
+- **Cash drawer filtering**: Drawer kick passes payment methods; case-insensitive `CASH` comparison prevents drawer opening for card/credit-only transactions when `drawer_on_cash_only` is enabled.
+
+### Improved — Code Quality (Review Feedback)
+
+- **Logged broad exception handlers**: All `except Exception` fallbacks in `auth_service.py`, `cart_service.py`, and `receipt_builder.py` now log at `debug` level for troubleshooting.
+- **Deterministic timestamps**: `build_void_receipt()` and `build_refund_receipt()` accept optional `void_timestamp` / `refund_timestamp` parameters — defaults to `datetime.now()` but injectable for testing.
+- **Extracted shared receipt helpers**: `_append_header_block()`, `_append_branding()`, `_append_cut()`, `_get_conf()` reduce duplication across receipt builders.
+
 ## [0.9.0] - 2026-03-05
 
 ### Security — Permission System Enforcement (Phase 31A)

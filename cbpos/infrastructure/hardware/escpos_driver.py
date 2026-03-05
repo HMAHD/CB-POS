@@ -209,11 +209,15 @@ class PrintWorker(QThread):
 
                 if job_type == "kick_drawer":
                     # Check drawer_on_cash_only config
-                    drawer_cash_only = ConfigService.get("drawer_on_cash_only") or False
-                    if drawer_cash_only and data:
+                    drawer_cash_only = bool(ConfigService.get("drawer_on_cash_only"))
+                    if drawer_cash_only:
                         # data = list of payment method strings
-                        if "CASH" not in data:
-                            logger.info("Drawer skipped — no cash payment (drawer_on_cash_only=True)")
+                        if not data:
+                            logger.info("Drawer skipped — no payment methods provided " "(drawer_on_cash_only=True)")
+                            continue
+                        has_cash = any(isinstance(m, str) and m.strip().upper() == "CASH" for m in data)
+                        if not has_cash:
+                            logger.info("Drawer skipped — no cash payment " "(drawer_on_cash_only=True)")
                             continue
                     current_printer.kick_drawer()
                 elif job_type == "print_receipt":

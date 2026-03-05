@@ -116,7 +116,8 @@ class CartService:
             from cbpos.core.services.config_service import ConfigService
 
             max_pct = Decimal(str(ConfigService.get("max_discount_percent") or 0))
-        except Exception:
+        except Exception as e:
+            logger.debug("Could not read 'max_discount_percent' from config, skipping validation. Error: %s", e)
             return  # Config not available (e.g. test environment)
 
         if max_pct <= 0:

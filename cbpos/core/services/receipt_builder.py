@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from decimal import Decimal
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
@@ -6,6 +7,8 @@ from cbpos.core.models import Sale, SaleItem
 
 
 from cbpos.core.utils.formatters import format_currency
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from cbpos.core.models import Customer, CustomerLedgerEntry, Proforma
@@ -345,6 +348,7 @@ class ReceiptBuilder:
         void_reason: str = "",
         authorized_by: str = "",
         config_override: Optional[Dict[str, Any]] = None,
+        void_timestamp: Optional[datetime] = None,
     ) -> List[Dict[str, Any]]:
         """
         Generates a VOID receipt with distinct visual treatment.
@@ -354,6 +358,7 @@ class ReceiptBuilder:
             void_reason: Human-readable void reason.
             authorized_by: Username who authorized the void.
             config_override: Optional config overrides.
+            void_timestamp: Timestamp for the void (defaults to now).
         """
         commands: List[Dict[str, Any]] = []
         t = cls._get_strings(config_override)
@@ -384,7 +389,8 @@ class ReceiptBuilder:
         if authorized_by:
             commands.append({"type": "text", "val": f"{t['authorized_by']}: {authorized_by}", "align": "left"})
 
-        void_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+        void_time_obj = void_timestamp or datetime.now()
+        void_time = void_time_obj.strftime("%Y-%m-%d %H:%M")
         commands.append({"type": "text", "val": f"Void Time: {void_time}", "align": "left"})
 
         commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
@@ -412,6 +418,7 @@ class ReceiptBuilder:
         refund_amount: Optional[Decimal] = None,
         authorized_by: str = "",
         config_override: Optional[Dict[str, Any]] = None,
+        refund_timestamp: Optional[datetime] = None,
     ) -> List[Dict[str, Any]]:
         """
         Generates a REFUND receipt with distinct visual treatment.
@@ -421,6 +428,7 @@ class ReceiptBuilder:
             refund_amount: Amount refunded (defaults to sale total).
             authorized_by: Username who authorized the refund.
             config_override: Optional config overrides.
+            refund_timestamp: Timestamp for the refund (defaults to now).
         """
         commands: List[Dict[str, Any]] = []
         t = cls._get_strings(config_override)
@@ -442,7 +450,8 @@ class ReceiptBuilder:
         if authorized_by:
             commands.append({"type": "text", "val": f"{t['authorized_by']}: {authorized_by}", "align": "left"})
 
-        refund_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+        refund_time_obj = refund_timestamp or datetime.now()
+        refund_time = refund_time_obj.strftime("%Y-%m-%d %H:%M")
         commands.append({"type": "text", "val": f"Refund Time: {refund_time}", "align": "left"})
 
         commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
@@ -658,7 +667,8 @@ class ReceiptBuilder:
 
             user = AuthService.get_current_user()
             return user.username if user else ""
-        except Exception:
+        except Exception as e:
+            logger.debug("Could not get current cashier name: %s", e)
             return ""
 
     @staticmethod

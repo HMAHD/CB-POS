@@ -224,7 +224,7 @@ class ReceiptBuilder:
         commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
 
         # Items
-        merge = gc("merge_items", True, config_override)
+        merge = gc("merge_items", False, config_override)
         display_items = cls._merge_items(sale.items) if merge else sale.items
 
         for item in display_items:
@@ -679,7 +679,7 @@ class ReceiptBuilder:
         """
         merged = {}
         for item in items:
-            pid = item.product_id
+            pid = item.product_id if item.product_id is not None else id(item.product)
             if pid in merged:
                 merged[pid].qty += item.qty
                 merged[pid].subtotal += item.subtotal

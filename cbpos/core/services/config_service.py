@@ -41,7 +41,7 @@ class ConfigService:
         "receipt_logo_path": "",  # Path to logo image
         "show_barcode": True,
         "show_tax_breakdown": True,
-        "merge_items": True,  # Merge duplicate items
+        "merge_items": False,  # Merge duplicate items on receipt
         # Sales Configuration
         "default_search_mode": "ALL",  # ALL, BARCODE, NAME
         "quick_pay_enabled": True,

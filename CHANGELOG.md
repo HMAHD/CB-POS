@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [0.9.3] - 2026-03-07
+
+### Improved — Receipt Layout & Preview Overhaul
+
+- **Professional receipt layout**: Restructured receipt to match industrial POS standards — shop name (bold, centered), address, phone, TIN in header block; document title derived from payment method (CASH RECEIPT / CARD RECEIPT / CREDIT INVOICE); invoice number centered; date and time as clean split row without labels.
+- **Item discount detection**: Discounts now detected by comparing `original_price` vs `unit_price` (persisted on SaleItem), not cart-only fields. Shows "Was Rs. X (-Y%)" with savings amount per line item.
+- **Two-column split rows**: New `_split_row()` helper emits both `val` (space-padded for printer) and `left_val`/`right_val` (semantic split for preview HTML tables), ensuring parity between preview and print.
+- **Payment & change section**: Receipt now shows PAID method + amount and CHANGE line with bold formatting.
+- **Bold text support**: Receipt commands support `bold` flag; ESC/POS driver sets `bold=True` on printer; preview renders `<b>` tags.
+- **Receipt preview rendering**: Rewrote `ReceiptPreviewWidget` with inline styles (no CSS classes) to work reliably in QTextBrowser's limited HTML 4 / CSS 2.1 engine. Separators use monospace characters with overflow clipping instead of unreliable `<hr>` tags.
+- **Barcode only**: Removed QR code from entire system (builder, preview, settings, ESC/POS driver). Barcode encodes invoice number for return scanning.
+
+### Fixed
+
+- **Invisible preview text in dark theme**: Added `color: #000000` to QSS for `ReceiptPreviewBrowser` in both themes.
+- **merge_items discount bug**: `ItemDisplay` now carries `original_price` so discount detection works when items are merged.
+- **Bill-level discount calculation**: Percentage discounts now calculate actual amount from items subtotal instead of displaying raw percentage as currency.
+
+### Changed — Discount Dialog
+
+- **Redesigned discount dialog**: Updated to match Ceylon Byte system theme — segmented type selector, outlined cyan preset buttons, proper hover/pressed/disabled states in both dark and light themes.
+
 ## [0.9.2] - 2026-03-05
 
 ### Added — Receipt Settings Live Preview & UI Overhaul

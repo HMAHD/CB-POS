@@ -108,7 +108,8 @@ class ESCPOSDriver(IPrinter):
 
                 if c_type == "text":
                     align = cmd.get("align", "left").upper()
-                    self.printer.set(align=align)
+                    bold = cmd.get("bold", False)
+                    self.printer.set(align=align, bold=bold)
                     self.printer.text(cmd.get("val") + "\n")
 
                 elif c_type == "image":

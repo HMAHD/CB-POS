@@ -1160,43 +1160,107 @@ QDialog#DiscountDialog {
     color: white;
 }
 
-QRadioButton#RbPercent, QRadioButton#RbFixed {
-    font-size: 16px;
+QDialog#DiscountDialog QLabel[class="dialog-title"] {
+    font-size: 18px;
     font-weight: bold;
+    color: #FFFFFF;
+    padding: 0 0 4px;
+}
+
+QFrame#DiscountTypeFrame {
+    background-color: #002B55;
+    border: 1px solid #3E3E42;
+    border-radius: 6px;
+}
+
+QRadioButton#RbPercent, QRadioButton#RbFixed {
+    font-size: 15px;
+    font-weight: bold;
+    color: #FFFFFF;
+    padding: 8px 12px;
+    spacing: 8px;
+}
+
+QRadioButton#RbPercent::indicator, QRadioButton#RbFixed::indicator {
+    width: 18px;
+    height: 18px;
 }
 
 QDoubleSpinBox#DiscountValueInput {
-    font-size: 32px;
+    font-size: 36px;
     font-weight: bold;
-    padding: 10px;
+    padding: 12px;
     border: 2px solid #00BCEB;
-    border-radius: 5px;
+    border-radius: 8px;
     background-color: #003366;
-    color: white;
+    color: #FFFFFF;
+    min-height: 50px;
 }
 
-QDoubleSpinBox#DiscountValueInput::up-button, QDoubleSpinBox#DiscountValueInput::down-button {
+QDoubleSpinBox#DiscountValueInput:focus {
+    border-color: #00BCEB;
+}
+
+QDoubleSpinBox#DiscountValueInput::up-button,
+QDoubleSpinBox#DiscountValueInput::down-button {
     width: 0px;
 }
 
 QPushButton[class="PresetBtn"] {
-    background-color: #0074D9;
-    color: white;
+    background-color: #003366;
+    color: #00BCEB;
     font-weight: bold;
-    font-size: 16px;
-    border-radius: 5px;
+    font-size: 15px;
+    border: 1px solid #00BCEB;
+    border-radius: 6px;
+    padding: 8px;
 }
 
 QPushButton[class="PresetBtn"]:hover {
-    background-color: #005bb5;
+    background-color: #004080;
+    color: #FFFFFF;
+}
+
+QPushButton[class="PresetBtn"]:pressed {
+    background-color: #00BCEB;
+    color: #001F3F;
+}
+
+QPushButton[class="PresetBtn"]:disabled {
+    background-color: #1a2a3a;
+    color: #555;
+    border-color: #333;
+}
+
+QPushButton#BtnCancel {
+    background-color: transparent;
+    color: #FF4136;
+    font-weight: bold;
+    font-size: 15px;
+    border: 2px solid #FF4136;
+    border-radius: 6px;
+}
+
+QPushButton#BtnCancel:hover {
+    background-color: #FF4136;
+    color: white;
 }
 
 QPushButton#BtnApplyDiscount {
     background-color: #39FF14;
-    color: black;
+    color: #001F3F;
     font-weight: bold;
-    font-size: 16px;
-    border-radius: 5px;
+    font-size: 15px;
+    border: none;
+    border-radius: 6px;
+}
+
+QPushButton#BtnApplyDiscount:hover {
+    background-color: #2ECC40;
+}
+
+QPushButton#BtnApplyDiscount:pressed {
+    background-color: #27AE36;
 }
 
 /* Customer Editor */
@@ -2137,7 +2201,8 @@ QLabel#ReceiptPreviewTitle {
     padding: 4px 0;
 }
 QTextBrowser#ReceiptPreviewBrowser {
-    background-color: #F5F5F0;
+    background-color: #d0d0d0;
+    color: #000000;
     border: 1px solid #3E3E42;
     border-radius: 6px;
 }

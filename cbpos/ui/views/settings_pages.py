@@ -28,7 +28,7 @@ from PyQt6.QtPrintSupport import QPrinterInfo
 from sqlalchemy.engine import URL
 from cbpos.core.services.language_service import LanguageService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
-from cbpos.core.models import Sale, SaleItem, Product
+from cbpos.core.models import Sale, SaleItem, SalePayment, Product
 from cbpos.config import Config
 import decimal
 import socket
@@ -847,12 +847,12 @@ class ReceiptPage(SettingsPage):
 
         self.txt_header = QTextEdit()
         self.txt_header.setFixedHeight(64)
-        self.txt_header.setPlaceholderText("Printed at the top of every receipt")
+        self.txt_header.setPlaceholderText("Shop greeting or promo (press Enter for new line)")
         hf_form.addRow("Header Text:", self.txt_header)
 
         self.txt_footer = QTextEdit()
         self.txt_footer.setFixedHeight(64)
-        self.txt_footer.setPlaceholderText("Printed at the bottom of every receipt")
+        self.txt_footer.setPlaceholderText("Thank you message (press Enter for new line)")
         hf_form.addRow("Footer Text:", self.txt_footer)
 
         vbox_content.addLayout(hf_form)
@@ -893,23 +893,6 @@ class ReceiptPage(SettingsPage):
         staff_form.addRow("Terminal ID:", self.chk_show_terminal)
         vbox_display.addLayout(staff_form)
 
-        # Section: QR Code
-        vbox_display.addWidget(self._make_section_header("QR Code"))
-
-        qr_form = QFormLayout()
-        self.configure_form_layout(qr_form)
-        qr_form.setContentsMargins(0, 0, 0, 0)
-        qr_form.setVerticalSpacing(10)
-
-        self.chk_show_qr = QCheckBox("Print QR code (e.g. shop website or WhatsApp)")
-        qr_form.addRow("Show QR Code:", self.chk_show_qr)
-
-        self.input_qr_content = QLineEdit()
-        self.input_qr_content.setPlaceholderText("https://wa.me/94767378901")
-        self.input_qr_content.setToolTip("URL or text encoded in QR code")
-        qr_form.addRow("QR Content:", self.input_qr_content)
-        vbox_display.addLayout(qr_form)
-
         self.tabs.addTab(tab_display, "Display")
 
         # --- Connect all inputs to live preview refresh ---
@@ -926,14 +909,12 @@ class ReceiptPage(SettingsPage):
         self.input_logo_path.textChanged.connect(trigger)
         self.txt_header.textChanged.connect(trigger)
         self.txt_footer.textChanged.connect(trigger)
-        self.input_qr_content.textChanged.connect(trigger)
         # Checkboxes
         self.chk_show_barcode.stateChanged.connect(trigger)
         self.chk_merge_items.stateChanged.connect(trigger)
         self.chk_show_tax.stateChanged.connect(trigger)
         self.chk_show_cashier.stateChanged.connect(trigger)
         self.chk_show_terminal.stateChanged.connect(trigger)
-        self.chk_show_qr.stateChanged.connect(trigger)
 
     def _schedule_refresh(self) -> None:
         """Restart the debounce timer — preview refreshes after 300 ms of inactivity."""
@@ -967,11 +948,9 @@ class ReceiptPage(SettingsPage):
         self.txt_footer.setText(settings.get("receipt_footer", ""))
         self.chk_show_barcode.setChecked(settings.get("show_barcode", True))
         self.chk_merge_items.setChecked(settings.get("merge_items", False))
-        self.chk_show_tax.setChecked(settings.get("show_tax_breakdown", True))
+        self.chk_show_tax.setChecked(settings.get("show_tax_breakdown", False))
         self.chk_show_cashier.setChecked(settings.get("show_cashier_on_receipt", True))
         self.chk_show_terminal.setChecked(settings.get("show_terminal_on_receipt", False))
-        self.chk_show_qr.setChecked(settings.get("show_qr_on_receipt", False))
-        self.input_qr_content.setText(settings.get("receipt_qr_content", ""))
         # Single refresh after all fields loaded
         self._refresh_preview()
 
@@ -985,8 +964,6 @@ class ReceiptPage(SettingsPage):
             "show_tax_breakdown": self.chk_show_tax.isChecked(),
             "show_cashier_on_receipt": self.chk_show_cashier.isChecked(),
             "show_terminal_on_receipt": self.chk_show_terminal.isChecked(),
-            "show_qr_on_receipt": self.chk_show_qr.isChecked(),
-            "receipt_qr_content": self.input_qr_content.text(),
         }
 
     @staticmethod
@@ -995,36 +972,42 @@ class ReceiptPage(SettingsPage):
         from datetime import datetime
 
         sale = Sale(
-            id=12345,
+            id=42,
             document_number="INV-2026-00042",
             date=datetime.now(),
-            total_amount=decimal.Decimal("1500.00"),
-            tax_vat=decimal.Decimal("228.81"),
-            tax_sscl=decimal.Decimal("37.50"),
-            net_revenue=decimal.Decimal("1233.69"),
+            total_amount=decimal.Decimal("1450.00"),
+            tax_vat=decimal.Decimal("221.19"),
+            tax_sscl=decimal.Decimal("36.25"),
+            net_revenue=decimal.Decimal("1192.56"),
         )
-        p1 = Product(name_en="Paracetamol 500mg")
-        p2 = Product(name_en="Vitamin C Tablets")
-        p3 = Product(name_en="Hand Sanitizer 250ml")
+        p1 = Product(name_en="Product A")
+        p2 = Product(name_en="Product B")
+        p3 = Product(name_en="Product C")
         sale.items = [
             SaleItem(
                 product=p1,
                 qty=decimal.Decimal("2"),
                 unit_price=decimal.Decimal("150.00"),
+                original_price=decimal.Decimal("150.00"),
                 subtotal=decimal.Decimal("300.00"),
             ),
             SaleItem(
                 product=p2,
                 qty=decimal.Decimal("1"),
-                unit_price=decimal.Decimal("450.00"),
-                subtotal=decimal.Decimal("450.00"),
+                unit_price=decimal.Decimal("400.00"),
+                original_price=decimal.Decimal("450.00"),
+                subtotal=decimal.Decimal("400.00"),
             ),
             SaleItem(
                 product=p3,
                 qty=decimal.Decimal("3"),
                 unit_price=decimal.Decimal("250.00"),
+                original_price=decimal.Decimal("250.00"),
                 subtotal=decimal.Decimal("750.00"),
             ),
+        ]
+        sale.payments = [
+            SalePayment(payment_method="Cash", amount=decimal.Decimal("1500.00")),
         ]
         return sale
 

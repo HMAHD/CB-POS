@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QToolButton,
@@ -10,8 +9,10 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap
 
-# Base directory for product images
-_ASSETS_DIR = Path(__file__).resolve().parent.parent.parent / "assets"
+# Base directory for product images (user data, not app assets)
+from cbpos.config import Config
+
+_IMAGES_DIR = Config.DATA_DIR
 
 
 class ProductCard(QToolButton):
@@ -40,7 +41,7 @@ class ProductCard(QToolButton):
         # Product image (shown only if image_path exists and file is valid)
         image_path = getattr(self.product, "image_path", None)
         if image_path:
-            full_path = os.path.join(str(_ASSETS_DIR), image_path)
+            full_path = os.path.join(str(_IMAGES_DIR), image_path)
             if os.path.isfile(full_path):
                 pixmap = QPixmap(full_path)
                 if not pixmap.isNull():

@@ -1,173 +1,166 @@
-# name: Release Build
-# 
-# on:
-#   push:
-#     tags:
-#       - 'v*.*.*'
-#   workflow_dispatch:
-# 
-# permissions:
-#   contents: write
-# 
-# jobs:
-#   build-windows:
-#     name: Build Windows Executable
-#     runs-on: windows-latest
-#     
-#     steps:
-#     - name: Checkout code
-#       uses: actions/checkout@v4
-#       
-#     - name: Set up Python 3.12
-#       uses: actions/setup-python@v4
-#       with:
-#         python-version: "3.12"
-#         cache: 'pip'
-#         
-#     - name: Install dependencies
-#       run: |
-#         python -m pip install --upgrade pip
-#         pip install -r requirements.txt
-#         pip install pyinstaller
-#         
-#     - name: Build executable with PyInstaller
-#       run: |
-#         pyinstaller --name=CB-POS `
-#           --windowed `
-#           --onefile `
-#           --icon=cbpos/assets/logo.ico `
-#           --add-data="cbpos/assets;cbpos/assets" `
-#           --hidden-import=sqlalchemy.ext.baked `
-#           --hidden-import=PyQt6.QtPrintSupport `
-#           --clean `
-#           main.py
-#           
-#     - name: Create installer metadata
-#       run: |
-#         echo "CB-POS Version: ${{ github.ref_name }}" > dist/VERSION.txt
-#         echo "Build Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" >> dist/VERSION.txt
-#         
-#     - name: Upload Windows artifact
-#       uses: actions/upload-artifact@v3
-#       with:
-#         name: CB-POS-Windows-${{ github.ref_name }}
-#         path: dist/
-# 
-#   build-linux:
-#     name: Build Linux Package
-#     runs-on: ubuntu-latest
-#     
-#     steps:
-#     - name: Checkout code
-#       uses: actions/checkout@v4
-#       
-#     - name: Set up Python 3.12
-#       uses: actions/setup-python@v4
-#       with:
-#         python-version: "3.12"
-#         cache: 'pip'
-#         
-#     - name: Install system dependencies
-#       run: |
-#         sudo apt-get update
-#         sudo apt-get install -y libgl1-mesa-glx libegl1-mesa
-#         
-#     - name: Install Python dependencies
-#       run: |
-#         python -m pip install --upgrade pip
-#         pip install -r requirements.txt
-#         pip install pyinstaller
-#         
-#     - name: Build executable
-#       run: |
-#         pyinstaller --name=CB-POS \
-#           --onefile \
-#           --add-data="cbpos/assets:cbpos/assets" \
-#           --hidden-import=sqlalchemy.ext.baked \
-#           --hidden-import=PyQt6.QtPrintSupport \
-#           --clean \
-#           main.py
-#           
-#     - name: Upload Linux artifact
-#       uses: actions/upload-artifact@v3
-#       with:
-#         name: CB-POS-Linux-${{ github.ref_name }}
-#         path: dist/
-# 
-#   create-release:
-#     name: Create GitHub Release
-#     runs-on: ubuntu-latest
-#     needs: [build-windows, build-linux]
-#     if: startsWith(github.ref, 'refs/tags/')
-#     
-#     steps:
-#     - name: Checkout code
-#       uses: actions/checkout@v4
-#       
-#     - name: Download Windows artifacts
-#       uses: actions/download-artifact@v3
-#       with:
-#         name: CB-POS-Windows-${{ github.ref_name }}
-#         path: ./release/windows
-#         
-#     - name: Download Linux artifacts
-#       uses: actions/download-artifact@v3
-#       with:
-#         name: CB-POS-Linux-${{ github.ref_name }}
-#         path: ./release/linux
-#         
-#     - name: Create ZIP archives
-#       run: |
-#         cd release/windows && zip -r ../CB-POS-Windows-${{ github.ref_name }}.zip . && cd ../..
-#         cd release/linux && tar -czf ../CB-POS-Linux-${{ github.ref_name }}.tar.gz . && cd ../..
-#         
-#     - name: Generate release notes
-#       id: release_notes
-#       run: |
-#         cat > RELEASE_NOTES.md << 'EOF'
-#         # CB-POS ${{ github.ref_name }}
-#         
-#         ## What's New
-#         
-#         Automated build for CB-POS Point of Sale System
-#         
-#         ## Downloads
-#         
-#         - **Windows**: CB-POS-Windows-${{ github.ref_name }}.zip
-#         - **Linux**: CB-POS-Linux-${{ github.ref_name }}.tar.gz
-#         
-#         ## Installation
-#         
-#         ### Windows
-#         1. Extract the ZIP file
-#         2. Run CB-POS.exe
-#         3. Follow the setup wizard
-#         
-#         ### Linux
-#         1. Extract: `tar -xzf CB-POS-Linux-${{ github.ref_name }}.tar.gz`
-#         2. Make executable: `chmod +x CB-POS`
-#         3. Run: `./CB-POS`
-#         
-#         ## Features
-#         
-#         - Advanced inventory management with negative stock control
-#         - Service item handling
-#         - Supplier management
-#         - Multi-language support (English, Sinhala, Tamil)
-#         - Thermal printer support
-#         - Barcode scanning
-#         - And much more!
-#         
-#         EOF
-#         
-#     - name: Create Release
-#       uses: softprops/action-gh-release@v1
-#       with:
-#         files: |
-#           release/CB-POS-Windows-${{ github.ref_name }}.zip
-#           release/CB-POS-Linux-${{ github.ref_name }}.tar.gz
-#         body_path: RELEASE_NOTES.md
-#         draft: false
-#         prerelease: false
-#       env:
-#         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+name: Build & Release
+
+# Trigger: push a version tag to the private repo.
+# Example:  git tag v1.0.0 && git push origin v1.0.0
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 1.0.0)"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────
+  # 1. Build Windows executable + Inno Setup installer
+  # ──────────────────────────────────────────────────────────────────────
+  build:
+    name: Build Windows Installer
+    runs-on: windows-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      installer_name: ${{ steps.version.outputs.installer_name }}
+      sha256: ${{ steps.hash.outputs.sha256 }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VER="${{ github.event.inputs.version }}"
+          else
+            VER="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "installer_name=CBPOSSetup-$VER.exe" >> "$GITHUB_OUTPUT"
+          echo "Building version: $VER"
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Stamp version in Config
+        shell: python
+        run: |
+          import re, pathlib
+          cfg = pathlib.Path("cbpos/config.py")
+          text = cfg.read_text()
+          text = re.sub(
+              r'VERSION\s*=\s*"[^"]*"',
+              'VERSION = "${{ steps.version.outputs.version }}"',
+              text,
+          )
+          cfg.write_text(text)
+          print(f"Stamped version: ${{ steps.version.outputs.version }}")
+
+      - name: Build executable with PyInstaller
+        run: pyinstaller cbpos.spec
+
+      - name: Verify exe exists
+        shell: bash
+        run: |
+          ls -la dist/cbpos.exe
+          echo "Exe size: $(stat -c%s dist/cbpos.exe 2>/dev/null || stat -f%z dist/cbpos.exe) bytes"
+
+      - name: Build Inno Setup installer
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.4
+        with:
+          path: installer/cbpos.iss
+
+      - name: Compute SHA-256
+        id: hash
+        shell: bash
+        run: |
+          INSTALLER="dist/installer/${{ steps.version.outputs.installer_name }}"
+          SHA=$(sha256sum "$INSTALLER" | awk '{print $1}')
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "SHA-256: $SHA"
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer
+          path: dist/installer/${{ steps.version.outputs.installer_name }}
+          retention-days: 5
+
+  # ──────────────────────────────────────────────────────────────────────
+  # 2. Publish to the PUBLIC releases repo (ceybyte/cbpos-releases)
+  # ──────────────────────────────────────────────────────────────────────
+  publish:
+    name: Publish to Releases Repo
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: installer
+          path: ./dist
+
+      - name: Generate latest.json
+        shell: bash
+        run: |
+          cat > latest.json << 'MANIFEST'
+          {
+              "version": "${{ needs.build.outputs.version }}",
+              "release_date": "$(date -u +%Y-%m-%d)",
+              "download_url": "https://github.com/ceybyte/cbpos-releases/releases/download/v${{ needs.build.outputs.version }}/${{ needs.build.outputs.installer_name }}",
+              "changelog": "",
+              "min_version": "1.0.0",
+              "sha256": "${{ needs.build.outputs.sha256 }}"
+          }
+          MANIFEST
+
+          # Fix the date (heredoc doesn't expand $(date))
+          sed -i "s/\$(date -u +%Y-%m-%d)/$(date -u +%Y-%m-%d)/g" latest.json
+          echo "Generated latest.json:"
+          cat latest.json
+
+      - name: Clone releases repo
+        run: |
+          git clone https://x-access-token:${{ secrets.RELEASES_PAT }}@github.com/ceybyte/cbpos-releases.git releases-repo
+
+      - name: Update latest.json in releases repo
+        run: |
+          cp latest.json releases-repo/latest.json
+          cd releases-repo
+          git config user.name "CB POS Bot"
+          git config user.email "bot@ceybyte.com"
+          git add latest.json
+          git diff --cached --quiet || git commit -m "Update latest.json to v${{ needs.build.outputs.version }}"
+          git push
+
+      - name: Create GitHub Release on releases repo
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_PAT }}
+        run: |
+          cd releases-repo
+          gh release create "v${{ needs.build.outputs.version }}" \
+            --title "CB POS v${{ needs.build.outputs.version }}" \
+            --notes "## CB POS v${{ needs.build.outputs.version }}
+
+          Download and run the installer. Your existing data is preserved automatically.
+
+          **SHA-256:** \`${{ needs.build.outputs.sha256 }}\`" \
+            ../dist/${{ needs.build.outputs.installer_name }}

@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [1.0.0] - 2026-03-09
+
+### Added — Packaging & Deployment (Phase 20)
+
+- **Platform-aware user data directory**: New `Config.DATA_DIR` stores database, settings, encryption key, logs, and backups in the OS-standard location (`%LOCALAPPDATA%\CB POS` on Windows, `~/Library/Application Support/CB POS` on macOS, `~/.local/share/cbpos` on Linux). Install directory is never touched — data survives updates. Development mode keeps data in project root (unchanged behaviour).
+- **Legacy data migration**: On first launch after upgrade, `ensure_data_dir()` automatically copies `cbpos.db`, `settings.json`, `.encryption_key`, and product images from the old install-relative location to the new `DATA_DIR`.
+- **Inno Setup Windows installer** (`installer/cbpos.iss`): Professional installer with LZMA2 compression, desktop/Start Menu/startup shortcuts, running-app detection via Windows mutex, automatic `DATA_DIR` creation post-install, silent install support (`/SILENT`), modern wizard with CB POS branding. Minimum Windows 10.
+- **Auto-update service** (`cbpos/core/services/update_service.py`): Checks `ceybyte/cbpos-releases` public repo for `latest.json` manifest on startup (3-second delay, non-blocking). Compares semantic versions; downloads installer with SHA-256 integrity verification.
+- **Update dialog** (`cbpos/ui/dialogs/update_dialog.py`): Shows changelog, download progress bar, and launches installer automatically. App quits to allow in-place update.
+- **Manual update check**: "Check for Updates" button added to Admin Tools view alongside version display (`v1.0.0`). Non-silent mode shows result even when up-to-date.
+- **GitHub Actions CI/CD** (`.github/workflows/release.yml`): Tag push (`v*.*.*`) triggers Windows build — PyInstaller exe → Inno Setup installer → SHA-256 hash → publishes installer + `latest.json` to public `ceybyte/cbpos-releases` repo via GitHub Release.
+- **App icon**: Updated PyInstaller spec to use multi-size `cbpos/assets/ico/cbpos_multi.ico`.
+
+### Improved — Receipt Preview
+
+- **Edge-to-edge separator lines**: Replaced `<hr>` approach (which had invisible internal margins in QTextBrowser) with a table-row technique — separators close the content cell and insert a full-width `<tr>` with `bgcolor='#000000'`, guaranteeing zero-gap lines from absolute left to right edge of the paper.
+- **Barcode preview**: Replaced PIL-generated barcode PNG with a lightweight HTML bar pattern — alternating black/white table cells derived from a hash of the barcode value. Decorative only (not scannable), with invoice number text below. Removes dependency on `python-barcode` for preview.
+- **Document margin eliminated**: Set `QTextDocument.setDocumentMargin(0)` so the paper table fills the viewport without internal gaps.
+
+### Changed
+
+- **Product images directory**: Moved from `cbpos/assets/products/` to `DATA_DIR/product_images/` so user-uploaded images are stored with user data, not inside the application bundle.
+- **Log directory**: Moved from `BASE_DIR/logs/` to `DATA_DIR/logs/`.
+- **Alembic migrations**: `alembic/env.py` now overrides `sqlalchemy.url` with runtime `Config.DATA_DIR` path, ensuring migrations always target the correct database regardless of working directory.
+
 ## [0.9.3] - 2026-03-07
 
 ### Improved — Receipt Layout & Preview Overhaul

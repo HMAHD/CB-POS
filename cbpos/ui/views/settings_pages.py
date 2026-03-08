@@ -946,10 +946,10 @@ class ReceiptPage(SettingsPage):
         self.input_logo_path.setText(settings.get("receipt_logo_path", ""))
         self.txt_header.setText(settings.get("receipt_header", ""))
         self.txt_footer.setText(settings.get("receipt_footer", ""))
-        self.chk_show_barcode.setChecked(settings.get("show_barcode", True))
+        self.chk_show_barcode.setChecked(settings.get("show_barcode", False))
         self.chk_merge_items.setChecked(settings.get("merge_items", False))
         self.chk_show_tax.setChecked(settings.get("show_tax_breakdown", False))
-        self.chk_show_cashier.setChecked(settings.get("show_cashier_on_receipt", True))
+        self.chk_show_cashier.setChecked(settings.get("show_cashier_on_receipt", False))
         self.chk_show_terminal.setChecked(settings.get("show_terminal_on_receipt", False))
         # Single refresh after all fields loaded
         self._refresh_preview()

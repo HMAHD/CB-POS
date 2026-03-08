@@ -130,6 +130,7 @@ class ReceiptBuilder:
     @classmethod
     def _append_branding(cls, commands: List[Dict[str, Any]]) -> None:
         """Append CB POS branding to receipt."""
+        commands.append({"type": "feed", "lines": 1})
         commands.append({"type": "text", "val": "Powered by CB POS", "align": "center"})
         commands.append({"type": "text", "val": "ceybyte.com", "align": "center"})
 
@@ -359,6 +360,7 @@ class ReceiptBuilder:
         # Footer text
         footer_text = gc("receipt_footer", "", config_override)
         if footer_text:
+            commands.append({"type": "feed", "lines": 1})
             commands.append({"type": "text", "val": footer_text, "align": "center"})
 
         # Duplicate marking (bottom)

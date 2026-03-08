@@ -87,5 +87,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='cbpos/assets/logo/Logo_light.png'
+    icon='cbpos/assets/ico/cbpos_multi.ico'
 )

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class ErrorLogService:
     """Read, filter, and export application log files."""
 
-    LOG_DIR = Config.BASE_DIR / "logs"
+    LOG_DIR = Config.DATA_DIR / "logs"
     LOG_NAME = "cbpos.log"
 
     @classmethod

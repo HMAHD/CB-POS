@@ -1,13 +1,64 @@
 import logging
 import logging.handlers
+import shutil
 import sys
 import os
+from pathlib import Path
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QFont
 from PyQt6.QtCore import qInstallMessageHandler, QtMsgType
 from cbpos.config import Config
 from cbpos.infrastructure.resource_loader import ResourceLoader
 from cbpos.ui.main_window import MainWindow
+
+
+def ensure_data_dir() -> None:
+    """Create the user data directory and migrate legacy data if needed.
+
+    On first launch after an update that moves data to AppData, this
+    copies cbpos.db, settings.json, and .encryption_key from the old
+    install-relative location to the new platform-specific DATA_DIR.
+    """
+    data_dir = Config.DATA_DIR
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    # Only migrate when running as an installed app (frozen) and the
+    # new data dir does not yet have a database.
+    if not getattr(sys, "frozen", False):
+        return
+
+    new_db = data_dir / "cbpos.db"
+    if new_db.exists():
+        return  # Already migrated or fresh install with DB created
+
+    # Look for legacy data next to the executable (old install layout).
+    exe_dir = Path(sys.executable).parent
+    legacy_db = exe_dir / "cbpos.db"
+    if not legacy_db.exists():
+        return  # Truly fresh install, nothing to migrate
+
+    print("[MIGRATE] Migrating user data to %s ..." % data_dir)
+    for filename in ("cbpos.db", "settings.json", ".encryption_key"):
+        src = exe_dir / filename
+        dst = data_dir / filename
+        if src.exists() and not dst.exists():
+            try:
+                shutil.copy2(str(src), str(dst))
+                print("[MIGRATE]   Copied %s" % filename)
+            except OSError as e:
+                print("[MIGRATE]   WARNING: Could not copy %s: %s" % (filename, e))
+
+    # Migrate product images
+    legacy_images = exe_dir / "cbpos" / "assets" / "products"
+    new_images = data_dir / "product_images"
+    if legacy_images.exists() and not new_images.exists():
+        try:
+            shutil.copytree(str(legacy_images), str(new_images))
+            print("[MIGRATE]   Copied product images")
+        except OSError as e:
+            print("[MIGRATE]   WARNING: Could not copy product images: %s" % e)
+
+    print("[MIGRATE] Migration complete.")
 
 
 def setup_logging() -> None:
@@ -17,7 +68,7 @@ def setup_logging() -> None:
     Writes WARNING+ messages to logs/cbpos.log with rotation
     (5 MB max, 3 backups). Console output remains unchanged.
     """
-    log_dir = Config.BASE_DIR / "logs"
+    log_dir = Config.DATA_DIR / "logs"
     log_dir.mkdir(exist_ok=True)
 
     file_handler = logging.handlers.RotatingFileHandler(
@@ -71,6 +122,18 @@ def main():
     Font loading MUST happen before any UI is created to prevent fallback to
     system fonts.
     """
+    # Ensure user data directory exists and migrate legacy data if needed
+    ensure_data_dir()
+
+    # Create a named mutex so the Inno Setup installer can detect a running instance.
+    # On non-Windows this is harmless — ctypes.windll doesn't exist.
+    try:
+        import ctypes
+
+        ctypes.windll.kernel32.CreateMutexW(None, False, "CBPOSAppMutex")
+    except (AttributeError, OSError):
+        pass  # Not on Windows — skip
+
     # Set up file-based error logging
     setup_logging()
 
@@ -149,6 +212,16 @@ def main():
     # Launch main window
     window = MainWindow()
     window.showMaximized()  # Industrial apps usually run full screen
+
+    # Check for updates 3 seconds after startup (non-blocking).
+    # The thread reference is kept on the app object to prevent GC.
+    from PyQt6.QtCore import QTimer
+    from cbpos.ui.dialogs.update_dialog import check_for_updates_async
+
+    def _deferred_update_check():
+        app._update_thread = check_for_updates_async(parent=window, silent=True)
+
+    QTimer.singleShot(3000, _deferred_update_check)
 
     sys.exit(app.exec())
 

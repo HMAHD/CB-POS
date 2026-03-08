@@ -19,7 +19,7 @@ class ConfigService:
     Stores settings in a 'settings.json' file in the project root.
     """
 
-    SETTINGS_FILE = os.path.join(Config.BASE_DIR, "settings.json")
+    SETTINGS_FILE = os.path.join(Config.DATA_DIR, "settings.json")
 
     DEFAULTS = {
         "shop_name": "Ceylon Byte POS",
@@ -126,7 +126,7 @@ class ConfigService:
     _SENSITIVE_KEYS = {"network_db_password", "smtp_pass"}
     _fernet: Fernet | None = None
 
-    _KEY_FILE = os.path.join(Config.BASE_DIR, ".encryption_key")
+    _KEY_FILE = os.path.join(Config.DATA_DIR, ".encryption_key")
 
     @classmethod
     def _get_fernet(cls) -> Fernet:

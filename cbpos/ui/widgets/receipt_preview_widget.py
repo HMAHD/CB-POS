@@ -6,25 +6,33 @@ Used inline in the Receipt Settings page and inside ``ReceiptPreviewDialog``.
 
 **Qt constraint:** QTextBrowser uses Qt's rich-text engine (HTML 4 / CSS 2.1
 subset).  It does NOT support flexbox, CSS gradients, box-shadow, or any
-CSS 3 layout.  ``<hr>`` tags have hardcoded internal margins that CSS cannot
-override, so separators are rendered as monospace dash characters instead.
+CSS 3 layout.
+
+**Separator edge-to-edge trick:** Each separator closes the current content
+``<td>``, inserts a full-width ``<tr>`` with a black-background cell, then
+re-opens a new content ``<td>``.  This guarantees the line physically spans
+the entire paper table width with zero gaps.
 """
 
+import hashlib
+import logging
 from html import escape
 from typing import List, Dict, Any
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QVBoxLayout, QWidget, QLabel, QTextBrowser
 
-# Only body background — everything else uses inline styles on elements
-# to avoid QTextBrowser's unreliable CSS class inheritance.
-_CSS = "body { margin: 0; padding: 0; background: #d0d0d0; }"
+logger = logging.getLogger(__name__)
 
-# Inline style constants (reused across elements)
-_FONT = "font-family:'Courier New',Courier,monospace;font-size:10.5px;line-height:1.3;"
+# Body background -- neutral grey so white paper stands out.
+_CSS = "body { margin: 0; padding: 0; background: #c8c8c8; }"
 
-# Unicode block characters for barcode simulation.
-_BARCODE_CHARS = "\u2588\u258c\u2590\u2588\u2590\u258c\u2588\u258c\u2590\u2588\u258c\u2588\u2590\u258c\u2590\u2588"
+# Inline style applied to every text element for consistent monospace rendering.
+_FONT = "font-family:'Courier New',Courier,monospace;font-size:11.5px;line-height:1.4;color:#000;"
+
+# Horizontal padding applied to content elements (NOT the paper <td>).
+_PX = 10
 
 
 class ReceiptPreviewWidget(QWidget):
@@ -58,6 +66,15 @@ class ReceiptPreviewWidget(QWidget):
         self._browser = QTextBrowser()
         self._browser.setObjectName("ReceiptPreviewBrowser")
         self._browser.setOpenExternalLinks(False)
+        # Force black text -- QTextBrowser ignores inline CSS color and uses
+        # the widget palette.  Set both palette AND document stylesheet so
+        # black text survives any QSS theme override.
+        pal = self._browser.palette()
+        pal.setColor(QPalette.ColorRole.Text, QColor("#000000"))
+        self._browser.setPalette(pal)
+        self._browser.document().setDefaultStyleSheet("body { color: #000000; } b { color: #000000; }")
+        # Eliminate default document margin so our table fills the viewport.
+        self._browser.document().setDocumentMargin(0)
         layout.addWidget(self._browser)
 
     def set_commands(self, commands: List[Dict[str, Any]]) -> None:
@@ -79,20 +96,20 @@ class ReceiptPreviewWidget(QWidget):
         px = self._PAPER_PX[self._paper_width]
         cols = self._CHAR_COLS[self._paper_width]
 
-        # Paper = single-cell table with white background, centered.
-        # All receipt content goes inside this one <td>.
         parts: list[str] = [
             "<html><head><style>%s</style></head><body>" % _CSS,
+            "<div style='height:8px;font-size:1px;'>&nbsp;</div>",
             "<table width='%d' cellpadding='0' cellspacing='0'"
-            " bgcolor='#ffffff' align='center'"
-            " style='%scolor:#000;'>"
-            "<tr><td style='padding:10px 0 6px;'>" % (px, _FONT),
+            " bgcolor='#ffffff' align='center'>"
+            "<tr><td style='padding:12px 0 0;%s'>" % (px, _FONT),
         ]
 
         for cmd in self._commands:
             self._render_command(cmd, cols, parts)
 
-        parts.append("</td></tr></table></body></html>")
+        parts.append("</td></tr></table>")
+        parts.append("<div style='height:8px;font-size:1px;'>&nbsp;</div>")
+        parts.append("</body></html>")
         self._browser.setHtml("".join(parts))
 
     @staticmethod
@@ -104,25 +121,30 @@ class ReceiptPreviewWidget(QWidget):
         """Render a single receipt command into HTML and append to *parts*."""
         ctype = cmd.get("type", "")
         bold = cmd.get("bold", False)
+        p = _PX  # horizontal padding for content
 
         if ctype == "text":
             raw = cmd.get("val", "")
             stripped = raw.strip()
 
-            # Full-width separator — render actual dash characters with NO
-            # padding so they go edge-to-edge.  Never use <hr> in QTextBrowser
-            # (it has hardcoded internal margins that CSS cannot override).
+            # Full-width separator -- close the content cell, add a
+            # full-width black row, then re-open a new content cell.
+            # This guarantees the line goes from absolute left edge to
+            # absolute right edge of the paper with zero gaps.
             if stripped and len(stripped) >= cols - 2 and set(stripped) <= {"-", "="}:
-                # Use many more characters than needed; overflow:hidden clips
-                # to the container width, guaranteeing edge-to-edge fill.
-                char = stripped[0]
-                fill = char * 200
                 parts.append(
-                    "<div style='padding:0;margin:0;%s" "overflow:hidden;white-space:nowrap;'>%s</div>" % (_FONT, fill)
+                    "</td></tr>"
+                    "<tr><td style='padding:4px 0;'>"
+                    "<table width='100%%' cellpadding='0' cellspacing='0'>"
+                    "<tr><td bgcolor='#000000' style='height:1px;"
+                    "font-size:1px;line-height:1px;'>"
+                    "&nbsp;</td></tr></table>"
+                    "</td></tr>"
+                    "<tr><td style='padding:0;%s'>" % _FONT
                 )
                 return
 
-            # Two-column split row (left/right alignment via table)
+            # Two-column split row (content gets horizontal padding)
             left_val = cmd.get("left_val")
             right_val = cmd.get("right_val")
             if left_val is not None or right_val is not None:
@@ -132,58 +154,91 @@ class ReceiptPreviewWidget(QWidget):
                     lv = "<b>%s</b>" % lv if lv else lv
                     rv = "<b>%s</b>" % rv if rv else rv
                 parts.append(
-                    "<table width='100%%' cellpadding='0' cellspacing='0'><tr>"
-                    "<td style='padding:0 8px;text-align:left;'>%s</td>"
-                    "<td style='padding:0 8px;text-align:right;"
-                    "white-space:nowrap;'>%s</td>"
-                    "</tr></table>" % (lv, rv)
+                    "<table width='100%%' cellpadding='0' cellspacing='0'>"
+                    "<tr>"
+                    "<td style='padding:1px %dpx;text-align:left;%s'>"
+                    "%s</td>"
+                    "<td style='padding:1px %dpx;text-align:right;"
+                    "white-space:nowrap;%s'>%s</td>"
+                    "</tr></table>" % (p, _FONT, lv, p, _FONT, rv)
                 )
                 return
 
-            # Plain text line (with 8px horizontal padding)
+            # Plain text line (content gets horizontal padding).
             align = cmd.get("align", "left")
             val = escape(raw).replace("\n", "<br>")
             if bold:
                 val = "<b>%s</b>" % val
-            parts.append("<div style='margin:0;padding:0 8px;%s" "text-align:%s;'>%s</div>" % (_FONT, align, val))
+            parts.append(
+                "<div align='%s' style='margin:0;padding:1px %dpx;"
+                "%stext-align:%s;'>%s</div>" % (align, p, _FONT, align, val)
+            )
 
         elif ctype == "image":
             path = cmd.get("path", "")
             if path:
                 parts.append(
-                    "<div style='text-align:center;margin:2px 0;"
-                    "padding:0 8px;'><img src='file:///%s'"
-                    " style='max-width:100%%;height:auto;'></div>" % escape(path)
+                    "<div align='center' style='text-align:center;"
+                    "margin:4px 0;padding:0 %dpx;'>"
+                    "<img src='file:///%s'"
+                    " style='max-width:100%%;height:auto;'></div>" % (p, escape(path))
                 )
 
         elif ctype == "barcode":
-            val = escape(cmd.get("val", ""))
-            # Barcode centered — Unicode block characters + label below
-            parts.append(
-                "<table width='100%%' cellpadding='0' cellspacing='0'>"
-                "<tr><td style='text-align:center;padding:4px 8px;"
-                "%sfont-size:12px;letter-spacing:1px;'>"
-                "%s</td></tr>" % (_FONT, _BARCODE_CHARS)
-            )
+            val = cmd.get("val", "")
             if val:
-                parts.append("<tr><td style='text-align:center;padding:0 8px;" "font-size:8px;'>%s</td></tr>" % val)
-            parts.append("</table>")
+                barcode_html = _generate_barcode_bars(val)
+                parts.append(
+                    "<div align='center' style='text-align:center;"
+                    "padding:6px %dpx 2px;'>%s</div>" % (p, barcode_html)
+                )
+                parts.append(
+                    "<div align='center' style='text-align:center;"
+                    "padding:0 %dpx 4px;font-size:9px;color:#000;"
+                    "%s'>%s</div>" % (p, _FONT, escape(val))
+                )
 
         elif ctype == "feed":
             lines = cmd.get("lines", 1)
             for _ in range(lines):
-                parts.append("<div style='height:4px;font-size:1px;'>&nbsp;</div>")
+                parts.append("<div style='height:5px;font-size:1px;'>&nbsp;</div>")
 
         elif ctype == "cut":
-            # Render cut as grey dashes (same technique as separator)
-            cut_fill = "- " * 100
+            # Close cell, add separator row, re-open cell for cut label.
             parts.append(
-                "<div style='padding:4px 0 0;margin:0;%s"
-                "color:#999;overflow:hidden;white-space:nowrap;'>"
-                "%s</div>" % (_FONT, cut_fill.strip())
+                "</td></tr>"
+                "<tr><td style='padding:4px 0;'>"
+                "<table width='100%%' cellpadding='0' cellspacing='0'>"
+                "<tr><td bgcolor='#000000' style='height:1px;"
+                "font-size:1px;line-height:1px;'>"
+                "&nbsp;</td></tr></table>"
+                "</td></tr>"
+                "<tr><td style='padding:0;%s'>" % _FONT
             )
             parts.append(
-                "<div style='text-align:center;font-size:8px;"
-                "color:#999;padding:0;margin:0 0 2px;'>"
+                "<div align='center' style='text-align:center;"
+                "font-size:8px;color:#999;padding:0;margin:0;'>"
                 "&#9986; cut</div>"
             )
+
+
+def _generate_barcode_bars(value: str) -> str:
+    """Generate a visual barcode pattern using HTML table cells.
+
+    Creates alternating black and white bars of varying widths derived
+    from a hash of the value.  This is purely decorative -- it is NOT
+    scannable but looks like a barcode in the preview.
+    """
+    if not value:
+        return ""
+    # Use hash to generate a deterministic bar pattern.
+    h = hashlib.md5(value.encode()).hexdigest()
+    cells: list[str] = []
+    for i, ch in enumerate(h[:28]):
+        n = int(ch, 16)
+        # Alternate black/white; width 1-3px based on hex digit.
+        is_black = i % 2 == 0
+        w = (n % 3) + 1
+        color = "#000" if is_black else "#fff"
+        cells.append("<td bgcolor='%s' style='width:%dpx;height:32px;" "font-size:1px;'>&nbsp;</td>" % (color, w))
+    return "<table cellpadding='0' cellspacing='0' align='center'>" "<tr>%s</tr></table>" % "".join(cells)

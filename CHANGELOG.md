@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [1.1.0] - 2026-03-09
+
+### Added — Tax Compliance
+
+- **VAT registration mode**: New "VAT Registered" toggle in Settings > Sales & Tax. When disabled, all tax calculations return zero — suitable for businesses below the registration threshold.
+- **Per-category VAT exemption**: Categories can be marked as tax-exempt (e.g., pharmaceuticals, rice, books). When "Enable item-level tax exemptions" is on, CartService splits items into taxable/exempt amounts and only applies VAT/SSCL to the taxable portion.
+- **Tax invoice format (Jan 2026 mandate)**: New `generate_tax_invoice()` produces A4 PDF with "TAX INVOICE" title, supplier/buyer TIN and details, YYMMM_QQQQ_XXXX serial number, payment method, amount in words, Net/VAT/SSCL breakdown, and ORIGINAL/DUPLICATE watermarks.
+- **Customer TIN field**: Added `tax_id` to Customer model for B2B buyer identification on tax invoices.
+- **Amount-to-words utility**: Converts Decimal amounts to English words (e.g., "One Thousand Two Hundred Rupees") for tax invoice compliance.
+- **Tax filing summary report**: New period-based report (monthly/quarterly/custom) with sales summary, VAT/SSCL computation, refund/void handling, and payment breakdown for filing returns.
+- **Tax summary on dashboard**: Tax Today panel showing VAT, SSCL, and Net Revenue for the current day.
+- **Tax columns in document browser**: VAT, SSCL, and Net Revenue columns in document detail view.
+- **Tax breakdown on receipts**: VAT/SSCL amounts shown on void and refund receipts when tax breakdown is enabled.
+- **Tax rate change audit trail**: All tax rate modifications logged to AuditLog with old/new values.
+
+### Added — UI/UX Improvements
+
+- **Pagination for large tables**: Reusable PaginationWidget (50 rows/page) with Previous/Next navigation and "Showing X-Y of Z" indicator. Applied to customer list, inventory, report viewer, and admin tools logs.
+- **Undo toast for cart item removal**: 4-second undo bar with Ctrl+Z support instead of confirmation dialog.
+- **Cart highlight on item add**: 800ms cyan flash on newly added/updated cart row.
+- **Active bill indicator**: Cyan border and bold font on the active held bill in the order bar.
+- **Loading indicators**: Visual feedback during dashboard refresh, CSV import, and refund processing.
+- **Empty state messages**: "No products match your search", "No customers found", "No credit customers found" placeholders.
+- **Product unit hint in quantity dialog**: Shows unit abbreviation (e.g., "Unit: kg") when entering quantity.
+- **Discount live preview**: "Original: Rs X → After discount: Rs Y" shown in real-time.
+- **Price list management**: Delete button, start/end date validation, Active/Upcoming/Expired status badges.
+- **Tooltips on all settings checkboxes**: Clear descriptions of what each setting controls.
+- **Cart row tooltips**: Full product name shown on hover for truncated names.
+
+### Fixed — Tax Calculation
+
+- **SSCL calculated on VAT-exclusive base**: SSCL now correctly computed on VAT-exclusive turnover per Sri Lankan law.
+- **Cart discount reduces tax base**: Tax now calculated on `final_total` (after cart-level discount) instead of `subtotal`.
+- **Invoice service field names**: Fixed references to nonexistent `sale.tax_amount` → `sale.tax_vat` / `sale.tax_sscl`.
+- **VAT number config key**: Standardized to `vat_number` (removed inconsistent `shop_vat_number` fallback).
+- **Cart totals populate tax**: `CartService.get_totals()` now calls TaxService directly as single source of truth.
+
+### Fixed — UI/UX
+
+- **Receipt print errors in context**: Print failures shown within receipt dialog with Retry/Skip options instead of delayed out-of-context messages.
+- **Context menu row selection**: Right-click now selects the row under cursor before showing the menu.
+- **Focus restored after dialogs**: Barcode input regains focus after all dialog closures.
+- **Cart row height**: Increased from 40px to 44px for better touch targets.
+- **Payment dialog touch targets**: Remove-payment button increased from 32x32 to 44x44.
+- **Sidebar collapsed by default**: Both Management and Settings sidebars start collapsed with state persisted.
+- **Settings unsaved changes warning**: Prompts before switching pages when settings are modified.
+- **SMTP port validation**: Added integer validator (1-65535) for email port setting.
+- **Default receipt toggles**: All receipt options default to false to match clean initial state.
+
 ## [1.0.0] - 2026-03-09
 
 ### Added — Packaging & Deployment (Phase 20)

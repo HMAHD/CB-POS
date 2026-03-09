@@ -177,11 +177,19 @@ class CartService:
 
         final_total = subtotal - cart_discount_amt
 
+        # Calculate tax breakdown from the final (post-discount) amount
+        from cbpos.core.services.tax_service import TaxService
+
+        tax_info = TaxService.calculate_taxes(final_total.quantize(Precision.MONEY))
+
         return {
             "subtotal": subtotal.quantize(Precision.MONEY),
             "cart_discount": cart_discount_amt.quantize(Precision.MONEY),
             "final_total": final_total.quantize(Precision.MONEY),
-            "tax": Decimal("0.00"),  # Placeholder for tax calculation
+            "tax_vat": tax_info["vat"],
+            "tax_sscl": tax_info["sscl"],
+            "tax": tax_info["vat"] + tax_info["sscl"],
+            "net_revenue": tax_info["net"],
             "count": len(self.items),
             "item_count": sum(item["qty"] for item in self.items),
         }

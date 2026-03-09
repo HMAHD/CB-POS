@@ -552,10 +552,7 @@ class SalesView(QWidget):
         cart_discount = totals.get("cart_discount", 0)
         item_count = totals.get("item_count", 0)
 
-        from cbpos.core.services.tax_service import TaxService
-
-        tax_info = TaxService.calculate_taxes(final_total)
-        tax_amount = tax_info["vat"] + tax_info["sscl"]
+        tax_amount = totals.get("tax", 0)
 
         self.total_label.setText(format_currency(final_total))
         self.lbl_subtotal.setText(f"Subtotal: {format_currency(subtotal)}")

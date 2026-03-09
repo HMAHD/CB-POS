@@ -284,6 +284,8 @@ class SettingsView(QWidget):
             page.load(settings)
 
     def save_all(self):
+        import json
+
         from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
 
@@ -302,6 +304,42 @@ class SettingsView(QWidget):
         except ValueError as e:
             QMessageBox.warning(self, "Validation Error", str(e))
             return
+
+        # Audit log tax rate changes before saving
+        tax_keys = [
+            "tax_vat_rate",
+            "tax_sscl_rate",
+            "tax_sscl_turnover_pct",
+            "vat_registered",
+        ]
+        tax_changes = {}
+        for key in tax_keys:
+            old_val = current_config.get(key)
+            new_val = all_settings.get(key)
+            if new_val is not None and str(old_val) != str(new_val):
+                tax_changes[key] = {"old": old_val, "new": new_val}
+
+        if tax_changes:
+            from cbpos.core.services.auth_service import AuthService
+            from cbpos.core.database import Database
+            from cbpos.core.models import AuditLog
+
+            user = AuthService.get_current_user()
+            if user:
+                db = Database()
+                try:
+                    terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+                    with db.get_session() as session:
+                        log = AuditLog(
+                            user_id=user.id,
+                            action="TAX_RATE_CHANGE",
+                            event_type="SECURITY",
+                            terminal_id=terminal_id,
+                            details=json.dumps(tax_changes),
+                        )
+                        session.add(log)
+                except Exception:
+                    pass  # Don't block save if audit logging fails
 
         ConfigService.update_all(all_settings)
 

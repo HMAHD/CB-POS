@@ -604,6 +604,7 @@ class SalesView(QWidget):
             return
         totals = self.cart_service.get_totals()
         if totals["subtotal"] <= 0:
+            SoundService.play("scan_error")
             return
 
         dialog = PaymentDialog(totals["subtotal"], self)

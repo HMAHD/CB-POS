@@ -468,6 +468,14 @@ class SalesTaxPage(SettingsPage):
         # --- Tab 2: Tax ---
         tab_tax, form_tax = self._build_form_tab()
 
+        self.chk_vat_registered = QCheckBox("Business is VAT Registered")
+        self.chk_vat_registered.setToolTip(
+            "Enable if your annual turnover exceeds the VAT registration threshold. "
+            "When disabled, no tax is calculated on sales."
+        )
+        self.chk_vat_registered.stateChanged.connect(self._toggle_tax_fields)
+        form_tax.addRow(self.chk_vat_registered)
+
         lbl_warn = QLabel("Note: Changing these values affects ALL future sales immediately.")
         lbl_warn.setProperty("class", "warning-hint")
         form_tax.addRow(lbl_warn)
@@ -494,14 +502,23 @@ class SalesTaxPage(SettingsPage):
 
         self.tabs.addTab(tab_tax, "Tax")
 
+    def _toggle_tax_fields(self) -> None:
+        """Enable/disable tax rate fields based on VAT registration status."""
+        enabled = self.chk_vat_registered.isChecked()
+        self.spin_vat.setEnabled(enabled)
+        self.spin_sscl.setEnabled(enabled)
+        self.spin_sscl_turnover.setEnabled(enabled)
+
     def load(self, settings: dict):
         self.combo_search_mode.setCurrentText(settings.get("default_search_mode", "ALL"))
         self.spin_max_discount.setValue(float(settings.get("max_discount_percent", 15.0)))
         self.spin_loyalty_ratio.setValue(int(settings.get("loyalty_points_ratio", 100)))
         self.spin_default_credit.setValue(int(settings.get("default_credit_limit", 0)))
+        self.chk_vat_registered.setChecked(settings.get("vat_registered", False))
         self.spin_vat.setValue(int(settings.get("tax_vat_rate", 18)))
         self.spin_sscl.setValue(float(settings.get("tax_sscl_rate", 2.5)))
         self.spin_sscl_turnover.setValue(float(settings.get("tax_sscl_turnover_pct", 50.0)))
+        self._toggle_tax_fields()
 
     def save(self) -> dict:
         return {
@@ -509,6 +526,7 @@ class SalesTaxPage(SettingsPage):
             "max_discount_percent": self.spin_max_discount.value(),
             "loyalty_points_ratio": self.spin_loyalty_ratio.value(),
             "default_credit_limit": self.spin_default_credit.value(),
+            "vat_registered": self.chk_vat_registered.isChecked(),
             "tax_vat_rate": self.spin_vat.value(),
             "tax_sscl_rate": self.spin_sscl.value(),
             "tax_sscl_turnover_pct": self.spin_sscl_turnover.value(),

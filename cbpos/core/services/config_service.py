@@ -31,6 +31,7 @@ class ConfigService:
         "currency_symbol": "Rs.",
         "date_format": "YYYY-MM-DD",
         # Tax Configuration
+        "vat_registered": False,  # Whether business is VAT-registered
         "tax_vat_rate": 18.0,
         "tax_sscl_rate": 2.5,
         "tax_sscl_turnover_pct": 50.0,

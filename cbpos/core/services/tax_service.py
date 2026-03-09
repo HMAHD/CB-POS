@@ -48,6 +48,14 @@ class TaxService:
         Returns:
             dict: {'vat': Decimal, 'sscl': Decimal, 'net': Decimal}
         """
+        # Skip tax calculation for non-registered businesses
+        if not ConfigService.get("vat_registered"):
+            return {
+                "vat": Decimal("0.00"),
+                "sscl": Decimal("0.00"),
+                "net": total_mrp.quantize(Precision.MONEY),
+            }
+
         vat_rate, sscl_rate, turnover_rate = TaxService._get_rates()
 
         # 1. VAT Calculation

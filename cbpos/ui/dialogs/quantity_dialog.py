@@ -32,16 +32,28 @@ class QuantityDialog(QDialog):
         self.lbl_product.setWordWrap(True)
         layout.addWidget(self.lbl_product)
 
-        # Quantity input
+        # Quantity input with unit hint
+        unit_abbr = ""
+        if hasattr(product, "unit") and product.unit:
+            unit_abbr = product.unit.abbreviation or ""
+
         self.qty_input = QLineEdit("1")
         self.qty_input.setObjectName("QtyInput")
         self.qty_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        if unit_abbr:
+            self.qty_input.setPlaceholderText(f"e.g. 1.5 {unit_abbr}")
         from PyQt6.QtGui import QDoubleValidator
 
         validator = QDoubleValidator(0.001, 999999.0, 3, self)
         self.qty_input.setValidator(validator)
         self.qty_input.selectAll()
         layout.addWidget(self.qty_input)
+
+        if unit_abbr:
+            lbl_unit = QLabel(f"Unit: {unit_abbr}")
+            lbl_unit.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            lbl_unit.setObjectName("QtyUnitHint")
+            layout.addWidget(lbl_unit)
 
         # OK / Cancel
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)

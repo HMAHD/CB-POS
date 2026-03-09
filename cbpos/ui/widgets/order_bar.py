@@ -24,6 +24,7 @@ class OrderBar(QWidget):
         super().__init__(parent)
         self.setFixedHeight(60)
         self.setObjectName("OrderBar")
+        self._active_bill_id: int | None = None  # Currently active (recalled) bill ID
 
         self.init_ui()
         self.refresh_tabs()
@@ -61,6 +62,10 @@ class OrderBar(QWidget):
         self.btn_new.clicked.connect(self.new_tab_requested.emit)
         layout.addWidget(self.btn_new)
 
+    def set_active_bill(self, bill_id: int | None) -> None:
+        """Track which bill is currently loaded in the cart."""
+        self._active_bill_id = bill_id
+
     def refresh_tabs(self):
         """Fetch held bills and rebuild tabs."""
         # Clear existing (widgets and spacers)
@@ -68,6 +73,19 @@ class OrderBar(QWidget):
             item = self.tabs_layout.takeAt(0)
             if item.widget():
                 item.widget().setParent(None)
+
+        # Current order tab (always shown, always active)
+        current_label = "Current"
+        if self._active_bill_id is not None:
+            current_label = f"Current (#{self._active_bill_id})"
+        btn_current = QPushButton(current_label)
+        btn_current.setFixedHeight(40)
+        btn_current.setCheckable(True)
+        btn_current.setChecked(True)
+        btn_current.setProperty("class", "accent")
+        btn_current.setStyleSheet("font-weight: bold; border-bottom: 3px solid #00BCEB;")
+        btn_current.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.tabs_layout.addWidget(btn_current)
 
         # Fetch from DB
         held_bills = TransactionService.get_held_bills()
@@ -83,6 +101,7 @@ class OrderBar(QWidget):
             btn.setFixedHeight(40)
             btn.setCheckable(True)
             btn.setProperty("class", "accent")
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
             # Connect
             # Use closure to capture bill.id

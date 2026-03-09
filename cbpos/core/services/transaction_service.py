@@ -269,8 +269,11 @@ class TransactionService:
             return sale
 
     @staticmethod
-    def hold_bill(cart_service: CartService, note: str = None) -> bool:
-        """Serialize cart items and save to SuspendedTransaction."""
+    def hold_bill(cart_service: CartService, note: str = None) -> int | None:
+        """Serialize cart items and save to SuspendedTransaction.
+
+        Returns the suspended transaction ID on success, None on failure.
+        """
         db = Database()
         try:
             with db.get_session() as session:
@@ -283,10 +286,11 @@ class TransactionService:
 
                 suspended = SuspendedTransaction(data=json_data, note=note)
                 session.add(suspended)
-            return True
+                session.flush()
+                return suspended.id
         except Exception as e:
             logger.error("Hold Bill Failed: %s", e)
-            return False
+            return None
 
     @staticmethod
     def get_held_bills() -> list:

@@ -311,11 +311,13 @@ class PaymentDialog(QDialog):
         # Update active tile styling
         if self._active_btn:
             self._active_btn.setProperty("selected", False)
+            self._active_btn.setStyleSheet("")  # Clear programmatic override
             self._active_btn.style().unpolish(self._active_btn)
             self._active_btn.style().polish(self._active_btn)
 
         if btn:
             btn.setProperty("selected", True)
+            btn.setStyleSheet("border: 2px solid #00BCEB; font-weight: bold;")
             btn.style().unpolish(btn)
             btn.style().polish(btn)
             self._active_btn = btn
@@ -419,8 +421,8 @@ class PaymentDialog(QDialog):
         btn_remove = QPushButton()
         btn_remove.setObjectName("BtnRemovePayment")
         btn_remove.setIcon(QIcon(str(icon_path)))
-        btn_remove.setIconSize(QSize(14, 14))
-        btn_remove.setFixedSize(32, 32)
+        btn_remove.setIconSize(QSize(18, 18))
+        btn_remove.setFixedSize(44, 44)
         btn_remove.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         btn_remove.setToolTip("Remove payment")
         btn_remove.clicked.connect(lambda: self._remove_payment(item))
@@ -447,6 +449,7 @@ class PaymentDialog(QDialog):
         if not self.payments:
             self.lbl_remaining.setText(f"Remaining: {format_currency(self.total_amount)}")
             self.lbl_remaining.setProperty("state", "remaining")
+            self.lbl_remaining.setStyleSheet("")  # Reset to CSS default
             self.lbl_remaining.style().unpolish(self.lbl_remaining)
             self.lbl_remaining.style().polish(self.lbl_remaining)
             self.btn_finish.setEnabled(False)
@@ -457,6 +460,7 @@ class PaymentDialog(QDialog):
         if remaining > 0:
             self.lbl_remaining.setText(f"Remaining: {format_currency(remaining)}")
             self.lbl_remaining.setProperty("state", "remaining")
+            self.lbl_remaining.setStyleSheet("")  # Reset to CSS default
             self.lbl_remaining.style().unpolish(self.lbl_remaining)
             self.lbl_remaining.style().polish(self.lbl_remaining)
             self.btn_finish.setEnabled(False)
@@ -465,6 +469,7 @@ class PaymentDialog(QDialog):
             change = abs(remaining)
             self.lbl_remaining.setText(f"Change: {format_currency(change)}")
             self.lbl_remaining.setProperty("state", "change")
+            self.lbl_remaining.setStyleSheet("color: #39FF14;")  # Green for change
             self.lbl_remaining.style().unpolish(self.lbl_remaining)
             self.lbl_remaining.style().polish(self.lbl_remaining)
             self.btn_finish.setEnabled(True)

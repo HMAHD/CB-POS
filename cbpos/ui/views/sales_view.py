@@ -643,11 +643,12 @@ class SalesView(QWidget):
         if not self.cart_service.items:
             return
 
-        if TransactionService.hold_bill(self.cart_service):
+        held_id = TransactionService.hold_bill(self.cart_service)
+        if held_id:
             self.cart_service.clear()
             self.update_cart_display()
             self.order_bar.refresh_tabs()
-            QMessageBox.information(self, "Held", "Bill put on hold.")
+            QMessageBox.information(self, "Held", f"Held #{held_id}")
         else:
             QMessageBox.critical(self, "Error", "Failed to hold bill.")
 
@@ -658,8 +659,10 @@ class SalesView(QWidget):
             return
 
         if TransactionService.recall_bill(suspended.id, self.cart_service):
+            self.order_bar.set_active_bill(suspended.id)
             self.update_cart_display()
-            QMessageBox.information(self, "Recalled", "Bill recalled.")
+            self.order_bar.refresh_tabs()
+            QMessageBox.information(self, "Recalled", f"Bill #{suspended.id} recalled.")
         else:
             QMessageBox.critical(self, "Error", "Failed to recall bill.")
 
@@ -792,7 +795,8 @@ class SalesView(QWidget):
         if not authorized_user:
             return
 
-        dialog = DiscountDialog(self)
+        line_total = self.cart_service.items[row]["total"] if row < len(self.cart_service.items) else Decimal("0.00")
+        dialog = DiscountDialog(self, original_amount=line_total)
         if dialog.exec():
             disc_type, disc_value = dialog.get_data()
             try:
@@ -871,6 +875,7 @@ class SalesView(QWidget):
 
         # 2. Recall Target
         if TransactionService.recall_bill(suspended_id, self.cart_service):
+            self.order_bar.set_active_bill(suspended_id)
             self.update_cart_display()
             self.order_bar.refresh_tabs()
         else:
@@ -887,11 +892,13 @@ class SalesView(QWidget):
             if TransactionService.hold_bill(self.cart_service, note="Auto-Switch"):
                 self.cart_service.clear()
                 self.update_cart_display()
+                self.order_bar.set_active_bill(None)
                 self.order_bar.refresh_tabs()
             else:
                 QMessageBox.critical(self, "Error", "Failed to hold current order.")
         else:
             # Already empty, just refresh tabs to be sure
+            self.order_bar.set_active_bill(None)
             self.order_bar.refresh_tabs()
             self.barcode_input.setFocus()
 
@@ -953,6 +960,7 @@ class SalesView(QWidget):
         self.barcode_input.setFocus()
         self.customer = None
         self.action_panel.clear_customer_info()
+        self.order_bar.set_active_bill(None)
         self.order_bar.refresh_tabs()
 
         # Show Receipt Options if configured (dialog handles printing)

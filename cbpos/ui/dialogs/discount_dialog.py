@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -15,14 +17,15 @@ from PyQt6.QtCore import Qt
 
 
 class DiscountDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, original_amount: Decimal = Decimal("0.00")):
         super().__init__(parent)
         self.setWindowTitle("Apply Discount")
-        self.setFixedSize(420, 380)
+        self.setFixedSize(420, 440)
         self.setObjectName("DiscountDialog")
 
         self.discount_type = "PERCENTAGE"
         self.discount_value = 0.0
+        self.original_amount = original_amount
 
         self.init_ui()
 
@@ -49,10 +52,12 @@ class DiscountDialog(QDialog):
         self.rb_percent = QRadioButton("Percentage (%)")
         self.rb_percent.setChecked(True)
         self.rb_percent.setObjectName("RbPercent")
+        self.rb_percent.setToolTip("Percentage: e.g., 10% off any price")
         self.type_group.addButton(self.rb_percent)
 
         self.rb_fixed = QRadioButton("Fixed Amount (Rs)")
         self.rb_fixed.setObjectName("RbFixed")
+        self.rb_fixed.setToolTip("Fixed: e.g., Remove Rs 500 from total")
         self.type_group.addButton(self.rb_fixed)
 
         type_layout.addWidget(self.rb_percent)
@@ -91,6 +96,19 @@ class DiscountDialog(QDialog):
 
         layout.addLayout(self.presets_layout)
 
+        # Live preview label
+        self.lbl_preview = QLabel("")
+        self.lbl_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_preview.setProperty("class", "muted")
+        self.lbl_preview.setWordWrap(True)
+        layout.addWidget(self.lbl_preview)
+
+        # Connect signals for live preview
+        self.spin_value.valueChanged.connect(self._update_preview)
+        self.rb_percent.toggled.connect(self._update_preview)
+        self.rb_fixed.toggled.connect(self._update_preview)
+        self._update_preview()
+
         layout.addStretch()
 
         # Action Buttons
@@ -110,6 +128,23 @@ class DiscountDialog(QDialog):
         btn_layout.addWidget(btn_cancel)
         btn_layout.addWidget(btn_apply)
         layout.addLayout(btn_layout)
+
+    def _update_preview(self) -> None:
+        """Update the live preview label with the discounted result."""
+        if self.original_amount <= 0:
+            self.lbl_preview.setText("")
+            return
+
+        value = Decimal(str(self.spin_value.value()))
+        original = self.original_amount
+
+        if self.rb_percent.isChecked():
+            discount_amt = original * value / Decimal("100")
+        else:
+            discount_amt = value
+
+        after = max(original - discount_amt, Decimal("0.00"))
+        self.lbl_preview.setText(f"Original: Rs {original:,.2f}  →  After discount: Rs {after:,.2f}")  # noqa: E231
 
     def on_type_changed(self, button):
         if button == self.rb_percent:

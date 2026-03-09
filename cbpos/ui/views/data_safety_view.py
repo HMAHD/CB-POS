@@ -34,7 +34,7 @@ from PyQt6.QtWidgets import (
     QDateEdit,
     QApplication,
 )
-from PyQt6.QtCore import QDate
+from PyQt6.QtCore import QDate, QTimer
 
 
 from cbpos.core.services.backup_service import BackupService
@@ -229,7 +229,13 @@ class DataSafetyView(QWidget):
 
         btn_row = QHBoxLayout()
         btn_copy = QPushButton("Copy Password")
-        btn_copy.clicked.connect(lambda: QApplication.clipboard().setText(password))
+
+        def _copy_password():
+            QApplication.clipboard().setText(password)
+            btn_copy.setText("Copied!")
+            QTimer.singleShot(1500, lambda: btn_copy.setText("Copy Password"))
+
+        btn_copy.clicked.connect(_copy_password)
         btn_row.addWidget(btn_copy)
 
         btn_row.addStretch()
@@ -695,6 +701,19 @@ class DataSafetyView(QWidget):
         from cbpos.core.services.data_export_service import DataExportService
         from cbpos.core.services.export_service import ExportService
         from cbpos.ui.workers import ExportWorker
+
+        # Validate date range for Sales export
+        data_type = self.cmb_export_data.currentText()
+        if data_type == "Sales":
+            start = self.date_export_from.date()
+            end = self.date_export_to.date()
+            if start > end:
+                QMessageBox.warning(
+                    self,
+                    "Invalid Date Range",
+                    "Start date must be on or before end date.",
+                )
+                return
 
         # Ask for output directory
         default_dir = str(Path.home() / "Documents")

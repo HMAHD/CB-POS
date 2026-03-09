@@ -29,11 +29,13 @@ def register_all_reports():
     from cbpos.core.reports.definitions.financial_reports import (
         ProfitLossReport,
         TaxLiabilityReport,
+        TaxFilingSummaryReport,
     )
     from cbpos.core.reports.definitions.cash_flow_report import CashFlowReport
 
     registry.register(ProfitLossReport)
     registry.register(TaxLiabilityReport)
+    registry.register(TaxFilingSummaryReport)
     registry.register(CashFlowReport)
 
     # Audit

@@ -14,12 +14,13 @@ from PyQt6.QtWidgets import (
     QMessageBox,
 )
 from PyQt6.QtCore import Qt
+from cbpos.i18n import _t
 
 
 class DiscountDialog(QDialog):
     def __init__(self, parent=None, original_amount: Decimal = Decimal("0.00")):
         super().__init__(parent)
-        self.setWindowTitle("Apply Discount")
+        self.setWindowTitle(_t("discount.title"))
         self.setFixedSize(420, 440)
         self.setObjectName("DiscountDialog")
 
@@ -35,10 +36,10 @@ class DiscountDialog(QDialog):
         layout.setContentsMargins(24, 20, 24, 20)
 
         # Title
-        title = QLabel("Apply Discount")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setProperty("class", "dialog-title")
-        layout.addWidget(title)
+        self.title_label = QLabel("")
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title_label.setProperty("class", "dialog-title")
+        layout.addWidget(self.title_label)
 
         # Discount Type Selection — styled as segmented control
         type_frame = QFrame()
@@ -49,15 +50,13 @@ class DiscountDialog(QDialog):
 
         self.type_group = QButtonGroup(self)
 
-        self.rb_percent = QRadioButton("Percentage (%)")
+        self.rb_percent = QRadioButton("")
         self.rb_percent.setChecked(True)
         self.rb_percent.setObjectName("RbPercent")
-        self.rb_percent.setToolTip("Percentage: e.g., 10% off any price")
         self.type_group.addButton(self.rb_percent)
 
-        self.rb_fixed = QRadioButton("Fixed Amount (Rs)")
+        self.rb_fixed = QRadioButton("")
         self.rb_fixed.setObjectName("RbFixed")
-        self.rb_fixed.setToolTip("Fixed: e.g., Remove Rs 500 from total")
         self.type_group.addButton(self.rb_fixed)
 
         type_layout.addWidget(self.rb_percent)
@@ -115,19 +114,33 @@ class DiscountDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(12)
 
-        btn_cancel = QPushButton("Cancel")
-        btn_cancel.setFixedHeight(48)
-        btn_cancel.setObjectName("BtnCancel")
-        btn_cancel.clicked.connect(self.reject)
+        self.btn_cancel = QPushButton("")
+        self.btn_cancel.setFixedHeight(48)
+        self.btn_cancel.setObjectName("BtnCancel")
+        self.btn_cancel.clicked.connect(self.reject)
 
-        btn_apply = QPushButton("Apply Discount")
-        btn_apply.setFixedHeight(48)
-        btn_apply.setObjectName("BtnApplyDiscount")
-        btn_apply.clicked.connect(self.accept)
+        self.btn_apply = QPushButton("")
+        self.btn_apply.setFixedHeight(48)
+        self.btn_apply.setObjectName("BtnApplyDiscount")
+        self.btn_apply.clicked.connect(self.accept)
 
-        btn_layout.addWidget(btn_cancel)
-        btn_layout.addWidget(btn_apply)
+        btn_layout.addWidget(self.btn_cancel)
+        btn_layout.addWidget(self.btn_apply)
         layout.addLayout(btn_layout)
+
+        # Apply translations
+        self.retranslate_ui()
+
+    def retranslate_ui(self) -> None:
+        """Set all translatable text using _t()."""
+        self.setWindowTitle(_t("discount.title"))
+        self.title_label.setText(_t("discount.title"))
+        self.rb_percent.setText(_t("discount.type_percentage"))
+        self.rb_percent.setToolTip(_t("discount.tooltip_percentage"))
+        self.rb_fixed.setText(_t("discount.type_fixed"))
+        self.rb_fixed.setToolTip(_t("discount.tooltip_fixed"))
+        self.btn_cancel.setText(_t("discount.btn_cancel"))
+        self.btn_apply.setText(_t("discount.btn_apply"))
 
     def _update_preview(self) -> None:
         """Update the live preview label with the discounted result."""
@@ -144,7 +157,9 @@ class DiscountDialog(QDialog):
             discount_amt = value
 
         after = max(original - discount_amt, Decimal("0.00"))
-        self.lbl_preview.setText(f"Original: Rs {original:,.2f}  →  After discount: Rs {after:,.2f}")  # noqa: E231
+        orig_str = "{:,.2f}".format(original)
+        disc_str = "{:,.2f}".format(after)
+        self.lbl_preview.setText(_t("discount.preview", original=orig_str, discounted=disc_str))
 
     def on_type_changed(self, button):
         if button == self.rb_percent:
@@ -173,8 +188,8 @@ class DiscountDialog(QDialog):
         if self.spin_value.value() <= 0:
             QMessageBox.warning(
                 self,
-                "Invalid Input",
-                "Please enter a valid discount value.",
+                _t("discount.invalid_title"),
+                _t("discount.invalid_message"),
             )
             return
         super().accept()

@@ -22,6 +22,7 @@ from PyQt6.QtGui import QDoubleValidator, QKeySequence, QShortcut, QIcon
 from cbpos.core.services.payment_service import PaymentService
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.utils.formatters import format_currency
+from cbpos.i18n import _t
 
 
 class PaymentDialog(QDialog):
@@ -32,7 +33,7 @@ class PaymentDialog(QDialog):
         self.customer_id = None
         self.payment_methods = []
 
-        self.setWindowTitle("Payment")
+        self.setWindowTitle(_t("payment.title"))
         self.setFixedSize(920, 700)
         self.setObjectName("PaymentDialog")
 
@@ -65,7 +66,7 @@ class PaymentDialog(QDialog):
         main_layout.setSpacing(12)
 
         # ── Top Banner ───────────────────────────────────────────
-        self.lbl_remaining = QLabel(f"Remaining: {format_currency(self.total_amount)}")
+        self.lbl_remaining = QLabel("")
         self.lbl_remaining.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_remaining.setObjectName("PaymentRemainingLabel")
         main_layout.addWidget(self.lbl_remaining)
@@ -81,9 +82,9 @@ class PaymentDialog(QDialog):
         left_layout.setSpacing(10)
 
         # Section Header: Payment Method
-        lbl_methods = QLabel("PAYMENT METHOD")
-        lbl_methods.setObjectName("PaymentMethodsHeader")
-        left_layout.addWidget(lbl_methods)
+        self.lbl_methods = QLabel("")
+        self.lbl_methods.setObjectName("PaymentMethodsHeader")
+        left_layout.addWidget(self.lbl_methods)
 
         # Method Tiles — build rows of 2 with explicit HBox spacing
         self._method_buttons = []
@@ -129,7 +130,7 @@ class PaymentDialog(QDialog):
             current_row_layout.addStretch()
 
         # Customer Combo (shown only for CREDIT)
-        self.lbl_customer = QLabel("Customer:")
+        self.lbl_customer = QLabel("")
         self.lbl_customer.setObjectName("PaymentFieldLabel")
         self.cmb_customer = QComboBox()
         self.cmb_customer.setObjectName("PaymentCustomerCombo")
@@ -140,9 +141,9 @@ class PaymentDialog(QDialog):
         left_layout.addWidget(self.cmb_customer)
 
         # Section Header: Applied Payments
-        lbl_applied = QLabel("APPLIED PAYMENTS")
-        lbl_applied.setObjectName("PaymentMethodsHeader")
-        left_layout.addWidget(lbl_applied)
+        self.lbl_applied = QLabel("")
+        self.lbl_applied.setObjectName("PaymentMethodsHeader")
+        left_layout.addWidget(self.lbl_applied)
 
         # Payment List — compact, grows only as needed
         self.list_payments = QListWidget()
@@ -161,7 +162,7 @@ class PaymentDialog(QDialog):
         right_layout.setSpacing(10)
 
         # Selected method label
-        self.lbl_selected_method = QLabel("Cash")
+        self.lbl_selected_method = QLabel("")
         self.lbl_selected_method.setObjectName("PaymentMethodLabel")
         self.lbl_selected_method.setAlignment(Qt.AlignmentFlag.AlignCenter)
         right_layout.addWidget(self.lbl_selected_method)
@@ -169,7 +170,7 @@ class PaymentDialog(QDialog):
         # Amount Input
         self.txt_amount = QLineEdit()
         self.txt_amount.setObjectName("PaymentAmountInput")
-        self.txt_amount.setPlaceholderText("Enter amount")
+        self.txt_amount.setPlaceholderText("")
         self.txt_amount.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.txt_amount.setValidator(QDoubleValidator(0.00, 999999.99, 2))
         self.txt_amount.returnPressed.connect(self.add_payment)
@@ -227,12 +228,12 @@ class PaymentDialog(QDialog):
         right_layout.addLayout(numpad_wrapper)
 
         # Add Payment Button
-        btn_add = QPushButton("ADD PAYMENT  (\u21b5)")
-        btn_add.setObjectName("BtnAddPayment")
-        btn_add.setFixedHeight(48)
-        btn_add.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        btn_add.clicked.connect(self.add_payment)
-        right_layout.addWidget(btn_add)
+        self.btn_add = QPushButton("")
+        self.btn_add.setObjectName("BtnAddPayment")
+        self.btn_add.setFixedHeight(48)
+        self.btn_add.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_add.clicked.connect(self.add_payment)
+        right_layout.addWidget(self.btn_add)
 
         right_layout.addStretch()
         content_layout.addWidget(right_widget, stretch=5)
@@ -248,18 +249,18 @@ class PaymentDialog(QDialog):
         action_layout = QHBoxLayout()
         action_layout.setSpacing(12)
 
-        btn_cancel = QPushButton("CANCEL")
-        btn_cancel.setObjectName("BtnCancel")
-        btn_cancel.setFixedHeight(48)
-        btn_cancel.clicked.connect(self.reject)
+        self.btn_cancel = QPushButton("")
+        self.btn_cancel.setObjectName("BtnCancel")
+        self.btn_cancel.setFixedHeight(48)
+        self.btn_cancel.clicked.connect(self.reject)
 
-        self.btn_finish = QPushButton("FINISH SALE  (F12)")
+        self.btn_finish = QPushButton("")
         self.btn_finish.setObjectName("BtnFinishSale")
         self.btn_finish.setFixedHeight(48)
         self.btn_finish.setEnabled(False)
         self.btn_finish.clicked.connect(self._finish_sale)
 
-        action_layout.addWidget(btn_cancel, stretch=1)
+        action_layout.addWidget(self.btn_cancel, stretch=1)
         action_layout.addWidget(self.btn_finish, stretch=2)
         main_layout.addLayout(action_layout)
 
@@ -269,6 +270,21 @@ class PaymentDialog(QDialog):
         if self.payment_methods:
             first_btn = self._method_buttons[0][0]
             self.select_method(self.payment_methods[0], first_btn)
+
+        # Apply translations
+        self.retranslate_ui()
+
+    def retranslate_ui(self) -> None:
+        """Set all translatable text using _t()."""
+        self.setWindowTitle(_t("payment.title"))
+        self.lbl_remaining.setText(f"{_t('payment.remaining')} {format_currency(self.total_amount)}")
+        self.lbl_methods.setText(_t("payment.method_label"))
+        self.lbl_customer.setText(_t("payment.customer_label"))
+        self.lbl_applied.setText(_t("payment.applied_label"))
+        self.txt_amount.setPlaceholderText(_t("payment.enter_amount_placeholder"))
+        self.btn_add.setText(_t("payment.add_payment"))
+        self.btn_cancel.setText(_t("payment.cancel"))
+        self.btn_finish.setText(_t("payment.finish_sale"))
 
     def setup_shortcuts(self):
         # Dialog-scoped Enter shortcut to add payment
@@ -298,7 +314,7 @@ class PaymentDialog(QDialog):
         # Make searchable — type to filter
         self.cmb_customer.setEditable(True)
         self.cmb_customer.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.cmb_customer.lineEdit().setPlaceholderText("Type to search...")
+        self.cmb_customer.lineEdit().setPlaceholderText(_t("payment.search_customer_placeholder"))
         completer = QCompleter(names, self)
         completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         completer.setFilterMode(Qt.MatchFlag.MatchContains)
@@ -375,7 +391,7 @@ class PaymentDialog(QDialog):
         try:
             amount = Decimal(text)
         except (ValueError, ArithmeticError):
-            QMessageBox.warning(self, "Invalid Amount", "Please enter a valid amount.")
+            QMessageBox.warning(self, _t("payment.invalid_amount_title"), _t("payment.invalid_amount_message"))
             return
 
         if amount <= 0:
@@ -384,11 +400,15 @@ class PaymentDialog(QDialog):
         if self.current_method.name.upper() == PaymentMethodType.CREDIT.upper():
             cust_name = self.cmb_customer.currentText().strip()
             if not cust_name:
-                QMessageBox.warning(self, "Error", "Please select a customer for Credit sale.")
+                QMessageBox.warning(self, _t("common.error"), _t("payment.credit_no_customer"))
                 return
             cust_id = self.customers_map.get(cust_name)
             if cust_id is None:
-                QMessageBox.warning(self, "Error", f"Customer '{cust_name}' not found. " "Please select from the list.")
+                QMessageBox.warning(
+                    self,
+                    _t("common.error"),
+                    _t("payment.credit_customer_not_found", name=cust_name),
+                )
                 return
             self.customer_id = cust_id
 
@@ -424,7 +444,7 @@ class PaymentDialog(QDialog):
         btn_remove.setIconSize(QSize(18, 18))
         btn_remove.setFixedSize(44, 44)
         btn_remove.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        btn_remove.setToolTip("Remove payment")
+        btn_remove.setToolTip(_t("payment.remove_tooltip"))
         btn_remove.clicked.connect(lambda: self._remove_payment(item))
         item_layout.addWidget(btn_remove)
 
@@ -447,7 +467,7 @@ class PaymentDialog(QDialog):
 
         # Reset to initial state if no payments left
         if not self.payments:
-            self.lbl_remaining.setText(f"Remaining: {format_currency(self.total_amount)}")
+            self.lbl_remaining.setText(f"{_t('payment.remaining')} {format_currency(self.total_amount)}")
             self.lbl_remaining.setProperty("state", "remaining")
             self.lbl_remaining.setStyleSheet("")  # Reset to CSS default
             self.lbl_remaining.style().unpolish(self.lbl_remaining)
@@ -458,7 +478,7 @@ class PaymentDialog(QDialog):
         remaining = self.get_remaining_amount()
 
         if remaining > 0:
-            self.lbl_remaining.setText(f"Remaining: {format_currency(remaining)}")
+            self.lbl_remaining.setText(f"{_t('payment.remaining')} {format_currency(remaining)}")
             self.lbl_remaining.setProperty("state", "remaining")
             self.lbl_remaining.setStyleSheet("")  # Reset to CSS default
             self.lbl_remaining.style().unpolish(self.lbl_remaining)
@@ -467,7 +487,7 @@ class PaymentDialog(QDialog):
             self.txt_amount.setText(str(remaining))
         else:
             change = abs(remaining)
-            self.lbl_remaining.setText(f"Change: {format_currency(change)}")
+            self.lbl_remaining.setText(f"{_t('payment.change')} {format_currency(change)}")
             self.lbl_remaining.setProperty("state", "change")
             self.lbl_remaining.setStyleSheet("color: #39FF14;")  # Green for change
             self.lbl_remaining.style().unpolish(self.lbl_remaining)

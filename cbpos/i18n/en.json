@@ -157,7 +157,8 @@
     "remove_tooltip": "Remove payment",
     "invalid_amount_title": "Invalid Amount",
     "invalid_amount_message": "Please enter a valid amount.",
-    "credit_no_customer": "Please select a customer for Credit sale."
+    "credit_no_customer": "Please select a customer for Credit sale.",
+    "credit_customer_not_found": "Customer '{name}' not found."
   },
   "discount": {
     "title": "Apply Discount",
@@ -193,7 +194,11 @@
     "email_title": "Email Receipt",
     "email_prompt": "Enter Email Address:",
     "sending_title": "Sending",
-    "sending_message": "Email is being sent in the background."
+    "sending_message": "Email is being sent in the background.",
+    "email_failed_title": "Email Failed",
+    "email_failed_message": "Failed to send email: {error}",
+    "print_error_title": "Print Error",
+    "print_error_message": "Failed to print receipt: {error}"
   },
   "refund": {
     "title": "Process Refund",
@@ -210,7 +215,20 @@
     "reason_placeholder": "Enter reason for refund...",
     "btn_process": "Process Refund",
     "btn_cancel": "Cancel",
-    "processing": "Processing..."
+    "processing": "Processing...",
+    "cannot_refund_title": "Cannot Refund",
+    "cannot_refund_message": "This sale cannot be refunded: {reason}",
+    "confirm_title": "Confirm Refund",
+    "customer_label": "Customer:",
+    "error_message": "An error occurred: {error}",
+    "failed_message": "Refund failed: {error}",
+    "not_found_title": "Not Found",
+    "not_found_message": "No sale found with that receipt number.",
+    "reason_required": "Please provide a reason for the refund.",
+    "success_title": "Refund Processed",
+    "success_message": "Refund of {amount} has been processed successfully.",
+    "unknown_product": "Unknown Product",
+    "walk_in": "Walk-in"
   },
   "customer_selection": {
     "title": "Select Customer",
@@ -250,12 +268,21 @@
     "history_header_receipt": "Receipt #",
     "history_header_total": "Total",
     "history_header_status": "Status",
-    "history_header_payment": "Payment"
+    "history_header_payment": "Payment",
+    "days_suffix": "days",
+    "invalid_email": "Please enter a valid email address.",
+    "invalid_phone": "Please enter a valid phone number.",
+    "loyalty_card_placeholder": "Scan or enter loyalty card number",
+    "name_required": "Customer name is required.",
+    "new_contact": "New Contact",
+    "price_list_default": "Default",
+    "tin_placeholder": "Tax Identification Number"
   },
   "customer_quick_add": {
     "title": "Quick Add Customer",
     "name_label": "Name:",
-    "phone_label": "Phone:"
+    "phone_label": "Phone:",
+    "name_required": "Customer name is required."
   },
   "customer_menu": {
     "quick_add_new": "Quick Add New",
@@ -293,7 +320,28 @@
     "no_image": "No Image Selected",
     "btn_upload_image": "Upload Image",
     "btn_clear_image": "Clear Image",
-    "image_not_found": "Image Not Found"
+    "image_not_found": "Image Not Found",
+    "already_added": "This component is already added.",
+    "barcode_exists": "Barcode '{barcode}' already exists for another product.",
+    "barcode_required": "Barcode is required.",
+    "cannot_add_self": "A product cannot be a component of itself.",
+    "comp_header_action": "Action",
+    "comp_header_qty": "Qty",
+    "duplicate_title": "Duplicate Barcode",
+    "invalid_stock": "Please enter a valid stock quantity.",
+    "invalid_title": "Invalid Input",
+    "name_required": "Product name is required.",
+    "no_default_supplier": "No default supplier",
+    "no_unit": "No unit",
+    "not_found_barcode": "No product found with barcode: {barcode}",
+    "not_found_title": "Not Found",
+    "preferred_qty": "Preferred Qty",
+    "price_required": "Selling price is required.",
+    "reorder_point": "Reorder Point",
+    "select_image_title": "Select Product Image",
+    "service_hint": "Service items have no stock tracking",
+    "stock_qty": "Stock Qty",
+    "weighted_hint": "Weighted items are sold by weight (kg, g, etc.)"
   },
   "csv_import": {
     "title": "Import Products from CSV",
@@ -305,7 +353,16 @@
     "btn_cancel": "Cancel",
     "no_file_selected": "No file selected",
     "importing": "Importing...",
-    "results": "Success: {success} | Failed: {failed} | Skipped: {skipped}"
+    "results": "Success: {success} | Failed: {failed} | Skipped: {skipped}",
+    "import_complete_title": "Import Complete",
+    "import_complete_message": "Successfully imported {count} products.",
+    "import_failed_title": "Import Failed",
+    "import_failed_message": "Error importing CSV: {error}",
+    "save_template_title": "Save CSV Template",
+    "select_csv_title": "Select CSV File",
+    "step1_description": "Select a CSV file with product data to import.",
+    "template_save_error": "Failed to save template: {error}",
+    "template_saved": "Template saved to {path}"
   },
   "advanced_search": {
     "title": "Advanced Search [F3]",
@@ -340,7 +397,18 @@
     "btn_cancel": "Cancel",
     "amount_placeholder": "0.00",
     "reference_placeholder": "Cheque #, Transfer ref (optional)",
-    "note_placeholder": "Optional note"
+    "note_placeholder": "Optional note",
+    "debt_label": "Debt:",
+    "enter_amount_error": "Please enter a payment amount.",
+    "input_error_title": "Input Error",
+    "invalid_amount_error": "Please enter a valid numeric amount.",
+    "limit_default": "N/A",
+    "no_user_error": "No user logged in. Cannot record payment.",
+    "outstanding_default": "N/A",
+    "record_failed": "Failed to record payment: {error}",
+    "select_customer_error": "Please select a customer first.",
+    "success_title": "Payment Recorded",
+    "success_message": "Payment of {amount} recorded for {customer}."
   },
   "stock_adjustment": {
     "title": "Adjust Stock: {product_name}",
@@ -353,7 +421,10 @@
     "reason_other": "Other",
     "adjustment_placeholder": "+/- Amount (e.g. 10 or -5)",
     "btn_cancel": "Cancel",
-    "btn_save": "Save Adjustment"
+    "btn_save": "Save Adjustment",
+    "failed_message": "Stock adjustment failed: {error}",
+    "invalid_amount": "Please enter a valid adjustment amount.",
+    "success_message": "Stock adjusted successfully."
   },
   "setup_wizard": {
     "title": "CB POS - Setup Wizard",
@@ -376,7 +447,23 @@
     "btn_cancel": "Cancel",
     "printer_none": "(None)",
     "paper_80mm": "80mm",
-    "paper_58mm": "58mm"
+    "paper_58mm": "58mm",
+    "address_placeholder": "Shop address",
+    "invalid_title": "Invalid Input",
+    "mismatch_title": "PIN Mismatch",
+    "none_detected": "None detected",
+    "phone_placeholder": "Phone number",
+    "pin_confirm_placeholder": "Confirm admin PIN",
+    "pin_digits_only": "PIN must contain only digits.",
+    "pin_min_length": "PIN must be at least 4 digits.",
+    "pin_mismatch": "PINs do not match. Please try again.",
+    "pin_placeholder": "Enter admin PIN (min 4 digits)",
+    "pin_update_failed": "Failed to update admin PIN: {error}",
+    "required_title": "Required Field",
+    "security_info": "This PIN will be used to log in as admin.",
+    "shop_name_placeholder": "Enter your shop name",
+    "shop_name_required": "Shop name is required.",
+    "vat_placeholder": "VAT registration number (optional)"
   },
   "side_menu": {
     "section_title": "MENU",

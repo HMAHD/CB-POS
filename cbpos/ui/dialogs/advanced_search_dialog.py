@@ -23,6 +23,7 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.category_service import CategoryService
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.formatters import format_currency, get_currency_symbol
+from cbpos.i18n import _t
 
 
 class AdvancedSearchDialog(QDialog):
@@ -35,7 +36,7 @@ class AdvancedSearchDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Advanced Search [F3]")
+        self.setWindowTitle(_t("advanced_search.title"))
         self.setMinimumSize(950, 620)
         self.setObjectName("AdvancedSearchDialog")
         self.product_service = ProductService()
@@ -48,9 +49,9 @@ class AdvancedSearchDialog(QDialog):
         layout.setSpacing(12)
 
         # Title
-        title = QLabel("Advanced Product Search")
-        title.setObjectName("AdvSearchTitle")
-        layout.addWidget(title)
+        self.title_label = QLabel("")
+        self.title_label.setObjectName("AdvSearchTitle")
+        layout.addWidget(self.title_label)
 
         # Filters Row 1: Search + Category + Supplier
         filter_row1 = QHBoxLayout()
@@ -58,19 +59,19 @@ class AdvancedSearchDialog(QDialog):
 
         self.search_input = QLineEdit()
         self.search_input.setObjectName("SearchInput")
-        self.search_input.setPlaceholderText("Search by product name or barcode...")
+        self.search_input.setPlaceholderText("")
         self.search_input.textChanged.connect(self.perform_search)
         filter_row1.addWidget(self.search_input, stretch=2)
 
         self.category_combo = QComboBox()
         self.category_combo.setObjectName("SearchCategoryCombo")
-        self.category_combo.addItem("All Categories", None)
+        self.category_combo.addItem(_t("advanced_search.all_categories"), None)
         self.category_combo.currentIndexChanged.connect(self.perform_search)
         filter_row1.addWidget(self.category_combo, stretch=1)
 
         self.supplier_combo = QComboBox()
         self.supplier_combo.setObjectName("SearchSupplierCombo")
-        self.supplier_combo.addItem("All Suppliers", None)
+        self.supplier_combo.addItem(_t("advanced_search.all_suppliers"), None)
         self.supplier_combo.currentIndexChanged.connect(self.perform_search)
         filter_row1.addWidget(self.supplier_combo, stretch=1)
 
@@ -80,9 +81,9 @@ class AdvancedSearchDialog(QDialog):
         filter_row2 = QHBoxLayout()
         filter_row2.setSpacing(10)
 
-        lbl_price = QLabel("Price:")
-        lbl_price.setObjectName("SearchFilterLabel")
-        filter_row2.addWidget(lbl_price)
+        self.lbl_price = QLabel("")
+        self.lbl_price.setObjectName("SearchFilterLabel")
+        filter_row2.addWidget(self.lbl_price)
 
         self.price_min = QDoubleSpinBox()
         self.price_min.setObjectName("SearchPriceMin")
@@ -91,9 +92,9 @@ class AdvancedSearchDialog(QDialog):
         self.price_min.valueChanged.connect(self.perform_search)
         filter_row2.addWidget(self.price_min)
 
-        lbl_to = QLabel("to")
-        lbl_to.setObjectName("SearchFilterLabel")
-        filter_row2.addWidget(lbl_to)
+        self.lbl_to = QLabel("")
+        self.lbl_to.setObjectName("SearchFilterLabel")
+        filter_row2.addWidget(self.lbl_to)
 
         self.price_max = QDoubleSpinBox()
         self.price_max.setObjectName("SearchPriceMax")
@@ -110,7 +111,7 @@ class AdvancedSearchDialog(QDialog):
         self.table = QTableWidget()
         self.table.setObjectName("SearchResultsTable")
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["Name", "Barcode", "Stock", "Price", "Category"])
+        self.table.setHorizontalHeaderLabels(["", "", "", "", ""])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -120,21 +121,21 @@ class AdvancedSearchDialog(QDialog):
         # Bottom Bar: Result count + Buttons
         btn_layout = QHBoxLayout()
 
-        self.lbl_count = QLabel("0 results")
+        self.lbl_count = QLabel("")
         self.lbl_count.setObjectName("SearchResultCount")
         btn_layout.addWidget(self.lbl_count)
 
         btn_layout.addStretch()
 
-        btn_select = QPushButton("Select [Enter]")
-        btn_select.setObjectName("BtnSearchSelect")
-        btn_select.clicked.connect(self.on_select)
-        btn_layout.addWidget(btn_select)
+        self.btn_select = QPushButton("")
+        self.btn_select.setObjectName("BtnSearchSelect")
+        self.btn_select.clicked.connect(self.on_select)
+        btn_layout.addWidget(self.btn_select)
 
-        btn_cancel = QPushButton("Cancel [Esc]")
-        btn_cancel.setObjectName("BtnSearchCancel")
-        btn_cancel.clicked.connect(self.reject)
-        btn_layout.addWidget(btn_cancel)
+        self.btn_cancel = QPushButton("")
+        self.btn_cancel.setObjectName("BtnSearchCancel")
+        self.btn_cancel.clicked.connect(self.reject)
+        btn_layout.addWidget(self.btn_cancel)
 
         layout.addLayout(btn_layout)
 
@@ -144,6 +145,29 @@ class AdvancedSearchDialog(QDialog):
 
         # Focus
         self.search_input.setFocus()
+
+        # Apply translations
+        self.retranslate_ui()
+
+    def retranslate_ui(self) -> None:
+        """Set all translatable text using _t()."""
+        self.setWindowTitle(_t("advanced_search.title"))
+        self.title_label.setText(_t("advanced_search.title_alt"))
+        self.search_input.setPlaceholderText(_t("advanced_search.search_placeholder"))
+        self.lbl_price.setText(_t("advanced_search.price_label"))
+        self.lbl_to.setText(_t("advanced_search.price_to"))
+        self.table.setHorizontalHeaderLabels(
+            [
+                _t("advanced_search.header_name"),
+                _t("advanced_search.header_barcode"),
+                _t("advanced_search.header_stock"),
+                _t("advanced_search.header_price"),
+                _t("advanced_search.header_category"),
+            ]
+        )
+        self.lbl_count.setText(_t("advanced_search.result_count", count=0))
+        self.btn_select.setText(_t("advanced_search.btn_select"))
+        self.btn_cancel.setText(_t("advanced_search.btn_cancel"))
 
     def load_filters(self):
         """Load categories and suppliers for filters."""
@@ -217,7 +241,7 @@ class AdvancedSearchDialog(QDialog):
             self.table.item(row, 0).setData(Qt.ItemDataRole.UserRole, product)
 
         # Update result count
-        self.lbl_count.setText(f"{len(filtered)} results")
+        self.lbl_count.setText(_t("advanced_search.result_count", count=len(filtered)))
 
     def on_select(self):
         """Emit selected product and close dialog."""

@@ -18,6 +18,7 @@ from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.core.models import Sale
 from cbpos.core.utils.formatters import format_currency
 from cbpos.ui.resources.icons import Icons
+from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class ReceiptOptionsDialog(QDialog):
     def __init__(self, sale: Sale, parent=None):
         super().__init__(parent)
         self.sale = sale
-        self.setWindowTitle("Receipt Options")
+        self.setWindowTitle(_t("receipt_options.title"))
         self.setFixedSize(440, 420)
         self.setObjectName("ReceiptOptionsDialog")
         self.init_ui()
@@ -45,10 +46,10 @@ class ReceiptOptionsDialog(QDialog):
         layout.addSpacing(12)
 
         # ── Title ──────────────────────────────────────────────────
-        lbl_title = QLabel("Transaction Completed!")
-        lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_title.setObjectName("ReceiptTitle")
-        layout.addWidget(lbl_title)
+        self.lbl_title = QLabel("")
+        self.lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_title.setObjectName("ReceiptTitle")
+        layout.addWidget(self.lbl_title)
         layout.addSpacing(16)
 
         # ── Order Info Card ────────────────────────────────────────
@@ -59,10 +60,10 @@ class ReceiptOptionsDialog(QDialog):
         info_layout.setContentsMargins(16, 12, 16, 12)
         info_layout.setSpacing(4)
 
-        lbl_order = QLabel(f"Order  #{self.sale.document_number}")
-        lbl_order.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_order.setObjectName("ReceiptInfoOrder")
-        info_layout.addWidget(lbl_order)
+        self.lbl_order = QLabel("")
+        self.lbl_order.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_order.setObjectName("ReceiptInfoOrder")
+        info_layout.addWidget(self.lbl_order)
 
         lbl_total = QLabel(format_currency(self.sale.total_amount))
         lbl_total.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -76,24 +77,24 @@ class ReceiptOptionsDialog(QDialog):
         is_dark = ThemeService.current_theme.lower() == "dark"
         icon_clr = "#FFFFFF" if is_dark else "#212529"
 
-        btn_print = QPushButton("  Print Receipt")
-        btn_print.setObjectName("ReceiptBtnPrint")
-        btn_print.setIcon(Icons.get("fa5s.print", icon_clr))
-        btn_print.setIconSize(QSize(18, 18))
-        btn_print.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_print.setFixedHeight(44)
-        btn_print.clicked.connect(self.print_thermal)
-        layout.addWidget(btn_print)
+        self.btn_print = QPushButton("")
+        self.btn_print.setObjectName("ReceiptBtnPrint")
+        self.btn_print.setIcon(Icons.get("fa5s.print", icon_clr))
+        self.btn_print.setIconSize(QSize(18, 18))
+        self.btn_print.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_print.setFixedHeight(44)
+        self.btn_print.clicked.connect(self.print_thermal)
+        layout.addWidget(self.btn_print)
         layout.addSpacing(10)
 
-        btn_email = QPushButton("  Email Receipt")
-        btn_email.setObjectName("ReceiptBtnEmail")
-        btn_email.setIcon(Icons.get("fa5s.envelope", icon_clr))
-        btn_email.setIconSize(QSize(18, 18))
-        btn_email.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_email.setFixedHeight(44)
-        btn_email.clicked.connect(self.email_receipt)
-        layout.addWidget(btn_email)
+        self.btn_email = QPushButton("")
+        self.btn_email.setObjectName("ReceiptBtnEmail")
+        self.btn_email.setIcon(Icons.get("fa5s.envelope", icon_clr))
+        self.btn_email.setIconSize(QSize(18, 18))
+        self.btn_email.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_email.setFixedHeight(44)
+        self.btn_email.clicked.connect(self.email_receipt)
+        layout.addWidget(self.btn_email)
 
         layout.addStretch(1)
 
@@ -101,15 +102,27 @@ class ReceiptOptionsDialog(QDialog):
         close_row = QHBoxLayout()
         close_row.addStretch()
 
-        btn_close = QPushButton("Close")
-        btn_close.setObjectName("ReceiptBtnClose")
-        btn_close.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_close.setFixedSize(120, 36)
-        btn_close.clicked.connect(self.accept)
-        close_row.addWidget(btn_close)
+        self.btn_close = QPushButton("")
+        self.btn_close.setObjectName("ReceiptBtnClose")
+        self.btn_close.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_close.setFixedSize(120, 36)
+        self.btn_close.clicked.connect(self.accept)
+        close_row.addWidget(self.btn_close)
 
         close_row.addStretch()
         layout.addLayout(close_row)
+
+        # Apply translations
+        self.retranslate_ui()
+
+    def retranslate_ui(self) -> None:
+        """Set all translatable text using _t()."""
+        self.setWindowTitle(_t("receipt_options.title"))
+        self.lbl_title.setText(_t("receipt_options.completed"))
+        self.lbl_order.setText(_t("receipt_options.order_number", number=self.sale.document_number))
+        self.btn_print.setText("  " + _t("receipt_options.btn_print"))
+        self.btn_email.setText("  " + _t("receipt_options.btn_email"))
+        self.btn_close.setText(_t("receipt_options.btn_close"))
 
     def print_thermal(self) -> None:
         """Print receipt via thermal printer. Auto-closes on success, shows retry on failure."""
@@ -129,7 +142,9 @@ class ReceiptOptionsDialog(QDialog):
             self._print_worker = worker  # prevent GC
         except Exception as e:
             logger.error("Receipt print failed: %s", e)
-            QMessageBox.warning(self, "Print Error", f"Failed to print receipt: {e}")
+            QMessageBox.warning(
+                self, _t("receipt_options.print_error_title"), _t("receipt_options.print_error_message", error=str(e))
+            )
 
     def _on_print_finished(self) -> None:
         """Auto-close the dialog when the print job completes successfully."""
@@ -139,11 +154,11 @@ class ReceiptOptionsDialog(QDialog):
         """Show print error with Retry/Skip options."""
         logger.error("Receipt print failed: %s", message)
         msg_box = QMessageBox(self)
-        msg_box.setWindowTitle("Print Error")
+        msg_box.setWindowTitle(_t("receipt_options.print_error_title"))
         msg_box.setIcon(QMessageBox.Icon.Warning)
-        msg_box.setText(f"Receipt print failed: {message}\n\n" "Check printer connection and try again.")
-        retry_btn = msg_box.addButton("Retry", QMessageBox.ButtonRole.AcceptRole)
-        msg_box.addButton("Skip", QMessageBox.ButtonRole.RejectRole)
+        msg_box.setText(_t("receipt_options.print_error_message", error=message))
+        retry_btn = msg_box.addButton(_t("receipt_options.print_error_retry"), QMessageBox.ButtonRole.AcceptRole)
+        msg_box.addButton(_t("receipt_options.print_error_skip"), QMessageBox.ButtonRole.RejectRole)
         msg_box.exec()
 
         if msg_box.clickedButton() == retry_btn:
@@ -159,13 +174,19 @@ class ReceiptOptionsDialog(QDialog):
         except Exception:
             pass  # Sale may be detached; skip customer email pre-fill
 
-        email, ok = QInputDialog.getText(self, "Email Receipt", "Enter Email Address:", text=default_email)
+        email, ok = QInputDialog.getText(
+            self, _t("receipt_options.email_title"), _t("receipt_options.email_prompt"), text=default_email
+        )
 
         if ok and email:
             self.worker = EmailService.send_receipt(email, self.sale.document_number)
             self.worker.finished.connect(self.on_email_finished)
-            QMessageBox.information(self, "Sending", "Email is being sent in the background.")
+            QMessageBox.information(self, _t("receipt_options.sending_title"), _t("receipt_options.sending_message"))
 
     def on_email_finished(self, success: bool, message: str) -> None:
         if not success:
-            QMessageBox.warning(self, "Email Failed", f"Failed to send email: {message}")
+            QMessageBox.warning(
+                self,
+                _t("receipt_options.email_failed_title"),
+                _t("receipt_options.email_failed_message", error=message),
+            )

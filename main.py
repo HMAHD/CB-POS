@@ -184,15 +184,11 @@ def main():
     saved_theme = ConfigService.get("theme")  # Returns "Dark" by default
     ThemeService.apply_theme(saved_theme)
 
-    # Inject translator handlers so LanguageService doesn't need PyQt imports
-    from PyQt6.QtCore import QTranslator
-    from cbpos.core.services.language_service import LanguageService
+    # Set application language from saved config
+    from cbpos.i18n import set_language
 
-    LanguageService.set_translator_handlers(
-        create=QTranslator,
-        install=lambda t: app.installTranslator(t),
-        remove=lambda t: app.removeTranslator(t),
-    )
+    saved_language = ConfigService.get("language") or "en"
+    set_language(saved_language)
 
     # Register Reports
     from cbpos.core.reports import register_all_reports

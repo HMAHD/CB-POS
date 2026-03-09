@@ -1052,11 +1052,13 @@ class SalesView(QWidget):
         self._drawer_worker = worker  # prevent GC
 
     def _on_print_error(self, message: str) -> None:
-        """Show printer error to user."""
+        """Show printer error to user with context."""
         QMessageBox.warning(
             self,
             "Printer Error",
-            f"{message}\n\nCheck Settings > Hardware.",
+            f"Receipt print failed: {message}\n\n"
+            "Check printer connection and verify settings "
+            "under Settings > Hardware.",
         )
 
     def _finalize_sale(self, sale) -> None:

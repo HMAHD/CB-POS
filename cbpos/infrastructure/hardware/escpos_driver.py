@@ -165,6 +165,7 @@ class PrintWorker(QThread):
     """
 
     error_occurred = pyqtSignal(str)  # Emitted when a print job fails
+    job_completed = pyqtSignal()  # Emitted when a print job succeeds
 
     def __init__(self, printer: IPrinter | None = None) -> None:
         super().__init__()
@@ -202,10 +203,9 @@ class PrintWorker(QThread):
 
             try:
                 if not current_printer.connect():
-                    logger.warning(
-                        "Printer not available — skipping %s job. " "Check printer settings in Settings > Hardware.",
-                        job_type,
-                    )
+                    msg = "Printer not available — skipping %s job. " "Check printer settings in Settings > Hardware."
+                    logger.warning(msg, job_type)
+                    self.error_occurred.emit("Printer not available. Check Settings > Hardware.")
                     continue
 
                 if job_type == "kick_drawer":
@@ -225,6 +225,7 @@ class PrintWorker(QThread):
                     current_printer.print_commands(data)
 
                 current_printer.disconnect()
+                self.job_completed.emit()
 
             except Exception as e:
                 logger.error("Print job '%s' failed: %s", job_type, e)

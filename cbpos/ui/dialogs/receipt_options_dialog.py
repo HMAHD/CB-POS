@@ -112,7 +112,7 @@ class ReceiptOptionsDialog(QDialog):
         layout.addLayout(close_row)
 
     def print_thermal(self) -> None:
-        """Print receipt via thermal printer and close dialog."""
+        """Print receipt via thermal printer. Auto-closes on success, shows retry on failure."""
         try:
             worker = PrintWorker()
             language = ConfigService.get("language") or "en"
@@ -124,11 +124,32 @@ class ReceiptOptionsDialog(QDialog):
                 receipt_image = ReceiptService.build_receipt_image(self.sale)
                 worker.add_job("print_image", receipt_image)
 
+            worker.error_occurred.connect(self._on_print_error)
+            worker.job_completed.connect(self._on_print_finished)
             self._print_worker = worker  # prevent GC
-            self.accept()
         except Exception as e:
             logger.error("Receipt print failed: %s", e)
             QMessageBox.warning(self, "Print Error", f"Failed to print receipt: {e}")
+
+    def _on_print_finished(self) -> None:
+        """Auto-close the dialog when the print job completes successfully."""
+        self.accept()
+
+    def _on_print_error(self, message: str) -> None:
+        """Show print error with Retry/Skip options."""
+        logger.error("Receipt print failed: %s", message)
+        msg_box = QMessageBox(self)
+        msg_box.setWindowTitle("Print Error")
+        msg_box.setIcon(QMessageBox.Icon.Warning)
+        msg_box.setText(f"Receipt print failed: {message}\n\n" "Check printer connection and try again.")
+        retry_btn = msg_box.addButton("Retry", QMessageBox.ButtonRole.AcceptRole)
+        msg_box.addButton("Skip", QMessageBox.ButtonRole.RejectRole)
+        msg_box.exec()
+
+        if msg_box.clickedButton() == retry_btn:
+            self.print_thermal()
+        else:
+            self.accept()
 
     def email_receipt(self) -> None:
         default_email = ""

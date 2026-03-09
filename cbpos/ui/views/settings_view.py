@@ -35,6 +35,8 @@ class SettingsView(QWidget):
         from cbpos.core.services.config_service import ConfigService
 
         self.is_collapsed = ConfigService.get("sidebar_collapsed") is not False
+        self._settings_dirty = False
+        self._saved_snapshot: dict = {}
         self.nav_buttons = []
         self.init_ui()
         if self.is_collapsed:
@@ -195,8 +197,33 @@ class SettingsView(QWidget):
         self.nav_buttons.append(btn)
         return btn
 
+    def _take_snapshot(self) -> dict:
+        """Collect current values from all config pages for dirty comparison."""
+        snapshot: dict = {}
+        for page in self.pages:
+            try:
+                snapshot.update(page.save())
+            except (ValueError, Exception):
+                pass
+        return snapshot
+
     def switch_page(self, index: int) -> None:
-        """Switch the stacked widget to the given page index."""
+        """Switch the stacked widget to the given page index.
+
+        If settings have been modified, prompt the user before switching.
+        """
+        if self._saved_snapshot and self._take_snapshot() != self._saved_snapshot:
+            reply = QMessageBox.question(
+                self,
+                "Unsaved Changes",
+                "You have unsaved changes. Continue without saving?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply == QMessageBox.StandardButton.No:
+                return
+            # User chose to discard — reload to reset dirty state
+            self.load_settings()
         self.stack.setCurrentIndex(index)
 
     def highlight_active_page(self, index: int) -> None:
@@ -282,6 +309,7 @@ class SettingsView(QWidget):
         settings = ConfigService.get_all()
         for page in self.pages:
             page.load(settings)
+        self._saved_snapshot = self._take_snapshot()
 
     def save_all(self):
         import json
@@ -364,4 +392,5 @@ class SettingsView(QWidget):
         else:
             QMessageBox.information(self, "Saved", "Settings saved successfully.")
 
+        self._saved_snapshot = self._take_snapshot()
         self.close_requested.emit()

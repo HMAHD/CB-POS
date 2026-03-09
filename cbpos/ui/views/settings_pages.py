@@ -23,7 +23,7 @@ from PyQt6.QtWidgets import (
     QTabWidget,
 )
 from PyQt6.QtCore import Qt, QTime, QSize
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QIntValidator
 from PyQt6.QtPrintSupport import QPrinterInfo
 from sqlalchemy.engine import URL
 from cbpos.core.services.language_service import LanguageService
@@ -279,6 +279,7 @@ class ShopInfoPage(SettingsPage):
 
         self.input_smtp_port = QLineEdit()
         self.input_smtp_port.setPlaceholderText("587")
+        self.input_smtp_port.setValidator(QIntValidator(1, 65535))
         form_email.addRow("SMTP Port:", self.input_smtp_port)
 
         self.input_smtp_user = QLineEdit()
@@ -1068,7 +1069,7 @@ class SystemPage(SettingsPage):
         form_sec.addRow("Require Void Reason:", self.chk_void_reason)
 
         self.spin_max_login = QSpinBox()
-        self.spin_max_login.setRange(1, 20)
+        self.spin_max_login.setRange(3, 20)
         self.spin_max_login.setToolTip("Failed login attempts before account lockout")
         form_sec.addRow("Max Login Attempts:", self.spin_max_login)
 

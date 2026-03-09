@@ -197,6 +197,7 @@ class DocumentBrowserService:
             "total_amount": sale.total_amount,
             "tax_vat": sale.tax_vat,
             "tax_sscl": sale.tax_sscl,
+            "net_revenue": sale.net_revenue,
             "payment_method": sale.payment_method,
             "items": items,
             "payments": payments,

@@ -416,6 +416,26 @@ class ReceiptBuilder:
             }
         )
 
+        # Tax reversal breakdown
+        gc = cls._get_conf
+        if gc("show_tax_breakdown", False, config_override):
+            if sale.tax_vat and sale.tax_vat > 0:
+                commands.append(
+                    cls._split_row(
+                        "  {} Reversed:".format(t["vat"]),
+                        "-{}".format(format_currency(sale.tax_vat)),
+                        line_chars,
+                    )
+                )
+            if sale.tax_sscl and sale.tax_sscl > 0:
+                commands.append(
+                    cls._split_row(
+                        "  {} Reversed:".format(t["sscl"]),
+                        "-{}".format(format_currency(sale.tax_sscl)),
+                        line_chars,
+                    )
+                )
+
         if void_reason:
             commands.append({"type": "text", "val": f"{t['void_reason']}: {void_reason}", "align": "left"})
         if authorized_by:
@@ -505,6 +525,26 @@ class ReceiptBuilder:
                 "align": "right",
             }
         )
+
+        # Tax breakdown on refund
+        gc = cls._get_conf
+        if gc("show_tax_breakdown", False, config_override):
+            if sale.tax_vat and sale.tax_vat > 0:
+                commands.append(
+                    cls._split_row(
+                        "  {} Refund:".format(t["vat"]),
+                        "-{}".format(format_currency(sale.tax_vat)),
+                        line_chars,
+                    )
+                )
+            if sale.tax_sscl and sale.tax_sscl > 0:
+                commands.append(
+                    cls._split_row(
+                        "  {} Refund:".format(t["sscl"]),
+                        "-{}".format(format_currency(sale.tax_sscl)),
+                        line_chars,
+                    )
+                )
 
         commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
         commands.append({"type": "text", "val": "*** REFUND ***", "align": "center"})

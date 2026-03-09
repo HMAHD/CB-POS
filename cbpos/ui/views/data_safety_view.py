@@ -102,7 +102,7 @@ class DataSafetyView(QWidget):
         dir_layout.addWidget(self.lbl_backup_dir, 1)
 
         btn_change_dir = QPushButton("Change")
-        btn_change_dir.setFixedWidth(80)
+        btn_change_dir.setFixedWidth(100)
         btn_change_dir.clicked.connect(self._change_backup_dir)
         dir_layout.addWidget(btn_change_dir)
         layout.addLayout(dir_layout)
@@ -300,16 +300,13 @@ class DataSafetyView(QWidget):
 
         # Password
         pwd_row = QHBoxLayout()
-        lbl_pwd = QLabel("Password:")
-        lbl_pwd.setFixedWidth(80)
-        pwd_row.addWidget(lbl_pwd)
         self.input_restore_password = QLineEdit()
         self.input_restore_password.setPlaceholderText("Enter backup password...")
         self.input_restore_password.setEchoMode(QLineEdit.EchoMode.Password)
         pwd_row.addWidget(self.input_restore_password, 1)
 
         self.btn_toggle_restore_pwd = QPushButton("Show")
-        self.btn_toggle_restore_pwd.setFixedWidth(60)
+        self.btn_toggle_restore_pwd.setFixedWidth(80)
         self.btn_toggle_restore_pwd.clicked.connect(self._toggle_restore_password_visibility)
         pwd_row.addWidget(self.btn_toggle_restore_pwd)
         file_layout.addLayout(pwd_row)

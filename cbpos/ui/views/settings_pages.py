@@ -23,7 +23,7 @@ from PyQt6.QtWidgets import (
     QTabWidget,
 )
 from PyQt6.QtCore import Qt, QTime, QSize
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QIntValidator
 from PyQt6.QtPrintSupport import QPrinterInfo
 from sqlalchemy.engine import URL
 from cbpos.core.services.language_service import LanguageService
@@ -262,6 +262,7 @@ class ShopInfoPage(SettingsPage):
         form_email.addRow(email_btn_row)
 
         self.chk_auto_report = QCheckBox()
+        self.chk_auto_report.setToolTip("Email a daily sales summary report at the scheduled time")
         form_email.addRow("Enable Daily Auto-Report:", self.chk_auto_report)
 
         self.time_auto_report = QTimeEdit()
@@ -278,6 +279,7 @@ class ShopInfoPage(SettingsPage):
 
         self.input_smtp_port = QLineEdit()
         self.input_smtp_port.setPlaceholderText("587")
+        self.input_smtp_port.setValidator(QIntValidator(1, 65535))
         form_email.addRow("SMTP Port:", self.input_smtp_port)
 
         self.input_smtp_user = QLineEdit()
@@ -467,6 +469,14 @@ class SalesTaxPage(SettingsPage):
         # --- Tab 2: Tax ---
         tab_tax, form_tax = self._build_form_tab()
 
+        self.chk_vat_registered = QCheckBox("Business is VAT Registered")
+        self.chk_vat_registered.setToolTip(
+            "Enable if your annual turnover exceeds the VAT registration threshold. "
+            "When disabled, no tax is calculated on sales."
+        )
+        self.chk_vat_registered.stateChanged.connect(self._toggle_tax_fields)
+        form_tax.addRow(self.chk_vat_registered)
+
         lbl_warn = QLabel("Note: Changing these values affects ALL future sales immediately.")
         lbl_warn.setProperty("class", "warning-hint")
         form_tax.addRow(lbl_warn)
@@ -491,16 +501,40 @@ class SalesTaxPage(SettingsPage):
         self.spin_sscl_turnover.setFixedWidth(200)
         form_tax.addRow("SSCL Turnover Base:", self.spin_sscl_turnover)
 
+        # Separator
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        form_tax.addRow(sep)
+
+        self.chk_item_tax_exemptions = QCheckBox("Enable item-level tax exemptions")
+        self.chk_item_tax_exemptions.setToolTip(
+            "When enabled, products in categories marked as tax-exempt "
+            "will not have VAT/SSCL calculated on them. "
+            "Useful for mixed-goods retailers selling both taxable "
+            "and exempt items (e.g. rice, pharmaceuticals, books)."
+        )
+        form_tax.addRow(self.chk_item_tax_exemptions)
+
         self.tabs.addTab(tab_tax, "Tax")
+
+    def _toggle_tax_fields(self) -> None:
+        """Enable/disable tax rate fields based on VAT registration status."""
+        enabled = self.chk_vat_registered.isChecked()
+        self.spin_vat.setEnabled(enabled)
+        self.spin_sscl.setEnabled(enabled)
+        self.spin_sscl_turnover.setEnabled(enabled)
 
     def load(self, settings: dict):
         self.combo_search_mode.setCurrentText(settings.get("default_search_mode", "ALL"))
         self.spin_max_discount.setValue(float(settings.get("max_discount_percent", 15.0)))
         self.spin_loyalty_ratio.setValue(int(settings.get("loyalty_points_ratio", 100)))
         self.spin_default_credit.setValue(int(settings.get("default_credit_limit", 0)))
+        self.chk_vat_registered.setChecked(settings.get("vat_registered", False))
         self.spin_vat.setValue(int(settings.get("tax_vat_rate", 18)))
         self.spin_sscl.setValue(float(settings.get("tax_sscl_rate", 2.5)))
         self.spin_sscl_turnover.setValue(float(settings.get("tax_sscl_turnover_pct", 50.0)))
+        self.chk_item_tax_exemptions.setChecked(settings.get("item_tax_exemptions", False))
+        self._toggle_tax_fields()
 
     def save(self) -> dict:
         return {
@@ -508,9 +542,11 @@ class SalesTaxPage(SettingsPage):
             "max_discount_percent": self.spin_max_discount.value(),
             "loyalty_points_ratio": self.spin_loyalty_ratio.value(),
             "default_credit_limit": self.spin_default_credit.value(),
+            "vat_registered": self.chk_vat_registered.isChecked(),
             "tax_vat_rate": self.spin_vat.value(),
             "tax_sscl_rate": self.spin_sscl.value(),
             "tax_sscl_turnover_pct": self.spin_sscl_turnover.value(),
+            "item_tax_exemptions": self.chk_item_tax_exemptions.isChecked(),
         }
 
 
@@ -608,6 +644,7 @@ class HardwarePage(SettingsPage):
         beh_form.setVerticalSpacing(10)
 
         self.chk_auto_print = QCheckBox("Automatically print after completing a sale")
+        self.chk_auto_print.setToolTip("Send receipt to printer immediately when a sale is completed")
         beh_form.addRow("Auto-Print Receipt:", self.chk_auto_print)
 
         self.spin_copies = QSpinBox()
@@ -643,6 +680,7 @@ class HardwarePage(SettingsPage):
         cut_form.setVerticalSpacing(10)
 
         self.chk_auto_cut = QCheckBox("Disable for tear-bar printers")
+        self.chk_auto_cut.setToolTip("Automatically cut paper after printing. Turn off for manual tear-bar printers.")
         cut_form.addRow("Auto-Cut Paper:", self.chk_auto_cut)
 
         self.combo_cut_type = QComboBox()
@@ -665,6 +703,7 @@ class HardwarePage(SettingsPage):
         drawer_form.setVerticalSpacing(10)
 
         self.chk_drawer_cash_only = QCheckBox("Only open drawer for cash payments")
+        self.chk_drawer_cash_only.setToolTip("Cash drawer stays closed for card and credit transactions")
         drawer_form.addRow("Drawer on Cash Only:", self.chk_drawer_cash_only)
         vbox_cut.addLayout(drawer_form)
 
@@ -870,8 +909,13 @@ class ReceiptPage(SettingsPage):
         elem_form.setVerticalSpacing(10)
 
         self.chk_show_barcode = QCheckBox("Print barcode of the sale reference")
+        self.chk_show_barcode.setToolTip("Print a scannable barcode of the invoice number for easy returns")
         self.chk_merge_items = QCheckBox("Combine identical line items into one row")
+        self.chk_merge_items.setToolTip(
+            "Group duplicate products into a single line with quantity instead of separate lines"
+        )
         self.chk_show_tax = QCheckBox("Show VAT and SSCL breakdown on receipt")
+        self.chk_show_tax.setToolTip("Display VAT and SSCL tax amounts separately on the receipt")
 
         elem_form.addRow("Show Barcode:", self.chk_show_barcode)
         elem_form.addRow("Merge Items:", self.chk_merge_items)
@@ -887,7 +931,9 @@ class ReceiptPage(SettingsPage):
         staff_form.setVerticalSpacing(10)
 
         self.chk_show_cashier = QCheckBox("Print cashier username on receipt")
+        self.chk_show_cashier.setToolTip("Show which cashier processed the sale on the printed receipt")
         self.chk_show_terminal = QCheckBox("Print terminal ID on receipt")
+        self.chk_show_terminal.setToolTip("Show the terminal/register ID on the printed receipt")
 
         staff_form.addRow("Cashier Name:", self.chk_show_cashier)
         staff_form.addRow("Terminal ID:", self.chk_show_terminal)
@@ -1039,7 +1085,7 @@ class SystemPage(SettingsPage):
         form_sec.addRow("Require Void Reason:", self.chk_void_reason)
 
         self.spin_max_login = QSpinBox()
-        self.spin_max_login.setRange(1, 20)
+        self.spin_max_login.setRange(3, 20)
         self.spin_max_login.setToolTip("Failed login attempts before account lockout")
         form_sec.addRow("Max Login Attempts:", self.spin_max_login)
 
@@ -1084,6 +1130,7 @@ class SystemPage(SettingsPage):
         form_inv.addRow("Auto-Generate Barcodes:", self.chk_auto_barcodes)
 
         self.chk_loyalty = QCheckBox()
+        self.chk_loyalty.setToolTip("Customers earn loyalty points on purchases based on the configured ratio")
         form_inv.addRow("Enable Loyalty Points:", self.chk_loyalty)
 
         self.chk_touch_mode = QCheckBox()

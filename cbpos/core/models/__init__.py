@@ -236,6 +236,7 @@ class Category(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     color: Mapped[str] = mapped_column(String(7), default="#FFFFFF")
     parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True)
+    tax_exempt: Mapped[bool] = mapped_column(Boolean, default=False)
 
     products: Mapped[List["Product"]] = relationship(back_populates="category")
     parent: Mapped["Category"] = relationship("Category", remote_side=[id], back_populates="subcategories")
@@ -291,7 +292,8 @@ class Customer(Base):
     phone: Mapped[Optional[str]] = mapped_column(String(20), unique=True, index=True, nullable=True)
     email: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
-    vat_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    vat_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # VAT registration number
+    tax_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # TIN (Taxpayer Identification Number)
     credit_limit: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     current_debt: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     payment_terms: Mapped[int] = mapped_column(Integer, default=0)  # Days

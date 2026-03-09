@@ -6,12 +6,15 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QTableView,
     QHeaderView,
+    QLabel,
+    QStackedWidget,
 )
 from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex
 from PyQt6.QtGui import QColor, QBrush
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.services.import_service import ImportService
 from cbpos.ui.dialogs.product_editor import ProductEditor
+from cbpos.ui.widgets.pagination_widget import PaginationWidget
 
 
 class InventoryModel(QAbstractTableModel):
@@ -77,6 +80,7 @@ class InventoryView(QWidget):
         super().__init__()
         self.inventory_service = InventoryService()
         self.import_service = ImportService()
+        self._filtered_products: list = []
         self.init_ui()
         self.load_data()
 
@@ -127,20 +131,54 @@ class InventoryView(QWidget):
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self.open_context_menu)
 
-        layout.addWidget(self.table)
+        # Empty state placeholder
+        self.empty_label = QLabel("No products match your search")
+        self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_label.setStyleSheet("color: gray; font-size: 14px;")
+
+        self.table_stack = QStackedWidget()
+        self.table_stack.addWidget(self.table)  # index 0
+        self.table_stack.addWidget(self.empty_label)  # index 1
+
+        layout.addWidget(self.table_stack)
+
+        # Pagination
+        self.pagination = PaginationWidget()
+        self.pagination.page_changed.connect(self._on_page_changed)
+        layout.addWidget(self.pagination)
+
+    def _update_empty_state(self) -> None:
+        """Show empty state label when model has no rows."""
+        if self.model.rowCount() == 0:
+            self.table_stack.setCurrentIndex(1)
+        else:
+            self.table_stack.setCurrentIndex(0)
 
     def load_data(self):
         self.all_products = self.inventory_service.get_all_products()
-        self.model.update_data(self.all_products)
+        self._filtered_products = self.all_products
+        self._apply_pagination()
 
     def filter_data(self, text):
         if not text:
-            self.model.update_data(self.all_products)
-            return
+            self._filtered_products = self.all_products
+        else:
+            text = text.lower()
+            self._filtered_products = [
+                p for p in self.all_products if text in p.barcode.lower() or text in p.name_en.lower()
+            ]
+        self._apply_pagination()
 
-        text = text.lower()
-        filtered = [p for p in self.all_products if text in p.barcode.lower() or text in p.name_en.lower()]
-        self.model.update_data(filtered)
+    def _apply_pagination(self) -> None:
+        self.pagination.set_total(len(self._filtered_products))
+        page_items = self.pagination.get_page_slice(self._filtered_products)
+        self.model.update_data(page_items)
+        self._update_empty_state()
+
+    def _on_page_changed(self, _page: int) -> None:
+        page_items = self.pagination.get_page_slice(self._filtered_products)
+        self.model.update_data(page_items)
+        self._update_empty_state()
 
     def open_add_dialog(self):
         from cbpos.core.utils.permission_helper import check_permission_with_override

@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
     QStackedWidget,
 )
 from PyQt6.QtCore import Qt, QDate
+from PyQt6.QtGui import QColor
 from cbpos.core.services.price_list_service import PriceListService
 from cbpos.core.services.product_service import ProductService
 
@@ -76,11 +77,21 @@ class PriceListView(QWidget):
         scroll.setWidget(self.nav_container)
         sidebar_layout.addWidget(scroll, 1)
 
-        # Add button
-        btn_add = QPushButton("+ Add Price List")
+        # Sidebar buttons row
+        sidebar_btn_row = QHBoxLayout()
+        sidebar_btn_row.setSpacing(6)
+
+        btn_add = QPushButton("+ Add")
         btn_add.setObjectName("PriceListAddBtn")
         btn_add.clicked.connect(self.add_price_list)
-        sidebar_layout.addWidget(btn_add)
+        sidebar_btn_row.addWidget(btn_add)
+
+        btn_delete = QPushButton("Delete")
+        btn_delete.setObjectName("PriceListDeleteBtn")
+        btn_delete.clicked.connect(self.delete_price_list)
+        sidebar_btn_row.addWidget(btn_delete)
+
+        sidebar_layout.addLayout(sidebar_btn_row)
 
         splitter.addWidget(sidebar)
 
@@ -130,6 +141,10 @@ class PriceListView(QWidget):
         self.lbl_list_name.setObjectName("PriceListTitle")
         header_layout.addWidget(self.lbl_list_name)
 
+        self.lbl_status = QLabel("")
+        self.lbl_status.setObjectName("PriceListStatusBadge")
+        header_layout.addWidget(self.lbl_status)
+
         self.lbl_dates = QLabel("")
         self.lbl_dates.setObjectName("PriceListDates")
         header_layout.addStretch()
@@ -140,8 +155,8 @@ class PriceListView(QWidget):
         # Product table
         self.table = QTableWidget()
         self.table.setObjectName("PriceListDataTable")
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["ID", "Product", "Base Price", "List Price"])
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels(["ID", "Product", "Base Price", "List Price", "Status"])
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.setColumnHidden(0, True)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -177,6 +192,27 @@ class PriceListView(QWidget):
         layout.addWidget(splitter)
 
     # ------------------------------------------------------------------
+    # Status helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _get_price_list_status(price_list) -> tuple[str, QColor]:
+        """Return (label, colour) based on the price list dates vs today.
+
+        Returns:
+            A tuple of (status_text, foreground_colour).
+        """
+        today = datetime.now()
+        start = price_list.start_date
+        end = price_list.end_date
+
+        if end and end < today:
+            return "Expired", QColor("#888888")
+        if start and start > today:
+            return "Upcoming", QColor("#5599FF")
+        return "Active", QColor("#39FF14")
+
+    # ------------------------------------------------------------------
     # Sidebar Navigation
     # ------------------------------------------------------------------
 
@@ -195,7 +231,8 @@ class PriceListView(QWidget):
 
         lists = self.price_list_service.get_all_lists()
         for pl in lists:
-            btn = QPushButton(pl.name)
+            status_text, _ = self._get_price_list_status(pl)
+            btn = QPushButton(f"{pl.name}  [{status_text}]")
             btn.setObjectName("PriceListNavItem")
             btn.setCheckable(True)
             btn.setAutoExclusive(True)
@@ -216,6 +253,14 @@ class PriceListView(QWidget):
         end = price_list.end_date.strftime("%Y-%m-%d") if price_list.end_date else "N/A"
         self.lbl_dates.setText(f"Valid: {start} to {end}")
 
+        # Update status badge
+        status_text, status_colour = self._get_price_list_status(price_list)
+        self.lbl_status.setText(status_text)
+        colour_name = status_colour.name()
+        self.lbl_status.setStyleSheet(
+            "color: %s; font-weight: bold; padding: 2px 8px; border-radius: 4px;" % colour_name
+        )
+
         self.load_items()
         self.content_stack.setCurrentIndex(1)
 
@@ -227,6 +272,7 @@ class PriceListView(QWidget):
         if not self.current_list:
             return
 
+        status_text, status_colour = self._get_price_list_status(self.current_list)
         products = self.product_service.get_all_products()
         list_items = self.price_list_service.get_items(self.current_list.id)
         price_map = {item.product_id: item.price for item in list_items}
@@ -249,6 +295,11 @@ class PriceListView(QWidget):
 
             self.table.setItem(row, 3, price_item)
 
+            # Status column
+            status_item = QTableWidgetItem(status_text)
+            status_item.setForeground(status_colour)
+            self.table.setItem(row, 4, status_item)
+
         self.lbl_product_count.setText(f"{len(products)} product{'s' if len(products) != 1 else ''}")
 
     def add_price_list(self):
@@ -257,6 +308,30 @@ class PriceListView(QWidget):
             name, start, end = dialog.get_data()
             try:
                 self.price_list_service.create_price_list(name, start, end)
+                self.load_lists()
+            except Exception as e:
+                QMessageBox.critical(self, "Error", str(e))
+
+    def delete_price_list(self) -> None:
+        """Delete the currently selected price list after confirmation."""
+        if not self.current_list:
+            QMessageBox.information(self, "No Selection", "Select a price list to delete.")
+            return
+
+        reply = QMessageBox.question(
+            self,
+            "Confirm Delete",
+            f'Are you sure you want to delete "{self.current_list.name}"?\n\n'
+            "This will also remove all prices assigned to this list.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                self.price_list_service.delete_price_list(self.current_list.id)
+                self.current_list = None
+                self.content_stack.setCurrentIndex(0)
                 self.load_lists()
             except Exception as e:
                 QMessageBox.critical(self, "Error", str(e))
@@ -320,11 +395,30 @@ class PriceListDialog(QDialog):
         layout.addLayout(form)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self.accept)
+        buttons.accepted.connect(self.validate_and_accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
+
+    def validate_and_accept(self) -> None:
+        """Validate form fields before accepting the dialog."""
+        name = self.name_input.text().strip()
+        if not name:
+            QMessageBox.warning(self, "Validation Error", "Price list name is required.")
+            return
+
+        start = self.start_date.date()
+        end = self.end_date.date()
+        if start > end:
+            QMessageBox.warning(
+                self,
+                "Validation Error",
+                "Start date must be on or before the end date.",
+            )
+            return
+
+        self.accept()
 
     def get_data(self):
         start = datetime.combine(self.start_date.date().toPyDate(), datetime.min.time())
         end = datetime.combine(self.end_date.date().toPyDate(), datetime.max.time())
-        return self.name_input.text(), start, end
+        return self.name_input.text().strip(), start, end

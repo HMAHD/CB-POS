@@ -440,6 +440,17 @@ class DocumentBrowserView(QWidget):
         if total is not None:
             html += f"<b>Total:</b> {format_currency(total)}<br>"  # noqa: E231
 
+        if doc["type"] == "sale":
+            tax_vat = doc.get("tax_vat")
+            if tax_vat is not None:
+                html += f"<b>VAT (18%):</b> {format_currency(tax_vat)}<br>"  # noqa: E231
+            tax_sscl = doc.get("tax_sscl")
+            if tax_sscl is not None:
+                html += f"<b>SSCL (2.5%):</b> {format_currency(tax_sscl)}<br>"  # noqa: E231
+            net_revenue = doc.get("net_revenue")
+            if net_revenue is not None:
+                html += f"<b>Net Revenue:</b> {format_currency(net_revenue)}<br>"  # noqa: E231
+
         if doc["type"] == "proforma":
             if doc.get("validity_days"):
                 html += f"<b>Validity:</b> {doc['validity_days']} days<br>"  # noqa: E231

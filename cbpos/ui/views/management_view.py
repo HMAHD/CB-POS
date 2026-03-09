@@ -34,8 +34,12 @@ class ManagementView(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.is_collapsed = False
+        from cbpos.core.services.config_service import ConfigService
+
+        self.is_collapsed = ConfigService.get("sidebar_collapsed") is not False
         self.init_ui()
+        if self.is_collapsed:
+            self._apply_collapsed_state()
 
     def init_ui(self):
         self.main_layout = QHBoxLayout(self)
@@ -248,7 +252,19 @@ class ManagementView(QWidget):
         if hasattr(self, "stock_take_view"):
             self.stock_take_view.set_user(user)
 
+    def _apply_collapsed_state(self) -> None:
+        """Set sidebar to collapsed (icon-only) mode without animation."""
+        self.sidebar.setFixedWidth(70)
+        self.lbl_logo.setVisible(False)
+        style = Qt.ToolButtonStyle.ToolButtonIconOnly
+        self.btn_pos.setToolButtonStyle(style)
+        self.btn_logout.setToolButtonStyle(style)
+        for btn in self.nav_buttons:
+            btn.setToolButtonStyle(style)
+
     def toggle_sidebar(self):
+        from cbpos.core.services.config_service import ConfigService
+
         start_width = self.sidebar.width()
 
         if self.is_collapsed:
@@ -263,6 +279,8 @@ class ManagementView(QWidget):
             self.lbl_logo.setVisible(False)
             style = Qt.ToolButtonStyle.ToolButtonIconOnly
             self.is_collapsed = True
+
+        ConfigService.set("sidebar_collapsed", self.is_collapsed)
 
         # Animate
         self.anim_width.setStartValue(start_width)

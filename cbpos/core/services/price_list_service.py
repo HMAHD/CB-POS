@@ -65,6 +65,24 @@ class PriceListService:
             session.expunge(item)
             return item
 
+    def delete_price_list(self, list_id: int) -> None:
+        """Delete a price list and all its items.
+
+        Args:
+            list_id: The ID of the price list to delete.
+
+        Raises:
+            ValueError: If the price list does not exist.
+        """
+        with self.db.get_session() as session:
+            price_list = session.get(PriceList, list_id)
+            if not price_list:
+                raise ValueError(f"Price list with ID {list_id} not found.")
+            # Delete associated items first
+            session.query(PriceListItem).filter(PriceListItem.price_list_id == list_id).delete()
+            session.delete(price_list)
+            session.commit()
+
     def get_items(self, list_id: int) -> List[PriceListItem]:
         with self.db.get_session() as session:
             stmt = (

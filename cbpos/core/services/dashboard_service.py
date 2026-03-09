@@ -122,6 +122,31 @@ class DashboardService:
                 "avg_sale": avg_sale,
             }
 
+    @staticmethod
+    def get_today_tax_summary() -> dict:
+        """Today's tax summary: VAT collected, SSCL liability, net revenue."""
+        with _session() as session:
+            today = date.today()
+
+            row = (
+                session.query(
+                    func.coalesce(func.sum(Sale.tax_vat), 0),
+                    func.coalesce(func.sum(Sale.tax_sscl), 0),
+                    func.coalesce(func.sum(Sale.net_revenue), 0),
+                )
+                .filter(
+                    func.date(Sale.date) == today,
+                    Sale.status == "COMPLETED",
+                )
+                .one()
+            )
+
+            return {
+                "vat": _decimal(row[0]),
+                "sscl": _decimal(row[1]),
+                "net_revenue": _decimal(row[2]),
+            }
+
     # ------------------------------------------------------------------
     # Yearly / Monthly
     # ------------------------------------------------------------------

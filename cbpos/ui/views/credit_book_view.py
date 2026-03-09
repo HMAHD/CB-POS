@@ -322,6 +322,18 @@ class CreditBookView(QWidget):
         """Populate the customer table with color-coded debt status."""
         self.customer_table.setRowCount(0)
 
+        if not customers:
+            self.customer_table.insertRow(0)
+            empty_item = QTableWidgetItem("No credit customers found")
+            empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty_item.setForeground(QColor("gray"))
+            empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
+            self.customer_table.setItem(0, 0, empty_item)
+            self.customer_table.setSpan(0, 0, 1, self.customer_table.columnCount())
+            self.lbl_total_customers.setText("0 customers")
+            self.lbl_total_outstanding.setText(f"Total Outstanding: {format_currency(Decimal('0.00'))}")
+            return
+
         total_outstanding = Decimal("0.00")
 
         for customer in customers:

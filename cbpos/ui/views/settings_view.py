@@ -32,9 +32,15 @@ class SettingsView(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.is_collapsed = False
+        from cbpos.core.services.config_service import ConfigService
+
+        self.is_collapsed = ConfigService.get("sidebar_collapsed") is not False
+        self._settings_dirty = False
+        self._saved_snapshot: dict = {}
         self.nav_buttons = []
         self.init_ui()
+        if self.is_collapsed:
+            self._apply_collapsed_state()
         self.load_settings()
 
     def init_ui(self):
@@ -191,8 +197,33 @@ class SettingsView(QWidget):
         self.nav_buttons.append(btn)
         return btn
 
+    def _take_snapshot(self) -> dict:
+        """Collect current values from all config pages for dirty comparison."""
+        snapshot: dict = {}
+        for page in self.pages:
+            try:
+                snapshot.update(page.save())
+            except (ValueError, Exception):
+                pass
+        return snapshot
+
     def switch_page(self, index: int) -> None:
-        """Switch the stacked widget to the given page index."""
+        """Switch the stacked widget to the given page index.
+
+        If settings have been modified, prompt the user before switching.
+        """
+        if self._saved_snapshot and self._take_snapshot() != self._saved_snapshot:
+            reply = QMessageBox.question(
+                self,
+                "Unsaved Changes",
+                "You have unsaved changes. Continue without saving?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply == QMessageBox.StandardButton.No:
+                return
+            # User chose to discard — reload to reset dirty state
+            self.load_settings()
         self.stack.setCurrentIndex(index)
 
     def highlight_active_page(self, index: int) -> None:
@@ -204,8 +235,18 @@ class SettingsView(QWidget):
             btn.style().unpolish(btn)
             btn.style().polish(btn)
 
+    def _apply_collapsed_state(self) -> None:
+        """Set sidebar to collapsed (icon-only) mode without animation."""
+        self.sidebar.setFixedWidth(70)
+        self.lbl_logo.setVisible(False)
+        style = Qt.ToolButtonStyle.ToolButtonIconOnly
+        for btn in self.nav_buttons:
+            btn.setToolButtonStyle(style)
+
     def toggle_sidebar(self) -> None:
         """Animate sidebar between expanded (250px) and collapsed (70px)."""
+        from cbpos.core.services.config_service import ConfigService
+
         start_width = self.sidebar.width()
 
         if self.is_collapsed:
@@ -218,6 +259,8 @@ class SettingsView(QWidget):
             self.lbl_logo.setVisible(False)
             style = Qt.ToolButtonStyle.ToolButtonIconOnly
             self.is_collapsed = True
+
+        ConfigService.set("sidebar_collapsed", self.is_collapsed)
 
         self.anim_width.setStartValue(start_width)
         self.anim_width.setEndValue(end_width)
@@ -266,8 +309,11 @@ class SettingsView(QWidget):
         settings = ConfigService.get_all()
         for page in self.pages:
             page.load(settings)
+        self._saved_snapshot = self._take_snapshot()
 
     def save_all(self):
+        import json
+
         from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
 
@@ -286,6 +332,44 @@ class SettingsView(QWidget):
         except ValueError as e:
             QMessageBox.warning(self, "Validation Error", str(e))
             return
+
+        # Audit log tax rate changes before saving
+        tax_keys = [
+            "tax_vat_rate",
+            "tax_sscl_rate",
+            "tax_sscl_turnover_pct",
+            "vat_registered",
+        ]
+        tax_changes = {}
+        for key in tax_keys:
+            old_val = current_config.get(key)
+            new_val = all_settings.get(key)
+            if new_val is not None and str(old_val) != str(new_val):
+                tax_changes[key] = {"old": old_val, "new": new_val}
+
+        if tax_changes:
+            from cbpos.core.services.auth_service import AuthService
+            from cbpos.core.database import Database
+            from cbpos.core.models import AuditLog
+
+            user = AuthService.get_current_user()
+            if user:
+                db = Database()
+                try:
+                    terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+                    with db.get_session() as session:
+                        log = AuditLog(
+                            user_id=user.id,
+                            action="TAX_RATE_CHANGE",
+                            event_type="SECURITY",
+                            terminal_id=terminal_id,
+                            details=json.dumps(tax_changes),
+                        )
+                        session.add(log)
+                except Exception as e:
+                    import logging
+
+                    logging.getLogger(__name__).warning("Tax audit log failed: %s", e)
 
         ConfigService.update_all(all_settings)
 
@@ -310,4 +394,5 @@ class SettingsView(QWidget):
         else:
             QMessageBox.information(self, "Saved", "Settings saved successfully.")
 
+        self._saved_snapshot = self._take_snapshot()
         self.close_requested.emit()

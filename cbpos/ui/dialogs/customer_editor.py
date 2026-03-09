@@ -111,6 +111,9 @@ class CustomerEditor(QDialog):
 
         self.vat_input = QLineEdit()
 
+        self.tax_id_input = QLineEdit()
+        self.tax_id_input.setPlaceholderText("Taxpayer Identification Number")
+
         self.limit_input = QDoubleSpinBox()
         self.limit_input.setRange(0, 10000000)
         self.limit_input.setDecimals(2)
@@ -124,6 +127,7 @@ class CustomerEditor(QDialog):
         # Price list loading deferred until PriceList management UI is complete
 
         form.addRow("VAT Number:", self.vat_input)
+        form.addRow("TIN:", self.tax_id_input)
         form.addRow("Credit Limit:", self.limit_input)
         form.addRow("Payment Terms:", self.payment_terms_input)
         form.addRow("Price List:", self.price_list_combo)
@@ -239,6 +243,7 @@ class CustomerEditor(QDialog):
         self.company_name_input.setEnabled(self.customer.is_company)
 
         self.vat_input.setText(self.customer.vat_number or "")
+        self.tax_id_input.setText(self.customer.tax_id or "")
         self.limit_input.setValue(float(self.customer.credit_limit))
         self.payment_terms_input.setValue(self.customer.payment_terms)
 
@@ -286,6 +291,7 @@ class CustomerEditor(QDialog):
             "is_company": self.is_company_chk.isChecked(),
             "company_name": self.company_name_input.text().strip() or None,
             "vat_number": self.vat_input.text().strip() or None,
+            "tax_id": self.tax_id_input.text().strip() or None,
             "credit_limit": Decimal(str(self.limit_input.value())),
             "payment_terms": self.payment_terms_input.value(),
             "loyalty_card_code": self.loyalty_code_input.text().strip() or None,

@@ -24,6 +24,7 @@ from cbpos.ui.views.reports.filter_widget import FilterWidget
 from cbpos.ui.views.reports.pandas_model import PandasModel
 from cbpos.ui.workers import ExportWorker
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
+from cbpos.ui.widgets.pagination_widget import PaginationWidget
 
 
 class ReportWorker(QThread):
@@ -97,6 +98,7 @@ class ReportViewer(QWidget):
         self.registry = ReportRegistry()
         self.export_service = ExportService()
         self.current_report = None
+        self._full_df = pd.DataFrame()
         self.init_ui()
 
     def init_ui(self):
@@ -225,6 +227,12 @@ class ReportViewer(QWidget):
         self.content_stack.setCurrentIndex(0)
         content_layout.addWidget(self.content_stack, 1)
 
+        # Pagination
+        self.pagination = PaginationWidget()
+        self.pagination.page_changed.connect(self._on_page_changed)
+        self.pagination.setVisible(False)
+        content_layout.addWidget(self.pagination)
+
         # Action Bar (hidden until data exists)
         self.action_bar = QWidget()
         self.action_bar.setObjectName("ReportActionBar")
@@ -338,9 +346,11 @@ class ReportViewer(QWidget):
         self.filter_bar.setVisible(True)
 
         # Reset content to empty state
+        self._full_df = pd.DataFrame()
         self.table_model.set_data(pd.DataFrame())
         self.content_stack.setCurrentIndex(0)
         self.action_bar.setVisible(False)
+        self.pagination.setVisible(False)
 
     # ------------------------------------------------------------------
     # Report execution
@@ -363,22 +373,37 @@ class ReportViewer(QWidget):
     def _on_report_finished(self, df: pd.DataFrame):
         self._overlay.hide_loading()
         self.btn_run.setEnabled(True)
-        self.table_model.set_data(df)
+        self._full_df = df
         has_data = not df.empty
 
         if has_data:
+            self.pagination.set_total(len(df))
+            self._show_current_page()
             self.content_stack.setCurrentIndex(1)
             row_count = len(df)
             self.row_count_label.setText(f"{row_count} row{'s' if row_count != 1 else ''}")
             self.action_bar.setVisible(True)
+            self.pagination.setVisible(True)
         else:
+            self.table_model.set_data(df)
             self.content_stack.setCurrentIndex(0)
             self.action_bar.setVisible(False)
+            self.pagination.setVisible(False)
             QMessageBox.information(
                 self,
                 "Report",
                 "No data found for the selected filters.",
             )
+
+    def _show_current_page(self) -> None:
+        """Display the current page slice of the full DataFrame."""
+        start = self.pagination.start_index
+        end = self.pagination.end_index
+        page_df = self._full_df.iloc[start:end].reset_index(drop=True)
+        self.table_model.set_data(page_df)
+
+    def _on_page_changed(self, _page: int) -> None:
+        self._show_current_page()
 
     def _on_report_error(self, error_msg: str):
         self._overlay.hide_loading()
@@ -396,13 +421,12 @@ class ReportViewer(QWidget):
         if not check_permission_with_override(Permissions.REPORTS_EXPORT, self):
             return
 
-        df = self.table_model.get_dataframe()
-        if df.empty:
+        if self._full_df.empty:
             return
 
         filename, _ = QFileDialog.getSaveFileName(self, "Save Excel", "", "Excel Files (*.xlsx)")
         if filename:
-            self._start_export(df, filename, "excel")
+            self._start_export(self._full_df, filename, "excel")
 
     def export_pdf(self) -> None:
         from cbpos.core.utils.permission_helper import check_permission_with_override
@@ -411,13 +435,12 @@ class ReportViewer(QWidget):
         if not check_permission_with_override(Permissions.REPORTS_EXPORT, self):
             return
 
-        df = self.table_model.get_dataframe()
-        if df.empty:
+        if self._full_df.empty:
             return
 
         filename, _ = QFileDialog.getSaveFileName(self, "Save PDF", "", "PDF Files (*.pdf)")
         if filename:
-            self._start_export(df, filename, "pdf")
+            self._start_export(self._full_df, filename, "pdf")
 
     def _start_export(self, df: pd.DataFrame, filepath: str, fmt: str) -> None:
         """Run export in background thread."""
@@ -455,7 +478,7 @@ class ReportViewer(QWidget):
         from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
         from PyQt6.QtGui import QTextDocument
 
-        df = self.table_model.get_dataframe()
+        df = self._full_df
         if df.empty:
             return
 
@@ -518,7 +541,7 @@ class ReportViewer(QWidget):
         import os
         from PyQt6.QtWidgets import QInputDialog
 
-        df = self.table_model.get_dataframe()
+        df = self._full_df
         if df.empty:
             return
 

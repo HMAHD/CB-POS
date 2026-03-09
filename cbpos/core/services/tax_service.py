@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Dict
+from typing import Dict, Optional
 from cbpos.core.constants.status import Precision
 from cbpos.core.services.config_service import ConfigService
 
@@ -32,34 +32,61 @@ class TaxService:
         return vat_rate, sscl_rate, turnover_rate
 
     @staticmethod
-    def calculate_taxes(total_mrp: Decimal) -> Dict[str, Decimal]:
+    def calculate_taxes(
+        total_mrp: Decimal,
+        taxable_amount: Optional[Decimal] = None,
+    ) -> Dict[str, Decimal]:
         """
         Calculate tax breakdown from the MRP (Tax Inclusive Price).
 
         Formula:
-        1. SSCL Liability = (MRP * Turnover%) * SSCL Rate
-        2. VAT Liable Base = MRP / (1 + VAT Rate)
-        3. VAT Amount = MRP - VAT Liable Base
+        1. VAT Liable Base = MRP / (1 + VAT Rate)
+        2. VAT Amount = MRP - VAT Liable Base
+        3. SSCL Liability = (VAT Liable Base * Turnover%) * SSCL Rate
         4. Net Revenue = MRP - VAT - SSCL
 
         Args:
             total_mrp (Decimal): The total transaction amount.
+            taxable_amount (Decimal, optional): If provided, only this portion
+                of total_mrp is subject to tax (the rest is exempt).
 
         Returns:
-            dict: {'vat': Decimal, 'sscl': Decimal, 'net': Decimal}
+            dict: {'vat': Decimal, 'sscl': Decimal, 'net': Decimal,
+                   'exempt_amount': Decimal}
         """
+        # Skip tax calculation for non-registered businesses
+        if not ConfigService.get("vat_registered"):
+            return {
+                "vat": Decimal("0.00"),
+                "sscl": Decimal("0.00"),
+                "net": total_mrp.quantize(Precision.MONEY),
+                "exempt_amount": Decimal("0.00"),
+            }
+
+        # Determine taxable vs exempt portions
+        if taxable_amount is not None:
+            tax_base_mrp = taxable_amount
+            exempt_amt = total_mrp - taxable_amount
+        else:
+            tax_base_mrp = total_mrp
+            exempt_amt = Decimal("0.00")
+
         vat_rate, sscl_rate, turnover_rate = TaxService._get_rates()
 
-        # 1. VAT Calculation
+        # 1. VAT Calculation (only on taxable portion)
         # Base + VAT = MRP
         # Base * (1 + VAT_RATE) = MRP
         # Base = MRP / (1 + VAT_RATE)
-        vat_liable_base = total_mrp / (Decimal("1") + vat_rate)
-        vat_amount = total_mrp - vat_liable_base
+        if tax_base_mrp != Decimal("0"):
+            vat_liable_base = tax_base_mrp / (Decimal("1") + vat_rate)
+            vat_amount = tax_base_mrp - vat_liable_base
+        else:
+            vat_liable_base = Decimal("0")
+            vat_amount = Decimal("0")
 
         # 2. SSCL Calculation
-        # SSCL is calculated on a percentage of turnover
-        sscl_amount = (total_mrp * turnover_rate) * sscl_rate
+        # SSCL is calculated on a percentage of VAT-exclusive turnover
+        sscl_amount = (vat_liable_base * turnover_rate) * sscl_rate
 
         # 3. Net Revenue (What the shop keeps)
         # Revenue = Total - Taxes
@@ -69,4 +96,5 @@ class TaxService:
             "vat": vat_amount.quantize(Precision.MONEY),
             "sscl": sscl_amount.quantize(Precision.MONEY),
             "net": net_revenue.quantize(Precision.MONEY),
+            "exempt_amount": exempt_amt.quantize(Precision.MONEY),
         }

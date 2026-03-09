@@ -160,8 +160,22 @@ class CartService:
 
             self._recalculate_line(item)
 
+    def _is_item_tax_exempt(self, item: Dict[str, Any]) -> bool:
+        """Check if a cart item is tax exempt via its category."""
+        try:
+            product = item.get("product")
+            if product and hasattr(product, "category") and product.category:
+                return bool(getattr(product.category, "tax_exempt", False))
+        except Exception:
+            # Guard against DetachedInstanceError if category wasn't eager-loaded
+            pass
+        return False
+
     def get_totals(self) -> Dict[str, Any]:
         """Return the cart totals."""
+        from cbpos.core.services.tax_service import TaxService
+        from cbpos.core.services.config_service import ConfigService
+
         # 1. Sum Net Lines
         subtotal = sum((item["total"] for item in self.items), Decimal("0.00"))
 
@@ -177,11 +191,40 @@ class CartService:
 
         final_total = subtotal - cart_discount_amt
 
+        # 3. Split into taxable vs exempt amounts when item-level exemptions enabled
+        taxable_amount = None
+        if ConfigService.get("item_tax_exemptions") and subtotal > Decimal("0"):
+            taxable_sub = Decimal("0.00")
+            exempt_sub = Decimal("0.00")
+            for item in self.items:
+                if self._is_item_tax_exempt(item):
+                    exempt_sub += item["total"]
+                else:
+                    taxable_sub += item["total"]
+
+            # Distribute cart discount proportionally
+            if cart_discount_amt > Decimal("0") and subtotal > Decimal("0"):
+                discount_ratio = cart_discount_amt / subtotal
+                taxable_discount = (taxable_sub * discount_ratio).quantize(Precision.MONEY)
+                taxable_amount = (taxable_sub - taxable_discount).quantize(Precision.MONEY)
+            else:
+                taxable_amount = taxable_sub.quantize(Precision.MONEY)
+
+        # Calculate tax breakdown from the final (post-discount) amount
+        tax_info = TaxService.calculate_taxes(
+            final_total.quantize(Precision.MONEY),
+            taxable_amount=taxable_amount,
+        )
+
         return {
             "subtotal": subtotal.quantize(Precision.MONEY),
             "cart_discount": cart_discount_amt.quantize(Precision.MONEY),
             "final_total": final_total.quantize(Precision.MONEY),
-            "tax": Decimal("0.00"),  # Placeholder for tax calculation
+            "tax_vat": tax_info["vat"],
+            "tax_sscl": tax_info["sscl"],
+            "tax": tax_info["vat"] + tax_info["sscl"],
+            "net_revenue": tax_info["net"],
+            "exempt_amount": tax_info.get("exempt_amount", Decimal("0.00")),
             "count": len(self.items),
             "item_count": sum(item["qty"] for item in self.items),
         }

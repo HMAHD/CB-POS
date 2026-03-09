@@ -65,7 +65,7 @@ class TransactionService:
         with db.get_session() as session:
             # 1. Prepare Data
             totals = cart_service.get_totals()
-            total_amount = totals["subtotal"]
+            total_amount = totals["final_total"]
 
             # Validate Payments
             total_paid = sum(p["amount"] for p in payments)
@@ -162,8 +162,13 @@ class TransactionService:
                     credit_amount_for_ledger = p["amount"]
                     credit_customer_balance = customer.current_debt
 
-            # 2. Create Sale Header
-            tax_info = TaxService.calculate_taxes(total_amount)
+            # 2. Create Sale Header — use tax values from cart totals (single source of truth)
+            exempt_amount = totals.get("exempt_amount", Decimal("0"))
+            tax_info = {
+                "vat": totals["tax_vat"],
+                "sscl": totals["tax_sscl"],
+                "net": totals["net_revenue"],
+            }
 
             # Determine primary method for simple display
             primary_method = payments[0]["method"] if len(payments) == 1 else "SPLIT"
@@ -179,6 +184,8 @@ class TransactionService:
                 user_id=cashier_id,
                 customer_id=customer_id,
             )
+            # Attach exempt amount for receipt builder (transient, not persisted)
+            sale._exempt_amount = exempt_amount
             session.add(sale)
             session.flush()
 
@@ -269,8 +276,11 @@ class TransactionService:
             return sale
 
     @staticmethod
-    def hold_bill(cart_service: CartService, note: str = None) -> bool:
-        """Serialize cart items and save to SuspendedTransaction."""
+    def hold_bill(cart_service: CartService, note: str = None) -> int | None:
+        """Serialize cart items and save to SuspendedTransaction.
+
+        Returns the suspended transaction ID on success, None on failure.
+        """
         db = Database()
         try:
             with db.get_session() as session:
@@ -283,10 +293,11 @@ class TransactionService:
 
                 suspended = SuspendedTransaction(data=json_data, note=note)
                 session.add(suspended)
-            return True
+                session.flush()
+                return suspended.id
         except Exception as e:
             logger.error("Hold Bill Failed: %s", e)
-            return False
+            return None
 
     @staticmethod
     def get_held_bills() -> list:

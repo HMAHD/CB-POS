@@ -59,9 +59,9 @@ class _YearlyWorker(QThread):
 
 
 class _PeriodicWorker(QThread):
-    """Fetches period-scoped data (products, hourly, stats, categories, customers)."""
+    """Fetches period-scoped data (products, hourly, stats, categories, customers, tax)."""
 
-    finished = pyqtSignal(list, list, dict, list, list)
+    finished = pyqtSignal(list, list, dict, list, list, dict)
 
     def __init__(self, start_date: date, end_date: date) -> None:
         super().__init__()
@@ -77,7 +77,8 @@ class _PeriodicWorker(QThread):
             stats = DashboardService.get_period_stats(self._start, self._end)
             categories = DashboardService.get_top_categories(self._start, self._end)
             customers = DashboardService.get_top_customers(self._start, self._end)
-            self.finished.emit(products, hourly, stats, categories, customers)
+            tax_summary = DashboardService.get_today_tax_summary()
+            self.finished.emit(products, hourly, stats, categories, customers, tax_summary)
         except Exception:
             logger.exception("Failed to load periodic dashboard data")
 
@@ -118,12 +119,13 @@ class DashboardView(QWidget):
         # === ROW 2: Periodic Reports Header ===
         self._build_period_header(layout)
 
-        # === ROW 3: Top Products + Hourly Sales + Quick Stats ===
+        # === ROW 3: Top Products + Hourly Sales + Quick Stats + Tax Today ===
         row3 = QHBoxLayout()
         row3.setSpacing(16)
         self._build_top_products_panel(row3)
         self._build_hourly_panel(row3)
         self._build_quick_stats_panel(row3)
+        self._build_tax_today_panel(row3)
         layout.addLayout(row3, 3)
 
         # === ROW 4: Categories Donut + Top Customers ===
@@ -351,6 +353,48 @@ class DashboardView(QWidget):
         vbox.addStretch()
         parent_layout.addWidget(panel, 1)
 
+    # --- Row 3: Tax Today ---
+    def _build_tax_today_panel(self, parent_layout: QHBoxLayout) -> None:
+        panel = QFrame()
+        panel.setObjectName("TaxTodayPanel")
+        vbox = QVBoxLayout(panel)
+        vbox.setContentsMargins(20, 16, 20, 16)
+        vbox.setSpacing(4)
+
+        # VAT
+        lbl = QLabel("VAT Collected")
+        lbl.setObjectName("StatLabel")
+        vbox.addWidget(lbl)
+
+        self.lbl_tax_vat = QLabel("Rs. 0")
+        self.lbl_tax_vat.setObjectName("StatBigValue")
+        vbox.addWidget(self.lbl_tax_vat)
+
+        vbox.addSpacing(14)
+
+        # SSCL
+        lbl2 = QLabel("SSCL Liability")
+        lbl2.setObjectName("StatLabel")
+        vbox.addWidget(lbl2)
+
+        self.lbl_tax_sscl = QLabel("Rs. 0")
+        self.lbl_tax_sscl.setObjectName("StatValue")
+        vbox.addWidget(self.lbl_tax_sscl)
+
+        vbox.addSpacing(14)
+
+        # Net Revenue
+        lbl3 = QLabel("Net Revenue")
+        lbl3.setObjectName("StatLabel")
+        vbox.addWidget(lbl3)
+
+        self.lbl_net_revenue = QLabel("Rs. 0")
+        self.lbl_net_revenue.setObjectName("StatValue")
+        vbox.addWidget(self.lbl_net_revenue)
+
+        vbox.addStretch()
+        parent_layout.addWidget(panel, 1)
+
     # --- Row 4: Categories Donut ---
     def _build_categories_panel(self, parent_layout: QHBoxLayout) -> None:
         panel = QFrame()
@@ -414,6 +458,9 @@ class DashboardView(QWidget):
     def _refresh_yearly(self) -> None:
         """Refresh yearly data (Row 1: monthly chart + summary)."""
         self.lbl_monthly_title.setText(f"Monthly Sales \u2014 {self._current_year}")
+        self.btn_prev_year.setEnabled(False)
+        self.btn_next_year.setEnabled(False)
+        self.lbl_yearly_total.setText("Loading...")
 
         self._yearly_worker = _YearlyWorker(self._current_year)
         self._yearly_worker.finished.connect(self._on_yearly_ready)
@@ -425,6 +472,9 @@ class DashboardView(QWidget):
         ed = self.date_to.date().toPyDate()
 
         self.lbl_period.setText(f"Periodic Reports  ({sd.strftime('%d.%m.%Y')}" f" \u2013 {ed.strftime('%d.%m.%Y')})")
+        self.btn_refresh.setEnabled(False)
+        self.btn_refresh.setText("\u231B")  # hourglass while loading
+        self.lbl_avg_order.setText("Loading...")
 
         self._periodic_worker = _PeriodicWorker(sd, ed)
         self._periodic_worker.finished.connect(self._on_periodic_ready)
@@ -436,6 +486,8 @@ class DashboardView(QWidget):
 
     def _on_yearly_ready(self, monthly: list, summary: dict) -> None:
         """Handle yearly data from worker thread."""
+        self.btn_prev_year.setEnabled(True)
+        self.btn_next_year.setEnabled(True)
         chart_data = [
             {
                 "label": m["label"],
@@ -450,8 +502,12 @@ class DashboardView(QWidget):
         self.lbl_top_month.setText(summary["top_month_name"].upper())
         self.lbl_top_month_total.setText(format_currency(summary["top_month_total"]))
 
-    def _on_periodic_ready(self, products: list, hourly: list, stats: dict, categories: list, customers: list) -> None:
+    def _on_periodic_ready(
+        self, products: list, hourly: list, stats: dict, categories: list, customers: list, tax_summary: dict
+    ) -> None:
         """Handle periodic data from worker thread."""
+        self.btn_refresh.setEnabled(True)
+        self.btn_refresh.setText("\u21BB")
         # Top Products table
         self.products_table.setRowCount(len(products))
         for row, p in enumerate(products):
@@ -487,3 +543,8 @@ class DashboardView(QWidget):
 
         # Top Customers
         self.customer_chart.set_data([{"label": c["name"], "value": c["total"]} for c in customers])
+
+        # Tax Today
+        self.lbl_tax_vat.setText(format_currency(tax_summary["vat"]))
+        self.lbl_tax_sscl.setText(format_currency(tax_summary["sscl"]))
+        self.lbl_net_revenue.setText(format_currency(tax_summary["net_revenue"]))

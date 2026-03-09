@@ -34,7 +34,7 @@ from PyQt6.QtWidgets import (
     QDateEdit,
     QApplication,
 )
-from PyQt6.QtCore import QDate
+from PyQt6.QtCore import QDate, QTimer
 
 
 from cbpos.core.services.backup_service import BackupService
@@ -102,7 +102,7 @@ class DataSafetyView(QWidget):
         dir_layout.addWidget(self.lbl_backup_dir, 1)
 
         btn_change_dir = QPushButton("Change")
-        btn_change_dir.setFixedWidth(80)
+        btn_change_dir.setFixedWidth(100)
         btn_change_dir.clicked.connect(self._change_backup_dir)
         dir_layout.addWidget(btn_change_dir)
         layout.addLayout(dir_layout)
@@ -229,7 +229,13 @@ class DataSafetyView(QWidget):
 
         btn_row = QHBoxLayout()
         btn_copy = QPushButton("Copy Password")
-        btn_copy.clicked.connect(lambda: QApplication.clipboard().setText(password))
+
+        def _copy_password():
+            QApplication.clipboard().setText(password)
+            btn_copy.setText("Copied!")
+            QTimer.singleShot(1500, lambda: btn_copy.setText("Copy Password"))
+
+        btn_copy.clicked.connect(_copy_password)
         btn_row.addWidget(btn_copy)
 
         btn_row.addStretch()
@@ -300,16 +306,13 @@ class DataSafetyView(QWidget):
 
         # Password
         pwd_row = QHBoxLayout()
-        lbl_pwd = QLabel("Password:")
-        lbl_pwd.setFixedWidth(80)
-        pwd_row.addWidget(lbl_pwd)
         self.input_restore_password = QLineEdit()
         self.input_restore_password.setPlaceholderText("Enter backup password...")
         self.input_restore_password.setEchoMode(QLineEdit.EchoMode.Password)
         pwd_row.addWidget(self.input_restore_password, 1)
 
         self.btn_toggle_restore_pwd = QPushButton("Show")
-        self.btn_toggle_restore_pwd.setFixedWidth(60)
+        self.btn_toggle_restore_pwd.setFixedWidth(80)
         self.btn_toggle_restore_pwd.clicked.connect(self._toggle_restore_password_visibility)
         pwd_row.addWidget(self.btn_toggle_restore_pwd)
         file_layout.addLayout(pwd_row)
@@ -698,6 +701,19 @@ class DataSafetyView(QWidget):
         from cbpos.core.services.data_export_service import DataExportService
         from cbpos.core.services.export_service import ExportService
         from cbpos.ui.workers import ExportWorker
+
+        # Validate date range for Sales export
+        data_type = self.cmb_export_data.currentText()
+        if data_type == "Sales":
+            start = self.date_export_from.date()
+            end = self.date_export_to.date()
+            if start > end:
+                QMessageBox.warning(
+                    self,
+                    "Invalid Date Range",
+                    "Start date must be on or before end date.",
+                )
+                return
 
         # Ask for output directory
         default_dir = str(Path.home() / "Documents")

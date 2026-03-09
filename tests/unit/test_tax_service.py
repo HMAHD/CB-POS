@@ -5,6 +5,7 @@ Tests VAT (backward calc from MRP), SSCL (Social Security Contribution Levy),
 and net revenue derivation.
 """
 
+from contextlib import contextmanager
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -12,20 +13,34 @@ from cbpos.core.services.tax_service import TaxService
 from cbpos.core.constants.status import Precision
 
 
-# Default config rates for mocking
+# Default config rates for mocking (VAT-registered business)
 DEFAULT_CONFIG = {
     "tax_vat_rate": 18.0,
     "tax_sscl_rate": 2.5,
     "tax_sscl_turnover_pct": 50.0,
+    "vat_registered": True,
 }
 
 
-def _mock_config():
-    """Return a patch for ConfigService.get_all with default rates."""
-    return patch(
-        "cbpos.core.services.tax_service.ConfigService.get_all",
-        return_value=DEFAULT_CONFIG,
-    )
+@contextmanager
+def _mock_config(config: dict = None):
+    """Patch ConfigService.get_all and .get for tax tests."""
+    cfg = config or DEFAULT_CONFIG
+
+    def _get_side_effect(key):
+        return cfg.get(key)
+
+    with (
+        patch(
+            "cbpos.core.services.tax_service.ConfigService.get_all",
+            return_value=cfg,
+        ),
+        patch(
+            "cbpos.core.services.tax_service.ConfigService.get",
+            side_effect=_get_side_effect,
+        ),
+    ):
+        yield
 
 
 class TestTaxServiceVAT:
@@ -80,11 +95,14 @@ class TestTaxServiceSSCL:
     """Tests for SSCL (Social Security Contribution Levy)."""
 
     def test_sscl_calculation_1000(self):
-        """SSCL on Rs.1000: (1000 * 0.50) * 0.025 = 12.50."""
+        """SSCL on Rs.1000: (1000/1.18 * 0.50) * 0.025 = 10.59."""
         with _mock_config():
             result = TaxService.calculate_taxes(Decimal("1000.00"))
-            # SSCL = (MRP * turnover_pct) * sscl_rate = (1000 * 0.5) * 0.025 = 12.50
-            assert result["sscl"] == Decimal("12.50")
+            # SSCL = (VAT-exclusive base * turnover_pct) * sscl_rate
+            # = (1000/1.18 * 0.5) * 0.025 = 10.59
+            vat_base = Decimal("1000.00") / Decimal("1.18")
+            expected = (vat_base * Decimal("0.5") * Decimal("0.025")).quantize(Precision.MONEY)
+            assert result["sscl"] == expected
 
     def test_sscl_on_zero_amount(self):
         """Zero MRP yields zero SSCL."""
@@ -93,21 +111,24 @@ class TestTaxServiceSSCL:
             assert result["sscl"] == Decimal("0.00")
 
     def test_sscl_on_500(self):
-        """SSCL on Rs.500: (500 * 0.50) * 0.025 = 6.25."""
+        """SSCL on Rs.500: (500/1.18 * 0.50) * 0.025 = 5.30."""
         with _mock_config():
             result = TaxService.calculate_taxes(Decimal("500.00"))
-            assert result["sscl"] == Decimal("6.25")
+            vat_base = Decimal("500.00") / Decimal("1.18")
+            expected = (vat_base * Decimal("0.5") * Decimal("0.025")).quantize(Precision.MONEY)
+            assert result["sscl"] == expected
 
 
 class TestTaxServiceNet:
     """Tests for net revenue calculation."""
 
     def test_net_equals_mrp_minus_taxes(self):
-        """Net = MRP - VAT - SSCL."""
+        """Net = MRP - VAT - SSCL (within rounding tolerance)."""
         with _mock_config():
             mrp = Decimal("1000.00")
             result = TaxService.calculate_taxes(mrp)
-            assert result["net"] == mrp - result["vat"] - result["sscl"]
+            expected = mrp - result["vat"] - result["sscl"]
+            assert abs(result["net"] - expected) <= Decimal("0.01")
 
     def test_net_always_positive(self):
         """Net revenue should always be positive for positive MRP."""
@@ -144,21 +165,13 @@ class TestTaxServiceCustomRates:
 
     def test_zero_vat_rate(self):
         """With 0% VAT, VAT should be zero."""
-        config = {**DEFAULT_CONFIG, "tax_vat_rate": 0.0}
-        with patch(
-            "cbpos.core.services.tax_service.ConfigService.get_all",
-            return_value=config,
-        ):
+        with _mock_config({**DEFAULT_CONFIG, "tax_vat_rate": 0.0}):
             result = TaxService.calculate_taxes(Decimal("1000.00"))
             assert result["vat"] == Decimal("0.00")
 
     def test_zero_sscl_rate(self):
         """With 0% SSCL, SSCL should be zero."""
-        config = {**DEFAULT_CONFIG, "tax_sscl_rate": 0.0}
-        with patch(
-            "cbpos.core.services.tax_service.ConfigService.get_all",
-            return_value=config,
-        ):
+        with _mock_config({**DEFAULT_CONFIG, "tax_sscl_rate": 0.0}):
             result = TaxService.calculate_taxes(Decimal("1000.00"))
             assert result["sscl"] == Decimal("0.00")
 
@@ -169,3 +182,11 @@ class TestTaxServiceCustomRates:
             assert result["vat"] < Decimal("0.00")
             assert result["sscl"] < Decimal("0.00")
             assert result["net"] < Decimal("0.00")
+
+    def test_not_vat_registered_returns_zero_tax(self):
+        """Non-registered businesses should have zero tax, full net revenue."""
+        with _mock_config({**DEFAULT_CONFIG, "vat_registered": False}):
+            result = TaxService.calculate_taxes(Decimal("1000.00"))
+            assert result["vat"] == Decimal("0.00")
+            assert result["sscl"] == Decimal("0.00")
+            assert result["net"] == Decimal("1000.00")

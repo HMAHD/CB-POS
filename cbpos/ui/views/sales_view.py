@@ -552,12 +552,19 @@ class SalesView(QWidget):
         cart_discount = totals.get("cart_discount", 0)
         item_count = totals.get("item_count", 0)
 
-        tax_amount = totals.get("tax", 0)
+        from cbpos.core.services.config_service import ConfigService
+
+        tax_vat = totals.get("tax_vat", 0)
+        tax_sscl = totals.get("tax_sscl", 0)
+        tax_total = totals.get("tax", 0)
 
         self.total_label.setText(format_currency(final_total))
         self.lbl_subtotal.setText(f"Subtotal: {format_currency(subtotal)}")
         self.lbl_discount.setText(f"Disc: {format_currency(cart_discount)}")
-        self.lbl_tax.setText(f"Tax: {format_currency(tax_amount)}")
+        if ConfigService.get("show_tax_breakdown") and tax_total > 0:
+            self.lbl_tax.setText(f"VAT: {format_currency(tax_vat)}  SSCL: {format_currency(tax_sscl)}")
+        else:
+            self.lbl_tax.setText(f"Tax: {format_currency(tax_total)}")
         self.lbl_item_count.setText(f"Items: {item_count}")
         self.cart_table.scrollToBottom()
 

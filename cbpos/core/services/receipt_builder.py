@@ -694,17 +694,17 @@ class ReceiptBuilder:
     @staticmethod
     def _get_doc_title(sale: Sale) -> str:
         """Derive document title from payment methods."""
-        if not hasattr(sale, "payments") or not sale.payments:
-            return "CASH RECEIPT"
-        methods = {p.payment_method.strip().upper() for p in sale.payments}
-        if methods == {"CASH"}:
-            return "CASH RECEIPT"
-        elif methods == {"CARD"}:
-            return "CARD RECEIPT"
-        elif "CREDIT" in methods:
+        payments = getattr(sale, "payments", []) or []
+        methods = {p.payment_method.strip().upper() for p in payments}
+
+        if "CREDIT" in methods:
             return "CREDIT INVOICE"
         elif len(methods) > 1:
             return "RECEIPT"
+        elif methods == {"CARD"}:
+            return "CARD RECEIPT"
+
+        # Default: cash-only or empty payments
         return "CASH RECEIPT"
 
     @staticmethod

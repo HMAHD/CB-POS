@@ -12,6 +12,19 @@ from cbpos.infrastructure.resource_loader import ResourceLoader
 from cbpos.ui.main_window import MainWindow
 
 
+# Buffer for early messages emitted before the logging system is ready.
+# Flushed to the logger by ``_flush_early_log()`` after ``setup_logging()``.
+_early_log: list[str] = []
+
+
+def _flush_early_log() -> None:
+    """Write buffered early messages to the application logger."""
+    _logger = logging.getLogger("cbpos.bootstrap")
+    for msg in _early_log:
+        _logger.warning(msg)
+    _early_log.clear()
+
+
 def ensure_data_dir() -> None:
     """Create the user data directory and migrate legacy data if needed.
 
@@ -37,16 +50,16 @@ def ensure_data_dir() -> None:
     if not legacy_db.exists():
         return  # Truly fresh install, nothing to migrate
 
-    print("[MIGRATE] Migrating user data to %s ..." % data_dir)
+    _early_log.append("Migrating user data to %s" % data_dir)
     for filename in ("cbpos.db", "settings.json", ".encryption_key"):
         src = exe_dir / filename
         dst = data_dir / filename
         if src.exists() and not dst.exists():
             try:
                 shutil.copy2(str(src), str(dst))
-                print("[MIGRATE]   Copied %s" % filename)
+                _early_log.append("Migrated %s" % filename)
             except OSError as e:
-                print("[MIGRATE]   WARNING: Could not copy %s: %s" % (filename, e))
+                _early_log.append("WARNING: Could not copy %s: %s" % (filename, e))
 
     # Migrate product images
     legacy_images = exe_dir / "cbpos" / "assets" / "products"
@@ -54,11 +67,11 @@ def ensure_data_dir() -> None:
     if legacy_images.exists() and not new_images.exists():
         try:
             shutil.copytree(str(legacy_images), str(new_images))
-            print("[MIGRATE]   Copied product images")
+            _early_log.append("Migrated product images")
         except OSError as e:
-            print("[MIGRATE]   WARNING: Could not copy product images: %s" % e)
+            _early_log.append("WARNING: Could not copy product images: %s" % e)
 
-    print("[MIGRATE] Migration complete.")
+    _early_log.append("Data migration complete.")
 
 
 def setup_logging() -> None:
@@ -136,6 +149,7 @@ def main():
 
     # Set up file-based error logging
     setup_logging()
+    _flush_early_log()
 
     # Install custom message handler to suppress Qt internal warnings
     qInstallMessageHandler(qt_message_handler)

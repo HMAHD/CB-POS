@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 class ConfigService:
     """
     Service to manage persistent application settings.
-    Stores settings in a 'settings.json' file in the project root.
+    Stores settings in a 'settings.json' file located in the application
+    data directory (Config.DATA_DIR).
     """
 
     SETTINGS_FILE = os.path.join(Config.DATA_DIR, "settings.json")

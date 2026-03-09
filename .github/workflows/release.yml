@@ -86,6 +86,7 @@ jobs:
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.4
         with:
           path: installer/cbpos.iss
+          options: /DMyAppVersion=${{ steps.version.outputs.version }}
 
       - name: Compute SHA-256
         id: hash

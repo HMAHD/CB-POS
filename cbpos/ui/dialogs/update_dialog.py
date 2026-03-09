@@ -5,13 +5,13 @@ and handles downloading + launching the installer.
 """
 
 import logging
-import os
 import subprocess
 import sys
 from typing import Any, Dict
 
 from PyQt6.QtCore import QThread, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
+    QApplication,
     QDialog,
     QHBoxLayout,
     QLabel,
@@ -95,10 +95,7 @@ class UpdateDialog(QDialog):
         layout.addWidget(header)
 
         # Current vs new
-        info = QLabel(
-            f"Your version: <b>{Config.VERSION}</b> &nbsp;&rarr;&nbsp; "
-            f"New version: <b>{version}</b>"
-        )
+        info = QLabel(f"Your version: <b>{Config.VERSION}</b>" f" \u2192 New version: <b>{version}</b>")
         info.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(info)
 
@@ -110,7 +107,7 @@ class UpdateDialog(QDialog):
 
         # Changelog
         if changelog:
-            cl_label = QLabel(f"<b>What's new:</b><br>{changelog}")
+            cl_label = QLabel(f"<b>What's new:</b><br>{changelog}")  # noqa: E231
             cl_label.setWordWrap(True)
             layout.addWidget(cl_label)
 
@@ -165,33 +162,42 @@ class UpdateDialog(QDialog):
         self._progress.setValue(pct)
         mb = downloaded / (1024 * 1024)
         total_mb = total / (1024 * 1024)
-        self._status.setText(f"Downloading... {mb:.1f} / {total_mb:.1f} MB")
+        self._status.setText(f"Downloading... {mb:.1f} / {total_mb:.1f} MB")  # noqa: E231
 
     def _on_download_ok(self, path: str) -> None:
         self._progress.setValue(100)
         self._status.setText("Download complete. Launching installer...")
 
-        # Launch the installer and close the app
+        # Launch the installer on supported platforms
         try:
             if sys.platform == "win32":
                 # /SILENT runs a quiet install; remove for full wizard
                 subprocess.Popen([path, "/SILENT"], close_fds=True)
+                logger.info("Installer launched: %s", path)
+                # Close the application so the installer can overwrite files
+                QApplication.instance().quit()
             else:
-                # Non-Windows: just open the file (unlikely path)
-                subprocess.Popen(["open", path])
-
-            logger.info("Installer launched: %s", path)
-            # Close the application so the installer can overwrite files
-            from PyQt6.QtWidgets import QApplication
-
-            QApplication.instance().quit()
+                # Non-Windows: automatic launch is not supported
+                logger.warning(
+                    "Automatic installer launch is only supported on Windows. " "Installer was downloaded to: %s",
+                    path,
+                )
+                QMessageBox.information(
+                    self,
+                    "Manual Update Required",
+                    "Automatic installer launch is only supported on Windows.\n\n"
+                    f"The installer was saved to:\n{path}\n"  # noqa: E231
+                    "Please run it manually.",
+                )
+                self._btn_skip.setEnabled(True)
+                self._btn_skip.setText("Close")
         except OSError as e:
             logger.error("Failed to launch installer: %s", e)
             QMessageBox.warning(
                 self,
                 "Error",
-                f"Could not launch installer:\n{e}\n\n"
-                f"The installer was saved to:\n{path}\n"
+                f"Could not launch installer:\n{e}\n\n"  # noqa: E231
+                f"The installer was saved to:\n{path}\n"  # noqa: E231
                 "Please run it manually.",
             )
             self._btn_skip.setEnabled(True)

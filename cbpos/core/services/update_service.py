@@ -25,26 +25,26 @@ import os
 import tempfile
 import urllib.error
 import urllib.request
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
+
+from packaging.version import InvalidVersion, Version
 
 from cbpos.config import Config
 
 logger = logging.getLogger(__name__)
 
-_MANIFEST_URL = (
-    "https://raw.githubusercontent.com/ceybyte/cbpos-releases/main/latest.json"
-)
+_MANIFEST_URL = "https://raw.githubusercontent.com/ceybyte/cbpos-releases/main/latest.json"
 
 # Timeout for network requests (seconds).
 _TIMEOUT = 15
 
 
-def _parse_version(v: str) -> Tuple[int, ...]:
-    """Convert a version string like '1.2.3' into a comparable tuple."""
+def _safe_version(v: str) -> Optional[Version]:
+    """Parse a PEP 440 version string, returning None on failure."""
     try:
-        return tuple(int(x) for x in v.strip().split("."))
-    except (ValueError, AttributeError):
-        return (0, 0, 0)
+        return Version(v.strip())
+    except (InvalidVersion, AttributeError):
+        return None
 
 
 class UpdateService:
@@ -66,12 +66,13 @@ class UpdateService:
             logger.info("Update check failed (network): %s", e)
             return None
 
-        remote_version = data.get("version", "")
-        if not remote_version:
+        remote_version = _safe_version(data.get("version", ""))
+        local_version = _safe_version(Config.VERSION)
+        if not remote_version or not local_version:
             return None
 
-        if _parse_version(remote_version) > _parse_version(Config.VERSION):
-            logger.info("Update available: %s → %s", Config.VERSION, remote_version)
+        if remote_version > local_version:
+            logger.info("Update available: %s → %s", Config.VERSION, data["version"])
             return data
 
         logger.info("App is up-to-date (%s)", Config.VERSION)
@@ -87,14 +88,15 @@ class UpdateService:
 
         Args:
             url: Direct download URL for the installer .exe.
-            expected_sha256: Optional SHA-256 hex digest for integrity check.
+            expected_sha256: SHA-256 hex digest for integrity verification.
+                Must be provided; raises RuntimeError if missing.
             progress_callback: Optional callable(bytes_downloaded, total_bytes).
 
         Returns:
             Path to the downloaded installer file.
 
         Raises:
-            RuntimeError: On download failure or checksum mismatch.
+            RuntimeError: On download failure, missing checksum, or checksum mismatch.
         """
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "CBPOS-Updater"})
@@ -106,9 +108,7 @@ class UpdateService:
 
         # Write to a temp file that persists after close (delete=False).
         suffix = ".exe" if url.lower().endswith(".exe") else ""
-        tmp = tempfile.NamedTemporaryFile(
-            prefix="CBPOSSetup_", suffix=suffix, delete=False
-        )
+        tmp = tempfile.NamedTemporaryFile(prefix="CBPOSSetup_", suffix=suffix, delete=False)
 
         sha = hashlib.sha256()
         downloaded = 0
@@ -130,16 +130,17 @@ class UpdateService:
             tmp.close()
             resp.close()
 
-        # Verify integrity if a hash was provided.
-        if expected_sha256:
-            actual = sha.hexdigest()
-            if actual.lower() != expected_sha256.lower():
-                os.unlink(tmp.name)
-                raise RuntimeError(
-                    "Checksum mismatch — download may be corrupt.\n"
-                    f"Expected: {expected_sha256}\n"
-                    f"Got:      {actual}"
-                )
+        # Verify integrity — checksum is mandatory for security.
+        if not expected_sha256:
+            os.unlink(tmp.name)
+            raise RuntimeError("Security error: No checksum provided in update manifest.")
+
+        actual = sha.hexdigest()
+        if actual.lower() != expected_sha256.lower():
+            os.unlink(tmp.name)
+            raise RuntimeError(
+                "Checksum mismatch — download may be corrupt.\n" f"Expected: {expected_sha256}\n" f"Got:      {actual}"
+            )
 
         logger.info("Installer downloaded: %s (%d bytes)", tmp.name, downloaded)
         return tmp.name

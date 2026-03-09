@@ -15,7 +15,11 @@
 ; ============================================================================
 
 #define MyAppName "CB POS"
-#define MyAppVersion "1.0.0"
+; Version can be overridden at build time via:
+;   iscc /DMyAppVersion=1.2.0 cbpos.iss
+#ifndef MyAppVersion
+  #define MyAppVersion "1.0.0"
+#endif
 #define MyAppPublisher "Ceylon Byte"
 #define MyAppURL "https://ceybyte.com"
 #define MyAppExeName "cbpos.exe"

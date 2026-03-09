@@ -458,6 +458,9 @@ class DashboardView(QWidget):
     def _refresh_yearly(self) -> None:
         """Refresh yearly data (Row 1: monthly chart + summary)."""
         self.lbl_monthly_title.setText(f"Monthly Sales \u2014 {self._current_year}")
+        self.btn_prev_year.setEnabled(False)
+        self.btn_next_year.setEnabled(False)
+        self.lbl_yearly_total.setText("Loading...")
 
         self._yearly_worker = _YearlyWorker(self._current_year)
         self._yearly_worker.finished.connect(self._on_yearly_ready)
@@ -469,6 +472,9 @@ class DashboardView(QWidget):
         ed = self.date_to.date().toPyDate()
 
         self.lbl_period.setText(f"Periodic Reports  ({sd.strftime('%d.%m.%Y')}" f" \u2013 {ed.strftime('%d.%m.%Y')})")
+        self.btn_refresh.setEnabled(False)
+        self.btn_refresh.setText("\u231B")  # hourglass while loading
+        self.lbl_avg_order.setText("Loading...")
 
         self._periodic_worker = _PeriodicWorker(sd, ed)
         self._periodic_worker.finished.connect(self._on_periodic_ready)
@@ -480,6 +486,8 @@ class DashboardView(QWidget):
 
     def _on_yearly_ready(self, monthly: list, summary: dict) -> None:
         """Handle yearly data from worker thread."""
+        self.btn_prev_year.setEnabled(True)
+        self.btn_next_year.setEnabled(True)
         chart_data = [
             {
                 "label": m["label"],
@@ -498,6 +506,8 @@ class DashboardView(QWidget):
         self, products: list, hourly: list, stats: dict, categories: list, customers: list, tax_summary: dict
     ) -> None:
         """Handle periodic data from worker thread."""
+        self.btn_refresh.setEnabled(True)
+        self.btn_refresh.setText("\u21BB")
         # Top Products table
         self.products_table.setRowCount(len(products))
         for row, p in enumerate(products):

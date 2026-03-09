@@ -133,6 +133,7 @@ class CsvImportDialog(QDialog):
             return
 
         self.btn_import.setEnabled(False)
+        self.btn_import.setText("Importing...")
         self.btn_choose.setEnabled(False)
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
@@ -172,6 +173,7 @@ class CsvImportDialog(QDialog):
     def _on_error(self, error_msg: str) -> None:
         self.progress_bar.setVisible(False)
         self.btn_import.setEnabled(True)
+        self.btn_import.setText("Import")
         self.btn_choose.setEnabled(True)
         msg = "CSV import failed:\n" + error_msg
         QMessageBox.critical(self, "Import Failed", msg)

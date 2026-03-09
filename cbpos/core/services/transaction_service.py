@@ -65,7 +65,7 @@ class TransactionService:
         with db.get_session() as session:
             # 1. Prepare Data
             totals = cart_service.get_totals()
-            total_amount = totals["subtotal"]
+            total_amount = totals["final_total"]
 
             # Validate Payments
             total_paid = sum(p["amount"] for p in payments)

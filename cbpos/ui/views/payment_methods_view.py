@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 from cbpos.core.services.payment_service import PaymentService
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 logger = logging.getLogger(__name__)
 
@@ -32,48 +33,52 @@ class PaymentMethodDialog(QDialog):
     def __init__(self, method=None, parent=None):
         super().__init__(parent)
         self.method = method
-        self.setWindowTitle("Edit Payment Method" if method else "Add Payment Method")
         self.setMinimumWidth(400)
         self.setObjectName("PaymentMethodDialog")
         self._init_ui()
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
 
-        form = QFormLayout()
-        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self._form = QFormLayout()
+        self._form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        self._form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
         self.txt_name = QLineEdit()
-        self.txt_name.setPlaceholderText("e.g. Cash, Card, PayHere")
         self.txt_name.setMaxLength(50)
-        form.addRow("Name:", self.txt_name)
+        self._lbl_name = QLabel()
+        self._form.addRow(self._lbl_name, self.txt_name)
 
         self.txt_shortcut = QLineEdit()
-        self.txt_shortcut.setPlaceholderText("e.g. F12 (optional)")
         self.txt_shortcut.setMaxLength(10)
-        form.addRow("Shortcut Key:", self.txt_shortcut)
+        self._lbl_shortcut = QLabel()
+        self._form.addRow(self._lbl_shortcut, self.txt_shortcut)
 
-        self.chk_cash = QCheckBox("This is a cash-type method")
-        form.addRow("Is Cash:", self.chk_cash)
+        self.chk_cash = QCheckBox()
+        self._lbl_is_cash = QLabel()
+        self._form.addRow(self._lbl_is_cash, self.chk_cash)
 
-        self.chk_drawer = QCheckBox("Open cash drawer on payment")
-        form.addRow("Open Drawer:", self.chk_drawer)
+        self.chk_drawer = QCheckBox()
+        self._lbl_drawer = QLabel()
+        self._form.addRow(self._lbl_drawer, self.chk_drawer)
 
-        layout.addLayout(form)
+        layout.addLayout(self._form)
 
         # Buttons
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
 
-        self.btn_cancel = QPushButton("Cancel")
+        self.btn_cancel = QPushButton()
         self.btn_cancel.setObjectName("DialogCancelButton")
         self.btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(self.btn_cancel)
 
-        self.btn_save = QPushButton("Save")
+        self.btn_save = QPushButton()
         self.btn_save.setObjectName("DialogSaveButton")
         self.btn_save.setProperty("class", "primary")
         self.btn_save.clicked.connect(self._save)
@@ -88,10 +93,30 @@ class PaymentMethodDialog(QDialog):
             self.chk_cash.setChecked(self.method.is_cash)
             self.chk_drawer.setChecked(self.method.open_drawer)
 
+    def retranslate_ui(self) -> None:
+        if self.method:
+            self.setWindowTitle(_t("payment_methods.dialog_edit_title"))
+        else:
+            self.setWindowTitle(_t("payment_methods.dialog_add_title"))
+        self._lbl_name.setText(_t("payment_methods.form_name"))
+        self.txt_name.setPlaceholderText(_t("payment_methods.name_placeholder"))
+        self._lbl_shortcut.setText(_t("payment_methods.form_shortcut"))
+        self.txt_shortcut.setPlaceholderText(_t("payment_methods.shortcut_placeholder"))
+        self._lbl_is_cash.setText(_t("payment_methods.form_is_cash"))
+        self.chk_cash.setText(_t("payment_methods.chk_is_cash"))
+        self._lbl_drawer.setText(_t("payment_methods.form_open_drawer"))
+        self.chk_drawer.setText(_t("payment_methods.chk_open_drawer"))
+        self.btn_cancel.setText(_t("common.cancel"))
+        self.btn_save.setText(_t("common.save"))
+
     def _save(self) -> None:
         name = self.txt_name.text().strip()
         if not name:
-            QMessageBox.warning(self, "Validation", "Payment method name is required.")
+            QMessageBox.warning(
+                self,
+                _t("payment_methods.validation_title"),
+                _t("payment_methods.name_required"),
+            )
             self.txt_name.setFocus()
             return
 
@@ -131,9 +156,9 @@ class _MethodCard(QFrame):
         # Tags line: properties as small text
         tags = []
         if self.method.is_cash:
-            tags.append("Cash")
+            tags.append(_t("payment_methods.tag_cash"))
         if self.method.open_drawer:
-            tags.append("Opens Drawer")
+            tags.append(_t("payment_methods.tag_opens_drawer"))
         if self.method.shortcut:
             tags.append(self.method.shortcut)
 
@@ -145,8 +170,12 @@ class _MethodCard(QFrame):
         layout.addLayout(info_layout, 1)
 
         # --- Center: Status badge ---
-        status_text = "Active" if self.method.is_active else "Inactive"
-        status_class = "pm-active" if self.method.is_active else "pm-inactive"
+        if self.method.is_active:
+            status_text = _t("payment_methods.status_active")
+            status_class = "pm-active"
+        else:
+            status_text = _t("payment_methods.status_inactive")
+            status_class = "pm-inactive"
         status_label = QLabel(status_text)
         status_label.setObjectName("PMCardStatus")
         status_label.setProperty("class", status_class)
@@ -158,14 +187,18 @@ class _MethodCard(QFrame):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
 
-        btn_edit = QPushButton("Edit")
+        btn_edit = QPushButton(_t("payment_methods.btn_edit"))
         btn_edit.setObjectName("PMCardBtn")
         btn_edit.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         btn_edit.clicked.connect(lambda: self._parent_view._edit_method(self.method))
         btn_layout.addWidget(btn_edit)
 
-        toggle_text = "Deactivate" if self.method.is_active else "Activate"
-        toggle_class = "warning" if self.method.is_active else "accent"
+        if self.method.is_active:
+            toggle_text = _t("payment_methods.btn_deactivate")
+            toggle_class = "warning"
+        else:
+            toggle_text = _t("payment_methods.btn_activate")
+            toggle_class = "accent"
         btn_toggle = QPushButton(toggle_text)
         btn_toggle.setObjectName("PMCardBtn")
         btn_toggle.setProperty("class", toggle_class)
@@ -174,7 +207,7 @@ class _MethodCard(QFrame):
         btn_layout.addWidget(btn_toggle)
 
         if not self.method.is_cash:
-            btn_delete = QPushButton("Delete")
+            btn_delete = QPushButton(_t("payment_methods.btn_delete"))
             btn_delete.setObjectName("PMCardBtn")
             btn_delete.setProperty("class", "danger")
             btn_delete.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -192,6 +225,9 @@ class PaymentMethodsView(QWidget):
         self.setObjectName("PaymentMethodsView")
         self._methods = []
         self._init_ui()
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -199,19 +235,19 @@ class PaymentMethodsView(QWidget):
         layout.setSpacing(12)
 
         # Header
-        title = QLabel("Payment Methods")
-        title.setProperty("class", "dialog-title")
-        layout.addWidget(title)
+        self._title = QLabel()
+        self._title.setProperty("class", "dialog-title")
+        layout.addWidget(self._title)
 
-        subtitle = QLabel("Manage payment methods available at checkout.")
-        subtitle.setProperty("class", "muted")
-        layout.addWidget(subtitle)
+        self._subtitle = QLabel()
+        self._subtitle.setProperty("class", "muted")
+        layout.addWidget(self._subtitle)
 
         # Action bar
         action_bar = QHBoxLayout()
         action_bar.addStretch()
 
-        self.btn_add = QPushButton("  Add Method  ")
+        self.btn_add = QPushButton()
         self.btn_add.setObjectName("PaymentMethodAddBtn")
         self.btn_add.setProperty("class", "primary")
         self.btn_add.clicked.connect(self._add_method)
@@ -236,9 +272,15 @@ class PaymentMethodsView(QWidget):
         layout.addWidget(self.scroll, 1)
 
         # Hint
-        hint = QLabel("Deactivate methods to hide from checkout. Cash method cannot be deleted.")
-        hint.setProperty("class", "muted")
-        layout.addWidget(hint)
+        self._hint = QLabel()
+        self._hint.setProperty("class", "muted")
+        layout.addWidget(self._hint)
+
+    def retranslate_ui(self) -> None:
+        self._title.setText(_t("payment_methods.title"))
+        self._subtitle.setText(_t("payment_methods.subtitle"))
+        self.btn_add.setText("  " + _t("payment_methods.btn_add_method") + "  ")
+        self._hint.setText(_t("payment_methods.hint"))
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
@@ -272,7 +314,11 @@ class PaymentMethodsView(QWidget):
                 )
                 self._load_methods()
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to create payment method: {e}")
+                QMessageBox.critical(
+                    self,
+                    _t("common.error"),
+                    _t("payment_methods.error_create").format(error=e),
+                )
 
     def _edit_method(self, method) -> None:
         dialog = PaymentMethodDialog(method=method, parent=self)
@@ -288,7 +334,11 @@ class PaymentMethodsView(QWidget):
                 )
                 self._load_methods()
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to update payment method: {e}")
+                QMessageBox.critical(
+                    self,
+                    _t("common.error"),
+                    _t("payment_methods.error_update").format(error=e),
+                )
 
     def _toggle_method(self, method) -> None:
         """Toggle active/inactive state."""
@@ -299,18 +349,25 @@ class PaymentMethodsView(QWidget):
             self._load_methods()
             logger.info("Payment method '%s' %sd", method.name, action)
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to {action} payment method: {e}")
+            QMessageBox.critical(
+                self,
+                _t("common.error"),
+                _t("payment_methods.error_toggle").format(action=action, error=e),
+            )
 
     def _delete_method(self, method) -> None:
         if method.is_cash:
-            QMessageBox.warning(self, "Cannot Delete", "Cash payment method cannot be deleted.")
+            QMessageBox.warning(
+                self,
+                _t("payment_methods.cannot_delete_title"),
+                _t("payment_methods.cannot_delete_cash"),
+            )
             return
 
         reply = QMessageBox.question(
             self,
-            "Delete Payment Method",
-            f'Are you sure you want to delete "{method.name}"?\n\n'
-            "Tip: You can deactivate it instead to keep transaction history.",
+            _t("payment_methods.delete_confirm_title"),
+            _t("payment_methods.delete_confirm_message").format(name=method.name),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
@@ -318,4 +375,8 @@ class PaymentMethodsView(QWidget):
                 PaymentService.delete_method(method.id)
                 self._load_methods()
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to delete payment method: {e}")
+                QMessageBox.critical(
+                    self,
+                    _t("common.error"),
+                    _t("payment_methods.error_delete").format(error=e),
+                )

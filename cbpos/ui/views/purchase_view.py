@@ -36,6 +36,7 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.utils.formatters import format_currency
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 logger = logging.getLogger(__name__)
 
@@ -44,13 +45,12 @@ class SupplierTableModel(QAbstractTableModel):
     def __init__(self, suppliers):
         super().__init__()
         self.suppliers = suppliers
-        self.headers = ["ID", "Company", "Contact", "Phone", "Tax No"]
 
     def rowCount(self, parent=None):
         return len(self.suppliers)
 
     def columnCount(self, parent=None):
-        return len(self.headers)
+        return 5
 
     def data(self, index, role):
         if role == Qt.ItemDataRole.DisplayRole:
@@ -69,14 +69,19 @@ class SupplierTableModel(QAbstractTableModel):
 
     def headerData(self, section, orientation, role):
         if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
-            return self.headers[section]
+            headers = [
+                _t("purchase.supplier_header_id"),
+                _t("purchase.supplier_header_company"),
+                _t("purchase.supplier_header_contact"),
+                _t("purchase.supplier_header_phone"),
+                _t("purchase.supplier_header_tax"),
+            ]
+            return headers[section]
         return None
 
 
 class PurchaseHistoryModel(QAbstractTableModel):
     """Table model for GRN history list."""
-
-    HEADERS = ["GRN #", "Date", "Supplier", "Ref #", "Items", "Total Cost", "Status"]
 
     def __init__(self, purchases=None):
         super().__init__()
@@ -86,7 +91,7 @@ class PurchaseHistoryModel(QAbstractTableModel):
         return len(self.purchases)
 
     def columnCount(self, parent=None):
-        return len(self.HEADERS)
+        return 7
 
     def data(self, index, role):
         if not index.isValid():
@@ -116,7 +121,16 @@ class PurchaseHistoryModel(QAbstractTableModel):
 
     def headerData(self, section, orientation, role):
         if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
-            return self.HEADERS[section]
+            headers = [
+                _t("purchase.history_header_grn"),
+                _t("purchase.history_header_date"),
+                _t("purchase.history_header_supplier"),
+                _t("purchase.history_header_ref"),
+                _t("purchase.history_header_items"),
+                _t("purchase.history_header_total"),
+                _t("purchase.history_header_status"),
+            ]
+            return headers[section]
         return None
 
     def get_purchase(self, row: int):
@@ -131,7 +145,7 @@ class GRNDetailDialog(QDialog):
 
     def __init__(self, purchase_id: int, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("GRN Details")
+        self.setWindowTitle(_t("purchase.grn_detail_title"))
         self.setMinimumSize(700, 500)
         self.resize(800, 550)
         self.init_ui(purchase_id)
@@ -143,27 +157,37 @@ class GRNDetailDialog(QDialog):
 
         purchase = PurchaseService.get_purchase(purchase_id)
         if not purchase:
-            layout.addWidget(QLabel("Purchase not found."))
+            layout.addWidget(QLabel(_t("purchase.purchase_not_found")))
             return
 
         # Header
-        title = QLabel(f"GRN: {purchase.document_number}")
+        title = QLabel(f"{_t('purchase.grn_label')}: {purchase.document_number}")
         title.setProperty("class", "dialog-title")
         layout.addWidget(title)
 
         # Info row
         info_layout = QHBoxLayout()
-        info_layout.addWidget(QLabel(f"Supplier: {purchase.supplier.company_name if purchase.supplier else 'N/A'}"))
-        info_layout.addWidget(QLabel(f"Ref #: {purchase.reference_external or 'N/A'}"))
-        info_layout.addWidget(QLabel(f"Date: {purchase.date.strftime('%Y-%m-%d %H:%M') if purchase.date else 'N/A'}"))
-        info_layout.addWidget(QLabel(f"Status: {purchase.status}"))
+        supplier_name = purchase.supplier.company_name if purchase.supplier else "N/A"
+        info_layout.addWidget(QLabel(f"{_t('purchase.form_supplier')} {supplier_name}"))
+        info_layout.addWidget(QLabel(f"{_t('purchase.form_ref')} {purchase.reference_external or 'N/A'}"))
+        date_str = purchase.date.strftime("%Y-%m-%d %H:%M") if purchase.date else "N/A"
+        info_layout.addWidget(QLabel(f"{_t('purchase.form_date')} {date_str}"))
+        info_layout.addWidget(QLabel(f"{_t('purchase.detail_status')}: {purchase.status}"))
         info_layout.addStretch()
         layout.addLayout(info_layout)
 
         # Items table
         table = QTableWidget()
         table.setColumnCount(5)
-        table.setHorizontalHeaderLabels(["Product", "Barcode", "Qty", "Unit Cost", "Line Total"])
+        table.setHorizontalHeaderLabels(
+            [
+                _t("purchase.detail_product"),
+                _t("purchase.detail_barcode"),
+                _t("purchase.detail_qty"),
+                _t("purchase.detail_unit_cost"),
+                _t("purchase.detail_line_total"),
+            ]
+        )
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
@@ -200,13 +224,13 @@ class GRNDetailDialog(QDialog):
         # Footer
         footer = QHBoxLayout()
         footer.addStretch()
-        total_label = QLabel(f"Total Cost: {format_currency(purchase.total_cost)}")
+        total_label = QLabel(f"{_t('purchase.total_cost_label')}: {format_currency(purchase.total_cost)}")
         total_label.setStyleSheet("font-size: 16px; font-weight: bold;")
         footer.addWidget(total_label)
         layout.addLayout(footer)
 
         # Close button
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton(_t("common.close"))
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
@@ -214,14 +238,12 @@ class GRNDetailDialog(QDialog):
 class SupplierDialog(QDialog):
     def __init__(self, parent=None, supplier=None):
         super().__init__(parent)
-        self.setWindowTitle(
-            "Add Supplier" if not supplier else "Edit Supplier",
-        )
         self.supplier = supplier
         self.init_ui()
+        self.retranslate_ui()
 
     def init_ui(self):
-        layout = QFormLayout(self)
+        self.form_layout = QFormLayout(self)
 
         self.company_input = QLineEdit()
         self.contact_input = QLineEdit()
@@ -230,7 +252,7 @@ class SupplierDialog(QDialog):
         self.details_input = QLineEdit()
         self.payment_terms_input = QSpinBox()
         self.payment_terms_input.setRange(0, 365)
-        self.payment_terms_input.setSuffix(" days")
+        self.payment_terms_input.setSuffix(" " + _t("purchase.days_suffix"))
 
         if self.supplier:
             self.company_input.setText(self.supplier.company_name)
@@ -240,22 +262,44 @@ class SupplierDialog(QDialog):
             self.details_input.setText(self.supplier.contact_details or "")
             self.payment_terms_input.setValue(getattr(self.supplier, "payment_terms", 0))
 
-        layout.addRow("Company Name:", self.company_input)
-        layout.addRow("Contact Person:", self.contact_input)
-        layout.addRow("Phone:", self.phone_input)
-        layout.addRow("Tax Number:", self.tax_input)
-        layout.addRow("Payment Terms:", self.payment_terms_input)
-        layout.addRow("Details:", self.details_input)
+        self.lbl_company = QLabel()
+        self.lbl_contact = QLabel()
+        self.lbl_phone = QLabel()
+        self.lbl_tax = QLabel()
+        self.lbl_terms = QLabel()
+        self.lbl_details = QLabel()
+
+        self.form_layout.addRow(self.lbl_company, self.company_input)
+        self.form_layout.addRow(self.lbl_contact, self.contact_input)
+        self.form_layout.addRow(self.lbl_phone, self.phone_input)
+        self.form_layout.addRow(self.lbl_tax, self.tax_input)
+        self.form_layout.addRow(self.lbl_terms, self.payment_terms_input)
+        self.form_layout.addRow(self.lbl_details, self.details_input)
 
         btn_box = QHBoxLayout()
-        save_btn = QPushButton("Save")
-        save_btn.clicked.connect(self.accept)
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.clicked.connect(self.reject)
+        self.save_btn = QPushButton()
+        self.save_btn.clicked.connect(self.accept)
+        self.cancel_btn = QPushButton()
+        self.cancel_btn.clicked.connect(self.reject)
 
-        btn_box.addWidget(save_btn)
-        btn_box.addWidget(cancel_btn)
-        layout.addRow(btn_box)
+        btn_box.addWidget(self.save_btn)
+        btn_box.addWidget(self.cancel_btn)
+        self.form_layout.addRow(btn_box)
+
+    def retranslate_ui(self) -> None:
+        """Update all translatable strings."""
+        if self.supplier:
+            self.setWindowTitle(_t("purchase.edit_supplier_title"))
+        else:
+            self.setWindowTitle(_t("purchase.add_supplier_title"))
+        self.lbl_company.setText(_t("purchase.supplier_dialog_company"))
+        self.lbl_contact.setText(_t("purchase.supplier_dialog_contact"))
+        self.lbl_phone.setText(_t("purchase.supplier_dialog_phone"))
+        self.lbl_tax.setText(_t("purchase.supplier_dialog_tax"))
+        self.lbl_terms.setText(_t("purchase.supplier_dialog_terms"))
+        self.lbl_details.setText(_t("purchase.supplier_dialog_details"))
+        self.save_btn.setText(_t("common.save"))
+        self.cancel_btn.setText(_t("common.cancel"))
 
     def get_data(self):
         return {
@@ -272,6 +316,9 @@ class PurchaseView(QWidget):
     def __init__(self):
         super().__init__()
         self.init_ui()
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
         self.refresh_suppliers()
 
     def init_ui(self):
@@ -283,34 +330,34 @@ class PurchaseView(QWidget):
         # Tab 1: Suppliers
         self.supplier_tab = QWidget()
         self.setup_supplier_tab()
-        self.tabs.addTab(self.supplier_tab, "Suppliers")
+        self.tabs.addTab(self.supplier_tab, "")
 
         # Tab 2: New GRN
         self.grn_tab = QWidget()
         self.setup_grn_tab()
-        self.tabs.addTab(self.grn_tab, "New GRN")
+        self.tabs.addTab(self.grn_tab, "")
 
         # Tab 3: GRN History
         self.history_tab = QWidget()
         self.setup_history_tab()
-        self.tabs.addTab(self.history_tab, "GRN History")
+        self.tabs.addTab(self.history_tab, "")
 
         # Tab 4: Payables
         self.payables_tab = QWidget()
         self.setup_payables_tab()
-        self.tabs.addTab(self.payables_tab, "Payables")
+        self.tabs.addTab(self.payables_tab, "")
 
     def setup_supplier_tab(self):
         layout = QVBoxLayout(self.supplier_tab)
 
         # Toolbar
         toolbar = QHBoxLayout()
-        add_btn = QPushButton("Add Supplier")
-        add_btn.clicked.connect(self.add_supplier)
-        refresh_btn = QPushButton("Refresh")
-        refresh_btn.clicked.connect(self.refresh_suppliers)
-        toolbar.addWidget(add_btn)
-        toolbar.addWidget(refresh_btn)
+        self.btn_add_supplier = QPushButton()
+        self.btn_add_supplier.clicked.connect(self.add_supplier)
+        self.btn_refresh_suppliers = QPushButton()
+        self.btn_refresh_suppliers.clicked.connect(self.refresh_suppliers)
+        toolbar.addWidget(self.btn_add_supplier)
+        toolbar.addWidget(self.btn_refresh_suppliers)
         toolbar.addStretch()
         layout.addLayout(toolbar)
 
@@ -328,14 +375,17 @@ class PurchaseView(QWidget):
 
         self.supplier_combo = QComboBox()
         self.invoice_input = QLineEdit()
-        self.invoice_input.setPlaceholderText("Vendor Invoice #")
         self.date_input = QDateEdit(QDate.currentDate())
 
-        form_layout.addWidget(QLabel("Supplier:"))
+        self.lbl_grn_supplier = QLabel()
+        self.lbl_grn_ref = QLabel()
+        self.lbl_grn_date = QLabel()
+
+        form_layout.addWidget(self.lbl_grn_supplier)
         form_layout.addWidget(self.supplier_combo)
-        form_layout.addWidget(QLabel("Ref #:"))
+        form_layout.addWidget(self.lbl_grn_ref)
         form_layout.addWidget(self.invoice_input)
-        form_layout.addWidget(QLabel("Date:"))
+        form_layout.addWidget(self.lbl_grn_date)
         form_layout.addWidget(self.date_input)
 
         layout.addLayout(form_layout)
@@ -343,7 +393,6 @@ class PurchaseView(QWidget):
         # Product Search
         search_layout = QHBoxLayout()
         self.product_search = QLineEdit()
-        self.product_search.setPlaceholderText("Scan Barcode or Type Product Name...")
         self.product_search.returnPressed.connect(self.add_product_to_grid)
 
         # Completer
@@ -351,13 +400,13 @@ class PurchaseView(QWidget):
         self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.product_search.setCompleter(self.completer)
 
-        search_layout.addWidget(QLabel("Add Product:"))
+        self.lbl_add_product = QLabel()
+        search_layout.addWidget(self.lbl_add_product)
         search_layout.addWidget(self.product_search)
         layout.addLayout(search_layout)
 
         # Items Grid
         self.grn_model = QStandardItemModel(0, 5)
-        self.grn_model.setHorizontalHeaderLabels(["ID", "Product Name", "Receive Qty", "Unit Cost", "Total"])
 
         self.grn_table = QTableView()
         self.grn_table.setModel(self.grn_model)
@@ -366,16 +415,16 @@ class PurchaseView(QWidget):
 
         # Footer
         footer_layout = QHBoxLayout()
-        self.total_label = QLabel("Total Cost: 0.00")
+        self.total_label = QLabel()
         self.total_label.setStyleSheet("font-size: 16px; font-weight: bold;")
 
-        commit_btn = QPushButton("Commit Stock")
-        commit_btn.setStyleSheet("background-color: #39FF14; color: black; font-weight: bold; padding: 10px;")
-        commit_btn.clicked.connect(self.commit_grn)
+        self.btn_commit = QPushButton()
+        self.btn_commit.setStyleSheet("background-color: #39FF14; color: black; font-weight: bold; padding: 10px;")
+        self.btn_commit.clicked.connect(self.commit_grn)
 
         footer_layout.addStretch()
         footer_layout.addWidget(self.total_label)
-        footer_layout.addWidget(commit_btn)
+        footer_layout.addWidget(self.btn_commit)
         layout.addLayout(footer_layout)
 
         # Data
@@ -388,35 +437,34 @@ class PurchaseView(QWidget):
         # Filters bar
         filter_layout = QHBoxLayout()
 
-        filter_layout.addWidget(QLabel("Supplier:"))
+        self.lbl_hist_supplier = QLabel()
+        filter_layout.addWidget(self.lbl_hist_supplier)
         self.history_supplier_combo = QComboBox()
-        self.history_supplier_combo.addItem("All Suppliers", None)
         filter_layout.addWidget(self.history_supplier_combo)
 
-        filter_layout.addWidget(QLabel("Status:"))
+        self.lbl_hist_status = QLabel()
+        filter_layout.addWidget(self.lbl_hist_status)
         self.history_status_combo = QComboBox()
-        self.history_status_combo.addItem("All", None)
-        self.history_status_combo.addItem("Completed", "COMPLETED")
-        self.history_status_combo.addItem("Draft", "DRAFT")
-        self.history_status_combo.addItem("Void", "VOID")
         filter_layout.addWidget(self.history_status_combo)
 
-        filter_layout.addWidget(QLabel("From:"))
+        self.lbl_hist_from = QLabel()
+        filter_layout.addWidget(self.lbl_hist_from)
         self.history_date_from = QDateEdit()
         self.history_date_from.setCalendarPopup(True)
         self.history_date_from.setDate(QDate.currentDate().addMonths(-3))
         filter_layout.addWidget(self.history_date_from)
 
-        filter_layout.addWidget(QLabel("To:"))
+        self.lbl_hist_to = QLabel()
+        filter_layout.addWidget(self.lbl_hist_to)
         self.history_date_to = QDateEdit()
         self.history_date_to.setCalendarPopup(True)
         self.history_date_to.setDate(QDate.currentDate())
         filter_layout.addWidget(self.history_date_to)
 
-        refresh_btn = QPushButton("Refresh")
-        refresh_btn.setProperty("class", "primary")
-        refresh_btn.clicked.connect(self.refresh_history)
-        filter_layout.addWidget(refresh_btn)
+        self.btn_refresh_history = QPushButton()
+        self.btn_refresh_history.setProperty("class", "primary")
+        self.btn_refresh_history.clicked.connect(self.refresh_history)
+        filter_layout.addWidget(self.btn_refresh_history)
 
         filter_layout.addStretch()
         layout.addLayout(filter_layout)
@@ -437,6 +485,88 @@ class PurchaseView(QWidget):
         self.history_table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
         self.history_table.doubleClicked.connect(self.on_history_double_click)
         layout.addWidget(self.history_table, 1)
+
+    def retranslate_ui(self) -> None:
+        """Update all translatable strings."""
+        # Tabs
+        self.tabs.setTabText(0, _t("purchase.tab_suppliers"))
+        self.tabs.setTabText(1, _t("purchase.tab_new_grn"))
+        self.tabs.setTabText(2, _t("purchase.tab_grn_history"))
+        self.tabs.setTabText(3, _t("purchase.tab_payables"))
+
+        # Supplier tab
+        self.btn_add_supplier.setText(_t("purchase.btn_add_supplier"))
+        self.btn_refresh_suppliers.setText(_t("purchase.btn_refresh"))
+
+        # GRN tab
+        self.lbl_grn_supplier.setText(_t("purchase.form_supplier"))
+        self.invoice_input.setPlaceholderText(_t("purchase.invoice_placeholder"))
+        self.lbl_grn_ref.setText(_t("purchase.form_ref"))
+        self.lbl_grn_date.setText(_t("purchase.form_date"))
+        self.lbl_add_product.setText(_t("purchase.form_add_product"))
+        self.product_search.setPlaceholderText(_t("purchase.product_search_placeholder"))
+        self.grn_model.setHorizontalHeaderLabels(
+            [
+                _t("purchase.grn_header_id"),
+                _t("purchase.grn_header_product"),
+                _t("purchase.grn_header_qty"),
+                _t("purchase.grn_header_cost"),
+                _t("purchase.grn_header_total"),
+            ]
+        )
+        self.btn_commit.setText(_t("purchase.btn_commit_stock"))
+        self.total_label.setText(f"{_t('purchase.total_cost_label')}: 0.00")
+
+        # History tab
+        self.lbl_hist_supplier.setText(_t("purchase.form_supplier"))
+        self.lbl_hist_status.setText(_t("purchase.history_status_label"))
+        self.lbl_hist_from.setText(_t("purchase.from"))
+        self.lbl_hist_to.setText(_t("purchase.to"))
+        self.btn_refresh_history.setText(_t("purchase.btn_refresh"))
+
+        # Repopulate status combo with translations
+        current_status = self.history_status_combo.currentData()
+        self.history_status_combo.clear()
+        self.history_status_combo.addItem(_t("purchase.all_suppliers"), None)
+        self.history_status_combo.addItem(_t("purchase.status_completed"), "COMPLETED")
+        self.history_status_combo.addItem(_t("purchase.status_draft"), "DRAFT")
+        self.history_status_combo.addItem(_t("purchase.status_void"), "VOID")
+        if current_status:
+            for i in range(self.history_status_combo.count()):
+                if self.history_status_combo.itemData(i) == current_status:
+                    self.history_status_combo.setCurrentIndex(i)
+                    break
+
+        # Payables tab
+        self.payables_title_label.setText(_t("purchase.payables_title"))
+        self.payable_search.setPlaceholderText(_t("purchase.payable_search_placeholder"))
+        self.btn_payable_back.setText(_t("purchase.payables_back"))
+        self.btn_make_payment.setText(_t("purchase.btn_make_payment"))
+        self.btn_adjust_payable.setText(_t("purchase.btn_adjust_balance"))
+        self.lbl_pay_from.setText(_t("purchase.from"))
+        self.lbl_pay_to.setText(_t("purchase.to"))
+        self.btn_pay_all.setText(_t("purchase.all"))
+
+        # Payable table headers
+        self.payable_supplier_table.setHorizontalHeaderLabels(
+            [
+                _t("purchase.supplier_header_id"),
+                _t("purchase.payable_header_supplier"),
+                _t("purchase.supplier_header_phone"),
+                _t("purchase.payable_header_payable"),
+                _t("purchase.payable_header_terms"),
+            ]
+        )
+        self.payable_ledger_table.setHorizontalHeaderLabels(
+            [
+                _t("purchase.ledger_header_date"),
+                _t("purchase.ledger_header_type"),
+                _t("purchase.ledger_header_doc"),
+                _t("purchase.ledger_header_debit"),
+                _t("purchase.ledger_header_credit"),
+                _t("purchase.ledger_header_balance"),
+            ]
+        )
 
     def refresh_history(self) -> None:
         """Refresh the GRN history table with current filters."""
@@ -479,7 +609,7 @@ class PurchaseView(QWidget):
         if hasattr(self, "history_supplier_combo"):
             current_data = self.history_supplier_combo.currentData()
             self.history_supplier_combo.clear()
-            self.history_supplier_combo.addItem("All Suppliers", None)
+            self.history_supplier_combo.addItem(_t("purchase.all_suppliers"), None)
             for s in self.suppliers:
                 self.history_supplier_combo.addItem(s.company_name, s.id)
             # Restore selection
@@ -507,7 +637,7 @@ class PurchaseView(QWidget):
 
         products = ProductService.search(query)
         if not products:
-            QMessageBox.warning(self, "Not Found", "Product not found.")
+            QMessageBox.warning(self, _t("purchase.not_found_title"), _t("purchase.product_not_found"))
             return
 
         # For simplicity, pick first match or if exact match
@@ -533,7 +663,7 @@ class PurchaseView(QWidget):
     def update_total(self):
         total = sum(item["qty"] * item["cost"] for item in self.grn_items)
         total_str = format(total, ".2f")
-        self.total_label.setText(f"Total Cost: {total_str}")
+        self.total_label.setText(f"{_t('purchase.total_cost_label')}: {total_str}")
 
     def set_user(self, user):
         self.user = user
@@ -543,15 +673,19 @@ class PurchaseView(QWidget):
         ref_no = self.invoice_input.text()
 
         if not supplier_id or not ref_no:
-            QMessageBox.warning(self, "Error", "Please select Supplier and enter Reference #")
+            QMessageBox.warning(
+                self,
+                _t("common.error"),
+                _t("purchase.error_supplier_ref"),
+            )
             return
 
         if not self.grn_items:
-            QMessageBox.warning(self, "Error", "No items in GRN")
+            QMessageBox.warning(self, _t("common.error"), _t("purchase.error_no_items"))
             return
 
         if not hasattr(self, "user") or not self.user:
-            QMessageBox.warning(self, "Error", "User not logged in.")
+            QMessageBox.warning(self, _t("common.error"), _t("purchase.error_no_user"))
             return
 
         try:
@@ -577,8 +711,8 @@ class PurchaseView(QWidget):
 
             QMessageBox.information(
                 self,
-                "Success",
-                (f"GRN {purchase.document_number} " f"Committed Successfully!"),
+                _t("common.success"),
+                _t("purchase.grn_committed_msg", doc_number=purchase.document_number),
             )
 
             # Reset
@@ -588,7 +722,7 @@ class PurchaseView(QWidget):
             self.update_total()
 
         except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+            QMessageBox.critical(self, _t("common.error"), str(e))
 
     # ========== Payables Tab ==========
 
@@ -620,16 +754,15 @@ class PurchaseView(QWidget):
 
         # Header
         header_row = QHBoxLayout()
-        title = QLabel("Supplier Payables")
-        title.setObjectName("PayablePageTitle")
-        header_row.addWidget(title)
+        self.payables_title_label = QLabel()
+        self.payables_title_label.setObjectName("PayablePageTitle")
+        header_row.addWidget(self.payables_title_label)
         header_row.addStretch()
         page_layout.addLayout(header_row)
 
         # Search
         self.payable_search = QLineEdit()
         self.payable_search.setObjectName("PayableSearchInput")
-        self.payable_search.setPlaceholderText("Search supplier...")
         self.payable_search.textChanged.connect(self.filter_payable_suppliers)
         page_layout.addWidget(self.payable_search)
 
@@ -637,7 +770,6 @@ class PurchaseView(QWidget):
         self.payable_supplier_table = QTableWidget()
         self.payable_supplier_table.setObjectName("PayableSupplierTable")
         self.payable_supplier_table.setColumnCount(5)
-        self.payable_supplier_table.setHorizontalHeaderLabels(["ID", "Supplier", "Phone", "Payable", "Terms"])
         self.payable_supplier_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.payable_supplier_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.payable_supplier_table.setColumnHidden(0, True)
@@ -661,7 +793,7 @@ class PurchaseView(QWidget):
 
         # Back button
         nav_row = QHBoxLayout()
-        self.btn_payable_back = QPushButton("< Back to Suppliers")
+        self.btn_payable_back = QPushButton()
         self.btn_payable_back.setObjectName("PayableBackBtn")
         self.btn_payable_back.clicked.connect(self._payable_go_back)
         nav_row.addWidget(self.btn_payable_back)
@@ -676,7 +808,7 @@ class PurchaseView(QWidget):
         header_layout.setSpacing(8)
 
         row1 = QHBoxLayout()
-        self.lbl_pay_name = QLabel("Supplier Name")
+        self.lbl_pay_name = QLabel()
         self.lbl_pay_name.setObjectName("PayableCustName")
         self.lbl_pay_phone = QLabel("")
         self.lbl_pay_phone.setObjectName("PayableCustPhone")
@@ -687,9 +819,9 @@ class PurchaseView(QWidget):
 
         row2 = QHBoxLayout()
         row2.setSpacing(16)
-        self.lbl_pay_balance = QLabel("Payable: ---")
+        self.lbl_pay_balance = QLabel()
         self.lbl_pay_balance.setObjectName("PayableMetricDebt")
-        self.lbl_pay_last = QLabel("Last Payment: ---")
+        self.lbl_pay_last = QLabel()
         self.lbl_pay_last.setObjectName("PayableMetricLast")
         row2.addWidget(self.lbl_pay_balance)
         row2.addStretch()
@@ -705,12 +837,12 @@ class PurchaseView(QWidget):
         action_layout.setContentsMargins(0, 0, 0, 0)
         action_layout.setSpacing(8)
 
-        self.btn_make_payment = QPushButton("Make Payment")
+        self.btn_make_payment = QPushButton()
         self.btn_make_payment.setObjectName("PayablePayBtn")
         self.btn_make_payment.clicked.connect(self.make_payment)
         action_layout.addWidget(self.btn_make_payment)
 
-        self.btn_adjust_payable = QPushButton("Adjust Balance")
+        self.btn_adjust_payable = QPushButton()
         self.btn_adjust_payable.setObjectName("PayableAdjustBtn")
         self.btn_adjust_payable.clicked.connect(self.adjust_payable)
         action_layout.addWidget(self.btn_adjust_payable)
@@ -725,9 +857,9 @@ class PurchaseView(QWidget):
         filter_layout.setContentsMargins(0, 0, 0, 0)
         filter_layout.setSpacing(8)
 
-        lbl_from = QLabel("From:")
-        lbl_from.setObjectName("PayableFilterLabel")
-        filter_layout.addWidget(lbl_from)
+        self.lbl_pay_from = QLabel()
+        self.lbl_pay_from.setObjectName("PayableFilterLabel")
+        filter_layout.addWidget(self.lbl_pay_from)
         self.pay_date_from = QDateEdit()
         self.pay_date_from.setObjectName("PayableDateEdit")
         self.pay_date_from.setCalendarPopup(True)
@@ -735,9 +867,9 @@ class PurchaseView(QWidget):
         self.pay_date_from.dateChanged.connect(self.reload_payable_ledger)
         filter_layout.addWidget(self.pay_date_from)
 
-        lbl_to = QLabel("To:")
-        lbl_to.setObjectName("PayableFilterLabel")
-        filter_layout.addWidget(lbl_to)
+        self.lbl_pay_to = QLabel()
+        self.lbl_pay_to.setObjectName("PayableFilterLabel")
+        filter_layout.addWidget(self.lbl_pay_to)
         self.pay_date_to = QDateEdit()
         self.pay_date_to.setObjectName("PayableDateEdit")
         self.pay_date_to.setCalendarPopup(True)
@@ -745,10 +877,10 @@ class PurchaseView(QWidget):
         self.pay_date_to.dateChanged.connect(self.reload_payable_ledger)
         filter_layout.addWidget(self.pay_date_to)
 
-        btn_all = QPushButton("All")
-        btn_all.setObjectName("PayableAllDatesBtn")
-        btn_all.clicked.connect(self.show_all_payable_dates)
-        filter_layout.addWidget(btn_all)
+        self.btn_pay_all = QPushButton()
+        self.btn_pay_all.setObjectName("PayableAllDatesBtn")
+        self.btn_pay_all.clicked.connect(self.show_all_payable_dates)
+        filter_layout.addWidget(self.btn_pay_all)
         filter_layout.addStretch()
         page_layout.addWidget(filter_bar)
 
@@ -756,7 +888,6 @@ class PurchaseView(QWidget):
         self.payable_ledger_table = QTableWidget()
         self.payable_ledger_table.setObjectName("PayableLedgerTable")
         self.payable_ledger_table.setColumnCount(6)
-        self.payable_ledger_table.setHorizontalHeaderLabels(["Date", "Type", "Doc #", "Debit", "Credit", "Balance"])
         self.payable_ledger_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.payable_ledger_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         self.payable_ledger_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -775,11 +906,11 @@ class PurchaseView(QWidget):
         footer.setObjectName("PayableLedgerFooter")
         footer_layout = QHBoxLayout(footer)
         footer_layout.setContentsMargins(8, 8, 8, 8)
-        self.lbl_total_purchases = QLabel("Purchases: ---")
+        self.lbl_total_purchases = QLabel()
         self.lbl_total_purchases.setObjectName("PayableLedgerDebit")
-        self.lbl_total_payments = QLabel("Payments: ---")
+        self.lbl_total_payments = QLabel()
         self.lbl_total_payments.setObjectName("PayableLedgerCredit")
-        self.lbl_closing = QLabel("Closing: ---")
+        self.lbl_closing = QLabel()
         self.lbl_closing.setObjectName("PayableLedgerClosing")
         footer_layout.addWidget(self.lbl_total_purchases)
         footer_layout.addWidget(self.lbl_total_payments)
@@ -858,18 +989,22 @@ class PurchaseView(QWidget):
     def _update_payable_header(self, supplier) -> None:
         """Update the payable header card."""
         self.lbl_pay_name.setText(supplier.company_name)
-        self.lbl_pay_phone.setText(supplier.phone or "No phone")
+        self.lbl_pay_phone.setText(supplier.phone or _t("purchase.no_phone"))
 
         summary = SupplierPayableService.get_supplier_summary(supplier.id)
         if summary:
-            self.lbl_pay_balance.setText(f"Payable: {format_currency(summary['current_payable'])}")
+            self.lbl_pay_balance.setText(
+                _t("purchase.payable_label") + " " + format_currency(summary["current_payable"])
+            )
             if summary["last_payment_date"]:
-                self.lbl_pay_last.setText(f"Last Payment: {summary['last_payment_date'].strftime('%Y-%m-%d')}")
+                self.lbl_pay_last.setText(
+                    _t("purchase.last_payment_label") + " " + summary["last_payment_date"].strftime("%Y-%m-%d")
+                )
             else:
-                self.lbl_pay_last.setText("Last Payment: None")
+                self.lbl_pay_last.setText(_t("purchase.last_payment_label") + " " + _t("purchase.none"))
         else:
-            self.lbl_pay_balance.setText("Payable: ---")
-            self.lbl_pay_last.setText("Last Payment: ---")
+            self.lbl_pay_balance.setText(_t("purchase.payable_label") + " ---")
+            self.lbl_pay_last.setText(_t("purchase.last_payment_label") + " ---")
 
     def reload_payable_ledger(self) -> None:
         """Reload ledger entries for the selected supplier."""
@@ -944,9 +1079,9 @@ class PurchaseView(QWidget):
 
             closing_balance = entry.balance_after
 
-        self.lbl_total_purchases.setText(f"Purchases: {format_currency(total_debit)}")
-        self.lbl_total_payments.setText(f"Payments: {format_currency(total_credit)}")
-        self.lbl_closing.setText(f"Closing: {format_currency(closing_balance)}")
+        self.lbl_total_purchases.setText(_t("purchase.purchases_label") + " " + format_currency(total_debit))
+        self.lbl_total_payments.setText(_t("purchase.payments_label") + " " + format_currency(total_credit))
+        self.lbl_closing.setText(_t("purchase.closing_label") + " " + format_currency(closing_balance))
 
     def make_payment(self) -> None:
         """Open supplier payment dialog."""
@@ -957,12 +1092,20 @@ class PurchaseView(QWidget):
             return
 
         if not self.selected_payable_supplier:
-            QMessageBox.warning(self, "No Supplier", "Please select a supplier first.")
+            QMessageBox.warning(
+                self,
+                _t("purchase.no_supplier_title"),
+                _t("purchase.no_supplier_msg"),
+            )
             return
 
         payable = getattr(self.selected_payable_supplier, "current_payable", Decimal("0.00")) or Decimal("0.00")
         if payable <= 0:
-            QMessageBox.information(self, "No Payable", "This supplier has no outstanding payable.")
+            QMessageBox.information(
+                self,
+                _t("purchase.no_payable_title"),
+                _t("purchase.no_payable_msg"),
+            )
             return
 
         from cbpos.ui.dialogs.supplier_payment_dialog import SupplierPaymentDialog
@@ -983,13 +1126,17 @@ class PurchaseView(QWidget):
             return
 
         if not self.selected_payable_supplier:
-            QMessageBox.warning(self, "No Supplier", "Please select a supplier first.")
+            QMessageBox.warning(
+                self,
+                _t("purchase.no_supplier_title"),
+                _t("purchase.no_supplier_msg"),
+            )
             return
 
         amount_str, ok = QInputDialog.getText(
             self,
-            "Adjust Balance",
-            "Enter adjustment amount (positive = increase payable, negative = decrease):",
+            _t("purchase.adjust_title"),
+            _t("purchase.adjust_prompt"),
         )
         if not ok or not amount_str:
             return
@@ -997,17 +1144,29 @@ class PurchaseView(QWidget):
         try:
             amount = Decimal(amount_str)
         except (ValueError, InvalidOperation):
-            QMessageBox.warning(self, "Invalid", "Invalid amount.")
+            QMessageBox.warning(
+                self,
+                _t("purchase.invalid_title"),
+                _t("purchase.invalid_amount_msg"),
+            )
             return
 
-        note, ok = QInputDialog.getText(self, "Adjustment Note", "Reason for adjustment (required):")
+        note, ok = QInputDialog.getText(
+            self,
+            _t("purchase.adjust_note_title"),
+            _t("purchase.adjust_note_prompt"),
+        )
         if not ok or not note:
-            QMessageBox.warning(self, "Required", "A reason is required for adjustments.")
+            QMessageBox.warning(
+                self,
+                _t("purchase.required_title"),
+                _t("purchase.reason_required_msg"),
+            )
             return
 
         current_user = AuthService.get_current_user()
         if not current_user:
-            QMessageBox.warning(self, "Error", "No user logged in.")
+            QMessageBox.warning(self, _t("common.error"), _t("purchase.error_no_user"))
             return
 
         try:
@@ -1017,10 +1176,14 @@ class PurchaseView(QWidget):
                 note=note,
                 user_id=current_user.id,
             )
-            QMessageBox.information(self, "Done", "Balance adjusted successfully.")
+            QMessageBox.information(
+                self,
+                _t("purchase.done_title"),
+                _t("purchase.balance_adjusted_msg"),
+            )
             self.selected_payable_supplier = SupplierService.get_supplier_by_id(self.selected_payable_supplier.id)
             self._update_payable_header(self.selected_payable_supplier)
             self.reload_payable_ledger()
             self.load_payable_suppliers()
         except ValueError as e:
-            QMessageBox.warning(self, "Error", str(e))
+            QMessageBox.warning(self, _t("common.error"), str(e))

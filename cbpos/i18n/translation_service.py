@@ -8,7 +8,7 @@ with automatic fallback to English when a translation is missing.
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Callable, Optional
+from typing import Dict, List, Callable
 
 logger = logging.getLogger(__name__)
 

@@ -30,35 +30,9 @@ from cbpos.core.services.language_service import LanguageService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.models import Sale, SaleItem, SalePayment, Product
 from cbpos.config import Config
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 import decimal
 import socket
-
-# Gmail SMTP setup guide content — kept separate for maintainability
-_GMAIL_GUIDE_STEPS = [
-    (
-        "1",
-        "Enable 2-Step Verification",
-        "Go to myaccount.google.com \u2192 Security\n" "Turn on 2-Step Verification for your account.",
-    ),
-    (
-        "2",
-        "Create an App Password",
-        "In your Google Account, search for 'App Passwords'.\n"
-        "Select app: 'Other' \u2192 type 'CB POS' \u2192 Generate.",
-    ),
-    (
-        "3",
-        "Copy the password",
-        "Google will show a 16-character password.\n" "Copy it \u2014 you won't be able to see it again.",
-    ),
-    (
-        "4",
-        "Paste in CB POS",
-        "Click 'Use Gmail' to fill Host & Port.\n"
-        "Enter your Gmail as SMTP User.\n"
-        "Paste the App Password as SMTP Password.",
-    ),
-]
 
 
 class SettingsPage(QWidget):
@@ -90,13 +64,13 @@ class SettingsPage(QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
 
-        title = QLabel(title_text)
-        title.setProperty("class", "dialog-title")
-        layout.addWidget(title)
+        self._page_title = QLabel(title_text)
+        self._page_title.setProperty("class", "dialog-title")
+        layout.addWidget(self._page_title)
 
-        subtitle = QLabel(subtitle_text)
-        subtitle.setProperty("class", "muted")
-        layout.addWidget(subtitle)
+        self._page_subtitle = QLabel(subtitle_text)
+        self._page_subtitle.setProperty("class", "muted")
+        layout.addWidget(self._page_subtitle)
 
         tabs = QTabWidget()
         layout.addWidget(tabs, 1)
@@ -170,7 +144,7 @@ class SettingsPage(QWidget):
     def _make_section_header(title: str) -> QWidget:
         """Create a styled section header with title and horizontal divider.
 
-        Returns a single widget containing: [title] ── [line] that spans the
+        Returns a single widget containing: [title] -- [line] that spans the
         full width of the form.  Use with ``form.addRow(header)`` (single-arg
         overload so it spans both columns).
         """
@@ -195,13 +169,10 @@ class ShopInfoPage(SettingsPage):
     """Consolidated: General + Payment banking + Automation email settings."""
 
     def init_ui(self):
-        _, self.tabs = self._create_page_layout(
-            "Shop Info",
-            "Business details, banking, email, and appearance settings.",
-        )
+        _, self.tabs = self._create_page_layout("", "")
 
         # --- Tab 1: Business ---
-        tab_biz, form_biz = self._build_form_tab()
+        self._tab_biz, self._form_biz = self._build_form_tab()
 
         self.input_shop_name = QLineEdit()
         self.input_address = QLineEdit()
@@ -210,112 +181,188 @@ class ShopInfoPage(SettingsPage):
         self.input_tax_id = QLineEdit()
         self.input_currency = QLineEdit()
 
-        form_biz.addRow("Shop Name:", self.input_shop_name)
-        form_biz.addRow("Address:", self.input_address)
-        form_biz.addRow("Phone:", self.input_phone)
-        form_biz.addRow("VAT Number:", self.input_vat)
-        form_biz.addRow("Company Tax ID:", self.input_tax_id)
-        form_biz.addRow("Currency Symbol:", self.input_currency)
+        self._lbl_shop_name = QLabel()
+        self._lbl_address = QLabel()
+        self._lbl_phone = QLabel()
+        self._lbl_vat = QLabel()
+        self._lbl_tax_id = QLabel()
+        self._lbl_currency = QLabel()
 
-        self.tabs.addTab(tab_biz, "Business")
+        self._form_biz.addRow(self._lbl_shop_name, self.input_shop_name)
+        self._form_biz.addRow(self._lbl_address, self.input_address)
+        self._form_biz.addRow(self._lbl_phone, self.input_phone)
+        self._form_biz.addRow(self._lbl_vat, self.input_vat)
+        self._form_biz.addRow(self._lbl_tax_id, self.input_tax_id)
+        self._form_biz.addRow(self._lbl_currency, self.input_currency)
+
+        self.tabs.addTab(self._tab_biz, "")
 
         # --- Tab 2: Banking ---
-        tab_bank, form_bank = self._build_form_tab()
+        self._tab_bank, self._form_bank = self._build_form_tab()
 
         self.input_bank_name = QLineEdit()
         self.input_account_no = QLineEdit()
         self.input_branch = QLineEdit()
 
-        form_bank.addRow("Bank Name:", self.input_bank_name)
-        form_bank.addRow("Account Number:", self.input_account_no)
-        form_bank.addRow("Branch:", self.input_branch)
+        self._lbl_bank_name = QLabel()
+        self._lbl_account_no = QLabel()
+        self._lbl_branch = QLabel()
 
-        self.tabs.addTab(tab_bank, "Banking")
+        self._form_bank.addRow(self._lbl_bank_name, self.input_bank_name)
+        self._form_bank.addRow(self._lbl_account_no, self.input_account_no)
+        self._form_bank.addRow(self._lbl_branch, self.input_branch)
+
+        self.tabs.addTab(self._tab_bank, "")
 
         # --- Tab 3: Email ---
-        tab_email, form_email = self._build_form_tab()
+        self._tab_email, self._form_email = self._build_form_tab()
 
         # Helper buttons row at top
         email_btn_row = QHBoxLayout()
         email_btn_row.addStretch()
 
-        btn_gmail = QPushButton("Use Gmail")
-        btn_gmail.setFixedHeight(32)
-        btn_gmail.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_gmail.setObjectName("BtnGmailHelper")
-        btn_gmail.setProperty("class", "link")
-        btn_gmail.setToolTip("Fill Gmail SMTP settings automatically")
-        btn_gmail.clicked.connect(self._prefill_gmail)
-        email_btn_row.addWidget(btn_gmail)
+        self.btn_gmail = QPushButton()
+        self.btn_gmail.setFixedHeight(32)
+        self.btn_gmail.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_gmail.setObjectName("BtnGmailHelper")
+        self.btn_gmail.setProperty("class", "link")
+        self.btn_gmail.clicked.connect(self._prefill_gmail)
+        email_btn_row.addWidget(self.btn_gmail)
 
-        btn_help = QPushButton()
+        self.btn_help = QPushButton()
         info_icon_path = str(Config.BASE_DIR / "cbpos" / "assets" / "icons" / "info-circle-cyan.svg")
-        btn_help.setIcon(QIcon(info_icon_path))
-        btn_help.setIconSize(QSize(24, 24))
-        btn_help.setFixedSize(28, 28)
-        btn_help.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_help.setObjectName("BtnInfoIcon")
-        btn_help.setToolTip("How to set up Gmail email (step-by-step guide)")
-        btn_help.clicked.connect(self._show_smtp_guide)
-        email_btn_row.addWidget(btn_help)
+        self.btn_help.setIcon(QIcon(info_icon_path))
+        self.btn_help.setIconSize(QSize(24, 24))
+        self.btn_help.setFixedSize(28, 28)
+        self.btn_help.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_help.setObjectName("BtnInfoIcon")
+        self.btn_help.clicked.connect(self._show_smtp_guide)
+        email_btn_row.addWidget(self.btn_help)
 
-        form_email.addRow(email_btn_row)
+        self._form_email.addRow(email_btn_row)
 
         self.chk_auto_report = QCheckBox()
-        self.chk_auto_report.setToolTip("Email a daily sales summary report at the scheduled time")
-        form_email.addRow("Enable Daily Auto-Report:", self.chk_auto_report)
+        self._lbl_auto_report = QLabel()
+        self._form_email.addRow(self._lbl_auto_report, self.chk_auto_report)
 
         self.time_auto_report = QTimeEdit()
         self.time_auto_report.setDisplayFormat("HH:mm")
-        form_email.addRow("Report Time:", self.time_auto_report)
+        self._lbl_report_time = QLabel()
+        self._form_email.addRow(self._lbl_report_time, self.time_auto_report)
 
         self.input_admin_email = QLineEdit()
-        self.input_admin_email.setPlaceholderText("yourname@gmail.com")
-        form_email.addRow("Admin Email:", self.input_admin_email)
+        self._lbl_admin_email = QLabel()
+        self._form_email.addRow(self._lbl_admin_email, self.input_admin_email)
 
         self.input_smtp_host = QLineEdit()
-        self.input_smtp_host.setPlaceholderText("smtp.gmail.com")
-        form_email.addRow("SMTP Host:", self.input_smtp_host)
+        self._lbl_smtp_host = QLabel()
+        self._form_email.addRow(self._lbl_smtp_host, self.input_smtp_host)
 
         self.input_smtp_port = QLineEdit()
-        self.input_smtp_port.setPlaceholderText("587")
         self.input_smtp_port.setValidator(QIntValidator(1, 65535))
-        form_email.addRow("SMTP Port:", self.input_smtp_port)
+        self._lbl_smtp_port = QLabel()
+        self._form_email.addRow(self._lbl_smtp_port, self.input_smtp_port)
 
         self.input_smtp_user = QLineEdit()
-        self.input_smtp_user.setPlaceholderText("yourname@gmail.com")
-        form_email.addRow("SMTP User (Email):", self.input_smtp_user)
+        self._lbl_smtp_user = QLabel()
+        self._form_email.addRow(self._lbl_smtp_user, self.input_smtp_user)
 
         self.input_smtp_pass = QLineEdit()
         self.input_smtp_pass.setEchoMode(QLineEdit.EchoMode.Password)
-        self.input_smtp_pass.setPlaceholderText("16-character App Password")
-        form_email.addRow("SMTP Password:", self.input_smtp_pass)
+        self._lbl_smtp_pass = QLabel()
+        self._form_email.addRow(self._lbl_smtp_pass, self.input_smtp_pass)
 
-        self.tabs.addTab(tab_email, "Email")
+        self.tabs.addTab(self._tab_email, "")
 
         # --- Tab 4: Appearance ---
-        tab_appear, form_appear = self._build_form_tab()
+        self._tab_appear, self._form_appear = self._build_form_tab()
 
         self.spin_font_size = QSpinBox()
         self.spin_font_size.setRange(8, 24)
         self.spin_font_size.setSuffix(" px")
-        form_appear.addRow("Font Size:", self.spin_font_size)
+        self._lbl_font_size = QLabel()
+        self._form_appear.addRow(self._lbl_font_size, self.spin_font_size)
 
         self.combo_theme = QComboBox()
-        self.combo_theme.addItems(["Ceylon Night (Dark)", "Ceylon Day (Light)"])
-        form_appear.addRow("Theme:", self.combo_theme)
+        self._lbl_theme = QLabel()
+        self._form_appear.addRow(self._lbl_theme, self.combo_theme)
 
         self.combo_language = QComboBox()
         languages = LanguageService.get_available_languages()
         for code, name in languages.items():
             self.combo_language.addItem(f"{name} ({code})", code)
-        form_appear.addRow("Language:", self.combo_language)
+        self._lbl_language = QLabel()
+        self._form_appear.addRow(self._lbl_language, self.combo_language)
 
-        lbl_restart = QLabel("(Font Size and Language changes require restart)")
-        lbl_restart.setProperty("class", "warning-hint")
-        form_appear.addRow("", lbl_restart)
+        self.lbl_restart = QLabel()
+        self.lbl_restart.setProperty("class", "warning-hint")
+        self._form_appear.addRow("", self.lbl_restart)
 
-        self.tabs.addTab(tab_appear, "Appearance")
+        self.tabs.addTab(self._tab_appear, "")
+
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
+    def retranslate_ui(self) -> None:
+        self._page_title.setText(_t("settings.shop_info.title"))
+        self._page_subtitle.setText(_t("settings.shop_info.subtitle"))
+
+        # Tab titles
+        self.tabs.setTabText(0, _t("settings.shop_info.tab_business"))
+        self.tabs.setTabText(1, _t("settings.shop_info.tab_banking"))
+        self.tabs.setTabText(2, _t("settings.shop_info.tab_email"))
+        self.tabs.setTabText(3, _t("settings.shop_info.tab_appearance"))
+
+        # Business
+        self._lbl_shop_name.setText(_t("settings.shop_info.shop_name"))
+        self._lbl_address.setText(_t("settings.shop_info.address"))
+        self._lbl_phone.setText(_t("settings.shop_info.phone"))
+        self._lbl_vat.setText(_t("settings.shop_info.vat_number"))
+        self._lbl_tax_id.setText(_t("settings.shop_info.company_tax_id"))
+        self._lbl_currency.setText(_t("settings.shop_info.currency_symbol"))
+
+        # Banking
+        self._lbl_bank_name.setText(_t("settings.shop_info.bank_name"))
+        self._lbl_account_no.setText(_t("settings.shop_info.account_number"))
+        self._lbl_branch.setText(_t("settings.shop_info.branch"))
+
+        # Email
+        self.btn_gmail.setText(_t("settings.shop_info.btn_use_gmail"))
+        self.btn_gmail.setToolTip(_t("settings.shop_info.tooltip_gmail"))
+        self.btn_help.setToolTip(_t("settings.shop_info.tooltip_email_help"))
+        self._lbl_auto_report.setText(_t("settings.shop_info.enable_auto_report"))
+        self.chk_auto_report.setToolTip(_t("settings.shop_info.tooltip_auto_report"))
+        self._lbl_report_time.setText(_t("settings.shop_info.report_time"))
+        self._lbl_admin_email.setText(_t("settings.shop_info.admin_email"))
+        self.input_admin_email.setPlaceholderText(_t("settings.shop_info.admin_email_placeholder"))
+        self._lbl_smtp_host.setText(_t("settings.shop_info.smtp_host"))
+        self.input_smtp_host.setPlaceholderText(_t("settings.shop_info.smtp_host_placeholder"))
+        self._lbl_smtp_port.setText(_t("settings.shop_info.smtp_port"))
+        self.input_smtp_port.setPlaceholderText(_t("settings.shop_info.smtp_port_placeholder"))
+        self._lbl_smtp_user.setText(_t("settings.shop_info.smtp_user"))
+        self.input_smtp_user.setPlaceholderText(_t("settings.shop_info.smtp_user_placeholder"))
+        self._lbl_smtp_pass.setText(_t("settings.shop_info.smtp_password"))
+        self.input_smtp_pass.setPlaceholderText(_t("settings.shop_info.smtp_password_placeholder"))
+
+        # Appearance
+        self._lbl_font_size.setText(_t("settings.shop_info.font_size"))
+        self._lbl_theme.setText(_t("settings.shop_info.theme"))
+
+        # Re-populate theme combo preserving selection
+        current_theme_idx = self.combo_theme.currentIndex()
+        self.combo_theme.clear()
+        self.combo_theme.addItems(
+            [
+                _t("settings.shop_info.theme_dark"),
+                _t("settings.shop_info.theme_light"),
+            ]
+        )
+        if current_theme_idx >= 0:
+            self.combo_theme.setCurrentIndex(current_theme_idx)
+
+        self._lbl_language.setText(_t("settings.shop_info.language"))
+        self.lbl_restart.setText(_t("settings.shop_info.restart_hint"))
 
     def _prefill_gmail(self):
         """Pre-fill SMTP fields with Gmail defaults."""
@@ -327,17 +374,24 @@ class ShopInfoPage(SettingsPage):
     def _show_smtp_guide(self):
         """Show a clean step-by-step SMTP setup guide dialog."""
         dlg = QDialog(self)
-        dlg.setWindowTitle("Email Setup Guide")
+        dlg.setWindowTitle(_t("settings.shop_info.email_guide_title"))
         dlg.setMinimumWidth(480)
         layout = QVBoxLayout(dlg)
         layout.setSpacing(16)
         layout.setContentsMargins(24, 24, 24, 24)
 
-        title = QLabel("How to set up email with Gmail")
+        title = QLabel(_t("settings.shop_info.email_guide_heading"))
         title.setProperty("class", "dialog-title")
         layout.addWidget(title)
 
-        for num, heading, detail in _GMAIL_GUIDE_STEPS:
+        guide_steps = [
+            ("1", _t("settings.shop_info.guide_step1_title"), _t("settings.shop_info.guide_step1_detail")),
+            ("2", _t("settings.shop_info.guide_step2_title"), _t("settings.shop_info.guide_step2_detail")),
+            ("3", _t("settings.shop_info.guide_step3_title"), _t("settings.shop_info.guide_step3_detail")),
+            ("4", _t("settings.shop_info.guide_step4_title"), _t("settings.shop_info.guide_step4_detail")),
+        ]
+
+        for num, heading, detail in guide_steps:
             step_frame = QFrame()
             step_frame.setObjectName("SmtpGuideStep")
             step_layout = QHBoxLayout(step_frame)
@@ -362,12 +416,12 @@ class ShopInfoPage(SettingsPage):
 
             layout.addWidget(step_frame)
 
-        note = QLabel("<b>Important:</b> Your regular Gmail password will NOT work. " "You must use an App Password.")
+        note = QLabel("<b>Important:</b> " + _t("settings.shop_info.guide_important_note"))
         note.setWordWrap(True)
         note.setProperty("class", "muted")
         layout.addWidget(note)
 
-        btn_close = QPushButton("Got it")
+        btn_close = QPushButton(_t("settings.shop_info.guide_btn_close"))
         btn_close.setProperty("class", "primary")
         btn_close.clicked.connect(dlg.accept)
         layout.addWidget(btn_close, alignment=Qt.AlignmentFlag.AlignRight)
@@ -432,90 +486,122 @@ class SalesTaxPage(SettingsPage):
     """Sales search mode + Tax configuration."""
 
     def init_ui(self):
-        _, self.tabs = self._create_page_layout(
-            "Sales & Tax",
-            "Search defaults and Sri Lankan tax configuration.",
-        )
+        _, self.tabs = self._create_page_layout("", "")
 
         # --- Tab 1: Sales ---
-        tab_sales, form_sales = self._build_form_tab()
+        self._tab_sales, self._form_sales = self._build_form_tab()
 
         self.combo_search_mode = QComboBox()
-        self.combo_search_mode.addItems(["ALL", "BARCODE", "NAME"])
-        form_sales.addRow("Default Search Mode:", self.combo_search_mode)
+        self._lbl_search_mode = QLabel()
+        self._form_sales.addRow(self._lbl_search_mode, self.combo_search_mode)
 
         self.spin_max_discount = QDoubleSpinBox()
         self.spin_max_discount.setRange(0, 100)
         self.spin_max_discount.setDecimals(1)
         self.spin_max_discount.setSuffix("%")
         self.spin_max_discount.setFixedWidth(200)
-        self.spin_max_discount.setToolTip("Maximum discount % a cashier can apply. 0 = no limit.")
-        form_sales.addRow("Max Discount:", self.spin_max_discount)
+        self._lbl_max_discount = QLabel()
+        self._form_sales.addRow(self._lbl_max_discount, self.spin_max_discount)
 
         self.spin_loyalty_ratio = QSpinBox()
         self.spin_loyalty_ratio.setRange(1, 10000)
         self.spin_loyalty_ratio.setPrefix("Rs. ")
-        self.spin_loyalty_ratio.setToolTip("Spend this amount to earn 1 loyalty point")
-        form_sales.addRow("Loyalty Points Ratio:", self.spin_loyalty_ratio)
+        self._lbl_loyalty_ratio = QLabel()
+        self._form_sales.addRow(self._lbl_loyalty_ratio, self.spin_loyalty_ratio)
 
         self.spin_default_credit = QSpinBox()
         self.spin_default_credit.setRange(0, 1000000)
         self.spin_default_credit.setPrefix("Rs. ")
-        self.spin_default_credit.setToolTip("Default credit limit for new customers. 0 = no credit.")
-        form_sales.addRow("Default Credit Limit:", self.spin_default_credit)
+        self._lbl_default_credit = QLabel()
+        self._form_sales.addRow(self._lbl_default_credit, self.spin_default_credit)
 
-        self.tabs.addTab(tab_sales, "Sales")
+        self.tabs.addTab(self._tab_sales, "")
 
         # --- Tab 2: Tax ---
-        tab_tax, form_tax = self._build_form_tab()
+        self._tab_tax, self._form_tax = self._build_form_tab()
 
-        self.chk_vat_registered = QCheckBox("Business is VAT Registered")
-        self.chk_vat_registered.setToolTip(
-            "Enable if your annual turnover exceeds the VAT registration threshold. "
-            "When disabled, no tax is calculated on sales."
-        )
+        self.chk_vat_registered = QCheckBox()
         self.chk_vat_registered.stateChanged.connect(self._toggle_tax_fields)
-        form_tax.addRow(self.chk_vat_registered)
+        self._form_tax.addRow(self.chk_vat_registered)
 
-        lbl_warn = QLabel("Note: Changing these values affects ALL future sales immediately.")
-        lbl_warn.setProperty("class", "warning-hint")
-        form_tax.addRow(lbl_warn)
+        self.lbl_tax_warn = QLabel()
+        self.lbl_tax_warn.setProperty("class", "warning-hint")
+        self._form_tax.addRow(self.lbl_tax_warn)
 
         self.spin_vat = QSpinBox()
         self.spin_vat.setRange(0, 100)
         self.spin_vat.setSuffix("%")
         self.spin_vat.setFixedWidth(200)
-        form_tax.addRow("VAT Rate:", self.spin_vat)
+        self._lbl_vat_rate = QLabel()
+        self._form_tax.addRow(self._lbl_vat_rate, self.spin_vat)
 
         self.spin_sscl = QDoubleSpinBox()
         self.spin_sscl.setRange(0, 100)
         self.spin_sscl.setDecimals(2)
         self.spin_sscl.setSuffix("%")
         self.spin_sscl.setFixedWidth(200)
-        form_tax.addRow("SSCL Rate:", self.spin_sscl)
+        self._lbl_sscl_rate = QLabel()
+        self._form_tax.addRow(self._lbl_sscl_rate, self.spin_sscl)
 
         self.spin_sscl_turnover = QDoubleSpinBox()
         self.spin_sscl_turnover.setRange(0, 100)
         self.spin_sscl_turnover.setDecimals(1)
         self.spin_sscl_turnover.setSuffix("%")
         self.spin_sscl_turnover.setFixedWidth(200)
-        form_tax.addRow("SSCL Turnover Base:", self.spin_sscl_turnover)
+        self._lbl_sscl_turnover = QLabel()
+        self._form_tax.addRow(self._lbl_sscl_turnover, self.spin_sscl_turnover)
 
         # Separator
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
-        form_tax.addRow(sep)
+        self._form_tax.addRow(sep)
 
-        self.chk_item_tax_exemptions = QCheckBox("Enable item-level tax exemptions")
-        self.chk_item_tax_exemptions.setToolTip(
-            "When enabled, products in categories marked as tax-exempt "
-            "will not have VAT/SSCL calculated on them. "
-            "Useful for mixed-goods retailers selling both taxable "
-            "and exempt items (e.g. rice, pharmaceuticals, books)."
-        )
-        form_tax.addRow(self.chk_item_tax_exemptions)
+        self.chk_item_tax_exemptions = QCheckBox()
+        self._form_tax.addRow(self.chk_item_tax_exemptions)
 
-        self.tabs.addTab(tab_tax, "Tax")
+        self.tabs.addTab(self._tab_tax, "")
+
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
+    def retranslate_ui(self) -> None:
+        self._page_title.setText(_t("settings.sales_tax.title"))
+        self._page_subtitle.setText(_t("settings.sales_tax.subtitle"))
+
+        self.tabs.setTabText(0, _t("settings.sales_tax.tab_sales"))
+        self.tabs.setTabText(1, _t("settings.sales_tax.tab_tax"))
+
+        # Sales tab
+        self._lbl_search_mode.setText(_t("settings.sales_tax.default_search_mode"))
+
+        # Re-populate search mode combo preserving selection
+        current_data = self.combo_search_mode.currentData()
+        self.combo_search_mode.clear()
+        self.combo_search_mode.addItem(_t("settings.sales_tax.search_mode_all"), "ALL")
+        self.combo_search_mode.addItem(_t("settings.sales_tax.search_mode_barcode"), "BARCODE")
+        self.combo_search_mode.addItem(_t("settings.sales_tax.search_mode_name"), "NAME")
+        if current_data:
+            idx = self.combo_search_mode.findData(current_data)
+            if idx >= 0:
+                self.combo_search_mode.setCurrentIndex(idx)
+
+        self._lbl_max_discount.setText(_t("settings.sales_tax.max_discount"))
+        self.spin_max_discount.setToolTip(_t("settings.sales_tax.tooltip_max_discount"))
+        self._lbl_loyalty_ratio.setText(_t("settings.sales_tax.loyalty_ratio"))
+        self.spin_loyalty_ratio.setToolTip(_t("settings.sales_tax.tooltip_loyalty_ratio"))
+        self._lbl_default_credit.setText(_t("settings.sales_tax.default_credit_limit"))
+        self.spin_default_credit.setToolTip(_t("settings.sales_tax.tooltip_default_credit"))
+
+        # Tax tab
+        self.chk_vat_registered.setText(_t("settings.sales_tax.vat_registered"))
+        self.chk_vat_registered.setToolTip(_t("settings.sales_tax.tooltip_vat_registered"))
+        self.lbl_tax_warn.setText(_t("settings.sales_tax.tax_warning"))
+        self._lbl_vat_rate.setText(_t("settings.sales_tax.vat_rate"))
+        self._lbl_sscl_rate.setText(_t("settings.sales_tax.sscl_rate"))
+        self._lbl_sscl_turnover.setText(_t("settings.sales_tax.sscl_turnover_base"))
+        self.chk_item_tax_exemptions.setText(_t("settings.sales_tax.item_tax_exemptions"))
+        self.chk_item_tax_exemptions.setToolTip(_t("settings.sales_tax.tooltip_item_tax_exemptions"))
 
     def _toggle_tax_fields(self) -> None:
         """Enable/disable tax rate fields based on VAT registration status."""
@@ -525,7 +611,10 @@ class SalesTaxPage(SettingsPage):
         self.spin_sscl_turnover.setEnabled(enabled)
 
     def load(self, settings: dict):
-        self.combo_search_mode.setCurrentText(settings.get("default_search_mode", "ALL"))
+        mode = settings.get("default_search_mode", "ALL")
+        idx = self.combo_search_mode.findData(mode)
+        if idx >= 0:
+            self.combo_search_mode.setCurrentIndex(idx)
         self.spin_max_discount.setValue(float(settings.get("max_discount_percent", 15.0)))
         self.spin_loyalty_ratio.setValue(int(settings.get("loyalty_points_ratio", 100)))
         self.spin_default_credit.setValue(int(settings.get("default_credit_limit", 0)))
@@ -538,7 +627,7 @@ class SalesTaxPage(SettingsPage):
 
     def save(self) -> dict:
         return {
-            "default_search_mode": self.combo_search_mode.currentText(),
+            "default_search_mode": self.combo_search_mode.currentData() or "ALL",
             "max_discount_percent": self.spin_max_discount.value(),
             "loyalty_points_ratio": self.spin_loyalty_ratio.value(),
             "default_credit_limit": self.spin_default_credit.value(),
@@ -554,38 +643,71 @@ class DocumentPage(SettingsPage):
     """Documents + Terminal ID."""
 
     def init_ui(self):
-        _, self.tabs = self._create_page_layout(
-            "Documents",
-            "Terminal ID, numbering formats, and reset period.",
-        )
+        _, self.tabs = self._create_page_layout("", "")
 
-        tab_docs, form_docs = self._build_form_tab()
+        self._tab_docs, self._form_docs = self._build_form_tab()
 
         self.input_terminal_id = QLineEdit()
-        self.input_terminal_id.setPlaceholderText("TERM-01")
-        form_docs.addRow("Terminal ID:", self.input_terminal_id)
+        self._lbl_terminal_id = QLabel()
+        self._form_docs.addRow(self._lbl_terminal_id, self.input_terminal_id)
 
         self.combo_reset_period = QComboBox()
-        self.combo_reset_period.addItems(["YEARLY", "MONTHLY", "NEVER"])
-        form_docs.addRow("Reset Period:", self.combo_reset_period)
+        self._lbl_reset_period = QLabel()
+        self._form_docs.addRow(self._lbl_reset_period, self.combo_reset_period)
 
         self.input_fmt_sale = QLineEdit()
-        self.input_fmt_sale.setPlaceholderText("INV-{Y}-{seq:05d}")
-        form_docs.addRow("Sale Format:", self.input_fmt_sale)
+        self._lbl_sale_fmt = QLabel()
+        self._form_docs.addRow(self._lbl_sale_fmt, self.input_fmt_sale)
 
         self.input_fmt_purchase = QLineEdit()
-        self.input_fmt_purchase.setPlaceholderText("GRN-{Y}-{seq:05d}")
-        form_docs.addRow("Purchase Format:", self.input_fmt_purchase)
+        self._lbl_purchase_fmt = QLabel()
+        self._form_docs.addRow(self._lbl_purchase_fmt, self.input_fmt_purchase)
 
         self.input_fmt_return = QLineEdit()
-        self.input_fmt_return.setPlaceholderText("CN-{Y}-{seq:05d}")
-        form_docs.addRow("Return Format:", self.input_fmt_return)
+        self._lbl_return_fmt = QLabel()
+        self._form_docs.addRow(self._lbl_return_fmt, self.input_fmt_return)
 
-        self.tabs.addTab(tab_docs, "Numbering")
+        self.tabs.addTab(self._tab_docs, "")
+
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
+    def retranslate_ui(self) -> None:
+        self._page_title.setText(_t("settings.documents.title"))
+        self._page_subtitle.setText(_t("settings.documents.subtitle"))
+
+        self.tabs.setTabText(0, _t("settings.documents.tab_numbering"))
+
+        self._lbl_terminal_id.setText(_t("settings.documents.terminal_id"))
+        self.input_terminal_id.setPlaceholderText(_t("settings.documents.terminal_id_placeholder"))
+
+        self._lbl_reset_period.setText(_t("settings.documents.reset_period"))
+
+        # Re-populate reset period combo preserving selection
+        current_data = self.combo_reset_period.currentData()
+        self.combo_reset_period.clear()
+        self.combo_reset_period.addItem(_t("settings.documents.reset_yearly"), "YEARLY")
+        self.combo_reset_period.addItem(_t("settings.documents.reset_monthly"), "MONTHLY")
+        self.combo_reset_period.addItem(_t("settings.documents.reset_never"), "NEVER")
+        if current_data:
+            idx = self.combo_reset_period.findData(current_data)
+            if idx >= 0:
+                self.combo_reset_period.setCurrentIndex(idx)
+
+        self._lbl_sale_fmt.setText(_t("settings.documents.sale_format"))
+        self.input_fmt_sale.setPlaceholderText(_t("settings.documents.sale_format_placeholder"))
+        self._lbl_purchase_fmt.setText(_t("settings.documents.purchase_format"))
+        self.input_fmt_purchase.setPlaceholderText(_t("settings.documents.purchase_format_placeholder"))
+        self._lbl_return_fmt.setText(_t("settings.documents.return_format"))
+        self.input_fmt_return.setPlaceholderText(_t("settings.documents.return_format_placeholder"))
 
     def load(self, settings: dict):
         self.input_terminal_id.setText(settings.get("terminal_id", "TERM-01"))
-        self.combo_reset_period.setCurrentText(settings.get("doc_reset_period", "YEARLY"))
+        period = settings.get("doc_reset_period", "YEARLY")
+        idx = self.combo_reset_period.findData(period)
+        if idx >= 0:
+            self.combo_reset_period.setCurrentIndex(idx)
         self.input_fmt_sale.setText(settings.get("doc_format_sale", "INV-{Y}-{seq:05d}"))
         self.input_fmt_purchase.setText(settings.get("doc_format_purchase", "GRN-{Y}-{seq:05d}"))
         self.input_fmt_return.setText(settings.get("doc_format_return", "CN-{Y}-{seq:05d}"))
@@ -593,7 +715,7 @@ class DocumentPage(SettingsPage):
     def save(self) -> dict:
         return {
             "terminal_id": self.input_terminal_id.text().strip() or "TERM-01",
-            "doc_reset_period": self.combo_reset_period.currentText(),
+            "doc_reset_period": self.combo_reset_period.currentData() or "YEARLY",
             "doc_format_sale": self.input_fmt_sale.text(),
             "doc_format_purchase": self.input_fmt_purchase.text(),
             "doc_format_return": self.input_fmt_return.text(),
@@ -604,18 +726,16 @@ class HardwarePage(SettingsPage):
     """Hardware + Paper Width."""
 
     def init_ui(self):
-        _, self.tabs = self._create_page_layout(
-            "Hardware",
-            "Printer selection, paper size, and weighing scale settings.",
-        )
+        _, self.tabs = self._create_page_layout("", "")
 
         # --- Tab 1: Printers ---
         tab_printer, vbox_printer = self._build_vbox_tab()
 
-        available_printers = QPrinterInfo.availablePrinterNames() or ["No printers found"]
+        available_printers = QPrinterInfo.availablePrinterNames() or [_t("settings.hardware.no_printers")]
 
         # Section: Printer Selection
-        vbox_printer.addWidget(self._make_section_header("Printer Selection"))
+        self._header_printer_sel = self._make_section_header(_t("settings.hardware.section_printer_selection"))
+        vbox_printer.addWidget(self._header_printer_sel)
 
         sel_form = QFormLayout()
         self.configure_form_layout(sel_form)
@@ -624,95 +744,103 @@ class HardwarePage(SettingsPage):
 
         self.combo_receipt_printer = QComboBox()
         self.combo_receipt_printer.addItems(available_printers)
-        sel_form.addRow("Receipt Printer:", self.combo_receipt_printer)
+        self._lbl_receipt_printer = QLabel()
+        sel_form.addRow(self._lbl_receipt_printer, self.combo_receipt_printer)
 
         self.combo_a4_printer = QComboBox()
         self.combo_a4_printer.addItems(available_printers)
-        sel_form.addRow("A4 Printer:", self.combo_a4_printer)
+        self._lbl_a4_printer = QLabel()
+        sel_form.addRow(self._lbl_a4_printer, self.combo_a4_printer)
 
         self.combo_paper_width = QComboBox()
         self.combo_paper_width.addItems(["80mm", "58mm"])
-        sel_form.addRow("Paper Width:", self.combo_paper_width)
+        self._lbl_paper_width = QLabel()
+        sel_form.addRow(self._lbl_paper_width, self.combo_paper_width)
         vbox_printer.addLayout(sel_form)
 
         # Section: Print Behavior
-        vbox_printer.addWidget(self._make_section_header("Print Behavior"))
+        self._header_print_beh = self._make_section_header(_t("settings.hardware.section_print_behavior"))
+        vbox_printer.addWidget(self._header_print_beh)
 
         beh_form = QFormLayout()
         self.configure_form_layout(beh_form)
         beh_form.setContentsMargins(0, 0, 0, 0)
         beh_form.setVerticalSpacing(10)
 
-        self.chk_auto_print = QCheckBox("Automatically print after completing a sale")
-        self.chk_auto_print.setToolTip("Send receipt to printer immediately when a sale is completed")
-        beh_form.addRow("Auto-Print Receipt:", self.chk_auto_print)
+        self.chk_auto_print = QCheckBox()
+        self._lbl_auto_print = QLabel()
+        beh_form.addRow(self._lbl_auto_print, self.chk_auto_print)
 
         self.spin_copies = QSpinBox()
         self.spin_copies.setRange(1, 5)
-        beh_form.addRow("Copies:", self.spin_copies)
+        self._lbl_copies = QLabel()
+        beh_form.addRow(self._lbl_copies, self.spin_copies)
         vbox_printer.addLayout(beh_form)
 
         # Test Buttons
-        vbox_printer.addWidget(self._make_section_header("Test Hardware"))
+        self._header_test_hw = self._make_section_header(_t("settings.hardware.section_test_hardware"))
+        vbox_printer.addWidget(self._header_test_hw)
         test_row = QHBoxLayout()
-        self.btn_test_print = QPushButton("Test Print")
+        self.btn_test_print = QPushButton()
         self.btn_test_print.setProperty("class", "accent")
         self.btn_test_print.clicked.connect(self._test_print)
         test_row.addWidget(self.btn_test_print)
 
-        self.btn_open_drawer = QPushButton("Open Drawer")
+        self.btn_open_drawer = QPushButton()
         self.btn_open_drawer.clicked.connect(self._test_drawer)
         test_row.addWidget(self.btn_open_drawer)
         test_row.addStretch()
         vbox_printer.addLayout(test_row)
 
-        self.tabs.addTab(tab_printer, "Printers")
+        self.tabs.addTab(tab_printer, "")
 
         # --- Tab: Paper Cut & Drawer ---
         tab_cut, vbox_cut = self._build_vbox_tab()
 
         # Section: Paper Cut
-        vbox_cut.addWidget(self._make_section_header("Paper Cut"))
+        self._header_paper_cut = self._make_section_header(_t("settings.hardware.section_paper_cut"))
+        vbox_cut.addWidget(self._header_paper_cut)
 
         cut_form = QFormLayout()
         self.configure_form_layout(cut_form)
         cut_form.setContentsMargins(0, 0, 0, 0)
         cut_form.setVerticalSpacing(10)
 
-        self.chk_auto_cut = QCheckBox("Disable for tear-bar printers")
-        self.chk_auto_cut.setToolTip("Automatically cut paper after printing. Turn off for manual tear-bar printers.")
-        cut_form.addRow("Auto-Cut Paper:", self.chk_auto_cut)
+        self.chk_auto_cut = QCheckBox()
+        self._lbl_auto_cut = QLabel()
+        cut_form.addRow(self._lbl_auto_cut, self.chk_auto_cut)
 
         self.combo_cut_type = QComboBox()
-        self.combo_cut_type.addItems(["partial", "full"])
-        self.combo_cut_type.setToolTip("Partial is safer for cheap cutters")
-        cut_form.addRow("Cut Type:", self.combo_cut_type)
+        self._lbl_cut_type = QLabel()
+        cut_form.addRow(self._lbl_cut_type, self.combo_cut_type)
 
         self.spin_feed_lines = QSpinBox()
         self.spin_feed_lines.setRange(1, 8)
-        self.spin_feed_lines.setToolTip("Lines of blank paper before cut")
-        cut_form.addRow("Feed Lines Before Cut:", self.spin_feed_lines)
+        self._lbl_feed_lines = QLabel()
+        cut_form.addRow(self._lbl_feed_lines, self.spin_feed_lines)
         vbox_cut.addLayout(cut_form)
 
         # Section: Cash Drawer
-        vbox_cut.addWidget(self._make_section_header("Cash Drawer"))
+        self._header_cash_drawer = self._make_section_header(_t("settings.hardware.section_cash_drawer"))
+        vbox_cut.addWidget(self._header_cash_drawer)
 
         drawer_form = QFormLayout()
         self.configure_form_layout(drawer_form)
         drawer_form.setContentsMargins(0, 0, 0, 0)
         drawer_form.setVerticalSpacing(10)
 
-        self.chk_drawer_cash_only = QCheckBox("Only open drawer for cash payments")
-        self.chk_drawer_cash_only.setToolTip("Cash drawer stays closed for card and credit transactions")
-        drawer_form.addRow("Drawer on Cash Only:", self.chk_drawer_cash_only)
+        self.chk_drawer_cash_only = QCheckBox()
+        self._lbl_drawer_cash_only = QLabel()
+        drawer_form.addRow(self._lbl_drawer_cash_only, self.chk_drawer_cash_only)
         vbox_cut.addLayout(drawer_form)
 
-        self.tabs.addTab(tab_cut, "Cut & Drawer")
+        self.tabs.addTab(tab_cut, "")
 
         # --- Tab: Scale ---
         tab_scale, vbox_scale = self._build_vbox_tab()
 
-        vbox_scale.addWidget(self._make_section_header("Weighing Scale Barcodes"))
+        self._header_scale = self._make_section_header(_t("settings.hardware.section_weighing_scale"))
+        vbox_scale.addWidget(self._header_scale)
 
         scale_form = QFormLayout()
         self.configure_form_layout(scale_form)
@@ -721,14 +849,66 @@ class HardwarePage(SettingsPage):
 
         self.input_scale_prefix = QLineEdit()
         self.input_scale_prefix.setMaxLength(2)
-        scale_form.addRow("Barcode Prefix (2 digits):", self.input_scale_prefix)
+        self._lbl_barcode_prefix = QLabel()
+        scale_form.addRow(self._lbl_barcode_prefix, self.input_scale_prefix)
 
         self.spin_decimal_places = QSpinBox()
         self.spin_decimal_places.setRange(0, 4)
-        scale_form.addRow("Decimal Places:", self.spin_decimal_places)
+        self._lbl_decimal_places = QLabel()
+        scale_form.addRow(self._lbl_decimal_places, self.spin_decimal_places)
         vbox_scale.addLayout(scale_form)
 
-        self.tabs.addTab(tab_scale, "Weighing Scale")
+        self.tabs.addTab(tab_scale, "")
+
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
+    def retranslate_ui(self) -> None:
+        self._page_title.setText(_t("settings.hardware.title"))
+        self._page_subtitle.setText(_t("settings.hardware.subtitle"))
+
+        self.tabs.setTabText(0, _t("settings.hardware.tab_printers"))
+        self.tabs.setTabText(1, _t("settings.hardware.tab_cut_drawer"))
+        self.tabs.setTabText(2, _t("settings.hardware.tab_weighing_scale"))
+
+        # Printers tab
+        self._lbl_receipt_printer.setText(_t("settings.hardware.receipt_printer"))
+        self._lbl_a4_printer.setText(_t("settings.hardware.a4_printer"))
+        self._lbl_paper_width.setText(_t("settings.hardware.paper_width"))
+        self._lbl_auto_print.setText(_t("settings.hardware.auto_print"))
+        self.chk_auto_print.setText(_t("settings.hardware.chk_auto_print"))
+        self.chk_auto_print.setToolTip(_t("settings.hardware.tooltip_auto_print"))
+        self._lbl_copies.setText(_t("settings.hardware.copies"))
+        self.btn_test_print.setText(_t("settings.hardware.btn_test_print"))
+        self.btn_open_drawer.setText(_t("settings.hardware.btn_open_drawer"))
+
+        # Cut & Drawer tab
+        self._lbl_auto_cut.setText(_t("settings.hardware.auto_cut"))
+        self.chk_auto_cut.setText(_t("settings.hardware.chk_auto_cut"))
+        self.chk_auto_cut.setToolTip(_t("settings.hardware.tooltip_auto_cut"))
+
+        self._lbl_cut_type.setText(_t("settings.hardware.cut_type"))
+        # Re-populate cut type combo preserving selection
+        current_cut_data = self.combo_cut_type.currentData()
+        self.combo_cut_type.clear()
+        self.combo_cut_type.addItem(_t("settings.hardware.cut_partial"), "partial")
+        self.combo_cut_type.addItem(_t("settings.hardware.cut_full"), "full")
+        if current_cut_data:
+            idx = self.combo_cut_type.findData(current_cut_data)
+            if idx >= 0:
+                self.combo_cut_type.setCurrentIndex(idx)
+        self.combo_cut_type.setToolTip(_t("settings.hardware.tooltip_cut_type"))
+
+        self._lbl_feed_lines.setText(_t("settings.hardware.feed_lines"))
+        self.spin_feed_lines.setToolTip(_t("settings.hardware.tooltip_feed_lines"))
+        self._lbl_drawer_cash_only.setText(_t("settings.hardware.drawer_cash_only"))
+        self.chk_drawer_cash_only.setText(_t("settings.hardware.chk_drawer_cash_only"))
+        self.chk_drawer_cash_only.setToolTip(_t("settings.hardware.tooltip_drawer_cash_only"))
+
+        # Scale tab
+        self._lbl_barcode_prefix.setText(_t("settings.hardware.barcode_prefix"))
+        self._lbl_decimal_places.setText(_t("settings.hardware.decimal_places"))
 
     def load(self, settings: dict):
         receipt_printer = settings.get("receipt_printer_name", "")
@@ -756,7 +936,7 @@ class HardwarePage(SettingsPage):
         # Cut & Drawer
         self.chk_auto_cut.setChecked(settings.get("auto_cut_paper", True))
         cut_type = settings.get("cut_type", "partial")
-        idx = self.combo_cut_type.findText(cut_type)
+        idx = self.combo_cut_type.findData(cut_type)
         if idx >= 0:
             self.combo_cut_type.setCurrentIndex(idx)
         self.spin_feed_lines.setValue(settings.get("feed_lines_before_cut", 3))
@@ -765,7 +945,7 @@ class HardwarePage(SettingsPage):
     def save(self) -> dict:
         prefix = self.input_scale_prefix.text()
         if len(prefix) != 2 or not prefix.isdigit():
-            raise ValueError("Scale Barcode Prefix must be exactly 2 digits.")
+            raise ValueError(_t("settings.hardware.scale_prefix_error"))
 
         return {
             "receipt_printer_name": self.combo_receipt_printer.currentText(),
@@ -776,7 +956,7 @@ class HardwarePage(SettingsPage):
             "scale_barcode_prefix": prefix,
             "scale_decimal_places": self.spin_decimal_places.value(),
             "auto_cut_paper": self.chk_auto_cut.isChecked(),
-            "cut_type": self.combo_cut_type.currentText(),
+            "cut_type": self.combo_cut_type.currentData() or "partial",
             "feed_lines_before_cut": self.spin_feed_lines.value(),
             "drawer_on_cash_only": self.chk_drawer_cash_only.isChecked(),
         }
@@ -787,9 +967,17 @@ class HardwarePage(SettingsPage):
 
         success, message = HardwareTestService.test_receipt_printer()
         if success:
-            QMessageBox.information(self, "Test Print", message)
+            QMessageBox.information(
+                self,
+                _t("settings.hardware.test_print_title"),
+                message,
+            )
         else:
-            QMessageBox.warning(self, "Test Print", message)
+            QMessageBox.warning(
+                self,
+                _t("settings.hardware.test_print_title"),
+                message,
+            )
 
     def _test_drawer(self) -> None:
         """Send a kick signal to the cash drawer."""
@@ -797,9 +985,17 @@ class HardwarePage(SettingsPage):
 
         success, message = HardwareTestService.test_cash_drawer()
         if success:
-            QMessageBox.information(self, "Cash Drawer", message)
+            QMessageBox.information(
+                self,
+                _t("settings.hardware.cash_drawer_title"),
+                message,
+            )
         else:
-            QMessageBox.warning(self, "Cash Drawer", message)
+            QMessageBox.warning(
+                self,
+                _t("settings.hardware.cash_drawer_title"),
+                message,
+            )
 
 
 class ReceiptPage(SettingsPage):
@@ -818,13 +1014,13 @@ class ReceiptPage(SettingsPage):
         root.setContentsMargins(20, 20, 20, 20)
         root.setSpacing(8)
 
-        title = QLabel("Receipt")
-        title.setProperty("class", "dialog-title")
-        root.addWidget(title)
+        self._page_title = QLabel()
+        self._page_title.setProperty("class", "dialog-title")
+        root.addWidget(self._page_title)
 
-        subtitle = QLabel("Customize receipt content and display — preview updates live.")
-        subtitle.setProperty("class", "muted")
-        root.addWidget(subtitle)
+        self._page_subtitle = QLabel()
+        self._page_subtitle.setProperty("class", "muted")
+        root.addWidget(self._page_subtitle)
 
         # Horizontal split: settings | preview
         split = QHBoxLayout()
@@ -856,7 +1052,8 @@ class ReceiptPage(SettingsPage):
         tab_content, vbox_content = self._build_vbox_tab()
 
         # Section: Logo
-        vbox_content.addWidget(self._make_section_header("Shop Logo"))
+        self._header_logo = self._make_section_header(_t("settings.receipt.section_logo"))
+        vbox_content.addWidget(self._header_logo)
 
         logo_form = QFormLayout()
         self.configure_form_layout(logo_form)
@@ -865,19 +1062,20 @@ class ReceiptPage(SettingsPage):
         logo_row = QHBoxLayout()
         self.input_logo_path = QLineEdit()
         self.input_logo_path.setReadOnly(True)
-        self.input_logo_path.setPlaceholderText("No logo selected")
-        self.btn_browse_logo = QPushButton("Browse...")
+        self.btn_browse_logo = QPushButton()
         self.btn_browse_logo.clicked.connect(self.browse_logo)
-        self.btn_clear_logo = QPushButton("Clear")
+        self.btn_clear_logo = QPushButton()
         self.btn_clear_logo.clicked.connect(self._clear_logo)
         logo_row.addWidget(self.input_logo_path, 1)
         logo_row.addWidget(self.btn_browse_logo)
         logo_row.addWidget(self.btn_clear_logo)
-        logo_form.addRow("Logo:", logo_row)
+        self._lbl_logo = QLabel()
+        logo_form.addRow(self._lbl_logo, logo_row)
         vbox_content.addLayout(logo_form)
 
         # Section: Header & Footer
-        vbox_content.addWidget(self._make_section_header("Header & Footer"))
+        self._header_hf = self._make_section_header(_t("settings.receipt.section_header_footer"))
+        vbox_content.addWidget(self._header_hf)
 
         hf_form = QFormLayout()
         self.configure_form_layout(hf_form)
@@ -886,63 +1084,103 @@ class ReceiptPage(SettingsPage):
 
         self.txt_header = QTextEdit()
         self.txt_header.setFixedHeight(64)
-        self.txt_header.setPlaceholderText("Shop greeting or promo (press Enter for new line)")
-        hf_form.addRow("Header Text:", self.txt_header)
+        self._lbl_header_text = QLabel()
+        hf_form.addRow(self._lbl_header_text, self.txt_header)
 
         self.txt_footer = QTextEdit()
         self.txt_footer.setFixedHeight(64)
-        self.txt_footer.setPlaceholderText("Thank you message (press Enter for new line)")
-        hf_form.addRow("Footer Text:", self.txt_footer)
+        self._lbl_footer_text = QLabel()
+        hf_form.addRow(self._lbl_footer_text, self.txt_footer)
 
         vbox_content.addLayout(hf_form)
-        self.tabs.addTab(tab_content, "Content")
+        self.tabs.addTab(tab_content, "")
 
         # ===================== Tab 2: Display =====================
         tab_display, vbox_display = self._build_vbox_tab()
 
         # Section: Receipt Elements
-        vbox_display.addWidget(self._make_section_header("Receipt Elements"))
+        self._header_elements = self._make_section_header(_t("settings.receipt.section_receipt_elements"))
+        vbox_display.addWidget(self._header_elements)
 
         elem_form = QFormLayout()
         self.configure_form_layout(elem_form)
         elem_form.setContentsMargins(0, 0, 0, 0)
         elem_form.setVerticalSpacing(10)
 
-        self.chk_show_barcode = QCheckBox("Print barcode of the sale reference")
-        self.chk_show_barcode.setToolTip("Print a scannable barcode of the invoice number for easy returns")
-        self.chk_merge_items = QCheckBox("Combine identical line items into one row")
-        self.chk_merge_items.setToolTip(
-            "Group duplicate products into a single line with quantity instead of separate lines"
-        )
-        self.chk_show_tax = QCheckBox("Show VAT and SSCL breakdown on receipt")
-        self.chk_show_tax.setToolTip("Display VAT and SSCL tax amounts separately on the receipt")
+        self.chk_show_barcode = QCheckBox()
+        self.chk_merge_items = QCheckBox()
+        self.chk_show_tax = QCheckBox()
 
-        elem_form.addRow("Show Barcode:", self.chk_show_barcode)
-        elem_form.addRow("Merge Items:", self.chk_merge_items)
-        elem_form.addRow("Tax Breakdown:", self.chk_show_tax)
+        self._lbl_show_barcode = QLabel()
+        self._lbl_merge_items = QLabel()
+        self._lbl_tax_breakdown = QLabel()
+
+        elem_form.addRow(self._lbl_show_barcode, self.chk_show_barcode)
+        elem_form.addRow(self._lbl_merge_items, self.chk_merge_items)
+        elem_form.addRow(self._lbl_tax_breakdown, self.chk_show_tax)
         vbox_display.addLayout(elem_form)
 
         # Section: Staff & Terminal
-        vbox_display.addWidget(self._make_section_header("Staff & Terminal"))
+        self._header_staff = self._make_section_header(_t("settings.receipt.section_staff_terminal"))
+        vbox_display.addWidget(self._header_staff)
 
         staff_form = QFormLayout()
         self.configure_form_layout(staff_form)
         staff_form.setContentsMargins(0, 0, 0, 0)
         staff_form.setVerticalSpacing(10)
 
-        self.chk_show_cashier = QCheckBox("Print cashier username on receipt")
-        self.chk_show_cashier.setToolTip("Show which cashier processed the sale on the printed receipt")
-        self.chk_show_terminal = QCheckBox("Print terminal ID on receipt")
-        self.chk_show_terminal.setToolTip("Show the terminal/register ID on the printed receipt")
+        self.chk_show_cashier = QCheckBox()
+        self.chk_show_terminal = QCheckBox()
 
-        staff_form.addRow("Cashier Name:", self.chk_show_cashier)
-        staff_form.addRow("Terminal ID:", self.chk_show_terminal)
+        self._lbl_cashier_name = QLabel()
+        self._lbl_terminal_id = QLabel()
+
+        staff_form.addRow(self._lbl_cashier_name, self.chk_show_cashier)
+        staff_form.addRow(self._lbl_terminal_id, self.chk_show_terminal)
         vbox_display.addLayout(staff_form)
 
-        self.tabs.addTab(tab_display, "Display")
+        self.tabs.addTab(tab_display, "")
 
         # --- Connect all inputs to live preview refresh ---
         self._connect_live_signals()
+
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
+    def retranslate_ui(self) -> None:
+        self._page_title.setText(_t("settings.receipt.title"))
+        self._page_subtitle.setText(_t("settings.receipt.subtitle"))
+
+        self.tabs.setTabText(0, _t("settings.receipt.tab_content"))
+        self.tabs.setTabText(1, _t("settings.receipt.tab_display"))
+
+        # Content tab
+        self._lbl_logo.setText(_t("settings.receipt.logo_label"))
+        self.input_logo_path.setPlaceholderText(_t("settings.receipt.logo_placeholder"))
+        self.btn_browse_logo.setText(_t("settings.receipt.btn_browse_logo"))
+        self.btn_clear_logo.setText(_t("settings.receipt.btn_clear_logo"))
+        self._lbl_header_text.setText(_t("settings.receipt.header_text"))
+        self.txt_header.setPlaceholderText(_t("settings.receipt.header_placeholder"))
+        self._lbl_footer_text.setText(_t("settings.receipt.footer_text"))
+        self.txt_footer.setPlaceholderText(_t("settings.receipt.footer_placeholder"))
+
+        # Display tab
+        self._lbl_show_barcode.setText(_t("settings.receipt.show_barcode"))
+        self.chk_show_barcode.setText(_t("settings.receipt.chk_show_barcode"))
+        self.chk_show_barcode.setToolTip(_t("settings.receipt.tooltip_show_barcode"))
+        self._lbl_merge_items.setText(_t("settings.receipt.merge_items"))
+        self.chk_merge_items.setText(_t("settings.receipt.chk_merge_items"))
+        self.chk_merge_items.setToolTip(_t("settings.receipt.tooltip_merge_items"))
+        self._lbl_tax_breakdown.setText(_t("settings.receipt.tax_breakdown"))
+        self.chk_show_tax.setText(_t("settings.receipt.chk_show_tax"))
+        self.chk_show_tax.setToolTip(_t("settings.receipt.tooltip_show_tax"))
+        self._lbl_cashier_name.setText(_t("settings.receipt.cashier_name"))
+        self.chk_show_cashier.setText(_t("settings.receipt.chk_show_cashier"))
+        self.chk_show_cashier.setToolTip(_t("settings.receipt.tooltip_show_cashier"))
+        self._lbl_terminal_id.setText(_t("settings.receipt.terminal_id"))
+        self.chk_show_terminal.setText(_t("settings.receipt.chk_show_terminal"))
+        self.chk_show_terminal.setToolTip(_t("settings.receipt.tooltip_show_terminal"))
 
     # ------------------------------------------------------------------
     # Signal wiring for live preview
@@ -963,7 +1201,7 @@ class ReceiptPage(SettingsPage):
         self.chk_show_terminal.stateChanged.connect(trigger)
 
     def _schedule_refresh(self) -> None:
-        """Restart the debounce timer — preview refreshes after 300 ms of inactivity."""
+        """Restart the debounce timer -- preview refreshes after 300 ms of inactivity."""
         self._refresh_timer.start()
 
     def _refresh_preview(self) -> None:
@@ -979,7 +1217,12 @@ class ReceiptPage(SettingsPage):
     # ------------------------------------------------------------------
 
     def browse_logo(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Select Logo", "", "Images (*.png *.jpg *.bmp)")
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            _t("settings.receipt.select_logo_title"),
+            "",
+            _t("settings.receipt.select_logo_filter"),
+        )
         if path:
             self.input_logo_path.setText(path)
 
@@ -1065,110 +1308,159 @@ class SystemPage(SettingsPage):
     """System settings: session security, feature toggles, and behavior."""
 
     def init_ui(self):
-        _, self.tabs = self._create_page_layout(
-            "System",
-            "Session security, POS behavior, inventory, and backup settings.",
-        )
+        _, self.tabs = self._create_page_layout("", "")
 
         # --- Tab 1: Security ---
-        tab_sec, form_sec = self._build_form_tab()
+        self._tab_sec, self._form_sec = self._build_form_tab()
 
         self.spin_timeout = QSpinBox()
         self.spin_timeout.setRange(0, 60)
         self.spin_timeout.setSuffix(" min")
-        self.spin_timeout.setSpecialValueText("Disabled (no auto-lock)")
-        self.spin_timeout.setToolTip("Auto-logout after inactivity. 0 = disabled.")
-        form_sec.addRow("Inactivity Timeout:", self.spin_timeout)
+        self._lbl_timeout = QLabel()
+        self._form_sec.addRow(self._lbl_timeout, self.spin_timeout)
 
         self.chk_void_reason = QCheckBox()
-        self.chk_void_reason.setToolTip("Require a reason when voiding a transaction")
-        form_sec.addRow("Require Void Reason:", self.chk_void_reason)
+        self._lbl_void_reason = QLabel()
+        self._form_sec.addRow(self._lbl_void_reason, self.chk_void_reason)
 
         self.spin_max_login = QSpinBox()
         self.spin_max_login.setRange(3, 20)
-        self.spin_max_login.setToolTip("Failed login attempts before account lockout")
-        form_sec.addRow("Max Login Attempts:", self.spin_max_login)
+        self._lbl_max_login = QLabel()
+        self._form_sec.addRow(self._lbl_max_login, self.spin_max_login)
 
         self.spin_lockout = QSpinBox()
         self.spin_lockout.setRange(30, 3600)
         self.spin_lockout.setSuffix(" sec")
-        self.spin_lockout.setToolTip("How long an account is locked after too many failed attempts")
-        form_sec.addRow("Lockout Duration:", self.spin_lockout)
+        self._lbl_lockout = QLabel()
+        self._form_sec.addRow(self._lbl_lockout, self.spin_lockout)
 
-        self.tabs.addTab(tab_sec, "Security")
+        self.tabs.addTab(self._tab_sec, "")
 
         # --- Tab 2: POS Behavior ---
-        tab_pos, form_pos = self._build_form_tab()
+        self._tab_pos, self._form_pos = self._build_form_tab()
 
         self.chk_quick_pay = QCheckBox()
-        self.chk_quick_pay.setToolTip("Allow instant cash payment with F12")
-        form_pos.addRow("Enable Quick Pay (F12):", self.chk_quick_pay)
+        self._lbl_quick_pay = QLabel()
+        self._form_pos.addRow(self._lbl_quick_pay, self.chk_quick_pay)
 
         self.chk_show_receipt_dialog = QCheckBox()
-        self.chk_show_receipt_dialog.setToolTip("Show print/email options after completing a sale")
-        form_pos.addRow("Show Receipt Options after Sale:", self.chk_show_receipt_dialog)
+        self._lbl_receipt_dialog = QLabel()
+        self._form_pos.addRow(self._lbl_receipt_dialog, self.chk_show_receipt_dialog)
 
         self.chk_auto_barcode_select = QCheckBox()
-        self.chk_auto_barcode_select.setToolTip("Automatically select product when barcode matches exactly")
-        form_pos.addRow("Auto-Select on Barcode Match:", self.chk_auto_barcode_select)
+        self._lbl_auto_barcode = QLabel()
+        self._form_pos.addRow(self._lbl_auto_barcode, self.chk_auto_barcode_select)
 
         self.chk_enable_sounds = QCheckBox()
-        self.chk_enable_sounds.setToolTip("Play audio feedback on scan, payment, and errors")
-        form_pos.addRow("Enable Sound Effects:", self.chk_enable_sounds)
+        self._lbl_sounds = QLabel()
+        self._form_pos.addRow(self._lbl_sounds, self.chk_enable_sounds)
 
-        self.tabs.addTab(tab_pos, "POS Behavior")
+        self.tabs.addTab(self._tab_pos, "")
 
         # --- Tab 3: Inventory ---
-        tab_inv, form_inv = self._build_form_tab()
+        self._tab_inv, self._form_inv = self._build_form_tab()
 
         self.chk_negative_stock = QCheckBox()
-        self.chk_negative_stock.setToolTip("Allow selling items even when stock is zero or negative")
-        form_inv.addRow("Allow Negative Stock:", self.chk_negative_stock)
+        self._lbl_negative_stock = QLabel()
+        self._form_inv.addRow(self._lbl_negative_stock, self.chk_negative_stock)
 
         self.chk_auto_barcodes = QCheckBox()
-        self.chk_auto_barcodes.setToolTip("Auto-generate barcodes for new products without one")
-        form_inv.addRow("Auto-Generate Barcodes:", self.chk_auto_barcodes)
+        self._lbl_auto_barcodes = QLabel()
+        self._form_inv.addRow(self._lbl_auto_barcodes, self.chk_auto_barcodes)
 
         self.chk_loyalty = QCheckBox()
-        self.chk_loyalty.setToolTip("Customers earn loyalty points on purchases based on the configured ratio")
-        form_inv.addRow("Enable Loyalty Points:", self.chk_loyalty)
+        self._lbl_loyalty = QLabel()
+        self._form_inv.addRow(self._lbl_loyalty, self.chk_loyalty)
 
         self.chk_touch_mode = QCheckBox()
-        self.chk_touch_mode.setToolTip("Enable touch-friendly UI elements")
-        form_inv.addRow("Enable Touch Mode:", self.chk_touch_mode)
+        self._lbl_touch_mode = QLabel()
+        self._form_inv.addRow(self._lbl_touch_mode, self.chk_touch_mode)
 
-        self.tabs.addTab(tab_inv, "Features")
+        self.tabs.addTab(self._tab_inv, "")
 
         # --- Tab 4: Backup ---
-        tab_backup, form_backup = self._build_form_tab()
+        self._tab_backup, self._form_backup = self._build_form_tab()
 
         self.chk_auto_backup = QCheckBox()
-        self.chk_auto_backup.setToolTip("Automatically create a backup when closing the application")
-        form_backup.addRow("Auto-Backup on Close:", self.chk_auto_backup)
+        self._lbl_auto_backup = QLabel()
+        self._form_backup.addRow(self._lbl_auto_backup, self.chk_auto_backup)
 
         self.spin_retention = QSpinBox()
         self.spin_retention.setRange(1, 50)
         self.spin_retention.setSuffix(" backups")
-        self.spin_retention.setToolTip("Number of most recent backups to keep during cleanup")
-        form_backup.addRow("Keep Recent Backups:", self.spin_retention)
+        self._lbl_retention = QLabel()
+        self._form_backup.addRow(self._lbl_retention, self.spin_retention)
 
         backup_dir_layout = QHBoxLayout()
         self.input_backup_dir = QLineEdit()
-        self.input_backup_dir.setPlaceholderText("Default: ~/Documents/CB-POS-Backups")
         self.input_backup_dir.setReadOnly(True)
         backup_dir_layout.addWidget(self.input_backup_dir, 1)
 
-        self.btn_browse_backup = QPushButton("Browse")
+        self.btn_browse_backup = QPushButton()
         self.btn_browse_backup.clicked.connect(self._browse_backup_dir)
         backup_dir_layout.addWidget(self.btn_browse_backup)
 
-        form_backup.addRow("Backup Folder:", backup_dir_layout)
+        self._lbl_backup_folder = QLabel()
+        self._form_backup.addRow(self._lbl_backup_folder, backup_dir_layout)
 
-        self.tabs.addTab(tab_backup, "Backup")
+        self.tabs.addTab(self._tab_backup, "")
+
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
+    def retranslate_ui(self) -> None:
+        self._page_title.setText(_t("settings.system.title"))
+        self._page_subtitle.setText(_t("settings.system.subtitle"))
+
+        self.tabs.setTabText(0, _t("settings.system.tab_security"))
+        self.tabs.setTabText(1, _t("settings.system.tab_pos_behavior"))
+        self.tabs.setTabText(2, _t("settings.system.tab_features"))
+        self.tabs.setTabText(3, _t("settings.system.tab_backup"))
+
+        # Security
+        self._lbl_timeout.setText(_t("settings.system.inactivity_timeout"))
+        self.spin_timeout.setSpecialValueText(_t("settings.system.timeout_disabled"))
+        self.spin_timeout.setToolTip(_t("settings.system.tooltip_timeout"))
+        self._lbl_void_reason.setText(_t("settings.system.require_void_reason"))
+        self.chk_void_reason.setToolTip(_t("settings.system.tooltip_void_reason"))
+        self._lbl_max_login.setText(_t("settings.system.max_login_attempts"))
+        self.spin_max_login.setToolTip(_t("settings.system.tooltip_max_login"))
+        self._lbl_lockout.setText(_t("settings.system.lockout_duration"))
+        self.spin_lockout.setToolTip(_t("settings.system.tooltip_lockout"))
+
+        # POS Behavior
+        self._lbl_quick_pay.setText(_t("settings.system.quick_pay"))
+        self.chk_quick_pay.setToolTip(_t("settings.system.tooltip_quick_pay"))
+        self._lbl_receipt_dialog.setText(_t("settings.system.show_receipt_dialog"))
+        self.chk_show_receipt_dialog.setToolTip(_t("settings.system.tooltip_receipt_dialog"))
+        self._lbl_auto_barcode.setText(_t("settings.system.auto_barcode_select"))
+        self.chk_auto_barcode_select.setToolTip(_t("settings.system.tooltip_auto_barcode"))
+        self._lbl_sounds.setText(_t("settings.system.enable_sounds"))
+        self.chk_enable_sounds.setToolTip(_t("settings.system.tooltip_sounds"))
+
+        # Features
+        self._lbl_negative_stock.setText(_t("settings.system.negative_stock"))
+        self.chk_negative_stock.setToolTip(_t("settings.system.tooltip_negative_stock"))
+        self._lbl_auto_barcodes.setText(_t("settings.system.auto_barcodes"))
+        self.chk_auto_barcodes.setToolTip(_t("settings.system.tooltip_auto_barcodes"))
+        self._lbl_loyalty.setText(_t("settings.system.loyalty_points"))
+        self.chk_loyalty.setToolTip(_t("settings.system.tooltip_loyalty"))
+        self._lbl_touch_mode.setText(_t("settings.system.touch_mode"))
+        self.chk_touch_mode.setToolTip(_t("settings.system.tooltip_touch_mode"))
+
+        # Backup
+        self._lbl_auto_backup.setText(_t("settings.system.auto_backup"))
+        self.chk_auto_backup.setToolTip(_t("settings.system.tooltip_auto_backup"))
+        self._lbl_retention.setText(_t("settings.system.backup_retention"))
+        self.spin_retention.setToolTip(_t("settings.system.tooltip_retention"))
+        self._lbl_backup_folder.setText(_t("settings.system.backup_folder"))
+        self.input_backup_dir.setPlaceholderText(_t("settings.system.backup_folder_placeholder"))
+        self.btn_browse_backup.setText(_t("settings.system.btn_browse_backup"))
 
     def _browse_backup_dir(self) -> None:
         current = self.input_backup_dir.text() or ""
-        chosen = QFileDialog.getExistingDirectory(self, "Choose Backup Folder", current)
+        chosen = QFileDialog.getExistingDirectory(self, _t("settings.system.choose_backup_folder"), current)
         if chosen:
             self.input_backup_dir.setText(chosen)
 
@@ -1217,10 +1509,7 @@ class NetworkPage(SettingsPage):
         super().__init__()
 
     def init_ui(self):
-        _, self.tabs = self._create_page_layout(
-            "Network",
-            "Database mode and multi-terminal server configuration.",
-        )
+        _, self.tabs = self._create_page_layout("", "")
 
         # --- Tab 1: Mode ---
         tab_mode, mode_layout = self._build_vbox_tab()
@@ -1237,21 +1526,20 @@ class NetworkPage(SettingsPage):
         self.lbl_mode_icon.setObjectName("StatusIcon")
 
         status_text_layout = QVBoxLayout()
-        self.lbl_status_title = QLabel("Single Computer Mode")
+        self.lbl_status_title = QLabel()
         self.lbl_status_title.setObjectName("StatusTitle")
-        self.lbl_status_subtitle = QLabel("Standalone \u2022 Local Database")
+        self.lbl_status_subtitle = QLabel()
         self.lbl_status_subtitle.setObjectName("StatusSubtitle")
         status_text_layout.addWidget(self.lbl_status_title)
         status_text_layout.addWidget(self.lbl_status_subtitle)
 
         mode_selector_layout = QVBoxLayout()
-        mode_label = QLabel("Database Mode:")
-        mode_label.setObjectName("StatusModeLabel")
+        self.lbl_db_mode = QLabel()
+        self.lbl_db_mode.setObjectName("StatusModeLabel")
         self.cmb_db_mode = QComboBox()
-        self.cmb_db_mode.addItems(["Standalone", "Network"])
         self.cmb_db_mode.setObjectName("StatusModeSelector")
         self.cmb_db_mode.currentTextChanged.connect(self._on_mode_changed)
-        mode_selector_layout.addWidget(mode_label)
+        mode_selector_layout.addWidget(self.lbl_db_mode)
         mode_selector_layout.addWidget(self.cmb_db_mode)
 
         status_layout.addWidget(self.lbl_mode_icon)
@@ -1260,14 +1548,14 @@ class NetworkPage(SettingsPage):
 
         mode_layout.addWidget(self.status_card)
 
-        self.lbl_warning = QLabel("Changing database mode requires application restart.")
+        self.lbl_warning = QLabel()
         self.lbl_warning.setObjectName("NetworkWarning")
         self.lbl_warning.setWordWrap(True)
         self.lbl_warning.setProperty("class", "warning-hint")
         self.lbl_warning.setVisible(False)
         mode_layout.addWidget(self.lbl_warning)
 
-        self.tabs.addTab(tab_mode, "Mode")
+        self.tabs.addTab(tab_mode, "")
 
         # --- Tab 2: Server Configuration ---
         tab_server, server_layout = self._build_vbox_tab()
@@ -1279,9 +1567,9 @@ class NetworkPage(SettingsPage):
         config_layout.setContentsMargins(25, 25, 25, 25)
         config_layout.setSpacing(18)
 
-        config_title = QLabel("Server Configuration")
-        config_title.setObjectName("CardTitle")
-        config_layout.addWidget(config_title)
+        self.lbl_config_title = QLabel()
+        self.lbl_config_title.setObjectName("CardTitle")
+        config_layout.addWidget(self.lbl_config_title)
 
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
@@ -1289,8 +1577,9 @@ class NetworkPage(SettingsPage):
                 local_ip = s.getsockname()[0]
         except Exception:
             local_ip = "127.0.0.1"
+        self._local_ip = local_ip
 
-        self.lbl_local_ip = QLabel(f"This Computer's IP: {local_ip}")
+        self.lbl_local_ip = QLabel()
         self.lbl_local_ip.setObjectName("IPHelper")
         config_layout.addWidget(self.lbl_local_ip)
 
@@ -1300,67 +1589,63 @@ class NetworkPage(SettingsPage):
         grid_layout.setColumnStretch(0, 0)
         grid_layout.setColumnStretch(1, 1)
 
-        lbl_host = QLabel("Host IP:")
-        lbl_host.setObjectName("FormLabel")
+        self.lbl_host = QLabel()
+        self.lbl_host.setObjectName("FormLabel")
         self.input_host = QLineEdit()
         self.input_host.setObjectName("InputNetwork")
-        self.input_host.setPlaceholderText("e.g., 192.168.1.100")
         grid_layout.addWidget(
-            lbl_host,
+            self.lbl_host,
             0,
             0,
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
         )
         grid_layout.addWidget(self.input_host, 0, 1)
 
-        lbl_port = QLabel("Port:")
-        lbl_port.setObjectName("FormLabel")
+        self.lbl_port = QLabel()
+        self.lbl_port.setObjectName("FormLabel")
         self.input_port = QSpinBox()
         self.input_port.setObjectName("InputNetwork")
         self.input_port.setRange(1, 65535)
         self.input_port.setValue(5432)
         grid_layout.addWidget(
-            lbl_port,
+            self.lbl_port,
             1,
             0,
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
         )
         grid_layout.addWidget(self.input_port, 1, 1)
 
-        lbl_dbname = QLabel("Database Name:")
-        lbl_dbname.setObjectName("FormLabel")
+        self.lbl_dbname = QLabel()
+        self.lbl_dbname.setObjectName("FormLabel")
         self.input_dbname = QLineEdit()
         self.input_dbname.setObjectName("InputNetwork")
-        self.input_dbname.setPlaceholderText("cbpos")
         grid_layout.addWidget(
-            lbl_dbname,
+            self.lbl_dbname,
             2,
             0,
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
         )
         grid_layout.addWidget(self.input_dbname, 2, 1)
 
-        lbl_user = QLabel("Username:")
-        lbl_user.setObjectName("FormLabel")
+        self.lbl_user = QLabel()
+        self.lbl_user.setObjectName("FormLabel")
         self.input_user = QLineEdit()
         self.input_user.setObjectName("InputNetwork")
-        self.input_user.setPlaceholderText("postgres")
         grid_layout.addWidget(
-            lbl_user,
+            self.lbl_user,
             3,
             0,
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
         )
         grid_layout.addWidget(self.input_user, 3, 1)
 
-        lbl_password = QLabel("Password:")
-        lbl_password.setObjectName("FormLabel")
+        self.lbl_password = QLabel()
+        self.lbl_password.setObjectName("FormLabel")
         self.input_password = QLineEdit()
         self.input_password.setObjectName("InputNetwork")
         self.input_password.setEchoMode(QLineEdit.EchoMode.Password)
-        self.input_password.setPlaceholderText("password")
         grid_layout.addWidget(
-            lbl_password,
+            self.lbl_password,
             4,
             0,
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
@@ -1370,7 +1655,7 @@ class NetworkPage(SettingsPage):
         config_layout.addLayout(grid_layout)
 
         test_btn_layout = QHBoxLayout()
-        self.btn_test = QPushButton("Test Connection")
+        self.btn_test = QPushButton()
         self.btn_test.setObjectName("BtnTestNetwork")
         self.btn_test.clicked.connect(self._test_connection)
         self.lbl_test_status = QLabel("")
@@ -1381,7 +1666,7 @@ class NetworkPage(SettingsPage):
 
         server_layout.addWidget(self.config_card)
 
-        self.tabs.addTab(tab_server, "Server")
+        self.tabs.addTab(tab_server, "")
 
         # --- Tab 3: Migration ---
         tab_migrate, migrate_layout = self._build_vbox_tab()
@@ -1393,20 +1678,16 @@ class NetworkPage(SettingsPage):
         migration_layout.setContentsMargins(25, 25, 25, 25)
         migration_layout.setSpacing(18)
 
-        migration_title = QLabel("First-Time Server Setup")
-        migration_title.setObjectName("CardTitle")
-        migration_layout.addWidget(migration_title)
+        self.lbl_migration_title = QLabel()
+        self.lbl_migration_title.setObjectName("CardTitle")
+        migration_layout.addWidget(self.lbl_migration_title)
 
-        migration_info = QLabel(
-            "Setting up the Main Server? Upload your current data to get started.\n\n"
-            "This will transfer all products, customers, and sales history to the "
-            "network database.\nThe target database must be empty."
-        )
-        migration_info.setWordWrap(True)
-        migration_info.setObjectName("MigrationInfo")
-        migration_layout.addWidget(migration_info)
+        self.lbl_migration_info = QLabel()
+        self.lbl_migration_info.setWordWrap(True)
+        self.lbl_migration_info.setObjectName("MigrationInfo")
+        migration_layout.addWidget(self.lbl_migration_info)
 
-        self.btn_migrate = QPushButton("Upload Local Data to Server")
+        self.btn_migrate = QPushButton()
         self.btn_migrate.setObjectName("BtnMigrate")
         self.btn_migrate.setEnabled(False)
         self.btn_migrate.clicked.connect(self._migrate_data)
@@ -1414,23 +1695,84 @@ class NetworkPage(SettingsPage):
 
         migrate_layout.addWidget(self.migration_card)
 
-        self.tabs.addTab(tab_migrate, "Migration")
+        self.tabs.addTab(tab_migrate, "")
 
         self._on_mode_changed("Standalone")
 
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
+    def retranslate_ui(self) -> None:
+        self._page_title.setText(_t("settings.network.title"))
+        self._page_subtitle.setText(_t("settings.network.subtitle"))
+
+        self.tabs.setTabText(0, _t("settings.network.tab_mode"))
+        self.tabs.setTabText(1, _t("settings.network.tab_server"))
+        self.tabs.setTabText(2, _t("settings.network.tab_migration"))
+
+        # Mode tab
+        self.lbl_db_mode.setText(_t("settings.network.database_mode"))
+
+        # Re-populate db mode combo preserving selection
+        current_data = self.cmb_db_mode.currentData()
+        self.cmb_db_mode.blockSignals(True)
+        self.cmb_db_mode.clear()
+        self.cmb_db_mode.addItem(_t("settings.network.mode_standalone"), "Standalone")
+        self.cmb_db_mode.addItem(_t("settings.network.mode_network"), "Network")
+        if current_data:
+            idx = self.cmb_db_mode.findData(current_data)
+            if idx >= 0:
+                self.cmb_db_mode.setCurrentIndex(idx)
+        self.cmb_db_mode.blockSignals(False)
+
+        # Update status text based on current mode
+        is_network = self.cmb_db_mode.currentData() == "Network"
+        if is_network:
+            self.lbl_status_title.setText(_t("settings.network.network_mode_title"))
+            self.lbl_status_subtitle.setText(_t("settings.network.network_mode_subtitle"))
+        else:
+            self.lbl_status_title.setText(_t("settings.network.single_mode_title"))
+            self.lbl_status_subtitle.setText(_t("settings.network.single_mode_subtitle"))
+
+        self.lbl_warning.setText(_t("settings.network.mode_change_warning"))
+
+        # Server tab
+        self.lbl_config_title.setText(_t("settings.network.server_config_title"))
+        self.lbl_local_ip.setText(_t("settings.network.local_ip").format(ip=self._local_ip))
+        self.lbl_host.setText(_t("settings.network.host_ip"))
+        self.input_host.setPlaceholderText(_t("settings.network.host_placeholder"))
+        self.lbl_port.setText(_t("settings.network.port"))
+        self.lbl_dbname.setText(_t("settings.network.database_name"))
+        self.input_dbname.setPlaceholderText(_t("settings.network.database_name_placeholder"))
+        self.lbl_user.setText(_t("settings.network.username"))
+        self.input_user.setPlaceholderText(_t("settings.network.username_placeholder"))
+        self.lbl_password.setText(_t("settings.network.password"))
+        self.input_password.setPlaceholderText(_t("settings.network.password_placeholder"))
+        self.btn_test.setText(_t("settings.network.btn_test_connection"))
+
+        # Migration tab
+        self.lbl_migration_title.setText(_t("settings.network.migration_title"))
+        self.lbl_migration_info.setText(_t("settings.network.migration_info"))
+        self.btn_migrate.setText(_t("settings.network.btn_upload"))
+
     def load(self, settings: dict):
         db_mode = settings.get("db_mode", "standalone")
-        self.cmb_db_mode.setCurrentText("Standalone" if db_mode == "standalone" else "Network")
+        mode_data = "Standalone" if db_mode == "standalone" else "Network"
+        idx = self.cmb_db_mode.findData(mode_data)
+        if idx >= 0:
+            self.cmb_db_mode.setCurrentIndex(idx)
         self.input_host.setText(settings.get("network_db_host", "localhost"))
         self.input_port.setValue(settings.get("network_db_port", 5432))
         self.input_dbname.setText(settings.get("network_db_name", "cbpos"))
         self.input_user.setText(settings.get("network_db_user", "postgres"))
         self.input_password.setText(settings.get("network_db_password", ""))
-        self._original_mode = self.cmb_db_mode.currentText()
-        self._on_mode_changed(self.cmb_db_mode.currentText())
+        self._original_mode = self.cmb_db_mode.currentData()
+        self._on_mode_changed(self.cmb_db_mode.currentData() or "Standalone")
 
     def save(self) -> dict:
-        db_mode = "standalone" if self.cmb_db_mode.currentText() == "Standalone" else "network"
+        mode_data = self.cmb_db_mode.currentData() or "Standalone"
+        db_mode = "standalone" if mode_data == "Standalone" else "network"
         return {
             "db_mode": db_mode,
             "network_db_host": self.input_host.text().strip(),
@@ -1444,12 +1786,12 @@ class NetworkPage(SettingsPage):
         is_network = mode == "Network"
         if is_network:
             self.lbl_mode_icon.setText("\U0001f310")
-            self.lbl_status_title.setText("Network Mode")
-            self.lbl_status_subtitle.setText("Multi-Terminal \u2022 Shared Database")
+            self.lbl_status_title.setText(_t("settings.network.network_mode_title"))
+            self.lbl_status_subtitle.setText(_t("settings.network.network_mode_subtitle"))
         else:
             self.lbl_mode_icon.setText("\U0001f4bb")
-            self.lbl_status_title.setText("Single Computer Mode")
-            self.lbl_status_subtitle.setText("Standalone \u2022 Local Database")
+            self.lbl_status_title.setText(_t("settings.network.single_mode_title"))
+            self.lbl_status_subtitle.setText(_t("settings.network.single_mode_subtitle"))
         self.connection_tested = False
         self.btn_migrate.setEnabled(False)
         self.lbl_test_status.setText("")
@@ -1472,12 +1814,12 @@ class NetworkPage(SettingsPage):
         if not all([cfg["host"], cfg["dbname"], cfg["user"]]):
             QMessageBox.warning(
                 self,
-                "Validation Error",
-                "Please fill in all required fields (Host, Database Name, Username).",
+                _t("common.validation_error"),
+                _t("settings.network.validation_required_fields"),
             )
             return
 
-        self.lbl_test_status.setText("Testing...")
+        self.lbl_test_status.setText(_t("settings.network.testing"))
         self.btn_test.setEnabled(False)
         QApplication.processEvents()
 
@@ -1493,18 +1835,22 @@ class NetworkPage(SettingsPage):
 
         if success:
             self.connection_tested = True
-            self.lbl_test_status.setText("Connected")
+            self.lbl_test_status.setText(_t("settings.network.connected"))
             self.btn_migrate.setEnabled(True)
             QMessageBox.information(
                 self,
-                "Connection Test",
-                f"{message}\n\nYou can now upload your data.",
+                _t("settings.network.connection_test_title"),
+                _t("settings.network.connection_success_message").format(message=message),
             )
         else:
             self.connection_tested = False
-            self.lbl_test_status.setText("Failed")
+            self.lbl_test_status.setText(_t("settings.network.failed"))
             self.btn_migrate.setEnabled(False)
-            QMessageBox.critical(self, "Connection Test", message)
+            QMessageBox.critical(
+                self,
+                _t("settings.network.connection_test_title"),
+                message,
+            )
 
     def _migrate_data(self):
         from cbpos.core.services.migration_service import MigrationService
@@ -1513,19 +1859,19 @@ class NetworkPage(SettingsPage):
         if not all([cfg["host"], cfg["dbname"], cfg["user"]]):
             QMessageBox.warning(
                 self,
-                "Validation Error",
-                "Please fill in all required connection fields before migrating data.",
+                _t("common.validation_error"),
+                _t("settings.network.validation_before_migrate"),
             )
             return
 
         confirm = QMessageBox.question(
             self,
-            "Confirm Data Migration",
-            f"This will upload ALL your local data to:\n\n"  # noqa: E231
-            f"  Host: {cfg['host']}:{cfg['port']}\n"  # noqa: E231
-            f"  Database: {cfg['dbname']}\n\n"  # noqa: E231
-            f"The target database must be empty. This operation may take several minutes.\n\n"
-            f"Do you want to continue?",
+            _t("settings.network.confirm_migration_title"),
+            _t("settings.network.confirm_migration_message").format(
+                host=cfg["host"],
+                port=cfg["port"],
+                dbname=cfg["dbname"],
+            ),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -1543,8 +1889,14 @@ class NetworkPage(SettingsPage):
         )
         postgres_url = url_obj
 
-        progress = QProgressDialog("Migrating data to server...\nPlease wait.", None, 0, 0, self)
-        progress.setWindowTitle("Data Migration")
+        progress = QProgressDialog(
+            _t("settings.network.migrating_progress"),
+            None,
+            0,
+            0,
+            self,
+        )
+        progress.setWindowTitle(_t("settings.network.migration_progress_title"))
         progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.setMinimumDuration(0)
         progress.setValue(0)
@@ -1557,17 +1909,14 @@ class NetworkPage(SettingsPage):
             if success:
                 QMessageBox.information(
                     self,
-                    "Migration Successful",
-                    f"{message}\n\nNext steps:\n"  # noqa: E231
-                    f"1. Save these network settings\n"
-                    f"2. Restart the application\n"
-                    f"3. All terminals can now connect to the server",
+                    _t("settings.network.migration_success_title"),
+                    _t("settings.network.migration_success_message").format(message=message),
                 )
             else:
                 QMessageBox.critical(
                     self,
-                    "Migration Failed",
-                    f"Migration error:\n\n{message}",  # noqa: E231
+                    _t("settings.network.migration_failed_title"),
+                    _t("settings.network.migration_failed_message").format(message=message),
                 )
         except Exception as e:
             progress.close()
@@ -1576,6 +1925,6 @@ class NetworkPage(SettingsPage):
             logging.getLogger(__name__).exception("Data migration failed: %s", e)
             QMessageBox.critical(
                 self,
-                "Migration Error",
-                "An unexpected error occurred during migration.\n" "Please check the application logs for details.",
+                _t("settings.network.migration_error_title"),
+                _t("settings.network.migration_error_message"),
             )

@@ -34,6 +34,7 @@ from cbpos.ui.widgets.charts import (
     HOURLY_COLORS,
 )
 from cbpos.core.utils.formatters import format_currency
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,10 @@ class DashboardView(QWidget):
         super().__init__()
         self._current_year = date.today().year
         self.init_ui()
+
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     # ------------------------------------------------------------------
     # UI construction
@@ -182,9 +187,9 @@ class DashboardView(QWidget):
         vbox.setContentsMargins(20, 20, 20, 20)
         vbox.setSpacing(6)
 
-        lbl_title = QLabel("Total Sales")
-        lbl_title.setObjectName("SummaryLabel")
-        vbox.addWidget(lbl_title)
+        self.lbl_total_sales_title = QLabel()
+        self.lbl_total_sales_title.setObjectName("SummaryLabel")
+        vbox.addWidget(self.lbl_total_sales_title)
 
         self.lbl_yearly_total = QLabel("Rs. 0")
         self.lbl_yearly_total.setObjectName("SummaryBigValue")
@@ -192,9 +197,9 @@ class DashboardView(QWidget):
 
         vbox.addSpacing(16)
 
-        lbl_top_title = QLabel("Top performing month")
-        lbl_top_title.setObjectName("SummaryLabel")
-        vbox.addWidget(lbl_top_title)
+        self.lbl_top_month_title = QLabel()
+        self.lbl_top_month_title.setObjectName("SummaryLabel")
+        vbox.addWidget(self.lbl_top_month_title)
 
         self.lbl_top_month = QLabel("-")
         self.lbl_top_month.setObjectName("SummaryHighlight")
@@ -216,7 +221,7 @@ class DashboardView(QWidget):
         hbox.setContentsMargins(16, 8, 16, 8)
         hbox.setSpacing(12)
 
-        self.lbl_period = QLabel("Periodic Reports")
+        self.lbl_period = QLabel()
         self.lbl_period.setObjectName("PanelTitle")
         hbox.addWidget(self.lbl_period)
 
@@ -258,20 +263,20 @@ class DashboardView(QWidget):
         vbox.setSpacing(8)
 
         header = QHBoxLayout()
-        lbl = QLabel("Top Products")
-        lbl.setObjectName("PanelTitle")
-        header.addWidget(lbl)
+        self.lbl_top_products = QLabel()
+        self.lbl_top_products.setObjectName("PanelTitle")
+        header.addWidget(self.lbl_top_products)
         header.addStretch()
 
-        lbl_sub = QLabel("by revenue in selected period")
-        lbl_sub.setObjectName("PanelSubtitle")
-        header.addWidget(lbl_sub)
+        self.lbl_top_products_sub = QLabel()
+        self.lbl_top_products_sub.setObjectName("PanelSubtitle")
+        header.addWidget(self.lbl_top_products_sub)
         vbox.addLayout(header)
 
         self.products_table = QTableWidget()
         self.products_table.setObjectName("DashboardTable")
         self.products_table.setColumnCount(2)
-        self.products_table.setHorizontalHeaderLabels(["Product", "Total"])
+        self.products_table.setHorizontalHeaderLabels(["", ""])
         self.products_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.products_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
         self.products_table.setColumnWidth(1, 110)
@@ -291,9 +296,9 @@ class DashboardView(QWidget):
         vbox.setContentsMargins(16, 12, 16, 12)
         vbox.setSpacing(8)
 
-        lbl = QLabel("Hourly Sales")
-        lbl.setObjectName("PanelTitle")
-        vbox.addWidget(lbl)
+        self.lbl_hourly_sales = QLabel()
+        self.lbl_hourly_sales.setObjectName("PanelTitle")
+        vbox.addWidget(self.lbl_hourly_sales)
 
         self.hourly_chart = VerticalBarChart()
         vbox.addWidget(self.hourly_chart, 1)
@@ -309,9 +314,9 @@ class DashboardView(QWidget):
         vbox.setSpacing(4)
 
         # Avg Order
-        lbl = QLabel("Avg Order Value")
-        lbl.setObjectName("StatLabel")
-        vbox.addWidget(lbl)
+        self.lbl_avg_order_title = QLabel()
+        self.lbl_avg_order_title.setObjectName("StatLabel")
+        vbox.addWidget(self.lbl_avg_order_title)
 
         self.lbl_avg_order = QLabel("Rs. 0")
         self.lbl_avg_order.setObjectName("StatBigValue")
@@ -320,9 +325,9 @@ class DashboardView(QWidget):
         vbox.addSpacing(14)
 
         # Items Sold
-        lbl2 = QLabel("Items Sold")
-        lbl2.setObjectName("StatLabel")
-        vbox.addWidget(lbl2)
+        self.lbl_items_sold_title = QLabel()
+        self.lbl_items_sold_title.setObjectName("StatLabel")
+        vbox.addWidget(self.lbl_items_sold_title)
 
         self.lbl_items_sold = QLabel("0")
         self.lbl_items_sold.setObjectName("StatValue")
@@ -331,9 +336,9 @@ class DashboardView(QWidget):
         vbox.addSpacing(14)
 
         # Unique Customers
-        lbl3 = QLabel("Unique Customers")
-        lbl3.setObjectName("StatLabel")
-        vbox.addWidget(lbl3)
+        self.lbl_unique_customers_title = QLabel()
+        self.lbl_unique_customers_title.setObjectName("StatLabel")
+        vbox.addWidget(self.lbl_unique_customers_title)
 
         self.lbl_unique_customers = QLabel("0")
         self.lbl_unique_customers.setObjectName("StatValue")
@@ -342,9 +347,9 @@ class DashboardView(QWidget):
         vbox.addSpacing(14)
 
         # Transactions
-        lbl4 = QLabel("Transactions")
-        lbl4.setObjectName("StatLabel")
-        vbox.addWidget(lbl4)
+        self.lbl_txn_title = QLabel()
+        self.lbl_txn_title.setObjectName("StatLabel")
+        vbox.addWidget(self.lbl_txn_title)
 
         self.lbl_txn_count = QLabel("0")
         self.lbl_txn_count.setObjectName("StatValue")
@@ -362,9 +367,9 @@ class DashboardView(QWidget):
         vbox.setSpacing(4)
 
         # VAT
-        lbl = QLabel("VAT Collected")
-        lbl.setObjectName("StatLabel")
-        vbox.addWidget(lbl)
+        self.lbl_vat_title = QLabel()
+        self.lbl_vat_title.setObjectName("StatLabel")
+        vbox.addWidget(self.lbl_vat_title)
 
         self.lbl_tax_vat = QLabel("Rs. 0")
         self.lbl_tax_vat.setObjectName("StatBigValue")
@@ -373,9 +378,9 @@ class DashboardView(QWidget):
         vbox.addSpacing(14)
 
         # SSCL
-        lbl2 = QLabel("SSCL Liability")
-        lbl2.setObjectName("StatLabel")
-        vbox.addWidget(lbl2)
+        self.lbl_sscl_title = QLabel()
+        self.lbl_sscl_title.setObjectName("StatLabel")
+        vbox.addWidget(self.lbl_sscl_title)
 
         self.lbl_tax_sscl = QLabel("Rs. 0")
         self.lbl_tax_sscl.setObjectName("StatValue")
@@ -384,9 +389,9 @@ class DashboardView(QWidget):
         vbox.addSpacing(14)
 
         # Net Revenue
-        lbl3 = QLabel("Net Revenue")
-        lbl3.setObjectName("StatLabel")
-        vbox.addWidget(lbl3)
+        self.lbl_net_revenue_title = QLabel()
+        self.lbl_net_revenue_title.setObjectName("StatLabel")
+        vbox.addWidget(self.lbl_net_revenue_title)
 
         self.lbl_net_revenue = QLabel("Rs. 0")
         self.lbl_net_revenue.setObjectName("StatValue")
@@ -404,13 +409,13 @@ class DashboardView(QWidget):
         vbox.setSpacing(8)
 
         header = QHBoxLayout()
-        lbl = QLabel("Top Selling Groups")
-        lbl.setObjectName("PanelTitle")
-        header.addWidget(lbl)
+        self.lbl_top_groups = QLabel()
+        self.lbl_top_groups.setObjectName("PanelTitle")
+        header.addWidget(self.lbl_top_groups)
         header.addStretch()
-        lbl_sub = QLabel("categories in selected period")
-        lbl_sub.setObjectName("PanelSubtitle")
-        header.addWidget(lbl_sub)
+        self.lbl_top_groups_sub = QLabel()
+        self.lbl_top_groups_sub.setObjectName("PanelSubtitle")
+        header.addWidget(self.lbl_top_groups_sub)
         vbox.addLayout(header)
 
         self.category_chart = DonutChart()
@@ -427,19 +432,45 @@ class DashboardView(QWidget):
         vbox.setSpacing(8)
 
         header = QHBoxLayout()
-        lbl = QLabel("Top Customers")
-        lbl.setObjectName("PanelTitle")
-        header.addWidget(lbl)
+        self.lbl_top_customers = QLabel()
+        self.lbl_top_customers.setObjectName("PanelTitle")
+        header.addWidget(self.lbl_top_customers)
         header.addStretch()
-        lbl_sub = QLabel("by spend in selected period")
-        lbl_sub.setObjectName("PanelSubtitle")
-        header.addWidget(lbl_sub)
+        self.lbl_top_customers_sub = QLabel()
+        self.lbl_top_customers_sub.setObjectName("PanelSubtitle")
+        header.addWidget(self.lbl_top_customers_sub)
         vbox.addLayout(header)
 
         self.customer_chart = HorizontalBarChart()
         vbox.addWidget(self.customer_chart, 1)
 
         parent_layout.addWidget(panel, 1)
+
+    # ------------------------------------------------------------------
+    # Translation
+    # ------------------------------------------------------------------
+
+    def retranslate_ui(self) -> None:
+        """Update all widget text from the translation system."""
+        self.lbl_monthly_title.setText(_t("dashboard.monthly_sales", year=self._current_year))
+        self.lbl_total_sales_title.setText(_t("dashboard.total_sales"))
+        self.lbl_top_month_title.setText(_t("dashboard.top_performing_month"))
+        self.lbl_period.setText(_t("dashboard.periodic_reports"))
+        self.lbl_top_products.setText(_t("dashboard.top_products"))
+        self.lbl_top_products_sub.setText(_t("dashboard.by_revenue"))
+        self.products_table.setHorizontalHeaderLabels([_t("dashboard.header_product"), _t("dashboard.header_total")])
+        self.lbl_hourly_sales.setText(_t("dashboard.hourly_sales"))
+        self.lbl_avg_order_title.setText(_t("dashboard.avg_order_value"))
+        self.lbl_items_sold_title.setText(_t("dashboard.items_sold"))
+        self.lbl_unique_customers_title.setText(_t("dashboard.unique_customers"))
+        self.lbl_txn_title.setText(_t("dashboard.transactions"))
+        self.lbl_vat_title.setText(_t("dashboard.vat_collected"))
+        self.lbl_sscl_title.setText(_t("dashboard.sscl_liability"))
+        self.lbl_net_revenue_title.setText(_t("dashboard.net_revenue"))
+        self.lbl_top_groups.setText(_t("dashboard.top_selling_groups"))
+        self.lbl_top_groups_sub.setText(_t("dashboard.categories_in_period"))
+        self.lbl_top_customers.setText(_t("dashboard.top_customers"))
+        self.lbl_top_customers_sub.setText(_t("dashboard.by_spend"))
 
     # ------------------------------------------------------------------
     # Data loading
@@ -457,10 +488,10 @@ class DashboardView(QWidget):
 
     def _refresh_yearly(self) -> None:
         """Refresh yearly data (Row 1: monthly chart + summary)."""
-        self.lbl_monthly_title.setText(f"Monthly Sales \u2014 {self._current_year}")
+        self.lbl_monthly_title.setText(_t("dashboard.monthly_sales", year=self._current_year))
         self.btn_prev_year.setEnabled(False)
         self.btn_next_year.setEnabled(False)
-        self.lbl_yearly_total.setText("Loading...")
+        self.lbl_yearly_total.setText(_t("dashboard.loading"))
 
         self._yearly_worker = _YearlyWorker(self._current_year)
         self._yearly_worker.finished.connect(self._on_yearly_ready)
@@ -471,10 +502,16 @@ class DashboardView(QWidget):
         sd = self.date_from.date().toPyDate()
         ed = self.date_to.date().toPyDate()
 
-        self.lbl_period.setText(f"Periodic Reports  ({sd.strftime('%d.%m.%Y')}" f" \u2013 {ed.strftime('%d.%m.%Y')})")
+        self.lbl_period.setText(
+            _t(
+                "dashboard.periodic_reports_range",
+                start=sd.strftime("%d.%m.%Y"),
+                end=ed.strftime("%d.%m.%Y"),
+            )
+        )
         self.btn_refresh.setEnabled(False)
         self.btn_refresh.setText("\u231B")  # hourglass while loading
-        self.lbl_avg_order.setText("Loading...")
+        self.lbl_avg_order.setText(_t("dashboard.loading"))
 
         self._periodic_worker = _PeriodicWorker(sd, ed)
         self._periodic_worker.finished.connect(self._on_periodic_ready)

@@ -32,9 +32,10 @@ class SettingsView(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.is_collapsed = False
+        self.is_collapsed = True
         self.nav_buttons = []
         self.init_ui()
+        self._apply_collapsed_state()
         self.load_settings()
 
     def init_ui(self):
@@ -203,6 +204,14 @@ class SettingsView(QWidget):
             btn.setProperty("active", is_active)
             btn.style().unpolish(btn)
             btn.style().polish(btn)
+
+    def _apply_collapsed_state(self) -> None:
+        """Set sidebar to collapsed (icon-only) mode without animation."""
+        self.sidebar.setFixedWidth(70)
+        self.lbl_logo.setVisible(False)
+        style = Qt.ToolButtonStyle.ToolButtonIconOnly
+        for btn in self.nav_buttons:
+            btn.setToolButtonStyle(style)
 
     def toggle_sidebar(self) -> None:
         """Animate sidebar between expanded (250px) and collapsed (70px)."""

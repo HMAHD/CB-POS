@@ -28,8 +28,7 @@ from PyQt6.QtPrintSupport import QPrinterInfo
 from sqlalchemy.engine import URL
 from cbpos.core.services.language_service import LanguageService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
-from cbpos.ui.dialogs.receipt_preview_dialog import ReceiptPreviewDialog
-from cbpos.core.models import Sale, SaleItem, Product
+from cbpos.core.models import Sale, SaleItem, SalePayment, Product
 from cbpos.config import Config
 import decimal
 import socket
@@ -166,6 +165,30 @@ class SettingsPage(QWidget):
         form_layout.setFormAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+
+    @staticmethod
+    def _make_section_header(title: str) -> QWidget:
+        """Create a styled section header with title and horizontal divider.
+
+        Returns a single widget containing: [title] ── [line] that spans the
+        full width of the form.  Use with ``form.addRow(header)`` (single-arg
+        overload so it spans both columns).
+        """
+        container = QWidget()
+        row = QHBoxLayout(container)
+        row.setContentsMargins(0, 10, 0, 2)
+        row.setSpacing(10)
+
+        lbl = QLabel(title)
+        lbl.setObjectName("SettingsSectionTitle")
+        row.addWidget(lbl)
+
+        line = QFrame()
+        line.setFrameShape(QFrame.Shape.HLine)
+        line.setObjectName("SettingsSectionLine")
+        row.addWidget(line, 1)
+
+        return container
 
 
 class ShopInfoPage(SettingsPage):
@@ -551,30 +574,49 @@ class HardwarePage(SettingsPage):
         )
 
         # --- Tab 1: Printers ---
-        tab_printer, form_printer = self._build_form_tab()
+        tab_printer, vbox_printer = self._build_vbox_tab()
 
         available_printers = QPrinterInfo.availablePrinterNames() or ["No printers found"]
 
+        # Section: Printer Selection
+        vbox_printer.addWidget(self._make_section_header("Printer Selection"))
+
+        sel_form = QFormLayout()
+        self.configure_form_layout(sel_form)
+        sel_form.setContentsMargins(0, 0, 0, 0)
+        sel_form.setVerticalSpacing(10)
+
         self.combo_receipt_printer = QComboBox()
         self.combo_receipt_printer.addItems(available_printers)
-        form_printer.addRow("Receipt Printer:", self.combo_receipt_printer)
+        sel_form.addRow("Receipt Printer:", self.combo_receipt_printer)
 
         self.combo_a4_printer = QComboBox()
         self.combo_a4_printer.addItems(available_printers)
-        form_printer.addRow("A4 Printer:", self.combo_a4_printer)
+        sel_form.addRow("A4 Printer:", self.combo_a4_printer)
 
         self.combo_paper_width = QComboBox()
         self.combo_paper_width.addItems(["80mm", "58mm"])
-        form_printer.addRow("Paper Width:", self.combo_paper_width)
+        sel_form.addRow("Paper Width:", self.combo_paper_width)
+        vbox_printer.addLayout(sel_form)
 
-        self.chk_auto_print = QCheckBox()
-        form_printer.addRow("Auto-Print Receipt:", self.chk_auto_print)
+        # Section: Print Behavior
+        vbox_printer.addWidget(self._make_section_header("Print Behavior"))
+
+        beh_form = QFormLayout()
+        self.configure_form_layout(beh_form)
+        beh_form.setContentsMargins(0, 0, 0, 0)
+        beh_form.setVerticalSpacing(10)
+
+        self.chk_auto_print = QCheckBox("Automatically print after completing a sale")
+        beh_form.addRow("Auto-Print Receipt:", self.chk_auto_print)
 
         self.spin_copies = QSpinBox()
         self.spin_copies.setRange(1, 5)
-        form_printer.addRow("Copies:", self.spin_copies)
+        beh_form.addRow("Copies:", self.spin_copies)
+        vbox_printer.addLayout(beh_form)
 
-        # --- Test Buttons ---
+        # Test Buttons
+        vbox_printer.addWidget(self._make_section_header("Test Hardware"))
         test_row = QHBoxLayout()
         self.btn_test_print = QPushButton("Test Print")
         self.btn_test_print.setProperty("class", "accent")
@@ -585,43 +627,67 @@ class HardwarePage(SettingsPage):
         self.btn_open_drawer.clicked.connect(self._test_drawer)
         test_row.addWidget(self.btn_open_drawer)
         test_row.addStretch()
-        form_printer.addRow("", test_row)
+        vbox_printer.addLayout(test_row)
 
         self.tabs.addTab(tab_printer, "Printers")
 
         # --- Tab: Paper Cut & Drawer ---
-        tab_cut, form_cut = self._build_form_tab()
+        tab_cut, vbox_cut = self._build_vbox_tab()
 
-        self.chk_auto_cut = QCheckBox()
-        self.chk_auto_cut.setToolTip("Disable for tear-bar printers")
-        form_cut.addRow("Auto-Cut Paper:", self.chk_auto_cut)
+        # Section: Paper Cut
+        vbox_cut.addWidget(self._make_section_header("Paper Cut"))
+
+        cut_form = QFormLayout()
+        self.configure_form_layout(cut_form)
+        cut_form.setContentsMargins(0, 0, 0, 0)
+        cut_form.setVerticalSpacing(10)
+
+        self.chk_auto_cut = QCheckBox("Disable for tear-bar printers")
+        cut_form.addRow("Auto-Cut Paper:", self.chk_auto_cut)
 
         self.combo_cut_type = QComboBox()
         self.combo_cut_type.addItems(["partial", "full"])
         self.combo_cut_type.setToolTip("Partial is safer for cheap cutters")
-        form_cut.addRow("Cut Type:", self.combo_cut_type)
+        cut_form.addRow("Cut Type:", self.combo_cut_type)
 
         self.spin_feed_lines = QSpinBox()
         self.spin_feed_lines.setRange(1, 8)
         self.spin_feed_lines.setToolTip("Lines of blank paper before cut")
-        form_cut.addRow("Feed Lines Before Cut:", self.spin_feed_lines)
+        cut_form.addRow("Feed Lines Before Cut:", self.spin_feed_lines)
+        vbox_cut.addLayout(cut_form)
 
-        self.chk_drawer_cash_only = QCheckBox()
-        self.chk_drawer_cash_only.setToolTip("Only open drawer for cash payments")
-        form_cut.addRow("Drawer on Cash Only:", self.chk_drawer_cash_only)
+        # Section: Cash Drawer
+        vbox_cut.addWidget(self._make_section_header("Cash Drawer"))
+
+        drawer_form = QFormLayout()
+        self.configure_form_layout(drawer_form)
+        drawer_form.setContentsMargins(0, 0, 0, 0)
+        drawer_form.setVerticalSpacing(10)
+
+        self.chk_drawer_cash_only = QCheckBox("Only open drawer for cash payments")
+        drawer_form.addRow("Drawer on Cash Only:", self.chk_drawer_cash_only)
+        vbox_cut.addLayout(drawer_form)
 
         self.tabs.addTab(tab_cut, "Cut & Drawer")
 
-        # --- Tab 2: Scale ---
-        tab_scale, form_scale = self._build_form_tab()
+        # --- Tab: Scale ---
+        tab_scale, vbox_scale = self._build_vbox_tab()
+
+        vbox_scale.addWidget(self._make_section_header("Weighing Scale Barcodes"))
+
+        scale_form = QFormLayout()
+        self.configure_form_layout(scale_form)
+        scale_form.setContentsMargins(0, 0, 0, 0)
+        scale_form.setVerticalSpacing(10)
 
         self.input_scale_prefix = QLineEdit()
         self.input_scale_prefix.setMaxLength(2)
-        form_scale.addRow("Barcode Prefix (2 digits):", self.input_scale_prefix)
+        scale_form.addRow("Barcode Prefix (2 digits):", self.input_scale_prefix)
 
         self.spin_decimal_places = QSpinBox()
         self.spin_decimal_places.setRange(0, 4)
-        form_scale.addRow("Decimal Places:", self.spin_decimal_places)
+        scale_form.addRow("Decimal Places:", self.spin_decimal_places)
+        vbox_scale.addLayout(scale_form)
 
         self.tabs.addTab(tab_scale, "Weighing Scale")
 
@@ -698,87 +764,198 @@ class HardwarePage(SettingsPage):
 
 
 class ReceiptPage(SettingsPage):
+    """Receipt settings with live preview split-pane layout.
+
+    Left panel: settings tabs (Content + Display).
+    Right panel: live receipt preview that auto-updates on every change.
+    """
+
     def init_ui(self):
-        _, self.tabs = self._create_page_layout(
-            "Receipt",
-            "Customize receipt logo, header, footer, and display options.",
-        )
+        from PyQt6.QtCore import QTimer
+        from cbpos.ui.widgets.receipt_preview_widget import ReceiptPreviewWidget
 
-        # --- Tab 1: Content ---
-        tab_content, form_content = self._build_form_tab()
+        # --- Custom layout: split-pane instead of standard vertical ---
+        root = QVBoxLayout(self)
+        root.setContentsMargins(20, 20, 20, 20)
+        root.setSpacing(8)
 
-        # Logo row
+        title = QLabel("Receipt")
+        title.setProperty("class", "dialog-title")
+        root.addWidget(title)
+
+        subtitle = QLabel("Customize receipt content and display — preview updates live.")
+        subtitle.setProperty("class", "muted")
+        root.addWidget(subtitle)
+
+        # Horizontal split: settings | preview
+        split = QHBoxLayout()
+        split.setSpacing(16)
+
+        # --- Left: Tab widget with settings ---
+        left_panel = QWidget()
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(0)
+
+        self.tabs = QTabWidget()
+        left_layout.addWidget(self.tabs)
+        split.addWidget(left_panel, 55)
+
+        # --- Right: Live preview ---
+        self._preview = ReceiptPreviewWidget()
+        split.addWidget(self._preview, 45)
+
+        root.addLayout(split, 1)
+
+        # Debounce timer for live preview refresh
+        self._refresh_timer = QTimer(self)
+        self._refresh_timer.setSingleShot(True)
+        self._refresh_timer.setInterval(300)
+        self._refresh_timer.timeout.connect(self._refresh_preview)
+
+        # ===================== Tab 1: Content =====================
+        tab_content, vbox_content = self._build_vbox_tab()
+
+        # Section: Logo
+        vbox_content.addWidget(self._make_section_header("Shop Logo"))
+
+        logo_form = QFormLayout()
+        self.configure_form_layout(logo_form)
+        logo_form.setContentsMargins(0, 0, 0, 0)
+        logo_form.setVerticalSpacing(10)
         logo_row = QHBoxLayout()
         self.input_logo_path = QLineEdit()
         self.input_logo_path.setReadOnly(True)
+        self.input_logo_path.setPlaceholderText("No logo selected")
         self.btn_browse_logo = QPushButton("Browse...")
         self.btn_browse_logo.clicked.connect(self.browse_logo)
         self.btn_clear_logo = QPushButton("Clear")
-        self.btn_clear_logo.clicked.connect(lambda: self.input_logo_path.clear())
+        self.btn_clear_logo.clicked.connect(self._clear_logo)
         logo_row.addWidget(self.input_logo_path, 1)
         logo_row.addWidget(self.btn_browse_logo)
         logo_row.addWidget(self.btn_clear_logo)
-        form_content.addRow("Logo:", logo_row)
+        logo_form.addRow("Logo:", logo_row)
+        vbox_content.addLayout(logo_form)
+
+        # Section: Header & Footer
+        vbox_content.addWidget(self._make_section_header("Header & Footer"))
+
+        hf_form = QFormLayout()
+        self.configure_form_layout(hf_form)
+        hf_form.setContentsMargins(0, 0, 0, 0)
+        hf_form.setVerticalSpacing(10)
 
         self.txt_header = QTextEdit()
-        self.txt_header.setFixedHeight(80)
-        form_content.addRow("Header Text:", self.txt_header)
+        self.txt_header.setFixedHeight(64)
+        self.txt_header.setPlaceholderText("Shop greeting or promo (press Enter for new line)")
+        hf_form.addRow("Header Text:", self.txt_header)
 
         self.txt_footer = QTextEdit()
-        self.txt_footer.setFixedHeight(80)
-        form_content.addRow("Footer Text:", self.txt_footer)
+        self.txt_footer.setFixedHeight(64)
+        self.txt_footer.setPlaceholderText("Thank you message (press Enter for new line)")
+        hf_form.addRow("Footer Text:", self.txt_footer)
 
+        vbox_content.addLayout(hf_form)
         self.tabs.addTab(tab_content, "Content")
 
-        # --- Tab 2: Display ---
-        tab_display, form_display = self._build_form_tab()
+        # ===================== Tab 2: Display =====================
+        tab_display, vbox_display = self._build_vbox_tab()
 
-        self.chk_show_barcode = QCheckBox()
-        self.chk_merge_items = QCheckBox()
-        self.chk_show_tax = QCheckBox()
-        self.chk_show_cashier = QCheckBox()
-        self.chk_show_cashier.setToolTip("Print cashier username on receipt")
-        self.chk_show_terminal = QCheckBox()
-        self.chk_show_terminal.setToolTip("Print terminal ID on receipt")
-        self.chk_show_qr = QCheckBox()
-        self.chk_show_qr.setToolTip("Print QR code (e.g. shop website/WhatsApp)")
+        # Section: Receipt Elements
+        vbox_display.addWidget(self._make_section_header("Receipt Elements"))
 
-        self.input_qr_content = QLineEdit()
-        self.input_qr_content.setPlaceholderText("https://wa.me/94767378901")
-        self.input_qr_content.setToolTip("URL or text encoded in QR code")
+        elem_form = QFormLayout()
+        self.configure_form_layout(elem_form)
+        elem_form.setContentsMargins(0, 0, 0, 0)
+        elem_form.setVerticalSpacing(10)
 
-        form_display.addRow("Show Barcode:", self.chk_show_barcode)
-        form_display.addRow("Merge Duplicate Items:", self.chk_merge_items)
-        form_display.addRow("Show Tax Breakdown:", self.chk_show_tax)
-        form_display.addRow("Show Cashier Name:", self.chk_show_cashier)
-        form_display.addRow("Show Terminal ID:", self.chk_show_terminal)
-        form_display.addRow("Show QR Code:", self.chk_show_qr)
-        form_display.addRow("QR Content (URL):", self.input_qr_content)
+        self.chk_show_barcode = QCheckBox("Print barcode of the sale reference")
+        self.chk_merge_items = QCheckBox("Combine identical line items into one row")
+        self.chk_show_tax = QCheckBox("Show VAT and SSCL breakdown on receipt")
 
-        # Preview Button
-        self.btn_preview = QPushButton("Preview Receipt")
-        self.btn_preview.setProperty("class", "accent")
-        self.btn_preview.clicked.connect(self.preview_receipt)
-        form_display.addRow("", self.btn_preview)
+        elem_form.addRow("Show Barcode:", self.chk_show_barcode)
+        elem_form.addRow("Merge Items:", self.chk_merge_items)
+        elem_form.addRow("Tax Breakdown:", self.chk_show_tax)
+        vbox_display.addLayout(elem_form)
+
+        # Section: Staff & Terminal
+        vbox_display.addWidget(self._make_section_header("Staff & Terminal"))
+
+        staff_form = QFormLayout()
+        self.configure_form_layout(staff_form)
+        staff_form.setContentsMargins(0, 0, 0, 0)
+        staff_form.setVerticalSpacing(10)
+
+        self.chk_show_cashier = QCheckBox("Print cashier username on receipt")
+        self.chk_show_terminal = QCheckBox("Print terminal ID on receipt")
+
+        staff_form.addRow("Cashier Name:", self.chk_show_cashier)
+        staff_form.addRow("Terminal ID:", self.chk_show_terminal)
+        vbox_display.addLayout(staff_form)
 
         self.tabs.addTab(tab_display, "Display")
 
-    def browse_logo(self):
+        # --- Connect all inputs to live preview refresh ---
+        self._connect_live_signals()
+
+    # ------------------------------------------------------------------
+    # Signal wiring for live preview
+    # ------------------------------------------------------------------
+
+    def _connect_live_signals(self) -> None:
+        """Connect every settings widget's change signal to the debounced refresh."""
+        trigger = self._schedule_refresh
+        # Text inputs
+        self.input_logo_path.textChanged.connect(trigger)
+        self.txt_header.textChanged.connect(trigger)
+        self.txt_footer.textChanged.connect(trigger)
+        # Checkboxes
+        self.chk_show_barcode.stateChanged.connect(trigger)
+        self.chk_merge_items.stateChanged.connect(trigger)
+        self.chk_show_tax.stateChanged.connect(trigger)
+        self.chk_show_cashier.stateChanged.connect(trigger)
+        self.chk_show_terminal.stateChanged.connect(trigger)
+
+    def _schedule_refresh(self) -> None:
+        """Restart the debounce timer — preview refreshes after 300 ms of inactivity."""
+        self._refresh_timer.start()
+
+    def _refresh_preview(self) -> None:
+        """Build receipt commands from current settings and update the preview."""
+        commands = ReceiptBuilder.build_receipt(
+            self._make_dummy_sale(),
+            config_override=self.save(),
+        )
+        self._preview.set_commands(commands)
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def browse_logo(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, "Select Logo", "", "Images (*.png *.jpg *.bmp)")
         if path:
             self.input_logo_path.setText(path)
 
-    def load(self, settings: dict):
+    def _clear_logo(self) -> None:
+        self.input_logo_path.clear()
+
+    def load(self, settings: dict) -> None:
+        # Block signals during bulk load to avoid N refreshes
+        self._refresh_timer.stop()
         self.input_logo_path.setText(settings.get("receipt_logo_path", ""))
         self.txt_header.setText(settings.get("receipt_header", ""))
         self.txt_footer.setText(settings.get("receipt_footer", ""))
-        self.chk_show_barcode.setChecked(settings.get("show_barcode", True))
-        self.chk_merge_items.setChecked(settings.get("merge_items", True))
-        self.chk_show_tax.setChecked(settings.get("show_tax_breakdown", True))
-        self.chk_show_cashier.setChecked(settings.get("show_cashier_on_receipt", True))
-        self.chk_show_terminal.setChecked(settings.get("show_terminal_on_receipt", False))
-        self.chk_show_qr.setChecked(settings.get("show_qr_on_receipt", False))
-        self.input_qr_content.setText(settings.get("receipt_qr_content", ""))
+        from cbpos.core.services.config_service import ConfigService
+
+        _d = ConfigService.DEFAULTS
+        self.chk_show_barcode.setChecked(settings.get("show_barcode", _d["show_barcode"]))
+        self.chk_merge_items.setChecked(settings.get("merge_items", _d["merge_items"]))
+        self.chk_show_tax.setChecked(settings.get("show_tax_breakdown", _d["show_tax_breakdown"]))
+        self.chk_show_cashier.setChecked(settings.get("show_cashier_on_receipt", _d["show_cashier_on_receipt"]))
+        self.chk_show_terminal.setChecked(settings.get("show_terminal_on_receipt", _d["show_terminal_on_receipt"]))
+        # Single refresh after all fields loaded
+        self._refresh_preview()
 
     def save(self) -> dict:
         return {
@@ -790,43 +967,52 @@ class ReceiptPage(SettingsPage):
             "show_tax_breakdown": self.chk_show_tax.isChecked(),
             "show_cashier_on_receipt": self.chk_show_cashier.isChecked(),
             "show_terminal_on_receipt": self.chk_show_terminal.isChecked(),
-            "show_qr_on_receipt": self.chk_show_qr.isChecked(),
-            "receipt_qr_content": self.input_qr_content.text(),
         }
 
-    def preview_receipt(self):
+    @staticmethod
+    def _make_dummy_sale() -> Sale:
+        """Create a realistic sample sale for the preview."""
         from datetime import datetime
 
-        dummy_sale = Sale(
-            id=12345,
+        sale = Sale(
+            id=42,
+            document_number="INV-2026-00042",
             date=datetime.now(),
-            total_amount=decimal.Decimal("1500.00"),
-            tax_vat=decimal.Decimal("228.81"),
-            tax_sscl=decimal.Decimal("37.50"),
-            net_revenue=decimal.Decimal("1233.69"),
+            total_amount=decimal.Decimal("1450.00"),
+            tax_vat=decimal.Decimal("221.19"),
+            tax_sscl=decimal.Decimal("36.25"),
+            net_revenue=decimal.Decimal("1192.56"),
         )
-        p1 = Product(name_en="Test Product 1")
-        p2 = Product(name_en="Test Product 2")
-        dummy_sale.items = [
+        p1 = Product(name_en="Product A")
+        p2 = Product(name_en="Product B")
+        p3 = Product(name_en="Product C")
+        sale.items = [
             SaleItem(
                 product=p1,
-                qty=decimal.Decimal(1),
-                unit_price=decimal.Decimal(500),
-                subtotal=decimal.Decimal(500),
+                qty=decimal.Decimal("2"),
+                unit_price=decimal.Decimal("150.00"),
+                original_price=decimal.Decimal("150.00"),
+                subtotal=decimal.Decimal("300.00"),
             ),
             SaleItem(
                 product=p2,
-                qty=decimal.Decimal(2),
-                unit_price=decimal.Decimal(500),
-                subtotal=decimal.Decimal(1000),
+                qty=decimal.Decimal("1"),
+                unit_price=decimal.Decimal("400.00"),
+                original_price=decimal.Decimal("450.00"),
+                subtotal=decimal.Decimal("400.00"),
+            ),
+            SaleItem(
+                product=p3,
+                qty=decimal.Decimal("3"),
+                unit_price=decimal.Decimal("250.00"),
+                original_price=decimal.Decimal("250.00"),
+                subtotal=decimal.Decimal("750.00"),
             ),
         ]
-
-        current_settings = self.save()
-        commands = ReceiptBuilder.build_receipt(dummy_sale, config_override=current_settings)
-
-        dlg = ReceiptPreviewDialog(commands, self)
-        dlg.exec()
+        sale.payments = [
+            SalePayment(payment_method="Cash", amount=decimal.Decimal("1500.00")),
+        ]
+        return sale
 
 
 class SystemPage(SettingsPage):

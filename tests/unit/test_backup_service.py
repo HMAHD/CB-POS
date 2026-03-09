@@ -37,6 +37,7 @@ class TestBackupService:
 
         with patch("cbpos.core.services.backup_service.Config") as mock_config:
             mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
             path, password = BackupService.create_backup(str(backup_dir), password="TestPass123")
 
         assert os.path.exists(path)
@@ -59,6 +60,7 @@ class TestBackupService:
 
         with patch("cbpos.core.services.backup_service.Config") as mock_config:
             mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
             path, password = BackupService.create_backup(str(backup_dir))
 
         assert len(password) == 16
@@ -70,6 +72,7 @@ class TestBackupService:
 
         with patch("cbpos.core.services.backup_service.Config") as mock_config:
             mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
             with pytest.raises(FileNotFoundError):
                 BackupService.create_backup(str(backup_dir))
 
@@ -78,7 +81,7 @@ class TestBackupService:
         db_file = tmp_path / "cbpos.db"
         db_file.write_text("mock db")
 
-        images_dir = tmp_path / "cbpos" / "assets" / "products"
+        images_dir = tmp_path / "product_images"
         images_dir.mkdir(parents=True)
         (images_dir / "test.jpg").write_text("mock image")
 
@@ -86,6 +89,7 @@ class TestBackupService:
 
         with patch("cbpos.core.services.backup_service.Config") as mock_config:
             mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
             path, password = BackupService.create_backup(str(backup_dir), password="test")
 
         with pyzipper.AESZipFile(path, "r") as zf:
@@ -107,6 +111,7 @@ class TestBackupService:
 
         with patch("cbpos.core.services.backup_service.Config") as mock_config:
             mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
             path, password = BackupService.create_backup(str(backup_dir), password="verify123")
 
         result = BackupService.verify_backup(path, "verify123")
@@ -122,6 +127,7 @@ class TestBackupService:
 
         with patch("cbpos.core.services.backup_service.Config") as mock_config:
             mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
             path, _ = BackupService.create_backup(str(backup_dir), password="correct")
 
         result = BackupService.verify_backup(path, "wrong")
@@ -147,6 +153,7 @@ class TestBackupService:
 
         with patch("cbpos.core.services.backup_service.Config") as mock_config:
             mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
             BackupService.create_backup(str(backup_dir), password="test")
             import time
 
@@ -200,6 +207,7 @@ class TestBackupService:
 
         with patch("cbpos.core.services.backup_service.Config") as mock_config:
             mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
             path, password = BackupService.create_backup(str(backup_dir), password="restore_test")
 
         # Modify the database to simulate changes
@@ -207,6 +215,7 @@ class TestBackupService:
 
         with patch("cbpos.core.services.backup_service.Config") as mock_config:
             mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
             result = BackupService.restore_backup(path, "restore_test")
 
         assert result is True
@@ -220,10 +229,12 @@ class TestBackupService:
 
         with patch("cbpos.core.services.backup_service.Config") as mock_config:
             mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
             path, _ = BackupService.create_backup(str(backup_dir), password="correct")
 
         with patch("cbpos.core.services.backup_service.Config") as mock_config:
             mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
             with pytest.raises(ValueError):
                 BackupService.restore_backup(path, "wrong_password")
 

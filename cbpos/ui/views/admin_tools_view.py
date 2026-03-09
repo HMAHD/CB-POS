@@ -32,6 +32,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QDate, QTimer
 from PyQt6.QtGui import QColor
 
+from cbpos.config import Config
 from cbpos.core.services.maintenance_service import MaintenanceService
 from cbpos.core.services.error_log_service import ErrorLogService
 from cbpos.core.services.hardware_test_service import HardwareTestService
@@ -76,15 +77,36 @@ class AdminToolsView(QWidget):
         title.setProperty("class", "dialog-title")
         layout.addWidget(title)
 
+        # Version + update check row
+        version_layout = QHBoxLayout()
+        version_layout.setSpacing(12)
+
         subtitle = QLabel("Diagnostic tools for troubleshooting and system administration.")
         subtitle.setProperty("class", "muted")
-        layout.addWidget(subtitle)
+        version_layout.addWidget(subtitle, 1)
+
+        version_lbl = QLabel(f"v{Config.VERSION}")
+        version_lbl.setProperty("class", "muted")
+        version_layout.addWidget(version_lbl)
+
+        btn_update = QPushButton("Check for Updates")
+        btn_update.setFixedWidth(160)
+        btn_update.clicked.connect(self._check_for_updates)
+        version_layout.addWidget(btn_update)
+
+        layout.addLayout(version_layout)
 
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_database_tab(), "Database")
         self.tabs.addTab(self._build_logs_tab(), "Error Logs")
         self.tabs.addTab(self._build_hardware_tab(), "Hardware")
         layout.addWidget(self.tabs, 1)
+
+    def _check_for_updates(self) -> None:
+        """Manually trigger an update check (non-silent — shows result either way)."""
+        from cbpos.ui.dialogs.update_dialog import check_for_updates_async
+
+        self._update_thread = check_for_updates_async(parent=self, silent=False)
 
     # ── Database Tab ─────────────────────────────────────────────────────
 

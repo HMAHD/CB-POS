@@ -2,6 +2,69 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [1.0.0] - 2026-03-09
+
+### Added — Packaging & Deployment (Phase 20)
+
+- **Platform-aware user data directory**: New `Config.DATA_DIR` stores database, settings, encryption key, logs, and backups in the OS-standard location (`%LOCALAPPDATA%\CB POS` on Windows, `~/Library/Application Support/CB POS` on macOS, `~/.local/share/cbpos` on Linux). Install directory is never touched — data survives updates. Development mode keeps data in project root (unchanged behaviour).
+- **Legacy data migration**: On first launch after upgrade, `ensure_data_dir()` automatically copies `cbpos.db`, `settings.json`, `.encryption_key`, and product images from the old install-relative location to the new `DATA_DIR`.
+- **Inno Setup Windows installer** (`installer/cbpos.iss`): Professional installer with LZMA2 compression, desktop/Start Menu/startup shortcuts, running-app detection via Windows mutex, automatic `DATA_DIR` creation post-install, silent install support (`/SILENT`), modern wizard with CB POS branding. Minimum Windows 10.
+- **Auto-update service** (`cbpos/core/services/update_service.py`): Checks `ceybyte/cbpos-releases` public repo for `latest.json` manifest on startup (3-second delay, non-blocking). Compares semantic versions; downloads installer with SHA-256 integrity verification.
+- **Update dialog** (`cbpos/ui/dialogs/update_dialog.py`): Shows changelog, download progress bar, and launches installer automatically. App quits to allow in-place update.
+- **Manual update check**: "Check for Updates" button added to Admin Tools view alongside version display (`v1.0.0`). Non-silent mode shows result even when up-to-date.
+- **GitHub Actions CI/CD** (`.github/workflows/release.yml`): Tag push (`v*.*.*`) triggers Windows build — PyInstaller exe → Inno Setup installer → SHA-256 hash → publishes installer + `latest.json` to public `ceybyte/cbpos-releases` repo via GitHub Release.
+- **App icon**: Updated PyInstaller spec to use multi-size `cbpos/assets/ico/cbpos_multi.ico`.
+
+### Improved — Receipt Preview
+
+- **Edge-to-edge separator lines**: Replaced `<hr>` approach (which had invisible internal margins in QTextBrowser) with a table-row technique — separators close the content cell and insert a full-width `<tr>` with `bgcolor='#000000'`, guaranteeing zero-gap lines from absolute left to right edge of the paper.
+- **Barcode preview**: Replaced PIL-generated barcode PNG with a lightweight HTML bar pattern — alternating black/white table cells derived from a hash of the barcode value. Decorative only (not scannable), with invoice number text below. Removes dependency on `python-barcode` for preview.
+- **Document margin eliminated**: Set `QTextDocument.setDocumentMargin(0)` so the paper table fills the viewport without internal gaps.
+
+### Changed
+
+- **Product images directory**: Moved from `cbpos/assets/products/` to `DATA_DIR/product_images/` so user-uploaded images are stored with user data, not inside the application bundle.
+- **Log directory**: Moved from `BASE_DIR/logs/` to `DATA_DIR/logs/`.
+- **Alembic migrations**: `alembic/env.py` now overrides `sqlalchemy.url` with runtime `Config.DATA_DIR` path, ensuring migrations always target the correct database regardless of working directory.
+
+## [0.9.3] - 2026-03-07
+
+### Improved — Receipt Layout & Preview Overhaul
+
+- **Professional receipt layout**: Restructured receipt to match industrial POS standards — shop name (bold, centered), address, phone, TIN in header block; document title derived from payment method (CASH RECEIPT / CARD RECEIPT / CREDIT INVOICE); invoice number centered; date and time as clean split row without labels.
+- **Item discount detection**: Discounts now detected by comparing `original_price` vs `unit_price` (persisted on SaleItem), not cart-only fields. Shows "Was Rs. X (-Y%)" with savings amount per line item.
+- **Two-column split rows**: New `_split_row()` helper emits both `val` (space-padded for printer) and `left_val`/`right_val` (semantic split for preview HTML tables), ensuring parity between preview and print.
+- **Payment & change section**: Receipt now shows PAID method + amount and CHANGE line with bold formatting.
+- **Bold text support**: Receipt commands support `bold` flag; ESC/POS driver sets `bold=True` on printer; preview renders `<b>` tags.
+- **Receipt preview rendering**: Rewrote `ReceiptPreviewWidget` with inline styles (no CSS classes) to work reliably in QTextBrowser's limited HTML 4 / CSS 2.1 engine. Separators use monospace characters with overflow clipping instead of unreliable `<hr>` tags.
+- **Barcode only**: Removed QR code from entire system (builder, preview, settings, ESC/POS driver). Barcode encodes invoice number for return scanning.
+
+### Fixed
+
+- **Invisible preview text in dark theme**: Added `color: #000000` to QSS for `ReceiptPreviewBrowser` in both themes.
+- **merge_items discount bug**: `ItemDisplay` now carries `original_price` so discount detection works when items are merged.
+- **Bill-level discount calculation**: Percentage discounts now calculate actual amount from items subtotal instead of displaying raw percentage as currency.
+
+### Changed — Discount Dialog
+
+- **Redesigned discount dialog**: Updated to match Ceylon Byte system theme — segmented type selector, outlined cyan preset buttons, proper hover/pressed/disabled states in both dark and light themes.
+
+## [0.9.2] - 2026-03-05
+
+### Added — Receipt Settings Live Preview & UI Overhaul
+
+- **Live receipt preview in settings**: Receipt settings page now uses a split-pane layout — settings on the left, live receipt preview on the right. Preview auto-updates on every change with 300ms debounce.
+- **Reusable `ReceiptPreviewWidget`**: Extracted receipt rendering into `cbpos/ui/widgets/receipt_preview_widget.py` — accurate thermal paper simulation with monospace font, dashed separators, barcode/QR placeholders, and 80mm/58mm paper width support.
+- **Section headers in settings pages**: New `_make_section_header()` base class helper with styled dividers (`SettingsSectionTitle` + `SettingsSectionLine`). Applied to Receipt and Hardware settings pages for visual grouping.
+- **Realistic sample data**: Receipt preview uses 3 products (Paracetamol, Vitamin C, Hand Sanitizer) with realistic Sri Lankan pricing and document number format.
+
+### Improved — Settings Page Layout
+
+- **Receipt page redesign**: Replaced sparse QFormLayout with sectioned VBox layout — "Shop Logo", "Header & Footer" sections in Content tab; "Receipt Elements", "Staff & Terminal", "QR Code" sections in Display tab.
+- **Hardware page redesign**: Applied same section-header pattern — "Printer Selection", "Print Behavior", "Test Hardware" in Printers tab; "Paper Cut", "Cash Drawer" in Cut & Drawer tab.
+- **DRY preview rendering**: `ReceiptPreviewDialog` refactored to use `ReceiptPreviewWidget`, eliminating duplicate HTML rendering logic.
+- **QSS theming**: Added styles for `ReceiptPreviewBrowser`, `ReceiptPreviewTitle`, `SettingsSectionTitle`, `SettingsSectionLine` in both dark and light themes.
+
 ## [0.9.1] - 2026-03-05
 
 ### Added — Receipt Printing Overhaul (Phase 31D)

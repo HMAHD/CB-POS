@@ -49,6 +49,7 @@ class TestMaintenanceService:
             patch("cbpos.core.services.maintenance_service.Database") as mock_db_cls,
         ):
             mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
             mock_db_cls.return_value = MagicMock(engine=mock_engine)
 
             result = MaintenanceService.vacuum_database()
@@ -74,6 +75,7 @@ class TestMaintenanceService:
             patch("cbpos.core.services.maintenance_service.Database") as mock_db_cls,
         ):
             mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
             mock_db_cls.return_value = MagicMock(engine=mock_engine)
 
             with pytest.raises(Exception, match="vacuum error"):

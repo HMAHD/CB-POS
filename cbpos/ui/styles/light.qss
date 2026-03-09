@@ -1219,44 +1219,93 @@ QDialog#DiscountDialog {
     color: #212529;
 }
 
-QRadioButton#RbPercent, QRadioButton#RbFixed {
-    font-size: 16px;
+QDialog#DiscountDialog QLabel[class="dialog-title"] {
+    font-size: 18px;
     font-weight: bold;
+    color: #212529;
+    padding: 0 0 4px;
+}
+
+QFrame#DiscountTypeFrame {
+    background-color: #F8F9FA;
+    border: 1px solid #DEE2E6;
+    border-radius: 6px;
+}
+
+QRadioButton#RbPercent, QRadioButton#RbFixed {
+    font-size: 15px;
+    font-weight: bold;
+    color: #212529;
+    padding: 8px 12px;
+    spacing: 8px;
 }
 
 QDoubleSpinBox#DiscountValueInput {
-    font-size: 32px;
+    font-size: 36px;
     font-weight: bold;
-    padding: 10px;
+    padding: 12px;
     border: 2px solid #0D6EFD;
-    border-radius: 5px;
+    border-radius: 8px;
     background-color: #FFFFFF;
     color: #212529;
+    min-height: 50px;
 }
 
-QDoubleSpinBox#DiscountValueInput::up-button, QDoubleSpinBox#DiscountValueInput::down-button {
+QDoubleSpinBox#DiscountValueInput::up-button,
+QDoubleSpinBox#DiscountValueInput::down-button {
     width: 0px;
 }
 
 QPushButton[class="PresetBtn"] {
-    background-color: #E9ECEF;
-    color: #212529;
+    background-color: #F8F9FA;
+    color: #0D6EFD;
     font-weight: bold;
-    font-size: 16px;
-    border-radius: 5px;
-    border: 1px solid #CED4DA;
+    font-size: 15px;
+    border: 1px solid #0D6EFD;
+    border-radius: 6px;
+    padding: 8px;
 }
 
 QPushButton[class="PresetBtn"]:hover {
-    background-color: #DEE2E6;
+    background-color: #E7F1FF;
+}
+
+QPushButton[class="PresetBtn"]:pressed {
+    background-color: #0D6EFD;
+    color: white;
+}
+
+QPushButton[class="PresetBtn"]:disabled {
+    background-color: #F0F0F0;
+    color: #AAA;
+    border-color: #DDD;
+}
+
+QPushButton#BtnCancel {
+    background-color: transparent;
+    color: #DC3545;
+    font-weight: bold;
+    font-size: 15px;
+    border: 2px solid #DC3545;
+    border-radius: 6px;
+}
+
+QPushButton#BtnCancel:hover {
+    background-color: #DC3545;
+    color: white;
 }
 
 QPushButton#BtnApplyDiscount {
     background-color: #198754;
     color: #FFFFFF;
     font-weight: bold;
-    font-size: 16px;
-    border-radius: 5px;
+    font-size: 15px;
+    border: none;
+    border-radius: 6px;
+}
+
+QPushButton#BtnApplyDiscount:hover {
+    background-color: #157347;
 }
 
 /* Customer Editor */
@@ -2030,6 +2079,34 @@ QScrollArea#SettingsScrollArea {
 }
 QWidget#SettingsScrollInner {
     background: transparent;
+}
+
+/* Settings page section headers */
+QLabel#SettingsSectionTitle {
+    color: #0D6EFD;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    background: transparent;
+}
+QFrame#SettingsSectionLine {
+    background-color: #CCCCCC;
+    max-height: 1px;
+    min-height: 1px;
+}
+
+/* Receipt live preview */
+QLabel#ReceiptPreviewTitle {
+    color: #888888;
+    font-size: 11px;
+    background: transparent;
+    padding: 4px 0;
+}
+QTextBrowser#ReceiptPreviewBrowser {
+    background-color: #d0d0d0;
+    color: #000000;
+    border: 1px solid #CCCCCC;
+    border-radius: 6px;
 }
 
 /* ── BackupRestoreDialog & ValuationDialog (light theme) ───────── */

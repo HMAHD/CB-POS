@@ -1,0 +1,8 @@
+{
+    "version": "1.0.0",
+    "release_date": "2026-03-09",
+    "download_url": "https://github.com/ceybyte/cbpos-releases/releases/download/v1.0.0/CBPOSSetup-1.0.0.exe",
+    "changelog": "Initial release of CB POS - Free Point of Sale for Sri Lankan Retail.",
+    "min_version": "1.0.0",
+    "sha256": ""
+}

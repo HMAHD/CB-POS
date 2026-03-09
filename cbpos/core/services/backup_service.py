@@ -61,8 +61,8 @@ class BackupService:
         backup_name = f"cbpos_backup_{timestamp}.zip"
         backup_path = dest / backup_name
 
-        db_file = Config.BASE_DIR / "cbpos.db"
-        images_dir = Config.BASE_DIR / "cbpos" / "assets" / "products"
+        db_file = Config.DATA_DIR / "cbpos.db"
+        images_dir = Config.DATA_DIR / "product_images"
 
         if not db_file.exists():
             raise FileNotFoundError(f"Database file not found: {db_file}")
@@ -87,7 +87,7 @@ class BackupService:
                         zf.write(img_file, arcname)
 
             # Add settings.json
-            settings_file = Config.BASE_DIR / "settings.json"
+            settings_file = Config.DATA_DIR / "settings.json"
             if settings_file.exists():
                 zf.write(settings_file, "settings.json")
 
@@ -131,7 +131,7 @@ class BackupService:
             raise ValueError(f"Cannot open backup — wrong password or corrupt file: {e}")
 
         # Create safety snapshot before restoring
-        db_file = Config.BASE_DIR / "cbpos.db"
+        db_file = Config.DATA_DIR / "cbpos.db"
         if db_file.exists():
             snapshot_dir = Path(BackupService.get_default_backup_dir())
             snapshot_dir.mkdir(parents=True, exist_ok=True)
@@ -168,7 +168,7 @@ class BackupService:
 
             # Restore settings.json
             extracted_settings = tmp_path / "settings.json"
-            settings_file = Config.BASE_DIR / "settings.json"
+            settings_file = Config.DATA_DIR / "settings.json"
             if extracted_settings.exists():
                 shutil.copy2(str(extracted_settings), str(settings_file))
                 logger.info("Settings restored from backup")
@@ -176,7 +176,7 @@ class BackupService:
             # Restore product images
             extracted_images = tmp_path / "products"
             if extracted_images.exists():
-                images_dir = Config.BASE_DIR / "cbpos" / "assets" / "products"
+                images_dir = Config.DATA_DIR / "product_images"
                 images_dir.mkdir(parents=True, exist_ok=True)
                 for img_file in extracted_images.rglob("*"):
                     if img_file.is_file():

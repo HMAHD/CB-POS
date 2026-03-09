@@ -7,6 +7,8 @@ from PyQt6.QtWidgets import (
     QRadioButton,
     QButtonGroup,
     QGridLayout,
+    QLabel,
+    QFrame,
     QMessageBox,
 )
 from PyQt6.QtCore import Qt
@@ -16,8 +18,7 @@ class DiscountDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Apply Discount")
-        self.setFixedSize(400, 350)
-        self.setFixedSize(400, 350)
+        self.setFixedSize(420, 380)
         self.setObjectName("DiscountDialog")
 
         self.discount_type = "PERCENTAGE"
@@ -27,10 +28,22 @@ class DiscountDialog(QDialog):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(20)
+        layout.setSpacing(16)
+        layout.setContentsMargins(24, 20, 24, 20)
 
-        # 1. Discount Type Selection
-        type_layout = QHBoxLayout()
+        # Title
+        title = QLabel("Apply Discount")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setProperty("class", "dialog-title")
+        layout.addWidget(title)
+
+        # Discount Type Selection — styled as segmented control
+        type_frame = QFrame()
+        type_frame.setObjectName("DiscountTypeFrame")
+        type_layout = QHBoxLayout(type_frame)
+        type_layout.setContentsMargins(4, 4, 4, 4)
+        type_layout.setSpacing(4)
+
         self.type_group = QButtonGroup(self)
 
         self.rb_percent = QRadioButton("Percentage (%)")
@@ -44,28 +57,31 @@ class DiscountDialog(QDialog):
 
         type_layout.addWidget(self.rb_percent)
         type_layout.addWidget(self.rb_fixed)
-        layout.addLayout(type_layout)
+        layout.addWidget(type_frame)
 
         self.type_group.buttonClicked.connect(self.on_type_changed)
 
-        # 2. Value Input
+        # Value Input
         self.spin_value = QDoubleSpinBox()
         self.spin_value.setRange(0, 999999)
         self.spin_value.setDecimals(2)
+        self.spin_value.setSuffix("%")
         self.spin_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.spin_value.setObjectName("DiscountValueInput")
         layout.addWidget(self.spin_value)
 
-        # 3. Presets
+        # Presets
         self.presets_layout = QGridLayout()
+        self.presets_layout.setSpacing(8)
         presets = [5, 10, 15, 20, 25, 50]
 
         row = 0
         col = 0
         for p in presets:
             btn = QPushButton(f"{p}%")
-            btn.setFixedSize(80, 50)
+            btn.setFixedHeight(44)
             btn.setProperty("class", "PresetBtn")
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             btn.clicked.connect(lambda checked, val=p: self.spin_value.setValue(val))
             self.presets_layout.addWidget(btn, row, col)
             col += 1
@@ -75,16 +91,19 @@ class DiscountDialog(QDialog):
 
         layout.addLayout(self.presets_layout)
 
-        # 4. Action Buttons
+        layout.addStretch()
+
+        # Action Buttons
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)
 
         btn_cancel = QPushButton("Cancel")
-        btn_cancel.setFixedHeight(50)
+        btn_cancel.setFixedHeight(48)
         btn_cancel.setObjectName("BtnCancel")
         btn_cancel.clicked.connect(self.reject)
 
         btn_apply = QPushButton("Apply Discount")
-        btn_apply.setFixedHeight(50)
+        btn_apply.setFixedHeight(48)
         btn_apply.setObjectName("BtnApplyDiscount")
         btn_apply.clicked.connect(self.accept)
 
@@ -96,11 +115,21 @@ class DiscountDialog(QDialog):
         if button == self.rb_percent:
             self.discount_type = "PERCENTAGE"
             self.spin_value.setSuffix("%")
-            self.presets_layout.setEnabled(True)
+            self.spin_value.setRange(0, 100)
+            # Enable preset buttons
+            for i in range(self.presets_layout.count()):
+                widget = self.presets_layout.itemAt(i).widget()
+                if widget:
+                    widget.setEnabled(True)
         else:
             self.discount_type = "FIXED"
             self.spin_value.setSuffix("")
-            self.presets_layout.setEnabled(False)  # Disable presets for fixed amount
+            self.spin_value.setRange(0, 999999)
+            # Disable preset buttons for fixed amount
+            for i in range(self.presets_layout.count()):
+                widget = self.presets_layout.itemAt(i).widget()
+                if widget:
+                    widget.setEnabled(False)
 
     def get_data(self):
         return self.discount_type, self.spin_value.value()

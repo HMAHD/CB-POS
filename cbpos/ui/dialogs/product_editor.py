@@ -27,6 +27,7 @@ from sqlalchemy.orm import joinedload
 from cbpos.core.models import Product, Category, CompositeItem
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.database import Database
+from cbpos.config import Config
 from cbpos.core.utils.formatters import get_currency_symbol
 
 
@@ -353,7 +354,7 @@ class ProductEditor(QDialog):
         if file_path:
             # Copy to assets
             filename = os.path.basename(file_path)
-            target_dir = os.path.join(os.getcwd(), "cbpos", "assets", "product_images")
+            target_dir = str(Config.DATA_DIR / "product_images")
             os.makedirs(target_dir, exist_ok=True)
 
             target_path = os.path.join(target_dir, filename)
@@ -417,9 +418,7 @@ class ProductEditor(QDialog):
                 self.supplier_combo.setCurrentIndex(idx)
 
         if self.product.image_path:
-            import os
-
-            full_path = os.path.join(os.getcwd(), "cbpos", "assets", self.product.image_path)
+            full_path = str(Config.DATA_DIR / self.product.image_path)
             self.show_image(full_path)
             self.current_image_path = self.product.image_path
 

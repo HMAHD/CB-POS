@@ -21,9 +21,14 @@ import os  # noqa: E402
 
 sys.path.append(os.getcwd())
 
+from cbpos.config import Config  # noqa: E402
 from cbpos.core.models import Base  # noqa: E402
 
 target_metadata = Base.metadata
+
+# Override the sqlalchemy.url from alembic.ini with the runtime DATA_DIR path.
+# This ensures migrations always target the correct database location.
+config.set_main_option("sqlalchemy.url", Config.DB_URI)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

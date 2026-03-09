@@ -31,7 +31,7 @@ class MaintenanceService:
         Returns:
             Dict with size_before, size_after, saved (human-readable).
         """
-        db_path = Config.BASE_DIR / "cbpos.db"
+        db_path = Config.DATA_DIR / "cbpos.db"
         size_before = db_path.stat().st_size if db_path.exists() else 0
 
         db = Database()
@@ -64,7 +64,7 @@ class MaintenanceService:
         Returns:
             Dict with size, products, customers, sales counts.
         """
-        db_path = Config.BASE_DIR / "cbpos.db"
+        db_path = Config.DATA_DIR / "cbpos.db"
         size = db_path.stat().st_size if db_path.exists() else 0
 
         if size >= 1024 * 1024:
@@ -98,7 +98,7 @@ class MaintenanceService:
             Dict with path, size, last_modified, sqlite_version,
             and tables (list of {name, rows}).
         """
-        db_path = Config.BASE_DIR / "cbpos.db"
+        db_path = Config.DATA_DIR / "cbpos.db"
         size = db_path.stat().st_size if db_path.exists() else 0
 
         if size >= 1024 * 1024:

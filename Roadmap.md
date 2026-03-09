@@ -529,28 +529,34 @@
 
 ---
 
-### Phase 20: Packaging & Deployment
+### Phase 20: Packaging & Deployment ✅
 *Goal: Clients can self-install.*
 
 - [x] **20.1 PyInstaller**
     - [x] Create `cbpos.spec` file.
     - [x] Handle hidden imports (SQLAlchemy, PyQt).
     - [x] Bundle assets (Fonts/Icons).
-- [ ] **20.2 Windows Installer**
-    - [ ] InnoSetup installer (`setup.iss`)
-    - [ ] Desktop shortcut and Start Menu entry
-    - [ ] Clean uninstaller
-- [ ] **20.3 Auto-Update Checker**
-    - [ ] Check GitHub releases on startup
-    - [ ] Notify user of new version
-    - [ ] Download link / one-click update
-- [ ] **20.4 First-Run Setup Wizard**
-    - [ ] Verify `setup_wizard.py` works end-to-end
-    - [ ] Business details, printer setup, initial admin PIN
-    - [ ] Sample data option for demo
+- [x] **20.2 Windows Installer**
+    - [x] InnoSetup installer (`installer/cbpos.iss`)
+    - [x] Desktop shortcut and Start Menu entry
+    - [x] Clean uninstaller
+    - [x] Running-app detection via mutex
+    - [x] User data in AppData (survives updates)
+- [x] **20.3 Auto-Update Checker**
+    - [x] Check GitHub releases on startup (silent, non-blocking)
+    - [x] Notify user of new version with changelog
+    - [x] One-click download with progress bar + SHA-256 verification
+    - [x] Manual "Check for Updates" in Admin Tools
+- [x] **20.4 First-Run Setup Wizard**
+    - [x] Verify `setup_wizard.py` works end-to-end
+    - [x] Business details, printer setup, initial admin PIN
+    - [x] Sample data option for demo
 - [x] **20.5 Licensing**
     - [x] Machine ID generation
     - [x] License key verification
+- [x] **20.6 CI/CD Pipeline**
+    - [x] GitHub Actions: tag push → build exe → Inno Setup → publish to ceybyte/cbpos-releases
+    - [x] Auto-generate latest.json manifest with SHA-256
 
 ---
 

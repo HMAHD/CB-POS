@@ -37,9 +37,9 @@ class TaxService:
         Calculate tax breakdown from the MRP (Tax Inclusive Price).
 
         Formula:
-        1. SSCL Liability = (MRP * Turnover%) * SSCL Rate
-        2. VAT Liable Base = MRP / (1 + VAT Rate)
-        3. VAT Amount = MRP - VAT Liable Base
+        1. VAT Liable Base = MRP / (1 + VAT Rate)
+        2. VAT Amount = MRP - VAT Liable Base
+        3. SSCL Liability = (VAT Liable Base * Turnover%) * SSCL Rate
         4. Net Revenue = MRP - VAT - SSCL
 
         Args:
@@ -58,8 +58,8 @@ class TaxService:
         vat_amount = total_mrp - vat_liable_base
 
         # 2. SSCL Calculation
-        # SSCL is calculated on a percentage of turnover
-        sscl_amount = (total_mrp * turnover_rate) * sscl_rate
+        # SSCL is calculated on a percentage of VAT-exclusive turnover
+        sscl_amount = (vat_liable_base * turnover_rate) * sscl_rate
 
         # 3. Net Revenue (What the shop keeps)
         # Revenue = Total - Taxes

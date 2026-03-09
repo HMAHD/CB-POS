@@ -185,11 +185,11 @@ class InvoiceService:
             ["Subtotal:", format_currency(subtotal)],
             ["Total Discount:", format_currency(total_discount)],
             [
-                "VAT ({0}%):".format(ConfigService.get("tax_vat_rate") or 18),
+                "VAT ({}%):".format(ConfigService.get("tax_vat_rate") or 18),
                 format_currency(vat_amount),
             ],
             [
-                "SSCL ({0}%):".format(ConfigService.get("tax_sscl_rate") or 2.5),
+                "SSCL ({}%):".format(ConfigService.get("tax_sscl_rate") or 2.5),
                 format_currency(sscl_amount),
             ],
             ["Grand Total:", format_currency(grand_total)],
@@ -263,6 +263,7 @@ class InvoiceService:
         filepath: str,
         copy_type: str = "ORIGINAL",
         language: str = "en",
+        serial_number: str = "",
     ) -> str:
         """
         Generate a Sri Lankan tax-compliant A4 invoice PDF (Jan 2026 mandate).
@@ -272,6 +273,8 @@ class InvoiceService:
             filepath: Absolute path where PDF should be saved.
             copy_type: 'ORIGINAL' or 'DUPLICATE' watermark text.
             language: Language for amount-in-words ('en', 'si', 'ta').
+            serial_number: Pre-generated serial number. If empty, one is generated.
+                Pass the same serial for ORIGINAL and DUPLICATE copies.
 
         Returns:
             Path to the generated PDF file.
@@ -341,7 +344,8 @@ class InvoiceService:
         shop_vat = ConfigService.get("vat_number") or ""
 
         # --- Tax Invoice Serial Number ---
-        serial_number = DocumentService.generate_tax_invoice_number()
+        if not serial_number:
+            serial_number = DocumentService.generate_tax_invoice_number()
 
         # === TITLE ===
         elements.append(Paragraph("<b>TAX INVOICE</b>", title_style))
@@ -501,11 +505,11 @@ class InvoiceService:
                 Paragraph(f"Rs. {_whole_lkr(net_amount)}", right_style),
             ],
             [
-                Paragraph("VAT (18%):", right_style),
+                Paragraph("VAT ({}%):".format(ConfigService.get("tax_vat_rate") or 18), right_style),
                 Paragraph(f"Rs. {_whole_lkr(vat_amount)}", right_style),
             ],
             [
-                Paragraph("SSCL (2.5%):", right_style),
+                Paragraph("SSCL ({}%):".format(ConfigService.get("tax_sscl_rate") or 2.5), right_style),
                 Paragraph(f"Rs. {_whole_lkr(sscl_amount)}", right_style),
             ],
             [

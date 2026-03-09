@@ -5,7 +5,7 @@ Provides Previous/Next navigation, a "Showing X-Y of Z" indicator,
 and a signal when the page changes so the parent view can update its table.
 """
 
-from typing import List, TypeVar
+from typing import TypeVar
 
 from PyQt6.QtWidgets import (
     QWidget,

@@ -70,10 +70,19 @@ def _number_to_words_en(n: int) -> str:
     for value, label in _SCALES:
         if n >= value:
             count, n = divmod(n, value)
-            parts.append(f"{_two_digit_words(count)} {label}")
+            # Recursively convert count if >= 100 (e.g., 150 Crore)
+            if count >= 100:
+                parts.append(f"{_number_to_words_en(count)} {label}")
+            elif count >= 20:
+                parts.append(f"{_two_digit_words(count)} {label}")
+            else:
+                parts.append(f"{_ONES[count]} {label}")
 
     if n > 0:
-        parts.append(_two_digit_words(n))
+        if n < 20:
+            parts.append(_ONES[n])
+        else:
+            parts.append(_two_digit_words(n))
 
     return " ".join(parts)
 

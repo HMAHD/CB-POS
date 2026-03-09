@@ -366,8 +366,10 @@ class SettingsView(QWidget):
                             details=json.dumps(tax_changes),
                         )
                         session.add(log)
-                except Exception:
-                    pass  # Don't block save if audit logging fails
+                except Exception as e:
+                    import logging
+
+                    logging.getLogger(__name__).warning("Tax audit log failed: %s", e)
 
         ConfigService.update_all(all_settings)
 

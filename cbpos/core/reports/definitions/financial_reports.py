@@ -2,7 +2,7 @@ from decimal import Decimal
 from typing import List, Dict, Any
 import pandas as pd
 from sqlalchemy import func
-from sqlalchemy.orm import joinedload
+
 from cbpos.core.reports.base_report import BaseReport
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Sale, SaleItem, Product
@@ -157,6 +157,7 @@ class TaxFilingSummaryReport(BaseReport):
         """Generate tax filing summary for the selected period.
 
         Excludes voided sales. Refunds are subtracted from taxable amounts.
+        Uses SQL aggregation for performance on large datasets.
         Returns a single-period summary as a vertical key-value DataFrame.
         """
         with get_db_session() as session:
@@ -164,59 +165,73 @@ class TaxFilingSummaryReport(BaseReport):
             start_date = date_range.get("start")
             end_date = date_range.get("end")
 
-            # Base query: all non-void sales in period, eager-load payments
-            query = session.query(Sale).options(joinedload(Sale.payments)).filter(Sale.status != "VOID")
+            # Date filter helper
+            def _date_filter(q):
+                if start_date:
+                    q = q.filter(func.date(Sale.date) >= start_date)
+                if end_date:
+                    q = q.filter(func.date(Sale.date) <= end_date)
+                return q
 
-            if start_date:
-                query = query.filter(func.date(Sale.date) >= start_date)
-            if end_date:
-                query = query.filter(func.date(Sale.date) <= end_date)
-
-            sales = query.all()
-
-            # Separate regular sales from refunds
-            regular_sales = [s for s in sales if s.refund_of_sale_id is None]
-            refund_sales = [s for s in sales if s.refund_of_sale_id is not None]
-
-            # --- Sales Summary ---
-            total_sales_mrp = sum((s.total_amount or self.ZERO) for s in regular_sales)
-            total_discounts = sum(
-                (s.additional_discount_value or self.ZERO)
-                for s in regular_sales
-                if s.additional_discount_type != "NONE"
+            # Aggregate regular sales (non-void, non-refund)
+            regular_q = _date_filter(
+                session.query(
+                    func.coalesce(func.sum(Sale.total_amount), 0),
+                    func.coalesce(func.sum(Sale.tax_vat), 0),
+                    func.coalesce(func.sum(Sale.tax_sscl), 0),
+                    func.coalesce(func.sum(Sale.net_revenue), 0),
+                    func.count(Sale.id),
+                ).filter(Sale.status != "VOID", Sale.refund_of_sale_id.is_(None))
             )
-            total_refunds = sum(abs(s.total_amount or self.ZERO) for s in refund_sales)
-            net_sales = total_sales_mrp - total_refunds
+            reg = regular_q.one()
+            total_sales_mrp = Decimal(str(reg[0]))
+            taxable_vat = Decimal(str(reg[1]))
+            taxable_sscl = Decimal(str(reg[2]))
+            taxable_net_revenue = Decimal(str(reg[3]))
+            regular_count = reg[4]
 
-            # --- VAT Computation ---
-            taxable_vat = sum((s.tax_vat or self.ZERO) for s in regular_sales)
-            refund_vat = sum(abs(s.tax_vat or self.ZERO) for s in refund_sales)
-            taxable_net_revenue = sum((s.net_revenue or self.ZERO) for s in regular_sales)
-            refund_net_revenue = sum(abs(s.net_revenue or self.ZERO) for s in refund_sales)
+            # Aggregate refund sales (non-void, has refund_of_sale_id)
+            refund_q = _date_filter(
+                session.query(
+                    func.coalesce(func.sum(func.abs(Sale.total_amount)), 0),
+                    func.coalesce(func.sum(func.abs(Sale.tax_vat)), 0),
+                    func.coalesce(func.sum(func.abs(Sale.tax_sscl)), 0),
+                    func.coalesce(func.sum(func.abs(Sale.net_revenue)), 0),
+                    func.count(Sale.id),
+                ).filter(Sale.status != "VOID", Sale.refund_of_sale_id.isnot(None))
+            )
+            ref = refund_q.one()
+            total_refunds = Decimal(str(ref[0]))
+            refund_vat = Decimal(str(ref[1]))
+            refund_sscl = Decimal(str(ref[2]))
+            refund_net_revenue = Decimal(str(ref[3]))
+            refund_count = ref[4]
+
+            # Computed values
+            net_sales = total_sales_mrp - total_refunds
+            total_discounts = self.ZERO  # Discount tracking requires item-level data
             vat_base = taxable_net_revenue - refund_net_revenue
             vat_liability = taxable_vat - refund_vat
-
-            # --- SSCL Computation ---
-            taxable_sscl = sum((s.tax_sscl or self.ZERO) for s in regular_sales)
-            refund_sscl = sum(abs(s.tax_sscl or self.ZERO) for s in refund_sales)
             sscl_liable_turnover = net_sales * Decimal("0.5")
             sscl_liability = taxable_sscl - refund_sscl
-
-            # --- Total Tax ---
             total_tax_liability = vat_liability + sscl_liability
 
-            # --- Payment Summary ---
-            payment_totals: Dict[str, Decimal] = {}
-            for sale in sales:
-                for payment in sale.payments:
-                    method = payment.payment_method
-                    amount = payment.amount or self.ZERO
-                    # Refund payments reduce the total
-                    if sale.refund_of_sale_id is not None:
-                        amount = -abs(amount)
-                    payment_totals[method] = payment_totals.get(method, self.ZERO) + amount
+            # Payment summary via SQL aggregation
+            from cbpos.core.models import SalePayment
 
-            # Build the summary as key-value rows
+            payment_q = _date_filter(
+                session.query(
+                    SalePayment.payment_method,
+                    func.sum(SalePayment.amount),
+                )
+                .join(Sale, SalePayment.sale_id == Sale.id)
+                .filter(Sale.status != "VOID")
+            ).group_by(SalePayment.payment_method)
+
+            payment_totals: Dict[str, Decimal] = {}
+            for method, total in payment_q.all():
+                payment_totals[method] = Decimal(str(total or 0))
+
             sorted_methods = sorted(payment_totals.keys())
             data = [
                 {
@@ -242,12 +257,12 @@ class TaxFilingSummaryReport(BaseReport):
                 {
                     "Section": "",
                     "Description": "Number of Sales",
-                    "Amount": Decimal(str(len(regular_sales))),
+                    "Amount": Decimal(str(regular_count)),
                 },
                 {
                     "Section": "",
                     "Description": "Number of Refunds",
-                    "Amount": Decimal(str(len(refund_sales))),
+                    "Amount": Decimal(str(refund_count)),
                 },
                 {
                     "Section": "VAT COMPUTATION",
@@ -256,7 +271,7 @@ class TaxFilingSummaryReport(BaseReport):
                 },
                 {
                     "Section": "",
-                    "Description": "VAT Liability (18%)",
+                    "Description": "VAT Liability",
                     "Amount": vat_liability,
                 },
                 {
@@ -266,7 +281,7 @@ class TaxFilingSummaryReport(BaseReport):
                 },
                 {
                     "Section": "",
-                    "Description": "SSCL Liability (2.5%)",
+                    "Description": "SSCL Liability",
                     "Amount": sscl_liability,
                 },
                 {

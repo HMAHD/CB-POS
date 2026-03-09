@@ -128,37 +128,23 @@ class DashboardService:
         with _session() as session:
             today = date.today()
 
-            total_vat = _decimal(
-                session.query(func.sum(Sale.tax_vat))
+            row = (
+                session.query(
+                    func.coalesce(func.sum(Sale.tax_vat), 0),
+                    func.coalesce(func.sum(Sale.tax_sscl), 0),
+                    func.coalesce(func.sum(Sale.net_revenue), 0),
+                )
                 .filter(
                     func.date(Sale.date) == today,
                     Sale.status == "COMPLETED",
                 )
-                .scalar()
-            )
-
-            total_sscl = _decimal(
-                session.query(func.sum(Sale.tax_sscl))
-                .filter(
-                    func.date(Sale.date) == today,
-                    Sale.status == "COMPLETED",
-                )
-                .scalar()
-            )
-
-            total_net_revenue = _decimal(
-                session.query(func.sum(Sale.net_revenue))
-                .filter(
-                    func.date(Sale.date) == today,
-                    Sale.status == "COMPLETED",
-                )
-                .scalar()
+                .one()
             )
 
             return {
-                "vat": total_vat,
-                "sscl": total_sscl,
-                "net_revenue": total_net_revenue,
+                "vat": _decimal(row[0]),
+                "sscl": _decimal(row[1]),
+                "net_revenue": _decimal(row[2]),
             }
 
     # ------------------------------------------------------------------

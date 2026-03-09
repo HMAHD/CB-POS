@@ -162,13 +162,13 @@ class TransactionService:
                     credit_amount_for_ledger = p["amount"]
                     credit_customer_balance = customer.current_debt
 
-            # 2. Create Sale Header
-            # Pass taxable_amount when item-level exemptions are active
+            # 2. Create Sale Header — use tax values from cart totals (single source of truth)
             exempt_amount = totals.get("exempt_amount", Decimal("0"))
-            taxable_amount = None
-            if exempt_amount > Decimal("0"):
-                taxable_amount = total_amount - exempt_amount
-            tax_info = TaxService.calculate_taxes(total_amount, taxable_amount=taxable_amount)
+            tax_info = {
+                "vat": totals["tax_vat"],
+                "sscl": totals["tax_sscl"],
+                "net": totals["net_revenue"],
+            }
 
             # Determine primary method for simple display
             primary_method = payments[0]["method"] if len(payments) == 1 else "SPLIT"
@@ -184,6 +184,8 @@ class TransactionService:
                 user_id=cashier_id,
                 customer_id=customer_id,
             )
+            # Attach exempt amount for receipt builder (transient, not persisted)
+            sale._exempt_amount = exempt_amount
             session.add(sale)
             session.flush()
 

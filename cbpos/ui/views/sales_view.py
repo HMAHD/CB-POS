@@ -673,7 +673,7 @@ class SalesView(QWidget):
             SoundService.play("scan_error")
             return
 
-        dialog = PaymentDialog(totals["subtotal"], self)
+        dialog = PaymentDialog(totals["final_total"], self)
         if dialog.exec():
             payments, _ = dialog.payment_data
             customer_id = self.customer.id if self.customer else None

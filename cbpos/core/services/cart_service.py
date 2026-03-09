@@ -162,9 +162,13 @@ class CartService:
 
     def _is_item_tax_exempt(self, item: Dict[str, Any]) -> bool:
         """Check if a cart item is tax exempt via its category."""
-        product = item.get("product")
-        if product and hasattr(product, "category") and product.category:
-            return bool(getattr(product.category, "tax_exempt", False))
+        try:
+            product = item.get("product")
+            if product and hasattr(product, "category") and product.category:
+                return bool(getattr(product.category, "tax_exempt", False))
+        except Exception:
+            # Guard against DetachedInstanceError if category wasn't eager-loaded
+            pass
         return False
 
     def get_totals(self) -> Dict[str, Any]:

@@ -79,7 +79,7 @@ class InvoiceService:
         shop_address = ConfigService.get("shop_address") or ""
         shop_phone = ConfigService.get("shop_phone") or ""
         shop_email = ConfigService.get("shop_email") or ""
-        vat_number = ConfigService.get("shop_vat_number") or ConfigService.get("vat_number") or ""
+        vat_number = ConfigService.get("vat_number") or ""
         company_tax_id = ConfigService.get("company_tax_id") or ""
 
         elements.append(Paragraph(shop_name, header_style))

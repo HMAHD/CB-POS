@@ -83,7 +83,7 @@ jobs:
           echo "Exe size: $(stat -c%s dist/cbpos.exe 2>/dev/null || stat -f%z dist/cbpos.exe) bytes"
 
       - name: Build Inno Setup installer
-        uses: Minionguyjpro/Inno-Setup-Action@v1.2.4
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.7
         with:
           path: installer/cbpos.iss
           options: /DMyAppVersion=${{ steps.version.outputs.version }}

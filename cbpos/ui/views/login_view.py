@@ -12,6 +12,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QIntValidator, QKeySequence, QShortcut
 from cbpos.core.services.auth_service import AuthService
 from cbpos.config import Config
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 # Numpad geometry constants
 _BTN_SIZE = 90  # Button width/height (setFixedSize — includes border)
@@ -34,6 +35,10 @@ class LoginView(QWidget):
 
         ThemeService.register_theme_callback(self.update_logo)
 
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
     def init_ui(self):
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -51,28 +56,28 @@ class LoginView(QWidget):
         self.logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Multilingual Welcome Text
-        welcome_text = QLabel("Welcome / ආයුබෝවන් / வணக்கம்")
-        welcome_text.setObjectName("WelcomeText")
-        welcome_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.welcome_text = QLabel()
+        self.welcome_text.setObjectName("WelcomeText")
+        self.welcome_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         left_layout.addStretch()
         left_layout.addWidget(self.logo_label)
-        left_layout.addWidget(welcome_text)
+        left_layout.addWidget(self.welcome_text)
         left_layout.addStretch()
 
         # Tagline
-        tagline = QLabel("Free POS software built for Sri Lankan businesses")
-        tagline.setObjectName("LoginTagline")
-        tagline.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        tagline.setWordWrap(True)
-        left_layout.addWidget(tagline)
+        self.tagline = QLabel()
+        self.tagline.setObjectName("LoginTagline")
+        self.tagline.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.tagline.setWordWrap(True)
+        left_layout.addWidget(self.tagline)
         left_layout.addSpacing(10)
 
         # Footer
-        footer_label = QLabel(f"Version {Config.VERSION} | \u00a9 2026 Ceylon Byte")
-        footer_label.setObjectName("FooterLabel")
-        footer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        left_layout.addWidget(footer_label)
+        self.footer_label = QLabel()
+        self.footer_label.setObjectName("FooterLabel")
+        self.footer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        left_layout.addWidget(self.footer_label)
         left_layout.addSpacing(20)
 
         # ── RIGHT PANEL (Interaction) ──────────────────────────────
@@ -83,16 +88,15 @@ class LoginView(QWidget):
         right_layout.setContentsMargins(40, 40, 40, 40)
 
         # PIN Heading
-        pin_heading = QLabel("Enter Your PIN")
-        pin_heading.setObjectName("PinHeading")
-        pin_heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        right_layout.addWidget(pin_heading)
+        self.pin_heading = QLabel()
+        self.pin_heading.setObjectName("PinHeading")
+        self.pin_heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        right_layout.addWidget(self.pin_heading)
         right_layout.addSpacing(10)
 
         # PIN Display — width matches numpad
         self.pin_input = QLineEdit()
         self.pin_input.setObjectName("PinInput")
-        self.pin_input.setPlaceholderText("Enter PIN")
         self.pin_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.pin_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.pin_input.setFixedWidth(_NUMPAD_W)
@@ -158,10 +162,10 @@ class LoginView(QWidget):
 
         # Help Hint
         right_layout.addSpacing(15)
-        help_hint = QLabel("Forgot PIN? Contact your administrator.")
-        help_hint.setObjectName("LoginHelpHint")
-        help_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        right_layout.addWidget(help_hint)
+        self.help_hint = QLabel()
+        self.help_hint.setObjectName("LoginHelpHint")
+        self.help_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        right_layout.addWidget(self.help_hint)
 
         # ── Assemble panels ────────────────────────────────────────
         main_layout.addWidget(left_panel, 40)
@@ -175,6 +179,15 @@ class LoginView(QWidget):
         self.shortcut_enter.activated.connect(self.attempt_login)
         self.shortcut_num_enter = QShortcut(QKeySequence(Qt.Key.Key_Enter), self)
         self.shortcut_num_enter.activated.connect(self.attempt_login)
+
+    def retranslate_ui(self) -> None:
+        """Update all translatable widget text (called on language change)."""
+        self.welcome_text.setText(_t("login.welcome"))
+        self.tagline.setText(_t("login.subtitle"))
+        self.footer_label.setText(_t("login.version_footer", version=Config.VERSION))
+        self.pin_heading.setText(_t("login.enter_your_pin"))
+        self.pin_input.setPlaceholderText(_t("login.enter_pin_placeholder"))
+        self.help_hint.setText(_t("login.forgot_pin_hint"))
 
     # ── Events ─────────────────────────────────────────────────────
 
@@ -217,7 +230,7 @@ class LoginView(QWidget):
             self.login_success.emit(user)
         else:
             self.pin_input.clear()
-            self.lbl_error.setText("Invalid PIN. Please try again.")
+            self.lbl_error.setText(_t("login.invalid_pin"))
             self.lbl_error.setVisible(True)
 
     def update_logo(self):
@@ -237,5 +250,5 @@ class LoginView(QWidget):
             )
             self.logo_label.setPixmap(scaled_pixmap)
         else:
-            self.logo_label.setText("CB POS")
+            self.logo_label.setText(_t("login.logo_fallback"))
             self.logo_label.setObjectName("LogoText")

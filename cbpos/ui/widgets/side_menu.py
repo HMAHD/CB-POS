@@ -12,15 +12,17 @@ from PyQt6.QtCore import Qt, pyqtSignal, QSize
 from PyQt6.QtGui import QColor
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.constants import SIDEBAR_WIDTH, ACTION_BTN_HEIGHT
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
 class NavTile(QPushButton):
     """Large navigation tile — icon above text, 2-column grid layout."""
 
-    def __init__(self, text: str, icon_name: str, parent=None):
+    def __init__(self, text_key: str, icon_name: str, parent=None):
         super().__init__(parent)
         self.setObjectName("NavTile")
         self.icon_name = icon_name
+        self._text_key = text_key
         self._active = False
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setMinimumHeight(80)
@@ -37,7 +39,7 @@ class NavTile(QPushButton):
         layout.addWidget(self.lbl_icon)
 
         # Text
-        self.lbl_text = QLabel(text)
+        self.lbl_text = QLabel()
         self.lbl_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_text.setWordWrap(True)
         layout.addWidget(self.lbl_text)
@@ -77,19 +79,23 @@ class NavTile(QPushButton):
         """Public API for theme change callbacks."""
         self._apply_theme()
 
+    def retranslate(self) -> None:
+        """Update text from translation key."""
+        self.lbl_text.setText(_t(self._text_key))
+
 
 class IconButton(QPushButton):
     """Icon-only button for the bottom toolbar."""
 
-    def __init__(self, icon_name: str, tooltip: str, color: str | None = None):
+    def __init__(self, icon_name: str, tooltip_key: str, color: str | None = None):
         super().__init__()
         self.setObjectName("IconButton")
 
         self.icon_name = icon_name
+        self._tooltip_key = tooltip_key
         self._fixed_color = color
         self.update_icon()
         self.setIconSize(QSize(20, 20))
-        self.setToolTip(tooltip)
         self.setFixedSize(40, 40)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
@@ -102,6 +108,10 @@ class IconButton(QPushButton):
         else:
             icon_color = ThemeService.get_icon_color()
         self.setIcon(Icons.get(self.icon_name, icon_color))
+
+    def retranslate(self) -> None:
+        """Update tooltip from translation key."""
+        self.setToolTip(_t(self._tooltip_key))
 
 
 class SideMenu(QWidget):
@@ -137,13 +147,17 @@ class SideMenu(QWidget):
         self._nav_buttons: list[NavTile] = []
         self.init_ui()
 
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
     def init_ui(self) -> None:
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
         # ── Section Header ────────────────────────────────────────
-        self.lbl_section = QLabel("MENU")
+        self.lbl_section = QLabel()
         self.lbl_section.setObjectName("MenuSectionHeader")
         self.lbl_section.setContentsMargins(16, 14, 0, 8)
         main_layout.addWidget(self.lbl_section)
@@ -155,32 +169,32 @@ class SideMenu(QWidget):
         nav_layout.setContentsMargins(10, 4, 10, 4)
         nav_layout.setSpacing(20)
 
-        self.btn_management = NavTile("Management", "fa5s.chart-line")
+        self.btn_management = NavTile("side_menu.management", "fa5s.chart-line")
         self.btn_management.clicked.connect(self._on_management)
         nav_layout.addWidget(self.btn_management)
         self._nav_buttons.append(self.btn_management)
 
-        self.btn_history = NavTile("Sales History", "fa5s.history")
+        self.btn_history = NavTile("side_menu.sales_history", "fa5s.history")
         self.btn_history.clicked.connect(self._on_history)
         nav_layout.addWidget(self.btn_history)
         self._nav_buttons.append(self.btn_history)
 
-        self.btn_documents = NavTile("Documents", "fa5s.file-invoice")
+        self.btn_documents = NavTile("side_menu.documents", "fa5s.file-invoice")
         self.btn_documents.clicked.connect(self._on_documents)
         nav_layout.addWidget(self.btn_documents)
         self._nav_buttons.append(self.btn_documents)
 
-        self.btn_receive_payment = NavTile("Receive Payment", "fa5s.hand-holding-usd")
+        self.btn_receive_payment = NavTile("side_menu.receive_payment", "fa5s.hand-holding-usd")
         self.btn_receive_payment.clicked.connect(self._on_receive_payment)
         nav_layout.addWidget(self.btn_receive_payment)
         self._nav_buttons.append(self.btn_receive_payment)
 
-        self.btn_reprint = NavTile("Reprint Receipt", "fa5s.print")
+        self.btn_reprint = NavTile("side_menu.reprint_receipt", "fa5s.print")
         self.btn_reprint.clicked.connect(self._on_reprint)
         nav_layout.addWidget(self.btn_reprint)
         self._nav_buttons.append(self.btn_reprint)
 
-        self.btn_refund = NavTile("Refund", "fa5s.undo")
+        self.btn_refund = NavTile("side_menu.refund", "fa5s.undo")
         self.btn_refund.clicked.connect(self._on_refund)
         nav_layout.addWidget(self.btn_refund)
         self._nav_buttons.append(self.btn_refund)
@@ -216,11 +230,11 @@ class SideMenu(QWidget):
         info_layout.setContentsMargins(0, 0, 0, 0)
         info_layout.setSpacing(1)
 
-        self.lbl_username = QLabel("Guest")
+        self.lbl_username = QLabel()
         self.lbl_username.setObjectName("MenuUsername")
         info_layout.addWidget(self.lbl_username)
 
-        self.lbl_role = QLabel("No Role")
+        self.lbl_role = QLabel()
         self.lbl_role.setObjectName("MenuRole")
         info_layout.addWidget(self.lbl_role)
 
@@ -241,7 +255,7 @@ class SideMenu(QWidget):
         self.btn_logout_icon.setCursor(Qt.CursorShape.PointingHandCursor)
         signout_row.addWidget(self.btn_logout_icon)
 
-        self.btn_logout = QPushButton("Sign Out")
+        self.btn_logout = QPushButton()
         self.btn_logout.setObjectName("SignOutBtn")
         self.btn_logout.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_logout.setFixedHeight(28)
@@ -266,19 +280,19 @@ class SideMenu(QWidget):
         toolbar_layout.setContentsMargins(20, 0, 20, 0)
         toolbar_layout.setSpacing(0)
 
-        self.btn_settings = IconButton("fa5s.cog", "Settings")
+        self.btn_settings = IconButton("fa5s.cog", "side_menu.settings_tooltip")
         self.btn_settings.clicked.connect(self.settings_clicked.emit)
         toolbar_layout.addWidget(self.btn_settings)
 
         toolbar_layout.addStretch()
 
-        self.btn_fullscreen = IconButton("fa5s.expand", "Toggle Fullscreen")
+        self.btn_fullscreen = IconButton("fa5s.expand", "side_menu.fullscreen_tooltip")
         self.btn_fullscreen.clicked.connect(self.fullscreen_clicked.emit)
         toolbar_layout.addWidget(self.btn_fullscreen)
 
         toolbar_layout.addStretch()
 
-        self.btn_power = IconButton("fa5s.power-off", "Exit Application", color="#FF4136")
+        self.btn_power = IconButton("fa5s.power-off", "side_menu.exit_tooltip", color="#FF4136")
         self.btn_power.clicked.connect(self.power_clicked.emit)
         toolbar_layout.addWidget(self.btn_power)
 
@@ -325,13 +339,29 @@ class SideMenu(QWidget):
         self._set_active(self.btn_refund)
         self.refund_clicked.emit()
 
+    # ── Translation ──────────────────────────────────────────────
+
+    def retranslate_ui(self) -> None:
+        """Update all translatable widget text (called on language change)."""
+        self.lbl_section.setText(_t("side_menu.menu_header"))
+        self.lbl_username.setText(_t("side_menu.guest"))
+        self.lbl_role.setText(_t("side_menu.no_role"))
+        self.btn_logout.setText(_t("side_menu.sign_out"))
+
+        for btn in self._nav_buttons:
+            btn.retranslate()
+
+        self.btn_settings.retranslate()
+        self.btn_fullscreen.retranslate()
+        self.btn_power.retranslate()
+
     # ── Public API ────────────────────────────────────────────────
 
     def set_user(self, user) -> None:
         """Update user info and permissions."""
         if user:
             self.lbl_username.setText(user.username)
-            self.lbl_role.setText(user.role.name if user.role else "Unknown")
+            self.lbl_role.setText(user.role.name if user.role else _t("side_menu.unknown_role"))
 
             is_admin = user.role and user.role.name.lower() in [
                 "admin",
@@ -342,8 +372,8 @@ class SideMenu(QWidget):
             self.btn_management.setVisible(is_admin)
             self.btn_settings.setVisible(is_admin)
         else:
-            self.lbl_username.setText("Guest")
-            self.lbl_role.setText("Not Logged In")
+            self.lbl_username.setText(_t("side_menu.guest"))
+            self.lbl_role.setText(_t("side_menu.not_logged_in"))
             self.btn_management.setVisible(False)
             self.btn_settings.setVisible(False)
 

@@ -40,6 +40,7 @@ from cbpos.ui.widgets.side_menu import SideMenu
 from cbpos.ui.widgets.action_panel import ActionPanel
 from cbpos.core.utils.formatters import format_currency
 from cbpos.core.services.sound_service import SoundService
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,7 @@ class SalesView(QWidget):
         self.current_search_mode = ConfigService.get("default_search_mode") or "ALL"
         self._undo_data = None
         self.init_ui()
+        self.retranslate_ui()
 
         # Side Menu Overlay
         self.side_menu = SideMenu(self)
@@ -66,6 +68,10 @@ class SalesView(QWidget):
 
         # Install Event Filter for clicking outside
         self.installEventFilter(self)
+
+        # Register for language changes
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self):
         # 1. Main Layout (Vertical)
@@ -133,17 +139,17 @@ class SalesView(QWidget):
         self.mode_group.buttonClicked.connect(self.on_search_mode_changed)
 
         modes = [
-            ("ALL", "*", "All"),
-            ("BARCODE", "||||", "Barcode"),
-            ("CODE", "#", "Code"),
-            ("NAME", "Tag", "Name"),
+            ("ALL", "*"),
+            ("BARCODE", "||||"),
+            ("CODE", "#"),
+            ("NAME", "Tag"),
         ]
 
-        for mode_id, text, tooltip in modes:
+        for mode_id, text in modes:
             btn = QToolButton()
             btn.setText(text)
             btn.setCheckable(True)
-            btn.setToolTip(tooltip)
+            btn.setToolTip("")  # Set by retranslate_ui
             btn.setFixedSize(40, 40)
             btn.setProperty("mode", mode_id)
             btn.setProperty("class", "SearchModeBtn")  # For styling
@@ -159,7 +165,7 @@ class SalesView(QWidget):
 
         # Search Input
         self.barcode_input = QLineEdit()
-        self.barcode_input.setPlaceholderText("Scan or type product... (Enter)")
+        self.barcode_input.setPlaceholderText("")  # Set by retranslate_ui
         self.barcode_input.setFixedHeight(CART_TABLE_ROW_HEIGHT)
 
         self.barcode_input.returnPressed.connect(self.process_barcode)
@@ -171,7 +177,7 @@ class SalesView(QWidget):
         # 2. Cart Table (Center)
         self.cart_table = QTableWidget()
         self.cart_table.setColumnCount(5)
-        self.cart_table.setHorizontalHeaderLabels(["Item", "Price", "Qty", "Disc", "Total"])
+        self.cart_table.setHorizontalHeaderLabels(["", "", "", "", ""])  # Set by retranslate_ui
 
         # Optimized column sizing for better readability
         self.cart_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)  # Item - flexible
@@ -198,7 +204,7 @@ class SalesView(QWidget):
         self.cart_table.setAlternatingRowColors(True)
 
         # Empty Cart Placeholder
-        self.empty_cart_label = QLabel("Scan or search to add items")
+        self.empty_cart_label = QLabel("")  # Set by retranslate_ui
         self.empty_cart_label.setObjectName("EmptyCartLabel")
         self.empty_cart_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -242,13 +248,13 @@ class SalesView(QWidget):
 
         # Subtotals (Left)
         subtotal_layout = QVBoxLayout()
-        self.lbl_item_count = QLabel("Items: 0")
+        self.lbl_item_count = QLabel("")
         self.lbl_item_count.setObjectName("ItemCountLabel")
-        self.lbl_subtotal = QLabel("Subtotal: 0.00")
+        self.lbl_subtotal = QLabel("")
         self.lbl_subtotal.setObjectName("SubtotalLabel")
-        self.lbl_discount = QLabel("Disc: 0.00")
+        self.lbl_discount = QLabel("")
         self.lbl_discount.setObjectName("DiscountLabel")
-        self.lbl_tax = QLabel("Tax: 0.00")
+        self.lbl_tax = QLabel("")
         self.lbl_tax.setObjectName("TaxLabel")
         self.lbl_exempt = QLabel("")
         self.lbl_exempt.setObjectName("ExemptLabel")
@@ -322,6 +328,52 @@ class SalesView(QWidget):
         # Initialize Cart
         self.update_cart_ui()
 
+    def retranslate_ui(self) -> None:
+        """Update all widget text for current language."""
+        # Search mode tooltips
+        mode_tooltip_keys = {
+            "ALL": "sales.search_mode_all",
+            "BARCODE": "sales.search_mode_barcode",
+            "CODE": "sales.search_mode_code",
+            "NAME": "sales.search_mode_name",
+        }
+        for btn in self.mode_group.buttons():
+            mode = btn.property("mode")
+            key = mode_tooltip_keys.get(mode)
+            if key:
+                btn.setToolTip(_t(key))
+
+        # Search input placeholder
+        self._update_search_placeholder()
+
+        # Cart table headers
+        self.cart_table.setHorizontalHeaderLabels(
+            [
+                _t("cart.header_item"),
+                _t("cart.header_price"),
+                _t("cart.header_qty"),
+                _t("cart.header_disc"),
+                _t("cart.header_total"),
+            ]
+        )
+
+        # Empty cart placeholder
+        self.empty_cart_label.setText(_t("sales.empty_cart"))
+
+        # Totals — refresh display with current values
+        self.update_cart_display()
+
+    def _update_search_placeholder(self) -> None:
+        """Set the search placeholder text based on current search mode."""
+        placeholder_keys = {
+            "ALL": "sales.search_placeholder_all",
+            "BARCODE": "sales.search_placeholder_barcode",
+            "CODE": "sales.search_placeholder_code",
+            "NAME": "sales.search_placeholder_name",
+        }
+        key = placeholder_keys.get(self.current_search_mode, "sales.search_placeholder_default")
+        self.barcode_input.setPlaceholderText(_t(key))
+
     def update_logo(self):
         """Update logo based on current theme (called on theme change)."""
         from cbpos.core.services.theme_service import ThemeService
@@ -333,7 +385,7 @@ class SalesView(QWidget):
             logo_pixmap = QPixmap(str(logo_path))
             self.lbl_logo.setPixmap(logo_pixmap.scaledToHeight(35, Qt.TransformationMode.SmoothTransformation))
         else:
-            self.lbl_logo.setText("CEYLON BYTE POS")  # Fallback
+            self.lbl_logo.setText(_t("sales.logo_fallback"))  # Fallback
             self.lbl_logo.setObjectName("LogoLabel")
 
         # Update hamburger menu icon (if it exists) - always white
@@ -515,7 +567,7 @@ class SalesView(QWidget):
             self.barcode_input.setFocus()
         else:
             SoundService.play("scan_error")
-            QMessageBox.warning(self, "Not Found", "Product not found.")
+            QMessageBox.warning(self, _t("sales.not_found_title"), _t("sales.not_found_message"))
             self.barcode_input.setFocus()
 
     def update_cart_display(self):
@@ -536,7 +588,7 @@ class SalesView(QWidget):
             # Product Name (with note indicator)
             name = item["product"].name_en
             if item.get("note"):
-                name = f"📝 {name}"
+                name = f"\U0001f4dd {name}"
             name_item = QTableWidgetItem(name)
             name_item.setToolTip(item["product"].name_en)
             name_item.setForeground(text_brush)
@@ -591,17 +643,17 @@ class SalesView(QWidget):
         exempt_amount = totals.get("exempt_amount", Decimal("0.00"))
 
         self.total_label.setText(format_currency(final_total))
-        self.lbl_subtotal.setText(f"Subtotal: {format_currency(subtotal)}")
-        self.lbl_discount.setText(f"Disc: {format_currency(cart_discount)}")
+        self.lbl_subtotal.setText(_t("cart.subtotal", amount=format_currency(subtotal)))
+        self.lbl_discount.setText(_t("cart.discount", amount=format_currency(cart_discount)))
         if ConfigService.get("show_tax_breakdown") and tax_total > 0:
-            self.lbl_tax.setText(f"VAT: {format_currency(tax_vat)}  SSCL: {format_currency(tax_sscl)}")
+            self.lbl_tax.setText(_t("cart.tax_breakdown", vat=format_currency(tax_vat), sscl=format_currency(tax_sscl)))
         else:
-            self.lbl_tax.setText(f"Tax: {format_currency(tax_total)}")
-        self.lbl_item_count.setText(f"Items: {item_count}")
+            self.lbl_tax.setText(_t("cart.tax", amount=format_currency(tax_total)))
+        self.lbl_item_count.setText(_t("cart.item_count", count=item_count))
 
         # Show exempt amount when applicable
         if exempt_amount > 0:
-            self.lbl_exempt.setText(f"Tax Exempt: {format_currency(exempt_amount)}")
+            self.lbl_exempt.setText(_t("cart.tax_exempt", amount=format_currency(exempt_amount)))
             self.lbl_exempt.setVisible(True)
         else:
             self.lbl_exempt.setVisible(False)
@@ -641,15 +693,15 @@ class SalesView(QWidget):
     def show_customer_menu(self, pos):
         menu = QMenu(self)
 
-        quick_add = QAction("Quick Add New", self)
+        quick_add = QAction(_t("customer_menu.quick_add_new"), self)
         quick_add.triggered.connect(self.quick_add_customer)
         menu.addAction(quick_add)
 
         if self.customer:
-            details = QAction("View Details", self)
+            details = QAction(_t("customer_menu.view_details"), self)
             menu.addAction(details)
 
-            clear = QAction("Clear Customer", self)
+            clear = QAction(_t("customer_menu.clear_customer"), self)
             clear.triggered.connect(self.clear_customer)
             menu.addAction(clear)
 
@@ -692,9 +744,9 @@ class SalesView(QWidget):
 
                     self._finalize_sale(sale)
             except ValueError as e:
-                QMessageBox.warning(self, "Validation Error", str(e))
+                QMessageBox.warning(self, _t("sales.validation_error"), str(e))
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Transaction failed: {str(e)}")
+                QMessageBox.critical(self, _t("common.error"), _t("sales.transaction_failed", error=str(e)))
             finally:
                 self._processing = False
         self.barcode_input.setFocus()
@@ -708,15 +760,15 @@ class SalesView(QWidget):
             self.cart_service.clear()
             self.update_cart_display()
             self.order_bar.refresh_tabs()
-            QMessageBox.information(self, "Held", f"Held #{held_id}")
+            QMessageBox.information(self, _t("orders.held_title"), _t("orders.held_message", id=held_id))
         else:
-            QMessageBox.critical(self, "Error", "Failed to hold bill.")
+            QMessageBox.critical(self, _t("common.error"), _t("orders.held_error"))
         self.barcode_input.setFocus()
 
     def recall_bill(self):
         suspended = TransactionService.get_latest_suspended()
         if not suspended:
-            QMessageBox.information(self, "Empty", "No held bills found.")
+            QMessageBox.information(self, _t("orders.empty_title"), _t("orders.empty_message"))
             self.barcode_input.setFocus()
             return
 
@@ -724,9 +776,9 @@ class SalesView(QWidget):
             self.order_bar.set_active_bill(suspended.id)
             self.update_cart_display()
             self.order_bar.refresh_tabs()
-            QMessageBox.information(self, "Recalled", f"Bill #{suspended.id} recalled.")
+            QMessageBox.information(self, _t("orders.recalled_title"), _t("orders.recalled_message", id=suspended.id))
         else:
-            QMessageBox.critical(self, "Error", "Failed to recall bill.")
+            QMessageBox.critical(self, _t("common.error"), _t("orders.recall_error"))
         self.barcode_input.setFocus()
 
     def void_bill(self):
@@ -746,8 +798,8 @@ class SalesView(QWidget):
         # 2. Confirm Void
         reply = QMessageBox.question(
             self,
-            "Void Bill",
-            "Are you sure you want to clear the current bill?",
+            _t("orders.void_title"),
+            _t("orders.void_confirm"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
@@ -762,14 +814,7 @@ class SalesView(QWidget):
         """Handle search mode change from segmented control."""
         mode = button.property("mode")
         self.current_search_mode = mode
-
-        placeholders = {
-            "ALL": "Scan or type product... (Enter)",
-            "BARCODE": "Scan barcode...",
-            "CODE": "Enter product code...",
-            "NAME": "Type product name...",
-        }
-        self.barcode_input.setPlaceholderText(placeholders.get(mode, "Search..."))
+        self._update_search_placeholder()
         self.barcode_input.setFocus()
 
     def set_search_mode(self, mode: str, icon: str):
@@ -802,23 +847,23 @@ class SalesView(QWidget):
 
         menu = QMenu(self)
 
-        add_note_action = QAction("Add Note", self)
+        add_note_action = QAction(_t("cart.context_add_note"), self)
         add_note_action.triggered.connect(self.add_line_note)
         menu.addAction(add_note_action)
 
-        change_qty_action = QAction("Change Quantity", self)
+        change_qty_action = QAction(_t("cart.context_change_qty"), self)
         change_qty_action.triggered.connect(self.change_line_quantity)
         menu.addAction(change_qty_action)
 
-        discount_action = QAction("Apply Line Discount", self)
+        discount_action = QAction(_t("cart.context_line_discount"), self)
         discount_action.triggered.connect(self.apply_line_discount)
         menu.addAction(discount_action)
 
-        price_action = QAction("Change Price", self)
+        price_action = QAction(_t("cart.context_change_price"), self)
         price_action.triggered.connect(self.change_line_price)
         menu.addAction(price_action)
 
-        remove_action = QAction("Remove Item", self)
+        remove_action = QAction(_t("cart.context_remove_item"), self)
         remove_action.triggered.connect(self.remove_line_item)
         menu.addAction(remove_action)
 
@@ -828,7 +873,7 @@ class SalesView(QWidget):
         """Add note to selected cart line."""
         row = self.cart_table.currentRow()
         if row >= 0:
-            note, ok = QInputDialog.getText(self, "Line Note", "Enter note for this item:")
+            note, ok = QInputDialog.getText(self, _t("cart.line_note_title"), _t("cart.line_note_prompt"))
             if ok and note:
                 self.cart_service.items[row]["note"] = note
                 self.update_cart_display()
@@ -841,8 +886,8 @@ class SalesView(QWidget):
             current_qty = self.cart_service.items[row]["qty"]
             qty, ok = QInputDialog.getDouble(
                 self,
-                "Change Quantity",
-                "Enter new quantity:",
+                _t("cart.change_qty_title"),
+                _t("cart.change_qty_prompt"),
                 value=float(current_qty),
                 min=0.001,
                 max=999999,
@@ -874,7 +919,11 @@ class SalesView(QWidget):
             try:
                 self.cart_service.apply_line_discount(row, disc_type, disc_value)
             except ValueError:
-                QMessageBox.warning(self, "Discount Limit", str(disc_value) + "% exceeds the allowed discount limit.")
+                QMessageBox.warning(
+                    self,
+                    _t("cart.discount_limit_title"),
+                    _t("cart.discount_limit_message", value=str(disc_value)),
+                )
                 self.barcode_input.setFocus()
                 return
             self.update_cart_display()
@@ -899,8 +948,8 @@ class SalesView(QWidget):
         current_price = self.cart_service.items[row]["unit_price"]
         new_price, ok = QInputDialog.getDouble(
             self,
-            "Change Price",
-            "Enter new price:",
+            _t("cart.change_price_title"),
+            _t("cart.change_price_prompt"),
             value=float(current_price),
             min=0.01,
             max=999999,
@@ -923,7 +972,7 @@ class SalesView(QWidget):
             self._undo_data = {"item": removed_item, "index": row}
 
             product_name = removed_item["product"].name_en
-            self.undo_toast.setText(f"Removed: {product_name} — Ctrl+Z to undo")
+            self.undo_toast.setText(_t("cart.removed_undo", product=product_name))
             self.undo_toast.adjustSize()
             self._position_undo_toast()
             self.undo_toast.setVisible(True)
@@ -985,7 +1034,7 @@ class SalesView(QWidget):
         if self.cart_service.items:
             # We don't ask for note here for speed, or maybe use "Auto-Hold" note
             if not TransactionService.hold_bill(self.cart_service, note="Auto-Switch"):
-                QMessageBox.critical(self, "Error", "Failed to hold current order.")
+                QMessageBox.critical(self, _t("common.error"), _t("orders.switch_error"))
                 return
             self.cart_service.clear()
 
@@ -995,7 +1044,7 @@ class SalesView(QWidget):
             self.update_cart_display()
             self.order_bar.refresh_tabs()
         else:
-            QMessageBox.warning(self, "Error", "Could not recall order. It may have been taken.")
+            QMessageBox.warning(self, _t("common.error"), _t("orders.recall_taken_error"))
             self.order_bar.refresh_tabs()
 
     def create_new_order(self):
@@ -1011,7 +1060,7 @@ class SalesView(QWidget):
                 self.order_bar.set_active_bill(None)
                 self.order_bar.refresh_tabs()
             else:
-                QMessageBox.critical(self, "Error", "Failed to hold current order.")
+                QMessageBox.critical(self, _t("common.error"), _t("orders.held_error"))
         else:
             # Already empty, just refresh tabs to be sure
             self.order_bar.set_active_bill(None)
@@ -1067,10 +1116,8 @@ class SalesView(QWidget):
         """Show printer error to user with context."""
         QMessageBox.warning(
             self,
-            "Printer Error",
-            f"Receipt print failed: {message}\n\n"
-            "Check printer connection and verify settings "
-            "under Settings > Hardware.",
+            _t("sales.printer_error_title"),
+            _t("sales.printer_error_message", message=message),
         )
 
     def _finalize_sale(self, sale) -> None:
@@ -1096,7 +1143,7 @@ class SalesView(QWidget):
             return
         # Check if quick pay is enabled in settings
         if not ConfigService.get("quick_pay_enabled"):
-            QMessageBox.information(self, "Disabled", "Quick Pay is disabled in settings.")
+            QMessageBox.information(self, _t("sales.disabled"), _t("sales.quick_pay_disabled"))
             return
 
         if not self.cart_service.items:
@@ -1115,9 +1162,9 @@ class SalesView(QWidget):
             if sale:
                 self._finalize_sale(sale)
         except ValueError as e:
-            QMessageBox.warning(self, "Validation Error", str(e))
+            QMessageBox.warning(self, _t("sales.validation_error"), str(e))
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Transaction failed: {str(e)}")
+            QMessageBox.critical(self, _t("common.error"), _t("sales.transaction_failed", error=str(e)))
         finally:
             self._processing = False
         self.barcode_input.setFocus()

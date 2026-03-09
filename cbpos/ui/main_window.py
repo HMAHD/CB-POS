@@ -14,13 +14,14 @@ from cbpos.ui.views.settings_view import SettingsView
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 from cbpos.infrastructure.session_watchdog import SessionWatchdog
 from cbpos.core.services.config_service import ConfigService
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 import logging
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("CB POS - Industrial Retail System")
+        self.setWindowTitle("")
         self.resize(1280, 800)
 
         # Scanner Hook
@@ -45,6 +46,14 @@ class MainWindow(QMainWindow):
 
         # Initialize Views
         self.init_views()
+
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
+    def retranslate_ui(self) -> None:
+        """Update all translatable text in the window."""
+        self.setWindowTitle(_t("main_window.title"))
 
     def init_views(self):
         # 0. Login View
@@ -152,7 +161,7 @@ class MainWindow(QMainWindow):
         else:
             self.showFullScreen()
             # Optional: Show notification/toast here
-            print("Press Esc to exit fullscreen")
+            print(_t("main_window.fullscreen_hint"))
 
     def on_convert_proforma(self, cart_data: dict) -> None:
         """Handle proforma-to-sale conversion by loading items into the SalesView cart."""

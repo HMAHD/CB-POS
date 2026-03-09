@@ -175,8 +175,8 @@ class InvoiceService:
         # === TOTALS SECTION ===
         subtotal = sum(item.unit_price * item.quantity for item in sale.items)
         total_discount = sum(item.discount for item in sale.items)
-        vat_amount = sale.tax_amount or Decimal("0.00")
-        sscl_amount = Decimal("0.00")  # Calculate if needed
+        vat_amount = sale.tax_vat or Decimal("0.00")
+        sscl_amount = sale.tax_sscl or Decimal("0.00")
         grand_total = sale.total_amount
 
         totals_data = [

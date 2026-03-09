@@ -32,10 +32,13 @@ class SettingsView(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.is_collapsed = True
+        from cbpos.core.services.config_service import ConfigService
+
+        self.is_collapsed = ConfigService.get("sidebar_collapsed") is not False
         self.nav_buttons = []
         self.init_ui()
-        self._apply_collapsed_state()
+        if self.is_collapsed:
+            self._apply_collapsed_state()
         self.load_settings()
 
     def init_ui(self):
@@ -215,6 +218,8 @@ class SettingsView(QWidget):
 
     def toggle_sidebar(self) -> None:
         """Animate sidebar between expanded (250px) and collapsed (70px)."""
+        from cbpos.core.services.config_service import ConfigService
+
         start_width = self.sidebar.width()
 
         if self.is_collapsed:
@@ -227,6 +232,8 @@ class SettingsView(QWidget):
             self.lbl_logo.setVisible(False)
             style = Qt.ToolButtonStyle.ToolButtonIconOnly
             self.is_collapsed = True
+
+        ConfigService.set("sidebar_collapsed", self.is_collapsed)
 
         self.anim_width.setStartValue(start_width)
         self.anim_width.setEndValue(end_width)

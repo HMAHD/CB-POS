@@ -34,9 +34,12 @@ class ManagementView(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.is_collapsed = True
+        from cbpos.core.services.config_service import ConfigService
+
+        self.is_collapsed = ConfigService.get("sidebar_collapsed") is not False
         self.init_ui()
-        self._apply_collapsed_state()
+        if self.is_collapsed:
+            self._apply_collapsed_state()
 
     def init_ui(self):
         self.main_layout = QHBoxLayout(self)
@@ -260,6 +263,8 @@ class ManagementView(QWidget):
             btn.setToolButtonStyle(style)
 
     def toggle_sidebar(self):
+        from cbpos.core.services.config_service import ConfigService
+
         start_width = self.sidebar.width()
 
         if self.is_collapsed:
@@ -274,6 +279,8 @@ class ManagementView(QWidget):
             self.lbl_logo.setVisible(False)
             style = Qt.ToolButtonStyle.ToolButtonIconOnly
             self.is_collapsed = True
+
+        ConfigService.set("sidebar_collapsed", self.is_collapsed)
 
         # Animate
         self.anim_width.setStartValue(start_width)

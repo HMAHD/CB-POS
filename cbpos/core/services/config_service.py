@@ -119,6 +119,8 @@ class ConfigService:
         "auto_backup_on_close": True,
         "backup_retention_count": 5,
         "backup_dir": "",
+        # UI Preferences
+        "sidebar_collapsed": True,
     }
 
     _settings: Dict[str, Any] = {}

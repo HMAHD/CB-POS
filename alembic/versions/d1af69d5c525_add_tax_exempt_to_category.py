@@ -5,6 +5,7 @@ Revises: 659c38ff3bee
 Create Date: 2026-03-09 15:06:46.671190
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -20,9 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     with op.batch_alter_table("categories", schema=None) as batch_op:
-        batch_op.add_column(
-            sa.Column("tax_exempt", sa.Boolean(), nullable=False, server_default=sa.text("0"))
-        )
+        batch_op.add_column(sa.Column("tax_exempt", sa.Boolean(), nullable=False, server_default=sa.text("0")))
 
 
 def downgrade() -> None:

@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QLineEdit,
 )
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.ui.dialogs.customer_editor import CustomerEditor
@@ -60,6 +61,15 @@ class CustomerView(QWidget):
 
     def populate_table(self, customers):
         self.table.setRowCount(0)
+        if not customers:
+            self.table.insertRow(0)
+            empty_item = QTableWidgetItem("No customers found")
+            empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty_item.setForeground(QColor("gray"))
+            empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
+            self.table.setItem(0, 0, empty_item)
+            self.table.setSpan(0, 0, 1, self.table.columnCount())
+            return
         for customer in customers:
             row = self.table.rowCount()
             self.table.insertRow(row)

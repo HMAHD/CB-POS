@@ -6,6 +6,8 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QTableView,
     QHeaderView,
+    QLabel,
+    QStackedWidget,
 )
 from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex
 from PyQt6.QtGui import QColor, QBrush
@@ -127,20 +129,39 @@ class InventoryView(QWidget):
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self.open_context_menu)
 
-        layout.addWidget(self.table)
+        # Empty state placeholder
+        self.empty_label = QLabel("No products match your search")
+        self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_label.setStyleSheet("color: gray; font-size: 14px;")
+
+        self.table_stack = QStackedWidget()
+        self.table_stack.addWidget(self.table)  # index 0
+        self.table_stack.addWidget(self.empty_label)  # index 1
+
+        layout.addWidget(self.table_stack)
+
+    def _update_empty_state(self) -> None:
+        """Show empty state label when model has no rows."""
+        if self.model.rowCount() == 0:
+            self.table_stack.setCurrentIndex(1)
+        else:
+            self.table_stack.setCurrentIndex(0)
 
     def load_data(self):
         self.all_products = self.inventory_service.get_all_products()
         self.model.update_data(self.all_products)
+        self._update_empty_state()
 
     def filter_data(self, text):
         if not text:
             self.model.update_data(self.all_products)
+            self._update_empty_state()
             return
 
         text = text.lower()
         filtered = [p for p in self.all_products if text in p.barcode.lower() or text in p.name_en.lower()]
         self.model.update_data(filtered)
+        self._update_empty_state()
 
     def open_add_dialog(self):
         from cbpos.core.utils.permission_helper import check_permission_with_override

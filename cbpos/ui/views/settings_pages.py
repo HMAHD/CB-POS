@@ -262,6 +262,7 @@ class ShopInfoPage(SettingsPage):
         form_email.addRow(email_btn_row)
 
         self.chk_auto_report = QCheckBox()
+        self.chk_auto_report.setToolTip("Email a daily sales summary report at the scheduled time")
         form_email.addRow("Enable Daily Auto-Report:", self.chk_auto_report)
 
         self.time_auto_report = QTimeEdit()
@@ -608,6 +609,7 @@ class HardwarePage(SettingsPage):
         beh_form.setVerticalSpacing(10)
 
         self.chk_auto_print = QCheckBox("Automatically print after completing a sale")
+        self.chk_auto_print.setToolTip("Send receipt to printer immediately when a sale is completed")
         beh_form.addRow("Auto-Print Receipt:", self.chk_auto_print)
 
         self.spin_copies = QSpinBox()
@@ -643,6 +645,7 @@ class HardwarePage(SettingsPage):
         cut_form.setVerticalSpacing(10)
 
         self.chk_auto_cut = QCheckBox("Disable for tear-bar printers")
+        self.chk_auto_cut.setToolTip("Automatically cut paper after printing. Turn off for manual tear-bar printers.")
         cut_form.addRow("Auto-Cut Paper:", self.chk_auto_cut)
 
         self.combo_cut_type = QComboBox()
@@ -665,6 +668,7 @@ class HardwarePage(SettingsPage):
         drawer_form.setVerticalSpacing(10)
 
         self.chk_drawer_cash_only = QCheckBox("Only open drawer for cash payments")
+        self.chk_drawer_cash_only.setToolTip("Cash drawer stays closed for card and credit transactions")
         drawer_form.addRow("Drawer on Cash Only:", self.chk_drawer_cash_only)
         vbox_cut.addLayout(drawer_form)
 
@@ -870,8 +874,13 @@ class ReceiptPage(SettingsPage):
         elem_form.setVerticalSpacing(10)
 
         self.chk_show_barcode = QCheckBox("Print barcode of the sale reference")
+        self.chk_show_barcode.setToolTip("Print a scannable barcode of the invoice number for easy returns")
         self.chk_merge_items = QCheckBox("Combine identical line items into one row")
+        self.chk_merge_items.setToolTip(
+            "Group duplicate products into a single line with quantity instead of separate lines"
+        )
         self.chk_show_tax = QCheckBox("Show VAT and SSCL breakdown on receipt")
+        self.chk_show_tax.setToolTip("Display VAT and SSCL tax amounts separately on the receipt")
 
         elem_form.addRow("Show Barcode:", self.chk_show_barcode)
         elem_form.addRow("Merge Items:", self.chk_merge_items)
@@ -887,7 +896,9 @@ class ReceiptPage(SettingsPage):
         staff_form.setVerticalSpacing(10)
 
         self.chk_show_cashier = QCheckBox("Print cashier username on receipt")
+        self.chk_show_cashier.setToolTip("Show which cashier processed the sale on the printed receipt")
         self.chk_show_terminal = QCheckBox("Print terminal ID on receipt")
+        self.chk_show_terminal.setToolTip("Show the terminal/register ID on the printed receipt")
 
         staff_form.addRow("Cashier Name:", self.chk_show_cashier)
         staff_form.addRow("Terminal ID:", self.chk_show_terminal)
@@ -1084,6 +1095,7 @@ class SystemPage(SettingsPage):
         form_inv.addRow("Auto-Generate Barcodes:", self.chk_auto_barcodes)
 
         self.chk_loyalty = QCheckBox()
+        self.chk_loyalty.setToolTip("Customers earn loyalty points on purchases based on the configured ratio")
         form_inv.addRow("Enable Loyalty Points:", self.chk_loyalty)
 
         self.chk_touch_mode = QCheckBox()

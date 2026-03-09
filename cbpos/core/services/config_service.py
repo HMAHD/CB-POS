@@ -40,8 +40,8 @@ class ConfigService:
         "receipt_header": "Welcome to Ceylon Byte",
         "receipt_footer": "Thank You! Come Again.",
         "receipt_logo_path": "",  # Path to logo image
-        "show_barcode": True,
-        "show_tax_breakdown": True,
+        "show_barcode": False,
+        "show_tax_breakdown": False,
         "merge_items": False,  # Merge duplicate items on receipt
         # Sales Configuration
         "default_search_mode": "ALL",  # ALL, BARCODE, NAME
@@ -83,7 +83,7 @@ class ConfigService:
         "doc_format_return": "CN-{Y}-{seq:05d}",
         "doc_reset_period": "YEARLY",
         "show_receipt_dialog": False,
-        "show_cashier_on_receipt": True,
+        "show_cashier_on_receipt": False,
         "show_terminal_on_receipt": False,
         "show_qr_on_receipt": False,
         "receipt_qr_content": "",  # Shop WhatsApp/website URL for QR

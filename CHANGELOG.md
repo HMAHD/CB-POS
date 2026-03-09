@@ -51,6 +51,19 @@ All notable changes to this project will be documented in this file. Never delet
 - **SMTP port validation**: Added integer validator (1-65535) for email port setting.
 - **Default receipt toggles**: All receipt options default to false to match clean initial state.
 
+### Fixed — PR Review (Post-Review)
+
+- **Payment dialog amount**: Now receives post-discount `final_total` instead of pre-discount `subtotal`.
+- **Tax invoice serial number**: ORIGINAL and DUPLICATE copies now share the same serial number via `serial_number` parameter.
+- **Tax exempt receipts**: `_exempt_amount` now set on Sale object so receipt builder can display taxable/exempt breakdown.
+- **Amount-to-words overflow**: Fixed crash for amounts >= Rs. 100,000,000 by adding recursive conversion for large scale counts.
+- **Single tax calculation**: Removed duplicate TaxService call in `_execute_sale()` — cart totals are now the single source of truth.
+- **Dynamic tax rate labels**: Invoice PDF and tax filing report now use configured rates instead of hardcoded 18%/2.5%.
+- **Tax filing report performance**: Replaced ORM object loading with SQL aggregation queries.
+- **Dashboard tax query**: Consolidated 3 separate queries into 1 for today's tax summary.
+- **Audit log failure**: Tax rate change audit failures now logged as warnings instead of silently swallowed.
+- **Cart tax exemption safety**: Added try/except guard against `DetachedInstanceError` when accessing `product.category`.
+
 ## [1.0.0] - 2026-03-09
 
 ### Added — Packaging & Deployment (Phase 20)

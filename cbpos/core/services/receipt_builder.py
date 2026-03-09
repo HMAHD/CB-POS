@@ -331,6 +331,12 @@ class ReceiptBuilder:
 
         # Tax — indented under total
         if gc("show_tax_breakdown", False, config_override):
+            # Show taxable/exempt breakdown when item-level exemptions are active
+            exempt_amount = getattr(sale, "_exempt_amount", None)
+            if exempt_amount and exempt_amount > Decimal("0"):
+                taxable_amount = sale.total_amount - exempt_amount
+                commands.append(cls._split_row("  Taxable:", format_currency(taxable_amount), line_chars))
+                commands.append(cls._split_row("  Tax Exempt:", format_currency(exempt_amount), line_chars))
             if sale.tax_vat > 0:
                 commands.append(cls._split_row("  {}:".format(t["vat"]), format_currency(sale.tax_vat), line_chars))
             if sale.tax_sscl > 0:

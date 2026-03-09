@@ -250,10 +250,14 @@ class SalesView(QWidget):
         self.lbl_discount.setObjectName("DiscountLabel")
         self.lbl_tax = QLabel("Tax: 0.00")
         self.lbl_tax.setObjectName("TaxLabel")
+        self.lbl_exempt = QLabel("")
+        self.lbl_exempt.setObjectName("ExemptLabel")
+        self.lbl_exempt.setVisible(False)
         subtotal_layout.addWidget(self.lbl_item_count)
         subtotal_layout.addWidget(self.lbl_subtotal)
         subtotal_layout.addWidget(self.lbl_discount)
         subtotal_layout.addWidget(self.lbl_tax)
+        subtotal_layout.addWidget(self.lbl_exempt)
         total_layout.addLayout(subtotal_layout)
 
         total_layout.addStretch()
@@ -584,6 +588,7 @@ class SalesView(QWidget):
         tax_vat = totals.get("tax_vat", 0)
         tax_sscl = totals.get("tax_sscl", 0)
         tax_total = totals.get("tax", 0)
+        exempt_amount = totals.get("exempt_amount", Decimal("0.00"))
 
         self.total_label.setText(format_currency(final_total))
         self.lbl_subtotal.setText(f"Subtotal: {format_currency(subtotal)}")
@@ -593,6 +598,13 @@ class SalesView(QWidget):
         else:
             self.lbl_tax.setText(f"Tax: {format_currency(tax_total)}")
         self.lbl_item_count.setText(f"Items: {item_count}")
+
+        # Show exempt amount when applicable
+        if exempt_amount > 0:
+            self.lbl_exempt.setText(f"Tax Exempt: {format_currency(exempt_amount)}")
+            self.lbl_exempt.setVisible(True)
+        else:
+            self.lbl_exempt.setVisible(False)
         self.cart_table.scrollToBottom()
 
         # Brief highlight on last row to give visual feedback on item add

@@ -163,7 +163,12 @@ class TransactionService:
                     credit_customer_balance = customer.current_debt
 
             # 2. Create Sale Header
-            tax_info = TaxService.calculate_taxes(total_amount)
+            # Pass taxable_amount when item-level exemptions are active
+            exempt_amount = totals.get("exempt_amount", Decimal("0"))
+            taxable_amount = None
+            if exempt_amount > Decimal("0"):
+                taxable_amount = total_amount - exempt_amount
+            tax_info = TaxService.calculate_taxes(total_amount, taxable_amount=taxable_amount)
 
             # Determine primary method for simple display
             primary_method = payments[0]["method"] if len(payments) == 1 else "SPLIT"

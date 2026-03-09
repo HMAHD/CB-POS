@@ -501,6 +501,20 @@ class SalesTaxPage(SettingsPage):
         self.spin_sscl_turnover.setFixedWidth(200)
         form_tax.addRow("SSCL Turnover Base:", self.spin_sscl_turnover)
 
+        # Separator
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        form_tax.addRow(sep)
+
+        self.chk_item_tax_exemptions = QCheckBox("Enable item-level tax exemptions")
+        self.chk_item_tax_exemptions.setToolTip(
+            "When enabled, products in categories marked as tax-exempt "
+            "will not have VAT/SSCL calculated on them. "
+            "Useful for mixed-goods retailers selling both taxable "
+            "and exempt items (e.g. rice, pharmaceuticals, books)."
+        )
+        form_tax.addRow(self.chk_item_tax_exemptions)
+
         self.tabs.addTab(tab_tax, "Tax")
 
     def _toggle_tax_fields(self) -> None:
@@ -519,6 +533,7 @@ class SalesTaxPage(SettingsPage):
         self.spin_vat.setValue(int(settings.get("tax_vat_rate", 18)))
         self.spin_sscl.setValue(float(settings.get("tax_sscl_rate", 2.5)))
         self.spin_sscl_turnover.setValue(float(settings.get("tax_sscl_turnover_pct", 50.0)))
+        self.chk_item_tax_exemptions.setChecked(settings.get("item_tax_exemptions", False))
         self._toggle_tax_fields()
 
     def save(self) -> dict:
@@ -531,6 +546,7 @@ class SalesTaxPage(SettingsPage):
             "tax_vat_rate": self.spin_vat.value(),
             "tax_sscl_rate": self.spin_sscl.value(),
             "tax_sscl_turnover_pct": self.spin_sscl_turnover.value(),
+            "item_tax_exemptions": self.chk_item_tax_exemptions.isChecked(),
         }
 
 

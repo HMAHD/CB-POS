@@ -236,6 +236,7 @@ class Category(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     color: Mapped[str] = mapped_column(String(7), default="#FFFFFF")
     parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True)
+    tax_exempt: Mapped[bool] = mapped_column(Boolean, default=False)
 
     products: Mapped[List["Product"]] = relationship(back_populates="category")
     parent: Mapped["Category"] = relationship("Category", remote_side=[id], back_populates="subcategories")

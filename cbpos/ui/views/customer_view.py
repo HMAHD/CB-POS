@@ -13,12 +13,14 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.ui.dialogs.customer_editor import CustomerEditor
+from cbpos.ui.widgets.pagination_widget import PaginationWidget
 
 
 class CustomerView(QWidget):
     def __init__(self):
         super().__init__()
         self.customer_service = CustomerService()
+        self._all_customers: list = []
         self.init_ui()
         self.load_customers()
 
@@ -48,18 +50,32 @@ class CustomerView(QWidget):
         self.table.doubleClicked.connect(self.open_edit_dialog)
         layout.addWidget(self.table)
 
+        # Pagination
+        self.pagination = PaginationWidget()
+        self.pagination.page_changed.connect(self._on_page_changed)
+        layout.addWidget(self.pagination)
+
     def load_customers(self):
-        customers = self.customer_service.get_all_customers()
-        self.populate_table(customers)
+        self._all_customers = self.customer_service.get_all_customers()
+        self._apply_pagination()
 
     def filter_customers(self, text):
         if not text:
-            self.load_customers()
-            return
-        customers = self.customer_service.search_customers(text)
-        self.populate_table(customers)
+            self._all_customers = self.customer_service.get_all_customers()
+        else:
+            self._all_customers = self.customer_service.search_customers(text)
+        self._apply_pagination()
 
-    def populate_table(self, customers):
+    def _apply_pagination(self) -> None:
+        self.pagination.set_total(len(self._all_customers))
+        page_items = self.pagination.get_page_slice(self._all_customers)
+        self._populate_table(page_items)
+
+    def _on_page_changed(self, _page: int) -> None:
+        page_items = self.pagination.get_page_slice(self._all_customers)
+        self._populate_table(page_items)
+
+    def _populate_table(self, customers):
         self.table.setRowCount(0)
         if not customers:
             self.table.insertRow(0)

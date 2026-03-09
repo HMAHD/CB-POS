@@ -36,6 +36,7 @@ from cbpos.config import Config
 from cbpos.core.services.maintenance_service import MaintenanceService
 from cbpos.core.services.error_log_service import ErrorLogService
 from cbpos.core.services.hardware_test_service import HardwareTestService
+from cbpos.ui.widgets.pagination_widget import PaginationWidget
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,7 @@ class AdminToolsView(QWidget):
 
     def __init__(self) -> None:
         super().__init__()
+        self._current_log_entries: list = []
         self._init_ui()
 
     def showEvent(self, event) -> None:
@@ -270,6 +272,11 @@ class AdminToolsView(QWidget):
 
         layout.addWidget(self.log_table, 1)
 
+        # Pagination
+        self.log_pagination = PaginationWidget()
+        self.log_pagination.page_changed.connect(self._on_log_page_changed)
+        layout.addWidget(self.log_pagination)
+
         # Bottom buttons
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(10)
@@ -319,32 +326,8 @@ class AdminToolsView(QWidget):
             entries = ErrorLogService.read_logs(level=level, date_from=date_from, date_to=date_to, search=search)
             self._current_log_entries = entries
 
-            self.log_table.setRowCount(len(entries))
-            for row, entry in enumerate(entries):
-                time_item = QTableWidgetItem(entry["timestamp"])
-                level_item = QTableWidgetItem(entry["level"])
-                source_item = QTableWidgetItem(entry["source"])
-                msg_item = QTableWidgetItem(entry["message"])
-
-                # Color coding
-                color = _LEVEL_COLORS.get(entry["level"])
-                bg_color = _LEVEL_BG_COLORS.get(entry["level"])
-                if color:
-                    for item in (time_item, level_item, source_item, msg_item):
-                        item.setForeground(color)
-                if bg_color:
-                    for item in (time_item, level_item, source_item, msg_item):
-                        item.setBackground(bg_color)
-
-                if entry["level"] == "CRITICAL":
-                    font = level_item.font()
-                    font.setBold(True)
-                    level_item.setFont(font)
-
-                self.log_table.setItem(row, 0, time_item)
-                self.log_table.setItem(row, 1, level_item)
-                self.log_table.setItem(row, 2, source_item)
-                self.log_table.setItem(row, 3, msg_item)
+            self.log_pagination.set_total(len(entries))
+            self._populate_log_page()
 
             self.lbl_log_count.setText(f"{len(entries)} entries")
 
@@ -359,6 +342,41 @@ class AdminToolsView(QWidget):
             )
         except Exception as e:
             logger.warning("Could not load logs: %s", e)
+
+    def _populate_log_page(self) -> None:
+        """Populate the log table with entries for the current page."""
+        entries = self._current_log_entries
+        page_entries = self.log_pagination.get_page_slice(entries)
+
+        self.log_table.setRowCount(len(page_entries))
+        for row, entry in enumerate(page_entries):
+            time_item = QTableWidgetItem(entry["timestamp"])
+            level_item = QTableWidgetItem(entry["level"])
+            source_item = QTableWidgetItem(entry["source"])
+            msg_item = QTableWidgetItem(entry["message"])
+
+            # Color coding
+            color = _LEVEL_COLORS.get(entry["level"])
+            bg_color = _LEVEL_BG_COLORS.get(entry["level"])
+            if color:
+                for item in (time_item, level_item, source_item, msg_item):
+                    item.setForeground(color)
+            if bg_color:
+                for item in (time_item, level_item, source_item, msg_item):
+                    item.setBackground(bg_color)
+
+            if entry["level"] == "CRITICAL":
+                font = level_item.font()
+                font.setBold(True)
+                level_item.setFont(font)
+
+            self.log_table.setItem(row, 0, time_item)
+            self.log_table.setItem(row, 1, level_item)
+            self.log_table.setItem(row, 2, source_item)
+            self.log_table.setItem(row, 3, msg_item)
+
+    def _on_log_page_changed(self, _page: int) -> None:
+        self._populate_log_page()
 
     def _export_logs(self) -> None:
         """Export displayed log entries to a text file."""

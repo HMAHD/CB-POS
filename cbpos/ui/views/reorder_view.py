@@ -123,9 +123,12 @@ class ReorderView(QWidget):
             preferred_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.table.setItem(row, 4, preferred_item)
 
-            # Supplier (first one if exists)
-            supplier_name = product.suppliers[0].name if product.suppliers else _t("reorder.no_supplier")
-            self.table.setItem(row, 5, QTableWidgetItem(supplier_name))
+            # Supplier (first one if exists) — store None sentinel in UserRole
+            has_supplier = bool(product.suppliers)
+            supplier_name = product.suppliers[0].name if has_supplier else _t("reorder.no_supplier")
+            supplier_item = QTableWidgetItem(supplier_name)
+            supplier_item.setData(Qt.ItemDataRole.UserRole + 1, product.suppliers[0].name if has_supplier else None)
+            self.table.setItem(row, 5, supplier_item)
 
             # Store product ID in row data
             self.table.item(row, 0).setData(Qt.ItemDataRole.UserRole, product.id)
@@ -152,7 +155,7 @@ class ReorderView(QWidget):
             product_name = self.table.item(row, 0).text()
             current_stock = Decimal(self.table.item(row, 2).text())
             preferred_qty = Decimal(self.table.item(row, 4).text())
-            supplier = self.table.item(row, 5).text()
+            supplier = self.table.item(row, 5).data(Qt.ItemDataRole.UserRole + 1)
 
             order_qty = max(preferred_qty - current_stock, Decimal("0"))
 
@@ -162,7 +165,7 @@ class ReorderView(QWidget):
                     "product_name": product_name,
                     "current_stock": current_stock,
                     "order_qty": order_qty,
-                    "supplier": supplier if supplier != _t("reorder.no_supplier") else "",
+                    "supplier": supplier or "",
                 }
             )
 

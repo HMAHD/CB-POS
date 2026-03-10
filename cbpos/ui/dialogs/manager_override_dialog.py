@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.permission_service import PermissionService
+from cbpos.i18n import _t
 
 
 class ManagerOverrideDialog(QDialog):
@@ -20,7 +21,7 @@ class ManagerOverrideDialog(QDialog):
         self.permission_required = permission_required
         self.authorized_user = None
 
-        self.setWindowTitle("Manager Override Required")
+        self.setWindowTitle(_t("manager_override.title"))
         self.setFixedSize(300, 200)
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
         self.init_ui()
@@ -30,16 +31,16 @@ class ManagerOverrideDialog(QDialog):
 
         self.pin_input = QLineEdit()
         self.pin_input.setEchoMode(QLineEdit.EchoMode.Password)
-        self.pin_input.setPlaceholderText("Enter Manager PIN")
+        self.pin_input.setPlaceholderText(_t("manager_override.pin_placeholder"))
         self.pin_input.returnPressed.connect(self.verify_pin)
         layout.addWidget(self.pin_input)
 
-        btn_verify = QPushButton("Verify")
+        btn_verify = QPushButton(_t("manager_override.verify"))
         btn_verify.setProperty("class", "accent")
         btn_verify.clicked.connect(self.verify_pin)
         layout.addWidget(btn_verify)
 
-        btn_cancel = QPushButton("Cancel")
+        btn_cancel = QPushButton(_t("common.cancel"))
         btn_cancel.setProperty("class", "danger")
         btn_cancel.clicked.connect(self.reject)
         layout.addWidget(btn_cancel)
@@ -61,10 +62,10 @@ class ManagerOverrideDialog(QDialog):
             else:
                 QMessageBox.warning(
                     self,
-                    "Access Denied",
-                    "This user does not have the required permission.",
+                    _t("manager_override.access_denied"),
+                    _t("manager_override.no_permission"),
                 )
                 self.pin_input.clear()
         else:
-            QMessageBox.warning(self, "Invalid PIN", "Invalid PIN. Please try again.")
+            QMessageBox.warning(self, _t("manager_override.invalid_pin"), _t("manager_override.invalid_pin_msg"))
             self.pin_input.clear()

@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.ui.widgets.receipt_preview_widget import ReceiptPreviewWidget
+from cbpos.i18n import _t
 
 
 class ReceiptPreviewDialog(QDialog):
@@ -14,7 +15,7 @@ class ReceiptPreviewDialog(QDialog):
 
     def __init__(self, commands: List[Dict[str, Any]], parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Receipt Preview")
+        self.setWindowTitle(_t("receipt_preview.title"))
         self.setFixedSize(400, 600)
         self._init_ui()
         self._preview.set_commands(commands)
@@ -28,7 +29,7 @@ class ReceiptPreviewDialog(QDialog):
 
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        btn_close = QPushButton("Close")
+        btn_close = QPushButton(_t("common.close"))
         btn_close.setProperty("class", "accent")
         btn_close.clicked.connect(self.accept)
         btn_layout.addWidget(btn_close)

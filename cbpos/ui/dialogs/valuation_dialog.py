@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from cbpos.core.services.report_service import ReportService
 from cbpos.core.utils.formatters import format_currency
+from cbpos.i18n import _t
 
 
 class ValuationDialog(QDialog):
@@ -22,7 +23,7 @@ class ValuationDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Stock Valuation Report")
+        self.setWindowTitle(_t("valuation.title"))
         self.setObjectName("ValuationDialog")
         self.setMinimumSize(800, 600)
         self.report_service = ReportService()
@@ -33,7 +34,7 @@ class ValuationDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # Title
-        title = QLabel("Stock Valuation Report")
+        title = QLabel(_t("valuation.title"))
         title.setObjectName("DialogTitle")
         layout.addWidget(title)
 
@@ -41,35 +42,43 @@ class ValuationDialog(QDialog):
         cards_layout = QHBoxLayout()
 
         # Card 1: Total Cost Value
-        self.card_cost = self.create_value_card("Total Stock Value (Cost)", format_currency(0), "#003366")
+        self.card_cost = self.create_value_card(_t("valuation.cost_value"), format_currency(0), "#003366")
         cards_layout.addWidget(self.card_cost)
 
         # Card 2: Total Retail Value
-        self.card_retail = self.create_value_card("Total Retail Value", format_currency(0), "#003366")
+        self.card_retail = self.create_value_card(_t("valuation.retail_value"), format_currency(0), "#003366")
         cards_layout.addWidget(self.card_retail)
 
         # Card 3: Potential Profit
-        self.card_profit = self.create_value_card("Potential Profit", format_currency(0), "#39FF14")
+        self.card_profit = self.create_value_card(_t("valuation.potential_profit"), format_currency(0), "#39FF14")
         cards_layout.addWidget(self.card_profit)
 
         layout.addLayout(cards_layout)
 
         # Category Breakdown Label
-        breakdown_label = QLabel("Category Breakdown")
+        breakdown_label = QLabel(_t("valuation.breakdown"))
         breakdown_label.setObjectName("SectionTitle")
         layout.addWidget(breakdown_label)
 
         # Breakdown Table
         self.table = QTableWidget()
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["Category", "Products", "Cost Value", "Retail Value", "Profit"])
+        self.table.setHorizontalHeaderLabels(
+            [
+                _t("common.category"),
+                _t("valuation.col_products"),
+                _t("valuation.col_cost"),
+                _t("valuation.col_retail"),
+                _t("valuation.col_profit"),
+            ]
+        )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setObjectName("ValuationTable")
         layout.addWidget(self.table)
 
         # Close Button
-        btn_close = QPushButton("Close")
+        btn_close = QPushButton(_t("common.close"))
         btn_close.setProperty("class", "secondary")
         btn_close.clicked.connect(self.close)
         layout.addWidget(btn_close, alignment=Qt.AlignmentFlag.AlignRight)

@@ -7,6 +7,7 @@ with automatic fallback to English when a translation is missing.
 
 import json
 import logging
+import threading
 import weakref
 from pathlib import Path
 from typing import Any, Callable, Dict, List
@@ -26,12 +27,13 @@ class TranslationService:
         # WeakMethod for bound methods, plain weakref.ref for functions.
         self._change_callbacks: List[weakref.ref] = []
         self._i18n_dir = Path(__file__).parent
+        self._lock = threading.Lock()
 
         # Always load English as the fallback language
         self._load_language("en")
 
     def _load_language(self, lang_code: str) -> None:
-        """Load a language JSON file into memory."""
+        """Load a language JSON file into memory. Thread-safe."""
         json_path = self._i18n_dir / f"{lang_code}.json"
         if not json_path.exists():
             logger.warning("Translation file not found: %s", json_path)
@@ -40,17 +42,19 @@ class TranslationService:
             with open(json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             # Flatten nested JSON into dot-notation keys
-            self._translations[lang_code] = self._flatten(data)
+            flattened = self._flatten(data)
+            with self._lock:
+                self._translations[lang_code] = flattened
             logger.debug(
                 "Loaded %d translation keys for '%s'",
-                len(self._translations[lang_code]),
+                len(flattened),
                 lang_code,
             )
         except Exception as e:
             logger.error("Failed to load translations for %s: %s", lang_code, e)
 
     def set_language(self, lang_code: str) -> None:
-        """Switch active language. Loads file if not already cached."""
+        """Switch active language. Loads file if not already cached. Thread-safe."""
         if lang_code not in self.SUPPORTED_LANGUAGES:
             logger.warning("Unsupported language code: %s", lang_code)
             lang_code = "en"
@@ -58,7 +62,8 @@ class TranslationService:
         if lang_code not in self._translations:
             self._load_language(lang_code)
 
-        self.current_language = lang_code
+        with self._lock:
+            self.current_language = lang_code
 
         # Notify all live callbacks, pruning dead weak references
         live: List[weakref.ref] = []
@@ -84,17 +89,19 @@ class TranslationService:
         Returns:
             Translated string with parameters substituted.
         """
-        # Try current language
-        text = self._translations.get(self.current_language, {}).get(key)
+        with self._lock:
+            lang = self.current_language
+            # Try current language
+            text = self._translations.get(lang, {}).get(key)
 
-        # Fallback to English
-        if text is None and self.current_language != "en":
-            text = self._translations.get("en", {}).get(key)
+            # Fallback to English
+            if text is None and lang != "en":
+                text = self._translations.get("en", {}).get(key)
 
         # Fallback to key itself (makes missing translations obvious in UI)
         if text is None:
-            if self.current_language != "en":
-                logger.debug("Missing translation: %s [%s]", key, self.current_language)
+            if lang != "en":
+                logger.debug("Missing translation: %s [%s]", key, lang)
             return key
 
         # Parameter substitution
@@ -128,12 +135,13 @@ class TranslationService:
         if lang_code not in self._translations:
             self._load_language(lang_code)
 
-        # Try requested language
-        text = self._translations.get(lang_code, {}).get(key)
+        with self._lock:
+            # Try requested language
+            text = self._translations.get(lang_code, {}).get(key)
 
-        # Fallback to English
-        if text is None and lang_code != "en":
-            text = self._translations.get("en", {}).get(key)
+            # Fallback to English
+            if text is None and lang_code != "en":
+                text = self._translations.get("en", {}).get(key)
 
         if text is None:
             return key

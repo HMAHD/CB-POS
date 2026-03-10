@@ -43,6 +43,20 @@ def get_language() -> str:
     return _service.current_language
 
 
+def translate_in(lang_code: str, key: str, **kwargs) -> str:
+    """Translate a key in a specific language without switching the active language.
+
+    Used by the receipt system to print in a different language than the UI.
+    Falls back to English, then to the raw key, just like ``_t()``.
+
+    Args:
+        lang_code: Language to translate into (e.g. ``"si"``).
+        key: Dot-notation key, e.g. ``"receipt_strings.total"``.
+        **kwargs: Named parameters for interpolation.
+    """
+    return _service.translate_in(lang_code, key, **kwargs)
+
+
 def register_language_callback(callback) -> None:
     """Register a callback to be invoked when language changes."""
     _service.register_change_callback(callback)

@@ -110,6 +110,32 @@ class TranslationService:
         except ValueError:
             pass
 
+    def translate_in(self, lang_code: str, key: str, **kwargs) -> str:
+        """Translate a key in a specific language without changing the active language.
+
+        Falls back to English, then to the raw key.
+        """
+        if lang_code not in self._translations:
+            self._load_language(lang_code)
+
+        # Try requested language
+        text = self._translations.get(lang_code, {}).get(key)
+
+        # Fallback to English
+        if text is None and lang_code != "en":
+            text = self._translations.get("en", {}).get(key)
+
+        if text is None:
+            return key
+
+        if kwargs:
+            try:
+                text = text.format(**kwargs)
+            except (KeyError, IndexError, ValueError) as e:
+                logger.warning("Translation format error for '%s': %s", key, e)
+
+        return text
+
     def get_missing_keys(self, lang_code: str) -> List[str]:
         """Return keys present in English but missing in the given language."""
         en_keys = set(self._translations.get("en", {}).keys())

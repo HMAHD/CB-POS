@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.models import Sale, SaleItem
-from cbpos.i18n import _t
+from cbpos.i18n import _t, translate_in
 
 
 from cbpos.core.utils.formatters import format_currency
@@ -26,9 +26,17 @@ class ReceiptBuilder:
     - {'type': 'cut', 'partial': True}
     """
 
-    @staticmethod
-    def _rt(key: str, **kwargs) -> str:
-        """Shorthand for receipt translation keys."""
+    @classmethod
+    def _rt(cls, key: str, **kwargs) -> str:
+        """Shorthand for receipt translation keys.
+
+        Uses the configured ``receipt_language`` setting.  If it differs from
+        the current UI language, the receipt is printed in the customer's
+        language while the UI stays in the operator's language.
+        """
+        receipt_lang = ConfigService.get("receipt_language")
+        if receipt_lang:
+            return translate_in(receipt_lang, f"receipt_strings.{key}", **kwargs)
         return _t(f"receipt_strings.{key}", **kwargs)
 
     @classmethod

@@ -64,7 +64,8 @@
     "category": "Category",
     "notes": "Notes",
     "update": "Update",
-    "na": "N/A"
+    "na": "N/A",
+    "important": "Important"
   },
   "login": {
     "welcome": "Welcome / ආයුබෝවන් / வணக்கம்",
@@ -1353,7 +1354,11 @@
       "tooltip_show_cashier": "Show which cashier processed the sale on the printed receipt",
       "terminal_id": "Terminal ID:",
       "chk_show_terminal": "Print terminal ID on receipt",
-      "tooltip_show_terminal": "Show the terminal/register ID on the printed receipt"
+      "tooltip_show_terminal": "Show the terminal/register ID on the printed receipt",
+      "section_receipt_language": "Receipt Language",
+      "receipt_language": "Print language:",
+      "receipt_language_hint": "Print receipts in a different language than the UI. Useful when operators work in English but customers need receipts in Sinhala or Tamil.",
+      "lang_same_as_ui": "Same as UI language"
     },
     "system": {
       "title": "System",
@@ -1835,7 +1840,10 @@
     "delete_selected": "Delete Selected",
     "clear_new": "Clear / New",
     "name_required": "Unit name is required.",
-    "abbr_required": "Abbreviation is required."
+    "abbr_required": "Abbreviation is required.",
+    "name_placeholder": "e.g., Kilogram",
+    "abbr_placeholder": "e.g., kg",
+    "decimals_tooltip": "Decimal places for quantities (0 = whole numbers)"
   },
   "update": {
     "title": "Update Available",

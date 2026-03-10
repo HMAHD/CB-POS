@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [1.2.0] - 2026-03-10
+
+### Added — Multilingual Support (i18n)
+
+- **JSON-based translation system**: Centralized `TranslationService` with `_t("dot.notation.key")` lookup, automatic English fallback, and `{parameter}` interpolation. All 1,870+ translation keys managed in `cbpos/i18n/en.json`, `si.json`, and `ta.json`.
+- **Live language switching**: UI language changes apply instantly without restart. Long-lived views implement `retranslate_ui()` and register with `TranslationService` for automatic updates when the language changes.
+- **Trilingual support**: English (complete), Sinhala (core UI translated — login, sales, cart, payments, receipts, menus), Tamil (core UI translated). Untranslated keys fall back to English automatically.
+- **Independent receipt language**: New "Receipt Language" setting in Receipt Settings allows printing receipts in a different language than the UI. Operators can work in English while printing Sinhala or Tamil thermal receipts for customers — an industry-standard pattern used by major POS systems in multilingual markets.
+- **100% UI coverage**: Every dialog (30+), view (15+), and widget in `cbpos/ui/` converted to use `_t()` translation calls. Zero hardcoded user-facing English strings remain.
+- **Receipt builder i18n**: Removed 96-line hardcoded `RECEIPT_STRINGS` dictionary from `receipt_builder.py`. All receipt text now uses the centralized JSON translation system via `_rt()` shorthand, supporting all three languages.
+- **Language picker**: Settings > Shop Info page includes language selector (English/Sinhala/Tamil) with immediate application on save.
+
+### Changed
+
+- **Language applies immediately**: Settings save now calls `set_language()` directly instead of requiring app restart for language changes.
+- **Removed Qt Linguist dependency**: Replaced `.qm` file-based `QTranslator` system with JSON-based translation service. `LanguageService` with `set_translator_handlers()` is no longer used for translations.
+
 ## [1.1.0] - 2026-03-09
 
 ### Added — Tax Compliance

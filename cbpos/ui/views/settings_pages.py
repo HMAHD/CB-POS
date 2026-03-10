@@ -416,7 +416,7 @@ class ShopInfoPage(SettingsPage):
 
             layout.addWidget(step_frame)
 
-        note = QLabel("<b>Important:</b> " + _t("settings.shop_info.guide_important_note"))
+        note = QLabel("<b>" + _t("common.important") + ":</b> " + _t("settings.shop_info.guide_important_note"))
         note.setWordWrap(True)
         note.setProperty("class", "muted")
         layout.addWidget(note)
@@ -1093,6 +1093,30 @@ class ReceiptPage(SettingsPage):
         hf_form.addRow(self._lbl_footer_text, self.txt_footer)
 
         vbox_content.addLayout(hf_form)
+
+        # Section: Receipt Language
+        self._header_receipt_lang = self._make_section_header(_t("settings.receipt.section_receipt_language"))
+        vbox_content.addWidget(self._header_receipt_lang)
+
+        lang_form = QFormLayout()
+        self.configure_form_layout(lang_form)
+        lang_form.setContentsMargins(0, 0, 0, 0)
+        lang_form.setVerticalSpacing(10)
+
+        self.combo_receipt_lang = QComboBox()
+        self.combo_receipt_lang.addItem(_t("settings.receipt.lang_same_as_ui"), "")
+        self.combo_receipt_lang.addItem("English", "en")
+        self.combo_receipt_lang.addItem("සිංහල (Sinhala)", "si")
+        self.combo_receipt_lang.addItem("தமிழ் (Tamil)", "ta")
+        self._lbl_receipt_lang = QLabel()
+        lang_form.addRow(self._lbl_receipt_lang, self.combo_receipt_lang)
+
+        self._lbl_receipt_lang_hint = QLabel()
+        self._lbl_receipt_lang_hint.setProperty("class", "muted")
+        self._lbl_receipt_lang_hint.setWordWrap(True)
+        lang_form.addRow("", self._lbl_receipt_lang_hint)
+        vbox_content.addLayout(lang_form)
+
         self.tabs.addTab(tab_content, "")
 
         # ===================== Tab 2: Display =====================
@@ -1165,6 +1189,11 @@ class ReceiptPage(SettingsPage):
         self._lbl_footer_text.setText(_t("settings.receipt.footer_text"))
         self.txt_footer.setPlaceholderText(_t("settings.receipt.footer_placeholder"))
 
+        # Receipt language
+        self._lbl_receipt_lang.setText(_t("settings.receipt.receipt_language"))
+        self._lbl_receipt_lang_hint.setText(_t("settings.receipt.receipt_language_hint"))
+        self.combo_receipt_lang.setItemText(0, _t("settings.receipt.lang_same_as_ui"))
+
         # Display tab
         self._lbl_show_barcode.setText(_t("settings.receipt.show_barcode"))
         self.chk_show_barcode.setText(_t("settings.receipt.chk_show_barcode"))
@@ -1193,6 +1222,7 @@ class ReceiptPage(SettingsPage):
         self.input_logo_path.textChanged.connect(trigger)
         self.txt_header.textChanged.connect(trigger)
         self.txt_footer.textChanged.connect(trigger)
+        self.combo_receipt_lang.currentIndexChanged.connect(trigger)
         # Checkboxes
         self.chk_show_barcode.stateChanged.connect(trigger)
         self.chk_merge_items.stateChanged.connect(trigger)
@@ -1243,6 +1273,13 @@ class ReceiptPage(SettingsPage):
         self.chk_show_tax.setChecked(settings.get("show_tax_breakdown", _d["show_tax_breakdown"]))
         self.chk_show_cashier.setChecked(settings.get("show_cashier_on_receipt", _d["show_cashier_on_receipt"]))
         self.chk_show_terminal.setChecked(settings.get("show_terminal_on_receipt", _d["show_terminal_on_receipt"]))
+
+        # Receipt language
+        receipt_lang = settings.get("receipt_language", "")
+        idx = self.combo_receipt_lang.findData(receipt_lang)
+        if idx >= 0:
+            self.combo_receipt_lang.setCurrentIndex(idx)
+
         # Single refresh after all fields loaded
         self._refresh_preview()
 
@@ -1256,6 +1293,7 @@ class ReceiptPage(SettingsPage):
             "show_tax_breakdown": self.chk_show_tax.isChecked(),
             "show_cashier_on_receipt": self.chk_show_cashier.isChecked(),
             "show_terminal_on_receipt": self.chk_show_terminal.isChecked(),
+            "receipt_language": self.combo_receipt_lang.currentData() or "",
         }
 
     @staticmethod

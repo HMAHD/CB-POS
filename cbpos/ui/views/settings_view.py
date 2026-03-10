@@ -402,10 +402,14 @@ class SettingsView(QWidget):
 
         ThemeService.apply_theme(new_theme)
 
-        restart_required = (
-            new_lang != current_lang
-            or new_font_size != current_font_size
-            or all_settings.get("db_mode") != current_config.get("db_mode")
+        # Apply language change immediately (live retranslation)
+        if new_lang != current_lang:
+            from cbpos.i18n import set_language
+
+            set_language(new_lang)
+
+        restart_required = new_font_size != current_font_size or all_settings.get("db_mode") != current_config.get(
+            "db_mode"
         )
 
         if restart_required:

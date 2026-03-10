@@ -75,18 +75,18 @@ class UnitManagerDialog(QDialog):
         form_layout.setSpacing(10)
 
         self.txt_name = QLineEdit()
-        self.txt_name.setPlaceholderText("e.g., Kilogram")
+        self.txt_name.setPlaceholderText(_t("unit_manager.name_placeholder"))
         form_layout.addRow(_t("common.name") + ":", self.txt_name)
 
         self.txt_abbr = QLineEdit()
-        self.txt_abbr.setPlaceholderText("e.g., kg")
+        self.txt_abbr.setPlaceholderText(_t("unit_manager.abbr_placeholder"))
         self.txt_abbr.setMaxLength(10)
         form_layout.addRow(_t("unit_manager.abbreviation"), self.txt_abbr)
 
         self.spin_decimals = QSpinBox()
         self.spin_decimals.setMinimum(0)
         self.spin_decimals.setMaximum(3)
-        self.spin_decimals.setToolTip("Decimal places for quantities (0 = whole numbers)")
+        self.spin_decimals.setToolTip(_t("unit_manager.decimals_tooltip"))
         form_layout.addRow(_t("unit_manager.decimal_places"), self.spin_decimals)
 
         right.addWidget(form_group)

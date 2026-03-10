@@ -317,7 +317,7 @@ class PaymentMethodsView(QWidget):
                 QMessageBox.critical(
                     self,
                     _t("common.error"),
-                    _t("payment_methods.error_create").format(error=e),
+                    _t("payment_methods.error_create", error=str(e)),
                 )
 
     def _edit_method(self, method) -> None:
@@ -337,7 +337,7 @@ class PaymentMethodsView(QWidget):
                 QMessageBox.critical(
                     self,
                     _t("common.error"),
-                    _t("payment_methods.error_update").format(error=e),
+                    _t("payment_methods.error_update", error=str(e)),
                 )
 
     def _toggle_method(self, method) -> None:
@@ -352,7 +352,7 @@ class PaymentMethodsView(QWidget):
             QMessageBox.critical(
                 self,
                 _t("common.error"),
-                _t("payment_methods.error_toggle").format(action=action, error=e),
+                _t("payment_methods.error_toggle", action=action, error=str(e)),
             )
 
     def _delete_method(self, method) -> None:
@@ -367,7 +367,7 @@ class PaymentMethodsView(QWidget):
         reply = QMessageBox.question(
             self,
             _t("payment_methods.delete_confirm_title"),
-            _t("payment_methods.delete_confirm_message").format(name=method.name),
+            _t("payment_methods.delete_confirm_message", name=method.name),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
@@ -378,5 +378,5 @@ class PaymentMethodsView(QWidget):
                 QMessageBox.critical(
                     self,
                     _t("common.error"),
-                    _t("payment_methods.error_delete").format(error=e),
+                    _t("payment_methods.error_delete", error=str(e)),
                 )

@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import QDateTime
 from cbpos.core.services.promotion_service import PromotionService
+from cbpos.i18n import _t
 
 
 class PromotionView(QWidget):
@@ -33,12 +34,12 @@ class PromotionView(QWidget):
 
         # Header
         header = QHBoxLayout()
-        lbl_title = QLabel("Promotions & Campaigns")
+        lbl_title = QLabel(_t("promotion.title"))
         lbl_title.setProperty("class", "dialog-title")
         header.addWidget(lbl_title)
         header.addStretch()
 
-        btn_add = QPushButton("Create Promotion")
+        btn_add = QPushButton(_t("promotion.create_promotion"))
         btn_add.setProperty("class", "accent")
         btn_add.clicked.connect(self.add_promotion)
         header.addWidget(btn_add)
@@ -48,7 +49,16 @@ class PromotionView(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["Name", "Type", "Value", "Start", "End", "Status"])
+        self.table.setHorizontalHeaderLabels(
+            [
+                _t("common.name"),
+                _t("promotion.type"),
+                _t("promotion.value"),
+                _t("promotion.start"),
+                _t("promotion.end"),
+                _t("common.status"),
+            ]
+        )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -67,7 +77,7 @@ class PromotionView(QWidget):
             self.table.setItem(row, 3, QTableWidgetItem(p.start_time.strftime("%Y-%m-%d %H:%M")))
             self.table.setItem(row, 4, QTableWidgetItem(p.end_time.strftime("%Y-%m-%d %H:%M")))
 
-            status = "Active" if p.is_active else "Inactive"
+            status = _t("common.active") if p.is_active else _t("common.inactive")
             self.table.setItem(row, 5, QTableWidgetItem(status))
 
     def add_promotion(self):
@@ -78,13 +88,13 @@ class PromotionView(QWidget):
                 self.promotion_service.create_promotion(**data)
                 self.load_promotions()
             except Exception as e:
-                QMessageBox.critical(self, "Error", str(e))
+                QMessageBox.critical(self, _t("common.error"), str(e))
 
 
 class PromotionDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("New Promotion")
+        self.setWindowTitle(_t("promotion.new_promotion"))
         self.setMinimumWidth(400)
         self.init_ui()
 
@@ -110,14 +120,14 @@ class PromotionDialog(QDialog):
         self.end_dt.setCalendarPopup(True)
 
         self.days_input = QLineEdit()
-        self.days_input.setPlaceholderText("0,1,2 (0=Mon, 6=Sun) - Leave empty for all")
+        self.days_input.setPlaceholderText(_t("promotion.days_placeholder"))
 
-        form.addRow("Name:", self.name_input)
-        form.addRow("Type:", self.type_combo)
-        form.addRow("Value:", self.value_input)
-        form.addRow("Start Time:", self.start_dt)
-        form.addRow("End Time:", self.end_dt)
-        form.addRow("Days (Optional):", self.days_input)
+        form.addRow(_t("promotion.name_label"), self.name_input)
+        form.addRow(_t("promotion.type_label"), self.type_combo)
+        form.addRow(_t("promotion.value_label"), self.value_input)
+        form.addRow(_t("promotion.start_time_label"), self.start_dt)
+        form.addRow(_t("promotion.end_time_label"), self.end_dt)
+        form.addRow(_t("promotion.days_label"), self.days_input)
 
         layout.addLayout(form)
 

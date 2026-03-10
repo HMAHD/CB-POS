@@ -13,6 +13,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont, QColor
 from decimal import Decimal
 from cbpos.core.services.stock_service import StockService
+from cbpos.i18n import _t
 
 
 class ReorderView(QWidget):
@@ -32,12 +33,12 @@ class ReorderView(QWidget):
         layout = QVBoxLayout(self)
 
         # Title
-        title = QLabel("Reorder Report - Low Stock Items")
+        title = QLabel(_t("reorder.title"))
         title.setProperty("class", "dialog-title")
         layout.addWidget(title)
 
         # Info text
-        info = QLabel("Products that need restocking (Stock ≤ Reorder Point)")
+        info = QLabel(_t("reorder.info_text"))
         info.setProperty("class", "muted")
         layout.addWidget(info)
 
@@ -46,12 +47,12 @@ class ReorderView(QWidget):
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels(
             [
-                "Product",
-                "Barcode",
-                "Current Stock",
-                "Reorder Point",
-                "Preferred Qty",
-                "Supplier",
+                _t("reorder.product"),
+                _t("reorder.barcode"),
+                _t("reorder.current_stock"),
+                _t("reorder.reorder_point"),
+                _t("reorder.preferred_qty"),
+                _t("reorder.supplier"),
             ]
         )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -62,13 +63,13 @@ class ReorderView(QWidget):
         # Action Buttons
         btn_layout = QHBoxLayout()
 
-        btn_refresh = QPushButton("Refresh")
+        btn_refresh = QPushButton(_t("common.refresh"))
         btn_refresh.clicked.connect(self.load_reorder_items)
         btn_layout.addWidget(btn_refresh)
 
         btn_layout.addStretch()
 
-        btn_create_po = QPushButton("Create Purchase Order")
+        btn_create_po = QPushButton(_t("reorder.create_purchase_order"))
         btn_create_po.setProperty("class", "primary")
         btn_create_po.clicked.connect(self.create_purchase_order)
         btn_layout.addWidget(btn_create_po)
@@ -113,7 +114,7 @@ class ReorderView(QWidget):
             self.table.setItem(row, 4, preferred_item)
 
             # Supplier (first one if exists)
-            supplier_name = product.suppliers[0].name if product.suppliers else "No Supplier"
+            supplier_name = product.suppliers[0].name if product.suppliers else _t("reorder.no_supplier")
             self.table.setItem(row, 5, QTableWidgetItem(supplier_name))
 
             # Store product ID in row data
@@ -129,8 +130,8 @@ class ReorderView(QWidget):
         if not selected_rows:
             QMessageBox.warning(
                 self,
-                "No Selection",
-                "Please select items to add to purchase order.",
+                _t("reorder.no_selection"),
+                _t("reorder.no_selection_msg"),
             )
             return
 
@@ -151,7 +152,7 @@ class ReorderView(QWidget):
                     "product_name": product_name,
                     "current_stock": current_stock,
                     "order_qty": order_qty,
-                    "supplier": supplier if supplier != "No Supplier" else "",
+                    "supplier": supplier if supplier != _t("reorder.no_supplier") else "",
                 }
             )
 
@@ -159,6 +160,6 @@ class ReorderView(QWidget):
         self.navigate_to_purchase.emit(po_items)
         QMessageBox.information(
             self,
-            "Purchase Order",
-            "Created purchase order with {0} items.\n" "Navigating to Purchase view...".format(len(po_items)),
+            _t("reorder.purchase_order"),
+            _t("reorder.purchase_order_created", count=len(po_items)),
         )

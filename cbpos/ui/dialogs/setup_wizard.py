@@ -89,12 +89,14 @@ class SetupWizard(QDialog):
         available_printers = QPrinterInfo.availablePrinterNames() or [_t("setup_wizard.none_detected")]
 
         self.combo_receipt_printer = QComboBox()
-        self.combo_receipt_printer.addItem(_t("setup_wizard.printer_none"))
-        self.combo_receipt_printer.addItems(available_printers)
+        self.combo_receipt_printer.addItem(_t("setup_wizard.printer_none"), None)
+        for p in available_printers:
+            self.combo_receipt_printer.addItem(p, p)
 
         self.combo_a4_printer = QComboBox()
-        self.combo_a4_printer.addItem(_t("setup_wizard.printer_none"))
-        self.combo_a4_printer.addItems(available_printers)
+        self.combo_a4_printer.addItem(_t("setup_wizard.printer_none"), None)
+        for p in available_printers:
+            self.combo_a4_printer.addItem(p, p)
 
         self.combo_paper_width = QComboBox()
         self.combo_paper_width.addItem(_t("setup_wizard.paper_80mm"), "80mm")
@@ -244,13 +246,13 @@ class SetupWizard(QDialog):
             "paper_width": self.combo_paper_width.currentData(),
         }
 
-        # Printer settings (skip if "(None)" selected)
-        receipt_printer = self.combo_receipt_printer.currentText()
-        if receipt_printer != _t("setup_wizard.printer_none"):
+        # Printer settings (skip if None sentinel selected)
+        receipt_printer = self.combo_receipt_printer.currentData()
+        if receipt_printer is not None:
             settings["receipt_printer_name"] = receipt_printer
 
-        a4_printer = self.combo_a4_printer.currentText()
-        if a4_printer != _t("setup_wizard.printer_none"):
+        a4_printer = self.combo_a4_printer.currentData()
+        if a4_printer is not None:
             settings["a4_printer_name"] = a4_printer
 
         ConfigService.update_all(settings)

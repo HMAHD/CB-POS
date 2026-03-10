@@ -25,6 +25,7 @@ from cbpos.ui.views.reports.pandas_model import PandasModel
 from cbpos.ui.workers import ExportWorker
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
 class ReportWorker(QThread):
@@ -101,6 +102,10 @@ class ReportViewer(QWidget):
         self._full_df = pd.DataFrame()
         self.init_ui()
 
+        # Register for language changes
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
     def init_ui(self):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -115,9 +120,9 @@ class ReportViewer(QWidget):
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(0)
 
-        sidebar_title = QLabel("REPORTS")
-        sidebar_title.setObjectName("ReportSidebarTitle")
-        sidebar_layout.addWidget(sidebar_title)
+        self.sidebar_title = QLabel("")
+        self.sidebar_title.setObjectName("ReportSidebarTitle")
+        sidebar_layout.addWidget(self.sidebar_title)
 
         # Scrollable report navigation
         scroll = QScrollArea()
@@ -174,7 +179,7 @@ class ReportViewer(QWidget):
         self.filter_widget = FilterWidget()
         filter_layout.addWidget(self.filter_widget)
 
-        self.btn_run = QPushButton("Run Report")
+        self.btn_run = QPushButton("")
         self.btn_run.setObjectName("RunReportBtn")
         self.btn_run.clicked.connect(self.run_report)
         self.btn_run.setEnabled(False)
@@ -200,15 +205,15 @@ class ReportViewer(QWidget):
         icon_container.addWidget(empty_icon)
         empty_layout.addLayout(icon_container)
 
-        empty_text = QLabel("Select a Report")
-        empty_text.setObjectName("ReportEmptyText")
-        empty_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        empty_layout.addWidget(empty_text)
+        self.empty_text = QLabel("")
+        self.empty_text.setObjectName("ReportEmptyText")
+        self.empty_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        empty_layout.addWidget(self.empty_text)
 
-        empty_subtext = QLabel("Choose a report from the sidebar, " "configure filters, and run")
-        empty_subtext.setObjectName("ReportEmptySubtext")
-        empty_subtext.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        empty_layout.addWidget(empty_subtext)
+        self.empty_subtext = QLabel("")
+        self.empty_subtext.setObjectName("ReportEmptySubtext")
+        self.empty_subtext.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        empty_layout.addWidget(self.empty_subtext)
 
         self.content_stack.addWidget(empty_state)
 
@@ -245,25 +250,25 @@ class ReportViewer(QWidget):
 
         action_layout.addStretch()
 
-        self.btn_print = QPushButton("Print")
+        self.btn_print = QPushButton("")
         self.btn_print.setObjectName("ReportPrintBtn")
         self.btn_print.clicked.connect(self.print_report)
         self.btn_print.setCursor(Qt.CursorShape.PointingHandCursor)
         action_layout.addWidget(self.btn_print)
 
-        self.btn_export_excel = QPushButton("Excel")
+        self.btn_export_excel = QPushButton("")
         self.btn_export_excel.setObjectName("ReportExportExcelBtn")
         self.btn_export_excel.clicked.connect(self.export_excel)
         self.btn_export_excel.setCursor(Qt.CursorShape.PointingHandCursor)
         action_layout.addWidget(self.btn_export_excel)
 
-        self.btn_export_pdf = QPushButton("PDF")
+        self.btn_export_pdf = QPushButton("")
         self.btn_export_pdf.setObjectName("ReportExportPdfBtn")
         self.btn_export_pdf.clicked.connect(self.export_pdf)
         self.btn_export_pdf.setCursor(Qt.CursorShape.PointingHandCursor)
         action_layout.addWidget(self.btn_export_pdf)
 
-        self.btn_email = QPushButton("Email")
+        self.btn_email = QPushButton("")
         self.btn_email.setObjectName("ReportEmailBtn")
         self.btn_email.clicked.connect(self.email_report)
         self.btn_email.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -281,6 +286,20 @@ class ReportViewer(QWidget):
 
         # Loading overlay
         self._overlay = LoadingOverlay(self)
+
+        # Apply translations
+        self.retranslate_ui()
+
+    def retranslate_ui(self) -> None:
+        """Set all translatable text using _t()."""
+        self.sidebar_title.setText(_t("report_viewer.sidebar_title"))
+        self.btn_run.setText(_t("report_viewer.btn_run"))
+        self.empty_text.setText(_t("report_viewer.empty_title"))
+        self.empty_subtext.setText(_t("report_viewer.empty_subtitle"))
+        self.btn_print.setText(_t("common.print"))
+        self.btn_export_excel.setText(_t("report_viewer.btn_excel"))
+        self.btn_export_pdf.setText(_t("report_viewer.btn_pdf"))
+        self.btn_email.setText(_t("common.email"))
 
     # ------------------------------------------------------------------
     # Sidebar construction
@@ -362,7 +381,7 @@ class ReportViewer(QWidget):
 
         filters = self.filter_widget.get_filter_values()
 
-        self._overlay.show_loading("Generating report...")
+        self._overlay.show_loading(_t("report_viewer.generating"))
         self.btn_run.setEnabled(False)
 
         self._report_worker = ReportWorker(self.current_report, filters)
@@ -381,7 +400,7 @@ class ReportViewer(QWidget):
             self._show_current_page()
             self.content_stack.setCurrentIndex(1)
             row_count = len(df)
-            self.row_count_label.setText(f"{row_count} row{'s' if row_count != 1 else ''}")
+            self.row_count_label.setText(_t("common.row_count", count=row_count))
             self.action_bar.setVisible(True)
             self.pagination.setVisible(True)
         else:
@@ -391,8 +410,8 @@ class ReportViewer(QWidget):
             self.pagination.setVisible(False)
             QMessageBox.information(
                 self,
-                "Report",
-                "No data found for the selected filters.",
+                _t("report_viewer.report_title"),
+                _t("report_viewer.no_data"),
             )
 
     def _show_current_page(self) -> None:
@@ -408,7 +427,7 @@ class ReportViewer(QWidget):
     def _on_report_error(self, error_msg: str):
         self._overlay.hide_loading()
         self.btn_run.setEnabled(True)
-        QMessageBox.critical(self, "Error", f"Failed to generate report: {error_msg}")
+        QMessageBox.critical(self, _t("common.error"), _t("report_viewer.generation_failed", error=error_msg))
 
     # ------------------------------------------------------------------
     # Export / Print / Email
@@ -424,7 +443,9 @@ class ReportViewer(QWidget):
         if self._full_df.empty:
             return
 
-        filename, _ = QFileDialog.getSaveFileName(self, "Save Excel", "", "Excel Files (*.xlsx)")
+        filename, _ = QFileDialog.getSaveFileName(
+            self, _t("report_viewer.save_excel_title"), "", "Excel Files (*.xlsx)"
+        )
         if filename:
             self._start_export(self._full_df, filename, "excel")
 
@@ -438,14 +459,14 @@ class ReportViewer(QWidget):
         if self._full_df.empty:
             return
 
-        filename, _ = QFileDialog.getSaveFileName(self, "Save PDF", "", "PDF Files (*.pdf)")
+        filename, _ = QFileDialog.getSaveFileName(self, _t("report_viewer.save_pdf_title"), "", "PDF Files (*.pdf)")
         if filename:
             self._start_export(self._full_df, filename, "pdf")
 
     def _start_export(self, df: pd.DataFrame, filepath: str, fmt: str) -> None:
         """Run export in background thread."""
         self._set_export_buttons_enabled(False)
-        self._overlay.show_loading("Exporting...")
+        self._overlay.show_loading(_t("report_viewer.exporting"))
 
         self._export_worker = ExportWorker(
             self.export_service,
@@ -461,12 +482,12 @@ class ReportViewer(QWidget):
     def _on_export_finished(self, message: str) -> None:
         self._overlay.hide_loading()
         self._set_export_buttons_enabled(True)
-        QMessageBox.information(self, "Success", message)
+        QMessageBox.information(self, _t("common.success"), message)
 
     def _on_export_error(self, error_msg: str) -> None:
         self._overlay.hide_loading()
         self._set_export_buttons_enabled(True)
-        QMessageBox.critical(self, "Error", f"Export failed: {error_msg}")
+        QMessageBox.critical(self, _t("common.error"), _t("report_viewer.export_failed", error=error_msg))
 
     def _set_export_buttons_enabled(self, enabled: bool) -> None:
         self.btn_export_excel.setEnabled(enabled)
@@ -550,8 +571,8 @@ class ReportViewer(QWidget):
 
         email, ok = QInputDialog.getText(
             self,
-            "Email Report",
-            "Recipient Email:",
+            _t("report_viewer.email_title"),
+            _t("report_viewer.email_prompt"),
             text=default_email,
         )
 
@@ -563,29 +584,29 @@ class ReportViewer(QWidget):
 
                 self.export_service.export_to_pdf(df, filepath, self.current_report.name)
 
-                body = f"Please find attached the " f"{self.current_report.name}."
+                body = _t("report_viewer.email_body", report_name=self.current_report.name)
 
                 self._email_thread = EmailService.send_email(
                     email,
-                    f"Report: {self.current_report.name}",
+                    f"{_t('report_viewer.email_subject_prefix')}: {self.current_report.name}",
                     body,
                     filepath,
                     callback=lambda success, msg: (
-                        QMessageBox.information(self, "Email", msg)
+                        QMessageBox.information(self, _t("common.email"), msg)
                         if success
-                        else QMessageBox.warning(self, "Email Failed", msg)
+                        else QMessageBox.warning(self, _t("report_viewer.email_failed"), msg)
                     ),
                 )
 
                 QMessageBox.information(
                     self,
-                    "Email",
-                    "Email sending started in background...",
+                    _t("common.email"),
+                    _t("report_viewer.email_sending"),
                 )
 
             except Exception as e:
                 QMessageBox.critical(
                     self,
-                    "Error",
-                    f"Failed to prepare email: {str(e)}",
+                    _t("common.error"),
+                    _t("report_viewer.email_prepare_failed", error=str(e)),
                 )

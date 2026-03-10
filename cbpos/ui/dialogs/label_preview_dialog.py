@@ -18,6 +18,7 @@ from PyQt6.QtCore import Qt, QRectF
 from PyQt6.QtGui import QPainter, QFont, QColor, QPen, QLinearGradient
 from cbpos.core.models import Product
 from cbpos.core.utils.formatters import format_currency
+from cbpos.i18n import _t
 
 # Label card dimensions (mimics a 50x30mm thermal label at 2x)
 LABEL_W = 300
@@ -166,7 +167,7 @@ class LabelPreviewDialog(QDialog):
 
     def __init__(self, product: Product, parent=None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Label Preview")
+        self.setWindowTitle(_t("label_preview.title"))
         self.setObjectName("LabelPreviewDialog")
         self.setFixedSize(360, 310)
 
@@ -185,7 +186,7 @@ class LabelPreviewDialog(QDialog):
         layout.addWidget(card, alignment=Qt.AlignmentFlag.AlignCenter)
 
         # Footer hint
-        hint = QLabel("Preview only — actual print may vary by printer")
+        hint = QLabel(_t("label_preview.hint"))
         hint.setObjectName("LabelPreviewHint")
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(hint)
@@ -193,7 +194,7 @@ class LabelPreviewDialog(QDialog):
         # Close button
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        btn_close = QPushButton("Close")
+        btn_close = QPushButton(_t("common.close"))
         btn_close.clicked.connect(self.accept)
         btn_layout.addWidget(btn_close)
         btn_layout.addStretch()

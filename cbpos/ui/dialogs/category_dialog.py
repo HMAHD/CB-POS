@@ -16,13 +16,14 @@ from PyQt6.QtGui import QColor
 from sqlalchemy import select
 from cbpos.core.database import Database
 from cbpos.core.models import Category
+from cbpos.i18n import _t
 
 
 class CategoryDialog(QDialog):
     def __init__(self, category: Category = None, parent=None):
         super().__init__(parent)
         self.category = category
-        self.setWindowTitle("Category Manager" if category else "New Category")
+        self.setWindowTitle(_t("category_dialog.edit_title") if category else _t("category_dialog.new_title"))
         self.setMinimumWidth(400)
 
         self.selected_color = "#FFFFFF"
@@ -45,7 +46,7 @@ class CategoryDialog(QDialog):
 
         # Parent Category
         self.parent_combo = QComboBox()
-        self.parent_combo.addItem("None", None)
+        self.parent_combo.addItem(_t("category_dialog.none"), None)
         self.load_categories()
 
         # Color Picker
@@ -55,16 +56,16 @@ class CategoryDialog(QDialog):
         style = f"background-color: {self.selected_color}; border: 1px solid gray;"  # noqa: E702,E231
         self.lbl_color.setStyleSheet(style)
 
-        btn_color = QPushButton("Pick Color")
+        btn_color = QPushButton(_t("category_dialog.pick_color"))
         btn_color.clicked.connect(self.pick_color)
 
         color_layout.addWidget(self.lbl_color)
         color_layout.addWidget(btn_color)
         color_layout.addStretch()
 
-        form.addRow("Name:", self.name_input)
-        form.addRow("Parent Category:", self.parent_combo)
-        form.addRow("Color:", color_layout)
+        form.addRow(_t("category_dialog.name"), self.name_input)
+        form.addRow(_t("category_dialog.parent_category"), self.parent_combo)
+        form.addRow(_t("category_dialog.color"), color_layout)
 
         layout.addLayout(form)
 
@@ -84,7 +85,7 @@ class CategoryDialog(QDialog):
                 self.parent_combo.addItem(cat.name, cat.id)
 
     def pick_color(self):
-        color = QColorDialog.getColor(QColor(self.selected_color), self, "Select Category Color")
+        color = QColorDialog.getColor(QColor(self.selected_color), self, _t("category_dialog.select_color"))
         if color.isValid():
             self.selected_color = color.name()
             self.lbl_color.setStyleSheet(
@@ -100,7 +101,7 @@ class CategoryDialog(QDialog):
     def save(self):
         name = self.name_input.text().strip()
         if not name:
-            QMessageBox.warning(self, "Error", "Name is required")
+            QMessageBox.warning(self, _t("common.error"), _t("category_dialog.name_required"))
             return
 
         parent_id = self.parent_combo.currentData()
@@ -121,4 +122,4 @@ class CategoryDialog(QDialog):
                 self.accept()
             except Exception as e:
                 session.rollback()
-                QMessageBox.critical(self, "Error", str(e))
+                QMessageBox.critical(self, _t("common.error"), str(e))

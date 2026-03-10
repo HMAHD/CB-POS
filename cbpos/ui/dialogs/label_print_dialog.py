@@ -27,6 +27,7 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.label_service import LabelService
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.core.utils.formatters import format_currency
+from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +88,7 @@ class LabelPrintDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Print Barcode Labels")
+        self.setWindowTitle(_t("label_print.title"))
         self.setMinimumSize(700, 500)
         self.setObjectName("LabelPrintDialog")
         self.product_service = ProductService()
@@ -104,7 +105,7 @@ class LabelPrintDialog(QDialog):
         # Search bar with autocomplete
         search_layout = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search product by name or barcode...")
+        self.search_input.setPlaceholderText(_t("label_print.search_placeholder"))
 
         self.product_completer = QCompleter()
         self.product_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
@@ -116,7 +117,7 @@ class LabelPrintDialog(QDialog):
         self.search_input.returnPressed.connect(self._on_return_pressed)
         search_layout.addWidget(self.search_input, 1)
 
-        btn_add = QPushButton("Add")
+        btn_add = QPushButton(_t("common.add"))
         btn_add.setProperty("class", "primary")
         btn_add.clicked.connect(self._add_product)
         search_layout.addWidget(btn_add)
@@ -127,7 +128,14 @@ class LabelPrintDialog(QDialog):
         self.table = QTableWidget()
         self.table.setObjectName("LabelQueueTable")
         self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["Product", "Barcode", "Price", "Qty"])
+        self.table.setHorizontalHeaderLabels(
+            [
+                _t("label_print.col_product"),
+                _t("label_print.col_barcode"),
+                _t("label_print.col_price"),
+                _t("label_print.col_qty"),
+            ]
+        )
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
@@ -147,25 +155,25 @@ class LabelPrintDialog(QDialog):
         # Summary + actions
         btn_layout = QHBoxLayout()
 
-        self.lbl_total = QLabel("Total labels: 0")
+        self.lbl_total = QLabel(_t("label_print.total_labels", count=0))
         self.lbl_total.setProperty("class", "bold")
         btn_layout.addWidget(self.lbl_total)
 
         btn_layout.addStretch()
 
-        btn_remove = QPushButton("Remove Selected")
+        btn_remove = QPushButton(_t("label_print.remove_selected"))
         btn_remove.clicked.connect(self._remove_selected)
         btn_layout.addWidget(btn_remove)
 
-        btn_clear = QPushButton("Clear All")
+        btn_clear = QPushButton(_t("label_print.clear_all"))
         btn_clear.clicked.connect(self._clear_all)
         btn_layout.addWidget(btn_clear)
 
-        btn_preview = QPushButton("Preview Label")
+        btn_preview = QPushButton(_t("label_print.preview_label"))
         btn_preview.clicked.connect(self._preview_label)
         btn_layout.addWidget(btn_preview)
 
-        btn_print = QPushButton("Print Labels")
+        btn_print = QPushButton(_t("label_print.print_labels"))
         btn_print.setProperty("class", "primary")
         btn_print.clicked.connect(self._print_labels)
         btn_layout.addWidget(btn_print)
@@ -215,8 +223,8 @@ class LabelPrintDialog(QDialog):
             if not products:
                 QMessageBox.warning(
                     self,
-                    "Not Found",
-                    f"No product found for '{query}'.",
+                    _t("label_print.not_found_title"),
+                    _t("label_print.not_found_msg", query=query),
                 )
                 return
             if len(products) == 1:
@@ -243,13 +251,19 @@ class LabelPrintDialog(QDialog):
     def _choose_product(self, products) -> object:
         """Show selection dialog when multiple products match."""
         dlg = QDialog(self)
-        dlg.setWindowTitle("Select Product")
+        dlg.setWindowTitle(_t("label_print.select_product"))
         dlg.setMinimumSize(500, 300)
         lay = QVBoxLayout(dlg)
 
         tbl = QTableWidget()
         tbl.setColumnCount(3)
-        tbl.setHorizontalHeaderLabels(["Name", "Barcode", "Price"])
+        tbl.setHorizontalHeaderLabels(
+            [
+                _t("common.name"),
+                _t("label_print.col_barcode"),
+                _t("label_print.col_price"),
+            ]
+        )
         tbl.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         tbl.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -265,10 +279,10 @@ class LabelPrintDialog(QDialog):
         lay.addWidget(tbl)
 
         btn_lay = QHBoxLayout()
-        btn_select = QPushButton("Select")
+        btn_select = QPushButton(_t("label_print.select"))
         btn_select.setProperty("class", "primary")
         btn_select.clicked.connect(dlg.accept)
-        btn_cancel = QPushButton("Cancel")
+        btn_cancel = QPushButton(_t("common.cancel"))
         btn_cancel.clicked.connect(dlg.reject)
         btn_lay.addStretch()
         btn_lay.addWidget(btn_select)
@@ -324,7 +338,7 @@ class LabelPrintDialog(QDialog):
 
     def _update_total(self) -> None:
         total = sum(item["quantity"] for item in self.label_items)
-        self.lbl_total.setText(f"Total labels: {total}")
+        self.lbl_total.setText(_t("label_print.total_labels", count=total))
 
     def _remove_selected(self) -> None:
         """Remove selected product from label queue."""
@@ -345,8 +359,8 @@ class LabelPrintDialog(QDialog):
         if not self.label_items:
             QMessageBox.warning(
                 self,
-                "No Items",
-                "Add a product first to preview its label.",
+                _t("label_print.no_items_title"),
+                _t("label_print.no_items_preview_msg"),
             )
             return
 
@@ -367,8 +381,8 @@ class LabelPrintDialog(QDialog):
         if not self.label_items:
             QMessageBox.warning(
                 self,
-                "Empty",
-                "No products to print labels for.",
+                _t("label_print.no_items_title"),
+                _t("label_print.no_items_print_msg"),
             )
             return
 
@@ -380,9 +394,9 @@ class LabelPrintDialog(QDialog):
             total = sum(item["quantity"] for item in self.label_items)
             QMessageBox.information(
                 self,
-                "Printing",
-                f"Sending {total} labels to printer...",
+                _t("label_print.printing_title"),
+                _t("label_print.printing_msg", count=total),
             )
         except Exception as e:
             logger.error(f"Label printing failed: {e}")
-            QMessageBox.critical(self, "Error", f"Print failed: {e}")
+            QMessageBox.critical(self, _t("common.error"), _t("label_print.print_failed", error=str(e)))

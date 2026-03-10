@@ -7,8 +7,9 @@ with automatic fallback to English when a translation is missing.
 
 import json
 import logging
+import weakref
 from pathlib import Path
-from typing import Dict, List, Callable
+from typing import Any, Callable, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,9 @@ class TranslationService:
     def __init__(self) -> None:
         self.current_language: str = "en"
         self._translations: Dict[str, Dict[str, str]] = {}
-        self._change_callbacks: List[Callable] = []
+        # Use weak references to prevent preventing GC of Qt widgets.
+        # WeakMethod for bound methods, plain weakref.ref for functions.
+        self._change_callbacks: List[weakref.ref] = []
         self._i18n_dir = Path(__file__).parent
 
         # Always load English as the fallback language
@@ -57,14 +60,19 @@ class TranslationService:
 
         self.current_language = lang_code
 
-        # Notify all registered UI components to retranslate
-        for callback in list(self._change_callbacks):
-            try:
-                callback()
-            except Exception as e:
-                logger.error("Error in language change callback: %s", e)
+        # Notify all live callbacks, pruning dead weak references
+        live: List[weakref.ref] = []
+        for ref in self._change_callbacks:
+            cb = ref()
+            if cb is not None:
+                live.append(ref)
+                try:
+                    cb()
+                except Exception as e:
+                    logger.error("Error in language change callback: %s", e)
+        self._change_callbacks = live
 
-    def translate(self, key: str, **kwargs) -> str:
+    def translate(self, key: str, **kwargs: Any) -> str:
         """Look up a translation key with optional parameter substitution.
 
         Fallback chain: current_language -> English -> raw key.
@@ -98,19 +106,21 @@ class TranslationService:
 
         return text
 
-    def register_change_callback(self, callback: Callable) -> None:
-        """Register a callable to be invoked when language changes."""
-        if callback not in self._change_callbacks:
-            self._change_callbacks.append(callback)
+    def register_change_callback(self, callback: Callable[[], None]) -> None:
+        """Register a callable to be invoked when language changes.
 
-    def unregister_change_callback(self, callback: Callable) -> None:
+        Uses weak references so that registering a bound method does not
+        prevent the owning widget from being garbage-collected.
+        """
+        ref = self._make_ref(callback)
+        if ref is not None:
+            self._change_callbacks.append(ref)
+
+    def unregister_change_callback(self, callback: Callable[[], None]) -> None:
         """Remove a language-change callback."""
-        try:
-            self._change_callbacks.remove(callback)
-        except ValueError:
-            pass
+        self._change_callbacks = [ref for ref in self._change_callbacks if ref() is not None and ref() != callback]
 
-    def translate_in(self, lang_code: str, key: str, **kwargs) -> str:
+    def translate_in(self, lang_code: str, key: str, **kwargs: Any) -> str:
         """Translate a key in a specific language without changing the active language.
 
         Falls back to English, then to the raw key.
@@ -150,6 +160,23 @@ class TranslationService:
         """Reload all cached translation files from disk."""
         for lang_code in list(self._translations.keys()):
             self._load_language(lang_code)
+
+    @staticmethod
+    def _make_ref(callback: Callable) -> "weakref.ref | None":
+        """Create a weak reference for *callback*.
+
+        Uses ``weakref.WeakMethod`` for bound methods and ``weakref.ref``
+        for plain functions/lambdas.
+        """
+        try:
+            return weakref.WeakMethod(callback)
+        except TypeError:
+            # Not a bound method — try a plain weak ref
+            try:
+                return weakref.ref(callback)
+            except TypeError:
+                logger.warning("Cannot create weak reference for callback: %s", callback)
+                return None
 
     @staticmethod
     def _flatten(data: Dict, prefix: str = "") -> Dict[str, str]:

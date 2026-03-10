@@ -14,6 +14,8 @@ To switch language at runtime::
     set_language("si")  # Sinhala
 """
 
+from typing import Callable
+
 from cbpos.i18n.translation_service import TranslationService
 
 # Singleton instance — shared across the entire application
@@ -57,11 +59,11 @@ def translate_in(lang_code: str, key: str, **kwargs) -> str:
     return _service.translate_in(lang_code, key, **kwargs)
 
 
-def register_language_callback(callback) -> None:
+def register_language_callback(callback: Callable[[], None]) -> None:
     """Register a callback to be invoked when language changes."""
     _service.register_change_callback(callback)
 
 
-def unregister_language_callback(callback) -> None:
+def unregister_language_callback(callback: Callable[[], None]) -> None:
     """Unregister a language-change callback."""
     _service.unregister_change_callback(callback)

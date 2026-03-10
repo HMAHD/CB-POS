@@ -17,6 +17,8 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 import logging
 
+logger = logging.getLogger(__name__)
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -161,7 +163,7 @@ class MainWindow(QMainWindow):
         else:
             self.showFullScreen()
             # Optional: Show notification/toast here
-            print(_t("main_window.fullscreen_hint"))
+            logger.info(_t("main_window.fullscreen_hint"))
 
     def on_convert_proforma(self, cart_data: dict) -> None:
         """Handle proforma-to-sale conversion by loading items into the SalesView cart."""

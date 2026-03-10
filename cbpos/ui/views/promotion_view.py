@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import QDateTime
 from cbpos.core.services.promotion_service import PromotionService
-from cbpos.i18n import _t
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
 class PromotionView(QWidget):
@@ -29,26 +29,38 @@ class PromotionView(QWidget):
         self.init_ui()
         self.load_promotions()
 
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
     def init_ui(self):
         layout = QVBoxLayout(self)
 
         # Header
         header = QHBoxLayout()
-        lbl_title = QLabel(_t("promotion.title"))
-        lbl_title.setProperty("class", "dialog-title")
-        header.addWidget(lbl_title)
+        self.lbl_title = QLabel()
+        self.lbl_title.setProperty("class", "dialog-title")
+        header.addWidget(self.lbl_title)
         header.addStretch()
 
-        btn_add = QPushButton(_t("promotion.create_promotion"))
-        btn_add.setProperty("class", "accent")
-        btn_add.clicked.connect(self.add_promotion)
-        header.addWidget(btn_add)
+        self.btn_add = QPushButton()
+        self.btn_add.setProperty("class", "accent")
+        self.btn_add.clicked.connect(self.add_promotion)
+        header.addWidget(self.btn_add)
 
         layout.addLayout(header)
 
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        layout.addWidget(self.table)
+
+    def retranslate_ui(self):
+        self.lbl_title.setText(_t("promotion.title"))
+        self.btn_add.setText(_t("promotion.create_promotion"))
         self.table.setHorizontalHeaderLabels(
             [
                 _t("common.name"),
@@ -59,10 +71,6 @@ class PromotionView(QWidget):
                 _t("common.status"),
             ]
         )
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        layout.addWidget(self.table)
 
     def load_promotions(self):
         promos = self.promotion_service.get_all_promotions()

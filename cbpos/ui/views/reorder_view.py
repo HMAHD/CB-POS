@@ -13,7 +13,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont, QColor
 from decimal import Decimal
 from cbpos.core.services.stock_service import StockService
-from cbpos.i18n import _t
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
 class ReorderView(QWidget):
@@ -29,22 +29,52 @@ class ReorderView(QWidget):
         self.init_ui()
         self.load_reorder_items()
 
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
     def init_ui(self):
         layout = QVBoxLayout(self)
 
         # Title
-        title = QLabel(_t("reorder.title"))
-        title.setProperty("class", "dialog-title")
-        layout.addWidget(title)
+        self.lbl_title = QLabel()
+        self.lbl_title.setProperty("class", "dialog-title")
+        layout.addWidget(self.lbl_title)
 
         # Info text
-        info = QLabel(_t("reorder.info_text"))
-        info.setProperty("class", "muted")
-        layout.addWidget(info)
+        self.lbl_info = QLabel()
+        self.lbl_info.setProperty("class", "muted")
+        layout.addWidget(self.lbl_info)
 
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        layout.addWidget(self.table)
+
+        # Action Buttons
+        btn_layout = QHBoxLayout()
+
+        self.btn_refresh = QPushButton()
+        self.btn_refresh.clicked.connect(self.load_reorder_items)
+        btn_layout.addWidget(self.btn_refresh)
+
+        btn_layout.addStretch()
+
+        self.btn_create_po = QPushButton()
+        self.btn_create_po.setProperty("class", "primary")
+        self.btn_create_po.clicked.connect(self.create_purchase_order)
+        btn_layout.addWidget(self.btn_create_po)
+
+        layout.addLayout(btn_layout)
+
+    def retranslate_ui(self):
+        self.lbl_title.setText(_t("reorder.title"))
+        self.lbl_info.setText(_t("reorder.info_text"))
+        self.btn_refresh.setText(_t("common.refresh"))
+        self.btn_create_po.setText(_t("reorder.create_purchase_order"))
         self.table.setHorizontalHeaderLabels(
             [
                 _t("reorder.product"),
@@ -55,26 +85,6 @@ class ReorderView(QWidget):
                 _t("reorder.supplier"),
             ]
         )
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        layout.addWidget(self.table)
-
-        # Action Buttons
-        btn_layout = QHBoxLayout()
-
-        btn_refresh = QPushButton(_t("common.refresh"))
-        btn_refresh.clicked.connect(self.load_reorder_items)
-        btn_layout.addWidget(btn_refresh)
-
-        btn_layout.addStretch()
-
-        btn_create_po = QPushButton(_t("reorder.create_purchase_order"))
-        btn_create_po.setProperty("class", "primary")
-        btn_create_po.clicked.connect(self.create_purchase_order)
-        btn_layout.addWidget(btn_create_po)
-
-        layout.addLayout(btn_layout)
 
     def load_reorder_items(self):
         """Load products where stock_qty <= reorder_point."""

@@ -26,18 +26,26 @@ class ReceiptBuilder:
     - {'type': 'cut', 'partial': True}
     """
 
+    # Per-build receipt language cache.  Set by build_receipt() and friends
+    # so that _rt() doesn't call ConfigService.get() on every invocation.
+    _receipt_lang: Optional[str] = None
+
     @classmethod
     def _rt(cls, key: str, **kwargs) -> str:
         """Shorthand for receipt translation keys.
 
-        Uses the configured ``receipt_language`` setting.  If it differs from
-        the current UI language, the receipt is printed in the customer's
-        language while the UI stays in the operator's language.
+        Uses the cached ``_receipt_lang`` (set at the start of each build
+        method).  Falls back to the current UI language when unset.
         """
-        receipt_lang = ConfigService.get("receipt_language")
-        if receipt_lang:
-            return translate_in(receipt_lang, f"receipt_strings.{key}", **kwargs)
+        lang = cls._receipt_lang
+        if lang:
+            return translate_in(lang, f"receipt_strings.{key}", **kwargs)
         return _t(f"receipt_strings.{key}", **kwargs)
+
+    @classmethod
+    def _resolve_receipt_lang(cls, config_override: Optional[Dict[str, Any]] = None) -> None:
+        """Cache the effective receipt language for the current build call."""
+        cls._receipt_lang = cls._get_conf("receipt_language", "", config_override) or None
 
     @classmethod
     def _get_conf(cls, key: str, default: Any = None, config_override: Optional[Dict[str, Any]] = None) -> Any:
@@ -122,6 +130,7 @@ class ReceiptBuilder:
             config_override: Optional dictionary to override ConfigService values.
             is_reprint: If True, adds DUPLICATE marking.
         """
+        cls._resolve_receipt_lang(config_override)
         commands: List[Dict[str, Any]] = []
         gc = cls._get_conf
 
@@ -325,6 +334,7 @@ class ReceiptBuilder:
             config_override: Optional config overrides.
             void_timestamp: Timestamp for the void (defaults to now).
         """
+        cls._resolve_receipt_lang(config_override)
         commands: List[Dict[str, Any]] = []
 
         line_chars = cls._append_header_block(commands, config_override)
@@ -414,6 +424,7 @@ class ReceiptBuilder:
             config_override: Optional config overrides.
             refund_timestamp: Timestamp for the refund (defaults to now).
         """
+        cls._resolve_receipt_lang(config_override)
         commands: List[Dict[str, Any]] = []
 
         line_chars = cls._append_header_block(commands, config_override)
@@ -497,6 +508,7 @@ class ReceiptBuilder:
             proforma: The Proforma model instance with items loaded.
             config_override: Optional dictionary to override ConfigService values.
         """
+        cls._resolve_receipt_lang(config_override)
         commands: List[Dict[str, Any]] = []
         gc = cls._get_conf
 
@@ -608,6 +620,7 @@ class ReceiptBuilder:
             period_to: Statement end date.
             config_override: Optional dictionary to override ConfigService values.
         """
+        cls._resolve_receipt_lang(config_override)
         commands: List[Dict[str, Any]] = []
         gc = cls._get_conf
 

@@ -626,7 +626,7 @@
     "closing_label": "Closing:",
     "no_customers_found": "No credit customers found",
     "customer_count": "{count} customer(s)",
-    "total_outstanding": "மொத்த நிலுவை",
+    "total_outstanding": "மொத்த நிலுவை: {amount}",
     "no_customer_title": "No Customer",
     "no_customer_msg": "Please select a customer first.",
     "no_debt_title": "No Debt",

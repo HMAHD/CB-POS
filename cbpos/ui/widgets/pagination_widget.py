@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from cbpos.i18n import _t
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 T = TypeVar("T")
 
@@ -64,6 +64,8 @@ class PaginationWidget(QWidget):
         layout.addWidget(self._btn_next)
 
         self._update_controls()
+        register_language_callback(self._retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self._retranslate_ui))
 
     # ------------------------------------------------------------------
     # Public API
@@ -138,5 +140,11 @@ class PaginationWidget(QWidget):
         end = self.end_index
         self._info_label.setText(_t("common.showing_range", start=start, end=end, total=total))
         self._page_label.setText(_t("common.page_of", page=self._current_page + 1, total=self.total_pages))
+        self._btn_prev.setText(_t("common.previous"))
+        self._btn_next.setText(_t("common.next"))
         self._btn_prev.setEnabled(self._current_page > 0)
         self._btn_next.setEnabled(self._current_page < self.total_pages - 1)
+
+    def _retranslate_ui(self) -> None:
+        """Update button text when language changes."""
+        self._update_controls()

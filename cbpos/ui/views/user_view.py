@@ -18,7 +18,7 @@ from PyQt6.QtCore import Qt
 from cbpos.core.services.user_service import UserService
 from cbpos.ui.dialogs.permission_dialog import PermissionDialog
 from cbpos.ui.resources.icons import Icons
-from cbpos.i18n import _t
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
 class UserDialog(QDialog):
@@ -113,6 +113,10 @@ class UserView(QWidget):
         super().__init__()
         self.init_ui()
 
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
     def init_ui(self):
         layout = QVBoxLayout(self)
 
@@ -122,12 +126,12 @@ class UserView(QWidget):
         # Tab 1: Users
         self.user_tab = QWidget()
         self.init_user_tab()
-        self.tabs.addTab(self.user_tab, _t("user.tab_users"))
+        self.tabs.addTab(self.user_tab, "")
 
         # Tab 2: Activity Log
         self.log_tab = QWidget()
         self.init_log_tab()
-        self.tabs.addTab(self.log_tab, _t("user.tab_activity_log"))
+        self.tabs.addTab(self.log_tab, "")
 
         # Load data
         self.load_users()
@@ -142,16 +146,16 @@ class UserView(QWidget):
         # Toolbar
         toolbar = QHBoxLayout()
 
-        btn_add = QPushButton(_t("user.add_user"))
-        btn_add.setIcon(Icons.get("fa5s.plus"))
-        btn_add.clicked.connect(self.add_user)
+        self.btn_add = QPushButton()
+        self.btn_add.setIcon(Icons.get("fa5s.plus"))
+        self.btn_add.clicked.connect(self.add_user)
 
-        btn_perms = QPushButton(_t("user.manage_permissions"))
-        btn_perms.setIcon(Icons.get("fa5s.lock"))
-        btn_perms.clicked.connect(self.manage_permissions)
+        self.btn_perms = QPushButton()
+        self.btn_perms.setIcon(Icons.get("fa5s.lock"))
+        self.btn_perms.clicked.connect(self.manage_permissions)
 
-        toolbar.addWidget(btn_add)
-        toolbar.addWidget(btn_perms)
+        toolbar.addWidget(self.btn_add)
+        toolbar.addWidget(self.btn_perms)
         toolbar.addStretch()
 
         layout.addLayout(toolbar)
@@ -159,14 +163,6 @@ class UserView(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(
-            [
-                _t("common.id"),
-                _t("user.col_username"),
-                _t("user.col_role"),
-                _t("common.status"),
-            ]
-        )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -179,6 +175,25 @@ class UserView(QWidget):
 
         self.log_table = QTableWidget()
         self.log_table.setColumnCount(5)
+        self.log_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.log_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.log_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+
+        layout.addWidget(self.log_table)
+
+    def retranslate_ui(self):
+        self.tabs.setTabText(0, _t("user.tab_users"))
+        self.tabs.setTabText(1, _t("user.tab_activity_log"))
+        self.btn_add.setText(_t("user.add_user"))
+        self.btn_perms.setText(_t("user.manage_permissions"))
+        self.table.setHorizontalHeaderLabels(
+            [
+                _t("common.id"),
+                _t("user.col_username"),
+                _t("user.col_role"),
+                _t("common.status"),
+            ]
+        )
         self.log_table.setHorizontalHeaderLabels(
             [
                 _t("user.col_time"),
@@ -188,11 +203,6 @@ class UserView(QWidget):
                 _t("user.col_details"),
             ]
         )
-        self.log_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.log_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.log_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-
-        layout.addWidget(self.log_table)
 
     def load_users(self):
         self.users = UserService.get_all_users()

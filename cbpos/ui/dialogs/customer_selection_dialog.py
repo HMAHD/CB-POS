@@ -8,12 +8,13 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox,
 )
 from cbpos.core.services.customer_service import CustomerService
+from cbpos.i18n import _t
 
 
 class CustomerSelectionDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Select Customer")
+        self.setWindowTitle(_t("customer_selection.title"))
         self.setMinimumWidth(500)
         self.setMinimumHeight(400)
         self.customer_service = CustomerService()
@@ -27,14 +28,20 @@ class CustomerSelectionDialog(QDialog):
 
         # Search
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search by Name or Phone...")
+        self.search_input.setPlaceholderText(_t("customer_selection.search_placeholder"))
         self.search_input.textChanged.connect(self.filter_customers)
         layout.addWidget(self.search_input)
 
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["ID", "Name", "Phone"])
+        self.table.setHorizontalHeaderLabels(
+            [
+                _t("customer_selection.header_id"),
+                _t("customer_selection.header_name"),
+                _t("customer_selection.header_phone"),
+            ]
+        )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)

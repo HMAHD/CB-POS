@@ -8,33 +8,36 @@ from PyQt6.QtWidgets import (
     QPushButton,
 )
 from PyQt6.QtCore import Qt
+from cbpos.i18n import _t
 
 
 class ShortcutsHelpDialog(QDialog):
     """F1 keyboard shortcuts overlay for the Sales view."""
 
-    SHORTCUTS = [
-        ("F1", "This help screen"),
-        ("F2", "Select customer"),
-        ("F3", "Advanced search"),
-        ("F4", "Change line quantity"),
-        ("F5", "Process payment"),
-        ("F6", "Hold / Suspend bill"),
-        ("F7", "Recall suspended bill"),
-        ("F8", "Open cash drawer"),
-        ("F10", "Process payment"),
-        ("F12", "Quick close (cash)"),
-        ("Ctrl+D", "Open cash drawer"),
-        ("PgUp", "Select first cart item"),
-        ("PgDn", "Select last cart item"),
-        ("Enter", "Add product from search"),
-        ("Delete", "Void current bill"),
-        ("Esc", "Close dialog / Cancel"),
-    ]
+    @staticmethod
+    def _get_shortcuts():
+        return [
+            ("F1", _t("shortcuts.help_screen")),
+            ("F2", _t("shortcuts.select_customer")),
+            ("F3", _t("shortcuts.advanced_search")),
+            ("F4", _t("shortcuts.change_quantity")),
+            ("F5", _t("shortcuts.process_payment")),
+            ("F6", _t("shortcuts.hold_bill")),
+            ("F7", _t("shortcuts.recall_bill")),
+            ("F8", _t("shortcuts.open_drawer")),
+            ("F10", _t("shortcuts.process_payment")),
+            ("F12", _t("shortcuts.quick_close")),
+            ("Ctrl+D", _t("shortcuts.open_drawer")),
+            ("PgUp", _t("shortcuts.first_cart_item")),
+            ("PgDn", _t("shortcuts.last_cart_item")),
+            ("Enter", _t("shortcuts.add_product")),
+            ("Delete", _t("shortcuts.void_bill")),
+            ("Esc", _t("shortcuts.close_cancel")),
+        ]
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Keyboard Shortcuts")
+        self.setWindowTitle(_t("shortcuts.title"))
         self.setFixedSize(450, 580)
         self.setObjectName("ShortcutsHelpDialog")
         self.init_ui()
@@ -44,20 +47,21 @@ class ShortcutsHelpDialog(QDialog):
         layout.setContentsMargins(25, 25, 25, 25)
         layout.setSpacing(15)
 
-        title = QLabel("Keyboard Shortcuts")
+        title = QLabel(_t("shortcuts.title"))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setProperty("class", "dialog-title")
         layout.addWidget(title)
 
-        subtitle = QLabel("Press F1 anytime to see this screen")
+        subtitle = QLabel(_t("shortcuts.subtitle"))
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitle.setProperty("class", "muted")
         layout.addWidget(subtitle)
 
+        shortcuts = self._get_shortcuts()
         table = QTableWidget()
         table.setColumnCount(2)
-        table.setHorizontalHeaderLabels(["Shortcut", "Action"])
-        table.setRowCount(len(self.SHORTCUTS))
+        table.setHorizontalHeaderLabels([_t("shortcuts.col_shortcut"), _t("shortcuts.col_action")])
+        table.setRowCount(len(shortcuts))
         table.verticalHeader().setVisible(False)
         table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
@@ -69,7 +73,7 @@ class ShortcutsHelpDialog(QDialog):
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         table.setColumnWidth(0, 100)
 
-        for row, (key, action) in enumerate(self.SHORTCUTS):
+        for row, (key, action) in enumerate(shortcuts):
             key_item = QTableWidgetItem(key)
             key_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             key_item.setForeground(Qt.GlobalColor.cyan)
@@ -80,7 +84,7 @@ class ShortcutsHelpDialog(QDialog):
 
         layout.addWidget(table)
 
-        btn_close = QPushButton("Close (Esc)")
+        btn_close = QPushButton(_t("shortcuts.close_esc"))
         btn_close.setObjectName("BtnCancel")
         btn_close.setFixedHeight(35)
         btn_close.clicked.connect(self.accept)

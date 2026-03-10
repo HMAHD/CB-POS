@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import pyqtSignal
 
 from cbpos.core.services.config_service import ConfigService
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
 class DenominationWidget(QWidget):
@@ -62,11 +63,18 @@ class DenominationWidget(QWidget):
         self.lbl_grand_total = QLabel("0.00")
         # Place it below the last row of denominations
         total_row = (len(self.denominations) + 1) // 2
-        layout.addWidget(QLabel("Grand Total:"), total_row, 0, 1, 2)
+        self._lbl_grand_total_label = QLabel(_t("denomination.grand_total"))
+        layout.addWidget(self._lbl_grand_total_label, total_row, 0, 1, 2)
+
+        register_language_callback(self._retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self._retranslate_ui))
         layout.addWidget(self.lbl_grand_total, total_row, 2, 1, 4)
 
         # Coins are assumed to be covered by the denominations list (e.g. 10, 5, 2, 1)
         # or handled via configuration.
+
+    def _retranslate_ui(self) -> None:
+        self._lbl_grand_total_label.setText(_t("denomination.grand_total"))
 
     def calculate_total(self):
         total = Decimal(0)

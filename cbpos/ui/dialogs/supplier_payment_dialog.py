@@ -22,6 +22,7 @@ from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.utils.formatters import format_currency
+from cbpos.i18n import _t
 
 
 class SupplierPaymentDialog(QDialog):
@@ -32,7 +33,7 @@ class SupplierPaymentDialog(QDialog):
         self.supplier_id = supplier_id
         self.recorded_payment = None
 
-        self.setWindowTitle("Make Payment to Supplier")
+        self.setWindowTitle(_t("supplier_payment.title"))
         self.setObjectName("SupplierPaymentDialog")
         self.setMinimumSize(450, 380)
         self.resize(500, 420)
@@ -44,7 +45,7 @@ class SupplierPaymentDialog(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
 
         # Title
-        title = QLabel("Make Supplier Payment")
+        title = QLabel(_t("supplier_payment.title"))
         title.setProperty("class", "dialog-title")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
@@ -54,7 +55,7 @@ class SupplierPaymentDialog(QDialog):
         # Supplier info
         supplier = SupplierService.get_supplier_by_id(self.supplier_id)
         if supplier:
-            name_label = QLabel(f"Supplier: {supplier.company_name}")
+            name_label = QLabel(_t("supplier_payment.supplier_label", name=supplier.company_name))
             name_label.setProperty("class", "bold")
             layout.addWidget(name_label)
 
@@ -63,9 +64,9 @@ class SupplierPaymentDialog(QDialog):
         self.balance_frame.setObjectName("BalanceFrame")
         balance_layout = QHBoxLayout(self.balance_frame)
         balance_layout.setContentsMargins(12, 8, 12, 8)
-        self.lbl_outstanding = QLabel("Outstanding: ---")
+        self.lbl_outstanding = QLabel(_t("supplier_payment.outstanding", amount="---"))
         self.lbl_outstanding.setProperty("class", "debit")
-        self.lbl_terms = QLabel("Terms: ---")
+        self.lbl_terms = QLabel(_t("supplier_payment.terms", days="---"))
         self.lbl_terms.setProperty("class", "muted")
         balance_layout.addWidget(self.lbl_outstanding)
         balance_layout.addStretch()
@@ -75,9 +76,13 @@ class SupplierPaymentDialog(QDialog):
         # Load supplier summary
         summary = SupplierPayableService.get_supplier_summary(self.supplier_id)
         if summary:
-            self.lbl_outstanding.setText(f"Outstanding: {format_currency(summary['current_payable'])}")
+            self.lbl_outstanding.setText(
+                _t("supplier_payment.outstanding", amount=format_currency(summary["current_payable"]))
+            )
             terms = summary["payment_terms"]
-            self.lbl_terms.setText(f"Terms: {terms} days" if terms > 0 else "Terms: N/A")
+            self.lbl_terms.setText(
+                _t("supplier_payment.terms", days=str(terms)) if terms > 0 else _t("supplier_payment.terms_na")
+            )
             self._current_payable = summary["current_payable"]
         else:
             self._current_payable = Decimal("0.00")
@@ -95,11 +100,11 @@ class SupplierPaymentDialog(QDialog):
         self.txt_amount.setPlaceholderText("0.00")
         amount_layout.addWidget(self.txt_amount, 1)
 
-        self.btn_pay_full = QPushButton("Pay Full")
+        self.btn_pay_full = QPushButton(_t("supplier_payment.pay_full"))
         self.btn_pay_full.setProperty("class", "accent")
         self.btn_pay_full.clicked.connect(self.fill_full_amount)
         amount_layout.addWidget(self.btn_pay_full)
-        form_layout.addRow("Amount:", amount_layout)
+        form_layout.addRow(_t("supplier_payment.amount_label"), amount_layout)
 
         # Payment Method (loaded from DB, excluding Credit)
         self.cmb_method = QComboBox()
@@ -109,29 +114,29 @@ class SupplierPaymentDialog(QDialog):
         for m in PaymentService.get_active_methods():
             if m.name.upper() != PaymentMethodType.CREDIT.upper():
                 self.cmb_method.addItem(m.name)
-        form_layout.addRow("Method:", self.cmb_method)
+        form_layout.addRow(_t("supplier_payment.method_label"), self.cmb_method)
 
         # Reference
         self.txt_reference = QLineEdit()
-        self.txt_reference.setPlaceholderText("Cheque #, Transfer ref (optional)")
-        form_layout.addRow("Reference:", self.txt_reference)
+        self.txt_reference.setPlaceholderText(_t("supplier_payment.reference_placeholder"))
+        form_layout.addRow(_t("supplier_payment.reference_label"), self.txt_reference)
 
         # Note
         self.txt_note = QLineEdit()
-        self.txt_note.setPlaceholderText("Optional note")
-        form_layout.addRow("Note:", self.txt_note)
+        self.txt_note.setPlaceholderText(_t("supplier_payment.note_placeholder"))
+        form_layout.addRow(_t("supplier_payment.note_label"), self.txt_note)
 
         layout.addLayout(form_layout)
         layout.addStretch()
 
         # Buttons
         btn_layout = QHBoxLayout()
-        self.btn_record = QPushButton("Record Payment")
+        self.btn_record = QPushButton(_t("supplier_payment.record"))
         self.btn_record.setProperty("class", "primary")
         self.btn_record.clicked.connect(self.validate_and_record)
         btn_layout.addWidget(self.btn_record)
 
-        self.btn_cancel = QPushButton("Cancel")
+        self.btn_cancel = QPushButton(_t("common.cancel"))
         self.btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(self.btn_cancel)
         layout.addLayout(btn_layout)
@@ -145,7 +150,7 @@ class SupplierPaymentDialog(QDialog):
         """Validate inputs and record the payment."""
         amount_text = self.txt_amount.text().strip()
         if not amount_text:
-            QMessageBox.warning(self, "Input Error", "Please enter an amount.")
+            QMessageBox.warning(self, _t("common.error"), _t("supplier_payment.enter_amount"))
             return
 
         try:
@@ -153,7 +158,7 @@ class SupplierPaymentDialog(QDialog):
             if amount <= 0:
                 raise ValueError
         except (InvalidOperation, ValueError):
-            QMessageBox.warning(self, "Input Error", "Invalid amount. Must be a positive number.")
+            QMessageBox.warning(self, _t("common.error"), _t("supplier_payment.invalid_amount"))
             return
 
         payment_method = self.cmb_method.currentText()
@@ -162,7 +167,7 @@ class SupplierPaymentDialog(QDialog):
 
         current_user = AuthService.get_current_user()
         if not current_user:
-            QMessageBox.warning(self, "Error", "No user logged in.")
+            QMessageBox.warning(self, _t("common.error"), _t("supplier_payment.no_user"))
             return
 
         try:
@@ -177,11 +182,11 @@ class SupplierPaymentDialog(QDialog):
             self.recorded_payment = payment
             QMessageBox.information(
                 self,
-                "Payment Recorded",
-                f"Payment of {format_currency(amount)} recorded successfully.",
+                _t("common.success"),
+                _t("supplier_payment.recorded_success", amount=format_currency(amount)),
             )
             self.accept()
         except ValueError as e:
-            QMessageBox.warning(self, "Validation Error", str(e))
+            QMessageBox.warning(self, _t("common.warning"), str(e))
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to record payment: {str(e)}")
+            QMessageBox.critical(self, _t("common.error"), _t("supplier_payment.record_failed", error=str(e)))

@@ -17,6 +17,7 @@ from cbpos.ui.widgets.denomination_widget import DenominationWidget
 from cbpos.ui.workers import BackupWorker
 from cbpos.core.services.shift_service import ShiftService
 from cbpos.core.services.receipt_service import ReceiptService
+from cbpos.i18n import _t
 
 
 class ShiftClosingDialog(QDialog):
@@ -29,7 +30,7 @@ class ShiftClosingDialog(QDialog):
         self.counted_cash = Decimal(0)
         self.summary = None
 
-        self.setWindowTitle("Close Shift")
+        self.setWindowTitle(_t("shift_closing.title"))
         self.setFixedSize(800, 600)
         self._init_ui()
         self._load_data()
@@ -38,7 +39,7 @@ class ShiftClosingDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # Header
-        self.lbl_step = QLabel("Step 1: Count Cash")
+        self.lbl_step = QLabel(_t("shift_closing.step1_count"))
         self.lbl_step.setObjectName("stepHeader")
         layout.addWidget(self.lbl_step)
 
@@ -56,16 +57,16 @@ class ShiftClosingDialog(QDialog):
         self.page_review = QWidget()
         review_layout = QVBoxLayout(self.page_review)
 
-        self.lbl_expected = QLabel("Expected: 0.00")
-        self.lbl_actual = QLabel("Actual: 0.00")
-        self.lbl_variance = QLabel("Variance: 0.00")
+        self.lbl_expected = QLabel(_t("shift_closing.expected", amount="0.00"))
+        self.lbl_actual = QLabel(_t("shift_closing.actual", amount="0.00"))
+        self.lbl_variance = QLabel(_t("shift_closing.variance", amount="0.00"))
         for lbl in (self.lbl_expected, self.lbl_actual, self.lbl_variance):
             lbl.setObjectName("reviewLabel")
             review_layout.addWidget(lbl)
 
-        review_layout.addWidget(QLabel("Reason for Variance (required if not 0):"))
+        review_layout.addWidget(QLabel(_t("shift_closing.variance_reason_label")))
         self.txt_reason = QTextEdit()
-        self.txt_reason.setPlaceholderText("Enter reason for discrepancy...")
+        self.txt_reason.setPlaceholderText(_t("shift_closing.reason_placeholder"))
         review_layout.addWidget(self.txt_reason)
 
         self.stack.addWidget(self.page_review)
@@ -74,14 +75,14 @@ class ShiftClosingDialog(QDialog):
 
         # Footer buttons
         btn_layout = QHBoxLayout()
-        self.btn_cancel = QPushButton("Cancel")
+        self.btn_cancel = QPushButton(_t("common.cancel"))
         self.btn_cancel.clicked.connect(self.reject)
 
-        self.btn_back = QPushButton("Back")
+        self.btn_back = QPushButton(_t("common.back"))
         self.btn_back.setEnabled(False)
         self.btn_back.clicked.connect(self._prev_step)
 
-        self.btn_next = QPushButton("Next")
+        self.btn_next = QPushButton(_t("common.next"))
         self.btn_next.clicked.connect(self._next_step)
 
         btn_layout.addWidget(self.btn_cancel)
@@ -95,7 +96,7 @@ class ShiftClosingDialog(QDialog):
         try:
             self.summary = self.shift_service.get_shift_summary(self.shift_id)
         except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+            QMessageBox.critical(self, _t("common.error"), str(e))
             self.reject()
 
     def _update_counted_cash(self, total: Decimal):
@@ -106,16 +107,16 @@ class ShiftClosingDialog(QDialog):
         if current == 0:  # move to review page
             self.stack.setCurrentIndex(1)
             self.btn_back.setEnabled(True)
-            self.btn_next.setText("Close Shift & Print")
-            self.lbl_step.setText("Step 2: Review & Close")
+            self.btn_next.setText(_t("shift_closing.close_and_print"))
+            self.lbl_step.setText(_t("shift_closing.step2_review"))
 
             # ---- Populate review fields (safe .get()) --------------------
             expected = self.summary.get("expected_cash", Decimal(0))
             variance = self.counted_cash - expected
 
-            self.lbl_expected.setText("Expected: {:,.2f}".format(expected))
-            self.lbl_actual.setText("Actual: {:,.2f}".format(self.counted_cash))
-            self.lbl_variance.setText("Variance: {:,.2f}".format(variance))
+            self.lbl_expected.setText(_t("shift_closing.expected", amount="{:,.2f}".format(expected)))
+            self.lbl_actual.setText(_t("shift_closing.actual", amount="{:,.2f}".format(self.counted_cash)))
+            self.lbl_variance.setText(_t("shift_closing.variance", amount="{:,.2f}".format(variance)))
 
             # colour handling via property (style sheet defined in theme.qss)
             self.lbl_variance.setProperty(
@@ -131,8 +132,8 @@ class ShiftClosingDialog(QDialog):
     def _prev_step(self):
         self.stack.setCurrentIndex(0)
         self.btn_back.setEnabled(False)
-        self.btn_next.setText("Next")
-        self.lbl_step.setText("Step 1: Count Cash")
+        self.btn_next.setText(_t("common.next"))
+        self.lbl_step.setText(_t("shift_closing.step1_count"))
 
     def _close_shift(self):
         variance = self.counted_cash - self.summary.get("expected_cash", Decimal(0))
@@ -141,8 +142,8 @@ class ShiftClosingDialog(QDialog):
         if variance != 0 and not reason:
             QMessageBox.warning(
                 self,
-                "Validation",
-                "Please provide a reason for the variance.",
+                _t("common.warning"),
+                _t("shift_closing.reason_required"),
             )
             return
 
@@ -151,14 +152,14 @@ class ShiftClosingDialog(QDialog):
             # Generate Z-Report (printing is delegated to hardware layer)
             ReceiptService.print_z_report(final_summary)
 
-            QMessageBox.information(self, "Success", "Shift closed and Z-Report generated.")
+            QMessageBox.information(self, _t("common.success"), _t("shift_closing.closed_success"))
 
             # Offer backup after successful shift close.
             # If user starts a backup, accept() is deferred until it finishes.
             if not self._offer_backup():
                 self.accept()
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to close shift: {e}")
+            QMessageBox.critical(self, _t("common.error"), _t("shift_closing.close_failed", error=str(e)))
 
     def _offer_backup(self) -> bool:
         """Prompt user to create a backup after closing the shift.
@@ -169,8 +170,8 @@ class ShiftClosingDialog(QDialog):
         """
         reply = QMessageBox.question(
             self,
-            "Backup",
-            "Would you like to create a backup of the database?",
+            _t("shift_closing.backup"),
+            _t("shift_closing.backup_prompt"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -180,13 +181,13 @@ class ShiftClosingDialog(QDialog):
         from PyQt6.QtWidgets import QFileDialog
 
         default_dir = BackupService.get_default_backup_dir()
-        chosen_dir = QFileDialog.getExistingDirectory(self, "Choose Backup Location", default_dir)
+        chosen_dir = QFileDialog.getExistingDirectory(self, _t("shift_closing.choose_backup_location"), default_dir)
         if not chosen_dir:
             return False
 
         self.btn_cancel.setEnabled(False)
         self.btn_next.setEnabled(False)
-        self.btn_next.setText("Creating backup...")
+        self.btn_next.setText(_t("shift_closing.creating_backup"))
         QApplication.setOverrideCursor(QCursor(Qt.CursorShape.WaitCursor))
 
         self._backup_worker = BackupWorker(chosen_dir)
@@ -199,14 +200,12 @@ class ShiftClosingDialog(QDialog):
         QApplication.restoreOverrideCursor()
         QMessageBox.information(
             self,
-            "Backup Complete",
-            f"Encrypted backup saved to:\n{backup_path}\n\n"  # noqa: E231
-            f"Password: {password}\n\n"
-            f"Keep this password safe \u2014 you need it to restore.",
+            _t("shift_closing.backup_complete"),
+            _t("shift_closing.backup_saved", path=backup_path, password=password),
         )
         self.accept()
 
     def _on_backup_error(self, error_msg: str) -> None:
         QApplication.restoreOverrideCursor()
-        QMessageBox.critical(self, "Backup Failed", f"Backup failed: {error_msg}")
+        QMessageBox.critical(self, _t("shift_closing.backup_failed"), _t("shift_closing.backup_error", error=error_msg))
         self.accept()

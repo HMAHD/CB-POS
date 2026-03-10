@@ -27,6 +27,7 @@ from cbpos.core.services.auth_service import AuthService
 from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.utils.formatters import format_currency
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,9 @@ class DocumentBrowserView(QWidget):
         self.current_page = 1
         self.total_docs = 0
         self.init_ui()
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
         try:
             self.load_documents()
         except Exception as e:
@@ -68,15 +72,15 @@ class DocumentBrowserView(QWidget):
 
         # Title row
         title_row = QHBoxLayout()
-        title = QLabel("Document Browser")
-        title.setObjectName("DocBrowserTitle")
-        title_row.addWidget(title)
+        self.title_label = QLabel()
+        self.title_label.setObjectName("DocBrowserTitle")
+        title_row.addWidget(self.title_label)
         title_row.addStretch()
 
-        new_proforma_btn = QPushButton("+ New Quotation")
-        new_proforma_btn.setObjectName("DocNewQuotationBtn")
-        new_proforma_btn.clicked.connect(self.open_proforma_dialog)
-        title_row.addWidget(new_proforma_btn)
+        self.new_proforma_btn = QPushButton()
+        self.new_proforma_btn.setObjectName("DocNewQuotationBtn")
+        self.new_proforma_btn.clicked.connect(self.open_proforma_dialog)
+        title_row.addWidget(self.new_proforma_btn)
         layout.addLayout(title_row)
 
         # Filter Bar
@@ -86,36 +90,34 @@ class DocumentBrowserView(QWidget):
         filter_layout.setContentsMargins(10, 8, 10, 8)
         filter_layout.setSpacing(8)
 
-        lbl_type = QLabel("Type:")
-        lbl_type.setObjectName("DocFilterLabel")
-        filter_layout.addWidget(lbl_type)
+        self.lbl_type = QLabel()
+        self.lbl_type.setObjectName("DocFilterLabel")
+        filter_layout.addWidget(self.lbl_type)
         self.type_combo = QComboBox()
         self.type_combo.setObjectName("DocFilterCombo")
-        self.type_combo.addItems(["All", "Sales", "Purchases", "Proforma"])
         self.type_combo.setMinimumWidth(110)
         filter_layout.addWidget(self.type_combo)
 
-        lbl_status = QLabel("Status:")
-        lbl_status.setObjectName("DocFilterLabel")
-        filter_layout.addWidget(lbl_status)
+        self.lbl_status = QLabel()
+        self.lbl_status.setObjectName("DocFilterLabel")
+        filter_layout.addWidget(self.lbl_status)
         self.status_combo = QComboBox()
         self.status_combo.setObjectName("DocFilterCombo")
-        self.status_combo.addItems(["All", "Completed", "Void", "Draft", "Quote", "Expired", "Converted"])
         self.status_combo.setMinimumWidth(110)
         filter_layout.addWidget(self.status_combo)
 
-        lbl_from = QLabel("From:")
-        lbl_from.setObjectName("DocFilterLabel")
-        filter_layout.addWidget(lbl_from)
+        self.lbl_from = QLabel()
+        self.lbl_from.setObjectName("DocFilterLabel")
+        filter_layout.addWidget(self.lbl_from)
         self.from_date = QDateEdit()
         self.from_date.setObjectName("DocDateEdit")
         self.from_date.setCalendarPopup(True)
         self.from_date.setDate(QDate.currentDate().addMonths(-1))
         filter_layout.addWidget(self.from_date)
 
-        lbl_to = QLabel("To:")
-        lbl_to.setObjectName("DocFilterLabel")
-        filter_layout.addWidget(lbl_to)
+        self.lbl_to = QLabel()
+        self.lbl_to.setObjectName("DocFilterLabel")
+        filter_layout.addWidget(self.lbl_to)
         self.to_date = QDateEdit()
         self.to_date.setObjectName("DocDateEdit")
         self.to_date.setCalendarPopup(True)
@@ -124,19 +126,18 @@ class DocumentBrowserView(QWidget):
 
         self.search_input = QLineEdit()
         self.search_input.setObjectName("DocSearchInput")
-        self.search_input.setPlaceholderText("Search document number...")
         self.search_input.returnPressed.connect(self.apply_filter)
         filter_layout.addWidget(self.search_input, 1)
 
-        filter_btn = QPushButton("Filter")
-        filter_btn.setObjectName("DocFilterBtn")
-        filter_btn.clicked.connect(self.apply_filter)
-        filter_layout.addWidget(filter_btn)
+        self.filter_btn = QPushButton()
+        self.filter_btn.setObjectName("DocFilterBtn")
+        self.filter_btn.clicked.connect(self.apply_filter)
+        filter_layout.addWidget(self.filter_btn)
 
-        clear_btn = QPushButton("Clear")
-        clear_btn.setObjectName("DocClearBtn")
-        clear_btn.clicked.connect(self.clear_filter)
-        filter_layout.addWidget(clear_btn)
+        self.clear_btn = QPushButton()
+        self.clear_btn.setObjectName("DocClearBtn")
+        self.clear_btn.clicked.connect(self.clear_filter)
+        filter_layout.addWidget(self.clear_btn)
 
         layout.addWidget(filter_frame)
 
@@ -144,9 +145,6 @@ class DocumentBrowserView(QWidget):
         self.doc_table = QTableWidget()
         self.doc_table.setObjectName("DocTable")
         self.doc_table.setColumnCount(7)
-        self.doc_table.setHorizontalHeaderLabels(
-            ["Date", "Doc #", "Type", "Customer/Supplier", "Total", "Status", "User"]
-        )
         self.doc_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.doc_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.doc_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
@@ -169,12 +167,12 @@ class DocumentBrowserView(QWidget):
 
         # Detail header row
         detail_header = QHBoxLayout()
-        self.detail_title = QLabel("Document Details")
+        self.detail_title = QLabel()
         self.detail_title.setObjectName("DocDetailTitle")
         detail_header.addWidget(self.detail_title)
         detail_header.addStretch()
 
-        self.btn_close_detail = QPushButton("Close")
+        self.btn_close_detail = QPushButton()
         self.btn_close_detail.setObjectName("DocDetailCloseBtn")
         self.btn_close_detail.clicked.connect(self._close_detail)
         detail_header.addWidget(self.btn_close_detail)
@@ -189,7 +187,7 @@ class DocumentBrowserView(QWidget):
         info_frame.setObjectName("DocInfoFrame")
         info_layout = QVBoxLayout(info_frame)
         info_layout.setContentsMargins(0, 0, 0, 0)
-        self.details_label = QLabel("Select a document to view details")
+        self.details_label = QLabel()
         self.details_label.setObjectName("DocInfoLabel")
         self.details_label.setWordWrap(True)
         info_layout.addWidget(self.details_label)
@@ -205,14 +203,13 @@ class DocumentBrowserView(QWidget):
         items_frame = QWidget()
         items_layout = QVBoxLayout(items_frame)
         items_layout.setContentsMargins(0, 0, 0, 0)
-        lbl_items_title = QLabel("Line Items")
-        lbl_items_title.setObjectName("DocItemsTitle")
-        items_layout.addWidget(lbl_items_title)
+        self.lbl_items_title = QLabel()
+        self.lbl_items_title.setObjectName("DocItemsTitle")
+        items_layout.addWidget(self.lbl_items_title)
 
         self.items_table = QTableWidget()
         self.items_table.setObjectName("DocItemsTable")
         self.items_table.setColumnCount(5)
-        self.items_table.setHorizontalHeaderLabels(["Product", "Qty", "Unit Price", "Discount", "Total"])
         self.items_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.items_table.verticalHeader().setVisible(False)
         self.items_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -226,25 +223,25 @@ class DocumentBrowserView(QWidget):
         action_row = QHBoxLayout()
         action_row.addStretch()
 
-        self.reprint_btn = QPushButton("Reprint")
+        self.reprint_btn = QPushButton()
         self.reprint_btn.setObjectName("DocReprintBtn")
         self.reprint_btn.clicked.connect(self.reprint_document)
         self.reprint_btn.setEnabled(False)
         action_row.addWidget(self.reprint_btn)
 
-        self.convert_btn = QPushButton("Convert to Sale")
+        self.convert_btn = QPushButton()
         self.convert_btn.setObjectName("DocConvertBtn")
         self.convert_btn.clicked.connect(self.convert_proforma)
         self.convert_btn.setEnabled(False)
         action_row.addWidget(self.convert_btn)
 
-        self.refund_btn = QPushButton("Refund")
+        self.refund_btn = QPushButton()
         self.refund_btn.setObjectName("DocRefundBtn")
         self.refund_btn.clicked.connect(self.process_refund)
         self.refund_btn.setEnabled(False)
         action_row.addWidget(self.refund_btn)
 
-        self.void_btn = QPushButton("Void")
+        self.void_btn = QPushButton()
         self.void_btn.setObjectName("DocVoidBtn")
         self.void_btn.clicked.connect(self.void_document)
         self.void_btn.setEnabled(False)
@@ -260,23 +257,110 @@ class DocumentBrowserView(QWidget):
         page_layout.setContentsMargins(0, 4, 0, 4)
         page_layout.addStretch()
 
-        self.page_label = QLabel("Page 1")
+        self.page_label = QLabel()
         self.page_label.setObjectName("DocPageLabel")
         page_layout.addWidget(self.page_label)
 
-        self.prev_btn = QPushButton("< Previous")
+        self.prev_btn = QPushButton()
         self.prev_btn.setObjectName("DocPrevBtn")
         self.prev_btn.clicked.connect(self.prev_page)
         self.prev_btn.setEnabled(False)
         page_layout.addWidget(self.prev_btn)
 
-        self.next_btn = QPushButton("Next >")
+        self.next_btn = QPushButton()
         self.next_btn.setObjectName("DocNextBtn")
         self.next_btn.clicked.connect(self.next_page)
         self.next_btn.setEnabled(False)
         page_layout.addWidget(self.next_btn)
 
         layout.addWidget(page_bar)
+
+    # ------------------------------------------------------------------
+    # Retranslation
+    # ------------------------------------------------------------------
+
+    def retranslate_ui(self) -> None:
+        """Update all translatable strings."""
+        self.title_label.setText(_t("document_browser.title"))
+        self.new_proforma_btn.setText(_t("document_browser.btn_new_quotation"))
+
+        # Filter labels
+        self.lbl_type.setText(_t("document_browser.filter_type"))
+        self.lbl_status.setText(_t("document_browser.filter_status"))
+        self.lbl_from.setText(_t("document_browser.filter_from"))
+        self.lbl_to.setText(_t("document_browser.filter_to"))
+        self.search_input.setPlaceholderText(_t("document_browser.search_placeholder"))
+        self.filter_btn.setText(_t("document_browser.btn_filter"))
+        self.clear_btn.setText(_t("document_browser.btn_clear"))
+
+        # Type combo
+        current_type = self.type_combo.currentIndex()
+        self.type_combo.clear()
+        self.type_combo.addItems(
+            [
+                _t("document_browser.type_all"),
+                _t("document_browser.type_sales"),
+                _t("document_browser.type_purchases"),
+                _t("document_browser.type_proforma"),
+            ]
+        )
+        if 0 <= current_type < self.type_combo.count():
+            self.type_combo.setCurrentIndex(current_type)
+
+        # Status combo
+        current_status = self.status_combo.currentIndex()
+        self.status_combo.clear()
+        self.status_combo.addItems(
+            [
+                _t("document_browser.status_all"),
+                _t("document_browser.status_completed"),
+                _t("document_browser.status_void"),
+                _t("document_browser.status_draft"),
+                _t("document_browser.status_quote"),
+                _t("document_browser.status_expired"),
+                _t("document_browser.status_converted"),
+            ]
+        )
+        if 0 <= current_status < self.status_combo.count():
+            self.status_combo.setCurrentIndex(current_status)
+
+        # Table headers
+        self.doc_table.setHorizontalHeaderLabels(
+            [
+                _t("document_browser.header_date"),
+                _t("document_browser.header_doc_number"),
+                _t("document_browser.header_type"),
+                _t("document_browser.header_party"),
+                _t("document_browser.header_total"),
+                _t("document_browser.header_status"),
+                _t("document_browser.header_user"),
+            ]
+        )
+
+        # Detail panel
+        self.detail_title.setText(_t("document_browser.detail_title"))
+        self.details_label.setText(_t("document_browser.detail_empty"))
+        self.btn_close_detail.setText(_t("document_browser.btn_close"))
+        self.lbl_items_title.setText(_t("document_browser.detail_line_items"))
+        self.items_table.setHorizontalHeaderLabels(
+            [
+                _t("document_browser.item_header_product"),
+                _t("document_browser.item_header_qty"),
+                _t("document_browser.item_header_unit_price"),
+                _t("document_browser.item_header_discount"),
+                _t("document_browser.item_header_total"),
+            ]
+        )
+
+        # Action buttons
+        self.reprint_btn.setText(_t("document_browser.btn_reprint"))
+        self.convert_btn.setText(_t("document_browser.btn_convert_to_sale"))
+        self.refund_btn.setText(_t("document_browser.btn_refund"))
+        self.void_btn.setText(_t("document_browser.btn_void"))
+
+        # Pagination
+        self.prev_btn.setText(_t("document_browser.btn_previous"))
+        self.next_btn.setText(_t("document_browser.btn_next"))
 
     # ------------------------------------------------------------------
     # Detail Panel
@@ -317,24 +401,19 @@ class DocumentBrowserView(QWidget):
 
     def load_documents(self) -> None:
         """Load documents from service with current filters."""
-        type_map = {
-            "All": None,
-            "Sales": "SALE",
-            "Purchases": "PURCHASE",
-            "Proforma": "PROFORMA",
-        }
+        type_map = {0: None, 1: "SALE", 2: "PURCHASE", 3: "PROFORMA"}
         status_map = {
-            "All": None,
-            "Completed": "COMPLETED",
-            "Void": "VOID",
-            "Draft": "DRAFT",
-            "Quote": "QUOTE",
-            "Expired": "EXPIRED",
-            "Converted": "CONVERTED",
+            0: None,
+            1: "COMPLETED",
+            2: "VOID",
+            3: "DRAFT",
+            4: "QUOTE",
+            5: "EXPIRED",
+            6: "CONVERTED",
         }
 
-        doc_type = type_map.get(self.type_combo.currentText())
-        status = status_map.get(self.status_combo.currentText())
+        doc_type = type_map.get(self.type_combo.currentIndex())
+        status = status_map.get(self.status_combo.currentIndex())
 
         from_date = self.from_date.date().toPyDate()
         to_date = self.to_date.date().toPyDate()
@@ -373,9 +452,9 @@ class DocumentBrowserView(QWidget):
             self.doc_table.setItem(row, 1, QTableWidgetItem(doc["document_number"]))
 
             type_display = {
-                "SALE": "Sale",
-                "PURCHASE": "Purchase",
-                "PROFORMA": "Quotation",
+                "SALE": _t("document_browser.type_sale_display"),
+                "PURCHASE": _t("document_browser.type_purchase_display"),
+                "PROFORMA": _t("document_browser.type_quotation_display"),
             }
             self.doc_table.setItem(row, 2, QTableWidgetItem(type_display.get(doc["type"], doc["type"])))
 
@@ -418,51 +497,68 @@ class DocumentBrowserView(QWidget):
     def display_details(self, doc: dict) -> None:
         """Display document details in the detail panel."""
         type_labels = {
-            "sale": "Sale",
-            "purchase": "Purchase",
-            "proforma": "Quotation",
+            "sale": _t("document_browser.type_sale_display"),
+            "purchase": _t("document_browser.type_purchase_display"),
+            "proforma": _t("document_browser.type_quotation_display"),
         }
 
         self.detail_title.setText(f"{type_labels.get(doc['type'], doc['type'])} — {doc['document_number']}")
 
         html = (
-            f"<b>Date:</b> {doc['date'].strftime('%Y-%m-%d %H:%M:%S') if doc['date'] else 'N/A'}<br>"  # noqa: E231
-            f"<b>Status:</b> {doc['status']}<br>"  # noqa: E231
-            f"<b>User:</b> {doc.get('username', '')}<br>"  # noqa: E231
+            f"<b>{_t('document_browser.detail_date')}:</b> "  # noqa: E231
+            f"{doc['date'].strftime('%Y-%m-%d %H:%M:%S') if doc['date'] else 'N/A'}<br>"
+            f"<b>{_t('document_browser.detail_status')}:</b> {doc['status']}<br>"  # noqa: E231
+            f"<b>{_t('document_browser.detail_user')}:</b> {doc.get('username', '')}<br>"  # noqa: E231
         )
 
         entity = doc.get("entity_name", "")
         if entity:
-            label = "Supplier" if doc["type"] == "purchase" else "Customer"
+            label = (
+                _t("document_browser.detail_supplier")
+                if doc["type"] == "purchase"
+                else _t("document_browser.detail_customer")
+            )
             html += f"<b>{label}:</b> {entity}<br>"  # noqa: E231
 
         total = doc.get("total_amount")
         if total is not None:
-            html += f"<b>Total:</b> {format_currency(total)}<br>"  # noqa: E231
+            html += f"<b>{_t('document_browser.detail_total')}:</b> {format_currency(total)}<br>"  # noqa: E231
 
         if doc["type"] == "sale":
             tax_vat = doc.get("tax_vat")
             if tax_vat is not None:
-                html += f"<b>VAT (18%):</b> {format_currency(tax_vat)}<br>"  # noqa: E231
+                html += f"<b>{_t('document_browser.detail_vat')}:</b> {format_currency(tax_vat)}<br>"  # noqa: E231
             tax_sscl = doc.get("tax_sscl")
             if tax_sscl is not None:
-                html += f"<b>SSCL (2.5%):</b> {format_currency(tax_sscl)}<br>"  # noqa: E231
+                html += f"<b>{_t('document_browser.detail_sscl')}:</b> {format_currency(tax_sscl)}<br>"  # noqa: E231
             net_revenue = doc.get("net_revenue")
             if net_revenue is not None:
-                html += f"<b>Net Revenue:</b> {format_currency(net_revenue)}<br>"  # noqa: E231
+                html += (
+                    f"<b>{_t('document_browser.detail_net_revenue')}:</b> "  # noqa: E231
+                    f"{format_currency(net_revenue)}<br>"
+                )
 
         if doc["type"] == "proforma":
             if doc.get("validity_days"):
-                html += f"<b>Validity:</b> {doc['validity_days']} days<br>"  # noqa: E231
+                html += (
+                    f"<b>{_t('document_browser.detail_validity')}:</b> "  # noqa: E231
+                    f"{doc['validity_days']} {_t('document_browser.detail_days')}<br>"
+                )
             if doc.get("expiry_date"):
-                html += f"<b>Expiry:</b> {doc['expiry_date']}<br>"  # noqa: E231
+                html += f"<b>{_t('document_browser.detail_expiry')}:</b> {doc['expiry_date']}<br>"  # noqa: E231
             if doc.get("notes"):
-                html += f"<b>Notes:</b> {doc['notes']}<br>"  # noqa: E231
+                html += f"<b>{_t('document_browser.detail_notes')}:</b> {doc['notes']}<br>"  # noqa: E231
             if doc.get("converted_sale_id"):
-                html += f"<b>Converted to Sale:</b> #{doc['converted_sale_id']}<br>"  # noqa: E231
+                html += (
+                    f"<b>{_t('document_browser.detail_converted_to_sale')}:</b> "  # noqa: E231
+                    f"#{doc['converted_sale_id']}<br>"
+                )
 
         if doc.get("refund_of_sale_id"):
-            html += f"<b>Refund of Sale:</b> #{doc['refund_of_sale_id']}<br>"  # noqa: E231
+            html += (
+                f"<b>{_t('document_browser.detail_refund_of_sale')}:</b> "  # noqa: E231
+                f"#{doc['refund_of_sale_id']}<br>"
+            )
 
         self.details_label.setText(html)
 
@@ -496,7 +592,9 @@ class DocumentBrowserView(QWidget):
             pay_lines = []
             for p in payments:
                 pay_lines.append(f"{p['method']}: {format_currency(p['amount'])}")
-            self.payment_label.setText("<b>Payments:</b> " + " | ".join(pay_lines))
+            self.payment_label.setText(
+                f"<b>{_t('document_browser.detail_payments')}:</b> " + " | ".join(pay_lines)  # noqa: E231
+            )
         else:
             self.payment_label.setText("")
 
@@ -558,8 +656,11 @@ class DocumentBrowserView(QWidget):
 
                     QMessageBox.information(
                         self,
-                        "Success",
-                        f"Receipt {self.current_doc['document_number']} sent to printer.",
+                        _t("common.success"),
+                        _t(
+                            "document_browser.receipt_sent_to_printer",
+                            doc_number=self.current_doc["document_number"],
+                        ),
                     )
             elif doc_type == "proforma":
                 from cbpos.core.services.receipt_builder import ReceiptBuilder
@@ -571,18 +672,25 @@ class DocumentBrowserView(QWidget):
                     worker.add_job("print_commands", commands)
                     QMessageBox.information(
                         self,
-                        "Success",
-                        f"Quotation {self.current_doc['document_number']} sent to printer.",
+                        _t("common.success"),
+                        _t(
+                            "document_browser.quotation_sent_to_printer",
+                            doc_number=self.current_doc["document_number"],
+                        ),
                     )
             else:
                 QMessageBox.information(
                     self,
-                    "Info",
-                    "Reprint is not yet supported for this document type.",
+                    _t("document_browser.info_title"),
+                    _t("document_browser.reprint_not_supported"),
                 )
 
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to reprint: {e}")
+            QMessageBox.critical(
+                self,
+                _t("common.error"),
+                _t("document_browser.reprint_failed", error=str(e)),
+            )
 
     def process_refund(self) -> None:
         """Process a refund for the selected sale."""
@@ -591,12 +699,12 @@ class DocumentBrowserView(QWidget):
 
         reply = QMessageBox.question(
             self,
-            "Confirm Refund",
-            f"<b>Refund Transaction?</b><br><br>"
-            f"Receipt: {self.current_doc['document_number']}<br>"
-            f"Amount: {format_currency(self.current_doc['total_amount'])}<br><br>"
-            f"<b style='color: #FF4136'>Warning:</b> "  # noqa: E231
-            f"Stock will be restored. This action cannot be undone.",
+            _t("document_browser.confirm_refund_title"),
+            f"<b>{_t('document_browser.refund_question')}</b><br><br>"
+            f"{_t('document_browser.detail_receipt')}: {self.current_doc['document_number']}<br>"
+            f"{_t('common.amount')}: {format_currency(self.current_doc['total_amount'])}<br><br>"
+            f"<b style='color: #FF4136'>{_t('common.warning')}:</b> "  # noqa: E231
+            f"{_t('document_browser.refund_warning')}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -605,21 +713,29 @@ class DocumentBrowserView(QWidget):
             try:
                 current_user = AuthService.get_current_user()
                 if not current_user:
-                    QMessageBox.warning(self, "Error", "No user logged in.")
+                    QMessageBox.warning(self, _t("common.error"), _t("document_browser.no_user_msg"))
                     return
 
                 success = TransactionService.process_refund(self.current_doc["id"], "Customer Return", current_user.id)
                 if success:
-                    QMessageBox.information(self, "Success", "Refund processed successfully.")
+                    QMessageBox.information(
+                        self,
+                        _t("common.success"),
+                        _t("document_browser.refund_success"),
+                    )
                     self.load_documents()
                 else:
                     QMessageBox.critical(
                         self,
-                        "Error",
-                        "Failed to process refund. Check logs.",
+                        _t("common.error"),
+                        _t("document_browser.refund_failed"),
                     )
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Refund failed: {e}")
+                QMessageBox.critical(
+                    self,
+                    _t("common.error"),
+                    _t("document_browser.refund_error", error=str(e)),
+                )
 
     def convert_proforma(self) -> None:
         """Convert selected proforma to a sale via SalesView."""
@@ -628,9 +744,11 @@ class DocumentBrowserView(QWidget):
 
         reply = QMessageBox.question(
             self,
-            "Convert to Sale",
-            f"Convert quotation <b>{self.current_doc['document_number']}</b> to a sale?<br><br>"
-            f"The items will be loaded into the POS cart for checkout.",
+            _t("document_browser.convert_title"),
+            _t(
+                "document_browser.convert_question",
+                doc_number=self.current_doc["document_number"],
+            ),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -642,8 +760,8 @@ class DocumentBrowserView(QWidget):
             else:
                 QMessageBox.critical(
                     self,
-                    "Error",
-                    "Failed to prepare proforma for conversion.",
+                    _t("common.error"),
+                    _t("document_browser.convert_failed"),
                 )
 
     def void_document(self) -> None:
@@ -662,9 +780,9 @@ class DocumentBrowserView(QWidget):
 
         reply = QMessageBox.question(
             self,
-            "Confirm Void",
-            f"<b>Void document {doc_number}?</b><br><br>"
-            f"<b style='color: #FF4136'>This action cannot be undone.</b>",
+            _t("document_browser.confirm_void_title"),
+            f"<b>{_t('document_browser.void_question', doc_number=doc_number)}</b><br><br>"
+            f"<b style='color: #FF4136'>{_t('document_browser.void_warning')}</b>",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -678,24 +796,36 @@ class DocumentBrowserView(QWidget):
             elif doc_type == "sale":
                 current_user = AuthService.get_current_user()
                 if not current_user:
-                    QMessageBox.warning(self, "Error", "No user logged in.")
+                    QMessageBox.warning(self, _t("common.error"), _t("document_browser.no_user_msg"))
                     return
                 success = TransactionService.void_sale(self.current_doc["id"], current_user.id)
             else:
                 QMessageBox.information(
                     self,
-                    "Info",
-                    "Void not supported for this document type.",
+                    _t("document_browser.info_title"),
+                    _t("document_browser.void_not_supported"),
                 )
                 return
 
             if success:
-                QMessageBox.information(self, "Success", f"Document {doc_number} voided.")
+                QMessageBox.information(
+                    self,
+                    _t("common.success"),
+                    _t("document_browser.void_success", doc_number=doc_number),
+                )
                 self.load_documents()
             else:
-                QMessageBox.critical(self, "Error", "Failed to void document.")
+                QMessageBox.critical(
+                    self,
+                    _t("common.error"),
+                    _t("document_browser.void_failed"),
+                )
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Void failed: {e}")
+            QMessageBox.critical(
+                self,
+                _t("common.error"),
+                _t("document_browser.void_error", error=str(e)),
+            )
 
     def open_proforma_dialog(self) -> None:
         """Open the dialog to create a new proforma/quotation."""
@@ -712,7 +842,14 @@ class DocumentBrowserView(QWidget):
     def update_pagination(self) -> None:
         """Update pagination controls."""
         total_pages = max(1, (self.total_docs + 49) // 50)
-        self.page_label.setText(f"Page {self.current_page} of {total_pages} ({self.total_docs} docs)")
+        self.page_label.setText(
+            _t(
+                "document_browser.page_info",
+                current=self.current_page,
+                total_pages=total_pages,
+                total_docs=self.total_docs,
+            )
+        )
         self.prev_btn.setEnabled(self.current_page > 1)
         self.next_btn.setEnabled(self.current_page < total_pages)
 

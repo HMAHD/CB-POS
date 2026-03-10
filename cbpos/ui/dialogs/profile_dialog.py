@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.user_service import UserService
+from cbpos.i18n import _t
 
 
 class ProfileDialog(QDialog):
@@ -17,7 +18,7 @@ class ProfileDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Edit Profile")
+        self.setWindowTitle(_t("profile.title"))
         self.setFixedSize(400, 300)
         self.setObjectName("ProfileDialog")
         self.init_ui()
@@ -28,7 +29,7 @@ class ProfileDialog(QDialog):
         layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(20)
 
-        title = QLabel("Edit Profile")
+        title = QLabel(_t("profile.title"))
         title.setObjectName("DialogTitle")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
@@ -40,20 +41,20 @@ class ProfileDialog(QDialog):
         form.setHorizontalSpacing(20)
 
         self.input_name = QLineEdit()
-        form.addRow("Display Name:", self.input_name)
+        form.addRow(_t("profile.display_name"), self.input_name)
 
         self.input_current_pin = QLineEdit()
         self.input_current_pin.setEchoMode(QLineEdit.EchoMode.Password)
-        form.addRow("Current PIN:", self.input_current_pin)
+        form.addRow(_t("profile.current_pin"), self.input_current_pin)
 
         self.input_new_pin = QLineEdit()
         self.input_new_pin.setEchoMode(QLineEdit.EchoMode.Password)
-        self.input_new_pin.setPlaceholderText("Leave empty to keep current")
-        form.addRow("New PIN:", self.input_new_pin)
+        self.input_new_pin.setPlaceholderText(_t("profile.new_pin_placeholder"))
+        form.addRow(_t("profile.new_pin"), self.input_new_pin)
 
         layout.addLayout(form)
 
-        self.btn_update = QPushButton("Update Profile")
+        self.btn_update = QPushButton(_t("profile.btn_update"))
         self.btn_update.setObjectName("BtnSave")
         self.btn_update.clicked.connect(self.update_profile)
         layout.addWidget(self.btn_update)
@@ -73,18 +74,18 @@ class ProfileDialog(QDialog):
         display_name = self.input_name.text()
 
         if not current_pin:
-            QMessageBox.warning(self, "Error", "Current PIN is required.")
+            QMessageBox.warning(self, _t("common.error"), _t("profile.pin_required"))
             return
 
         verified_user = AuthService.verify_pin(current_pin)
         if not verified_user or verified_user.id != user.id:
-            QMessageBox.critical(self, "Error", "Invalid Current PIN.")
+            QMessageBox.critical(self, _t("common.error"), _t("profile.invalid_pin"))
             return
 
         success = UserService.update_user_profile(user.id, display_name, new_pin if new_pin else None)
 
         if success:
-            QMessageBox.information(self, "Success", "Profile updated successfully.")
+            QMessageBox.information(self, _t("common.success"), _t("profile.update_success"))
             self.accept()
         else:
-            QMessageBox.critical(self, "Error", "Failed to update profile.")
+            QMessageBox.critical(self, _t("common.error"), _t("profile.update_failed"))

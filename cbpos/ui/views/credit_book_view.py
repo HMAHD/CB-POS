@@ -25,6 +25,7 @@ from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.ui.dialogs.customer_editor import CustomerEditor
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,9 @@ class CreditBookView(QWidget):
         self.customer_service = CustomerService()
         self.selected_customer = None
         self.init_ui()
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
         self.load_customers()
 
     def init_ui(self) -> None:
@@ -72,12 +76,12 @@ class CreditBookView(QWidget):
 
         # Header row
         header_row = QHBoxLayout()
-        title = QLabel("Credit Book")
-        title.setObjectName("CreditPageTitle")
-        header_row.addWidget(title)
+        self.title_label = QLabel()
+        self.title_label.setObjectName("CreditPageTitle")
+        header_row.addWidget(self.title_label)
         header_row.addStretch()
 
-        self.btn_add_customer = QPushButton("+ Add Customer")
+        self.btn_add_customer = QPushButton()
         self.btn_add_customer.setObjectName("CreditAddBtn")
         self.btn_add_customer.clicked.connect(self.open_add_customer)
         header_row.addWidget(self.btn_add_customer)
@@ -86,7 +90,6 @@ class CreditBookView(QWidget):
         # Search bar
         self.search_input = QLineEdit()
         self.search_input.setObjectName("CreditSearchInput")
-        self.search_input.setPlaceholderText("Search by name or phone...")
         self.search_input.textChanged.connect(self.filter_customers)
         page_layout.addWidget(self.search_input)
 
@@ -94,7 +97,6 @@ class CreditBookView(QWidget):
         self.customer_table = QTableWidget()
         self.customer_table.setObjectName("CreditCustomerTable")
         self.customer_table.setColumnCount(5)
-        self.customer_table.setHorizontalHeaderLabels(["ID", "Name", "Phone", "Outstanding Debt", "Credit Limit"])
         self.customer_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.customer_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.customer_table.setColumnHidden(0, True)
@@ -111,9 +113,9 @@ class CreditBookView(QWidget):
         footer.setObjectName("CreditListFooter")
         footer_layout = QHBoxLayout(footer)
         footer_layout.setContentsMargins(8, 8, 8, 8)
-        self.lbl_total_customers = QLabel("0 customers")
+        self.lbl_total_customers = QLabel()
         self.lbl_total_customers.setObjectName("CreditFooterLabel")
-        self.lbl_total_outstanding = QLabel("Total Outstanding: ---")
+        self.lbl_total_outstanding = QLabel()
         self.lbl_total_outstanding.setObjectName("CreditFooterDebt")
         footer_layout.addWidget(self.lbl_total_customers)
         footer_layout.addStretch()
@@ -135,7 +137,7 @@ class CreditBookView(QWidget):
 
         # Back button + title row
         nav_row = QHBoxLayout()
-        self.btn_back = QPushButton("< Back to Customers")
+        self.btn_back = QPushButton()
         self.btn_back.setObjectName("CreditBackBtn")
         self.btn_back.clicked.connect(self._go_back)
         nav_row.addWidget(self.btn_back)
@@ -151,7 +153,7 @@ class CreditBookView(QWidget):
 
         # Row 1: Name + Phone
         row1 = QHBoxLayout()
-        self.lbl_cust_name = QLabel("Customer Name")
+        self.lbl_cust_name = QLabel()
         self.lbl_cust_name.setObjectName("CreditCustName")
         self.lbl_cust_phone = QLabel("")
         self.lbl_cust_phone.setObjectName("CreditCustPhone")
@@ -163,11 +165,11 @@ class CreditBookView(QWidget):
         # Row 2: Metric cards
         row2 = QHBoxLayout()
         row2.setSpacing(16)
-        self.lbl_debt = QLabel("Debt: ---")
+        self.lbl_debt = QLabel()
         self.lbl_debt.setObjectName("CreditMetricDebt")
-        self.lbl_available = QLabel("Available: ---")
+        self.lbl_available = QLabel()
         self.lbl_available.setObjectName("CreditMetricAvail")
-        self.lbl_last_payment = QLabel("Last Payment: ---")
+        self.lbl_last_payment = QLabel()
         self.lbl_last_payment.setObjectName("CreditMetricLast")
         row2.addWidget(self.lbl_debt)
         row2.addWidget(self.lbl_available)
@@ -184,22 +186,22 @@ class CreditBookView(QWidget):
         action_layout.setContentsMargins(0, 0, 0, 0)
         action_layout.setSpacing(8)
 
-        self.btn_receive_payment = QPushButton("Receive Payment")
+        self.btn_receive_payment = QPushButton()
         self.btn_receive_payment.setObjectName("CreditPayBtn")
         self.btn_receive_payment.clicked.connect(self.receive_payment)
         action_layout.addWidget(self.btn_receive_payment)
 
-        self.btn_print_statement = QPushButton("Print Statement")
+        self.btn_print_statement = QPushButton()
         self.btn_print_statement.setObjectName("CreditPrintBtn")
         self.btn_print_statement.clicked.connect(self.print_statement)
         action_layout.addWidget(self.btn_print_statement)
 
-        self.btn_adjust = QPushButton("Adjust Balance")
+        self.btn_adjust = QPushButton()
         self.btn_adjust.setObjectName("CreditAdjustBtn")
         self.btn_adjust.clicked.connect(self.adjust_balance)
         action_layout.addWidget(self.btn_adjust)
 
-        self.btn_edit_customer = QPushButton("Edit Customer")
+        self.btn_edit_customer = QPushButton()
         self.btn_edit_customer.setObjectName("CreditEditBtn")
         self.btn_edit_customer.clicked.connect(self.edit_customer)
         action_layout.addWidget(self.btn_edit_customer)
@@ -214,9 +216,9 @@ class CreditBookView(QWidget):
         filter_layout.setContentsMargins(0, 0, 0, 0)
         filter_layout.setSpacing(8)
 
-        lbl_from = QLabel("From:")
-        lbl_from.setObjectName("CreditFilterLabel")
-        filter_layout.addWidget(lbl_from)
+        self.lbl_from = QLabel()
+        self.lbl_from.setObjectName("CreditFilterLabel")
+        filter_layout.addWidget(self.lbl_from)
         self.date_from = QDateEdit()
         self.date_from.setObjectName("CreditDateEdit")
         self.date_from.setCalendarPopup(True)
@@ -224,9 +226,9 @@ class CreditBookView(QWidget):
         self.date_from.dateChanged.connect(self.reload_ledger)
         filter_layout.addWidget(self.date_from)
 
-        lbl_to = QLabel("To:")
-        lbl_to.setObjectName("CreditFilterLabel")
-        filter_layout.addWidget(lbl_to)
+        self.lbl_to = QLabel()
+        self.lbl_to.setObjectName("CreditFilterLabel")
+        filter_layout.addWidget(self.lbl_to)
         self.date_to = QDateEdit()
         self.date_to.setObjectName("CreditDateEdit")
         self.date_to.setCalendarPopup(True)
@@ -234,7 +236,7 @@ class CreditBookView(QWidget):
         self.date_to.dateChanged.connect(self.reload_ledger)
         filter_layout.addWidget(self.date_to)
 
-        self.btn_all_dates = QPushButton("All")
+        self.btn_all_dates = QPushButton()
         self.btn_all_dates.setObjectName("CreditAllDatesBtn")
         self.btn_all_dates.clicked.connect(self.show_all_dates)
         filter_layout.addWidget(self.btn_all_dates)
@@ -246,7 +248,6 @@ class CreditBookView(QWidget):
         self.ledger_table = QTableWidget()
         self.ledger_table.setObjectName("CreditLedgerTable")
         self.ledger_table.setColumnCount(6)
-        self.ledger_table.setHorizontalHeaderLabels(["Date", "Type", "Doc #", "Debit", "Credit", "Balance"])
         self.ledger_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.ledger_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         self.ledger_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -265,11 +266,11 @@ class CreditBookView(QWidget):
         footer.setObjectName("CreditLedgerFooter")
         footer_layout = QHBoxLayout(footer)
         footer_layout.setContentsMargins(8, 8, 8, 8)
-        self.lbl_total_sales = QLabel("Sales: ---")
+        self.lbl_total_sales = QLabel()
         self.lbl_total_sales.setObjectName("CreditLedgerDebit")
-        self.lbl_total_payments = QLabel("Payments: ---")
+        self.lbl_total_payments = QLabel()
         self.lbl_total_payments.setObjectName("CreditLedgerCredit")
-        self.lbl_closing = QLabel("Closing: ---")
+        self.lbl_closing = QLabel()
         self.lbl_closing.setObjectName("CreditLedgerClosing")
         footer_layout.addWidget(self.lbl_total_sales)
         footer_layout.addWidget(self.lbl_total_payments)
@@ -278,6 +279,43 @@ class CreditBookView(QWidget):
         page_layout.addWidget(footer)
 
         self.stack.addWidget(page)
+
+    # ------------------------------------------------------------------
+    # Retranslation
+    # ------------------------------------------------------------------
+
+    def retranslate_ui(self) -> None:
+        """Update all translatable strings."""
+        self.title_label.setText(_t("credit_book.title"))
+        self.btn_add_customer.setText(_t("credit_book.btn_add_customer"))
+        self.search_input.setPlaceholderText(_t("credit_book.search_placeholder"))
+        self.customer_table.setHorizontalHeaderLabels(
+            [
+                _t("credit_book.customer_header_id"),
+                _t("credit_book.customer_header_name"),
+                _t("credit_book.customer_header_phone"),
+                _t("credit_book.customer_header_debt"),
+                _t("credit_book.customer_header_limit"),
+            ]
+        )
+        self.btn_back.setText(_t("credit_book.btn_back"))
+        self.btn_receive_payment.setText(_t("credit_book.btn_receive_payment"))
+        self.btn_print_statement.setText(_t("credit_book.btn_print_statement"))
+        self.btn_adjust.setText(_t("credit_book.btn_adjust_balance"))
+        self.btn_edit_customer.setText(_t("credit_book.btn_edit_customer"))
+        self.lbl_from.setText(_t("credit_book.from"))
+        self.lbl_to.setText(_t("credit_book.to"))
+        self.btn_all_dates.setText(_t("credit_book.all"))
+        self.ledger_table.setHorizontalHeaderLabels(
+            [
+                _t("credit_book.ledger_header_date"),
+                _t("credit_book.ledger_header_type"),
+                _t("credit_book.ledger_header_doc"),
+                _t("credit_book.ledger_header_debit"),
+                _t("credit_book.ledger_header_credit"),
+                _t("credit_book.ledger_header_balance"),
+            ]
+        )
 
     # ------------------------------------------------------------------
     # Navigation
@@ -324,14 +362,16 @@ class CreditBookView(QWidget):
 
         if not customers:
             self.customer_table.insertRow(0)
-            empty_item = QTableWidgetItem("No credit customers found")
+            empty_item = QTableWidgetItem(_t("credit_book.no_customers_found"))
             empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             empty_item.setForeground(QColor("gray"))
             empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
             self.customer_table.setItem(0, 0, empty_item)
             self.customer_table.setSpan(0, 0, 1, self.customer_table.columnCount())
-            self.lbl_total_customers.setText("0 customers")
-            self.lbl_total_outstanding.setText(f"Total Outstanding: {format_currency(Decimal('0.00'))}")
+            self.lbl_total_customers.setText(_t("credit_book.customer_count", count=0))
+            self.lbl_total_outstanding.setText(
+                _t("credit_book.total_outstanding", amount=format_currency(Decimal("0.00")))
+            )
             return
 
         total_outstanding = Decimal("0.00")
@@ -369,26 +409,30 @@ class CreditBookView(QWidget):
 
         # Update footer
         count = len(customers)
-        self.lbl_total_customers.setText(f"{count} customer{'s' if count != 1 else ''}")
-        self.lbl_total_outstanding.setText(f"Total Outstanding: {format_currency(total_outstanding)}")
+        self.lbl_total_customers.setText(_t("credit_book.customer_count", count=count))
+        self.lbl_total_outstanding.setText(
+            _t("credit_book.total_outstanding", amount=format_currency(total_outstanding))
+        )
 
     def update_header(self, customer) -> None:
         """Update the header card with customer details."""
         self.lbl_cust_name.setText(customer.name)
-        self.lbl_cust_phone.setText(customer.phone or "No phone")
+        self.lbl_cust_phone.setText(customer.phone or _t("credit_book.no_phone"))
 
         summary = CustomerCreditService.get_customer_summary(customer.id)
         if summary:
-            self.lbl_debt.setText(f"Debt: {format_currency(summary['current_debt'])}")
-            self.lbl_available.setText(f"Available: {format_currency(summary['available'])}")
+            self.lbl_debt.setText(_t("credit_book.debt_label") + " " + format_currency(summary["current_debt"]))
+            self.lbl_available.setText(_t("credit_book.available_label") + " " + format_currency(summary["available"]))
             if summary["last_payment_date"]:
-                self.lbl_last_payment.setText(f"Last Payment: {summary['last_payment_date'].strftime('%Y-%m-%d')}")
+                self.lbl_last_payment.setText(
+                    _t("credit_book.last_payment_label") + " " + summary["last_payment_date"].strftime("%Y-%m-%d")
+                )
             else:
-                self.lbl_last_payment.setText("Last Payment: None")
+                self.lbl_last_payment.setText(_t("credit_book.last_payment_label") + " " + _t("credit_book.none"))
         else:
-            self.lbl_debt.setText("Debt: ---")
-            self.lbl_available.setText("Available: ---")
-            self.lbl_last_payment.setText("Last Payment: ---")
+            self.lbl_debt.setText(_t("credit_book.debt_label") + " ---")
+            self.lbl_available.setText(_t("credit_book.available_label") + " ---")
+            self.lbl_last_payment.setText(_t("credit_book.last_payment_label") + " ---")
 
     # ========== Ledger Methods ==========
 
@@ -473,9 +517,9 @@ class CreditBookView(QWidget):
             closing_balance = entry.balance_after
 
         # Update footer
-        self.lbl_total_sales.setText(f"Sales: {format_currency(total_debit)}")
-        self.lbl_total_payments.setText(f"Payments: {format_currency(total_credit)}")
-        self.lbl_closing.setText(f"Closing: {format_currency(closing_balance)}")
+        self.lbl_total_sales.setText(_t("credit_book.sales_label") + " " + format_currency(total_debit))
+        self.lbl_total_payments.setText(_t("credit_book.payments_label") + " " + format_currency(total_credit))
+        self.lbl_closing.setText(_t("credit_book.closing_label") + " " + format_currency(closing_balance))
 
     # ========== Action Methods ==========
 
@@ -488,11 +532,19 @@ class CreditBookView(QWidget):
             return
 
         if not self.selected_customer:
-            QMessageBox.warning(self, "No Customer", "Please select a customer first.")
+            QMessageBox.warning(
+                self,
+                _t("credit_book.no_customer_title"),
+                _t("credit_book.no_customer_msg"),
+            )
             return
 
         if self.selected_customer.current_debt <= 0:
-            QMessageBox.information(self, "No Debt", "This customer has no outstanding debt.")
+            QMessageBox.information(
+                self,
+                _t("credit_book.no_debt_title"),
+                _t("credit_book.no_debt_msg"),
+            )
             return
 
         from cbpos.ui.dialogs.receive_payment_dialog import ReceivePaymentDialog
@@ -506,7 +558,11 @@ class CreditBookView(QWidget):
     def print_statement(self) -> None:
         """Open customer statement dialog for viewing and printing."""
         if not self.selected_customer:
-            QMessageBox.warning(self, "No Customer", "Please select a customer first.")
+            QMessageBox.warning(
+                self,
+                _t("credit_book.no_customer_title"),
+                _t("credit_book.no_customer_msg"),
+            )
             return
 
         from cbpos.ui.dialogs.customer_statement_dialog import (
@@ -525,13 +581,17 @@ class CreditBookView(QWidget):
             return
 
         if not self.selected_customer:
-            QMessageBox.warning(self, "No Customer", "Please select a customer first.")
+            QMessageBox.warning(
+                self,
+                _t("credit_book.no_customer_title"),
+                _t("credit_book.no_customer_msg"),
+            )
             return
 
         amount_str, ok = QInputDialog.getText(
             self,
-            "Adjust Balance",
-            "Enter adjustment amount (positive = increase debt, negative = decrease):",
+            _t("credit_book.adjust_title"),
+            _t("credit_book.adjust_prompt"),
         )
         if not ok or not amount_str:
             return
@@ -539,17 +599,29 @@ class CreditBookView(QWidget):
         try:
             amount = Decimal(amount_str)
         except Exception:
-            QMessageBox.warning(self, "Invalid", "Invalid amount.")
+            QMessageBox.warning(
+                self,
+                _t("credit_book.invalid_title"),
+                _t("credit_book.invalid_amount_msg"),
+            )
             return
 
-        note, ok = QInputDialog.getText(self, "Adjustment Note", "Reason for adjustment (required):")
+        note, ok = QInputDialog.getText(
+            self,
+            _t("credit_book.adjust_note_title"),
+            _t("credit_book.adjust_note_prompt"),
+        )
         if not ok or not note:
-            QMessageBox.warning(self, "Required", "A reason is required for adjustments.")
+            QMessageBox.warning(
+                self,
+                _t("credit_book.required_title"),
+                _t("credit_book.reason_required_msg"),
+            )
             return
 
         current_user = AuthService.get_current_user()
         if not current_user:
-            QMessageBox.warning(self, "Error", "No user logged in.")
+            QMessageBox.warning(self, _t("common.error"), _t("credit_book.no_user_msg"))
             return
 
         try:
@@ -559,17 +631,25 @@ class CreditBookView(QWidget):
                 note=note,
                 user_id=current_user.id,
             )
-            QMessageBox.information(self, "Done", "Balance adjusted successfully.")
+            QMessageBox.information(
+                self,
+                _t("credit_book.done_title"),
+                _t("credit_book.balance_adjusted_msg"),
+            )
             self.selected_customer = self.customer_service.get_customer(self.selected_customer.id)
             self.update_header(self.selected_customer)
             self.reload_ledger()
         except ValueError as e:
-            QMessageBox.warning(self, "Error", str(e))
+            QMessageBox.warning(self, _t("common.error"), str(e))
 
     def edit_customer(self) -> None:
         """Open the customer editor for the selected customer."""
         if not self.selected_customer:
-            QMessageBox.warning(self, "No Customer", "Please select a customer first.")
+            QMessageBox.warning(
+                self,
+                _t("credit_book.no_customer_title"),
+                _t("credit_book.no_customer_msg"),
+            )
             return
 
         dialog = CustomerEditor(self.selected_customer, parent=self)

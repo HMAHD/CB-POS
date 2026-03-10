@@ -14,6 +14,7 @@ from PyQt6.QtGui import QColor
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.ui.dialogs.customer_editor import CustomerEditor
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
 class CustomerView(QWidget):
@@ -24,16 +25,19 @@ class CustomerView(QWidget):
         self.init_ui()
         self.load_customers()
 
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
     def init_ui(self):
         layout = QVBoxLayout(self)
 
         # Top Bar
         top_bar = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search by Name or Phone...")
         self.search_input.textChanged.connect(self.filter_customers)
 
-        self.add_btn = QPushButton("Add Customer")
+        self.add_btn = QPushButton()
         self.add_btn.clicked.connect(self.open_add_dialog)
 
         top_bar.addWidget(self.search_input)
@@ -43,7 +47,7 @@ class CustomerView(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["ID", "Name", "Phone", "Credit Limit", "Current Debt", "Points"])
+        self.table.setHorizontalHeaderLabels(["", "", "", "", "", ""])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -54,6 +58,21 @@ class CustomerView(QWidget):
         self.pagination = PaginationWidget()
         self.pagination.page_changed.connect(self._on_page_changed)
         layout.addWidget(self.pagination)
+
+    def retranslate_ui(self) -> None:
+        """Update all widget text from the translation system."""
+        self.search_input.setPlaceholderText(_t("customer_view.search_placeholder"))
+        self.add_btn.setText(_t("customer_view.btn_add_customer"))
+        self.table.setHorizontalHeaderLabels(
+            [
+                _t("customer_view.header_id"),
+                _t("customer_view.header_name"),
+                _t("customer_view.header_phone"),
+                _t("customer_view.header_credit_limit"),
+                _t("customer_view.header_current_debt"),
+                _t("customer_view.header_points"),
+            ]
+        )
 
     def load_customers(self):
         self._all_customers = self.customer_service.get_all_customers()
@@ -79,7 +98,7 @@ class CustomerView(QWidget):
         self.table.setRowCount(0)
         if not customers:
             self.table.insertRow(0)
-            empty_item = QTableWidgetItem("No customers found")
+            empty_item = QTableWidgetItem(_t("customer_view.empty_state"))
             empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             empty_item.setForeground(QColor("gray"))
             empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
@@ -101,7 +120,7 @@ class CustomerView(QWidget):
             # Highlight high debt ( > 90% of limit)
             if customer.credit_limit > 0 and customer.current_debt >= (customer.credit_limit * Decimal("0.9")):
                 debt_item.setForeground(QColor("red"))
-                debt_item.setToolTip("High Debt Warning!")
+                debt_item.setToolTip(_t("customer_view.high_debt_tooltip"))
 
             self.table.setItem(row, 4, debt_item)
             self.table.setItem(row, 5, QTableWidgetItem(str(customer.loyalty_points)))

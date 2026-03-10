@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.models import Sale, SaleItem
+from cbpos.i18n import _t, translate_in
 
 
 from cbpos.core.utils.formatters import format_currency
@@ -12,88 +13,6 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from cbpos.core.models import Customer, CustomerLedgerEntry, Proforma
-
-
-RECEIPT_STRINGS = {
-    "en": {
-        "receipt_no": "Receipt #",
-        "date": "Date",
-        "total": "Total",
-        "tax_breakdown": "Tax Breakdown",
-        "vat": "VAT",
-        "sscl": "SSCL",
-        "quotation": "*** QUOTATION ***",
-        "customer": "Customer",
-        "valid_until": "Valid Until",
-        "statement": "*** CUSTOMER STATEMENT ***",
-        "phone": "Phone",
-        "period": "Period",
-        "opening_balance": "Opening Balance",
-        "total_sales": "Total Sales",
-        "total_payments": "Total Payments",
-        "closing_balance": "Closing Balance",
-        "thank_you": "Thank you for your business",
-        "cashier": "Cashier",
-        "terminal": "Terminal",
-        "tin": "TIN",
-        "authorized_by": "Authorized by",
-        "void_reason": "Reason",
-        "original_receipt": "Original Receipt",
-    },
-    "si": {
-        "receipt_no": "\u0dbb\u0dc3\u0dd2\u0daf\u0db4\u0dad #",
-        "date": "\u0daf\u0dd2\u0db1\u0dba",
-        "total": "\u0d91\u0d9a\u0dad\u0dd4",
-        "tax_breakdown": "\u0db6\u0daf\u0dd4 \u0dc0\u0dd2\u0dc3\u0dca\u0dad\u0dbb\u0dba",
-        "vat": "\u0dc0\u0dd0\u0da7\u0dca",
-        "sscl": "\u0d91\u0dc3\u0dca\u0d91\u0dc3\u0dca\u0dc3\u0dd2\u0d91\u0dca\u0d91\u0dca\u0dbd\u0dca",
-        "quotation": "*** \u0db4\u0dca\u200d\u0dbb\u0dc3\u0dca\u0dad\u0dcf\u0dc0\u0db1\u0dba ***",
-        "customer": "\u0db4\u0dcf\u0dbb\u0dd2\u0db7\u0ddd\u0d9c\u0dd2\u0d9a\u0dba\u0dcf",
-        "valid_until": "\u0dc0\u0dbd\u0d82\u0d9c\u0dd4 \u0daf\u0dd2\u0db1\u0dba",
-        "statement": "*** \u0d9c\u0dd2\u0dab\u0dd4\u0db8\u0dca \u0dc0\u0dd2\u0dc0\u0dbb\u0dab\u0dba ***",
-        "phone": "\u0daf\u0dd4\u0dbb\u0d9a\u0dae\u0db1",
-        "period": "\u0d9a\u0dcf\u0dbd\u0dba",
-        "opening_balance": "\u0d86\u0dbb\u0db8\u0dca\u0db7\u0d9a \u0dc3\u0dd2\u0dbd\u0dca\u0dbd",
-        "total_sales": "\u0d91\u0d9a\u0dad\u0dd4 \u0dc0\u0dd2\u0d9a\u0dd2\u0dab\u0dd3\u0db8\u0dca",
-        "total_payments": "\u0d91\u0d9a\u0dad\u0dd4 \u0d9c\u0dd9\u0dc0\u0dd3\u0db8\u0dca",
-        "closing_balance": "\u0d85\u0dc0\u0dc3\u0db1\u0dca \u0dc3\u0dd2\u0dbd\u0dca\u0dbd",
-        "thank_you": (  # noqa: E501
-            "\u0d94\u0db6\u0d9c\u0dda \u0dc0\u0dca\u200d\u0dba\u0dcf\u0db4\u0dcf\u0dbb\u0dba\u0da7"
-            " \u0dc3\u0dca\u0dad\u0dd4\u0dad\u0dd2\u0dba\u0dd2"
-        ),
-        "cashier": "\u0db8\u0dd4\u0daf\u0dbd\u0dca\u0d9a\u0dbb\u0dd4",
-        "terminal": "\u0da7\u0dd6\u0dbb\u0dca\u0db8\u0dd2\u0db1\u0dbd\u0dca",
-        "tin": "TIN",
-        "authorized_by": "\u0d85\u0db0\u0dd2\u0d9a\u0dcf\u0dbb\u0dba",
-        "void_reason": "\u0dc4\u0dda\u0dad\u0dd4\u0dc0",
-        "original_receipt": "\u0db8\u0dd6\u0dbd\u0dd2\u0d9a \u0dbb\u0dc3\u0dd2\u0daf\u0db4\u0dad",
-    },
-    "ta": {
-        "receipt_no": "\u0bb0\u0b9a\u0bc0\u0ba4\u0bc1 #",
-        "date": "\u0ba4\u0bc7\u0ba4\u0bbf",
-        "total": "\u0bae\u0bca\u0ba4\u0bcd\u0ba4\u0bae\u0bcd",
-        "tax_breakdown": "\u0bb5\u0bb0\u0bbf \u0bb5\u0bbf\u0baa\u0bb0\u0bae\u0bcd",
-        "vat": "\u0bb5\u0bb0\u0bbf",
-        "sscl": "\u0b8e\u0bb8\u0bcd\u0b8e\u0bb8\u0bcd\u0b9a\u0bbf\u0b8e\u0bb2\u0bcd",
-        "quotation": "*** \u0bae\u0bc7\u0bb1\u0bcd\u0b95\u0bcb\u0bb3\u0bcd ***",
-        "customer": "\u0ba8\u0bc1\u0b95\u0bb0\u0bcd\u0bb5\u0bcb\u0bb0\u0bcd",
-        "valid_until": "\u0b9a\u0bc6\u0bb2\u0bcd\u0bb2\u0bc1\u0baa\u0b9f\u0bbf \u0ba4\u0bc7\u0ba4\u0bbf",
-        "statement": "*** \u0b95\u0ba3\u0b95\u0bcd\u0b95\u0bc1 \u0b85\u0bb1\u0bbf\u0b95\u0bcd\u0b95\u0bc8 ***",
-        "phone": "\u0ba4\u0bca\u0bb2\u0bc8\u0baa\u0bcd\u0baa\u0bc7\u0b9a\u0bbf",
-        "period": "\u0b95\u0bbe\u0bb2\u0bae\u0bcd",
-        "opening_balance": "\u0ba4\u0bca\u0b9f\u0b95\u0bcd\u0b95 \u0b87\u0bb0\u0bc1\u0baa\u0bcd\u0baa\u0bc1",
-        "total_sales": "\u0bae\u0bca\u0ba4\u0bcd\u0ba4 \u0bb5\u0bbf\u0bb1\u0bcd\u0baa\u0ba9\u0bc8",
-        "total_payments": "\u0bae\u0bca\u0ba4\u0bcd\u0ba4 \u0b9a\u0bc6\u0bb2\u0bc1\u0ba4\u0bcd\u0ba4\u0bb2\u0bcd",
-        "closing_balance": "\u0b87\u0bb1\u0bc1\u0ba4\u0bbf \u0b87\u0bb0\u0bc1\u0baa\u0bcd\u0baa\u0bc1",
-        "thank_you": "\u0ba8\u0ba9\u0bcd\u0bb1\u0bbf",
-        "cashier": "\u0b95\u0bbe\u0b9a\u0bbf\u0baf\u0bb0\u0bcd",
-        "terminal": "\u0b9f\u0bc6\u0bb0\u0bcd\u0bae\u0bbf\u0ba9\u0bb2\u0bcd",
-        "tin": "TIN",
-        "authorized_by": "\u0b85\u0ba9\u0bc1\u0bae\u0ba4\u0bbf",
-        "void_reason": "\u0b95\u0bbe\u0bb0\u0ba3\u0bae\u0bcd",
-        "original_receipt": "\u0b85\u0b9a\u0bb2\u0bcd \u0bb0\u0b9a\u0bc0\u0ba4\u0bc1",
-    },
-}
 
 
 class ReceiptBuilder:
@@ -107,17 +26,26 @@ class ReceiptBuilder:
     - {'type': 'cut', 'partial': True}
     """
 
+    # Per-build receipt language cache.  Set by build_receipt() and friends
+    # so that _rt() doesn't call ConfigService.get() on every invocation.
+    _receipt_lang: Optional[str] = None
+
     @classmethod
-    def _get_strings(cls, config_override: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
-        """Get translated receipt strings based on current language."""
-        lang = "en"
-        if config_override and "language" in config_override:
-            lang = config_override["language"]
-        else:
-            val = ConfigService.get("language")
-            if val:
-                lang = val
-        return RECEIPT_STRINGS.get(lang, RECEIPT_STRINGS["en"])
+    def _rt(cls, key: str, **kwargs) -> str:
+        """Shorthand for receipt translation keys.
+
+        Uses the cached ``_receipt_lang`` (set at the start of each build
+        method).  Falls back to the current UI language when unset.
+        """
+        lang = cls._receipt_lang
+        if lang:
+            return translate_in(lang, f"receipt_strings.{key}", **kwargs)
+        return _t(f"receipt_strings.{key}", **kwargs)
+
+    @classmethod
+    def _resolve_receipt_lang(cls, config_override: Optional[Dict[str, Any]] = None) -> None:
+        """Cache the effective receipt language for the current build call."""
+        cls._receipt_lang = cls._get_conf("receipt_language", "", config_override) or None
 
     @classmethod
     def _get_conf(cls, key: str, default: Any = None, config_override: Optional[Dict[str, Any]] = None) -> Any:
@@ -155,7 +83,6 @@ class ReceiptBuilder:
         paper_width = cls._get_conf("paper_width", "80mm", config_override)
         line_chars = 32 if paper_width == "58mm" else 42
         gc = cls._get_conf
-        t = cls._get_strings(config_override)
 
         # Custom header text (top — greeting/promo before shop identity)
         header_text = gc("receipt_header", "", config_override)
@@ -184,7 +111,7 @@ class ReceiptBuilder:
         # TIN
         tax_id = gc("company_tax_id", "", config_override)
         if tax_id:
-            commands.append({"type": "text", "val": f"{t['tin']}: {tax_id}", "align": "center"})
+            commands.append({"type": "text", "val": f"{cls._rt('tin')}: {tax_id}", "align": "center"})
 
         return line_chars
 
@@ -203,6 +130,7 @@ class ReceiptBuilder:
             config_override: Optional dictionary to override ConfigService values.
             is_reprint: If True, adds DUPLICATE marking.
         """
+        cls._resolve_receipt_lang(config_override)
         commands: List[Dict[str, Any]] = []
         gc = cls._get_conf
 
@@ -211,11 +139,10 @@ class ReceiptBuilder:
 
         # Duplicate marking (top)
         if is_reprint:
-            commands.append({"type": "text", "val": "*** DUPLICATE ***", "align": "center"})
+            commands.append({"type": "text", "val": cls._rt("duplicate"), "align": "center"})
 
         # Header block (header text, logo, shop info, TIN)
         line_chars = cls._append_header_block(commands, config_override)
-        t = cls._get_strings(config_override)
 
         # Document title — derive from payment method
         commands.append(_sep())
@@ -241,7 +168,7 @@ class ReceiptBuilder:
         if gc("show_cashier_on_receipt", True, config_override):
             cashier_name = cls._get_current_cashier_name()
         if cashier_name:
-            commands.append({"type": "text", "val": f"{t['cashier']}: {cashier_name}", "align": "left"})
+            commands.append({"type": "text", "val": f"{cls._rt('cashier')}: {cashier_name}", "align": "left"})
 
         # Terminal ID
         if gc("show_terminal_on_receipt", False, config_override):
@@ -250,7 +177,7 @@ class ReceiptBuilder:
                 commands.append(
                     {
                         "type": "text",
-                        "val": f"{t['terminal']}: {terminal_id}",
+                        "val": f"{cls._rt('terminal')}: {terminal_id}",
                         "align": "left",
                     }
                 )
@@ -258,11 +185,11 @@ class ReceiptBuilder:
         # Customer name (shown for credit sales or when customer is linked)
         customer = getattr(sale, "customer", None)
         if customer and hasattr(customer, "name") and customer.name:
-            commands.append({"type": "text", "val": f"{t['customer']}: {customer.name}", "align": "left"})
+            commands.append({"type": "text", "val": f"{cls._rt('customer')}: {customer.name}", "align": "left"})
 
         # Item column header
         commands.append(_sep())
-        commands.append(cls._split_row("SN DESCRIPTION", "AMOUNT", line_chars, bold=True))
+        commands.append(cls._split_row(cls._rt("sn_description"), cls._rt("amount_label"), line_chars, bold=True))
         commands.append(_sep())
 
         # Line items with serial numbers
@@ -290,7 +217,7 @@ class ReceiptBuilder:
                 disc_pct = (saving * Decimal("100") / orig_price).quantize(Decimal("1"))
                 commands.append(
                     cls._split_row(
-                        "   Was {} (-{}%)".format(format_currency(orig_price), disc_pct),
+                        "   {}".format(cls._rt("was_price", price=format_currency(orig_price), pct=disc_pct)),
                         "-{}".format(format_currency(saving * qty)),
                         line_chars,
                     )
@@ -306,7 +233,7 @@ class ReceiptBuilder:
         total_qty = sum(i.qty for i in display_items)
         commands.append(
             cls._split_row(
-                "{} item(s), Qty: {}".format(item_count, total_qty),
+                cls._rt("items_count", count=item_count, qty=total_qty),
                 "",
                 line_chars,
             )
@@ -317,44 +244,53 @@ class ReceiptBuilder:
         disc_val = getattr(sale, "additional_discount_value", None)
         if disc_type != "NONE" and disc_val and disc_val > 0:
             if disc_type == "PERCENTAGE":
-                # Calculate actual discount amount from items subtotal
                 items_subtotal = sum(i.subtotal for i in display_items)
                 disc_amount = items_subtotal * disc_val / Decimal("100")
-                disc_label = "DISCOUNT ({}%):".format(disc_val)
+                disc_label = cls._rt("discount_pct", pct=disc_val)
                 disc_display = "-{}".format(format_currency(disc_amount))
             else:
-                disc_label = "DISCOUNT:"
+                disc_label = cls._rt("discount_label")
                 disc_display = "-{}".format(format_currency(disc_val))
             commands.append(cls._split_row(disc_label, disc_display, line_chars))
 
-        commands.append(cls._split_row("TOTAL AMOUNT:", format_currency(sale.total_amount), line_chars, bold=True))
+        commands.append(
+            cls._split_row(cls._rt("total_amount"), format_currency(sale.total_amount), line_chars, bold=True)
+        )
 
         # Tax — indented under total
         if gc("show_tax_breakdown", False, config_override):
-            # Show taxable/exempt breakdown when item-level exemptions are active
             exempt_amount = getattr(sale, "_exempt_amount", None)
             if exempt_amount and exempt_amount > Decimal("0"):
                 taxable_amount = sale.total_amount - exempt_amount
-                commands.append(cls._split_row("  Taxable:", format_currency(taxable_amount), line_chars))
-                commands.append(cls._split_row("  Tax Exempt:", format_currency(exempt_amount), line_chars))
+                commands.append(
+                    cls._split_row("  {}:".format(cls._rt("taxable")), format_currency(taxable_amount), line_chars)
+                )
+                commands.append(
+                    cls._split_row("  {}:".format(cls._rt("tax_exempt")), format_currency(exempt_amount), line_chars)
+                )
             if sale.tax_vat > 0:
-                commands.append(cls._split_row("  {}:".format(t["vat"]), format_currency(sale.tax_vat), line_chars))
+                commands.append(
+                    cls._split_row("  {}:".format(cls._rt("vat")), format_currency(sale.tax_vat), line_chars)
+                )
             if sale.tax_sscl > 0:
-                commands.append(cls._split_row("  {}:".format(t["sscl"]), format_currency(sale.tax_sscl), line_chars))
-            # Net revenue
+                commands.append(
+                    cls._split_row("  {}:".format(cls._rt("sscl")), format_currency(sale.tax_sscl), line_chars)
+                )
             if sale.net_revenue and sale.net_revenue > 0:
-                commands.append(cls._split_row("  NET TOTAL:", format_currency(sale.net_revenue), line_chars))
+                commands.append(
+                    cls._split_row("  {}:".format(cls._rt("net_total")), format_currency(sale.net_revenue), line_chars)
+                )
 
         # Payment block
         if hasattr(sale, "payments") and sale.payments:
             commands.append(_sep())
             for pmt in sale.payments:
-                label = "PAID {}:".format(pmt.payment_method.upper())
+                label = cls._rt("paid_label", method=pmt.payment_method.upper())
                 commands.append(cls._split_row(label, format_currency(pmt.amount), line_chars))
             total_paid = sum(p.amount for p in sale.payments)
             if total_paid > sale.total_amount:
                 change = total_paid - sale.total_amount
-                commands.append(cls._split_row("CHANGE:", format_currency(change), line_chars, bold=True))
+                commands.append(cls._split_row(cls._rt("change_label"), format_currency(change), line_chars, bold=True))
 
         commands.append(_sep())
 
@@ -371,7 +307,7 @@ class ReceiptBuilder:
 
         # Duplicate marking (bottom)
         if is_reprint:
-            commands.append({"type": "text", "val": "*** DUPLICATE ***", "align": "center"})
+            commands.append({"type": "text", "val": cls._rt("duplicate"), "align": "center"})
 
         # Branding + Cut
         cls._append_branding(commands)
@@ -398,26 +334,26 @@ class ReceiptBuilder:
             config_override: Optional config overrides.
             void_timestamp: Timestamp for the void (defaults to now).
         """
+        cls._resolve_receipt_lang(config_override)
         commands: List[Dict[str, Any]] = []
-        t = cls._get_strings(config_override)
 
         line_chars = cls._append_header_block(commands, config_override)
 
         # VOID header
         commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
-        commands.append({"type": "text", "val": "*** VOIDED ***", "align": "center"})
+        commands.append({"type": "text", "val": cls._rt("voided"), "align": "center"})
         commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
         commands.append({"type": "feed", "lines": 1})
 
         # Original sale reference
         doc_num = getattr(sale, "document_number", None) or str(sale.id)
-        commands.append({"type": "text", "val": f"{t['original_receipt']}: {doc_num}", "align": "left"})
+        commands.append({"type": "text", "val": f"{cls._rt('original_receipt')}: {doc_num}", "align": "left"})
         date_str = sale.date.strftime("%Y-%m-%d %H:%M") if sale.date else "N/A"
-        commands.append({"type": "text", "val": f"{t['date']}: {date_str}", "align": "left"})
+        commands.append({"type": "text", "val": f"{cls._rt('date')}: {date_str}", "align": "left"})
         commands.append(
             {
                 "type": "text",
-                "val": "{}: {}".format(t["total"], format_currency(sale.total_amount)),
+                "val": "{}: {}".format(cls._rt("total"), format_currency(sale.total_amount)),
                 "align": "left",
             }
         )
@@ -428,7 +364,7 @@ class ReceiptBuilder:
             if sale.tax_vat and sale.tax_vat > 0:
                 commands.append(
                     cls._split_row(
-                        "  {} Reversed:".format(t["vat"]),
+                        "  {}".format(cls._rt("vat_reversed", vat=cls._rt("vat"))),
                         "-{}".format(format_currency(sale.tax_vat)),
                         line_chars,
                     )
@@ -436,20 +372,20 @@ class ReceiptBuilder:
             if sale.tax_sscl and sale.tax_sscl > 0:
                 commands.append(
                     cls._split_row(
-                        "  {} Reversed:".format(t["sscl"]),
+                        "  {}".format(cls._rt("sscl_reversed", sscl=cls._rt("sscl"))),
                         "-{}".format(format_currency(sale.tax_sscl)),
                         line_chars,
                     )
                 )
 
         if void_reason:
-            commands.append({"type": "text", "val": f"{t['void_reason']}: {void_reason}", "align": "left"})
+            commands.append({"type": "text", "val": f"{cls._rt('void_reason')}: {void_reason}", "align": "left"})
         if authorized_by:
-            commands.append({"type": "text", "val": f"{t['authorized_by']}: {authorized_by}", "align": "left"})
+            commands.append({"type": "text", "val": f"{cls._rt('authorized_by')}: {authorized_by}", "align": "left"})
 
         void_time_obj = void_timestamp or datetime.now()
         void_time = void_time_obj.strftime("%Y-%m-%d %H:%M")
-        commands.append({"type": "text", "val": f"Void Time: {void_time}", "align": "left"})
+        commands.append({"type": "text", "val": cls._rt("void_time", time=void_time), "align": "left"})
 
         commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
 
@@ -461,7 +397,7 @@ class ReceiptBuilder:
             commands.append({"type": "text", "val": line, "align": "right"})
 
         commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
-        commands.append({"type": "text", "val": "*** VOIDED ***", "align": "center"})
+        commands.append({"type": "text", "val": cls._rt("voided"), "align": "center"})
         commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
 
         cls._append_branding(commands)
@@ -488,29 +424,29 @@ class ReceiptBuilder:
             config_override: Optional config overrides.
             refund_timestamp: Timestamp for the refund (defaults to now).
         """
+        cls._resolve_receipt_lang(config_override)
         commands: List[Dict[str, Any]] = []
-        t = cls._get_strings(config_override)
 
         line_chars = cls._append_header_block(commands, config_override)
 
         # REFUND header
         commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
-        commands.append({"type": "text", "val": "*** REFUND ***", "align": "center"})
+        commands.append({"type": "text", "val": cls._rt("refund_label"), "align": "center"})
         commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
         commands.append({"type": "feed", "lines": 1})
 
         # Original sale reference
         doc_num = getattr(sale, "document_number", None) or str(sale.id)
-        commands.append({"type": "text", "val": f"{t['original_receipt']}: {doc_num}", "align": "left"})
+        commands.append({"type": "text", "val": f"{cls._rt('original_receipt')}: {doc_num}", "align": "left"})
         date_str = sale.date.strftime("%Y-%m-%d %H:%M") if sale.date else "N/A"
-        commands.append({"type": "text", "val": f"{t['date']}: {date_str}", "align": "left"})
+        commands.append({"type": "text", "val": f"{cls._rt('date')}: {date_str}", "align": "left"})
 
         if authorized_by:
-            commands.append({"type": "text", "val": f"{t['authorized_by']}: {authorized_by}", "align": "left"})
+            commands.append({"type": "text", "val": f"{cls._rt('authorized_by')}: {authorized_by}", "align": "left"})
 
         refund_time_obj = refund_timestamp or datetime.now()
         refund_time = refund_time_obj.strftime("%Y-%m-%d %H:%M")
-        commands.append({"type": "text", "val": f"Refund Time: {refund_time}", "align": "left"})
+        commands.append({"type": "text", "val": cls._rt("refund_time", time=refund_time), "align": "left"})
 
         commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
 
@@ -527,7 +463,7 @@ class ReceiptBuilder:
         commands.append(
             {
                 "type": "text",
-                "val": "Refund {}: {}".format(t["total"], format_currency(amount)),
+                "val": cls._rt("refund_total", total_label=cls._rt("total"), amount=format_currency(amount)),
                 "align": "right",
             }
         )
@@ -538,7 +474,7 @@ class ReceiptBuilder:
             if sale.tax_vat and sale.tax_vat > 0:
                 commands.append(
                     cls._split_row(
-                        "  {} Refund:".format(t["vat"]),
+                        "  {}".format(cls._rt("vat_refund", vat=cls._rt("vat"))),
                         "-{}".format(format_currency(sale.tax_vat)),
                         line_chars,
                     )
@@ -546,14 +482,14 @@ class ReceiptBuilder:
             if sale.tax_sscl and sale.tax_sscl > 0:
                 commands.append(
                     cls._split_row(
-                        "  {} Refund:".format(t["sscl"]),
+                        "  {}".format(cls._rt("sscl_refund", sscl=cls._rt("sscl"))),
                         "-{}".format(format_currency(sale.tax_sscl)),
                         line_chars,
                     )
                 )
 
         commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
-        commands.append({"type": "text", "val": "*** REFUND ***", "align": "center"})
+        commands.append({"type": "text", "val": cls._rt("refund_label"), "align": "center"})
         commands.append({"type": "text", "val": "=" * line_chars, "align": "center"})
 
         cls._append_branding(commands)
@@ -572,25 +508,32 @@ class ReceiptBuilder:
             proforma: The Proforma model instance with items loaded.
             config_override: Optional dictionary to override ConfigService values.
         """
+        cls._resolve_receipt_lang(config_override)
         commands: List[Dict[str, Any]] = []
         gc = cls._get_conf
 
         line_chars = cls._append_header_block(commands, config_override)
 
         # Title
-        commands.append({"type": "text", "val": "*** QUOTATION ***", "align": "center"})
+        commands.append({"type": "text", "val": cls._rt("quotation"), "align": "center"})
         commands.append({"type": "feed", "lines": 1})
 
         # Proforma Details
-        commands.append({"type": "text", "val": f"Quotation #: {proforma.document_number}", "align": "left"})
+        commands.append(
+            {"type": "text", "val": cls._rt("quotation_number", number=proforma.document_number), "align": "left"}
+        )
         date_str = proforma.date.strftime("%Y-%m-%d %H:%M") if proforma.date else "N/A"
-        commands.append({"type": "text", "val": f"Date: {date_str}", "align": "left"})
+        commands.append({"type": "text", "val": cls._rt("quotation_date", date=date_str), "align": "left"})
 
         if proforma.expiry_date:
-            commands.append({"type": "text", "val": f"Valid Until: {proforma.expiry_date}", "align": "left"})
+            commands.append(
+                {"type": "text", "val": f"{cls._rt('valid_until')}: {proforma.expiry_date}", "align": "left"}
+            )
 
         if proforma.customer:
-            commands.append({"type": "text", "val": f"Customer: {proforma.customer.name}", "align": "left"})
+            commands.append(
+                {"type": "text", "val": f"{cls._rt('customer')}: {proforma.customer.name}", "align": "left"}
+            )
 
         commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
 
@@ -610,7 +553,7 @@ class ReceiptBuilder:
         commands.append(
             {
                 "type": "text",
-                "val": "Total: {}".format(format_currency(proforma.total_amount)),
+                "val": "{}: {}".format(cls._rt("total"), format_currency(proforma.total_amount)),
                 "align": "right",
             }
         )
@@ -618,25 +561,35 @@ class ReceiptBuilder:
         # Tax Breakdown
         if gc("show_tax_breakdown", False, config_override):
             commands.append({"type": "feed", "lines": 1})
-            commands.append({"type": "text", "val": "Tax Breakdown:", "align": "left"})
+            commands.append({"type": "text", "val": "{}:".format(cls._rt("tax_breakdown")), "align": "left"})
             if proforma.tax_vat and proforma.tax_vat > 0:
                 commands.append(
-                    {"type": "text", "val": "VAT: {}".format(format_currency(proforma.tax_vat)), "align": "right"}
+                    {
+                        "type": "text",
+                        "val": "{}: {}".format(cls._rt("vat"), format_currency(proforma.tax_vat)),
+                        "align": "right",
+                    }
                 )
             if proforma.tax_sscl and proforma.tax_sscl > 0:
                 commands.append(
-                    {"type": "text", "val": "SSCL: {}".format(format_currency(proforma.tax_sscl)), "align": "right"}
+                    {
+                        "type": "text",
+                        "val": "{}: {}".format(cls._rt("sscl"), format_currency(proforma.tax_sscl)),
+                        "align": "right",
+                    }
                 )
 
         # Notes
         if proforma.notes:
             commands.append({"type": "feed", "lines": 1})
-            commands.append({"type": "text", "val": f"Notes: {proforma.notes}", "align": "left"})
+            commands.append({"type": "text", "val": cls._rt("notes", notes=proforma.notes), "align": "left"})
 
         # Footer
         commands.append({"type": "feed", "lines": 1})
-        commands.append({"type": "text", "val": "This is a quotation, not a tax invoice.", "align": "center"})
-        commands.append({"type": "text", "val": f"Valid for {proforma.validity_days} days.", "align": "center"})
+        commands.append({"type": "text", "val": cls._rt("quotation_not_invoice"), "align": "center"})
+        commands.append(
+            {"type": "text", "val": cls._rt("quotation_valid_days", days=proforma.validity_days), "align": "center"}
+        )
 
         footer_text = gc("receipt_footer", "", config_override)
         if footer_text:
@@ -667,24 +620,25 @@ class ReceiptBuilder:
             period_to: Statement end date.
             config_override: Optional dictionary to override ConfigService values.
         """
+        cls._resolve_receipt_lang(config_override)
         commands: List[Dict[str, Any]] = []
         gc = cls._get_conf
 
         line_chars = cls._append_header_block(commands, config_override)
 
         # Title
-        commands.append({"type": "text", "val": "*** CUSTOMER STATEMENT ***", "align": "center"})
+        commands.append({"type": "text", "val": cls._rt("statement"), "align": "center"})
         commands.append({"type": "feed", "lines": 1})
 
         # Customer Info
-        commands.append({"type": "text", "val": f"Customer: {customer.name}", "align": "left"})
+        commands.append({"type": "text", "val": f"{cls._rt('customer')}: {customer.name}", "align": "left"})
         if customer.phone:
-            commands.append({"type": "text", "val": f"Phone: {customer.phone}", "align": "left"})
+            commands.append({"type": "text", "val": f"{cls._rt('phone')}: {customer.phone}", "align": "left"})
 
         # Period
         from_str = period_from.strftime("%Y-%m-%d")
         to_str = period_to.strftime("%Y-%m-%d")
-        commands.append({"type": "text", "val": f"Period: {from_str} to {to_str}", "align": "left"})
+        commands.append({"type": "text", "val": f"{cls._rt('period')}: {from_str} to {to_str}", "align": "left"})
         commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
 
         # Opening Balance
@@ -693,7 +647,9 @@ class ReceiptBuilder:
         else:
             opening = customer.current_debt
 
-        commands.append({"type": "text", "val": f"Opening Balance: {format_currency(opening)}", "align": "left"})
+        commands.append(
+            {"type": "text", "val": f"{cls._rt('opening_balance')}: {format_currency(opening)}", "align": "left"}
+        )
         commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
 
         # Entries
@@ -715,17 +671,23 @@ class ReceiptBuilder:
         commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})
 
         # Totals
-        commands.append({"type": "text", "val": f"Total Sales: {format_currency(total_debit)}", "align": "right"})
-        commands.append({"type": "text", "val": f"Total Payments: {format_currency(total_credit)}", "align": "right"})
+        commands.append(
+            {"type": "text", "val": f"{cls._rt('total_sales')}: {format_currency(total_debit)}", "align": "right"}
+        )
+        commands.append(
+            {"type": "text", "val": f"{cls._rt('total_payments')}: {format_currency(total_credit)}", "align": "right"}
+        )
 
         # Closing Balance
         closing = entries[-1].balance_after if entries else customer.current_debt
         commands.append({"type": "feed", "lines": 1})
-        commands.append({"type": "text", "val": f"Closing Balance: {format_currency(closing)}", "align": "right"})
+        commands.append(
+            {"type": "text", "val": f"{cls._rt('closing_balance')}: {format_currency(closing)}", "align": "right"}
+        )
 
         # Footer
         commands.append({"type": "feed", "lines": 1})
-        commands.append({"type": "text", "val": "Thank you for your business", "align": "center"})
+        commands.append({"type": "text", "val": cls._rt("thank_you"), "align": "center"})
 
         footer_text = gc("receipt_footer", "", config_override)
         if footer_text:
@@ -737,21 +699,21 @@ class ReceiptBuilder:
 
         return commands
 
-    @staticmethod
-    def _get_doc_title(sale: Sale) -> str:
+    @classmethod
+    def _get_doc_title(cls, sale: Sale) -> str:
         """Derive document title from payment methods."""
         payments = getattr(sale, "payments", []) or []
         methods = {p.payment_method.strip().upper() for p in payments}
 
         if "CREDIT" in methods:
-            return "CREDIT INVOICE"
+            return cls._rt("doc_title_credit")
         elif len(methods) > 1:
-            return "RECEIPT"
+            return cls._rt("doc_title_receipt")
         elif methods == {"CARD"}:
-            return "CARD RECEIPT"
+            return cls._rt("doc_title_card")
 
         # Default: cash-only or empty payments
-        return "CASH RECEIPT"
+        return cls._rt("doc_title_cash")
 
     @staticmethod
     def _two_col(left: str, right: str, width: int) -> str:

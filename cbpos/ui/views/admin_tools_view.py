@@ -37,6 +37,7 @@ from cbpos.core.services.maintenance_service import MaintenanceService
 from cbpos.core.services.error_log_service import ErrorLogService
 from cbpos.core.services.hardware_test_service import HardwareTestService
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,9 @@ class AdminToolsView(QWidget):
         super().__init__()
         self._current_log_entries: list = []
         self._init_ui()
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def showEvent(self, event) -> None:
         """Refresh data when the view becomes visible."""
@@ -75,33 +79,33 @@ class AdminToolsView(QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
 
-        title = QLabel("Admin Tools")
-        title.setProperty("class", "dialog-title")
-        layout.addWidget(title)
+        self.lbl_title = QLabel()
+        self.lbl_title.setProperty("class", "dialog-title")
+        layout.addWidget(self.lbl_title)
 
         # Version + update check row
         version_layout = QHBoxLayout()
         version_layout.setSpacing(12)
 
-        subtitle = QLabel("Diagnostic tools for troubleshooting and system administration.")
-        subtitle.setProperty("class", "muted")
-        version_layout.addWidget(subtitle, 1)
+        self.lbl_subtitle = QLabel()
+        self.lbl_subtitle.setProperty("class", "muted")
+        version_layout.addWidget(self.lbl_subtitle, 1)
 
         version_lbl = QLabel(f"v{Config.VERSION}")
         version_lbl.setProperty("class", "muted")
         version_layout.addWidget(version_lbl)
 
-        btn_update = QPushButton("Check for Updates")
-        btn_update.setFixedWidth(160)
-        btn_update.clicked.connect(self._check_for_updates)
-        version_layout.addWidget(btn_update)
+        self.btn_update = QPushButton()
+        self.btn_update.setFixedWidth(160)
+        self.btn_update.clicked.connect(self._check_for_updates)
+        version_layout.addWidget(self.btn_update)
 
         layout.addLayout(version_layout)
 
         self.tabs = QTabWidget()
-        self.tabs.addTab(self._build_database_tab(), "Database")
-        self.tabs.addTab(self._build_logs_tab(), "Error Logs")
-        self.tabs.addTab(self._build_hardware_tab(), "Hardware")
+        self.tabs.addTab(self._build_database_tab(), "")
+        self.tabs.addTab(self._build_logs_tab(), "")
+        self.tabs.addTab(self._build_hardware_tab(), "")
         layout.addWidget(self.tabs, 1)
 
     def _check_for_updates(self) -> None:
@@ -119,35 +123,38 @@ class AdminToolsView(QWidget):
         layout.setSpacing(12)
 
         # Database File group
-        grp_file = QGroupBox("Database File")
-        file_layout = QFormLayout(grp_file)
+        self.grp_file = QGroupBox()
+        file_layout = QFormLayout(self.grp_file)
         file_layout.setVerticalSpacing(10)
         file_layout.setHorizontalSpacing(20)
 
         self.lbl_db_path = QLabel("--")
         self.lbl_db_path.setWordWrap(True)
         self.lbl_db_path.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        file_layout.addRow("Path:", self.lbl_db_path)
+        self.lbl_db_path_label = QLabel()
+        file_layout.addRow(self.lbl_db_path_label, self.lbl_db_path)
 
         self.lbl_db_size = QLabel("--")
         self.lbl_db_size.setProperty("class", "bold")
-        file_layout.addRow("Size:", self.lbl_db_size)
+        self.lbl_db_size_label = QLabel()
+        file_layout.addRow(self.lbl_db_size_label, self.lbl_db_size)
 
         self.lbl_db_modified = QLabel("--")
-        file_layout.addRow("Last Modified:", self.lbl_db_modified)
+        self.lbl_db_modified_label = QLabel()
+        file_layout.addRow(self.lbl_db_modified_label, self.lbl_db_modified)
 
         self.lbl_sqlite_version = QLabel("--")
-        file_layout.addRow("SQLite Version:", self.lbl_sqlite_version)
+        self.lbl_sqlite_version_label = QLabel()
+        file_layout.addRow(self.lbl_sqlite_version_label, self.lbl_sqlite_version)
 
-        layout.addWidget(grp_file)
+        layout.addWidget(self.grp_file)
 
         # Table Row Counts group
-        grp_tables = QGroupBox("Table Row Counts")
-        tables_layout = QVBoxLayout(grp_tables)
+        self.grp_tables = QGroupBox()
+        tables_layout = QVBoxLayout(self.grp_tables)
 
         self.table_counts = QTableWidget()
         self.table_counts.setColumnCount(2)
-        self.table_counts.setHorizontalHeaderLabels(["Table", "Rows"])
         self.table_counts.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table_counts.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table_counts.setAlternatingRowColors(True)
@@ -158,15 +165,15 @@ class AdminToolsView(QWidget):
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         tables_layout.addWidget(self.table_counts)
 
-        layout.addWidget(grp_tables, 1)
+        layout.addWidget(self.grp_tables, 1)
 
         # Refresh button
         btn_layout = QHBoxLayout()
-        btn_refresh = QPushButton("Refresh")
-        btn_refresh.setProperty("class", "accent")
-        btn_refresh.setFixedWidth(120)
-        btn_refresh.clicked.connect(self._load_db_info)
-        btn_layout.addWidget(btn_refresh)
+        self.btn_db_refresh = QPushButton()
+        self.btn_db_refresh.setProperty("class", "accent")
+        self.btn_db_refresh.setFixedWidth(120)
+        self.btn_db_refresh.clicked.connect(self._load_db_info)
+        btn_layout.addWidget(self.btn_db_refresh)
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
 
@@ -203,18 +210,18 @@ class AdminToolsView(QWidget):
         filter_layout = QHBoxLayout()
         filter_layout.setSpacing(8)
 
-        lbl_level = QLabel("Level:")
-        lbl_level.setProperty("class", "muted")
-        filter_layout.addWidget(lbl_level)
+        self.lbl_level = QLabel()
+        self.lbl_level.setProperty("class", "muted")
+        filter_layout.addWidget(self.lbl_level)
 
         self.combo_log_level = QComboBox()
         self.combo_log_level.addItems(["All", "WARNING", "ERROR", "CRITICAL"])
         self.combo_log_level.setFixedWidth(120)
         filter_layout.addWidget(self.combo_log_level)
 
-        lbl_from = QLabel("From:")
-        lbl_from.setProperty("class", "muted")
-        filter_layout.addWidget(lbl_from)
+        self.lbl_from = QLabel()
+        self.lbl_from.setProperty("class", "muted")
+        filter_layout.addWidget(self.lbl_from)
 
         self.date_log_from = QDateEdit()
         self.date_log_from.setCalendarPopup(True)
@@ -222,9 +229,9 @@ class AdminToolsView(QWidget):
         self.date_log_from.setFixedWidth(130)
         filter_layout.addWidget(self.date_log_from)
 
-        lbl_to = QLabel("To:")
-        lbl_to.setProperty("class", "muted")
-        filter_layout.addWidget(lbl_to)
+        self.lbl_to = QLabel()
+        self.lbl_to.setProperty("class", "muted")
+        filter_layout.addWidget(self.lbl_to)
 
         self.date_log_to = QDateEdit()
         self.date_log_to.setCalendarPopup(True)
@@ -233,16 +240,15 @@ class AdminToolsView(QWidget):
         filter_layout.addWidget(self.date_log_to)
 
         self.input_log_search = QLineEdit()
-        self.input_log_search.setPlaceholderText("Search logs...")
         self.input_log_search.setFixedWidth(200)
         self.input_log_search.returnPressed.connect(self._load_logs)
         filter_layout.addWidget(self.input_log_search)
 
-        btn_apply = QPushButton("Apply")
-        btn_apply.setProperty("class", "accent")
-        btn_apply.setFixedWidth(80)
-        btn_apply.clicked.connect(self._load_logs)
-        filter_layout.addWidget(btn_apply)
+        self.btn_apply = QPushButton()
+        self.btn_apply.setProperty("class", "accent")
+        self.btn_apply.setFixedWidth(80)
+        self.btn_apply.clicked.connect(self._load_logs)
+        filter_layout.addWidget(self.btn_apply)
 
         filter_layout.addStretch()
         layout.addLayout(filter_layout)
@@ -255,7 +261,6 @@ class AdminToolsView(QWidget):
         # Log table
         self.log_table = QTableWidget()
         self.log_table.setColumnCount(4)
-        self.log_table.setHorizontalHeaderLabels(["Time", "Level", "Source", "Message"])
         self.log_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.log_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.log_table.setAlternatingRowColors(True)
@@ -281,18 +286,18 @@ class AdminToolsView(QWidget):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(10)
 
-        btn_export = QPushButton("Export Logs")
-        btn_export.clicked.connect(self._export_logs)
-        btn_layout.addWidget(btn_export)
+        self.btn_export = QPushButton()
+        self.btn_export.clicked.connect(self._export_logs)
+        btn_layout.addWidget(self.btn_export)
 
-        btn_clear = QPushButton("Clear Logs")
-        btn_clear.setProperty("class", "danger")
-        btn_clear.clicked.connect(self._clear_logs)
-        btn_layout.addWidget(btn_clear)
+        self.btn_clear = QPushButton()
+        self.btn_clear.setProperty("class", "danger")
+        self.btn_clear.clicked.connect(self._clear_logs)
+        btn_layout.addWidget(self.btn_clear)
 
-        btn_refresh_logs = QPushButton("Refresh")
-        btn_refresh_logs.clicked.connect(self._load_logs)
-        btn_layout.addWidget(btn_refresh_logs)
+        self.btn_refresh_logs = QPushButton()
+        self.btn_refresh_logs.clicked.connect(self._load_logs)
+        btn_layout.addWidget(self.btn_refresh_logs)
 
         btn_layout.addStretch()
 
@@ -329,16 +334,19 @@ class AdminToolsView(QWidget):
             self.log_pagination.set_total(len(entries))
             self._populate_log_page()
 
-            self.lbl_log_count.setText(f"{len(entries)} entries")
+            self.lbl_log_count.setText(_t("admin_tools.logs_entries_count", count=len(entries)))
 
             # Update stats
             stats = ErrorLogService.get_log_stats()
             log_size = ErrorLogService.get_total_log_size()
             self.lbl_log_stats.setText(
-                f"Warnings: {stats['WARNING']} | "
-                f"Errors: {stats['ERROR']} | "
-                f"Critical: {stats['CRITICAL']} | "
-                f"Log size: {log_size}"
+                _t(
+                    "admin_tools.logs_stats",
+                    warnings=stats["WARNING"],
+                    errors=stats["ERROR"],
+                    critical=stats["CRITICAL"],
+                    size=log_size,
+                )
             )
         except Exception as e:
             logger.warning("Could not load logs: %s", e)
@@ -382,10 +390,16 @@ class AdminToolsView(QWidget):
         """Export displayed log entries to a text file."""
         entries = getattr(self, "_current_log_entries", [])
         if not entries:
-            QMessageBox.information(self, "No Entries", "No log entries to export.")
+            QMessageBox.information(
+                self,
+                _t("admin_tools.logs_no_entries"),
+                _t("admin_tools.logs_no_entries_msg"),
+            )
             return
 
-        filepath, _ = QFileDialog.getSaveFileName(self, "Export Logs", "cbpos_logs.txt", "Text Files (*.txt)")
+        filepath, _ = QFileDialog.getSaveFileName(
+            self, _t("admin_tools.logs_export_title"), "cbpos_logs.txt", "Text Files (*.txt)"
+        )
         if not filepath:
             return
 
@@ -393,18 +407,22 @@ class AdminToolsView(QWidget):
             ErrorLogService.export_logs(filepath, entries)
             QMessageBox.information(
                 self,
-                "Export Complete",
-                f"Exported {len(entries)} entries to:\n{filepath}",  # noqa: E231
+                _t("admin_tools.logs_export_complete"),
+                _t("admin_tools.logs_export_complete_msg", count=len(entries), path=filepath),
             )
         except Exception as e:
-            QMessageBox.critical(self, "Export Failed", f"Could not export logs:\n{e}")  # noqa: E231
+            QMessageBox.critical(
+                self,
+                _t("admin_tools.logs_export_failed"),
+                _t("admin_tools.logs_export_failed_msg", error=e),
+            )
 
     def _clear_logs(self) -> None:
         """Clear all log files after confirmation."""
         reply = QMessageBox.question(
             self,
-            "Clear Logs",
-            "This will delete all log entries.\n\nContinue?",
+            _t("admin_tools.logs_clear_title"),
+            _t("admin_tools.logs_clear_msg"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -415,7 +433,11 @@ class AdminToolsView(QWidget):
             ErrorLogService.clear_logs()
             self._load_logs()
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Could not clear logs:\n{e}")  # noqa: E231
+            QMessageBox.critical(
+                self,
+                _t("common.error"),
+                _t("admin_tools.logs_clear_error", error=e),
+            )
 
     # ── Hardware Tab ─────────────────────────────────────────────────────
 
@@ -426,40 +448,45 @@ class AdminToolsView(QWidget):
         layout.setSpacing(12)
 
         # Printer Configuration group
-        grp_config = QGroupBox("Printer Configuration")
-        config_layout = QFormLayout(grp_config)
+        self.grp_config = QGroupBox()
+        config_layout = QFormLayout(self.grp_config)
         config_layout.setVerticalSpacing(10)
         config_layout.setHorizontalSpacing(20)
 
         self.lbl_hw_type = QLabel("--")
-        config_layout.addRow("Printer Type:", self.lbl_hw_type)
+        self.lbl_hw_type_label = QLabel()
+        config_layout.addRow(self.lbl_hw_type_label, self.lbl_hw_type)
 
         self.lbl_hw_path = QLabel("--")
-        config_layout.addRow("Printer Path:", self.lbl_hw_path)
+        self.lbl_hw_path_label = QLabel()
+        config_layout.addRow(self.lbl_hw_path_label, self.lbl_hw_path)
 
         self.lbl_hw_receipt = QLabel("--")
-        config_layout.addRow("Receipt Printer:", self.lbl_hw_receipt)
+        self.lbl_hw_receipt_label = QLabel()
+        config_layout.addRow(self.lbl_hw_receipt_label, self.lbl_hw_receipt)
 
         self.lbl_hw_a4 = QLabel("--")
-        config_layout.addRow("A4 Printer:", self.lbl_hw_a4)
+        self.lbl_hw_a4_label = QLabel()
+        config_layout.addRow(self.lbl_hw_a4_label, self.lbl_hw_a4)
 
         self.lbl_hw_paper = QLabel("--")
-        config_layout.addRow("Paper Width:", self.lbl_hw_paper)
+        self.lbl_hw_paper_label = QLabel()
+        config_layout.addRow(self.lbl_hw_paper_label, self.lbl_hw_paper)
 
-        layout.addWidget(grp_config)
+        layout.addWidget(self.grp_config)
 
         # Receipt Printer Test group
-        grp_printer = QGroupBox("Receipt Printer Test")
-        printer_layout = QVBoxLayout(grp_printer)
+        self.grp_printer = QGroupBox()
+        printer_layout = QVBoxLayout(self.grp_printer)
         printer_layout.setSpacing(8)
 
-        lbl_printer_desc = QLabel("Send a test page to the configured receipt printer to verify connectivity.")
-        lbl_printer_desc.setProperty("class", "muted")
-        lbl_printer_desc.setWordWrap(True)
-        printer_layout.addWidget(lbl_printer_desc)
+        self.lbl_printer_desc = QLabel()
+        self.lbl_printer_desc.setProperty("class", "muted")
+        self.lbl_printer_desc.setWordWrap(True)
+        printer_layout.addWidget(self.lbl_printer_desc)
 
         printer_btn_row = QHBoxLayout()
-        self.btn_test_printer = QPushButton("Print Test Page")
+        self.btn_test_printer = QPushButton()
         self.btn_test_printer.setProperty("class", "accent")
         self.btn_test_printer.setFixedWidth(160)
         self.btn_test_printer.clicked.connect(self._test_printer)
@@ -470,20 +497,20 @@ class AdminToolsView(QWidget):
         printer_btn_row.addWidget(self.lbl_printer_status, 1)
 
         printer_layout.addLayout(printer_btn_row)
-        layout.addWidget(grp_printer)
+        layout.addWidget(self.grp_printer)
 
         # Cash Drawer Test group
-        grp_drawer = QGroupBox("Cash Drawer Test")
-        drawer_layout = QVBoxLayout(grp_drawer)
+        self.grp_drawer = QGroupBox()
+        drawer_layout = QVBoxLayout(self.grp_drawer)
         drawer_layout.setSpacing(8)
 
-        lbl_drawer_desc = QLabel("Send a kick signal to open the cash drawer via the receipt printer.")
-        lbl_drawer_desc.setProperty("class", "muted")
-        lbl_drawer_desc.setWordWrap(True)
-        drawer_layout.addWidget(lbl_drawer_desc)
+        self.lbl_drawer_desc = QLabel()
+        self.lbl_drawer_desc.setProperty("class", "muted")
+        self.lbl_drawer_desc.setWordWrap(True)
+        drawer_layout.addWidget(self.lbl_drawer_desc)
 
         drawer_btn_row = QHBoxLayout()
-        self.btn_test_drawer = QPushButton("Open Drawer")
+        self.btn_test_drawer = QPushButton()
         self.btn_test_drawer.setProperty("class", "accent")
         self.btn_test_drawer.setFixedWidth(160)
         self.btn_test_drawer.clicked.connect(self._test_drawer)
@@ -494,29 +521,28 @@ class AdminToolsView(QWidget):
         drawer_btn_row.addWidget(self.lbl_drawer_status, 1)
 
         drawer_layout.addLayout(drawer_btn_row)
-        layout.addWidget(grp_drawer)
+        layout.addWidget(self.grp_drawer)
 
         # Barcode Scanner Test group
-        grp_scanner = QGroupBox("Barcode Scanner Test")
-        scanner_layout = QVBoxLayout(grp_scanner)
+        self.grp_scanner = QGroupBox()
+        scanner_layout = QVBoxLayout(self.grp_scanner)
         scanner_layout.setSpacing(8)
 
-        lbl_scanner_desc = QLabel("Click the input field below and scan a barcode to test your scanner.")
-        lbl_scanner_desc.setProperty("class", "muted")
-        lbl_scanner_desc.setWordWrap(True)
-        scanner_layout.addWidget(lbl_scanner_desc)
+        self.lbl_scanner_desc = QLabel()
+        self.lbl_scanner_desc.setProperty("class", "muted")
+        self.lbl_scanner_desc.setWordWrap(True)
+        scanner_layout.addWidget(self.lbl_scanner_desc)
 
         scanner_row = QHBoxLayout()
         self.input_scanner_test = QLineEdit()
-        self.input_scanner_test.setPlaceholderText("Scan a barcode here...")
         self.input_scanner_test.textChanged.connect(self._on_scanner_input)
         self.input_scanner_test.returnPressed.connect(self._on_scanner_enter)
         scanner_row.addWidget(self.input_scanner_test, 1)
 
-        btn_clear_scan = QPushButton("Clear")
-        btn_clear_scan.setFixedWidth(80)
-        btn_clear_scan.clicked.connect(self._clear_scanner)
-        scanner_row.addWidget(btn_clear_scan)
+        self.btn_clear_scan = QPushButton()
+        self.btn_clear_scan.setFixedWidth(80)
+        self.btn_clear_scan.clicked.connect(self._clear_scanner)
+        scanner_row.addWidget(self.btn_clear_scan)
 
         scanner_layout.addLayout(scanner_row)
 
@@ -532,7 +558,7 @@ class AdminToolsView(QWidget):
         # Timing tracking for scanner detection
         self._scanner_keystroke_times: list[float] = []
 
-        layout.addWidget(grp_scanner)
+        layout.addWidget(self.grp_scanner)
 
         layout.addStretch()
 
@@ -553,7 +579,7 @@ class AdminToolsView(QWidget):
     def _test_printer(self) -> None:
         """Test the receipt printer in a background thread."""
         self.btn_test_printer.setEnabled(False)
-        self.btn_test_printer.setText("Testing...")
+        self.btn_test_printer.setText(_t("admin_tools.hw_printer_testing"))
         self.lbl_printer_status.setText("")
 
         from cbpos.ui.workers import PrinterTestWorker
@@ -567,15 +593,15 @@ class AdminToolsView(QWidget):
         """Handle printer test timeout after 15 seconds."""
         if hasattr(self, "_printer_worker") and self._printer_worker.isRunning():
             self.btn_test_printer.setEnabled(True)
-            self.btn_test_printer.setText("Print Test Page")
-            self.lbl_printer_status.setText("Printer test timed out after 15 seconds.")
+            self.btn_test_printer.setText(_t("admin_tools.hw_btn_test_printer"))
+            self.lbl_printer_status.setText(_t("admin_tools.hw_printer_timeout"))
             self.lbl_printer_status.setProperty("class", "debit")
             self.lbl_printer_status.style().unpolish(self.lbl_printer_status)
             self.lbl_printer_status.style().polish(self.lbl_printer_status)
 
     def _on_printer_test_done(self, success: bool, message: str) -> None:
         self.btn_test_printer.setEnabled(True)
-        self.btn_test_printer.setText("Print Test Page")
+        self.btn_test_printer.setText(_t("admin_tools.hw_btn_test_printer"))
         self.lbl_printer_status.setText(message)
         self.lbl_printer_status.setProperty("class", "credit" if success else "debit")
         self.lbl_printer_status.style().unpolish(self.lbl_printer_status)
@@ -584,7 +610,7 @@ class AdminToolsView(QWidget):
     def _test_drawer(self) -> None:
         """Test the cash drawer in a background thread."""
         self.btn_test_drawer.setEnabled(False)
-        self.btn_test_drawer.setText("Testing...")
+        self.btn_test_drawer.setText(_t("admin_tools.hw_drawer_testing"))
         self.lbl_drawer_status.setText("")
 
         from cbpos.ui.workers import DrawerTestWorker
@@ -598,15 +624,15 @@ class AdminToolsView(QWidget):
         """Handle drawer test timeout after 15 seconds."""
         if hasattr(self, "_drawer_worker") and self._drawer_worker.isRunning():
             self.btn_test_drawer.setEnabled(True)
-            self.btn_test_drawer.setText("Open Drawer")
-            self.lbl_drawer_status.setText("Drawer test timed out after 15 seconds.")
+            self.btn_test_drawer.setText(_t("admin_tools.hw_btn_open_drawer"))
+            self.lbl_drawer_status.setText(_t("admin_tools.hw_drawer_timeout"))
             self.lbl_drawer_status.setProperty("class", "debit")
             self.lbl_drawer_status.style().unpolish(self.lbl_drawer_status)
             self.lbl_drawer_status.style().polish(self.lbl_drawer_status)
 
     def _on_drawer_test_done(self, success: bool, message: str) -> None:
         self.btn_test_drawer.setEnabled(True)
-        self.btn_test_drawer.setText("Open Drawer")
+        self.btn_test_drawer.setText(_t("admin_tools.hw_btn_open_drawer"))
         self.lbl_drawer_status.setText(message)
         self.lbl_drawer_status.setProperty("class", "credit" if success else "debit")
         self.lbl_drawer_status.style().unpolish(self.lbl_drawer_status)
@@ -617,7 +643,7 @@ class AdminToolsView(QWidget):
         self._scanner_keystroke_times.append(time.monotonic())
 
         if text.strip():
-            self.lbl_scanner_status.setText(f"Barcode received: {text.strip()}")
+            self.lbl_scanner_status.setText(_t("admin_tools.hw_scanner_barcode_received", barcode=text.strip()))
             self.lbl_scanner_status.setProperty("class", "credit")
         else:
             self.lbl_scanner_status.setText("")
@@ -642,12 +668,10 @@ class AdminToolsView(QWidget):
         avg_ms = (sum(intervals) / len(intervals)) * 1000
 
         if avg_ms < 50:
-            detection_text = f"Scanner detected (avg {avg_ms:.0f}ms between characters)"  # noqa: E231
+            detection_text = _t("admin_tools.hw_scanner_detected", ms=f"{avg_ms:.0f}")  # noqa: E231
             self.lbl_scanner_detection.setProperty("class", "credit")
         else:
-            detection_text = (
-                f"Manual input detected, not a scanner (avg {avg_ms:.0f}ms between characters)"  # noqa: E231
-            )
+            detection_text = _t("admin_tools.hw_scanner_manual", ms=f"{avg_ms:.0f}")  # noqa: E231
             self.lbl_scanner_detection.setProperty("class", "debit")
 
         self.lbl_scanner_detection.setText(detection_text)
@@ -661,3 +685,62 @@ class AdminToolsView(QWidget):
         self.lbl_scanner_detection.setText("")
         self._scanner_keystroke_times.clear()
         self.input_scanner_test.setFocus()
+
+    def retranslate_ui(self) -> None:
+        """Update all translatable strings."""
+        self.lbl_title.setText(_t("admin_tools.title"))
+        self.lbl_subtitle.setText(_t("admin_tools.subtitle"))
+        self.btn_update.setText(_t("admin_tools.btn_check_updates"))
+
+        # Tab titles
+        self.tabs.setTabText(0, _t("admin_tools.tab_database"))
+        self.tabs.setTabText(1, _t("admin_tools.tab_error_logs"))
+        self.tabs.setTabText(2, _t("admin_tools.tab_hardware"))
+
+        # Database tab
+        self.grp_file.setTitle(_t("admin_tools.db_group_file"))
+        self.lbl_db_path_label.setText(_t("admin_tools.db_path"))
+        self.lbl_db_size_label.setText(_t("admin_tools.db_size"))
+        self.lbl_db_modified_label.setText(_t("admin_tools.db_last_modified"))
+        self.lbl_sqlite_version_label.setText(_t("admin_tools.db_sqlite_version"))
+        self.grp_tables.setTitle(_t("admin_tools.db_group_table_counts"))
+        self.table_counts.setHorizontalHeaderLabels(
+            [_t("admin_tools.db_header_table"), _t("admin_tools.db_header_rows")]
+        )
+        self.btn_db_refresh.setText(_t("admin_tools.db_btn_refresh"))
+
+        # Logs tab
+        self.lbl_level.setText(_t("admin_tools.logs_level"))
+        self.lbl_from.setText(_t("admin_tools.logs_from"))
+        self.lbl_to.setText(_t("admin_tools.logs_to"))
+        self.input_log_search.setPlaceholderText(_t("admin_tools.logs_search_placeholder"))
+        self.btn_apply.setText(_t("admin_tools.logs_btn_apply"))
+        self.log_table.setHorizontalHeaderLabels(
+            [
+                _t("admin_tools.logs_header_time"),
+                _t("admin_tools.logs_header_level"),
+                _t("admin_tools.logs_header_source"),
+                _t("admin_tools.logs_header_message"),
+            ]
+        )
+        self.btn_export.setText(_t("admin_tools.logs_btn_export"))
+        self.btn_clear.setText(_t("admin_tools.logs_btn_clear"))
+        self.btn_refresh_logs.setText(_t("admin_tools.logs_btn_refresh"))
+
+        # Hardware tab
+        self.grp_config.setTitle(_t("admin_tools.hw_group_printer"))
+        self.lbl_hw_type_label.setText(_t("admin_tools.hw_printer_type"))
+        self.lbl_hw_path_label.setText(_t("admin_tools.hw_printer_path"))
+        self.lbl_hw_receipt_label.setText(_t("admin_tools.hw_receipt_printer"))
+        self.lbl_hw_a4_label.setText(_t("admin_tools.hw_a4_printer"))
+        self.lbl_hw_paper_label.setText(_t("admin_tools.hw_paper_width"))
+        self.grp_printer.setTitle(_t("admin_tools.hw_group_receipt_test"))
+        self.lbl_printer_desc.setText(_t("admin_tools.hw_receipt_desc"))
+        self.btn_test_printer.setText(_t("admin_tools.hw_btn_test_printer"))
+        self.grp_drawer.setTitle(_t("admin_tools.hw_group_drawer_test"))
+        self.lbl_drawer_desc.setText(_t("admin_tools.hw_drawer_desc"))
+        self.btn_test_drawer.setText(_t("admin_tools.hw_btn_open_drawer"))
+        self.grp_scanner.setTitle(_t("admin_tools.hw_group_scanner_test"))
+        self.lbl_scanner_desc.setText(_t("admin_tools.hw_scanner_desc"))
+        self.input_scanner_test.setPlaceholderText(_t("admin_tools.hw_scanner_placeholder"))
+        self.btn_clear_scan.setText(_t("common.clear"))

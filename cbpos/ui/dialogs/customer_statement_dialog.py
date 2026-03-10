@@ -22,6 +22,7 @@ from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.core.utils.formatters import format_currency
+from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ class CustomerStatementDialog(QDialog):
         self.customer = customer
         self.statement_data = None
 
-        self.setWindowTitle(f"Statement — {customer.name}")
+        self.setWindowTitle(_t("customer_statement.title", name=customer.name))
         self.setMinimumSize(750, 550)
         self.setObjectName("CustomerStatementDialog")
         self._init_ui()
@@ -51,7 +52,7 @@ class CustomerStatementDialog(QDialog):
         header_layout.addWidget(self.lbl_customer)
 
         if self.customer.phone:
-            lbl_phone = QLabel(f"Phone: {self.customer.phone}")
+            lbl_phone = QLabel(_t("customer_statement.phone", phone=self.customer.phone))
             lbl_phone.setProperty("class", "muted")
             header_layout.addWidget(lbl_phone)
 
@@ -60,7 +61,7 @@ class CustomerStatementDialog(QDialog):
 
         # Date filter
         filter_layout = QHBoxLayout()
-        lbl_from = QLabel("From:")
+        lbl_from = QLabel(_t("common.from"))
         lbl_from.setProperty("class", "transparent")
         filter_layout.addWidget(lbl_from)
         self.date_from = QDateEdit()
@@ -68,7 +69,7 @@ class CustomerStatementDialog(QDialog):
         self.date_from.setDate(QDate.currentDate().addMonths(-1))
         filter_layout.addWidget(self.date_from)
 
-        lbl_to = QLabel("To:")
+        lbl_to = QLabel(_t("common.to"))
         lbl_to.setProperty("class", "transparent")
         filter_layout.addWidget(lbl_to)
         self.date_to = QDateEdit()
@@ -76,7 +77,7 @@ class CustomerStatementDialog(QDialog):
         self.date_to.setDate(QDate.currentDate())
         filter_layout.addWidget(self.date_to)
 
-        btn_refresh = QPushButton("Refresh")
+        btn_refresh = QPushButton(_t("common.refresh"))
         btn_refresh.setProperty("class", "accent")
         btn_refresh.clicked.connect(self._load_statement)
         filter_layout.addWidget(btn_refresh)
@@ -86,13 +87,13 @@ class CustomerStatementDialog(QDialog):
 
         # Summary labels
         summary_layout = QHBoxLayout()
-        self.lbl_opening = QLabel("Opening: ---")
+        self.lbl_opening = QLabel(_t("customer_statement.opening", value="---"))
         self.lbl_opening.setProperty("class", "transparent")
-        self.lbl_total_debit = QLabel("Sales: ---")
+        self.lbl_total_debit = QLabel(_t("customer_statement.sales", value="---"))
         self.lbl_total_debit.setProperty("class", "debit")
-        self.lbl_total_credit = QLabel("Payments: ---")
+        self.lbl_total_credit = QLabel(_t("customer_statement.payments", value="---"))
         self.lbl_total_credit.setProperty("class", "credit")
-        self.lbl_closing = QLabel("Closing: ---")
+        self.lbl_closing = QLabel(_t("customer_statement.closing", value="---"))
         self.lbl_closing.setProperty("class", "bold")
         summary_layout.addWidget(self.lbl_opening)
         summary_layout.addWidget(self.lbl_total_debit)
@@ -104,7 +105,16 @@ class CustomerStatementDialog(QDialog):
         # Entries table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["Date", "Type", "Description", "Debit", "Credit", "Balance"])
+        self.table.setHorizontalHeaderLabels(
+            [
+                _t("customer_statement.col_date"),
+                _t("customer_statement.col_type"),
+                _t("customer_statement.col_description"),
+                _t("customer_statement.col_debit"),
+                _t("customer_statement.col_credit"),
+                _t("customer_statement.col_balance"),
+            ]
+        )
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -115,12 +125,12 @@ class CustomerStatementDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
 
-        btn_print = QPushButton("Print Statement")
+        btn_print = QPushButton(_t("customer_statement.print_statement"))
         btn_print.setProperty("class", "accent")
         btn_print.clicked.connect(self._print_thermal)
         btn_layout.addWidget(btn_print)
 
-        btn_close = QPushButton("Close")
+        btn_close = QPushButton(_t("common.close"))
         btn_close.clicked.connect(self.accept)
         btn_layout.addWidget(btn_close)
 
@@ -146,16 +156,16 @@ class CustomerStatementDialog(QDialog):
             )
         except Exception as e:
             logger.error(f"Failed to load statement: {e}")
-            QMessageBox.critical(self, "Error", f"Failed to load statement: {e}")
+            QMessageBox.critical(self, _t("common.error"), _t("customer_statement.load_failed", error=str(e)))
             return
 
         data = self.statement_data
 
         # Update summaries
-        self.lbl_opening.setText(f"Opening: {format_currency(data['opening_balance'])}")
-        self.lbl_total_debit.setText(f"Sales: {format_currency(data['total_debit'])}")
-        self.lbl_total_credit.setText(f"Payments: {format_currency(data['total_credit'])}")
-        self.lbl_closing.setText(f"Closing: {format_currency(data['closing_balance'])}")
+        self.lbl_opening.setText(_t("customer_statement.opening", value=format_currency(data["opening_balance"])))
+        self.lbl_total_debit.setText(_t("customer_statement.sales", value=format_currency(data["total_debit"])))
+        self.lbl_total_credit.setText(_t("customer_statement.payments", value=format_currency(data["total_credit"])))
+        self.lbl_closing.setText(_t("customer_statement.closing", value=format_currency(data["closing_balance"])))
 
         # Populate table
         self.table.setRowCount(0)
@@ -193,4 +203,4 @@ class CustomerStatementDialog(QDialog):
 
         worker = PrintWorker()
         worker.add_job("print_commands", commands)
-        QMessageBox.information(self, "Print", "Statement sent to printer.")
+        QMessageBox.information(self, _t("common.print"), _t("customer_statement.print_sent"))

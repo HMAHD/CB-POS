@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.config import Config
 from cbpos.core.services.update_service import UpdateService
+from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,7 @@ class UpdateDialog(QDialog):
         self._init_ui()
 
     def _init_ui(self) -> None:
-        self.setWindowTitle("Update Available")
+        self.setWindowTitle(_t("update.title"))
         self.setMinimumWidth(420)
         self.setModal(True)
 
@@ -90,24 +91,26 @@ class UpdateDialog(QDialog):
         changelog = self._manifest.get("changelog", "")
 
         # Header
-        header = QLabel(f"<h3>CB POS {version} is available</h3>")
+        header = QLabel(f"<h3>{_t('update.version_available', version=version)}</h3>")
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(header)
 
         # Current vs new
-        info = QLabel(f"Your version: <b>{Config.VERSION}</b>" f" \u2192 New version: <b>{version}</b>")
+        info = QLabel(
+            _t("update.your_version", version=Config.VERSION) + " \u2192 " + _t("update.new_version", version=version)
+        )
         info.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(info)
 
         if date:
-            date_lbl = QLabel(f"Released: {date}")
+            date_lbl = QLabel(_t("update.released", date=date))
             date_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             date_lbl.setStyleSheet("color: #888;")
             layout.addWidget(date_lbl)
 
         # Changelog
         if changelog:
-            cl_label = QLabel(f"<b>What's new:</b><br>{changelog}")  # noqa: E231
+            cl_label = QLabel(f"<b>{_t('update.whats_new')}:</b><br>{changelog}")  # noqa: E231
             cl_label.setWordWrap(True)
             layout.addWidget(cl_label)
 
@@ -125,12 +128,12 @@ class UpdateDialog(QDialog):
         # Buttons
         btn_layout = QHBoxLayout()
 
-        self._btn_update = QPushButton("Download && Install")
+        self._btn_update = QPushButton(_t("update.download_install"))
         self._btn_update.setDefault(True)
         self._btn_update.clicked.connect(self._start_download)
         btn_layout.addWidget(self._btn_update)
 
-        self._btn_skip = QPushButton("Remind Me Later")
+        self._btn_skip = QPushButton(_t("update.remind_later"))
         self._btn_skip.clicked.connect(self.reject)
         btn_layout.addWidget(self._btn_skip)
 
@@ -139,7 +142,7 @@ class UpdateDialog(QDialog):
     def _start_download(self) -> None:
         url = self._manifest.get("download_url", "")
         if not url:
-            QMessageBox.warning(self, "Error", "No download URL in update manifest.")
+            QMessageBox.warning(self, _t("common.error"), _t("update.no_download_url"))
             return
 
         sha = self._manifest.get("sha256", "")
@@ -149,7 +152,7 @@ class UpdateDialog(QDialog):
         self._progress.setVisible(True)
         self._progress.setValue(0)
         self._status.setVisible(True)
-        self._status.setText("Downloading update...")
+        self._status.setText(_t("update.downloading"))
 
         self._download_thread = _DownloadThread(url, sha, self)
         self._download_thread.progress.connect(self._on_progress)
@@ -162,11 +165,13 @@ class UpdateDialog(QDialog):
         self._progress.setValue(pct)
         mb = downloaded / (1024 * 1024)
         total_mb = total / (1024 * 1024)
-        self._status.setText(f"Downloading... {mb:.1f} / {total_mb:.1f} MB")  # noqa: E231
+        self._status.setText(
+            _t("update.downloading_progress", downloaded="{:.1f}".format(mb), total="{:.1f}".format(total_mb))
+        )
 
     def _on_download_ok(self, path: str) -> None:
         self._progress.setValue(100)
-        self._status.setText("Download complete. Launching installer...")
+        self._status.setText(_t("update.launching_installer"))
 
         # Launch the installer on supported platforms
         try:
@@ -184,31 +189,27 @@ class UpdateDialog(QDialog):
                 )
                 QMessageBox.information(
                     self,
-                    "Manual Update Required",
-                    "Automatic installer launch is only supported on Windows.\n\n"
-                    f"The installer was saved to:\n{path}\n"  # noqa: E231
-                    "Please run it manually.",
+                    _t("update.manual_required"),
+                    _t("update.manual_message", path=path),
                 )
                 self._btn_skip.setEnabled(True)
-                self._btn_skip.setText("Close")
+                self._btn_skip.setText(_t("common.close"))
         except OSError as e:
             logger.error("Failed to launch installer: %s", e)
             QMessageBox.warning(
                 self,
-                "Error",
-                f"Could not launch installer:\n{e}\n\n"  # noqa: E231
-                f"The installer was saved to:\n{path}\n"  # noqa: E231
-                "Please run it manually.",
+                _t("common.error"),
+                _t("update.launch_failed", error=str(e), path=path),
             )
             self._btn_skip.setEnabled(True)
-            self._btn_skip.setText("Close")
+            self._btn_skip.setText(_t("common.close"))
 
     def _on_download_err(self, error: str) -> None:
-        self._status.setText("Download failed.")
+        self._status.setText(_t("update.download_failed"))
         self._progress.setVisible(False)
         self._btn_update.setEnabled(True)
         self._btn_skip.setEnabled(True)
-        QMessageBox.warning(self, "Download Failed", error)
+        QMessageBox.warning(self, _t("update.download_failed"), error)
 
 
 def check_for_updates_async(parent=None, silent: bool = True) -> _CheckThread:
@@ -231,8 +232,8 @@ def check_for_updates_async(parent=None, silent: bool = True) -> _CheckThread:
         if not silent:
             QMessageBox.information(
                 parent,
-                "No Updates",
-                f"You are running the latest version ({Config.VERSION}).",
+                _t("update.no_updates"),
+                _t("update.latest_version", version=Config.VERSION),
             )
 
     thread = _CheckThread(parent)

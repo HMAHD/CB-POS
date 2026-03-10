@@ -24,6 +24,7 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.services.proforma_service import ProformaService
 from cbpos.core.utils.formatters import format_currency
+from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ class ProformaDialog(QDialog):
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("New Quotation")
+        self.setWindowTitle(_t("proforma.title"))
         self.setMinimumSize(700, 550)
         self.items: list[dict] = []
         self.products_cache: dict = {}
@@ -54,27 +55,27 @@ class ProformaDialog(QDialog):
 
         self.customer_combo = QComboBox()
         self.customer_combo.setEditable(True)
-        self.customer_combo.addItem("-- No Customer --", None)
-        form.addRow("Customer:", self.customer_combo)
+        self.customer_combo.addItem(_t("proforma.no_customer"), None)
+        form.addRow(_t("proforma.customer"), self.customer_combo)
 
         self.validity_spin = QSpinBox()
         self.validity_spin.setRange(1, 365)
         self.validity_spin.setValue(30)
-        self.validity_spin.setSuffix(" days")
-        form.addRow("Validity:", self.validity_spin)
+        self.validity_spin.setSuffix(" " + _t("proforma.days"))
+        form.addRow(_t("proforma.validity"), self.validity_spin)
 
         self.notes_edit = QTextEdit()
         self.notes_edit.setMaximumHeight(60)
-        self.notes_edit.setPlaceholderText("Optional notes...")
-        form.addRow("Notes:", self.notes_edit)
+        self.notes_edit.setPlaceholderText(_t("proforma.notes_placeholder"))
+        form.addRow(_t("common.notes") + ":", self.notes_edit)
 
         layout.addLayout(form)
 
         # Product Search
         search_layout = QHBoxLayout()
-        search_layout.addWidget(QLabel("Add Product:"))
+        search_layout.addWidget(QLabel(_t("proforma.add_product")))
         self.product_search = QLineEdit()
-        self.product_search.setPlaceholderText("Search by name or barcode...")
+        self.product_search.setPlaceholderText(_t("proforma.search_placeholder"))
         self.product_completer = QCompleter()
         self.product_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.product_completer.setFilterMode(Qt.MatchFlag.MatchContains)
@@ -82,7 +83,7 @@ class ProformaDialog(QDialog):
         self.product_search.returnPressed.connect(self.add_product)
         search_layout.addWidget(self.product_search, 1)
 
-        add_btn = QPushButton("Add")
+        add_btn = QPushButton(_t("common.add"))
         add_btn.clicked.connect(self.add_product)
         search_layout.addWidget(add_btn)
 
@@ -91,7 +92,16 @@ class ProformaDialog(QDialog):
         # Items Grid
         self.items_table = QTableWidget()
         self.items_table.setColumnCount(6)
-        self.items_table.setHorizontalHeaderLabels(["Product", "Qty", "Unit Price", "Disc Type", "Disc Value", "Total"])
+        self.items_table.setHorizontalHeaderLabels(
+            [
+                _t("proforma.col_product"),
+                _t("proforma.col_qty"),
+                _t("proforma.col_unit_price"),
+                _t("proforma.col_disc_type"),
+                _t("proforma.col_disc_value"),
+                _t("common.total"),
+            ]
+        )
         self.items_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.items_table.verticalHeader().setVisible(False)
         self.items_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -108,11 +118,11 @@ class ProformaDialog(QDialog):
 
         footer.addStretch()
 
-        cancel_btn = QPushButton("Cancel")
+        cancel_btn = QPushButton(_t("common.cancel"))
         cancel_btn.clicked.connect(self.reject)
         footer.addWidget(cancel_btn)
 
-        create_btn = QPushButton("Create Quotation")
+        create_btn = QPushButton(_t("proforma.btn_create"))
         create_btn.setStyleSheet("background-color: #00BCEB; color: white; font-weight: bold; padding: 8px 20px;")
         create_btn.clicked.connect(self.create_proforma)
         footer.addWidget(create_btn)
@@ -153,7 +163,7 @@ class ProformaDialog(QDialog):
                     break
 
         if not product:
-            QMessageBox.warning(self, "Not Found", f"Product '{text}' not found.")
+            QMessageBox.warning(self, _t("proforma.not_found"), _t("proforma.product_not_found", name=text))
             return
 
         # Check if already in items
@@ -220,8 +230,8 @@ class ProformaDialog(QDialog):
         from PyQt6.QtWidgets import QMenu
 
         menu = QMenu(self)
-        edit_qty = menu.addAction("Change Quantity")
-        remove = menu.addAction("Remove Item")
+        edit_qty = menu.addAction(_t("proforma.change_qty"))
+        remove = menu.addAction(_t("common.remove"))
 
         action = menu.exec(self.items_table.viewport().mapToGlobal(position))
         row = self.items_table.currentRow()
@@ -239,7 +249,9 @@ class ProformaDialog(QDialog):
         from PyQt6.QtWidgets import QInputDialog
 
         current = float(self.items[row]["quantity"])
-        qty, ok = QInputDialog.getDouble(self, "Change Quantity", "New quantity:", current, 0.001, 99999.0, 3)
+        qty, ok = QInputDialog.getDouble(
+            self, _t("proforma.change_qty"), _t("proforma.new_qty"), current, 0.001, 99999.0, 3
+        )
         if ok:
             self.items[row]["quantity"] = Decimal(str(qty))
             self.items[row]["line_total"] = self.items[row]["quantity"] * self.items[row]["unit_price"]
@@ -248,7 +260,7 @@ class ProformaDialog(QDialog):
     def create_proforma(self) -> None:
         """Create the proforma via ProformaService."""
         if not self.items:
-            QMessageBox.warning(self, "No Items", "Add at least one item to the quotation.")
+            QMessageBox.warning(self, _t("proforma.no_items"), _t("proforma.no_items_msg"))
             return
 
         customer_id = self.customer_combo.currentData()
@@ -270,4 +282,4 @@ class ProformaDialog(QDialog):
             )
             self.accept()
         else:
-            QMessageBox.critical(self, "Error", "Failed to create quotation. Check logs.")
+            QMessageBox.critical(self, _t("common.error"), _t("proforma.create_failed"))

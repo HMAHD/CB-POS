@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QBrush, QAction
 from cbpos.core.services.category_service import CategoryService
+from cbpos.i18n import _t
 
 
 class CategoryTreeDialog(QDialog):
@@ -24,7 +25,7 @@ class CategoryTreeDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Category Manager (Tree View)")
+        self.setWindowTitle(_t("category_tree.title"))
         self.setMinimumSize(600, 500)
         self.init_ui()
         self.load_categories()
@@ -33,13 +34,13 @@ class CategoryTreeDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # Title
-        title = QLabel("Category Manager - Hierarchical View")
+        title = QLabel(_t("category_tree.heading"))
         title.setProperty("class", "dialog-title")
         layout.addWidget(title)
 
         # Tree Widget
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["Category Name", "Color"])
+        self.tree.setHeaderLabels([_t("category_tree.col_name"), _t("category_tree.col_color")])
         self.tree.setDragDropMode(QTreeWidget.DragDropMode.InternalMove)
         self.tree.setSelectionMode(QTreeWidget.SelectionMode.SingleSelection)
         self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -50,18 +51,18 @@ class CategoryTreeDialog(QDialog):
         # Buttons
         btn_layout = QHBoxLayout()
 
-        btn_add_root = QPushButton("Add Root Category")
+        btn_add_root = QPushButton(_t("category_tree.add_root"))
         btn_add_root.setProperty("class", "primary")
         btn_add_root.clicked.connect(self.add_root_category)
         btn_layout.addWidget(btn_add_root)
 
         btn_layout.addStretch()
 
-        btn_refresh = QPushButton("Refresh")
+        btn_refresh = QPushButton(_t("common.refresh"))
         btn_refresh.clicked.connect(self.load_categories)
         btn_layout.addWidget(btn_refresh)
 
-        btn_close = QPushButton("Close")
+        btn_close = QPushButton(_t("common.close"))
         btn_close.clicked.connect(self.close)
         btn_layout.addWidget(btn_close)
 
@@ -117,21 +118,21 @@ class CategoryTreeDialog(QDialog):
 
         menu = QMenu(self)
 
-        action_add_sub = QAction("Add Sub-category", self)
+        action_add_sub = QAction(_t("category_tree.add_subcategory"), self)
         action_add_sub.triggered.connect(lambda: self.add_subcategory(item))
         menu.addAction(action_add_sub)
 
-        action_edit = QAction("Edit", self)
+        action_edit = QAction(_t("common.edit"), self)
         action_edit.triggered.connect(lambda: self.edit_category(item))
         menu.addAction(action_edit)
 
-        action_change_color = QAction("Change Color", self)
+        action_change_color = QAction(_t("category_tree.change_color"), self)
         action_change_color.triggered.connect(lambda: self.change_category_color(item))
         menu.addAction(action_change_color)
 
         menu.addSeparator()
 
-        action_delete = QAction("Delete", self)
+        action_delete = QAction(_t("common.delete"), self)
         action_delete.triggered.connect(lambda: self.delete_category(item))
         menu.addAction(action_delete)
 
@@ -139,12 +140,14 @@ class CategoryTreeDialog(QDialog):
 
     def add_root_category(self):
         """Add a new root category."""
-        name, ok = QInputDialog.getText(self, "Add Root Category", "Category Name:")
+        name, ok = QInputDialog.getText(
+            self, _t("category_tree.add_root_title"), _t("category_tree.category_name_prompt")
+        )
         if ok and name:
             try:
                 CategoryService.create(name=name)
             except ValueError as e:
-                QMessageBox.warning(self, "Error", str(e))
+                QMessageBox.warning(self, _t("common.error"), str(e))
                 return
             self.load_categories()
 
@@ -152,12 +155,14 @@ class CategoryTreeDialog(QDialog):
         """Add a subcategory under the selected category."""
         parent_id = parent_item.data(0, Qt.ItemDataRole.UserRole)
 
-        name, ok = QInputDialog.getText(self, "Add Sub-category", "Category Name:")
+        name, ok = QInputDialog.getText(
+            self, _t("category_tree.add_sub_title"), _t("category_tree.category_name_prompt")
+        )
         if ok and name:
             try:
                 CategoryService.create(name=name, parent_id=parent_id)
             except ValueError as e:
-                QMessageBox.warning(self, "Error", str(e))
+                QMessageBox.warning(self, _t("common.error"), str(e))
                 return
             self.load_categories()
 
@@ -166,12 +171,14 @@ class CategoryTreeDialog(QDialog):
         category_id = item.data(0, Qt.ItemDataRole.UserRole)
         current_name = item.text(0)
 
-        name, ok = QInputDialog.getText(self, "Edit Category", "Category Name:", text=current_name)
+        name, ok = QInputDialog.getText(
+            self, _t("category_tree.edit_title"), _t("category_tree.category_name_prompt"), text=current_name
+        )
         if ok and name:
             try:
                 CategoryService.update(category_id, name=name)
             except ValueError as e:
-                QMessageBox.warning(self, "Error", str(e))
+                QMessageBox.warning(self, _t("common.error"), str(e))
                 return
             self.load_categories()
 
@@ -184,7 +191,7 @@ class CategoryTreeDialog(QDialog):
             try:
                 CategoryService.update(category_id, color=color.name())
             except ValueError as e:
-                QMessageBox.warning(self, "Error", str(e))
+                QMessageBox.warning(self, _t("common.error"), str(e))
                 return
             self.load_categories()
 
@@ -195,10 +202,8 @@ class CategoryTreeDialog(QDialog):
 
         reply = QMessageBox.question(
             self,
-            "Delete Category",
-            "Are you sure you want to delete '{0}'?\nAll products in this category will become uncategorized.".format(
-                category_name
-            ),
+            _t("category_tree.delete_title"),
+            _t("category_tree.delete_confirm", name=category_name),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
@@ -206,7 +211,7 @@ class CategoryTreeDialog(QDialog):
             try:
                 CategoryService.delete(category_id)
             except ValueError as e:
-                QMessageBox.warning(self, "Error", str(e))
+                QMessageBox.warning(self, _t("common.error"), str(e))
                 return
             self.load_categories()
 

@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from cbpos.core.services.unit_service import UnitService
+from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class UnitManagerDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Manage Units of Measurement")
+        self.setWindowTitle(_t("unit_manager.title"))
         self.setMinimumSize(620, 460)
         self.setObjectName("UnitManagerDialog")
         self._editing_id = None
@@ -47,7 +48,9 @@ class UnitManagerDialog(QDialog):
 
         self.table = QTableWidget()
         self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["ID", "Name", "Abbr.", "Decimals"])
+        self.table.setHorizontalHeaderLabels(
+            [_t("common.id"), _t("common.name"), _t("unit_manager.col_abbr"), _t("unit_manager.col_decimals")]
+        )
         self.table.setColumnHidden(0, True)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
@@ -65,26 +68,26 @@ class UnitManagerDialog(QDialog):
         right.setSpacing(10)
 
         # Form
-        form_group = QGroupBox("Unit Details")
+        form_group = QGroupBox(_t("unit_manager.details"))
         form_layout = QFormLayout(form_group)
         form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
         form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         form_layout.setSpacing(10)
 
         self.txt_name = QLineEdit()
-        self.txt_name.setPlaceholderText("e.g., Kilogram")
-        form_layout.addRow("Name:", self.txt_name)
+        self.txt_name.setPlaceholderText(_t("unit_manager.name_placeholder"))
+        form_layout.addRow(_t("common.name") + ":", self.txt_name)
 
         self.txt_abbr = QLineEdit()
-        self.txt_abbr.setPlaceholderText("e.g., kg")
+        self.txt_abbr.setPlaceholderText(_t("unit_manager.abbr_placeholder"))
         self.txt_abbr.setMaxLength(10)
-        form_layout.addRow("Abbreviation:", self.txt_abbr)
+        form_layout.addRow(_t("unit_manager.abbreviation"), self.txt_abbr)
 
         self.spin_decimals = QSpinBox()
         self.spin_decimals.setMinimum(0)
         self.spin_decimals.setMaximum(3)
-        self.spin_decimals.setToolTip("Decimal places for quantities (0 = whole numbers)")
-        form_layout.addRow("Decimal Places:", self.spin_decimals)
+        self.spin_decimals.setToolTip(_t("unit_manager.decimals_tooltip"))
+        form_layout.addRow(_t("unit_manager.decimal_places"), self.spin_decimals)
 
         right.addWidget(form_group)
 
@@ -92,12 +95,12 @@ class UnitManagerDialog(QDialog):
         btn_layout = QVBoxLayout()
         btn_layout.setSpacing(6)
 
-        self.btn_save = QPushButton("Save New")
+        self.btn_save = QPushButton(_t("unit_manager.save_new"))
         self.btn_save.setProperty("class", "primary")
         self.btn_save.clicked.connect(self._save_unit)
         btn_layout.addWidget(self.btn_save)
 
-        self.btn_delete = QPushButton("Delete Selected")
+        self.btn_delete = QPushButton(_t("unit_manager.delete_selected"))
         self.btn_delete.setProperty("class", "danger")
         self.btn_delete.setEnabled(False)
         self.btn_delete.clicked.connect(self._delete_unit)
@@ -109,13 +112,13 @@ class UnitManagerDialog(QDialog):
         sep.setFrameShadow(QFrame.Shadow.Sunken)
         btn_layout.addWidget(sep)
 
-        self.btn_clear = QPushButton("Clear / New")
+        self.btn_clear = QPushButton(_t("unit_manager.clear_new"))
         self.btn_clear.clicked.connect(self._clear_form)
         btn_layout.addWidget(self.btn_clear)
 
         btn_layout.addStretch()
 
-        btn_close = QPushButton("Close")
+        btn_close = QPushButton(_t("common.close"))
         btn_close.clicked.connect(self.accept)
         btn_layout.addWidget(btn_close)
 
@@ -153,17 +156,17 @@ class UnitManagerDialog(QDialog):
         self.txt_name.setText(self.table.item(row, 1).text())
         self.txt_abbr.setText(self.table.item(row, 2).text())
         self.spin_decimals.setValue(int(self.table.item(row, 3).text()))
-        self.btn_save.setText("Update")
+        self.btn_save.setText(_t("common.update"))
         self.btn_delete.setEnabled(True)
 
     def _validate(self) -> bool:
         """Validate form fields."""
         if not self.txt_name.text().strip():
-            QMessageBox.warning(self, "Validation", "Name is required.")
+            QMessageBox.warning(self, _t("common.warning"), _t("unit_manager.name_required"))
             self.txt_name.setFocus()
             return False
         if not self.txt_abbr.text().strip():
-            QMessageBox.warning(self, "Validation", "Abbreviation is required.")
+            QMessageBox.warning(self, _t("common.warning"), _t("unit_manager.abbr_required"))
             self.txt_abbr.setFocus()
             return False
         return True
@@ -225,7 +228,7 @@ class UnitManagerDialog(QDialog):
         self.txt_name.clear()
         self.txt_abbr.clear()
         self.spin_decimals.setValue(0)
-        self.btn_save.setText("Save New")
+        self.btn_save.setText(_t("unit_manager.save_new"))
         self.btn_delete.setEnabled(False)
         self.table.clearSelection()
         self.txt_name.setFocus()

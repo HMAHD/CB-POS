@@ -11,12 +11,13 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.user_service import UserService
+from cbpos.i18n import _t
 
 
 class PermissionDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Permission Manager")
+        self.setWindowTitle(_t("permission.title"))
         self.resize(800, 600)
         self.init_ui()
 
@@ -33,9 +34,9 @@ class PermissionDialog(QDialog):
 
         # Buttons
         btn_layout = QHBoxLayout()
-        btn_save = QPushButton("Save Changes")
+        btn_save = QPushButton(_t("permission.save_changes"))
         btn_save.clicked.connect(self.save_changes)
-        btn_close = QPushButton("Close")
+        btn_close = QPushButton(_t("common.close"))
         btn_close.clicked.connect(self.reject)
 
         btn_layout.addStretch()
@@ -48,7 +49,7 @@ class PermissionDialog(QDialog):
         self.permissions = PermissionService.get_all_permissions()
 
         # Setup Columns: Permission | Role 1 | Role 2 | ...
-        headers = ["Permission"] + [role.name for role in self.roles]
+        headers = [_t("permission.col_permission")] + [role.name for role in self.roles]
         self.tree.setHeaderLabels(headers)
 
         # Group permissions
@@ -109,7 +110,7 @@ class PermissionDialog(QDialog):
                         # Update role permission
                         PermissionService.update_role_permission(role.id, perm_id, is_checked)
 
-            QMessageBox.information(self, "Success", "Permissions updated successfully.")
+            QMessageBox.information(self, _t("common.success"), _t("permission.save_success"))
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save permissions: {str(e)}")
+            QMessageBox.critical(self, _t("common.error"), _t("permission.save_failed", error=str(e)))

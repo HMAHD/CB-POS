@@ -22,6 +22,7 @@ from typing import List, Dict, Any
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QVBoxLayout, QWidget, QLabel, QTextBrowser
+from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ class ReceiptPreviewWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
 
-        self._lbl_title = QLabel("Receipt Preview")
+        self._lbl_title = QLabel(_t("receipt_preview.title"))
         self._lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._lbl_title.setObjectName("ReceiptPreviewTitle")
         layout.addWidget(self._lbl_title)
@@ -88,7 +89,7 @@ class ReceiptPreviewWidget(QWidget):
             width = "80mm"
         if width != self._paper_width:
             self._paper_width = width
-            self._lbl_title.setText("Receipt Preview (%s)" % width)
+            self._lbl_title.setText(_t("receipt_preview.title") + " (%s)" % width)
             self._render()
 
     def _render(self) -> None:

@@ -13,6 +13,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont, QColor
 from decimal import Decimal
 from cbpos.core.services.stock_service import StockService
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
 class ReorderView(QWidget):
@@ -28,32 +29,26 @@ class ReorderView(QWidget):
         self.init_ui()
         self.load_reorder_items()
 
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
     def init_ui(self):
         layout = QVBoxLayout(self)
 
         # Title
-        title = QLabel("Reorder Report - Low Stock Items")
-        title.setProperty("class", "dialog-title")
-        layout.addWidget(title)
+        self.lbl_title = QLabel()
+        self.lbl_title.setProperty("class", "dialog-title")
+        layout.addWidget(self.lbl_title)
 
         # Info text
-        info = QLabel("Products that need restocking (Stock ≤ Reorder Point)")
-        info.setProperty("class", "muted")
-        layout.addWidget(info)
+        self.lbl_info = QLabel()
+        self.lbl_info.setProperty("class", "muted")
+        layout.addWidget(self.lbl_info)
 
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(
-            [
-                "Product",
-                "Barcode",
-                "Current Stock",
-                "Reorder Point",
-                "Preferred Qty",
-                "Supplier",
-            ]
-        )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -62,18 +57,34 @@ class ReorderView(QWidget):
         # Action Buttons
         btn_layout = QHBoxLayout()
 
-        btn_refresh = QPushButton("Refresh")
-        btn_refresh.clicked.connect(self.load_reorder_items)
-        btn_layout.addWidget(btn_refresh)
+        self.btn_refresh = QPushButton()
+        self.btn_refresh.clicked.connect(self.load_reorder_items)
+        btn_layout.addWidget(self.btn_refresh)
 
         btn_layout.addStretch()
 
-        btn_create_po = QPushButton("Create Purchase Order")
-        btn_create_po.setProperty("class", "primary")
-        btn_create_po.clicked.connect(self.create_purchase_order)
-        btn_layout.addWidget(btn_create_po)
+        self.btn_create_po = QPushButton()
+        self.btn_create_po.setProperty("class", "primary")
+        self.btn_create_po.clicked.connect(self.create_purchase_order)
+        btn_layout.addWidget(self.btn_create_po)
 
         layout.addLayout(btn_layout)
+
+    def retranslate_ui(self):
+        self.lbl_title.setText(_t("reorder.title"))
+        self.lbl_info.setText(_t("reorder.info_text"))
+        self.btn_refresh.setText(_t("common.refresh"))
+        self.btn_create_po.setText(_t("reorder.create_purchase_order"))
+        self.table.setHorizontalHeaderLabels(
+            [
+                _t("reorder.product"),
+                _t("reorder.barcode"),
+                _t("reorder.current_stock"),
+                _t("reorder.reorder_point"),
+                _t("reorder.preferred_qty"),
+                _t("reorder.supplier"),
+            ]
+        )
 
     def load_reorder_items(self):
         """Load products where stock_qty <= reorder_point."""
@@ -112,9 +123,12 @@ class ReorderView(QWidget):
             preferred_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.table.setItem(row, 4, preferred_item)
 
-            # Supplier (first one if exists)
-            supplier_name = product.suppliers[0].name if product.suppliers else "No Supplier"
-            self.table.setItem(row, 5, QTableWidgetItem(supplier_name))
+            # Supplier (first one if exists) — store None sentinel in UserRole
+            has_supplier = bool(product.suppliers)
+            supplier_name = product.suppliers[0].name if has_supplier else _t("reorder.no_supplier")
+            supplier_item = QTableWidgetItem(supplier_name)
+            supplier_item.setData(Qt.ItemDataRole.UserRole + 1, product.suppliers[0].name if has_supplier else None)
+            self.table.setItem(row, 5, supplier_item)
 
             # Store product ID in row data
             self.table.item(row, 0).setData(Qt.ItemDataRole.UserRole, product.id)
@@ -129,8 +143,8 @@ class ReorderView(QWidget):
         if not selected_rows:
             QMessageBox.warning(
                 self,
-                "No Selection",
-                "Please select items to add to purchase order.",
+                _t("reorder.no_selection"),
+                _t("reorder.no_selection_msg"),
             )
             return
 
@@ -141,7 +155,7 @@ class ReorderView(QWidget):
             product_name = self.table.item(row, 0).text()
             current_stock = Decimal(self.table.item(row, 2).text())
             preferred_qty = Decimal(self.table.item(row, 4).text())
-            supplier = self.table.item(row, 5).text()
+            supplier = self.table.item(row, 5).data(Qt.ItemDataRole.UserRole + 1)
 
             order_qty = max(preferred_qty - current_stock, Decimal("0"))
 
@@ -151,7 +165,7 @@ class ReorderView(QWidget):
                     "product_name": product_name,
                     "current_stock": current_stock,
                     "order_qty": order_qty,
-                    "supplier": supplier if supplier != "No Supplier" else "",
+                    "supplier": supplier or "",
                 }
             )
 
@@ -159,6 +173,6 @@ class ReorderView(QWidget):
         self.navigate_to_purchase.emit(po_items)
         QMessageBox.information(
             self,
-            "Purchase Order",
-            "Created purchase order with {0} items.\n" "Navigating to Purchase view...".format(len(po_items)),
+            _t("reorder.purchase_order"),
+            _t("reorder.purchase_order_created", count=len(po_items)),
         )

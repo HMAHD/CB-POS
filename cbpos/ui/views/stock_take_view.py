@@ -29,6 +29,7 @@ from cbpos.core.services.stock_count_service import StockCountService
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.constants.status import DocumentStatus, Precision
 from cbpos.core.utils.formatters import format_currency
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 logger = logging.getLogger(__name__)
 
@@ -36,18 +37,30 @@ logger = logging.getLogger(__name__)
 class StockCountItemModel(QAbstractTableModel):
     """Table model for stock count items with editable Counted column."""
 
-    HEADERS = ["Barcode", "Product", "Expected", "Counted", "Variance", "Value"]
     COL_COUNTED = 3
 
     def __init__(self, items=None):
         super().__init__()
         self.items = items or []
+        self._headers = [
+            _t("stock_take.col_barcode"),
+            _t("stock_take.col_product"),
+            _t("stock_take.col_expected"),
+            _t("stock_take.col_counted"),
+            _t("stock_take.col_variance"),
+            _t("stock_take.col_value"),
+        ]
+
+    def update_headers(self, headers: list[str]) -> None:
+        """Update column headers and refresh the header view."""
+        self._headers = headers
+        self.headerDataChanged.emit(Qt.Orientation.Horizontal, 0, len(headers) - 1)
 
     def rowCount(self, parent=None):
         return len(self.items)
 
     def columnCount(self, parent=None):
-        return len(self.HEADERS)
+        return len(self._headers)
 
     def data(self, index, role):
         if not index.isValid():
@@ -59,7 +72,7 @@ class StockCountItemModel(QAbstractTableModel):
             if col == 0:
                 return item.product.barcode if item.product else ""
             if col == 1:
-                return item.product.name_en if item.product else "Unknown"
+                return item.product.name_en if item.product else _t("stock_take.unknown_product")
             if col == 2:
                 return f"{item.expected_qty:.3f}"  # noqa: E231
             if col == 3:
@@ -123,7 +136,7 @@ class StockCountItemModel(QAbstractTableModel):
 
     def headerData(self, section, orientation, role):
         if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
-            return self.HEADERS[section]
+            return self._headers[section]
         return None
 
     def get_item(self, row: int):
@@ -137,7 +150,7 @@ class StockCountReportDialog(QDialog):
 
     def __init__(self, stock_count_id: int, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Stock Count Report")
+        self.setWindowTitle(_t("stock_take.report_title"))
         self.setMinimumSize(700, 500)
         self.resize(800, 550)
         self.init_ui(stock_count_id)
@@ -149,28 +162,44 @@ class StockCountReportDialog(QDialog):
 
         stock_count = StockCountService.get_stock_count(stock_count_id)
         if not stock_count:
-            layout.addWidget(QLabel("Stock count not found."))
+            layout.addWidget(QLabel(_t("stock_take.count_not_found")))
             return
 
         # Header
-        title = QLabel(f"Stock Count: {stock_count.document_number}")
+        title = QLabel(_t("stock_take.count_label", number=stock_count.document_number))
         title.setProperty("class", "dialog-title")
         layout.addWidget(title)
 
         info_layout = QHBoxLayout()
-        info_layout.addWidget(QLabel(f"Status: {stock_count.status}"))
+        info_layout.addWidget(QLabel(_t("stock_take.status_label", status=stock_count.status)))
         info_layout.addWidget(
-            QLabel(f"Date: {stock_count.date.strftime('%Y-%m-%d %H:%M') if stock_count.date else 'N/A'}")
+            QLabel(
+                _t(
+                    "stock_take.date_label",
+                    date=stock_count.date.strftime("%Y-%m-%d %H:%M") if stock_count.date else _t("common.na"),
+                )
+            )
         )
-        info_layout.addWidget(QLabel(f"Note: {stock_count.note or 'N/A'}"))
+        info_layout.addWidget(QLabel(_t("stock_take.note_label", note=stock_count.note or _t("common.na"))))
         info_layout.addStretch()
-        info_layout.addWidget(QLabel(f"Total Variance: {format_currency(stock_count.total_variance_value)}"))
+        info_layout.addWidget(
+            QLabel(_t("stock_take.total_variance_label", amount=format_currency(stock_count.total_variance_value)))
+        )
         layout.addLayout(info_layout)
 
         # Items table
         table = QTableWidget()
         table.setColumnCount(6)
-        table.setHorizontalHeaderLabels(["Barcode", "Product", "Expected", "Counted", "Variance", "Value"])
+        table.setHorizontalHeaderLabels(
+            [
+                _t("stock_take.col_barcode"),
+                _t("stock_take.col_product"),
+                _t("stock_take.col_expected"),
+                _t("stock_take.col_counted"),
+                _t("stock_take.col_variance"),
+                _t("stock_take.col_value"),
+            ]
+        )
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -180,7 +209,9 @@ class StockCountReportDialog(QDialog):
             row = table.rowCount()
             table.insertRow(row)
             table.setItem(row, 0, QTableWidgetItem(item.product.barcode if item.product else ""))
-            table.setItem(row, 1, QTableWidgetItem(item.product.name_en if item.product else "Unknown"))
+            table.setItem(
+                row, 1, QTableWidgetItem(item.product.name_en if item.product else _t("stock_take.unknown_product"))
+            )
 
             for col, val in [
                 (2, item.expected_qty),
@@ -209,7 +240,7 @@ class StockCountReportDialog(QDialog):
 
         layout.addWidget(table, 1)
 
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton(_t("common.close"))
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
@@ -222,6 +253,10 @@ class StockTakeView(QWidget):
         self.current_stock_count = None
         self.init_ui()
 
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
     def init_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -232,12 +267,12 @@ class StockTakeView(QWidget):
         # Tab 1: New Count
         self.new_count_tab = QWidget()
         self.setup_new_count_tab()
-        self.tabs.addTab(self.new_count_tab, "New Count")
+        self.tabs.addTab(self.new_count_tab, _t("stock_take.tab_new_count"))
 
         # Tab 2: History
         self.history_tab = QWidget()
         self.setup_history_tab()
-        self.tabs.addTab(self.history_tab, "History")
+        self.tabs.addTab(self.history_tab, _t("stock_take.tab_history"))
 
     def setup_new_count_tab(self) -> None:
         layout = QVBoxLayout(self.new_count_tab)
@@ -247,18 +282,20 @@ class StockTakeView(QWidget):
         # Header row
         header_layout = QHBoxLayout()
 
-        header_layout.addWidget(QLabel("Note:"))
+        self.note_label = QLabel(_t("stock_take.note_field"))
+        header_layout.addWidget(self.note_label)
         self.note_input = QLineEdit()
-        self.note_input.setPlaceholderText("Stock count description (optional)")
+        self.note_input.setPlaceholderText(_t("stock_take.note_placeholder"))
         header_layout.addWidget(self.note_input)
 
-        header_layout.addWidget(QLabel("Category:"))
+        self.category_label = QLabel(_t("stock_take.category_field"))
+        header_layout.addWidget(self.category_label)
         self.category_combo = QComboBox()
-        self.category_combo.addItem("All Categories", None)
+        self.category_combo.addItem(_t("stock_take.all_categories"), None)
         self._load_categories()
         header_layout.addWidget(self.category_combo)
 
-        self.btn_load = QPushButton("Load Products")
+        self.btn_load = QPushButton(_t("stock_take.btn_load_products"))
         self.btn_load.setProperty("class", "primary")
         self.btn_load.clicked.connect(self.load_products)
         header_layout.addWidget(self.btn_load)
@@ -268,7 +305,7 @@ class StockTakeView(QWidget):
         # Product search
         search_layout = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Scan barcode or search product to add...")
+        self.search_input.setPlaceholderText(_t("stock_take.search_placeholder"))
         self.search_input.returnPressed.connect(self.add_single_product)
         search_layout.addWidget(self.search_input)
         layout.addLayout(search_layout)
@@ -289,10 +326,10 @@ class StockTakeView(QWidget):
 
         # Stats bar
         stats_layout = QHBoxLayout()
-        self.lbl_items = QLabel("Items: 0")
-        self.lbl_counted = QLabel("Counted: 0/0")
-        self.lbl_variance = QLabel("Variance: Rs. 0.00")
-        self.lbl_status = QLabel("Status: ---")
+        self.lbl_items = QLabel(_t("stock_take.items_count", count=0))
+        self.lbl_counted = QLabel(_t("stock_take.counted_progress", counted=0, total=0))
+        self.lbl_variance = QLabel(_t("stock_take.variance_amount", amount="Rs. 0.00"))
+        self.lbl_status = QLabel(_t("stock_take.status_display", status="---"))
         stats_layout.addWidget(self.lbl_items)
         stats_layout.addWidget(self.lbl_counted)
         stats_layout.addWidget(self.lbl_variance)
@@ -303,29 +340,29 @@ class StockTakeView(QWidget):
         # Buttons
         btn_layout = QHBoxLayout()
 
-        self.btn_save_draft = QPushButton("Save Draft")
+        self.btn_save_draft = QPushButton(_t("stock_take.btn_save_draft"))
         self.btn_save_draft.setProperty("class", "accent")
         self.btn_save_draft.clicked.connect(self.save_draft)
         btn_layout.addWidget(self.btn_save_draft)
 
-        self.btn_finalize = QPushButton("Finalize Count")
+        self.btn_finalize = QPushButton(_t("stock_take.btn_finalize"))
         self.btn_finalize.setProperty("class", "primary")
         self.btn_finalize.clicked.connect(self.finalize_count)
         btn_layout.addWidget(self.btn_finalize)
 
-        self.btn_approve = QPushButton("Approve && Apply")
+        self.btn_approve = QPushButton(_t("stock_take.btn_approve_apply"))
         self.btn_approve.setStyleSheet("background-color: #39FF14; color: black; font-weight: bold; padding: 8px;")
         self.btn_approve.clicked.connect(self.approve_and_apply)
         btn_layout.addWidget(self.btn_approve)
 
-        self.btn_void = QPushButton("Void")
+        self.btn_void = QPushButton(_t("stock_take.btn_void"))
         self.btn_void.setProperty("class", "danger")
         self.btn_void.clicked.connect(self.void_count)
         btn_layout.addWidget(self.btn_void)
 
         btn_layout.addStretch()
 
-        self.btn_new = QPushButton("New Count")
+        self.btn_new = QPushButton(_t("stock_take.btn_new_count"))
         self.btn_new.clicked.connect(self.reset_form)
         btn_layout.addWidget(self.btn_new)
 
@@ -338,38 +375,50 @@ class StockTakeView(QWidget):
         # Filters
         filter_layout = QHBoxLayout()
 
-        filter_layout.addWidget(QLabel("Status:"))
+        self.hist_status_label = QLabel(_t("common.status") + ":")
+        filter_layout.addWidget(self.hist_status_label)
         self.hist_status_combo = QComboBox()
-        self.hist_status_combo.addItem("All", None)
-        self.hist_status_combo.addItem("Draft", DocumentStatus.DRAFT)
-        self.hist_status_combo.addItem("Counted", DocumentStatus.COUNTED)
-        self.hist_status_combo.addItem("Completed", DocumentStatus.COMPLETED)
-        self.hist_status_combo.addItem("Void", DocumentStatus.VOID)
+        self.hist_status_combo.addItem(_t("common.all"), None)
+        self.hist_status_combo.addItem(_t("stock_take.status_draft"), DocumentStatus.DRAFT)
+        self.hist_status_combo.addItem(_t("stock_take.status_counted"), DocumentStatus.COUNTED)
+        self.hist_status_combo.addItem(_t("stock_take.status_completed"), DocumentStatus.COMPLETED)
+        self.hist_status_combo.addItem(_t("stock_take.status_void"), DocumentStatus.VOID)
         filter_layout.addWidget(self.hist_status_combo)
 
-        filter_layout.addWidget(QLabel("From:"))
+        self.hist_from_label = QLabel(_t("common.from"))
+        filter_layout.addWidget(self.hist_from_label)
         self.hist_date_from = QDateEdit()
         self.hist_date_from.setCalendarPopup(True)
         self.hist_date_from.setDate(QDate.currentDate().addMonths(-3))
         filter_layout.addWidget(self.hist_date_from)
 
-        filter_layout.addWidget(QLabel("To:"))
+        self.hist_to_label = QLabel(_t("common.to"))
+        filter_layout.addWidget(self.hist_to_label)
         self.hist_date_to = QDateEdit()
         self.hist_date_to.setCalendarPopup(True)
         self.hist_date_to.setDate(QDate.currentDate())
         filter_layout.addWidget(self.hist_date_to)
 
-        refresh_btn = QPushButton("Refresh")
-        refresh_btn.setProperty("class", "primary")
-        refresh_btn.clicked.connect(self.refresh_history)
-        filter_layout.addWidget(refresh_btn)
+        self.hist_refresh_btn = QPushButton(_t("common.refresh"))
+        self.hist_refresh_btn.setProperty("class", "primary")
+        self.hist_refresh_btn.clicked.connect(self.refresh_history)
+        filter_layout.addWidget(self.hist_refresh_btn)
         filter_layout.addStretch()
         layout.addLayout(filter_layout)
 
         # History table
         self.history_table = QTableWidget()
         self.history_table.setColumnCount(6)
-        self.history_table.setHorizontalHeaderLabels(["STK #", "Date", "User", "Items", "Variance Total", "Status"])
+        self.history_table.setHorizontalHeaderLabels(
+            [
+                _t("stock_take.hist_col_stk"),
+                _t("common.date"),
+                _t("stock_take.hist_col_user"),
+                _t("stock_take.hist_col_items"),
+                _t("stock_take.hist_col_variance_total"),
+                _t("common.status"),
+            ]
+        )
         self.history_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.history_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         self.history_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -385,6 +434,64 @@ class StockTakeView(QWidget):
         # Store IDs for double-click lookup
         self._history_ids = []
 
+    def retranslate_ui(self) -> None:
+        """Update all widget text from the translation system."""
+        # Tabs
+        self.tabs.setTabText(0, _t("stock_take.tab_new_count"))
+        self.tabs.setTabText(1, _t("stock_take.tab_history"))
+
+        # New count tab - header
+        self.note_label.setText(_t("stock_take.note_field"))
+        self.note_input.setPlaceholderText(_t("stock_take.note_placeholder"))
+        self.category_label.setText(_t("stock_take.category_field"))
+        self.category_combo.setItemText(0, _t("stock_take.all_categories"))
+        self.btn_load.setText(_t("stock_take.btn_load_products"))
+        self.search_input.setPlaceholderText(_t("stock_take.search_placeholder"))
+
+        # Buttons
+        self.btn_save_draft.setText(_t("stock_take.btn_save_draft"))
+        self.btn_finalize.setText(_t("stock_take.btn_finalize"))
+        self.btn_approve.setText(_t("stock_take.btn_approve_apply"))
+        self.btn_void.setText(_t("stock_take.btn_void"))
+        self.btn_new.setText(_t("stock_take.btn_new_count"))
+
+        # Update stats
+        self._update_stats()
+
+        # Update item model headers
+        self.item_model.update_headers(
+            [
+                _t("stock_take.col_barcode"),
+                _t("stock_take.col_product"),
+                _t("stock_take.col_expected"),
+                _t("stock_take.col_counted"),
+                _t("stock_take.col_variance"),
+                _t("stock_take.col_value"),
+            ]
+        )
+
+        # History tab
+        self.hist_status_label.setText(_t("common.status") + ":")
+        self.hist_status_combo.setItemText(0, _t("common.all"))
+        self.hist_status_combo.setItemText(1, _t("stock_take.status_draft"))
+        self.hist_status_combo.setItemText(2, _t("stock_take.status_counted"))
+        self.hist_status_combo.setItemText(3, _t("stock_take.status_completed"))
+        self.hist_status_combo.setItemText(4, _t("stock_take.status_void"))
+        self.hist_from_label.setText(_t("common.from"))
+        self.hist_to_label.setText(_t("common.to"))
+        self.hist_refresh_btn.setText(_t("common.refresh"))
+
+        self.history_table.setHorizontalHeaderLabels(
+            [
+                _t("stock_take.hist_col_stk"),
+                _t("common.date"),
+                _t("stock_take.hist_col_user"),
+                _t("stock_take.hist_col_items"),
+                _t("stock_take.hist_col_variance_total"),
+                _t("common.status"),
+            ]
+        )
+
     # ========== New Count Methods ==========
 
     def _load_categories(self) -> None:
@@ -398,7 +505,7 @@ class StockTakeView(QWidget):
     def load_products(self) -> None:
         """Create stock count and load products."""
         if not hasattr(self, "user") or not self.user:
-            QMessageBox.warning(self, "Error", "User not logged in.")
+            QMessageBox.warning(self, _t("common.error"), _t("stock_take.user_not_logged_in"))
             return
 
         if not self.current_stock_count:
@@ -408,10 +515,10 @@ class StockTakeView(QWidget):
         category_id = self.category_combo.currentData()
         try:
             count = StockCountService.add_all_products(self.current_stock_count.id, category_id=category_id)
-            QMessageBox.information(self, "Loaded", f"{count} products added to stock count.")
+            QMessageBox.information(self, _t("stock_take.loaded_title"), _t("stock_take.products_loaded", count=count))
             self._reload_items()
         except ValueError as e:
-            QMessageBox.warning(self, "Error", str(e))
+            QMessageBox.warning(self, _t("common.error"), str(e))
 
     def add_single_product(self) -> None:
         """Add a single product via barcode/search."""
@@ -421,14 +528,14 @@ class StockTakeView(QWidget):
 
         if not self.current_stock_count:
             if not hasattr(self, "user") or not self.user:
-                QMessageBox.warning(self, "Error", "User not logged in.")
+                QMessageBox.warning(self, _t("common.error"), _t("stock_take.user_not_logged_in"))
                 return
             note = self.note_input.text().strip() or None
             self.current_stock_count = StockCountService.create_stock_count(user_id=self.user.id, note=note)
 
         products = ProductService.search(query)
         if not products:
-            QMessageBox.warning(self, "Not Found", "Product not found.")
+            QMessageBox.warning(self, _t("stock_take.not_found_title"), _t("stock_take.product_not_found"))
             return
 
         product = products[0]
@@ -437,7 +544,7 @@ class StockTakeView(QWidget):
             self.search_input.clear()
             self._reload_items()
         except ValueError as e:
-            QMessageBox.warning(self, "Error", str(e))
+            QMessageBox.warning(self, _t("common.error"), str(e))
 
     def _reload_items(self) -> None:
         """Reload items from the database for the current stock count."""
@@ -453,10 +560,10 @@ class StockTakeView(QWidget):
     def _update_stats(self) -> None:
         """Update the stats bar labels."""
         if not self.current_stock_count:
-            self.lbl_items.setText("Items: 0")
-            self.lbl_counted.setText("Counted: 0/0")
-            self.lbl_variance.setText("Variance: Rs. 0.00")
-            self.lbl_status.setText("Status: ---")
+            self.lbl_items.setText(_t("stock_take.items_count", count=0))
+            self.lbl_counted.setText(_t("stock_take.counted_progress", counted=0, total=0))
+            self.lbl_variance.setText(_t("stock_take.variance_amount", amount="Rs. 0.00"))
+            self.lbl_status.setText(_t("stock_take.status_display", status="---"))
             return
 
         items = self.item_model.items
@@ -464,10 +571,10 @@ class StockTakeView(QWidget):
         counted = sum(1 for i in items if i.counted_qty is not None)
         variance = sum(abs(i.variance_value) for i in items if i.variance_value is not None)
 
-        self.lbl_items.setText(f"Items: {total}")
-        self.lbl_counted.setText(f"Counted: {counted}/{total}")
-        self.lbl_variance.setText(f"Variance: {format_currency(variance)}")
-        self.lbl_status.setText(f"Status: {self.current_stock_count.status}")
+        self.lbl_items.setText(_t("stock_take.items_count", count=total))
+        self.lbl_counted.setText(_t("stock_take.counted_progress", counted=counted, total=total))
+        self.lbl_variance.setText(_t("stock_take.variance_amount", amount=format_currency(variance)))
+        self.lbl_status.setText(_t("stock_take.status_display", status=self.current_stock_count.status))
 
         # Button state
         is_draft = self.current_stock_count.status == DocumentStatus.DRAFT
@@ -480,10 +587,10 @@ class StockTakeView(QWidget):
 
     def save_draft(self) -> None:
         """Save current state (items are already persisted via update_count)."""
-        QMessageBox.information(self, "Saved", "Stock count saved as draft.")
+        QMessageBox.information(self, _t("common.saved"), _t("stock_take.draft_saved"))
 
     def finalize_count(self) -> None:
-        """Finalize the count — validate and set to COUNTED status."""
+        """Finalize the count -- validate and set to COUNTED status."""
         if not self.current_stock_count:
             return
 
@@ -491,14 +598,16 @@ class StockTakeView(QWidget):
             self.current_stock_count = StockCountService.finalize_count(self.current_stock_count.id)
             QMessageBox.information(
                 self,
-                "Finalized",
-                f"Stock count {self.current_stock_count.document_number} finalized.\n"
-                f"Total variance: {format_currency(self.current_stock_count.total_variance_value)}\n\n"
-                "Click 'Approve & Apply' to adjust stock.",
+                _t("stock_take.finalized_title"),
+                _t(
+                    "stock_take.finalized_message",
+                    number=self.current_stock_count.document_number,
+                    variance=format_currency(self.current_stock_count.total_variance_value),
+                ),
             )
             self._reload_items()
         except ValueError as e:
-            QMessageBox.warning(self, "Error", str(e))
+            QMessageBox.warning(self, _t("common.error"), str(e))
 
     def approve_and_apply(self) -> None:
         """Approve the count and apply stock adjustments."""
@@ -506,17 +615,15 @@ class StockTakeView(QWidget):
             return
 
         if not hasattr(self, "user") or not self.user:
-            QMessageBox.warning(self, "Error", "User not logged in.")
+            QMessageBox.warning(self, _t("common.error"), _t("stock_take.user_not_logged_in"))
             return
 
         # Confirmation
         variance = self.current_stock_count.total_variance_value
         reply = QMessageBox.question(
             self,
-            "Confirm Approval",
-            f"Apply stock adjustments?\n\n"
-            f"Total variance value: {format_currency(variance)}\n\n"
-            f"This will update product stock quantities and cannot be undone.",
+            _t("stock_take.confirm_approval_title"),
+            _t("stock_take.confirm_approval_message", variance=format_currency(variance)),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -526,13 +633,12 @@ class StockTakeView(QWidget):
             self.current_stock_count = StockCountService.approve_and_apply(self.current_stock_count.id, self.user.id)
             QMessageBox.information(
                 self,
-                "Applied",
-                f"Stock count {self.current_stock_count.document_number} approved.\n"
-                "Stock quantities have been adjusted.",
+                _t("stock_take.applied_title"),
+                _t("stock_take.applied_message", number=self.current_stock_count.document_number),
             )
             self._reload_items()
         except ValueError as e:
-            QMessageBox.warning(self, "Error", str(e))
+            QMessageBox.warning(self, _t("common.error"), str(e))
 
     def void_count(self) -> None:
         """Void the current stock count."""
@@ -547,8 +653,8 @@ class StockTakeView(QWidget):
 
         reply = QMessageBox.question(
             self,
-            "Confirm Void",
-            "Are you sure you want to void this stock count?",
+            _t("stock_take.confirm_void_title"),
+            _t("stock_take.confirm_void_message"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -556,10 +662,10 @@ class StockTakeView(QWidget):
 
         try:
             self.current_stock_count = StockCountService.void_stock_count(self.current_stock_count.id)
-            QMessageBox.information(self, "Voided", "Stock count voided.")
+            QMessageBox.information(self, _t("stock_take.voided_title"), _t("stock_take.voided_message"))
             self._reload_items()
         except ValueError as e:
-            QMessageBox.warning(self, "Error", str(e))
+            QMessageBox.warning(self, _t("common.error"), str(e))
 
     def reset_form(self) -> None:
         """Reset the form for a new stock count."""

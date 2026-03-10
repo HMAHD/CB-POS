@@ -18,13 +18,14 @@ from PyQt6.QtCore import Qt
 from cbpos.core.services.user_service import UserService
 from cbpos.ui.dialogs.permission_dialog import PermissionDialog
 from cbpos.ui.resources.icons import Icons
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
 class UserDialog(QDialog):
     def __init__(self, user=None, parent=None):
         super().__init__(parent)
         self.user = user
-        self.setWindowTitle("Add User" if not user else "Edit User")
+        self.setWindowTitle(_t("user.add_user") if not user else _t("user.edit_user"))
         self.setFixedWidth(400)
         self.init_ui()
 
@@ -32,20 +33,20 @@ class UserDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # Username
-        layout.addWidget(QLabel("Username:"))
+        layout.addWidget(QLabel(_t("user.username_label")))
         self.txt_username = QLineEdit()
         if self.user:
             self.txt_username.setText(self.user.username)
         layout.addWidget(self.txt_username)
 
         # PIN
-        layout.addWidget(QLabel("PIN (Leave empty to keep unchanged):" if self.user else "PIN:"))
+        layout.addWidget(QLabel(_t("user.pin_keep_unchanged") if self.user else _t("user.pin_label")))
         self.txt_pin = QLineEdit()
         self.txt_pin.setEchoMode(QLineEdit.EchoMode.Password)
         layout.addWidget(self.txt_pin)
 
         # Role
-        layout.addWidget(QLabel("Role:"))
+        layout.addWidget(QLabel(_t("user.role_label")))
         self.cmb_role = QComboBox()
         self.roles = UserService.get_all_roles()
         for role in self.roles:
@@ -58,7 +59,7 @@ class UserDialog(QDialog):
         layout.addWidget(self.cmb_role)
 
         # Active
-        self.chk_active = QCheckBox("Active")
+        self.chk_active = QCheckBox(_t("common.active"))
         self.chk_active.setChecked(True)
         if self.user:
             self.chk_active.setChecked(self.user.is_active)
@@ -66,9 +67,9 @@ class UserDialog(QDialog):
 
         # Buttons
         btn_layout = QHBoxLayout()
-        btn_save = QPushButton("Save")
+        btn_save = QPushButton(_t("common.save"))
         btn_save.clicked.connect(self.save)
-        btn_cancel = QPushButton("Cancel")
+        btn_cancel = QPushButton(_t("common.cancel"))
         btn_cancel.clicked.connect(self.reject)
 
         btn_layout.addWidget(btn_save)
@@ -82,15 +83,15 @@ class UserDialog(QDialog):
         is_active = self.chk_active.isChecked()
 
         if not username:
-            QMessageBox.warning(self, "Error", "Username is required.")
+            QMessageBox.warning(self, _t("common.error"), _t("user.username_required"))
             return
 
         if not self.user and not pin:
-            QMessageBox.warning(self, "Error", "PIN is required for new users.")
+            QMessageBox.warning(self, _t("common.error"), _t("user.pin_required"))
             return
 
         if pin and (len(pin) < 4 or len(pin) > 6 or not pin.isdigit()):
-            QMessageBox.warning(self, "Error", "PIN must be 4-6 digits.")
+            QMessageBox.warning(self, _t("common.error"), _t("user.pin_invalid"))
             return
 
         try:
@@ -100,13 +101,21 @@ class UserDialog(QDialog):
                 UserService.create_user(username, pin, role_id)
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save user: {str(e)}")
+            QMessageBox.critical(
+                self,
+                _t("common.error"),
+                _t("user.save_failed", error=str(e)),
+            )
 
 
 class UserView(QWidget):
     def __init__(self):
         super().__init__()
         self.init_ui()
+
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -117,12 +126,12 @@ class UserView(QWidget):
         # Tab 1: Users
         self.user_tab = QWidget()
         self.init_user_tab()
-        self.tabs.addTab(self.user_tab, "Users")
+        self.tabs.addTab(self.user_tab, "")
 
         # Tab 2: Activity Log
         self.log_tab = QWidget()
         self.init_log_tab()
-        self.tabs.addTab(self.log_tab, "Activity Log")
+        self.tabs.addTab(self.log_tab, "")
 
         # Load data
         self.load_users()
@@ -137,16 +146,16 @@ class UserView(QWidget):
         # Toolbar
         toolbar = QHBoxLayout()
 
-        btn_add = QPushButton("Add User")
-        btn_add.setIcon(Icons.get("fa5s.plus"))
-        btn_add.clicked.connect(self.add_user)
+        self.btn_add = QPushButton()
+        self.btn_add.setIcon(Icons.get("fa5s.plus"))
+        self.btn_add.clicked.connect(self.add_user)
 
-        btn_perms = QPushButton("Manage Permissions")
-        btn_perms.setIcon(Icons.get("fa5s.lock"))
-        btn_perms.clicked.connect(self.manage_permissions)
+        self.btn_perms = QPushButton()
+        self.btn_perms.setIcon(Icons.get("fa5s.lock"))
+        self.btn_perms.clicked.connect(self.manage_permissions)
 
-        toolbar.addWidget(btn_add)
-        toolbar.addWidget(btn_perms)
+        toolbar.addWidget(self.btn_add)
+        toolbar.addWidget(self.btn_perms)
         toolbar.addStretch()
 
         layout.addLayout(toolbar)
@@ -154,7 +163,6 @@ class UserView(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["ID", "Username", "Role", "Status"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -167,12 +175,34 @@ class UserView(QWidget):
 
         self.log_table = QTableWidget()
         self.log_table.setColumnCount(5)
-        self.log_table.setHorizontalHeaderLabels(["Time", "User", "Event", "Terminal", "Details"])
         self.log_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.log_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.log_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
         layout.addWidget(self.log_table)
+
+    def retranslate_ui(self):
+        self.tabs.setTabText(0, _t("user.tab_users"))
+        self.tabs.setTabText(1, _t("user.tab_activity_log"))
+        self.btn_add.setText(_t("user.add_user"))
+        self.btn_perms.setText(_t("user.manage_permissions"))
+        self.table.setHorizontalHeaderLabels(
+            [
+                _t("common.id"),
+                _t("user.col_username"),
+                _t("user.col_role"),
+                _t("common.status"),
+            ]
+        )
+        self.log_table.setHorizontalHeaderLabels(
+            [
+                _t("user.col_time"),
+                _t("user.col_user"),
+                _t("user.col_event"),
+                _t("user.col_terminal"),
+                _t("user.col_details"),
+            ]
+        )
 
     def load_users(self):
         self.users = UserService.get_all_users()
@@ -181,9 +211,13 @@ class UserView(QWidget):
         for row, user in enumerate(self.users):
             self.table.setItem(row, 0, QTableWidgetItem(str(user.id)))
             self.table.setItem(row, 1, QTableWidgetItem(user.username))
-            self.table.setItem(row, 2, QTableWidgetItem(user.role.name if user.role else "None"))
+            self.table.setItem(
+                row,
+                2,
+                QTableWidgetItem(user.role.name if user.role else _t("user.no_role")),
+            )
 
-            status = "Active" if user.is_active else "Inactive"
+            status = _t("common.active") if user.is_active else _t("common.inactive")
             item_status = QTableWidgetItem(status)
             if not user.is_active:
                 item_status.setForeground(Qt.GlobalColor.red)
@@ -195,7 +229,11 @@ class UserView(QWidget):
 
         for row, log in enumerate(logs):
             self.log_table.setItem(row, 0, QTableWidgetItem(str(log.timestamp)))
-            self.log_table.setItem(row, 1, QTableWidgetItem(log.user.username if log.user else "Unknown"))
+            self.log_table.setItem(
+                row,
+                1,
+                QTableWidgetItem(log.user.username if log.user else _t("user.unknown_user")),
+            )
             self.log_table.setItem(row, 2, QTableWidgetItem(log.event_type))
             self.log_table.setItem(row, 3, QTableWidgetItem(log.terminal_id or "-"))
             self.log_table.setItem(row, 4, QTableWidgetItem(log.details or ""))

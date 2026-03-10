@@ -9,13 +9,14 @@ from PyQt6.QtWidgets import (
     QMessageBox,
 )
 from PyQt6.QtCore import Qt
+from cbpos.i18n import _t
 
 
 class CashMovementDialog(QDialog):
     def __init__(self, movement_type="IN", parent=None):
         super().__init__(parent)
         self.movement_type = movement_type
-        self.setWindowTitle(f"Cash {movement_type}")
+        self.setWindowTitle(_t("cash_movement.title", type=movement_type))
         self.setFixedSize(400, 250)
         self.init_ui()
 
@@ -26,7 +27,7 @@ class CashMovementDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # Title
-        title = QLabel(f"Record Cash {self.movement_type}")
+        title = QLabel(_t("cash_movement.record_title", type=self.movement_type))
         title.setProperty("class", "credit" if self.movement_type == "IN" else "debit")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
@@ -34,16 +35,16 @@ class CashMovementDialog(QDialog):
         layout.addSpacing(20)
 
         # Amount
-        lbl_amount = QLabel("Amount:")
+        lbl_amount = QLabel(_t("cash_movement.amount"))
         self.txt_amount = QLineEdit()
         self.txt_amount.setPlaceholderText("0.00")
         layout.addWidget(lbl_amount)
         layout.addWidget(self.txt_amount)
 
         # Reason
-        lbl_reason = QLabel("Reason:")
+        lbl_reason = QLabel(_t("cash_movement.reason"))
         self.txt_reason = QLineEdit()
-        self.txt_reason.setPlaceholderText("e.g. Petty Cash, Float")
+        self.txt_reason.setPlaceholderText(_t("cash_movement.reason_placeholder"))
         layout.addWidget(lbl_reason)
         layout.addWidget(self.txt_reason)
 
@@ -52,12 +53,12 @@ class CashMovementDialog(QDialog):
         # Buttons
         btn_layout = QHBoxLayout()
 
-        self.btn_save = QPushButton("Save")
+        self.btn_save = QPushButton(_t("common.save"))
         self.btn_save.clicked.connect(self.validate_and_save)
         self.btn_save.setProperty("class", "accent")
         btn_layout.addWidget(self.btn_save)
 
-        self.btn_cancel = QPushButton("Cancel")
+        self.btn_cancel = QPushButton(_t("common.cancel"))
         self.btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(self.btn_cancel)
 
@@ -68,7 +69,7 @@ class CashMovementDialog(QDialog):
         reason = self.txt_reason.text().strip()
 
         if not amount_text:
-            QMessageBox.warning(self, "Input Error", "Please enter an amount.")
+            QMessageBox.warning(self, _t("cash_movement.input_error"), _t("cash_movement.enter_amount"))
             return
 
         try:
@@ -76,11 +77,11 @@ class CashMovementDialog(QDialog):
             if amount <= 0:
                 raise ValueError
         except (InvalidOperation, ValueError):
-            QMessageBox.warning(self, "Input Error", "Invalid amount.")
+            QMessageBox.warning(self, _t("cash_movement.input_error"), _t("cash_movement.invalid_amount"))
             return
 
         if not reason:
-            QMessageBox.warning(self, "Input Error", "Please enter a reason.")
+            QMessageBox.warning(self, _t("cash_movement.input_error"), _t("cash_movement.enter_reason"))
             return
 
         self.amount = amount

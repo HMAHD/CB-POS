@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 T = TypeVar("T")
 
@@ -47,7 +48,7 @@ class PaginationWidget(QWidget):
 
         layout.addStretch()
 
-        self._btn_prev = QPushButton("Previous")
+        self._btn_prev = QPushButton(_t("common.previous"))
         self._btn_prev.setFixedWidth(90)
         self._btn_prev.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_prev.clicked.connect(self._go_prev)
@@ -56,13 +57,15 @@ class PaginationWidget(QWidget):
         self._page_label = QLabel()
         layout.addWidget(self._page_label)
 
-        self._btn_next = QPushButton("Next")
+        self._btn_next = QPushButton(_t("common.next"))
         self._btn_next.setFixedWidth(90)
         self._btn_next.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_next.clicked.connect(self._go_next)
         layout.addWidget(self._btn_next)
 
         self._update_controls()
+        register_language_callback(self._retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self._retranslate_ui))
 
     # ------------------------------------------------------------------
     # Public API
@@ -125,7 +128,7 @@ class PaginationWidget(QWidget):
     def _update_controls(self) -> None:
         total = self._total_items
         if total == 0:
-            self._info_label.setText("No items")
+            self._info_label.setText(_t("common.no_items"))
             self._page_label.setText("")
             self._btn_prev.setEnabled(False)
             self._btn_next.setEnabled(False)
@@ -135,7 +138,13 @@ class PaginationWidget(QWidget):
         self.setVisible(True)
         start = self.start_index + 1
         end = self.end_index
-        self._info_label.setText(f"Showing {start}\u2013{end} of {total}")
-        self._page_label.setText(f"Page {self._current_page + 1} of {self.total_pages}")
+        self._info_label.setText(_t("common.showing_range", start=start, end=end, total=total))
+        self._page_label.setText(_t("common.page_of", page=self._current_page + 1, total=self.total_pages))
+        self._btn_prev.setText(_t("common.previous"))
+        self._btn_next.setText(_t("common.next"))
         self._btn_prev.setEnabled(self._current_page > 0)
         self._btn_next.setEnabled(self._current_page < self.total_pages - 1)
+
+    def _retranslate_ui(self) -> None:
+        """Update button text when language changes."""
+        self._update_controls()

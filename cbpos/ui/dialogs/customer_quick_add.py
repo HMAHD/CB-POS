@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from cbpos.core.services.customer_service import CustomerService
+from cbpos.i18n import _t
 
 
 class CustomerQuickAddDialog(QDialog):
@@ -16,7 +17,7 @@ class CustomerQuickAddDialog(QDialog):
         self.customer_service = CustomerService()
         self.created_customer = None
 
-        self.setWindowTitle("Quick Add Customer")
+        self.setWindowTitle(_t("customer_quick_add.title"))
         self.setMinimumWidth(300)
         self.setObjectName("CustomerQuickAddDialog")
         self.setup_ui()
@@ -32,8 +33,8 @@ class CustomerQuickAddDialog(QDialog):
         self.name_input = QLineEdit()
         self.phone_input = QLineEdit()
 
-        form.addRow("Name:", self.name_input)
-        form.addRow("Phone:", self.phone_input)
+        form.addRow(_t("customer_quick_add.name_label"), self.name_input)
+        form.addRow(_t("customer_quick_add.phone_label"), self.phone_input)
 
         layout.addLayout(form)
 
@@ -52,11 +53,11 @@ class CustomerQuickAddDialog(QDialog):
         }
 
         if not data["name"]:
-            QMessageBox.warning(self, "Error", "Name is required")
+            QMessageBox.warning(self, _t("common.error"), _t("customer_quick_add.name_required"))
             return
 
         try:
             self.created_customer = self.customer_service.create_customer(data)
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+            QMessageBox.critical(self, _t("common.error"), str(e))

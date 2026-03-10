@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QShortcut, QKeySequence
+from cbpos.i18n import _t
 
 
 class QuantityDialog(QDialog):
@@ -16,7 +17,7 @@ class QuantityDialog(QDialog):
 
     def __init__(self, product, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Enter Quantity")
+        self.setWindowTitle(_t("quantity.title"))
         self.setObjectName("QuantityDialog")
         self.setFixedSize(340, 180)
         self.setModal(True)
@@ -50,7 +51,7 @@ class QuantityDialog(QDialog):
         layout.addWidget(self.qty_input)
 
         if unit_abbr:
-            lbl_unit = QLabel(f"Unit: {unit_abbr}")
+            lbl_unit = QLabel(_t("quantity.unit_hint", abbr=unit_abbr))
             lbl_unit.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl_unit.setObjectName("QtyUnitHint")
             layout.addWidget(lbl_unit)

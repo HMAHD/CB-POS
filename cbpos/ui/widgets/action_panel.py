@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from cbpos.ui.resources.icons import Icons
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 _BTN_H = 70
 
@@ -17,10 +18,11 @@ _BTN_H = 70
 class ActionBtn(QPushButton):
     """Action tile — shortcut top-left, icon center, label bottom."""
 
-    def __init__(self, shortcut_text, label_text, icon_name=None, color=None, parent=None):
+    def __init__(self, shortcut_text, label_key, icon_name=None, color=None, parent=None):
         super().__init__(parent)
         self.setObjectName("ActionGridBtn")
         self._icon_name = icon_name
+        self._label_key = label_key
 
         self.setFixedHeight(_BTN_H)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -44,7 +46,7 @@ class ActionBtn(QPushButton):
         layout.addWidget(self.lbl_icon, 1, 0)
 
         # Label (Bottom)
-        self.lbl_text = QLabel(label_text)
+        self.lbl_text = QLabel()
         self.lbl_text.setObjectName("lblText")
         self.lbl_text.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom)
         layout.addWidget(self.lbl_text, 2, 0)
@@ -92,13 +94,22 @@ class ActionBtn(QPushButton):
         """Re-apply theme colors (called when theme changes)."""
         self._apply_theme_styles(self._icon_name)
 
+    def retranslate(self) -> None:
+        """Update label text from translation key."""
+        self.lbl_text.setText(_t(self._label_key))
+
 
 class SectionLabel(QLabel):
     """Section header label for grouping action buttons."""
 
-    def __init__(self, text: str, parent=None):
-        super().__init__(text, parent)
+    def __init__(self, text_key: str, parent=None):
+        super().__init__(parent=parent)
+        self._text_key = text_key
         self.setObjectName("ActionSectionLabel")
+
+    def retranslate(self) -> None:
+        """Update text from translation key."""
+        self.setText(_t(self._text_key))
 
 
 class ActionPanel(QWidget):
@@ -119,7 +130,13 @@ class ActionPanel(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._section_labels: list[SectionLabel] = []
+        self._action_btns: list[ActionBtn] = []
         self.init_ui()
+
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -144,17 +161,17 @@ class ActionPanel(QWidget):
         # Customer info (name + subtitle)
         cust_info = QVBoxLayout()
         cust_info.setSpacing(0)
-        lbl_cust_title = QLabel("Customer")
-        lbl_cust_title.setObjectName("CustTitle")
-        cust_info.addWidget(lbl_cust_title)
-        self.lbl_customer = QLabel("Walk-in Customer")
+        self.lbl_cust_title = QLabel()
+        self.lbl_cust_title.setObjectName("CustTitle")
+        cust_info.addWidget(self.lbl_cust_title)
+        self.lbl_customer = QLabel()
         self.lbl_customer.setObjectName("CustomerLabel")
         cust_info.addWidget(self.lbl_customer)
         cust_layout.addLayout(cust_info)
 
         cust_layout.addStretch()
 
-        self.btn_cust_select = QPushButton("Select \u25BE")
+        self.btn_cust_select = QPushButton()
         self.btn_cust_select.setObjectName("BtnCustomerSelect")
         self.btn_cust_select.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_cust_select.clicked.connect(self.customer_clicked.emit)
@@ -170,69 +187,84 @@ class ActionPanel(QWidget):
 
         # ── 2. Orders Section ────────────────────────────────────
         layout.addSpacing(10)
-        layout.addWidget(SectionLabel("Orders"))
+        self.section_orders = SectionLabel("action_panel.section_orders")
+        self._section_labels.append(self.section_orders)
+        layout.addWidget(self.section_orders)
         layout.addSpacing(4)
 
         orders_grid = QGridLayout()
         orders_grid.setSpacing(6)
 
-        self.btn_f2 = ActionBtn("F2", "Customer", Icons.CUSTOMERS)
+        self.btn_f2 = ActionBtn("F2", "action_panel.btn_customer", Icons.CUSTOMERS)
         self.btn_f2.clicked.connect(self.action_f2.emit)
         orders_grid.addWidget(self.btn_f2, 0, 0)
+        self._action_btns.append(self.btn_f2)
 
-        self.btn_f3 = ActionBtn("F3", "Search", Icons.SEARCH)
+        self.btn_f3 = ActionBtn("F3", "action_panel.btn_search", Icons.SEARCH)
         self.btn_f3.clicked.connect(self.action_f3.emit)
         orders_grid.addWidget(self.btn_f3, 0, 1)
+        self._action_btns.append(self.btn_f3)
 
-        self.btn_f4 = ActionBtn("F4", "Qty", Icons.EDIT)
+        self.btn_f4 = ActionBtn("F4", "action_panel.btn_qty", Icons.EDIT)
         self.btn_f4.clicked.connect(self.action_f4.emit)
         orders_grid.addWidget(self.btn_f4, 1, 0)
+        self._action_btns.append(self.btn_f4)
 
-        self.btn_f6 = ActionBtn("F6", "Hold", Icons.HOLD, "#FFDC00")
+        self.btn_f6 = ActionBtn("F6", "action_panel.btn_hold", Icons.HOLD, "#FFDC00")
         self.btn_f6.clicked.connect(self.action_f6.emit)
         orders_grid.addWidget(self.btn_f6, 1, 1)
+        self._action_btns.append(self.btn_f6)
 
         layout.addLayout(orders_grid)
 
         # ── 3. Transaction Section ───────────────────────────────
         layout.addSpacing(10)
-        layout.addWidget(SectionLabel("Transaction"))
+        self.section_transaction = SectionLabel("action_panel.section_transaction")
+        self._section_labels.append(self.section_transaction)
+        layout.addWidget(self.section_transaction)
         layout.addSpacing(4)
 
         txn_grid = QGridLayout()
         txn_grid.setSpacing(6)
 
-        self.btn_f7 = ActionBtn("F7", "Recall", Icons.RECALL)
+        self.btn_f7 = ActionBtn("F7", "action_panel.btn_recall", Icons.RECALL)
         self.btn_f7.clicked.connect(self.action_f7.emit)
         txn_grid.addWidget(self.btn_f7, 0, 0)
+        self._action_btns.append(self.btn_f7)
 
-        self.btn_f8 = ActionBtn("F8", "Drawer", Icons.DRAWER)
+        self.btn_f8 = ActionBtn("F8", "action_panel.btn_drawer", Icons.DRAWER)
         self.btn_f8.clicked.connect(self.action_f8.emit)
         txn_grid.addWidget(self.btn_f8, 0, 1)
+        self._action_btns.append(self.btn_f8)
 
-        self.btn_del = ActionBtn("Del", "Void", Icons.VOID, "#FF4136")
+        self.btn_del = ActionBtn("Del", "action_panel.btn_void", Icons.VOID, "#FF4136")
         self.btn_del.clicked.connect(self.action_del.emit)
         txn_grid.addWidget(self.btn_del, 1, 0)
+        self._action_btns.append(self.btn_del)
 
-        self.btn_ref = ActionBtn("Ref", "Refund", Icons.HISTORY, "#FF4136")
+        self.btn_ref = ActionBtn("Ref", "action_panel.btn_refund", Icons.HISTORY, "#FF4136")
         self.btn_ref.clicked.connect(self.action_ref.emit)
         txn_grid.addWidget(self.btn_ref, 1, 1)
+        self._action_btns.append(self.btn_ref)
 
         layout.addLayout(txn_grid)
 
         # ── 4. Specialty Section ─────────────────────────────────
         layout.addSpacing(10)
-        layout.addWidget(SectionLabel("Specialty"))
+        self.section_specialty = SectionLabel("action_panel.section_specialty")
+        self._section_labels.append(self.section_specialty)
+        layout.addWidget(self.section_specialty)
         layout.addSpacing(4)
 
-        self.btn_more = ActionBtn("", "Touch", Icons.GRID)
+        self.btn_more = ActionBtn("", "action_panel.btn_touch", Icons.GRID)
         self.btn_more.clicked.connect(self.action_more.emit)
         layout.addWidget(self.btn_more)
+        self._action_btns.append(self.btn_more)
 
         # ── 5. Spacer + Pay Button ───────────────────────────────
         layout.addStretch()
 
-        self.btn_pay = QPushButton("  Pay (F5)")
+        self.btn_pay = QPushButton()
         self.btn_pay.setFixedHeight(56)
         self.btn_pay.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_pay.setObjectName("BtnPay")
@@ -245,10 +277,23 @@ class ActionPanel(QWidget):
         icon = Icons.get("fa5s.cash-register", "white")
         self.btn_pay.setIcon(icon)
 
+    def retranslate_ui(self) -> None:
+        """Update all translatable widget text (called on language change)."""
+        self.lbl_cust_title.setText(_t("action_panel.customer_title"))
+        self.lbl_customer.setText(_t("action_panel.walk_in_customer"))
+        self.btn_cust_select.setText(_t("action_panel.select_customer"))
+        self.btn_pay.setText(_t("action_panel.btn_pay"))
+
+        for lbl in self._section_labels:
+            lbl.retranslate()
+
+        for btn in self._action_btns:
+            btn.retranslate()
+
     def set_customer_info(self, name, phone, points):
         self.lbl_customer.setText(f"{name} ({phone})")
-        self.lbl_points.setText(f"Points: {points}")
+        self.lbl_points.setText(_t("action_panel.points", points=points))
 
     def clear_customer_info(self):
-        self.lbl_customer.setText("Walk-in Customer")
+        self.lbl_customer.setText(_t("action_panel.walk_in_customer"))
         self.lbl_points.setText("")

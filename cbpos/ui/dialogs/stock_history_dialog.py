@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from cbpos.core.services.stock_service import StockService
 from cbpos.core.models import Product
+from cbpos.i18n import _t
 
 
 class StockHistoryDialog(QDialog):
@@ -17,7 +18,7 @@ class StockHistoryDialog(QDialog):
         super().__init__(parent)
         self.product = product
         self.stock_service = StockService()
-        self.setWindowTitle(f"Stock History - {product.name_en}")
+        self.setWindowTitle(_t("stock_history.title", name=product.name_en))
         self.setMinimumWidth(800)
         self.setMinimumHeight(500)
 
@@ -28,19 +29,28 @@ class StockHistoryDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # Header
-        lbl_header = QLabel(f"Stock Movement History: {self.product.name_en}")
+        lbl_header = QLabel(_t("stock_history.heading", name=self.product.name_en))
         lbl_header.setProperty("class", "dialog-title")
         layout.addWidget(lbl_header)
 
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["Date", "Type", "Reference", "User", "Change", "Balance"])
+        self.table.setHorizontalHeaderLabels(
+            [
+                _t("common.date"),
+                _t("common.type"),
+                _t("stock_history.reference"),
+                _t("stock_history.user"),
+                _t("stock_history.change"),
+                _t("stock_history.balance"),
+            ]
+        )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.table)
 
         # Close Button
-        btn_close = QPushButton("Close")
+        btn_close = QPushButton(_t("common.close"))
         btn_close.clicked.connect(self.accept)
         layout.addWidget(btn_close)
 

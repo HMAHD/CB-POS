@@ -23,6 +23,7 @@ from cbpos.ui.views.user_view import UserView
 from cbpos.ui.views.pricelist_view import PriceListView
 from cbpos.ui.views.promotion_view import PromotionView
 from cbpos.ui.views.document_view import DocumentBrowserView
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,10 @@ class ManagementView(QWidget):
         self.init_ui()
         if self.is_collapsed:
             self._apply_collapsed_state()
+
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self):
         self.main_layout = QHBoxLayout(self)
@@ -69,8 +74,7 @@ class ManagementView(QWidget):
         if not logo_pixmap.isNull():
             self.lbl_logo.setPixmap(logo_pixmap.scaledToHeight(40, Qt.TransformationMode.SmoothTransformation))
         else:
-            self.lbl_logo.setText("CB POS")
-            self.lbl_logo.setText("CB POS")
+            self.lbl_logo.setText("")
             self.lbl_logo.setObjectName("SidebarLogo")
 
         self.btn_toggle = QToolButton()
@@ -92,16 +96,16 @@ class ManagementView(QWidget):
         # 1.2 Nav Buttons
         self.nav_buttons = []
 
-        self.btn_dashboard = self.create_nav_button("Dashboard", Icons.DASHBOARD, 0)
-        self.btn_inventory = self.create_nav_button("Inventory", Icons.INVENTORY, 1)
-        self.btn_purchasing = self.create_nav_button("Purchasing", Icons.PURCHASE, 2)
-        self.btn_customers = self.create_nav_button("Credit Book", Icons.CREDIT_BOOK, 3)
-        self.btn_reports = self.create_nav_button("Reports", Icons.REPORTS, 4)
-        self.btn_documents = self.create_nav_button("Documents", Icons.DOCUMENTS, 5)
-        self.btn_users = self.create_nav_button("Users", Icons.USERS, 6)
-        self.btn_pricelists = self.create_nav_button("Price Lists", Icons.PRICE_LIST, 7)
-        self.btn_promotions = self.create_nav_button("Promotions", Icons.PROMOTION, 8)
-        self.btn_stock_take = self.create_nav_button("Stock Take", Icons.STOCK_TAKE, 9)
+        self.btn_dashboard = self.create_nav_button("", Icons.DASHBOARD, 0)
+        self.btn_inventory = self.create_nav_button("", Icons.INVENTORY, 1)
+        self.btn_purchasing = self.create_nav_button("", Icons.PURCHASE, 2)
+        self.btn_customers = self.create_nav_button("", Icons.CREDIT_BOOK, 3)
+        self.btn_reports = self.create_nav_button("", Icons.REPORTS, 4)
+        self.btn_documents = self.create_nav_button("", Icons.DOCUMENTS, 5)
+        self.btn_users = self.create_nav_button("", Icons.USERS, 6)
+        self.btn_pricelists = self.create_nav_button("", Icons.PRICE_LIST, 7)
+        self.btn_promotions = self.create_nav_button("", Icons.PROMOTION, 8)
+        self.btn_stock_take = self.create_nav_button("", Icons.STOCK_TAKE, 9)
 
         # Push everything else to bottom
         self.sidebar_layout.addStretch()
@@ -114,14 +118,14 @@ class ManagementView(QWidget):
         user_profile_layout.setSpacing(0)
 
         # POS Button
-        self.btn_pos = SidebarButton("   POS / Sales", "fa5s.cash-register")
+        self.btn_pos = SidebarButton("", "fa5s.cash-register")
         self.btn_pos.setObjectName("BtnPos")  # Special Styling
         self.btn_pos.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.btn_pos.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.btn_pos.clicked.connect(self.request_pos_view.emit)
         user_profile_layout.addWidget(self.btn_pos)
 
-        self.btn_logout = SidebarButton("   Logout", Icons.LOGOUT)
+        self.btn_logout = SidebarButton("", Icons.LOGOUT)
         self.btn_logout.setObjectName("BtnLogout")  # Special Styling
         self.btn_logout.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.btn_logout.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -165,6 +169,28 @@ class ManagementView(QWidget):
         from cbpos.core.services.theme_service import ThemeService
 
         ThemeService.register_theme_callback(self.update_sidebar_icons)
+
+    def retranslate_ui(self) -> None:
+        """Update all translatable text in the view."""
+        # Logo fallback text
+        if self.lbl_logo.pixmap() is None or self.lbl_logo.pixmap().isNull():
+            self.lbl_logo.setText(_t("management.logo_fallback"))
+
+        # Nav buttons
+        self.btn_dashboard.setText("   " + _t("management.sidebar_dashboard"))
+        self.btn_inventory.setText("   " + _t("management.sidebar_inventory"))
+        self.btn_purchasing.setText("   " + _t("management.sidebar_purchasing"))
+        self.btn_customers.setText("   " + _t("management.sidebar_credit_book"))
+        self.btn_reports.setText("   " + _t("management.sidebar_reports"))
+        self.btn_documents.setText("   " + _t("management.sidebar_documents"))
+        self.btn_users.setText("   " + _t("management.sidebar_users"))
+        self.btn_pricelists.setText("   " + _t("management.sidebar_price_lists"))
+        self.btn_promotions.setText("   " + _t("management.sidebar_promotions"))
+        self.btn_stock_take.setText("   " + _t("management.sidebar_stock_take"))
+
+        # Bottom buttons
+        self.btn_pos.setText("   " + _t("management.sidebar_pos"))
+        self.btn_logout.setText("   " + _t("management.sidebar_logout"))
 
     def create_nav_button(self, text, icon, index):
         # Add spaces for visual separation

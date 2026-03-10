@@ -19,6 +19,7 @@ from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.core.services.auth_service import AuthService
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.core.utils.formatters import format_currency
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
 class HistoryView(QWidget):
@@ -32,6 +33,10 @@ class HistoryView(QWidget):
         self.init_ui()
         self.load_today()
 
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
     def init_ui(self):
         """Setup the UI layout"""
         layout = QVBoxLayout(self)
@@ -39,25 +44,27 @@ class HistoryView(QWidget):
         # Filter Bar
         filter_layout = QHBoxLayout()
 
-        filter_layout.addWidget(QLabel("From:"))
+        self.from_label = QLabel(_t("common.from"))
+        filter_layout.addWidget(self.from_label)
         self.from_date = QDateEdit()
         self.from_date.setCalendarPopup(True)
         self.from_date.setDate(QDate.currentDate())
         filter_layout.addWidget(self.from_date)
 
-        filter_layout.addWidget(QLabel("To:"))
+        self.to_label = QLabel(_t("common.to"))
+        filter_layout.addWidget(self.to_label)
         self.to_date = QDateEdit()
         self.to_date.setCalendarPopup(True)
         self.to_date.setDate(QDate.currentDate())
         filter_layout.addWidget(self.to_date)
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search by Receipt# or Customer...")
+        self.search_input.setPlaceholderText(_t("history.search_placeholder"))
         filter_layout.addWidget(self.search_input, 1)
 
-        filter_btn = QPushButton("Filter")
-        filter_btn.clicked.connect(self.apply_filter)
-        filter_layout.addWidget(filter_btn)
+        self.filter_btn = QPushButton(_t("common.filter"))
+        self.filter_btn.clicked.connect(self.apply_filter)
+        filter_layout.addWidget(self.filter_btn)
 
         layout.addLayout(filter_layout)
 
@@ -68,7 +75,14 @@ class HistoryView(QWidget):
         self.transaction_table = QTableWidget()
         self.transaction_table.setColumnCount(6)
         self.transaction_table.setHorizontalHeaderLabels(
-            ["Date/Time", "Receipt#", "Cashier", "Total", "Method", "Status"]
+            [
+                _t("history.col_datetime"),
+                _t("history.col_receipt"),
+                _t("history.col_cashier"),
+                _t("common.total"),
+                _t("history.col_method"),
+                _t("common.status"),
+            ]
         )
         self.transaction_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.transaction_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
@@ -82,30 +96,39 @@ class HistoryView(QWidget):
         details_widget = QWidget()
         details_layout = QVBoxLayout(details_widget)
 
-        details_layout.addWidget(QLabel("<b>Transaction Details</b>"))
+        self.details_title_label = QLabel(f"<b>{_t('history.transaction_details')}</b>")
+        details_layout.addWidget(self.details_title_label)
 
-        self.details_label = QLabel("Select a transaction to view details")
+        self.details_label = QLabel(_t("history.select_transaction"))
         self.details_label.setWordWrap(True)
         self.details_label.setStyleSheet("padding: 10px; background: #002244;")
         details_layout.addWidget(self.details_label)
 
         # Line Items Table
-        details_layout.addWidget(QLabel("<b>Line Items:</b>"))
+        self.line_items_label = QLabel(f"<b>{_t('history.line_items')}:</b>")
+        details_layout.addWidget(self.line_items_label)
         self.items_table = QTableWidget()
         self.items_table.setColumnCount(4)
-        self.items_table.setHorizontalHeaderLabels(["Product", "Qty", "Unit Price", "Subtotal"])
+        self.items_table.setHorizontalHeaderLabels(
+            [
+                _t("history.col_product"),
+                _t("history.col_qty"),
+                _t("history.col_unit_price"),
+                _t("history.col_subtotal"),
+            ]
+        )
         self.items_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.items_table.verticalHeader().setVisible(False)
         details_layout.addWidget(self.items_table)
 
         # Action Buttons
         action_layout = QHBoxLayout()
-        self.reprint_btn = QPushButton("Reprint Receipt")
+        self.reprint_btn = QPushButton(_t("history.reprint_receipt"))
         self.reprint_btn.clicked.connect(self.reprint_receipt)
         self.reprint_btn.setEnabled(False)
         action_layout.addWidget(self.reprint_btn)
 
-        self.refund_btn = QPushButton("Process Refund")
+        self.refund_btn = QPushButton(_t("history.process_refund"))
         self.refund_btn.clicked.connect(self.process_refund)
         self.refund_btn.setEnabled(False)
         self.refund_btn.setStyleSheet("background-color: #FF4136; color: white;")
@@ -119,6 +142,47 @@ class HistoryView(QWidget):
         splitter.setStretchFactor(1, 1)
 
         layout.addWidget(splitter)
+
+    def retranslate_ui(self) -> None:
+        """Update all widget text from the translation system."""
+        self.from_label.setText(_t("common.from"))
+        self.to_label.setText(_t("common.to"))
+        self.search_input.setPlaceholderText(_t("history.search_placeholder"))
+        self.filter_btn.setText(_t("common.filter"))
+
+        # Transaction table headers
+        self.transaction_table.setHorizontalHeaderLabels(
+            [
+                _t("history.col_datetime"),
+                _t("history.col_receipt"),
+                _t("history.col_cashier"),
+                _t("common.total"),
+                _t("history.col_method"),
+                _t("common.status"),
+            ]
+        )
+
+        # Details panel
+        self.details_title_label.setText(f"<b>{_t('history.transaction_details')}</b>")
+        if not self.current_sale:
+            self.details_label.setText(_t("history.select_transaction"))
+        else:
+            self.display_details(self.current_sale)
+        self.line_items_label.setText(f"<b>{_t('history.line_items')}:</b>")
+
+        # Items table headers
+        self.items_table.setHorizontalHeaderLabels(
+            [
+                _t("history.col_product"),
+                _t("history.col_qty"),
+                _t("history.col_unit_price"),
+                _t("history.col_subtotal"),
+            ]
+        )
+
+        # Action buttons
+        self.reprint_btn.setText(_t("history.reprint_receipt"))
+        self.refund_btn.setText(_t("history.process_refund"))
 
     def load_today(self):
         """Load today's transactions"""
@@ -154,7 +218,7 @@ class HistoryView(QWidget):
             self.transaction_table.setItem(row, 1, QTableWidgetItem(sale.document_number))
 
             # Cashier
-            cashier_name = sale.user.username if sale.user else "Unknown"
+            cashier_name = sale.user.username if sale.user else _t("history.unknown")
             self.transaction_table.setItem(row, 2, QTableWidgetItem(cashier_name))
 
             # Total
@@ -197,17 +261,18 @@ class HistoryView(QWidget):
 
     def display_details(self, sale):
         """Display sale details in details panel"""
+        cashier = sale.user.username if sale.user else _t("history.unknown")
         details_text = f"""
-        <b>Receipt:</b> {sale.document_number}<br>
-        <b>Date:</b> {sale.date.strftime("%Y-%m-%d %H:%M:%S")}<br>
-        <b>Cashier:</b> {sale.user.username if sale.user else 'Unknown'}<br>
-        <b>Total:</b> {format_currency(sale.total_amount)}<br>
-        <b>Payment:</b> {sale.payment_method}<br>
-        <b>Status:</b> {sale.status}
+        <b>{_t('history.detail_receipt')}:</b> {sale.document_number}<br>
+        <b>{_t('common.date')}:</b> {sale.date.strftime("%Y-%m-%d %H:%M:%S")}<br>
+        <b>{_t('history.col_cashier')}:</b> {cashier}<br>
+        <b>{_t('common.total')}:</b> {format_currency(sale.total_amount)}<br>
+        <b>{_t('history.detail_payment')}:</b> {sale.payment_method}<br>
+        <b>{_t('common.status')}:</b> {sale.status}
         """
 
         if sale.refund_of_sale_id:
-            details_text += f"<br><b>Refund of Sale:</b> #{sale.refund_of_sale_id}"  # noqa: E231
+            details_text += f"<br><b>{_t('history.refund_of_sale')}:</b> #{sale.refund_of_sale_id}"  # noqa: E231
 
         self.details_label.setText(details_text)
 
@@ -217,7 +282,7 @@ class HistoryView(QWidget):
             self.items_table.insertRow(row_idx)
 
             # Product name
-            product_name = item.product.name_en if item.product else "Unknown"
+            product_name = item.product.name_en if item.product else _t("history.unknown")
             self.items_table.setItem(row_idx, 0, QTableWidgetItem(product_name))
 
             # Quantity
@@ -263,11 +328,11 @@ class HistoryView(QWidget):
 
             QMessageBox.information(
                 self,
-                "Success",
-                f"Receipt {self.current_sale.document_number} sent to printer.",
+                _t("common.success"),
+                _t("history.receipt_sent", receipt=self.current_sale.document_number),
             )
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to reprint receipt: {e}")
+            QMessageBox.critical(self, _t("common.error"), _t("history.reprint_failed", error=e))
 
     def process_refund(self):
         """Process a refund for the selected sale"""
@@ -277,13 +342,12 @@ class HistoryView(QWidget):
         # Confirmation dialog
         reply = QMessageBox.question(
             self,
-            "Confirm Refund",
-            f"<b>Refund Transaction?</b><br><br>"
-            f"Receipt: {self.current_sale.document_number}<br>"
-            f"Amount: {format_currency(self.current_sale.total_amount)}<br><br>"
-            f"<b style='color: #FF4136'>Warning:</b> "  # noqa: E231
-            f"Stock will be restored. "
-            f"This action cannot be undone.",
+            _t("history.confirm_refund"),
+            f"<b>{_t('history.refund_transaction_q')}</b><br><br>"
+            f"{_t('history.detail_receipt')}: {self.current_sale.document_number}<br>"
+            f"{_t('common.amount')}: {format_currency(self.current_sale.total_amount)}<br><br>"
+            f"<b style='color: #FF4136'>{_t('common.warning')}:</b> "  # noqa: E231
+            f"{_t('history.refund_warning')}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -292,15 +356,15 @@ class HistoryView(QWidget):
             try:
                 current_user = AuthService.get_current_user()
                 if not current_user:
-                    QMessageBox.warning(self, "Error", "No user logged in.")
+                    QMessageBox.warning(self, _t("common.error"), _t("history.no_user_logged_in"))
                     return
 
                 success = TransactionService.process_refund(self.current_sale.id, "Customer Return", current_user.id)
 
                 if success:
-                    QMessageBox.information(self, "Success", "Refund processed successfully.")
+                    QMessageBox.information(self, _t("common.success"), _t("history.refund_success"))
                     self.apply_filter()  # Refresh list
                 else:
-                    QMessageBox.critical(self, "Error", "Failed to process refund. Check logs.")
+                    QMessageBox.critical(self, _t("common.error"), _t("history.refund_failed"))
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Refund failed: {e}")
+                QMessageBox.critical(self, _t("common.error"), _t("history.refund_error", error=e))

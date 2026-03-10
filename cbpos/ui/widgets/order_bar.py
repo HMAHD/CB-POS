@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from cbpos.core.services.transaction_service import TransactionService
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
 class OrderBar(QWidget):
@@ -29,15 +30,18 @@ class OrderBar(QWidget):
         self.init_ui()
         self.refresh_tabs()
 
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
     def init_ui(self):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
         layout.setSpacing(10)
 
         # 1. Label
-        lbl_title = QLabel("ORDERS:")
-        lbl_title.setProperty("class", "muted")
-        layout.addWidget(lbl_title)
+        self.lbl_title = QLabel()
+        self.lbl_title.setProperty("class", "muted")
+        layout.addWidget(self.lbl_title)
 
         # 2. Scroll Area for Tabs
         self.scroll_area = QScrollArea()
@@ -56,11 +60,20 @@ class OrderBar(QWidget):
         layout.addWidget(self.scroll_area)
 
         # 3. New Order Button (+)
-        self.btn_new = QPushButton("+")
+        self.btn_new = QPushButton()
         self.btn_new.setFixedSize(50, 40)
         self.btn_new.setProperty("class", "primary")
         self.btn_new.clicked.connect(self.new_tab_requested.emit)
         layout.addWidget(self.btn_new)
+
+        self.retranslate_ui()
+
+    def retranslate_ui(self) -> None:
+        """Update all translatable widget text (called on language change)."""
+        self.lbl_title.setText(_t("orders.title"))
+        self.btn_new.setText(_t("orders.new_order"))
+        # Refresh tabs to re-translate "Current" label
+        self.refresh_tabs()
 
     def set_active_bill(self, bill_id: int | None) -> None:
         """Track which bill is currently loaded in the cart."""
@@ -75,9 +88,10 @@ class OrderBar(QWidget):
                 item.widget().setParent(None)
 
         # Current order tab (always shown, always active)
-        current_label = "Current"
         if self._active_bill_id is not None:
-            current_label = f"Current (#{self._active_bill_id})"
+            current_label = _t("orders.current_with_id", id=self._active_bill_id)
+        else:
+            current_label = _t("orders.current")
         btn_current = QPushButton(current_label)
         btn_current.setFixedHeight(40)
         btn_current.setCheckable(True)

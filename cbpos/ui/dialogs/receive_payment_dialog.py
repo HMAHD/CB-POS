@@ -17,6 +17,7 @@ from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.utils.formatters import format_currency
+from cbpos.i18n import _t
 
 
 class ReceivePaymentDialog(QDialog):
@@ -28,7 +29,7 @@ class ReceivePaymentDialog(QDialog):
         self.selected_customer_id = customer_id
         self.recorded_payment = None
 
-        self.setWindowTitle("Receive Payment")
+        self.setWindowTitle(_t("receive_payment.title"))
         self.setObjectName("ReceivePaymentDialog")
         self.setMinimumSize(450, 420)
         self.resize(500, 480)
@@ -43,21 +44,21 @@ class ReceivePaymentDialog(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
 
         # Title
-        title = QLabel("Receive Customer Payment")
-        title.setProperty("class", "dialog-title")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title)
+        self.title_label = QLabel("")
+        self.title_label.setProperty("class", "dialog-title")
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.title_label)
 
         layout.addSpacing(8)
 
         # Customer Selector
         customer_layout = QHBoxLayout()
         customer_layout.setSpacing(10)
-        lbl_customer = QLabel("Customer:")
-        lbl_customer.setProperty("class", "bold")
+        self.lbl_customer = QLabel("")
+        self.lbl_customer.setProperty("class", "bold")
         self.cmb_customer = QComboBox()
         self.cmb_customer.setMinimumWidth(250)
-        customer_layout.addWidget(lbl_customer)
+        customer_layout.addWidget(self.lbl_customer)
         customer_layout.addWidget(self.cmb_customer, 1)
         layout.addLayout(customer_layout)
 
@@ -66,9 +67,9 @@ class ReceivePaymentDialog(QDialog):
         self.balance_frame.setObjectName("BalanceFrame")
         balance_layout = QHBoxLayout(self.balance_frame)
         balance_layout.setContentsMargins(12, 8, 12, 8)
-        self.lbl_outstanding = QLabel("Outstanding: ---")
+        self.lbl_outstanding = QLabel("")
         self.lbl_outstanding.setProperty("class", "debit")
-        self.lbl_limit = QLabel("Limit: ---")
+        self.lbl_limit = QLabel("")
         self.lbl_limit.setProperty("class", "muted")
         balance_layout.addWidget(self.lbl_outstanding)
         balance_layout.addStretch()
@@ -85,15 +86,15 @@ class ReceivePaymentDialog(QDialog):
         # Amount + Pay Full
         amount_layout = QHBoxLayout()
         self.txt_amount = QLineEdit()
-        self.txt_amount.setPlaceholderText("0.00")
+        self.txt_amount.setPlaceholderText(_t("receive_payment.amount_placeholder"))
         amount_layout.addWidget(self.txt_amount, 1)
 
-        self.btn_pay_full = QPushButton("Pay Full")
+        self.btn_pay_full = QPushButton("")
         self.btn_pay_full.setProperty("class", "accent")
         self.btn_pay_full.clicked.connect(self.fill_full_amount)
         amount_layout.addWidget(self.btn_pay_full)
 
-        form_layout.addRow("Amount:", amount_layout)
+        form_layout.addRow(_t("receive_payment.amount_label"), amount_layout)
 
         # Payment Method (loaded from DB, excluding Credit)
         self.cmb_method = QComboBox()
@@ -103,17 +104,17 @@ class ReceivePaymentDialog(QDialog):
         for m in PaymentService.get_active_methods():
             if m.name.upper() != PaymentMethodType.CREDIT.upper():
                 self.cmb_method.addItem(m.name)
-        form_layout.addRow("Method:", self.cmb_method)
+        form_layout.addRow(_t("receive_payment.method_label"), self.cmb_method)
 
         # Reference
         self.txt_reference = QLineEdit()
-        self.txt_reference.setPlaceholderText("Cheque #, Transfer ref (optional)")
-        form_layout.addRow("Reference:", self.txt_reference)
+        self.txt_reference.setPlaceholderText(_t("receive_payment.reference_placeholder"))
+        form_layout.addRow(_t("receive_payment.reference_label"), self.txt_reference)
 
         # Note
         self.txt_note = QLineEdit()
-        self.txt_note.setPlaceholderText("Optional note")
-        form_layout.addRow("Note:", self.txt_note)
+        self.txt_note.setPlaceholderText(_t("receive_payment.note_placeholder"))
+        form_layout.addRow(_t("receive_payment.note_label"), self.txt_note)
 
         layout.addLayout(form_layout)
         layout.addStretch()
@@ -121,12 +122,12 @@ class ReceivePaymentDialog(QDialog):
         # Buttons
         btn_layout = QHBoxLayout()
 
-        self.btn_record = QPushButton("Record Payment")
+        self.btn_record = QPushButton("")
         self.btn_record.setProperty("class", "primary")
         self.btn_record.clicked.connect(self.validate_and_record)
         btn_layout.addWidget(self.btn_record)
 
-        self.btn_cancel = QPushButton("Cancel")
+        self.btn_cancel = QPushButton("")
         self.btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(self.btn_cancel)
 
@@ -136,14 +137,32 @@ class ReceivePaymentDialog(QDialog):
         self.cmb_customer.currentIndexChanged.connect(self.on_customer_changed)
         self.load_customers_with_debt()
 
+        # Apply translations
+        self.retranslate_ui()
+
+    def retranslate_ui(self) -> None:
+        """Set all translatable text using _t()."""
+        self.setWindowTitle(_t("receive_payment.title"))
+        self.title_label.setText(_t("receive_payment.title_alt"))
+        self.lbl_customer.setText(_t("receive_payment.customer_label"))
+        self.lbl_outstanding.setText(_t("receive_payment.outstanding_default"))
+        self.lbl_limit.setText(_t("receive_payment.limit_default"))
+        self.btn_pay_full.setText(_t("receive_payment.btn_pay_full"))
+        self.btn_record.setText(_t("receive_payment.btn_record"))
+        self.btn_cancel.setText(_t("receive_payment.btn_cancel"))
+
     def load_customers_with_debt(self) -> None:
         """Load all active customers into the combo box."""
         customers = self.customer_service.get_all_customers()
         self.cmb_customer.clear()
-        self.cmb_customer.addItem("-- Select Customer --", None)
+        self.cmb_customer.addItem(_t("receive_payment.select_customer"), None)
 
         for customer in customers:
-            debt_str = f" (Debt: {format_currency(customer.current_debt)})" if customer.current_debt > 0 else ""
+            debt_str = (
+                f" ({_t('receive_payment.debt_label')} {format_currency(customer.current_debt)})"
+                if customer.current_debt > 0
+                else ""
+            )
             self.cmb_customer.addItem(f"{customer.name}{debt_str}", customer.id)
 
     def load_customer(self, customer_id: int) -> None:
@@ -157,19 +176,21 @@ class ReceivePaymentDialog(QDialog):
         """Update balance display when customer selection changes."""
         customer_id = self.cmb_customer.currentData()
         if not customer_id:
-            self.lbl_outstanding.setText("Outstanding: ---")
-            self.lbl_limit.setText("Limit: ---")
+            self.lbl_outstanding.setText(_t("receive_payment.outstanding_default"))
+            self.lbl_limit.setText(_t("receive_payment.limit_default"))
             self.selected_customer_id = None
             return
 
         self.selected_customer_id = customer_id
         summary = CustomerCreditService.get_customer_summary(customer_id)
         if summary:
-            self.lbl_outstanding.setText(f"Outstanding: {format_currency(summary['current_debt'])}")
-            self.lbl_limit.setText(f"Limit: {format_currency(summary['credit_limit'])}")
+            self.lbl_outstanding.setText(
+                f"{_t('receive_payment.outstanding_label')} {format_currency(summary['current_debt'])}"
+            )
+            self.lbl_limit.setText(f"{_t('receive_payment.limit_label')} {format_currency(summary['credit_limit'])}")
         else:
-            self.lbl_outstanding.setText("Outstanding: ---")
-            self.lbl_limit.setText("Limit: ---")
+            self.lbl_outstanding.setText(_t("receive_payment.outstanding_default"))
+            self.lbl_limit.setText(_t("receive_payment.limit_default"))
 
     def fill_full_amount(self) -> None:
         """Fill the amount field with the full outstanding balance."""
@@ -182,12 +203,14 @@ class ReceivePaymentDialog(QDialog):
     def validate_and_record(self) -> None:
         """Validate inputs and record the payment."""
         if not self.selected_customer_id:
-            QMessageBox.warning(self, "Input Error", "Please select a customer.")
+            QMessageBox.warning(
+                self, _t("receive_payment.input_error_title"), _t("receive_payment.select_customer_error")
+            )
             return
 
         amount_text = self.txt_amount.text().strip()
         if not amount_text:
-            QMessageBox.warning(self, "Input Error", "Please enter an amount.")
+            QMessageBox.warning(self, _t("receive_payment.input_error_title"), _t("receive_payment.enter_amount_error"))
             return
 
         try:
@@ -195,7 +218,9 @@ class ReceivePaymentDialog(QDialog):
             if amount <= 0:
                 raise ValueError
         except (InvalidOperation, ValueError):
-            QMessageBox.warning(self, "Input Error", "Invalid amount. Must be a positive number.")
+            QMessageBox.warning(
+                self, _t("receive_payment.input_error_title"), _t("receive_payment.invalid_amount_error")
+            )
             return
 
         payment_method = self.cmb_method.currentText()
@@ -204,7 +229,7 @@ class ReceivePaymentDialog(QDialog):
 
         current_user = AuthService.get_current_user()
         if not current_user:
-            QMessageBox.warning(self, "Error", "No user logged in.")
+            QMessageBox.warning(self, _t("common.error"), _t("receive_payment.no_user_error"))
             return
 
         try:
@@ -219,11 +244,11 @@ class ReceivePaymentDialog(QDialog):
             self.recorded_payment = payment
             QMessageBox.information(
                 self,
-                "Payment Recorded",
-                f"Payment of {format_currency(amount)} recorded successfully.",
+                _t("receive_payment.success_title"),
+                _t("receive_payment.success_message", amount=format_currency(amount)),
             )
             self.accept()
         except ValueError as e:
-            QMessageBox.warning(self, "Validation Error", str(e))
+            QMessageBox.warning(self, _t("common.validation_error"), str(e))
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to record payment: {str(e)}")
+            QMessageBox.critical(self, _t("common.error"), _t("receive_payment.record_failed", error=str(e)))

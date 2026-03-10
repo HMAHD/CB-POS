@@ -25,6 +25,7 @@ from cbpos.ui.views.settings_pages import (
     SystemPage,
     NetworkPage,
 )
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
 class SettingsView(QWidget):
@@ -42,6 +43,10 @@ class SettingsView(QWidget):
         if self.is_collapsed:
             self._apply_collapsed_state()
         self.load_settings()
+
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
@@ -73,7 +78,7 @@ class SettingsView(QWidget):
         if not logo_pixmap.isNull():
             self.lbl_logo.setPixmap(logo_pixmap.scaledToHeight(40, Qt.TransformationMode.SmoothTransformation))
         else:
-            self.lbl_logo.setText("CB POS")
+            self.lbl_logo.setText("")
             self.lbl_logo.setObjectName("SidebarLogo")
 
         self.btn_toggle = QToolButton()
@@ -91,18 +96,18 @@ class SettingsView(QWidget):
         self.sidebar_layout.addSpacing(10)
 
         # Navigation buttons — config pages
-        self.btn_shop_info = self.create_nav_button("Shop Info", "fa5s.store", 0)
-        self.btn_sales_tax = self.create_nav_button("Sales & Tax", "fa5s.shopping-cart", 1)
-        self.btn_documents = self.create_nav_button("Documents", "fa5s.file-invoice", 2)
-        self.btn_hardware = self.create_nav_button("Hardware", "fa5s.print", 3)
-        self.btn_receipt = self.create_nav_button("Receipt", "fa5s.receipt", 4)
-        self.btn_system = self.create_nav_button("System", "fa5s.cogs", 5)
-        self.btn_network = self.create_nav_button("Network", "fa5s.network-wired", 6)
-        self.btn_payment_methods = self.create_nav_button("Payments", "fa5s.credit-card", 7)
+        self.btn_shop_info = self.create_nav_button("", "fa5s.store", 0)
+        self.btn_sales_tax = self.create_nav_button("", "fa5s.shopping-cart", 1)
+        self.btn_documents = self.create_nav_button("", "fa5s.file-invoice", 2)
+        self.btn_hardware = self.create_nav_button("", "fa5s.print", 3)
+        self.btn_receipt = self.create_nav_button("", "fa5s.receipt", 4)
+        self.btn_system = self.create_nav_button("", "fa5s.cogs", 5)
+        self.btn_network = self.create_nav_button("", "fa5s.network-wired", 6)
+        self.btn_payment_methods = self.create_nav_button("", "fa5s.credit-card", 7)
 
         # Operational buttons (same list, no gap)
-        self.btn_data_safety = self.create_nav_button("Data Safety", "fa5s.shield-alt", 8)
-        self.btn_admin_tools = self.create_nav_button("Admin Tools", "fa5s.toolbox", 9)
+        self.btn_data_safety = self.create_nav_button("", "fa5s.shield-alt", 8)
+        self.btn_admin_tools = self.create_nav_button("", "fa5s.toolbox", 9)
 
         self.sidebar_layout.addStretch()
 
@@ -154,12 +159,12 @@ class SettingsView(QWidget):
 
         footer_layout.addStretch()
 
-        self.btn_save = QPushButton("Save Changes")
+        self.btn_save = QPushButton("")
         self.btn_save.setFixedSize(140, 40)
         self.btn_save.setObjectName("BtnSave")
         self.btn_save.clicked.connect(self.save_all)
 
-        self.btn_cancel = QPushButton("Cancel")
+        self.btn_cancel = QPushButton("")
         self.btn_cancel.setFixedSize(120, 40)
         self.btn_cancel.setObjectName("BtnCancel")
         self.btn_cancel.clicked.connect(self.close_requested.emit)
@@ -168,8 +173,6 @@ class SettingsView(QWidget):
         footer_layout.addWidget(self.btn_cancel)
 
         main_layout.addWidget(footer_frame)
-
-        self.setWindowTitle("Settings - CB POS")
 
         # Animation
         self.anim_width = QPropertyAnimation(self.sidebar, b"minimumWidth")
@@ -186,6 +189,26 @@ class SettingsView(QWidget):
 
         # Register theme callback
         ThemeService.register_theme_callback(self.update_sidebar_icons)
+
+    def retranslate_ui(self) -> None:
+        """Update all translatable text in the view."""
+        self.setWindowTitle(_t("settings.title"))
+
+        # Nav buttons
+        self.btn_shop_info.setText("   " + _t("settings.sidebar_shop_info"))
+        self.btn_sales_tax.setText("   " + _t("settings.sidebar_sales_tax"))
+        self.btn_documents.setText("   " + _t("settings.sidebar_documents"))
+        self.btn_hardware.setText("   " + _t("settings.sidebar_hardware"))
+        self.btn_receipt.setText("   " + _t("settings.sidebar_receipt"))
+        self.btn_system.setText("   " + _t("settings.sidebar_system"))
+        self.btn_network.setText("   " + _t("settings.sidebar_network"))
+        self.btn_payment_methods.setText("   " + _t("settings.sidebar_payments"))
+        self.btn_data_safety.setText("   " + _t("settings.sidebar_data_safety"))
+        self.btn_admin_tools.setText("   " + _t("settings.sidebar_admin_tools"))
+
+        # Footer buttons
+        self.btn_save.setText(_t("settings.btn_save"))
+        self.btn_cancel.setText(_t("settings.btn_cancel"))
 
     def create_nav_button(self, text: str, icon: str, index: int) -> SidebarButton:
         """Create a sidebar navigation button connected to the given stack index."""
@@ -215,8 +238,8 @@ class SettingsView(QWidget):
         if self._saved_snapshot and self._take_snapshot() != self._saved_snapshot:
             reply = QMessageBox.question(
                 self,
-                "Unsaved Changes",
-                "You have unsaved changes. Continue without saving?",
+                _t("settings.unsaved_title"),
+                _t("settings.unsaved_message"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
             )
@@ -330,7 +353,7 @@ class SettingsView(QWidget):
             for page in self.pages:
                 all_settings.update(page.save())
         except ValueError as e:
-            QMessageBox.warning(self, "Validation Error", str(e))
+            QMessageBox.warning(self, _t("common.validation_error"), str(e))
             return
 
         # Audit log tax rate changes before saving
@@ -379,20 +402,28 @@ class SettingsView(QWidget):
 
         ThemeService.apply_theme(new_theme)
 
-        restart_required = (
-            new_lang != current_lang
-            or new_font_size != current_font_size
-            or all_settings.get("db_mode") != current_config.get("db_mode")
+        # Apply language change immediately (live retranslation)
+        if new_lang != current_lang:
+            from cbpos.i18n import set_language
+
+            set_language(new_lang)
+
+        restart_required = new_font_size != current_font_size or all_settings.get("db_mode") != current_config.get(
+            "db_mode"
         )
 
         if restart_required:
             QMessageBox.information(
                 self,
-                "Restart Required",
-                "Please restart the application to apply changes completely.",
+                _t("settings.restart_title"),
+                _t("settings.restart_message"),
             )
         else:
-            QMessageBox.information(self, "Saved", "Settings saved successfully.")
+            QMessageBox.information(
+                self,
+                _t("settings.saved_title"),
+                _t("settings.saved_message"),
+            )
 
         self._saved_snapshot = self._take_snapshot()
         self.close_requested.emit()

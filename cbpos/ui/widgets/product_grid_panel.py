@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from cbpos.core.services.product_service import ProductService
 from cbpos.ui.widgets.touch_widgets import ProductCard, CategoryButton
+from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ class ProductGridPanel(QWidget):
             products = self.product_service.get_all_products()[:50]
 
         if not products:
-            lbl = QLabel("No products in this category")
+            lbl = QLabel(_t("product_grid.no_products"))
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lbl.setProperty("class", "muted")
             self.grid_layout.addWidget(lbl, 0, 0)

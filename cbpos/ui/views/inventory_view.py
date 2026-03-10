@@ -15,13 +15,14 @@ from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.services.import_service import ImportService
 from cbpos.ui.dialogs.product_editor import ProductEditor
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
 class InventoryModel(QAbstractTableModel):
     def __init__(self, products=None):
         super().__init__()
         self.products = products or []
-        self.headers = ["Barcode", "Name", "Category", "Price", "Stock", "Unit"]
+        self.headers = ["", "", "", "", "", ""]
 
     def rowCount(self, parent=QModelIndex()):
         return len(self.products)
@@ -74,6 +75,11 @@ class InventoryModel(QAbstractTableModel):
         self.products = products
         self.endResetModel()
 
+    def update_headers(self, headers: list[str]) -> None:
+        """Update header labels and notify views."""
+        self.headers = headers
+        self.headerDataChanged.emit(Qt.Orientation.Horizontal, 0, len(headers) - 1)
+
 
 class InventoryView(QWidget):
     def __init__(self):
@@ -84,6 +90,10 @@ class InventoryView(QWidget):
         self.init_ui()
         self.load_data()
 
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
     def init_ui(self):
         layout = QVBoxLayout(self)
 
@@ -91,22 +101,21 @@ class InventoryView(QWidget):
         top_bar = QHBoxLayout()
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search by Barcode or Name...")
         self.search_input.textChanged.connect(self.filter_data)
 
-        self.add_btn = QPushButton("Add Product")
+        self.add_btn = QPushButton()
         self.add_btn.clicked.connect(self.open_add_dialog)
 
-        self.import_btn = QPushButton("Import CSV")
+        self.import_btn = QPushButton()
         self.import_btn.clicked.connect(self.import_csv)
 
-        self.cat_btn = QPushButton("Manage Categories")
+        self.cat_btn = QPushButton()
         self.cat_btn.clicked.connect(self.open_category_dialog)
 
-        self.unit_btn = QPushButton("Units")
+        self.unit_btn = QPushButton()
         self.unit_btn.clicked.connect(self.open_unit_manager)
 
-        self.label_btn = QPushButton("Print Labels")
+        self.label_btn = QPushButton()
         self.label_btn.clicked.connect(self.open_label_print)
 
         top_bar.addWidget(self.search_input)
@@ -132,7 +141,7 @@ class InventoryView(QWidget):
         self.table.customContextMenuRequested.connect(self.open_context_menu)
 
         # Empty state placeholder
-        self.empty_label = QLabel("No products match your search")
+        self.empty_label = QLabel()
         self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty_label.setStyleSheet("color: gray; font-size: 14px;")
 
@@ -146,6 +155,26 @@ class InventoryView(QWidget):
         self.pagination = PaginationWidget()
         self.pagination.page_changed.connect(self._on_page_changed)
         layout.addWidget(self.pagination)
+
+    def retranslate_ui(self) -> None:
+        """Update all widget text from the translation system."""
+        self.search_input.setPlaceholderText(_t("inventory.search_placeholder"))
+        self.add_btn.setText(_t("inventory.btn_add_product"))
+        self.import_btn.setText(_t("inventory.btn_import_csv"))
+        self.cat_btn.setText(_t("inventory.btn_manage_categories"))
+        self.unit_btn.setText(_t("inventory.btn_units"))
+        self.label_btn.setText(_t("inventory.btn_print_labels"))
+        self.empty_label.setText(_t("inventory.empty_state"))
+        self.model.update_headers(
+            [
+                _t("inventory.header_barcode"),
+                _t("inventory.header_name"),
+                _t("inventory.header_category"),
+                _t("inventory.header_price"),
+                _t("inventory.header_stock"),
+                _t("inventory.header_unit"),
+            ]
+        )
 
     def _update_empty_state(self) -> None:
         """Show empty state label when model has no rows."""
@@ -231,7 +260,7 @@ class InventoryView(QWidget):
             return
 
         menu = QMenu()
-        history_action = menu.addAction("View Stock History")
+        history_action = menu.addAction(_t("inventory.context_stock_history"))
 
         action = menu.exec(self.table.viewport().mapToGlobal(position))
 

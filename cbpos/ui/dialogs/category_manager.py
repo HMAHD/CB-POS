@@ -26,6 +26,7 @@ from sqlalchemy.orm import joinedload
 
 from cbpos.core.database import Database
 from cbpos.core.models import Category, Product
+from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ class CategoryManagerDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Category Manager")
+        self.setWindowTitle(_t("category_manager.title"))
         self.setMinimumSize(640, 500)
         self.resize(700, 540)
         self.setObjectName("CategoryManagerDialog")
@@ -63,7 +64,7 @@ class CategoryManagerDialog(QDialog):
         left.setSpacing(8)
 
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["Category", "Products"])
+        self.tree.setHeaderLabels([_t("category_manager.col_category"), _t("category_manager.col_products")])
         self.tree.setColumnWidth(0, 280)
         self.tree.setRootIsDecorated(True)
         self.tree.setAlternatingRowColors(True)
@@ -77,30 +78,30 @@ class CategoryManagerDialog(QDialog):
         right.setSpacing(10)
 
         # Form
-        form_group = QGroupBox("Category Details")
+        form_group = QGroupBox(_t("category_manager.details_group"))
         form_layout = QFormLayout(form_group)
         form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
         form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         form_layout.setSpacing(10)
 
         self.txt_name = QLineEdit()
-        self.txt_name.setPlaceholderText("Category name")
-        form_layout.addRow("Name:", self.txt_name)
+        self.txt_name.setPlaceholderText(_t("category_manager.name_placeholder"))
+        form_layout.addRow(_t("category_manager.name_label"), self.txt_name)
 
         self.combo_parent = QComboBox()
-        form_layout.addRow("Parent:", self.combo_parent)
+        form_layout.addRow(_t("category_manager.parent_label"), self.combo_parent)
 
         # Color picker row
         color_row = QHBoxLayout()
         self.lbl_color = QLabel()
         self.lbl_color.setFixedSize(32, 32)
         self._update_color_preview()
-        self.btn_pick_color = QPushButton("Pick Color")
+        self.btn_pick_color = QPushButton(_t("category_manager.pick_color"))
         self.btn_pick_color.clicked.connect(self._pick_color)
         color_row.addWidget(self.lbl_color)
         color_row.addWidget(self.btn_pick_color)
         color_row.addStretch()
-        form_layout.addRow("Color:", color_row)
+        form_layout.addRow(_t("category_manager.color_label"), color_row)
 
         right.addWidget(form_group)
 
@@ -108,12 +109,12 @@ class CategoryManagerDialog(QDialog):
         btn_layout = QVBoxLayout()
         btn_layout.setSpacing(6)
 
-        self.btn_save = QPushButton("Save New")
+        self.btn_save = QPushButton(_t("category_manager.save_new"))
         self.btn_save.setProperty("class", "primary")
         self.btn_save.clicked.connect(self._save_category)
         btn_layout.addWidget(self.btn_save)
 
-        self.btn_delete = QPushButton("Delete Selected")
+        self.btn_delete = QPushButton(_t("category_manager.delete_selected"))
         self.btn_delete.setProperty("class", "danger")
         self.btn_delete.setEnabled(False)
         self.btn_delete.clicked.connect(self._delete_category)
@@ -125,13 +126,13 @@ class CategoryManagerDialog(QDialog):
         sep.setFrameShadow(QFrame.Shadow.Sunken)
         btn_layout.addWidget(sep)
 
-        self.btn_clear = QPushButton("Clear / New")
+        self.btn_clear = QPushButton(_t("category_manager.clear_new"))
         self.btn_clear.clicked.connect(self._clear_form)
         btn_layout.addWidget(self.btn_clear)
 
         btn_layout.addStretch()
 
-        btn_close = QPushButton("Close")
+        btn_close = QPushButton(_t("common.close"))
         btn_close.clicked.connect(self.accept)
         btn_layout.addWidget(btn_close)
 
@@ -181,7 +182,7 @@ class CategoryManagerDialog(QDialog):
     def _populate_parent_combo(self, exclude_id: int = None) -> None:
         """Populate parent combo with all categories, excluding self and descendants."""
         self.combo_parent.clear()
-        self.combo_parent.addItem("None (Top Level)", None)
+        self.combo_parent.addItem(_t("category_manager.none_top_level"), None)
 
         db = Database()
         with db.get_session() as session:
@@ -224,7 +225,7 @@ class CategoryManagerDialog(QDialog):
             if idx >= 0:
                 self.combo_parent.setCurrentIndex(idx)
 
-        self.btn_save.setText("Update")
+        self.btn_save.setText(_t("category_manager.update"))
 
     def _get_descendant_ids(self, session, cat_id: int) -> set:
         """Get all descendant category IDs to prevent circular parenting."""
@@ -240,7 +241,7 @@ class CategoryManagerDialog(QDialog):
         """Add or update a category based on current editing state."""
         name = self.txt_name.text().strip()
         if not name:
-            QMessageBox.warning(self, "Validation", "Category name is required.")
+            QMessageBox.warning(self, _t("common.validation_error"), _t("category_manager.name_required"))
             self.txt_name.setFocus()
             return
 
@@ -268,7 +269,7 @@ class CategoryManagerDialog(QDialog):
                 session.commit()
             except Exception as e:
                 session.rollback()
-                QMessageBox.critical(self, "Error", str(e))
+                QMessageBox.critical(self, _t("common.error"), str(e))
                 return
 
         self._load_tree()
@@ -293,21 +294,23 @@ class CategoryManagerDialog(QDialog):
             if product_count > 0:
                 QMessageBox.warning(
                     self,
-                    "Cannot Delete",
-                    f"Cannot delete '{cat_name}': {product_count} product(s) "
-                    f"use this category or its subcategories.\n\n"
-                    f"Reassign the products first.",
+                    _t("category_manager.cannot_delete_title"),
+                    _t(
+                        "category_manager.cannot_delete_msg",
+                        name=cat_name,
+                        count=product_count,
+                    ),
                 )
                 return
 
             sub_count = len(all_ids) - 1
-            msg = f"Delete category '{cat_name}'?"
+            msg = _t("category_manager.confirm_delete_msg", name=cat_name)
             if sub_count > 0:
-                msg += f"\n\nThis will also delete {sub_count} subcategory(ies)."
+                msg += "\n\n" + _t("category_manager.confirm_delete_sub", count=sub_count)
 
             reply = QMessageBox.question(
                 self,
-                "Confirm Delete",
+                _t("category_manager.confirm_delete_title"),
                 msg,
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
@@ -322,14 +325,14 @@ class CategoryManagerDialog(QDialog):
                 session.commit()
             except Exception as e:
                 session.rollback()
-                QMessageBox.critical(self, "Error", str(e))
+                QMessageBox.critical(self, _t("common.error"), str(e))
                 return
 
         self._load_tree()
         self._clear_form()
 
     def _pick_color(self) -> None:
-        color = QColorDialog.getColor(QColor(self.selected_color), self, "Select Category Color")
+        color = QColorDialog.getColor(QColor(self.selected_color), self, _t("category_manager.select_color"))
         if color.isValid():
             self.selected_color = color.name()
             self._update_color_preview()
@@ -347,7 +350,7 @@ class CategoryManagerDialog(QDialog):
         self.txt_name.clear()
         self.selected_color = "#00BCEB"
         self._update_color_preview()
-        self.btn_save.setText("Save New")
+        self.btn_save.setText(_t("category_manager.save_new"))
         self.btn_delete.setEnabled(False)
         self.tree.clearSelection()
         self._populate_parent_combo()

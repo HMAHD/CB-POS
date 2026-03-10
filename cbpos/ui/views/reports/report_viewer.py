@@ -444,7 +444,7 @@ class ReportViewer(QWidget):
             return
 
         filename, _ = QFileDialog.getSaveFileName(
-            self, _t("report_viewer.save_excel_title"), "", "Excel Files (*.xlsx)"
+            self, _t("report_viewer.save_excel_title"), "", _t("report_viewer.excel_filter")
         )
         if filename:
             self._start_export(self._full_df, filename, "excel")
@@ -459,7 +459,7 @@ class ReportViewer(QWidget):
         if self._full_df.empty:
             return
 
-        filename, _ = QFileDialog.getSaveFileName(self, _t("report_viewer.save_pdf_title"), "", "PDF Files (*.pdf)")
+        filename, _ = QFileDialog.getSaveFileName(self, _t("report_viewer.save_pdf_title"), "", _t("report_viewer.pdf_filter"))
         if filename:
             self._start_export(self._full_df, filename, "pdf")
 

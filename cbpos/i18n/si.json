@@ -1677,6 +1677,8 @@
     "generation_failed": "Failed to generate report: {error}",
     "save_excel_title": "Save Excel",
     "save_pdf_title": "Save PDF",
+    "excel_filter": "Excel Files (*.xlsx)",
+    "pdf_filter": "PDF Files (*.pdf)",
     "exporting": "Exporting...",
     "export_failed": "Export failed: {error}",
     "email_title": "Email Report",

@@ -107,19 +107,23 @@ class PaymentDialog(QDialog):
                 btn.setProperty("methodType", "other")
 
             btn_inner = QVBoxLayout(btn)
-            btn_inner.setContentsMargins(4, 4, 4, 4)
-            btn_inner.setSpacing(2)
+            btn_inner.setContentsMargins(6, 4, 6, 4)
+            btn_inner.setSpacing(0)
 
+            # Shortcut badge in top-right corner
             if method.shortcut:
                 lbl_sc = QLabel(method.shortcut)
                 lbl_sc.setObjectName("PayMethodShortcut")
-                lbl_sc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                lbl_sc.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
                 btn_inner.addWidget(lbl_sc)
+            else:
+                btn_inner.addStretch()
 
             lbl_name = QLabel(method.name.upper())
             lbl_name.setObjectName("PayMethodName")
             lbl_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
             btn_inner.addWidget(lbl_name)
+            btn_inner.addStretch()
 
             btn.clicked.connect(lambda checked, m=method, b=btn: self.select_method(m, b))
             current_row_layout.addWidget(btn)
@@ -148,7 +152,7 @@ class PaymentDialog(QDialog):
         # Payment List — compact, grows only as needed
         self.list_payments = QListWidget()
         self.list_payments.setObjectName("PaymentList")
-        self.list_payments.setMaximumHeight(140)
+        self.list_payments.setMaximumHeight(160)
         self.list_payments.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         left_layout.addWidget(self.list_payments)
 
@@ -324,16 +328,14 @@ class PaymentDialog(QDialog):
         self.current_method = method
         self.lbl_selected_method.setText(method.name)
 
-        # Update active tile styling
+        # Update active tile styling via properties (no inline stylesheets)
         if self._active_btn:
             self._active_btn.setProperty("selected", False)
-            self._active_btn.setStyleSheet("")  # Clear programmatic override
             self._active_btn.style().unpolish(self._active_btn)
             self._active_btn.style().polish(self._active_btn)
 
         if btn:
             btn.setProperty("selected", True)
-            btn.setStyleSheet("border: 2px solid #00BCEB; font-weight: bold;")
             btn.style().unpolish(btn)
             btn.style().polish(btn)
             self._active_btn = btn

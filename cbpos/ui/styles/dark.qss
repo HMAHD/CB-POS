@@ -964,8 +964,9 @@ QListWidget#PaymentList {
     font-size: 14px;
     color: #FFFFFF;
     background-color: #252526;
-    border: 1px solid #3E3E42;
+    border: 1px solid #555555;
     border-radius: 6px;
+    padding: 2px;
 }
 
 QListWidget#PaymentList::item {
@@ -1042,26 +1043,28 @@ QPushButton#PayMethodBtn:hover {
 
 QPushButton#PayMethodBtn[selected="true"] {
     border: 2px solid #00BCEB;
-    background-color: #2D2D30;
+    background-color: rgba(0, 188, 235, 0.12);
 }
 
 QPushButton#PayMethodBtn[methodType="cash"] {
     background-color: #0D6832;
-    border-color: #39FF14;
+    border: 1px solid #1B8A4A;
 }
 
 QPushButton#PayMethodBtn[methodType="cash"]:hover {
     background-color: #0F7A3B;
+    border-color: #39FF14;
 }
 
 QPushButton#PayMethodBtn[methodType="cash"][selected="true"] {
     border: 2px solid #39FF14;
+    background-color: #0F7A3B;
 }
 
 QPushButton#PayMethodBtn QLabel#PayMethodShortcut {
-    color: #AAAAAA;
+    color: #888888;
     font-size: 9px;
-    font-weight: bold;
+    font-weight: normal;
     background: transparent;
 }
 
@@ -1072,9 +1075,12 @@ QPushButton#PayMethodBtn QLabel#PayMethodName {
     background: transparent;
 }
 
-QPushButton#PayMethodBtn[methodType="cash"] QLabel#PayMethodName,
-QPushButton#PayMethodBtn[methodType="cash"] QLabel#PayMethodShortcut {
+QPushButton#PayMethodBtn[methodType="cash"] QLabel#PayMethodName {
     color: #FFFFFF;
+}
+
+QPushButton#PayMethodBtn[methodType="cash"] QLabel#PayMethodShortcut {
+    color: rgba(255, 255, 255, 0.6);
 }
 
 /* ── Advanced Search Dialog ── */
@@ -1143,7 +1149,7 @@ QLabel#QtyProductName {
 QLineEdit#QtyInput {
     background-color: #2A2A2A;
     color: #FFFFFF;
-    font-size: 28px;
+    font-size: 24px;
     font-weight: bold;
     border: 2px solid #3E3E42;
     border-radius: 6px;

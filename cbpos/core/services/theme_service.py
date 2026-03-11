@@ -119,7 +119,7 @@ class ThemeService:
             # Dark theme (default) needs WHITE text logo
             logo_file = "cover_white.png"
 
-        return str(Config.BASE_DIR / "cbpos" / "ui" / "assets" / "logo" / logo_file)
+        return str(Config.BASE_DIR / "cbpos" / "assets" / "logo" / logo_file)
 
     @staticmethod
     def get_icon_color() -> str:

@@ -526,7 +526,11 @@ class ProductEditor(QDialog):
                 self.inventory_service.update_product(self.product.id, data)
             else:
                 if self.inventory_service.get_product_by_barcode(data["barcode"]):
-                    QMessageBox.warning(self, _t("product_editor.duplicate_title"), _t("product_editor.barcode_exists"))
+                    QMessageBox.warning(
+                        self,
+                        _t("product_editor.duplicate_title"),
+                        _t("product_editor.barcode_exists", barcode=data["barcode"]),
+                    )
                     self.tabs.setCurrentIndex(0)
                     self.barcode_input.setFocus()
                     return

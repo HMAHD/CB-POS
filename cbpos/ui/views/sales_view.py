@@ -187,9 +187,9 @@ class SalesView(QWidget):
         self.cart_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)  # Total - fixed
 
         # Set fixed widths for numeric columns (better alignment)
-        self.cart_table.setColumnWidth(1, 100)  # Price
-        self.cart_table.setColumnWidth(2, 80)  # Qty
-        self.cart_table.setColumnWidth(3, 60)  # Disc
+        self.cart_table.setColumnWidth(1, 140)  # Price
+        self.cart_table.setColumnWidth(2, 50)  # Qty
+        self.cart_table.setColumnWidth(3, 50)  # Disc
         self.cart_table.setColumnWidth(4, 120)  # Total
 
         # Set object name for CSS targeting

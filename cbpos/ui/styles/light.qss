@@ -1120,7 +1120,7 @@ QPushButton#PayMethodBtn[methodType="cash"][selected="true"] {
 QPushButton#PayMethodBtn QLabel#PayMethodShortcut {
     color: #6C757D;
     font-size: 9px;
-    font-weight: bold;
+    font-weight: normal;
     background: transparent;
 }
 
@@ -1202,7 +1202,7 @@ QLabel#QtyProductName {
 QLineEdit#QtyInput {
     background-color: #F8F9FA;
     color: #212529;
-    font-size: 28px;
+    font-size: 24px;
     font-weight: bold;
     border: 2px solid #CED4DA;
     border-radius: 6px;

@@ -29,7 +29,7 @@ class StockHistoryDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # Header
-        lbl_header = QLabel(_t("stock_history.heading", name=self.product.name_en))
+        lbl_header = QLabel(_t("stock_history.heading", product=self.product.name_en))
         lbl_header.setProperty("class", "dialog-title")
         layout.addWidget(lbl_header)
 

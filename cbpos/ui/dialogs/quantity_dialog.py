@@ -19,7 +19,7 @@ class QuantityDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(_t("quantity.title"))
         self.setObjectName("QuantityDialog")
-        self.setFixedSize(340, 180)
+        self.setFixedWidth(340)
         self.setModal(True)
 
         layout = QVBoxLayout(self)
@@ -40,6 +40,7 @@ class QuantityDialog(QDialog):
 
         self.qty_input = QLineEdit("1")
         self.qty_input.setObjectName("QtyInput")
+        self.qty_input.setMinimumHeight(44)
         self.qty_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
         if unit_abbr:
             self.qty_input.setPlaceholderText(f"e.g. 1.5 {unit_abbr}")

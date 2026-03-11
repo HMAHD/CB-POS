@@ -182,7 +182,7 @@ class RefundDialog(QDialog):
             QMessageBox.warning(
                 self,
                 _t("refund.cannot_refund_title"),
-                _t("refund.cannot_refund_message", status=sale.status),
+                _t("refund.cannot_refund_message", reason=sale.status),
             )
 
     def process_refund(self) -> None:
@@ -230,11 +230,13 @@ class RefundDialog(QDialog):
                 QMessageBox.information(
                     self,
                     _t("refund.success_title"),
-                    _t("refund.success_message", doc_number=self.found_sale.document_number),
+                    _t("refund.success_message", amount=format_currency(self.found_sale.total_amount)),
                 )
                 self.accept()
             else:
-                QMessageBox.critical(self, _t("common.error"), _t("refund.failed_message"))
+                QMessageBox.critical(
+                    self, _t("common.error"), _t("refund.failed_message", error=_t("common.unknown_error"))
+                )
                 self.btn_refund.setText(_t("refund.btn_process"))
                 self.btn_refund.setEnabled(True)
         except ValueError as e:

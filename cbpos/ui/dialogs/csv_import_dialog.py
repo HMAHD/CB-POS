@@ -128,8 +128,7 @@ class CsvImportDialog(QDialog):
             content = ImportService.generate_template()
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(content)
-            msg = _t("csv_import.template_saved") + "\n" + str(file_path)
-            QMessageBox.information(self, _t("common.saved"), msg)
+            QMessageBox.information(self, _t("common.saved"), _t("csv_import.template_saved", path=str(file_path)))
         except Exception as e:
             logger.error("Failed to save template: %s", e)
             QMessageBox.critical(self, _t("common.error"), _t("csv_import.template_save_error", error=str(e)))

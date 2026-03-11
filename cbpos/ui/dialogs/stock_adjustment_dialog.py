@@ -93,4 +93,6 @@ class StockAdjustmentDialog(QDialog):
             QMessageBox.information(self, _t("common.success"), _t("stock_adjustment.success_message"))
             self.accept()
         else:
-            QMessageBox.critical(self, _t("common.error"), _t("stock_adjustment.failed_message"))
+            QMessageBox.critical(
+                self, _t("common.error"), _t("stock_adjustment.failed_message", error=_t("common.unknown_error"))
+            )

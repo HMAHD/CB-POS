@@ -13,6 +13,11 @@ All notable changes to this project will be documented in this file. Never delet
 - **DetachedInstanceError on barcode scan**: Product `unit` and `category` relationships now use `lazy="joined"` at the model level, ensuring they are always eager-loaded regardless of how the query is written. Removed redundant manual `joinedload()` calls from `product_service`, `inventory_service`, and `data_export_service`.
 - **DetachedInstanceError in `get_by_barcode()`**: Product returned without `session.expunge()`, causing crashes when accessing attributes outside the session. Also fixes `recall_bill()` which depends on this method.
 - **DetachedInstanceError in `get_last_sale()`**: Sale returned without eager-loading `items`, `customer`, or `payments` relationships, causing crashes on any relationship access after the method returns.
+- **10 translation parameter mismatches**: Fixed `_t()` calls across 8 dialogs where `{placeholder}` text appeared in the UI instead of actual values — `receive_payment_dialog` (missing `customer`), `refund_dialog` (wrong param names for `reason`, `amount`, `error`), `product_editor` (missing `barcode`), `stock_adjustment_dialog` (missing `error`), `stock_history_dialog` (wrong param `name` → `product`), `csv_import_dialog` (missing `path`, wrong params for import summary), `data_export_dialog` (unused `{path}` in JSON).
+- **Header logo not loading**: `ThemeService.get_logo_path()` pointed to non-existent `cbpos/ui/assets/logo/` instead of actual `cbpos/assets/logo/` — now displays the cover image instead of fallback text.
+- **Quantity dialog input clipped**: Removed fixed dialog height, added minimum input height, reduced font size from 28px to 24px.
+- **Cart price column truncated**: Widened Price column from 100px to 140px so strikethrough prices display fully.
+- **Payment dialog styling issues**: Removed inline `setStyleSheet()` override on cash button that broke green styling when selected; moved shortcut labels to top-right corner; improved applied payments list border visibility.
 
 ### Changed
 

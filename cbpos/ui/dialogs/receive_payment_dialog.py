@@ -245,7 +245,11 @@ class ReceivePaymentDialog(QDialog):
             QMessageBox.information(
                 self,
                 _t("receive_payment.success_title"),
-                _t("receive_payment.success_message", amount=format_currency(amount)),
+                _t(
+                    "receive_payment.success_message",
+                    amount=format_currency(amount),
+                    customer=self.cmb_customer.currentText().split(" (")[0],
+                ),
             )
             self.accept()
         except ValueError as e:

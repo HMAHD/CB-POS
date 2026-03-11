@@ -267,8 +267,8 @@ class Product(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     version_id: Mapped[int] = mapped_column(Integer, default=1, nullable=False)  # Optimistic Locking
 
-    category: Mapped["Category"] = relationship(back_populates="products")
-    unit: Mapped[Optional["Unit"]] = relationship(back_populates="products")
+    category: Mapped["Category"] = relationship(back_populates="products", lazy="joined")
+    unit: Mapped[Optional["Unit"]] = relationship(back_populates="products", lazy="joined")
     parent: Mapped["Product"] = relationship("Product", remote_side=[id], back_populates="variants")
     variants: Mapped[List["Product"]] = relationship("Product", back_populates="parent")
     components: Mapped[List["CompositeItem"]] = relationship(

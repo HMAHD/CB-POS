@@ -4,11 +4,20 @@ All notable changes to this project will be documented in this file. Never delet
 
 ## [1.2.1] - 2026-03-11
 
+### Added
+
+- **Comprehensive seed data**: 80 realistic Sri Lankan retail products (Munchee, Maliban, Dilmah, Sunlight, etc.) with Sinhala/Tamil names, 15 customers (incl. 3 B2B companies), 8 suppliers, 20 categories (hierarchical), 30+ historical sales, 5 purchase orders, shift history, cash movements, audit logs, inventory adjustments, promotions, and wholesale price lists.
+
+### Fixed
+
+- **DetachedInstanceError on barcode scan**: Product `unit` and `category` relationships now use `lazy="joined"` at the model level, ensuring they are always eager-loaded regardless of how the query is written. Removed redundant manual `joinedload()` calls from `product_service`, `inventory_service`, and `data_export_service`.
+
 ### Changed
 
 - **Updated PROJECT_OVERVIEW.md**: Corrected all file counts (52 services, 24 views, 36 dialogs, 12 widgets, 21 migrations, 230 Python files, ~43K LOC). Expanded i18n section with architecture details, translation service patterns, and validation script documentation.
 - **Updated README.md**: Rewritten with current features including i18n (trilingual, 1,827 keys), tax compliance, credit book, label printing, reporting, accurate project structure, and translation validation commands.
 - **Created SECURITY.md**: Security vulnerability reporting policy with version support table, responsible disclosure process, scope definitions, and deployment security best practices.
+- **Removed** `tests/verify_automation.py` — obsolete manual test script superseded by pytest suite.
 
 ## [1.2.0] - 2026-03-10
 

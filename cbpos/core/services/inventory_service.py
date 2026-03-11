@@ -2,7 +2,6 @@ import logging
 from typing import List, Optional, Dict, Any
 from decimal import Decimal
 from sqlalchemy import select
-from sqlalchemy.orm import joinedload
 from cbpos.core.database import Database
 from cbpos.core.models import Product, InventoryLog, AuditLog, CompositeItem
 
@@ -124,12 +123,7 @@ class InventoryService:
         """Get active products with categories, with pagination support."""
         with self.db.get_session() as session:
             stmt = (
-                select(Product)
-                .options(joinedload(Product.category), joinedload(Product.unit))
-                .where(Product.is_active.is_(True))
-                .order_by(Product.name_en)
-                .limit(limit)
-                .offset(offset)
+                select(Product).where(Product.is_active.is_(True)).order_by(Product.name_en).limit(limit).offset(offset)
             )
             return list(session.scalars(stmt).all())
 
@@ -144,5 +138,5 @@ class InventoryService:
     def get_product_by_barcode(self, barcode: str) -> Optional[Product]:
         """Get a single product by its barcode."""
         with self.db.get_session() as session:
-            stmt = select(Product).options(joinedload(Product.category)).where(Product.barcode == barcode)
+            stmt = select(Product).where(Product.barcode == barcode)
             return session.scalars(stmt).first()

@@ -6,7 +6,6 @@ Provides ALL, BARCODE, CODE, and NAME search capabilities.
 import logging
 from typing import List
 from sqlalchemy import select, or_, func
-from sqlalchemy.orm import joinedload
 from cbpos.core.models import Product
 from cbpos.core.database import Database
 from cbpos.core.utils.formatters import escape_like
@@ -43,34 +42,19 @@ class ProductService:
         query = query.strip()
 
         with self.db.get_session() as session:
-            # Add joinedload to eager load category
-            from sqlalchemy.orm import joinedload
-
             if mode == self.SEARCH_MODE_BARCODE:
-                # Exact barcode match
-                stmt = (
-                    select(Product)
-                    .options(joinedload(Product.category))
-                    .where(Product.barcode == query, Product.is_active)
-                )
+                stmt = select(Product).where(Product.barcode == query, Product.is_active)
 
             elif mode == self.SEARCH_MODE_CODE:
-                # Match on product ID or internal reference
                 if query.isdigit():
-                    stmt = (
-                        select(Product)
-                        .options(joinedload(Product.category))
-                        .where(Product.id == int(query), Product.is_active)
-                    )
+                    stmt = select(Product).where(Product.id == int(query), Product.is_active)
                 else:
                     return []
 
             elif mode == self.SEARCH_MODE_NAME:
-                # Fuzzy name search (EN, SI, TA)
                 pattern = f"%{escape_like(query)}%"
                 stmt = (
                     select(Product)
-                    .options(joinedload(Product.category))
                     .where(
                         or_(
                             func.lower(Product.name_en).like(func.lower(pattern)),
@@ -83,11 +67,9 @@ class ProductService:
                 )
 
             else:  # SEARCH_MODE_ALL (default)
-                # Search barcode OR any name field
                 pattern = f"%{escape_like(query)}%"
                 stmt = (
                     select(Product)
-                    .options(joinedload(Product.category))
                     .where(
                         or_(
                             Product.barcode.like(pattern),
@@ -108,9 +90,7 @@ class ProductService:
     def get_all_products(self) -> List[Product]:
         """Get all active products."""
         with self.db.get_session() as session:
-            stmt = (
-                select(Product).options(joinedload(Product.category)).where(Product.is_active).order_by(Product.name_en)
-            )
+            stmt = select(Product).where(Product.is_active).order_by(Product.name_en)
             results = list(session.scalars(stmt).unique().all())
             for p in results:
                 session.expunge(p)

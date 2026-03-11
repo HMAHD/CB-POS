@@ -1,22 +1,27 @@
 <p align="center">
-  <img src="assets/CBPOS_Banner.png" alt="CB POS Banner" width="600">
+  <img src="assets/CBPOS_Banner.png" alt="CB POS Banner" width="600"/>
 </p>
 
 <h1 align="center">CB POS</h1>
-<h3 align="center">Free Point of Sale for Sri Lankan Retail</h3>
+<h3 align="center">Free Point of Sale Software for Sri Lankan Retail</h3>
 
 <p align="center">
-  <a href="https://github.com/ceybyte/cbpos-releases/releases/latest"><img src="https://img.shields.io/github/v/release/ceybyte/cbpos-releases?style=for-the-badge&color=00BCEB&label=Download" alt="Latest Release"></a>
-  <img src="https://img.shields.io/badge/Platform-Windows%2010+-0078D6?style=for-the-badge&logo=windows" alt="Windows 10+">
-  <img src="https://img.shields.io/badge/Price-Free-39FF14?style=for-the-badge" alt="Free">
-  <img src="https://img.shields.io/badge/Languages-EN%20%7C%20%E0%B7%83%E0%B7%92%E0%B6%82%E0%B7%84%E0%B6%BD%20%7C%20%E0%AE%A4%E0%AE%AE%E0%AE%BF%E0%AE%B4%E0%AF%8D-FFDC00?style=for-the-badge" alt="Trilingual">
+  <strong>Built by <a href="https://ceybyte.com">Ceylon Byte</a> for Sri Lankan shop owners.</strong><br/>
+  Grocery, pharmacy, hardware, clothing, electronics — any retail shop.
 </p>
 
 <p align="center">
-  <a href="#-download--install">Download</a> &bull;
-  <a href="#-features">Features</a> &bull;
-  <a href="#-getting-started">Getting Started</a> &bull;
-  <a href="#-faq">FAQ</a> &bull;
+  <a href="https://github.com/ceybyte/cbpos-releases/releases/latest"><img src="https://img.shields.io/github/v/release/ceybyte/cbpos-releases?style=for-the-badge&color=00BCEB&label=Latest%20Version" alt="Latest Release"/></a>
+  <img src="https://img.shields.io/badge/Platform-Windows%2010+-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 10+"/>
+  <img src="https://img.shields.io/badge/Price-Free-2E8B57?style=for-the-badge" alt="Free"/>
+  <img src="https://img.shields.io/badge/Languages-EN%20%7C%20%E0%B7%83%E0%B7%92%E0%B6%82%E0%B7%84%E0%B6%BD%20%7C%20%E0%AE%A4%E0%AE%AE%E0%AE%BF%E0%AE%B4%E0%AF%8D-FF6B35?style=for-the-badge" alt="Trilingual"/>
+</p>
+
+<p align="center">
+  <a href="#-download--install">Download</a> &nbsp;&bull;&nbsp;
+  <a href="#-features">Features</a> &nbsp;&bull;&nbsp;
+  <a href="#-getting-started">Getting Started</a> &nbsp;&bull;&nbsp;
+  <a href="#-faq">FAQ</a> &nbsp;&bull;&nbsp;
   <a href="#-support">Support</a>
 </p>
 
@@ -24,57 +29,84 @@
 
 ## Why CB POS?
 
-Built specifically for Sri Lankan shop owners — grocery stores, pharmacies, hardware shops, clothing boutiques, and everything in between. No monthly fees, no internet required, no IT team needed.
+Running a shop in Sri Lanka shouldn't require expensive software or an IT department. CB POS gives you everything you need to manage your sales, stock, and customers — **completely free**, no hidden charges, no monthly fees, no internet required.
 
-- **Works offline** — your sales never stop, even when the WiFi does
-- **Trilingual** — switch between English, Sinhala, and Tamil instantly
-- **Tax compliant** — VAT (18%) and SSCL (2.5%) calculated automatically from MRP
-- **Just install and start selling** — setup takes less than 5 minutes
+Whether you run a *sathosa*, a pharmacy in Kandy, a hardware store in Galle, or a clothing shop in Colombo — CB POS is built for **your** business.
+
+---
+
+## Screenshots
+
+<!-- Replace these with actual screenshot paths when available -->
+<p align="center">
+  <img src="assets/screenshots/sales-screen.png" alt="Sales Screen" width="45%"/>
+  &nbsp;&nbsp;
+  <img src="assets/screenshots/dashboard.png" alt="Dashboard" width="45%"/>
+</p>
+<p align="center">
+  <img src="assets/screenshots/inventory.png" alt="Inventory Management" width="45%"/>
+  &nbsp;&nbsp;
+  <img src="assets/screenshots/receipt-print.png" alt="Receipt Printing" width="45%"/>
+</p>
+
+> *Screenshots coming soon. Install and see for yourself!*
 
 ---
 
 ## Features
 
 ### Fast Checkout
-- Barcode scanning with sub-50ms response
-- Keyboard shortcuts for every action — your cashier never needs to touch the mouse
-- Touch-screen product grid for quick picks
-- Hold and recall bills, split payments, multi-payment support
+- **Instant barcode scanning** — scan and sell in under a second
+- **Keyboard shortcuts** for everything — your cashier never needs to touch the mouse
+- **Hold & recall bills** — switch between customers without losing their cart
+- **Multi-payment** — cash, card, credit, or split payments
+- **Touch screen mode** — visual product grid for shops without barcode scanners
 
 ### Inventory Management
-- Track stock for thousands of products
-- Weighted items (kg, g, L) with 3 decimal places
-- Composite/bundle items (e.g., gift pack = 3 separate products)
-- Stock take and adjustment with audit trail
-- Low stock alerts on the dashboard
+- Track stock levels in real time
+- **Weighted items** — sell by kg with 3-decimal precision (rice, vegetables, spices)
+- **Composite items** — bundle products together (gift packs, combo deals)
+- Purchase orders with automatic stock updates
+- Low stock alerts on your dashboard
+- Full stock adjustment history with reasons
 
-### Customer Credit Book
-- Maintain customer credit accounts with limits
-- Record payments against outstanding balances
-- Print customer statements
+### Customer & Credit Book
+- Customer database with purchase history
+- **Credit book** — track customer credit balances and payments (the "poth" system, digitized)
+- Customer statements for settlement
 
-### Receipts & Printing
-- Thermal receipt printing (ESC/POS) in Sinhala, Tamil, or English
-- Receipt reprinting from sale history
-- Product label printing
-- A4 tax invoice generation (PDF)
+### Receipt Printing
+- Direct thermal printer support (ESC/POS) — no drivers to install
+- **Print in Sinhala, Tamil, or English** — choose receipt language independently from the app language
+- Barcode label printing for your products
+
+### Trilingual — English, සිංහල, தமிழ்
+- Full Sinhala and Tamil interface translation
+- Switch language instantly, no restart needed
+- Your staff can work in the language they're comfortable with
 
 ### Reports & Dashboard
-- Daily sales summary, inventory valuation, cash flow
-- Export to Excel, CSV, or PDF
-- Real-time dashboard with top products and KPIs
+- Daily sales summary, inventory reports, cash flow
+- Top-selling products, category breakdown
+- Export to **Excel, CSV, or PDF**
+- Real-time dashboard with today's KPIs
 
-### Security
-- Role-based access: Admin, Manager, Cashier
-- Manager override PIN for restricted operations (void, refund, price change)
-- Full audit trail for every critical action
+### Security & Staff Management
+- **Role-based access** — Admin, Manager, Cashier with different permissions
+- Manager override for restricted actions (voids, refunds, price changes)
 - Shift management with opening/closing float
+- Complete audit trail — every void, refund, and price change is logged
 
-### Tax Compliance
-- Sri Lankan VAT (18%) backward calculation from MRP
-- SSCL (2.5% on 50% of revenue)
-- Per-category tax exemption (e.g., pharmacy, rice)
-- Tax filing summary report for monthly/quarterly returns
+### Sri Lankan Tax Compliance
+- Built-in **VAT (18%)** and **SSCL (2.5%)** backward calculation from MRP
+- Tax invoice generation (2026 mandate compliant)
+- Tax-exempt categories (pharmaceuticals, essentials)
+- Tax filing summary reports for your accountant
+
+### Works Offline — Always
+- **No internet required.** Everything runs on your computer.
+- Local SQLite database — your data stays on your machine
+- No cloud subscriptions, no servers, no downtime
 
 ---
 
@@ -83,141 +115,143 @@ Built specifically for Sri Lankan shop owners — grocery stores, pharmacies, ha
 ### System Requirements
 
 | Requirement | Minimum |
-|------------|---------|
-| Operating System | Windows 10 or later |
-| RAM | 4 GB |
-| Disk Space | 200 MB |
-| Screen Resolution | 1280 x 720 |
-| Printer (optional) | Any ESC/POS thermal printer |
-| Scanner (optional) | Any USB barcode scanner |
+|---|---|
+| **Operating System** | Windows 10 (64-bit) or later |
+| **RAM** | 4 GB |
+| **Disk Space** | 200 MB |
+| **Screen Resolution** | 1024 x 768 |
+| **Optional Hardware** | USB barcode scanner, ESC/POS thermal printer |
 
 ### Installation Steps
 
 1. **Download** the latest installer from the [Releases page](https://github.com/ceybyte/cbpos-releases/releases/latest)
-2. **Run** `CBPOSSetup-x.x.x.exe`
-3. If Windows SmartScreen appears, click **"More info"** then **"Run anyway"** — the app is safe, we just haven't purchased a code signing certificate yet
-4. Follow the installer — it takes about 30 seconds
-5. Launch CB POS from the desktop shortcut
+2. **Run** the downloaded `.exe` installer
+3. **Follow** the setup wizard — click Next a few times, that's it
+4. **Launch** CB POS from your desktop shortcut
 
-### First Launch
+> **Windows SmartScreen Warning:** Since CB POS is new software, Windows may show a "Windows protected your PC" message. Click **"More info"** then **"Run anyway"**. This is normal for new applications and will go away as the software gains more users.
 
-On the first launch you'll see:
-1. **Setup Wizard** — enter your shop name, select your printer, and set an admin PIN
-2. **Database Choice** — pick **"Start Fresh"** for a clean database, or **"Load Demo Data"** to explore with sample products and sales already loaded
-
-**Default login:** Username `admin`, PIN `1234` (change this immediately in Settings)
+No special software needed. No Python, no databases, no command line — just download, install, and start selling.
 
 ---
 
 ## Getting Started
 
-1. **Log in** with `admin` / `1234`
-2. **Add your products** — go to Management > Inventory > Add Product
-3. **Set up categories** — organize products into groups for easy browsing
-4. **Add customers** (optional) — for credit sales and loyalty tracking
-5. **Configure your printer** — Settings > Hardware > Receipt Printer
-6. **Start selling!** — scan barcodes or search by name, press F12 or click Pay
+### First Launch
 
-### Keyboard Shortcuts (POS Screen)
+1. **Login** with the default admin account:
+   - Username: `admin`
+   - PIN: `1234`
 
-| Key | Action |
-|-----|--------|
-| `F1` | Help / Shortcuts |
-| `F2` | Select Customer |
-| `F4` | Change Quantity |
-| `F6` | Hold Bill |
-| `F7` | Recall Bill |
-| `F8` | Open Cash Drawer |
-| `F12` | Pay / Checkout |
-| `Del` | Void Bill |
+2. **Change your PIN** immediately — go to Settings and update the default passwords
+
+3. **Set up your shop** — go to Settings > Shop Info and enter your:
+   - Shop name
+   - Address and phone number
+   - VAT/TIN number (if registered)
+   - Preferred language
+
+4. **Add your products** — go to Management > Inventory:
+   - Add products one by one, or
+   - Import from a CSV/Excel file if you have a product list
+
+5. **Connect your hardware** (optional):
+   - Plug in your USB barcode scanner — it works automatically
+   - Set up your thermal printer in Settings > Receipt Settings
+
+6. **Create staff accounts** — go to Management > Admin Tools:
+   - Create Cashier accounts for your staff
+   - Each person gets their own login and permissions
+
+### You're Ready!
+
+Start scanning items, processing sales, and printing receipts. CB POS is designed to be learned by doing — every screen is self-explanatory.
 
 ---
 
 ## What's Included
 
 | Component | Description |
-|-----------|-------------|
-| POS Checkout | Main sales screen with cart, payments, receipts |
-| Inventory | Products, categories, stock adjustments, stock take |
-| Purchase Orders | Supplier management, GRN, cost tracking |
-| Customer CRM | Credit book, statements, payment recording |
-| Reporting | 9 built-in reports with Excel/PDF export |
-| Tax Module | VAT/SSCL compliance, tax invoices |
-| User Management | Roles, permissions, audit logs |
-| Backup & Restore | One-click database backup |
+|---|---|
+| **CB POS Application** | The full POS software with all features |
+| **Sample Data** | Demo products, customers, and sales to explore before adding your own |
+| **Sinhala & Tamil Fonts** | Noto Sans fonts for proper trilingual display and printing |
+| **Dark & Light Themes** | Choose the look that suits your shop |
+| **Receipt Templates** | Pre-configured thermal receipt layouts |
 
 ---
 
 ## FAQ
 
-**Is this really free?**
-Yes. CB POS is completely free to use for any type of shop. There are no hidden fees, no trial periods, and no feature limits.
+**Is CB POS really free?**
+Yes. Free to download, free to use, no trial period, no feature limits, no monthly fees. We build this to support Sri Lankan small businesses.
 
-**Does it work without internet?**
-Yes. Everything runs locally on your computer using a local database. No internet connection is required for any feature.
+**Do I need internet to use CB POS?**
+No. CB POS works 100% offline. Your data is stored locally on your computer. Internet is only needed to download the installer.
+
+**Can I use it for my grocery/pharmacy/hardware/clothing shop?**
+Yes. CB POS works for any retail shop. It supports barcoded items, weighted items (kg), and manual entry.
 
 **What printers are supported?**
-Any ESC/POS compatible thermal receipt printer (most 58mm and 80mm printers). For A4 documents, any Windows printer works.
+Any ESC/POS compatible thermal receipt printer connected via USB. Most 58mm and 80mm thermal printers sold in Sri Lanka work out of the box.
 
-**Can I print receipts in Sinhala?**
-Yes. Receipts can be printed in Sinhala, Tamil, or English — independently of your UI language.
+**Can my cashier use it in Sinhala?**
+Yes. The full interface is available in Sinhala, Tamil, and English. You can even print receipts in a different language than the one your cashier uses.
 
 **Is my data safe?**
-Your data is stored locally on your computer. Use the built-in backup feature (Settings > Backup) to create regular backups to a USB drive or external folder.
+Your data stays on your computer — it is never sent anywhere online. We recommend regular backups using the built-in backup feature.
 
-**Can multiple cashiers use it?**
-Yes. Create separate user accounts with different roles (Admin, Manager, Cashier). Each user logs in with their own PIN.
+**Can multiple cashiers use it at the same time?**
+The current version supports one terminal. Multi-terminal support is on the roadmap.
 
-**Can I use it on multiple computers?**
-The current version is designed for single-computer use. Multi-terminal support (network mode) is planned for a future release.
-
-**How do I report a bug?**
-Open an issue on this repository's [Issues page](https://github.com/ceybyte/cbpos-releases/issues), or contact us at the email below.
+**I found a bug / I have a feature request.**
+Open an [Issue](https://github.com/ceybyte/cbpos-releases/issues) on this repository, or contact us at [ceybyte.com](https://ceybyte.com). We read every message.
 
 **Is this open source?**
-No. CB POS is free software but the source code is not publicly available.
+No. CB POS is free to use but the source code is proprietary. You may not copy, modify, or redistribute the software.
 
 ---
 
 ## Version History
 
-See the [Releases page](https://github.com/ceybyte/cbpos-releases/releases) for all versions and changelogs.
+See the [Releases page](https://github.com/ceybyte/cbpos-releases/releases) for the full changelog.
 
-### Latest: v1.2.2 (March 2026)
-- Sale History dialog with browse, reprint, and inline refund
+**Current Version: 1.2.2** (March 2026)
+- Sale history browser with search and filters
+- Improved refund workflow
 - First-run database setup (empty or demo)
-- Trilingual support (English, Sinhala, Tamil)
-- Tax compliance (VAT/SSCL)
-- 80+ bug fixes and improvements
+- 80+ Sri Lankan retail products in sample data
+- Trilingual interface (English, Sinhala, Tamil)
+- VAT & SSCL tax compliance
+- Pagination, undo toast, discount preview, and more
 
 ---
 
 ## Security
 
-If you discover a security vulnerability, please report it responsibly:
+- Change default PINs immediately after installation
+- Enable session timeout for unattended terminals
+- Keep CB POS updated to the latest version
 
-- **Email:** security@ceybyte.com
-- **Do NOT** create a public issue for security bugs
-- We will acknowledge receipt within 48 hours
+To report a security vulnerability, **do not** open a public issue. Contact us privately through [ceybyte.com](https://ceybyte.com). See our [Security Policy](SECURITY.md) for details.
 
 ---
 
 ## Support
 
-| Channel | Contact |
-|---------|---------|
-| Bug Reports | [GitHub Issues](https://github.com/ceybyte/cbpos-releases/issues) |
-| Email | support@ceybyte.com |
-| Website | [ceybyte.com](https://ceybyte.com) |
+| Channel | Details |
+|---|---|
+| **Website** | [ceybyte.com](https://ceybyte.com) |
+| **GitHub Issues** | [Report a bug or request a feature](https://github.com/ceybyte/cbpos-releases/issues) |
+| **Email** | Available on [ceybyte.com](https://ceybyte.com) |
 
 ---
 
 <p align="center">
-  <img src="assets/CBPOS_Logo.png" alt="CB POS Logo" width="80">
-  <br>
-  <strong>CB POS</strong> by <a href="https://ceybyte.com">Ceylon Byte</a>
-  <br>
-  <sub>Free Point of Sale for Sri Lankan Retail</sub>
-  <br><br>
-  <sub>&copy; 2026 Ceylon Byte. All rights reserved.</sub>
+  <br/>
+  <img src="assets/CBPOS_Logo.png" alt="CB POS Logo" width="80"/>
+  <br/><br/>
+  <strong>CB POS</strong> — Made in Sri Lanka, for Sri Lanka.<br/>
+  <sub>Built with care by <a href="https://ceybyte.com">Ceylon Byte</a></sub><br/><br/>
+  <sub>Copyright &copy; 2026 Ceylon Byte. All rights reserved.</sub>
 </p>

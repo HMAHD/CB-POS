@@ -30,6 +30,9 @@ flake8_report.txt
 test_output*.txt
 verify_automation.py
 
+# Dev plugins (local only)
+CCPlugins/
+
 # OS
 .DS_Store
 Thumbs.db

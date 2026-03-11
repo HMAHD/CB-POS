@@ -18,7 +18,7 @@
 #     
 #     steps:
 #     - name: Checkout code
-#       uses: actions/checkout@v4
+#       uses: actions/checkout@v6
 #       
 #     - name: Set up Python 3.12
 #       uses: actions/setup-python@v6
@@ -27,7 +27,7 @@
 #         cache: 'pip'
 #         
 #     - name: Cache pre-commit hooks
-#       uses: actions/cache@v3
+#       uses: actions/cache@v5
 #       with:
 #         path: ~/.cache/pre-commit
 #         key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
@@ -56,7 +56,7 @@
 #     
 #     steps:
 #     - name: Checkout code
-#       uses: actions/checkout@v4
+#       uses: actions/checkout@v6
 #       
 #     - name: Set up Python 3.12
 #       uses: actions/setup-python@v6
@@ -80,7 +80,7 @@
 #         
 #     - name: Upload security reports
 #       if: always()
-#       uses: actions/upload-artifact@v5
+#       uses: actions/upload-artifact@v6
 #       with:
 #         name: security-reports
 #         path: |
@@ -100,7 +100,7 @@
 #         
 #     steps:
 #     - name: Checkout code
-#       uses: actions/checkout@v4
+#       uses: actions/checkout@v6
 #       
 #     - name: Set up Python ${{ matrix.python-version }}
 #       uses: actions/setup-python@v6
@@ -160,7 +160,7 @@
 #         
 #     - name: Upload test results
 #       if: always()
-#       uses: actions/upload-artifact@v5
+#       uses: actions/upload-artifact@v6
 #       with:
 #         name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
 #         path: |
@@ -176,7 +176,7 @@
 #     
 #     steps:
 #     - name: Checkout code
-#       uses: actions/checkout@v4
+#       uses: actions/checkout@v6
 #       
 #     - name: Set up Python 3.12
 #       uses: actions/setup-python@v6
@@ -220,7 +220,7 @@
 #         
 #     steps:
 #     - name: Checkout code
-#       uses: actions/checkout@v4
+#       uses: actions/checkout@v6
 #       
 #     - name: Set up Python 3.12
 #       uses: actions/setup-python@v6
@@ -255,7 +255,7 @@
 #     
 #     steps:
 #     - name: Checkout code
-#       uses: actions/checkout@v4
+#       uses: actions/checkout@v6
 #       
 #     - name: Set up Python 3.12
 #       uses: actions/setup-python@v6

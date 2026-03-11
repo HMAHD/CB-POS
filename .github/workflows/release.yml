@@ -76,11 +76,12 @@ jobs:
       - name: Build executable with PyInstaller
         run: pyinstaller cbpos.spec
 
-      - name: Verify exe exists
+      - name: Verify build output
         shell: bash
         run: |
-          ls -la dist/cbpos.exe
-          echo "Exe size: $(stat -c%s dist/cbpos.exe 2>/dev/null || stat -f%z dist/cbpos.exe) bytes"
+          ls -la dist/cbpos/cbpos.exe
+          echo "Exe size: $(stat -c%s dist/cbpos/cbpos.exe 2>/dev/null || stat -f%z dist/cbpos/cbpos.exe) bytes"
+          echo "Total files: $(find dist/cbpos -type f | wc -l)"
 
       - name: Build Inno Setup installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.7

@@ -4,8 +4,8 @@
 ; Builds a professional Windows installer for CB POS.
 ;
 ; Prerequisites:
-;   1. Build the PyInstaller exe first:  pyinstaller cbpos.spec
-;   2. The output exe is at:             dist/cbpos.exe
+;   1. Build with PyInstaller:  pyinstaller cbpos.spec
+;   2. Output directory:        dist/cbpos/  (one-dir mode)
 ;   3. Run Inno Setup Compiler on this file to produce the installer.
 ;
 ; Data safety:
@@ -44,7 +44,7 @@ DisableProgramGroupPage=yes
 OutputDir=..\dist\installer
 OutputBaseFilename=CBPOSSetup-{#MyAppVersion}
 SetupIconFile=..\cbpos\assets\ico\cbpos_multi.ico
-UninstallDisplayIcon={app}\cbpos.exe
+UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName}
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -60,6 +60,11 @@ PrivilegesRequired=admin
 UsePreviousAppDir=yes
 ; Minimum Windows 10
 MinVersion=10.0
+; Version info embedded in installer exe
+VersionInfoVersion={#MyAppVersion}
+VersionInfoCompany={#MyAppPublisher}
+VersionInfoDescription={#MyAppDescription}
+VersionInfoProductName={#MyAppName}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -69,12 +74,8 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 Name: "startupicon"; Description: "Start {#MyAppName} when Windows starts"; GroupDescription: "Additional shortcuts:"
 
 [Files]
-; Main application executable
-Source: "..\dist\cbpos.exe"; DestDir: "{app}"; Flags: ignoreversion
-
-; Assets bundled inside the exe by PyInstaller — no extra files needed.
-; If you switch to folder mode (--onedir), uncomment below:
-; Source: "..\dist\cbpos\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; One-dir mode: copy entire PyInstaller output folder to Program Files
+Source: "..\dist\cbpos\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 ; Start Menu

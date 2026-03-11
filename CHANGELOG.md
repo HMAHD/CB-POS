@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [1.2.1] - 2026-03-11
+
+### Changed
+
+- **Updated PROJECT_OVERVIEW.md**: Corrected all file counts (52 services, 24 views, 36 dialogs, 12 widgets, 21 migrations, 230 Python files, ~43K LOC). Expanded i18n section with architecture details, translation service patterns, and validation script documentation.
+- **Updated README.md**: Rewritten with current features including i18n (trilingual, 1,827 keys), tax compliance, credit book, label printing, reporting, accurate project structure, and translation validation commands.
+- **Created SECURITY.md**: Security vulnerability reporting policy with version support table, responsible disclosure process, scope definitions, and deployment security best practices.
+
 ## [1.2.0] - 2026-03-10
 
 ### Added — Multilingual Support (i18n)

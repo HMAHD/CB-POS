@@ -44,20 +44,20 @@
                          │
 ┌────────────────────────┴────────────────────────────┐
 │              UI Layer (cbpos/ui/)                    │
-│  16 Views │ 18 Dialogs │ 8 Widgets │ 2 QSS Themes  │
+│  24 Views │ 36 Dialogs │ 12 Widgets │ 2 QSS Themes │
 │  LoginView → SalesView → ManagementView → Settings  │
 └────────────────────────┬────────────────────────────┘
                          │ Signals/Slots (NO DB calls)
 ┌────────────────────────┴────────────────────────────┐
 │           Service Layer (cbpos/core/services/)      │
-│  37 Services: Transaction, Cart, Tax, Stock,        │
+│  52 Services: Transaction, Cart, Tax, Stock,        │
 │  Auth, Pricing, Receipt, Shift, Report, etc.        │
 └────────────────────────┬────────────────────────────┘
                          │ SQLAlchemy Sessions
 ┌────────────────────────┴────────────────────────────┐
 │          Data Layer (cbpos/core/models/)             │
 │  26 Models in 1 file │ Document Polymorphism        │
-│  Singleton Database │ Alembic Migrations (15)       │
+│  Singleton Database │ Alembic Migrations (21)       │
 └────────────────────────┬────────────────────────────┘
                          │
 ┌────────────────────────┴────────────────────────────┐
@@ -105,11 +105,18 @@
 │   │   ├── logo/              # Ceylon Byte branding
 │   │   └── badge/             # UI icons
 │   │
+│   ├── i18n/                  # Internationalization
+│   │   ├── __init__.py        # _t(), register/unregister callbacks
+│   │   ├── translation_service.py  # Thread-safe TranslationService
+│   │   ├── en.json            # English (1,827 keys — complete)
+│   │   ├── si.json            # Sinhala translations
+│   │   └── ta.json            # Tamil translations
+│   │
 │   ├── core/                  # Business logic layer
 │   │   ├── database.py        # Singleton Database Manager
 │   │   ├── models/
 │   │   │   └── __init__.py    # All 26 models (single file)
-│   │   ├── services/          # 37 business services
+│   │   ├── services/          # 52 business services
 │   │   ├── constants/
 │   │   │   └── permissions.py # Permission codes
 │   │   ├── interfaces/
@@ -134,9 +141,9 @@
 │   │
 │   └── ui/                    # Presentation layer
 │       ├── main_window.py     # QStackedWidget navigation
-│       ├── views/             # 16 main screens
-│       ├── dialogs/           # 18 popup dialogs
-│       ├── widgets/           # 8 reusable components
+│       ├── views/             # 24 main screens
+│       ├── dialogs/           # 36 popup dialogs
+│       ├── widgets/           # 12 reusable components
 │       ├── styles/            # QSS themes (dark.qss, light.qss)
 │       ├── resources/
 │       │   ├── icons.py       # QtAwesome icon loader
@@ -145,17 +152,20 @@
 │
 ├── alembic/                   # Database migrations
 │   ├── env.py                 # Alembic environment config
-│   └── versions/              # 15 migration files
+│   └── versions/              # 21 migration files
 │
 ├── scripts/                   # Utility scripts
 │   ├── seed.py                # Database seeding
-│   ├── update_translations.py
-│   └── debug_db.py
+│   ├── validate_translations.py # i18n param/brace/key validation
+│   ├── update_translations.py # i18n string extraction
+│   └── debug_db.py            # Database inspection tool
 │
-├── tests/                     # Test suite
+├── tests/                     # Test suite (17 files)
 │   ├── conftest.py            # pytest config (in-memory DB)
-│   ├── unit/
-│   │   └── test_transaction_service.py
+│   ├── unit/                  # Unit tests
+│   │   ├── test_transaction_service.py
+│   │   ├── test_translation_service.py
+│   │   └── ... (15 more)
 │   ├── test_logic_layer.py
 │   └── test_purchasing.py
 │
@@ -303,7 +313,7 @@ with db.get_session() as session:
 
 ## 6. Service Layer
 
-**Location:** `cbpos/core/services/` — 37 services total.
+**Location:** `cbpos/core/services/` — 52 services total.
 
 ### Core Transaction Services
 
@@ -363,6 +373,9 @@ with db.get_session() as session:
 | **theme_service.py** | QSS theme loading, change callbacks |
 | **language_service.py** | i18n support (EN, SI, TA) |
 | **migration_service.py** | Alembic migration orchestration |
+| **backup_service.py** | Database backup/restore, auto-backup on close |
+| **maintenance_service.py** | Database maintenance and optimization |
+| **update_service.py** | Application update checking |
 
 ### Reports & Export
 
@@ -372,18 +385,42 @@ with db.get_session() as session:
 | **export_service.py** | Excel/CSV/PDF export (pandas, xlsxwriter, xhtml2pdf) |
 | **dashboard_service.py** | Today's sales, top products, low stock |
 
+### Data & Import/Export
+
+| Service | Responsibility |
+|---------|----------------|
+| **import_service.py** | CSV/bulk data import |
+| **data_export_service.py** | Data export orchestration |
+| **label_service.py** | Product label generation |
+| **statement_service.py** | Customer statement generation |
+
+### Document & CRM
+
+| Service | Responsibility |
+|---------|----------------|
+| **document_service.py** | Document number sequencing |
+| **document_browser_service.py** | Document search and browsing |
+| **proforma_service.py** | Proforma invoice management |
+| **customer_credit_service.py** | Credit book and balance management |
+| **supplier_payable_service.py** | Supplier payable tracking |
+
 ### Other Services
 
 | Service | Responsibility |
 |---------|----------------|
 | **email_service.py** | SMTP email sending |
 | **invoice_service.py** | A4 invoice generation |
-| **document_service.py** | Document number sequencing |
 | **user_service.py** | User CRUD |
 | **supplier_service.py** | Supplier management |
+| **category_service.py** | Category tree management |
+| **unit_service.py** | Unit of measure management |
 | **logging_service.py** | Application logging |
+| **error_log_service.py** | Error tracking and reporting |
 | **license_service.py** | License validation |
 | **scheduler_service.py** | Background task scheduling |
+| **sound_service.py** | UI sound feedback |
+| **hardware_test_service.py** | Printer/scanner diagnostics |
+| **stock_count_service.py** | Stock take/counting operations |
 
 ---
 
@@ -412,28 +449,36 @@ with db.get_session() as session:
 **Navigation Flow:**
 Login → SalesView → Management/Settings (via side menu) → Back returns to last view
 
-### 7.2 Views (16 Files)
+### 7.2 Views (24 Files)
 
 | View | File | Description |
 |------|------|-------------|
 | **LoginView** | `login_view.py` | PIN pad entry, `login_success(user)` signal |
 | **SalesView** | `sales_view.py` | Search modes (ALL/BARCODE/CODE/NAME), cart table, context menu, autocomplete, barcode processing |
-| **ManagementView** | `management_view.py` | Tab-based (Inventory, Customers, Purchases, Reports, Users) |
+| **ManagementView** | `management_view.py` | Tab-based (Inventory, Customers, Purchases, Reports, Users, Documents) |
 | **SettingsView** | `settings_view.py` | Category-based settings, live theme preview |
 | **DashboardView** | `dashboard_view.py` | Real-time KPIs, low stock alerts |
 | **InventoryView** | `inventory_view.py` | Product CRUD, stock adjustment, category assignment |
 | **CustomerView** | `customer_view.py` | Customer management, credit tracking |
+| **CreditBookView** | `credit_book_view.py` | Customer credit ledger and balance tracking |
 | **PurchaseView** | `purchase_view.py` | Purchase orders, supplier selection, auto stock increase |
 | **HistoryView** | `history_view.py` | Transaction history, void/refund capabilities |
+| **DocumentView** | `document_view.py` | Unified document browser (sales, purchases, credit notes) |
 | **UserView** | `user_view.py` | User CRUD, role assignment, PIN management |
+| **AdminToolsView** | `admin_tools_view.py` | Admin utilities and system tools |
 | **PricelistView** | `pricelist_view.py` | Price list management, bulk updates |
 | **PromotionView** | `promotion_view.py` | Promotion CRUD, time-window configuration |
 | **ReorderView** | `reorder_view.py` | Low stock report, purchase order suggestions |
+| **StockTakeView** | `stock_take_view.py` | Physical stock count and reconciliation |
+| **PaymentMethodsView** | `payment_methods_view.py` | Payment method configuration |
+| **DataSafetyView** | `data_safety_view.py` | Backup/restore and data management |
 | **VisualPOSView** | `visual_pos_view.py` | Touch-optimized POS (category grid + product grid) |
 | **ReportViewer** | `reports/report_viewer.py` | Pandas DataFrame display, export |
 | **SettingsPages** | `settings_pages.py` | Individual settings page implementations |
+| **PandasModel** | `pandas_model.py` | QAbstractTableModel for DataFrame display |
+| **FilterWidget** | `reports/filter_widget.py` | Report filter input components |
 
-### 7.3 Dialogs (18 Files)
+### 7.3 Dialogs (36 Files)
 
 **Payment & Checkout:**
 
@@ -442,6 +487,10 @@ Login → SalesView → Management/Settings (via side menu) → Back returns to 
 | `payment_dialog.py` | Split payment UI (Cash, Card, Credit) |
 | `receipt_options_dialog.py` | Print/Email receipt options |
 | `receipt_preview_dialog.py` | Receipt preview before print |
+| `receipt_reprint_dialog.py` | Reprint previous receipt |
+| `receive_payment_dialog.py` | Receive credit payment |
+| `refund_dialog.py` | Process refund/return |
+| `quantity_dialog.py` | Quantity input for items |
 
 **Customer:**
 
@@ -450,6 +499,8 @@ Login → SalesView → Management/Settings (via side menu) → Back returns to 
 | `customer_selection_dialog.py` | Customer lookup |
 | `customer_quick_add.py` | Fast customer creation |
 | `customer_editor.py` | Full customer form |
+| `customer_statement_dialog.py` | Customer statement generation |
+| `supplier_payment_dialog.py` | Supplier payment recording |
 
 **Inventory:**
 
@@ -458,16 +509,23 @@ Login → SalesView → Management/Settings (via side menu) → Back returns to 
 | `product_editor.py` | Product CRUD form |
 | `category_dialog.py` | Category creation |
 | `category_tree_dialog.py` | Hierarchical category selector |
+| `category_manager.py` | Category tree management |
 | `stock_adjustment_dialog.py` | Manual stock adjustment |
 | `stock_history_dialog.py` | Product movement history |
 | `valuation_dialog.py` | Inventory valuation |
+| `csv_import_dialog.py` | CSV data import |
+| `unit_manager.py` | Unit of measure management |
+| `label_print_dialog.py` | Product label printing |
+| `label_preview_dialog.py` | Label print preview |
 
-**Sales:**
+**Sales & Documents:**
 
 | Dialog | Purpose |
 |--------|---------|
 | `discount_dialog.py` | Line/cart discount entry |
 | `advanced_search_dialog.py` | Multi-criteria product search |
+| `proforma_dialog.py` | Proforma invoice management |
+| `data_export_dialog.py` | Data export configuration |
 
 **Cash Management:**
 
@@ -476,14 +534,19 @@ Login → SalesView → Management/Settings (via side menu) → Back returns to 
 | `shift_closing_dialog.py` | Cash count and variance |
 | `cash_movement_dialog.py` | Safe drop/payout |
 
-**Security:**
+**System & Security:**
 
 | Dialog | Purpose |
 |--------|---------|
 | `manager_override_dialog.py` | Permission elevation |
 | `permission_dialog.py` | Permission assignment |
+| `profile_dialog.py` | User profile editor |
+| `backup_restore_dialog.py` | Database backup/restore |
+| `setup_wizard.py` | First-run setup wizard |
+| `shortcuts_help_dialog.py` | Keyboard shortcuts reference |
+| `update_dialog.py` | Application update notification |
 
-### 7.4 Widgets (8 Reusable Components)
+### 7.4 Widgets (12 Reusable Components)
 
 | Widget | Purpose |
 |--------|---------|
@@ -494,6 +557,11 @@ Login → SalesView → Management/Settings (via side menu) → Back returns to 
 | `custom_widgets.py` | Custom QLineEdit, QTableWidget |
 | `touch_widgets.py` | Touch-optimized buttons |
 | `denomination_widget.py` | Cash denomination counter |
+| `pagination_widget.py` | Table pagination controls |
+| `receipt_preview_widget.py` | Live receipt preview renderer |
+| `product_grid_panel.py` | Touch-mode product grid |
+| `charts.py` | Dashboard chart components |
+| `loading_overlay.py` | Loading spinner overlay |
 
 ### 7.5 Themes
 
@@ -600,7 +668,7 @@ Registration: register_all_reports() called in main.py
 - `render_as_batch=True` for SQLite ALTER TABLE support
 - Imports `cbpos.core.models.Base` for autogenerate
 
-### Migration History (15 files)
+### Migration History (21 files)
 
 | Migration | Description |
 |-----------|-------------|
@@ -609,7 +677,7 @@ Registration: register_all_reports() called in main.py
 | `b8a7c1d34f92` | Optimistic locking (`version_id`) |
 | `aa29f0271e58` | Advanced inventory (composite items) |
 | `aa9e82761ac2` | Customer B2B fields and pricing |
-| + 10 more | Incremental schema changes |
+| + 16 more | Incremental schema changes (shift management, cash movements, payment methods, supplier payables, etc.) |
 
 ### Commands
 
@@ -625,9 +693,11 @@ alembic revision --autogenerate -m "msg"       # Generate new
 | Script | Purpose |
 |--------|---------|
 | `scripts/seed.py` | Full database reset + seed data (users, products, categories, suppliers, permissions, roles, payment methods) |
+| `scripts/validate_translations.py` | Translation validation — checks format params, malformed braces, missing keys. Supports `--strict` for CI |
 | `scripts/update_translations.py` | i18n string extraction |
-| `scripts/verify_phase4.py` | Manual testing script |
 | `scripts/debug_db.py` | Database inspection tool |
+| `scripts/debug_conftest.py` | Test configuration debugging |
+| `scripts/verify_phase4.py` | Manual testing script |
 
 ### Seed Data (via `seed.py`)
 
@@ -653,13 +723,15 @@ alembic revision --autogenerate -m "msg"       # Generate new
 - **Patches**: `Database.SessionLocal` redirected to test session
 - **Pytest-Qt**: `qapp` fixture for PyQt6 tests
 
-### Test Files
+### Test Files (17 files)
 
 | File | Coverage |
 |------|----------|
-| `test_transaction_service.py` | Sale processing tests |
+| `test_transaction_service.py` | Sale processing, void, refund |
+| `test_translation_service.py` | Fallback chain, interpolation, callbacks, thread safety |
 | `test_logic_layer.py` | Business logic validation |
 | `test_purchasing.py` | Purchase flow tests |
+| + 13 more | Cart, tax, stock, pricing, customer, permissions, etc. |
 
 ### Running Tests
 
@@ -850,17 +922,59 @@ new_cost = (old_cost * old_qty + purchase_cost * purchase_qty) / (old_qty + purc
 
 ### Supported Languages
 
-| Language | Font |
-|----------|------|
-| English (en) | Noto Sans |
-| Sinhala (si) | Noto Sans Sinhala |
-| Tamil (ta) | Noto Sans Tamil |
+| Language | Code | Font | Translation Status |
+|----------|------|------|--------------------|
+| English | `en` | Noto Sans | Complete (1,827 keys) |
+| Sinhala | `si` | Noto Sans Sinhala | Core UI translated (~400 keys) |
+| Tamil | `ta` | Noto Sans Tamil | Core UI translated (~350 keys) |
 
-### Implementation
+### Architecture
+
+**Translation Service** (`cbpos/i18n/translation_service.py`):
+
+- Thread-safe singleton with `threading.Lock`
+- Dot-notation key lookup: `_t("login.title")` → "Login" / "පිවිසුම" / "உள்நுழைவு"
+- Fallback chain: Current language → English → raw key
+- `{parameter}` interpolation: `_t("common.items", count=5)` → "Items: 5"
+- `translate_in(lang, key)` for language-specific lookup without switching (used for receipts)
+- WeakMethod callbacks prevent memory leaks on Qt widget destruction
+- Live language switching — no restart required
+
+**JSON Files** (`cbpos/i18n/en.json`, `si.json`, `ta.json`):
+
+- 67 sections, 1,827 keys (English complete)
+- Flat or nested JSON, flattened to dot notation at load time
+- Keys starting with `_` are metadata (skipped)
+
+**UI Integration Pattern:**
+
+```python
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+
+class MyView(QWidget):
+    def __init__(self):
+        super().__init__()
+        self._init_ui()
+        self.retranslate_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
+    def retranslate_ui(self):
+        self._title.setText(_t("my_view.title"))
+```
+
+**Validation** (`scripts/validate_translations.py`):
+
+- Checks format parameters preserved across translations (`{error}`, `{name}`, etc.)
+- Detects malformed braces (mismatched `{` and `}`)
+- Reports missing keys per language
+- `--strict` mode exits with code 1 for CI integration
+
+### Product Multilingual Names
 
 - Product model: `name_en`, `name_si`, `name_ta`
-- `LanguageService` manages locale switching
 - Receipt printing: Image mode for Unicode (Sinhala/Tamil)
+- Independent receipt language setting (print in different language than UI)
 
 ---
 
@@ -927,15 +1041,17 @@ main.py
 
 | Component | Count |
 |-----------|-------|
-| Python files | 120+ |
-| Core services | 37 |
-| UI views | 16 |
-| UI dialogs | 18 |
-| UI widgets | 8 |
+| Python files | 230 |
+| Total lines of code | ~43,000 |
+| Core services | 52 |
+| UI views | 24 |
+| UI dialogs | 36 |
+| UI widgets | 12 |
 | Database models | 26 (in 1 file) |
-| Report definitions | 5 |
-| Alembic migrations | 15 |
-| Test files | 5+ |
+| Report definitions | 9 |
+| Alembic migrations | 21 |
+| Test files | 17 |
+| Translation keys | 1,827 (67 sections) |
 | QSS theme lines | 3,103 (Dark: 1,529, Light: 1,574) |
 | Configurable settings | 76 |
 | Dependencies | 24 packages |

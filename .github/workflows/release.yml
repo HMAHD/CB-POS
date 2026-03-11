@@ -83,7 +83,9 @@ jobs:
           echo "Exe size: $(stat -c%s dist/cbpos.exe 2>/dev/null || stat -f%z dist/cbpos.exe) bytes"
 
       - name: Build Inno Setup installer
-        uses: Minionguyjpro/Inno-Setup-Action@v1.2.4
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.7
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
           path: installer/cbpos.iss
           options: /DMyAppVersion=${{ steps.version.outputs.version }}
@@ -98,7 +100,7 @@ jobs:
           echo "SHA-256: $SHA"
 
       - name: Upload installer artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: installer
           path: dist/installer/${{ steps.version.outputs.installer_name }}
@@ -114,7 +116,7 @@ jobs:
 
     steps:
       - name: Download installer artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: installer
           path: ./dist

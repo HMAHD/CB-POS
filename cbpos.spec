@@ -45,13 +45,18 @@ hiddenimports = [
     'usb.backend.libusb1',
 ]
 
-# Collect all for escpos just in case
-tmp_ret = collect_all('escpos')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-
-# Collect all for qtawesome (FontAwesome font files + icon maps)
-tmp_ret = collect_all('qtawesome')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+# Collect all submodules/data for packages with dynamic imports
+for pkg in [
+    'escpos',
+    'qtawesome',
+    'reportlab',
+    'xhtml2pdf',
+    'PIL',
+    'pandas',
+    'cryptography',
+]:
+    tmp_ret = collect_all(pkg)
+    datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 block_cipher = None
 
@@ -64,7 +69,11 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=[
+        'pytest', 'pytest_qt', '_pytest',
+        'black', 'flake8', 'pre_commit',
+        'sphinx', 'myst_parser',
+    ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,

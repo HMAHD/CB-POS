@@ -8,11 +8,18 @@ All notable changes to this project will be documented in this file. Never delet
 
 - **Sale History dialog**: New `SaleHistoryDialog` accessible from the side menu "Sales History" button. Browse recent sales with quick filter buttons (Today/Yesterday/This Week/This Month), debounced search by receipt # or customer name, sale details with line items, receipt reprinting, and inline refund processing with permission checks.
 - **Improved refund flow**: Side menu "Refund" button now opens the Sale History dialog instead of the old manual-entry RefundDialog. Users can visually browse and select a sale to refund instead of typing invoice numbers. The ActionPanel "Ref" button retains the old behavior for backward compatibility.
+- **First-run database setup dialog**: New users now choose between "Start Fresh" (empty database with only admin account) or "Load Demo Data" (80+ products, sample sales, customers). Shown automatically on first launch after the setup wizard.
+- **DatabaseSetupService**: New service (`database_setup_service.py`) with `create_empty_database()` (minimal: permissions, roles, admin user, void reasons, payment methods, units) and `create_demo_database()` (full seed data).
 
 ### Fixed
 
 - **"Sales History" side menu button was non-functional**: The `history_clicked` signal from `SideMenu` was never connected in `main_window.py`. Now wired to open the Sale History dialog.
+- **PyInstaller missing `qtawesome` module**: Added `collect_all('qtawesome')` to `cbpos.spec` to bundle FontAwesome icon fonts required by `cbpos/ui/resources/icons.py`.
+- **Inno Setup invalid `checked` flag**: Removed non-existent `Flags: checked` from `[Tasks]` section (tasks are checked by default).
+- **Inno Setup finish page logo**: Changed `WizardImageFile` to `Logo_dark.png` with `WizardImageStretch=no` for proper branding on Welcome and Finish pages.
 - **Flake8 F541 warnings in `scripts/seed.py`**: Removed unnecessary f-string prefixes on 5 lines with no placeholders.
+- **Orphaned CCPlugins submodule**: Removed gitlink with no `.gitmodules` entry that caused CI post-job cleanup to fail.
+- **GitHub Actions Node.js 20 deprecation**: Updated all actions to Node.js 24 compatible versions (checkout@v6, setup-python@v6, upload/download-artifact@v6, cache@v5).
 
 ## [1.2.1] - 2026-03-11
 

@@ -50,8 +50,10 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 ; Modern installer look
 WizardStyle=modern
-WizardImageFile=..\cbpos\assets\logo\cover_white.png
+; Logo_dark.png shows on Welcome + Finish pages (left panel)
+WizardImageFile=..\cbpos\assets\logo\Logo_dark.png
 WizardSmallImageFile=..\cbpos\assets\ico\cbpos.png
+WizardImageStretch=no
 ; Require admin for Program Files install
 PrivilegesRequired=admin
 ; Allow upgrading over existing installation

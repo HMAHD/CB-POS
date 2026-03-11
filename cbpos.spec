@@ -49,6 +49,10 @@ hiddenimports = [
 tmp_ret = collect_all('escpos')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
+# Collect all for qtawesome (FontAwesome font files + icon maps)
+tmp_ret = collect_all('qtawesome')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+
 block_cipher = None
 
 a = Analysis(

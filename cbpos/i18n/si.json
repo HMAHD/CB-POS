@@ -2024,5 +2024,19 @@
     "detail_customer": "Customer:",
     "detail_payment": "Payment:",
     "detail_status": "Status:"
+  },
+  "db_setup": {
+    "title": "Database Setup",
+    "heading": "Welcome to CB POS!",
+    "description": "Choose how you would like to start. You can always add your own data later.",
+    "empty_icon": "\ud83d\udcca",
+    "empty_title": "Start Fresh",
+    "empty_desc": "Empty database with only the admin account. Add your own products, categories, and customers.",
+    "btn_empty": "Start Fresh",
+    "demo_icon": "\ud83c\udfaa",
+    "demo_title": "Demo Data",
+    "demo_desc": "Pre-loaded with 80+ products, customers, sample sales, and suppliers. Great for exploring the system.",
+    "btn_demo": "Load Demo Data",
+    "loading": "Setting up database..."
   }
 }

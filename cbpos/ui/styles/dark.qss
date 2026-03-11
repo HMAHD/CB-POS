@@ -3504,3 +3504,21 @@ QFrame#RefundInlinePanel {
     border: 1px solid #FF4136;
     border-radius: 6px;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Database Setup Dialog
+   ═══════════════════════════════════════════════════════════════ */
+
+QDialog#DatabaseSetupDialog {
+    background-color: #1E1E1E;
+}
+
+QFrame#SetupCard {
+    background-color: #252526;
+    border: 1px solid #3E3E42;
+    border-radius: 8px;
+}
+
+QFrame#SetupCard:hover {
+    border-color: #00BCEB;
+}

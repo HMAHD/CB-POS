@@ -206,6 +206,27 @@ def main():
             print("[BOOTSTRAP] Setup wizard cancelled. Exiting.")
             sys.exit(0)
 
+    # First-Run Database Setup (empty vs demo)
+    from cbpos.core.services.database_setup_service import DatabaseSetupService
+
+    if DatabaseSetupService.needs_setup():
+        from cbpos.ui.dialogs.database_setup_dialog import DatabaseSetupDialog
+
+        print("[BOOTSTRAP] No database found - showing database setup dialog...")
+        db_dialog = DatabaseSetupDialog()
+        if not db_dialog.exec():
+            print("[BOOTSTRAP] Database setup cancelled. Exiting.")
+            sys.exit(0)
+
+        if db_dialog.choice == DatabaseSetupDialog.CHOICE_DEMO:
+            print("[BOOTSTRAP] Creating demo database...")
+            DatabaseSetupService.create_demo_database()
+            print("[BOOTSTRAP] Demo database ready.")
+        else:
+            print("[BOOTSTRAP] Creating empty database...")
+            DatabaseSetupService.create_empty_database()
+            print("[BOOTSTRAP] Empty database ready.")
+
     # Start scheduler timer for auto-report
     if ConfigService.get("auto_report_enabled"):
         try:

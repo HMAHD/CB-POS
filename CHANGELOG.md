@@ -11,6 +11,8 @@ All notable changes to this project will be documented in this file. Never delet
 ### Fixed
 
 - **DetachedInstanceError on barcode scan**: Product `unit` and `category` relationships now use `lazy="joined"` at the model level, ensuring they are always eager-loaded regardless of how the query is written. Removed redundant manual `joinedload()` calls from `product_service`, `inventory_service`, and `data_export_service`.
+- **DetachedInstanceError in `get_by_barcode()`**: Product returned without `session.expunge()`, causing crashes when accessing attributes outside the session. Also fixes `recall_bill()` which depends on this method.
+- **DetachedInstanceError in `get_last_sale()`**: Sale returned without eager-loading `items`, `customer`, or `payments` relationships, causing crashes on any relationship access after the method returns.
 
 ### Changed
 

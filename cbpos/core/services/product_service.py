@@ -134,7 +134,10 @@ class ProductService:
         db = Database()
         with db.get_session() as session:
             stmt = select(Product).where(Product.barcode == barcode, Product.is_active)
-            return session.scalar(stmt)
+            product = session.scalar(stmt)
+            if product:
+                session.expunge(product)
+            return product
 
     @staticmethod
     def search(query: str, limit: int = 50) -> List[Product]:

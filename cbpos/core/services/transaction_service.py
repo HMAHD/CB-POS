@@ -579,7 +579,16 @@ class TransactionService:
         """Return the most recent sale, detached from session."""
         db = Database()
         with db.get_session() as session:
-            sale = session.query(Sale).order_by(Sale.id.desc()).first()
+            sale = (
+                session.query(Sale)
+                .options(
+                    joinedload(Sale.items).joinedload(SaleItem.product),
+                    joinedload(Sale.customer),
+                    joinedload(Sale.payments),
+                )
+                .order_by(Sale.id.desc())
+                .first()
+            )
             if sale:
                 session.expunge(sale)
             return sale

@@ -1103,6 +1103,16 @@ class SalesView(QWidget):
         dialog.exec()
         self.barcode_input.setFocus()
 
+    def open_sale_history(self) -> None:
+        """Open Sale History dialog for browsing sales, reprinting, and refunds."""
+        from cbpos.ui.dialogs.sale_history_dialog import SaleHistoryDialog
+
+        if self.side_menu.isVisible():
+            self.toggle_side_menu()
+        dialog = SaleHistoryDialog(parent=self)
+        dialog.exec()
+        self.barcode_input.setFocus()
+
     def open_cash_drawer(self) -> None:
         """Open the cash drawer via PrintWorker (F8 / Ctrl+D)."""
         from cbpos.infrastructure.hardware.escpos_driver import PrintWorker

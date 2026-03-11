@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [1.2.2] - 2026-03-11
+
+### Added
+
+- **Sale History dialog**: New `SaleHistoryDialog` accessible from the side menu "Sales History" button. Browse recent sales with quick filter buttons (Today/Yesterday/This Week/This Month), debounced search by receipt # or customer name, sale details with line items, receipt reprinting, and inline refund processing with permission checks.
+- **Improved refund flow**: Side menu "Refund" button now opens the Sale History dialog instead of the old manual-entry RefundDialog. Users can visually browse and select a sale to refund instead of typing invoice numbers. The ActionPanel "Ref" button retains the old behavior for backward compatibility.
+
+### Fixed
+
+- **"Sales History" side menu button was non-functional**: The `history_clicked` signal from `SideMenu` was never connected in `main_window.py`. Now wired to open the Sale History dialog.
+- **Flake8 F541 warnings in `scripts/seed.py`**: Removed unnecessary f-string prefixes on 5 lines with no placeholders.
+
 ## [1.2.1] - 2026-03-11
 
 ### Added

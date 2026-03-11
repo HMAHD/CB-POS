@@ -3364,3 +3364,143 @@ QPushButton#PMCardBtn[class="accent"] {
 QPushButton#PMCardBtn[class="accent"]:hover {
     background-color: #00A5D0;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Sale History Dialog
+   ═══════════════════════════════════════════════════════════════ */
+
+QDialog#SaleHistoryDialog {
+    background-color: #1E1E1E;
+}
+
+/* Quick Filter Buttons */
+QPushButton#QuickFilterBtn {
+    background-color: #252526;
+    color: #AAAAAA;
+    border: 1px solid #3E3E42;
+    border-radius: 4px;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+QPushButton#QuickFilterBtn:hover {
+    background-color: #2D2D30;
+    color: #FFFFFF;
+}
+
+QPushButton#QuickFilterBtn:checked {
+    background-color: #00BCEB;
+    color: #001F3F;
+    border-color: #00BCEB;
+    font-weight: 600;
+}
+
+/* Search Input */
+QLineEdit#SaleHistorySearch {
+    background-color: #252526;
+    border: 1px solid #3E3E42;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 14px;
+    color: #FFFFFF;
+}
+
+QLineEdit#SaleHistorySearch:focus {
+    border-color: #00BCEB;
+}
+
+/* Sales Table */
+QTableWidget#SaleHistoryTable {
+    background-color: #252526;
+    alternate-background-color: #2A2A2E;
+    border: 1px solid #3E3E42;
+    border-radius: 4px;
+    gridline-color: #3E3E42;
+    selection-background-color: #003366;
+    selection-color: #FFFFFF;
+}
+
+QTableWidget#SaleHistoryTable QHeaderView::section {
+    background-color: #1E1E1E;
+    color: #AAAAAA;
+    border: none;
+    border-bottom: 1px solid #3E3E42;
+    padding: 6px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+/* Details Panel */
+QWidget#SaleHistoryDetails {
+    background-color: #1E1E1E;
+}
+
+QFrame#SaleInfoFrame {
+    background-color: #252526;
+    border: 1px solid #3E3E42;
+    border-radius: 4px;
+}
+
+/* Line Items Table */
+QTableWidget#SaleHistoryItems {
+    background-color: #252526;
+    alternate-background-color: #2A2A2E;
+    border: 1px solid #3E3E42;
+    border-radius: 4px;
+    gridline-color: #3E3E42;
+}
+
+QTableWidget#SaleHistoryItems QHeaderView::section {
+    background-color: #1E1E1E;
+    color: #AAAAAA;
+    border: none;
+    border-bottom: 1px solid #3E3E42;
+    padding: 4px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+/* Action Buttons */
+QPushButton#SaleHistoryReprint {
+    background-color: #00BCEB;
+    color: #001F3F;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 20px;
+    font-weight: 600;
+}
+
+QPushButton#SaleHistoryReprint:hover {
+    background-color: #00A5D0;
+}
+
+QPushButton#SaleHistoryReprint:disabled {
+    background-color: #3E3E42;
+    color: #666666;
+}
+
+QPushButton#SaleHistoryRefund {
+    background-color: #FF4136;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 20px;
+    font-weight: 600;
+}
+
+QPushButton#SaleHistoryRefund:hover {
+    background-color: #E0362D;
+}
+
+QPushButton#SaleHistoryRefund:disabled {
+    background-color: #3E3E42;
+    color: #666666;
+}
+
+/* Refund Inline Panel */
+QFrame#RefundInlinePanel {
+    background-color: #3D1010;
+    border: 1px solid #FF4136;
+    border-radius: 6px;
+}

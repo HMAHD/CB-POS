@@ -4,6 +4,7 @@ from PyInstaller.utils.hooks import collect_all
 datas = [
     ('cbpos/assets', 'cbpos/assets'),
     ('cbpos/ui/styles', 'cbpos/ui/styles'),
+    ('cbpos/i18n', 'cbpos/i18n'),
     ('alembic.ini', '.'),
     ('alembic', 'alembic'),
 ]

@@ -14,12 +14,18 @@ All notable changes to this project will be documented in this file. Never delet
 ### Fixed
 
 - **"Sales History" side menu button was non-functional**: The `history_clicked` signal from `SideMenu` was never connected in `main_window.py`. Now wired to open the Sale History dialog.
-- **PyInstaller missing `qtawesome` module**: Added `collect_all('qtawesome')` to `cbpos.spec` to bundle FontAwesome icon fonts required by `cbpos/ui/resources/icons.py`.
+- **PyInstaller missing modules**: Added `collect_all()` for `qtawesome`, `reportlab`, `xhtml2pdf`, `PIL`, `pandas`, and `cryptography` to `cbpos.spec` — resolves `ModuleNotFoundError` crashes in the built exe for barcode generation, PDF export, image handling, and encryption.
+- **Missing `qtawesome` in requirements.txt**: Package was imported in code but never listed as a dependency, causing `collect_all()` to silently collect nothing during CI builds.
 - **Inno Setup invalid `checked` flag**: Removed non-existent `Flags: checked` from `[Tasks]` section (tasks are checked by default).
 - **Inno Setup finish page logo**: Changed `WizardImageFile` to `Logo_dark.png` with `WizardImageStretch=no` for proper branding on Welcome and Finish pages.
 - **Flake8 F541 warnings in `scripts/seed.py`**: Removed unnecessary f-string prefixes on 5 lines with no placeholders.
 - **Orphaned CCPlugins submodule**: Removed gitlink with no `.gitmodules` entry that caused CI post-job cleanup to fail.
-- **GitHub Actions Node.js 20 deprecation**: Updated all actions to Node.js 24 compatible versions (checkout@v6, setup-python@v6, upload/download-artifact@v6, cache@v5).
+- **GitHub Actions Node.js 20 deprecation**: Updated all actions to Node.js 24 compatible versions (checkout@v6, setup-python@v6, upload/download-artifact@v7, Inno-Setup-Action@v1.2.7).
+
+### Changed
+
+- **Switched to one-dir PyInstaller distribution**: Replaced single-file exe mode (slow startup, AV false positives, temp extraction) with industry-standard one-directory mode. The installer now copies the full application folder to Program Files — matching how VS Code, Discord, and OBS distribute.
+- **Excluded dev-only packages from build**: Added `pytest`, `black`, `flake8`, `sphinx`, `myst_parser` to PyInstaller excludes to reduce bundle size.
 
 ## [1.2.1] - 2026-03-11
 

@@ -202,7 +202,7 @@ Yes. The full interface is available in Sinhala, Tamil, and English. You can eve
 Your data stays on your computer — it is never sent anywhere online. We recommend regular backups using the built-in backup feature.
 
 **Can multiple cashiers use it at the same time?**
-The current version supports one terminal. Multi-terminal support is on the roadmap.
+Yes. CB POS supports multi-terminal setups. Switch to Network mode in Settings > Network, point each terminal to a shared PostgreSQL database, and assign a unique Terminal ID (TERM-01, TERM-02, etc.) to each machine. All terminals share inventory, customers, and sales data in real time.
 
 **I found a bug / I have a feature request.**
 Open an [Issue](https://github.com/ceybyte/cbpos-releases/issues) on this repository, or contact us at [ceybyte.com](https://ceybyte.com). We read every message.

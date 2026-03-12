@@ -37,7 +37,7 @@ class ManagementView(QWidget):
         super().__init__()
         from cbpos.core.services.config_service import ConfigService
 
-        self.is_collapsed = ConfigService.get("sidebar_collapsed") is not False
+        self.is_collapsed = bool(ConfigService.get("sidebar_collapsed"))
         self.init_ui()
         if self.is_collapsed:
             self._apply_collapsed_state()

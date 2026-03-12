@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [1.2.4] - 2026-03-12
+
+### Changed
+
+- **Sidebar defaults to expanded**: New installs now show the sidebar expanded by default instead of collapsed, so users can immediately see navigation labels.
+- **Settings sidebar now includes POS/Sales and Logout buttons**: Matches the management sidebar — users can quickly jump to POS view or log out from settings without going back first. Both buttons prompt for unsaved changes before navigating.
+
+### Fixed
+
+- **Sidebar button spacing too tight**: Added `min-height: 36px` and vertical padding (`8px`) to sidebar nav buttons (`SidebarButton`, `BtnPos`, `BtnLogout`) in both dark and light themes. Menu items no longer overlap or feel cramped in packaged builds.
+
 ## [1.2.3] - 2026-03-12
 
 ### Added

@@ -88,6 +88,8 @@ class MainWindow(QMainWindow):
         # 3. Settings View (Top Level)
         self.settings_view = SettingsView()
         self.settings_view.close_requested.connect(self.go_back)
+        self.settings_view.logout_requested.connect(self.logout)
+        self.settings_view.request_pos_view.connect(lambda: self.stack.setCurrentWidget(self.sales_view))
         self.stack.addWidget(self.settings_view)
 
         self.stack.setCurrentWidget(self.login_view)

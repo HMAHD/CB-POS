@@ -30,12 +30,14 @@ from cbpos.i18n import _t, register_language_callback, unregister_language_callb
 
 class SettingsView(QWidget):
     close_requested = pyqtSignal()
+    logout_requested = pyqtSignal()
+    request_pos_view = pyqtSignal()
 
     def __init__(self):
         super().__init__()
         from cbpos.core.services.config_service import ConfigService
 
-        self.is_collapsed = ConfigService.get("sidebar_collapsed") is not False
+        self.is_collapsed = bool(ConfigService.get("sidebar_collapsed"))
         self._settings_dirty = False
         self._saved_snapshot: dict = {}
         self.nav_buttons = []
@@ -110,6 +112,30 @@ class SettingsView(QWidget):
         self.btn_admin_tools = self.create_nav_button("", "fa5s.toolbox", 9)
 
         self.sidebar_layout.addStretch()
+
+        # Bottom Section (POS + Logout) — matches ManagementView
+        self.user_profile_widget = QWidget()
+        self.user_profile_widget.setObjectName("UserProfileContainer")
+        user_profile_layout = QVBoxLayout(self.user_profile_widget)
+        user_profile_layout.setContentsMargins(0, 0, 0, 0)
+        user_profile_layout.setSpacing(0)
+
+        self.btn_pos = SidebarButton("", "fa5s.cash-register")
+        self.btn_pos.setObjectName("BtnPos")
+        self.btn_pos.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.btn_pos.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.btn_pos.clicked.connect(self._on_pos_clicked)
+        user_profile_layout.addWidget(self.btn_pos)
+
+        self.btn_logout = SidebarButton("", Icons.LOGOUT)
+        self.btn_logout.setObjectName("BtnLogout")
+        self.btn_logout.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.btn_logout.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.btn_logout.clicked.connect(self._on_logout_clicked)
+        user_profile_layout.addWidget(self.btn_logout)
+
+        user_profile_layout.addSpacing(10)
+        self.sidebar_layout.addWidget(self.user_profile_widget)
 
         body_layout.addWidget(self.sidebar)
 
@@ -206,6 +232,10 @@ class SettingsView(QWidget):
         self.btn_data_safety.setText("   " + _t("settings.sidebar_data_safety"))
         self.btn_admin_tools.setText("   " + _t("settings.sidebar_admin_tools"))
 
+        # Bottom sidebar buttons
+        self.btn_pos.setText("   " + _t("management.sidebar_pos"))
+        self.btn_logout.setText("   " + _t("management.sidebar_logout"))
+
         # Footer buttons
         self.btn_save.setText(_t("settings.btn_save"))
         self.btn_cancel.setText(_t("settings.btn_cancel"))
@@ -263,6 +293,8 @@ class SettingsView(QWidget):
         self.sidebar.setFixedWidth(70)
         self.lbl_logo.setVisible(False)
         style = Qt.ToolButtonStyle.ToolButtonIconOnly
+        self.btn_pos.setToolButtonStyle(style)
+        self.btn_logout.setToolButtonStyle(style)
         for btn in self.nav_buttons:
             btn.setToolButtonStyle(style)
 
@@ -295,19 +327,23 @@ class SettingsView(QWidget):
 
         self.update_sidebar_styles()
 
+        self.btn_pos.setToolButtonStyle(style)
+        self.btn_logout.setToolButtonStyle(style)
         for btn in self.nav_buttons:
             btn.setToolButtonStyle(style)
 
     def update_sidebar_styles(self) -> None:
         """Update collapsed property on all sidebar buttons for QSS targeting."""
-        for btn in self.nav_buttons:
+        buttons = self.nav_buttons + [self.btn_pos, self.btn_logout]
+        for btn in buttons:
             btn.setProperty("collapsed", self.is_collapsed)
             btn.style().unpolish(btn)
             btn.style().polish(btn)
 
     def update_sidebar_icons(self) -> None:
         """Update sidebar button icons when theme changes."""
-        for btn in self.nav_buttons:
+        buttons = self.nav_buttons + [self.btn_pos, self.btn_logout]
+        for btn in buttons:
             if hasattr(btn, "update_icon"):
                 btn.update_icon()
 
@@ -327,6 +363,31 @@ class SettingsView(QWidget):
         is_admin = "admin" in role
         self.btn_data_safety.setVisible(is_admin)
         self.btn_admin_tools.setVisible(is_admin)
+
+    def _check_discard_unsaved(self) -> bool:
+        """Check for unsaved changes and prompt user. Returns True if safe to proceed."""
+        if self._saved_snapshot and self._take_snapshot() != self._saved_snapshot:
+            reply = QMessageBox.question(
+                self,
+                _t("settings.unsaved_title"),
+                _t("settings.unsaved_message"),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply == QMessageBox.StandardButton.No:
+                return False
+            self.load_settings()
+        return True
+
+    def _on_pos_clicked(self) -> None:
+        """Navigate to POS/Sales view, prompting for unsaved changes."""
+        if self._check_discard_unsaved():
+            self.request_pos_view.emit()
+
+    def _on_logout_clicked(self) -> None:
+        """Logout, prompting for unsaved changes."""
+        if self._check_discard_unsaved():
+            self.logout_requested.emit()
 
     def load_settings(self):
         settings = ConfigService.get_all()

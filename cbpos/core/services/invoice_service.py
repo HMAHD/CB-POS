@@ -15,6 +15,7 @@ from reportlab.platypus import (
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from cbpos.core.models import Sale
+from cbpos.core.services.tax_service import TaxService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.core.utils.amount_to_words import amount_to_words
 from cbpos.core.services.document_service import DocumentService
@@ -95,7 +96,7 @@ class InvoiceService:
         if contact_parts:
             elements.append(Paragraph(" | ".join(contact_parts), header_style))
         reg_parts = []
-        if vat_number:
+        if vat_number and TaxService.is_vat_active():
             reg_parts.append(f"VAT Reg: {vat_number}")
         if company_tax_id:
             reg_parts.append(f"Tax ID: {company_tax_id}")
@@ -184,16 +185,22 @@ class InvoiceService:
         totals_data = [
             ["Subtotal:", format_currency(subtotal)],
             ["Total Discount:", format_currency(total_discount)],
-            [
-                "VAT ({}%):".format(ConfigService.get("tax_vat_rate") or 18),
-                format_currency(vat_amount),
-            ],
-            [
-                "SSCL ({}%):".format(ConfigService.get("tax_sscl_rate") or 2.5),
-                format_currency(sscl_amount),
-            ],
-            ["Grand Total:", format_currency(grand_total)],
         ]
+        # Only show tax rows if VAT is active or the sale actually has tax values
+        if TaxService.is_vat_active() or vat_amount > 0:
+            totals_data.append(
+                [
+                    "VAT ({}%):".format(ConfigService.get("tax_vat_rate") or 18),
+                    format_currency(vat_amount),
+                ]
+            )
+            totals_data.append(
+                [
+                    "SSCL ({}%):".format(ConfigService.get("tax_sscl_rate") or 2.5),
+                    format_currency(sscl_amount),
+                ]
+            )
+        totals_data.append(["Grand Total:", format_currency(grand_total)])
 
         totals_table = Table(totals_data, colWidths=[140 * mm, 45 * mm])
         totals_table.setStyle(
@@ -361,14 +368,22 @@ class InvoiceService:
             buyer_address = sale.customer.address or ""
             buyer_phone = sale.customer.phone or ""
 
+        show_vat = TaxService.is_vat_active() or (
+            (sale.tax_vat and sale.tax_vat > 0) or (sale.tax_sscl and sale.tax_sscl > 0)
+        )
         supplier_lines = [
             [Paragraph("<b>Supplier</b>", label_style), ""],
             [Paragraph("Name:", label_style), Paragraph(shop_name, value_style)],
             [Paragraph("TIN:", label_style), Paragraph(shop_tin, value_style)],
-            [Paragraph("VAT Reg:", label_style), Paragraph(shop_vat, value_style)],
-            [Paragraph("Address:", label_style), Paragraph(shop_address, value_style)],
-            [Paragraph("Phone:", label_style), Paragraph(shop_phone, value_style)],
         ]
+        if show_vat and shop_vat:
+            supplier_lines.append([Paragraph("VAT Reg:", label_style), Paragraph(shop_vat, value_style)])
+        supplier_lines.extend(
+            [
+                [Paragraph("Address:", label_style), Paragraph(shop_address, value_style)],
+                [Paragraph("Phone:", label_style), Paragraph(shop_phone, value_style)],
+            ]
+        )
         buyer_lines = [
             [Paragraph("<b>Buyer</b>", label_style), ""],
             [Paragraph("Name:", label_style), Paragraph(buyer_name, value_style)],
@@ -499,24 +514,32 @@ class InvoiceService:
         right_style = ParagraphStyle("TIRight", parent=label_style, alignment=TA_RIGHT)
         right_bold = ParagraphStyle("TIRightBold", parent=value_style, alignment=TA_RIGHT)
 
-        totals_data = [
-            [
-                Paragraph("Net Amount:", right_style),
-                Paragraph(f"Rs. {_whole_lkr(net_amount)}", right_style),
-            ],
-            [
-                Paragraph("VAT ({}%):".format(ConfigService.get("tax_vat_rate") or 18), right_style),
-                Paragraph(f"Rs. {_whole_lkr(vat_amount)}", right_style),
-            ],
-            [
-                Paragraph("SSCL ({}%):".format(ConfigService.get("tax_sscl_rate") or 2.5), right_style),
-                Paragraph(f"Rs. {_whole_lkr(sscl_amount)}", right_style),
-            ],
+        totals_data = []
+        if show_vat:
+            totals_data.append(
+                [
+                    Paragraph("Net Amount:", right_style),
+                    Paragraph(f"Rs. {_whole_lkr(net_amount)}", right_style),
+                ]
+            )
+            totals_data.append(
+                [
+                    Paragraph("VAT ({}%):".format(ConfigService.get("tax_vat_rate") or 18), right_style),
+                    Paragraph(f"Rs. {_whole_lkr(vat_amount)}", right_style),
+                ]
+            )
+            totals_data.append(
+                [
+                    Paragraph("SSCL ({}%):".format(ConfigService.get("tax_sscl_rate") or 2.5), right_style),
+                    Paragraph(f"Rs. {_whole_lkr(sscl_amount)}", right_style),
+                ]
+            )
+        totals_data.append(
             [
                 Paragraph("<b>Total:</b>", right_bold),
                 Paragraph(f"<b>Rs. {_whole_lkr(grand_total)}</b>", right_bold),
-            ],
-        ]
+            ]
+        )
         totals_table = Table(totals_data, colWidths=[130 * mm, 40 * mm])
         totals_table.setStyle(
             TableStyle(

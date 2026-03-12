@@ -11,6 +11,11 @@ class TaxService:
     """
 
     @staticmethod
+    def is_vat_active() -> bool:
+        """Single source of truth: is VAT enabled for this business?"""
+        return bool(ConfigService.get("vat_registered"))
+
+    @staticmethod
     def _get_rates():
         """
         Helper to fetch and convert rates from config.

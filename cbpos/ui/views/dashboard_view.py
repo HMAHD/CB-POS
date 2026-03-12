@@ -34,6 +34,7 @@ from cbpos.ui.widgets.charts import (
     HOURLY_COLORS,
 )
 from cbpos.core.utils.formatters import format_currency
+from cbpos.core.services.tax_service import TaxService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 logger = logging.getLogger(__name__)
@@ -159,14 +160,14 @@ class DashboardView(QWidget):
         header.addStretch()
 
         self.btn_prev_year = QToolButton()
-        self.btn_prev_year.setText("\u25C0")
+        self.btn_prev_year.setText("\u25c0")
         self.btn_prev_year.setObjectName("YearNavButton")
         self.btn_prev_year.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_prev_year.clicked.connect(lambda: self._change_year(-1))
         header.addWidget(self.btn_prev_year)
 
         self.btn_next_year = QToolButton()
-        self.btn_next_year.setText("\u25B6")
+        self.btn_next_year.setText("\u25b6")
         self.btn_next_year.setObjectName("YearNavButton")
         self.btn_next_year.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_next_year.clicked.connect(lambda: self._change_year(1))
@@ -246,7 +247,7 @@ class DashboardView(QWidget):
         hbox.addWidget(self.date_to)
 
         self.btn_refresh = QToolButton()
-        self.btn_refresh.setText("\u21BB")
+        self.btn_refresh.setText("\u21bb")
         self.btn_refresh.setObjectName("PeriodRefreshBtn")
         self.btn_refresh.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_refresh.clicked.connect(self.refresh_periodic)
@@ -398,6 +399,7 @@ class DashboardView(QWidget):
         vbox.addWidget(self.lbl_net_revenue)
 
         vbox.addStretch()
+        self.tax_today_panel = panel
         parent_layout.addWidget(panel, 1)
 
     # --- Row 4: Categories Donut ---
@@ -483,6 +485,7 @@ class DashboardView(QWidget):
 
     def refresh_all(self) -> None:
         """Refresh both yearly and periodic data."""
+        self.tax_today_panel.setVisible(TaxService.is_vat_active())
         self._refresh_yearly()
         self.refresh_periodic()
 
@@ -510,7 +513,7 @@ class DashboardView(QWidget):
             )
         )
         self.btn_refresh.setEnabled(False)
-        self.btn_refresh.setText("\u231B")  # hourglass while loading
+        self.btn_refresh.setText("\u231b")  # hourglass while loading
         self.lbl_avg_order.setText(_t("dashboard.loading"))
 
         self._periodic_worker = _PeriodicWorker(sd, ed)
@@ -544,7 +547,7 @@ class DashboardView(QWidget):
     ) -> None:
         """Handle periodic data from worker thread."""
         self.btn_refresh.setEnabled(True)
-        self.btn_refresh.setText("\u21BB")
+        self.btn_refresh.setText("\u21bb")
         # Top Products table
         self.products_table.setRowCount(len(products))
         for row, p in enumerate(products):

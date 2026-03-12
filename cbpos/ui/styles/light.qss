@@ -1308,6 +1308,10 @@ QPushButton#BtnApplyDiscount:hover {
     background-color: #157347;
 }
 
+QPushButton#BtnApplyDiscount:pressed {
+    background-color: #0F5132;
+}
+
 /* Customer Editor */
 QDialog#CustomerEditor, QDialog#CustomerQuickAddDialog {
     background-color: #FFFFFF;
@@ -1584,7 +1588,7 @@ QLabel#CardTrend[trendType="negative"] {
 /* === DASHBOARD PANELS === */
 QFrame#MonthlyChartPanel, QFrame#YearlySummaryPanel,
 QFrame#TopProductsPanel, QFrame#HourlySalesPanel, QFrame#QuickStatsPanel,
-QFrame#TopCategoriesPanel, QFrame#TopCustomersPanel {
+QFrame#TaxTodayPanel, QFrame#TopCategoriesPanel, QFrame#TopCustomersPanel {
     background-color: #FFFFFF;
     border: 1px solid #E5E7EB;
     border-radius: 8px;
@@ -3387,4 +3391,128 @@ QFrame#SetupCard {
 
 QFrame#SetupCard:hover {
     border-color: #0D6EFD;
+}
+
+/* ===================================================================
+   CRUD MANAGER DIALOGS (Category, Unit) - Light Theme
+   =================================================================== */
+
+QDialog#CategoryManagerDialog,
+QDialog#UnitManagerDialog {
+    background-color: #FFFFFF;
+}
+
+QDialog#CategoryManagerDialog QGroupBox,
+QDialog#UnitManagerDialog QGroupBox {
+    background-color: #F8F9FA;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    margin-top: 16px;
+    padding: 12px;
+    padding-top: 24px;
+}
+
+QDialog#CategoryManagerDialog QGroupBox::title,
+QDialog#UnitManagerDialog QGroupBox::title {
+    color: #0D6EFD;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+QDialog#CategoryManagerDialog QGroupBox QLabel,
+QDialog#UnitManagerDialog QGroupBox QLabel {
+    background-color: transparent;
+    color: #1F2937;
+}
+
+QDialog#CategoryManagerDialog QTreeWidget {
+    background-color: #FFFFFF;
+    alternate-background-color: #F8F9FA;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+}
+
+QDialog#CategoryManagerDialog QTreeWidget::item {
+    padding: 6px;
+    border: none;
+}
+
+QDialog#CategoryManagerDialog QTreeWidget::item:selected {
+    background-color: #E7F1FF;
+    color: #0D6EFD;
+}
+
+QDialog#CategoryManagerDialog QTreeWidget::item:hover {
+    background-color: #F0F4F8;
+}
+
+QDialog#CategoryManagerDialog QTreeWidget QHeaderView::section {
+    background-color: #F0F4F8;
+    color: #0D6EFD;
+    font-weight: bold;
+    font-size: 11px;
+    text-transform: uppercase;
+    border: none;
+    padding: 8px;
+}
+
+/* ===================================================================
+   RECEIVE PAYMENT DIALOG - Transparent Labels (Light Theme)
+   =================================================================== */
+
+QDialog#ReceivePaymentDialog QLabel {
+    background-color: transparent;
+    color: #1F2937;
+}
+
+QFrame#BalanceFrame QLabel {
+    background-color: transparent;
+    color: #1F2937;
+}
+
+/* ===================================================================
+   DOCUMENT BROWSER VIEW - Transparent Labels (Light Theme)
+   =================================================================== */
+
+QFrame#FilterBar QLabel {
+    background-color: transparent;
+    color: #374151;
+}
+
+QFrame#DocDetailsPanel QLabel {
+    background-color: transparent;
+    color: #374151;
+}
+
+/* ===================================================================
+   NETWORK SETTINGS - Light Theme
+   =================================================================== */
+
+QPushButton#BtnTestConnection {
+    background-color: transparent;
+    color: #0D6EFD;
+    border: 2px solid #0D6EFD;
+    border-radius: 6px;
+    padding: 10px 24px;
+    font-weight: bold;
+    font-size: 14px;
+    min-width: 150px;
+}
+
+QPushButton#BtnTestConnection:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+    border-color: #0B5ED7;
+}
+
+QPushButton#BtnTestConnection:pressed {
+    background-color: rgba(13, 110, 253, 0.2);
+}
+
+QLabel#NetworkWarningLabel {
+    background-color: #FEF2F2;
+    color: #DC3545;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 12px;
 }

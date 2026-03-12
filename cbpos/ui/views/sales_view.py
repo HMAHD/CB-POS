@@ -636,27 +636,39 @@ class SalesView(QWidget):
         item_count = totals.get("item_count", 0)
 
         from cbpos.core.services.config_service import ConfigService
+        from cbpos.core.services.tax_service import TaxService
 
         tax_vat = totals.get("tax_vat", 0)
         tax_sscl = totals.get("tax_sscl", 0)
         tax_total = totals.get("tax", 0)
         exempt_amount = totals.get("exempt_amount", Decimal("0.00"))
+        vat_active = TaxService.is_vat_active()
 
         self.total_label.setText(format_currency(final_total))
         self.lbl_subtotal.setText(_t("cart.subtotal", amount=format_currency(subtotal)))
         self.lbl_discount.setText(_t("cart.discount", amount=format_currency(cart_discount)))
-        if ConfigService.get("show_tax_breakdown") and tax_total > 0:
-            self.lbl_tax.setText(_t("cart.tax_breakdown", vat=format_currency(tax_vat), sscl=format_currency(tax_sscl)))
-        else:
-            self.lbl_tax.setText(_t("cart.tax", amount=format_currency(tax_total)))
-        self.lbl_item_count.setText(_t("cart.item_count", count=item_count))
 
-        # Show exempt amount when applicable
-        if exempt_amount > 0:
-            self.lbl_exempt.setText(_t("cart.tax_exempt", amount=format_currency(exempt_amount)))
-            self.lbl_exempt.setVisible(True)
-        else:
+        # Hide tax labels entirely when VAT is off
+        if not vat_active:
+            self.lbl_tax.setVisible(False)
             self.lbl_exempt.setVisible(False)
+        else:
+            self.lbl_tax.setVisible(True)
+            if ConfigService.get("show_tax_breakdown") and tax_total > 0:
+                self.lbl_tax.setText(
+                    _t("cart.tax_breakdown", vat=format_currency(tax_vat), sscl=format_currency(tax_sscl))
+                )
+            else:
+                self.lbl_tax.setText(_t("cart.tax", amount=format_currency(tax_total)))
+
+            # Show exempt amount when applicable
+            if exempt_amount > 0:
+                self.lbl_exempt.setText(_t("cart.tax_exempt", amount=format_currency(exempt_amount)))
+                self.lbl_exempt.setVisible(True)
+            else:
+                self.lbl_exempt.setVisible(False)
+
+        self.lbl_item_count.setText(_t("cart.item_count", count=item_count))
         self.cart_table.scrollToBottom()
 
         # Brief highlight on last row to give visual feedback on item add

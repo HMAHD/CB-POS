@@ -74,6 +74,8 @@ class ProfitLossReport(BaseReport):
 
 
 class TaxLiabilityReport(BaseReport):
+    requires_vat = True
+
     @property
     def id(self) -> str:
         return "tax_liability"
@@ -124,6 +126,7 @@ class TaxLiabilityReport(BaseReport):
 class TaxFilingSummaryReport(BaseReport):
     """Period summary report for filing VAT/SSCL returns with Inland Revenue."""
 
+    requires_vat = True
     ZERO = Decimal("0")
 
     @property

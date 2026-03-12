@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [1.2.3] - 2026-03-12
+
+### Added
+
+- **VAT lock/unlock system**: All tax-related UI (dashboard Tax Today panel, cart tax labels, invoice tax rows, receipt tax breakdowns, customer VAT field, tax reports) is now hidden when `vat_registered` is `False` (the default). Enabling VAT in Settings → Tax tab instantly unlocks all tax features — no restart needed.
+- **`TaxService.is_vat_active()`**: Single source of truth for VAT status, used by all UI components and services to gate tax visibility.
+- **`requires_vat` report flag**: `TaxLiabilityReport` and `TaxFilingSummaryReport` are hidden from the report sidebar when VAT is off.
+- **Light theme: 13 missing selector groups**: Added `CategoryManagerDialog`, `UnitManagerDialog`, `ReceivePaymentDialog`, `BalanceFrame`, `DocDetailsPanel`, `FilterBar`, `BtnTestConnection`, `NetworkWarningLabel`, and `BtnApplyDiscount:pressed` selectors adapted to light palette.
+
+### Fixed
+
+- **Dashboard Tax Today panel unstyled**: `QFrame#TaxTodayPanel` was missing from the grouped dashboard panel selector in both dark and light themes — now included.
+- **Non-VAT businesses saw confusing "Rs. 0" tax values**: Tax labels in cart, dashboard, document details, and invoices always displayed even when VAT was off. Now hidden entirely for non-VAT businesses.
+- **Historical invoice/receipt reprints preserved**: Reprinting old sales with tax values still shows original tax data (gated on `is_vat_active() OR sale.tax_vat > 0 OR sale.tax_sscl > 0`). Covers sale receipts, void receipts, refund receipts, document detail view, and both invoice types.
+- **Invoice VAT reg tautology**: Fixed `if vat_number and (... or vat_number)` condition that always evaluated true — VAT registration line now correctly hidden when VAT is off.
+- **Receipt tax breakdown toggle**: Kept always-enabled in receipt settings to allow one-pass setup (enable VAT + tax breakdown in the same save). Runtime gating in `ReceiptBuilder` handles the actual behavior.
+- **Item tax exemptions checkbox active when VAT off**: Now disabled alongside tax rate fields when VAT is unchecked in Settings → Tax tab.
+- **Report sidebar spacing with filtered categories**: Fixed leading spacer when first category was skipped due to VAT filtering.
+
 ## [1.2.2] - 2026-03-11
 
 ### Added

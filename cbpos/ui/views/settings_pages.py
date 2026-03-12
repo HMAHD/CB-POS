@@ -604,11 +604,12 @@ class SalesTaxPage(SettingsPage):
         self.chk_item_tax_exemptions.setToolTip(_t("settings.sales_tax.tooltip_item_tax_exemptions"))
 
     def _toggle_tax_fields(self) -> None:
-        """Enable/disable tax rate fields based on VAT registration status."""
+        """Enable/disable tax rate fields and sub-options based on VAT registration status."""
         enabled = self.chk_vat_registered.isChecked()
         self.spin_vat.setEnabled(enabled)
         self.spin_sscl.setEnabled(enabled)
         self.spin_sscl_turnover.setEnabled(enabled)
+        self.chk_item_tax_exemptions.setEnabled(enabled)
 
     def load(self, settings: dict):
         mode = settings.get("default_search_mode", "ALL")

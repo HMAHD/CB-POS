@@ -1545,7 +1545,7 @@ QLabel#CardTrend[trendType="negative"] {
 /* === DASHBOARD PANELS === */
 QFrame#MonthlyChartPanel, QFrame#YearlySummaryPanel,
 QFrame#TopProductsPanel, QFrame#HourlySalesPanel, QFrame#QuickStatsPanel,
-QFrame#TopCategoriesPanel, QFrame#TopCustomersPanel {
+QFrame#TaxTodayPanel, QFrame#TopCategoriesPanel, QFrame#TopCustomersPanel {
     background-color: #1A1A1A;
     border: 1px solid #2A2A2A;
     border-radius: 8px;

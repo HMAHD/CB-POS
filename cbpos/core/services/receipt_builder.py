@@ -257,8 +257,11 @@ class ReceiptBuilder:
             cls._split_row(cls._rt("total_amount"), format_currency(sale.total_amount), line_chars, bold=True)
         )
 
-        # Tax — indented under total
-        if gc("show_tax_breakdown", False, config_override):
+        # Tax — indented under total (skip when VAT off, unless sale has historical tax)
+        from cbpos.core.services.tax_service import TaxService
+
+        has_stored_tax = (sale.tax_vat and sale.tax_vat > 0) or (sale.tax_sscl and sale.tax_sscl > 0)
+        if gc("show_tax_breakdown", False, config_override) and (TaxService.is_vat_active() or has_stored_tax):
             exempt_amount = getattr(sale, "_exempt_amount", None)
             if exempt_amount and exempt_amount > Decimal("0"):
                 taxable_amount = sale.total_amount - exempt_amount
@@ -359,8 +362,11 @@ class ReceiptBuilder:
         )
 
         # Tax reversal breakdown
+        from cbpos.core.services.tax_service import TaxService
+
         gc = cls._get_conf
-        if gc("show_tax_breakdown", False, config_override):
+        has_stored_tax = (sale.tax_vat and sale.tax_vat > 0) or (sale.tax_sscl and sale.tax_sscl > 0)
+        if gc("show_tax_breakdown", False, config_override) and (TaxService.is_vat_active() or has_stored_tax):
             if sale.tax_vat and sale.tax_vat > 0:
                 commands.append(
                     cls._split_row(
@@ -469,8 +475,11 @@ class ReceiptBuilder:
         )
 
         # Tax breakdown on refund
+        from cbpos.core.services.tax_service import TaxService
+
         gc = cls._get_conf
-        if gc("show_tax_breakdown", False, config_override):
+        has_stored_tax = (sale.tax_vat and sale.tax_vat > 0) or (sale.tax_sscl and sale.tax_sscl > 0)
+        if gc("show_tax_breakdown", False, config_override) and (TaxService.is_vat_active() or has_stored_tax):
             if sale.tax_vat and sale.tax_vat > 0:
                 commands.append(
                     cls._split_row(

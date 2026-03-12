@@ -7,7 +7,8 @@ from PyQt6.QtWidgets import (
     QStackedWidget,
 )
 from PyQt6.QtCore import pyqtSignal
-from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.permission_service import PermissionService
+from cbpos.core.constants.permissions import Permissions
 from cbpos.ui.widgets.collapsible_sidebar import CollapsibleSidebar
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.views.dashboard_view import DashboardView
@@ -22,9 +23,6 @@ from cbpos.ui.views.document_view import DocumentBrowserView
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 logger = logging.getLogger(__name__)
-
-# Minimum window width before sidebar auto-collapses
-RESPONSIVE_BREAKPOINT = 1024
 
 
 class ManagementView(QWidget):
@@ -140,8 +138,7 @@ class ManagementView(QWidget):
     def set_user(self, user) -> None:
         self.user = user
 
-        role = user.role.name.lower() if user.role else "cashier"
-        is_admin = "admin" in role
+        is_admin = PermissionService.user_has_permission(user, Permissions.ADMIN_MANAGE_USERS)
         self.btn_users.setVisible(is_admin)
         self.btn_pricelists.setVisible(is_admin)
         self.btn_promotions.setVisible(is_admin)
@@ -155,10 +152,4 @@ class ManagementView(QWidget):
     def resizeEvent(self, event) -> None:
         """Auto-collapse sidebar on narrow screens."""
         super().resizeEvent(event)
-        width = event.size().width()
-        if width < RESPONSIVE_BREAKPOINT and not self.sidebar.is_collapsed:
-            self.sidebar.set_collapsed(True)
-        elif width >= RESPONSIVE_BREAKPOINT and self.sidebar.is_collapsed:
-            # Only auto-expand if user hasn't manually collapsed
-            if not bool(ConfigService.get("sidebar_collapsed")):
-                self.sidebar.set_collapsed(False)
+        self.sidebar.handle_resize(event.size().width())

@@ -1,3 +1,6 @@
+import json
+import logging
+
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -9,6 +12,9 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.theme_service import ThemeService
+from cbpos.core.services.permission_service import PermissionService
+from cbpos.core.constants.permissions import Permissions
 from cbpos.ui.widgets.collapsible_sidebar import CollapsibleSidebar
 from cbpos.ui.views.settings_pages import (
     ShopInfoPage,
@@ -21,8 +27,7 @@ from cbpos.ui.views.settings_pages import (
 )
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
-# Minimum window width before sidebar auto-collapses
-RESPONSIVE_BREAKPOINT = 1024
+logger = logging.getLogger(__name__)
 
 
 class SettingsView(QWidget):
@@ -228,9 +233,8 @@ class SettingsView(QWidget):
     # ------------------------------------------------------------------
 
     def set_user(self, user) -> None:
-        """Show/hide admin-only sidebar buttons based on user role."""
-        role = user.role.name.lower() if user.role else "cashier"
-        is_admin = "admin" in role
+        """Show/hide admin-only sidebar buttons based on user permissions."""
+        is_admin = PermissionService.user_has_permission(user, Permissions.ADMIN_SETTINGS)
         self.btn_data_safety.setVisible(is_admin)
         self.btn_admin_tools.setVisible(is_admin)
 
@@ -245,10 +249,7 @@ class SettingsView(QWidget):
         self._saved_snapshot = self._take_snapshot()
 
     def save_all(self):
-        import json
-
         from cbpos.core.utils.permission_helper import check_permission_with_override
-        from cbpos.core.constants.permissions import Permissions
 
         if not check_permission_with_override(Permissions.ADMIN_SETTINGS, self):
             return
@@ -300,13 +301,9 @@ class SettingsView(QWidget):
                         )
                         session.add(log)
                 except Exception as e:
-                    import logging
-
-                    logging.getLogger(__name__).warning("Tax audit log failed: %s", e)
+                    logger.warning("Tax audit log failed: %s", e)
 
         ConfigService.update_all(all_settings)
-
-        from cbpos.core.services.theme_service import ThemeService
 
         new_theme = all_settings.get("theme", current_theme)
         new_lang = all_settings.get("language", current_lang)
@@ -347,9 +344,4 @@ class SettingsView(QWidget):
     def resizeEvent(self, event) -> None:
         """Auto-collapse sidebar on narrow screens."""
         super().resizeEvent(event)
-        width = event.size().width()
-        if width < RESPONSIVE_BREAKPOINT and not self.sidebar.is_collapsed:
-            self.sidebar.set_collapsed(True)
-        elif width >= RESPONSIVE_BREAKPOINT and self.sidebar.is_collapsed:
-            if not bool(ConfigService.get("sidebar_collapsed")):
-                self.sidebar.set_collapsed(False)
+        self.sidebar.handle_resize(event.size().width())

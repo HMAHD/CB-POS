@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QPixmap
+from cbpos.i18n import _t
 from cbpos.ui.widgets.custom_widgets import SidebarButton
 from cbpos.ui.resources.icons import Icons
 from cbpos.core.services.theme_service import ThemeService
@@ -19,6 +20,7 @@ from cbpos.core.services.config_service import ConfigService
 EXPANDED_WIDTH = 250
 COLLAPSED_WIDTH = 70
 ANIMATION_DURATION = 300
+RESPONSIVE_BREAKPOINT = 1024
 
 
 class CollapsibleSidebar(QFrame):
@@ -166,8 +168,6 @@ class CollapsibleSidebar(QFrame):
 
         Called by the owning view's ``retranslate_ui`` method.
         """
-        from cbpos.i18n import _t
-
         self.btn_pos.setText("   " + _t("management.sidebar_pos"))
         self.btn_logout.setText("   " + _t("management.sidebar_logout"))
 
@@ -209,6 +209,19 @@ class CollapsibleSidebar(QFrame):
             return
         self.toggle()
 
+    def handle_resize(self, width: int) -> None:
+        """Auto-collapse/expand based on parent width.
+
+        Call from the owning view's ``resizeEvent``. Collapses when below
+        ``RESPONSIVE_BREAKPOINT`` and re-expands only if the user hasn't
+        manually collapsed.
+        """
+        if width < RESPONSIVE_BREAKPOINT and not self.is_collapsed:
+            self.set_collapsed(True)
+        elif width >= RESPONSIVE_BREAKPOINT and self.is_collapsed:
+            if not ConfigService.get("sidebar_collapsed"):
+                self.set_collapsed(False)
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
@@ -239,9 +252,7 @@ class CollapsibleSidebar(QFrame):
         logo_path = ThemeService.get_logo_path()
         logo_pixmap = QPixmap(logo_path)
         if not logo_pixmap.isNull():
-            self.lbl_logo.setPixmap(
-                logo_pixmap.scaledToHeight(40, Qt.TransformationMode.SmoothTransformation)
-            )
+            self.lbl_logo.setPixmap(logo_pixmap.scaledToHeight(40, Qt.TransformationMode.SmoothTransformation))
         else:
             self.lbl_logo.setText("")
             self.lbl_logo.setObjectName("SidebarLogo")

@@ -81,13 +81,15 @@ class MainWindow(QMainWindow):
         # 2. Management View
         self.management_view = ManagementView()
         self.management_view.logout_requested.connect(self.logout)
-        self.management_view.request_pos_view.connect(lambda: self.stack.setCurrentWidget(self.sales_view))
+        self.management_view.request_pos_view.connect(self._navigate_to_pos)
         self.management_view.convert_proforma_to_sale.connect(self.on_convert_proforma)
         self.stack.addWidget(self.management_view)
 
         # 3. Settings View (Top Level)
         self.settings_view = SettingsView()
         self.settings_view.close_requested.connect(self.go_back)
+        self.settings_view.logout_requested.connect(self.logout)
+        self.settings_view.request_pos_view.connect(self._navigate_to_pos)
         self.stack.addWidget(self.settings_view)
 
         self.stack.setCurrentWidget(self.login_view)
@@ -107,6 +109,10 @@ class MainWindow(QMainWindow):
 
     def go_back(self):
         self.stack.setCurrentIndex(self.last_index)
+
+    def _navigate_to_pos(self) -> None:
+        """Switch to the POS/Sales view."""
+        self.stack.setCurrentWidget(self.sales_view)
 
     def on_login_success(self, user):
         self.user = user

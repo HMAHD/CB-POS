@@ -549,6 +549,9 @@ QToolButton#SidebarButton {
     border-left: 4px solid transparent;
     text-align: left;
     padding-left: 20px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    min-height: 36px;
     font-size: 15px;  /* Slightly larger for readability */
     font-weight: normal;
 }
@@ -577,6 +580,7 @@ QToolButton#BtnPos {
     color: #39FF14;
     background-color: rgba(57, 255, 20, 0.1);
     border: none;
+    min-height: 36px;
     border-top: 1px solid #333;
     text-align: left;
     padding-left: 24px;
@@ -595,6 +599,7 @@ QToolButton#BtnLogout {
     color: #FF4136;
     background-color: rgba(255, 65, 54, 0.1);
     border: none;
+    min-height: 36px;
     text-align: left;
     padding-left: 24px;
 }

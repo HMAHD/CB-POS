@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [1.2.4] - 2026-03-12
+
+### Changed
+
+- **Sidebar defaults to expanded**: New installs now show the sidebar expanded by default instead of collapsed, so users can immediately see navigation labels.
+- **Settings sidebar now includes POS/Sales and Logout buttons**: Matches the management sidebar — users can quickly jump to POS view or log out from settings without going back first. Both buttons prompt for unsaved changes before navigating.
+- **Shared `CollapsibleSidebar` widget**: Extracted ~120 lines of duplicated sidebar code from `ManagementView` and `SettingsView` into a reusable `CollapsibleSidebar` widget (`cbpos/ui/widgets/collapsible_sidebar.py`). Both views now use the same widget — single source of truth for sidebar layout, animation, collapse/expand, and theme updates.
+- **Responsive sidebar**: Both sidebars auto-collapse when the window width drops below 1024px and auto-expand when it widens again, ensuring usability on smaller displays and resolutions.
+- **Smart settings footer**: Save Changes / Cancel footer is now hidden on operational pages (Payment Methods, Data Safety, Admin Tools) that auto-save per action. Footer only appears on config pages (Shop Info through Network) where batch save is needed.
+
+### Fixed
+
+- **Sidebar button spacing too tight**: Added `min-height: 36px` and vertical padding (`8px`) to sidebar nav buttons (`SidebarButton`, `BtnPos`, `BtnLogout`) in both dark and light themes. Menu items no longer overlap or feel cramped in packaged builds.
+
 ## [1.2.3] - 2026-03-12
 
 ### Added

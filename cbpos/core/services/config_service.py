@@ -121,7 +121,7 @@ class ConfigService:
         "backup_retention_count": 5,
         "backup_dir": "",
         # UI Preferences
-        "sidebar_collapsed": True,
+        "sidebar_collapsed": False,
     }
 
     _settings: Dict[str, Any] = {}

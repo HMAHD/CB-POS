@@ -2038,5 +2038,14 @@
     "demo_desc": "Pre-loaded with 80+ products, customers, sample sales, and suppliers. Great for exploring the system.",
     "btn_demo": "Load Demo Data",
     "loading": "Setting up database..."
+  },
+  "errors": {
+    "already_exists": "එම නමින් අයිතමයක් දැනටමත් පවතී.",
+    "not_found": "ඉල්ලූ අයිතමය සොයාගත නොහැක.",
+    "cannot_delete_in_use": "භාවිතයේ ඇති නිසා මකා දැමිය නොහැක.",
+    "concurrent_modification": "මෙම වාර්තාව වෙනත් පරිශීලකයෙකු විසින් වෙනස් කර ඇත. කරුණාකර නැවත පූරණය කර උත්සාහ කරන්න.",
+    "circular_reference": "ප්‍රවර්ගයකට තමාගේම මව් ප්‍රවර්ගය විය නොහැක.",
+    "payment_amount_zero": "ගෙවීමේ මුදල ශුන්‍යයට වඩා වැඩි විය යුතුය.",
+    "customer_not_found": "පාරිභෝගිකයා සොයාගත නොහැක."
   }
 }

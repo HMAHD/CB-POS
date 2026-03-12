@@ -16,6 +16,7 @@ from PyQt6.QtGui import QColor
 from cbpos.core.models import Category
 from cbpos.core.services.category_service import CategoryService
 from cbpos.i18n import _t
+from cbpos.core.utils.error_messages import translate_error
 
 
 class CategoryDialog(QDialog):
@@ -119,4 +120,4 @@ class CategoryDialog(QDialog):
                 )
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))

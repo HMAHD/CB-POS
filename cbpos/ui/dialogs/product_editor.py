@@ -29,6 +29,7 @@ from cbpos.core.services.supplier_service import SupplierService
 from cbpos.config import Config
 from cbpos.core.utils.formatters import get_currency_symbol
 from cbpos.i18n import _t
+from cbpos.core.utils.error_messages import translate_error
 
 
 def _color_icon(hex_color: str, size: int = 12) -> QIcon:
@@ -512,4 +513,4 @@ class ProductEditor(QDialog):
                 self.inventory_service.create_product(data)
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))

@@ -2038,5 +2038,14 @@
     "demo_desc": "Pre-loaded with 80+ products, customers, sample sales, and suppliers. Great for exploring the system.",
     "btn_demo": "Load Demo Data",
     "loading": "Setting up database..."
+  },
+  "errors": {
+    "already_exists": "அந்தப் பெயரில் ஒரு உருப்படி ஏற்கனவே உள்ளது.",
+    "not_found": "கோரிய உருப்படி கண்டுபிடிக்கப்படவில்லை.",
+    "cannot_delete_in_use": "பயன்பாட்டில் உள்ளதால் நீக்க முடியாது.",
+    "concurrent_modification": "இந்தப் பதிவு மற்றொரு பயனரால் மாற்றப்பட்டுள்ளது. மீண்டும் ஏற்றி முயற்சிக்கவும்.",
+    "circular_reference": "ஒரு வகைப்பிரிவு தன்னையே பெற்றோர் வகைப்பிரிவாகக் கொண்டிருக்க முடியாது.",
+    "payment_amount_zero": "பணம் செலுத்தும் தொகை பூஜ்ஜியத்தை விட அதிகமாக இருக்க வேண்டும்.",
+    "customer_not_found": "வாடிக்கையாளர் கண்டுபிடிக்கப்படவில்லை."
   }
 }

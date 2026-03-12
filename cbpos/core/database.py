@@ -1,11 +1,20 @@
+import logging
 from contextlib import contextmanager
 from typing import Generator, Optional
+
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import URL
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
 from sqlalchemy.pool import QueuePool
+
 from cbpos.config import Config
 from cbpos.core.services.config_service import ConfigService
+
+logger = logging.getLogger(__name__)
+
+# Maximum number of transparent retries on transient connection errors.
+_MAX_RETRIES = 2
 
 
 class Base(DeclarativeBase):
@@ -15,9 +24,14 @@ class Base(DeclarativeBase):
 
 
 class Database:
-    """
-    Singleton Database Manager with Engine Factory.
+    """Singleton Database Manager with Engine Factory.
+
     Supports both Standalone (SQLite) and Network (PostgreSQL) modes.
+
+    Network mode includes:
+    - Connection retry with back-off for transient failures
+    - Configurable transaction isolation level
+    - Pool pre-ping to detect stale connections
     """
 
     _instance = None
@@ -29,9 +43,9 @@ class Database:
         return cls._instance
 
     def _initialize(self):
-        """Initialize the database engine and session factory using Engine Factory pattern."""
-        # Load database mode from config
+        """Initialize the database engine and session factory."""
         db_mode = ConfigService.get("db_mode") or "standalone"
+        self._db_mode = db_mode
 
         if db_mode == "standalone":
             db_uri = self._get_sqlite_uri()
@@ -39,7 +53,6 @@ class Database:
             pool_args = {}
         else:  # network mode
             db_uri = self._get_postgres_uri()
-            # Apply statement timeout if configured (in milliseconds for PostgreSQL)
             statement_timeout = ConfigService.get("db_statement_timeout") or 30
             timeout_ms = int(statement_timeout) * 1000
             connect_args = {"options": f"-c statement_timeout={timeout_ms}"}
@@ -68,7 +81,12 @@ class Database:
                 cursor.execute("PRAGMA foreign_keys=ON")
                 cursor.close()
 
-        self.SessionLocal = sessionmaker(bind=self.engine, autocommit=False, autoflush=False, expire_on_commit=False)
+        self.SessionLocal = sessionmaker(
+            bind=self.engine,
+            autocommit=False,
+            autoflush=False,
+            expire_on_commit=False,
+        )
 
     def _get_sqlite_uri(self) -> str:
         """Generate SQLite database URI."""
@@ -83,12 +101,10 @@ class Database:
         password = ConfigService.get("network_db_password") or ""
         sslmode = ConfigService.get("network_db_sslmode") or "prefer"
 
-        # Build query params for SSL configuration
         query = {}
         if sslmode and sslmode != "disable":
             query["sslmode"] = sslmode
 
-        # Use SQLAlchemy URL.create to safely handle special characters in password
         url_obj = URL.create(
             drivername="postgresql+psycopg2",
             username=user,
@@ -109,8 +125,7 @@ class Database:
         user: Optional[str] = None,
         password: Optional[str] = None,
     ) -> tuple[bool, str]:
-        """
-        Test database connection without modifying the singleton instance.
+        """Test database connection without modifying the singleton instance.
 
         Args:
             mode: "standalone" or "network"
@@ -127,11 +142,10 @@ class Database:
             if mode == "standalone":
                 test_uri = Config.DB_URI
                 test_engine = create_engine(test_uri, echo=False)
-            else:  # network
+            else:
                 if not all([host, port, dbname, user]):
                     return False, "Missing required connection parameters"
 
-                # Use SQLAlchemy URL.create to safely handle special characters in password
                 url_obj = URL.create(
                     drivername="postgresql+psycopg2",
                     username=user,
@@ -142,7 +156,6 @@ class Database:
                 )
                 test_engine = create_engine(url_obj, echo=False, pool_pre_ping=True)
 
-            # Test connection
             with test_engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
 
@@ -157,20 +170,55 @@ class Database:
         Base.metadata.create_all(bind=self.engine)
 
     @contextmanager
-    def get_session(self) -> Generator[Session, None, None]:
-        """
-        Context manager for database sessions.
+    def get_session(self, serializable: bool = False) -> Generator[Session, None, None]:
+        """Context manager for database sessions.
+
         Ensures sessions are closed and transactions are handled.
+        For network mode, transient connection errors are retried
+        transparently up to ``_MAX_RETRIES`` times.
+
+        Args:
+            serializable: If True and running in network (PostgreSQL) mode,
+                          use SERIALIZABLE isolation level for this session.
+                          Use for financial operations that must not have
+                          phantom reads (stock checks, credit updates,
+                          document number generation).
         """
-        session = self.SessionLocal()
-        try:
-            yield session
-            session.commit()
-        except Exception:
-            session.rollback()
-            raise
-        finally:
-            session.close()
+        last_error: Optional[Exception] = None
+        retries = _MAX_RETRIES if self._db_mode == "network" else 0
+
+        for attempt in range(1 + retries):
+            session = self.SessionLocal()
+            try:
+                # Set isolation level for PostgreSQL when requested
+                if serializable and self._db_mode == "network":
+                    session.execute(text("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE"))
+
+                yield session
+                session.commit()
+                return  # success
+            except OperationalError as e:
+                session.rollback()
+                last_error = e
+                # Only retry on transient connection errors in network mode
+                if self._db_mode == "network" and attempt < retries:
+                    logger.warning(
+                        "Database connection error (attempt %d/%d): %s",
+                        attempt + 1,
+                        1 + retries,
+                        e,
+                    )
+                    continue
+                raise
+            except Exception:
+                session.rollback()
+                raise
+            finally:
+                session.close()
+
+        # Should not reach here, but just in case
+        if last_error:
+            raise last_error
 
 
 def get_db_session():

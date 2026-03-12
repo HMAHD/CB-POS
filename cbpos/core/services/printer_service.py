@@ -99,8 +99,10 @@ class PrinterService:
 
     @staticmethod
     def _send_pdf_to_printer(pdf_path: str, printer_name: str) -> None:
-        """
-        Send PDF file to system printer (Windows).
+        """Send PDF file to system printer (Windows) without blocking the UI.
+
+        Uses ``subprocess.Popen`` so the calling thread is not blocked while
+        the print spooler processes the document.
 
         Args:
             pdf_path: Path to PDF file.
@@ -112,13 +114,14 @@ class PrinterService:
             PrinterService._validate_name(pdf_path, "PDF path")
             PrinterService._validate_name(printer_name, "printer name")
 
-            subprocess.run(
+            subprocess.Popen(
                 [
                     "powershell",
                     "-Command",
                     'Start-Process -FilePath "{0}" -Verb Print -WindowStyle Hidden'.format(pdf_path),
                 ],
-                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
             logger.info("[PrinterService] Sent PDF to printer: %s", printer_name)
         except ValueError as e:

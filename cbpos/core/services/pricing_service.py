@@ -77,10 +77,10 @@ class PricingService:
                 # Calculate potential new price
                 temp_price = final_price
                 if promo.type == "PERCENTAGE":
-                    discount = (final_price * promo.value) / 100
+                    discount = (final_price * promo.value) / Decimal("100")
                     temp_price = final_price - discount
                 elif promo.type == "FIXED_AMOUNT":
-                    temp_price = final_price - promo.value
+                    temp_price = final_price - Decimal(str(promo.value))
 
                 # Ensure we don't go negative
                 if temp_price < 0:

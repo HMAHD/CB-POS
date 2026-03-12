@@ -240,6 +240,19 @@ def main():
         except Exception as e:
             print(f"[BOOTSTRAP] Scheduler failed to start: {e}")
 
+    # Register the manager-override handler so the core permission helper
+    # can prompt for override without importing UI components itself.
+    from cbpos.core.utils.permission_helper import set_override_handler
+    from cbpos.ui.dialogs.manager_override_dialog import ManagerOverrideDialog
+
+    def _manager_override(permission_code: str, parent=None):
+        dialog = ManagerOverrideDialog(permission_code, parent)
+        if dialog.exec():
+            return dialog.authorized_user
+        return None
+
+    set_override_handler(_manager_override)
+
     # Launch main window
     window = MainWindow()
     window.showMaximized()  # Industrial apps usually run full screen

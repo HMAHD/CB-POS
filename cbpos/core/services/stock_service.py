@@ -1,9 +1,25 @@
+import logging
 from decimal import Decimal
 from typing import List, Optional
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
+from cbpos.core.constants.status import MovementType
 from cbpos.core.database import Database
 from cbpos.core.models import Product, StockMovement
+
+logger = logging.getLogger(__name__)
+
+_VALID_MOVEMENT_TYPES = frozenset(
+    {
+        MovementType.SALE,
+        MovementType.PURCHASE,
+        MovementType.ADJUSTMENT,
+        MovementType.RETURN,
+        MovementType.VOID,
+    }
+)
 
 
 class StockService:
@@ -20,6 +36,13 @@ class StockService:
         Record a stock movement and update product quantity.
         Atomic operation with negative stock validation.
         """
+        if movement_type not in _VALID_MOVEMENT_TYPES:
+            raise ValueError(
+                "Invalid movement type '{0}'. Must be one of: {1}".format(
+                    movement_type, ", ".join(sorted(_VALID_MOVEMENT_TYPES))
+                )
+            )
+
         if session:
             return StockService._execute_movement(
                 session,

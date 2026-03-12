@@ -183,6 +183,7 @@ class TransactionService:
                 payment_method=primary_method,
                 user_id=cashier_id,
                 customer_id=customer_id,
+                terminal_id=ConfigService.get("terminal_id") or "TERM-01",
             )
             # Attach exempt amount for receipt builder (transient, not persisted)
             sale._exempt_amount = exempt_amount
@@ -450,6 +451,7 @@ class TransactionService:
                     user_id=user_id,
                     customer_id=original_sale.customer_id,
                     refund_of_sale_id=original_sale_id,
+                    terminal_id=ConfigService.get("terminal_id") or "TERM-01",
                 )
                 session.add(refund_sale)
                 session.flush()

@@ -1,10 +1,13 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Dict, Any
+
 from sqlalchemy import select, func
+
 from cbpos.core.database import Database
 from cbpos.core.models import Shift, CashMovement, Sale, SalePayment
 from cbpos.core.constants.status import ShiftStatus, DocumentStatus, PaymentMethodType
+from cbpos.core.services.config_service import ConfigService
 
 
 class ShiftService:
@@ -13,19 +16,26 @@ class ShiftService:
 
     def start_shift(self, user_id: int, float_amount: Decimal) -> Shift:
         with self.db.get_session() as session:
-            # Check if user already has an open shift
+            terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+
+            # Check if user already has an open shift on this terminal
             existing_shift = session.scalars(
-                select(Shift).where(Shift.user_id == user_id, Shift.status == ShiftStatus.OPEN)
+                select(Shift).where(
+                    Shift.user_id == user_id,
+                    Shift.terminal_id == terminal_id,
+                    Shift.status == ShiftStatus.OPEN,
+                )
             ).first()
 
             if existing_shift:
-                raise ValueError("User already has an open shift.")
+                raise ValueError("User already has an open shift on this terminal.")
 
             shift = Shift(
                 user_id=user_id,
                 starting_cash=float_amount,
                 start_time=datetime.now(),
                 status=ShiftStatus.OPEN,
+                terminal_id=terminal_id,
             )
             session.add(shift)
             session.commit()
@@ -34,8 +44,13 @@ class ShiftService:
 
     def get_current_shift(self, user_id: int) -> Optional[Shift]:
         with self.db.get_session() as session:
+            terminal_id = ConfigService.get("terminal_id") or "TERM-01"
             return session.scalars(
-                select(Shift).where(Shift.user_id == user_id, Shift.status == ShiftStatus.OPEN)
+                select(Shift).where(
+                    Shift.user_id == user_id,
+                    Shift.terminal_id == terminal_id,
+                    Shift.status == ShiftStatus.OPEN,
+                )
             ).first()
 
     def record_cash_movement(

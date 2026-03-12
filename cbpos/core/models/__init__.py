@@ -131,6 +131,8 @@ class Document(Base):
     reference_external: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     void_reason_id: Mapped[Optional[int]] = mapped_column(ForeignKey("void_reasons.id"), nullable=True)
 
+    terminal_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
+
     user: Mapped["User"] = relationship()
     void_reason: Mapped["VoidReason"] = relationship()
 
@@ -397,6 +399,7 @@ class StockMovement(Base):
     balance_after: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
     document_id: Mapped[Optional[int]] = mapped_column(ForeignKey("documents.id"), nullable=True)
     type: Mapped[str] = mapped_column(String(20), nullable=False)  # SALE, PURCHASE, ADJUSTMENT, RETURN, VOID
+    terminal_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
 
     product: Mapped["Product"] = relationship()
     user: Mapped["User"] = relationship()
@@ -455,6 +458,7 @@ class Shift(Base):
     expected_cash: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
     actual_cash: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="OPEN", index=True)  # OPEN, CLOSED
+    terminal_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
 
     user: Mapped["User"] = relationship()
 

@@ -105,6 +105,8 @@ class StockService:
         product.stock_qty += qty_change
 
         # Create Movement Record
+        from cbpos.core.services.config_service import ConfigService
+
         movement = StockMovement(
             product_id=product_id,
             user_id=user_id,
@@ -112,6 +114,7 @@ class StockService:
             balance_after=product.stock_qty,
             document_id=document_id,
             type=movement_type,
+            terminal_id=ConfigService.get("terminal_id") or "TERM-01",
         )
         session.add(movement)
 

@@ -525,7 +525,7 @@ class DocumentBrowserView(QWidget):
         if total is not None:
             html += f"<b>{_t('document_browser.detail_total')}:</b> {format_currency(total)}<br>"  # noqa: E231
 
-        if doc["type"] == "sale" and TaxService.is_vat_active():
+        if doc["type"] == "sale" and (TaxService.is_vat_active() or doc.get("tax_vat", 0) > 0):
             tax_vat = doc.get("tax_vat")
             if tax_vat is not None:
                 html += f"<b>{_t('document_browser.detail_vat')}:</b> {format_currency(tax_vat)}<br>"  # noqa: E231

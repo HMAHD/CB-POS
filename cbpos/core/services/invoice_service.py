@@ -96,7 +96,7 @@ class InvoiceService:
         if contact_parts:
             elements.append(Paragraph(" | ".join(contact_parts), header_style))
         reg_parts = []
-        if vat_number and (TaxService.is_vat_active() or vat_number):
+        if vat_number and TaxService.is_vat_active():
             reg_parts.append(f"VAT Reg: {vat_number}")
         if company_tax_id:
             reg_parts.append(f"Tax ID: {company_tax_id}")
@@ -368,7 +368,9 @@ class InvoiceService:
             buyer_address = sale.customer.address or ""
             buyer_phone = sale.customer.phone or ""
 
-        show_vat = TaxService.is_vat_active() or (sale.tax_vat and sale.tax_vat > 0)
+        show_vat = TaxService.is_vat_active() or (
+            (sale.tax_vat and sale.tax_vat > 0) or (sale.tax_sscl and sale.tax_sscl > 0)
+        )
         supplier_lines = [
             [Paragraph("<b>Supplier</b>", label_style), ""],
             [Paragraph("Name:", label_style), Paragraph(shop_name, value_style)],

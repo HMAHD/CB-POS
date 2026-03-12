@@ -311,6 +311,7 @@ class ReportViewer(QWidget):
         categories = self.registry.get_all_categories()
 
         vat_active = TaxService.is_vat_active()
+        rendered_any = False
 
         for idx, category in enumerate(categories):
             all_reports = self.registry.get_reports_by_category(category)
@@ -320,8 +321,9 @@ class ReportViewer(QWidget):
                 continue
 
             # Category header row: label + count badge
-            if idx > 0:
+            if rendered_any:
                 self._nav_layout.addSpacing(8)
+            rendered_any = True
 
             cat_row = QHBoxLayout()
             cat_row.setContentsMargins(6, 8, 6, 4)

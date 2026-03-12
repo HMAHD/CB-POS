@@ -15,9 +15,11 @@ All notable changes to this project will be documented in this file. Never delet
 
 - **Dashboard Tax Today panel unstyled**: `QFrame#TaxTodayPanel` was missing from the grouped dashboard panel selector in both dark and light themes — now included.
 - **Non-VAT businesses saw confusing "Rs. 0" tax values**: Tax labels in cart, dashboard, document details, and invoices always displayed even when VAT was off. Now hidden entirely for non-VAT businesses.
-- **Historical invoice/receipt reprints preserved**: Reprinting old sales with tax values still shows original tax data (gated on `is_vat_active() OR sale.tax_vat > 0`).
-- **Receipt `show_tax_breakdown` toggle ignored VAT status**: The checkbox in receipt settings is now disabled when VAT is off, preventing misconfiguration.
+- **Historical invoice/receipt reprints preserved**: Reprinting old sales with tax values still shows original tax data (gated on `is_vat_active() OR sale.tax_vat > 0 OR sale.tax_sscl > 0`). Covers sale receipts, void receipts, refund receipts, document detail view, and both invoice types.
+- **Invoice VAT reg tautology**: Fixed `if vat_number and (... or vat_number)` condition that always evaluated true — VAT registration line now correctly hidden when VAT is off.
+- **Receipt tax breakdown toggle**: Kept always-enabled in receipt settings to allow one-pass setup (enable VAT + tax breakdown in the same save). Runtime gating in `ReceiptBuilder` handles the actual behavior.
 - **Item tax exemptions checkbox active when VAT off**: Now disabled alongside tax rate fields when VAT is unchecked in Settings → Tax tab.
+- **Report sidebar spacing with filtered categories**: Fixed leading spacer when first category was skipped due to VAT filtering.
 
 ## [1.2.2] - 2026-03-11
 

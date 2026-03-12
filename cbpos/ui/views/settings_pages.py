@@ -1272,10 +1272,6 @@ class ReceiptPage(SettingsPage):
         self.chk_show_barcode.setChecked(settings.get("show_barcode", _d["show_barcode"]))
         self.chk_merge_items.setChecked(settings.get("merge_items", _d["merge_items"]))
         self.chk_show_tax.setChecked(settings.get("show_tax_breakdown", _d["show_tax_breakdown"]))
-        # Disable tax breakdown toggle when VAT is not active
-        from cbpos.core.services.tax_service import TaxService
-
-        self.chk_show_tax.setEnabled(TaxService.is_vat_active())
         self.chk_show_cashier.setChecked(settings.get("show_cashier_on_receipt", _d["show_cashier_on_receipt"]))
         self.chk_show_terminal.setChecked(settings.get("show_terminal_on_receipt", _d["show_terminal_on_receipt"]))
 

@@ -1,11 +1,18 @@
 import logging
+import re
+import time
 from datetime import datetime
+
 from sqlalchemy import desc
 from sqlalchemy.exc import IntegrityError
+
 from cbpos.core.database import Database
 from cbpos.core.models import Document
 
 logger = logging.getLogger(__name__)
+
+# Pre-compiled regex for {seq:05d} or {seq} placeholders
+_SEQ_RE = re.compile(r"\{seq(:.*?)?\}")
 
 
 class DocumentService:
@@ -29,7 +36,6 @@ class DocumentService:
         Supports configurable patterns and concurrency retries.
         """
         from cbpos.core.services.config_service import ConfigService
-        import time
 
         # 1. Get Configuration
         settings = ConfigService.get_all()
@@ -104,77 +110,59 @@ class DocumentService:
             search_prefix = prefix_pattern + "-"
 
         # 3. Retry Loop for Concurrency
-        max_retries = 3
+        # Use serializable isolation in network mode to prevent two
+        # terminals from reading the same max sequence simultaneously.
+        max_retries = 5
         for attempt in range(max_retries):
             try:
                 db = Database()
-                with db.get_session() as session:
+                with db.get_session(serializable=True) as session:
                     # Get the last document matching the prefix
+                    like_filter = f"{search_prefix}%" if search_prefix else f"{pre_seq}%"
                     last_doc = (
                         session.query(Document)
-                        .filter(Document.document_number.like(f"{search_prefix}%"))
+                        .filter(Document.document_number.like(like_filter))
                         .order_by(desc(Document.document_number))
                         .first()
                     )
 
                     new_seq = 1
                     if last_doc:
-                        # Extract sequence
-                        # Remove prefix from the actual doc number
                         current_no = last_doc.document_number
-                        if current_no.startswith(search_prefix):
-                            remainder = current_no[len(search_prefix) :]
-                            # Extract digits from remainder (it might have suffix)
-                            # If pattern was INV-{Y}-{seq:05d}, remainder is 00001
-                            # If pattern was INV-{seq}-X, remainder is 00001-X
-
-                            # Simple digit extraction
+                        # Extract the numeric sequence from the document number
+                        compare_prefix = search_prefix if search_prefix else pre_seq
+                        if current_no.startswith(compare_prefix):
+                            remainder = current_no[len(compare_prefix) :]
                             digits = "".join(filter(str.isdigit, remainder))
                             if digits:
                                 new_seq = int(digits) + 1
 
-                    # Format the new number
-                    # We need to put new_seq into the pattern
-                    # pattern has {seq:05d} or similar.
-                    # We can use python's format string if we sanitize it.
-
-                    # Re-render pattern with new_seq
-                    # We need to handle the format specifier inside {seq...}
-                    # Manual replacement of {seq...} with formatted number
-
-                    final_number = prefix_pattern  # Already has Y/M/D replaced, still has {seq:05d}
-
-                    # Find {seq...}
-                    import re
-
-                    match = re.search(r"\{seq(:.*?)?\}", final_number)
+                    # Render the final document number
+                    final_number = prefix_pattern
+                    match = _SEQ_RE.search(final_number)
                     if match:
-                        fmt = match.group(1) or ""  # e.g. :05d
-                        # Create a format string like "{:05d}"
+                        fmt = match.group(1) or ""
                         fmt_str = "{" + fmt + "}"
                         seq_str = fmt_str.format(new_seq)
                         final_number = final_number.replace(match.group(0), seq_str)
                     else:
-                        # Fallback append
                         final_number = f"{final_number}{new_seq}"
 
-                    # Check if exists (Race condition check)
+                    # Verify uniqueness within the same serializable
+                    # transaction — concurrent terminals will block here.
                     exists = session.query(Document).filter_by(document_number=final_number).first()
                     if not exists:
                         return final_number
 
-                    # Increment sequence and retry within same session
-                    new_seq += 1
-                    time.sleep(0.05)  # Small backoff
+                    # Number already exists — retry with next sequence
+                    logger.info("Document number %s already exists, retrying...", final_number)
 
             except IntegrityError:
-                # Another transaction inserted the same number concurrently
                 logger.warning("Document number collision on attempt %d, retrying...", attempt + 1)
                 time.sleep(0.05)
             except Exception as e:
                 logger.error("Error generating document number: %s", e)
                 if attempt == max_retries - 1:
-                    # Fallback to UUID if all fails
                     import uuid
 
                     return f"ERR-{uuid.uuid4().hex[:8].upper()}"

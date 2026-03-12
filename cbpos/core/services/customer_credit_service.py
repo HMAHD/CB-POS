@@ -24,6 +24,9 @@ class CustomerCreditService:
         """
         Record a customer payment against their existing debt.
 
+        Uses serializable isolation and row-level locking to prevent
+        concurrent terminals from corrupting the customer balance.
+
         Args:
             customer_id: The customer making the payment.
             amount: Payment amount (must be > 0 and <= current_debt).
@@ -42,7 +45,7 @@ class CustomerCreditService:
             raise ValueError("Payment amount must be greater than zero.")
 
         db = Database()
-        with db.get_session() as session:
+        with db.get_session(serializable=True) as session:
             customer = session.get(Customer, customer_id, with_for_update=True)
             if not customer:
                 raise ValueError("Customer not found.")
@@ -111,11 +114,14 @@ class CustomerCreditService:
             user_id: Cashier who processed the sale.
         """
         db = Database()
-        with db.get_session() as session:
-            customer = session.get(Customer, customer_id)
+        with db.get_session(serializable=True) as session:
+            customer = session.get(Customer, customer_id, with_for_update=True)
             if not customer:
                 logger.warning("record_credit_sale: Customer %d not found", customer_id)
                 return
+
+            # Increment debt atomically under row lock
+            customer.current_debt += amount
 
             entry = CustomerLedgerEntry(
                 customer_id=customer_id,

@@ -32,6 +32,25 @@ class DatabaseSetupService:
     """Handles first-run database initialization."""
 
     @staticmethod
+    def _stamp_alembic_head() -> None:
+        """Stamp the database with the current Alembic head revision.
+
+        Called after ``create_all()`` so that future Alembic migrations
+        know the schema is already up to date and don't try to re-apply.
+        """
+        try:
+            from cbpos.config import Config
+            from alembic.config import Config as AlembicConfig
+            from alembic import command
+
+            alembic_cfg = AlembicConfig(str(Config.BASE_DIR / "alembic.ini"))
+            alembic_cfg.set_main_option("script_location", str(Config.BASE_DIR / "alembic"))
+            alembic_cfg.set_main_option("sqlalchemy.url", Config.DB_URI)
+            command.stamp(alembic_cfg, "head")
+        except Exception as e:
+            logger.warning("Could not stamp alembic version: %s", e)
+
+    @staticmethod
     def needs_setup() -> bool:
         """Check if the database needs initial setup (no tables or no users)."""
         from cbpos.config import Config
@@ -49,8 +68,8 @@ class DatabaseSetupService:
         except Exception:
             return True
 
-    @staticmethod
-    def create_empty_database() -> None:
+    @classmethod
+    def create_empty_database(cls) -> None:
         """Create tables with only the minimum data needed to log in.
 
         Creates: permissions, roles (Admin/Manager/Cashier), default admin
@@ -149,10 +168,12 @@ class DatabaseSetupService:
             ]
             session.add_all(units)
 
+        # Stamp the alembic version so future migrations apply correctly
+        cls._stamp_alembic_head()
         logger.info("Empty database initialized with default admin (admin/1234).")
 
-    @staticmethod
-    def create_demo_database() -> None:
+    @classmethod
+    def create_demo_database(cls) -> None:
         """Create tables and populate with full demo/sample data.
 
         Runs the same seed logic as scripts/seed.py.
@@ -168,4 +189,6 @@ class DatabaseSetupService:
         from scripts.seed import seed_data
 
         seed_data()
+        # Stamp the alembic version so future migrations apply correctly
+        cls._stamp_alembic_head()
         logger.info("Demo database created with sample data.")

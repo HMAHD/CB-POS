@@ -25,6 +25,64 @@ def _flush_early_log() -> None:
     _early_log.clear()
 
 
+def run_migrations() -> None:
+    """Apply pending Alembic migrations to bring the database schema up to date.
+
+    For databases created via ``Base.metadata.create_all()`` (first-run) that
+    were never stamped by Alembic, this stamps them at ``head`` so future
+    migrations apply cleanly.  For databases already tracked, it runs
+    ``alembic upgrade head`` to apply any new migrations.
+
+    Safe to call on every startup — if the DB is already at head, this is a
+    fast no-op.
+    """
+    from cbpos.config import Config
+
+    db_path = Config.DATA_DIR / "cbpos.db"
+    if not db_path.exists():
+        return  # No database yet — will be created by DatabaseSetupService
+
+    try:
+        from alembic.config import Config as AlembicConfig
+        from alembic import command
+        from alembic.script import ScriptDirectory
+        from alembic.migration import MigrationContext
+        from sqlalchemy import create_engine, inspect
+
+        alembic_cfg = AlembicConfig(str(Config.BASE_DIR / "alembic.ini"))
+        alembic_cfg.set_main_option("script_location", str(Config.BASE_DIR / "alembic"))
+        alembic_cfg.set_main_option("sqlalchemy.url", Config.DB_URI)
+
+        engine = create_engine(Config.DB_URI)
+
+        # Check if alembic_version table exists
+        inspector = inspect(engine)
+        has_version_table = "alembic_version" in inspector.get_table_names()
+
+        if not has_version_table:
+            # Database was created by create_all() without Alembic tracking.
+            # Stamp at head so future migrations apply correctly.
+            command.stamp(alembic_cfg, "head")
+            _early_log.append("Database stamped at current migration head.")
+        else:
+            # Check if there are pending migrations
+            with engine.connect() as conn:
+                context = MigrationContext.configure(conn)
+                current_rev = context.get_current_heads()
+
+            script = ScriptDirectory.from_config(alembic_cfg)
+            head_rev = script.get_current_head()
+
+            if not current_rev or head_rev not in current_rev:
+                command.upgrade(alembic_cfg, "head")
+                _early_log.append("Database migrated to latest schema.")
+
+        engine.dispose()
+
+    except Exception as e:
+        _early_log.append("WARNING: Auto-migration failed: %s" % e)
+
+
 def ensure_data_dir() -> None:
     """Create the user data directory and migrate legacy data if needed.
 
@@ -137,6 +195,9 @@ def main():
     """
     # Ensure user data directory exists and migrate legacy data if needed
     ensure_data_dir()
+
+    # Apply any pending database schema migrations
+    run_migrations()
 
     # Create a named mutex so the Inno Setup installer can detect a running instance.
     # On non-Windows this is harmless — ctypes.windll doesn't exist.

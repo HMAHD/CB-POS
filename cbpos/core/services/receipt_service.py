@@ -58,9 +58,11 @@ class ReceiptService:
         lines.append("-" * ReceiptService.WIDTH_CHARS)
 
         # 4. Tax Breakdown
+        vat_rate_pct = settings.get("tax_vat_rate", 18.0)
+        sscl_rate_pct = settings.get("tax_sscl_rate", 2.5)
         lines.append(ReceiptService._center("*** TAX BREAKDOWN ***"))
-        lines.append("{:<20} {:>21.2f}".format("VAT (18%)", sale.tax_vat))
-        lines.append("{:<20} {:>21.2f}".format("SSCL (2.5%)", sale.tax_sscl))
+        lines.append("{:<20} {:>21.2f}".format(f"VAT ({vat_rate_pct}%)", sale.tax_vat))
+        lines.append("{:<20} {:>21.2f}".format(f"SSCL ({sscl_rate_pct}%)", sale.tax_sscl))
         lines.append("{:<20} {:>21.2f}".format("Net Revenue", sale.net_revenue))
         lines.append("-" * ReceiptService.WIDTH_CHARS)
 

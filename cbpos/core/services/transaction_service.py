@@ -15,7 +15,6 @@ from cbpos.core.models import (
 )
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.auth_service import AuthService
-from cbpos.core.services.tax_service import TaxService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.stock_service import StockService
 from cbpos.core.services.receipt_service import ReceiptService
@@ -435,17 +434,21 @@ class TransactionService:
                 # 2. Create refund transaction (negative values)
                 refund_receipt_no = f"REF-{uuid.uuid4().hex[:8].upper()}"
 
-                # Calculate negative taxes
+                # Mirror original sale's tax values (negated) to preserve
+                # correct tax breakdown, especially for sales with exempt items.
+                # Recalculating from the total would lose exempt-item granularity.
                 refund_amount = -original_sale.total_amount
-                tax_info = TaxService.calculate_taxes(refund_amount)
+                refund_vat = -(original_sale.tax_vat or Decimal("0"))
+                refund_sscl = -(original_sale.tax_sscl or Decimal("0"))
+                refund_net = -(original_sale.net_revenue or Decimal("0"))
 
                 refund_sale = Sale(
                     document_number=refund_receipt_no,
                     date=datetime.now(),
                     total_amount=refund_amount,
-                    tax_vat=tax_info["vat"],
-                    tax_sscl=tax_info["sscl"],
-                    net_revenue=tax_info["net"],
+                    tax_vat=refund_vat,
+                    tax_sscl=refund_sscl,
+                    net_revenue=refund_net,
                     payment_method="REFUND",
                     status="COMPLETED",
                     user_id=user_id,

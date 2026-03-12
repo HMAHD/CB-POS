@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [1.2.5] - 2026-03-12
+
+### Added
+
+- **Database-backed brute-force lockout**: PIN lockout state (failed attempts, locked_until) now stored in User model columns instead of in-memory dict. Persists across restarts and shared across terminals in network mode (#169).
+- **Terminal-aware models**: Added `terminal_id` column to Document, StockMovement, and Shift models. All sales, stock movements, and shifts now record which terminal processed them (#160).
+- **Per-terminal settings**: Printer, language, theme, and other hardware settings are now stored per-terminal in network mode using terminal-prefixed keys (e.g., `TERM-01.printer_type`). Terminals no longer overwrite each other's configuration (#164, #172).
+- **Concurrent session detection**: Login now checks AuditLog for active sessions on other terminals and logs a warning if the same user is logged in elsewhere (#161).
+- **Document number terminal placeholder**: Document number format patterns now support `{T}` and `{terminal}` placeholders for terminal-specific numbering (#182).
+- **Serializable transaction isolation**: `Database.get_session(serializable=True)` sets `SERIALIZABLE` isolation level for PostgreSQL, used by document numbering and credit operations (#163).
+- **Network resilience**: Database session manager retries transient `OperationalError` up to 2 times in network mode (#159).
+- **CategoryService expanded API**: Added `get_by_id()`, `get_top_level_with_subcategories()`, `get_descendant_ids()`, `get_product_count_for_ids()`, `delete_with_descendants()` methods and `parent_id` support in `update()` (#162).
+- **Error message translation utility**: `translate_error()` maps common English service errors to i18n keys at the UI boundary. Added 7 error keys to en/si/ta translations (#179).
+- **Unit tests for 3 critical services**: Added 18 tests covering CustomerCreditService (payments, credit sales, adjustments, ledger), ShiftService (start, duplicate, close with variance), and CategoryService (CRUD, descendant tree, product constraints) (#177).
+
+### Fixed
+
+- **Architecture: core layer imported UI dialog**: `permission_helper.py` directly imported `ManagerOverrideDialog`. Replaced with pluggable callback pattern via `set_override_handler()` (#158).
+- **Float division in pricing service**: Changed `/ 100` to `/ Decimal("100")` and wrapped promo values in `Decimal(str())` (#174).
+- **Unvalidated stock movement types**: Added `_VALID_MOVEMENT_TYPES` frozenset validation at top of `record_movement()` (#185).
+- **Printer subprocess blocks UI thread**: Changed `subprocess.run()` to non-blocking `subprocess.Popen()` in printer service (#184).
+- **Payment service missing error handling**: Complete rewrite with name validation, duplicate checking, referential integrity in delete (deactivates instead of deleting if method has sales), and proper `session.expunge()` (#186).
+- **Insecure file permissions**: Settings file and encryption key now written with 0600 permissions via `os.open()` (#156).
+- **Document number race condition**: Document numbering now uses serializable isolation with proper YEARLY/MONTHLY scope filtering and 5 retries (#157).
+- **Customer credit race condition**: Payment and credit sale operations now use serializable isolation with row-level locking (#165).
+- **Shift not terminal-aware**: `start_shift()` and `get_current_shift()` now filter by terminal_id, preventing cross-terminal shift conflicts (#166).
+- **N+1 query in data export**: Added `joinedload(Product.category)` and `joinedload(Product.unit)` to product export query (#168).
+- **Optimistic locking not handled**: `update_product()` and `adjust_stock()` now catch `StaleDataError` and raise user-friendly messages (#178).
+- **DB calls in UI dialogs (MVC violation)**: Removed all direct `Database()` calls from `category_manager.py`, `category_dialog.py`, and `product_editor.py` — now use service layer exclusively (#162).
+- **Duplicate tax calculation in refunds**: Refund now mirrors original sale's stored tax values instead of recalculating from total, fixing incorrect tax on sales with exempt items (#176).
+- **Hardcoded tax rate labels on receipts**: Receipt tax labels now read VAT/SSCL rates from config instead of hardcoded 18%/2.5% (#176).
+- **Error messages always English**: Added `translate_error()` utility for mapping service errors to i18n keys at the UI boundary (#179).
+
 ## [1.2.4] - 2026-03-12
 
 ### Changed

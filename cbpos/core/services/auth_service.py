@@ -1,6 +1,6 @@
 import hashlib
 import logging
-import time
+from datetime import datetime, timedelta
 from typing import Optional
 
 import bcrypt
@@ -35,18 +35,16 @@ def _get_lockout_duration() -> int:
 
 
 class AuthService:
-    """
-    Service to handle user authentication and session management.
+    """Service to handle user authentication and session management.
 
     Security features:
     - bcrypt PIN hashing with automatic migration from legacy SHA-256
-    - Brute-force protection: configurable lockout (default 5 min after 5 failed attempts)
+    - Database-backed brute-force protection: configurable lockout
+      (default 5 min after 5 failed attempts), persists across restarts
+      and is shared across all terminals in network mode.
     """
 
     _current_user: Optional[User] = None
-
-    # In-memory brute-force tracking: {username: {"attempts": int, "locked_until": float}}
-    _failed_attempts: dict[str, dict] = {}
 
     # ------------------------------------------------------------------
     # PIN hashing helpers (used by UserService and seed script too)
@@ -54,8 +52,7 @@ class AuthService:
 
     @staticmethod
     def hash_pin(pin: str) -> str:
-        """
-        Hash a PIN using bcrypt.
+        """Hash a PIN using bcrypt.
 
         Args:
             pin: The plaintext PIN string.
@@ -72,17 +69,9 @@ class AuthService:
 
     @staticmethod
     def _verify_against_hash(pin: str, stored_hash: str) -> bool:
-        """
-        Verify a plaintext PIN against a stored hash.
+        """Verify a plaintext PIN against a stored hash.
 
         Supports both legacy SHA-256 hashes and modern bcrypt hashes.
-
-        Args:
-            pin: The plaintext PIN.
-            stored_hash: The hash stored in the database.
-
-        Returns:
-            True if the PIN matches the stored hash.
         """
         if AuthService._is_legacy_hash(stored_hash):
             return hashlib.sha256(pin.encode()).hexdigest() == stored_hash
@@ -92,48 +81,43 @@ class AuthService:
             return False
 
     # ------------------------------------------------------------------
-    # Brute-force protection helpers
+    # Database-backed brute-force protection
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _is_locked_out(username: str) -> bool:
-        """Check if a username is currently locked out due to too many failed attempts."""
-        info = AuthService._failed_attempts.get(username)
-        if not info:
-            return False
-        if info["attempts"] >= _get_max_attempts():
-            if time.monotonic() < info["locked_until"]:
-                return True
-            # Lockout period expired — reset
-            del AuthService._failed_attempts[username]
+    def _is_locked_out_db(user: User) -> bool:
+        """Check if a user is currently locked out based on DB columns."""
+        if user.locked_until and user.locked_until > datetime.now():
+            return True
         return False
 
     @staticmethod
-    def _record_failed_attempt(username: str) -> None:
-        """Record a failed login attempt for brute-force tracking."""
-        info = AuthService._failed_attempts.get(username)
-        if info is None:
-            info = {"attempts": 0, "locked_until": 0.0}
-            AuthService._failed_attempts[username] = info
-        info["attempts"] += 1
-        if info["attempts"] >= _get_max_attempts():
-            info["locked_until"] = time.monotonic() + _get_lockout_duration()
+    def _record_failed_attempt_db(session, user: User) -> None:
+        """Increment failed attempt counter and lock if threshold reached."""
+        user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+        max_attempts = _get_max_attempts()
+        if user.failed_login_attempts >= max_attempts:
+            duration = _get_lockout_duration()
+            user.locked_until = datetime.now() + timedelta(seconds=duration)
             logger.warning(
                 "Account '%s' locked for %d seconds after %d failed attempts",
-                username,
-                _get_lockout_duration(),
-                _get_max_attempts(),
+                user.username,
+                duration,
+                max_attempts,
             )
+        session.commit()
 
     @staticmethod
-    def _reset_failed_attempts(username: str) -> None:
+    def _reset_failed_attempts_db(session, user: User) -> None:
         """Reset the failed attempt counter on successful login."""
-        AuthService._failed_attempts.pop(username, None)
+        if user.failed_login_attempts or user.locked_until:
+            user.failed_login_attempts = 0
+            user.locked_until = None
+            session.commit()
 
     @staticmethod
     def get_remaining_lockout_seconds(username: str) -> int:
-        """
-        Return the number of seconds remaining on a lockout, or 0 if not locked.
+        """Return the number of seconds remaining on a lockout, or 0 if not locked.
 
         Args:
             username: The username to check.
@@ -141,11 +125,13 @@ class AuthService:
         Returns:
             Remaining lockout seconds (0 if not locked out).
         """
-        info = AuthService._failed_attempts.get(username)
-        if not info or info["attempts"] < _get_max_attempts():
-            return 0
-        remaining = info["locked_until"] - time.monotonic()
-        return max(0, int(remaining))
+        db = Database()
+        with db.get_session() as session:
+            user = session.query(User).filter(User.username == username).first()
+            if not user or not user.locked_until:
+                return 0
+            remaining = (user.locked_until - datetime.now()).total_seconds()
+            return max(0, int(remaining))
 
     # ------------------------------------------------------------------
     # Core authentication
@@ -153,8 +139,7 @@ class AuthService:
 
     @staticmethod
     def verify_pin(pin: str) -> Optional[User]:
-        """
-        Verify the provided PIN against the database.
+        """Verify the provided PIN against the database.
 
         Includes brute-force protection and automatic migration from
         legacy SHA-256 hashes to bcrypt on successful login.
@@ -167,12 +152,11 @@ class AuthService:
         """
         db = Database()
         with db.get_session() as session:
-            # Fetch all active users with their roles
             users = session.query(User).options(joinedload(User.role)).filter(User.is_active.is_(True)).all()
 
             for user in users:
-                # Check brute-force lockout per username
-                if AuthService._is_locked_out(user.username):
+                # Check database-backed lockout
+                if AuthService._is_locked_out_db(user):
                     continue
 
                 if AuthService._verify_against_hash(pin, user.pin_hash):
@@ -182,13 +166,10 @@ class AuthService:
                     if AuthService._is_legacy_hash(user.pin_hash):
                         user.pin_hash = AuthService.hash_pin(pin)
                         session.commit()
-                        logger.info(
-                            "Migrated PIN hash to bcrypt for user '%s'",
-                            user.username,
-                        )
+                        logger.info("Migrated PIN hash to bcrypt for user '%s'", user.username)
 
                     # Reset brute-force counter
-                    AuthService._reset_failed_attempts(user.username)
+                    AuthService._reset_failed_attempts_db(session, user)
 
                     # Detach user and role to keep available after session close
                     if user.role:
@@ -218,19 +199,14 @@ class AuthService:
 
                     return user
 
-            # No match found — record failed attempt for ALL active users
-            # (We don't know which user was targeted with PIN-only auth,
-            #  but we track per-user to avoid locking innocent accounts.
-            #  Since we can't identify the target, we don't increment here.)
-            # Instead, we log a general failed attempt warning.
+            # No match — log warning
             logger.warning("Failed login attempt with PIN")
 
         return None
 
     @staticmethod
     def verify_pin_for_user(username: str, pin: str) -> Optional[User]:
-        """
-        Verify a PIN for a specific username (used where username is known).
+        """Verify a PIN for a specific username (used where username is known).
 
         Includes brute-force protection and automatic bcrypt migration.
 
@@ -241,15 +217,6 @@ class AuthService:
         Returns:
             The User object on success, else None.
         """
-        if AuthService._is_locked_out(username):
-            remaining = AuthService.get_remaining_lockout_seconds(username)
-            logger.warning(
-                "Login attempt for locked account '%s' (%ds remaining)",
-                username,
-                remaining,
-            )
-            return None
-
         db = Database()
         with db.get_session() as session:
             user = (
@@ -259,8 +226,23 @@ class AuthService:
                 .first()
             )
 
-            if not user or not AuthService._verify_against_hash(pin, user.pin_hash):
-                AuthService._record_failed_attempt(username)
+            if not user:
+                return None
+
+            # Check database-backed lockout
+            if AuthService._is_locked_out_db(user):
+                remaining = 0
+                if user.locked_until:
+                    remaining = max(0, int((user.locked_until - datetime.now()).total_seconds()))
+                logger.warning(
+                    "Login attempt for locked account '%s' (%ds remaining)",
+                    username,
+                    remaining,
+                )
+                return None
+
+            if not AuthService._verify_against_hash(pin, user.pin_hash):
+                AuthService._record_failed_attempt_db(session, user)
                 return None
 
             # Migrate legacy hash
@@ -269,7 +251,7 @@ class AuthService:
                 session.commit()
                 logger.info("Migrated PIN hash to bcrypt for user '%s'", username)
 
-            AuthService._reset_failed_attempts(username)
+            AuthService._reset_failed_attempts_db(session, user)
 
             if user.role:
                 _ = user.role.name

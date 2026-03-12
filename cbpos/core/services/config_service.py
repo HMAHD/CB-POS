@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import platform
+import stat
 from typing import Dict, Any
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -132,6 +133,33 @@ class ConfigService:
 
     _KEY_FILE = os.path.join(Config.DATA_DIR, ".encryption_key")
 
+    @staticmethod
+    def _write_restricted(path: str, content: str, encoding: str = "utf-8") -> None:
+        """Write *content* to *path* with owner-only permissions (0600).
+
+        On Windows ``os.chmod`` sets the read-only attribute which is not
+        equivalent to POSIX permissions, but it is the best we can do
+        without pulling in ``pywin32``.  The file is still protected by
+        the per-user AppData directory ACL set by the OS.
+        """
+        # Use os.open with explicit mode bits so the file is never
+        # world-readable even for a brief instant.
+        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+        fd = os.open(path, flags, stat.S_IRUSR | stat.S_IWUSR)  # 0600
+        try:
+            with os.fdopen(fd, "w", encoding=encoding) as f:
+                f.write(content)
+        except BaseException:
+            # fd is already closed by os.fdopen on success; on error we
+            # must NOT close it twice — os.fdopen takes ownership.
+            raise
+        # Belt-and-suspenders: chmod again in case the OS ignored the
+        # mode in os.open (Windows does).
+        try:
+            os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+        except OSError:
+            pass
+
     @classmethod
     def _get_fernet(cls) -> Fernet:
         """Return a Fernet instance using a persistent key file.
@@ -150,8 +178,7 @@ class ConfigService:
                 key = base64.urlsafe_b64encode(hashlib.sha256(seed).digest())
                 # Persist the key so it stays stable across hostname changes
                 try:
-                    with open(cls._KEY_FILE, "w", encoding="ascii") as f:
-                        f.write(key.decode("ascii"))
+                    cls._write_restricted(cls._KEY_FILE, key.decode("ascii"), encoding="ascii")
                 except OSError as e:
                     logger.warning("Could not persist encryption key: %s", e)
             cls._fernet = Fernet(key)
@@ -208,8 +235,10 @@ class ConfigService:
             for key in cls._SENSITIVE_KEYS:
                 if key in save_data and save_data[key]:
                     save_data[key] = cls._encode_sensitive(save_data[key])
-            with open(cls.SETTINGS_FILE, "w", encoding="utf-8") as f:
-                json.dump(save_data, f, indent=4, ensure_ascii=False)
+            cls._write_restricted(
+                cls.SETTINGS_FILE,
+                json.dumps(save_data, indent=4, ensure_ascii=False),
+            )
         except Exception as e:
             logger.error("Error saving settings: %s", e)
 

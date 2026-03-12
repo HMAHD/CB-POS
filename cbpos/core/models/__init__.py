@@ -64,6 +64,10 @@ class User(Base):
     role_id: Mapped[Optional[int]] = mapped_column(ForeignKey("roles.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
+    # Brute-force protection (database-backed, survives restarts)
+    failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
     role: Mapped["Role"] = relationship()
 
 

@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QGroupBox,
 )
 from cbpos.core.services.transaction_service import TransactionService
+from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.core.utils.permission_helper import check_permission_with_override
 from cbpos.i18n import _t
@@ -135,7 +136,7 @@ class RefundDialog(QDialog):
         to_dt = datetime.now()
         from_dt = to_dt - timedelta(days=365)
 
-        results = TransactionService.get_sales_history(
+        results = SaleQueryService.get_sales_history(
             from_date=from_dt,
             to_date=to_dt,
             search_term=search,

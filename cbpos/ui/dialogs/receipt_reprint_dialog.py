@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
 )
 from PyQt6.QtCore import QDate
-from cbpos.core.services.transaction_service import TransactionService
+from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.core.utils.formatters import format_currency
@@ -117,7 +117,7 @@ class ReceiptReprintDialog(QDialog):
         to_dt = datetime(d_to.year(), d_to.month(), d_to.day(), 23, 59, 59)
 
         try:
-            self.results = TransactionService.get_sales_history(
+            self.results = SaleQueryService.get_sales_history(
                 from_date=from_dt,
                 to_date=to_dt,
                 search_term=search_term,

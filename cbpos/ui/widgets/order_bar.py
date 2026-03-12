@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QFrame,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from cbpos.core.services.transaction_service import TransactionService
+from cbpos.core.services.suspended_transaction_service import SuspendedTransactionService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
@@ -102,7 +102,7 @@ class OrderBar(QWidget):
         self.tabs_layout.addWidget(btn_current)
 
         # Fetch from DB
-        held_bills = TransactionService.get_held_bills()
+        held_bills = SuspendedTransactionService.get_held_bills()
 
         for i, bill in enumerate(held_bills):
             # Format: "Order {ID} ({Time})"

@@ -24,6 +24,7 @@ from decimal import Decimal
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.transaction_service import TransactionService
+from cbpos.core.services.suspended_transaction_service import SuspendedTransactionService
 from cbpos.ui.dialogs.payment_dialog import PaymentDialog
 from cbpos.ui.dialogs.discount_dialog import DiscountDialog
 from cbpos.ui.dialogs.quantity_dialog import QuantityDialog
@@ -767,7 +768,7 @@ class SalesView(QWidget):
         if not self.cart_service.items:
             return
 
-        held_id = TransactionService.hold_bill(self.cart_service)
+        held_id = SuspendedTransactionService.hold_bill(self.cart_service)
         if held_id:
             self.cart_service.clear()
             self.update_cart_display()
@@ -778,13 +779,13 @@ class SalesView(QWidget):
         self.barcode_input.setFocus()
 
     def recall_bill(self):
-        suspended = TransactionService.get_latest_suspended()
+        suspended = SuspendedTransactionService.get_latest_suspended()
         if not suspended:
             QMessageBox.information(self, _t("orders.empty_title"), _t("orders.empty_message"))
             self.barcode_input.setFocus()
             return
 
-        if TransactionService.recall_bill(suspended.id, self.cart_service):
+        if SuspendedTransactionService.recall_bill(suspended.id, self.cart_service):
             self.order_bar.set_active_bill(suspended.id)
             self.update_cart_display()
             self.order_bar.refresh_tabs()
@@ -1045,13 +1046,13 @@ class SalesView(QWidget):
         # 1. Hold Current (Auto-Hold)
         if self.cart_service.items:
             # We don't ask for note here for speed, or maybe use "Auto-Hold" note
-            if not TransactionService.hold_bill(self.cart_service, note="Auto-Switch"):
+            if not SuspendedTransactionService.hold_bill(self.cart_service, note="Auto-Switch"):
                 QMessageBox.critical(self, _t("common.error"), _t("orders.switch_error"))
                 return
             self.cart_service.clear()
 
         # 2. Recall Target
-        if TransactionService.recall_bill(suspended_id, self.cart_service):
+        if SuspendedTransactionService.recall_bill(suspended_id, self.cart_service):
             self.order_bar.set_active_bill(suspended_id)
             self.update_cart_display()
             self.order_bar.refresh_tabs()
@@ -1066,7 +1067,7 @@ class SalesView(QWidget):
         2. Clear cart.
         """
         if self.cart_service.items:
-            if TransactionService.hold_bill(self.cart_service, note="Auto-Switch"):
+            if SuspendedTransactionService.hold_bill(self.cart_service, note="Auto-Switch"):
                 self.cart_service.clear()
                 self.update_cart_display()
                 self.order_bar.set_active_bill(None)

@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QDate
 from cbpos.core.services.transaction_service import TransactionService
+from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.core.services.auth_service import AuthService
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
@@ -194,7 +195,7 @@ class HistoryView(QWidget):
         to_date = self.to_date.date().toPyDate()
         search_term = self.search_input.text().strip() or None
 
-        sales = TransactionService.get_sales_history(
+        sales = SaleQueryService.get_sales_history(
             from_date=datetime.combine(from_date, datetime.min.time()),
             to_date=datetime.combine(to_date, datetime.max.time()),
             search_term=search_term,
@@ -251,7 +252,7 @@ class HistoryView(QWidget):
         sale_id = self.transaction_table.item(selected_rows[0].row(), 0).data(Qt.ItemDataRole.UserRole)
 
         # Load sale details
-        sale = TransactionService.get_sale_details(sale_id)
+        sale = SaleQueryService.get_sale_details(sale_id)
         if sale:
             self.current_sale = sale
             self.display_details(sale)

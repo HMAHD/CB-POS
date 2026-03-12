@@ -23,6 +23,7 @@ from cbpos.core.services.document_browser_service import DocumentBrowserService
 from cbpos.core.services.proforma_service import ProformaService
 from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.core.services.transaction_service import TransactionService
+from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.utils.formatters import format_currency
@@ -640,7 +641,7 @@ class DocumentBrowserView(QWidget):
 
         try:
             if doc_type == "sale":
-                sale = TransactionService.get_sale_details(self.current_doc["id"])
+                sale = SaleQueryService.get_sale_details(self.current_doc["id"])
                 if sale:
                     from cbpos.core.services.config_service import ConfigService
 

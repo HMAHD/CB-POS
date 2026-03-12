@@ -2,13 +2,12 @@ import uuid
 import logging
 from decimal import Decimal
 from datetime import datetime
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, Session
 from cbpos.core.database import Database
 from cbpos.core.models import (
     Sale,
     SaleItem,
     Product,
-    SuspendedTransaction,
     Customer,
     SalePayment,
     CompositeItem,
@@ -18,11 +17,8 @@ from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.stock_service import StockService
 from cbpos.core.services.receipt_service import ReceiptService
-from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
-from cbpos.core.utils.formatters import escape_like
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
-import json
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +27,9 @@ class TransactionService:
     """
     Service to handle the persistence of sales transactions.
     Ensures Atomicity (All or Nothing).
+
+    For sale queries, see SaleQueryService.
+    For suspended/held bills, see SuspendedTransactionService.
     """
 
     @staticmethod
@@ -58,6 +57,35 @@ class TransactionService:
             return None
 
     @staticmethod
+    def _fetch_composite_map(session: Session, product_ids: list) -> dict:
+        """Pre-fetch composite items for a list of product IDs.
+
+        Returns a dict mapping parent_product_id to list of CompositeItem objects.
+        """
+        composites = session.query(CompositeItem).filter(CompositeItem.parent_product_id.in_(product_ids)).all()
+        composite_map: dict[int, list] = {}
+        for comp in composites:
+            composite_map.setdefault(comp.parent_product_id, []).append(comp)
+        return composite_map
+
+    @staticmethod
+    def _print_receipt_async(sale: Sale) -> None:
+        """Print a receipt asynchronously via the print worker.
+
+        Checks language setting to decide between text and image receipt.
+        """
+        worker = PrintWorker()
+        settings = ConfigService.get_all()
+        language = settings.get("language", "en")
+
+        if language == "en":
+            receipt_text = ReceiptService.build_receipt_text(sale)
+            worker.add_job("print_receipt", receipt_text)
+        else:
+            receipt_image = ReceiptService.build_receipt_image(sale)
+            worker.add_job("print_image", receipt_image)
+
+    @staticmethod
     def _execute_sale(cart_service: CartService, payments: list, customer_id: int = None) -> Sale:
         """Internal method that executes the sale transaction."""
         db = Database()
@@ -74,16 +102,12 @@ class TransactionService:
             # Pre-fetch composite items for all cart products (avoids N+1 queries later)
             cart_items = cart_service.items
             parent_ids = [item["product"].id for item in cart_items]
-            composites = session.query(CompositeItem).filter(CompositeItem.parent_product_id.in_(parent_ids)).all()
-
-            # Group composites by parent for O(1) lookup
-            composite_map = {}
-            for comp in composites:
-                composite_map.setdefault(comp.parent_product_id, []).append(comp)
+            composite_map = TransactionService._fetch_composite_map(session, parent_ids)
 
             # Negative Stock Check
             if not ConfigService.get("allow_negative_stock"):
                 # Collect Child IDs from Composites
+                composites = [c for comps in composite_map.values() for c in comps]
                 child_ids = [c.child_product_id for c in composites]
 
                 # Fetch ALL involved Products (Parents + Children) in one query
@@ -260,79 +284,12 @@ class TransactionService:
             # Otherwise, print receipt automatically for frictionless flow.
             show_dialog = ConfigService.get("show_receipt_dialog")
             if not show_dialog:
-                settings = ConfigService.get_all()
-                language = settings.get("language", "en")
-
-                if language == "en":
-                    receipt_text = ReceiptService.build_receipt_text(sale)
-                    worker.add_job("print_receipt", receipt_text)
-                else:
-                    receipt_image = ReceiptService.build_receipt_image(sale)
-                    worker.add_job("print_image", receipt_image)
+                TransactionService._print_receipt_async(sale)
 
             payment_methods = [p.payment_method for p in sale.payments] if sale.payments else []
             worker.add_job("kick_drawer", payment_methods)
 
             return sale
-
-    @staticmethod
-    def hold_bill(cart_service: CartService, note: str = None) -> int | None:
-        """Serialize cart items and save to SuspendedTransaction.
-
-        Returns the suspended transaction ID on success, None on failure.
-        """
-        db = Database()
-        try:
-            with db.get_session() as session:
-                # Serialize cart items
-                items_data = []
-                for item in cart_service.items:
-                    items_data.append({"barcode": item["product"].barcode, "qty": str(item["qty"])})
-
-                json_data = json.dumps(items_data)
-
-                suspended = SuspendedTransaction(data=json_data, note=note)
-                session.add(suspended)
-                session.flush()
-                return suspended.id
-        except Exception as e:
-            logger.error("Hold Bill Failed: %s", e)
-            return None
-
-    @staticmethod
-    def get_held_bills() -> list:
-        """Return a list of all suspended transactions."""
-        db = Database()
-        with db.get_session() as session:
-            suspended = session.query(SuspendedTransaction).order_by(SuspendedTransaction.timestamp.desc()).all()
-            # Detach objects
-            for s in suspended:
-                session.expunge(s)
-            return suspended
-
-    @staticmethod
-    def recall_bill(suspended_id: int, cart_service: CartService) -> bool:
-        """Restore cart from SuspendedTransaction and delete the record."""
-        db = Database()
-        try:
-            with db.get_session() as session:
-                suspended = session.get(SuspendedTransaction, suspended_id)
-                if not suspended:
-                    return False
-
-                items_data = json.loads(suspended.data)
-                cart_service.clear()
-
-                for item in items_data:
-                    product = ProductService.get_by_barcode(item["barcode"])
-                    if product:
-                        cart_service.add_item(product, Decimal(item["qty"]))
-
-                session.delete(suspended)
-            return True
-        except Exception as e:
-            logger.error("Recall Bill Failed: %s", e)
-            return False
 
     @staticmethod
     def void_sale(sale_id: int, user_id: int, reason: str) -> bool:
@@ -355,10 +312,7 @@ class TransactionService:
 
                 # Pre-fetch composite items for all products in sale
                 product_ids = [item.product_id for item in sale.items]
-                composites = session.query(CompositeItem).filter(CompositeItem.parent_product_id.in_(product_ids)).all()
-                composite_map = {}
-                for comp in composites:
-                    composite_map.setdefault(comp.parent_product_id, []).append(comp)
+                composite_map = TransactionService._fetch_composite_map(session, product_ids)
 
                 # Reverse Stock via StockService
                 for item in sale.items:
@@ -395,7 +349,8 @@ class TransactionService:
     def process_refund(original_sale_id: int, refund_reason: str, user_id: int) -> bool:
         """
         Process a full refund for a previous sale.
-        Creates a negative transaction and restores stock.
+        Creates a negative transaction and restores stock via StockService
+        for proper audit trail.
 
         Args:
             original_sale_id: ID of the original sale to refund
@@ -426,10 +381,7 @@ class TransactionService:
 
                 # Pre-fetch composite items for all products in sale
                 product_ids = [item.product_id for item in original_sale.items]
-                composites = session.query(CompositeItem).filter(CompositeItem.parent_product_id.in_(product_ids)).all()
-                composite_map = {}
-                for comp in composites:
-                    composite_map.setdefault(comp.parent_product_id, []).append(comp)
+                composite_map = TransactionService._fetch_composite_map(session, product_ids)
 
                 # 2. Create refund transaction (negative values)
                 refund_receipt_no = f"REF-{uuid.uuid4().hex[:8].upper()}"
@@ -471,21 +423,31 @@ class TransactionService:
                     )
                     session.add(refund_item)
 
-                    # 4. RESTORE stock (increase)
-                    product = session.get(Product, original_item.product_id, with_for_update=True)
-                    if product:
-                        composite_children = composite_map.get(product.id, [])
+                    # 4. RESTORE stock via StockService (proper audit trail)
+                    composite_children = composite_map.get(original_item.product_id, [])
 
-                        if composite_children:
-                            # Restore child product stock
-                            for comp in composite_children:
-                                child_product = session.get(Product, comp.child_product_id, with_for_update=True)
-                                if child_product:
-                                    restoration = comp.qty * original_item.qty
-                                    child_product.stock_qty += restoration
-                        else:
-                            # Restore product stock directly
-                            product.stock_qty += original_item.qty
+                    if composite_children:
+                        # Restore child product stock
+                        for comp in composite_children:
+                            restoration = comp.qty * original_item.qty
+                            StockService.record_movement(
+                                product_id=comp.child_product_id,
+                                qty_change=restoration,
+                                movement_type="RETURN",
+                                document_id=refund_sale.id,
+                                user_id=user_id,
+                                session=session,
+                            )
+                    else:
+                        # Restore product stock directly
+                        StockService.record_movement(
+                            product_id=original_item.product_id,
+                            qty_change=original_item.qty,
+                            movement_type="RETURN",
+                            document_id=refund_sale.id,
+                            user_id=user_id,
+                            session=session,
+                        )
 
                 # 5. Create refund payment record
                 refund_payment = SalePayment(
@@ -504,16 +466,7 @@ class TransactionService:
                 )
 
                 # 6. Print refund voucher (after commit via context manager)
-                worker = PrintWorker()
-                settings = ConfigService.get_all()
-                language = settings.get("language", "en")
-
-                if language == "en":
-                    receipt_text = ReceiptService.build_receipt_text(refund_sale)
-                    worker.add_job("print_receipt", receipt_text)
-                else:
-                    receipt_image = ReceiptService.build_receipt_image(refund_sale)
-                    worker.add_job("print_image", receipt_image)
+                TransactionService._print_receipt_async(refund_sale)
 
             return True
 
@@ -572,114 +525,7 @@ class TransactionService:
             logger.error("Transfer Order Failed: %s", e)
             return False
 
-    @staticmethod
-    def get_held_bill_count() -> int:
-        """Return the number of currently held bills."""
-        db = Database()
-        with db.get_session() as session:
-            return session.query(SuspendedTransaction).count()
 
-    @staticmethod
-    def get_last_sale() -> Sale:
-        """Return the most recent sale, detached from session."""
-        db = Database()
-        with db.get_session() as session:
-            sale = (
-                session.query(Sale)
-                .options(
-                    joinedload(Sale.items).joinedload(SaleItem.product),
-                    joinedload(Sale.customer),
-                    joinedload(Sale.payments),
-                )
-                .order_by(Sale.id.desc())
-                .first()
-            )
-            if sale:
-                session.expunge(sale)
-            return sale
-
-    @staticmethod
-    def get_latest_suspended() -> SuspendedTransaction:
-        """Return the most recent suspended transaction, detached from session."""
-        db = Database()
-        with db.get_session() as session:
-            suspended = session.query(SuspendedTransaction).order_by(SuspendedTransaction.timestamp.desc()).first()
-            if suspended:
-                session.expunge(suspended)
-            return suspended
-
-    @staticmethod
-    def get_sales_history(
-        from_date: datetime,
-        to_date: datetime,
-        search_term: str = None,
-        limit: int = 500,
-    ) -> list:
-        """
-        Fetch sales within a date range with optional search filter.
-
-        Args:
-            from_date: Start datetime
-            to_date: End datetime
-            search_term: Optional receipt# or customer name filter
-            limit: Maximum number of results (default 500)
-
-        Returns:
-            List of detached Sale objects with eager-loaded relationships
-        """
-        db = Database()
-        with db.get_session() as session:
-            query = session.query(Sale).filter(
-                Sale.date >= from_date,
-                Sale.date <= to_date,
-            )
-
-            if search_term:
-                query = query.filter(
-                    (Sale.document_number.like(f"%{escape_like(search_term)}%")) | (Sale.customer.has(name=search_term))
-                )
-
-            from cbpos.core.models import SaleItem
-
-            sales = (
-                query.options(
-                    joinedload(Sale.user),
-                    joinedload(Sale.customer),
-                    joinedload(Sale.items).joinedload(SaleItem.product),
-                )
-                .order_by(Sale.date.desc())
-                .limit(limit)
-                .all()
-            )
-
-            # Detach from session
-            for sale in sales:
-                session.expunge(sale)
-
-            return sales
-
-    @staticmethod
-    def get_sale_details(sale_id: int) -> Sale:
-        """
-        Fetch a single sale with all relationships loaded.
-
-        Args:
-            sale_id: Sale ID to fetch
-
-        Returns:
-            Detached Sale object or None
-        """
-        db = Database()
-        with db.get_session() as session:
-            sale = session.get(
-                Sale,
-                sale_id,
-                options=[
-                    joinedload(Sale.items).joinedload(SaleItem.product),
-                    joinedload(Sale.user),
-                    joinedload(Sale.customer),
-                ],
-            )
-            if sale:
-                session.expunge(sale)
-            return sale
+# Backward compatibility — callers can still import from here
+from cbpos.core.services.sale_query_service import SaleQueryService  # noqa: F401, E402
+from cbpos.core.services.suspended_transaction_service import SuspendedTransactionService  # noqa: F401, E402

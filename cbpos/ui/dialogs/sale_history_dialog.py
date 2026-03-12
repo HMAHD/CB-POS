@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor, QBrush
 from cbpos.core.services.transaction_service import TransactionService
+from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 
@@ -322,7 +323,7 @@ class SaleHistoryDialog(QDialog):
         search_term = self.search_input.text().strip() or None
 
         try:
-            self._sales = TransactionService.get_sales_history(
+            self._sales = SaleQueryService.get_sales_history(
                 from_date=from_date,
                 to_date=to_date,
                 search_term=search_term,

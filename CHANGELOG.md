@@ -16,6 +16,9 @@ All notable changes to this project will be documented in this file. Never delet
 - **CategoryService expanded API**: Added `get_by_id()`, `get_top_level_with_subcategories()`, `get_descendant_ids()`, `get_product_count_for_ids()`, `delete_with_descendants()` methods and `parent_id` support in `update()` (#162).
 - **Error message translation utility**: `translate_error()` maps common English service errors to i18n keys at the UI boundary. Added 7 error keys to en/si/ta translations (#179).
 - **Unit tests for 3 critical services**: Added 18 tests covering CustomerCreditService (payments, credit sales, adjustments, ledger), ShiftService (start, duplicate, close with variance), and CategoryService (CRUD, descendant tree, product constraints) (#177).
+- **Split god classes into focused services** (#180):
+  - `TransactionService` (685 → 526 lines): Extracted `SaleQueryService` and `SuspendedTransactionService`. Added shared helpers for composite item handling and receipt printing.
+  - `ReceiptBuilder` (804 → 30-line facade): Extracted `BaseReceiptBuilder`, `SalesReceiptBuilder`, `VoidReceiptBuilder`, `RefundReceiptBuilder`, `ProformaReceiptBuilder`, `StatementReceiptBuilder`. Backward-compatible facade preserves all existing imports.
 
 ### Fixed
 
@@ -34,6 +37,7 @@ All notable changes to this project will be documented in this file. Never delet
 - **Duplicate tax calculation in refunds**: Refund now mirrors original sale's stored tax values instead of recalculating from total, fixing incorrect tax on sales with exempt items (#176).
 - **Hardcoded tax rate labels on receipts**: Receipt tax labels now read VAT/SSCL rates from config instead of hardcoded 18%/2.5% (#176).
 - **Error messages always English**: Added `translate_error()` utility for mapping service errors to i18n keys at the UI boundary (#179).
+- **Refund stock audit trail missing**: `process_refund()` now uses `StockService.record_movement()` for proper audit records, matching `void_sale()` behavior (#180).
 
 ## [1.2.4] - 2026-03-12
 

@@ -79,7 +79,7 @@ def test_delete_category_with_products(db_session, test_category):
     suffix = _next_suffix()
     product = Product(
         name_en=f"Product_{suffix}",
-        barcode=f"DEL{suffix:0>4}",
+        barcode="DEL{:0>4}".format(suffix),
         price=100.0,
         stock_qty=5.0,
         category_id=test_category.id,

@@ -64,8 +64,7 @@ class SaleQueryService:
 
             if search_term:
                 query = query.filter(
-                    (Sale.document_number.like(f"%{escape_like(search_term)}%"))
-                    | (Sale.customer.has(name=search_term))
+                    (Sale.document_number.like(f"%{escape_like(search_term)}%")) | (Sale.customer.has(name=search_term))
                 )
 
             sales = (

@@ -82,11 +82,7 @@ def test_record_payment_success(db_session, test_user, test_customer):
     assert test_customer.current_debt == Decimal("4000.00")
 
     # Verify ledger entry was created
-    entries = (
-        db_session.query(CustomerLedgerEntry)
-        .filter(CustomerLedgerEntry.customer_id == test_customer.id)
-        .all()
-    )
+    entries = db_session.query(CustomerLedgerEntry).filter(CustomerLedgerEntry.customer_id == test_customer.id).all()
     assert len(entries) == 1
     assert entries[0].entry_type == "PAYMENT"
     assert entries[0].amount == Decimal("-1000.00")

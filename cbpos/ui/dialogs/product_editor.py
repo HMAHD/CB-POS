@@ -22,11 +22,10 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon, QPixmap, QColor, QDoubleValidator
 
-from sqlalchemy import select
-from sqlalchemy.orm import joinedload
-from cbpos.core.models import Product, Category, CompositeItem
+from cbpos.core.models import Product
 from cbpos.core.services.inventory_service import InventoryService
-from cbpos.core.database import Database
+from cbpos.core.services.category_service import CategoryService
+from cbpos.core.services.supplier_service import SupplierService
 from cbpos.config import Config
 from cbpos.core.utils.formatters import get_currency_symbol
 from cbpos.i18n import _t
@@ -59,26 +58,10 @@ class ProductEditor(QDialog):
             self.load_data()
 
     def load_categories(self):
-        db = Database()
-        with db.get_session() as session:
-            self.categories = list(
-                session.execute(
-                    select(Category)
-                    .options(joinedload(Category.subcategories))
-                    .where(Category.parent_id.is_(None))
-                    .order_by(Category.name)
-                )
-                .unique()
-                .scalars()
-                .all()
-            )
+        self.categories = CategoryService.get_top_level_with_subcategories()
 
     def load_suppliers(self):
-        from cbpos.core.models import Supplier
-
-        db = Database()
-        with db.get_session() as session:
-            self.suppliers = list(session.scalars(select(Supplier)).all())
+        self.suppliers = SupplierService.get_all_suppliers(active_only=False)
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -437,26 +420,18 @@ class ProductEditor(QDialog):
             self.current_image_path = self.product.image_path
 
         # Load components
-        db = Database()
-        with db.get_session() as session:
-            stmt = select(CompositeItem).where(CompositeItem.parent_product_id == self.product.id)
-            components = session.scalars(stmt).all()
+        components = self.inventory_service.get_composite_items(self.product.id)
+        for comp in components:
+            row = self.comp_table.rowCount()
+            self.comp_table.insertRow(row)
+            self.comp_table.setItem(row, 0, QTableWidgetItem(str(comp["child_product_id"])))
+            self.comp_table.setItem(row, 1, QTableWidgetItem(comp["child_name"]))
+            self.comp_table.setItem(row, 2, QTableWidgetItem(str(comp["qty"])))
 
-            for comp in components:
-                row = self.comp_table.rowCount()
-                self.comp_table.insertRow(row)
-                self.comp_table.setItem(row, 0, QTableWidgetItem(str(comp.child_product_id)))
-
-                child = session.get(Product, comp.child_product_id)
-                child_name = child.name_en if child else "Unknown"
-
-                self.comp_table.setItem(row, 1, QTableWidgetItem(child_name))
-                self.comp_table.setItem(row, 2, QTableWidgetItem(str(comp.qty)))
-
-                remove_btn = QPushButton(_t("product_editor.btn_remove_component"))
-                target_row = row
-                remove_btn.clicked.connect(lambda checked, r=target_row: self._remove_component(r))
-                self.comp_table.setCellWidget(row, 3, remove_btn)
+            remove_btn = QPushButton(_t("product_editor.btn_remove_component"))
+            target_row = row
+            remove_btn.clicked.connect(lambda checked, r=target_row: self._remove_component(r))
+            self.comp_table.setCellWidget(row, 3, remove_btn)
 
     def _parse_decimal(self, text: str, fallback: str = "0") -> Decimal:
         """Safely parse a QLineEdit value to Decimal."""

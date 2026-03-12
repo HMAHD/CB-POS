@@ -31,7 +31,16 @@ class DataExportService:
         """
         db = Database()
         with db.get_session() as session:
-            products = session.query(Product).filter(Product.is_active.is_(True)).order_by(Product.name_en).all()
+            products = (
+                session.query(Product)
+                .options(
+                    joinedload(Product.category),
+                    joinedload(Product.unit),
+                )
+                .filter(Product.is_active.is_(True))
+                .order_by(Product.name_en)
+                .all()
+            )
 
             rows = []
             for p in products:

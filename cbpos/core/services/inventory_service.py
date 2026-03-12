@@ -2,6 +2,7 @@ import logging
 from typing import List, Optional, Dict, Any
 from decimal import Decimal
 from sqlalchemy import select
+from sqlalchemy.orm.exc import StaleDataError
 from cbpos.core.database import Database
 from cbpos.core.models import Product, InventoryLog, AuditLog, CompositeItem
 
@@ -63,7 +64,11 @@ class InventoryService:
                         )
                         session.add(composite)
 
-            session.commit()
+            try:
+                session.commit()
+            except StaleDataError:
+                session.rollback()
+                raise ValueError("This product was modified by another user. " "Please reload and try again.")
             session.refresh(product)
             return product
 
@@ -116,8 +121,29 @@ class InventoryService:
             )
             session.add(audit_log)
 
-            session.commit()
+            try:
+                session.commit()
+            except StaleDataError:
+                session.rollback()
+                raise ValueError("This product's stock was modified by another user. " "Please reload and try again.")
             return True
+
+    def get_composite_items(self, product_id: int) -> List[Dict[str, Any]]:
+        """Get composite (bundle) child items for a product."""
+        with self.db.get_session() as session:
+            stmt = select(CompositeItem).where(CompositeItem.parent_product_id == product_id)
+            components = session.scalars(stmt).all()
+            result = []
+            for comp in components:
+                child = session.get(Product, comp.child_product_id)
+                result.append(
+                    {
+                        "child_product_id": comp.child_product_id,
+                        "child_name": child.name_en if child else "Unknown",
+                        "qty": comp.qty,
+                    }
+                )
+            return result
 
     def get_all_products(self, limit: int = 1000, offset: int = 0) -> List[Product]:
         """Get active products with categories, with pagination support."""

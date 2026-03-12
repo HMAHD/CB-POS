@@ -21,11 +21,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QPixmap, QIcon
-from sqlalchemy import select, func
-from sqlalchemy.orm import joinedload
-
-from cbpos.core.database import Database
-from cbpos.core.models import Category, Product
+from cbpos.core.models import Category
+from cbpos.core.services.category_service import CategoryService
 from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
@@ -143,31 +140,16 @@ class CategoryManagerDialog(QDialog):
     # ── Tree loading ──
 
     def _load_tree(self) -> None:
-        """Reload the full category tree from DB."""
+        """Reload the full category tree from service."""
         self.tree.clear()
-        db = Database()
-        with db.get_session() as session:
-            categories = (
-                session.execute(
-                    select(Category)
-                    .options(
-                        joinedload(Category.subcategories),
-                        joinedload(Category.products),
-                    )
-                    .where(Category.parent_id.is_(None))
-                    .order_by(Category.name)
-                )
-                .unique()
-                .scalars()
-                .all()
-            )
+        categories = CategoryService.get_top_level_with_subcategories_and_products()
 
-            for cat in categories:
-                item = self._make_tree_item(cat)
-                self.tree.addTopLevelItem(item)
-                for sub in sorted(cat.subcategories, key=lambda c: c.name):
-                    child = self._make_tree_item(sub)
-                    item.addChild(child)
+        for cat in categories:
+            item = self._make_tree_item(cat)
+            self.tree.addTopLevelItem(item)
+            for sub in sorted(cat.subcategories, key=lambda c: c.name):
+                child = self._make_tree_item(sub)
+                item.addChild(child)
 
         self.tree.expandAll()
         self._populate_parent_combo()
@@ -184,17 +166,15 @@ class CategoryManagerDialog(QDialog):
         self.combo_parent.clear()
         self.combo_parent.addItem(_t("category_manager.none_top_level"), None)
 
-        db = Database()
-        with db.get_session() as session:
-            all_cats = session.execute(select(Category).order_by(Category.name)).scalars().all()
+        all_cats = CategoryService.get_all()
 
-            excluded_ids = set()
-            if exclude_id:
-                excluded_ids = {exclude_id} | self._get_descendant_ids(session, exclude_id)
+        excluded_ids: set = set()
+        if exclude_id:
+            excluded_ids = {exclude_id} | CategoryService.get_descendant_ids(exclude_id)
 
-            for c in all_cats:
-                if c.id not in excluded_ids:
-                    self.combo_parent.addItem(_color_icon(c.color or "#FFFFFF"), c.name, c.id)
+        for c in all_cats:
+            if c.id not in excluded_ids:
+                self.combo_parent.addItem(_color_icon(c.color or "#FFFFFF"), c.name, c.id)
 
     # ── Selection ──
 
@@ -209,31 +189,21 @@ class CategoryManagerDialog(QDialog):
         cat_id = current.data(0, CATEGORY_ID_ROLE)
         self._editing_id = cat_id
 
-        db = Database()
-        with db.get_session() as session:
-            cat = session.get(Category, cat_id)
-            if not cat:
-                return
+        cat = CategoryService.get_by_id(cat_id)
+        if not cat:
+            return
 
-            self.txt_name.setText(cat.name)
-            self.selected_color = cat.color or "#00BCEB"
-            self._update_color_preview()
+        self.txt_name.setText(cat.name)
+        self.selected_color = cat.color or "#00BCEB"
+        self._update_color_preview()
 
-            # Rebuild parent combo excluding self + descendants
-            self._populate_parent_combo(exclude_id=cat_id)
-            idx = self.combo_parent.findData(cat.parent_id)
-            if idx >= 0:
-                self.combo_parent.setCurrentIndex(idx)
+        # Rebuild parent combo excluding self + descendants
+        self._populate_parent_combo(exclude_id=cat_id)
+        idx = self.combo_parent.findData(cat.parent_id)
+        if idx >= 0:
+            self.combo_parent.setCurrentIndex(idx)
 
         self.btn_save.setText(_t("category_manager.update"))
-
-    def _get_descendant_ids(self, session, cat_id: int) -> set:
-        """Get all descendant category IDs to prevent circular parenting."""
-        children = session.execute(select(Category.id).where(Category.parent_id == cat_id)).scalars().all()
-        ids = set(children)
-        for child_id in children:
-            ids |= self._get_descendant_ids(session, child_id)
-        return ids
 
     # ── Actions ──
 
@@ -247,30 +217,23 @@ class CategoryManagerDialog(QDialog):
 
         parent_id = self.combo_parent.currentData()
 
-        db = Database()
-        with db.get_session() as session:
-            try:
-                if self._editing_id:
-                    # Update existing
-                    cat = session.get(Category, self._editing_id)
-                    if not cat:
-                        return
-                    cat.name = name
-                    cat.parent_id = parent_id
-                    cat.color = self.selected_color
-                else:
-                    # Create new
-                    cat = Category(
-                        name=name,
-                        color=self.selected_color,
-                        parent_id=parent_id,
-                    )
-                    session.add(cat)
-                session.commit()
-            except Exception as e:
-                session.rollback()
-                QMessageBox.critical(self, _t("common.error"), str(e))
-                return
+        try:
+            if self._editing_id:
+                CategoryService.update(
+                    self._editing_id,
+                    name=name,
+                    color=self.selected_color,
+                    parent_id=parent_id,
+                )
+            else:
+                CategoryService.create(
+                    name=name,
+                    color=self.selected_color,
+                    parent_id=parent_id,
+                )
+        except Exception as e:
+            QMessageBox.critical(self, _t("common.error"), str(e))
+            return
 
         self._load_tree()
         self._clear_form()
@@ -283,50 +246,42 @@ class CategoryManagerDialog(QDialog):
         cat_id = current.data(0, CATEGORY_ID_ROLE)
         cat_name = current.text(0)
 
-        db = Database()
-        with db.get_session() as session:
-            all_ids = {cat_id} | self._get_descendant_ids(session, cat_id)
+        descendant_ids = CategoryService.get_descendant_ids(cat_id)
+        all_ids = {cat_id} | descendant_ids
 
-            product_count = session.execute(
-                select(func.count(Product.id)).where(Product.category_id.in_(all_ids))
-            ).scalar()
+        product_count = CategoryService.get_product_count_for_ids(all_ids)
 
-            if product_count > 0:
-                QMessageBox.warning(
-                    self,
-                    _t("category_manager.cannot_delete_title"),
-                    _t(
-                        "category_manager.cannot_delete_msg",
-                        name=cat_name,
-                        count=product_count,
-                    ),
-                )
-                return
-
-            sub_count = len(all_ids) - 1
-            msg = _t("category_manager.confirm_delete_msg", name=cat_name)
-            if sub_count > 0:
-                msg += "\n\n" + _t("category_manager.confirm_delete_sub", count=sub_count)
-
-            reply = QMessageBox.question(
+        if product_count > 0:
+            QMessageBox.warning(
                 self,
-                _t("category_manager.confirm_delete_title"),
-                msg,
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                _t("category_manager.cannot_delete_title"),
+                _t(
+                    "category_manager.cannot_delete_msg",
+                    name=cat_name,
+                    count=product_count,
+                ),
             )
-            if reply != QMessageBox.StandardButton.Yes:
-                return
+            return
 
-            try:
-                for cid in sorted(all_ids, reverse=True):
-                    cat = session.get(Category, cid)
-                    if cat:
-                        session.delete(cat)
-                session.commit()
-            except Exception as e:
-                session.rollback()
-                QMessageBox.critical(self, _t("common.error"), str(e))
-                return
+        sub_count = len(descendant_ids)
+        msg = _t("category_manager.confirm_delete_msg", name=cat_name)
+        if sub_count > 0:
+            msg += "\n\n" + _t("category_manager.confirm_delete_sub", count=sub_count)
+
+        reply = QMessageBox.question(
+            self,
+            _t("category_manager.confirm_delete_title"),
+            msg,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            CategoryService.delete_with_descendants(cat_id)
+        except Exception as e:
+            QMessageBox.critical(self, _t("common.error"), str(e))
+            return
 
         self._load_tree()
         self._clear_form()

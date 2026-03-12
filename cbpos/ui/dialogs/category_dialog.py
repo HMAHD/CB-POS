@@ -13,9 +13,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
-from sqlalchemy import select
-from cbpos.core.database import Database
 from cbpos.core.models import Category
+from cbpos.core.services.category_service import CategoryService
 from cbpos.i18n import _t
 
 
@@ -75,14 +74,12 @@ class CategoryDialog(QDialog):
         layout.addWidget(buttons)
 
     def load_categories(self):
-        db = Database()
-        with db.get_session() as session:
-            categories = session.scalars(select(Category)).all()
-            for cat in categories:
-                # Avoid self-parenting
-                if self.category and cat.id == self.category.id:
-                    continue
-                self.parent_combo.addItem(cat.name, cat.id)
+        categories = CategoryService.get_all()
+        for cat in categories:
+            # Avoid self-parenting
+            if self.category and cat.id == self.category.id:
+                continue
+            self.parent_combo.addItem(cat.name, cat.id)
 
     def pick_color(self):
         color = QColorDialog.getColor(QColor(self.selected_color), self, _t("category_dialog.select_color"))
@@ -106,20 +103,20 @@ class CategoryDialog(QDialog):
 
         parent_id = self.parent_combo.currentData()
 
-        db = Database()
-        with db.get_session() as session:
-            try:
-                if self.category:
-                    cat = session.get(Category, self.category.id)
-                    cat.name = name
-                    cat.parent_id = parent_id
-                    cat.color = self.selected_color
-                else:
-                    cat = Category(name=name, parent_id=parent_id, color=self.selected_color)
-                    session.add(cat)
-
-                session.commit()
-                self.accept()
-            except Exception as e:
-                session.rollback()
-                QMessageBox.critical(self, _t("common.error"), str(e))
+        try:
+            if self.category:
+                CategoryService.update(
+                    self.category.id,
+                    name=name,
+                    color=self.selected_color,
+                    parent_id=parent_id,
+                )
+            else:
+                CategoryService.create(
+                    name=name,
+                    color=self.selected_color,
+                    parent_id=parent_id,
+                )
+            self.accept()
+        except Exception as e:
+            QMessageBox.critical(self, _t("common.error"), str(e))

@@ -50,36 +50,47 @@ class DocumentService:
         )
         reset_period = settings.get("doc_reset_period", "YEARLY")  # YEARLY, MONTHLY, NEVER
 
-        # 2. Parse Date Placeholders
+        # 2. Parse placeholders
         now = datetime.now()
         year_str = now.strftime("%Y")
         month_str = now.strftime("%m")
         day_str = now.strftime("%d")
+        terminal_id = settings.get("terminal_id", "TERM-01") or "TERM-01"
+        # Short terminal suffix: "TERM-01" → "01", "T3" → "T3"
+        terminal_short = terminal_id.split("-")[-1] if "-" in terminal_id else terminal_id
 
-        # Replace static parts to find the prefix for DB query
-        # We need to identify the static prefix part to filter the DB.
-        # E.g. INV-2023-{seq:05d} -> Prefix is INV-2023-
-        # This is tricky if {seq} is in the middle.
-        # Strategy: Render the pattern without seq, but with a placeholder, then split?
-        # Simpler Strategy: We assume the pattern generates a string. We need to find the MAX of that string.
-        # But if the pattern changes, the sequence might break.
-        # Standard approach: Filter by "Prefix" determined by Reset Period.
+        # Render static placeholders (date + terminal)
+        prefix_pattern = (
+            pattern.replace("{Y}", year_str)
+            .replace("{M}", month_str)
+            .replace("{D}", day_str)
+            .replace("{T}", terminal_short)
+            .replace("{terminal}", terminal_short)
+        )
 
-        # Determine Reset Scope
-        if reset_period == "YEARLY":
-            # Filter by Year
-            # We need to construct a "Like" query that matches the current year's pattern
-            # This is complex if the user changes the pattern mid-year.
-            # Industrial Standard: The Sequence is usually stored in a separate Sequence Table or we rely on the ID.
-            # Given "Offline First" and SQLite, we will try to parse the pattern to extract a prefix.
-
-            # Let's assume the pattern starts with static text or date.
-            # We will render the pattern with {seq:05d} replaced by a wildcard or just look for the max ID
-            # that matches the rendered date parts.
-            pass
-
-        # RENDER DATE PARTS
-        prefix_pattern = pattern.replace("{Y}", year_str).replace("{M}", month_str).replace("{D}", day_str)
+        # Determine reset scope filter
+        if reset_period == "MONTHLY":
+            # Filter documents whose number matches the current year+month prefix
+            scope_prefix = (
+                pattern.split("{seq")[0]
+                .replace("{Y}", year_str)
+                .replace("{M}", month_str)
+                .replace("{D}", "%")
+                .replace("{T}", terminal_short)
+                .replace("{terminal}", terminal_short)
+            )
+        elif reset_period == "YEARLY":
+            scope_prefix = (
+                pattern.split("{seq")[0]
+                .replace("{Y}", year_str)
+                .replace("{M}", "%")
+                .replace("{D}", "%")
+                .replace("{T}", terminal_short)
+                .replace("{terminal}", terminal_short)
+            )
+        else:
+            # NEVER — no date scoping, just prefix
+            scope_prefix = None  # handled below
 
         # Extract the part before {seq} to use as DB filter
         # This assumes {seq} is at the end or we can filter by the static part.
@@ -87,14 +98,9 @@ class DocumentService:
         # Let's assume standard format where we can split by {seq}.
 
         if "{seq" in prefix_pattern:
-            pre_seq, post_seq = prefix_pattern.split("{seq", 1)
-            # pre_seq might be "INV-2023-"
-            # post_seq might be ":05d}"
-
-            # Clean up pre_seq
-            search_prefix = pre_seq
+            pre_seq, _ = prefix_pattern.split("{seq", 1)
+            search_prefix = scope_prefix if scope_prefix else pre_seq
         else:
-            # Fallback
             search_prefix = prefix_pattern + "-"
 
         # 3. Retry Loop for Concurrency

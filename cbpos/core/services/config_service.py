@@ -127,6 +127,24 @@ class ConfigService:
 
     _settings: Dict[str, Any] = {}
 
+    # Keys that are per-terminal in network mode.  When ``db_mode`` is
+    # ``"network"`` these are stored under a terminal-prefixed key
+    # (e.g. ``"TERM-01.printer_type"``) so each terminal can have its
+    # own printer, language, theme, etc. without overwriting other terminals.
+    _PER_TERMINAL_KEYS = frozenset(
+        {
+            "printer_type",
+            "printer_path",
+            "receipt_printer_name",
+            "a4_printer_name",
+            "language",
+            "theme",
+            "enable_sounds",
+            "enable_touch_mode",
+            "sidebar_collapsed",
+        }
+    )
+
     # Keys that should be encrypted in the settings file
     _SENSITIVE_KEYS = {"network_db_password", "smtp_pass"}
     _fernet: Fernet | None = None
@@ -243,18 +261,48 @@ class ConfigService:
             logger.error("Error saving settings: %s", e)
 
     @classmethod
+    def _terminal_key(cls, key: str) -> str:
+        """Return a terminal-prefixed key when running in network mode."""
+        if key in cls._PER_TERMINAL_KEYS:
+            db_mode = cls._settings.get("db_mode", "standalone")
+            if db_mode == "network":
+                tid = cls._settings.get("terminal_id", "TERM-01")
+                prefixed = f"{tid}.{key}"
+                # Only use prefixed key if it exists; fall through to
+                # global key for backwards compatibility.
+                if prefixed in cls._settings:
+                    return prefixed
+        return key
+
+    @classmethod
     def get(cls, key: str) -> Any:
-        """Get a setting value."""
+        """Get a setting value.
+
+        In network mode, per-terminal keys (printer, language, theme, etc.)
+        are looked up under a terminal-prefixed key first, falling back to
+        the global default if no terminal-specific value exists.
+        """
         if not cls._settings:
             cls.load()
-        return cls._settings.get(key, cls.DEFAULTS.get(key))
+        resolved = cls._terminal_key(key)
+        return cls._settings.get(resolved, cls.DEFAULTS.get(key))
 
     @classmethod
     def set(cls, key: str, value: Any):
-        """Set a setting value and save."""
+        """Set a setting value and save.
+
+        In network mode, per-terminal keys are stored under a
+        terminal-prefixed key (e.g. ``TERM-01.printer_type``).
+        """
         if not cls._settings:
             cls.load()
-        cls._settings[key] = value
+        store_key = key
+        if key in cls._PER_TERMINAL_KEYS:
+            db_mode = cls._settings.get("db_mode", "standalone")
+            if db_mode == "network":
+                tid = cls._settings.get("terminal_id", "TERM-01")
+                store_key = f"{tid}.{key}"
+        cls._settings[store_key] = value
         cls.save()
 
     @classmethod

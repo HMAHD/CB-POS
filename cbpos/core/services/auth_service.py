@@ -179,12 +179,45 @@ class AuthService:
 
                     AuthService._current_user = user
 
-                    # Log Login
+                    # Log login and check for concurrent sessions
                     try:
                         from cbpos.core.models import AuditLog
                         from cbpos.core.services.config_service import ConfigService
 
                         terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+
+                        # Warn if user is already logged in on another terminal
+                        # (check audit log for LOGIN without matching LOGOUT)
+                        last_login = (
+                            session.query(AuditLog)
+                            .filter(
+                                AuditLog.user_id == user.id,
+                                AuditLog.event_type == "LOGIN",
+                                AuditLog.terminal_id != terminal_id,
+                            )
+                            .order_by(AuditLog.timestamp.desc())
+                            .first()
+                        )
+                        if last_login:
+                            # Check if there's a logout after it
+                            last_logout = (
+                                session.query(AuditLog)
+                                .filter(
+                                    AuditLog.user_id == user.id,
+                                    AuditLog.event_type == "LOGOUT",
+                                    AuditLog.terminal_id == last_login.terminal_id,
+                                    AuditLog.timestamp > last_login.timestamp,
+                                )
+                                .first()
+                            )
+                            if not last_logout:
+                                logger.warning(
+                                    "User '%s' may be logged in on terminal '%s' "
+                                    "(no logout recorded). Concurrent session detected.",
+                                    user.username,
+                                    last_login.terminal_id,
+                                )
+
                         log = AuditLog(
                             user_id=user.id,
                             action="User Login",

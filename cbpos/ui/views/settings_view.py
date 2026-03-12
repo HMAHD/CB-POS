@@ -6,16 +6,10 @@ from PyQt6.QtWidgets import (
     QStackedWidget,
     QFrame,
     QMessageBox,
-    QLabel,
-    QToolButton,
-    QSizePolicy,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtCore import pyqtSignal
 from cbpos.core.services.config_service import ConfigService
-from cbpos.core.services.theme_service import ThemeService
-from cbpos.ui.widgets.custom_widgets import SidebarButton
-from cbpos.ui.resources.icons import Icons
+from cbpos.ui.widgets.collapsible_sidebar import CollapsibleSidebar
 from cbpos.ui.views.settings_pages import (
     ShopInfoPage,
     SalesTaxPage,
@@ -27,6 +21,9 @@ from cbpos.ui.views.settings_pages import (
 )
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
+# Minimum window width before sidebar auto-collapses
+RESPONSIVE_BREAKPOINT = 1024
+
 
 class SettingsView(QWidget):
     close_requested = pyqtSignal()
@@ -35,15 +32,9 @@ class SettingsView(QWidget):
 
     def __init__(self):
         super().__init__()
-        from cbpos.core.services.config_service import ConfigService
-
-        self.is_collapsed = bool(ConfigService.get("sidebar_collapsed"))
         self._settings_dirty = False
         self._saved_snapshot: dict = {}
-        self.nav_buttons = []
         self.init_ui()
-        if self.is_collapsed:
-            self._apply_collapsed_state()
         self.load_settings()
 
         self.retranslate_ui()
@@ -55,94 +46,38 @@ class SettingsView(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # Body: Sidebar + Content
         body_layout = QHBoxLayout()
         body_layout.setContentsMargins(0, 0, 0, 0)
         body_layout.setSpacing(0)
 
-        # --- Sidebar (matches ManagementView pattern) ---
-        self.sidebar = QFrame()
-        self.sidebar.setFixedWidth(250)
-        self.sidebar.setObjectName("SidebarContainer")
-        self.sidebar_layout = QVBoxLayout(self.sidebar)
-        self.sidebar_layout.setContentsMargins(0, 0, 0, 0)
-        self.sidebar_layout.setSpacing(10)
-
-        # Header (Logo + Toggle)
-        header_container = QWidget()
-        header_container.setFixedHeight(60)
-        header_layout = QHBoxLayout(header_container)
-        header_layout.setContentsMargins(10, 10, 10, 10)
-
-        self.lbl_logo = QLabel()
-        logo_path = ThemeService.get_logo_path()
-        logo_pixmap = QPixmap(logo_path)
-        if not logo_pixmap.isNull():
-            self.lbl_logo.setPixmap(logo_pixmap.scaledToHeight(40, Qt.TransformationMode.SmoothTransformation))
-        else:
-            self.lbl_logo.setText("")
-            self.lbl_logo.setObjectName("SidebarLogo")
-
-        self.btn_toggle = QToolButton()
-        icon_color = ThemeService.get_icon_color()
-        self.btn_toggle.setIcon(Icons.get("fa5s.bars", icon_color))
-        self.btn_toggle.setObjectName("SidebarToggle")
-        self.btn_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_toggle.clicked.connect(self.toggle_sidebar)
-
-        header_layout.addWidget(self.lbl_logo)
-        header_layout.addStretch()
-        header_layout.addWidget(self.btn_toggle)
-
-        self.sidebar_layout.addWidget(header_container)
-        self.sidebar_layout.addSpacing(10)
+        # --- Sidebar ---
+        self.sidebar = CollapsibleSidebar()
+        self.sidebar.nav_clicked.connect(self.switch_page)
+        self.sidebar.pos_clicked.connect(self._on_pos_clicked)
+        self.sidebar.logout_clicked.connect(self._on_logout_clicked)
 
         # Navigation buttons — config pages
-        self.btn_shop_info = self.create_nav_button("", "fa5s.store", 0)
-        self.btn_sales_tax = self.create_nav_button("", "fa5s.shopping-cart", 1)
-        self.btn_documents = self.create_nav_button("", "fa5s.file-invoice", 2)
-        self.btn_hardware = self.create_nav_button("", "fa5s.print", 3)
-        self.btn_receipt = self.create_nav_button("", "fa5s.receipt", 4)
-        self.btn_system = self.create_nav_button("", "fa5s.cogs", 5)
-        self.btn_network = self.create_nav_button("", "fa5s.network-wired", 6)
-        self.btn_payment_methods = self.create_nav_button("", "fa5s.credit-card", 7)
+        self.btn_shop_info = self.sidebar.add_nav_button("", "fa5s.store", 0)
+        self.btn_sales_tax = self.sidebar.add_nav_button("", "fa5s.shopping-cart", 1)
+        self.btn_documents = self.sidebar.add_nav_button("", "fa5s.file-invoice", 2)
+        self.btn_hardware = self.sidebar.add_nav_button("", "fa5s.print", 3)
+        self.btn_receipt = self.sidebar.add_nav_button("", "fa5s.receipt", 4)
+        self.btn_system = self.sidebar.add_nav_button("", "fa5s.cogs", 5)
+        self.btn_network = self.sidebar.add_nav_button("", "fa5s.network-wired", 6)
+        self.btn_payment_methods = self.sidebar.add_nav_button("", "fa5s.credit-card", 7)
 
-        # Operational buttons (same list, no gap)
-        self.btn_data_safety = self.create_nav_button("", "fa5s.shield-alt", 8)
-        self.btn_admin_tools = self.create_nav_button("", "fa5s.toolbox", 9)
+        # Operational buttons
+        self.btn_data_safety = self.sidebar.add_nav_button("", "fa5s.shield-alt", 8)
+        self.btn_admin_tools = self.sidebar.add_nav_button("", "fa5s.toolbox", 9)
 
-        self.sidebar_layout.addStretch()
-
-        # Bottom Section (POS + Logout) — matches ManagementView
-        self.user_profile_widget = QWidget()
-        self.user_profile_widget.setObjectName("UserProfileContainer")
-        user_profile_layout = QVBoxLayout(self.user_profile_widget)
-        user_profile_layout.setContentsMargins(0, 0, 0, 0)
-        user_profile_layout.setSpacing(0)
-
-        self.btn_pos = SidebarButton("", "fa5s.cash-register")
-        self.btn_pos.setObjectName("BtnPos")
-        self.btn_pos.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.btn_pos.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.btn_pos.clicked.connect(self._on_pos_clicked)
-        user_profile_layout.addWidget(self.btn_pos)
-
-        self.btn_logout = SidebarButton("", Icons.LOGOUT)
-        self.btn_logout.setObjectName("BtnLogout")
-        self.btn_logout.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.btn_logout.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.btn_logout.clicked.connect(self._on_logout_clicked)
-        user_profile_layout.addWidget(self.btn_logout)
-
-        user_profile_layout.addSpacing(10)
-        self.sidebar_layout.addWidget(self.user_profile_widget)
-
+        self.sidebar.finalize()
+        self.sidebar.highlight(0)
         body_layout.addWidget(self.sidebar)
 
         # --- Content Area ---
         self.stack = QStackedWidget()
         self.stack.setObjectName("SettingsContent")
-        self.stack.currentChanged.connect(self.highlight_active_page)
+        self.stack.currentChanged.connect(self.sidebar.highlight)
 
         # Config pages (participate in load/save)
         self.pages = [
@@ -175,11 +110,11 @@ class SettingsView(QWidget):
         body_layout.addWidget(self.stack, 1)
         main_layout.addLayout(body_layout, 1)
 
-        # Footer Bar (unchanged)
-        footer_frame = QFrame()
-        footer_frame.setFixedHeight(70)
-        footer_frame.setObjectName("SettingsFooter")
-        footer_layout = QHBoxLayout(footer_frame)
+        # --- Footer Bar (visible only on config pages 0-6) ---
+        self.footer_frame = QFrame()
+        self.footer_frame.setFixedHeight(70)
+        self.footer_frame.setObjectName("SettingsFooter")
+        footer_layout = QHBoxLayout(self.footer_frame)
         footer_layout.setContentsMargins(30, 15, 30, 15)
         footer_layout.setSpacing(15)
 
@@ -198,23 +133,10 @@ class SettingsView(QWidget):
         footer_layout.addWidget(self.btn_save)
         footer_layout.addWidget(self.btn_cancel)
 
-        main_layout.addWidget(footer_frame)
+        main_layout.addWidget(self.footer_frame)
 
-        # Animation
-        self.anim_width = QPropertyAnimation(self.sidebar, b"minimumWidth")
-        self.anim_width.setDuration(300)
-        self.anim_width.setEasingCurve(QEasingCurve.Type.InOutQuart)
-
-        self.anim_max_width = QPropertyAnimation(self.sidebar, b"maximumWidth")
-        self.anim_max_width.setDuration(300)
-        self.anim_max_width.setEasingCurve(QEasingCurve.Type.InOutQuart)
-
-        # Apply initial styles
-        self.update_sidebar_styles()
-        self.highlight_active_page(0)
-
-        # Register theme callback
-        ThemeService.register_theme_callback(self.update_sidebar_icons)
+        # Hide footer on operational pages (they auto-save)
+        self.stack.currentChanged.connect(self._update_footer_visibility)
 
     def retranslate_ui(self) -> None:
         """Update all translatable text in the view."""
@@ -233,22 +155,15 @@ class SettingsView(QWidget):
         self.btn_admin_tools.setText("   " + _t("settings.sidebar_admin_tools"))
 
         # Bottom sidebar buttons
-        self.btn_pos.setText("   " + _t("management.sidebar_pos"))
-        self.btn_logout.setText("   " + _t("management.sidebar_logout"))
+        self.sidebar.retranslate_pos_logout()
 
         # Footer buttons
         self.btn_save.setText(_t("settings.btn_save"))
         self.btn_cancel.setText(_t("settings.btn_cancel"))
 
-    def create_nav_button(self, text: str, icon: str, index: int) -> SidebarButton:
-        """Create a sidebar navigation button connected to the given stack index."""
-        btn = SidebarButton(f"   {text}", icon)
-        btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        btn.clicked.connect(lambda checked=False, idx=index: self.switch_page(idx))
-        self.sidebar_layout.addWidget(btn)
-        self.nav_buttons.append(btn)
-        return btn
+    # ------------------------------------------------------------------
+    # Page switching with unsaved-changes guard
+    # ------------------------------------------------------------------
 
     def _take_snapshot(self) -> dict:
         """Collect current values from all config pages for dirty comparison."""
@@ -279,90 +194,9 @@ class SettingsView(QWidget):
             self.load_settings()
         self.stack.setCurrentIndex(index)
 
-    def highlight_active_page(self, index: int) -> None:
-        """Highlight the active nav button based on current stack index."""
-        for i, btn in enumerate(self.nav_buttons):
-            is_active = i == index
-            btn.set_active(is_active)
-            btn.setProperty("active", is_active)
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
-
-    def _apply_collapsed_state(self) -> None:
-        """Set sidebar to collapsed (icon-only) mode without animation."""
-        self.sidebar.setFixedWidth(70)
-        self.lbl_logo.setVisible(False)
-        style = Qt.ToolButtonStyle.ToolButtonIconOnly
-        self.btn_pos.setToolButtonStyle(style)
-        self.btn_logout.setToolButtonStyle(style)
-        for btn in self.nav_buttons:
-            btn.setToolButtonStyle(style)
-
-    def toggle_sidebar(self) -> None:
-        """Animate sidebar between expanded (250px) and collapsed (70px)."""
-        from cbpos.core.services.config_service import ConfigService
-
-        start_width = self.sidebar.width()
-
-        if self.is_collapsed:
-            end_width = 250
-            self.lbl_logo.setVisible(True)
-            style = Qt.ToolButtonStyle.ToolButtonTextBesideIcon
-            self.is_collapsed = False
-        else:
-            end_width = 70
-            self.lbl_logo.setVisible(False)
-            style = Qt.ToolButtonStyle.ToolButtonIconOnly
-            self.is_collapsed = True
-
-        ConfigService.set("sidebar_collapsed", self.is_collapsed)
-
-        self.anim_width.setStartValue(start_width)
-        self.anim_width.setEndValue(end_width)
-        self.anim_width.start()
-
-        self.anim_max_width.setStartValue(start_width)
-        self.anim_max_width.setEndValue(end_width)
-        self.anim_max_width.start()
-
-        self.update_sidebar_styles()
-
-        self.btn_pos.setToolButtonStyle(style)
-        self.btn_logout.setToolButtonStyle(style)
-        for btn in self.nav_buttons:
-            btn.setToolButtonStyle(style)
-
-    def update_sidebar_styles(self) -> None:
-        """Update collapsed property on all sidebar buttons for QSS targeting."""
-        buttons = self.nav_buttons + [self.btn_pos, self.btn_logout]
-        for btn in buttons:
-            btn.setProperty("collapsed", self.is_collapsed)
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
-
-    def update_sidebar_icons(self) -> None:
-        """Update sidebar button icons when theme changes."""
-        buttons = self.nav_buttons + [self.btn_pos, self.btn_logout]
-        for btn in buttons:
-            if hasattr(btn, "update_icon"):
-                btn.update_icon()
-
-        # Also update toggle button icon
-        icon_color = ThemeService.get_icon_color()
-        self.btn_toggle.setIcon(Icons.get("fa5s.bars", icon_color))
-
-        # Update logo
-        logo_path = ThemeService.get_logo_path()
-        logo_pixmap = QPixmap(logo_path)
-        if not logo_pixmap.isNull():
-            self.lbl_logo.setPixmap(logo_pixmap.scaledToHeight(40, Qt.TransformationMode.SmoothTransformation))
-
-    def set_user(self, user) -> None:
-        """Show/hide admin-only sidebar buttons based on user role."""
-        role = user.role.name.lower() if user.role else "cashier"
-        is_admin = "admin" in role
-        self.btn_data_safety.setVisible(is_admin)
-        self.btn_admin_tools.setVisible(is_admin)
+    def _update_footer_visibility(self, index: int) -> None:
+        """Show footer only on config pages (0-6). Operational pages (7+) auto-save."""
+        self.footer_frame.setVisible(index < len(self.pages))
 
     def _check_discard_unsaved(self) -> bool:
         """Check for unsaved changes and prompt user. Returns True if safe to proceed."""
@@ -388,6 +222,21 @@ class SettingsView(QWidget):
         """Logout, prompting for unsaved changes."""
         if self._check_discard_unsaved():
             self.logout_requested.emit()
+
+    # ------------------------------------------------------------------
+    # User / permissions
+    # ------------------------------------------------------------------
+
+    def set_user(self, user) -> None:
+        """Show/hide admin-only sidebar buttons based on user role."""
+        role = user.role.name.lower() if user.role else "cashier"
+        is_admin = "admin" in role
+        self.btn_data_safety.setVisible(is_admin)
+        self.btn_admin_tools.setVisible(is_admin)
+
+    # ------------------------------------------------------------------
+    # Load / Save
+    # ------------------------------------------------------------------
 
     def load_settings(self):
         settings = ConfigService.get_all()
@@ -457,6 +306,8 @@ class SettingsView(QWidget):
 
         ConfigService.update_all(all_settings)
 
+        from cbpos.core.services.theme_service import ThemeService
+
         new_theme = all_settings.get("theme", current_theme)
         new_lang = all_settings.get("language", current_lang)
         new_font_size = all_settings.get("font_size", current_font_size)
@@ -488,3 +339,17 @@ class SettingsView(QWidget):
 
         self._saved_snapshot = self._take_snapshot()
         self.close_requested.emit()
+
+    # ------------------------------------------------------------------
+    # Responsive
+    # ------------------------------------------------------------------
+
+    def resizeEvent(self, event) -> None:
+        """Auto-collapse sidebar on narrow screens."""
+        super().resizeEvent(event)
+        width = event.size().width()
+        if width < RESPONSIVE_BREAKPOINT and not self.sidebar.is_collapsed:
+            self.sidebar.set_collapsed(True)
+        elif width >= RESPONSIVE_BREAKPOINT and self.sidebar.is_collapsed:
+            if not bool(ConfigService.get("sidebar_collapsed")):
+                self.sidebar.set_collapsed(False)

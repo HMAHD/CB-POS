@@ -604,11 +604,12 @@ class SalesTaxPage(SettingsPage):
         self.chk_item_tax_exemptions.setToolTip(_t("settings.sales_tax.tooltip_item_tax_exemptions"))
 
     def _toggle_tax_fields(self) -> None:
-        """Enable/disable tax rate fields based on VAT registration status."""
+        """Enable/disable tax rate fields and sub-options based on VAT registration status."""
         enabled = self.chk_vat_registered.isChecked()
         self.spin_vat.setEnabled(enabled)
         self.spin_sscl.setEnabled(enabled)
         self.spin_sscl_turnover.setEnabled(enabled)
+        self.chk_item_tax_exemptions.setEnabled(enabled)
 
     def load(self, settings: dict):
         mode = settings.get("default_search_mode", "ALL")
@@ -1271,6 +1272,10 @@ class ReceiptPage(SettingsPage):
         self.chk_show_barcode.setChecked(settings.get("show_barcode", _d["show_barcode"]))
         self.chk_merge_items.setChecked(settings.get("merge_items", _d["merge_items"]))
         self.chk_show_tax.setChecked(settings.get("show_tax_breakdown", _d["show_tax_breakdown"]))
+        # Disable tax breakdown toggle when VAT is not active
+        from cbpos.core.services.tax_service import TaxService
+
+        self.chk_show_tax.setEnabled(TaxService.is_vat_active())
         self.chk_show_cashier.setChecked(settings.get("show_cashier_on_receipt", _d["show_cashier_on_receipt"]))
         self.chk_show_terminal.setChecked(settings.get("show_terminal_on_receipt", _d["show_terminal_on_receipt"]))
 

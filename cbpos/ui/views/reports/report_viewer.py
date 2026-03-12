@@ -25,6 +25,7 @@ from cbpos.ui.views.reports.pandas_model import PandasModel
 from cbpos.ui.workers import ExportWorker
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
+from cbpos.core.services.tax_service import TaxService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
@@ -309,8 +310,14 @@ class ReportViewer(QWidget):
         """Build category sections with report buttons."""
         categories = self.registry.get_all_categories()
 
+        vat_active = TaxService.is_vat_active()
+
         for idx, category in enumerate(categories):
-            reports = self.registry.get_reports_by_category(category)
+            all_reports = self.registry.get_reports_by_category(category)
+            # Filter out VAT-only reports when VAT is not active
+            reports = [r for r in all_reports if not getattr(r, "requires_vat", False) or vat_active]
+            if not reports:
+                continue
 
             # Category header row: label + count badge
             if idx > 0:

@@ -27,6 +27,7 @@ from cbpos.core.services.price_list_service import (
     PriceListService,
 )  # Assuming this exists or will be needed
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.tax_service import TaxService
 from cbpos.i18n import _t
 
 
@@ -111,6 +112,7 @@ class CustomerEditor(QDialog):
         form.setSpacing(12)
 
         self.vat_input = QLineEdit()
+        self._lbl_vat = QLabel(_t("customer_editor.vat_number"))
 
         self.tax_id_input = QLineEdit()
         self.tax_id_input.setPlaceholderText(_t("customer_editor.tin_placeholder"))
@@ -127,7 +129,11 @@ class CustomerEditor(QDialog):
         self.price_list_combo.addItem(_t("customer_editor.price_list_default"), None)
         # Price list loading deferred until PriceList management UI is complete
 
-        form.addRow(_t("customer_editor.vat_number"), self.vat_input)
+        form.addRow(self._lbl_vat, self.vat_input)
+        # Hide VAT number field when VAT is not active
+        if not TaxService.is_vat_active():
+            self.vat_input.setVisible(False)
+            self._lbl_vat.setVisible(False)
         form.addRow(_t("customer_editor.tin"), self.tax_id_input)
         form.addRow(_t("customer_editor.credit_limit"), self.limit_input)
         form.addRow(_t("customer_editor.payment_terms"), self.payment_terms_input)

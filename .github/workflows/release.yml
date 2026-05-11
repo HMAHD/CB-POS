@@ -84,7 +84,7 @@ jobs:
           echo "Total files: $(find dist/cbpos -type f | wc -l)"
 
       - name: Build Inno Setup installer
-        uses: Minionguyjpro/Inno-Setup-Action@v1.2.7
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.8
         env:
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:

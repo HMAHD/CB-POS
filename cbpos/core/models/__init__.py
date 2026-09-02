@@ -41,6 +41,7 @@ class Role(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     access_level: Mapped[int] = mapped_column(Integer, default=0)
+    last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
     permissions: Mapped[List["Permission"]] = relationship(secondary=role_permissions, back_populates="roles")
 
 
@@ -51,6 +52,7 @@ class Permission(Base):
     code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String(200))
     group: Mapped[str] = mapped_column(String(50), default="General")
+    last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
     roles: Mapped[List["Role"]] = relationship(secondary=role_permissions, back_populates="permissions")
 
@@ -67,6 +69,7 @@ class User(Base):
     # Brute-force protection (database-backed, survives restarts)
     failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
     role: Mapped["Role"] = relationship()
 
@@ -80,6 +83,7 @@ class PriceList(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     start_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     end_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
     items: Mapped[List["PriceListItem"]] = relationship(back_populates="price_list", cascade="all, delete-orphan")
 
@@ -108,6 +112,7 @@ class Promotion(Base):
     type: Mapped[str] = mapped_column(String(20), nullable=False)  # PERCENTAGE, FIXED_AMOUNT, BOGO
     value: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
 
 # --- Unified Document Architecture ---
@@ -117,6 +122,7 @@ class VoidReason(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     description: Mapped[str] = mapped_column(String(100), nullable=False)
     code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
+    last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
 
 class Document(Base):
@@ -132,6 +138,8 @@ class Document(Base):
     void_reason_id: Mapped[Optional[int]] = mapped_column(ForeignKey("void_reasons.id"), nullable=True)
 
     terminal_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
+    origin_terminal_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
+    synced: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     user: Mapped["User"] = relationship()
     void_reason: Mapped["VoidReason"] = relationship()
@@ -231,6 +239,7 @@ class Unit(Base):
     abbreviation: Mapped[str] = mapped_column(String(10), nullable=False)
     decimal_places: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
     products: Mapped[List["Product"]] = relationship(back_populates="unit")
 
@@ -243,6 +252,7 @@ class Category(Base):
     color: Mapped[str] = mapped_column(String(7), default="#FFFFFF")
     parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True)
     tax_exempt: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
     products: Mapped[List["Product"]] = relationship(back_populates="category")
     parent: Mapped["Category"] = relationship("Category", remote_side=[id], back_populates="subcategories")
@@ -272,6 +282,7 @@ class Product(Base):
     unit_id: Mapped[Optional[int]] = mapped_column(ForeignKey("units.id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     version_id: Mapped[int] = mapped_column(Integer, default=1, nullable=False)  # Optimistic Locking
+    last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
     category: Mapped["Category"] = relationship(back_populates="products", lazy="joined")
     unit: Mapped[Optional["Unit"]] = relationship(back_populates="products", lazy="joined")
@@ -307,6 +318,7 @@ class Customer(Base):
     loyalty_card_code: Mapped[Optional[str]] = mapped_column(String(50), unique=True, index=True, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     price_list_id: Mapped[Optional[int]] = mapped_column(ForeignKey("price_lists.id"), nullable=True)
+    last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
     sales: Mapped[List["Sale"]] = relationship(back_populates="customer")
     price_list: Mapped["PriceList"] = relationship()
@@ -340,6 +352,7 @@ class Supplier(Base):
     current_payable: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     payment_terms: Mapped[int] = mapped_column(Integer, default=0)  # Days
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
 
     purchases: Mapped[List["Purchase"]] = relationship(back_populates="supplier")
     products: Mapped[List["Product"]] = relationship(secondary=product_suppliers, back_populates="suppliers")
@@ -400,6 +413,7 @@ class StockMovement(Base):
     document_id: Mapped[Optional[int]] = mapped_column(ForeignKey("documents.id"), nullable=True)
     type: Mapped[str] = mapped_column(String(20), nullable=False)  # SALE, PURCHASE, ADJUSTMENT, RETURN, VOID
     terminal_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
+    synced: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     product: Mapped["Product"] = relationship()
     user: Mapped["User"] = relationship()
@@ -428,6 +442,7 @@ class AuditLog(Base):
     terminal_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     details: Mapped[Optional[str]] = mapped_column(String)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    synced: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     user: Mapped["User"] = relationship()
 
@@ -459,6 +474,7 @@ class Shift(Base):
     actual_cash: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="OPEN", index=True)  # OPEN, CLOSED
     terminal_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
+    synced: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     user: Mapped["User"] = relationship()
 
@@ -473,6 +489,7 @@ class CashMovement(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     reason: Mapped[str] = mapped_column(String(200), nullable=False)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    synced: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     user: Mapped["User"] = relationship()
     shift: Mapped["Shift"] = relationship()
@@ -498,6 +515,7 @@ class CustomerPayment(Base):
     note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)
+    synced: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     customer: Mapped["Customer"] = relationship()
     user: Mapped["User"] = relationship()
@@ -516,6 +534,7 @@ class CustomerLedgerEntry(Base):
     note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)
+    synced: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     customer: Mapped["Customer"] = relationship()
     user: Mapped["User"] = relationship()
@@ -567,6 +586,7 @@ class SupplierPayment(Base):
     note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)
+    synced: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     supplier: Mapped["Supplier"] = relationship()
     user: Mapped["User"] = relationship()
@@ -587,6 +607,7 @@ class SupplierLedgerEntry(Base):
     note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)
+    synced: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     supplier: Mapped["Supplier"] = relationship()
     user: Mapped["User"] = relationship()
@@ -601,3 +622,43 @@ class PaymentMethod(Base):
     open_drawer: Mapped[bool] = mapped_column(Boolean, default=False)
     shortcut: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
+
+
+# --- Multi-Terminal Sync ---
+class SyncLog(Base):
+    """Tracks completed sync operations between terminals and the Main PC."""
+
+    __tablename__ = "sync_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    terminal_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    direction: Mapped[str] = mapped_column(String(10), nullable=False)  # PUSH or PULL
+    sync_type: Mapped[str] = mapped_column(String(30), nullable=False)  # CATALOG, TRANSACTIONS, FULL
+    records_count: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(20), default="SUCCESS")  # SUCCESS, FAILED, PARTIAL
+    error_message: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+class SyncQueue(Base):
+    """Outgoing items waiting to be pushed to the Main PC.
+
+    When a terminal creates a transaction (sale, payment, etc.) while
+    offline or before the next sync cycle, a queue entry is created.
+    The SyncClient processes the queue and marks items as sent.
+    """
+
+    __tablename__ = "sync_queue"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    table_name: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    record_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    action: Mapped[str] = mapped_column(String(10), nullable=False)  # INSERT, UPDATE, DELETE
+    payload: Mapped[str] = mapped_column(Text, nullable=False)  # JSON serialized record
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)
+    sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING", index=True)  # PENDING, SENT, FAILED
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    error_message: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)

@@ -109,6 +109,11 @@ class ConfigService:
         "auto_select_barcode_match": True,
         # Terminal Identification
         "terminal_id": "TERM-01",
+        # Multi-Terminal LAN Sync
+        "terminal_mode": "standalone",  # standalone, main, or terminal
+        "sync_server_port": 5555,  # Port for sync server (Main PC)
+        "main_pc_address": "",  # IP:port of Main PC (Terminal mode)
+        "sync_interval_seconds": 3,  # How often terminals push/pull (seconds)
         # Automation / Email
         "auto_report_enabled": False,
         "auto_report_time": "22:00",
@@ -142,6 +147,8 @@ class ConfigService:
             "enable_sounds",
             "enable_touch_mode",
             "sidebar_collapsed",
+            "terminal_mode",
+            "main_pc_address",
         }
     )
 

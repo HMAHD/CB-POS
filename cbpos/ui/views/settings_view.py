@@ -317,8 +317,10 @@ class SettingsView(QWidget):
 
             set_language(new_lang)
 
-        restart_required = new_font_size != current_font_size or all_settings.get("db_mode") != current_config.get(
-            "db_mode"
+        restart_required = (
+            new_font_size != current_font_size
+            or all_settings.get("db_mode") != current_config.get("db_mode")
+            or all_settings.get("terminal_mode") != current_config.get("terminal_mode")
         )
 
         if restart_required:

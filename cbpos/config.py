@@ -6,7 +6,7 @@ from pathlib import Path
 
 class Config:
     APP_NAME = "CB POS"
-    VERSION = "1.2.5"
+    VERSION = "1.3.0"
 
     # Application code / assets directory (where the source lives).
     BASE_DIR = Path(__file__).parent.parent

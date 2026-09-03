@@ -1736,7 +1736,108 @@ class NetworkPage(SettingsPage):
 
         self.tabs.addTab(tab_migrate, "")
 
+        # --- Tab 4: LAN Sync (Multi-Terminal) ---
+        tab_sync, sync_layout = self._build_vbox_tab()
+
+        self.sync_card = QFrame()
+        self.sync_card.setObjectName("NetworkCard")
+        self.sync_card.setFrameShape(QFrame.Shape.StyledPanel)
+        sync_card_layout = QVBoxLayout(self.sync_card)
+        sync_card_layout.setContentsMargins(25, 25, 25, 25)
+        sync_card_layout.setSpacing(18)
+
+        self.lbl_sync_title = QLabel("Multi-Terminal LAN Sync")
+        self.lbl_sync_title.setObjectName("CardTitle")
+        sync_card_layout.addWidget(self.lbl_sync_title)
+
+        self.lbl_sync_desc = QLabel(
+            "Connect multiple registers over a LAN cable. "
+            "One PC acts as the Main (hub), others connect as Terminals."
+        )
+        self.lbl_sync_desc.setWordWrap(True)
+        self.lbl_sync_desc.setObjectName("MigrationInfo")
+        sync_card_layout.addWidget(self.lbl_sync_desc)
+
+        sync_grid = QGridLayout()
+        sync_grid.setVerticalSpacing(12)
+        sync_grid.setHorizontalSpacing(10)
+        sync_grid.setColumnStretch(0, 0)
+        sync_grid.setColumnStretch(1, 1)
+
+        # Terminal Mode selector
+        self.lbl_terminal_mode = QLabel("Terminal Mode:")
+        self.lbl_terminal_mode.setObjectName("FormLabel")
+        self.cmb_terminal_mode = QComboBox()
+        self.cmb_terminal_mode.addItem("Standalone (Single PC)", "standalone")
+        self.cmb_terminal_mode.addItem("Main PC (Hub)", "main")
+        self.cmb_terminal_mode.addItem("Terminal (Connect to Main)", "terminal")
+        self.cmb_terminal_mode.currentIndexChanged.connect(self._on_terminal_mode_changed)
+        sync_grid.addWidget(self.lbl_terminal_mode, 0, 0, Qt.AlignmentFlag.AlignLeft)
+        sync_grid.addWidget(self.cmb_terminal_mode, 0, 1)
+
+        # Terminal ID
+        self.lbl_sync_terminal_id = QLabel("Terminal ID:")
+        self.lbl_sync_terminal_id.setObjectName("FormLabel")
+        self.input_terminal_id = QLineEdit()
+        self.input_terminal_id.setObjectName("InputNetwork")
+        self.input_terminal_id.setPlaceholderText("TERM-01")
+        sync_grid.addWidget(self.lbl_sync_terminal_id, 1, 0, Qt.AlignmentFlag.AlignLeft)
+        sync_grid.addWidget(self.input_terminal_id, 1, 1)
+
+        # Sync server port (Main PC mode)
+        self.lbl_sync_port = QLabel("Sync Port:")
+        self.lbl_sync_port.setObjectName("FormLabel")
+        self.spin_sync_port = QSpinBox()
+        self.spin_sync_port.setObjectName("InputNetwork")
+        self.spin_sync_port.setRange(1024, 65535)
+        self.spin_sync_port.setValue(5555)
+        sync_grid.addWidget(self.lbl_sync_port, 2, 0, Qt.AlignmentFlag.AlignLeft)
+        sync_grid.addWidget(self.spin_sync_port, 2, 1)
+
+        # Main PC address (Terminal mode)
+        self.lbl_main_pc_addr = QLabel("Main PC Address:")
+        self.lbl_main_pc_addr.setObjectName("FormLabel")
+        self.input_main_pc_addr = QLineEdit()
+        self.input_main_pc_addr.setObjectName("InputNetwork")
+        self.input_main_pc_addr.setPlaceholderText("192.168.1.100:5555")
+        sync_grid.addWidget(self.lbl_main_pc_addr, 3, 0, Qt.AlignmentFlag.AlignLeft)
+        sync_grid.addWidget(self.input_main_pc_addr, 3, 1)
+
+        # Sync interval
+        self.lbl_sync_interval = QLabel("Sync Interval:")
+        self.lbl_sync_interval.setObjectName("FormLabel")
+        self.spin_sync_interval = QSpinBox()
+        self.spin_sync_interval.setObjectName("InputNetwork")
+        self.spin_sync_interval.setRange(1, 60)
+        self.spin_sync_interval.setSuffix(" seconds")
+        self.spin_sync_interval.setValue(3)
+        sync_grid.addWidget(self.lbl_sync_interval, 4, 0, Qt.AlignmentFlag.AlignLeft)
+        sync_grid.addWidget(self.spin_sync_interval, 4, 1)
+
+        sync_card_layout.addLayout(sync_grid)
+
+        # Test LAN Sync Connection button
+        sync_test_layout = QHBoxLayout()
+        self.btn_test_sync = QPushButton("Test Sync Connection")
+        self.btn_test_sync.setObjectName("BtnTestNetwork")
+        self.btn_test_sync.clicked.connect(self._test_sync_connection)
+        self.lbl_sync_test_status = QLabel("")
+        self.lbl_sync_test_status.setObjectName("TestStatus")
+        sync_test_layout.addWidget(self.btn_test_sync)
+        sync_test_layout.addWidget(self.lbl_sync_test_status, 1)
+        sync_card_layout.addLayout(sync_test_layout)
+
+        # Server address display (Main PC mode)
+        self.lbl_server_address = QLabel("")
+        self.lbl_server_address.setObjectName("IPHelper")
+        self.lbl_server_address.setWordWrap(True)
+        sync_card_layout.addWidget(self.lbl_server_address)
+
+        sync_layout.addWidget(self.sync_card)
+        self.tabs.addTab(tab_sync, "")
+
         self._on_mode_changed("Standalone")
+        self._on_terminal_mode_changed(0)
 
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui)
@@ -1749,6 +1850,7 @@ class NetworkPage(SettingsPage):
         self.tabs.setTabText(0, _t("settings.network.tab_mode"))
         self.tabs.setTabText(1, _t("settings.network.tab_server"))
         self.tabs.setTabText(2, _t("settings.network.tab_migration"))
+        self.tabs.setTabText(3, "LAN Sync")
 
         # Mode tab
         self.lbl_db_mode.setText(_t("settings.network.database_mode"))
@@ -1809,6 +1911,16 @@ class NetworkPage(SettingsPage):
         self._original_mode = self.cmb_db_mode.currentData()
         self._on_mode_changed(self.cmb_db_mode.currentData() or "Standalone")
 
+        # LAN Sync settings
+        terminal_mode = settings.get("terminal_mode", "standalone")
+        tm_idx = self.cmb_terminal_mode.findData(terminal_mode)
+        if tm_idx >= 0:
+            self.cmb_terminal_mode.setCurrentIndex(tm_idx)
+        self.input_terminal_id.setText(settings.get("terminal_id", "TERM-01"))
+        self.spin_sync_port.setValue(int(settings.get("sync_server_port", 5555)))
+        self.input_main_pc_addr.setText(settings.get("main_pc_address", ""))
+        self.spin_sync_interval.setValue(int(settings.get("sync_interval_seconds", 3)))
+
     def save(self) -> dict:
         mode_data = self.cmb_db_mode.currentData() or "Standalone"
         db_mode = "standalone" if mode_data == "Standalone" else "network"
@@ -1819,6 +1931,12 @@ class NetworkPage(SettingsPage):
             "network_db_name": self.input_dbname.text().strip(),
             "network_db_user": self.input_user.text().strip(),
             "network_db_password": self.input_password.text(),
+            # LAN Sync
+            "terminal_mode": self.cmb_terminal_mode.currentData() or "standalone",
+            "terminal_id": self.input_terminal_id.text().strip() or "TERM-01",
+            "sync_server_port": self.spin_sync_port.value(),
+            "main_pc_address": self.input_main_pc_addr.text().strip(),
+            "sync_interval_seconds": self.spin_sync_interval.value(),
         }
 
     def _on_mode_changed(self, mode: str):
@@ -1967,3 +2085,104 @@ class NetworkPage(SettingsPage):
                 _t("settings.network.migration_error_title"),
                 _t("settings.network.migration_error_message"),
             )
+
+    def _on_terminal_mode_changed(self, index: int) -> None:
+        """Show/hide fields based on selected terminal mode."""
+        mode = self.cmb_terminal_mode.currentData() or "standalone"
+
+        is_main = mode == "main"
+        is_terminal = mode == "terminal"
+        is_sync = is_main or is_terminal
+
+        # Terminal ID always visible when sync enabled
+        self.lbl_sync_terminal_id.setVisible(is_sync)
+        self.input_terminal_id.setVisible(is_sync)
+
+        # Sync port only for Main PC
+        self.lbl_sync_port.setVisible(is_main)
+        self.spin_sync_port.setVisible(is_main)
+
+        # Main PC address only for Terminal
+        self.lbl_main_pc_addr.setVisible(is_terminal)
+        self.input_main_pc_addr.setVisible(is_terminal)
+
+        # Sync interval for both
+        self.lbl_sync_interval.setVisible(is_sync)
+        self.spin_sync_interval.setVisible(is_sync)
+
+        # Test button only for Terminal mode
+        self.btn_test_sync.setVisible(is_terminal)
+        self.lbl_sync_test_status.setVisible(is_terminal)
+
+        # Server address display for Main PC
+        if is_main:
+            try:
+                import socket
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.settimeout(0.1)
+                s.connect(("10.255.255.255", 1))
+                ip = s.getsockname()[0]
+                s.close()
+            except Exception:
+                ip = "127.0.0.1"
+            port = self.spin_sync_port.value()
+            self.lbl_server_address.setText(
+                f"Terminals should connect to: {ip}:{port}"
+            )
+            self.lbl_server_address.setVisible(True)
+        else:
+            self.lbl_server_address.setVisible(False)
+
+    def _test_sync_connection(self) -> None:
+        """Test the connection to the Main PC sync server."""
+        address = self.input_main_pc_addr.text().strip()
+        if not address:
+            QMessageBox.warning(
+                self, "Validation Error", "Enter the Main PC address (IP:port)"
+            )
+            return
+
+        if not address.startswith("http"):
+            address = f"http://{address}"
+
+        self.lbl_sync_test_status.setText("Testing...")
+        self.btn_test_sync.setEnabled(False)
+        QApplication.processEvents()
+
+        try:
+            import urllib.request
+            import urllib.error
+
+            url = f"{address}/sync/heartbeat"
+            req = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+
+            if data.get("status") == "ok":
+                version = data.get("protocol_version", "?")
+                terminals = data.get("terminals_connected", 0)
+                self.lbl_sync_test_status.setText("✓ Connected")
+                QMessageBox.information(
+                    self,
+                    "Connection Successful",
+                    f"Connected to Main PC!\n\n"
+                    f"Protocol version: {version}\n"
+                    f"Terminals connected: {terminals}",
+                )
+            else:
+                self.lbl_sync_test_status.setText("✗ Unexpected response")
+
+        except urllib.error.URLError as e:
+            self.lbl_sync_test_status.setText("✗ Failed")
+            QMessageBox.critical(
+                self,
+                "Connection Failed",
+                f"Cannot reach Main PC at {address}\n\n{e}",
+            )
+        except Exception as e:
+            self.lbl_sync_test_status.setText("✗ Error")
+            QMessageBox.critical(
+                self, "Connection Error", str(e)
+            )
+        finally:
+            self.btn_test_sync.setEnabled(True)

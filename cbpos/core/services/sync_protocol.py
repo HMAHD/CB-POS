@@ -1,0 +1,371 @@
+"""
+Sync Protocol for CB-POS Multi-Terminal LAN Sync.
+
+Provides JSON serialization/deserialization for SQLAlchemy models,
+sync envelope format, and shared constants for the sync server/client.
+"""
+
+import json
+import logging
+from datetime import datetime, date
+from decimal import Decimal
+from typing import Any, Dict, List, Optional, Type
+
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.orm import RelationshipProperty
+
+from cbpos.core.database import Base
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Sync Protocol Version — bump when envelope format changes.
+# Server and client must agree on the major version.
+# ---------------------------------------------------------------------------
+SYNC_PROTOCOL_VERSION = "1.0"
+
+# ---------------------------------------------------------------------------
+# Default sync server port
+# ---------------------------------------------------------------------------
+DEFAULT_SYNC_PORT = 5555
+
+# ---------------------------------------------------------------------------
+# Sync Endpoints (URL paths for the HTTP sync server)
+# ---------------------------------------------------------------------------
+EP_HEARTBEAT = "/sync/heartbeat"
+EP_REGISTER = "/sync/register"
+EP_PUSH_TRANSACTIONS = "/sync/push-transactions"
+EP_PULL_CATALOG = "/sync/pull-catalog"
+EP_PULL_STOCK = "/sync/pull-stock"
+EP_PUSH_AUDIT = "/sync/push-audit"
+
+# ---------------------------------------------------------------------------
+# Catalog tables — Main PC is the master, terminals pull these.
+# Order matters: tables without FKs first, then tables with dependencies.
+# ---------------------------------------------------------------------------
+CATALOG_TABLES = [
+    "roles",
+    "permissions",
+    "users",
+    "void_reasons",
+    "units",
+    "categories",
+    "suppliers",
+    "customers",
+    "price_lists",
+    "price_list_items",
+    "products",
+    "promotions",
+    "payment_methods",
+    "composite_items",
+]
+
+# ---------------------------------------------------------------------------
+# Transaction tables — Terminals push these to the Main PC.
+# Order: parent tables before children (for FK integrity).
+# ---------------------------------------------------------------------------
+TRANSACTION_TABLES = [
+    "documents",  # Base (polymorphic: sale, purchase, proforma, stock_count)
+    "sales",
+    "sale_items",
+    "sale_payments",
+    "purchases",
+    "purchase_items",
+    "stock_movements",
+    "shifts",
+    "cash_movements",
+    "audit_logs",
+    "customer_payments",
+    "customer_ledger",
+    "supplier_payments",
+    "supplier_ledger",
+    "suspended_transactions",
+    "inventory_logs",
+]
+
+
+# ---------------------------------------------------------------------------
+# JSON Encoder — handles Decimal, datetime, date
+# ---------------------------------------------------------------------------
+class SyncEncoder(json.JSONEncoder):
+    """JSON encoder that handles Python types used in SQLAlchemy models.
+
+    - ``Decimal`` → ``str`` (preserves precision, avoids float errors)
+    - ``datetime`` → ISO 8601 string
+    - ``date`` → ISO 8601 date string
+    """
+
+    def default(self, obj: Any) -> Any:
+        if isinstance(obj, Decimal):
+            return str(obj)
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        if isinstance(obj, date):
+            return obj.isoformat()
+        return super().default(obj)
+
+
+def sync_json_dumps(obj: Any) -> str:
+    """Serialize ``obj`` to a JSON string using the sync encoder."""
+    return json.dumps(obj, cls=SyncEncoder, ensure_ascii=False)
+
+
+def sync_json_loads(s: str) -> Any:
+    """Deserialize a JSON string.  Decimal/datetime decoding is done
+    explicitly by :func:`dict_to_model` using column type introspection."""
+    return json.loads(s)
+
+
+# ---------------------------------------------------------------------------
+# Model ↔ Dict Conversion
+# ---------------------------------------------------------------------------
+def model_to_dict(instance: Base, include_relationships: bool = False) -> Dict[str, Any]:
+    """Convert a SQLAlchemy model instance to a plain dict.
+
+    Only scalar (column) attributes are included by default.
+    Relationship attributes are excluded unless ``include_relationships``
+    is True, in which case one-to-many children are serialized recursively
+    (used for pushing Sale + SaleItems + SalePayments as a single unit).
+
+    Args:
+        instance: A SQLAlchemy model instance.
+        include_relationships: If True, include list-type relationships
+            (e.g. Sale.items, Sale.payments) as nested dicts.
+
+    Returns:
+        Dict with column names as keys and Python values.
+    """
+    mapper = sa_inspect(type(instance))
+    result: Dict[str, Any] = {}
+
+    # Scalar columns
+    for col in mapper.columns:
+        key = col.key
+        value = getattr(instance, key, None)
+        if isinstance(value, Decimal):
+            value = str(value)
+        elif isinstance(value, (datetime, date)):
+            value = value.isoformat()
+        result[key] = value
+
+    if include_relationships:
+        for rel in mapper.relationships:
+            if rel.uselist:  # one-to-many
+                children = getattr(instance, rel.key, []) or []
+                result[rel.key] = [model_to_dict(child) for child in children]
+
+    return result
+
+
+def dict_to_model(model_class: Type[Base], data: Dict[str, Any]) -> Base:
+    """Create a SQLAlchemy model instance from a dict.
+
+    Handles type coercion:
+    - ``Decimal`` columns: str → Decimal
+    - ``DateTime`` columns: ISO string → datetime
+    - ``Date`` columns: ISO string → date
+    - ``Boolean`` columns: int/str → bool
+    - ``Integer`` columns: str → int
+
+    Args:
+        model_class: The SQLAlchemy model class.
+        data: Dict with column names as keys.
+
+    Returns:
+        An unsaved model instance (not added to any session).
+    """
+    mapper = sa_inspect(model_class)
+    column_types = {}
+    for col in mapper.columns:
+        column_types[col.key] = col.type
+
+    kwargs = {}
+    for key, value in data.items():
+        if value is None:
+            kwargs[key] = None
+            continue
+
+        # Skip relationship keys (lists of dicts)
+        if isinstance(value, list):
+            continue
+
+        col_type = column_types.get(key)
+        if col_type is None:
+            # Not a column on this model — skip (could be a relationship key)
+            continue
+
+        type_name = type(col_type).__name__
+
+        if type_name in ("Numeric", "NUMERIC"):
+            kwargs[key] = Decimal(str(value))
+        elif type_name in ("DateTime", "DATETIME"):
+            if isinstance(value, str):
+                kwargs[key] = datetime.fromisoformat(value)
+            else:
+                kwargs[key] = value
+        elif type_name in ("Date", "DATE"):
+            if isinstance(value, str):
+                kwargs[key] = date.fromisoformat(value)
+            else:
+                kwargs[key] = value
+        elif type_name in ("Boolean", "BOOLEAN"):
+            if isinstance(value, str):
+                kwargs[key] = value.lower() in ("true", "1", "yes")
+            else:
+                kwargs[key] = bool(value)
+        elif type_name in ("Integer", "INTEGER"):
+            kwargs[key] = int(value) if value is not None else None
+        else:
+            kwargs[key] = value
+
+    return model_class(**kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Sync Envelope — the wrapper around all sync messages
+# ---------------------------------------------------------------------------
+def make_envelope(
+    terminal_id: str,
+    msg_type: str,
+    payload: Any,
+    sequence: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Create a sync envelope for transmission.
+
+    Args:
+        terminal_id: The sending terminal's ID (e.g. "TERM-02").
+        msg_type: Message type (e.g. "PUSH_TRANSACTIONS", "PULL_CATALOG").
+        payload: The data payload (will be JSON-serialized).
+        sequence: Optional sync sequence number for resumable sync.
+
+    Returns:
+        Dict ready for JSON serialization.
+    """
+    return {
+        "protocol_version": SYNC_PROTOCOL_VERSION,
+        "terminal_id": terminal_id,
+        "timestamp": datetime.now().isoformat(),
+        "sequence": sequence,
+        "type": msg_type,
+        "payload": payload,
+    }
+
+
+def validate_envelope(data: Dict[str, Any]) -> tuple[bool, str]:
+    """Validate a received sync envelope.
+
+    Returns:
+        Tuple of (is_valid, error_message).
+    """
+    required = ("protocol_version", "terminal_id", "type", "payload")
+    for field in required:
+        if field not in data:
+            return False, f"Missing required field: {field}"
+
+    version = data.get("protocol_version", "")
+    if not version.startswith("1."):
+        return False, f"Incompatible protocol version: {version}"
+
+    return True, ""
+
+
+# ---------------------------------------------------------------------------
+# Table name → Model class mapping (lazy-loaded to avoid circular imports)
+# ---------------------------------------------------------------------------
+_TABLE_MODEL_MAP: Optional[Dict[str, Type[Base]]] = None
+
+
+def get_table_model_map() -> Dict[str, Type[Base]]:
+    """Return a dict mapping table names to their SQLAlchemy model classes.
+
+    Lazy-loaded on first call to avoid circular import issues.
+    """
+    global _TABLE_MODEL_MAP
+    if _TABLE_MODEL_MAP is not None:
+        return _TABLE_MODEL_MAP
+
+    from cbpos.core.models import (
+        Role,
+        Permission,
+        User,
+        PriceList,
+        PriceListItem,
+        Promotion,
+        VoidReason,
+        Unit,
+        Category,
+        Product,
+        Customer,
+        CustomerContact,
+        Supplier,
+        CompositeItem,
+        PaymentMethod,
+        Document,
+        Sale,
+        SaleItem,
+        SalePayment,
+        Purchase,
+        PurchaseItem,
+        Proforma,
+        ProformaItem,
+        StockMovement,
+        AuditLog,
+        InventoryLog,
+        Shift,
+        CashMovement,
+        SuspendedTransaction,
+        CustomerPayment,
+        CustomerLedgerEntry,
+        StockCount,
+        StockCountItem,
+        SupplierPayment,
+        SupplierLedgerEntry,
+        SyncLog,
+        SyncQueue,
+    )
+
+    _TABLE_MODEL_MAP = {
+        "roles": Role,
+        "permissions": Permission,
+        "users": User,
+        "price_lists": PriceList,
+        "price_list_items": PriceListItem,
+        "promotions": Promotion,
+        "void_reasons": VoidReason,
+        "units": Unit,
+        "categories": Category,
+        "products": Product,
+        "customers": Customer,
+        "customer_contacts": CustomerContact,
+        "suppliers": Supplier,
+        "composite_items": CompositeItem,
+        "payment_methods": PaymentMethod,
+        "documents": Document,
+        "sales": Sale,
+        "sale_items": SaleItem,
+        "sale_payments": SalePayment,
+        "purchases": Purchase,
+        "purchase_items": PurchaseItem,
+        "proformas": Proforma,
+        "proforma_items": ProformaItem,
+        "stock_movements": StockMovement,
+        "audit_logs": AuditLog,
+        "inventory_logs": InventoryLog,
+        "shifts": Shift,
+        "cash_movements": CashMovement,
+        "suspended_transactions": SuspendedTransaction,
+        "customer_payments": CustomerPayment,
+        "customer_ledger": CustomerLedgerEntry,
+        "stock_counts": StockCount,
+        "stock_count_items": StockCountItem,
+        "supplier_payments": SupplierPayment,
+        "supplier_ledger": SupplierLedgerEntry,
+        "sync_logs": SyncLog,
+        "sync_queue": SyncQueue,
+    }
+    return _TABLE_MODEL_MAP
+
+
+def get_model_for_table(table_name: str) -> Optional[Type[Base]]:
+    """Return the SQLAlchemy model class for a given table name."""
+    return get_table_model_map().get(table_name)

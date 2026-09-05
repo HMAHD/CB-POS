@@ -113,6 +113,8 @@ class ConfigService:
         "main_pc_address": "",  # IP:port of Main PC (Terminal mode)
         "sync_interval_seconds": 3,  # How often terminals push/pull (seconds)
         "sync_shared_secret": "",  # Shared token — same value required on Main PC and every Terminal
+        "main_pc_instance_id": "",  # This machine's Main PC identity — generated on first "Main PC" start
+        "sync_known_main_instance_id": "",  # (Terminal mode) instance_id of the Main PC first synced with
         # Automation / Email
         "auto_report_enabled": False,
         "auto_report_time": "22:00",

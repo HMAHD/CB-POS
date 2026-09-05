@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional
 from PyQt6.QtCore import QThread, pyqtSignal, QTimer
 
 from cbpos.core.database import Database
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.models import (
     Document,
     Sale,
@@ -250,9 +251,40 @@ class SyncClient(QThread):
             },
         )
         if result and result.get("status") == "registered":
+            if not self._check_main_identity(result.get("main_instance_id")):
+                return False
             logger.info("Registered with Main PC as %s", self._terminal_id)
             return True
         return False
+
+    def _check_main_identity(self, main_instance_id: Optional[str]) -> bool:
+        """Verify the Main PC we just registered with is the one we've
+        trusted since our first successful connection.
+
+        Terminal mode has no discovery/election protocol — nothing stops
+        a second machine from being configured as "Main PC" at the same
+        address. Pinning the instance_id on first connection and refusing
+        to silently follow a change is what catches that, rather than
+        quietly syncing against a different machine than the shop
+        actually intended.
+        """
+        if not main_instance_id:
+            return True  # unrecognized server response shape — don't break on it
+
+        known = ConfigService.get("sync_known_main_instance_id") or ""
+        if not known:
+            ConfigService.set("sync_known_main_instance_id", main_instance_id)
+            return True
+        if known != main_instance_id:
+            logger.error(
+                "Main PC identity changed (expected %s, got %s) — refusing to "
+                "sync. If you intentionally replaced the Main PC, clear the "
+                "trusted identity in Settings > Network > LAN Sync.",
+                known,
+                main_instance_id,
+            )
+            return False
+        return True
 
     # --- Initial Full Sync ---
 

@@ -1832,6 +1832,16 @@ class NetworkPage(SettingsPage):
         sync_test_layout.addWidget(self.lbl_sync_test_status, 1)
         sync_card_layout.addLayout(sync_test_layout)
 
+        # Forget Trusted Main PC — recovery path after intentionally
+        # replacing the Main PC (see SyncClient._check_main_identity)
+        self.btn_forget_main = QPushButton("Forget Trusted Main PC")
+        self.btn_forget_main.setObjectName("BtnTestNetwork")
+        self.btn_forget_main.setToolTip(
+            "Only needed if you replaced the Main PC and this Terminal now " "refuses to sync with it."
+        )
+        self.btn_forget_main.clicked.connect(self._forget_trusted_main_pc)
+        sync_card_layout.addWidget(self.btn_forget_main)
+
         # Server address display (Main PC mode)
         self.lbl_server_address = QLabel("")
         self.lbl_server_address.setObjectName("IPHelper")
@@ -2136,6 +2146,7 @@ class NetworkPage(SettingsPage):
         # Test button only for Terminal mode
         self.btn_test_sync.setVisible(is_terminal)
         self.lbl_sync_test_status.setVisible(is_terminal)
+        self.btn_forget_main.setVisible(is_terminal)
 
         # Server address display for Main PC
         if is_main:
@@ -2220,3 +2231,27 @@ class NetworkPage(SettingsPage):
             QMessageBox.critical(self, "Connection Error", str(e))
         finally:
             self.btn_test_sync.setEnabled(True)
+
+    def _forget_trusted_main_pc(self) -> None:
+        """Clear the pinned Main PC identity so this Terminal will trust
+        whichever machine answers at the configured address next time.
+
+        Needed after intentionally replacing the Main PC — otherwise
+        SyncClient refuses to sync against a different instance_id than
+        the one it first connected to.
+        """
+        from cbpos.core.services.config_service import ConfigService
+
+        reply = QMessageBox.question(
+            self,
+            "Forget Trusted Main PC",
+            "This Terminal will trust whichever Main PC answers at the "
+            "configured address the next time it connects.\n\n"
+            "Only do this if you intentionally replaced the Main PC.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            ConfigService.set("sync_known_main_instance_id", "")
+            QMessageBox.information(
+                self, "Forget Trusted Main PC", "Done. This Terminal will re-pin on next connection."
+            )

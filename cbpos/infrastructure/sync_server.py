@@ -11,6 +11,7 @@ The server is intentionally simple — uses Python's built-in
 import hmac
 import json
 import logging
+import secrets
 import socket
 import threading
 from datetime import datetime
@@ -47,6 +48,23 @@ from cbpos.core.services.sync_protocol import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def get_or_create_main_instance_id() -> str:
+    """Return this machine's persistent Main PC identity, generating one
+    on first use.
+
+    Terminals remember whichever instance_id they first synced with and
+    refuse to keep syncing if it ever changes (see SyncClient) — this is
+    what lets a terminal detect "I'm now talking to a different machine
+    than the one I trusted", e.g. a second PC accidentally configured as
+    Main PC at the same address, without needing any network discovery.
+    """
+    instance_id = ConfigService.get("main_pc_instance_id")
+    if not instance_id:
+        instance_id = secrets.token_hex(8)
+        ConfigService.set("main_pc_instance_id", instance_id)
+    return instance_id
 
 
 # ---------------------------------------------------------------------------
@@ -226,6 +244,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
                 "protocol_version": SYNC_PROTOCOL_VERSION,
                 "server_time": datetime.now().isoformat(),
                 "terminals_connected": len(_registry.get_all()),
+                "main_instance_id": get_or_create_main_instance_id(),
             }
         )
 
@@ -254,6 +273,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
                 "terminal_id": terminal_id,
                 "server_time": datetime.now().isoformat(),
                 "protocol_version": SYNC_PROTOCOL_VERSION,
+                "main_instance_id": get_or_create_main_instance_id(),
             }
         )
 

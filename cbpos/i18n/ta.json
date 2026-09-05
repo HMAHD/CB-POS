@@ -81,7 +81,12 @@
   },
   "main_window": {
     "title": "CB POS",
-    "fullscreen_hint": "முழுத்திரையிலிருந்து வெளியேற F11 அழுத்தவும்"
+    "fullscreen_hint": "முழுத்திரையிலிருந்து வெளியேற F11 அழுத்தவும்",
+    "exit_confirm_title": "Cart Has Items",
+    "exit_confirm_message": "You have {count} item(s) in your cart. Do you want to hold the bill before closing?",
+    "exit_hold_and_exit": "Hold && Exit",
+    "exit_without_saving": "Exit Without Saving",
+    "exit_cancel": "Cancel"
   },
   "sales": {
     "search_placeholder_all": "Scan or type product... (Enter)",

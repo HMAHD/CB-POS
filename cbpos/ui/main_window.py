@@ -218,7 +218,28 @@ class MainWindow(QMainWindow):
         self.sales_view.update_cart_display()
 
     def closeEvent(self, event) -> None:
-        """Auto-backup on close if enabled, stop sync threads."""
+        """Warn about an active cart, auto-backup on close if enabled, stop sync threads."""
+        cart_items = self.sales_view.cart_service.items
+        if cart_items:
+            from PyQt6.QtWidgets import QMessageBox
+
+            box = QMessageBox(self)
+            box.setWindowTitle(_t("main_window.exit_confirm_title"))
+            box.setText(_t("main_window.exit_confirm_message", count=len(cart_items)))
+            box.setIcon(QMessageBox.Icon.Warning)
+            hold_btn = box.addButton(_t("main_window.exit_hold_and_exit"), QMessageBox.ButtonRole.AcceptRole)
+            box.addButton(_t("main_window.exit_without_saving"), QMessageBox.ButtonRole.DestructiveRole)
+            cancel_btn = box.addButton(_t("main_window.exit_cancel"), QMessageBox.ButtonRole.RejectRole)
+            box.setDefaultButton(cancel_btn)
+            box.exec()
+
+            clicked = box.clickedButton()
+            if clicked is cancel_btn:
+                event.ignore()
+                return
+            if clicked is hold_btn:
+                self.sales_view.hold_bill()
+
         # Stop sync server/client
         if self._sync_server:
             self._sync_server.stop()

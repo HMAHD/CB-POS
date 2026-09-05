@@ -8,22 +8,26 @@ The server is intentionally simple — uses Python's built-in
 ``http.server`` so there are zero external dependencies.
 """
 
+import hmac
 import json
 import logging
 import socket
 import threading
 from datetime import datetime
 from decimal import Decimal
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from typing import Any, Dict, List, Optional
 
 from PyQt6.QtCore import QThread, pyqtSignal
+from sqlalchemy.orm.exc import StaleDataError
 
 from cbpos.core.database import Database
 from cbpos.core.models import (
     Product,
+    StockMovement,
     SyncLog,
 )
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.sync_protocol import (
     SYNC_PROTOCOL_VERSION,
     EP_HEARTBEAT,
@@ -75,9 +79,7 @@ class TerminalInfo:
             "registered_at": self.registered_at.isoformat(),
             "last_heartbeat": self.last_heartbeat.isoformat(),
             "last_push_sequence": self.last_push_sequence,
-            "last_catalog_sync": (
-                self.last_catalog_sync.isoformat() if self.last_catalog_sync else None
-            ),
+            "last_catalog_sync": (self.last_catalog_sync.isoformat() if self.last_catalog_sync else None),
         }
 
 
@@ -173,9 +175,25 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             logger.error("Failed to read JSON body: %s", e)
             return None
 
+    def _authorized(self) -> bool:
+        """Validate the caller against the configured shared secret.
+
+        A blank/unconfigured secret does not mean "open to anyone" — it
+        means sync is not correctly set up, so every request is refused
+        until a non-empty secret is configured on both ends.
+        """
+        expected = ConfigService.get("sync_shared_secret") or ""
+        if not expected:
+            return False
+        provided = self.headers.get("X-Sync-Token", "")
+        return hmac.compare_digest(provided, expected)
+
     # --- Routing ---
 
     def do_GET(self):
+        if not self._authorized():
+            self._send_json({"error": "Unauthorized"}, 401)
+            return
         if self.path == EP_HEARTBEAT:
             self._handle_heartbeat()
         elif self.path.startswith(EP_PULL_CATALOG):
@@ -186,6 +204,9 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "Not found"}, 404)
 
     def do_POST(self):
+        if not self._authorized():
+            self._send_json({"error": "Unauthorized"}, 401)
+            return
         if self.path == EP_REGISTER:
             self._handle_register()
         elif self.path == EP_PUSH_TRANSACTIONS:
@@ -199,12 +220,14 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
 
     def _handle_heartbeat(self):
         """GET /sync/heartbeat — connection health check."""
-        self._send_json({
-            "status": "ok",
-            "protocol_version": SYNC_PROTOCOL_VERSION,
-            "server_time": datetime.now().isoformat(),
-            "terminals_connected": len(_registry.get_all()),
-        })
+        self._send_json(
+            {
+                "status": "ok",
+                "protocol_version": SYNC_PROTOCOL_VERSION,
+                "server_time": datetime.now().isoformat(),
+                "terminals_connected": len(_registry.get_all()),
+            }
+        )
 
     def _handle_register(self):
         """POST /sync/register — terminal announces itself."""
@@ -225,12 +248,14 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         if _signal_emitter:
             _signal_emitter.terminal_connected.emit(terminal_id)
 
-        self._send_json({
-            "status": "registered",
-            "terminal_id": terminal_id,
-            "server_time": datetime.now().isoformat(),
-            "protocol_version": SYNC_PROTOCOL_VERSION,
-        })
+        self._send_json(
+            {
+                "status": "registered",
+                "terminal_id": terminal_id,
+                "server_time": datetime.now().isoformat(),
+                "protocol_version": SYNC_PROTOCOL_VERSION,
+            }
+        )
 
     def _handle_pull_catalog(self):
         """GET /sync/pull-catalog?since=ISO_TIMESTAMP&terminal_id=TERM-XX
@@ -286,20 +311,20 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             since_str or "full",
         )
 
-        self._send_json({
-            "status": "ok",
-            "timestamp": now.isoformat(),
-            "total_records": total_records,
-            "payload": payload,
-        })
+        self._send_json(
+            {
+                "status": "ok",
+                "timestamp": now.isoformat(),
+                "total_records": total_records,
+                "payload": payload,
+            }
+        )
 
     def _handle_pull_stock(self):
         """GET /sync/pull-stock — returns current stock quantities for all products."""
         db = Database()
         with db.get_session() as session:
-            products = session.query(
-                Product.id, Product.stock_qty, Product.version_id
-            ).all()
+            products = session.query(Product.id, Product.stock_qty, Product.version_id).all()
             stock_data = [
                 {
                     "id": p.id,
@@ -309,11 +334,13 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
                 for p in products
             ]
 
-        self._send_json({
-            "status": "ok",
-            "timestamp": datetime.now().isoformat(),
-            "products": stock_data,
-        })
+        self._send_json(
+            {
+                "status": "ok",
+                "timestamp": datetime.now().isoformat(),
+                "products": stock_data,
+            }
+        )
 
     def _handle_push_transactions(self):
         """POST /sync/push-transactions — terminal pushes new sales/transactions."""
@@ -336,49 +363,83 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         if info and sequence and sequence <= info.last_push_sequence:
             logger.info(
                 "Duplicate push from %s (seq %d <= %d), acknowledging",
-                terminal_id, sequence, info.last_push_sequence,
+                terminal_id,
+                sequence,
+                info.last_push_sequence,
             )
-            self._send_json({
-                "status": "duplicate",
-                "sequence": sequence,
-                "message": "Already processed",
-            })
+            self._send_json(
+                {
+                    "status": "duplicate",
+                    "sequence": sequence,
+                    "message": "Already processed",
+                }
+            )
             return
 
-        # Process each table in the payload
+        # Process each table in the payload. Wrapped in a bounded retry: two
+        # terminals pushing StockMovements for the same Product at nearly
+        # the same time can lose the optimistic-lock race on Product's
+        # version_id column (see _apply_record) — that's expected under
+        # concurrency, so retry with a fresh read rather than failing the
+        # whole batch on the first collision.
+        db = Database()
+        max_attempts = 3
         records_applied = 0
         errors: List[str] = []
-        db = Database()
 
-        try:
-            with db.get_session() as session:
-                for table_name, records in payload.items():
-                    if not isinstance(records, list):
-                        continue
+        for attempt in range(1, max_attempts + 1):
+            records_applied = 0
+            errors = []
+            try:
+                with db.get_session() as session:
+                    for table_name, records in payload.items():
+                        if not isinstance(records, list):
+                            continue
 
-                    model_class = get_model_for_table(table_name)
-                    if model_class is None:
-                        errors.append(f"Unknown table: {table_name}")
-                        continue
-
-                    for record_data in records:
-                        try:
-                            self._apply_record(
-                                session, model_class, table_name, record_data
+                        if table_name not in TRANSACTION_TABLES:
+                            errors.append(f"Table not allowed for push: {table_name}")
+                            logger.warning(
+                                "Terminal %s attempted to push disallowed table %r",
+                                terminal_id,
+                                table_name,
                             )
-                            records_applied += 1
-                        except Exception as e:
-                            error_msg = f"{table_name}[{record_data.get('id', '?')}]: {e}"
-                            errors.append(error_msg)
-                            logger.error("Error applying record: %s", error_msg)
+                            continue
 
-                # Mark synced
-                session.commit()
+                        model_class = get_model_for_table(table_name)
+                        if model_class is None:
+                            errors.append(f"Unknown table: {table_name}")
+                            continue
 
-        except Exception as e:
-            logger.error("Transaction push failed: %s", e)
-            self._send_json({"error": str(e)}, 500)
-            return
+                        for record_data in records:
+                            try:
+                                self._apply_record(session, model_class, table_name, record_data)
+                                records_applied += 1
+                            except Exception as e:
+                                error_msg = f"{table_name}[{record_data.get('id', '?')}]: {e}"
+                                errors.append(error_msg)
+                                logger.error("Error applying record: %s", error_msg)
+
+                    # Mark synced
+                    session.commit()
+                break  # success — exit retry loop
+
+            except StaleDataError as e:
+                logger.warning(
+                    "Stock conflict applying push from %s (attempt %d/%d): %s",
+                    terminal_id,
+                    attempt,
+                    max_attempts,
+                    e,
+                )
+                if attempt == max_attempts:
+                    self._send_json({"error": f"Conflict applying update, retries exhausted: {e}"}, 409)
+                    return
+                continue  # retry against a fresh session/read
+
+            except Exception as e:
+                logger.error("Transaction push failed: %s", e)
+                self._send_json({"error": str(e)}, 500)
+                return
 
         # Update sequence tracking
         if sequence:
@@ -392,12 +453,14 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             _signal_emitter.sync_completed.emit(terminal_id, records_applied)
 
         status = "ok" if not errors else "partial"
-        self._send_json({
-            "status": status,
-            "sequence": sequence,
-            "records_applied": records_applied,
-            "errors": errors,
-        })
+        self._send_json(
+            {
+                "status": status,
+                "sequence": sequence,
+                "records_applied": records_applied,
+                "errors": errors,
+            }
+        )
 
     def _apply_record(
         self,
@@ -418,9 +481,30 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             if isinstance(value, list):
                 child_data[key] = record_data.pop(key)
 
+        # A StockMovement carries an already-computed qty_change from
+        # whichever terminal processed the sale/purchase locally. The Main
+        # PC's own Product.stock_qty is the one figure every other terminal
+        # later reads via /sync/pull-stock, so it must be updated here too
+        # — but only the first time this movement is seen, so a retried or
+        # duplicate push (see _handle_push_transactions' sequence check)
+        # can't double-apply the same delta.
+        is_new_stock_movement = False
+        if table_name == "stock_movements":
+            movement_id = record_data.get("id")
+            is_new_stock_movement = movement_id is not None and session.get(StockMovement, movement_id) is None
+
         instance = dict_to_model(model_class, record_data)
         instance.synced = True  # Mark as synced on the server side
         session.merge(instance)
+
+        if is_new_stock_movement:
+            product = session.get(Product, instance.product_id)
+            if product is not None:
+                # Product.version_id is an optimistic-lock column, so a
+                # concurrent update from another terminal's push raises
+                # StaleDataError at commit — handled by the retry loop in
+                # _handle_push_transactions.
+                product.stock_qty += instance.qty_change
 
         # Process children
         for rel_key, children in child_data.items():
@@ -475,10 +559,12 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
 
         self._log_sync(terminal_id, "PUSH", "AUDIT", records_applied, [])
 
-        self._send_json({
-            "status": "ok",
-            "records_applied": records_applied,
-        })
+        self._send_json(
+            {
+                "status": "ok",
+                "records_applied": records_applied,
+            }
+        )
 
     @staticmethod
     def _log_sync(
@@ -511,8 +597,13 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
 # ---------------------------------------------------------------------------
 # Threaded HTTP Server
 # ---------------------------------------------------------------------------
-class _ThreadedHTTPServer(HTTPServer):
-    """HTTPServer that handles each request in a new thread."""
+class _ThreadedHTTPServer(ThreadingHTTPServer):
+    """Handles each sync request in its own thread.
+
+    Without this, a slow request (e.g. a full catalog pull while the
+    product list is large) would block heartbeats, registrations, and
+    pushes from every other terminal until it finished.
+    """
 
     allow_reuse_address = True
     daemon_threads = True
@@ -575,18 +666,16 @@ class SyncServer(QThread):
         _signal_emitter = self
 
         try:
-            self._server = _ThreadedHTTPServer(
-                ("0.0.0.0", self._port), SyncRequestHandler
-            )
+            self._server = _ThreadedHTTPServer(("0.0.0.0", self._port), SyncRequestHandler)
             self._running = True
 
             address = self.get_server_address()
             logger.info("Sync server listening on %s", address)
             self.started_signal.emit(address)
 
-            # Serve until stopped
-            while self._running:
-                self._server.handle_request()
+            # Blocks here, dispatching each request to its own thread,
+            # until stop() calls self._server.shutdown().
+            self._server.serve_forever(poll_interval=0.2)
 
         except OSError as e:
             error_msg = f"Sync server failed to start on port {self._port}: {e}"

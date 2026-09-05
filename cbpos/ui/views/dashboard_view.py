@@ -91,6 +91,10 @@ class DashboardView(QWidget):
         self._current_year = date.today().year
         self.init_ui()
 
+        from cbpos.ui.widgets.loading_overlay import LoadingOverlay
+
+        self._monthly_overlay = LoadingOverlay(self.monthly_panel)
+
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui)
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
@@ -147,6 +151,7 @@ class DashboardView(QWidget):
     # --- Row 1: Monthly Chart ---
     def _build_monthly_panel(self, parent_layout: QHBoxLayout) -> None:
         panel = QFrame()
+        self.monthly_panel = panel
         panel.setObjectName("MonthlyChartPanel")
         vbox = QVBoxLayout(panel)
         vbox.setContentsMargins(16, 12, 16, 12)
@@ -503,6 +508,7 @@ class DashboardView(QWidget):
         self.btn_prev_year.setEnabled(False)
         self.btn_next_year.setEnabled(False)
         self.lbl_yearly_total.setText(_t("dashboard.loading"))
+        self._monthly_overlay.show_loading(_t("dashboard.loading"))
 
         self._yearly_worker = _YearlyWorker(self._current_year)
         self._yearly_worker.finished.connect(self._on_yearly_ready)
@@ -522,6 +528,11 @@ class DashboardView(QWidget):
         )
         self.btn_refresh.setEnabled(False)
         self.btn_refresh.setText("\u231b")  # hourglass while loading
+        # Prevent changing the range mid-refresh (#214) -- a rapid second
+        # change would otherwise start a second _PeriodicWorker while the
+        # first is still in flight.
+        self.date_from.setEnabled(False)
+        self.date_to.setEnabled(False)
         self.lbl_avg_order.setText(_t("dashboard.loading"))
 
         self._periodic_worker = _PeriodicWorker(sd, ed)
@@ -536,6 +547,7 @@ class DashboardView(QWidget):
         """Handle yearly data from worker thread."""
         self.btn_prev_year.setEnabled(True)
         self.btn_next_year.setEnabled(True)
+        self._monthly_overlay.hide_loading()
         chart_data = [
             {
                 "label": m["label"],
@@ -556,6 +568,8 @@ class DashboardView(QWidget):
         """Handle periodic data from worker thread."""
         self.btn_refresh.setEnabled(True)
         self.btn_refresh.setText("\u21bb")
+        self.date_from.setEnabled(True)
+        self.date_to.setEnabled(True)
         # Top Products table
         self.products_table.setRowCount(len(products))
         for row, p in enumerate(products):

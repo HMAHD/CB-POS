@@ -480,6 +480,11 @@ QPushButton#NavTile[active="true"] {
     border-color: #00BCEB;
 }
 
+/* pt scales with DPI (px doesn't) — #207 */
+QLabel#NavTileText {
+    font-size: 9pt;
+}
+
 /* User Profile Row */
 QWidget#UserProfileRow {
     background-color: rgba(255, 255, 255, 0.03);
@@ -801,6 +806,17 @@ QPushButton#ActionGridBtn:hover {
 QPushButton#ActionGridBtn:pressed {
     background-color: #00BCEB;
     color: #000000;
+}
+
+/* pt scales with DPI (px doesn't) — #207: these were inline px in Python,
+   invisible at 150-200% Windows scaling. */
+QPushButton#ActionGridBtn QLabel#lblText {
+    font-size: 9pt;
+    font-weight: 500;
+}
+
+QPushButton#ActionGridBtn QLabel#lblShortcut {
+    font-size: 7pt;
 }
 
 /* Color accents — bottom border */

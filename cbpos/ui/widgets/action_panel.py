@@ -65,14 +65,11 @@ class ActionBtn(QPushButton):
 
         text_color = "#FFFFFF" if is_dark else "#1A1A1A"
         shortcut_color = "#666666" if is_dark else "#AAAAAA"
-        self.lbl_text.setStyleSheet(
-            f"color: {text_color}; background: transparent;"  # noqa: E702, E231
-            " font-size: 12px; font-weight: 500;"
-        )
-        self.lbl_shortcut.setStyleSheet(
-            f"color: {shortcut_color}; background: transparent;"  # noqa: E702, E231
-            " font-size: 9px;"
-        )
+        # Font size/weight live in QSS (#lblText/#lblShortcut in dark.qss and
+        # light.qss) using pt units so they scale with Windows DPI settings —
+        # only the theme-dependent color is set here.
+        self.lbl_text.setStyleSheet(f"color: {text_color}; background: transparent;")
+        self.lbl_shortcut.setStyleSheet(f"color: {shortcut_color}; background: transparent;")
         self.lbl_icon.setStyleSheet("background: transparent;")
 
         if icon_name:

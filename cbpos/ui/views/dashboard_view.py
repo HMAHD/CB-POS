@@ -178,6 +178,7 @@ class DashboardView(QWidget):
         self.monthly_chart = VerticalBarChart()
         vbox.addWidget(self.monthly_chart, 1)
 
+        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 4)
 
     # --- Row 1: Yearly Summary ---
@@ -211,6 +212,7 @@ class DashboardView(QWidget):
         vbox.addWidget(self.lbl_top_month_total)
 
         vbox.addStretch()
+        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 1)
 
     # --- Row 2: Period Header ---
@@ -287,6 +289,7 @@ class DashboardView(QWidget):
         self.products_table.setShowGrid(False)
         vbox.addWidget(self.products_table, 1)
 
+        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 2)
 
     # --- Row 3: Hourly Sales Chart ---
@@ -304,6 +307,7 @@ class DashboardView(QWidget):
         self.hourly_chart = VerticalBarChart()
         vbox.addWidget(self.hourly_chart, 1)
 
+        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 2)
 
     # --- Row 3: Quick Stats ---
@@ -357,6 +361,7 @@ class DashboardView(QWidget):
         vbox.addWidget(self.lbl_txn_count)
 
         vbox.addStretch()
+        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 1)
 
     # --- Row 3: Tax Today ---
@@ -400,6 +405,7 @@ class DashboardView(QWidget):
 
         vbox.addStretch()
         self.tax_today_panel = panel
+        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 1)
 
     # --- Row 4: Categories Donut ---
@@ -423,6 +429,7 @@ class DashboardView(QWidget):
         self.category_chart = DonutChart()
         vbox.addWidget(self.category_chart, 1)
 
+        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 1)
 
     # --- Row 4: Top Customers ---
@@ -446,6 +453,7 @@ class DashboardView(QWidget):
         self.customer_chart = HorizontalBarChart()
         vbox.addWidget(self.customer_chart, 1)
 
+        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 1)
 
     # ------------------------------------------------------------------

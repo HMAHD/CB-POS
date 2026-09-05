@@ -474,6 +474,20 @@ class SalesView(QWidget):
             self.total_label.style().unpolish(self.total_label)
             self.total_label.style().polish(self.total_label)
 
+        # Keep the undo toast anchored correctly if the window is resized
+        # while it's showing (#205) — it's positioned with absolute pixel
+        # arithmetic, so it doesn't move on its own the way a layout would.
+        if self.undo_toast.isVisible():
+            self._position_undo_toast()
+
+        # If the side menu isn't open, the action panel must always be
+        # visible — closing #206, where a maximize/unmaximize while the
+        # menu was open could otherwise leave it permanently hidden (only
+        # showEvent restored it, which doesn't fire on a resize or on a
+        # payment dialog closing).
+        if not self.side_menu.isVisible():
+            self.action_panel.setVisible(True)
+
     def toggle_side_menu(self):
         menu_width = self.side_menu.width()
         start_pos = self.side_menu.pos()
@@ -669,7 +683,18 @@ class SalesView(QWidget):
         self.lbl_item_count.setText(_t("cart.item_count", count=item_count))
         self.cart_table.scrollToBottom()
 
-        # Brief highlight on last row to give visual feedback on item add
+        # Brief highlight on last row to give visual feedback on item add.
+        # A barcode scanner can add 2-5 items/second -- faster than the old
+        # fixed 800ms QTimer.singleShot(), whose closure captured last_row by
+        # value. A second scan before the first timer fired left two rows
+        # highlighted at once, and once the table had been rebuilt again,
+        # the stale closure's last_row could point at the wrong row
+        # entirely (#222). A single cancellable timer, stopped and
+        # restarted on every scan, means only the latest one ever fires.
+        if not hasattr(self, "_highlight_timer"):
+            self._highlight_timer = QTimer(self)
+            self._highlight_timer.setSingleShot(True)
+
         if has_items:
             last_row = self.cart_table.rowCount() - 1
             highlight_color = QColor("#00BCEB") if is_dark else QColor("#B3ECFF")
@@ -685,7 +710,13 @@ class SalesView(QWidget):
                     if cell:
                         cell.setBackground(QBrush())
 
-            QTimer.singleShot(800, _clear_highlight)
+            self._highlight_timer.stop()
+            try:
+                self._highlight_timer.timeout.disconnect()
+            except TypeError:
+                pass  # nothing connected yet
+            self._highlight_timer.timeout.connect(_clear_highlight)
+            self._highlight_timer.start(600)
 
     def select_customer(self):
         dialog = CustomerSelectionDialog(self)
@@ -734,6 +765,11 @@ class SalesView(QWidget):
         if totals["subtotal"] <= 0:
             SoundService.play("scan_error")
             return
+
+        # A payment shortcut (F5/F10/F12) firing while the side menu is open
+        # would otherwise open the dialog behind/under the menu overlay (#206).
+        if self.side_menu.isVisible():
+            self.toggle_side_menu()
 
         dialog = PaymentDialog(totals["final_total"], self)
         if dialog.exec():

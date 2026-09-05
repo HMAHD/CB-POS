@@ -148,16 +148,16 @@ class SettingsView(QWidget):
         self.setWindowTitle(_t("settings.title"))
 
         # Nav buttons
-        self.btn_shop_info.setText("   " + _t("settings.sidebar_shop_info"))
-        self.btn_sales_tax.setText("   " + _t("settings.sidebar_sales_tax"))
-        self.btn_documents.setText("   " + _t("settings.sidebar_documents"))
-        self.btn_hardware.setText("   " + _t("settings.sidebar_hardware"))
-        self.btn_receipt.setText("   " + _t("settings.sidebar_receipt"))
-        self.btn_system.setText("   " + _t("settings.sidebar_system"))
-        self.btn_network.setText("   " + _t("settings.sidebar_network"))
-        self.btn_payment_methods.setText("   " + _t("settings.sidebar_payments"))
-        self.btn_data_safety.setText("   " + _t("settings.sidebar_data_safety"))
-        self.btn_admin_tools.setText("   " + _t("settings.sidebar_admin_tools"))
+        self.btn_shop_info.setText(_t("settings.sidebar_shop_info"))
+        self.btn_sales_tax.setText(_t("settings.sidebar_sales_tax"))
+        self.btn_documents.setText(_t("settings.sidebar_documents"))
+        self.btn_hardware.setText(_t("settings.sidebar_hardware"))
+        self.btn_receipt.setText(_t("settings.sidebar_receipt"))
+        self.btn_system.setText(_t("settings.sidebar_system"))
+        self.btn_network.setText(_t("settings.sidebar_network"))
+        self.btn_payment_methods.setText(_t("settings.sidebar_payments"))
+        self.btn_data_safety.setText(_t("settings.sidebar_data_safety"))
+        self.btn_admin_tools.setText(_t("settings.sidebar_admin_tools"))
 
         # Bottom sidebar buttons
         self.sidebar.retranslate_pos_logout()

@@ -84,16 +84,16 @@ class ManagementView(QWidget):
             self.sidebar.lbl_logo.setText(_t("management.logo_fallback"))
 
         # Nav buttons
-        self.btn_dashboard.setText("   " + _t("management.sidebar_dashboard"))
-        self.btn_inventory.setText("   " + _t("management.sidebar_inventory"))
-        self.btn_purchasing.setText("   " + _t("management.sidebar_purchasing"))
-        self.btn_customers.setText("   " + _t("management.sidebar_credit_book"))
-        self.btn_reports.setText("   " + _t("management.sidebar_reports"))
-        self.btn_documents.setText("   " + _t("management.sidebar_documents"))
-        self.btn_users.setText("   " + _t("management.sidebar_users"))
-        self.btn_pricelists.setText("   " + _t("management.sidebar_price_lists"))
-        self.btn_promotions.setText("   " + _t("management.sidebar_promotions"))
-        self.btn_stock_take.setText("   " + _t("management.sidebar_stock_take"))
+        self.btn_dashboard.setText(_t("management.sidebar_dashboard"))
+        self.btn_inventory.setText(_t("management.sidebar_inventory"))
+        self.btn_purchasing.setText(_t("management.sidebar_purchasing"))
+        self.btn_customers.setText(_t("management.sidebar_credit_book"))
+        self.btn_reports.setText(_t("management.sidebar_reports"))
+        self.btn_documents.setText(_t("management.sidebar_documents"))
+        self.btn_users.setText(_t("management.sidebar_users"))
+        self.btn_pricelists.setText(_t("management.sidebar_price_lists"))
+        self.btn_promotions.setText(_t("management.sidebar_promotions"))
+        self.btn_stock_take.setText(_t("management.sidebar_stock_take"))
 
         # Bottom buttons
         self.sidebar.retranslate_pos_logout()

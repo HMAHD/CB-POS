@@ -3091,63 +3091,6 @@ QSplitter#PriceListSplitter::handle {
     width: 1px;
 }
 
-/* ── Touch Product Grid ── */
-#ProductGridPanel {
-    background: #F8F9FA;
-}
-
-QToolButton#CategoryTab {
-    background-color: #FFFFFF;
-    color: #212529;
-    border: 1px solid #DEE2E6;
-    border-radius: 4px;
-    padding: 5px 10px;
-    font-size: 13px;
-    font-weight: bold;
-}
-
-QToolButton#CategoryTab:checked {
-    color: white;
-    border: 1px solid #0D6EFD;
-}
-
-QToolButton#CategoryTab:hover {
-    border-color: #0D6EFD;
-}
-
-QToolButton#ProductCard {
-    background-color: #FFFFFF;
-    border: 1px solid #DEE2E6;
-    border-radius: 8px;
-}
-
-QToolButton#ProductCard:hover {
-    background-color: #F0F6FF;
-    border: 1px solid #0D6EFD;
-}
-
-QToolButton#ProductCard:pressed {
-    background-color: #E7F1FF;
-}
-
-QLabel#ProductCardImage {
-    background: transparent;
-}
-
-QLabel#ProductCardName {
-    font-size: 13px;
-    font-weight: bold;
-    color: #212529;
-    background: transparent;
-}
-
-QLabel#ProductCardPrice {
-    font-size: 15px;
-    font-weight: bold;
-    color: #0D6EFD;
-    background: transparent;
-}
-
 /* ── Payment Methods Card List ── */
 #PMCardScroll {
     background: transparent;

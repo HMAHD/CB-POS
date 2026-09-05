@@ -784,6 +784,7 @@ class SalesView(QWidget):
         totals = self.cart_service.get_totals()
         if totals["subtotal"] <= 0:
             SoundService.play("scan_error")
+            self._flash_pay_button_error()
             return
 
         # A payment shortcut (F5/F10/F12) firing while the side menu is open
@@ -971,6 +972,26 @@ class SalesView(QWidget):
         from cbpos.core.services.theme_service import ThemeService
 
         return ThemeService.current_theme.lower() == "dark"
+
+    def _flash_pay_button_error(self) -> None:
+        """Briefly flash PAY red when clicked on an empty cart (#209).
+
+        Previously only a sound played -- silent to a cashier who has
+        speakers muted, or just doesn't register a beep as "add items
+        first" versus a hardware problem. Property+polish, not an inline
+        stylesheet, matching the #219 pattern.
+        """
+        btn = self.action_panel.btn_pay
+        btn.setProperty("state", "error")
+        btn.style().unpolish(btn)
+        btn.style().polish(btn)
+
+        def _clear_error() -> None:
+            btn.setProperty("state", "")
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+
+        QTimer.singleShot(400, _clear_error)
 
     def add_line_note(self):
         """Add note to selected cart line."""

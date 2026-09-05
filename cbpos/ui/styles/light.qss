@@ -906,6 +906,12 @@ QPushButton#BtnPay:pressed {
     background-color: #0F5132;
 }
 
+/* Brief flash when PAY is clicked on an empty cart (#209) */
+QPushButton#BtnPay[state="error"] {
+    background-color: #DC3545;
+    border: 2px solid #B02A37;
+}
+
 /* Dashboard Cards */
 QWidget#InfoCard {
     background-color: #FFFFFF;

@@ -472,7 +472,6 @@ Login → SalesView → Management/Settings (via side menu) → Back returns to 
 | **StockTakeView** | `stock_take_view.py` | Physical stock count and reconciliation |
 | **PaymentMethodsView** | `payment_methods_view.py` | Payment method configuration |
 | **DataSafetyView** | `data_safety_view.py` | Backup/restore and data management |
-| **VisualPOSView** | `visual_pos_view.py` | Touch-optimized POS (category grid + product grid) |
 | **ReportViewer** | `reports/report_viewer.py` | Pandas DataFrame display, export |
 | **SettingsPages** | `settings_pages.py` | Individual settings page implementations |
 | **PandasModel** | `pandas_model.py` | QAbstractTableModel for DataFrame display |
@@ -555,11 +554,9 @@ Login → SalesView → Management/Settings (via side menu) → Back returns to 
 | `action_panel.py` | Quick action buttons |
 | `info_card.py` | Dashboard KPI cards |
 | `custom_widgets.py` | Custom QLineEdit, QTableWidget |
-| `touch_widgets.py` | Touch-optimized buttons |
 | `denomination_widget.py` | Cash denomination counter |
 | `pagination_widget.py` | Table pagination controls |
 | `receipt_preview_widget.py` | Live receipt preview renderer |
-| `product_grid_panel.py` | Touch-mode product grid |
 | `charts.py` | Dashboard chart components |
 | `loading_overlay.py` | Loading spinner overlay |
 
@@ -768,7 +765,7 @@ python -m pytest tests/unit/test_transaction_service.py::TestTransactionService:
 
 - Shop details, tax rates, printer config
 - Database mode (standalone/network)
-- Feature flags (loyalty, touch mode)
+- Feature flags (loyalty)
 - Document numbering formats
 
 ### cbpos.spec (PyInstaller)

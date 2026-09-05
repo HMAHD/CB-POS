@@ -60,7 +60,6 @@ Whether you run a *sathosa*, a pharmacy in Kandy, a hardware store in Galle, or 
 - **Keyboard shortcuts** for everything — your cashier never needs to touch the mouse
 - **Hold & recall bills** — switch between customers without losing their cart
 - **Multi-payment** — cash, card, credit, or split payments
-- **Touch screen mode** — visual product grid for shops without barcode scanners
 
 ### Inventory Management
 - Track stock levels in real time

@@ -73,8 +73,6 @@ class ConfigService:
         # Feature Flags
         "enable_loyalty": True,
         "enable_sounds": True,
-        "enable_touch_mode": True,
-        "enable_visual_search": True,
         "auto_select_barcode_match": True,
         # Appearance
         "theme": "Dark",
@@ -109,6 +107,14 @@ class ConfigService:
         "auto_select_barcode_match": True,
         # Terminal Identification
         "terminal_id": "TERM-01",
+        # Multi-Terminal LAN Sync
+        "terminal_mode": "standalone",  # standalone, main, or terminal
+        "sync_server_port": 5555,  # Port for sync server (Main PC)
+        "main_pc_address": "",  # IP:port of Main PC (Terminal mode)
+        "sync_interval_seconds": 3,  # How often terminals push/pull (seconds)
+        "sync_shared_secret": "",  # Shared token — same value required on Main PC and every Terminal
+        "main_pc_instance_id": "",  # This machine's Main PC identity — generated on first "Main PC" start
+        "sync_known_main_instance_id": "",  # (Terminal mode) instance_id of the Main PC first synced with
         # Automation / Email
         "auto_report_enabled": False,
         "auto_report_time": "22:00",
@@ -140,13 +146,14 @@ class ConfigService:
             "language",
             "theme",
             "enable_sounds",
-            "enable_touch_mode",
             "sidebar_collapsed",
+            "terminal_mode",
+            "main_pc_address",
         }
     )
 
     # Keys that should be encrypted in the settings file
-    _SENSITIVE_KEYS = {"network_db_password", "smtp_pass"}
+    _SENSITIVE_KEYS = {"network_db_password", "smtp_pass", "sync_shared_secret"}
     _fernet: Fernet | None = None
 
     _KEY_FILE = os.path.join(Config.DATA_DIR, ".encryption_key")

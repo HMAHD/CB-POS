@@ -498,7 +498,6 @@
     "select_customer": "පාරිභෝගිකයා තෝරන්න",
     "section_orders": "ඇණවුම්",
     "section_transaction": "ගනුදෙනු",
-    "section_specialty": "විශේෂ",
     "btn_customer": "පාරිභෝගික",
     "btn_search": "සොයන්න",
     "btn_qty": "ප්‍රමාණය",
@@ -507,7 +506,6 @@
     "btn_drawer": "ලාච්චුව",
     "btn_void": "අවලංගු",
     "btn_refund": "ආපසු",
-    "btn_touch": "ස්පර්ශ",
     "btn_pay": "ගෙවීම",
     "loyalty_points": "Points: {points}",
     "customer_title": "පාරිභෝගික",
@@ -1378,8 +1376,6 @@
       "tooltip_auto_barcodes": "Auto-generate barcodes for new products without one",
       "loyalty_points": "Enable Loyalty Points:",
       "tooltip_loyalty": "Customers earn loyalty points on purchases based on the configured ratio",
-      "touch_mode": "Enable Touch Mode:",
-      "tooltip_touch_mode": "Enable touch-friendly UI elements",
       "auto_backup": "Auto-Backup on Close:",
       "tooltip_auto_backup": "Automatically create a backup when closing the application",
       "backup_retention": "Keep Recent Backups:",
@@ -1865,9 +1861,6 @@
   },
   "denomination": {
     "grand_total": "මහා එකතුව"
-  },
-  "product_grid": {
-    "no_products": "No products in this category"
   },
   "user": {
     "add_user": "Add User",

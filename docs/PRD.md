@@ -72,8 +72,7 @@ A secure, owner-only view to track tax obligations in real-time.
     * **Signal Red (`#FF4136`)**: Void / Error / Low Stock.
 
 ### 4.2 Workspace Layouts
-* **Touch Mode:** Grid-based "Visual Groups" for non-barcoded items (Vegetables, Bakery).
-* **Keyboard Mode:** Dense list view. **Focus Trap** ensures the cursor is *always* in the scan box.
+* **Keyboard-First:** Dense list view. **Focus Trap** ensures the cursor is *always* in the scan box.
 
 ---
 

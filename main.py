@@ -318,6 +318,55 @@ def main():
     window = MainWindow()
     window.showMaximized()  # Industrial apps usually run full screen
 
+    # --- Multi-Terminal LAN Sync ---
+    terminal_mode = ConfigService.get("terminal_mode") or "standalone"
+    shared_secret = ConfigService.get("sync_shared_secret") or ""
+
+    if terminal_mode in ("main", "terminal") and not shared_secret:
+        print(
+            "[BOOTSTRAP] LAN Sync is configured but no Shared Secret is set "
+            "(Settings > Network > LAN Sync) — refusing to start sync "
+            "unauthenticated."
+        )
+        window.sync_status.set_mode(terminal_mode)
+        window.sync_status.set_config_error("Shared Secret is required")
+
+    elif terminal_mode == "main":
+        print("[BOOTSTRAP] Starting sync server (Main PC mode)...")
+        from cbpos.infrastructure.sync_server import SyncServer
+
+        sync_port = int(ConfigService.get("sync_server_port") or 5555)
+        sync_server = SyncServer(port=sync_port)
+        sync_server.started_signal.connect(window.sync_status.set_server_address)
+        sync_server.terminal_connected.connect(window.sync_status.on_terminal_connected)
+        sync_server.sync_completed.connect(window.sync_status.on_sync_completed)
+        sync_server.start()
+        window._sync_server = sync_server
+        window.sync_status.set_mode("main")
+        print(f"[BOOTSTRAP] Sync server starting on port {sync_port}")
+
+    elif terminal_mode == "terminal":
+        main_pc_address = ConfigService.get("main_pc_address") or ""
+        if main_pc_address:
+            print(f"[BOOTSTRAP] Starting sync client (Terminal mode) -> {main_pc_address}")
+            from cbpos.infrastructure.sync_client import SyncClient
+
+            terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+            sync_interval = int(ConfigService.get("sync_interval_seconds") or 3)
+            sync_client = SyncClient(terminal_id, main_pc_address, sync_interval, shared_secret)
+            sync_client.status_changed.connect(window.sync_status.set_state)
+            sync_client.sync_completed.connect(window.sync_status.on_client_sync_completed)
+            sync_client.start()
+            window._sync_client = sync_client
+            window.sync_status.set_mode("terminal")
+            window.sync_status.set_server_address(main_pc_address)
+        else:
+            print("[BOOTSTRAP] Terminal mode but no main_pc_address configured")
+            window.sync_status.set_mode("terminal")
+            window.sync_status.set_config_error("Main PC Address is required")
+    else:
+        window.sync_status.set_mode("standalone")
+
     # Check for updates 3 seconds after startup (non-blocking).
     # The thread reference is kept on the app object to prevent GC.
     from PyQt6.QtCore import QTimer

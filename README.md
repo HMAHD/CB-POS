@@ -12,7 +12,6 @@
 - **Zero-Latency Checkout**: Optimized for sub-50ms barcode scans and instant UI transitions.
 - **Keyboard-First Design**: Full operation without a mouse for maximum cashier efficiency.
 - **Offline-First**: 100% local database (SQLite) ensures operations never stop, even without internet.
-- **Touch-Optimized POS**: Visual product grid mode for touch-screen terminals.
 
 ### Inventory & Financials
 - **Advanced Inventory**: Composite items (bundles), weighted products (kg/g), stock take/count.

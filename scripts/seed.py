@@ -19,6 +19,7 @@ project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
 from cbpos.core.database import Database, Base  # noqa: E402
+from cbpos.core.services.database_setup_service import DatabaseSetupService  # noqa: E402
 from cbpos.core.models import (  # noqa: E402
     User,
     Category,
@@ -58,6 +59,10 @@ def seed_data():  # noqa: C901
     # Drop all tables to ensure clean slate for new schema
     Base.metadata.drop_all(db.engine)
     Base.metadata.create_all(db.engine)
+    # Stamp alembic_version at head — tables above were created directly
+    # from the current models, bypassing migrations, so future
+    # `alembic upgrade head` calls must not try to re-create them.
+    DatabaseSetupService.stamp_alembic_head()
 
     with db.get_session() as session:
         # =============================================================

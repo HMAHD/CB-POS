@@ -498,7 +498,6 @@
     "select_customer": "Select ▾",
     "section_orders": "Orders",
     "section_transaction": "Transaction",
-    "section_specialty": "Specialty",
     "btn_customer": "Customer",
     "btn_search": "Search",
     "btn_qty": "Qty",
@@ -507,7 +506,6 @@
     "btn_drawer": "Drawer",
     "btn_void": "Void",
     "btn_refund": "Refund",
-    "btn_touch": "Touch",
     "btn_pay": "  Pay (F5)",
     "loyalty_points": "Points: {points}",
     "customer_title": "Customer",
@@ -1407,8 +1405,6 @@
       "tooltip_auto_barcodes": "Auto-generate barcodes for new products without one",
       "loyalty_points": "Enable Loyalty Points:",
       "tooltip_loyalty": "Customers earn loyalty points on purchases based on the configured ratio",
-      "touch_mode": "Enable Touch Mode:",
-      "tooltip_touch_mode": "Enable touch-friendly UI elements",
       "auto_backup": "Auto-Backup on Close:",
       "tooltip_auto_backup": "Automatically create a backup when closing the application",
       "backup_retention": "Keep Recent Backups:",
@@ -1865,9 +1861,6 @@
   },
   "denomination": {
     "grand_total": "Grand Total:"
-  },
-  "product_grid": {
-    "no_products": "No products in this category"
   },
   "user": {
     "add_user": "Add User",

@@ -498,7 +498,6 @@
     "select_customer": "வாடிக்கையாளரைத் தேர்ந்தெடுக்கவும்",
     "section_orders": "ஆர்டர்கள்",
     "section_transaction": "பரிவர்த்தனை",
-    "section_specialty": "சிறப்பு",
     "btn_customer": "வாடிக்கையாளர்",
     "btn_search": "தேடு",
     "btn_qty": "அளவு",
@@ -507,7 +506,6 @@
     "btn_drawer": "பணப்பெட்டி",
     "btn_void": "ரத்து",
     "btn_refund": "திருப்பி",
-    "btn_touch": "தொடு",
     "btn_pay": "பணம் செலுத்து",
     "loyalty_points": "Points: {points}",
     "customer_title": "வாடிக்கையாளர்",
@@ -1378,8 +1376,6 @@
       "tooltip_auto_barcodes": "Auto-generate barcodes for new products without one",
       "loyalty_points": "Enable Loyalty Points:",
       "tooltip_loyalty": "Customers earn loyalty points on purchases based on the configured ratio",
-      "touch_mode": "Enable Touch Mode:",
-      "tooltip_touch_mode": "Enable touch-friendly UI elements",
       "auto_backup": "Auto-Backup on Close:",
       "tooltip_auto_backup": "Automatically create a backup when closing the application",
       "backup_retention": "Keep Recent Backups:",
@@ -1865,9 +1861,6 @@
   },
   "denomination": {
     "grand_total": "மொத்த தொகை"
-  },
-  "product_grid": {
-    "no_products": "No products in this category"
   },
   "user": {
     "add_user": "Add User",

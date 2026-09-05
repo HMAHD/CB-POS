@@ -1813,6 +1813,27 @@ QComboBox#InputNetwork {
     font-size: 13px;
 }
 
+/* Higher specificity than "QWidget#SettingsContent QSpinBox" (below) is
+   required here, or that rule's min-height wins and stretches this
+   spinbox (and its up/down buttons) far taller than its sibling
+   QLineEdit/QComboBox fields. */
+QWidget#SettingsContent QSpinBox#InputNetwork {
+    min-height: 18px;
+    max-height: 18px;
+}
+
+QSpinBox#InputNetwork::up-button,
+QSpinBox#InputNetwork::down-button {
+    width: 20px;
+    height: 12px;
+}
+
+QSpinBox#InputNetwork::up-arrow,
+QSpinBox#InputNetwork::down-arrow {
+    width: 8px;
+    height: 8px;
+}
+
 QLineEdit#InputNetwork:focus,
 QSpinBox#InputNetwork:focus,
 QComboBox#InputNetwork:focus {
@@ -3219,63 +3240,6 @@ QLabel#PriceListFooterHint {
 QSplitter#PriceListSplitter::handle {
     background-color: #112240;
     width: 1px;
-}
-
-/* ── Touch Product Grid ── */
-#ProductGridPanel {
-    background: #001F3F;
-}
-
-QToolButton#CategoryTab {
-    background-color: #003366;
-    color: white;
-    border: 1px solid #00509E;
-    border-radius: 4px;
-    padding: 5px 10px;
-    font-size: 13px;
-    font-weight: bold;
-}
-
-QToolButton#CategoryTab:checked {
-    color: black;
-    border: 1px solid white;
-}
-
-QToolButton#CategoryTab:hover {
-    border-color: #00BCEB;
-}
-
-QToolButton#ProductCard {
-    background-color: #003366;
-    border: 1px solid #00509E;
-    border-radius: 8px;
-}
-
-QToolButton#ProductCard:hover {
-    background-color: #004080;
-    border: 1px solid #00BCEB;
-}
-
-QToolButton#ProductCard:pressed {
-    background-color: #002855;
-}
-
-QLabel#ProductCardImage {
-    background: transparent;
-}
-
-QLabel#ProductCardName {
-    font-size: 13px;
-    font-weight: bold;
-    color: white;
-    background: transparent;
-}
-
-QLabel#ProductCardPrice {
-    font-size: 15px;
-    font-weight: bold;
-    color: #00BCEB;
-    background: transparent;
 }
 
 /* ── Payment Methods Card List ── */

@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [1.3.0] - 2026-09-03
+
+### Added — Multi-Terminal LAN Sync
+
+- **Multi-terminal LAN sync architecture**: Connect 2-10 registers over a LAN cable with zero internet required. One PC acts as the Main (hub), others connect as Terminals. Uses SQLite-based HTTP/JSON sync over standard Python `http.server` — zero external dependencies.
+- **Sync Server** (`sync_server.py`): HTTP server runs as a QThread on the Main PC. Endpoints: `/sync/register` (terminal announces itself), `/sync/heartbeat` (health check), `/sync/pull-catalog?since=ISO` (incremental catalog download for 12 tables), `/sync/pull-stock` (current stock quantities), `/sync/push-transactions` (receive sales with nested items/payments), `/sync/push-audit` (receive audit logs). Handles multiple concurrent terminals with thread-safe request processing.
+- **Sync Client** (`sync_client.py`): Background QThread on Terminals with auto-register → initial full sync → push/pull loop (configurable interval, default 3s) → auto-reconnect with exponential backoff. Pushes unsynced sales, purchases, stock movements, cash movements, shifts, and audit logs. Pulls catalog updates (products, categories, customers, users, suppliers, promotions, payment methods, price lists, composite items, units). Connection state signaling (`connected`, `syncing`, `disconnected`, `error`).
+- **Sync Protocol** (`sync_protocol.py`): JSON serialization layer that preserves `Decimal` as string (never floats — money-safe), ISO 8601 datetime encoding, envelope format with protocol versioning, and bidirectional `model_to_dict` / `dict_to_model` conversion for all 30 SQLAlchemy models including relationship serialization.
+- **Schema extensions for sync**: Added `last_modified` (DateTime, auto-updated) to 12 catalog tables for incremental sync. Added `synced` (Boolean, default False) to 9 transaction tables for push tracking. Added `origin_terminal_id` to `documents` table to identify source terminal. New `sync_logs` table (direction, type, record count, status, timestamps) and `sync_queue` table (outbox pattern).
+- **Alembic migration** (`91ce190ffa8b`): Adds all sync columns and tables with SQLite-safe `server_default` values for existing data compatibility.
+- **Sync Status Widget** (`sync_status_widget.py`): Compact colored-dot indicator in the main window top bar. 🟢 Synced, 🟡 Syncing (N pending), 🔴 Disconnected, 🟣 Main PC (N terminals). Clickable for detailed sync info tooltip (mode, address, pending records, last sync time). Auto-hidden in standalone mode.
+- **LAN Sync settings tab**: New Tab 4 in Settings → Network with terminal mode selector (Standalone / Main PC / Terminal), terminal ID, sync server port, Main PC address input, sync interval, and "Test Sync Connection" button that pings the heartbeat endpoint and shows protocol version.
+- **Origin terminal stamping**: `TransactionService._execute_sale()` and `process_refund()` now set `origin_terminal_id` at document creation time, ensuring provenance tracking before sync occurs.
+- **Restart-required detection**: Settings save detects `terminal_mode` changes and prompts for app restart (sync threads start at boot).
+- **24 unit tests for sync protocol**: Covers SyncEncoder (Decimal/datetime/date), model roundtrips (Product, Sale with relationships, SyncLog), boolean coercion, None handling, Decimal precision preservation, envelope creation/validation (valid, missing fields, version compatibility), table-model mapping for all 30 tables, and full push-payload simulation.
+
+### Added — Configuration
+
+- **6 new config settings**: `terminal_mode` (standalone/main/terminal), `sync_server_port` (default 5555), `main_pc_address`, `sync_interval_seconds` (default 3), `terminal_id`, and `main_pc_address` — all managed through the Settings UI with sensible defaults.
+
+### Changed
+
+- **MainWindow lifecycle**: `closeEvent` now stops sync server/client threads before backup-on-close. Sync thread references stored on window for proper lifecycle management.
+- **App bootstrap** (`main.py`): After creating MainWindow, checks `terminal_mode` config and starts `SyncServer` (main mode) or `SyncClient` (terminal mode) with Qt signals wired to the status widget.
+
 ## [1.2.5] - 2026-03-12
 
 ### Added

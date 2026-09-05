@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (
     QStackedWidget,
     QWidget,
     QVBoxLayout,
+    QHBoxLayout,
     QApplication,
 )
 from PyQt6.QtGui import QKeySequence, QShortcut
@@ -41,6 +42,21 @@ class MainWindow(QMainWindow):
         self.main_layout = QVBoxLayout(central_widget)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
+
+        # Sync Status Bar (top-right, only visible in main/terminal mode)
+        from cbpos.ui.widgets.sync_status_widget import SyncStatusWidget
+
+        self._sync_status_bar = QWidget()
+        sync_bar_layout = QHBoxLayout(self._sync_status_bar)
+        sync_bar_layout.setContentsMargins(0, 0, 0, 0)
+        sync_bar_layout.addStretch()
+        self.sync_status = SyncStatusWidget()
+        sync_bar_layout.addWidget(self.sync_status)
+        self.main_layout.addWidget(self._sync_status_bar)
+
+        # Sync server/client references (set by main.py)
+        self._sync_server = None
+        self._sync_client = None
 
         # Stack
         self.stack = QStackedWidget()
@@ -202,7 +218,13 @@ class MainWindow(QMainWindow):
         self.sales_view.update_cart_display()
 
     def closeEvent(self, event) -> None:
-        """Auto-backup on close if enabled in settings."""
+        """Auto-backup on close if enabled, stop sync threads."""
+        # Stop sync server/client
+        if self._sync_server:
+            self._sync_server.stop()
+        if self._sync_client:
+            self._sync_client.stop()
+
         if ConfigService.get("auto_backup_on_close"):
             try:
                 from cbpos.core.services.backup_service import BackupService

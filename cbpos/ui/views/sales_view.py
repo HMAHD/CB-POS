@@ -140,20 +140,26 @@ class SalesView(QWidget):
         self.mode_group.setExclusive(True)
         self.mode_group.buttonClicked.connect(self.on_search_mode_changed)
 
+        # Icons instead of symbol labels (#213) -- "*", "||||", "#", "Tag" were
+        # tested with non-technical shop owners and were not understood (a
+        # magnifying glass, barcode, hashtag, and font glyph are self-evident
+        # even without reading the tooltip, which requires a hover that
+        # doesn't happen on a touch screen anyway).
         modes = [
-            ("ALL", "*"),
-            ("BARCODE", "||||"),
-            ("CODE", "#"),
-            ("NAME", "Tag"),
+            ("ALL", Icons.SEARCH),
+            ("BARCODE", Icons.SEARCH_BARCODE),
+            ("CODE", Icons.SEARCH_CODE),
+            ("NAME", Icons.SEARCH_NAME),
         ]
 
-        for mode_id, text in modes:
+        for mode_id, icon_name in modes:
             btn = QToolButton()
-            btn.setText(text)
             btn.setCheckable(True)
             btn.setToolTip("")  # Set by retranslate_ui
             btn.setFixedSize(40, 40)
+            btn.setIconSize(QSize(18, 18))
             btn.setProperty("mode", mode_id)
+            btn.setProperty("iconName", icon_name)
             btn.setProperty("class", "SearchModeBtn")  # For styling
             btn.setObjectName("SearchModeBtn")  # For styling
 
@@ -162,6 +168,11 @@ class SalesView(QWidget):
 
             self.mode_group.addButton(btn)
             search_layout.addWidget(btn)
+
+        self._refresh_search_mode_icons()
+        from cbpos.core.services.theme_service import ThemeService
+
+        ThemeService.register_theme_callback(self._refresh_search_mode_icons)
 
         search_layout.addSpacing(10)
 
@@ -861,7 +872,26 @@ class SalesView(QWidget):
         mode = button.property("mode")
         self.current_search_mode = mode
         self._update_search_placeholder()
+        self._refresh_search_mode_icons()
         self.barcode_input.setFocus()
+
+    def _refresh_search_mode_icons(self) -> None:
+        """Re-tint each search-mode icon for the current theme + checked
+        state (#213). Checked/unchecked use opposite icon colors in both
+        themes -- e.g. dark theme's checked state is a black icon on a
+        cyan background -- so this can't be set once at construction."""
+        from cbpos.core.services.theme_service import ThemeService
+
+        is_dark = ThemeService.current_theme.lower() == "dark"
+        for btn in self.mode_group.buttons():
+            icon_name = btn.property("iconName")
+            if not icon_name:
+                continue
+            if is_dark:
+                color = "#000000" if btn.isChecked() else "#FFFFFF"
+            else:
+                color = "#FFFFFF" if btn.isChecked() else "#495057"
+            btn.setIcon(Icons.get(icon_name, color=color))
 
     def set_search_mode(self, mode: str, icon: str):
         # Legacy support or external call

@@ -81,7 +81,12 @@
   },
   "main_window": {
     "title": "CB POS",
-    "fullscreen_hint": "முழுத்திரையிலிருந்து வெளியேற F11 அழுத்தவும்"
+    "fullscreen_hint": "முழுத்திரையிலிருந்து வெளியேற F11 அழுத்தவும்",
+    "exit_confirm_title": "Cart Has Items",
+    "exit_confirm_message": "You have {count} item(s) in your cart. Do you want to hold the bill before closing?",
+    "exit_hold_and_exit": "Hold && Exit",
+    "exit_without_saving": "Exit Without Saving",
+    "exit_cancel": "Cancel"
   },
   "sales": {
     "search_placeholder_all": "Scan or type product... (Enter)",
@@ -163,6 +168,7 @@
     "enter_amount_placeholder": "தொகையை உள்ளிடுக",
     "search_customer_placeholder": "தேட...",
     "remove_tooltip": "கட்டணத்தை நீக்கு",
+    "finish_tooltip_remaining": "Add {amount} more to finish the sale",
     "invalid_amount_title": "தவறான தொகை",
     "invalid_amount_message": "சரியான தொகையை உள்ளிடுக.",
     "credit_no_customer": "கடன் விற்பனைக்கு வாடிக்கையாளரைத் தேர்வு செய்யுங்கள்.",

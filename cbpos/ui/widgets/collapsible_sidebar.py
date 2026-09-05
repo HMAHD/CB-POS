@@ -123,14 +123,14 @@ class CollapsibleSidebar(QFrame):
         """Create and add a navigation button to the sidebar.
 
         Args:
-            text: Button label (will be prefixed with spacing).
+            text: Button label.
             icon: qtawesome icon name (e.g. ``"fa5s.store"``).
             index: Stack index this button switches to.
 
         Returns:
             The created ``SidebarButton`` instance.
         """
-        btn = SidebarButton(f"   {text}", icon)
+        btn = SidebarButton(text, icon)
         btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         btn.clicked.connect(lambda checked=False, idx=index: self.nav_clicked.emit(idx))

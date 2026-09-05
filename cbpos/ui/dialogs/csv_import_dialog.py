@@ -30,6 +30,7 @@ class CsvImportDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(_t("csv_import.title"))
         self.setMinimumWidth(480)
+        self.setMinimumHeight(400)
         self.setObjectName("CsvImportDialog")
         self.import_service = import_service
         self._selected_file: str = ""

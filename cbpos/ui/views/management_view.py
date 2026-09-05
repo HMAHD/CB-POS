@@ -69,13 +69,27 @@ class ManagementView(QWidget):
         content_layout.setContentsMargins(0, 0, 0, 0)
 
         self.stack = QStackedWidget()
-        self.stack.currentChanged.connect(self.sidebar.highlight)
         content_layout.addWidget(self.stack)
 
         main_layout.addWidget(content_area, 1)
 
-        # Initialize child views
-        self._init_views()
+        # Views are created lazily by switch_tab(), not all 10 up front here
+        # (#227) -- see _get_or_create_view(). The nav-index -> attribute
+        # name mapping lets set_user() and switch_tab() find an
+        # already-created view without a long if/elif chain.
+        self._view_widgets: dict = {}
+        self._view_attr_names = {
+            0: "dashboard_view",
+            1: "inventory_view",
+            2: "purchase_view",
+            3: "credit_book_view",
+            4: "reports_view",
+            5: "document_view",
+            6: "user_view",
+            7: "pricelist_view",
+            8: "promotion_view",
+            9: "stock_take_view",
+        }
 
     def retranslate_ui(self) -> None:
         """Update all translatable text in the view."""
@@ -84,56 +98,70 @@ class ManagementView(QWidget):
             self.sidebar.lbl_logo.setText(_t("management.logo_fallback"))
 
         # Nav buttons
-        self.btn_dashboard.setText("   " + _t("management.sidebar_dashboard"))
-        self.btn_inventory.setText("   " + _t("management.sidebar_inventory"))
-        self.btn_purchasing.setText("   " + _t("management.sidebar_purchasing"))
-        self.btn_customers.setText("   " + _t("management.sidebar_credit_book"))
-        self.btn_reports.setText("   " + _t("management.sidebar_reports"))
-        self.btn_documents.setText("   " + _t("management.sidebar_documents"))
-        self.btn_users.setText("   " + _t("management.sidebar_users"))
-        self.btn_pricelists.setText("   " + _t("management.sidebar_price_lists"))
-        self.btn_promotions.setText("   " + _t("management.sidebar_promotions"))
-        self.btn_stock_take.setText("   " + _t("management.sidebar_stock_take"))
+        self.btn_dashboard.setText(_t("management.sidebar_dashboard"))
+        self.btn_inventory.setText(_t("management.sidebar_inventory"))
+        self.btn_purchasing.setText(_t("management.sidebar_purchasing"))
+        self.btn_customers.setText(_t("management.sidebar_credit_book"))
+        self.btn_reports.setText(_t("management.sidebar_reports"))
+        self.btn_documents.setText(_t("management.sidebar_documents"))
+        self.btn_users.setText(_t("management.sidebar_users"))
+        self.btn_pricelists.setText(_t("management.sidebar_price_lists"))
+        self.btn_promotions.setText(_t("management.sidebar_promotions"))
+        self.btn_stock_take.setText(_t("management.sidebar_stock_take"))
 
         # Bottom buttons
         self.sidebar.retranslate_pos_logout()
 
     def switch_tab(self, index: int) -> None:
-        self.stack.setCurrentIndex(index)
+        widget = self._get_or_create_view(index)
+        self.stack.setCurrentWidget(widget)
+        self.sidebar.highlight(index)
 
-    def _init_views(self) -> None:
-        self.dashboard_view = DashboardView()
-        self.stack.addWidget(self.dashboard_view)
+    def _create_view(self, index: int):
+        """Factory for the view at a given nav index. StockTakeView keeps
+        its existing deferred import here rather than moving it to module
+        level, since that's the pre-existing pattern this file used."""
+        if index == 0:
+            return DashboardView()
+        if index == 1:
+            return InventoryView()
+        if index == 2:
+            return PurchaseView()
+        if index == 3:
+            return CreditBookView()
+        if index == 4:
+            return ReportViewer()
+        if index == 5:
+            view = DocumentBrowserView()
+            view.convert_to_sale_requested.connect(self.convert_proforma_to_sale.emit)
+            return view
+        if index == 6:
+            return UserView()
+        if index == 7:
+            return PriceListView()
+        if index == 8:
+            return PromotionView()
+        if index == 9:
+            from cbpos.ui.views.stock_take_view import StockTakeView
 
-        self.inventory_view = InventoryView()
-        self.stack.addWidget(self.inventory_view)
+            return StockTakeView()
+        raise ValueError(f"No view factory for nav index {index}")
 
-        self.purchase_view = PurchaseView()
-        self.stack.addWidget(self.purchase_view)
+    def _get_or_create_view(self, index: int):
+        if index not in self._view_widgets:
+            widget = self._create_view(index)
+            self._view_widgets[index] = widget
+            setattr(self, self._view_attr_names[index], widget)
+            self.stack.addWidget(widget)
 
-        self.credit_book_view = CreditBookView()
-        self.stack.addWidget(self.credit_book_view)
-
-        self.reports_view = ReportViewer()
-        self.stack.addWidget(self.reports_view)
-
-        self.document_view = DocumentBrowserView()
-        self.document_view.convert_to_sale_requested.connect(self.convert_proforma_to_sale.emit)
-        self.stack.addWidget(self.document_view)
-
-        self.user_view = UserView()
-        self.stack.addWidget(self.user_view)
-
-        self.pricelist_view = PriceListView()
-        self.stack.addWidget(self.pricelist_view)
-
-        self.promotion_view = PromotionView()
-        self.stack.addWidget(self.promotion_view)
-
-        from cbpos.ui.views.stock_take_view import StockTakeView
-
-        self.stock_take_view = StockTakeView()
-        self.stack.addWidget(self.stock_take_view)
+            # These two views need the current user as soon as they're
+            # created, not just on the next login (set_user() already
+            # re-applies to existing views below).
+            if index in (2, 9):
+                user = getattr(self, "user", None)
+                if user is not None:
+                    widget.set_user(user)
+        return self._view_widgets[index]
 
     def set_user(self, user) -> None:
         self.user = user

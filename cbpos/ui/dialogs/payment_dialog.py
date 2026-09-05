@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QCompleter,
     QFrame,
     QSizePolicy,
+    QApplication,
 )
 
 from PyQt6.QtCore import Qt, QSize
@@ -34,7 +35,11 @@ class PaymentDialog(QDialog):
         self.payment_methods = []
 
         self.setWindowTitle(_t("payment.title"))
-        self.setFixedSize(920, 700)
+        screen = QApplication.primaryScreen().availableGeometry()
+        width = min(920, int(screen.width() * 0.90))
+        height = min(700, int(screen.height() * 0.90))
+        self.resize(width, height)
+        self.setMinimumSize(640, 520)
         self.setObjectName("PaymentDialog")
 
         self.load_payment_methods()
@@ -181,7 +186,15 @@ class PaymentDialog(QDialog):
         right_layout.addWidget(self.txt_amount)
 
         # Numpad Grid — wrapped in container to prevent stretching
-        _BTN_SIZE = 72
+        # Sized from the dialog's own height (computed from screen geometry
+        # above, before any numpad button exists) rather than a fixed 72px,
+        # so it doesn't overflow a small/low-res window (#210). Read at
+        # construction time only — not a live resizeEvent — since the
+        # buttons are setFixedSize themselves and would create a circular
+        # "panel can't shrink below what the buttons already need" loop if
+        # this were recomputed off their own container's size later.
+        available_h = self.height() - 220
+        _BTN_SIZE = max(56, min(72, available_h // 5))
         _SPACING = 8
         numpad_widget = QWidget()
         numpad_widget.setObjectName("PaymentListItemWidget")
@@ -262,6 +275,9 @@ class PaymentDialog(QDialog):
         self.btn_finish.setObjectName("BtnFinishSale")
         self.btn_finish.setFixedHeight(48)
         self.btn_finish.setEnabled(False)
+        self.btn_finish.setToolTip(
+            _t("payment.finish_tooltip_remaining", amount=format_currency(self.total_amount))
+        )
         self.btn_finish.clicked.connect(self._finish_sale)
 
         action_layout.addWidget(self.btn_cancel, stretch=1)
@@ -471,10 +487,12 @@ class PaymentDialog(QDialog):
         if not self.payments:
             self.lbl_remaining.setText(f"{_t('payment.remaining')} {format_currency(self.total_amount)}")
             self.lbl_remaining.setProperty("state", "remaining")
-            self.lbl_remaining.setStyleSheet("")  # Reset to CSS default
             self.lbl_remaining.style().unpolish(self.lbl_remaining)
             self.lbl_remaining.style().polish(self.lbl_remaining)
             self.btn_finish.setEnabled(False)
+            self.btn_finish.setToolTip(
+                _t("payment.finish_tooltip_remaining", amount=format_currency(self.total_amount))
+            )
 
     def update_balance(self):
         remaining = self.get_remaining_amount()
@@ -482,19 +500,19 @@ class PaymentDialog(QDialog):
         if remaining > 0:
             self.lbl_remaining.setText(f"{_t('payment.remaining')} {format_currency(remaining)}")
             self.lbl_remaining.setProperty("state", "remaining")
-            self.lbl_remaining.setStyleSheet("")  # Reset to CSS default
             self.lbl_remaining.style().unpolish(self.lbl_remaining)
             self.lbl_remaining.style().polish(self.lbl_remaining)
             self.btn_finish.setEnabled(False)
+            self.btn_finish.setToolTip(_t("payment.finish_tooltip_remaining", amount=format_currency(remaining)))
             self.txt_amount.setText(str(remaining))
         else:
             change = abs(remaining)
             self.lbl_remaining.setText(f"{_t('payment.change')} {format_currency(change)}")
             self.lbl_remaining.setProperty("state", "change")
-            self.lbl_remaining.setStyleSheet("color: #39FF14;")  # Green for change
             self.lbl_remaining.style().unpolish(self.lbl_remaining)
             self.lbl_remaining.style().polish(self.lbl_remaining)
             self.btn_finish.setEnabled(True)
+            self.btn_finish.setToolTip("")
             self.btn_finish.setFocus()
 
     # ── Numpad Helpers ─────────────────────────────────────────

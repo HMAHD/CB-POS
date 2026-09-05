@@ -81,7 +81,12 @@
   },
   "main_window": {
     "title": "CB POS",
-    "fullscreen_hint": "පූර්ණ තිරයෙන් පිටවීමට F11 ඔබන්න"
+    "fullscreen_hint": "පූර්ණ තිරයෙන් පිටවීමට F11 ඔබන්න",
+    "exit_confirm_title": "Cart Has Items",
+    "exit_confirm_message": "You have {count} item(s) in your cart. Do you want to hold the bill before closing?",
+    "exit_hold_and_exit": "Hold && Exit",
+    "exit_without_saving": "Exit Without Saving",
+    "exit_cancel": "Cancel"
   },
   "sales": {
     "search_placeholder_all": "Scan or type product... (Enter)",
@@ -163,6 +168,7 @@
     "enter_amount_placeholder": "මුදල ඇතුළත් කරන්න",
     "search_customer_placeholder": "සොයන්න...",
     "remove_tooltip": "ගෙවීම ඉවත් කරන්න",
+    "finish_tooltip_remaining": "Add {amount} more to finish the sale",
     "invalid_amount_title": "වලංගු නොවන මුදල",
     "invalid_amount_message": "කරුණාකර වලංගු මුදලක් ඇතුළත් කරන්න.",
     "credit_no_customer": "ණය විකුණුමට පාරිභෝගිකයෙකු තෝරන්න.",

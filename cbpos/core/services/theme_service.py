@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from cbpos.infrastructure.resource_loader import ResourceLoader
 from cbpos.core.services.config_service import ConfigService
 from cbpos.config import Config
@@ -60,6 +61,22 @@ class ThemeService:
 
             style_content = style_content.replace("{{FONT_FAMILY}}", font_family)
             style_content = style_content.replace("{{FONT_SIZE}}", font_size)
+
+            # A leftover "{{...}}" placeholder (a typo'd token, an unhandled
+            # variable, anything the two replace() calls above didn't match)
+            # is invalid CSS that Qt silently ignores, falling back to the
+            # system default font for the *entire app*. A regex catch-all
+            # guarantees no such token ever reaches the stylesheet, whatever
+            # its exact contents — re-running the same two replace() calls
+            # again would not help, since if they didn't match the first
+            # time they won't match the second.
+            if "{{" in style_content:
+                logger.error(
+                    "Unsubstituted template placeholder remained in %s after variable "
+                    "injection — forcing safe fallback font-size.",
+                    theme_file,
+                )
+                style_content = re.sub(r"\{\{[^}]*\}\}", "14px", style_content)
 
             if ThemeService._set_stylesheet:
                 ThemeService._set_stylesheet(style_content)

@@ -32,12 +32,18 @@ class Icons:
     SAVE = "fa5s.save"
     CANCEL = "fa5s.times"
     SEARCH = "fa5s.search"
+    SEARCH_BARCODE = "fa5s.barcode"
+    SEARCH_CODE = "fa5s.hashtag"
+    SEARCH_NAME = "fa5s.font"
     PRINT = "fa5s.print"
     PAY = "fa5s.money-bill-wave"
     HOLD = "fa5s.hand-paper"
     RECALL = "fa5s.history"
     VOID = "fa5s.ban"
     DRAWER = "fa5s.cash-register"
+    NOTE = "fa5s.sticky-note"
+    PERCENT = "fa5s.percent"
+    QTY = "fa5s.sort-numeric-up"
 
     # Status
     SUCCESS = "fa5s.check-circle"

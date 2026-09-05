@@ -81,7 +81,12 @@
   },
   "main_window": {
     "title": "CB POS - Industrial Retail System",
-    "fullscreen_hint": "Press Esc to exit fullscreen"
+    "fullscreen_hint": "Press Esc to exit fullscreen",
+    "exit_confirm_title": "Cart Has Items",
+    "exit_confirm_message": "You have {count} item(s) in your cart. Do you want to hold the bill before closing?",
+    "exit_hold_and_exit": "Hold && Exit",
+    "exit_without_saving": "Exit Without Saving",
+    "exit_cancel": "Cancel"
   },
   "sales": {
     "search_placeholder_all": "Scan or type product... (Enter)",
@@ -163,6 +168,7 @@
     "enter_amount_placeholder": "Enter amount",
     "search_customer_placeholder": "Type to search...",
     "remove_tooltip": "Remove payment",
+    "finish_tooltip_remaining": "Add {amount} more to finish the sale",
     "invalid_amount_title": "Invalid Amount",
     "invalid_amount_message": "Please enter a valid amount.",
     "credit_no_customer": "Please select a customer for Credit sale.",

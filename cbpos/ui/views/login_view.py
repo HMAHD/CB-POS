@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QGridLayout,
     QSizePolicy,
+    QApplication,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QIntValidator, QKeySequence, QShortcut
@@ -15,9 +16,12 @@ from cbpos.config import Config
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 # Numpad geometry constants
-_BTN_SIZE = 90  # Button width/height (setFixedSize — includes border)
+_BTN_SIZE = 90  # Default/initial button width/height — resizeEvent adjusts this
+_BTN_SIZE_MIN = 72
+_BTN_SIZE_MAX = 110
 _BTN_GAP = 12  # Spacing between buttons
 _NUM_COLS = 3
+_NUM_ROWS = 4
 # Total numpad width: 3 buttons + 2 gaps
 _NUMPAD_W = _NUM_COLS * _BTN_SIZE + (_NUM_COLS - 1) * _BTN_GAP
 
@@ -45,7 +49,8 @@ class LoginView(QWidget):
         main_layout.setSpacing(0)
 
         # ── LEFT PANEL (Branding) ──────────────────────────────────
-        left_panel = QWidget()
+        self.left_panel = QWidget()
+        left_panel = self.left_panel
         left_panel.setObjectName("LoginLeftPanel")
         left_layout = QVBoxLayout(left_panel)
         left_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -81,9 +86,11 @@ class LoginView(QWidget):
         left_layout.addSpacing(20)
 
         # ── RIGHT PANEL (Interaction) ──────────────────────────────
-        right_panel = QWidget()
+        self.right_panel = QWidget()
+        right_panel = self.right_panel
         right_panel.setObjectName("LoginRightPanel")
-        right_layout = QVBoxLayout(right_panel)
+        self._right_layout = QVBoxLayout(right_panel)
+        right_layout = self._right_layout
         right_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         right_layout.setContentsMargins(40, 40, 40, 40)
 
@@ -116,12 +123,14 @@ class LoginView(QWidget):
 
         # ── Numpad ─────────────────────────────────────────────────
         # Container constrains the grid to exact numpad width.
-        numpad_container = QWidget()
+        self.numpad_container = QWidget()
+        numpad_container = self.numpad_container
         numpad_container.setObjectName("NumpadContainer")
         numpad_container.setFixedWidth(_NUMPAD_W)
         numpad_container.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
-        grid = QGridLayout(numpad_container)
+        self._numpad_grid = QGridLayout(numpad_container)
+        grid = self._numpad_grid
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setHorizontalSpacing(_BTN_GAP)
         grid.setVerticalSpacing(_BTN_GAP)
@@ -141,6 +150,7 @@ class LoginView(QWidget):
             ("\u23ce", 3, 2),
         ]
 
+        self._numpad_buttons = []
         for text, row, col in buttons:
             btn = QPushButton(text)
             btn.setFixedSize(_BTN_SIZE, _BTN_SIZE)
@@ -157,6 +167,7 @@ class LoginView(QWidget):
                 btn.clicked.connect(lambda checked, t=text: self.append_pin(t))
 
             grid.addWidget(btn, row, col)
+            self._numpad_buttons.append(btn)
 
         right_layout.addWidget(numpad_container, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -179,6 +190,46 @@ class LoginView(QWidget):
         self.shortcut_enter.activated.connect(self.attempt_login)
         self.shortcut_num_enter = QShortcut(QKeySequence(Qt.Key.Key_Enter), self)
         self.shortcut_num_enter.activated.connect(self.attempt_login)
+
+        self._btn_size = _BTN_SIZE
+
+    def resizeEvent(self, event) -> None:
+        """Scale the numpad to the screen size instead of a fixed pixel size,
+        so it stays usable from small screens to high-DPI displays (#199).
+
+        Deliberately keyed off screen geometry, not self.right_panel.height():
+        the numpad's own buttons are setFixedSize, so the panel's reported
+        height can never shrink below what the *current* button size already
+        demands — sizing off it would be circular and never actually shrink
+        anything. Screen geometry has no such feedback loop.
+        """
+        super().resizeEvent(event)
+
+        # Below ~1200px wide, the branding panel leaves too little room for
+        # the numpad; hide it and let the right panel take the full width
+        # (#220). Also tighten the right panel's margins on short windows so
+        # the numpad doesn't get pushed into the help-hint text below it.
+        self.left_panel.setVisible(self.width() >= 1200)
+        v_margin = 20 if self.height() < 900 else 40
+        self._right_layout.setContentsMargins(40, v_margin, 40, v_margin)
+
+        screen = QApplication.primaryScreen().availableGeometry()
+        # Reserve roughly the space taken by everything above/below the
+        # numpad (heading, PIN field, error label, spacing, help hint) so
+        # the button grid itself gets what's actually left.
+        available_h = screen.height() - 260
+        btn_size = max(_BTN_SIZE_MIN, min(_BTN_SIZE_MAX, available_h // _NUM_ROWS))
+
+        if btn_size == getattr(self, "_btn_size", None):
+            return
+        self._btn_size = btn_size
+
+        for btn in self._numpad_buttons:
+            btn.setFixedSize(btn_size, btn_size)
+
+        numpad_w = _NUM_COLS * btn_size + (_NUM_COLS - 1) * _BTN_GAP
+        self.numpad_container.setFixedWidth(numpad_w)
+        self.pin_input.setFixedWidth(numpad_w)
 
     def retranslate_ui(self) -> None:
         """Update all translatable widget text (called on language change)."""

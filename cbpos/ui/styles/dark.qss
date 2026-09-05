@@ -480,6 +480,11 @@ QPushButton#NavTile[active="true"] {
     border-color: #00BCEB;
 }
 
+/* pt scales with DPI (px doesn't) — #207 */
+QLabel#NavTileText {
+    font-size: 9pt;
+}
+
 /* User Profile Row */
 QWidget#UserProfileRow {
     background-color: rgba(255, 255, 255, 0.03);
@@ -713,6 +718,10 @@ QLabel#TotalLabel {
     background: transparent;
 }
 
+QLabel#TotalLabel[compact="true"] {
+    font-size: 36px;
+}
+
 /* Action Panel */
 QWidget#ActionPanel {
     background-color: #1E1E1E;
@@ -799,6 +808,17 @@ QPushButton#ActionGridBtn:pressed {
     color: #000000;
 }
 
+/* pt scales with DPI (px doesn't) — #207: these were inline px in Python,
+   invisible at 150-200% Windows scaling. */
+QPushButton#ActionGridBtn QLabel#lblText {
+    font-size: 9pt;
+    font-weight: 500;
+}
+
+QPushButton#ActionGridBtn QLabel#lblShortcut {
+    font-size: 7pt;
+}
+
 /* Color accents — bottom border */
 QPushButton#ActionGridBtn[btnColor="#FFDC00"] { border-bottom: 2px solid #FFDC00; }
 QPushButton#ActionGridBtn[btnColor="#FF4136"] { border-bottom: 2px solid #FF4136; }
@@ -825,6 +845,12 @@ QPushButton#BtnPay:hover {
 
 QPushButton#BtnPay:pressed {
     background-color: #28B40E;
+}
+
+/* Brief flash when PAY is clicked on an empty cart (#209) */
+QPushButton#BtnPay[state="error"] {
+    background-color: #FF4136;
+    border: 2px solid #FF6B5E;
 }
 
 /* Dashboard Cards */

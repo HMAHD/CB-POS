@@ -30,7 +30,7 @@ from cbpos.ui.dialogs.discount_dialog import DiscountDialog
 from cbpos.ui.dialogs.quantity_dialog import QuantityDialog
 from cbpos.ui.dialogs.receipt_options_dialog import ReceiptOptionsDialog
 from cbpos.core.services.config_service import ConfigService
-from cbpos.ui.constants import SEARCH_BAR_HEIGHT, CART_TABLE_ROW_HEIGHT, PAYMENT_PANEL_WIDTH
+from cbpos.ui.constants import SEARCH_BAR_HEIGHT, CART_TABLE_ROW_HEIGHT
 from cbpos.ui.dialogs.customer_selection_dialog import CustomerSelectionDialog
 from cbpos.ui.dialogs.advanced_search_dialog import AdvancedSearchDialog
 from cbpos.ui.dialogs.customer_quick_add import CustomerQuickAddDialog
@@ -124,6 +124,7 @@ class SalesView(QWidget):
         # LEFT PANEL (Cart & Totals) - 75%
         # ==========================
         self.container_left = QWidget()
+        self.container_left.setMinimumWidth(400)
         left_layout = QVBoxLayout(self.container_left)
         left_layout.setContentsMargins(10, 10, 10, 10)
         left_layout.setSpacing(10)
@@ -139,20 +140,26 @@ class SalesView(QWidget):
         self.mode_group.setExclusive(True)
         self.mode_group.buttonClicked.connect(self.on_search_mode_changed)
 
+        # Icons instead of symbol labels (#213) -- "*", "||||", "#", "Tag" were
+        # tested with non-technical shop owners and were not understood (a
+        # magnifying glass, barcode, hashtag, and font glyph are self-evident
+        # even without reading the tooltip, which requires a hover that
+        # doesn't happen on a touch screen anyway).
         modes = [
-            ("ALL", "*"),
-            ("BARCODE", "||||"),
-            ("CODE", "#"),
-            ("NAME", "Tag"),
+            ("ALL", Icons.SEARCH),
+            ("BARCODE", Icons.SEARCH_BARCODE),
+            ("CODE", Icons.SEARCH_CODE),
+            ("NAME", Icons.SEARCH_NAME),
         ]
 
-        for mode_id, text in modes:
+        for mode_id, icon_name in modes:
             btn = QToolButton()
-            btn.setText(text)
             btn.setCheckable(True)
             btn.setToolTip("")  # Set by retranslate_ui
             btn.setFixedSize(40, 40)
+            btn.setIconSize(QSize(18, 18))
             btn.setProperty("mode", mode_id)
+            btn.setProperty("iconName", icon_name)
             btn.setProperty("class", "SearchModeBtn")  # For styling
             btn.setObjectName("SearchModeBtn")  # For styling
 
@@ -161,6 +168,11 @@ class SalesView(QWidget):
 
             self.mode_group.addButton(btn)
             search_layout.addWidget(btn)
+
+        self._refresh_search_mode_icons()
+        from cbpos.core.services.theme_service import ThemeService
+
+        ThemeService.register_theme_callback(self._refresh_search_mode_icons)
 
         search_layout.addSpacing(10)
 
@@ -192,6 +204,11 @@ class SalesView(QWidget):
         self.cart_table.setColumnWidth(2, 50)  # Qty
         self.cart_table.setColumnWidth(3, 50)  # Disc
         self.cart_table.setColumnWidth(4, 120)  # Total
+
+        # Guard against columns truncating below readability on small/high-DPI
+        # screens (the Item column, being Stretch-mode, always keeps whatever
+        # width remains — this only bounds the Fixed-mode numeric columns).
+        self.cart_table.horizontalHeader().setMinimumSectionSize(55)
 
         # Set object name for CSS targeting
         self.cart_table.setObjectName("CartTable")
@@ -281,7 +298,8 @@ class SalesView(QWidget):
         # RIGHT PANEL (Controls) - 25%
         # ==========================
         self.action_panel = ActionPanel()
-        self.action_panel.setFixedWidth(PAYMENT_PANEL_WIDTH)
+        self.action_panel.setMinimumWidth(280)
+        self.action_panel.setMaximumWidth(400)
         self.action_panel.setObjectName("ActionPanel")
 
         # Connect Action Panel Signals
@@ -458,6 +476,29 @@ class SalesView(QWidget):
         else:
             self.side_menu.setGeometry(self.width(), 0, menu_width, self.height())
 
+        # Shrink the grand-total font on short windows (#202) — driven by a
+        # QSS property selector, not an inline stylesheet, so it doesn't
+        # fight the theme cascade the way #219 did.
+        compact = self.height() < 900
+        if self.total_label.property("compact") != compact:
+            self.total_label.setProperty("compact", compact)
+            self.total_label.style().unpolish(self.total_label)
+            self.total_label.style().polish(self.total_label)
+
+        # Keep the undo toast anchored correctly if the window is resized
+        # while it's showing (#205) — it's positioned with absolute pixel
+        # arithmetic, so it doesn't move on its own the way a layout would.
+        if self.undo_toast.isVisible():
+            self._position_undo_toast()
+
+        # If the side menu isn't open, the action panel must always be
+        # visible — closing #206, where a maximize/unmaximize while the
+        # menu was open could otherwise leave it permanently hidden (only
+        # showEvent restored it, which doesn't fire on a resize or on a
+        # payment dialog closing).
+        if not self.side_menu.isVisible():
+            self.action_panel.setVisible(True)
+
     def toggle_side_menu(self):
         menu_width = self.side_menu.width()
         start_pos = self.side_menu.pos()
@@ -594,8 +635,17 @@ class SalesView(QWidget):
 
             self.cart_table.setItem(row, 0, name_item)
 
-            # Qty column
-            qty_item = QTableWidgetItem(str(item["qty"]))
+            # Qty column — the raw Decimal always carries 3 decimal places
+            # (e.g. "1.000"), which reads as a bug for whole-unit items like
+            # bottled water. Format to the product's unit precision instead,
+            # falling back to stripping trailing zeros if no unit is set (#224).
+            product = item["product"]
+            if product.unit is not None:
+                dp = product.unit.decimal_places
+                qty_str = f'{item["qty"]:.{dp}f}'
+            else:
+                qty_str = f'{item["qty"]:.3f}'.rstrip("0").rstrip(".") or "0"
+            qty_item = QTableWidgetItem(qty_str)
             qty_item.setForeground(text_brush)
             self.cart_table.setItem(row, 2, qty_item)
 
@@ -653,7 +703,18 @@ class SalesView(QWidget):
         self.lbl_item_count.setText(_t("cart.item_count", count=item_count))
         self.cart_table.scrollToBottom()
 
-        # Brief highlight on last row to give visual feedback on item add
+        # Brief highlight on last row to give visual feedback on item add.
+        # A barcode scanner can add 2-5 items/second -- faster than the old
+        # fixed 800ms QTimer.singleShot(), whose closure captured last_row by
+        # value. A second scan before the first timer fired left two rows
+        # highlighted at once, and once the table had been rebuilt again,
+        # the stale closure's last_row could point at the wrong row
+        # entirely (#222). A single cancellable timer, stopped and
+        # restarted on every scan, means only the latest one ever fires.
+        if not hasattr(self, "_highlight_timer"):
+            self._highlight_timer = QTimer(self)
+            self._highlight_timer.setSingleShot(True)
+
         if has_items:
             last_row = self.cart_table.rowCount() - 1
             highlight_color = QColor("#00BCEB") if is_dark else QColor("#B3ECFF")
@@ -669,7 +730,13 @@ class SalesView(QWidget):
                     if cell:
                         cell.setBackground(QBrush())
 
-            QTimer.singleShot(800, _clear_highlight)
+            self._highlight_timer.stop()
+            try:
+                self._highlight_timer.timeout.disconnect()
+            except TypeError:
+                pass  # nothing connected yet
+            self._highlight_timer.timeout.connect(_clear_highlight)
+            self._highlight_timer.start(600)
 
     def select_customer(self):
         dialog = CustomerSelectionDialog(self)
@@ -717,7 +784,13 @@ class SalesView(QWidget):
         totals = self.cart_service.get_totals()
         if totals["subtotal"] <= 0:
             SoundService.play("scan_error")
+            self._flash_pay_button_error()
             return
+
+        # A payment shortcut (F5/F10/F12) firing while the side menu is open
+        # would otherwise open the dialog behind/under the menu overlay (#206).
+        if self.side_menu.isVisible():
+            self.toggle_side_menu()
 
         dialog = PaymentDialog(totals["final_total"], self)
         if dialog.exec():
@@ -809,7 +882,26 @@ class SalesView(QWidget):
         mode = button.property("mode")
         self.current_search_mode = mode
         self._update_search_placeholder()
+        self._refresh_search_mode_icons()
         self.barcode_input.setFocus()
+
+    def _refresh_search_mode_icons(self) -> None:
+        """Re-tint each search-mode icon for the current theme + checked
+        state (#213). Checked/unchecked use opposite icon colors in both
+        themes -- e.g. dark theme's checked state is a black icon on a
+        cyan background -- so this can't be set once at construction."""
+        from cbpos.core.services.theme_service import ThemeService
+
+        is_dark = ThemeService.current_theme.lower() == "dark"
+        for btn in self.mode_group.buttons():
+            icon_name = btn.property("iconName")
+            if not icon_name:
+                continue
+            if is_dark:
+                color = "#000000" if btn.isChecked() else "#FFFFFF"
+            else:
+                color = "#FFFFFF" if btn.isChecked() else "#495057"
+            btn.setIcon(Icons.get(icon_name, color=color))
 
     def set_search_mode(self, mode: str, icon: str):
         # Legacy support or external call
@@ -821,8 +913,22 @@ class SalesView(QWidget):
                 break
 
     def setup_autocomplete(self):
-        """Setup QCompleter for product names."""
-        names = self.product_service.get_top_products(100)
+        """Setup QCompleter for product names.
+
+        Runs the product-name query in a background thread (#216) -- on a
+        5,000+ product inventory this took 300-800ms run synchronously in
+        __init__, causing a visible freeze at first launch and after every
+        multi-user login switch. Bumped from top-100 to top-500 while at
+        it, since a product outside the top 100 by sales count previously
+        got no autocomplete suggestion even for an exact-name match.
+        """
+        from cbpos.ui.workers import AutocompleteLoadWorker
+
+        self._autocomplete_worker = AutocompleteLoadWorker(self.product_service, limit=500)
+        self._autocomplete_worker.finished.connect(self._on_autocomplete_loaded)
+        self._autocomplete_worker.start()
+
+    def _on_autocomplete_loaded(self, names: list) -> None:
         completer = QCompleter(names, self)
         completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
@@ -840,28 +946,66 @@ class SalesView(QWidget):
         self.cart_table.selectRow(row)
 
         menu = QMenu(self)
+        icon_color = "#FFFFFF" if self._is_dark_theme() else "#212529"
 
-        add_note_action = QAction(_t("cart.context_add_note"), self)
+        add_note_action = QAction(Icons.get(Icons.NOTE, icon_color), _t("cart.context_add_note"), self)
         add_note_action.triggered.connect(self.add_line_note)
         menu.addAction(add_note_action)
 
-        change_qty_action = QAction(_t("cart.context_change_qty"), self)
+        # F4 is a real, already-existing global QShortcut for this exact
+        # handler (see setup_shortcuts). Shown as a text hint via "\t" rather
+        # than action.setShortcut("F4"): a second, separate F4 registration
+        # on the same window risks Qt treating the key as ambiguous and
+        # firing neither one, silently breaking the shortcut that already
+        # works -- not something to risk without being able to verify it.
+        change_qty_action = QAction(
+            Icons.get(Icons.QTY, icon_color), _t("cart.context_change_qty") + "\tF4", self
+        )
         change_qty_action.triggered.connect(self.change_line_quantity)
         menu.addAction(change_qty_action)
 
-        discount_action = QAction(_t("cart.context_line_discount"), self)
+        discount_action = QAction(Icons.get(Icons.PERCENT, icon_color), _t("cart.context_line_discount"), self)
         discount_action.triggered.connect(self.apply_line_discount)
         menu.addAction(discount_action)
 
-        price_action = QAction(_t("cart.context_change_price"), self)
+        price_action = QAction(Icons.get(Icons.EDIT, icon_color), _t("cart.context_change_price"), self)
         price_action.triggered.connect(self.change_line_price)
         menu.addAction(price_action)
 
-        remove_action = QAction(_t("cart.context_remove_item"), self)
+        # Deliberately no Delete-key shortcut here: Delete is already bound
+        # globally to void_bill() (voiding the *entire* sale) -- binding it
+        # here too would make one keypress do two different destructive
+        # things depending on focus, which is worse than no shortcut at all.
+        remove_action = QAction(Icons.get(Icons.DELETE, "#FF4136"), _t("cart.context_remove_item"), self)
         remove_action.triggered.connect(self.remove_line_item)
         menu.addAction(remove_action)
 
         menu.exec(self.cart_table.viewport().mapToGlobal(position))
+
+    def _is_dark_theme(self) -> bool:
+        from cbpos.core.services.theme_service import ThemeService
+
+        return ThemeService.current_theme.lower() == "dark"
+
+    def _flash_pay_button_error(self) -> None:
+        """Briefly flash PAY red when clicked on an empty cart (#209).
+
+        Previously only a sound played -- silent to a cashier who has
+        speakers muted, or just doesn't register a beep as "add items
+        first" versus a hardware problem. Property+polish, not an inline
+        stylesheet, matching the #219 pattern.
+        """
+        btn = self.action_panel.btn_pay
+        btn.setProperty("state", "error")
+        btn.style().unpolish(btn)
+        btn.style().polish(btn)
+
+        def _clear_error() -> None:
+            btn.setProperty("state", "")
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+
+        QTimer.singleShot(400, _clear_error)
 
     def add_line_note(self):
         """Add note to selected cart line."""

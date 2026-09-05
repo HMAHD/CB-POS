@@ -91,6 +91,10 @@ class DashboardView(QWidget):
         self._current_year = date.today().year
         self.init_ui()
 
+        from cbpos.ui.widgets.loading_overlay import LoadingOverlay
+
+        self._monthly_overlay = LoadingOverlay(self.monthly_panel)
+
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui)
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
@@ -147,6 +151,7 @@ class DashboardView(QWidget):
     # --- Row 1: Monthly Chart ---
     def _build_monthly_panel(self, parent_layout: QHBoxLayout) -> None:
         panel = QFrame()
+        self.monthly_panel = panel
         panel.setObjectName("MonthlyChartPanel")
         vbox = QVBoxLayout(panel)
         vbox.setContentsMargins(16, 12, 16, 12)
@@ -178,6 +183,7 @@ class DashboardView(QWidget):
         self.monthly_chart = VerticalBarChart()
         vbox.addWidget(self.monthly_chart, 1)
 
+        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 4)
 
     # --- Row 1: Yearly Summary ---
@@ -211,13 +217,14 @@ class DashboardView(QWidget):
         vbox.addWidget(self.lbl_top_month_total)
 
         vbox.addStretch()
+        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 1)
 
     # --- Row 2: Period Header ---
     def _build_period_header(self, parent_layout: QVBoxLayout) -> None:
         header = QFrame()
         header.setObjectName("PeriodHeader")
-        header.setFixedHeight(50)
+        header.setMinimumHeight(50)
         hbox = QHBoxLayout(header)
         hbox.setContentsMargins(16, 8, 16, 8)
         hbox.setSpacing(12)
@@ -287,6 +294,7 @@ class DashboardView(QWidget):
         self.products_table.setShowGrid(False)
         vbox.addWidget(self.products_table, 1)
 
+        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 2)
 
     # --- Row 3: Hourly Sales Chart ---
@@ -304,6 +312,7 @@ class DashboardView(QWidget):
         self.hourly_chart = VerticalBarChart()
         vbox.addWidget(self.hourly_chart, 1)
 
+        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 2)
 
     # --- Row 3: Quick Stats ---
@@ -357,6 +366,7 @@ class DashboardView(QWidget):
         vbox.addWidget(self.lbl_txn_count)
 
         vbox.addStretch()
+        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 1)
 
     # --- Row 3: Tax Today ---
@@ -400,6 +410,7 @@ class DashboardView(QWidget):
 
         vbox.addStretch()
         self.tax_today_panel = panel
+        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 1)
 
     # --- Row 4: Categories Donut ---
@@ -423,6 +434,7 @@ class DashboardView(QWidget):
         self.category_chart = DonutChart()
         vbox.addWidget(self.category_chart, 1)
 
+        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 1)
 
     # --- Row 4: Top Customers ---
@@ -446,6 +458,7 @@ class DashboardView(QWidget):
         self.customer_chart = HorizontalBarChart()
         vbox.addWidget(self.customer_chart, 1)
 
+        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
         parent_layout.addWidget(panel, 1)
 
     # ------------------------------------------------------------------
@@ -495,6 +508,7 @@ class DashboardView(QWidget):
         self.btn_prev_year.setEnabled(False)
         self.btn_next_year.setEnabled(False)
         self.lbl_yearly_total.setText(_t("dashboard.loading"))
+        self._monthly_overlay.show_loading(_t("dashboard.loading"))
 
         self._yearly_worker = _YearlyWorker(self._current_year)
         self._yearly_worker.finished.connect(self._on_yearly_ready)
@@ -514,6 +528,11 @@ class DashboardView(QWidget):
         )
         self.btn_refresh.setEnabled(False)
         self.btn_refresh.setText("\u231b")  # hourglass while loading
+        # Prevent changing the range mid-refresh (#214) -- a rapid second
+        # change would otherwise start a second _PeriodicWorker while the
+        # first is still in flight.
+        self.date_from.setEnabled(False)
+        self.date_to.setEnabled(False)
         self.lbl_avg_order.setText(_t("dashboard.loading"))
 
         self._periodic_worker = _PeriodicWorker(sd, ed)
@@ -528,6 +547,7 @@ class DashboardView(QWidget):
         """Handle yearly data from worker thread."""
         self.btn_prev_year.setEnabled(True)
         self.btn_next_year.setEnabled(True)
+        self._monthly_overlay.hide_loading()
         chart_data = [
             {
                 "label": m["label"],
@@ -548,6 +568,8 @@ class DashboardView(QWidget):
         """Handle periodic data from worker thread."""
         self.btn_refresh.setEnabled(True)
         self.btn_refresh.setText("\u21bb")
+        self.date_from.setEnabled(True)
+        self.date_to.setEnabled(True)
         # Top Products table
         self.products_table.setRowCount(len(products))
         for row, p in enumerate(products):

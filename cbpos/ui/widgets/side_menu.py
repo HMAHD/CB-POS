@@ -40,6 +40,7 @@ class NavTile(QPushButton):
 
         # Text
         self.lbl_text = QLabel()
+        self.lbl_text.setObjectName("NavTileText")
         self.lbl_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_text.setWordWrap(True)
         layout.addWidget(self.lbl_text)
@@ -70,10 +71,10 @@ class NavTile(QPushButton):
         pixmap = Icons.get(self.icon_name, icon_color).pixmap(28, 28)
         self.lbl_icon.setPixmap(pixmap)
         self.lbl_icon.setStyleSheet("background: transparent;")
-        self.lbl_text.setStyleSheet(
-            f"color: {text_color}; background: transparent;"  # noqa: E702, E231
-            " font-size: 12px;"
-        )
+        # Font size lives in QSS (#NavTileText, pt units so it scales with
+        # Windows DPI settings — #207); only the active-state-dependent
+        # color needs to be set here.
+        self.lbl_text.setStyleSheet(f"color: {text_color}; background: transparent;")
 
     def update_icon(self) -> None:
         """Public API for theme change callbacks."""

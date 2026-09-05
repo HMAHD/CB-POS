@@ -1636,6 +1636,7 @@ class NetworkPage(SettingsPage):
         self.lbl_port.setObjectName("FormLabel")
         self.input_port = QSpinBox()
         self.input_port.setObjectName("InputNetwork")
+        self.input_port.setFixedHeight(38)
         self.input_port.setRange(1, 65535)
         self.input_port.setValue(5432)
         grid_layout.addWidget(
@@ -1781,6 +1782,7 @@ class NetworkPage(SettingsPage):
         self.lbl_sync_port.setObjectName("FormLabel")
         self.spin_sync_port = QSpinBox()
         self.spin_sync_port.setObjectName("InputNetwork")
+        self.spin_sync_port.setFixedHeight(38)
         self.spin_sync_port.setRange(1024, 65535)
         self.spin_sync_port.setValue(5555)
         sync_grid.addWidget(self.lbl_sync_port, 2, 0, Qt.AlignmentFlag.AlignLeft)
@@ -1800,6 +1802,7 @@ class NetworkPage(SettingsPage):
         self.lbl_sync_interval.setObjectName("FormLabel")
         self.spin_sync_interval = QSpinBox()
         self.spin_sync_interval.setObjectName("InputNetwork")
+        self.spin_sync_interval.setFixedHeight(38)
         self.spin_sync_interval.setRange(1, 60)
         self.spin_sync_interval.setSuffix(" seconds")
         self.spin_sync_interval.setValue(3)
@@ -1844,6 +1847,18 @@ class NetworkPage(SettingsPage):
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui)
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
+        # The first style polish on show() re-expands these spinboxes past
+        # their #InputNetwork height (a pre-existing QSS specificity clash
+        # with "QWidget#SettingsContent QSpinBox"), so pin the height again
+        # one event-loop tick after the initial polish has already happened.
+        from PyQt6.QtCore import QTimer
+
+        def _fix_spinbox_heights():
+            for spinbox in (self.input_port, self.spin_sync_port, self.spin_sync_interval):
+                spinbox.setFixedHeight(38)
+
+        QTimer.singleShot(0, _fix_spinbox_heights)
 
     def retranslate_ui(self) -> None:
         self._page_title.setText(_t("settings.network.title"))
@@ -2113,6 +2128,10 @@ class NetworkPage(SettingsPage):
         # Sync interval for both
         self.lbl_sync_interval.setVisible(is_sync)
         self.spin_sync_interval.setVisible(is_sync)
+
+        # Shared secret for both
+        self.lbl_sync_secret.setVisible(is_sync)
+        self.input_sync_secret.setVisible(is_sync)
 
         # Test button only for Terminal mode
         self.btn_test_sync.setVisible(is_terminal)

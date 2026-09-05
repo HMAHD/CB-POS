@@ -1813,6 +1813,27 @@ QComboBox#InputNetwork {
     font-size: 13px;
 }
 
+/* Higher specificity than "QWidget#SettingsContent QSpinBox" (below) is
+   required here, or that rule's min-height wins and stretches this
+   spinbox (and its up/down buttons) far taller than its sibling
+   QLineEdit/QComboBox fields. */
+QWidget#SettingsContent QSpinBox#InputNetwork {
+    min-height: 18px;
+    max-height: 18px;
+}
+
+QSpinBox#InputNetwork::up-button,
+QSpinBox#InputNetwork::down-button {
+    width: 20px;
+    height: 12px;
+}
+
+QSpinBox#InputNetwork::up-arrow,
+QSpinBox#InputNetwork::down-arrow {
+    width: 8px;
+    height: 8px;
+}
+
 QLineEdit#InputNetwork:focus,
 QSpinBox#InputNetwork:focus,
 QComboBox#InputNetwork:focus {

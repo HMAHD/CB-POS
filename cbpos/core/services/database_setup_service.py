@@ -32,7 +32,7 @@ class DatabaseSetupService:
     """Handles first-run database initialization."""
 
     @staticmethod
-    def _stamp_alembic_head() -> None:
+    def stamp_alembic_head() -> None:
         """Stamp the database with the current Alembic head revision.
 
         Called after ``create_all()`` so that future Alembic migrations
@@ -169,7 +169,7 @@ class DatabaseSetupService:
             session.add_all(units)
 
         # Stamp the alembic version so future migrations apply correctly
-        cls._stamp_alembic_head()
+        cls.stamp_alembic_head()
         logger.info("Empty database initialized with default admin (admin/1234).")
 
     @classmethod
@@ -190,5 +190,5 @@ class DatabaseSetupService:
 
         seed_data()
         # Stamp the alembic version so future migrations apply correctly
-        cls._stamp_alembic_head()
+        cls.stamp_alembic_head()
         logger.info("Demo database created with sample data.")

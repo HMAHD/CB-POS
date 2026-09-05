@@ -81,6 +81,7 @@ class UpdateDialog(QDialog):
     def _init_ui(self) -> None:
         self.setWindowTitle(_t("update.title"))
         self.setMinimumWidth(420)
+        self.setMinimumHeight(300)
         self.setModal(True)
 
         layout = QVBoxLayout(self)

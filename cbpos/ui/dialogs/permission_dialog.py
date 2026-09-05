@@ -19,6 +19,7 @@ class PermissionDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(_t("permission.title"))
         self.resize(800, 600)
+        self.setMinimumSize(600, 450)
         self.init_ui()
 
     def init_ui(self):

@@ -19,6 +19,7 @@ class CustomerQuickAddDialog(QDialog):
 
         self.setWindowTitle(_t("customer_quick_add.title"))
         self.setMinimumWidth(300)
+        self.setMinimumHeight(350)
         self.setObjectName("CustomerQuickAddDialog")
         self.setup_ui()
 

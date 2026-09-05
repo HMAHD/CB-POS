@@ -20,6 +20,7 @@ class QuantityDialog(QDialog):
         self.setWindowTitle(_t("quantity.title"))
         self.setObjectName("QuantityDialog")
         self.setFixedWidth(340)
+        self.setMinimumHeight(220)
         self.setModal(True)
 
         layout = QVBoxLayout(self)

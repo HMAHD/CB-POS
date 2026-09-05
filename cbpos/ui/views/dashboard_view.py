@@ -217,7 +217,7 @@ class DashboardView(QWidget):
     def _build_period_header(self, parent_layout: QVBoxLayout) -> None:
         header = QFrame()
         header.setObjectName("PeriodHeader")
-        header.setFixedHeight(50)
+        header.setMinimumHeight(50)
         hbox = QHBoxLayout(header)
         hbox.setContentsMargins(16, 8, 16, 8)
         hbox.setSpacing(12)

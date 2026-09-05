@@ -1411,10 +1411,6 @@ class SystemPage(SettingsPage):
         self._lbl_loyalty = QLabel()
         self._form_inv.addRow(self._lbl_loyalty, self.chk_loyalty)
 
-        self.chk_touch_mode = QCheckBox()
-        self._lbl_touch_mode = QLabel()
-        self._form_inv.addRow(self._lbl_touch_mode, self.chk_touch_mode)
-
         self.tabs.addTab(self._tab_inv, "")
 
         # --- Tab 4: Backup ---
@@ -1485,8 +1481,6 @@ class SystemPage(SettingsPage):
         self.chk_auto_barcodes.setToolTip(_t("settings.system.tooltip_auto_barcodes"))
         self._lbl_loyalty.setText(_t("settings.system.loyalty_points"))
         self.chk_loyalty.setToolTip(_t("settings.system.tooltip_loyalty"))
-        self._lbl_touch_mode.setText(_t("settings.system.touch_mode"))
-        self.chk_touch_mode.setToolTip(_t("settings.system.tooltip_touch_mode"))
 
         # Backup
         self._lbl_auto_backup.setText(_t("settings.system.auto_backup"))
@@ -1515,7 +1509,6 @@ class SystemPage(SettingsPage):
         self.chk_negative_stock.setChecked(settings.get("allow_negative_stock", False))
         self.chk_auto_barcodes.setChecked(settings.get("auto_generate_barcodes", True))
         self.chk_loyalty.setChecked(settings.get("enable_loyalty", True))
-        self.chk_touch_mode.setChecked(settings.get("enable_touch_mode", True))
         self.chk_auto_backup.setChecked(settings.get("auto_backup_on_close", True))
         self.spin_retention.setValue(int(settings.get("backup_retention_count", 5)))
         self.input_backup_dir.setText(settings.get("backup_dir", ""))
@@ -1533,7 +1526,6 @@ class SystemPage(SettingsPage):
             "allow_negative_stock": self.chk_negative_stock.isChecked(),
             "auto_generate_barcodes": self.chk_auto_barcodes.isChecked(),
             "enable_loyalty": self.chk_loyalty.isChecked(),
-            "enable_touch_mode": self.chk_touch_mode.isChecked(),
             "auto_backup_on_close": self.chk_auto_backup.isChecked(),
             "backup_retention_count": self.spin_retention.value(),
             "backup_dir": self.input_backup_dir.text(),

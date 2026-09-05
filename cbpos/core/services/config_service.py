@@ -73,8 +73,6 @@ class ConfigService:
         # Feature Flags
         "enable_loyalty": True,
         "enable_sounds": True,
-        "enable_touch_mode": True,
-        "enable_visual_search": True,
         "auto_select_barcode_match": True,
         # Appearance
         "theme": "Dark",
@@ -145,7 +143,6 @@ class ConfigService:
             "language",
             "theme",
             "enable_sounds",
-            "enable_touch_mode",
             "sidebar_collapsed",
             "terminal_mode",
             "main_pc_address",

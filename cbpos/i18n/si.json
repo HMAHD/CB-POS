@@ -168,6 +168,7 @@
     "enter_amount_placeholder": "මුදල ඇතුළත් කරන්න",
     "search_customer_placeholder": "සොයන්න...",
     "remove_tooltip": "ගෙවීම ඉවත් කරන්න",
+    "finish_tooltip_remaining": "Add {amount} more to finish the sale",
     "invalid_amount_title": "වලංගු නොවන මුදල",
     "invalid_amount_message": "කරුණාකර වලංගු මුදලක් ඇතුළත් කරන්න.",
     "credit_no_customer": "ණය විකුණුමට පාරිභෝගිකයෙකු තෝරන්න.",

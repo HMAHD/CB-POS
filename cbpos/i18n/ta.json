@@ -168,6 +168,7 @@
     "enter_amount_placeholder": "தொகையை உள்ளிடுக",
     "search_customer_placeholder": "தேட...",
     "remove_tooltip": "கட்டணத்தை நீக்கு",
+    "finish_tooltip_remaining": "Add {amount} more to finish the sale",
     "invalid_amount_title": "தவறான தொகை",
     "invalid_amount_message": "சரியான தொகையை உள்ளிடுக.",
     "credit_no_customer": "கடன் விற்பனைக்கு வாடிக்கையாளரைத் தேர்வு செய்யுங்கள்.",

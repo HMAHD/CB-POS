@@ -168,6 +168,7 @@
     "enter_amount_placeholder": "Enter amount",
     "search_customer_placeholder": "Type to search...",
     "remove_tooltip": "Remove payment",
+    "finish_tooltip_remaining": "Add {amount} more to finish the sale",
     "invalid_amount_title": "Invalid Amount",
     "invalid_amount_message": "Please enter a valid amount.",
     "credit_no_customer": "Please select a customer for Credit sale.",

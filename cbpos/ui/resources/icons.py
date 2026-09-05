@@ -41,6 +41,9 @@ class Icons:
     RECALL = "fa5s.history"
     VOID = "fa5s.ban"
     DRAWER = "fa5s.cash-register"
+    NOTE = "fa5s.sticky-note"
+    PERCENT = "fa5s.percent"
+    QTY = "fa5s.sort-numeric-up"
 
     # Status
     SUCCESS = "fa5s.check-circle"

@@ -931,28 +931,46 @@ class SalesView(QWidget):
         self.cart_table.selectRow(row)
 
         menu = QMenu(self)
+        icon_color = "#FFFFFF" if self._is_dark_theme() else "#212529"
 
-        add_note_action = QAction(_t("cart.context_add_note"), self)
+        add_note_action = QAction(Icons.get(Icons.NOTE, icon_color), _t("cart.context_add_note"), self)
         add_note_action.triggered.connect(self.add_line_note)
         menu.addAction(add_note_action)
 
-        change_qty_action = QAction(_t("cart.context_change_qty"), self)
+        # F4 is a real, already-existing global QShortcut for this exact
+        # handler (see setup_shortcuts). Shown as a text hint via "\t" rather
+        # than action.setShortcut("F4"): a second, separate F4 registration
+        # on the same window risks Qt treating the key as ambiguous and
+        # firing neither one, silently breaking the shortcut that already
+        # works -- not something to risk without being able to verify it.
+        change_qty_action = QAction(
+            Icons.get(Icons.QTY, icon_color), _t("cart.context_change_qty") + "\tF4", self
+        )
         change_qty_action.triggered.connect(self.change_line_quantity)
         menu.addAction(change_qty_action)
 
-        discount_action = QAction(_t("cart.context_line_discount"), self)
+        discount_action = QAction(Icons.get(Icons.PERCENT, icon_color), _t("cart.context_line_discount"), self)
         discount_action.triggered.connect(self.apply_line_discount)
         menu.addAction(discount_action)
 
-        price_action = QAction(_t("cart.context_change_price"), self)
+        price_action = QAction(Icons.get(Icons.EDIT, icon_color), _t("cart.context_change_price"), self)
         price_action.triggered.connect(self.change_line_price)
         menu.addAction(price_action)
 
-        remove_action = QAction(_t("cart.context_remove_item"), self)
+        # Deliberately no Delete-key shortcut here: Delete is already bound
+        # globally to void_bill() (voiding the *entire* sale) -- binding it
+        # here too would make one keypress do two different destructive
+        # things depending on focus, which is worse than no shortcut at all.
+        remove_action = QAction(Icons.get(Icons.DELETE, "#FF4136"), _t("cart.context_remove_item"), self)
         remove_action.triggered.connect(self.remove_line_item)
         menu.addAction(remove_action)
 
         menu.exec(self.cart_table.viewport().mapToGlobal(position))
+
+    def _is_dark_theme(self) -> bool:
+        from cbpos.core.services.theme_service import ThemeService
+
+        return ThemeService.current_theme.lower() == "dark"
 
     def add_line_note(self):
         """Add note to selected cart line."""

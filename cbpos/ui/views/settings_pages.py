@@ -1806,6 +1806,16 @@ class NetworkPage(SettingsPage):
         sync_grid.addWidget(self.lbl_sync_interval, 4, 0, Qt.AlignmentFlag.AlignLeft)
         sync_grid.addWidget(self.spin_sync_interval, 4, 1)
 
+        # Shared secret — required on both Main PC and every Terminal
+        self.lbl_sync_secret = QLabel("Shared Secret:")
+        self.lbl_sync_secret.setObjectName("FormLabel")
+        self.input_sync_secret = QLineEdit()
+        self.input_sync_secret.setObjectName("InputNetwork")
+        self.input_sync_secret.setEchoMode(QLineEdit.EchoMode.Password)
+        self.input_sync_secret.setPlaceholderText("Required — same value on every PC")
+        sync_grid.addWidget(self.lbl_sync_secret, 5, 0, Qt.AlignmentFlag.AlignLeft)
+        sync_grid.addWidget(self.input_sync_secret, 5, 1)
+
         sync_card_layout.addLayout(sync_grid)
 
         # Test LAN Sync Connection button
@@ -1912,6 +1922,7 @@ class NetworkPage(SettingsPage):
         self.spin_sync_port.setValue(int(settings.get("sync_server_port", 5555)))
         self.input_main_pc_addr.setText(settings.get("main_pc_address", ""))
         self.spin_sync_interval.setValue(int(settings.get("sync_interval_seconds", 3)))
+        self.input_sync_secret.setText(settings.get("sync_shared_secret", ""))
 
     def save(self) -> dict:
         mode_data = self.cmb_db_mode.currentData() or "Standalone"
@@ -1929,6 +1940,7 @@ class NetworkPage(SettingsPage):
             "sync_server_port": self.spin_sync_port.value(),
             "main_pc_address": self.input_main_pc_addr.text().strip(),
             "sync_interval_seconds": self.spin_sync_interval.value(),
+            "sync_shared_secret": self.input_sync_secret.text(),
         }
 
     def _on_mode_changed(self, mode: str):
@@ -2110,6 +2122,7 @@ class NetworkPage(SettingsPage):
         if is_main:
             try:
                 import socket
+
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.settimeout(0.1)
                 s.connect(("10.255.255.255", 1))
@@ -2118,9 +2131,7 @@ class NetworkPage(SettingsPage):
             except Exception:
                 ip = "127.0.0.1"
             port = self.spin_sync_port.value()
-            self.lbl_server_address.setText(
-                f"Terminals should connect to: {ip}:{port}"
-            )
+            self.lbl_server_address.setText(f"Terminals should connect to: {ip}:{port}")
             self.lbl_server_address.setVisible(True)
         else:
             self.lbl_server_address.setVisible(False)
@@ -2129,9 +2140,7 @@ class NetworkPage(SettingsPage):
         """Test the connection to the Main PC sync server."""
         address = self.input_main_pc_addr.text().strip()
         if not address:
-            QMessageBox.warning(
-                self, "Validation Error", "Enter the Main PC address (IP:port)"
-            )
+            QMessageBox.warning(self, "Validation Error", "Enter the Main PC address (IP:port)")
             return
 
         if not address.startswith("http"):
@@ -2142,11 +2151,12 @@ class NetworkPage(SettingsPage):
         QApplication.processEvents()
 
         try:
+            import json
             import urllib.request
             import urllib.error
 
             url = f"{address}/sync/heartbeat"
-            req = urllib.request.Request(url, method="GET")
+            req = urllib.request.Request(url, method="GET", headers={"X-Sync-Token": self.input_sync_secret.text()})
             with urllib.request.urlopen(req, timeout=5) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
 
@@ -2157,13 +2167,28 @@ class NetworkPage(SettingsPage):
                 QMessageBox.information(
                     self,
                     "Connection Successful",
-                    f"Connected to Main PC!\n\n"
-                    f"Protocol version: {version}\n"
-                    f"Terminals connected: {terminals}",
+                    f"Connected to Main PC!\n\n" f"Protocol version: {version}\n" f"Terminals connected: {terminals}",
                 )
             else:
                 self.lbl_sync_test_status.setText("✗ Unexpected response")
 
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                self.lbl_sync_test_status.setText("✗ Unauthorized")
+                QMessageBox.critical(
+                    self,
+                    "Connection Failed",
+                    "Shared Secret does not match the Main PC's.\n\n"
+                    "Enter the same Shared Secret configured on the Main PC, "
+                    "then try again.",
+                )
+            else:
+                self.lbl_sync_test_status.setText("✗ Failed")
+                QMessageBox.critical(
+                    self,
+                    "Connection Failed",
+                    f"Cannot reach Main PC at {address}\n\n{e}",
+                )
         except urllib.error.URLError as e:
             self.lbl_sync_test_status.setText("✗ Failed")
             QMessageBox.critical(
@@ -2173,8 +2198,6 @@ class NetworkPage(SettingsPage):
             )
         except Exception as e:
             self.lbl_sync_test_status.setText("✗ Error")
-            QMessageBox.critical(
-                self, "Connection Error", str(e)
-            )
+            QMessageBox.critical(self, "Connection Error", str(e))
         finally:
             self.btn_test_sync.setEnabled(True)

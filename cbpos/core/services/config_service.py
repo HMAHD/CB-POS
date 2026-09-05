@@ -112,6 +112,7 @@ class ConfigService:
         "sync_server_port": 5555,  # Port for sync server (Main PC)
         "main_pc_address": "",  # IP:port of Main PC (Terminal mode)
         "sync_interval_seconds": 3,  # How often terminals push/pull (seconds)
+        "sync_shared_secret": "",  # Shared token — same value required on Main PC and every Terminal
         # Automation / Email
         "auto_report_enabled": False,
         "auto_report_time": "22:00",
@@ -150,7 +151,7 @@ class ConfigService:
     )
 
     # Keys that should be encrypted in the settings file
-    _SENSITIVE_KEYS = {"network_db_password", "smtp_pass"}
+    _SENSITIVE_KEYS = {"network_db_password", "smtp_pass", "sync_shared_secret"}
     _fernet: Fernet | None = None
 
     _KEY_FILE = os.path.join(Config.DATA_DIR, ".encryption_key")

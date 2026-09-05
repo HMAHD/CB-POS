@@ -72,7 +72,7 @@ class SyncClient(QThread):
         error_signal: Emitted on errors (error message).
     """
 
-    status_changed = pyqtSignal(str)       # status string
+    status_changed = pyqtSignal(str)  # status string
     sync_completed = pyqtSignal(int, int)  # pushed, pulled
     initial_sync_completed = pyqtSignal()
     error_signal = pyqtSignal(str)
@@ -88,12 +88,14 @@ class SyncClient(QThread):
         terminal_id: str,
         server_address: str,
         sync_interval: int = 3,
+        shared_secret: str = "",
         parent=None,
     ):
         super().__init__(parent)
         self._terminal_id = terminal_id
         self._server_address = server_address.rstrip("/")
         self._sync_interval = sync_interval  # seconds
+        self._shared_secret = shared_secret
         self._running = False
         self._state = self.STATE_DISCONNECTED
         self._push_sequence = 0
@@ -124,11 +126,7 @@ class SyncClient(QThread):
         try:
             db = Database()
             with db.get_session() as session:
-                return (
-                    session.query(Document)
-                    .filter_by(synced=False)
-                    .count()
-                )
+                return session.query(Document).filter_by(synced=False).count()
         except Exception:
             return 0
 
@@ -152,16 +150,13 @@ class SyncClient(QThread):
         """
         url = f"{self._server_address}{endpoint}"
         try:
+            headers = {"X-Sync-Token": self._shared_secret}
             if data is not None:
                 body = sync_json_dumps(data).encode("utf-8")
-                req = urllib.request.Request(
-                    url,
-                    data=body,
-                    method=method,
-                    headers={"Content-Type": "application/json; charset=utf-8"},
-                )
+                headers["Content-Type"] = "application/json; charset=utf-8"
+                req = urllib.request.Request(url, data=body, method=method, headers=headers)
             else:
-                req = urllib.request.Request(url, method=method)
+                req = urllib.request.Request(url, method=method, headers=headers)
 
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 raw = resp.read().decode("utf-8")
@@ -247,9 +242,13 @@ class SyncClient(QThread):
 
     def _try_register(self) -> bool:
         """Register with the Main PC."""
-        result = self._request("POST", EP_REGISTER, {
-            "terminal_id": self._terminal_id,
-        })
+        result = self._request(
+            "POST",
+            EP_REGISTER,
+            {
+                "terminal_id": self._terminal_id,
+            },
+        )
         if result and result.get("status") == "registered":
             logger.info("Registered with Main PC as %s", self._terminal_id)
             return True
@@ -285,11 +284,7 @@ class SyncClient(QThread):
         try:
             with db.get_session() as session:
                 # Find unsynced sales (with items and payments)
-                unsynced_sales = (
-                    session.query(Sale)
-                    .filter_by(synced=False)
-                    .all()
-                )
+                unsynced_sales = session.query(Sale).filter_by(synced=False).all()
 
                 if unsynced_sales:
                     # Get parent Document data for each sale
@@ -301,18 +296,20 @@ class SyncClient(QThread):
                         # Document base fields
                         doc_dict = model_to_dict(sale)
                         # Remove polymorphic child columns from document
-                        docs.append({
-                            "id": doc_dict["id"],
-                            "document_number": sale.document_number,
-                            "date": sale.date.isoformat() if sale.date else None,
-                            "type": sale.type,
-                            "status": sale.status,
-                            "user_id": sale.user_id,
-                            "void_reason_id": sale.void_reason_id,
-                            "terminal_id": sale.terminal_id,
-                            "origin_terminal_id": sale.origin_terminal_id or self._terminal_id,
-                            "synced": True,
-                        })
+                        docs.append(
+                            {
+                                "id": doc_dict["id"],
+                                "document_number": sale.document_number,
+                                "date": sale.date.isoformat() if sale.date else None,
+                                "type": sale.type,
+                                "status": sale.status,
+                                "user_id": sale.user_id,
+                                "void_reason_id": sale.void_reason_id,
+                                "terminal_id": sale.terminal_id,
+                                "origin_terminal_id": sale.origin_terminal_id or self._terminal_id,
+                                "synced": True,
+                            }
+                        )
                         sales.append(model_to_dict(sale))
                         for item in sale.items:
                             items.append(model_to_dict(item))
@@ -325,27 +322,25 @@ class SyncClient(QThread):
                     payload["sale_payments"] = payments
 
                 # Find unsynced purchases
-                unsynced_purchases = (
-                    session.query(Purchase)
-                    .filter_by(synced=False)
-                    .all()
-                )
+                unsynced_purchases = session.query(Purchase).filter_by(synced=False).all()
                 if unsynced_purchases:
                     p_docs = []
                     purchases = []
                     p_items = []
                     for purchase in unsynced_purchases:
-                        p_docs.append({
-                            "id": purchase.id,
-                            "document_number": purchase.document_number,
-                            "date": purchase.date.isoformat() if purchase.date else None,
-                            "type": purchase.type,
-                            "status": purchase.status,
-                            "user_id": purchase.user_id,
-                            "terminal_id": purchase.terminal_id,
-                            "origin_terminal_id": purchase.origin_terminal_id or self._terminal_id,
-                            "synced": True,
-                        })
+                        p_docs.append(
+                            {
+                                "id": purchase.id,
+                                "document_number": purchase.document_number,
+                                "date": purchase.date.isoformat() if purchase.date else None,
+                                "type": purchase.type,
+                                "status": purchase.status,
+                                "user_id": purchase.user_id,
+                                "terminal_id": purchase.terminal_id,
+                                "origin_terminal_id": purchase.origin_terminal_id or self._terminal_id,
+                                "synced": True,
+                            }
+                        )
                         purchases.append(model_to_dict(purchase))
                         for item in purchase.items:
                             p_items.append(model_to_dict(item))
@@ -357,79 +352,39 @@ class SyncClient(QThread):
                     payload["purchase_items"] = p_items
 
                 # Find unsynced stock movements
-                unsynced_movements = (
-                    session.query(StockMovement)
-                    .filter_by(synced=False)
-                    .all()
-                )
+                unsynced_movements = session.query(StockMovement).filter_by(synced=False).all()
                 if unsynced_movements:
-                    payload["stock_movements"] = [
-                        model_to_dict(m) for m in unsynced_movements
-                    ]
+                    payload["stock_movements"] = [model_to_dict(m) for m in unsynced_movements]
 
                 # Find unsynced shifts
-                unsynced_shifts = (
-                    session.query(Shift)
-                    .filter_by(synced=False)
-                    .all()
-                )
+                unsynced_shifts = session.query(Shift).filter_by(synced=False).all()
                 if unsynced_shifts:
                     payload["shifts"] = [model_to_dict(s) for s in unsynced_shifts]
 
                 # Find unsynced cash movements
-                unsynced_cash = (
-                    session.query(CashMovement)
-                    .filter_by(synced=False)
-                    .all()
-                )
+                unsynced_cash = session.query(CashMovement).filter_by(synced=False).all()
                 if unsynced_cash:
-                    payload["cash_movements"] = [
-                        model_to_dict(c) for c in unsynced_cash
-                    ]
+                    payload["cash_movements"] = [model_to_dict(c) for c in unsynced_cash]
 
                 # Find unsynced customer payments
-                unsynced_cpay = (
-                    session.query(CustomerPayment)
-                    .filter_by(synced=False)
-                    .all()
-                )
+                unsynced_cpay = session.query(CustomerPayment).filter_by(synced=False).all()
                 if unsynced_cpay:
-                    payload["customer_payments"] = [
-                        model_to_dict(p) for p in unsynced_cpay
-                    ]
+                    payload["customer_payments"] = [model_to_dict(p) for p in unsynced_cpay]
 
                 # Find unsynced customer ledger entries
-                unsynced_cledger = (
-                    session.query(CustomerLedgerEntry)
-                    .filter_by(synced=False)
-                    .all()
-                )
+                unsynced_cledger = session.query(CustomerLedgerEntry).filter_by(synced=False).all()
                 if unsynced_cledger:
-                    payload["customer_ledger"] = [
-                        model_to_dict(e) for e in unsynced_cledger
-                    ]
+                    payload["customer_ledger"] = [model_to_dict(e) for e in unsynced_cledger]
 
                 # Find unsynced supplier payments
-                unsynced_spay = (
-                    session.query(SupplierPayment)
-                    .filter_by(synced=False)
-                    .all()
-                )
+                unsynced_spay = session.query(SupplierPayment).filter_by(synced=False).all()
                 if unsynced_spay:
-                    payload["supplier_payments"] = [
-                        model_to_dict(p) for p in unsynced_spay
-                    ]
+                    payload["supplier_payments"] = [model_to_dict(p) for p in unsynced_spay]
 
                 # Find unsynced supplier ledger entries
-                unsynced_sledger = (
-                    session.query(SupplierLedgerEntry)
-                    .filter_by(synced=False)
-                    .all()
-                )
+                unsynced_sledger = session.query(SupplierLedgerEntry).filter_by(synced=False).all()
                 if unsynced_sledger:
-                    payload["supplier_ledger"] = [
-                        model_to_dict(e) for e in unsynced_sledger
-                    ]
+                    payload["supplier_ledger"] = [model_to_dict(e) for e in unsynced_sledger]
 
         except Exception as e:
             logger.error("Error collecting unsynced transactions: %s", e)
@@ -617,12 +572,7 @@ class SyncClient(QThread):
         db = Database()
         try:
             with db.get_session() as session:
-                unsynced = (
-                    session.query(AuditLog)
-                    .filter_by(synced=False)
-                    .limit(100)  # Batch size
-                    .all()
-                )
+                unsynced = session.query(AuditLog).filter_by(synced=False).limit(100).all()  # Batch size
                 if not unsynced:
                     return 0
 

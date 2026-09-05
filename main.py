@@ -320,7 +320,17 @@ def main():
 
     # --- Multi-Terminal LAN Sync ---
     terminal_mode = ConfigService.get("terminal_mode") or "standalone"
-    if terminal_mode == "main":
+    shared_secret = ConfigService.get("sync_shared_secret") or ""
+
+    if terminal_mode in ("main", "terminal") and not shared_secret:
+        print(
+            "[BOOTSTRAP] LAN Sync is configured but no Shared Secret is set "
+            "(Settings > Network > LAN Sync) — refusing to start sync "
+            "unauthenticated. Running as standalone."
+        )
+        window.sync_status.set_mode("standalone")
+
+    elif terminal_mode == "main":
         print("[BOOTSTRAP] Starting sync server (Main PC mode)...")
         from cbpos.core.services.sync_server import SyncServer
 
@@ -342,7 +352,7 @@ def main():
 
             terminal_id = ConfigService.get("terminal_id") or "TERM-01"
             sync_interval = int(ConfigService.get("sync_interval_seconds") or 3)
-            sync_client = SyncClient(terminal_id, main_pc_address, sync_interval)
+            sync_client = SyncClient(terminal_id, main_pc_address, sync_interval, shared_secret)
             sync_client.status_changed.connect(window.sync_status.set_state)
             sync_client.sync_completed.connect(window.sync_status.on_client_sync_completed)
             sync_client.start()
@@ -351,6 +361,7 @@ def main():
             window.sync_status.set_server_address(main_pc_address)
         else:
             print("[BOOTSTRAP] Terminal mode but no main_pc_address configured")
+            window.sync_status.set_mode("standalone")
     else:
         window.sync_status.set_mode("standalone")
 

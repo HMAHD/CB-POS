@@ -635,8 +635,17 @@ class SalesView(QWidget):
 
             self.cart_table.setItem(row, 0, name_item)
 
-            # Qty column
-            qty_item = QTableWidgetItem(str(item["qty"]))
+            # Qty column — the raw Decimal always carries 3 decimal places
+            # (e.g. "1.000"), which reads as a bug for whole-unit items like
+            # bottled water. Format to the product's unit precision instead,
+            # falling back to stripping trailing zeros if no unit is set (#224).
+            product = item["product"]
+            if product.unit is not None:
+                dp = product.unit.decimal_places
+                qty_str = f'{item["qty"]:.{dp}f}'
+            else:
+                qty_str = f'{item["qty"]:.3f}'.rstrip("0").rstrip(".") or "0"
+            qty_item = QTableWidgetItem(qty_str)
             qty_item.setForeground(text_brush)
             self.cart_table.setItem(row, 2, qty_item)
 

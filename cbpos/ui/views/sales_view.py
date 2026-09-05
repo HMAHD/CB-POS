@@ -30,7 +30,7 @@ from cbpos.ui.dialogs.discount_dialog import DiscountDialog
 from cbpos.ui.dialogs.quantity_dialog import QuantityDialog
 from cbpos.ui.dialogs.receipt_options_dialog import ReceiptOptionsDialog
 from cbpos.core.services.config_service import ConfigService
-from cbpos.ui.constants import SEARCH_BAR_HEIGHT, CART_TABLE_ROW_HEIGHT, PAYMENT_PANEL_WIDTH
+from cbpos.ui.constants import SEARCH_BAR_HEIGHT, CART_TABLE_ROW_HEIGHT
 from cbpos.ui.dialogs.customer_selection_dialog import CustomerSelectionDialog
 from cbpos.ui.dialogs.advanced_search_dialog import AdvancedSearchDialog
 from cbpos.ui.dialogs.customer_quick_add import CustomerQuickAddDialog
@@ -124,6 +124,7 @@ class SalesView(QWidget):
         # LEFT PANEL (Cart & Totals) - 75%
         # ==========================
         self.container_left = QWidget()
+        self.container_left.setMinimumWidth(400)
         left_layout = QVBoxLayout(self.container_left)
         left_layout.setContentsMargins(10, 10, 10, 10)
         left_layout.setSpacing(10)
@@ -192,6 +193,11 @@ class SalesView(QWidget):
         self.cart_table.setColumnWidth(2, 50)  # Qty
         self.cart_table.setColumnWidth(3, 50)  # Disc
         self.cart_table.setColumnWidth(4, 120)  # Total
+
+        # Guard against columns truncating below readability on small/high-DPI
+        # screens (the Item column, being Stretch-mode, always keeps whatever
+        # width remains — this only bounds the Fixed-mode numeric columns).
+        self.cart_table.horizontalHeader().setMinimumSectionSize(55)
 
         # Set object name for CSS targeting
         self.cart_table.setObjectName("CartTable")
@@ -281,7 +287,8 @@ class SalesView(QWidget):
         # RIGHT PANEL (Controls) - 25%
         # ==========================
         self.action_panel = ActionPanel()
-        self.action_panel.setFixedWidth(PAYMENT_PANEL_WIDTH)
+        self.action_panel.setMinimumWidth(280)
+        self.action_panel.setMaximumWidth(400)
         self.action_panel.setObjectName("ActionPanel")
 
         # Connect Action Panel Signals
@@ -457,6 +464,15 @@ class SalesView(QWidget):
             self.side_menu.setGeometry(self.width() - menu_width, 0, menu_width, self.height())
         else:
             self.side_menu.setGeometry(self.width(), 0, menu_width, self.height())
+
+        # Shrink the grand-total font on short windows (#202) — driven by a
+        # QSS property selector, not an inline stylesheet, so it doesn't
+        # fight the theme cascade the way #219 did.
+        compact = self.height() < 900
+        if self.total_label.property("compact") != compact:
+            self.total_label.setProperty("compact", compact)
+            self.total_label.style().unpolish(self.total_label)
+            self.total_label.style().polish(self.total_label)
 
     def toggle_side_menu(self):
         menu_width = self.side_menu.width()

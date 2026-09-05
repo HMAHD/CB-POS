@@ -713,6 +713,10 @@ QLabel#TotalLabel {
     background: transparent;
 }
 
+QLabel#TotalLabel[compact="true"] {
+    font-size: 36px;
+}
+
 /* Action Panel */
 QWidget#ActionPanel {
     background-color: #1E1E1E;

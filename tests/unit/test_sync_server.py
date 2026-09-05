@@ -17,7 +17,7 @@ import pytest
 from cbpos.core.models import Permission, Product, Role, StockMovement, User
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.sync_protocol import make_envelope, model_to_dict
-from cbpos.core.services.sync_server import SyncRequestHandler
+from cbpos.infrastructure.sync_server import SyncRequestHandler
 
 _counter = 0
 

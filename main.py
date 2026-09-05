@@ -333,7 +333,7 @@ def main():
 
     elif terminal_mode == "main":
         print("[BOOTSTRAP] Starting sync server (Main PC mode)...")
-        from cbpos.core.services.sync_server import SyncServer
+        from cbpos.infrastructure.sync_server import SyncServer
 
         sync_port = int(ConfigService.get("sync_server_port") or 5555)
         sync_server = SyncServer(port=sync_port)
@@ -349,7 +349,7 @@ def main():
         main_pc_address = ConfigService.get("main_pc_address") or ""
         if main_pc_address:
             print(f"[BOOTSTRAP] Starting sync client (Terminal mode) -> {main_pc_address}")
-            from cbpos.core.services.sync_client import SyncClient
+            from cbpos.infrastructure.sync_client import SyncClient
 
             terminal_id = ConfigService.get("terminal_id") or "TERM-01"
             sync_interval = int(ConfigService.get("sync_interval_seconds") or 3)

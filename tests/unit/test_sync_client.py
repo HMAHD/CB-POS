@@ -1,14 +1,19 @@
 """
-Tests for SyncClient's Main PC identity pinning.
+Tests for SyncClient's Main PC identity pinning and catalog sync watermark.
 
 Terminal mode has no discovery/election protocol, so nothing stops a
 second machine from being configured as "Main PC" at the same address.
 These tests cover the guard against that: a Terminal pins whichever
 instance_id it first connects with, and refuses to treat a later,
 different instance_id as the same trusted Main PC.
+
+They also cover that incremental catalog sync tracks the *server's*
+clock, not this machine's own — the actual fix for wall-clock skew
+between a Main PC and its terminals.
 """
 
 import os
+from datetime import datetime
 
 import pytest
 
@@ -63,3 +68,59 @@ class TestMainIdentityPinning:
 
         assert client._check_main_identity("xyz999") is True
         assert ConfigService.get("sync_known_main_instance_id") == "xyz999"
+
+
+class TestCatalogSyncWatermark:
+    """_last_catalog_sync must come from the server's clock, not this
+    machine's own — otherwise clock drift between a Main PC and a
+    Terminal silently drops or duplicates catalog updates."""
+
+    def test_uses_server_timestamp_not_local_clock(self, client, monkeypatch):
+        # A server timestamp far from "now" on this machine — if the
+        # client ever falls back to its own clock, this test would only
+        # pass by coincidence.
+        server_time = datetime(2030, 1, 1, 12, 0, 0)
+        monkeypatch.setattr(
+            client,
+            "_request",
+            lambda *a, **k: {
+                "status": "ok",
+                "timestamp": server_time.isoformat(),
+                "total_records": 0,
+                "payload": {},
+            },
+        )
+
+        client._pull_catalog(full_sync=True)
+
+        assert client._last_catalog_sync == server_time
+
+    def test_uses_server_timestamp_even_with_records(self, client, monkeypatch):
+        server_time = datetime(2030, 6, 15, 9, 30, 0)
+        monkeypatch.setattr(
+            client,
+            "_request",
+            lambda *a, **k: {
+                "status": "ok",
+                "timestamp": server_time.isoformat(),
+                "total_records": 0,  # no records, but timestamp still must be trusted
+                "payload": {},
+            },
+        )
+
+        client._pull_catalog()
+
+        assert client._last_catalog_sync == server_time
+
+    def test_falls_back_to_local_clock_if_timestamp_missing(self, client, monkeypatch):
+        monkeypatch.setattr(
+            client,
+            "_request",
+            lambda *a, **k: {"status": "ok", "total_records": 0, "payload": {}},
+        )
+
+        before = datetime.now()
+        client._pull_catalog(full_sync=True)
+        after = datetime.now()
+
+        assert before <= client._last_catalog_sync <= after

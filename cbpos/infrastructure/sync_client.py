@@ -511,9 +511,10 @@ class SyncClient(QThread):
 
         payload = result.get("payload", {})
         total_records = result.get("total_records", 0)
+        server_timestamp = self._parse_server_timestamp(result)
 
         if total_records == 0:
-            self._last_catalog_sync = datetime.now()
+            self._last_catalog_sync = server_timestamp
             return 0
 
         # Apply catalog updates to local database
@@ -549,9 +550,28 @@ class SyncClient(QThread):
             logger.error("Error applying catalog update: %s", e)
             return -1
 
-        self._last_catalog_sync = datetime.now()
+        self._last_catalog_sync = server_timestamp
         logger.info("Pulled %d catalog records", records_applied)
         return records_applied
+
+    @staticmethod
+    def _parse_server_timestamp(result: Dict[str, Any]) -> datetime:
+        """Return the Main PC's own clock reading from a pull-catalog
+        response, used as the next ``since`` watermark.
+
+        Using the server's timestamp (rather than this machine's own
+        ``datetime.now()``) means catalog sync never depends on the
+        Main PC and Terminal agreeing on the time of day — only on the
+        Main PC agreeing with itself between one request and the next,
+        which it always does.
+        """
+        raw = result.get("timestamp")
+        if raw:
+            try:
+                return datetime.fromisoformat(raw)
+            except ValueError:
+                pass
+        return datetime.now()
 
     # --- Pull Stock ---
 

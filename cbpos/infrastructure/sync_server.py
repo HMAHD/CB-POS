@@ -301,6 +301,16 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         payload: Dict[str, List[Dict[str, Any]]] = {}
         total_records = 0
 
+        # Captured before querying, not after: a row edited while this
+        # request is running must have last_modified >= now so it's
+        # picked up by the *next* pull. Capturing it after the query loop
+        # would let that edit's timestamp fall inside the gap between
+        # "already queried" and "new watermark", and it would never be
+        # seen again — this is the server-side half of not depending on
+        # wall-clock agreement between machines (see SyncClient._pull_catalog,
+        # which trusts this timestamp rather than its own clock).
+        now = datetime.now()
+
         db = Database()
         with db.get_session() as session:
             for table_name in CATALOG_TABLES:
@@ -319,7 +329,6 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
                     payload[table_name] = [model_to_dict(r) for r in records]
                     total_records += len(records)
 
-        now = datetime.now()
         if terminal_id:
             _registry.update_catalog_sync(terminal_id)
 

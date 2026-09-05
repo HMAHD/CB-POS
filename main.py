@@ -326,9 +326,10 @@ def main():
         print(
             "[BOOTSTRAP] LAN Sync is configured but no Shared Secret is set "
             "(Settings > Network > LAN Sync) — refusing to start sync "
-            "unauthenticated. Running as standalone."
+            "unauthenticated."
         )
-        window.sync_status.set_mode("standalone")
+        window.sync_status.set_mode(terminal_mode)
+        window.sync_status.set_config_error("Shared Secret is required")
 
     elif terminal_mode == "main":
         print("[BOOTSTRAP] Starting sync server (Main PC mode)...")
@@ -361,7 +362,8 @@ def main():
             window.sync_status.set_server_address(main_pc_address)
         else:
             print("[BOOTSTRAP] Terminal mode but no main_pc_address configured")
-            window.sync_status.set_mode("standalone")
+            window.sync_status.set_mode("terminal")
+            window.sync_status.set_config_error("Main PC Address is required")
     else:
         window.sync_status.set_mode("standalone")
 

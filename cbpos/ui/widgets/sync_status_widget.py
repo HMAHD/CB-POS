@@ -32,12 +32,12 @@ class SyncStatusWidget(QWidget):
 
     # Style constants
     COLORS = {
-        "connected": "#4CAF50",     # Green
-        "syncing": "#FFC107",       # Amber
+        "connected": "#4CAF50",  # Green
+        "syncing": "#FFC107",  # Amber
         "disconnected": "#F44336",  # Red
-        "main": "#9C27B0",          # Purple
-        "standalone": "#607D8B",    # Blue-grey
-        "error": "#FF5722",         # Deep orange
+        "main": "#9C27B0",  # Purple
+        "standalone": "#607D8B",  # Blue-grey
+        "error": "#FF5722",  # Deep orange
     }
 
     def __init__(self, parent=None):
@@ -48,6 +48,7 @@ class SyncStatusWidget(QWidget):
         self._connected_terminals: int = 0
         self._server_address: str = ""
         self._last_sync: str = ""
+        self._config_error: str = ""
 
         self._setup_ui()
 
@@ -63,9 +64,7 @@ class SyncStatusWidget(QWidget):
 
         # Status label
         self._label = QLabel("")
-        self._label.setStyleSheet(
-            "font-size: 11px; color: #aaa; padding: 0 4px;"
-        )
+        self._label.setStyleSheet("font-size: 11px; color: #aaa; padding: 0 4px;")
         layout.addWidget(self._label)
 
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
@@ -81,6 +80,10 @@ class SyncStatusWidget(QWidget):
 
     def _build_details_text(self) -> str:
         lines = []
+        if self._config_error:
+            lines.append(f"<b>LAN Sync is not running:</b> {self._config_error}")
+            lines.append("Fix this in Settings &rarr; Network &rarr; LAN Sync.")
+            return "<br>".join(lines)
         if self._mode == "main":
             lines.append(f"<b>Mode:</b> Main PC (Sync Server)")
             lines.append(f"<b>Address:</b> {self._server_address}")
@@ -105,6 +108,21 @@ class SyncStatusWidget(QWidget):
         self.setVisible(mode in ("main", "terminal"))
         self._update_display()
 
+    def set_config_error(self, message: str) -> None:
+        """Show a persistent configuration error (e.g. missing Shared Secret).
+
+        Distinct from the transient connection ``error`` state: this means
+        sync was never started at all, not that it dropped mid-session.
+        Call with an empty string to clear it. The widget is made visible
+        even in modes that would otherwise stay hidden, since the whole
+        point is to tell the user *why* the sync they configured isn't
+        running.
+        """
+        self._config_error = message
+        if message:
+            self.setVisible(True)
+        self._update_display()
+
     @pyqtSlot(str)
     def set_state(self, state: str) -> None:
         """Update the connection state (for terminal mode)."""
@@ -127,6 +145,7 @@ class SyncStatusWidget(QWidget):
     def on_sync_completed(self, terminal_id: str, count: int) -> None:
         """Update after a sync cycle completes (for main mode)."""
         from datetime import datetime
+
         self._last_sync = datetime.now().strftime("%H:%M:%S")
         self._update_display()
 
@@ -134,6 +153,7 @@ class SyncStatusWidget(QWidget):
     def on_client_sync_completed(self, pushed: int, pulled: int) -> None:
         """Update after a sync cycle (for terminal mode)."""
         from datetime import datetime
+
         self._last_sync = datetime.now().strftime("%H:%M:%S")
         self._pending = max(0, self._pending - pushed)
         self._update_display()
@@ -150,7 +170,10 @@ class SyncStatusWidget(QWidget):
 
     def _update_display(self) -> None:
         """Refresh the dot color and label text based on current state."""
-        if self._mode == "main":
+        if self._config_error:
+            color = self.COLORS["error"]
+            text = "Sync disabled — see Settings"
+        elif self._mode == "main":
             color = self.COLORS["main"]
             text = f"Main PC · {self._connected_terminals} terminals"
         elif self._mode == "terminal":

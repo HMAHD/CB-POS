@@ -296,32 +296,21 @@ class SalesView(QWidget):
         self.action_panel.action_f8.connect(self.open_cash_drawer)
         self.action_panel.action_del.connect(self.void_bill)
         self.action_panel.action_ref.connect(self.open_refund)
-        self.action_panel.action_more.connect(self.toggle_product_grid)
 
         # Context Menu for Customer Button
         self.action_panel.btn_cust_select.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.action_panel.btn_cust_select.customContextMenuRequested.connect(self.show_customer_menu)
         self.btn_cust = self.action_panel.btn_cust_select  # Alias for existing code
 
-        # Product Grid Panel (Touch Mode) — hidden by default
-        from cbpos.ui.widgets.product_grid_panel import ProductGridPanel
-
-        self.product_grid = ProductGridPanel()
-        self.product_grid.product_selected.connect(self.on_visual_item_clicked)
-        self.product_grid.setVisible(False)
-
         # Add panels to splitter
         self.splitter.addWidget(self.container_left)
-        self.splitter.addWidget(self.product_grid)
         self.splitter.addWidget(self.action_panel)
 
-        # Stretch: cart expands, product_grid hidden initially, action_panel fixed width
+        # Stretch: cart expands, action_panel fixed width
         self.splitter.setStretchFactor(0, 1)  # container_left — takes remaining space
-        self.splitter.setStretchFactor(1, 0)  # product_grid — hidden by default
-        self.splitter.setStretchFactor(2, 0)  # action_panel — fixed width
+        self.splitter.setStretchFactor(1, 0)  # action_panel — fixed width
         self.splitter.setCollapsible(0, False)
-        self.splitter.setCollapsible(1, True)  # product_grid can collapse
-        self.splitter.setCollapsible(2, False)
+        self.splitter.setCollapsible(1, False)
 
         # Shortcuts
         self.setup_shortcuts()
@@ -516,14 +505,6 @@ class SalesView(QWidget):
         self.action_panel.setVisible(True)
         self.barcode_input.setFocus()
         self.order_bar.refresh_tabs()
-
-    def on_visual_item_clicked(self, product):
-        """Handle item click from Visual POS."""
-        dialog = QuantityDialog(product, self)
-        if dialog.exec():
-            self.cart_service.add_item(product, qty=dialog.get_quantity())
-            self.update_cart_display()
-        self.barcode_input.setFocus()
 
     def process_barcode_external(self, barcode):
         """Handle barcode from global scanner hook."""
@@ -1079,18 +1060,6 @@ class SalesView(QWidget):
             self.order_bar.set_active_bill(None)
             self.order_bar.refresh_tabs()
             self.barcode_input.setFocus()
-
-    def toggle_product_grid(self) -> None:
-        """Toggle the visual product grid panel on/off."""
-        is_visible = self.product_grid.isVisible()
-        self.product_grid.setVisible(not is_visible)
-        if not is_visible:
-            # Set splitter sizes: cart gets remaining, grid 350px, action panel keeps fixed width
-            total = self.splitter.width()
-            action_w = PAYMENT_PANEL_WIDTH
-            grid_w = 420
-            cart_w = total - grid_w - action_w
-            self.splitter.setSizes([max(cart_w, 200), grid_w, action_w])
 
     def open_receive_payment(self) -> None:
         """Open Receive Payment dialog from POS (quick payment without sale)."""

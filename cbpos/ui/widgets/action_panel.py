@@ -126,7 +126,6 @@ class ActionPanel(QWidget):
     action_f8 = pyqtSignal()
     action_del = pyqtSignal()
     action_ref = pyqtSignal()
-    action_more = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -249,19 +248,7 @@ class ActionPanel(QWidget):
 
         layout.addLayout(txn_grid)
 
-        # ── 4. Specialty Section ─────────────────────────────────
-        layout.addSpacing(10)
-        self.section_specialty = SectionLabel("action_panel.section_specialty")
-        self._section_labels.append(self.section_specialty)
-        layout.addWidget(self.section_specialty)
-        layout.addSpacing(4)
-
-        self.btn_more = ActionBtn("", "action_panel.btn_touch", Icons.GRID)
-        self.btn_more.clicked.connect(self.action_more.emit)
-        layout.addWidget(self.btn_more)
-        self._action_btns.append(self.btn_more)
-
-        # ── 5. Spacer + Pay Button ───────────────────────────────
+        # ── 4. Spacer + Pay Button ───────────────────────────────
         layout.addStretch()
 
         self.btn_pay = QPushButton()

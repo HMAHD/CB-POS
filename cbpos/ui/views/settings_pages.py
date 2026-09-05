@@ -2173,8 +2173,10 @@ class NetworkPage(SettingsPage):
             QMessageBox.warning(self, "Validation Error", "Enter the Main PC address (IP:port)")
             return
 
-        if not address.startswith("http"):
-            address = f"http://{address}"
+        if address.startswith("http://"):
+            address = "https://" + address[len("http://") :]
+        elif not address.startswith("https://"):
+            address = f"https://{address}"
 
         self.lbl_sync_test_status.setText("Testing...")
         self.btn_test_sync.setEnabled(False)
@@ -2185,9 +2187,11 @@ class NetworkPage(SettingsPage):
             import urllib.request
             import urllib.error
 
+            from cbpos.infrastructure.sync_tls import build_client_ssl_context
+
             url = f"{address}/sync/heartbeat"
             req = urllib.request.Request(url, method="GET", headers={"X-Sync-Token": self.input_sync_secret.text()})
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            with urllib.request.urlopen(req, timeout=5, context=build_client_ssl_context()) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
 
             if data.get("status") == "ok":

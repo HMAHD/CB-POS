@@ -105,9 +105,17 @@ class SyncClient(QThread):
         self._consecutive_failures = 0
         self._max_retries = 3
 
-        # Ensure server_address has http:// prefix
-        if not self._server_address.startswith("http"):
-            self._server_address = f"http://{self._server_address}"
+        # Sync is always over TLS — normalize to https:// regardless of
+        # what was typed in (bare "host:port", or an old "http://" value
+        # left over from before TLS support).
+        if self._server_address.startswith("http://"):
+            self._server_address = "https://" + self._server_address[len("http://") :]
+        elif not self._server_address.startswith("https://"):
+            self._server_address = f"https://{self._server_address}"
+
+        from cbpos.infrastructure.sync_tls import build_client_ssl_context
+
+        self._ssl_context = build_client_ssl_context()
 
     @property
     def state(self) -> str:
@@ -159,7 +167,7 @@ class SyncClient(QThread):
             else:
                 req = urllib.request.Request(url, method=method, headers=headers)
 
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
+            with urllib.request.urlopen(req, timeout=timeout, context=self._ssl_context) as resp:
                 raw = resp.read().decode("utf-8")
                 return sync_json_loads(raw)
 

@@ -696,10 +696,16 @@ class SyncServer(QThread):
 
         try:
             self._server = _ThreadedHTTPServer(("0.0.0.0", self._port), SyncRequestHandler)
+
+            from cbpos.infrastructure.sync_tls import build_server_ssl_context
+
+            ssl_context = build_server_ssl_context()
+            self._server.socket = ssl_context.wrap_socket(self._server.socket, server_side=True)
+
             self._running = True
 
             address = self.get_server_address()
-            logger.info("Sync server listening on %s", address)
+            logger.info("Sync server listening on %s (TLS)", address)
             self.started_signal.emit(address)
 
             # Blocks here, dispatching each request to its own thread,

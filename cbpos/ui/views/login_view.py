@@ -49,7 +49,8 @@ class LoginView(QWidget):
         main_layout.setSpacing(0)
 
         # ── LEFT PANEL (Branding) ──────────────────────────────────
-        left_panel = QWidget()
+        self.left_panel = QWidget()
+        left_panel = self.left_panel
         left_panel.setObjectName("LoginLeftPanel")
         left_layout = QVBoxLayout(left_panel)
         left_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -88,7 +89,8 @@ class LoginView(QWidget):
         self.right_panel = QWidget()
         right_panel = self.right_panel
         right_panel.setObjectName("LoginRightPanel")
-        right_layout = QVBoxLayout(right_panel)
+        self._right_layout = QVBoxLayout(right_panel)
+        right_layout = self._right_layout
         right_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         right_layout.setContentsMargins(40, 40, 40, 40)
 
@@ -202,6 +204,14 @@ class LoginView(QWidget):
         anything. Screen geometry has no such feedback loop.
         """
         super().resizeEvent(event)
+
+        # Below ~1200px wide, the branding panel leaves too little room for
+        # the numpad; hide it and let the right panel take the full width
+        # (#220). Also tighten the right panel's margins on short windows so
+        # the numpad doesn't get pushed into the help-hint text below it.
+        self.left_panel.setVisible(self.width() >= 1200)
+        v_margin = 20 if self.height() < 900 else 40
+        self._right_layout.setContentsMargins(40, v_margin, 40, v_margin)
 
         screen = QApplication.primaryScreen().availableGeometry()
         # Reserve roughly the space taken by everything above/below the

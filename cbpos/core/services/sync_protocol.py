@@ -9,7 +9,7 @@ import json
 import logging
 from datetime import datetime, date
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, Optional, Type
 
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import RelationshipProperty
@@ -149,6 +149,7 @@ def model_to_dict(instance: Base, include_relationships: bool = False) -> Dict[s
         result[key] = value
 
     if include_relationships:
+        rel: RelationshipProperty
         for rel in mapper.relationships:
             if rel.uselist:  # one-to-many
                 children = getattr(instance, rel.key, []) or []

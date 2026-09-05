@@ -5,12 +5,10 @@ Tests serialization roundtrips, envelope validation, and model mapping.
 """
 
 import json
-import pytest
 from datetime import datetime, date
 from decimal import Decimal
 
 from cbpos.core.services.sync_protocol import (
-    SyncEncoder,
     sync_json_dumps,
     sync_json_loads,
     model_to_dict,
@@ -18,7 +16,6 @@ from cbpos.core.services.sync_protocol import (
     make_envelope,
     validate_envelope,
     get_model_for_table,
-    get_table_model_map,
     CATALOG_TABLES,
     TRANSACTION_TABLES,
     SYNC_PROTOCOL_VERSION,
@@ -28,8 +25,6 @@ from cbpos.core.models import (
     Sale,
     SaleItem,
     SalePayment,
-    Category,
-    Customer,
     SyncLog,
     SyncQueue,
 )
@@ -38,6 +33,7 @@ from cbpos.core.models import (
 # ---------------------------------------------------------------------------
 # SyncEncoder Tests
 # ---------------------------------------------------------------------------
+
 
 class TestSyncEncoder:
     """Test the custom JSON encoder."""
@@ -82,6 +78,7 @@ class TestSyncEncoder:
 # ---------------------------------------------------------------------------
 # model_to_dict / dict_to_model Tests
 # ---------------------------------------------------------------------------
+
 
 class TestModelConversion:
     """Test SQLAlchemy model ↔ dict conversion."""
@@ -148,12 +145,15 @@ class TestModelConversion:
 
     def test_boolean_coercion(self):
         """Boolean values are coerced correctly from various representations."""
-        product = dict_to_model(Product, {
-            "is_active": "true",
-            "is_weighted": "false",
-            "is_composite": 1,
-            "is_service": 0,
-        })
+        product = dict_to_model(
+            Product,
+            {
+                "is_active": "true",
+                "is_weighted": "false",
+                "is_composite": 1,
+                "is_service": 0,
+            },
+        )
         assert product.is_active is True
         assert product.is_weighted is False
         assert product.is_composite is True
@@ -241,6 +241,7 @@ class TestModelConversion:
 # Envelope Tests
 # ---------------------------------------------------------------------------
 
+
 class TestEnvelope:
     """Test sync envelope creation and validation."""
 
@@ -294,6 +295,7 @@ class TestEnvelope:
 # Table Model Map Tests
 # ---------------------------------------------------------------------------
 
+
 class TestTableModelMap:
     """Test table name → model class mapping."""
 
@@ -323,6 +325,7 @@ class TestTableModelMap:
 # ---------------------------------------------------------------------------
 # Full Roundtrip Simulation
 # ---------------------------------------------------------------------------
+
 
 class TestFullRoundtrip:
     """Test a complete push payload simulation."""
@@ -365,9 +368,14 @@ class TestFullRoundtrip:
 
         # Serialize
         sale_dict = model_to_dict(sale, include_relationships=True)
-        envelope = make_envelope("TERM-02", "PUSH_TRANSACTIONS", {
-            "sales": [sale_dict],
-        }, sequence=1)
+        envelope = make_envelope(
+            "TERM-02",
+            "PUSH_TRANSACTIONS",
+            {
+                "sales": [sale_dict],
+            },
+            sequence=1,
+        )
         json_str = sync_json_dumps(envelope)
 
         # Simulate network transfer

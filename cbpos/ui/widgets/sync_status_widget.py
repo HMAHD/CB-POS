@@ -13,7 +13,6 @@ Design:
 """
 
 import logging
-from typing import Optional
 
 from PyQt6.QtWidgets import (
     QWidget,
@@ -21,7 +20,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QToolTip,
 )
-from PyQt6.QtCore import Qt, pyqtSlot, QTimer
+from PyQt6.QtCore import Qt, pyqtSlot
 from PyQt6.QtGui import QCursor
 
 logger = logging.getLogger(__name__)
@@ -85,11 +84,11 @@ class SyncStatusWidget(QWidget):
             lines.append("Fix this in Settings &rarr; Network &rarr; LAN Sync.")
             return "<br>".join(lines)
         if self._mode == "main":
-            lines.append(f"<b>Mode:</b> Main PC (Sync Server)")
+            lines.append("<b>Mode:</b> Main PC (Sync Server)")
             lines.append(f"<b>Address:</b> {self._server_address}")
             lines.append(f"<b>Connected terminals:</b> {self._connected_terminals}")
         elif self._mode == "terminal":
-            lines.append(f"<b>Mode:</b> Terminal")
+            lines.append("<b>Mode:</b> Terminal")
             lines.append(f"<b>Main PC:</b> {self._server_address}")
             lines.append(f"<b>Status:</b> {self._state.title()}")
             lines.append(f"<b>Pending:</b> {self._pending} records")

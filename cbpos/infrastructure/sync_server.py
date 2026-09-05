@@ -9,13 +9,11 @@ The server is intentionally simple — uses Python's built-in
 """
 
 import hmac
-import json
 import logging
 import secrets
 import socket
 import threading
 from datetime import datetime
-from decimal import Decimal
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from typing import Any, Dict, List, Optional
 
@@ -261,7 +259,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             return
 
         ip = self.client_address[0]
-        info = _registry.register(terminal_id, ip)
+        _registry.register(terminal_id, ip)
 
         # Emit signal for UI updates
         if _signal_emitter:

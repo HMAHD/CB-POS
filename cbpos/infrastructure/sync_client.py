@@ -11,7 +11,6 @@ Features:
 - Initial full sync on first connection
 """
 
-import json
 import logging
 import urllib.request
 import urllib.error
@@ -19,17 +18,14 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
-from PyQt6.QtCore import QThread, pyqtSignal, QTimer
+from PyQt6.QtCore import QThread, pyqtSignal
 
 from cbpos.core.database import Database
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.models import (
     Document,
     Sale,
-    SaleItem,
-    SalePayment,
     Purchase,
-    PurchaseItem,
     StockMovement,
     AuditLog,
     Shift,
@@ -38,12 +34,9 @@ from cbpos.core.models import (
     CustomerLedgerEntry,
     SupplierPayment,
     SupplierLedgerEntry,
-    SyncQueue,
-    SyncLog,
     Product,
 )
 from cbpos.core.services.sync_protocol import (
-    EP_HEARTBEAT,
     EP_REGISTER,
     EP_PUSH_TRANSACTIONS,
     EP_PULL_CATALOG,

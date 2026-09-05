@@ -913,8 +913,22 @@ class SalesView(QWidget):
                 break
 
     def setup_autocomplete(self):
-        """Setup QCompleter for product names."""
-        names = self.product_service.get_top_products(100)
+        """Setup QCompleter for product names.
+
+        Runs the product-name query in a background thread (#216) -- on a
+        5,000+ product inventory this took 300-800ms run synchronously in
+        __init__, causing a visible freeze at first launch and after every
+        multi-user login switch. Bumped from top-100 to top-500 while at
+        it, since a product outside the top 100 by sales count previously
+        got no autocomplete suggestion even for an exact-name match.
+        """
+        from cbpos.ui.workers import AutocompleteLoadWorker
+
+        self._autocomplete_worker = AutocompleteLoadWorker(self.product_service, limit=500)
+        self._autocomplete_worker.finished.connect(self._on_autocomplete_loaded)
+        self._autocomplete_worker.start()
+
+    def _on_autocomplete_loaded(self, names: list) -> None:
         completer = QCompleter(names, self)
         completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)

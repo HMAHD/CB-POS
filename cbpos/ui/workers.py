@@ -213,3 +213,26 @@ class ExportWorker(QThread):
         except Exception as e:
             logger.error("Export failed: %s", e)
             self.error.emit(str(e))
+
+
+class AutocompleteLoadWorker(QThread):
+    """Loads product names for the sales search box's autocomplete in a
+    background thread. On a large inventory this DB query took 300-800ms
+    run synchronously in SalesView.__init__, causing a visible freeze
+    at startup and after every multi-user login switch."""
+
+    finished = pyqtSignal(list)  # list[str]
+
+    def __init__(self, product_service, limit: int) -> None:
+        super().__init__()
+        self.finished.connect(self.deleteLater)
+        self.product_service = product_service
+        self.limit = limit
+
+    def run(self) -> None:
+        try:
+            names = self.product_service.get_top_products(self.limit)
+            self.finished.emit(names)
+        except Exception as e:
+            logger.error("Autocomplete load worker failed: %s", e)
+            self.finished.emit([])

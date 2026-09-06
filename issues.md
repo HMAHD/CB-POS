@@ -38,6 +38,7 @@ Nothing gets "fixed" here, only logged.
 | [UX-004](#ux-004-discount-highlight-only-tints-one-cell-of-the-row) | Discount highlight only tints one cell of the row | POS main (Sales) | P2 | 🔴 Open |
 | [UX-005](#ux-005-empty-cart-placeholder-is-plain-text-with-no-visual-anchor) | Empty cart placeholder is plain text with no visual anchor | POS main (Sales) | P3 | 🔴 Open |
 | [UX-006](#ux-006-customer-icon-bypasses-the-centralized-icon-system-no-points-icon-registered) | Customer icon bypasses the centralized icon system; no points icon registered | `cbpos/ui/widgets/action_panel.py` | P3 | 🔴 Open |
+| [UX-007](#ux-007-applied-payments-list-is-hard-capped-at-160px-so-it-scrolls-and-clips-the-boundary-rows-remove-button-instead-of-expanding) | Applied Payments list is hard-capped at 160px, so it scrolls and clips the boundary row's remove button instead of expanding | Payment dialog | P1 | 🔴 Open |
 
 ---
 
@@ -251,3 +252,60 @@ in active use.
 "fa5s.star"` to the `Icons` class (needed for UX-003's badge anyway), and
 use `Icons.CUSTOMER` at `action_panel.py:152` instead of the inline string —
 purely a consistency cleanup, zero visible behavior change.
+
+---
+
+### UX-007: Applied Payments list is hard-capped at 160px, so it scrolls and clips the boundary row's remove button instead of expanding
+
+**Screen:** Payment dialog, "Applied Payments" section
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** two things — (a) the applied-payments container doesn't
+grow as more split payments are added, and (b) one row's remove ("×") button
+only shows a border on 3 sides, like the bottom edge is missing.
+
+**These are the same bug, confirmed by actually reproducing it** (constructed
+the dialog, added 4 cash payments, rendered it):
+
+`cbpos/ui/dialogs/payment_dialog.py:161`:
+```python
+self.list_payments.setMaximumHeight(160)
+```
+160px is a hard ceiling, not a starting size — the comment above it even says
+"compact, grows only as needed" (line 158), but `setMaximumHeight` overrides
+whatever the size policy (`Expanding, Preferred`, line 162) would otherwise
+allow. At ~55-60px per row, 160px only ever fits ~2.5 rows, so a 3rd+ payment
+forces internal scrolling — **and the row sitting right at that 160px cutoff
+is the one that gets visually clipped**, its remove button's own red border
+cut off mid-render exactly where the list's viewport ends. That's the "3
+sides only" row you marked — it's not a separate rendering/alignment bug on
+that specific button, it's this same row being cut off by the container
+boundary. Reproduced exactly in a screenshot: rows 1-2 render fully, row 3
+("Cash: Rs. 70.00") is sliced in half by the list's bottom edge, button
+border included.
+
+Compounding it: `left_layout.addStretch()` right after the list
+(`payment_dialog.py:165`) means any vertical space the dialog *does* have
+below the Applied Payments list is deliberately handed to empty stretch
+instead of the list — there's visibly a large empty black gap between the
+list and the Cancel/Finish Sale bar in the screenshot, space that could
+easily fit 2 more full rows.
+
+**Why it matters:** split payments (cash + card, multiple cash tenders,
+etc.) are a normal Sri Lankan retail pattern, not an edge case — a cashier
+splitting a bill 3-4 ways is common, and the one thing they need to check
+before finishing the sale (what's been applied so far) is the thing getting
+clipped.
+
+**Suggested fix:**
+1. Raise the cap significantly (e.g. 260-300px, or compute it from the
+   dialog's actual available height at construction time, the same way
+   `_BTN_SIZE` for the numpad is already computed from screen geometry) so
+   4-5 typical split payments fit without scrolling.
+2. Remove (or shrink) the trailing `addStretch()` so the list is the thing
+   that claims freed-up vertical space in that column, not empty space below
+   it — matches the "grows only as needed" comment that's already there but
+   currently not true.
+3. Keep the QListWidget's native scrollbar as a fallback for the rare case
+   of more splits than even a generous cap can show — just make the common
+   case (2-5 payments) not need it.

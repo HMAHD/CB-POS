@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import List, Optional
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from cbpos.core.constants.status import MovementType
 from cbpos.core.database import Database
@@ -147,9 +147,16 @@ class StockService:
         """Get list of products that need reordering."""
         db = Database()
         with db.get_session() as session:
-            stmt = select(Product).where(
-                Product.is_active.is_(True),
-                Product.is_service.is_(False),
-                Product.stock_qty <= Product.reorder_point,
+            stmt = (
+                select(Product)
+                .where(
+                    Product.is_active.is_(True),
+                    Product.is_service.is_(False),
+                    Product.stock_qty <= Product.reorder_point,
+                )
+                .options(joinedload(Product.suppliers))
             )
-            return list(session.scalars(stmt).all())
+            products = list(session.scalars(stmt).unique().all())
+            for p in products:
+                session.expunge(p)
+            return products

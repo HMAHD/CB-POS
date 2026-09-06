@@ -102,6 +102,10 @@ don't need re-litigating every time a new screen surfaces the same issue.
 | [UX-054](#ux-054-proforma-dialogs-customer-field-looks-searchable-but-isnt) | Proforma dialog's Customer field looks searchable but isn't | Proforma/Quotation dialog | P1 | 🔴 Open |
 | [UX-055](#ux-055-proforma-dialogs-validity-field-uses-the-same-known-broken-spinbox-stepper-pattern) | Proforma dialog's Validity field uses the same known-broken spinbox stepper pattern | Proforma/Quotation dialog | P2 | 🔴 Open |
 | [UX-056](#ux-056-proforma-dialogs-line-items-table-has-no-empty-state-message) | Proforma dialog's line-items table has no empty-state message | Proforma/Quotation dialog | P2 | 🔴 Open |
+| [UX-057](#ux-057-users-table-shows-the-same-id-number-twice) | Users table shows the same ID number twice | Users | P3 | 🔴 Open |
+| [UX-058](#ux-058-no-ui-exists-to-createrenamedelete-a-role-even-though-the-backend-already-fully-supports-it) | No UI exists to create/rename/delete a role, even though the backend already fully supports it | Users | P1 | 🔴 Open |
+| [UX-059](#ux-059-manage-permissions-save-changes-calls-a-method-that-doesnt-exist-every-save-will-crash) | "Manage Permissions" Save Changes calls a method that doesn't exist — every save will crash | Users, Manage Permissions dialog | P0 | 🔴 Open |
+| [UX-060](#ux-060-permission-manager-isnt-missing-permissions-its-hiding-most-of-them-below-the-fold) | Permission Manager isn't missing permissions — it's hiding most of them below the fold | Users, Manage Permissions dialog | P2 | 🔴 Open |
 
 ---
 
@@ -2352,3 +2356,173 @@ UX-053 on this same screen.
 
 **Suggested fix:** once UX-043's shared `EmptyStateWidget` exists, use it
 here too (e.g. "No products added yet — search above to add one").
+
+---
+
+### UX-057: Users table shows the same ID number twice
+
+**Screen:** Users, main table
+**Severity:** P3 · **Status:** 🔴 Open
+
+**What you flagged:** "a few alignment [issues]" on this screen —
+this is the concrete one.
+
+**Root cause (verified in code):** `user_view.py:164-171` builds the
+table with Qt's default vertical header left visible (no
+`verticalHeader().setVisible(False)` call anywhere in the file), which
+already shows a row-number gutter (the cyan "1, 2, 3, 4" on the far
+left). A separate "ID" data column is then populated at
+`user_view.py:212` with the raw `user.id` primary key. Since users are
+created sequentially, the PK almost always equals the row number — so the
+table shows the same number twice, once as Qt's built-in row label and
+once as an actual column with a header taking up real width.
+
+**Why it matters:** small, but it's a wasted column on a 4-column table
+where every bit of width matters, and it reads as an oversight rather
+than a deliberate "here's the record ID" column (which would make sense
+if it *didn't* match the row number).
+
+**Suggested fix:** drop the redundant vertical header (`setVisible(False)`)
+and keep the ID column if the raw database ID is genuinely useful
+information to show, or drop the ID column and keep the row-number gutter
+if it isn't — not both.
+
+---
+
+### UX-058: No UI exists to create/rename/delete a role, even though the backend already fully supports it
+
+**Screen:** Users
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "there is no option to CRUD user roles, and every
+user created has a role, so [the ability to manage] roles needs to be
+added — able to add a role, and those roles should be editable, deletable."
+
+**Confirmed, and worth knowing this is a pure UI gap, not a data-model
+limitation:** `cbpos/core/models/__init__.py:38-57` — `Role` is already a
+real, normal database table (`roles`: `id`, unique `name`, `access_level`,
+plus a many-to-many `permissions` relationship). `User.role_id`
+(line 66) is a proper foreign key, and the "Add User" dialog's role
+picker already queries this table live (`user_view.py:50-53` —
+`UserService.get_all_roles()`, no hardcoded "Admin"/"Manager"/"Cashier"
+strings anywhere). A full grep across every dialog/view for role-related
+CRUD logic (add/edit/delete a role) turned up nothing — `PermissionDialog`
+only *toggles permissions for existing roles*, it never creates one.
+
+**Why it matters:** the app already fully supports custom roles at the
+data layer (e.g. a shop could want a "Supervisor" role between Manager
+and Cashier) — the only thing standing in the way is that nothing in the
+UI lets an admin actually create one, so the feature is invisible even
+though it's almost entirely already built.
+
+**Suggested fix:** add a small Role management panel next to the existing
+Users table — a list of roles with Add/Rename/Delete, each wired to
+`UserService`'s existing role plumbing (which already has to exist in
+some form, since `get_all_roles()` is already called elsewhere) — this
+should be a comparatively small addition given the data layer is already
+done. Deleting a role in use by existing users needs a guard (reassign or
+block deletion), which is worth deciding as part of this fix.
+
+---
+
+### UX-059: "Manage Permissions" Save Changes calls a method that doesn't exist — every save will crash
+
+**Screen:** Users → "Manage Permissions" dialog
+**Severity:** P0 · **Status:** 🔴 Open
+
+**Not from your notes — found while investigating whether the Permission
+Manager "lacks a lot more permissions" as you suspected. It doesn't (see
+UX-060) — but I found something more serious while checking: the save
+button is completely broken.**
+
+**Root cause (verified in code):** `permission_dialog.py`'s
+`save_changes()` (line 112) calls:
+```python
+PermissionService.update_role_permission(role.id, perm_id, is_checked)
+```
+— singular `update_role_permission`. `permission_service.py` only defines
+`update_role_permissions` (**plural**, line 48), which takes a completely
+different signature (`role_id, permission_ids: list[int]`). The singular
+method the dialog calls does not exist anywhere in the codebase (confirmed
+by grep — zero definitions). This means **every single click of "Save
+Changes" raises an `AttributeError`** — no permission change made in this
+dialog has ever been able to save successfully in this build.
+
+**Why it matters:** this is the most severe finding across the entire
+catalog so far — Permission Manager is the app's access-control screen,
+and its one action (saving changed permissions) cannot work at all,
+silently or with a crash, every single time. Any admin who opens this
+dialog to actually change what a Cashier or Manager can do is currently
+unable to, full stop — this is a genuinely broken feature, not an
+unpolished one (same class as UX-026's broken product search).
+
+**Suggested fix:** fix the call to use the existing plural
+`update_role_permissions(role_id, permission_ids)` method (collecting all
+checked permission IDs for that role first), or add the missing singular
+method to `PermissionService` if per-permission granularity is actually
+wanted — either way, this needs a real test click-through before it's
+considered fixed, not just a code read, since it's the kind of bug that's
+invisible until you actually press the button.
+
+---
+
+### UX-060: Permission Manager isn't missing permissions — it's hiding most of them below the fold
+
+**Screen:** Users → "Manage Permissions" dialog
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "I think that can be optimized more to get the best
+UI/UX, and lacks a lot more permissions there."
+
+**Worth correcting the framing before fixing anything — the permissions
+aren't actually missing, they're just poorly surfaced:**
+`cbpos/core/constants/permissions.py:66-118` defines **10 groups, 36
+permission codes** in total — Sales, Inventory, Reports, Documents,
+Credit, Data Safety, Purchase, Stock Take, Cash, and Admin. The dialog
+(`permission_dialog.py:48-62`) genuinely renders all of them — it queries
+the DB-backed `Permission` table dynamically via
+`PermissionService.get_all_permissions()`, with no hardcoded category
+list of its own. Your screenshot only shows 5 of the 10 groups (Sales,
+Inventory, Reports, Documents, Credit) because the dialog cuts off there
+— Data Safety, Purchase, Stock Take, Cash, and Admin are all below the
+fold, reachable only by scrolling a thin, easy-to-miss scrollbar with no
+visual hint that there's more content beneath it. That's exactly why it
+*reads* as "lacks a lot more permissions" even though the data is all
+there.
+
+**Three real, compounding UX gaps on top of the visibility problem:**
+1. **No bulk actions.** Built as a `QTreeWidget` (`permission_dialog.py:29-31`)
+   with one checkbox per permission per role — 36 × 3 = 108 individual
+   checkboxes, with no "select all in this category" or "select all for
+   this role" convenience anywhere.
+2. **Unstyled checkboxes.** These aren't real `QCheckBox` widgets — they're
+   `QTreeWidgetItem.setCheckState()` calls (lines 83, 91), rendered by
+   Qt's native tree-item delegate. The app already has a fully themed
+   `QCheckBox::indicator` style elsewhere (`dark.qss:194-227`, rounded,
+   cyan-filled), but tree-item check states don't pick up that rule at
+   all — so these render as plain grey native OS squares, visually
+   inconsistent with every other checkbox in the app.
+3. **No search/filter**, and no dirty-state tracking on "Save Changes" —
+   confirmed no `QLineEdit` filter exists, and the button is always
+   clickable regardless of whether anything actually changed.
+
+**A smaller architectural note worth flagging (not a currently-visible
+bug):** the dialog only renders whatever `Permission` rows exist in the
+database, which are populated by seeding from `permissions.py`'s
+constants (`scripts/seed.py:77`, `database_setup_service.py:93`). If a
+future code change adds a new permission constant without a matching
+migration/reseed, it will silently never appear as a checkbox anywhere —
+worth a startup consistency check at some point.
+
+**Why it matters:** once UX-059's crash is fixed and this dialog actually
+works, its core usability problem is that it looks incomplete and is
+tedious to operate for exactly the reason you sensed — not because
+permissions are missing, but because the dialog doesn't help you see or
+manage all 36 of them efficiently.
+
+**Suggested fix:** make the dialog resizable/taller by default so more
+groups are visible without scrolling, add a "select all" checkbox per
+role column and per category row, add a simple text filter across
+permission names, and either switch to real `QCheckBox` widgets embedded
+per cell or apply an explicit tree-item-checkbox QSS rule so they match
+the rest of the app.

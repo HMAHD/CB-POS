@@ -26,6 +26,20 @@ Nothing gets "fixed" here, only logged.
 - **P2** — polish, inconsistency, or minor friction
 - **P3** — nice-to-have / feature idea, not a defect
 
+## Standing decisions
+
+Product decisions made mid-catalog that apply going forward, so they
+don't need re-litigating every time a new screen surfaces the same issue.
+
+- **Only two themes: Dark and Light. No third "navy" sub-theme.**
+  Decided 2026-09-06. Full context and confirmed scope in
+  [UX-031](#ux-031-payables-uses-a-deliberate-but-undocumented-navy-sub-theme-shared-with-credit-book)
+  — 6 locations found so far (Payables, Credit Book, Reports, Document
+  Browser, Price Lists, Payment Methods). If a new screen under review
+  turns out to use the `#001F3F`/`#0A1929`/`#0D2137`/`#112240`/`#00BCEB`
+  palette, log it as a confirmed instance of this same decided fix, not
+  as a new open question.
+
 ---
 
 ## Index
@@ -62,7 +76,7 @@ Nothing gets "fixed" here, only logged.
 | [UX-028](#ux-028-supplier-selection-combos-in-purchasing-are-plain-non-searchable-comboboxes) | Supplier-selection combos in Purchasing are plain, non-searchable comboboxes | New GRN, GRN History tabs | P1 | 🔴 Open |
 | [UX-029](#ux-029-grn-history-status-filter-shows-all-suppliers-instead-of-all-statuses) | GRN History "Status" filter shows "All Suppliers" instead of "All Statuses" | GRN History tab | P2 | 🔴 Open |
 | [UX-030](#ux-030-grn-history-and-payables-tables-have-no-empty-state-message) | GRN History and Payables tables have no empty-state message | GRN History, Payables tabs | P2 | 🔴 Open |
-| [UX-031](#ux-031-payables-uses-a-deliberate-but-undocumented-navy-sub-theme-shared-with-credit-book) | Payables uses a deliberate but undocumented navy sub-theme, shared with Credit Book | Payables tab, Credit Book | P2 | 🔴 Open |
+| [UX-031](#ux-031-payables-uses-a-deliberate-but-undocumented-navy-sub-theme-shared-with-credit-book) | Payables uses a deliberate but undocumented navy sub-theme, shared with Credit Book — DECIDED: retire app-wide, 6 locations confirmed | Payables, Credit Book, Reports, Document Browser, Price Lists, Payment Methods | P1 | 🔴 Open |
 | [UX-032](#ux-032-payables-supplier-list-is-double-click-only-same-pattern-as-ux-009) | Payables supplier list is double-click-only — same pattern as UX-009 | Payables tab | P1 | 🔴 Open |
 | [UX-033](#ux-033-payables-ledger-shows-zero-entries-despite-a-non-zero-balance-needs-one-live-check-to-fully-confirm) | Payables ledger shows zero entries despite a non-zero balance (needs one live check to fully confirm) | Payables tab | P1 | 🔴 Open |
 | [UX-034](#ux-034-credit-book-outstanding-debt-column-header-is-clipped-to-tstanding-di) | Credit Book "Outstanding Debt" column header is clipped to "TSTANDING DI" | Credit Book | P1 | 🔴 Open |
@@ -72,7 +86,7 @@ Nothing gets "fixed" here, only logged.
 | [UX-038](#ux-038-new-customer-dialogs-commercial-tab-has-mismatched-field-widths-recurring-pattern-to-watch-for) | New Customer dialog's Commercial tab has mismatched field widths — recurring pattern to watch for | Customer Editor, Commercial tab | P1 | 🔴 Open |
 | [UX-039](#ux-039-only-2-of-15-date-pickers-in-the-app-have-any-styling-at-all) | Only 2 of 15 date pickers in the app have any styling at all | App-wide (`QDateEdit`) | P1 | 🔴 Open |
 | [UX-040](#ux-040-customer-statement-dialog-has-uneven-filter-row-and-summary-spacing) | Customer Statement dialog has uneven filter-row and summary spacing | Print Statement dialog | P2 | 🔴 Open |
-| [UX-041](#ux-041-reports-screen-is-a-third-independent-navy-themed-screen-not-shared-with-ux-031) | Reports screen is a third, independent navy-themed screen — not shared with UX-031 | Reports | P2 | 🔴 Open |
+| [UX-041](#ux-041-reports-screen-is-a-third-independent-navy-themed-screen-not-shared-with-ux-031) | Reports screen is a third, independent navy-themed screen — not shared with UX-031 | Reports | P1 | 🔴 Open |
 | [UX-042](#ux-042-reports-category-panel-scales-far-wider-than-its-content-needs) | Reports category panel scales far wider than its content needs | Reports | P2 | 🔴 Open |
 | [UX-043](#ux-043-no-shared-empty-state-component-every-screen-hand-builds-its-own) | No shared empty-state component — every screen hand-builds its own | App-wide | P3 | 🔴 Open |
 | [UX-044](#ux-044-current-nav-item-highlight-is-much-weaker-when-the-sidebar-is-collapsed) | Current nav item highlight is much weaker when the sidebar is collapsed | Main sidebar (all screens) | P2 | 🔴 Open |
@@ -1294,9 +1308,9 @@ mechanism.
 
 ### UX-031: Payables uses a deliberate but undocumented navy sub-theme, shared with Credit Book
 
-**Screen:** Payables tab and Credit Book (confirmed directly — see the
-Credit Book screenshots reviewed below, this is not a "likely" anymore)
-**Severity:** P2 · **Status:** 🔴 Open
+**Screen:** Payables, Credit Book, Reports, Document Browser, Price Lists,
+Payment Methods — confirmed app-wide, see the full scope list below
+**Severity:** P1 · **Status:** 🔴 Open
 
 **What you flagged:** the whole Payables screen is blue, not a good look.
 
@@ -1332,13 +1346,39 @@ visible reason (no theme toggle, no "you're in a special mode" indicator)
 — which is exactly what reads as inconsistent to a user moving between
 tabs.
 
-**Suggested fix:** this is a product decision, not a quick color swap —
-either commit to the navy ledger theme and extend it deliberately (with a
-name and a reason, and probably applied more broadly if it's meant to
-signal "financial ledger" screens), or retire it in favor of the standard
-surface colors used everywhere else. Worth deciding intentionally rather
-than leaving it as an accident of history. If retired, `credit_book_view.py`
-should be checked and fixed in the same pass, since it shares every rule.
+**DECIDED (2026-09-06):** you've ruled directly on this — "there
+shouldn't be a navy theme system, only have dark and white theme for now."
+This is no longer an open product question; it's a confirmed fix, scoped
+below.
+
+**Full confirmed scope — every screen carrying this exact palette
+(`#001F3F`/`#0A1929`/`#0D2137`/`#112240`/`#00BCEB`), found via a
+full-codebase grep prompted by your decision, not just the screens
+already reviewed by screenshot:**
+
+| Screen | objectName(s) | QSS location |
+|---|---|---|
+| Payables + Credit Book | `Payable*`/`Credit*` (shared 1:1 rule set) | `dark.qss:2666-2900` |
+| Reports | `ReportViewer`, `ReportSidebarPanel`, `ReportCategoryCount`, `ReportNavItem` | `dark.qss:2387-2464` (UX-041) |
+| Document Browser (main table) | `DocTable` | `dark.qss:2980-3002` (UX-052/053) |
+| Document Browser (detail panel) | `DocDetailCloseBtn`, `DocItemsTable`, `DocInfoLabel`, `DocReprintBtn`, `DocRefundBtn`/`DocVoidBtn`, `DocPrevBtn`/`DocNextBtn` | `dark.qss:3020-3124` — not yet reviewed by screenshot, found in this audit |
+| Price Lists | `PriceListSidebarPanel`, `PriceListNavItem`, `PriceListContentPanel`, `PriceListHeader`, `PriceListDataTable`, `PriceListFooter` | `dark.qss:3120-3289` — a full screen not yet reviewed by screenshot, found in this audit |
+| Payment Methods (card list) | `PMCard` (`payment_methods_view.py:139`) | `dark.qss:3290-3305` — lighter touch (card background + `#00BCEB` hover border only, not a full-screen background) |
+
+That's **6 confirmed locations**, not the 2-3 found so far by screenshot
+review alone — this was never just a Payables/Credit Book quirk.
+
+**Suggested fix — no longer a choice, this is the plan:** retire the navy
+sub-theme everywhere it appears above, converting every listed selector
+to the app's two real themes (`#1E1E1E`/`#252526` dark surfaces,
+matching Light theme equivalents) — same structural rules, just the
+standard palette instead of the one-off navy. Price Lists and Payment
+Methods haven't had a full UI/UX pass yet (no screenshot reviewed), so
+when either of those screens comes up for review, this theme fix is
+already known and doesn't need rediscovering — just apply the same
+conversion. This should land as one focused pass across all 6 locations
+during the fixing phase, not 6 separate patches, since it's the same
+color swap repeated.
 
 ---
 
@@ -1708,7 +1748,7 @@ dialog.
 ### UX-041: Reports screen is a third, independent navy-themed screen — not shared with UX-031
 
 **Screen:** Reports (category sidebar + content pane)
-**Severity:** P2 · **Status:** 🔴 Open
+**Severity:** P1 · **Status:** 🔴 Open
 
 **What you flagged:** "same blue problem" — you spotted this on sight,
 correctly, as the same family of issue already logged for Payables/Credit
@@ -1737,14 +1777,12 @@ this, with no shared class or documented name anywhere. That makes it
 harder, not easier, to fix consistently — three separate rule blocks to
 change instead of one.
 
-**Update — make that "at least four":** Document Browser (UX-052/UX-053)
-uses the identical palette too — `QTableWidget#DocTable {
-background-color: #0A1929; ... }` with `#112240` gridlines and a
-`#00BCEB` header (`dark.qss:2980-3002`), its own separate rule block again.
-Every new screen that gets built without someone deliberately reaching for
-this palette will keep re-adding a fifth, sixth instance — this is the
-strongest argument yet for making the product decision in UX-031's
-"Suggested fix" now rather than later.
+**Update — make that "six, and it's decided":** Document Browser
+(UX-052/053), Price Lists, and Payment Methods all carry the identical
+palette too — see the full 6-location table now recorded in UX-031, which
+also carries the decision: **you've ruled this out entirely — "there
+shouldn't be a navy theme system, only dark and white for now."** This is
+no longer an open question anywhere in this catalog.
 
 **A smaller, compounding issue on the same block:** the category header
 label (`ReportCategoryLabel`) is plain transparent text
@@ -1753,12 +1791,11 @@ its own pill background — two different visual treatments for what reads
 as one header row — and the badge's text color (`#3A5A7A` on `#112240`) is
 low-contrast, borderline hard to read.
 
-**Suggested fix:** same product decision as UX-031, but now covering 3
-screens — either name this "financial ledger" style formally, extract it
-into one shared QSS class/objectName convention so all 3 (and any future
-screen) draw from one place, or retire it everywhere in favor of the
-standard `#1E1E1E`/`#252526` surface. Whichever way you go, fix Reports in
-the same pass as UX-031 rather than as a fourth separate cleanup later.
+**Suggested fix:** same fix as UX-031, decided — retire this palette here
+too, converting `#ReportViewer`/`#ReportSidebarPanel`/`#ReportCategoryCount`/
+the checked nav-item rule to the standard `#1E1E1E`/`#252526` surface
+colors, in the same pass as the other 5 confirmed locations rather than
+as a separate cleanup.
 
 ---
 

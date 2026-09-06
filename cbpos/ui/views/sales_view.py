@@ -55,6 +55,18 @@ class SalesView(QWidget):
         self.customer = None
         self.current_search_mode = ConfigService.get("default_search_mode") or "ALL"
         self._undo_data = None
+
+        # Listen for print/drawer failures for the rest of the app's
+        # lifetime. Covers open_cash_drawer() below, and also the
+        # automatic post-sale receipt print (TransactionService's
+        # _print_receipt_async(), used when show_receipt_dialog is off
+        # for a frictionless checkout) -- that path has no dialog of its
+        # own to report a failure through, so without this the cashier
+        # had no way to know a receipt silently failed to print.
+        from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+
+        PrintWorker.instance().error_occurred.connect(self._on_print_error)
+
         self.init_ui()
         self.retranslate_ui()
 
@@ -1243,19 +1255,9 @@ class SalesView(QWidget):
         """Open the cash drawer via PrintWorker (F8 / Ctrl+D)."""
         from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
-        worker = PrintWorker.instance()
-        # PrintWorker.instance() is one shared, persistent object for the
-        # app's lifetime (see its docstring), so connecting on every call
-        # without guarding would add another duplicate connection each
-        # time this runs -- the next error would then show once per
-        # accumulated connection instead of once. Disconnect any previous
-        # connection first so exactly one exists.
-        try:
-            worker.error_occurred.disconnect(self._on_print_error)
-        except TypeError:
-            pass  # not connected yet
-        worker.error_occurred.connect(self._on_print_error)
-        worker.add_job("kick_drawer")
+        # error_occurred is already connected to _on_print_error once, for
+        # the view's lifetime, in __init__ -- no per-call connect needed.
+        PrintWorker.instance().add_job("kick_drawer")
 
     def _on_print_error(self, message: str) -> None:
         """Show printer error to user with context."""

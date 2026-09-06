@@ -647,7 +647,7 @@ class DocumentBrowserView(QWidget):
 
                     settings = ConfigService.get_all()
                     language = settings.get("language", "en")
-                    worker = PrintWorker()
+                    worker = PrintWorker.instance()
 
                     if language == "en":
                         receipt_text = ReceiptService.build_receipt_text(sale)
@@ -670,7 +670,7 @@ class DocumentBrowserView(QWidget):
                 proforma = ProformaService.get_proforma_details(self.current_doc["id"])
                 if proforma:
                     commands = ReceiptBuilder.build_proforma(proforma)
-                    worker = PrintWorker()
+                    worker = PrintWorker.instance()
                     worker.add_job("print_commands", commands)
                     QMessageBox.information(
                         self,

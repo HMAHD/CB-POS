@@ -318,7 +318,7 @@ class HistoryView(QWidget):
             settings = ConfigService.get_all()
             language = settings.get("language", "en")
 
-            worker = PrintWorker()
+            worker = PrintWorker.instance()
 
             if language == "en":
                 receipt_text = ReceiptService.build_receipt_text(self.current_sale)

@@ -157,7 +157,7 @@ class ReceiptReprintDialog(QDialog):
 
         try:
             commands = ReceiptBuilder.build_receipt(sale, is_reprint=True)
-            worker = PrintWorker()
+            worker = PrintWorker.instance()
             worker.add_job("print_receipt", commands)
             QMessageBox.information(
                 self, _t("receipt_reprint.reprinting"), _t("receipt_reprint.sending", doc=sale.document_number)

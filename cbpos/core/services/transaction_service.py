@@ -74,7 +74,7 @@ class TransactionService:
 
         Checks language setting to decide between text and image receipt.
         """
-        worker = PrintWorker()
+        worker = PrintWorker.instance()
         settings = ConfigService.get_all()
         language = settings.get("language", "en")
 
@@ -279,7 +279,7 @@ class TransactionService:
             # 6. Context manager handles commit
 
             # 7. Hardware Output (after successful commit)
-            worker = PrintWorker()
+            worker = PrintWorker.instance()
 
             # If receipt dialog is enabled, skip auto-print (dialog handles it).
             # Otherwise, print receipt automatically for frictionless flow.

@@ -388,7 +388,7 @@ class LabelPrintDialog(QDialog):
 
         try:
             commands = LabelService.generate_batch_commands(self.label_items)
-            worker = PrintWorker()
+            worker = PrintWorker.instance()
             worker.add_job("print_commands", commands)
 
             total = sum(item["quantity"] for item in self.label_items)

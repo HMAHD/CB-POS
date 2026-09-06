@@ -1243,7 +1243,7 @@ class SalesView(QWidget):
         """Open the cash drawer via PrintWorker (F8 / Ctrl+D)."""
         from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
-        worker = PrintWorker()
+        worker = PrintWorker.instance()
         worker.error_occurred.connect(self._on_print_error)
         worker.add_job("kick_drawer")
         self._drawer_worker = worker  # prevent GC

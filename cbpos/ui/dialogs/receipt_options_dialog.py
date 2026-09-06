@@ -127,7 +127,7 @@ class ReceiptOptionsDialog(QDialog):
     def print_thermal(self) -> None:
         """Print receipt via thermal printer. Auto-closes on success, shows retry on failure."""
         try:
-            worker = PrintWorker()
+            worker = PrintWorker.instance()
             language = ConfigService.get("language") or "en"
 
             if language == "en":

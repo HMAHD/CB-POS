@@ -476,7 +476,7 @@ class SaleHistoryDialog(QDialog):
             from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
             commands = ReceiptBuilder.build_receipt(self._selected_sale, is_reprint=True)
-            worker = PrintWorker()
+            worker = PrintWorker.instance()
             worker.add_job("print_receipt", commands)
             QMessageBox.information(
                 self,

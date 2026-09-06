@@ -201,6 +201,6 @@ class CustomerStatementDialog(QDialog):
             period_to=to_dt,
         )
 
-        worker = PrintWorker()
+        worker = PrintWorker.instance()
         worker.add_job("print_commands", commands)
         QMessageBox.information(self, _t("common.print"), _t("customer_statement.print_sent"))

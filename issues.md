@@ -148,6 +148,13 @@ don't need re-litigating every time a new screen surfaces the same issue.
 | [UX-092](#ux-092-copies-field-box-proportions-make-its-value-easy-to-misread-as-blank-couldnt-confirm-a-code-level-bug) | "Copies" field box proportions make its value easy to misread as blank (couldn't confirm a code-level bug) | Settings → Hardware | P2 | 🔴 Open |
 | [UX-093](#ux-093-printer-list-never-rescans-a-newly-connected-printer-needs-a-full-app-restart-to-appear) | Printer list never rescans — a newly connected printer needs a full app restart to appear | Settings → Hardware | P2 | 🔴 Open |
 | [UX-094](#ux-094-good-pattern-already-built-the-section-divider-helper-should-be-reused-in-the-sidebar-redesign) | Good pattern already built: the section-divider helper should be reused in the sidebar redesign | Settings → Hardware, app-wide | P3 | 🔴 Open |
+| [UX-095](#ux-095-receipt-preview-never-reflects-the-actual-configured-paper-width-always-renders-at-80mm) | Receipt preview never reflects the actual configured paper width — always renders at 80mm | Settings → Receipt | P1 | 🔴 Open |
+| [UX-096](#ux-096-preview-and-real-thermal-print-use-two-independent-text-renderers-for-free-form-headerfooter-text) | Preview and real thermal print use two independent text renderers for free-form header/footer text | Settings → Receipt | P1 | 🔴 Open |
+| [UX-097](#ux-097-a-real-print-preview-dialog-already-exists-in-the-codebase-but-is-completely-unwired) | A real print-preview dialog already exists in the codebase, but is completely unwired | Settings → Receipt | P2 | 🔴 Open |
+| [UX-098](#ux-098-qr-code-support-is-fully-documented-in-the-receipt-schema-but-never-actually-emitted) | QR code support is fully documented in the receipt schema, but never actually emitted | Settings → Receipt | P3 | 🔴 Open |
+| [UX-099](#ux-099-receipt-preview-barcode-is-explicitly-decorative-and-not-scannable-by-the-codes-own-admission) | Receipt preview barcode is explicitly decorative and not scannable, by the code's own admission | Settings → Receipt | P3 | 🔴 Open |
+| [UX-100](#ux-100-shop-logo-has-no-size-guidance-and-no-real-dithering-step-for-thermal-print-quality) | Shop Logo has no size guidance and no real dithering step for thermal print quality | Settings → Receipt | P2 | 🔴 Open |
+| [UX-101](#ux-101-receipt-customization-is-fragmented-across-3-disconnected-settings-pages) | Receipt customization is fragmented across 3 disconnected Settings pages | Settings → Receipt, Hardware, Documents | P2 | 🔴 Open |
 
 ---
 
@@ -4039,3 +4046,268 @@ redesign, reuse (or adapt) `_make_section_header()`'s visual language for
 the sidebar's section dividers instead of inventing a new one — same
 visual system, less new code, guaranteed consistency between Settings
 and the main navigation.
+
+---
+
+### UX-095: Receipt preview never reflects the actual configured paper width — always renders at 80mm
+
+**Screen:** Settings → Receipt
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** you called this one of the most important features
+in the app and asked for a precise, thorough review — this is the single
+most concrete bug that came out of it.
+
+**Root cause (verified in code):** `ReceiptPreviewWidget.__init__`
+(`cbpos/ui/widgets/receipt_preview_widget.py:54`) hardcodes
+`self._paper_width = "80mm"`. There's a real setter,
+`set_paper_width()` (line 86), but `ReceiptPage.init_ui()`
+(`settings_pages.py:1041`, `self._preview = ReceiptPreviewWidget()`)
+**never calls it** — confirmed by grep, the only two references to
+`ReceiptPreviewWidget` in the whole codebase are its own file and this
+one construction call, with no setter invocation anywhere. Meanwhile the
+real paper width lives on a completely different page —
+`combo_paper_width` on the Hardware tab (`settings_pages.py:756-759`),
+saved as config key `"paper_width"` (line 954).
+
+**The text content is actually correct — only the visual container is
+wrong, which makes this worse, not better:** the underlying receipt
+builder does read the real `"paper_width"` config and correctly wraps
+two-column rows to 32 characters (58mm) or 42 (80mm)
+(`base_receipt_builder.py:81-82`). But the preview's rendered container
+width is a fixed pixel value (`_PAPER_PX = {"80mm": 302, "58mm": 220}`,
+line 48) that stays at 302px regardless, because the setter that would
+switch it is never called. So a shop with a real 58mm printer sees
+correctly-wrapped 32-character-wide text floating inside a visibly wider
+80mm-shaped preview canvas — the exact opposite of what "preview updates
+live" (this page's own subtitle) promises.
+
+**Why it matters:** this directly undermines the one feature this page
+is built around. A shop owner configuring their actual 58mm thermal
+printer has no way to see, before printing a real receipt, how narrow
+their lines will actually be — the preview actively misrepresents it.
+
+**Suggested fix:** read the real `"paper_width"` config value when
+building the preview and call `set_paper_width()` with it — one missing
+call away from being correct, since both the setter and the correct
+underlying text-wrapping logic already exist.
+
+---
+
+### UX-096: Preview and real thermal print use two independent text renderers for free-form header/footer text
+
+**Screen:** Settings → Receipt
+**Severity:** P1 · **Status:** 🔴 Open
+
+**Not from your notes directly, but squarely inside what you asked me to
+check — whether this "is far below industry-grade" functionally, not
+just visually.**
+
+**Good news first: the underlying content is genuinely single-source-of-
+truth.** `ReceiptPage._refresh_preview()` (`settings_pages.py:1238-1244`)
+and the real print path,
+`PrinterService._print_thermal_receipt()`
+(`cbpos/core/services/printer_service.py:66-88`), both build their
+receipt from the exact same `ReceiptBuilder.build_receipt(...)`
+(`cbpos/core/services/receipt_builder.py:21-30` →
+`sales_receipt_builder.py:34-235`) — header/footer/logo/toggle text
+can't drift between the two paths at the data level.
+
+**But the two paths *render* that shared content with two independently-
+written engines, and free-form text isn't pre-wrapped for either:** the
+preview renders via HTML `<div>`s inside a fixed-width table cell
+(`receipt_preview_widget.py:116-224`, Courier New 11.5px), letting Qt's
+own HTML/CSS engine decide where lines break. The real printer path
+hands the same string to `python-escpos`'s `printer.text()`
+(`escpos_driver.py:109-113`), which wraps according to the physical
+ESC/POS thermal head's own font metrics. Only pre-formatted, fixed-width
+fields (two-column price rows via `_two_col`/`_split_row`,
+`base_receipt_builder.py:116-138`) are guaranteed identical between the
+two. Free-form **Header Text**/**Footer Text** is appended completely
+unwrapped (`base_receipt_builder.py:86-88`,
+`sales_receipt_builder.py:222-225`) — each renderer wraps it on its own,
+so a long header/footer is not guaranteed to break at the same point on
+screen as it will on paper.
+
+**Compounding this: there's no guidance telling the user how much room
+they actually have.** Both fields are multi-line `QTextEdit`s
+(`settings_pages.py:1086-1094`) with no `setMaxLength`, no character
+counter, and the 32/42-character-per-line budget
+(`base_receipt_builder.py:82`) exists only as an internal constant —
+never surfaced anywhere in the UI. A shop owner can type an arbitrarily
+long greeting with zero warning that it'll wrap unpredictably, and
+differently, on the two things they're comparing (the preview and the
+real receipt).
+
+**Why it matters:** the whole value of a live preview is trusting that
+what you see is what prints — for the one type of content most likely to
+be genuinely custom-written (a shop's own greeting/thank-you message),
+that promise doesn't fully hold.
+
+**Suggested fix:** pre-wrap free-form header/footer text to the real
+character budget (32/58mm or 42/80mm) once, in the shared builder, so
+both renderers receive already-line-broken text instead of wrapping it
+independently — and surface a live character-count indicator under each
+field so the user can see the real limit while typing.
+
+---
+
+### UX-097: A real print-preview dialog already exists in the codebase, but is completely unwired
+
+**Screen:** App-wide (sales flow — where a real print preview would
+belong)
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes — found while tracing the preview/print pipeline.**
+`cbpos/ui/dialogs/receipt_preview_dialog.py` defines a
+`ReceiptPreviewDialog` — a genuine "see the real receipt before it
+prints" surface. A full-repo grep found **no caller instantiating it
+anywhere** — it's built, but dead. There is currently no "preview before
+you print" step anywhere in the live sales flow; the only preview a user
+ever sees is the mock on this Settings page, built from a dummy sale,
+not the receipt about to actually print.
+
+**Why it matters:** this is exactly the kind of feature a shop owner
+would expect from an industry-grade POS (confirm before committing paper
+to a mistake) — the work to build it already happened, it's just never
+been connected to anything.
+
+**Suggested fix:** either wire `ReceiptPreviewDialog` into the real
+checkout flow (e.g. an optional "Preview before printing" toggle, or
+always show it before the first print of a session) or, if it's
+intentionally being retired in favor of the Settings-page mock, remove
+the dead file rather than leave a half-built feature sitting unreferenced.
+
+---
+
+### UX-098: QR code support is fully documented in the receipt schema, but never actually emitted
+
+**Screen:** Settings → Receipt
+**Severity:** P3 · **Status:** 🔴 Open
+
+**Not from your notes — found while checking receipt content types
+against what's actually used.** `base_receipt_builder.py:22` explicitly
+documents `'code': 'QR'` as a supported command type in the receipt
+schema's own comment — but a full-repo grep shows it is **never emitted
+anywhere**; only `"CODE39"` barcodes are ever built
+(`sales_receipt_builder.py:219`). There's no toggle for it on the
+Display tab either (confirmed against the full 5-checkbox list in
+UX-101's investigation).
+
+**Why it matters (feature idea, not a defect):** a QR code linking to a
+digital receipt, a review page, or a loyalty signup is a standard,
+high-value feature on modern receipts — the schema was clearly designed
+with this in mind and then never finished.
+
+**Suggested fix:** finish what was started — add a Display-tab toggle
+and an actual `'code': 'QR'` emission (e.g. linking to a digital copy of
+the receipt, or the shop's page), since the plumbing for it already
+exists in the schema.
+
+---
+
+### UX-099: Receipt preview barcode is explicitly decorative and not scannable, by the code's own admission
+
+**Screen:** Settings → Receipt
+**Severity:** P3 · **Status:** 🔴 Open
+
+**Not from your notes — found while checking barcode rendering fidelity.**
+`_generate_barcode_bars()` (`receipt_preview_widget.py:226-245`) contains
+its own comment stating this is "purely decorative — it is NOT scannable
+but looks like a barcode in the preview." So toggling "Show Barcode" on
+and looking at the preview tells you nothing about whether the barcode
+that actually prints will scan correctly — the preview can't be used to
+verify that at all.
+
+**Why it matters:** low severity since it doesn't affect the real print
+output, but worth documenting clearly so nobody (including future me,
+reviewing this page again later) mistakes the preview as validating
+barcode print quality.
+
+**Suggested fix:** none required functionally — optionally, a small
+"preview only" label/tooltip on the barcode area would prevent this from
+ever being mistaken for a real scannability check.
+
+---
+
+### UX-100: Shop Logo has no size guidance and no real dithering step for thermal print quality
+
+**Screen:** Settings → Receipt → Content
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes — found while checking how the logo actually gets
+from a file picker to a thermal printout.** `browse_logo()`
+(`settings_pages.py:1250-1258`) only opens a file dialog filtered to
+PNG/JPG/BMP and sets the path — no file-size check, no dimension check,
+no re-validation of the image at all.
+
+**On the print side:** `ESCPOSDriver.print_commands()`
+(`escpos_driver.py:115-127`) only does a width-based downscale if the
+image exceeds a configured max pixel width (`printer_image_max_width`,
+default 500px) — there is no grayscale conversion or dithering done in
+CB-POS's own code; whatever monochrome conversion happens is left
+entirely to `python-escpos`'s internal `printer.image()` call, not
+something this app controls, previews, or lets the user tune. There's
+also no resizing tied to the actual configured paper width's dot-column
+count (58mm/80mm have different physical dot widths) — just one fixed
+pixel cap regardless of paper size.
+
+**One thing that does work correctly, for contrast:** the preview *does*
+render the real selected logo file (`receipt_preview_widget.py:178-186`,
+embeds the actual image), so what you see in this Settings page really
+is that image — it just doesn't show you how it'll look once converted
+to 1-bit thermal dots, which is the part that commonly looks bad on real
+hardware if the source image isn't already high-contrast.
+
+**Why it matters:** a logo that looks fine as a full-color PNG in the
+picker can turn into an unreadable grey blob once naively converted to
+monochrome thermal dots — exactly the kind of print-quality problem a
+shop owner would only discover after printing (and wasting) real receipt
+paper.
+
+**Suggested fix:** add basic guidance (recommended dimensions, "high
+contrast black & white works best") next to the Logo field, and
+consider doing an explicit dithering pass (e.g. Floyd-Steinberg via
+Pillow) before handing the image to `python-escpos`, so the preview and
+the app have actual control over — and can show — how the logo will
+really look in 1-bit thermal output.
+
+---
+
+### UX-101: Receipt customization is fragmented across 3 disconnected Settings pages
+
+**Screen:** Settings → Receipt, Hardware, Documents
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes — found while cataloging everything actually
+configurable for receipts, in response to your ask to find "the most
+important details."**
+
+**What's on the Receipt page itself (confirmed complete list):**
+Content tab — Shop Logo, Header Text, Footer Text, Print Language.
+Display tab, 5 checkboxes across 2 groups
+(`settings_pages.py:1123-1167`): Show Barcode, Merge Items, Tax
+Breakdown (VAT+SSCL), Show Cashier Name, Show Terminal ID.
+
+**But two settings that are just as much "receipt customization" live on
+entirely different pages, with no link or cross-reference between
+them:** number of copies to print / auto-print behavior is on the
+**Hardware** tab (`spin_copies`, `settings_pages.py:775-778`), and the
+receipt/document numbering format (e.g. how sale/purchase/return
+document numbers are formatted) is on the **Documents** tab
+(`input_fmt_sale/purchase/return`, lines 659-669). Someone customizing
+"how my receipts look and behave" has to already know to check two other,
+unrelated-sounding sidebar sections to find the rest of what governs
+that.
+
+**Why it matters:** this is a discoverability problem specific to what
+you called out as one of the most important features — a shop owner
+tuning their receipt is likely to set the header/footer/logo, feel done,
+and never realize copy count or numbering format are configured
+somewhere else entirely.
+
+**Suggested fix:** at minimum, add a short cross-reference note on the
+Receipt page ("Copies & auto-print: see Hardware. Numbering format: see
+Documents.") — or, more thoroughly, consider consolidating all
+receipt-related settings onto this one page, since that's clearly the
+mental model a user already brings to it.

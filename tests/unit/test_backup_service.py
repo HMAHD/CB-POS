@@ -213,10 +213,22 @@ class TestBackupService:
         # Modify the database to simulate changes
         db_file.write_text("modified database")
 
-        with patch("cbpos.core.services.backup_service.Config") as mock_config:
+        with (
+            patch("cbpos.core.services.backup_service.Config") as mock_config,
+            # restore_backup() calls Database().engine.dispose() for real to
+            # release file locks before overwriting cbpos.db (needed on
+            # Windows). Database is a process-wide singleton shared with
+            # every other test's db_session fixture via the same test_engine
+            # -- disposing the real one here would tear down the shared
+            # in-memory schema out from under every test that runs after
+            # this one in the same session, however unrelated.
+            patch("cbpos.core.database.Database") as mock_database_cls,
+        ):
             mock_config.BASE_DIR = tmp_path
             mock_config.DATA_DIR = tmp_path
             result = BackupService.restore_backup(path, "restore_test")
+
+        mock_database_cls.return_value.engine.dispose.assert_called_once()
 
         assert result is True
         assert db_file.read_text() == "original database"

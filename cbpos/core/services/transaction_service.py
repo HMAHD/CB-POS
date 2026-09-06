@@ -74,7 +74,7 @@ class TransactionService:
 
         Checks language setting to decide between text and image receipt.
         """
-        worker = PrintWorker()
+        worker = PrintWorker.instance()
         settings = ConfigService.get_all()
         language = settings.get("language", "en")
 
@@ -275,11 +275,13 @@ class TransactionService:
             # 5. Eager-load relationships before session closes (prevents DetachedInstanceError)
             if sale.customer_id:
                 _ = sale.customer  # Force load while session is open
+            for item in sale.items:  # Force load items + product for ReceiptOptionsDialog
+                _ = item.product
 
             # 6. Context manager handles commit
 
             # 7. Hardware Output (after successful commit)
-            worker = PrintWorker()
+            worker = PrintWorker.instance()
 
             # If receipt dialog is enabled, skip auto-print (dialog handles it).
             # Otherwise, print receipt automatically for frictionless flow.

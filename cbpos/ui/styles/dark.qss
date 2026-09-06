@@ -279,6 +279,18 @@ QPushButton[class="accent"]:hover {
     background-color: #00A5D0;
 }
 
+/* Secondary Button (neutral, outlined -- dismiss/close actions that
+   aren't destructive enough for the red Danger style) */
+QPushButton[class="secondary"] {
+    background-color: transparent;
+    color: #E5E5E5;
+    border: 1px solid #3E3E42;
+}
+
+QPushButton[class="secondary"]:hover {
+    background-color: #3E3E42;
+}
+
 /* Warning Button (Yellow) */
 QPushButton[class="warning"] {
     background-color: #FFDC00;
@@ -1269,7 +1281,12 @@ QPushButton[class="PresetBtn"]:disabled {
     border-color: #333;
 }
 
-QPushButton#BtnCancel {
+/* Scoped to DiscountDialog specifically -- #BtnCancel is a shared object name
+   used by several other dialogs, which already get the solid "Danger" style
+   above. An unscoped rule here would collide with those (and, before the
+   :not() selector elsewhere in this file was fixed to be valid CSS, a stray
+   parse failure happened to mask this collision by accident). */
+QDialog#DiscountDialog QPushButton#BtnCancel {
     background-color: transparent;
     color: #FF4136;
     font-weight: bold;
@@ -1278,7 +1295,7 @@ QPushButton#BtnCancel {
     border-radius: 6px;
 }
 
-QPushButton#BtnCancel:hover {
+QDialog#DiscountDialog QPushButton#BtnCancel:hover {
     background-color: #FF4136;
     color: white;
 }
@@ -1778,33 +1795,20 @@ QTableView QHeaderView::section {
     padding: 10px;
 }
 
-/* === BUTTONS === */
-/* Generic button styling - excludes special buttons with IDs */
-QPushButton:not(#NumpadBtn):not(#ActionGridBtn):not(#NavTile):not(#SignOutBtn):not(#IconButton) {
-    background-color: #2A2A2A;
-    color: #E5E5E5;
-    border: 1px solid #3A3A3A;
-    border-radius: 6px;
-    padding: 8px 16px;
-    font-weight: bold;
-    font-size: 13px;
-    min-height: 32px;
-}
-
-QPushButton:not(#NumpadBtn):not(#ActionGridBtn):not(#NavTile):not(#SignOutBtn):not(#IconButton):hover {
-    background-color: #353535;
-    border-color: #00BCEB;
-}
-
-QPushButton:not(#NumpadBtn):not(#ActionGridBtn):not(#NavTile):not(#SignOutBtn):not(#IconButton):pressed {
-    background-color: #1A1A1A;
-}
-
-QPushButton:not(#NumpadBtn):not(#ActionGridBtn):not(#NavTile):not(#SignOutBtn):not(#IconButton):disabled {
-    background-color: #1A1A1A;
-    color: #666666;
-    border-color: #2A2A2A;
-}
+/* === BUTTONS ===
+   A second generic QPushButton rule used to live here, meant to exclude
+   NumpadBtn/ActionGridBtn/NavTile/SignOutBtn/IconButton via a :not()
+   selector chain -- invalid in Qt Style Sheets (Qt doesn't support :not()),
+   so Qt silently dropped all 4 of its rules (base/hover/pressed/disabled)
+   and logged "Could not parse application stylesheet" the first time any
+   QPushButton was polished. Since it never actually applied, every plain
+   button in the app has always been styled solely by the real, valid
+   generic QPushButton rule near the top of this file, in the earlier
+   Buttons section. Deleted rather than fixed into valid CSS: making it
+   valid would have made it start winning the cascade over that
+   already-shipped rule (both being plain-type selectors, later-in-file
+   wins), silently reskinning ~80 buttons across the app that were never
+   meant to change. */
 
 /* === SEARCH/INPUT FIELDS === */
 QLineEdit {
@@ -3176,6 +3180,20 @@ QPushButton#PriceListAddBtn {
 
 QPushButton#PriceListAddBtn:hover {
     background-color: #33CBF0;
+}
+
+QPushButton#PriceListDeleteBtn {
+    background-color: #FF4136;
+    color: #FFFFFF;
+    font-weight: bold;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+}
+
+QPushButton#PriceListDeleteBtn:hover {
+    background-color: #E0362C;
 }
 
 QWidget#PriceListContentPanel {

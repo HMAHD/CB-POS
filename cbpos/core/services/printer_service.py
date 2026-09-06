@@ -79,7 +79,7 @@ class PrinterService:
             copies = ConfigService.get("receipt_copies") or 1
             commands = ReceiptBuilder.build_receipt(sale, is_reprint=is_reprint)
 
-            worker = PrintWorker()
+            worker = PrintWorker.instance()
             for i in range(copies):
                 worker.add_job("print_receipt", commands)
                 logger.info("[PrinterService] Queued receipt copy %d/%d", i + 1, copies)

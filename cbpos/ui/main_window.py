@@ -246,6 +246,13 @@ class MainWindow(QMainWindow):
         if self._sync_client:
             self._sync_client.stop()
 
+        # Stop the shared print/drawer worker thread (if one was ever
+        # started) -- QThread aborts the process if destroyed while still
+        # running, so it must be joined before the app exits.
+        from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+
+        PrintWorker.shutdown()
+
         if ConfigService.get("auto_backup_on_close"):
             try:
                 from cbpos.core.services.backup_service import BackupService

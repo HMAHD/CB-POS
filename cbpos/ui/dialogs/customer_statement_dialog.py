@@ -201,6 +201,31 @@ class CustomerStatementDialog(QDialog):
             period_to=to_dt,
         )
 
-        worker = PrintWorker()
+        worker = PrintWorker.instance()
+        # PrintWorker.add_job() only queues the job -- the print itself
+        # happens later, asynchronously, on the worker thread. Showing
+        # "success" right after add_job() (the old behavior) meant the
+        # user was told the print worked even when the printer wasn't
+        # configured at all. Wait for the real outcome instead. Guard
+        # against reconnecting on every call the same way
+        # ReceiptOptionsDialog.print_thermal() does.
+        try:
+            worker.error_occurred.disconnect(self._on_print_error)
+        except TypeError:
+            pass  # not connected yet
+        try:
+            worker.job_completed.disconnect(self._on_print_finished)
+        except TypeError:
+            pass
+        worker.error_occurred.connect(self._on_print_error)
+        worker.job_completed.connect(self._on_print_finished)
         worker.add_job("print_commands", commands)
+
+    def _on_print_finished(self) -> None:
+        """Called once the queued print job actually completes."""
         QMessageBox.information(self, _t("common.print"), _t("customer_statement.print_sent"))
+
+    def _on_print_error(self, message: str) -> None:
+        """Called if the queued print job actually fails (e.g. no printer configured)."""
+        logger.error("Statement print failed: %s", message)
+        QMessageBox.critical(self, _t("common.error"), _t("customer_statement.print_failed"))

@@ -72,6 +72,7 @@ class SaleQueryService:
                     joinedload(Sale.user),
                     joinedload(Sale.customer),
                     joinedload(Sale.items).joinedload(SaleItem.product),
+                    joinedload(Sale.payments),
                 )
                 .order_by(Sale.date.desc())
                 .limit(limit)
@@ -104,6 +105,7 @@ class SaleQueryService:
                     joinedload(Sale.items).joinedload(SaleItem.product),
                     joinedload(Sale.user),
                     joinedload(Sale.customer),
+                    joinedload(Sale.payments),
                 ],
             )
             if sale:

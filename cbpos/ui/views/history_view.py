@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from PyQt6.QtWidgets import (
     QWidget,
@@ -21,6 +22,8 @@ from cbpos.core.services.auth_service import AuthService
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+
+logger = logging.getLogger(__name__)
 
 
 class HistoryView(QWidget):
@@ -318,7 +321,24 @@ class HistoryView(QWidget):
             settings = ConfigService.get_all()
             language = settings.get("language", "en")
 
-            worker = PrintWorker()
+            worker = PrintWorker.instance()
+            # PrintWorker.add_job() only queues the job -- the print itself
+            # happens later, asynchronously, on the worker thread. Showing
+            # "success" right after add_job() (the old behavior) meant the
+            # user was told the reprint worked even when the printer wasn't
+            # configured at all. Wait for the real outcome instead. Guard
+            # against reconnecting on every call the same way
+            # ReceiptOptionsDialog.print_thermal() does.
+            try:
+                worker.error_occurred.disconnect(self._on_reprint_error)
+            except TypeError:
+                pass  # not connected yet
+            try:
+                worker.job_completed.disconnect(self._on_reprint_finished)
+            except TypeError:
+                pass
+            worker.error_occurred.connect(self._on_reprint_error)
+            worker.job_completed.connect(self._on_reprint_finished)
 
             if language == "en":
                 receipt_text = ReceiptService.build_receipt_text(self.current_sale)
@@ -326,14 +346,22 @@ class HistoryView(QWidget):
             else:
                 receipt_image = ReceiptService.build_receipt_image(self.current_sale)
                 worker.add_job("print_image", receipt_image)
-
-            QMessageBox.information(
-                self,
-                _t("common.success"),
-                _t("history.receipt_sent", receipt=self.current_sale.document_number),
-            )
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), _t("history.reprint_failed", error=e))
+            logger.error("Reprint failed: %s", e)
+            QMessageBox.critical(self, _t("common.error"), _t("history.reprint_failed"))
+
+    def _on_reprint_finished(self) -> None:
+        """Called once the queued print job actually completes."""
+        QMessageBox.information(
+            self,
+            _t("common.success"),
+            _t("history.receipt_sent", receipt=self.current_sale.document_number),
+        )
+
+    def _on_reprint_error(self, message: str) -> None:
+        """Called if the queued print job actually fails (e.g. no printer configured)."""
+        logger.error("Reprint failed: %s", message)
+        QMessageBox.critical(self, _t("common.error"), _t("history.reprint_failed"))
 
     def process_refund(self):
         """Process a refund for the selected sale"""

@@ -19,10 +19,11 @@ from PyQt6.QtWidgets import (
 )
 
 from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QDoubleValidator, QKeySequence, QShortcut, QIcon
+from PyQt6.QtGui import QDoubleValidator, QKeySequence, QShortcut
 from cbpos.core.services.payment_service import PaymentService
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.utils.formatters import format_currency
+from cbpos.ui.resources.icons import Icons
 from cbpos.i18n import _t
 
 
@@ -443,8 +444,6 @@ class PaymentDialog(QDialog):
 
     def _add_payment_list_item(self, index: int, method_name: str, amount: Decimal):
         """Add a payment entry to the list with a remove button."""
-        from pathlib import Path
-
         item_widget = QWidget()
         item_widget.setObjectName("PaymentListItemWidget")
         item_layout = QHBoxLayout(item_widget)
@@ -455,10 +454,14 @@ class PaymentDialog(QDialog):
         lbl.setObjectName("PaymentListItemLabel")
         item_layout.addWidget(lbl, stretch=1)
 
-        icon_path = Path(__file__).resolve().parents[2] / "assets" / "icons" / "x-red.svg"
+        # Uses the app's centralized qtawesome icon system (cbpos/ui/resources/icons.py)
+        # rather than loading a raw SVG file directly -- a raw QIcon(path) depends on
+        # Qt's SVG icon engine plugin being present, which isn't guaranteed on every
+        # install; qtawesome renders from a bundled font instead, matching every other
+        # icon in the app and avoiding that dependency.
         btn_remove = QPushButton()
         btn_remove.setObjectName("BtnRemovePayment")
-        btn_remove.setIcon(QIcon(str(icon_path)))
+        btn_remove.setIcon(Icons.get(Icons.CANCEL, color="#FF4136"))
         btn_remove.setIconSize(QSize(18, 18))
         btn_remove.setFixedSize(44, 44)
         btn_remove.setFocusPolicy(Qt.FocusPolicy.NoFocus)

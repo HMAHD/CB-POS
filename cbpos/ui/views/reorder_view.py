@@ -125,9 +125,11 @@ class ReorderView(QWidget):
 
             # Supplier (first one if exists) — store None sentinel in UserRole
             has_supplier = bool(product.suppliers)
-            supplier_name = product.suppliers[0].name if has_supplier else _t("reorder.no_supplier")
+            supplier_name = product.suppliers[0].company_name if has_supplier else _t("reorder.no_supplier")
             supplier_item = QTableWidgetItem(supplier_name)
-            supplier_item.setData(Qt.ItemDataRole.UserRole + 1, product.suppliers[0].name if has_supplier else None)
+            supplier_item.setData(
+                Qt.ItemDataRole.UserRole + 1, product.suppliers[0].company_name if has_supplier else None
+            )
             self.table.setItem(row, 5, supplier_item)
 
             # Store product ID in row data

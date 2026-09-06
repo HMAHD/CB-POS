@@ -127,8 +127,27 @@ class ReceiptOptionsDialog(QDialog):
     def print_thermal(self) -> None:
         """Print receipt via thermal printer. Auto-closes on success, shows retry on failure."""
         try:
-            worker = PrintWorker()
+            worker = PrintWorker.instance()
             language = ConfigService.get("language") or "en"
+
+            # PrintWorker.instance() is one shared, persistent object for
+            # the app's lifetime, and the Retry button on _on_print_error
+            # below calls print_thermal() again -- connecting without
+            # guarding would add another duplicate connection on every
+            # retry, so a later failure would show once per accumulated
+            # connection instead of once. Disconnect any previous
+            # connection first, and connect before add_job() so a job
+            # that finishes fast can't emit before we're listening.
+            try:
+                worker.error_occurred.disconnect(self._on_print_error)
+            except TypeError:
+                pass  # not connected yet
+            try:
+                worker.job_completed.disconnect(self._on_print_finished)
+            except TypeError:
+                pass
+            worker.error_occurred.connect(self._on_print_error)
+            worker.job_completed.connect(self._on_print_finished)
 
             if language == "en":
                 receipt_text = ReceiptService.build_receipt_text(self.sale)
@@ -136,10 +155,6 @@ class ReceiptOptionsDialog(QDialog):
             else:
                 receipt_image = ReceiptService.build_receipt_image(self.sale)
                 worker.add_job("print_image", receipt_image)
-
-            worker.error_occurred.connect(self._on_print_error)
-            worker.job_completed.connect(self._on_print_finished)
-            self._print_worker = worker  # prevent GC
         except Exception as e:
             logger.error("Receipt print failed: %s", e)
             QMessageBox.warning(

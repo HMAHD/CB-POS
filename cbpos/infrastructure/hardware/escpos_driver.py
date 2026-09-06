@@ -167,11 +167,39 @@ class PrintWorker(QThread):
     error_occurred = pyqtSignal(str)  # Emitted when a print job fails
     job_completed = pyqtSignal()  # Emitted when a print job succeeds
 
+    _instance: "PrintWorker | None" = None
+
     def __init__(self, printer: IPrinter | None = None) -> None:
         super().__init__()
         self.printer = printer
         self._queue: queue.Queue[tuple[str, Any]] = queue.Queue()
         self.running = True
+
+    @classmethod
+    def instance(cls) -> "PrintWorker":
+        """Return the one shared PrintWorker for the app's lifetime.
+
+        Every caller must go through this instead of `PrintWorker()`. run()
+        below loops until stop() is called (by design -- add_job() keeps
+        reusing the same running thread for jobs queued later), so a
+        locally-scoped `PrintWorker()` is still running when its only
+        Python reference goes out of scope at the end of the calling
+        function; Qt then aborts the whole process ("QThread: Destroyed
+        while thread is still running") rather than merely raising a
+        catchable exception. A single persistent instance, kept alive on
+        the class itself, avoids that entirely.
+        """
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    @classmethod
+    def shutdown(cls) -> None:
+        """Stop and join the shared worker on app exit, if one was created."""
+        if cls._instance is not None:
+            cls._instance.stop()
+            cls._instance.wait(5000)
+            cls._instance = None
 
     def add_job(self, job_type: str, data: Any = None) -> None:
         """Queue a print job. Starts the thread if not already running.

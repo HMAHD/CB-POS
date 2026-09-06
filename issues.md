@@ -117,6 +117,11 @@ don't need re-litigating every time a new screen surfaces the same issue.
 | [UX-069](#ux-069-new-price-list-dialogs-date-fields-work-but-are-unstyled-app-wide-gap) | New Price List dialog's date fields work but are unstyled (app-wide gap) | Price Lists | P2 | 🔴 Open |
 | [UX-070](#ux-070-status-column-shows-the-same-static-list-level-value-on-every-product-row) | STATUS column shows the same static, list-level value on every product row | Price Lists | P2 | 🔴 Open |
 | [UX-071](#ux-071-price-list-sidebar-is-cramped-plain-text-with-no-visual-hierarchy) | Price List sidebar is cramped, plain text with no visual hierarchy | Price Lists | P2 | 🔴 Open |
+| [UX-072](#ux-072-promotions-arent-wired-into-checkout-at-all-the-feature-currently-affects-zero-real-sales) | Promotions aren't wired into checkout at all — the feature currently affects zero real sales | Promotions & Campaigns | P0 | 🔴 Open |
+| [UX-073](#ux-073-promotions-have-zero-crud-beyond-create-no-edit-delete-or-deactivate-exists-anywhere) | Promotions have zero CRUD beyond Create — no edit, delete, or deactivate exists anywhere | Promotions & Campaigns | P1 | 🔴 Open |
+| [UX-074](#ux-074-status-is-a-stored-flag-set-once-at-creation-and-never-re-evaluated-every-promotion-shows-active-forever) | STATUS is a stored flag set once at creation and never re-evaluated — every promotion shows "Active" forever | Promotions & Campaigns | P1 | 🔴 Open |
+| [UX-075](#ux-075-promotions-name-column-truncates-the-same-global-stretch-pattern-found-repeatedly-elsewhere) | Promotions NAME column truncates — the same global-stretch pattern found repeatedly elsewhere | Promotions & Campaigns | P1 | 🔴 Open |
+| [UX-076](#ux-076-create-promotion-dialog-is-generic-and-cant-actually-target-specific-products) | Create Promotion dialog is generic, and can't actually target specific products | Promotions & Campaigns | P1 | 🔴 Open |
 
 ---
 
@@ -2929,3 +2934,205 @@ status into a small colored badge instead of bracketed text (matching
 the pattern the "Standard" header status pill already uses, just visible
 in the sidebar too), and consider a small icon per list for quicker visual
 scanning once there are more than a handful.
+
+---
+
+### UX-072: Promotions aren't wired into checkout at all — the feature currently affects zero real sales
+
+**Screen:** Promotions & Campaigns
+**Severity:** P0 · **Status:** 🔴 Open
+
+**Not from your notes directly, but it's the finding that reframes
+everything else you flagged here.** You said "promotions and campaigns
+lacks everything" — that's more literally true than it might have
+seemed: this isn't a promotions feature with rough edges, it's a
+promotions **table** with a create-only screen in front of it, entirely
+disconnected from the sale flow.
+
+**Root cause (verified in code):** `PromotionService`,
+`get_active_promotions()`, and the `Promotion` model are referenced
+**nowhere** in `transaction_service.py` or anywhere else in the checkout/
+sale/discount code path (confirmed by grep across the whole `cbpos/`
+tree — zero matches tying promotions to a real transaction). There's no
+relationship from `Promotion` to `Sale`/`SaleItem`/`Document` in the model
+either (`cbpos/core/models/__init__.py:104-115`). A cashier ringing up
+"Sunlight Products" today gets no Rs.50 discount, a "Weekend 5% Off"
+promotion never reduces a snack's price — none of the 3 promotions in
+your screenshot can currently do anything to a real sale, regardless of
+whether they're within their date window or not.
+
+**Why it matters:** this is the single biggest gap on this screen — every
+other issue here (CRUD, status display, dialog polish) is about managing
+data that, right now, has no effect on the business it's meant to
+influence. Fixing the smaller issues first would polish a feature that
+still doesn't work.
+
+**Suggested fix:** this needs a real design/implementation pass, not a
+quick patch — wire promotion lookup into the sale/cart calculation
+(checking `get_active_promotions()`'s date-and-flag filter, once UX-074's
+stored-flag bug is also fixed) so an eligible promotion actually applies
+its discount at checkout, matching the tax/discount calculation
+conventions already used for manual discounts in `sales_view.py`.
+
+---
+
+### UX-073: Promotions have zero CRUD beyond Create — no edit, delete, or deactivate exists anywhere
+
+**Screen:** Promotions & Campaigns
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "no CRUD operations whatsoever."
+
+**Confirmed, at every layer:** `promotion_view.py` has exactly one write
+path — `add_promotion()` (lines 91-99), wired only to the "Create
+Promotion" button. There is no `edit_promotion`/`delete_promotion`/
+`update_promotion`/`deactivate_promotion` method anywhere in the file.
+The table itself (`promotion_view.py:54-58`) has
+`setEditTriggers(NoEditTriggers)` and no double-click or right-click
+wiring at all — no way to even open an existing promotion, let alone
+change it. `PromotionService` mirrors this exactly: only
+`create_promotion`, `get_active_promotions`, `get_all_promotions` exist —
+there is no update/delete method at the service layer either. Your
+description is accurate to the letter: this screen can only ever add
+rows, never touch existing ones.
+
+**Why it matters:** a promotion with a typo'd name, a wrong value, or a
+date range that needs adjusting (see UX-074) can currently only be fixed
+by leaving the wrong one in the table forever and creating a new,
+separate one — there's no way to correct or retire anything.
+
+**Suggested fix:** add edit and delete/deactivate actions (a button row
+or right-click menu) backed by new `PromotionService.update_promotion(...)`/
+`delete_promotion(...)` methods — this is foundational enough that it
+should land in the same pass as UX-072's checkout wiring, since a
+promotion nobody can correct or turn off is especially risky once it
+actually starts affecting real prices.
+
+---
+
+### UX-074: STATUS is a stored flag set once at creation and never re-evaluated — every promotion shows "Active" forever
+
+**Screen:** Promotions & Campaigns
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "promotions should time out automatically when
+dates hit, I don't think that also works correctly." Confirmed — it
+doesn't.
+
+**Root cause (verified in code):** `is_active`
+(`cbpos/core/models/__init__.py:114`) is a plain stored boolean, set to
+`True` once at creation (`promotion_service.py:30`) and **never flipped
+anywhere in the codebase** — no scheduled job, no query-time check, no
+code path sets it back to `False`. The STATUS column in the table reads
+this raw flag directly (`promotion_view.py:88`:
+`_t("common.active") if p.is_active else _t("common.inactive")`), not a
+computed comparison against `start_time`/`end_time`. Every promotion you
+create will show "Active" forever, regardless of whether its end date
+passed a year ago.
+
+**A correct implementation already exists, just unused:**
+`get_active_promotions()` (`promotion_service.py:38-49`) properly filters
+`is_active AND start_time <= now AND end_time >= now` — but it's never
+called from anywhere, including the view itself (which calls
+`get_all_promotions()` instead, `promotion_view.py:76`). The 60-second
+scheduler timer (`main.py:294-299` → `SchedulerService.check_automation()`)
+only handles report emailing — there's no promotion-expiry job either.
+
+**Why it matters:** even setting aside UX-072 (promotions not affecting
+real sales yet), this display bug alone is actively misleading — an
+admin scanning this table has no way to tell, from the STATUS column,
+which promotions are actually still within their date window and which
+quietly expired weeks ago.
+
+**Suggested fix:** stop trusting the stored flag for display — compute
+STATUS at render time the same way `get_active_promotions()` already
+does (or switch the view to call that method), so "Active" genuinely
+means "within its date range today."
+
+---
+
+### UX-075: Promotions NAME column truncates — the same global-stretch pattern found repeatedly elsewhere
+
+**Screen:** Promotions & Campaigns, main table
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** as part of "lot of UI/UX issues" — visible directly
+in the screenshot ("Evening Happy Hour - 10% Off ..." cut off).
+
+**Root cause (verified in code):** `promotion_view.py:56`:
+```python
+self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+```
+Called on the whole header with no column index — all 6 columns (NAME/
+TYPE/VALUE/START/END/STATUS) get equal stretch width regardless of
+content. NAME needs by far the most room of any column here; with
+nothing giving it priority, longer promotion names clip. This is the
+same root pattern already logged on the Activity Log, Reports, and
+Document Browser tables — same fix, different screen.
+
+**Why it matters:** promotion names are free text a shop owner writes
+themselves to describe an offer — clipping them defeats the point of
+letting them be descriptive.
+
+**Suggested fix:** per-column resize modes, giving NAME `Stretch` (or a
+generous minimum width) and `ResizeToContents` for the shorter columns
+(TYPE, VALUE, STATUS) — same fix already recommended for the other 3
+tables with this exact bug.
+
+---
+
+### UX-076: Create Promotion dialog is generic, and can't actually target specific products
+
+**Screen:** Promotions & Campaigns → "Create Promotion"
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "create promotion popup also very generic, needs
+attention, clean UI, proper alignment and date picker."
+
+**The single biggest gap in this dialog, worth leading with:** there is
+**no product or category picker anywhere** — `PromotionDialog.get_data()`
+(`promotion_view.py:147-155`) and `create_promotion()`
+(`promotion_service.py:13-36`) only ever take `name, type, value,
+start_time, end_time, days_of_week`. Every promotion is necessarily
+store-wide by construction. Your own screenshot shows a promotion named
+"Rs.50 Off Sunlight Products" — a name that implies product-specific
+targeting the feature has no way to actually enforce; today, that's just
+a label a cashier has to interpret and apply manually, not a rule the
+system understands or restricts.
+
+**Smaller, compounding issues on the same dialog (verified in code):**
+- **Missing promotion type**: the model already defines a `BOGO` type
+  (`models/__init__.py:112`), but the dialog's type combo only offers
+  PERCENTAGE/FIXED_AMOUNT (`promotion_view.py:116`) — a third of the
+  data model's own promotion types can never be created through the UI.
+- **Unconstrained field widths**: only the dialog itself gets a
+  `setMinimumWidth(400)` (line 106) — `value_input`, `start_dt`, `end_dt`,
+  and the free-text `days_input` have no explicit width, so they stretch
+  to fill available space via `QFormLayout`'s default growth policy, the
+  same unconstrained-field pattern already logged in the Customer Editor
+  (UX-038) and elsewhere.
+- **Date pickers work but are unstyled**: both `start_dt`/`end_dt`
+  (`QDateTimeEdit`, lines 122-128) do call `setCalendarPopup(True)` —
+  they open correctly — but neither has an `objectName`, so they fall
+  into the same unstyled bucket already tracked in UX-039.
+- **No `start < end` validation**: `create_promotion()` inserts whatever
+  it's given with no comparison check — a promotion with an end date
+  before its start date would be silently created and just never apply
+  (once UX-072 is fixed) or never show as active.
+- **"Days of week" is unstructured free text**: `days_input`
+  (line 130-131) is a plain `QLineEdit` with only a placeholder hint, no
+  actual day picker (checkboxes for Mon-Sun would be the obvious fit) and
+  no format validation.
+
+**Why it matters:** "Rs.50 off Sunlight Products" and "Weekend 5% Off All
+Snacks" are exactly the kind of targeted promotions a small retailer
+actually wants to run — a feature that can only create untargeted,
+store-wide discounts under a descriptive-but-unenforced name doesn't
+match what it's advertising itself as capable of.
+
+**Suggested fix:** add a product/category multi-select to the dialog and
+matching scope fields to the model/service (this is the core feature gap
+to close before anything else here matters much), add the missing BOGO
+option or remove it from the model if it's not planned, constrain field
+widths, add `start < end` validation, and replace the free-text days
+field with 7 day-of-week checkboxes.

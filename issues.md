@@ -39,6 +39,11 @@ Nothing gets "fixed" here, only logged.
 | [UX-005](#ux-005-empty-cart-placeholder-is-plain-text-with-no-visual-anchor) | Empty cart placeholder is plain text with no visual anchor | POS main (Sales) | P3 | 🔴 Open |
 | [UX-006](#ux-006-customer-icon-bypasses-the-centralized-icon-system-no-points-icon-registered) | Customer icon bypasses the centralized icon system; no points icon registered | `cbpos/ui/widgets/action_panel.py` | P3 | 🔴 Open |
 | [UX-007](#ux-007-applied-payments-list-is-hard-capped-at-160px-so-it-scrolls-and-clips-the-boundary-rows-remove-button-instead-of-expanding) | Applied Payments list is hard-capped at 160px, so it scrolls and clips the boundary row's remove button instead of expanding | Payment dialog | P1 | 🔴 Open |
+| [UX-008](#ux-008-change-quantitychange-price-on-a-cart-line-use-a-raw-native-dialog-instead-of-the-apps-own-styled-one) | "Change Quantity"/"Change Price" on a cart line use a raw native dialog instead of the app's own styled one | POS main (Sales), cart line actions | P1 | 🔴 Open |
+| [UX-009](#ux-009-select-customer-dialog-cannot-be-confirmed-from-the-keyboard-at-all) | Select Customer dialog cannot be confirmed from the keyboard at all | Select Customer dialog | P1 | 🔴 Open |
+| [UX-010](#ux-010-select-customer-table-truncates-real-customer-names) | Select Customer table truncates real customer names | Select Customer dialog | P1 | 🔴 Open |
+| [UX-011](#ux-011-select-customer-header-alignment-doesnt-match-cell-alignment-same-pattern-as-ux-002) | Select Customer header alignment doesn't match cell alignment — same pattern as UX-002 | Select Customer dialog | P2 | 🔴 Open |
+| [UX-012](#ux-012-select-customer-table-skips-3-conventions-every-other-table-in-the-app-follows) | Select Customer table skips 3 conventions every other table in the app follows | Select Customer dialog | P2 | 🔴 Open |
 
 ---
 
@@ -309,3 +314,203 @@ clipped.
 3. Keep the QListWidget's native scrollbar as a fallback for the rare case
    of more splits than even a generous cap can show — just make the common
    case (2-5 payments) not need it.
+
+---
+
+### UX-008: "Change Quantity"/"Change Price" on a cart line use a raw native dialog instead of the app's own styled one
+
+**Screen:** POS main screen, cart line context menu / F4 shortcut ("Qty" in
+the Orders panel)
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** the up/down steppers next to the quantity field look
+disconnected from the input (a visible gap + odd dividing line between
+them), and Cancel/OK have no visual hierarchy — OK doesn't look like the
+button you're supposed to press.
+
+**Root cause (verified in code) — this is not the dialog you'd expect.**
+CB-POS already has a well-built, fully-styled `QuantityDialog`
+(`cbpos/ui/dialogs/quantity_dialog.py`) — a big centered `QLineEdit`
+(`#QtyInput`, 44px tall, 24px bold text, cyan focus ring, styled at
+`dark.qss:1192-1204`), product name shown above it, unit hint below, Enter
+bound to confirm. It's used for **adding** a product to the cart
+(`sales_view.py:587, 1171`).
+
+But the F4 "Change Quantity" action on an *existing* cart line — the exact
+screen in your screenshot — doesn't use it. `sales_view.py:1032-1050`,
+`change_line_quantity()`:
+```python
+qty, ok = QInputDialog.getDouble(
+    self, _t("cart.change_qty_title"), _t("cart.change_qty_prompt"),
+    value=float(current_qty), min=0.001, max=999999, decimals=3,
+)
+```
+`QInputDialog.getDouble()` is a **stock Qt dialog** — its embedded spin box
+and OK/Cancel buttons are native widgets with no `objectName`, so none of
+this app's QSS can reach them at all. What you're seeing — the gap between
+the field and the stepper, the dividing line between the two arrow buttons,
+both buttons looking identically plain — is just the OS's default rendering
+of an unstyled `QAbstractSpinBox`, not a CSS bug to patch. `change_line_price()`
+(`sales_view.py:1082-1112`, the Manager-only price override) has the exact
+same problem, same root cause, one line away.
+
+**Why it matters:** a cashier who's just used the polished add-to-cart
+quantity prompt sees a completely different, native-OS-styled dialog show up
+for what feels like the identical task (typing a number for a cart line) —
+inconsistent even within the same screen, and it's the one place in the cart
+workflow that still looks unfinished next to everything else.
+
+**Suggested fix:** reuse `QuantityDialog` for `change_line_quantity()`
+instead of `QInputDialog.getDouble()`. It needs one small capability it
+doesn't have yet: today it always starts the input at `"1"` (its docstring
+says it's built for "adding a product to the cart"); changing an *existing*
+line needs to open pre-filled with the current quantity. That's a small,
+additive change to its constructor (an optional `initial_qty` parameter),
+not a rebuild. For `change_line_price()`, either build an equivalent
+small "Change Price" dialog following the exact same visual pattern
+(large centered input, product name, styled OK/Cancel with OK using the
+existing `class="primary"` green), or generalize `QuantityDialog` into a
+shared "single numeric value" prompt reusable for both — worth deciding
+which, once we're in the fixing pass. Either way, giving OK the `primary`
+green treatment (the same convention `DiscountDialog`'s "Apply Discount"
+button already uses) fixes the "no visual hierarchy" complaint for free.
+
+**Related, not pictured:** `add_line_note()` (`sales_view.py:1022-1030`)
+uses `QInputDialog.getText()` for the same reason — a third native dialog
+in the same cluster of cart-line actions. Lower priority (plain text input
+doesn't have the stepper-button styling problem), but worth folding into
+the same pass for consistency.
+
+---
+
+### UX-009: Select Customer dialog cannot be confirmed from the keyboard at all
+
+**Screen:** Select Customer dialog
+**Severity:** P1 · **Status:** 🔴 Open
+
+**Not from your notes — flagged during code review, but directly relevant
+to this app's own "keyboard-first" design principle.**
+`customer_selection_dialog.py:51-54` builds the button row with **only a
+Cancel button** — there is no Select/OK button at all. The only way to
+confirm a selection is `self.table.doubleClicked.connect(self.select_customer)`
+(line 48) — a mouse-only interaction. There is no `Key_Return`/`Key_Enter`
+binding anywhere in the file. Compare with `AdvancedSearchDialog`, which
+gets this right: it has both a visible "Select" button *and*
+`QShortcut(Qt.Key.Key_Return, self).activated.connect(self.on_select)`.
+
+**Why it matters:** this app is explicitly built keyboard-first for speed —
+a cashier can arrow-key down to the right row, but then has nothing to
+press to confirm it. They're forced to reach for the mouse specifically at
+the one moment they were otherwise moving entirely by keyboard. That's a
+real workflow interruption, not a cosmetic gap.
+
+**Suggested fix:** add a "Select" button (styled `class="primary"`, matching
+the rest of the app's confirm-action convention) next to Cancel, and bind
+Enter/Return to the same `select_customer()` handler — both small, exactly
+matching the pattern `AdvancedSearchDialog` already establishes elsewhere in
+this codebase.
+
+---
+
+### UX-010: Select Customer table truncates real customer names
+
+**Screen:** Select Customer dialog
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you'd see if you searched further** — "Malini ..." and "Chaminda ..."
+in the screenshot aren't abbreviations, they're mid-name truncation. This is
+a genuine usability problem: the one thing this dialog exists to do is let
+a cashier tell customers apart, and it's cutting off the exact information
+that would do that.
+
+**Root cause (verified in code):** `customer_selection_dialog.py:44` sets
+resize mode with the no-column-index overload —
+`self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)`
+— which applies `Stretch` **uniformly to all 3 columns**. ID, NAME, and
+PHONE all fight for an equal one-third share of the table's width, even
+though ID only ever needs ~2 digits and PHONE is always exactly 10 digits —
+so NAME, the one column with genuinely variable-length content, gets
+starved down to the same width as the shortest column. No `setColumnWidth`
+override exists anywhere in the file, and Qt's default elide mode
+(`ElideRight`) just quietly truncates whatever doesn't fit, with no tooltip
+showing the full name on hover.
+
+**Suggested fix:** give NAME a stretch column (`Stretch` mode, same as the
+cart table's ITEM column) and make ID + PHONE `ResizeToContents` or a
+sensible fixed width (ID: ~50px, PHONE: ~120px) — the same "one flexible
+column, N-1 sized-to-content" pattern already used correctly in the cart
+table (`sales_view.py:208-218`) and the Reorder Report. As a cheap
+complementary safety net, also set a tooltip with the full name on each
+row (`item.setToolTip(customer.name)`) so a name is still recoverable even
+in a narrow window.
+
+**Feature idea while we're in here:** see UX-012 below for the ID column
+itself — showing a raw internal database key here isn't obviously useful to
+a cashier; the freed-up width from fixing this could go toward something a
+cashier would actually act on.
+
+---
+
+### UX-011: Select Customer header alignment doesn't match cell alignment — same pattern as UX-002
+
+**Screen:** Select Customer dialog
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes — flagged during code review.** Same defect class as
+UX-002 (cart table), confirmed here too:
+`customer_selection_dialog.py:72-74` never calls `setTextAlignment()` on
+any `QTableWidgetItem`, so ID/NAME/PHONE cell data defaults to Qt's
+left-aligned item style. The column headers, meanwhile, get no alignment
+override either and fall back to Qt's own default **center** alignment for
+header text. Center-aligned "ID / NAME / PHONE" sitting directly above
+left-aligned data is the exact same header/data mismatch already logged for
+the cart table — this is the second table in the app with it, which makes
+it worth treating as a shared pattern rather than two unrelated one-off
+bugs once we get to fixing.
+
+**Suggested fix:** left-align both the NAME/PHONE headers and their data
+(natural reading alignment for text); ID can stay center or move to
+right-aligned if it's kept as a numeric-looking column at all (see UX-012).
+Whichever convention we land on while fixing UX-002, apply the same one
+here for consistency across the app's tables.
+
+---
+
+### UX-012: Select Customer table skips 3 conventions every other table in the app follows
+
+**Screen:** Select Customer dialog
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes — flagged during code review.** Three small things,
+grouped here because they're all "this table didn't follow the pattern
+already established everywhere else," best fixed together:
+
+1. **No alternating row colors.** `setAlternatingRowColors(True)` is called
+   by 24 other tables across this codebase (cart table, unit manager,
+   refund dialog, sale history, category manager, purchase view, and more)
+   — this is the outlier that skips it, making a 7+ row result list harder
+   to scan row-to-row than every comparable list elsewhere in the app.
+2. **Row-number gutter left visible and unstyled.** The dark-navy,
+   cyan-bordered column of `1, 2, 3...` on the left in your screenshot isn't
+   a deliberate design — it's Qt's default vertical header, left showing
+   because `verticalHeader().setVisible(False)` is never called. Five other
+   comparable tables in the app (`sales_view.py`'s cart table,
+   `proforma_dialog.py`, `sale_history_dialog.py` ×2,
+   `shortcuts_help_dialog.py`) explicitly hide it. It's not useful
+   information to a cashier (a row's position in a scrolled list isn't
+   meaningful) and it's currently the most visually dominant color block in
+   the dialog purely by accident.
+3. **No `objectName` set on the table at all**, so it can't be targeted by
+   any dialog-specific QSS rule even if we wanted to fix any of the above
+   through the stylesheet rather than code — worth giving it one
+   (e.g. `#CustomerSelectTable`) as part of the same pass.
+
+**Separately, a robustness note on the ID column:** `select_customer()`
+(`customer_selection_dialog.py:76-81`) re-parses the customer ID by reading
+it back out of the *displayed cell text* (`int(self.table.item(row, 0).text())`)
+rather than storing it as item data (`Qt.ItemDataRole.UserRole`) — it happens
+to work today only because the ID column shows nothing but the raw integer.
+If the ID column's presentation ever changes (padding, a `#` prefix, i18n
+formatting), this parse breaks silently. Worth storing the ID as UserRole
+data on the row instead of round-tripping it through display text, regardless
+of what happens with the ID column itself.

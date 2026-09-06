@@ -39,6 +39,14 @@ don't need re-litigating every time a new screen surfaces the same issue.
   turns out to use the `#001F3F`/`#0A1929`/`#0D2137`/`#112240`/`#00BCEB`
   palette, log it as a confirmed instance of this same decided fix, not
   as a new open question.
+- **Table header/column alignment is a critical, app-wide design defect —
+  flagged 2026-09-06 as something to address as one coordinated fix when
+  the fixing phase starts, not table-by-table.** Full context and the
+  confirmed scope (12+ tables so far) in
+  [UX-077](#ux-077-nearly-every-table-in-the-app-has-the-same-headercontent-alignment-defect).
+  If a new screen under review shows a table with truncated/misaligned
+  headers or columns, log it as a confirmed instance of this already-known
+  systemic pattern, not as an isolated one-off.
 
 ---
 
@@ -122,6 +130,7 @@ don't need re-litigating every time a new screen surfaces the same issue.
 | [UX-074](#ux-074-status-is-a-stored-flag-set-once-at-creation-and-never-re-evaluated-every-promotion-shows-active-forever) | STATUS is a stored flag set once at creation and never re-evaluated — every promotion shows "Active" forever | Promotions & Campaigns | P1 | 🔴 Open |
 | [UX-075](#ux-075-promotions-name-column-truncates-the-same-global-stretch-pattern-found-repeatedly-elsewhere) | Promotions NAME column truncates — the same global-stretch pattern found repeatedly elsewhere | Promotions & Campaigns | P1 | 🔴 Open |
 | [UX-076](#ux-076-create-promotion-dialog-is-generic-and-cant-actually-target-specific-products) | Create Promotion dialog is generic, and can't actually target specific products | Promotions & Campaigns | P1 | 🔴 Open |
+| [UX-077](#ux-077-nearly-every-table-in-the-app-has-the-same-headercontent-alignment-defect) | Nearly every table in the app has the same header/content alignment defect | App-wide (every table reviewed so far) | P1 | 🔴 Open |
 
 ---
 
@@ -3136,3 +3145,77 @@ to close before anything else here matters much), add the missing BOGO
 option or remove it from the model if it's not planned, constrain field
 widths, add `start < end` validation, and replace the free-text days
 field with 7 day-of-week checkboxes.
+
+---
+
+### UX-077: Nearly every table in the app has the same header/content alignment defect
+
+**Screen:** App-wide — every screen with a table reviewed so far
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "every table I see in the app have misalignment,
+row headers doesn't match with content it appears — that's critical, it
+makes the application [look un-]pure design, and needs to be addressed
+when fixing."
+
+**You're right, and it's worth stating plainly: this is not a collection
+of unrelated small bugs. It is one recurring implementation mistake,
+made independently on nearly every screen that has a table, because
+there is no shared "build a table correctly" convention anywhere in the
+codebase for anyone to reach for.** Every table gets its column sizing
+hand-rolled from scratch, and it goes wrong in one of two mechanically
+distinct ways:
+
+**Mechanism 1 — a resize mode is set once, with no column index, applying
+the same rule to every column regardless of content:**
+| Screen | Entry | Where |
+|---|---|---|
+| POS main cart | UX-002 | `sales_view.py` |
+| Select Customer dialog | UX-010/011/012 | `customer_selection_dialog.py:36-49,44` |
+| Inventory table | UX-017 | `inventory_view.py:136` |
+| Credit Book customer list | UX-034 | `credit_book_view.py:99-102` |
+| Activity Log | UX-061 | `user_view.py:178` |
+| Promotions table | UX-075 | `promotion_view.py:56` |
+| Category Manager tree | UX-021 | no resize mode set at all (`category_manager.py:64-70`) |
+
+**Mechanism 2 — the opposite failure: `setStretchLastSection(True)` (or
+an explicit `Stretch` on the wrong column) forces one column to bloat
+while others starve, regardless of which one actually holds the longest
+content:**
+| Screen | Entry | Where |
+|---|---|---|
+| Reports results table | UX-048 | `report_viewer.py:226-227` |
+| Document Browser table | UX-052 | `document_view.py:149-152` |
+
+**A third, related symptom — header text alignment not matching cell
+alignment** (numbers left-aligned in the header but right-aligned in
+cells, or vice versa) was called out specifically in UX-011.
+
+That's **12 confirmed tables** across the catalog so far, from 9 root
+causes in 2 mechanically distinct patterns — and this is very likely an
+undercount, since it's been found incidentally on nearly every screen
+reviewed, not from a dedicated table-by-table audit.
+
+**Why it matters — agreeing with your framing:** a POS used all day by
+non-technical staff lives or dies on whether its data is legible at a
+glance. Truncated headers, clipped totals, and columns that don't match
+their content are the single most visible signal that software wasn't
+carefully built, even to someone who couldn't name why it looks off. This
+is exactly the kind of defect that undermines trust in "clean, modern,
+industry-grade" faster than almost anything else, because it shows up
+constantly, on nearly every screen, not just once.
+
+**Suggested fix — treat this as one fix, not twelve:** before touching
+individual tables, define one small shared helper (e.g.
+`configure_table_columns(table, {col_index: mode_or_width, ...})` in
+`cbpos/ui/widgets/` or a table-utils module) that makes the *correct*
+per-column pattern the easy, obvious thing to reach for — explicit
+`ResizeToContents` for short/fixed-format columns (IDs, dates, statuses,
+totals), `Stretch` reserved for exactly the one column that should
+actually absorb extra space (usually a name/description/details field),
+and `setStretchLastSection(False)` set explicitly every time so Qt's
+default can't quietly reintroduce this bug on a 13th table. Then sweep
+every table listed above (and any found later) through it in one pass —
+this is a small, mechanical, high-leverage fix precisely because it's
+the same 3-line mistake repeated a dozen times, not 12 different
+problems needing 12 different solutions.

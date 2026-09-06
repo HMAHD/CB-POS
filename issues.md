@@ -140,6 +140,10 @@ don't need re-litigating every time a new screen surfaces the same issue.
 | [UX-084](#ux-084-management-screens-use-4-different-navigation-patterns-with-no-consistent-page-title) | Management screens use 4 different navigation patterns, with no consistent page title | App-wide (Management section) | P1 | 🔴 Open |
 | [UX-085](#ux-085-settings-footer-bar-being-hidden-not-reserved-creates-a-70px-height-jump-between-pages) | Settings' footer bar being hidden (not reserved) creates a 70px height jump between pages | Settings | P2 | 🔴 Open |
 | [UX-086](#ux-086-settings-appearance-tab-has-3-mismatched-field-widths-and-the-same-broken-spinbox-stepper) | Settings Appearance tab has 3 mismatched field widths, and the same broken spinbox stepper | Settings | P2 | 🔴 Open |
+| [UX-087](#ux-087-report-time-and-sales-tax-fields-have-the-same-mismatched-width-problem-the-fix-is-already-in-the-same-file) | Report Time and Sales Tax fields have the same mismatched-width problem — the fix is already in the same file | Settings | P2 | 🔴 Open |
+| [UX-088](#ux-088-good-pattern-worth-reusing-the-gmail-help-guide-should-become-the-apps-standard-for-technical-fields) | Good pattern worth reusing: the Gmail help guide should become the app's standard for technical fields | Settings, app-wide | P3 | 🔴 Open |
+| [UX-089](#ux-089-checkbox-hover-is-already-universal-in-css-the-perceived-inconsistency-traces-to-ux-060-instead) | Checkbox hover is already universal in CSS — the perceived inconsistency traces to UX-060 instead | Settings, app-wide | P3 | 🔴 Open |
+| [UX-090](#ux-090-daily-auto-report-has-two-independent-reliability-bugs-confirming-your-suspicion) | Daily Auto-Report has two independent reliability bugs, confirming your suspicion | Settings → Shop Info → Email | P1 | 🔴 Open |
 
 ---
 
@@ -3684,3 +3688,187 @@ is fine, just the fields above it aren't.
 consistent minimum width, and replace the Font Size spinbox with a
 `QLineEdit` + integer validator, matching the pattern already proven
 correct in `product_editor.py`.
+
+---
+
+### UX-087: Report Time and Sales Tax fields have the same mismatched-width problem — the fix is already in the same file
+
+**Screen:** Settings → Shop Info → Email tab, and Sales Tax page
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "Report Time is hard to see, lacks UI/UX skill...
+Sales Tax page also has the same unmatching-size problem."
+
+**Report Time (confirmed):** `settings_pages.py:248-251` builds
+`time_auto_report` as a plain `QTimeEdit` with `setDisplayFormat("HH:mm")`
+and no width set at all — same `_build_form_tab()` /
+`ExpandingFieldsGrow` mechanism as UX-086, so the full-width Admin
+Email/SMTP text fields below it stretch while this one stays at its tiny
+native size. Same root cause, seventh confirmed instance across the app.
+
+**Sales Tax — confirmed, and genuinely more revealing than a typical
+instance of this bug:** `SalesTaxPage` (`settings_pages.py:485-562`) has
+**six** numeric/combo fields across its Sales and Tax sub-tabs. Three of
+them — `spin_max_discount` (line 502), `spin_vat` (line 534), `spin_sscl`
+(line 542), `spin_sscl_turnover` (line 550) — already get an explicit
+`setFixedWidth(200)`. The other two — `combo_search_mode` (line 494),
+`spin_loyalty_ratio` (line 510), `spin_default_credit` (line 516) — get
+no width at all and stretch full-width. **This means the correct fix
+(`setFixedWidth(200)`) already exists as a convention in this exact
+file** — it just wasn't applied consistently to every field in the same
+class.
+
+**Why it matters:** this is the easiest version of this bug to fix
+anywhere in the app — there's no design decision left to make, no new
+convention to invent, just applying the width value already sitting three
+lines away to the fields that were skipped.
+
+**Suggested fix:** apply `setFixedWidth(200)` (or promote it to a shared
+named constant, since it's clearly already the house convention for this
+kind of field) to `combo_search_mode`, `spin_loyalty_ratio`,
+`spin_default_credit`, and `time_auto_report` — closing out this specific
+instance of UX-038's pattern with the least effort of any table/dialog
+found so far.
+
+---
+
+### UX-088: Good pattern worth reusing: the Gmail help guide should become the app's standard for technical fields
+
+**Screen:** Settings → Shop Info → Email tab
+**Severity:** P3 · **Status:** 🔴 Open
+
+**What you flagged, positively:** "I love that — we could use that
+style when we have to add info or help, to make things easy for the
+user."
+
+**You're right to want more of this — confirmed it's a genuinely
+well-built pattern, not just good-looking:** `settings_pages.py` wires
+two complementary things together, not one. "Use Gmail" (`btn_gmail`,
+line 224) actually does something on click —
+`_prefill_gmail()` (line 367-372) auto-fills SMTP Host with
+`smtp.gmail.com` and Port with `587`, then focuses the User field —
+plus a tooltip explaining what it does. The blue info-circle
+(`btn_help`, line 232-240) both shows a hover tooltip *and*, on click,
+opens a real 4-step numbered guide dialog (`_show_smtp_guide()`,
+lines 374-411) walking through enabling 2-Step Verification, generating
+a Gmail App Password, and where to paste it — genuinely useful,
+task-specific help, not a generic "?" that just repeats the label.
+
+**Why it's worth calling out as a feature idea, not just a compliment:**
+this app has several other fields across the catalog so far that are
+exactly as unfamiliar to a non-technical shop owner as SMTP settings —
+Purchasing's Payment Terms, Price Lists' date ranges, tax calculation
+fields on this same Sales Tax page (VAT/SSCL) — none of which currently
+get any equivalent help affordance.
+
+**Suggested fix (feature idea):** extract this into a small reusable
+`HelpIconButton` widget (icon + tooltip + optional click-to-open guide
+dialog) and deliberately place it next to any other field in the app
+where a non-technical user is likely to need the same kind of "what do I
+put here and why" guidance — this is a good candidate for a genuinely
+new, small shared component, not just a one-off worth admiring on this
+one screen.
+
+---
+
+### UX-089: Checkbox hover is already universal in CSS — the perceived inconsistency traces to UX-060 instead
+
+**Screen:** Settings, app-wide
+**Severity:** P3 · **Status:** 🔴 Open
+
+**What you flagged:** "settings have toggles, but only a few have a
+hover effect — I'd like all of them to have that."
+
+**Worth correcting the premise before "fixing" the wrong thing:**
+checked the actual QSS — `dark.qss:201-227` (mirrored in `light.qss`)
+defines `QCheckBox::indicator:unchecked:hover` and
+`QCheckBox::indicator:checked:hover` with **no objectName or class
+qualifier at all** — it's already a fully generic rule. A full-repo grep
+confirms **no checkbox anywhere in the app has `setObjectName()` called
+on it** — "Enable Daily Auto-Report" and every other real `QCheckBox` in
+the codebase (Sales Tax's VAT/exemption checkboxes, Product Editor,
+Customer Editor, Users, Payment Methods) should already get this hover
+effect identically, since there's nothing in the stylesheet that could
+scope it to only some of them.
+
+**So where's the inconsistency actually coming from? Most likely the
+same root cause already logged as UX-060.** Not every checkbox-*looking*
+control in this app is a real `QCheckBox` widget — UX-060 found that
+Permission Manager's checkboxes are `QTreeWidgetItem.setCheckState()`
+calls, rendered by Qt's native tree-item delegate, which **never**
+receives `QCheckBox::indicator` QSS at all, hover included. If similar
+non-`QCheckBox` check controls exist elsewhere (worth a quick sweep next
+time one is spotted), that would fully explain "only some have the
+effect" without any scoping bug in the stylesheet itself — the rule
+genuinely is universal for the widgets it can reach.
+
+**Why it matters:** worth flagging so effort doesn't get spent hunting
+for a scoping bug in `dark.qss` that isn't there — the actual fix, if
+this is confirmed, is the same one already proposed in UX-060 (use real
+`QCheckBox` widgets, or apply matching QSS to whatever custom check
+control is being used instead).
+
+**Suggested fix:** none needed at the CSS layer — if a specific
+non-hovering checkbox-like control turns up on a future screen, log it
+as another confirmed instance of UX-060's pattern rather than a new
+mystery.
+
+---
+
+### UX-090: Daily Auto-Report has two independent reliability bugs, confirming your suspicion
+
+**Screen:** Settings → Shop Info → Email tab
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "also check that it works or not — [the] report
+timer, I think that functionality [is] not properly set up and
+connected." You were right, and it's two separate bugs, not one.
+
+**Bug 1 — enabling the feature mid-session does nothing until the app
+restarts.** `main.py:292-302` only creates the scheduler `QTimer` if
+`ConfigService.get("auto_report_enabled")` was already `True` **at
+process startup**:
+```python
+if ConfigService.get("auto_report_enabled"):
+    ...
+    scheduler_timer.start(60_000)
+```
+There is no code anywhere in `settings_view.py` or `main_window.py` that
+starts or stops this timer when the setting is changed (confirmed by
+grep — zero matches). So the normal way anyone would actually discover
+and turn on this feature — opening Settings, checking the box, clicking
+Save Changes, during a running session — **has no effect at all** until
+the next full app restart, with nothing in the UI indicating this.
+
+**Bug 2 — a failed send is invisible to the user.**
+`SchedulerService.check_automation()` (`scheduler_service.py`) correctly
+reads the same `auto_report_enabled`/`auto_report_time`/`admin_email`
+config keys the UI writes, and correctly guards against re-sending
+within the same day (a stored `auto_report_last_run` date flag) — this
+part is sound. But `EmailService.send_email_with_pdf` fires the actual
+send on a detached `threading.Thread` with no completion callback
+(`email_service.py:86-96`), and `scheduler_service.py:77` logs
+`"Auto-Report sent to %s"` **immediately**, before the thread has
+actually attempted delivery — so that log line is written regardless of
+whether the email ever really went out. If SMTP genuinely fails (wrong
+password, unreachable host), the only trace is
+`logger.error(...)` inside the background thread
+(`email_service.py:56-57`), written to the rotating log file only — no
+`AuditLog` entry, no UI notification, nothing a shop owner would ever
+see. The report can silently never arrive, with the log even claiming
+it did.
+
+**Why it matters:** this is exactly the kind of feature that erodes
+trust once discovered — a checkbox that appears to work (no error, no
+warning) but doesn't actually schedule anything until a restart, feeding
+into a send path whose one failure signal is a file nobody but a
+developer would ever open.
+
+**Suggested fix:** have Settings' save handler start/stop the scheduler
+`QTimer` directly when the checkbox changes, instead of only reading the
+flag once at process launch; and have `EmailService` report real
+success/failure back to the scheduler (via a callback or by making the
+send synchronous within the already-background-safe scheduler context)
+so a failure can be written to `AuditLog` and surfaced somewhere a user
+would actually see it — a small banner or the existing Activity Log
+(once UX-062/063's audit-logging fixes land) would both work.

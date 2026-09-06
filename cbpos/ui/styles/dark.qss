@@ -3170,6 +3170,20 @@ QPushButton#PriceListAddBtn:hover {
     background-color: #33CBF0;
 }
 
+QPushButton#PriceListDeleteBtn {
+    background-color: #FF4136;
+    color: #FFFFFF;
+    font-weight: bold;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+}
+
+QPushButton#PriceListDeleteBtn:hover {
+    background-color: #E0362C;
+}
+
 QWidget#PriceListContentPanel {
     background-color: #001F3F;
 }

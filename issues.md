@@ -144,6 +144,10 @@ don't need re-litigating every time a new screen surfaces the same issue.
 | [UX-088](#ux-088-good-pattern-worth-reusing-the-gmail-help-guide-should-become-the-apps-standard-for-technical-fields) | Good pattern worth reusing: the Gmail help guide should become the app's standard for technical fields | Settings, app-wide | P3 | 🔴 Open |
 | [UX-089](#ux-089-checkbox-hover-is-already-universal-in-css-the-perceived-inconsistency-traces-to-ux-060-instead) | Checkbox hover is already universal in CSS — the perceived inconsistency traces to UX-060 instead | Settings, app-wide | P3 | 🔴 Open |
 | [UX-090](#ux-090-daily-auto-report-has-two-independent-reliability-bugs-confirming-your-suspicion) | Daily Auto-Report has two independent reliability bugs, confirming your suspicion | Settings → Shop Info → Email | P1 | 🔴 Open |
+| [UX-091](#ux-091-cut-drawer-tab-label-is-silently-eaten-by-qts-mnemonic-parser) | "Cut & Drawer" tab label is silently eaten by Qt's mnemonic parser | Settings → Hardware | P1 | 🔴 Open |
+| [UX-092](#ux-092-copies-field-box-proportions-make-its-value-easy-to-misread-as-blank-couldnt-confirm-a-code-level-bug) | "Copies" field box proportions make its value easy to misread as blank (couldn't confirm a code-level bug) | Settings → Hardware | P2 | 🔴 Open |
+| [UX-093](#ux-093-printer-list-never-rescans-a-newly-connected-printer-needs-a-full-app-restart-to-appear) | Printer list never rescans — a newly connected printer needs a full app restart to appear | Settings → Hardware | P2 | 🔴 Open |
+| [UX-094](#ux-094-good-pattern-already-built-the-section-divider-helper-should-be-reused-in-the-sidebar-redesign) | Good pattern already built: the section-divider helper should be reused in the sidebar redesign | Settings → Hardware, app-wide | P3 | 🔴 Open |
 
 ---
 
@@ -3872,3 +3876,166 @@ send synchronous within the already-background-safe scheduler context)
 so a failure can be written to `AuditLog` and surfaced somewhere a user
 would actually see it — a small banner or the existing Activity Log
 (once UX-062/063's audit-logging fixes land) would both work.
+
+---
+
+### UX-091: "Cut & Drawer" tab label is silently eaten by Qt's mnemonic parser
+
+**Screen:** Settings → Hardware, sub-tab bar
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "tab names are not showing" — the second tab
+reads "Cut Dra..." instead of its full name.
+
+**Two separate causes found, one certain and one platform-dependent —
+worth keeping them distinct rather than treating this as one bug:**
+
+**The certain one:** `cbpos/i18n/en.json:1309` (and the matching key in
+`si.json`/`ta.json`) defines this tab's label as:
+```json
+"tab_cut_drawer": "Cut & Drawer"
+```
+A literal, unescaped `&`. Qt's `QTabBar` (like `QPushButton` and every
+other Qt widget that supports mnemonics) treats a single `&` as an
+accelerator marker — it gets consumed by Qt's mnemonic parser instead of
+being rendered as a visible character. So "Cut & Drawer" doesn't display
+as "Cut & Drawer" at all — the `&` vanishes and the next letter would
+normally get an underline accelerator hint. This is a genuine content bug,
+platform-independent, and fully reproducible — not a maybe.
+
+**The platform-dependent one (secondary contributor):** no code anywhere
+sets `setElideMode`, a min/max width, or a font override on this
+`QTabWidget`/`QTabBar` (confirmed by grep — nothing constrains it).
+Rendered headless, the tab bar's own `elideMode()` defaults to `ElideNone`
+with `usesScrollButtons() == True` — nothing in this codebase asks Qt to
+truncate. The "..." you're seeing most likely comes from the **native OS
+widget style's** own truncation behavior (Windows' Vista/11 styles elide
+long tab labels when the bar is narrower than its tabs' natural width;
+other styles like Fusion don't) — meaning this part is real on the
+Windows build this app ships for, but isn't something reproducible from
+the code alone in every environment, similar to UX-014/UX-046's
+platform-dependent findings.
+
+**Why it matters:** between the two, at least one (the `&` mnemonic bug)
+is guaranteed to be visibly wrong for every user on every platform —
+worth fixing regardless of how the width-truncation question resolves.
+
+**Suggested fix:** escape the ampersand in the i18n string (`"Cut &&
+Drawer"` — Qt's convention for a literal `&`) across all three language
+files, and separately, give the sub-tab bar enough width or an explicit
+elide policy so labels don't get cut off due to native style truncation
+on narrower windows.
+
+---
+
+### UX-092: "Copies" field box proportions make its value easy to misread as blank (couldn't confirm a code-level bug)
+
+**Screen:** Settings → Hardware → Printers → Print Behavior
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you'd likely flag if pressed on it — the "Copies" field looks
+completely empty in the screenshot, just a box with +/- steppers and no
+visible number.**
+
+**Investigated thoroughly, and being upfront that I could not confirm an
+actual invisible-text bug — this is worth logging honestly rather than
+asserting a defect I can't prove, the same discipline as UX-014.**
+`spin_copies` (`settings_pages.py:775-776`) is a `QSpinBox` with
+`setRange(1, 5)` — its minimum is 1, not 0, so it can never render a
+literal blank/zero value, and its default is explicitly loaded as
+`settings.get("receipt_copies", 1)` (line 933). I rendered this exact
+widget headless with the app's real compiled QSS and it displayed "1"
+clearly — I could not reproduce a genuine color/contrast collision in
+either theme (`dark.qss:889-899` and `light.qss:948-950`, the
+ID-scoped rules that apply here, both have clearly contrasting text/
+background colors).
+
+**My best working theory, not a confirmed cause:** the same QSS rule
+that sizes this spinbox reserves `min-height: 32-36px` and
+`padding-right: 35px` (for the stacked +/- buttons), producing a
+noticeably tall box for a single digit — the value likely renders small
+in the top-left corner with a lot of visually "dead" space below it,
+which could easily read as "empty" in a screenshot or at a glance,
+without the text itself actually being invisible.
+
+**Why it matters either way:** whether it's a genuine rendering bug or
+just a proportions problem, a field a cashier needs to trust before
+printing multiple receipt copies shouldn't be ambiguous about its own
+value at a glance.
+
+**Suggested fix:** before changing anything, this needs a real visual
+check on the actual target platform (Windows, the app's primary build
+target) rather than further code reading — if the value truly isn't
+visible there, it's a live styling bug; if it's just small/high in a
+tall box, tightening the box height or centering the value vertically
+would resolve the "looks blank" impression either way.
+
+---
+
+### UX-093: Printer list never rescans — a newly connected printer needs a full app restart to appear
+
+**Screen:** Settings → Hardware → Printers
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes — found while checking the "No printers found"
+state shown in your screenshot (which is itself a legitimate, expected
+placeholder in an environment with no physical printer attached, not a
+bug on its own).**
+
+**Root cause (verified in code):** `settings_pages.py:735`:
+```python
+available_printers = QPrinterInfo.availablePrinterNames() or [_t("settings.hardware.no_printers")]
+```
+This detection runs exactly **once**, inside `HardwarePage.__init__()`.
+`HardwarePage` itself is constructed exactly once per app session
+(`settings_view.py:92`) and kept alive in a `QStackedWidget` for the rest
+of that session. There is no "Refresh"/"Detect Printers" button anywhere
+on this tab, and no other call to `availablePrinterNames()` exists in the
+file. So if a shop owner plugs in a receipt printer *after* opening the
+app (a very plausible real-world sequence — printer wasn't on, or wasn't
+plugged in, at boot), simply re-opening Settings won't pick it up — the
+whole application needs to be restarted.
+
+**Why it matters:** hardware setup is exactly the kind of task where a
+non-technical user will plug something in, look for it in the list, not
+see it, and have no idea a full app restart (not just navigating away
+and back) is what's actually required.
+
+**Suggested fix:** add a small "Refresh" button next to the printer
+combos that re-runs `QPrinterInfo.availablePrinterNames()` and
+repopulates them without needing a restart.
+
+---
+
+### UX-094: Good pattern already built: the section-divider helper should be reused in the sidebar redesign
+
+**Screen:** Settings → Hardware (and every other Settings page); relevant to the sidebar redesign discussed in UX-083
+**Severity:** P3 · **Status:** 🔴 Open
+
+**Not from your notes — found while reviewing this page's section
+headers ("Printer Selection," "Print Behavior," "Test Hardware"), and
+worth flagging as good news, not a new bug to fix.**
+
+**What's already built:** `SettingsPage._make_section_header()`
+(`settings_pages.py:143-165`) is a small, reusable, already-DRY helper —
+a `QWidget` with a bold `QLabel` (`SettingsSectionTitle`) plus an
+`HLine`-shaped `QFrame` (`SettingsSectionLine`) that stretches to fill
+the remaining row width. Every section on this page (and presumably
+others in Settings) is just one call:
+`form.addRow(self._make_section_header(_t(...)))`. It's a clean,
+lightweight way to group related fields with a visible label + divider,
+and it already exists as a single shared method, not duplicated
+per-screen.
+
+**Why this matters right now:** UX-083 (the sidebar redesign) recommended
+adding subtle section grouping to the main nav list (splitting
+operational screens from admin/management ones) as a "modern, clean"
+improvement. This is exactly that pattern, already built, already
+proven, and already themed for both light and dark — no new component
+needs to be designed or QSS written from scratch.
+
+**Suggested fix / feature idea:** when implementing UX-083's sidebar
+redesign, reuse (or adapt) `_make_section_header()`'s visual language for
+the sidebar's section dividers instead of inventing a new one — same
+visual system, less new code, guaranteed consistency between Settings
+and the main navigation.

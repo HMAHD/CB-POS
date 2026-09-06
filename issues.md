@@ -111,6 +111,12 @@ don't need re-litigating every time a new screen surfaces the same issue.
 | [UX-063](#ux-063-void-refund-permission-changes-purchasing-and-credit-adjustments-have-zero-audit-trail) | Void, Refund, Permission changes, Purchasing, and Credit adjustments have zero audit trail | App-wide (audit logging) | P1 | 🔴 Open |
 | [UX-064](#ux-064-activity-log-has-no-color-or-icon-coding-by-event-type) | Activity Log has no color or icon coding by event type | Users, Activity Log | P2 | 🔴 Open |
 | [UX-065](#ux-065-activity-log-is-hardcoded-to-the-10-most-recent-rows-with-no-filter-ui) | Activity Log is hardcoded to the 10 most recent rows, with no filter UI | Users, Activity Log | P2 | 🔴 Open |
+| [UX-066](#ux-066-valid-na-to-na-is-real-and-once-set-a-price-lists-dates-can-never-be-changed) | "Valid: N/A to N/A" is real, and once set, a price list's dates can never be changed | Price Lists | P1 | 🔴 Open |
+| [UX-067](#ux-067-price-editing-is-double-click-only-and-reuses-the-same-known-broken-spinbox-stepper) | Price editing is double-click-only, and reuses the same known-broken spinbox stepper | Price Lists | P1 | 🔴 Open |
+| [UX-068](#ux-068-a-price-list-cant-be-renamed-and-a-product-override-cant-be-removed-once-set) | A price list can't be renamed, and a product override can't be removed once set | Price Lists | P1 | 🔴 Open |
+| [UX-069](#ux-069-new-price-list-dialogs-date-fields-work-but-are-unstyled-app-wide-gap) | New Price List dialog's date fields work but are unstyled (app-wide gap) | Price Lists | P2 | 🔴 Open |
+| [UX-070](#ux-070-status-column-shows-the-same-static-list-level-value-on-every-product-row) | STATUS column shows the same static, list-level value on every product row | Price Lists | P2 | 🔴 Open |
+| [UX-071](#ux-071-price-list-sidebar-is-cramped-plain-text-with-no-visual-hierarchy) | Price List sidebar is cramped, plain text with no visual hierarchy | Price Lists | P2 | 🔴 Open |
 
 ---
 
@@ -1371,7 +1377,7 @@ already reviewed by screenshot:**
 | Reports | `ReportViewer`, `ReportSidebarPanel`, `ReportCategoryCount`, `ReportNavItem` | `dark.qss:2387-2464` (UX-041) |
 | Document Browser (main table) | `DocTable` | `dark.qss:2980-3002` (UX-052/053) |
 | Document Browser (detail panel) | `DocDetailCloseBtn`, `DocItemsTable`, `DocInfoLabel`, `DocReprintBtn`, `DocRefundBtn`/`DocVoidBtn`, `DocPrevBtn`/`DocNextBtn` | `dark.qss:3020-3124` — not yet reviewed by screenshot, found in this audit |
-| Price Lists | `PriceListSidebarPanel`, `PriceListNavItem`, `PriceListContentPanel`, `PriceListHeader`, `PriceListDataTable`, `PriceListFooter` | `dark.qss:3120-3289` — a full screen not yet reviewed by screenshot, found in this audit |
+| Price Lists | `PriceListSidebarPanel`, `PriceListNavItem`, `PriceListContentPanel`, `PriceListHeader`, `PriceListDataTable`, `PriceListFooter` | `dark.qss:3120-3289` — now confirmed by screenshot too (see UX-066/071) |
 | Payment Methods (card list) | `PMCard` (`payment_methods_view.py:139`) | `dark.qss:3290-3305` — lighter touch (card background + `#00BCEB` hover border only, not a full-screen background) |
 
 That's **6 confirmed locations**, not the 2-3 found so far by screenshot
@@ -1671,7 +1677,8 @@ Every `QDateEdit` construction site in `cbpos/ui/`:
 | `credit_book_view.py:222,232` | `CreditDateEdit` | ❌ no — dead name, no matching rule |
 | `document_view.py:114,123` | `DocDateEdit` | ❌ no — dead name, no matching rule |
 | `purchase_view.py:863,873` | `PayableDateEdit` | ❌ no — dead name, no matching rule |
-| `receipt_reprint_dialog.py`, `data_export_dialog.py`, `customer_statement_dialog.py`, `admin_tools_view.py`, `data_safety_view.py`, `history_view.py`, `stock_take_view.py`, `purchase_view.py:452,459` | *(none set)* | ❌ no |
+| `receipt_reprint_dialog.py`, `data_export_dialog.py`, `customer_statement_dialog.py`, `admin_tools_view.py`, `data_safety_view.py`, `history_view.py`, `stock_take_view.py`, `pricelist_view.py:411,415`, `purchase_view.py:452,459` | *(none set)* | ❌ no |
+| `purchase_view.py:378` (`date_input`) | no `setCalendarPopup` call found — worth a direct check, this could be a functional gap (field may not open a picker at all), not just styling | none | ❌ no |
 
 **Root cause (verified in code):** exactly 2 of the 5 distinct
 `QDateEdit` objectNames used in the app have a matching QSS rule —
@@ -1687,6 +1694,17 @@ itself is unstyled everywhere in the app, including on the 2 screens that
 do have a styled input field (this is the same broken popup already
 logged as UX-013, now confirmed to be a symptom of this wider gap, not a
 one-off). None of the 15 sites set `setMinimumDate`/`setMaximumDate`.
+
+**Correction:** the table above originally undercounted the "no
+objectName" bucket by 2 sites (`pricelist_view.py:411,415` and
+`purchase_view.py:378`) — now added back in. `pricelist_view.py`'s two
+fields are confirmed functional (`setCalendarPopup(True)` is called,
+re-verified directly while reviewing UX-069) — just unstyled, same as
+the rest of the bucket. `purchase_view.py:378` (`date_input`) is still an
+open question — no `setCalendarPopup` call was found for it, which would
+mean that field can't open a picker at all, a functional bug rather than
+a styling one — flagged here for a direct check next time Purchasing's
+New GRN tab comes up again, rather than asserted as confirmed.
 
 **Why it matters:** you're right that it "isn't good throughout the
 application" — a shop owner filtering Credit Book, then Payables, then
@@ -2711,3 +2729,203 @@ it — this part is nearly free), a date range, and basic pagination or a
 "load more" control, matching the filter conventions already used
 elsewhere in the app (Document Browser's Type/Status/From/To row is a
 close template).
+
+---
+
+### UX-066: "Valid: N/A to N/A" is real, and once set, a price list's dates can never be changed
+
+**Screen:** Price Lists
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "top right corner shows Valid N/A N/A, that should
+be [a] date, it doesn't show."
+
+**Root cause (verified in code) — the display logic is actually
+correct, the data really is empty:** `pricelist_view.py:277-279` builds
+the label with a proper None-guard (`if price_list.start_date else
+"N/A"`), and `PriceList.start_date`/`end_date`
+(`cbpos/core/models/__init__.py:84-85`) are nullable. The three demo
+lists really do have no dates — `scripts/seed.py:147-150` creates
+`PriceList(name="Standard", is_active=True)` etc. with no date arguments
+at all. So "N/A to N/A" is an honest reflection of the data, not a
+formatting bug.
+
+**The deeper problem — this can never be fixed after the fact:**
+`PriceListService` has no update/edit method at all (only
+`create_price_list`, `get_all_lists`, `get_active_lists`,
+`set_item_price`, `delete_price_list`, `get_items`). Dates can only ever
+be entered once, at creation time, through `PriceListDialog`
+(confirmed working — see UX-069). Once a price list exists — with wrong
+dates, or none — there is no way to correct them short of deleting the
+whole list and recreating it (losing every product price override set on
+it in the process).
+
+**Why it matters:** a "Happy Hour" or seasonal price list is exactly the
+kind of thing whose validity dates *will* need adjusting — extend a
+promotion, fix a typo'd end date — and right now that requires destroying
+and rebuilding the entire list.
+
+**Suggested fix:** add an edit capability for a price list's name and
+date range (a small "Edit List" action next to Add/Delete), backed by a
+new `PriceListService.update_price_list(...)` method.
+
+---
+
+### UX-067: Price editing is double-click-only, and reuses the same known-broken spinbox stepper
+
+**Screen:** Price Lists
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "the only way to do changes to product price is
+double click."
+
+**Root cause (verified in code) — two compounding, already-familiar
+patterns, confirmed here a fifth time each:**
+1. `pricelist_view.py:166` disables native cell editing entirely
+   (`setEditTriggers(NoEditTriggers)`), and `pricelist_view.py:169` wires
+   **only** `doubleClicked` to `edit_item_price` — no button, no Enter
+   key, no context menu. Same gap as UX-009/032/035.
+2. `edit_item_price` (`pricelist_view.py:367-393`) opens the price input
+   via `QInputDialog.getDouble(...)` (lines 379-386) — Qt implements this
+   dialog's numeric field as an internal `QDoubleSpinBox`, which renders
+   the same unstyled +/- steppers already logged 4 times (UX-018/025/038/055),
+   and — because it's `QInputDialog`'s own internal widget — it can't even
+   be reached by objectName for a future QSS fix without replacing the
+   whole dialog.
+
+**Why it matters:** setting prices is the single most common action on
+this screen, and it's both undiscoverable (no visible affordance) and
+built on the one native-Qt shortcut (`QInputDialog`) that can't be styled
+to match the rest of the app even if someone tried.
+
+**Suggested fix:** add a visible "Edit Price" button/Enter-key binding
+matching UX-009's fix, and replace `QInputDialog.getDouble` with the
+app's own styled dialog pattern (a small custom `QDialog` with a
+`QLineEdit` + validator, matching `QuantityDialog`'s already-correct
+approach) instead of a native Qt convenience dialog.
+
+---
+
+### UX-068: A price list can't be renamed, and a product override can't be removed once set
+
+**Screen:** Price Lists
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "lack of CRUD operations."
+
+**Root cause (verified in code) — confirmed, two real gaps beyond
+UX-066's date problem:**
+- The sidebar only wires `+ Add` → `add_price_list` and `Delete` →
+  `delete_price_list` (`pricelist_view.py:90,95`) — there is no
+  rename/edit-name handler anywhere in the file, and (per UX-066)
+  `PriceListService` has no update method to support one even if the
+  button existed.
+- `set_item_price` (`price_list_service.py:48-66`) only ever
+  upserts — there is no `delete_item_price`/remove-override method
+  anywhere in the service, and `edit_item_price` never offers a "clear"
+  option. Once a LIST PRICE is set for a product, it can only ever be
+  changed to a different number — it can never be reverted back to "-"
+  (i.e., back to using the base price with no override).
+
+**Why it matters:** this is a real, everyday limitation for managing
+price lists — renaming "Happy Hour" to "Weekend Special," or undoing a
+mistaken product-specific override, are both things a shop owner will
+want to do and currently can't, without deleting and rebuilding.
+
+**Suggested fix:** add `update_price_list(name=...)` for renaming
+(pairs with UX-066's date-edit fix — likely the same dialog/service
+change), and add a "Remove Override" option in `edit_item_price` (or a
+right-click action) that deletes the `PriceListItem` row entirely,
+falling back to the product's base price.
+
+---
+
+### UX-069: New Price List dialog's date fields work but are unstyled (app-wide gap)
+
+**Screen:** Price Lists → "+ Add"
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "new price list creation tab has date selection,
+same date picker problem there also."
+
+**Root cause (verified in code) — good news, the fields work; this is
+purely the already-tracked styling gap, not a second broken widget:**
+`PriceListDialog.init_ui` (`pricelist_view.py:402-432`) builds
+`start_date`/`end_date` as `QDateEdit` with `setCalendarPopup(True)`
+called on both (lines 413, 417) — the calendar does open and function.
+Neither field gets a `setObjectName()`, though, so they fall into the
+same unstyled bucket as 10+ other date fields across the app — now
+folded into [UX-039](#ux-039-only-2-of-15-date-pickers-in-the-app-have-any-styling-at-all)'s
+confirmed scope (see its correction note).
+
+**Why it matters:** covered by UX-039's broader fix — noted here mainly
+so this specific screen doesn't get rediscovered as a separate mystery
+later.
+
+**Suggested fix:** same as UX-039 — a shared `QDateEdit`/`QCalendarWidget`
+QSS rule fixes this location along with the rest.
+
+---
+
+### UX-070: STATUS column shows the same static, list-level value on every product row
+
+**Screen:** Price Lists, product table
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes — found while checking what STATUS actually
+represents.** Every one of the 80 product rows shows "Active" —
+identically.
+
+**Root cause (verified in code):** `_get_price_list_status`
+(`pricelist_view.py:223-238`) computes exactly **one** status for the
+whole price list (based on its start/end dates vs. now), and
+`load_items` (lines 300, 324-326) applies that same single value to
+every row in the loop. It's not a per-product or per-override flag —
+`PriceListItem` has no `is_active` field at all, so there's no real
+per-row state for this column to represent yet.
+
+**Why it matters:** a column that repeats the exact same value 80 times
+reads as either broken or pointless — right now it's neither, it's just
+showing list-level information at the row level, which is misleading
+framing more than a bug.
+
+**Suggested fix:** either move this into the header (next to the
+existing "Active" badge, since that's genuinely where it belongs — it's
+already shown there) and drop the per-row column entirely, or give
+`PriceListItem` a real per-product active/inactive flag if that's
+actually a feature worth having (e.g. temporarily disable one product's
+override without deleting it) — in which case the column becomes
+meaningful data instead of a repeated constant.
+
+---
+
+### UX-071: Price List sidebar is cramped, plain text with no visual hierarchy
+
+**Screen:** Price Lists, left sidebar
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "price list [shown] in sidebar is too close
+[together], items — make [it] creative, it [keep space and] looks
+clean."
+
+**Root cause (verified in code):** `dark.qss:3148-3157`
+(`QPushButton#PriceListNavItem`) sets `padding: 10px 12px;` with no icon
+support, and `pricelist_view.py:78` sets only 2px between buttons
+(`setSpacing(2)`). The label itself is a single plain string
+(`pricelist_view.py:260`: `f"{pl.name}  [{status_text}]"`) — no icon
+widget, no count badge, no section header, no separators. Contrast with
+the Reports category sidebar reviewed earlier, which at least has
+section headers and count badges — Price Lists has neither, just three
+tightly-packed text buttons.
+
+**Why it matters:** with only 3 items today this is mild, but it already
+reads as an afterthought compared to Reports' sidebar, and it won't
+scale gracefully if a shop ends up with 8-10 price lists (seasonal,
+wholesale tiers, staff discount, etc.).
+
+**Suggested fix:** give nav items more breathing room (16-20px vertical
+padding, more spacing between buttons), move the "[Active]"/inactive
+status into a small colored badge instead of bracketed text (matching
+the pattern the "Standard" header status pill already uses, just visible
+in the sidebar too), and consider a small icon per list for quicker visual
+scanning once there are more than a handful.

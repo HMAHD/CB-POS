@@ -72,6 +72,12 @@ Nothing gets "fixed" here, only logged.
 | [UX-038](#ux-038-new-customer-dialogs-commercial-tab-has-mismatched-field-widths-recurring-pattern-to-watch-for) | New Customer dialog's Commercial tab has mismatched field widths — recurring pattern to watch for | Customer Editor, Commercial tab | P1 | 🔴 Open |
 | [UX-039](#ux-039-only-2-of-15-date-pickers-in-the-app-have-any-styling-at-all) | Only 2 of 15 date pickers in the app have any styling at all | App-wide (`QDateEdit`) | P1 | 🔴 Open |
 | [UX-040](#ux-040-customer-statement-dialog-has-uneven-filter-row-and-summary-spacing) | Customer Statement dialog has uneven filter-row and summary spacing | Print Statement dialog | P2 | 🔴 Open |
+| [UX-041](#ux-041-reports-screen-is-a-third-independent-navy-themed-screen-not-shared-with-ux-031) | Reports screen is a third, independent navy-themed screen — not shared with UX-031 | Reports | P2 | 🔴 Open |
+| [UX-042](#ux-042-reports-category-panel-scales-far-wider-than-its-content-needs) | Reports category panel scales far wider than its content needs | Reports | P2 | 🔴 Open |
+| [UX-043](#ux-043-no-shared-empty-state-component-every-screen-hand-builds-its-own) | No shared empty-state component — every screen hand-builds its own | App-wide | P3 | 🔴 Open |
+| [UX-044](#ux-044-current-nav-item-highlight-is-much-weaker-when-the-sidebar-is-collapsed) | Current nav item highlight is much weaker when the sidebar is collapsed | Main sidebar (all screens) | P2 | 🔴 Open |
+| [UX-045](#ux-045-pos-logout-buttons-still-use-the-leftover-string-padding-hack) | POS / Logout buttons still use the leftover string-padding hack | Main sidebar (all screens) | P3 | 🔴 Open |
+| [UX-046](#ux-046-sidebar-widthexpanded-header-in-the-screenshot-doesnt-match-the-widths-in-code-needs-a-live-render-to-confirm) | Sidebar width/expanded header in the screenshot doesn't match the widths in code (needs a live render to confirm) | Main sidebar (all screens) | P2 | 🔴 Open |
 
 ---
 
@@ -1601,24 +1607,27 @@ Every `QDateEdit` construction site in `cbpos/ui/`:
 
 | File | objectName | Styled in QSS? |
 |---|---|---|
-| `dashboard_view.py:238,249` | `PeriodDateEdit` | ✅ yes |
-| `credit_book_view.py:222,232` | `CreditDateEdit` | ❌ no |
-| `document_view.py:114,123` | `DocDateEdit` | ❌ no |
-| `purchase_view.py:863,873` | `PayableDateEdit` | ❌ no |
-| `reports/filter_widget.py:55,58` | `ReportDateEdit` | ❌ no |
+| `dashboard_view.py:238,249` | `PeriodDateEdit` | ✅ yes (`dark.qss:1692`) |
+| `reports/filter_widget.py:55,58` | `ReportDateEdit` | ✅ yes (`dark.qss:2507-2524`) |
+| `credit_book_view.py:222,232` | `CreditDateEdit` | ❌ no — dead name, no matching rule |
+| `document_view.py:114,123` | `DocDateEdit` | ❌ no — dead name, no matching rule |
+| `purchase_view.py:863,873` | `PayableDateEdit` | ❌ no — dead name, no matching rule |
 | `receipt_reprint_dialog.py`, `data_export_dialog.py`, `customer_statement_dialog.py`, `admin_tools_view.py`, `data_safety_view.py`, `history_view.py`, `stock_take_view.py`, `purchase_view.py:452,459` | *(none set)* | ❌ no |
 
-**Root cause (verified in code):** the only `QDateEdit` rule in either
-theme is `QDateEdit#PeriodDateEdit` (`dark.qss:1692`, `light.qss:1735`) —
-scoped to the 2 Dashboard instances only. There is **no generic `QDateEdit
-{ ... }` type-selector rule** in either QSS file, so every other instance
-(11 of 13 remaining sites, several with their own unused objectName that
-nothing in the QSS ever matches) falls back to Qt's bare native styling —
-and there is **no `QCalendarWidget` rule anywhere**, so the calendar popup
-itself is unstyled everywhere in the app, including on the 2 "styled"
-`PeriodDateEdit` instances (this is the same broken popup already logged
-as UX-013, now confirmed to be a symptom of this wider gap, not a one-off).
-None of the 15 sites set `setMinimumDate`/`setMaximumDate`.
+**Root cause (verified in code):** exactly 2 of the 5 distinct
+`QDateEdit` objectNames used in the app have a matching QSS rule —
+`#PeriodDateEdit` (`dark.qss:1692`, `light.qss:1735`) and `#ReportDateEdit`
+(`dark.qss:2507-2524`, `light.qss:2407-2424`) — covering the 2 Dashboard
+and 2 Reports fields (4 widgets across 2 of the 15 file-sites). There is
+**no generic `QDateEdit { ... }` type-selector rule** in either QSS file,
+so the other 13 sites fall back to Qt's bare native styling, including 3
+with their own dead objectName (`CreditDateEdit`, `DocDateEdit`,
+`PayableDateEdit`) that nothing in either QSS file ever matches — and
+there is **no `QCalendarWidget` rule anywhere**, so the calendar popup
+itself is unstyled everywhere in the app, including on the 2 screens that
+do have a styled input field (this is the same broken popup already
+logged as UX-013, now confirmed to be a symptom of this wider gap, not a
+one-off). None of the 15 sites set `setMinimumDate`/`setMaximumDate`.
 
 **Why it matters:** you're right that it "isn't good throughout the
 application" — a shop owner filtering Credit Book, then Payables, then
@@ -1628,8 +1637,8 @@ broken/unstyled regardless of which field opened it.
 
 **Suggested fix — my recommendation as the one to make:** don't keep
 patching per-instance objectNames (`CreditDateEdit`, `DocDateEdit`,
-`PayableDateEdit`, `ReportDateEdit` already exist and are just never
-matched — that's dead naming, not a fix waiting to happen). Add **one**
+`PayableDateEdit` already exist and are just never matched — that's dead
+naming, not a fix waiting to happen). Add **one**
 generic `QDateEdit { ... }` rule plus a matching `QCalendarWidget { ... }`
 + `QCalendarWidget QAbstractItemView { ... }` rule block to both
 `dark.qss`/`light.qss`, styled once to match the app's real theme, and let
@@ -1683,3 +1692,238 @@ layout (`QFormLayout`/`QGridLayout`) used elsewhere in the app.
 `QGridLayout` (label column, value column) instead of packed
 `QHBoxLayout`s — same fix direction as UX-038, applied to a second
 dialog.
+
+---
+
+### UX-041: Reports screen is a third, independent navy-themed screen — not shared with UX-031
+
+**Screen:** Reports (category sidebar + content pane)
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "same blue problem" — you spotted this on sight,
+correctly, as the same family of issue already logged for Payables/Credit
+Book.
+
+**Worth getting the framing exactly right, because it's a slightly
+different bug than UX-031, not the same one:** UX-031 is one shared QSS
+rule block reused by two screens (`Credit*`/`Payable*` selectors paired
+1:1 in the same rule). Reports is **not** wired into that block — it has
+its own, separately-written objectNames and rules using the same navy
+palette:
+- `#ReportViewer { background-color: #001F3F; }` (`dark.qss:2387-2389`)
+- `#ReportSidebarPanel { background-color: #0A1929; }` (`dark.qss:2398-2401`)
+- `#ReportCategoryCount` (the "3"/"4"/"2" badges) → `background-color:
+  #112240;` (`dark.qss:2431-2439`)
+- checked nav item → `background-color: #0D2847;` accent `#00BCEB`
+  (`dark.qss:2459-2464`)
+
+**Why it matters:** this is now the **third** screen carrying this exact
+navy palette (`#001F3F`/`#0A1929`/`#112240`/`#00BCEB`), each one coded
+independently rather than sharing a single reusable style — meaning it
+isn't a one-off leftover (UX-019) or even a single deliberate decision
+applied twice (UX-031). It looks like an unnamed "financial/data drill-down"
+house style that's been hand-copied every time someone builds a screen like
+this, with no shared class or documented name anywhere. That makes it
+harder, not easier, to fix consistently — three separate rule blocks to
+change instead of one.
+
+**A smaller, compounding issue on the same block:** the category header
+label (`ReportCategoryLabel`) is plain transparent text
+(`dark.qss:2423-2429`) while its count badge (`ReportCategoryCount`) gets
+its own pill background — two different visual treatments for what reads
+as one header row — and the badge's text color (`#3A5A7A` on `#112240`) is
+low-contrast, borderline hard to read.
+
+**Suggested fix:** same product decision as UX-031, but now covering 3
+screens — either name this "financial ledger" style formally, extract it
+into one shared QSS class/objectName convention so all 3 (and any future
+screen) draw from one place, or retire it everywhere in favor of the
+standard `#1E1E1E`/`#252526` surface. Whichever way you go, fix Reports in
+the same pass as UX-031 rather than as a fourth separate cleanup later.
+
+---
+
+### UX-042: Reports category panel scales far wider than its content needs
+
+**Screen:** Reports, middle category panel
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "report list is too wide."
+
+**Root cause (verified in code):** `report_viewer.py:114` — a `QSplitter`
+(`objectName="ReportSplitter"`) with:
+```python
+splitter.setSizes([280, 720])       # report_viewer.py:282
+sidebar.setMinimumWidth(260)        # report_viewer.py:284
+```
+No `setStretchFactor()` is ever called. A plain `QSplitter` without stretch
+factors keeps its panels' **proportional ratio** (roughly 28:72) as the
+window resizes, rather than pinning the category list to a sensible fixed
+width and giving all the extra space to the report content on the right.
+On a large monitor (the screenshots are 2880px wide) that stretches the
+category panel — whose actual content is short labels like "AUDIT" and
+"Stock Movement Audit" — into far more width than it needs, which is
+exactly the "too wide, lots of dead space" look in the screenshot. Nothing
+inside the panel (`ReportNavContainer`, lines 135-145) sets a max-width
+either, so there's nothing to stop it from growing.
+
+**Why it matters:** wasted horizontal space in a navigation list isn't
+just cosmetic here — the whole right pane (where the actual report table/
+chart needs the room) is the one that gets shortchanged as a result.
+
+**Suggested fix:** set explicit stretch factors —
+`splitter.setStretchFactor(0, 0)` (sidebar doesn't grow) and
+`splitter.setStretchFactor(1, 1)` (content takes all extra space) — and
+add a `setMaximumWidth(320-360)` on the sidebar panel so it stays a fixed,
+comfortable list width regardless of monitor size, exactly like a
+professional 3-pane app (email client, IDE) would.
+
+---
+
+### UX-043: No shared empty-state component — every screen hand-builds its own
+
+**Screen:** App-wide (Reports' "Select a Report" placeholder used as the
+trigger for this review)
+**Severity:** P3 · **Status:** 🔴 Open
+
+**Not from your notes — found while checking whether Reports' "Select a
+Report" placeholder reused an existing pattern.** It doesn't. Reports
+builds its own: a custom-painted bar-chart icon (`_ReportPlaceholderIcon`,
+`report_viewer.py:53-93`) + `ReportEmptyText`/`ReportEmptySubtext` labels
+(198-217). Checking around the app for the "empty state" pattern already
+referenced in UX-001/UX-030 turns up **three different implementations**,
+not one shared one:
+- Reports: icon + title + subtext, custom widget (above).
+- `customer_view.py:97-107`: a single spanned `QTableWidgetItem` with gray
+  text *inside* the table — a completely different technique.
+- `pricelist_view.py`, `sales_view.py`: their own variations again, per a
+  grep across the codebase.
+
+**Why it matters:** for an app aiming at an "industry-grade, every screen
+looks intentional" bar, empty states are one of the highest-visibility
+places this shows — a shop owner sees them constantly (no products, no
+customers yet, no report run yet), and right now every screen that has one
+looks and behaves slightly differently, with no shared visual language.
+
+**Suggested fix / feature idea:** extract one reusable `EmptyStateWidget`
+(icon + title + optional subtext + optional action button) into
+`cbpos/ui/widgets/`, themed once in QSS, and swap every ad hoc empty-state
+implementation in the app over to it — Reports, POS cart (UX-001/UX-005),
+GRN History/Payables (UX-030), and any table view that currently shows
+nothing or a bare text row when empty.
+
+---
+
+### UX-044: Current nav item highlight is much weaker when the sidebar is collapsed
+
+**Screen:** Main sidebar, both collapsed and expanded states, every screen
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes — found while investigating the expand/collapse
+complaint below.** Comparing your two screenshots: collapsed, the current
+section (Reports) is marked only by a thin blue left-edge bar next to its
+icon; expanded, it gets that same bar **plus** a full-width grey background
+box behind the icon+label. That's a real, noticeable difference in how
+easy it is to tell which section you're on.
+
+**Root cause (verified in code):** `dark.qss:581-586` — there is only
+**one** checked/active rule, meant to apply the same in both states:
+```css
+QToolButton#SidebarButton:checked, QToolButton#SidebarButton[active="true"] {
+    background-color: #2A2A2A;
+    color: #00BCEB;
+    border-left: 4px solid #00BCEB;
+    font-weight: bold;
+}
+```
+The `[collapsed="true"]` rule right below it only adjusts padding/text
+alignment, not background — so the grey box is *supposed* to render in
+collapsed mode too. It most likely doesn't reliably because `QToolButton`
+in `ToolButtonIconOnly` display mode is known to not always paint a
+stylesheet background over its full rect — a Qt rendering quirk, not a
+second intentional design. On top of that, `set_active()`
+(`custom_widgets.py:79-81`) only calls `setChecked()` — it never recolors
+the qtawesome icon glyph itself, so in collapsed mode (where there's no
+text to turn cyan) **nothing about the icon's color changes at all**;
+the thin left bar is the only signal.
+
+**Why it matters:** collapsed mode is presumably the more common state
+once someone's used the app for a while (it's the more efficient use of
+screen space) — and that's exactly the state where "which section am I
+in" is hardest to tell at a glance.
+
+**Suggested fix:** recolor the icon glyph itself on the checked state
+(swap the qtawesome icon's color, not just the button's QSS), so the
+signal survives in icon-only mode instead of relying on a background fill
+that Qt may not paint reliably in that display mode.
+
+---
+
+### UX-045: POS / Logout buttons still use the leftover string-padding hack
+
+**Screen:** Main sidebar, bottom section, every screen
+**Severity:** P3 · **Status:** 🔴 Open
+
+**Not from your notes — found while checking sidebar label spacing.**
+Every regular nav button (Dashboard, Inventory, Reports, etc.) gets its
+icon/text spacing from real layout + QSS padding
+(`add_nav_button`, no hack). But `retranslate_pos_logout()`
+(`collapsible_sidebar.py:171-172`) still does this:
+```python
+self.btn_pos.setText("   " + _t("management.sidebar_pos"))
+self.btn_logout.setText("   " + _t("management.sidebar_logout"))
+```
+Three literal space characters faking icon-text spacing, on exactly the
+two buttons that sit at the bottom of every sidebar screenshot you've
+sent (POS/Sales in green, Logout in red) — while every other button in
+the same list does it properly.
+
+**Why it matters:** it's a small thing, but it means these two labels
+won't line up pixel-identically with the rest of the list at every font/
+DPI setting the way a real layout spacing would, and it's dead code
+duplicating what the rest of the file already does correctly.
+
+**Suggested fix:** drop the string-padding hack on these two buttons and
+route them through the same layout-spacing mechanism `add_nav_button`
+already gives every other item.
+
+---
+
+### UX-046: Sidebar width/expanded header in the screenshot doesn't match the widths in code (needs a live render to confirm)
+
+**Screen:** Main sidebar, collapsed vs expanded
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "when sidebar open to show text instead icon, UX is
+very bad" — pointing at the expanded state specifically.
+
+**Two things I found that don't obviously reconcile, so I'm logging both
+honestly rather than asserting a root cause I haven't rendered and
+confirmed:**
+
+1. **Width discrepancy.** `collapsible_sidebar.py:20-22` defines
+   `EXPANDED_WIDTH = 250`, `COLLAPSED_WIDTH = 70` (300ms animated
+   transition, `QPropertyAnimation` on min/max width, lines 106-113/195-201).
+   Your screenshots look noticeably wider than that in both states. This
+   could just be the screenshot's own scale (2880px source, described as
+   "displayed at 2000x1250, multiply by 1.44") making a visual estimate
+   unreliable — but it's worth a real render to confirm the constants
+   actually in this codebase are what's running, rather than guessing from
+   a scaled screenshot the way UX-014 stayed honestly unconfirmed.
+
+2. **Header layout.** `collapsible_sidebar.py:54-75` builds the logo +
+   hamburger as a single `QHBoxLayout` row (logo, stretch, toggle button),
+   fixed at 60px height — there's no code path that stacks the hamburger
+   above the logo on its own line. Your expanded screenshot appears to
+   show exactly that stacked look (hamburger on one line, "C3 CEYLON
+   BYTES" logo below it). If real, that's most likely the 60px header
+   being too short once the full logo pixmap + wordmark render at 250px
+   width, forcing a wrap — but I haven't rendered it to confirm, so I'm
+   not asserting that as the fix yet.
+
+**Suggested fix:** before changing anything, render `CollapsibleSidebar`
+offscreen at both collapsed and expanded widths (the same
+`QT_QPA_PLATFORM=offscreen` + `.grab()` technique used earlier for the
+Applied Payments and Dashboard calendar bugs) to see the real pixel output
+next to these numbers, then adjust whichever of the two (stale constants,
+or header height) turns out to be the actual cause.

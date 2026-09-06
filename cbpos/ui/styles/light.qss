@@ -280,6 +280,18 @@ QPushButton[class="accent"]:hover {
     background-color: #0088B5;
 }
 
+/* Secondary Button (neutral, outlined -- dismiss/close actions that
+   aren't destructive enough for the red Danger style) */
+QPushButton[class="secondary"] {
+    background-color: transparent;
+    color: #374151;
+    border: 1px solid #D1D5DB;
+}
+
+QPushButton[class="secondary"]:hover {
+    background-color: #E5E7EB;
+}
+
 /* Warning Button (Yellow) */
 QPushButton[class="warning"] {
     background-color: #FFC107;

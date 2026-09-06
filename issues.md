@@ -44,6 +44,10 @@ Nothing gets "fixed" here, only logged.
 | [UX-010](#ux-010-select-customer-table-truncates-real-customer-names) | Select Customer table truncates real customer names | Select Customer dialog | P1 | 🔴 Open |
 | [UX-011](#ux-011-select-customer-header-alignment-doesnt-match-cell-alignment-same-pattern-as-ux-002) | Select Customer header alignment doesn't match cell alignment — same pattern as UX-002 | Select Customer dialog | P2 | 🔴 Open |
 | [UX-012](#ux-012-select-customer-table-skips-3-conventions-every-other-table-in-the-app-follows) | Select Customer table skips 3 conventions every other table in the app follows | Select Customer dialog | P2 | 🔴 Open |
+| [UX-013](#ux-013-periodic-reports-date-picker-calendar-popup-renders-broken-reproduced-exactly) | Periodic Reports date-picker calendar popup renders broken (reproduced exactly) | Dashboard | P1 | 🔴 Open |
+| [UX-014](#ux-014-total-sales-kpi-number-appears-clipped-in-the-reported-screenshot-couldnt-reproduce-yet) | Total Sales KPI number appears clipped in the reported screenshot (couldn't reproduce yet) | Dashboard | P1 | 🔴 Open |
+| [UX-015](#ux-015-both-dashboard-background-workers-swallow-errors-silently-and-leave-the-ui-stuck) | Both dashboard background workers swallow errors silently and leave the UI stuck | Dashboard | P1 | 🔴 Open |
+| [UX-016](#ux-016-periodic-reports-date-range-has-no-sanity-bounds-and-isnt-remembered) | Periodic Reports date range has no sanity bounds and isn't remembered | Dashboard | P2 | 🔴 Open |
 
 ---
 
@@ -514,3 +518,190 @@ If the ID column's presentation ever changes (padding, a `#` prefix, i18n
 formatting), this parse breaks silently. Worth storing the ID as UserRole
 data on the row instead of round-tripping it through display text, regardless
 of what happens with the ID column itself.
+
+---
+
+### UX-013: Periodic Reports date-picker calendar popup renders broken (reproduced exactly)
+
+**Screen:** Dashboard, "Periodic Reports" date range fields
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** the calendar popup doesn't display properly.
+
+**Reproduced pixel-for-pixel** — constructed the real `DashboardView`,
+opened `date_from`'s calendar popup, and grabbed it. Weekday header shows
+"..." repeated across every column; day-number cells (including a "3", "4"
+in red, and a stray "1") render past the popup's own right edge, overlapping
+whatever sits next to it on screen — exactly what your screenshot shows.
+
+**Root cause (verified in code):** `dashboard_view.py:238-254` sets
+`date_from`/`date_to` up as plain `QDateEdit(setCalendarPopup(True))` —
+there's no custom calendar subclass, just Qt's stock `QCalendarWidget`. A
+`grep -ni "calendar"` across `dark.qss` returns **zero matches** — nothing
+in this app's stylesheet targets `QCalendarWidget` at all. But the popup
+isn't actually unstyled either: its internal day-grid is a `QTableView`
+subclass and its weekday-name row is a `QHeaderView`, both of which match
+**fully unscoped, global** rules meant for completely different widgets
+elsewhere in the app:
+```css
+/* dark.qss:354-361 — meant for real data tables, matches every QHeaderView::section in the app */
+QHeaderView::section {
+    padding: 10px;
+    font-weight: bold;
+    border-bottom: 2px solid #00BCEB;
+    ...
+}
+/* dark.qss:1769-1786 — meant for real data tables */
+QTableView::item { padding: 8px; border: none; }
+```
+Qt computes the calendar popup's window size (`sizeHint()` in my repro:
+224×171 — tiny) *before* factoring in stylesheet padding. Once `padding:
+10px` lands on every header cell and `padding: 8px` on every day cell, the
+content those cells need no longer fits the geometry Qt already locked in —
+the header text gets elided down to "...", and the day-grid's true rendered
+width exceeds the popup's fixed window width, so cells past a certain
+column spill out past its edge entirely.
+
+**Why it matters:** this isn't just visually broken — it's genuinely
+unusable. You can't reliably tell what date a bleeding-out cell corresponds
+to, so picking a date via this calendar is as likely to select the wrong
+one as the right one. (See UX-016 — this is almost certainly how the report
+range ended up a year in the future in your screenshot.)
+
+**Suggested fix:** add a real, scoped stylesheet block for the calendar
+popup specifically — e.g. `QCalendarWidget QAbstractItemView` /
+`QCalendarWidget QTableView::item` / `QCalendarWidget QHeaderView::section`
+overrides with padding/font-size sized to actually fit a fixed small popup,
+*and* give the popup itself a bit more room via
+`calendarWidget().setMinimumSize(...)` after `setCalendarPopup(True)` (Qt
+does respect an explicit minimum size on the calendar widget itself, unlike
+the auto-computed default). Test at the exact size chosen, the same way I
+just did — this can't be eyeballed from QSS alone, it needs a rendered
+check.
+
+**Feature idea:** most of the time a cashier or owner wants "This Month" /
+"Last Month" / "This Year" / "Last 7 Days," not an arbitrary custom range —
+a small row of preset-range buttons next to the date fields would cover the
+common case without needing the calendar popup at all, and make the
+custom-range calendar a rarely-used fallback rather than the primary
+interaction. Worth considering alongside the fix, not instead of it (a
+custom range is still a real, legitimate need).
+
+---
+
+### UX-014: Total Sales KPI number appears clipped in the reported screenshot (couldn't reproduce yet)
+
+**Screen:** Dashboard, top-right summary panel
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "Rs. 161,749." cuts off right after the decimal point
+— no cents digits visible, like the text is too big for its box.
+
+**Being upfront about what I could and couldn't confirm:** I checked the
+code and rendered the real dashboard twice — once standalone, once inside
+the full `ManagementView` at the exact 2880×1800 resolution your screenshot
+was taken at — and in both renders `format_currency()` correctly produces
+`"Rs. 161,749.00"` and it displays in full, not clipped. So I can't yet
+reproduce what your screenshot shows, which means either it's specific to
+the real device (HiDPI/Retina font-metric rounding is a very plausible
+culprit — the `SummaryBigValue` label is a large 32px font with no
+`setWordWrap`, no `setMaximumWidth`, and no elide-mode set, so it has zero
+safety margin if font metrics come out even slightly different than my
+offscreen render assumes), or the real total in your data has more digits
+than my test value did and tips it over some threshold mine didn't reach.
+
+**Root cause candidate (confirmed in code, even if I couldn't trigger the
+visible symptom):** `dashboard_view.py:190-221` builds this value as
+`QLabel#SummaryBigValue`, styled at `dark.qss:1635-1640`:
+```css
+QLabel#SummaryBigValue { font-size: 32px; font-weight: bold; }
+```
+— more than double `QLabel#SummarySubValue`'s 14px (the "Rs. 136,423.58"
+right below it, which isn't clipped in your screenshot). Neither label has
+any wrapping, elision, or width safety net, so whichever one is closer to
+its container's actual limit is the one that has no fallback if it's ever
+1 pixel too wide.
+
+**Suggested fix, regardless of exact root cause:** don't rely on a fixed
+32px working out — either enable `setWordWrap(True)` with a two-line
+layout the panel already has room for, or (better, matching this app's
+existing responsive-font mechanism already used for the theme's
+`{{FONT_SIZE}}` system) scale the font down slightly for wider numbers, or
+set an explicit `setMinimumWidth` on the summary panel generous enough for
+worst-case totals (7-8 digits) at 32px. Whatever we pick, it needs to be
+checked on the actual target device/resolution before calling it fixed —
+this is exactly the kind of thing that looks fine in one environment and
+clips in another.
+
+---
+
+### UX-015: Both dashboard background workers swallow errors silently and leave the UI stuck
+
+**Screen:** Dashboard (whole screen)
+**Severity:** P1 · **Status:** 🔴 Open
+
+**Not from your notes — flagged as the system-engineer pass you asked for.**
+This is the same bug *class* already found and fixed in the print/reprint
+flows earlier in this review (issues #244/#248 from the prior GitHub-issue
+batch): a background worker that only reports success, with no path back
+to the UI on failure.
+
+`dashboard_view.py`'s `_YearlyWorker.run()` (lines 52-60) and
+`_PeriodicWorker.run()` (lines 73-85) both wrap their DB calls in a bare
+`try/except Exception: logger.exception(...)` — **neither emits its
+`finished` signal on failure.** Since `_on_yearly_ready()` /
+`_on_periodic_ready()` are the only places that hide the monthly-chart
+loading overlay, re-enable the prev/next-year buttons, re-enable the
+`date_from`/`date_to` pickers, and reset the refresh button off its
+hourglass icon — if either query throws for any reason (a transient DB
+hiccup, a bad date range, anything), those elements **stay stuck exactly as
+they were mid-load, permanently**, with zero indication to the user that
+anything went wrong or what to do about it.
+
+**Why it matters:** a dashboard that silently freezes mid-refresh, with no
+error and no way to tell it's stuck versus just slow, is the kind of bug
+that generates a support call rather than a bug report — the owner has no
+idea it's broken, they just see numbers that never update again until they
+restart the app.
+
+**Suggested fix:** give both workers an `error_occurred = pyqtSignal(str)`
+(mirroring the pattern already established for `PrintWorker`), emit it in
+the `except` branch instead of only logging, and connect it in
+`DashboardView` to re-enable whatever that worker's success path would have
+re-enabled, plus a lightweight, non-blocking error indicator (a small inline
+message where the KPI/chart would be is enough — this doesn't need a modal).
+
+---
+
+### UX-016: Periodic Reports date range has no sanity bounds and isn't remembered
+
+**Screen:** Dashboard, "Periodic Reports" date range fields
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Directly answers your "get more accurate data" ask.** Two related gaps,
+both confirmed in code:
+
+1. **No min/max bounds on the date pickers at all** — `dashboard_view.py`
+   never calls `setMaximumDate`/`setMinimumDate` on either field. There's no
+   sales data from the future, so a report range that can end next year (as
+   yours did) or start before the shop existed produces a query that's
+   technically "valid" but never meaningfully correct. I verified the
+   *initial* default computed at construction (`Jan 1 of current year` →
+   `today`) is correct — there's no date-math bug there — so a value like
+   `06.09.2027` almost certainly came from a stray click that landed on the
+   wrong cell, which UX-013's broken popup makes very easy to do by
+   accident.
+2. **The chosen range isn't a remembered preference** — `dashboard_view.py`
+   has no `ConfigService` usage anywhere; the date range lives purely in
+   the widget's in-memory state for as long as the view instance is alive,
+   reset to today's default only on a fresh app start. If the owner checks
+   "Last Month" every morning, they re-pick it every morning too.
+
+**Suggested fix:**
+1. Cap `date_to` at `QDate.currentDate()` and set a sensible `date_from`
+   floor (e.g. the shop's earliest recorded sale, or just "not before
+   `date_to`") so an accidental future/reversed range is structurally
+   impossible rather than just unlikely.
+2. Persist the last-used range (or which preset was active, if UX-013's
+   preset-buttons idea is adopted) via `ConfigService`, restored on next
+   dashboard load — small change, meaningfully less repetitive for daily use.

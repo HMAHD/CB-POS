@@ -78,6 +78,10 @@ Nothing gets "fixed" here, only logged.
 | [UX-044](#ux-044-current-nav-item-highlight-is-much-weaker-when-the-sidebar-is-collapsed) | Current nav item highlight is much weaker when the sidebar is collapsed | Main sidebar (all screens) | P2 | 🔴 Open |
 | [UX-045](#ux-045-pos-logout-buttons-still-use-the-leftover-string-padding-hack) | POS / Logout buttons still use the leftover string-padding hack | Main sidebar (all screens) | P3 | 🔴 Open |
 | [UX-046](#ux-046-sidebar-widthexpanded-header-in-the-screenshot-doesnt-match-the-widths-in-code-needs-a-live-render-to-confirm) | Sidebar width/expanded header in the screenshot doesn't match the widths in code (needs a live render to confirm) | Main sidebar (all screens) | P2 | 🔴 Open |
+| [UX-047](#ux-047-reports-date-picker-has-a-near-invisible-click-target-and-no-fixed-display-format) | Reports date picker has a near-invisible click target and no fixed display format | Reports | P1 | 🔴 Open |
+| [UX-048](#ux-048-report-tables-last-column-always-stretches-truncating-the-first-columns-labels) | Report table's last column always stretches, truncating the first column's labels | Reports | P1 | 🔴 Open |
+| [UX-049](#ux-049-every-report-type-shares-one-generic-renderer-with-zero-report-specific-treatment) | Every report type shares one generic renderer with zero report-specific treatment | Reports | P2 | 🔴 Open |
+| [UX-050](#ux-050-pagination-controls-render-even-when-there-is-only-one-page) | Pagination controls render even when there is only one page | Reports | P3 | 🔴 Open |
 
 ---
 
@@ -1927,3 +1931,166 @@ offscreen at both collapsed and expanded widths (the same
 Applied Payments and Dashboard calendar bugs) to see the real pixel output
 next to these numbers, then adjust whichever of the two (stale constants,
 or header height) turns out to be the actual cause.
+
+---
+
+### UX-047: Reports date picker has a near-invisible click target and no fixed display format
+
+**Screen:** Reports, Date Range filter
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "this date picker is weird, can't pick date
+correctly, UI/UX not good and unfriendly."
+
+**Root cause (verified in code) — three compounding problems, all on the
+same widget:**
+
+1. **The click target to open the calendar is nearly invisible.**
+   `filter_widget.py:55-60` sets `setCalendarPopup(True)` but nothing else
+   — and `dark.qss:2521-2524`:
+   ```css
+   #ReportDateEdit::drop-down {
+       border: none;
+       width: 20px;
+   }
+   ```
+   `border: none` removes any visual box around the drop-down arrow, so
+   the only clickable spot that opens the calendar is an unmarked 20px
+   sliver on the right edge of the field — the rest of the field (padded
+   6px/10px, `dark.qss:2512-2513`) just looks like plain, uninteractive
+   text. There's nothing telling the user "click here" to get a calendar.
+
+2. **No fixed display format.** `filter_widget.py` never calls
+   `setDisplayFormat(...)`, so the field falls back to Qt's locale-default
+   format rather than a deliberate, unambiguous one — and with no
+   `setReadOnly()`/input mask either, the user can type directly over any
+   of the day/month/year segments freely, making it easy to land on an
+   invalid or unintended date by accident.
+
+3. **The calendar popup itself is unstyled.** No `QCalendarWidget` rule
+   exists in either theme file (confirmed by grep) — so even once a user
+   finds the tiny drop-down, the popup that opens renders in plain,
+   unthemed Qt/OS styling, clashing visibly against the rest of the dark
+   UI. This is the same root gap already logged as UX-013/UX-039, now
+   confirmed to affect Reports directly, not just Dashboard.
+
+**Why it matters:** this is exactly the kind of small, everyday friction
+that erodes trust in "clean, modern, industry-grade" software — a date
+field that looks unclickable, accepts free-typed invalid input, and pops
+open something that looks broken, on one of the screens business owners
+would use most (running financial reports).
+
+**Suggested fix:** as part of the shared `QDateEdit`/`QCalendarWidget` fix
+already recommended in UX-039 — give the drop-down button a visible
+background/border so it reads as a button, call `setDisplayFormat("yyyy-MM-dd")`
+explicitly (matching the format already shown in the screenshot) so typed
+input can't drift into an ambiguous format, and style the calendar popup
+to match the app's dark theme.
+
+---
+
+### UX-048: Report table's last column always stretches, truncating the first column's labels
+
+**Screen:** Reports, results table (e.g. Cash Flow Report)
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "alignments are way off" — you're right, and it has
+an exact, single-line cause.
+
+**Root cause (verified in code):** `report_viewer.py:226-227`:
+```python
+self.table_view.horizontalHeader().setStretchLastSection(True)
+self.table_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+```
+`setStretchLastSection(True)` unconditionally forces whichever column
+happens to be *last* to absorb 100% of the remaining width — in the Cash
+Flow Report that's TYPE, whose actual content ("Inflow"/"Outflow"/"Net")
+is a few characters long, so it ends up stretched across most of the
+screen while sitting almost entirely empty. Meanwhile CATEGORY (first
+column) is left on Qt's default `Interactive` width (~100px), too narrow
+for "Net Cash Flow" — no `resizeColumnsToContents()` call exists anywhere
+in the file — so it truncates to "Net Cas..." in the screenshot. This is
+the same missing-resize-mode truncation pattern already logged 3 times
+(UX-010/017/034), but this time the mechanism is the *opposite*: it's not
+that no column got a resize mode, it's that the wrong column got forced
+to stretch regardless of its content.
+
+**Why it matters:** every report built from this shared table (not just
+Cash Flow) inherits the same problem — whichever column is positioned
+last will always look bloated, and whichever holds longer labels will
+always be at risk of truncating, independent of what that report
+actually contains.
+
+**Suggested fix:** replace the blanket `setStretchLastSection(True)` with
+per-column sizing driven by content: `resizeColumnsToContents()` after
+data loads, then let the app pick which column (if any) should absorb
+extra space based on what's actually the "detail" column for that report
+— not a hardcoded assumption that it's always the last one.
+
+---
+
+### UX-049: Every report type shares one generic renderer with zero report-specific treatment
+
+**Screen:** Reports, all report types
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "reports look very generic and don't show details
+clearly."
+
+**Root cause (verified in code):** every report — Cash Flow, P&L, Stock
+Movement Audit, all of them — is rendered through one shared
+`QTableView`/`PandasModel` pair (`report_viewer.py:222-231`), with
+`_on_report_finished`/`_show_current_page` (lines 401/426) just calling
+`self.table_model.set_data(page_df)` on the raw dataframe. There is no
+report-specific formatting anywhere in that path:
+- No highlighted/bold total row — "Net Cash Flow" renders as a plain
+  table row identical in style to "Refunds"/"Expenses", even though it's
+  the one number that actually answers the report's question.
+- No color-coding for Inflow vs. Outflow (a near-universal convention in
+  financial reporting software — green for money in, red for money out).
+- No currency formatting — `pandas_model.py:24-30` renders amounts as
+  plain `"{:.2f}"` (e.g. `"500.00"`), with no "Rs." prefix and no
+  thousands separator, even though every other money value in the app
+  (POS, Credit Book, Payables) is formatted as currency.
+
+**Why it matters:** this is precisely why the reports "don't show details
+clearly" — a shop owner scanning a Cash Flow Report has to read every row
+carefully to find the number that matters, instead of it visually
+standing out the way a real financial report would.
+
+**Suggested fix:** introduce a small per-report-type rendering layer on
+top of the shared table — a way to mark a row as a "total" (bold/tinted
+background), tag a column as a signed/directional amount (color by
+positive/negative or by an explicit Inflow/Outflow tag), and format money
+columns through the app's existing currency formatter instead of raw
+`.2f`. This doesn't need a rewrite — just a thin config per report type
+(which row is the total, which columns are currency, which column
+carries a color tag) fed into the existing `PandasModel`.
+
+---
+
+### UX-050: Pagination controls render even when there is only one page
+
+**Screen:** Reports, results table footer
+**Severity:** P3 · **Status:** 🔴 Open
+
+**Not from your notes — found while checking the report table's footer
+controls.** The screenshot shows "Showing 1-4 of 4" with a fully-rendered
+Previous / "Page 1 of 1" / Next control row, for a report that has
+exactly one page of results.
+
+**Root cause (verified in code):** `PaginationWidget._update_controls`
+(`pagination_widget.py:126-133`) only hides the whole control when
+`total == 0` — with any data at all, even a single page, it calls
+`self.setVisible(True)` and renders the full Previous/Page/Next row
+regardless of whether paging is actually possible.
+
+**Why it matters:** small, but it's exactly the kind of "generic, not
+polished" detail you flagged — a disabled-looking-but-not-disabled
+Previous/Next pair with "Page 1 of 1" is UI noise for a 4-row report;
+industry-grade software hides pagination entirely when there's nothing
+to paginate.
+
+**Suggested fix:** hide the pagination row (not just disable its buttons)
+whenever `total_pages <= 1`, showing it only when there's an actual
+second page to go to.

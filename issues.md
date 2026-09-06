@@ -131,6 +131,10 @@ don't need re-litigating every time a new screen surfaces the same issue.
 | [UX-075](#ux-075-promotions-name-column-truncates-the-same-global-stretch-pattern-found-repeatedly-elsewhere) | Promotions NAME column truncates — the same global-stretch pattern found repeatedly elsewhere | Promotions & Campaigns | P1 | 🔴 Open |
 | [UX-076](#ux-076-create-promotion-dialog-is-generic-and-cant-actually-target-specific-products) | Create Promotion dialog is generic, and can't actually target specific products | Promotions & Campaigns | P1 | 🔴 Open |
 | [UX-077](#ux-077-nearly-every-table-in-the-app-has-the-same-headercontent-alignment-defect) | Nearly every table in the app has the same header/content alignment defect | App-wide (every table reviewed so far) | P1 | 🔴 Open |
+| [UX-078](#ux-078-the-counted-column-collapses-to-almost-nothing-making-its-own-input-editor-nearly-invisible) | The COUNTED column collapses to almost nothing, making its own input editor nearly invisible | Stock Take | P1 | 🔴 Open |
+| [UX-079](#ux-079-stock-take-button-colors-contradict-the-apps-own-documented-palette-and-each-other) | Stock Take button colors contradict the app's own documented palette, and each other | Stock Take | P2 | 🔴 Open |
+| [UX-080](#ux-080-draft-stock-counts-in-history-are-orphaned-no-way-to-resume-edit-or-delete-them) | DRAFT stock counts in History are orphaned — no way to resume, edit, or delete them | Stock Take | P1 | 🔴 Open |
+| [UX-081](#ux-081-save-draft-is-a-no-op-counts-are-already-auto-saved-per-keystroke) | "Save Draft" is a no-op — counts are already auto-saved per keystroke | Stock Take | P2 | 🔴 Open |
 
 ---
 
@@ -3177,6 +3181,8 @@ the same rule to every column regardless of content:**
 | Activity Log | UX-061 | `user_view.py:178` |
 | Promotions table | UX-075 | `promotion_view.py:56` |
 | Category Manager tree | UX-021 | no resize mode set at all (`category_manager.py:64-70`) |
+| Stock Take BARCODE column | — | `stock_take_view.py`'s `item_table`/`history_table`, no min width on BARCODE/STK#/DATE columns |
+| Stock Count Report dialog | — | only 1 of 6 columns gets a resize mode (`stock_take_view.py:203`), causing the "479600900..." truncation |
 
 **Mechanism 2 — the opposite failure: `setStretchLastSection(True)` (or
 an explicit `Stretch` on the wrong column) forces one column to bloat
@@ -3187,12 +3193,20 @@ content:**
 | Reports results table | UX-048 | `report_viewer.py:226-227` |
 | Document Browser table | UX-052 | `document_view.py:149-152` |
 
-**A third, related symptom — header text alignment not matching cell
+**Mechanism 3 — new, found on Stock Take: a column *does* get an
+explicit per-column resize mode, but `ResizeToContents` computed at load
+time against an empty/short column stays too narrow even for what the
+column is about to hold** (a live-typed value, not just static text) —
+see [UX-078](#ux-078-the-counted-column-collapses-to-almost-nothing-making-its-own-input-editor-nearly-invisible)
+for the full writeup; this is the same family of bug but distinct enough
+mechanically (correct-looking code, wrong result) to name separately.
+
+**A fourth, related symptom — header text alignment not matching cell
 alignment** (numbers left-aligned in the header but right-aligned in
 cells, or vice versa) was called out specifically in UX-011.
 
-That's **12 confirmed tables** across the catalog so far, from 9 root
-causes in 2 mechanically distinct patterns — and this is very likely an
+That's **15 confirmed tables** across the catalog so far, from 3
+mechanically distinct root-cause patterns — and this is very likely an
 undercount, since it's been found incidentally on nearly every screen
 reviewed, not from a dedicated table-by-table audit.
 
@@ -3205,7 +3219,7 @@ is exactly the kind of defect that undermines trust in "clean, modern,
 industry-grade" faster than almost anything else, because it shows up
 constantly, on nearly every screen, not just once.
 
-**Suggested fix — treat this as one fix, not twelve:** before touching
+**Suggested fix — treat this as one fix, not fifteen:** before touching
 individual tables, define one small shared helper (e.g.
 `configure_table_columns(table, {col_index: mode_or_width, ...})` in
 `cbpos/ui/widgets/` or a table-utils module) that makes the *correct*
@@ -3213,9 +3227,173 @@ per-column pattern the easy, obvious thing to reach for — explicit
 `ResizeToContents` for short/fixed-format columns (IDs, dates, statuses,
 totals), `Stretch` reserved for exactly the one column that should
 actually absorb extra space (usually a name/description/details field),
-and `setStretchLastSection(False)` set explicitly every time so Qt's
-default can't quietly reintroduce this bug on a 13th table. Then sweep
-every table listed above (and any found later) through it in one pass —
-this is a small, mechanical, high-leverage fix precisely because it's
-the same 3-line mistake repeated a dozen times, not 12 different
-problems needing 12 different solutions.
+`setStretchLastSection(False)` set explicitly every time so Qt's default
+can't quietly reintroduce this bug on a 16th table, and — per UX-078's
+Mechanism 3 finding — an explicit `setMinimumSectionSize()` or a fixed
+minimum width on any column that can ever hold a live-typed value, so
+`ResizeToContents` can't collapse it based on an empty initial state.
+Then sweep every table listed above (and any found later) through it in
+one pass — this is a small, mechanical, high-leverage fix precisely
+because it's the same few-line mistake repeated over a dozen times, not
+15 different problems needing 15 different solutions.
+
+---
+
+### UX-078: The COUNTED column collapses to almost nothing, making its own input editor nearly invisible
+
+**Screen:** Stock Take → New Count
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "the important thing to fix here is the way count
+can be added — as you can see, the second image top product line shows a
+blue circular-y place, that's what it currently has, not good, hard to
+do, not visible, even hard to identify, need an industrial-grade proper
+solution and fix."
+
+**Root cause (verified in code) — a genuinely new variant of UX-077's
+pattern, worth understanding precisely because the code looks
+reasonable and still produces a bad result:** the New Count table
+(`item_table`, a `QTableView` bound to a custom `StockCountItemModel`) is
+not built with `setCellWidget()` or any custom editor — it uses Qt's
+default, transient item-delegate editing. Only the COUNTED column is
+marked editable (`flags()`, lines 131-135), and Qt spawns a plain
+`QLineEdit` editor only for the exact cell being actively double-clicked
+or typed into — that's the "blue oval" you saw, not a permanent widget.
+Column 3 (COUNTED) is set to `ResizeToContents` (line 322) — which
+sounds correct — but it's computed **immediately after loading**, when
+every COUNTED cell is still empty (`counted_qty is None → ""`). Qt sizes
+the column to fit an empty string, so it collapses to roughly the width
+of the header text alone. The transient editor that later appears for
+that cell is then squeezed into that same too-narrow column, rendered
+with the app's generic `QLineEdit` focus styling (`dark.qss:35-44`: 8px
+padding, cyan focus border) — which is exactly what reads as a tiny,
+barely-visible cyan pill rather than a proper input field.
+
+**Why it matters more than a typical truncation bug:** every other
+UX-077 instance is about *displaying* data that's already there. This one
+is about *entering* data — COUNTED is the single column a warehouse
+worker interacts with dozens or hundreds of times during a real stock
+count, and right now the box they need to type into is nearly impossible
+to see or aim for. This is the core interaction of the entire feature,
+not a side detail.
+
+**Suggested fix:** give the COUNTED column a fixed, generous minimum
+width (not `ResizeToContents` on an always-initially-empty column) — see
+UX-077's updated Suggested Fix for the general version of this rule.
+Beyond sizing, for a "type a number many times in a row" workflow, worth
+considering a dedicated numeric-entry pattern instead of Qt's bare
+transient editor — e.g. a persistent, larger inline input per visible
+row (not one that disappears the instant you click away), or a
+"select row → type in a fixed count-entry box at the bottom → Enter
+advances to the next row" flow, which would also be faster for someone
+counting 79+ items in a row than double-clicking each cell individually.
+
+---
+
+### UX-079: Stock Take button colors contradict the app's own documented palette, and each other
+
+**Screen:** Stock Take → New Count
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "other UI/UX issues can be identified, I see some
+unmatching elements to our system on other pages."
+
+**Root cause (verified in code) — a genuine mess, not just a "could be
+better":**
+| Button | Class/style | Color |
+|---|---|---|
+| Load Products | `class="primary"` | green `#2ECC40` |
+| Save Draft | `class="accent"` | cyan `#00BCEB` dark / `#0099CC` light |
+| Finalize Count | `class="primary"` | green `#2ECC40` — **same as Load Products** |
+| Approve & Apply | hardcoded inline `setStyleSheet(...)` | neon green `#39FF14` — **a third, different green, and bypasses the class system entirely** |
+| Void | `class="danger"` | red `#FF4136` — consistent |
+| New Count | no class/objectName at all | plain native grey |
+| Refresh (History tab) | `class="primary"` | green — same as Load Products/Finalize |
+
+Two distinct problems: first, three semantically different actions
+(fetching products, completing a count, refreshing a list) all render
+identically green because they all reach for the same `primary` class —
+color stops meaning anything when everything is the same color. Second,
+`class="primary"` itself resolving to green rather than the app's
+documented cyan accent (`#00BCEB`) is a mismatch between CLAUDE.md's own
+color palette section and what's actually implemented — and
+Approve & Apply then adds a *fourth* shade of green on top by hardcoding
+its own style rather than using any class at all. Also worth a small
+separate note: Save Draft's light-theme color (`#0099CC`) doesn't match
+either the dark theme's `#00BCEB` or CLAUDE.md's documented light accent
+(`#0D6EFD`) — a small but real cross-theme inconsistency.
+
+**Why it matters:** color is supposed to be a fast visual cue for what
+kind of action a button performs — right now, on this one screen, green
+means "load data," "finish and commit," and "approve and apply to
+inventory" all at once, which is exactly the kind of inconsistency that
+undermines the "clean, industry-grade" bar across every screen, not just
+this one.
+
+**Suggested fix:** reserve one distinct color per action *category*, not
+per button — e.g. neutral/secondary for data-fetch actions (Load
+Products, Refresh), a single clear "commit/complete" color for
+Finalize/Approve (ideally the *same* one, since both are "make this
+count official" actions), and route Approve & Apply through the class
+system instead of an inline `setStyleSheet` override so it can't drift
+from the rest again.
+
+---
+
+### UX-080: DRAFT stock counts in History are orphaned — no way to resume, edit, or delete them
+
+**Screen:** Stock Take → History
+**Severity:** P1 · **Status:** 🔴 Open
+
+**Not from your notes — found while checking the History tab's row
+actions.** The screenshot shows 3 stock counts, all in DRAFT status.
+
+**Root cause (verified in code):** `on_history_double_click`
+(lines 716-721) only ever opens the read-only `StockCountReportDialog` —
+there is no edit, resume, void, or delete action reachable from a History
+row at all. `Void` (line 358) only acts on `self.current_stock_count`,
+the in-memory count from the active session — once that session ends
+(app restart, navigating away), a DRAFT count sitting in History has no
+way back into an editable state and no way to be discarded either. It
+just accumulates.
+
+**Why it matters:** a "Draft" that can never be resumed or removed isn't
+really a draft — it's permanent, unfinishable clutter. Given the app
+already created 3 of these in quick succession during this review alone,
+this will accumulate quickly in real use if a stock count is ever started
+and not finished in the same session.
+
+**Suggested fix:** add a "Resume" action on a DRAFT row (reload it into
+`item_table` as the active count, replacing New Count's "start from
+scratch" flow) and a "Delete Draft" action for ones that are genuinely
+abandoned.
+
+---
+
+### UX-081: "Save Draft" is a no-op — counts are already auto-saved per keystroke
+
+**Screen:** Stock Take → New Count
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes — found while tracing what "Save Draft" actually
+does.** It's misleading in a specific, checkable way.
+
+**Root cause (verified in code):** `save_draft()` (lines 588-590) is
+just a message box — it performs no save action itself. That's because
+every counted value is already persisted the moment it's typed, via
+`update_count()` inside the model's `setData()` (line 117) — the count is
+saved continuously, per keystroke, whether or not "Save Draft" is ever
+clicked.
+
+**Why it matters:** a button labeled "Save Draft" implies that without
+clicking it, your work might be lost — which isn't true here, but a user
+has no way to know that, and might avoid closing the screen or worry
+unnecessarily believing they need to click it first. Mislabeled buttons
+that do nothing (or do less than they claim) erode trust in exactly the
+same way a broken one does.
+
+**Suggested fix:** either remove the button (since saving is already
+automatic and continuous) or repurpose it into something it can honestly
+do — e.g. an explicit "pause and return to this later" action that's
+distinct from the auto-save already happening, if that's a real
+behavior worth having.

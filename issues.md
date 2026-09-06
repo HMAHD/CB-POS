@@ -54,6 +54,8 @@ Nothing gets "fixed" here, only logged.
 | [UX-020](#ux-020-csv-import-dialog-floating-thumbnail-investigated-likely-not-an-app-bug) | CSV Import dialog floating thumbnail — investigated, likely not an app bug | Import CSV dialog | ⚪ N/A | ⚪ Won't Fix |
 | [UX-021](#ux-021-category-manager-tree-has-no-column-resize-mode-configured-causing-a-horizontal-scrollbar-and-a-squeezed-header) | Category Manager tree has no column resize-mode configured, causing a horizontal scrollbar and a squeezed header | Category Manager dialog | P2 | 🔴 Open |
 | [UX-022](#ux-022-secondarydanger-button-class-convention-is-inconsistently-applied-across-3-dialogs) | Secondary/danger button class convention is inconsistently applied across 3 dialogs | Category Manager, Unit Manager, Label Print | P3 | 🔴 Open |
+| [UX-023](#ux-023-management-view-shows-a-completely-blank-screen-until-the-first-sidebar-click-confirmed-regression) | Management view shows a completely blank screen until the first sidebar click (confirmed regression) | Management (all tabs) | P1 | 🔴 Open |
+| [UX-024](#ux-024-management-sidebar-gets-permanently-stuck-collapsed-across-restarts-confirmed-root-cause) | Management sidebar gets permanently stuck collapsed across restarts (confirmed root cause) | Management, `CollapsibleSidebar` | P1 | 🔴 Open |
 
 ---
 
@@ -950,3 +952,126 @@ layout, or whether a side-by-side row (matching Product Editor's
 Cancel/Save convention) reads more consistently with the rest of the app —
 not a defect either way, just worth a deliberate decision rather than
 whatever the copy-paste happened to produce.
+
+---
+
+### UX-023: Management view shows a completely blank screen until the first sidebar click (confirmed regression)
+
+**Screen:** Management (Dashboard tab specifically, but affects entry into
+Management as a whole)
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** entering Management after a fresh app restart shows
+nothing at all — no Dashboard, no content, until a sidebar item is clicked.
+
+**Reproduced and root-caused with certainty** — this is a real functional
+regression, and worth being upfront: it's one I introduced myself earlier
+in this same review, in the fix for issue #227 ("lazy management-view
+construction," merged in PR #253).
+
+Constructed a real `MainWindow`, called `switch_to_management()` (the exact
+method the side menu's "Management" button triggers), and checked the
+internal state directly:
+```
+management_view.stack.count(): 0
+management_view.stack.currentWidget(): None
+```
+**The stack genuinely has zero widgets in it** — not just "showing the
+wrong one." `main_window.py:166-169`:
+```python
+def switch_to_management(self):
+    self.stack.setCurrentWidget(self.management_view)
+    self.sales_view.side_menu.setVisible(False)
+```
+Compare with its sibling right below it, `switch_to_documents()`
+(`main_window.py:171-174`), which explicitly does
+`self.management_view.switch_tab(5)` before showing the view.
+`switch_to_management()` has no equivalent call for the Dashboard tab
+(index 0). Since `ManagementView`'s 10 sub-views are now built lazily —
+only `_get_or_create_view(index)`, called from `switch_tab()`, ever adds a
+widget to the internal stack (`management_view.py:115-118, 150-164`) — and
+nothing calls `switch_tab(0)` by default anywhere in `ManagementView.__init__()`
+either, the very first entry into Management has genuinely nothing in its
+stack until the user manually clicks a sidebar icon, which is the first
+thing that ever populates it.
+
+Before the #227 lazy-construction fix, all 10 views were built eagerly in
+a fixed order at `ManagementView` construction time, so `QStackedWidget`
+defaulted to showing the first one added (Dashboard, index 0) automatically
+— that implicit default silently disappeared when construction became
+lazy, and nothing was added to replace it.
+
+**Suggested fix:** either add `self.switch_tab(0)` at the end of
+`ManagementView.__init__()` (matching the "always land on Dashboard"
+default the eager version had for free), or have `switch_to_management()`
+call it explicitly the same way `switch_to_documents()` already does for
+index 5 — the second option is more consistent with how the Documents
+shortcut already handles this exact class of problem.
+
+---
+
+### UX-024: Management sidebar gets permanently stuck collapsed across restarts (confirmed root cause)
+
+**Screen:** Management, `CollapsibleSidebar`
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** the sidebar shows icon-only, no text labels, on this
+same fresh-restart-then-Management screen.
+
+**Reproduced and root-caused with certainty — a second, independent bug on
+the same screenshot, not a side effect of UX-023.** Confirmed the button
+labels themselves are set correctly (`btn_dashboard.text()` returns
+`"Dashboard"`, not empty) — the icon-only appearance is entirely because
+`CollapsibleSidebar.is_collapsed` is `True`, and it stays `True` **even when
+the actual window is a genuinely wide 2880px** (tested directly: resized
+the real `MainWindow` to 2880×1800, switched to Management, and the sidebar
+was still collapsed — so this isn't legitimate responsive behavior kicking
+in at a narrow width, it's stuck).
+
+**Root cause, `cbpos/ui/widgets/collapsible_sidebar.py`:**
+```python
+# line 44 — initial state read directly from persisted config, not current width
+self.is_collapsed = bool(ConfigService.get("sidebar_collapsed"))
+```
+```python
+# lines 178-193, toggle() — persists on every call, no matter what triggered it
+def toggle(self) -> None:
+    ...
+    ConfigService.set("sidebar_collapsed", self.is_collapsed)
+```
+```python
+# lines 212-223, handle_resize() — auto-collapse/expand based on width
+def handle_resize(self, width: int) -> None:
+    if width < RESPONSIVE_BREAKPOINT and not self.is_collapsed:
+        self.set_collapsed(True)          # -> toggle() -> persists!
+    elif width >= RESPONSIVE_BREAKPOINT and self.is_collapsed:
+        if not ConfigService.get("sidebar_collapsed"):   # blocked once poisoned
+            self.set_collapsed(False)
+```
+`ManagementView` is laid out once while still narrow (confirmed: width was
+640px right after construction, before the window reaches its final size)
+— a perfectly normal, transient moment during startup layout. `handle_resize(640)`
+correctly auto-collapses the sidebar for that instant... but `set_collapsed()`
+calls the same `toggle()` used for a deliberate manual click, which
+**permanently writes `sidebar_collapsed = true` to the settings file** —
+treating a transient, automatic, responsive-layout collapse as if it were
+the user's own explicit preference. From that point on, the auto-*expand*
+branch's own guard (`if not ConfigService.get("sidebar_collapsed")`)
+refuses to fire, because the flag it's checking is the exact one the
+auto-collapse just wrote — so even a later, completely valid wide-window
+resize event can never re-expand it. And since it's a persisted setting,
+it survives exactly the "close and reopen the app" scenario you described,
+every time, forever, until something manually toggles it back.
+
+**Why it matters:** once triggered, this doesn't self-correct — a shop
+owner would need to know to manually click a collapse/expand toggle to fix
+what looks like a broken layout, with no indication that's the cause.
+
+**Suggested fix:** only persist to `ConfigService` when the collapse was a
+genuine user action (a manual toggle-button click), not when it's the
+automatic result of `handle_resize()`. Concretely: give `set_collapsed()`
+a way to change the visual/internal state without writing to config (e.g.
+an internal helper that `toggle()` and `handle_resize()` both call, with
+only `toggle()`'s manual-click path doing the `ConfigService.set(...)`),
+so a responsive, temporary layout adjustment can never masquerade as a
+permanent preference.

@@ -540,7 +540,6 @@ Login → SalesView → Management/Settings (via side menu) → Back returns to 
 | `manager_override_dialog.py` | Permission elevation |
 | `permission_dialog.py` | Permission assignment |
 | `profile_dialog.py` | User profile editor |
-| `backup_restore_dialog.py` | Database backup/restore |
 | `setup_wizard.py` | First-run setup wizard |
 | `shortcuts_help_dialog.py` | Keyboard shortcuts reference |
 | `update_dialog.py` | Application update notification |

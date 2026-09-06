@@ -62,9 +62,16 @@ Nothing gets "fixed" here, only logged.
 | [UX-028](#ux-028-supplier-selection-combos-in-purchasing-are-plain-non-searchable-comboboxes) | Supplier-selection combos in Purchasing are plain, non-searchable comboboxes | New GRN, GRN History tabs | P1 | 🔴 Open |
 | [UX-029](#ux-029-grn-history-status-filter-shows-all-suppliers-instead-of-all-statuses) | GRN History "Status" filter shows "All Suppliers" instead of "All Statuses" | GRN History tab | P2 | 🔴 Open |
 | [UX-030](#ux-030-grn-history-and-payables-tables-have-no-empty-state-message) | GRN History and Payables tables have no empty-state message | GRN History, Payables tabs | P2 | 🔴 Open |
-| [UX-031](#ux-031-payables-uses-a-deliberate-but-undocumented-navy-sub-theme-shared-with-credit-book) | Payables uses a deliberate but undocumented navy sub-theme, shared with Credit Book | Payables tab (+ likely Credit Book) | P2 | 🔴 Open |
+| [UX-031](#ux-031-payables-uses-a-deliberate-but-undocumented-navy-sub-theme-shared-with-credit-book) | Payables uses a deliberate but undocumented navy sub-theme, shared with Credit Book | Payables tab, Credit Book | P2 | 🔴 Open |
 | [UX-032](#ux-032-payables-supplier-list-is-double-click-only-same-pattern-as-ux-009) | Payables supplier list is double-click-only — same pattern as UX-009 | Payables tab | P1 | 🔴 Open |
 | [UX-033](#ux-033-payables-ledger-shows-zero-entries-despite-a-non-zero-balance-needs-one-live-check-to-fully-confirm) | Payables ledger shows zero entries despite a non-zero balance (needs one live check to fully confirm) | Payables tab | P1 | 🔴 Open |
+| [UX-034](#ux-034-credit-book-outstanding-debt-column-header-is-clipped-to-tstanding-di) | Credit Book "Outstanding Debt" column header is clipped to "TSTANDING DI" | Credit Book | P1 | 🔴 Open |
+| [UX-035](#ux-035-credit-book-customer-list-is-double-click-only-same-pattern-as-ux-009ux-032) | Credit Book customer list is double-click-only — same pattern as UX-009/UX-032 | Credit Book | P1 | 🔴 Open |
+| [UX-036](#ux-036-adjust-balance-button-uses-the-apps-warning-color-for-a-routine-action) | "Adjust Balance" button uses the app's warning color for a routine action | Credit Book, customer detail | P2 | 🔴 Open |
+| [UX-037](#ux-037-credit-book-ledger-shows-zero-entries-despite-a-non-zero-debt-same-pattern-as-ux-033-now-confirmed-on-a-second-screen) | Credit Book ledger shows zero entries despite a non-zero debt — same pattern as UX-033, now confirmed on a second screen | Credit Book, customer detail | P1 | 🔴 Open |
+| [UX-038](#ux-038-new-customer-dialogs-commercial-tab-has-mismatched-field-widths-recurring-pattern-to-watch-for) | New Customer dialog's Commercial tab has mismatched field widths — recurring pattern to watch for | Customer Editor, Commercial tab | P1 | 🔴 Open |
+| [UX-039](#ux-039-only-2-of-15-date-pickers-in-the-app-have-any-styling-at-all) | Only 2 of 15 date pickers in the app have any styling at all | App-wide (`QDateEdit`) | P1 | 🔴 Open |
+| [UX-040](#ux-040-customer-statement-dialog-has-uneven-filter-row-and-summary-spacing) | Customer Statement dialog has uneven filter-row and summary spacing | Print Statement dialog | P2 | 🔴 Open |
 
 ---
 
@@ -1271,8 +1278,8 @@ mechanism.
 
 ### UX-031: Payables uses a deliberate but undocumented navy sub-theme, shared with Credit Book
 
-**Screen:** Payables tab (and very likely Credit Book — not yet reviewed
-directly, but built from the identical shared QSS)
+**Screen:** Payables tab and Credit Book (confirmed directly — see the
+Credit Book screenshots reviewed below, this is not a "likely" anymore)
 **Severity:** P2 · **Status:** 🔴 Open
 
 **What you flagged:** the whole Payables screen is blue, not a good look.
@@ -1294,6 +1301,14 @@ drill-down" visual language (navy `#0A1929`/`#0D2137` surfaces, `#112240`
 borders, `#00BCEB` cyan accents) and reused across two unrelated features
 — it just never got reconciled with the rest of the app's actual standard
 dark theme (`#1E1E1E`/`#252526`).
+
+**Update — confirmed directly against `credit_book_view.py`:**
+`dark.qss:2704-2732` styles `QTableWidget#CreditCustomerTable,
+QTableWidget#CreditLedgerTable, QTableWidget#PayableSupplierTable,
+QTableWidget#PayableLedgerTable` as one combined rule (same for the header
+card, back button, and pay button at lines 2772/2787/2826) — it's the exact
+same rule set, not just a similar one. Credit Book is not a separate case to
+investigate later; it's the same bug, same fix, same decision.
 
 **Why it matters:** whatever the original intent, the result today is that
 two specific screens look like they belong to a different app, with no
@@ -1377,3 +1392,294 @@ confusing regardless of correctness — either default the range wider (e.g.
 this year, not last month), or show an inline hint when the visible range
 doesn't account for the full balance ("Showing 0 of Rs. 62,000 — try
 expanding the date range").
+
+---
+
+### UX-034: Credit Book "Outstanding Debt" column header is clipped to "TSTANDING DI"
+
+**Screen:** Credit Book, customer list
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** the credit book is "as like before" — the customer
+list has the same rough edges as the tables reviewed earlier.
+
+**Root cause (verified in code):** `credit_book_view.py:99-102`:
+```python
+self.customer_table.setColumnCount(5)
+self.customer_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+self.customer_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+self.customer_table.setColumnHidden(0, True)
+```
+Only Name (1) and Phone (2) get an explicit resize mode. The Debt column
+(3) — whose header text is `"customer_header_debt": "Outstanding Debt"`
+(`cbpos/i18n/en.json:629`, set at `credit_book_view.py:297`) — is left on
+Qt's default `Interactive` mode, so its width is whatever Qt guesses from
+row content, not from the header label. Since the numeric values ("2500.00")
+are shorter than the header text, the column ends up narrower than the
+label needs, and the header text gets clipped — exactly the "TSTANDING DI"
+seen in the screenshot (the start of "OU" and end of "T" are cut off).
+
+**Why it matters:** this is the same class of bug as UX-010/UX-017 (both
+already logged as truncating real data) — the third confirmed instance,
+now on a column header rather than a cell.
+
+**Suggested fix:** give the Debt and Credit Limit columns an explicit
+resize mode too — `ResizeToContents` sized off the header label
+specifically (or a fixed minimum width computed from the longest expected
+value/header), not just Name and Phone.
+
+---
+
+### UX-035: Credit Book customer list is double-click-only — same pattern as UX-009/UX-032
+
+**Screen:** Credit Book, customer list
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "the only way to select a customer is double click,
+as again it keeps going" — you've now hit this exact gap on three separate
+screens.
+
+**Root cause (verified in code):** `credit_book_view.py:108`:
+```python
+self.customer_table.doubleClicked.connect(self._on_customer_double_click)
+```
+No button, no Enter/Return key binding, no context menu, anywhere in
+`_build_customer_list_page` (lines 70-125) — identical to UX-009 (Select
+Customer dialog) and UX-032 (Payables supplier list). This is now the
+**third** confirmed instance of the exact same interaction gap, in three
+different parts of the app, built independently of each other.
+
+**Why it matters:** at this point it isn't three isolated oversights, it's
+a missing convention. A user who's never been told "double-click a row to
+open it" — and the app never says so — has no way to discover this
+anywhere in the UI.
+
+**Suggested fix:** the fix here shouldn't be three separate patches. Worth
+adding a small shared helper/pattern (e.g. a `TableSelectMixin` or just a
+documented convention in CLAUDE.md) that every "list → drill into row"
+table follows: a visible action button bound to the current selection, and
+Enter/Return wired to the same handler, applied consistently to Select
+Customer, Payables, and Credit Book in one pass.
+
+---
+
+### UX-036: "Adjust Balance" button uses the app's warning color for a routine action
+
+**Screen:** Credit Book, customer detail page
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes — found while reviewing the customer detail page you
+sent.** Look at the 4 action buttons: Receive Payment (cyan, active),
+Print Statement (navy), **Adjust Balance (dark-gold background, bold
+yellow text)**, Edit Customer (navy). Adjust Balance visually reads as a
+warning or destructive action — the same yellow CLAUDE.md defines as the
+**Warning** color (`#FFDC00`) — even though it's a routine, legitimate
+action (correcting a data-entry mistake), no more dangerous than Edit
+Customer sitting right next to it in plain navy.
+
+**Root cause (verified in code):** `credit_book_view.py:189-207` gives
+each of the 4 buttons its own unique `setObjectName()` (not a shared
+`class=` property), and only `CreditAdjustBtn`'s QSS rule
+(`dark.qss:2854-2867`) sets `background-color: #332800; color: #FFDC00;`
+— a one-off style nothing else in the row shares.
+
+**Why it matters:** color is a signal. A yellow/gold button next to three
+neutral ones tells the user "be careful here" even when there's no
+particular reason to be more careful adjusting a balance than editing a
+customer's other details — it also doesn't match the semantic case where
+yellow *should* mean something (e.g. an actual warning state).
+
+**Suggested fix:** give Adjust Balance the same neutral/secondary styling
+as Print Statement and Edit Customer, unless there's a deliberate reason
+to flag it — in which case make that reason visible too (e.g. a tooltip
+explaining why it needs extra care), not just an unexplained color change.
+
+---
+
+### UX-037: Credit Book ledger shows zero entries despite a non-zero debt — same pattern as UX-033, now confirmed on a second screen
+
+**Screen:** Credit Book, customer detail page (e.g. Saman Kumara: "Debt:
+Rs. 7,200.00" header, but the ledger table and footer all read Rs. 0.00)
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "last two images is customer selected and that also
+bluish, need to fix and check that UI/UX issues as well."
+
+**Root cause (verified in code) — this is the exact same two-source split
+already logged as UX-033 for Payables, now confirmed in Credit Book too:**
+- Header "Debt" value: `update_header()` reads
+  `CustomerCreditService.get_customer_summary(customer.id)["current_debt"]`
+  → `Customer.current_debt`, a running total with **no date filter**.
+- Ledger table: `reload_ledger()` (`credit_book_view.py:439-463`) always
+  applies `date_from`/`date_to` from the two `QDateEdit` widgets, which
+  default to `QDate.currentDate().addMonths(-1)` through today (lines
+  225/235) — a fixed one-month window that resets **every time a customer
+  is opened**, with no persisted preference. `show_all_dates()` (465-471)
+  correctly bypasses the filter when "All" is clicked — matching the same
+  "All" escape hatch already found in Payables.
+
+**Why it matters:** this is no longer a one-off — the same
+header-vs-filtered-ledger split now shows up on **both** money-ledger
+screens in the app (Payables and Credit Book), sourced from parallel
+service methods (`SupplierPayableService`/`CustomerCreditService`) that
+were clearly built from the same template. Fixing one and not the other
+would just leave the same confusing gap on the second screen.
+
+**Suggested fix:** same as UX-033 — default the range wider (e.g. this
+year, or "since account opened" up to a reasonable cap) or show an inline
+hint when the visible range can't account for the full balance. Worth
+fixing both screens together in the same pass, since they share the root
+cause.
+
+---
+
+### UX-038: New Customer dialog's Commercial tab has mismatched field widths — recurring pattern to watch for
+
+**Screen:** Credit Book → "+ Add Customer" → Commercial tab
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "Credit Limit, Payment Terms, Price List — those
+[fields] not aligned properly and not clean UI/UX... not just here, if
+you find similar elements somewhere, those need to align properly,
+remember that."
+
+**Root cause (verified in code):** `customer_editor.py:106-142`,
+`create_commercial_tab()`, uses a real `QFormLayout` (line 108,
+`setLabelAlignment(AlignRight)`), so the **label column** is actually
+fine — Qt auto-sizes it to the widest label and right-aligns every label
+against it. The misalignment you're seeing is in the **field column**:
+none of TIN (`QLineEdit`, line 117), Credit Limit (`QDoubleSpinBox`, line
+120), Payment Terms (`QSpinBox`, line 124), or Price List (`QComboBox`,
+line 128) get an explicit `setMinimumWidth`/`setFixedWidth`. With the
+form's `ExpandingFieldsGrow` policy (line 112), the `QLineEdit` stretches
+to fill the available width while the two spin boxes stay at their native,
+stepper-driven minimum size and the combo sits at yet a third width — so
+TIN reads much wider than Credit Limit/Payment Terms, which read narrower
+still than Price List, with no shared column to anchor the eye.
+
+**A second, compounding issue on the same two fields:** Credit Limit and
+Payment Terms use plain `QDoubleSpinBox`/`QSpinBox` with native +/-
+steppers. `product_editor.py:142-143` has an explicit code comment about
+this exact widget class: `# Stock group — QLineEdit instead of
+QDoubleSpinBox for clean rendering (QDoubleSpinBox +/- buttons break under
+QSS)`, and that dialog migrated its own numeric fields to `QLineEdit` +
+validator specifically to avoid it. This dialog was never updated to match
+— it's the same known-broken pattern already logged as UX-018, now found
+a second place it was never fixed.
+
+**Why it matters — and why "remember that" is the right instinct:** this
+isn't a one-dialog fix. Any `QFormLayout` in the app that mixes a
+free-stretching `QLineEdit`/`QComboBox` with a native-sized spin box in
+the same field column will show this same "some fields wide, some
+narrow, none aligned to a shared edge" look. Worth treating as a form
+convention to check across the app, not a single-dialog patch.
+
+**Suggested fix:** give every field in a given `QFormLayout` a consistent
+minimum width (e.g. `setMinimumWidth(200)` on the field column, or a
+shared constant used across all editor dialogs), and replace the Credit
+Limit/Payment Terms spin boxes with `QLineEdit` + validator, matching the
+fix already applied in `product_editor.py` — same convention, same look,
+same behavior, wherever a numeric field appears in a form.
+
+---
+
+### UX-039: Only 2 of 15 date pickers in the app have any styling at all
+
+**Screen:** App-wide — Credit Book, Payables, Documents, Reports,
+Dashboard, Stock Take, Data Export, Sale History Reprint, Admin Tools,
+Data Safety
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "print statement dialog... date picker not good
+throughout application, have a date picker either fix that widget perfect
+for everywhere and works accurately and match style, or fix it separately,
+either way your choice, you're the expert."
+
+**Investigated app-wide, not just the one dialog — and it's worse than
+one broken widget, it's one un-themed widget class used in 15 places.**
+Every `QDateEdit` construction site in `cbpos/ui/`:
+
+| File | objectName | Styled in QSS? |
+|---|---|---|
+| `dashboard_view.py:238,249` | `PeriodDateEdit` | ✅ yes |
+| `credit_book_view.py:222,232` | `CreditDateEdit` | ❌ no |
+| `document_view.py:114,123` | `DocDateEdit` | ❌ no |
+| `purchase_view.py:863,873` | `PayableDateEdit` | ❌ no |
+| `reports/filter_widget.py:55,58` | `ReportDateEdit` | ❌ no |
+| `receipt_reprint_dialog.py`, `data_export_dialog.py`, `customer_statement_dialog.py`, `admin_tools_view.py`, `data_safety_view.py`, `history_view.py`, `stock_take_view.py`, `purchase_view.py:452,459` | *(none set)* | ❌ no |
+
+**Root cause (verified in code):** the only `QDateEdit` rule in either
+theme is `QDateEdit#PeriodDateEdit` (`dark.qss:1692`, `light.qss:1735`) —
+scoped to the 2 Dashboard instances only. There is **no generic `QDateEdit
+{ ... }` type-selector rule** in either QSS file, so every other instance
+(11 of 13 remaining sites, several with their own unused objectName that
+nothing in the QSS ever matches) falls back to Qt's bare native styling —
+and there is **no `QCalendarWidget` rule anywhere**, so the calendar popup
+itself is unstyled everywhere in the app, including on the 2 "styled"
+`PeriodDateEdit` instances (this is the same broken popup already logged
+as UX-013, now confirmed to be a symptom of this wider gap, not a one-off).
+None of the 15 sites set `setMinimumDate`/`setMaximumDate`.
+
+**Why it matters:** you're right that it "isn't good throughout the
+application" — a shop owner filtering Credit Book, then Payables, then
+Reports sees a differently-dressed date field on every screen (some
+native-grey, one themed), and every calendar popup that opens looks
+broken/unstyled regardless of which field opened it.
+
+**Suggested fix — my recommendation as the one to make:** don't keep
+patching per-instance objectNames (`CreditDateEdit`, `DocDateEdit`,
+`PayableDateEdit`, `ReportDateEdit` already exist and are just never
+matched — that's dead naming, not a fix waiting to happen). Add **one**
+generic `QDateEdit { ... }` rule plus a matching `QCalendarWidget { ... }`
++ `QCalendarWidget QAbstractItemView { ... }` rule block to both
+`dark.qss`/`light.qss`, styled once to match the app's real theme, and let
+every instance inherit it automatically — including the ones with no
+objectName at all. This fixes all 15 places (and any future one) in a
+single pass instead of 13 separate patches, and finally makes the
+already-broken calendar popup (UX-013) render correctly everywhere instead
+of just being patched on the Dashboard.
+
+**Feature idea:** while touching this, consider a shared `DateRangeWidget`
+(From/To + a row of quick presets: Today, This Week, This Month, This
+Year, All) as a reusable component — Credit Book, Payables, and Reports
+all hand-build a near-identical from/to + "All" row today (each with its
+own default-window gap, see UX-033/UX-037); one shared widget would fix
+the styling, the missing bounds, and the default-window confusion in one
+place instead of three.
+
+---
+
+### UX-040: Customer Statement dialog has uneven filter-row and summary spacing
+
+**Screen:** Credit Book → customer detail → "Print Statement"
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "print statement dialog have lot issues" (grouped
+with the date-picker complaint above — the date-picker part is now
+UX-039; this entry covers what's specific to this dialog's own layout).
+
+**Root cause (verified in code):** `customer_statement_dialog.py` uses the
+same `QDateEdit` pair as Credit Book (lines 67-78, no bounds, same
+`addMonths(-1)`→today default — inherits UX-039 and UX-037's gaps
+directly). Beyond the date pickers:
+- The filter row (line 63, one `QHBoxLayout`) packs `class="transparent"`
+  labels (65, 73) next to the date fields and an accent-styled refresh
+  button (81) with no explicit per-row margin/spacing — it only inherits
+  the dialog's blanket `layout.setSpacing(10)` (line 46), so nothing in
+  this row was actually tuned for its own content.
+- The summary line (89-103) mixes four different `class` properties
+  (`transparent`, `debit`, `credit`, `bold`) packed left-to-right with a
+  stretch, but no column/grid alignment — so the labels and their values
+  don't line up into a predictable visual rhythm the way a small
+  `QGridLayout` would give them.
+
+**Why it matters:** this is a lower-severity, "looks slightly off" issue
+rather than a functional one, but it's the kind of thing that reads as
+unpolished specifically because the layout was assembled ad hoc
+(`QHBoxLayout` + manual classes) rather than with the same structured
+layout (`QFormLayout`/`QGridLayout`) used elsewhere in the app.
+
+**Suggested fix:** rebuild the filter row and summary line with a small
+`QGridLayout` (label column, value column) instead of packed
+`QHBoxLayout`s — same fix direction as UX-038, applied to a second
+dialog.

@@ -106,6 +106,11 @@ don't need re-litigating every time a new screen surfaces the same issue.
 | [UX-058](#ux-058-no-ui-exists-to-createrenamedelete-a-role-even-though-the-backend-already-fully-supports-it) | No UI exists to create/rename/delete a role, even though the backend already fully supports it | Users | P1 | 🔴 Open |
 | [UX-059](#ux-059-manage-permissions-save-changes-calls-a-method-that-doesnt-exist-every-save-will-crash) | "Manage Permissions" Save Changes calls a method that doesn't exist — every save will crash | Users, Manage Permissions dialog | P0 | 🔴 Open |
 | [UX-060](#ux-060-permission-manager-isnt-missing-permissions-its-hiding-most-of-them-below-the-fold) | Permission Manager isn't missing permissions — it's hiding most of them below the fold | Users, Manage Permissions dialog | P2 | 🔴 Open |
+| [UX-061](#ux-061-activity-log-details-column-is-forced-to-the-same-width-as-every-other-column) | Activity Log DETAILS column is forced to the same width as every other column | Users, Activity Log | P1 | 🔴 Open |
+| [UX-062](#ux-062-the-apps-one-central-audit-logging-method-is-dead-code-and-would-crash-if-called-and-a-live-caller-has-the-same-bug) | The app's one central audit-logging method is dead code and would crash if called — and a live caller has the same bug | App-wide (audit logging) | P0 | 🔴 Open |
+| [UX-063](#ux-063-void-refund-permission-changes-purchasing-and-credit-adjustments-have-zero-audit-trail) | Void, Refund, Permission changes, Purchasing, and Credit adjustments have zero audit trail | App-wide (audit logging) | P1 | 🔴 Open |
+| [UX-064](#ux-064-activity-log-has-no-color-or-icon-coding-by-event-type) | Activity Log has no color or icon coding by event type | Users, Activity Log | P2 | 🔴 Open |
+| [UX-065](#ux-065-activity-log-is-hardcoded-to-the-10-most-recent-rows-with-no-filter-ui) | Activity Log is hardcoded to the 10 most recent rows, with no filter UI | Users, Activity Log | P2 | 🔴 Open |
 
 ---
 
@@ -2526,3 +2531,183 @@ role column and per category row, add a simple text filter across
 permission names, and either switch to real `QCheckBox` widgets embedded
 per cell or apply an explicit tree-item-checkbox QSS rule so they match
 the rest of the app.
+
+---
+
+### UX-061: Activity Log DETAILS column is forced to the same width as every other column
+
+**Screen:** Users → Activity Log tab
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "logs not clear" — the free-text reason column is
+exactly the part that needs the most room, and it's the part that's
+cut off ("Reason: Damaged goods — spoiled d...").
+
+**Root cause (verified in code):** `user_view.py:178`:
+```python
+self.log_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+```
+Called with no column index — this is the single-argument overload,
+which sets the *default* resize mode for **all 5 columns at once** (TIME,
+USER, EVENT, TERMINAL, DETAILS), forcing them all to equal width
+regardless of content. DETAILS needs far more room than a fixed
+timestamp or a short event name — this is the same missing-per-column-
+resize-mode pattern already logged repeatedly (Reports, Document Browser),
+just via a different mechanism (blanket default instead of an unset
+`Interactive` fallback).
+
+**Why it matters:** DETAILS is the one column that actually explains what
+happened — squeezing it to 1/5 of the table width defeats the log's whole
+purpose.
+
+**Suggested fix:** set explicit per-column modes — `ResizeToContents` for
+TIME/USER/EVENT/TERMINAL, `Stretch` only for DETAILS (using the per-column
+overload: `setSectionResizeMode(column_index, mode)`).
+
+---
+
+### UX-062: The app's one central audit-logging method is dead code and would crash if called — and a live caller has the same bug
+
+**Screen:** App-wide (audit logging infrastructure)
+**Severity:** P0 · **Status:** 🔴 Open
+
+**Not from your notes — found while checking your suspicion that
+"functionally wise it doesn't work across the full application." You
+were right, and it's more serious than missing coverage — there's an
+active crash risk in a real workflow.**
+
+**Root cause (verified in code):** `cbpos/core/services/logging_service.py:16-31`
+defines `LoggingService.log_action()` — clearly intended as *the* central
+audit-logging API. It has **zero callers anywhere in the repository**
+(confirmed by grep) — every real call site instead hand-rolls its own
+`AuditLog(...)` construction independently, duplicated across ~7 places.
+Worse, `log_action()` itself never sets `event_type`, which is
+`nullable=False` on the `AuditLog` model
+(`cbpos/core/models/__init__.py:435-448`) — calling it as written would
+raise an `IntegrityError` on commit. It's not just unused, it's broken.
+
+**The same exact bug already exists in a live, reachable code path:**
+`InventoryService.adjust_stock` (`inventory_service.py:114-121`) builds
+its own `AuditLog(action="STOCK_ADJUSTMENT", ...)` and **also** omits
+`event_type`. Its surrounding `try/except` (lines 124-128) only catches
+`StaleDataError` — an `IntegrityError` from the missing `event_type` is
+not caught, so it propagates and rolls back the entire session per
+`Database.get_session()`'s exception handling
+(`cbpos/core/database.py:173`). In practice, this means **a stock
+adjustment is likely to fail outright** when this code path runs, not
+just fail to log quietly.
+
+**Why it matters:** this isn't "the audit trail has gaps" (that's
+UX-063) — this is a live bug that can break a core Inventory action
+(stock adjustment) the moment it's exercised, because the code that's
+supposed to record the adjustment can throw and roll back the very
+change it was meant to log.
+
+**Suggested fix:** fix `adjust_stock`'s `AuditLog(...)` call to include
+`event_type` (should be quick — pattern is already correct in the other
+~7 call sites), and either wire every hand-rolled `AuditLog(...)`
+construction through the existing `LoggingService.log_action()` (fixing
+its missing `event_type` first) or delete it if it's not going to be the
+real shared path — dead code that would crash if anyone ever called it is
+worse than no shared helper at all, since it looks safe to reach for.
+This needs a real click-through test (trigger a stock adjustment, confirm
+it commits), not just a code read, given the exact same class of bug
+already went unnoticed in UX-059.
+
+---
+
+### UX-063: Void, Refund, Permission changes, Purchasing, and Credit adjustments have zero audit trail
+
+**Screen:** App-wide (audit logging coverage)
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "I don't think functionally wise it works across
+the full application" — confirmed, and CLAUDE.md's own documented claim
+("All critical changes logged to `AuditLog` table via services") doesn't
+hold up against what's actually implemented.
+
+**Root cause (verified in code) — a full trace of every `event_type`
+ever written anywhere in the codebase:** only `LOGIN`, `LOGOUT`, `TIMEOUT`,
+`TRANSACTION` (only for `TRANSFER_ORDER`), and `SECURITY` (tax rate
+changes, profile updates, user create/update) are ever recorded. Grepping
+the services that should be the most security-sensitive in the entire
+app turns up **zero** `AuditLog` writes:
+- `transaction_service.py`'s `void_sale` and `process_refund`
+  (lines 298-451) — void only calls `logger.info(...)`, a plain file-log
+  line, never a database `AuditLog` row.
+- `PermissionService`/`permission_dialog.py` — no `AuditLog` reference
+  anywhere (consistent with UX-059's finding that saving permissions is
+  currently broken outright, so there's doubly nothing to trace here yet).
+- `purchase_service.py` — no audit entry when a GRN/purchase is committed.
+- `customer_credit_service.py` — no audit entry for credit adjustments or
+  payments received (including `record_adjustment`).
+
+**Why it matters:** these are precisely the actions a shop owner would
+most want a trail for — someone voiding a sale, refunding a customer,
+changing what a Cashier is allowed to do, or adjusting a customer's
+credit balance. Right now, routine logins are tracked in detail while the
+actually consequential actions leave no record at all — the opposite of
+what an audit log is for.
+
+**Suggested fix:** once UX-062's central logging path is fixed, wire
+`void_sale`, `process_refund`, permission changes (after UX-059 is
+fixed), purchase/GRN commits, and credit adjustments through it — each
+with enough `details` to reconstruct what happened (who, what, why, for
+how much).
+
+---
+
+### UX-064: Activity Log has no color or icon coding by event type
+
+**Screen:** Users → Activity Log tab
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "can we add some colored tag to identify logs
+properly."
+
+**Root cause (verified in code):** `load_logs()` (`user_view.py:226-239`)
+builds every row as a plain `QTableWidgetItem(...)` with no
+`setForeground()`/icon/badge logic at all — LOGIN, LOGOUT, TRANSACTION,
+and SECURITY events all render identically in plain white text. Worth
+noting this isn't a new pattern for the codebase to learn — the sibling
+Users tab in the very same file already does exactly this kind of thing
+(`load_users()`, lines 222-224, sets red foreground text for inactive
+user status) — it just wasn't applied here.
+
+**Why it matters:** a shop owner scanning for something unusual (a void,
+a permission change, a failed login) has to read every row's EVENT text
+individually today — color/icon coding is exactly what makes an activity
+log scannable at a glance, which is the whole point of the feature.
+
+**Suggested fix:** tag each event type with a color (e.g. LOGIN/LOGOUT
+neutral, SECURITY amber, and — once UX-063 adds them — VOID/REFUND red,
+PERMISSION_CHANGE amber/bold) using the same `setForeground()` approach
+already proven in `load_users()`, or a small colored dot/icon prefix on
+the EVENT cell.
+
+---
+
+### UX-065: Activity Log is hardcoded to the 10 most recent rows, with no filter UI
+
+**Screen:** Users → Activity Log tab
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes — found while checking this tab's data loading.**
+`UserService.get_recent_activity(user_id=None, limit=10)`
+(`user_service.py:74-94`) already supports filtering by a specific user —
+but `load_logs()` calls it with **zero arguments**
+(`user_view.py:227`), so it always shows exactly the 10 most recent
+audit rows system-wide, with no date range, no event-type filter, and no
+way to page further back — despite the filtering capability already
+existing one layer down.
+
+**Why it matters:** an activity log that can only ever show its 10 most
+recent entries stops being useful the moment there's been any real
+activity since — you can't look up "what did the cashier do yesterday"
+or "when was this customer's credit last adjusted" at all.
+
+**Suggested fix:** surface a user filter (the service already supports
+it — this part is nearly free), a date range, and basic pagination or a
+"load more" control, matching the filter conventions already used
+elsewhere in the app (Document Browser's Type/Status/From/To row is a
+close template).

@@ -82,6 +82,12 @@ Nothing gets "fixed" here, only logged.
 | [UX-048](#ux-048-report-tables-last-column-always-stretches-truncating-the-first-columns-labels) | Report table's last column always stretches, truncating the first column's labels | Reports | P1 | 🔴 Open |
 | [UX-049](#ux-049-every-report-type-shares-one-generic-renderer-with-zero-report-specific-treatment) | Every report type shares one generic renderer with zero report-specific treatment | Reports | P2 | 🔴 Open |
 | [UX-050](#ux-050-pagination-controls-render-even-when-there-is-only-one-page) | Pagination controls render even when there is only one page | Reports | P3 | 🔴 Open |
+| [UX-051](#ux-051-one-dialog-has-three-different-names-for-the-same-feature) | One dialog has three different names for the same feature | Document Browser | P1 | 🔴 Open |
+| [UX-052](#ux-052-document-browser-table-has-three-competing-stretch-columns-truncating-type-and-total) | Document Browser table has three competing stretch columns, truncating TYPE and TOTAL | Document Browser | P1 | 🔴 Open |
+| [UX-053](#ux-053-document-browser-doesnt-explain-what-its-for-or-why-to-use-it) | Document Browser doesn't explain what it's for or why to use it | Document Browser | P2 | 🔴 Open |
+| [UX-054](#ux-054-proforma-dialogs-customer-field-looks-searchable-but-isnt) | Proforma dialog's Customer field looks searchable but isn't | Proforma/Quotation dialog | P1 | 🔴 Open |
+| [UX-055](#ux-055-proforma-dialogs-validity-field-uses-the-same-known-broken-spinbox-stepper-pattern) | Proforma dialog's Validity field uses the same known-broken spinbox stepper pattern | Proforma/Quotation dialog | P2 | 🔴 Open |
+| [UX-056](#ux-056-proforma-dialogs-line-items-table-has-no-empty-state-message) | Proforma dialog's line-items table has no empty-state message | Proforma/Quotation dialog | P2 | 🔴 Open |
 
 ---
 
@@ -1731,6 +1737,15 @@ this, with no shared class or documented name anywhere. That makes it
 harder, not easier, to fix consistently — three separate rule blocks to
 change instead of one.
 
+**Update — make that "at least four":** Document Browser (UX-052/UX-053)
+uses the identical palette too — `QTableWidget#DocTable {
+background-color: #0A1929; ... }` with `#112240` gridlines and a
+`#00BCEB` header (`dark.qss:2980-3002`), its own separate rule block again.
+Every new screen that gets built without someone deliberately reaching for
+this palette will keep re-adding a fifth, sixth instance — this is the
+strongest argument yet for making the product decision in UX-031's
+"Suggested fix" now rather than later.
+
 **A smaller, compounding issue on the same block:** the category header
 label (`ReportCategoryLabel`) is plain transparent text
 (`dark.qss:2423-2429`) while its count badge (`ReportCategoryCount`) gets
@@ -2094,3 +2109,209 @@ to paginate.
 **Suggested fix:** hide the pagination row (not just disable its buttons)
 whenever `total_pages <= 1`, showing it only when there's an actual
 second page to go to.
+
+---
+
+### UX-051: One dialog has three different names for the same feature
+
+**Screen:** Document Browser → "+ New Quotation"
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "truth to be told I don't even know what the use of
+it and how valuable this is to my app, so how would users know?" — that
+reaction is the direct, predictable result of a real naming bug, not a
+vague first impression.
+
+**Root cause (verified in code) — confirmed, not a mismatched parameter,
+the naming is simply hardcoded three different ways in one class:**
+- The button you clicked: `document_view.py:82-85`, text set at line 287
+  via `_t("document_browser.btn_new_quotation")` → `"+ New Quotation"`
+  (`en.json:769`).
+- The dialog that opens: `open_proforma_dialog()`
+  (`document_view.py:855-861`) constructs `ProformaDialog(self)` — no
+  document-type argument at all, because `ProformaDialog.__init__` has
+  none (`proforma_dialog.py:35`).
+- The dialog's window title: hardcoded `_t("proforma.title")` →
+  `"Proforma Invoice"` (`proforma_dialog.py:37`, `en.json:1713`).
+- The confirm button: hardcoded `_t("proforma.btn_create")` →
+  `"Create Proforma"` (`proforma_dialog.py:125-126`, `en.json:1726`).
+- The success message on save says "Quotation" again
+  (`proforma_dialog.py:281`) — a **third** label for the same action.
+
+So in one flow: you click something called Quotation, open a dialog
+titled Proforma Invoice, click a button that says Create Proforma, and
+get a success message about a Quotation. There's no `doc_type` switch
+being ignored — there's just one hardcoded name at each of the 4 points,
+and they were never made to agree.
+
+**Why it matters:** this isn't cosmetic — a shop owner (you, by your own
+account) genuinely can't tell what this feature *is* when the app itself
+can't settle on what to call it. Quotations and Proforma Invoices are
+also two different real-world business documents in Sri Lankan retail
+(a quotation is a price estimate with no commitment; a proforma invoice
+is a formal pre-sale document, often used for advance payment or customs/
+import purposes) — if this dialog is meant to produce a Quotation,
+"Proforma Invoice"/"Create Proforma" is actively the wrong term, not just
+an inconsistent one; if it's meant to produce a Proforma Invoice, the
+trigger button is the wrong one.
+
+**Suggested fix:** first, a product decision — decide which one document
+this dialog actually produces (or whether it should support both, in
+which case it does need the `doc_type` parameter that doesn't exist yet,
+with the title/button/success-message all keyed off it). Then make the
+button, window title, confirm button, and success message agree
+everywhere. This is worth fixing before anything else on this screen —
+right now the feature can't be evaluated because it doesn't know its own
+name.
+
+---
+
+### UX-052: Document Browser table has three competing stretch columns, truncating TYPE and TOTAL
+
+**Screen:** Document Browser, main table
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** shown as part of the same screenshot — the TYPE
+column reads "STOCK_C..." and several TOTAL cells read "Rs. ..." with
+both truncated by ellipsis.
+
+**Root cause (verified in code) — a different shape of bug than the
+Reports table (UX-048), but the same family:** `document_view.py:149-152`
+sets an explicit resize mode on only 2 of 7 columns — DOC # (1) and PARTY
+(3), both `Stretch`. TYPE (2), TOTAL (4), STATUS (5), and USER (6) get
+**no resize mode call at all**, defaulting to Qt's `Interactive` mode. On
+top of that, `setStretchLastSection` is never disabled, so Qt's own
+default (`stretchLastSection=True`) makes column 6 (USER) stretch too —
+meaning there are **three** columns simultaneously competing for extra
+width (1, 3, and the implicit last column 6), squeezing the untouched
+`Interactive` columns (TYPE, TOTAL) into whatever's left over — which is
+too little for "STOCK_COUNT" or a full "Rs. 1,621.44".
+
+**Why it matters:** TOTAL is arguably the single most important column in
+a document ledger — truncating it to "Rs. ..." on multiple rows defeats
+the table's entire purpose for a user scanning for how much a document
+was worth.
+
+**Suggested fix:** give every column an explicit, deliberate resize mode
+— `ResizeToContents` (or a sensible fixed minimum) for DATE, TYPE, TOTAL,
+STATUS, USER, and reserve `Stretch` for exactly one column that should
+actually absorb extra space (PARTY makes sense; DOC # doesn't need to
+stretch). Also call `setStretchLastSection(False)` explicitly so USER
+stops competing by accident.
+
+---
+
+### UX-053: Document Browser doesn't explain what it's for or why to use it
+
+**Screen:** Document Browser
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged, directly:** "truth to be told I don't even know what
+the use of it and how valuable this is to my app."
+
+**This is worth logging as its own issue, separate from UX-051's naming
+bug** — even with perfect naming, nothing on this screen currently
+explains *why* a shop owner would come here. It's a flat table of every
+document type the app produces (quotations, invoices, GRNs, stock counts,
+receipts) with filter controls, but no header subtitle, no empty-state
+guidance, no tooltip — nothing that answers "what am I looking at and
+when would I use this" for someone encountering it for the first time.
+For an app built for non-technical shop owners who "learn through
+practice, not manuals," a screen whose own creator says "I don't even
+know what the use of it" is a signal that real end users won't either.
+
+**Why it matters:** a feature nobody understands the value of is a
+feature nobody uses — regardless of how well it's eventually styled or
+how correctly its bugs get fixed, if the "why" isn't communicated on the
+screen itself, this work risks going unused.
+
+**Suggested fix / feature idea:** add a one-line subtitle under
+"Document Browser" explaining its purpose in plain language (e.g. "Search
+and reprint any document your business has ever created — invoices,
+quotations, purchase orders, and more, all in one place"), and consider
+whether the "+ New Quotation" action even belongs on a *browsing* screen
+at all, versus living wherever quotations are naturally created in the
+sales flow — a browse/search screen and a create-new-document action are
+two different jobs bolted together here, which may be part of why the
+screen's purpose feels unclear even to you.
+
+---
+
+### UX-054: Proforma dialog's Customer field looks searchable but isn't
+
+**Screen:** Document Browser → "+ New Quotation" dialog
+**Severity:** P1 · **Status:** 🔴 Open
+
+**Not from your notes — found while reviewing the dialog's fields.** The
+Customer field shows a text cursor and looks like you can type to search
+— but there's no actual filtering behind it.
+
+**Root cause (verified in code):** `proforma_dialog.py:56-59` —
+`self.customer_combo = QComboBox()` with only `setEditable(True)` set. No
+`QCompleter` is attached, no `setInsertPolicy`, no placeholder text. This
+is the same gap already logged for Purchasing's supplier combos
+(UX-028) — contrast with the correct, already-working pattern in
+`payment_dialog.py:330-341`: `setInsertPolicy(NoInsert)`, a real
+`QCompleter(names, self)` with `MatchContains`, and a placeholder.
+
+**Why it matters:** a shop with more than a handful of customers gives
+the user a text box that accepts typing but never narrows the dropdown —
+which is worse than a plain non-editable combo, because it invites typing
+that then does nothing.
+
+**Suggested fix:** apply the exact same fix already recommended for
+UX-028 — wire this field to the same searchable-combo pattern already
+proven correct in `payment_dialog.py`.
+
+---
+
+### UX-055: Proforma dialog's Validity field uses the same known-broken spinbox stepper pattern
+
+**Screen:** Document Browser → "+ New Quotation" dialog
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes — found while reviewing the dialog's fields.** The
+Validity field ("30 days") shows the same odd stacked +/- stepper buttons
+already flagged elsewhere.
+
+**Root cause (verified in code):** `proforma_dialog.py:61-64` —
+`self.validity_spin = QSpinBox()`, no `setObjectName()`, no explicit
+width, so it falls back to the generic `QSpinBox`/`QDoubleSpinBox` QSS
+rule (`dark.qss:120-187`). This is the exact widget class
+`product_editor.py:142-143`'s own code comment already identifies as
+broken under QSS ("`QDoubleSpinBox` +/- buttons break under QSS") — this
+is now the fourth confirmed place (after Product Editor's stock fields,
+Customer Editor's Commercial tab (UX-038), and here) where a native
+stepper spinbox was used instead of the `QLineEdit` + validator pattern
+the codebase already knows is the correct workaround.
+
+**Why it matters:** at four confirmed instances, this isn't a per-dialog
+oversight anymore — it's a widget choice that needs to stop being made by
+default across the whole app.
+
+**Suggested fix:** same as UX-038 — replace with `QLineEdit` + an integer
+validator, matching the pattern already proven in `product_editor.py`.
+
+---
+
+### UX-056: Proforma dialog's line-items table has no empty-state message
+
+**Screen:** Document Browser → "+ New Quotation" dialog
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes — found while reviewing the dialog.** Before any
+product is added, the PRODUCT/QTY/UNIT PRICE/DISC TYPE/DISC VALUE/TOTAL
+table is just a blank dark rectangle under the headers.
+
+**Root cause (verified in code):** `refresh_table()`
+(`proforma_dialog.py:192-223`) calls `setRowCount(0)` when `self.items` is
+empty, with no placeholder row or message — the same gap already logged
+for GRN History/Payables (UX-030), now confirmed a third place.
+
+**Why it matters:** a blank table with no guidance leaves a first-time
+user unsure whether the table is broken, still loading, or genuinely
+empty — small, but part of the same "doesn't explain itself" theme as
+UX-053 on this same screen.
+
+**Suggested fix:** once UX-043's shared `EmptyStateWidget` exists, use it
+here too (e.g. "No products added yet — search above to add one").

@@ -1244,9 +1244,18 @@ class SalesView(QWidget):
         from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
         worker = PrintWorker.instance()
+        # PrintWorker.instance() is one shared, persistent object for the
+        # app's lifetime (see its docstring), so connecting on every call
+        # without guarding would add another duplicate connection each
+        # time this runs -- the next error would then show once per
+        # accumulated connection instead of once. Disconnect any previous
+        # connection first so exactly one exists.
+        try:
+            worker.error_occurred.disconnect(self._on_print_error)
+        except TypeError:
+            pass  # not connected yet
         worker.error_occurred.connect(self._on_print_error)
         worker.add_job("kick_drawer")
-        self._drawer_worker = worker  # prevent GC
 
     def _on_print_error(self, message: str) -> None:
         """Show printer error to user with context."""

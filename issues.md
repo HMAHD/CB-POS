@@ -159,6 +159,16 @@ don't need re-litigating every time a new screen surfaces the same issue.
 | [UX-103](#ux-103-network-mode-icon-is-a-raw-emoji-not-the-apps-icon-system-explaining-the-black-background) | Network mode icon is a raw emoji, not the app's icon system — explaining the black background | Settings → Network | P2 | 🔴 Open |
 | [UX-104](#ux-104-network-page-has-almost-no-explanatory-text-which-is-exactly-why-mode-vs-lan-sync-reads-as-redundant) | Network page has almost no explanatory text, which is exactly why Mode vs. LAN Sync reads as redundant | Settings → Network | P1 | 🔴 Open |
 | [UX-105](#ux-105-lan-sync-tab-hardcodes-english-strings-bypassing-i18n-entirely) | LAN Sync tab hardcodes English strings, bypassing i18n entirely | Settings → Network | P2 | 🔴 Open |
+| [UX-106](#ux-106-payment-method-cards-are-a-7th-confirmed-instance-of-the-navy-palette) | Payment method cards are a 7th confirmed instance of the navy palette | Settings → Payments | P2 | 🔴 Open |
+| [UX-107](#ux-107-cashs-narrower-button-row-breaks-column-alignment-across-payment-method-rows) | Cash's narrower button row breaks column alignment across payment method rows | Settings → Payments | P2 | 🔴 Open |
+| [UX-108](#ux-108-only-cash-shows-a-shortcutbehavior-tag-because-only-cash-was-ever-seeded-with-one) | Only Cash shows a shortcut/behavior tag — because only Cash was ever seeded with one | Settings → Payments | P3 | 🔴 Open |
+| [UX-109](#ux-109-cashs-tag-labels-arent-translated-in-sinhala-or-tamil) | Cash's tag labels aren't translated in Sinhala or Tamil | Settings → Payments | P3 | 🔴 Open |
+| [UX-110](#ux-110-backup-list-loads-synchronously-with-no-loading-indicator-despite-the-pattern-already-existing-in-the-same-file) | Backup list loads synchronously with no loading indicator, despite the pattern already existing in the same file | Settings → Data Safety | P2 | 🔴 Open |
+| [UX-111](#ux-111-the-18-pre-restore-backups-shown-are-very-likely-a-test-isolation-bug-leaking-into-a-real-user-folder) | The 18 pre-restore backups shown are very likely a test-isolation bug leaking into a real user folder | Settings → Data Safety | P2 | 🔴 Open |
+| [UX-112](#ux-112-pre-restore-backups-are-permanently-exempt-from-cleanup-and-have-no-delete-option-anywhere) | Pre-restore backups are permanently exempt from cleanup, and have no delete option anywhere | Settings → Data Safety | P1 | 🔴 Open |
+| [UX-113](#ux-113-database-file-path-is-visually-truncated-by-a-qformlayout-sizing-bug-not-a-data-bug) | Database file path is visually truncated by a QFormLayout sizing bug, not a data bug | Settings → Admin Tools | P2 | 🔴 Open |
+| [UX-114](#ux-114-admin-tools-hardware-tab-duplicates-two-test-buttons-already-on-settings-hardware) | Admin Tools' Hardware tab duplicates two test buttons already on Settings → Hardware | Settings → Admin Tools | P3 | 🔴 Open |
+| [UX-115](#ux-115-a-working-database-integrity-check-already-exists-but-is-never-wired-to-any-button) | A working database integrity-check already exists, but is never wired to any button | Settings → Admin Tools | P3 | 🔴 Open |
 
 ---
 
@@ -1420,7 +1430,7 @@ already reviewed by screenshot:**
 | Document Browser (main table) | `DocTable` | `dark.qss:2980-3002` (UX-052/053) |
 | Document Browser (detail panel) | `DocDetailCloseBtn`, `DocItemsTable`, `DocInfoLabel`, `DocReprintBtn`, `DocRefundBtn`/`DocVoidBtn`, `DocPrevBtn`/`DocNextBtn` | `dark.qss:3020-3124` — not yet reviewed by screenshot, found in this audit |
 | Price Lists | `PriceListSidebarPanel`, `PriceListNavItem`, `PriceListContentPanel`, `PriceListHeader`, `PriceListDataTable`, `PriceListFooter` | `dark.qss:3120-3289` — now confirmed by screenshot too (see UX-066/071) |
-| Payment Methods (card list) | `PMCard` (`payment_methods_view.py:139`) | `dark.qss:3290-3305` — lighter touch (card background + `#00BCEB` hover border only, not a full-screen background) |
+| Payment Methods (card list) | `PMCard` (`payment_methods_view.py:139`) | `dark.qss:3290-3305` — now confirmed by screenshot too (see UX-106); lighter touch (card background + `#00BCEB` hover border only, not a full-screen background) |
 
 That's **6 confirmed locations**, not the 2-3 found so far by screenshot
 review alone — this was never just a Payables/Credit Book quirk.
@@ -4477,3 +4487,333 @@ app maintains, on what is otherwise a fully real, working feature.
 **Suggested fix:** add the missing i18n keys to `en.json`/`si.json`/
 `ta.json` and route every hardcoded label and the tab title through
 `_t(...)`, matching the other 3 tabs on the same page.
+
+---
+
+### UX-106: Payment method cards are a 7th confirmed instance of the navy palette
+
+**Screen:** Settings → Payments
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "this page's payment methods show as a dark blue
+color that doesn't match with system styling, fix it."
+
+**Confirmed — and this location was actually already found via the
+code-only audit that produced UX-031's decision, now confirmed directly
+by your screenshot too.** `payment_methods_view.py:139` sets
+`objectName("PMCard")`, styled at `dark.qss:3294-3298` with the same
+`#112240` background already tracked (33 other sites use this exact
+color across the app, `#0A1929` at 9, `#00BCEB` at 30+) — not a separate
+or new color, the same already-decided-to-retire palette.
+
+**Why it matters / status:** no new decision needed — this is simply one
+more confirmed location for the fix already scoped in UX-031 (now 7
+locations: Payables, Credit Book, Reports, Document Browser, Price
+Lists, Payment Methods, plus Network's header rules noted earlier).
+
+**Suggested fix:** include `#PMCard` in the same retirement pass as the
+other 6 locations — no separate decision required, this is already
+covered by the standing decision at the top of this document.
+
+---
+
+### UX-107: Cash's narrower button row breaks column alignment across payment method rows
+
+**Screen:** Settings → Payments
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes — found while checking for row-to-row
+inconsistencies, per your "mark any other UI/UX issues" ask.**
+
+**Root cause (verified in code):** Cash is the only payment method
+without a Delete button — gated by `if not self.method.is_cash`
+(`payment_methods_view.py:209-215`), correctly matching the footer note
+"Cash method cannot be deleted." But the button group has no fixed width
+or spacer reserving room for a missing third button, and the row is
+right-anchored only via a stretch factor on the info column
+(`layout.addLayout(info_layout, 1)`, line 170) — so Cash's narrower
+2-button block still sits flush against the right margin, landing its
+"Edit" button in a different horizontal position than every other row's
+"Edit" button. Across 6 rows, 5 line up and 1 doesn't.
+
+**Why it matters:** small, but a list of rows where the buttons don't
+form a straight column is exactly the kind of detail that reads as
+unpolished, especially on a settings page a shop owner might visit
+often to toggle payment methods on/off.
+
+**Suggested fix:** reserve a fixed-width slot for the Delete button
+position on every row (rendering it disabled/hidden-but-space-reserved
+for Cash) instead of omitting it from the layout entirely, so every
+row's button group has identical width regardless of which buttons are
+actually clickable.
+
+---
+
+### UX-108: Only Cash shows a shortcut/behavior tag — because only Cash was ever seeded with one
+
+**Screen:** Settings → Payments
+**Severity:** P3 · **Status:** 🔴 Open
+
+**Not from your notes — found while checking why only Cash has a
+subtitle ("Cash · Opens Drawer · F12") and the other 5 methods don't.**
+
+**Good news: the architecture is fine, this is a data gap, not a code
+bug.** The subtitle is built generically from real per-method fields —
+`is_cash`, `open_drawer`, `shortcut` — all genuine columns on the
+`PaymentMethod` model (`cbpos/core/models/__init__.py:616-625`), with no
+hardcoded `if method.name == "Cash"` special case anywhere
+(`payment_methods_view.py:156-168`). The keyboard-shortcut mechanism is
+similarly generic — `payment_dialog.py:321-328` wires a `QShortcut` for
+*whichever* method has one set. It's just that seed data
+(`scripts/seed.py:1640-1646`, and the fresh-install path in
+`database_setup_service.py:149-154`) only ever assigns a shortcut/
+drawer-open flag to Cash — Card/Credit/QR/Cheque/Transfer are seeded
+with none.
+
+**Why it matters:** a shop owner who wants a fast keyboard shortcut for
+Card payments (a very plausible real want) already *can* set one via the
+existing Edit dialog — the UI would render it correctly the moment it's
+set — this just isn't obvious from the current screen, since it looks
+like Cash is special rather than "any method can have this."
+
+**Suggested fix:** no code change required — consider seeding one more
+common default (e.g. a shortcut for Card) so the pattern is visible out
+of the box, and maybe a one-line hint on the Add/Edit dialog ("Set a
+keyboard shortcut and drawer-open behavior for faster checkout") so
+admins know this is available for every method, not just Cash.
+
+---
+
+### UX-109: Cash's tag labels aren't translated in Sinhala or Tamil
+
+**Screen:** Settings → Payments
+**Severity:** P3 · **Status:** 🔴 Open
+
+**Not from your notes — found while checking the tag-building code from
+UX-108.** `tag_cash`/`tag_opens_drawer` i18n keys are left as literal
+untranslated English ("Cash"/"Opens Drawer") in both `si.json:1032-1033`
+and `ta.json:1032-1033` — unlike the neighboring `status_active`/
+`status_inactive` keys, which are properly localized.
+
+**Why it matters:** a small but real gap in the trilingual guarantee —
+a Sinhala or Tamil-language admin would see these two specific words in
+English regardless of their chosen language.
+
+**Suggested fix:** add real Sinhala/Tamil translations for these two
+keys, matching the standard already met by their neighbors in the same
+file.
+
+---
+
+### UX-110: Backup list loads synchronously with no loading indicator, despite the pattern already existing in the same file
+
+**Screen:** Settings → Data Safety → Backup
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "the main thing is it takes time to show — at
+least show a skeleton and load the data."
+
+**Root cause (verified in code) — and worth noting the fix pattern is
+already built and used elsewhere in this exact file:**
+`_refresh_backup_list` (`data_safety_view.py:152-167`) calls
+`BackupService.list_backups(backup_dir)` **synchronously on the main UI
+thread** — no `QThread`/worker, unlike every other operation on this
+page (create backup, restore, vacuum, integrity check, export all
+already use dedicated workers imported at line 42). The app's own
+`LoadingOverlay` widget is used for all of those
+(`self._overlay.show_loading(...)`, e.g. lines 185, 433, 587, 619) — but
+it is **never called** around the backup-list scan, which runs
+unguarded from `showEvent` (line 63, every time this tab becomes
+visible), the Refresh button (line 144), after a backup completes
+(line 197), and after Clean Old Backups (line 283).
+
+**Why it matters:** the UI appears to freeze with zero feedback while
+this scan runs — exactly the "takes time to show" you're describing —
+even though the app already has the right tool for this, just not
+applied here.
+
+**Suggested fix:** wrap `_refresh_backup_list`'s call in the same
+`LoadingOverlay`/worker-thread pattern already used for every other
+operation on this page — this isn't a new pattern to build, just one
+call site that was missed.
+
+---
+
+### UX-111: The 18 pre-restore backups shown are very likely a test-isolation bug leaking into a real user folder
+
+**Screen:** Settings → Data Safety → Backup
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you asked:** "are those really there, or does it just show
+without a backup — check the functionality."
+
+**Investigated precisely, and the honest answer is: these specific 18
+files are very likely not genuine user-initiated restores, but they are
+real files on disk (not a display bug) — caused by a test-isolation
+defect, which is itself worth fixing.** `restore_backup()`
+(`backup_service.py:98-188`) correctly creates one pre-restore snapshot
+per real restore action, and the only app-level caller is
+`DataSafetyView._restore_backup()` — genuinely one snapshot per actual
+restore, if that were the only caller.
+
+**But there's a second caller: the test suite.**
+`tests/unit/test_backup_service.py:229` (`test_restore_backup`) calls
+the same `restore_backup()`. That test mocks `Config.DATA_DIR`/`BASE_DIR`
+to a temp directory — but the snapshot path is **not** derived from
+`Config` at all: `backup_service.py:136` builds it from
+`BackupService.get_default_backup_dir()`
+(`backup_service.py:324-327`), which is **hardcoded** to
+`Path.home() / "Documents" / "CB-POS-Backups"`, completely bypassing the
+test's own mock. Every run of this one test writes a real
+`.pre_restore.zip`, built from a tiny fabricated "database" (an ~18-byte
+string), into the developer's **actual** home-directory backup folder —
+exactly matching the pattern seen (many files, same day, tight time
+window, all showing "0.0 MB", which is legitimate rounding of that
+genuinely tiny fabricated file, not a size-computation bug).
+
+**Why it matters:** re-running this test (or the suite) repeatedly during
+development pollutes a real, production-shaped user data directory with
+fake artifacts — a test-hygiene bug with a real side effect, not
+something a genuine end user would ever trigger 18 times in 15 minutes.
+
+**Suggested fix:** make `get_default_backup_dir()` (or the snapshot path
+specifically) actually honor the mocked `Config` in tests — likely by
+deriving the default from `Config.DATA_DIR` instead of a hardcoded
+`Path.home()` call, so the test suite can never write outside its own
+temp directory again.
+
+---
+
+### UX-112: Pre-restore backups are permanently exempt from cleanup, and have no delete option anywhere
+
+**Screen:** Settings → Data Safety → Backup
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "there is no option to delete a backup, rather
+than 'Clean Old Backups' — give a delete option, with a user-friendly
+warning."
+
+**This is the real, production-relevant bug behind what you're seeing —
+separate from UX-111's dev-environment explanation for this specific
+screenshot.** `cleanup_old_backups()` (`backup_service.py:236-270`)
+keeps the `keep_count` most recent **regular** backups and deletes the
+rest — but explicitly excludes every pre-restore file from
+consideration at all: `backup_service.py:256`,
+`if ".pre_restore" not in f.name`. Combined with the fact that no
+per-row delete action exists anywhere in `data_safety_view.py` (confirmed
+by grep — the only deletion path in the whole file is this one bulk
+method), **pre-restore snapshots can never be removed by any means
+built into the app**, in any real installation, ever. Every genuine
+restore a shop owner ever performs leaves behind a file that will sit on
+disk forever.
+
+**Why it matters — this is a real, unbounded-growth problem on the
+app's own data-safety feature, which is exactly the kind of thing that
+should be reliable:** a shop that restores from backup periodically
+(recovering from a bad import, testing a migration, etc.) will
+accumulate an ever-growing pile of pre-restore snapshots with no way to
+ever clean them up short of manually deleting files outside the app.
+
+**Suggested fix:** exactly what you asked for — add a per-row Delete
+button with a clear confirmation warning (e.g. "This backup will be
+permanently deleted and cannot be recovered — are you sure?"), and
+either let it also apply to pre-restore files, or add pre-restore files
+to `cleanup_old_backups()`'s own retention logic (keep the last N
+pre-restore snapshots too, rather than excluding them entirely) so they
+don't need manual attention to stay bounded.
+
+---
+
+### UX-113: Database file path is visually truncated by a QFormLayout sizing bug, not a data bug
+
+**Screen:** Settings → Admin Tools → Database
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you'd notice from the screenshot:** "Path:" shows only
+`/Users/akash/` — looks like the filename itself is missing.
+
+**Investigated and given a definitive answer: the underlying data is
+correct, this is purely a display defect.** The real path is computed
+correctly with the filename included —
+`maintenance_service.py:101`: `db_path = Config.DATA_DIR / "cbpos.db"`,
+passed through unmodified at `maintenance_service.py:135`. It's rendered
+as-is, with no slicing (`admin_tools_view.py:186`:
+`self.lbl_db_path.setText(info.get("path", "--"))`). The widget is a
+plain `QLabel` with `setWordWrap(True)` inside a `QFormLayout`
+(`admin_tools_view.py:131-135`), with no `setMinimumWidth` anywhere on
+the label or its containing group — the classic `QFormLayout` +
+word-wrapped-`QLabel` sizing defect, where the field column doesn't get
+allocated enough width/height for the wrapped text, so only the first
+line/fragment paints visibly.
+
+**Why it matters:** this is an admin-diagnostic screen — the whole point
+of showing the database file path is to let someone confirm exactly
+where their data lives, which this currently fails to do.
+
+**Suggested fix:** give `lbl_db_path` (or its containing group box) an
+explicit minimum width sized to a realistic full path, or switch to a
+selectable multi-line `QTextEdit`/`QPlainTextEdit` sized to its content
+instead of relying on `QFormLayout`'s field-column sizing for wrapped
+text.
+
+---
+
+### UX-114: Admin Tools' Hardware tab duplicates two test buttons already on Settings → Hardware
+
+**Screen:** Settings → Admin Tools → Hardware
+**Severity:** P3 · **Status:** 🔴 Open
+
+**Not from your notes — found while checking whether this tab overlaps
+with the main Hardware settings page, per your "are there features that
+should be here" ask.**
+
+**Confirmed real duplication, but with a clear distinction worth
+keeping:** both this tab and Settings → Hardware have a "Test Print" and
+"Open Drawer"/cash-drawer-test button, both calling the exact same
+`HardwareTestService` methods (`test_receipt_printer()`/
+`test_cash_drawer()`). The unique value this tab actually adds is a
+read-only configuration summary (printer type/path, current receipt/A4
+printer, paper width) and a Barcode Scanner keystroke-timing diagnostic
+that exists nowhere else. Settings → Hardware remains the only place to
+actually *change* printer selection/paper width — this tab never edits
+anything, it only displays and tests.
+
+**Why it matters:** low severity — it's not wrong to be able to test
+hardware from two places, but two identical buttons calling the same
+method on two different screens is duplicated surface area worth
+noting.
+
+**Suggested fix:** consider whether Admin Tools' printer/drawer test
+buttons should simply link over to Settings → Hardware instead of
+duplicating the buttons, keeping this tab focused on its unique value
+(read-only diagnostics + the scanner test).
+
+---
+
+### UX-115: A working database integrity-check already exists, but is never wired to any button
+
+**Screen:** Settings → Admin Tools → Database
+**Severity:** P3 · **Status:** 🔴 Open
+
+**Not from your notes — found while checking for missing industry-grade
+admin features, per your explicit ask.**
+
+**Good news: this isn't a missing feature, it's an unconnected one.**
+`MaintenanceService.integrity_check()` (`maintenance_service.py:143`) is
+a real, working method — it's just never called from anywhere in
+`admin_tools_view.py` (confirmed by grep). Also confirmed absent from
+this screen entirely: a VACUUM/optimize-database action, a combined
+diagnostic-bundle export (DB info + logs + hardware info in one
+shareable file for support), and a raw SQL query console — none of
+these exist anywhere in the file, unlike the integrity check, which is
+sitting there half-wired.
+
+**Why it matters:** "Check Database Integrity" is exactly the kind of
+button a shop owner troubleshooting a problem (or a support agent
+walking them through one) would expect on this screen — and the backend
+work to support it is already done.
+
+**Suggested fix:** add a "Check Database Integrity" button on the
+Database tab that calls the existing `integrity_check()` method and
+shows its result — this should be one of the cheapest features to add
+in this entire catalog, since the actual logic already exists and works.

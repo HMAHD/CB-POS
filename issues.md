@@ -48,6 +48,12 @@ Nothing gets "fixed" here, only logged.
 | [UX-014](#ux-014-total-sales-kpi-number-appears-clipped-in-the-reported-screenshot-couldnt-reproduce-yet) | Total Sales KPI number appears clipped in the reported screenshot (couldn't reproduce yet) | Dashboard | P1 | 🔴 Open |
 | [UX-015](#ux-015-both-dashboard-background-workers-swallow-errors-silently-and-leave-the-ui-stuck) | Both dashboard background workers swallow errors silently and leave the UI stuck | Dashboard | P1 | 🔴 Open |
 | [UX-016](#ux-016-periodic-reports-date-range-has-no-sanity-bounds-and-isnt-remembered) | Periodic Reports date range has no sanity bounds and isn't remembered | Dashboard | P2 | 🔴 Open |
+| [UX-017](#ux-017-inventory-table-truncates-product-names-third-confirmed-instance-of-the-ux-010-pattern) | Inventory table truncates product names — third confirmed instance of the UX-010 pattern | Inventory | P1 | 🔴 Open |
+| [UX-018](#ux-018-three-different-numeric-input-conventions-in-the-app-one-of-them-flagged-as-broken-in-its-own-code-comment-and-still-used-for-price) | Three different numeric-input conventions in the app — one of them flagged as broken in its own code comment, and still used for Price | Product Editor + app-wide | P1 | 🔴 Open |
+| [UX-019](#ux-019-label-preview-dialog-has-a-hardcoded-navy-background-that-doesnt-match-the-dark-theme) | Label Preview dialog has a hardcoded navy background that doesn't match the dark theme | Label Preview dialog | P1 | 🔴 Open |
+| [UX-020](#ux-020-csv-import-dialog-floating-thumbnail-investigated-likely-not-an-app-bug) | CSV Import dialog floating thumbnail — investigated, likely not an app bug | Import CSV dialog | ⚪ N/A | ⚪ Won't Fix |
+| [UX-021](#ux-021-category-manager-tree-has-no-column-resize-mode-configured-causing-a-horizontal-scrollbar-and-a-squeezed-header) | Category Manager tree has no column resize-mode configured, causing a horizontal scrollbar and a squeezed header | Category Manager dialog | P2 | 🔴 Open |
+| [UX-022](#ux-022-secondarydanger-button-class-convention-is-inconsistently-applied-across-3-dialogs) | Secondary/danger button class convention is inconsistently applied across 3 dialogs | Category Manager, Unit Manager, Label Print | P3 | 🔴 Open |
 
 ---
 
@@ -705,3 +711,242 @@ both confirmed in code:
 2. Persist the last-used range (or which preset was active, if UX-013's
    preset-buttons idea is adopted) via `ConfigService`, restored on next
    dashboard load — small change, meaningfully less repetitive for daily use.
+
+---
+
+### UX-017: Inventory table truncates product names — third confirmed instance of the UX-010 pattern
+
+**Screen:** Inventory
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you'd see** — "Atlas A5 Exercise Book 80 ...", "Comfort Fabric Softener
+...", "Dettol Antiseptic Liquid ...", "Elephant House Cream So..." in the
+NAME column all cut off mid-word, same as the Select Customer dialog
+(UX-010).
+
+**Root cause (verified in code) — literally the same bug, confirmed
+independently in a second file:** `inventory_view.py:136`:
+```python
+self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+```
+The no-column-index overload again — BARCODE/NAME/CATEGORY/PRICE/STOCK/UNIT
+all get an equal forced share of the table's width, so NAME (the one column
+with genuinely variable-length content) gets squeezed exactly like the
+Select Customer table did. No `setToolTip` is set anywhere in this file
+either (confirmed via the model's `data()` method — it only implements
+`DisplayRole`/`BackgroundRole`, no `ToolTipRole`), so there's no hover
+fallback to recover a cut-off name. The table also has no `objectName` set,
+so it can't be targeted by dialog-specific QSS even if we wanted to.
+
+**Why it matters:** same as UX-010 — this is the main product list a shop
+owner scans through daily; not being able to read a full product name
+defeats the point of the screen.
+
+**Suggested fix:** identical to UX-010 — give NAME the `Stretch` column and
+size BARCODE/CATEGORY/PRICE/STOCK/UNIT to content or a sensible fixed width
+instead of uniform stretch, add `ToolTipRole` to the model's `data()` method
+so a full name is always recoverable on hover, and give the table an
+`objectName` while touching this code. **Worth fixing UX-010 and this one
+together** — same bug, same fix, two files.
+
+---
+
+### UX-018: Three different numeric-input conventions in the app — one of them flagged as broken in its own code comment, and still used for Price
+
+**Screen:** Product Editor dialog (Selling Price / Cost Price), app-wide pattern
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What prompted this** — the Selling Price/Cost Price fields' +/- steppers
+in your screenshot visually resemble the raw, unstyled native dialog already
+found in UX-008, so I checked whether this was the same problem. It isn't
+quite — but what I found is arguably a bigger finding: **the developers
+already knew about a QSS rendering problem with this exact widget, fixed it
+in three places in the same file, and left it broken in two more.**
+
+**Root cause (verified in code):** `product_editor.py:120-128` builds
+Selling Price/Cost Price as plain `QDoubleSpinBox()` instances (no
+`objectName`, reached only by the generic `QSpinBox, QDoubleSpinBox` QSS
+rule at `dark.qss:119-191`). A few lines later, `product_editor.py:142-143`,
+right above the Stock/Reorder Point/Preferred Qty fields:
+```python
+# Stock group — QLineEdit instead of QDoubleSpinBox for clean
+# rendering (QDoubleSpinBox +/- buttons break under QSS)
+```
+— an explicit developer comment stating `QDoubleSpinBox` steppers are known
+to render badly under this app's stylesheet, with `QLineEdit` +
+`QDoubleValidator` adopted as the fix for Stock/Reorder Point/Preferred Qty
+(lines 149-162). **Selling Price and Cost Price were never migrated** and
+still use the flagged-as-broken widget — same dialog, same known issue,
+inconsistently applied. The Composition tab's component-quantity field
+(`comp_qty_input`) has the same gap.
+
+Zooming out, this app has accumulated **three unrelated workarounds** for
+the same underlying problem (numeric entry that needs to look right under
+this stylesheet), each invented independently:
+1. `QDoubleSpinBox` with steppers, generic-QSS-styled (Price/Cost/Composition
+   qty in `product_editor.py`, Decimal Places in `unit_manager.py`).
+2. Plain `QLineEdit` + `QDoubleValidator`, no steppers at all
+   (Stock/Reorder/Preferred Qty in `product_editor.py`, the entire
+   `quantity_dialog.py` from UX-008).
+3. A custom `QStyledItemDelegate` editor with a `setStyleSheet()` applied
+   directly per-instance, because — per its own comment,
+   `label_print_dialog.py:45-49` — "delegate editors inside a
+   globally-styled QTableWidget cannot be reached by QSS selectors" at all.
+
+**Why it matters:** beyond the visual inconsistency, this is real
+maintenance debt — three different patterns for the same UI concept means
+three different places that can independently drift, break, or need
+fixing, and no single component to fix once.
+
+**Suggested fix:** finish the migration this file already started —
+Selling Price/Cost Price/Composition qty to the same `QLineEdit` +
+`QDoubleValidator` pattern already proven in the Stock group and
+`quantity_dialog.py`. Longer-term, worth extracting one shared "currency/
+numeric input" widget (validated `QLineEdit`, optional +/- buttons drawn
+consistently, one QSS target) used everywhere a number is entered in this
+app, rather than three ad-hoc conventions competing.
+
+---
+
+### UX-019: Label Preview dialog has a hardcoded navy background that doesn't match the dark theme
+
+**Screen:** Print Labels → Label Preview dialog
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged** — the preview popup's background is a distinct navy
+blue instead of matching the rest of the dark UI.
+
+**Root cause (confirmed exactly):** `dark.qss:2334-2341`:
+```css
+/* ── Label Preview Dialog ── */
+QDialog#LabelPreviewDialog {
+    background-color: #001F3F;
+}
+```
+`#001F3F` is `Config.COLOR_NAVY` (`cbpos/config.py:37`) — a real, named
+constant, not a stray typo — but grepping the codebase shows it's **never
+referenced from Python anywhere** (dead constant) and in QSS it's used
+~20+ times almost exclusively as *button text color for contrast on bright
+buttons* (e.g. green/cyan/yellow primary buttons use `color: #001F3F` so
+dark text reads against a bright background), not as a surface/background
+tone. `LabelPreviewDialog` is the one dialog left in the app using it as a
+full *background* — its immediate neighbor in the same stylesheet file uses
+the correct convention:
+```css
+/* ── CSV Import Dialog ── */
+QDialog#CsvImportDialog {
+    background-color: #1E1E1E;
+}
+```
+(`dark.qss:2355-2358`). The white label mockup card inside the preview *is*
+intentional — it's custom-`QPainter`-drawn to look like a real printed
+label (correctly white) — only the dialog's own surrounding background is
+wrong.
+
+**Why it matters:** small, but it's the one screen in the whole app that
+visibly breaks theme consistency for no functional reason — an easy, safe,
+high-confidence fix.
+
+**Suggested fix:** change `dark.qss:2336` (and check `light.qss` for the
+same rule) from `#001F3F` to the standard dialog surface color (`#1E1E1E`,
+matching `CsvImportDialog` right next to it).
+
+---
+
+### UX-020: CSV Import dialog floating thumbnail — investigated, likely not an app bug
+
+**Screen:** Import CSV dialog
+**Severity:** N/A · **Status:** ⚪ Won't Fix (pending your confirmation)
+
+**What you flagged** — a small, unexplained thumbnail-like image floating
+in the dialog's bottom-right corner.
+
+**Investigated thoroughly, logging the result rather than skipping it.**
+I read the full widget tree of `csv_import_dialog.py` and grepped for every
+mechanism that could plausibly produce a floating image: `QPixmap`, `QIcon`,
+`QMovie`, drag-and-drop handlers, a shared base-dialog class that might
+inject a watermark — all zero matches. There is no `QLabel` holding an
+image anywhere in this dialog, and `CsvImportWorker` (`cbpos/ui/workers.py`)
+has no pixmap/preview code either. Nothing in the code can produce what's
+in the screenshot.
+
+**Most likely explanation:** an OS-level or screenshot-tool artifact (e.g.
+a window-picker/Mission Control thumbnail caught mid-capture), not
+something this app rendered. Marking as Won't Fix rather than leaving it
+open indefinitely — flag it again if it reproduces in a plain screen
+recording (not a static screenshot), since that would rule out the capture-
+artifact explanation.
+
+---
+
+### UX-021: Category Manager tree has no column resize-mode configured, causing a horizontal scrollbar and a squeezed header
+
+**Screen:** Manage Categories dialog
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you'd see** — a horizontal scrollbar at the bottom of the category
+tree, and the "Products" column header squeezed down to showing just "P".
+
+**Root cause (code-corroborated, not fully pixel-verified):**
+`category_manager.py:64-70` sets `setColumnWidth(0, 280)` for the
+"Category" column but **never calls `setSectionResizeMode`** for either
+column — column 1 ("Products") is left entirely to Qt's default sizing.
+Compare with `unit_manager.py` (its sibling "manager" dialog), which
+explicitly sets `Stretch` for its Name column and `ResizeToContents` for
+the rest (lines 55-57) — Category Manager is the one dialog in this pair
+that skips this configuration. With the dialog's `setMinimumSize(640, 500)`
+giving the tree panel only a 2:1 share of a fairly compact window, plus
+`setRootIsDecorated(True)` + `expandAll()` adding per-level indentation on
+top of the fixed 280px first column, there's a plausible, code-supported
+path to the tree's true content width exceeding its viewport — matching
+both symptoms in your screenshot. I couldn't verify the exact pixel
+breakdown without a live render, so flagging this as strongly
+code-supported rather than 100% certain.
+
+**Suggested fix:** add explicit resize modes the same way `unit_manager.py`
+already does — `Stretch` (or a sized minimum) for "Category", `Stretch` or
+`ResizeToContents` for "Products" — removing the competition between a
+too-generous fixed column and an unconfigured one.
+
+---
+
+### UX-022: Secondary/danger button class convention is inconsistently applied across 3 dialogs
+
+**Screen:** Category Manager, Unit Manager, Label Print
+**Severity:** P3 · **Status:** 🔴 Open
+
+**Not from your notes — flagged during code review, a straightforward
+consistency cleanup.** This app has an established button-class convention
+(`class="primary"` green, `class="danger"` red, `class="secondary"` neutral
+outlined — the last one added earlier in this same review pass, originally
+for `ValuationDialog`'s Close button). Three dialogs skip it for buttons
+that clearly fit an existing class:
+
+- **Category Manager** (`category_manager.py:106-137`) and **Unit Manager**
+  (`unit_manager.py:94-127`, confirmed structurally identical code, same
+  stacked vertical button layout, same gaps) — "Save"/"Update" correctly
+  uses `class="primary"`, "Delete Selected" correctly uses `class="danger"`,
+  but **"Clear/New" and "Close" have no class set at all**, falling back to
+  plain default styling instead of the `class="secondary"` treatment that
+  exists specifically for neutral dismiss/reset actions like these.
+- **Label Print** (`label_print_dialog.py:164-178`) — "Print Labels"
+  correctly uses `class="primary"`, but **"Remove Selected", "Clear All",
+  and "Preview Labels" all have no class set**, so a destructive action
+  (Remove/Clear) and a safe, non-destructive one (Preview) render visually
+  identically as plain gray buttons, with no differentiation between them.
+
+**Why it matters:** low severity on its own, but it's the kind of thing
+that quietly erodes the "clean, deliberate" feel across dialogs a shop
+owner uses often (Inventory tools especially) — every other button in
+these dialogs already looks intentional; these are the ones that don't.
+
+**Suggested fix:** apply `class="secondary"` to Clear/New and Close in both
+manager dialogs, and `class="danger"` to Remove Selected/Clear All +
+`class="secondary"` (or leave Preview as the neutral default, but
+deliberately, not by omission) in Label Print. While touching these,
+worth a quick judgment call on whether the stacked-full-width button
+column (shared identically by both manager dialogs) is still the right
+layout, or whether a side-by-side row (matching Product Editor's
+Cancel/Save convention) reads more consistently with the rest of the app —
+not a defect either way, just worth a deliberate decision rather than
+whatever the copy-paste happened to produce.

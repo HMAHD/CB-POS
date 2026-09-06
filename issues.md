@@ -155,6 +155,10 @@ don't need re-litigating every time a new screen surfaces the same issue.
 | [UX-099](#ux-099-receipt-preview-barcode-is-explicitly-decorative-and-not-scannable-by-the-codes-own-admission) | Receipt preview barcode is explicitly decorative and not scannable, by the code's own admission | Settings → Receipt | P3 | 🔴 Open |
 | [UX-100](#ux-100-shop-logo-has-no-size-guidance-and-no-real-dithering-step-for-thermal-print-quality) | Shop Logo has no size guidance and no real dithering step for thermal print quality | Settings → Receipt | P2 | 🔴 Open |
 | [UX-101](#ux-101-receipt-customization-is-fragmented-across-3-disconnected-settings-pages) | Receipt customization is fragmented across 3 disconnected Settings pages | Settings → Receipt, Hardware, Documents | P2 | 🔴 Open |
+| [UX-102](#ux-102-system-security-tab-field-truncation-couldnt-reproduce-from-code-same-widget-class-as-ux-092) | System Security tab field truncation — couldn't reproduce from code, same widget class as UX-092 | Settings → System | P2 | 🔴 Open |
+| [UX-103](#ux-103-network-mode-icon-is-a-raw-emoji-not-the-apps-icon-system-explaining-the-black-background) | Network mode icon is a raw emoji, not the app's icon system — explaining the black background | Settings → Network | P2 | 🔴 Open |
+| [UX-104](#ux-104-network-page-has-almost-no-explanatory-text-which-is-exactly-why-mode-vs-lan-sync-reads-as-redundant) | Network page has almost no explanatory text, which is exactly why Mode vs. LAN Sync reads as redundant | Settings → Network | P1 | 🔴 Open |
+| [UX-105](#ux-105-lan-sync-tab-hardcodes-english-strings-bypassing-i18n-entirely) | LAN Sync tab hardcodes English strings, bypassing i18n entirely | Settings → Network | P2 | 🔴 Open |
 
 ---
 
@@ -4311,3 +4315,165 @@ Receipt page ("Copies & auto-print: see Hardware. Numbering format: see
 Documents.") — or, more thoroughly, consider consolidating all
 receipt-related settings onto this one page, since that's clearly the
 mental model a user already brings to it.
+
+---
+
+### UX-102: System Security tab field truncation — couldn't reproduce from code, same widget class as UX-092
+
+**Screen:** Settings → System → Security
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "the system settings page also isn't correctly
+aligned with each other, because of that text doesn't show up
+properly" — pointing at "Inactivity Timeout" reading `:abled (no
+auto-lock)`, "Max Login Attempts" showing only `!`, and "Lockout
+Duration" showing `300 se`.
+
+**Investigated thoroughly, and being honest that I could not confirm a
+code-level defect — same discipline as UX-014/UX-046/UX-092.** All three
+fields are `QSpinBox` (`settings_pages.py:1355,1365,1370`), not
+`QComboBox` as the truncated text might suggest. None gets an explicit
+width — same "bare `QSpinBox`, no width call" pattern already found for
+the Copies field (UX-092). But rendered headless with the app's real
+compiled QSS at a normal window width, all three displayed their full
+text with no clipping: "Disabled (no auto-lock)" (the exact special-value
+string at `en.json:1392`, confirming that's what the screenshot's
+`:abled...` fragment is the tail of), "3"–"20" for Max Login Attempts,
+and "300 sec" for Lockout Duration (the suffix is `" sec"`, not
+`" seconds"` — so `300 se` is one character short of the true label, not
+an oversized-suffix problem).
+
+**What this means:** there's no hardcoded narrow width or suffix-
+measurement bug in this code to point to — so if this is genuinely
+happening on the real target platform, it's most likely an environment-
+specific factor (Windows DPI/scale-factor rounding, an actual narrower
+window, or a first-paint-before-QSS-polish geometry glitch) rather than
+something fixable by reading the source further. Worth flagging plainly
+as unconfirmed rather than asserting a line-level cause I can't back up.
+
+**One thing that is confirmed working well here, for contrast:** all
+four fields on this tab already have tooltips
+(`settings_pages.py:1459,1461,1463,1465`) — this page already does the
+thing UX-104 finds completely missing on Network, two tabs away in the
+same file.
+
+**Suggested fix:** this needs a real screenshot/render from the actual
+Windows target environment (matching the DPI/scale settings a real
+install would use) before deciding what to change — if it reproduces
+there, the underlying fix is the same shared one already proposed for
+UX-092 (explicit minimum widths on bare `QSpinBox` fields across
+Settings, sized to their real content including any suffix).
+
+---
+
+### UX-103: Network mode icon is a raw emoji, not the app's icon system — explaining the black background
+
+**Screen:** Settings → Network → Mode
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "under [the] text [there's a] black background and
+an emoji — that's not professional."
+
+**Root cause (verified in code) — confirmed, and it's the first place in
+this entire review where the app departs from its own icon system:**
+`settings_pages.py:1556`:
+```python
+self.lbl_mode_icon = QLabel("\U0001f4bb")  # 💻
+```
+A literal Unicode emoji character in a plain `QLabel`, swapped for
+`"\U0001f310"` (🌐) when switching to Network mode
+(`settings_pages.py:1974,1978`). Every other icon anywhere else in this
+app goes through `Icons.get()` (qtawesome, theme-colored vector icons) —
+this is the only place a raw emoji glyph is used instead. `QLabel#StatusIcon`
+(`dark.qss:1930-1933`) only sets font-size/min-width — no background —
+confirming the black box you're seeing is the emoji glyph's own
+fallback-font rendering, not something the app's QSS is drawing; emoji
+characters render via the OS's own emoji font/rendering path, which
+doesn't respect the app's theme colors the way a qtawesome icon would.
+
+**Why it matters:** this is a small, isolated inconsistency, but it's
+exactly the kind of detail that reads as unpolished specifically because
+every other icon in the app looks and behaves consistently — one emoji
+breaks that pattern visibly.
+
+**Suggested fix:** replace both emoji with real qtawesome icons via
+`Icons.get()` — e.g. `fa5s.desktop` for Standalone, `fa5s.network-wired`
+for Network mode — matching every other icon in the app.
+
+---
+
+### UX-104: Network page has almost no explanatory text, which is exactly why Mode vs. LAN Sync reads as redundant
+
+**Screen:** Settings → Network
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "I'm a bit confused now — do Mode and LAN Sync do
+the same thing, or are they separate? Also, settings pages need some
+kind of tooltip to explain what they do — that would be very helpful."
+
+**Good news on the substance — they're genuinely not redundant, I
+checked precisely:** Mode + Server + Migration (`settings_pages.py:1546-1730`)
+configure switching the whole app to a **shared PostgreSQL backend** —
+`db_mode` is read directly in `cbpos/core/database.py:47-64`, branching
+the SQLAlchemy engine between SQLite and PostgreSQL. LAN Sync
+(`settings_pages.py:1732-1852`) is a **completely different mechanism**:
+peer-to-peer HTTP queue-replication between independent SQLite
+databases, with its own `terminal_mode` (Standalone/Main PC/Terminal),
+sync port, main PC address, and shared secret — read in `main.py:322-364`,
+which actually starts real `SyncServer`/`SyncClient` threads
+(`cbpos/infrastructure/sync_client.py`, `sync_server.py`). Both are real,
+independently wired multi-terminal strategies, not a naming leftover or
+half-built duplicate.
+
+**But your confusion is completely understandable, because the page
+gives you almost nothing to go on:** across the whole Network page's
+~15+ fields (database host/port/user/password, terminal mode, terminal
+ID, sync port, main PC address, sync interval, shared secret), exactly
+**one** has a tooltip (`btn_forget_main`, line 1839). There's no summary
+text anywhere distinguishing "this is for one shared database" from
+"this is for syncing separate databases between terminals" — two
+genuinely different, non-obvious infrastructure concepts sitting on
+adjacent tabs with zero framing between them.
+
+**Why it matters — and why this is exactly the ask you made:** you
+specifically asked for tooltips/explanations on settings pages, and this
+is the strongest possible example of why: a real, correctly-implemented
+feature became confusing not because it's broken, but because nothing on
+the page tells you what problem each tab actually solves. Worth noting
+`SystemPage`'s Security tab — a few clicks away in the same file — already
+does exactly what's being asked for (tooltips on every field); Network
+just didn't get the same treatment.
+
+**Suggested fix:** add a one-line explanation at the top of each of the 4
+tabs (e.g. Mode/Server/Migration: "Share one database across multiple
+computers on your network"; LAN Sync: "Keep separate databases on each
+computer in sync automatically"), and add tooltips to the remaining ~14
+untouched fields — following the exact pattern `SystemPage` already
+established, not a new one.
+
+---
+
+### UX-105: LAN Sync tab hardcodes English strings, bypassing i18n entirely
+
+**Screen:** Settings → Network → LAN Sync
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes — found while reading the LAN Sync tab's labels.**
+CLAUDE.md is explicit: "All user-facing text uses the translation
+system. **NEVER** hardcode English strings in UI code" — this tab does
+exactly that.
+
+**Root cause (verified in code):** unlike every other tab in this file
+(which route every label through `_t(...)`), LAN Sync's labels are
+literal Python strings — e.g. `QLabel("Terminal Mode:")`
+(`settings_pages.py:1761`) and the tab's own title, `"LAN Sync"`
+(line 1880), set directly with no `_t()` call.
+
+**Why it matters:** this is the one place in Settings where a Sinhala or
+Tamil-language user would suddenly see raw English regardless of their
+chosen UI language — breaking the trilingual guarantee the rest of the
+app maintains, on what is otherwise a fully real, working feature.
+
+**Suggested fix:** add the missing i18n keys to `en.json`/`si.json`/
+`ta.json` and route every hardcoded label and the tab title through
+`_t(...)`, matching the other 3 tabs on the same page.

@@ -138,6 +138,8 @@ don't need re-litigating every time a new screen surfaces the same issue.
 | [UX-082](#ux-082-sidebar-nav-icons-and-labels-have-zero-gap-correcting-ux-045) | Sidebar nav icons and labels have zero gap (correcting UX-045) | Main sidebar (all screens) | P1 | 🔴 Open |
 | [UX-083](#ux-083-sidebar-redesign-dull-flat-treatment-and-poslogout-need-real-visual-hierarchy) | Sidebar redesign: dull flat treatment, and POS/Logout need real visual hierarchy | Main sidebar (all screens) | P2 | 🔴 Open |
 | [UX-084](#ux-084-management-screens-use-4-different-navigation-patterns-with-no-consistent-page-title) | Management screens use 4 different navigation patterns, with no consistent page title | App-wide (Management section) | P1 | 🔴 Open |
+| [UX-085](#ux-085-settings-footer-bar-being-hidden-not-reserved-creates-a-70px-height-jump-between-pages) | Settings' footer bar being hidden (not reserved) creates a 70px height jump between pages | Settings | P2 | 🔴 Open |
+| [UX-086](#ux-086-settings-appearance-tab-has-3-mismatched-field-widths-and-the-same-broken-spinbox-stepper) | Settings Appearance tab has 3 mismatched field widths, and the same broken spinbox stepper | Settings | P2 | 🔴 Open |
 
 ---
 
@@ -3586,3 +3588,99 @@ Reports/Price Lists can keep their sidebar's own internal label as a
 secondary element, but should still get this same top-level strip so
 their header treatment matches Document Browser/Promotions/Credit
 Book's, rather than being a fourth pattern of its own.
+
+---
+
+### UX-085: Settings' footer bar being hidden (not reserved) creates a 70px height jump between pages
+
+**Screen:** Settings, every sidebar section
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "the Save Changes and Cancel buttons don't appear
+on Payments, Data Safety, and Admin Tools — it's okay for them to be
+there [on other pages], but it makes the sidebar [look] short; how about
+[the footer] starts from the page, not from that end, so it doesn't
+affect the sidebar? Let's keep Management and Settings sidebar styles
+identical."
+
+**Two things worth separating here, one confirmed, one that needed
+correcting after checking the actual layout code:**
+
+**First — the sidebar is already identical, nothing to "keep in sync":**
+`settings_view.py:59` builds `self.sidebar = CollapsibleSidebar()` with
+the exact same zero-argument construction as
+`management_view.py:47`. It's not two similar sidebars that could drift
+apart — it's the literal same shared widget class, so every sidebar fix
+already logged (UX-044/045/046/082/083) already covers Settings
+automatically, with no separate work needed to "match" them.
+
+**Second — the footer bar's hide/show does cause a real inconsistency,
+but not the one it looks like at first glance.** `footer_frame`
+(`settings_view.py:119-141`, fixed height 70px, holding Save Changes/
+Cancel) is built once and sits as a **sibling of the sidebar+content
+row** in the outer layout — not scoped to content width, and not part of
+the sidebar at all. `_update_footer_visibility`
+(`settings_view.py:202-204`) hides it entirely
+(`setVisible(index < len(self.pages))`) for exactly the 3 pages you
+named — Payments, Data Safety, Admin Tools sit outside the indexed range
+of pages that get a footer. Because Qt's layout system reclaims space
+from a hidden widget, hiding this 70px bar should make the row
+*containing* the sidebar **taller**, not shorter — so the specific
+"buttons missing → sidebar looks short" causation doesn't hold up
+against the actual widget tree. What's real is simpler: **the total
+visible content area is ~70px taller on those 3 pages than on the other
+7**, which is exactly the kind of inconsistency that would read as "this
+page feels different" even if "shorter sidebar" isn't the literal
+mechanism.
+
+**Why it matters:** whether or not the sidebar itself moves, a
+±70px jump in usable content height depending on which of 10 sidebar
+items is selected is a real, fixable inconsistency — three sections
+suddenly get noticeably more vertical room than the other seven for no
+reason a user would understand.
+
+**Suggested fix:** don't hide the footer bar — keep its 70px of space
+reserved on every page (even if the buttons inside it are disabled/blank
+for Payments/Data Safety/Admin Tools, or simply always show Save/Cancel
+there too if those pages have anything save-able), so every Settings
+section renders at the same total height regardless of which sidebar
+item is active.
+
+---
+
+### UX-086: Settings Appearance tab has 3 mismatched field widths, and the same broken spinbox stepper
+
+**Screen:** Settings → Shop Info → Appearance
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "in the Appearance tab you can see several
+issues, UI/UX not clean and modern — it shows 3 sizes, need proper size
+and matching each, carefully designed."
+
+**Confirmed, and this is exactly the pattern UX-038 predicted would keep
+showing up "wherever similar elements are found":** `settings_pages.py`'s
+Appearance tab (lines 277-301) uses a `QFormLayout` with
+`ExpandingFieldsGrow` (`_build_form_tab()`, line 104) — the same
+mechanism already logged for the Customer Editor's Commercial tab and
+the Proforma dialog. None of the three fields (`spin_font_size`, line
+280; `combo_theme`, line 286; `combo_language`, line 290) get an explicit
+width, so each one sizes to its own content — the spinbox to "12 px",
+the theme combo to its longest item text ("Ceylon Night (Dark)"), the
+language combo to its own ("English (en)") — three different widths,
+exactly the "3 sizes" you're seeing, with no shared column to anchor
+them.
+
+**On top of that, Font Size is a plain `QSpinBox`** (line 280-282, range
+8-24, `" px"` suffix) — the same native-stepper widget already flagged
+as breaking under this app's QSS in 5 other places (UX-018/025/038/055/067).
+This is now the sixth confirmed instance.
+
+**One thing that is working correctly, for contrast:** the "(Font Size
+and Language changes require restart)" hint is real and present
+(`settings_pages.py:297-299`, `en.json:1250`) — that part of the design
+is fine, just the fields above it aren't.
+
+**Suggested fix:** same as UX-038 — give every field in this form a
+consistent minimum width, and replace the Font Size spinbox with a
+`QLineEdit` + integer validator, matching the pattern already proven
+correct in `product_editor.py`.

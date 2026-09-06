@@ -389,14 +389,34 @@ class LabelPrintDialog(QDialog):
         try:
             commands = LabelService.generate_batch_commands(self.label_items)
             worker = PrintWorker.instance()
+            # PrintWorker.add_job() only queues the job -- the print itself
+            # happens later, asynchronously, on the worker thread. Showing
+            # "success" right after add_job() (the old behavior) meant the
+            # user was told printing worked even when the printer wasn't
+            # configured at all. Wait for the real outcome instead. Guard
+            # against reconnecting on every call the same way
+            # ReceiptOptionsDialog.print_thermal() does.
+            try:
+                worker.error_occurred.disconnect(self._on_print_error)
+            except TypeError:
+                pass  # not connected yet
+            try:
+                worker.job_completed.disconnect(self._on_print_finished)
+            except TypeError:
+                pass
+            worker.error_occurred.connect(self._on_print_error)
+            worker.job_completed.connect(self._on_print_finished)
             worker.add_job("print_commands", commands)
-
-            total = sum(item["quantity"] for item in self.label_items)
-            QMessageBox.information(
-                self,
-                _t("label_print.printing_title"),
-                _t("label_print.printing_msg", count=total),
-            )
         except Exception as e:
             logger.error(f"Label printing failed: {e}")
-            QMessageBox.critical(self, _t("common.error"), _t("label_print.print_failed", error=str(e)))
+            QMessageBox.critical(self, _t("common.error"), _t("label_print.print_failed"))
+
+    def _on_print_finished(self) -> None:
+        """Called once the queued print job actually completes."""
+        total = sum(item["quantity"] for item in self.label_items)
+        QMessageBox.information(self, _t("label_print.printing_title"), _t("label_print.print_success", count=total))
+
+    def _on_print_error(self, message: str) -> None:
+        """Called if the queued print job actually fails (e.g. no printer configured)."""
+        logger.error("Label printing failed: %s", message)
+        QMessageBox.critical(self, _t("common.error"), _t("label_print.print_failed"))

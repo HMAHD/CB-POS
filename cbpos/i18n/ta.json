@@ -803,7 +803,7 @@
     "receipt_sent_to_printer": "Receipt {doc_number} sent to printer.",
     "quotation_sent_to_printer": "Quotation {doc_number} sent to printer.",
     "reprint_not_supported": "Reprint is not yet supported for this document type.",
-    "reprint_failed": "Failed to reprint: {error}",
+    "reprint_failed": "Failed to reprint. Check the printer connection in Settings > Hardware.",
     "confirm_refund_title": "Confirm Refund",
     "refund_question": "Refund Transaction?",
     "refund_warning": "Stock will be restored. This action cannot be undone.",
@@ -1569,6 +1569,7 @@
     "col_balance": "நிலுவை",
     "print_statement": "Print Statement",
     "print_sent": "Statement sent to printer.",
+    "print_failed": "Failed to print statement. Check the printer connection in Settings > Hardware.",
     "load_failed": "Failed to load statement: {error}"
   },
   "data_export": {
@@ -1620,7 +1621,8 @@
     "not_found_msg": "No product found with that barcode.",
     "printing_title": "Printing",
     "printing_msg": "Sending labels to printer...",
-    "print_failed": "Print failed: {error}"
+    "print_success": "{count} label(s) sent to printer.",
+    "print_failed": "Failed to print labels. Check the printer connection in Settings > Hardware."
   },
   "report_viewer": {
     "sidebar_title": "REPORTS",
@@ -1857,7 +1859,7 @@
     "detail_payment": "Payment",
     "refund_of_sale": "Refund of Sale",
     "receipt_sent": "Receipt {receipt} sent to printer.",
-    "reprint_failed": "Failed to reprint receipt: {error}",
+    "reprint_failed": "Failed to reprint receipt. Check the printer connection in Settings > Hardware.",
     "confirm_refund": "Confirm Refund",
     "refund_transaction_q": "Refund Transaction?",
     "refund_warning": "Stock will be restored. This action cannot be undone.",

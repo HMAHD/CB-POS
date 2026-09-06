@@ -647,7 +647,7 @@ class DocumentBrowserView(QWidget):
 
                     settings = ConfigService.get_all()
                     language = settings.get("language", "en")
-                    worker = PrintWorker.instance()
+                    worker = self._connect_print_signals()
 
                     if language == "en":
                         receipt_text = ReceiptService.build_receipt_text(sale)
@@ -655,31 +655,14 @@ class DocumentBrowserView(QWidget):
                     else:
                         receipt_image = ReceiptService.build_receipt_image(sale)
                         worker.add_job("print_image", receipt_image)
-
-                    QMessageBox.information(
-                        self,
-                        _t("common.success"),
-                        _t(
-                            "document_browser.receipt_sent_to_printer",
-                            doc_number=self.current_doc["document_number"],
-                        ),
-                    )
             elif doc_type == "proforma":
                 from cbpos.core.services.receipt_builder import ReceiptBuilder
 
                 proforma = ProformaService.get_proforma_details(self.current_doc["id"])
                 if proforma:
                     commands = ReceiptBuilder.build_proforma(proforma)
-                    worker = PrintWorker.instance()
+                    worker = self._connect_print_signals()
                     worker.add_job("print_commands", commands)
-                    QMessageBox.information(
-                        self,
-                        _t("common.success"),
-                        _t(
-                            "document_browser.quotation_sent_to_printer",
-                            doc_number=self.current_doc["document_number"],
-                        ),
-                    )
             else:
                 QMessageBox.information(
                     self,
@@ -691,8 +674,48 @@ class DocumentBrowserView(QWidget):
             QMessageBox.critical(
                 self,
                 _t("common.error"),
-                _t("document_browser.reprint_failed", error=str(e)),
+                _t("document_browser.reprint_failed"),
             )
+            logger.error("Reprint failed: %s", e)
+
+    def _connect_print_signals(self) -> PrintWorker:
+        """Return the shared PrintWorker, connected to report the real
+        outcome of the job about to be queued.
+
+        PrintWorker.add_job() only queues the job -- the print itself
+        happens later, asynchronously, on the worker thread. Showing
+        "success" right after add_job() (the old behavior) meant the
+        user was told the reprint worked even when the printer wasn't
+        configured at all. Guard against reconnecting on every call the
+        same way ReceiptOptionsDialog.print_thermal() does.
+        """
+        worker = PrintWorker.instance()
+        try:
+            worker.error_occurred.disconnect(self._on_reprint_error)
+        except TypeError:
+            pass  # not connected yet
+        try:
+            worker.job_completed.disconnect(self._on_reprint_finished)
+        except TypeError:
+            pass
+        worker.error_occurred.connect(self._on_reprint_error)
+        worker.job_completed.connect(self._on_reprint_finished)
+        return worker
+
+    def _on_reprint_finished(self) -> None:
+        """Called once the queued print job actually completes."""
+        doc_type = self.current_doc.get("type", "")
+        key = "receipt_sent_to_printer" if doc_type == "sale" else "quotation_sent_to_printer"
+        QMessageBox.information(
+            self,
+            _t("common.success"),
+            _t(f"document_browser.{key}", doc_number=self.current_doc["document_number"]),
+        )
+
+    def _on_reprint_error(self, message: str) -> None:
+        """Called if the queued print job actually fails (e.g. no printer configured)."""
+        logger.error("Reprint failed: %s", message)
+        QMessageBox.critical(self, _t("common.error"), _t("document_browser.reprint_failed"))
 
     def process_refund(self) -> None:
         """Process a refund for the selected sale."""

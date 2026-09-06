@@ -52,123 +52,123 @@ don't need re-litigating every time a new screen surfaces the same issue.
 
 ## Index
 
-| ID | Title | Screen | Severity | Status |
-|----|-------|--------|----------|--------|
-| [UX-001](#ux-001-empty-cart-hides-the-entire-table-including-its-header) | Empty cart hides the entire table, including its header | POS main (Sales) | P1 | 🔴 Open |
-| [UX-002](#ux-002-cart-table-numeric-columns-are-inconsistently-aligned-discounted-price-format-doesnt-match-regular-one) | Cart table numeric columns are inconsistently aligned, discounted price format doesn't match regular one | POS main (Sales) | P1 | 🔴 Open |
-| [UX-003](#ux-003-customer-card-and-loyalty-points-are-two-disconnected-elements) | Customer card and loyalty points are two disconnected elements | POS main (Sales), ActionPanel | P1 | 🔴 Open |
-| [UX-004](#ux-004-discount-highlight-only-tints-one-cell-of-the-row) | Discount highlight only tints one cell of the row | POS main (Sales) | P2 | 🔴 Open |
-| [UX-005](#ux-005-empty-cart-placeholder-is-plain-text-with-no-visual-anchor) | Empty cart placeholder is plain text with no visual anchor | POS main (Sales) | P3 | 🔴 Open |
-| [UX-006](#ux-006-customer-icon-bypasses-the-centralized-icon-system-no-points-icon-registered) | Customer icon bypasses the centralized icon system; no points icon registered | `cbpos/ui/widgets/action_panel.py` | P3 | 🔴 Open |
-| [UX-007](#ux-007-applied-payments-list-is-hard-capped-at-160px-so-it-scrolls-and-clips-the-boundary-rows-remove-button-instead-of-expanding) | Applied Payments list is hard-capped at 160px, so it scrolls and clips the boundary row's remove button instead of expanding | Payment dialog | P1 | 🔴 Open |
-| [UX-008](#ux-008-change-quantitychange-price-on-a-cart-line-use-a-raw-native-dialog-instead-of-the-apps-own-styled-one) | "Change Quantity"/"Change Price" on a cart line use a raw native dialog instead of the app's own styled one | POS main (Sales), cart line actions | P1 | 🔴 Open |
-| [UX-009](#ux-009-select-customer-dialog-cannot-be-confirmed-from-the-keyboard-at-all) | Select Customer dialog cannot be confirmed from the keyboard at all | Select Customer dialog | P1 | 🔴 Open |
-| [UX-010](#ux-010-select-customer-table-truncates-real-customer-names) | Select Customer table truncates real customer names | Select Customer dialog | P1 | 🔴 Open |
-| [UX-011](#ux-011-select-customer-header-alignment-doesnt-match-cell-alignment-same-pattern-as-ux-002) | Select Customer header alignment doesn't match cell alignment — same pattern as UX-002 | Select Customer dialog | P2 | 🔴 Open |
-| [UX-012](#ux-012-select-customer-table-skips-3-conventions-every-other-table-in-the-app-follows) | Select Customer table skips 3 conventions every other table in the app follows | Select Customer dialog | P2 | 🔴 Open |
-| [UX-013](#ux-013-periodic-reports-date-picker-calendar-popup-renders-broken-reproduced-exactly) | Periodic Reports date-picker calendar popup renders broken (reproduced exactly) | Dashboard | P1 | 🔴 Open |
-| [UX-014](#ux-014-total-sales-kpi-number-appears-clipped-in-the-reported-screenshot-couldnt-reproduce-yet) | Total Sales KPI number appears clipped in the reported screenshot (couldn't reproduce yet) | Dashboard | P1 | 🔴 Open |
-| [UX-015](#ux-015-both-dashboard-background-workers-swallow-errors-silently-and-leave-the-ui-stuck) | Both dashboard background workers swallow errors silently and leave the UI stuck | Dashboard | P1 | 🔴 Open |
-| [UX-016](#ux-016-periodic-reports-date-range-has-no-sanity-bounds-and-isnt-remembered) | Periodic Reports date range has no sanity bounds and isn't remembered | Dashboard | P2 | 🔴 Open |
-| [UX-017](#ux-017-inventory-table-truncates-product-names-third-confirmed-instance-of-the-ux-010-pattern) | Inventory table truncates product names — third confirmed instance of the UX-010 pattern | Inventory | P1 | 🔴 Open |
-| [UX-018](#ux-018-three-different-numeric-input-conventions-in-the-app-one-of-them-flagged-as-broken-in-its-own-code-comment-and-still-used-for-price) | Three different numeric-input conventions in the app — one of them flagged as broken in its own code comment, and still used for Price | Product Editor + app-wide | P1 | 🔴 Open |
-| [UX-019](#ux-019-label-preview-dialog-has-a-hardcoded-navy-background-that-doesnt-match-the-dark-theme) | Label Preview dialog has a hardcoded navy background that doesn't match the dark theme | Label Preview dialog | P1 | 🔴 Open |
-| [UX-020](#ux-020-csv-import-dialog-floating-thumbnail-investigated-likely-not-an-app-bug) | CSV Import dialog floating thumbnail — investigated, likely not an app bug | Import CSV dialog | ⚪ N/A | ⚪ Won't Fix |
-| [UX-021](#ux-021-category-manager-tree-has-no-column-resize-mode-configured-causing-a-horizontal-scrollbar-and-a-squeezed-header) | Category Manager tree has no column resize-mode configured, causing a horizontal scrollbar and a squeezed header | Category Manager dialog | P2 | 🔴 Open |
-| [UX-022](#ux-022-secondarydanger-button-class-convention-is-inconsistently-applied-across-3-dialogs) | Secondary/danger button class convention is inconsistently applied across 3 dialogs | Category Manager, Unit Manager, Label Print | P3 | 🔴 Open |
-| [UX-023](#ux-023-management-view-shows-a-completely-blank-screen-until-the-first-sidebar-click-confirmed-regression) | Management view shows a completely blank screen until the first sidebar click (confirmed regression) | Management (all tabs) | P1 | 🔴 Open |
-| [UX-024](#ux-024-management-sidebar-gets-permanently-stuck-collapsed-across-restarts-confirmed-root-cause) | Management sidebar gets permanently stuck collapsed across restarts (confirmed root cause) | Management, `CollapsibleSidebar` | P1 | 🔴 Open |
-| [UX-025](#ux-025-add-supplier-dialog-has-zero-dialog-specific-styling-no-objectname-no-size-no-qss-at-all) | Add Supplier dialog has zero dialog-specific styling — no objectName, no size, no QSS at all | Suppliers tab | P1 | 🔴 Open |
-| [UX-026](#ux-026-new-grn-add-product-search-is-a-genuinely-broken-feature-not-just-unpolished) | New GRN "Add Product" search is a genuinely broken feature, not just unpolished | New GRN tab | P0 | 🔴 Open |
-| [UX-027](#ux-027-new-grn-header-row-supplierrefdate-has-no-width-balancing-date-field-looks-tiny) | New GRN header row (Supplier/Ref#/Date) has no width balancing — Date field looks tiny | New GRN tab | P2 | 🔴 Open |
-| [UX-028](#ux-028-supplier-selection-combos-in-purchasing-are-plain-non-searchable-comboboxes) | Supplier-selection combos in Purchasing are plain, non-searchable comboboxes | New GRN, GRN History tabs | P1 | 🔴 Open |
-| [UX-029](#ux-029-grn-history-status-filter-shows-all-suppliers-instead-of-all-statuses) | GRN History "Status" filter shows "All Suppliers" instead of "All Statuses" | GRN History tab | P2 | 🔴 Open |
-| [UX-030](#ux-030-grn-history-and-payables-tables-have-no-empty-state-message) | GRN History and Payables tables have no empty-state message | GRN History, Payables tabs | P2 | 🔴 Open |
-| [UX-031](#ux-031-payables-uses-a-deliberate-but-undocumented-navy-sub-theme-shared-with-credit-book) | Payables uses a deliberate but undocumented navy sub-theme, shared with Credit Book — DECIDED: retire app-wide, 6 locations confirmed | Payables, Credit Book, Reports, Document Browser, Price Lists, Payment Methods | P1 | 🔴 Open |
-| [UX-032](#ux-032-payables-supplier-list-is-double-click-only-same-pattern-as-ux-009) | Payables supplier list is double-click-only — same pattern as UX-009 | Payables tab | P1 | 🔴 Open |
-| [UX-033](#ux-033-payables-ledger-shows-zero-entries-despite-a-non-zero-balance-needs-one-live-check-to-fully-confirm) | Payables ledger shows zero entries despite a non-zero balance (needs one live check to fully confirm) | Payables tab | P1 | 🔴 Open |
-| [UX-034](#ux-034-credit-book-outstanding-debt-column-header-is-clipped-to-tstanding-di) | Credit Book "Outstanding Debt" column header is clipped to "TSTANDING DI" | Credit Book | P1 | 🔴 Open |
-| [UX-035](#ux-035-credit-book-customer-list-is-double-click-only-same-pattern-as-ux-009ux-032) | Credit Book customer list is double-click-only — same pattern as UX-009/UX-032 | Credit Book | P1 | 🔴 Open |
-| [UX-036](#ux-036-adjust-balance-button-uses-the-apps-warning-color-for-a-routine-action) | "Adjust Balance" button uses the app's warning color for a routine action | Credit Book, customer detail | P2 | 🔴 Open |
-| [UX-037](#ux-037-credit-book-ledger-shows-zero-entries-despite-a-non-zero-debt-same-pattern-as-ux-033-now-confirmed-on-a-second-screen) | Credit Book ledger shows zero entries despite a non-zero debt — same pattern as UX-033, now confirmed on a second screen | Credit Book, customer detail | P1 | 🔴 Open |
-| [UX-038](#ux-038-new-customer-dialogs-commercial-tab-has-mismatched-field-widths-recurring-pattern-to-watch-for) | New Customer dialog's Commercial tab has mismatched field widths — recurring pattern to watch for | Customer Editor, Commercial tab | P1 | 🔴 Open |
-| [UX-039](#ux-039-only-2-of-15-date-pickers-in-the-app-have-any-styling-at-all) | Only 2 of 15 date pickers in the app have any styling at all | App-wide (`QDateEdit`) | P1 | 🔴 Open |
-| [UX-040](#ux-040-customer-statement-dialog-has-uneven-filter-row-and-summary-spacing) | Customer Statement dialog has uneven filter-row and summary spacing | Print Statement dialog | P2 | 🔴 Open |
-| [UX-041](#ux-041-reports-screen-is-a-third-independent-navy-themed-screen-not-shared-with-ux-031) | Reports screen is a third, independent navy-themed screen — not shared with UX-031 | Reports | P1 | 🔴 Open |
-| [UX-042](#ux-042-reports-category-panel-scales-far-wider-than-its-content-needs) | Reports category panel scales far wider than its content needs | Reports | P2 | 🔴 Open |
-| [UX-043](#ux-043-no-shared-empty-state-component-every-screen-hand-builds-its-own) | No shared empty-state component — every screen hand-builds its own | App-wide | P3 | 🔴 Open |
-| [UX-044](#ux-044-current-nav-item-highlight-is-much-weaker-when-the-sidebar-is-collapsed) | Current nav item highlight is much weaker when the sidebar is collapsed | Main sidebar (all screens) | P2 | 🔴 Open |
-| [UX-045](#ux-045-pos-logout-buttons-still-use-the-leftover-string-padding-hack) | POS / Logout buttons still use the leftover string-padding hack | Main sidebar (all screens) | P3 | 🔴 Open |
-| [UX-046](#ux-046-sidebar-widthexpanded-header-in-the-screenshot-doesnt-match-the-widths-in-code-needs-a-live-render-to-confirm) | Sidebar width/expanded header in the screenshot doesn't match the widths in code (needs a live render to confirm) | Main sidebar (all screens) | P2 | 🔴 Open |
-| [UX-047](#ux-047-reports-date-picker-has-a-near-invisible-click-target-and-no-fixed-display-format) | Reports date picker has a near-invisible click target and no fixed display format | Reports | P1 | 🔴 Open |
-| [UX-048](#ux-048-report-tables-last-column-always-stretches-truncating-the-first-columns-labels) | Report table's last column always stretches, truncating the first column's labels | Reports | P1 | 🔴 Open |
-| [UX-049](#ux-049-every-report-type-shares-one-generic-renderer-with-zero-report-specific-treatment) | Every report type shares one generic renderer with zero report-specific treatment | Reports | P2 | 🔴 Open |
-| [UX-050](#ux-050-pagination-controls-render-even-when-there-is-only-one-page) | Pagination controls render even when there is only one page | Reports | P3 | 🔴 Open |
-| [UX-051](#ux-051-one-dialog-has-three-different-names-for-the-same-feature) | One dialog has three different names for the same feature | Document Browser | P1 | 🔴 Open |
-| [UX-052](#ux-052-document-browser-table-has-three-competing-stretch-columns-truncating-type-and-total) | Document Browser table has three competing stretch columns, truncating TYPE and TOTAL | Document Browser | P1 | 🔴 Open |
-| [UX-053](#ux-053-document-browser-doesnt-explain-what-its-for-or-why-to-use-it) | Document Browser doesn't explain what it's for or why to use it | Document Browser | P2 | 🔴 Open |
-| [UX-054](#ux-054-proforma-dialogs-customer-field-looks-searchable-but-isnt) | Proforma dialog's Customer field looks searchable but isn't | Proforma/Quotation dialog | P1 | 🔴 Open |
-| [UX-055](#ux-055-proforma-dialogs-validity-field-uses-the-same-known-broken-spinbox-stepper-pattern) | Proforma dialog's Validity field uses the same known-broken spinbox stepper pattern | Proforma/Quotation dialog | P2 | 🔴 Open |
-| [UX-056](#ux-056-proforma-dialogs-line-items-table-has-no-empty-state-message) | Proforma dialog's line-items table has no empty-state message | Proforma/Quotation dialog | P2 | 🔴 Open |
-| [UX-057](#ux-057-users-table-shows-the-same-id-number-twice) | Users table shows the same ID number twice | Users | P3 | 🔴 Open |
-| [UX-058](#ux-058-no-ui-exists-to-createrenamedelete-a-role-even-though-the-backend-already-fully-supports-it) | No UI exists to create/rename/delete a role, even though the backend already fully supports it | Users | P1 | 🔴 Open |
-| [UX-059](#ux-059-manage-permissions-save-changes-calls-a-method-that-doesnt-exist-every-save-will-crash) | "Manage Permissions" Save Changes calls a method that doesn't exist — every save will crash | Users, Manage Permissions dialog | P0 | 🔴 Open |
-| [UX-060](#ux-060-permission-manager-isnt-missing-permissions-its-hiding-most-of-them-below-the-fold) | Permission Manager isn't missing permissions — it's hiding most of them below the fold | Users, Manage Permissions dialog | P2 | 🔴 Open |
-| [UX-061](#ux-061-activity-log-details-column-is-forced-to-the-same-width-as-every-other-column) | Activity Log DETAILS column is forced to the same width as every other column | Users, Activity Log | P1 | 🔴 Open |
-| [UX-062](#ux-062-the-apps-one-central-audit-logging-method-is-dead-code-and-would-crash-if-called-and-a-live-caller-has-the-same-bug) | The app's one central audit-logging method is dead code and would crash if called — and a live caller has the same bug | App-wide (audit logging) | P0 | 🔴 Open |
-| [UX-063](#ux-063-void-refund-permission-changes-purchasing-and-credit-adjustments-have-zero-audit-trail) | Void, Refund, Permission changes, Purchasing, and Credit adjustments have zero audit trail | App-wide (audit logging) | P1 | 🔴 Open |
-| [UX-064](#ux-064-activity-log-has-no-color-or-icon-coding-by-event-type) | Activity Log has no color or icon coding by event type | Users, Activity Log | P2 | 🔴 Open |
-| [UX-065](#ux-065-activity-log-is-hardcoded-to-the-10-most-recent-rows-with-no-filter-ui) | Activity Log is hardcoded to the 10 most recent rows, with no filter UI | Users, Activity Log | P2 | 🔴 Open |
-| [UX-066](#ux-066-valid-na-to-na-is-real-and-once-set-a-price-lists-dates-can-never-be-changed) | "Valid: N/A to N/A" is real, and once set, a price list's dates can never be changed | Price Lists | P1 | 🔴 Open |
-| [UX-067](#ux-067-price-editing-is-double-click-only-and-reuses-the-same-known-broken-spinbox-stepper) | Price editing is double-click-only, and reuses the same known-broken spinbox stepper | Price Lists | P1 | 🔴 Open |
-| [UX-068](#ux-068-a-price-list-cant-be-renamed-and-a-product-override-cant-be-removed-once-set) | A price list can't be renamed, and a product override can't be removed once set | Price Lists | P1 | 🔴 Open |
-| [UX-069](#ux-069-new-price-list-dialogs-date-fields-work-but-are-unstyled-app-wide-gap) | New Price List dialog's date fields work but are unstyled (app-wide gap) | Price Lists | P2 | 🔴 Open |
-| [UX-070](#ux-070-status-column-shows-the-same-static-list-level-value-on-every-product-row) | STATUS column shows the same static, list-level value on every product row | Price Lists | P2 | 🔴 Open |
-| [UX-071](#ux-071-price-list-sidebar-is-cramped-plain-text-with-no-visual-hierarchy) | Price List sidebar is cramped, plain text with no visual hierarchy | Price Lists | P2 | 🔴 Open |
-| [UX-072](#ux-072-promotions-arent-wired-into-checkout-at-all-the-feature-currently-affects-zero-real-sales) | Promotions aren't wired into checkout at all — the feature currently affects zero real sales | Promotions & Campaigns | P0 | 🔴 Open |
-| [UX-073](#ux-073-promotions-have-zero-crud-beyond-create-no-edit-delete-or-deactivate-exists-anywhere) | Promotions have zero CRUD beyond Create — no edit, delete, or deactivate exists anywhere | Promotions & Campaigns | P1 | 🔴 Open |
-| [UX-074](#ux-074-status-is-a-stored-flag-set-once-at-creation-and-never-re-evaluated-every-promotion-shows-active-forever) | STATUS is a stored flag set once at creation and never re-evaluated — every promotion shows "Active" forever | Promotions & Campaigns | P1 | 🔴 Open |
-| [UX-075](#ux-075-promotions-name-column-truncates-the-same-global-stretch-pattern-found-repeatedly-elsewhere) | Promotions NAME column truncates — the same global-stretch pattern found repeatedly elsewhere | Promotions & Campaigns | P1 | 🔴 Open |
-| [UX-076](#ux-076-create-promotion-dialog-is-generic-and-cant-actually-target-specific-products) | Create Promotion dialog is generic, and can't actually target specific products | Promotions & Campaigns | P1 | 🔴 Open |
-| [UX-077](#ux-077-nearly-every-table-in-the-app-has-the-same-headercontent-alignment-defect) | Nearly every table in the app has the same header/content alignment defect | App-wide (every table reviewed so far) | P1 | 🔴 Open |
-| [UX-078](#ux-078-the-counted-column-collapses-to-almost-nothing-making-its-own-input-editor-nearly-invisible) | The COUNTED column collapses to almost nothing, making its own input editor nearly invisible | Stock Take | P1 | 🔴 Open |
-| [UX-079](#ux-079-stock-take-button-colors-contradict-the-apps-own-documented-palette-and-each-other) | Stock Take button colors contradict the app's own documented palette, and each other | Stock Take | P2 | 🔴 Open |
-| [UX-080](#ux-080-draft-stock-counts-in-history-are-orphaned-no-way-to-resume-edit-or-delete-them) | DRAFT stock counts in History are orphaned — no way to resume, edit, or delete them | Stock Take | P1 | 🔴 Open |
-| [UX-081](#ux-081-save-draft-is-a-no-op-counts-are-already-auto-saved-per-keystroke) | "Save Draft" is a no-op — counts are already auto-saved per keystroke | Stock Take | P2 | 🔴 Open |
-| [UX-082](#ux-082-sidebar-nav-icons-and-labels-have-zero-gap-correcting-ux-045) | Sidebar nav icons and labels have zero gap (correcting UX-045) | Main sidebar (all screens) | P1 | 🔴 Open |
-| [UX-083](#ux-083-sidebar-redesign-dull-flat-treatment-and-poslogout-need-real-visual-hierarchy) | Sidebar redesign: dull flat treatment, and POS/Logout need real visual hierarchy | Main sidebar (all screens) | P2 | 🔴 Open |
-| [UX-084](#ux-084-management-screens-use-4-different-navigation-patterns-with-no-consistent-page-title) | Management screens use 4 different navigation patterns, with no consistent page title | App-wide (Management section) | P1 | 🔴 Open |
-| [UX-085](#ux-085-settings-footer-bar-being-hidden-not-reserved-creates-a-70px-height-jump-between-pages) | Settings' footer bar being hidden (not reserved) creates a 70px height jump between pages | Settings | P2 | 🔴 Open |
-| [UX-086](#ux-086-settings-appearance-tab-has-3-mismatched-field-widths-and-the-same-broken-spinbox-stepper) | Settings Appearance tab has 3 mismatched field widths, and the same broken spinbox stepper | Settings | P2 | 🔴 Open |
-| [UX-087](#ux-087-report-time-and-sales-tax-fields-have-the-same-mismatched-width-problem-the-fix-is-already-in-the-same-file) | Report Time and Sales Tax fields have the same mismatched-width problem — the fix is already in the same file | Settings | P2 | 🔴 Open |
-| [UX-088](#ux-088-good-pattern-worth-reusing-the-gmail-help-guide-should-become-the-apps-standard-for-technical-fields) | Good pattern worth reusing: the Gmail help guide should become the app's standard for technical fields | Settings, app-wide | P3 | 🔴 Open |
-| [UX-089](#ux-089-checkbox-hover-is-already-universal-in-css-the-perceived-inconsistency-traces-to-ux-060-instead) | Checkbox hover is already universal in CSS — the perceived inconsistency traces to UX-060 instead | Settings, app-wide | P3 | 🔴 Open |
-| [UX-090](#ux-090-daily-auto-report-has-two-independent-reliability-bugs-confirming-your-suspicion) | Daily Auto-Report has two independent reliability bugs, confirming your suspicion | Settings → Shop Info → Email | P1 | 🔴 Open |
-| [UX-091](#ux-091-cut-drawer-tab-label-is-silently-eaten-by-qts-mnemonic-parser) | "Cut & Drawer" tab label is silently eaten by Qt's mnemonic parser | Settings → Hardware | P1 | 🔴 Open |
-| [UX-092](#ux-092-copies-field-box-proportions-make-its-value-easy-to-misread-as-blank-couldnt-confirm-a-code-level-bug) | "Copies" field box proportions make its value easy to misread as blank (couldn't confirm a code-level bug) | Settings → Hardware | P2 | 🔴 Open |
-| [UX-093](#ux-093-printer-list-never-rescans-a-newly-connected-printer-needs-a-full-app-restart-to-appear) | Printer list never rescans — a newly connected printer needs a full app restart to appear | Settings → Hardware | P2 | 🔴 Open |
-| [UX-094](#ux-094-good-pattern-already-built-the-section-divider-helper-should-be-reused-in-the-sidebar-redesign) | Good pattern already built: the section-divider helper should be reused in the sidebar redesign | Settings → Hardware, app-wide | P3 | 🔴 Open |
-| [UX-095](#ux-095-receipt-preview-never-reflects-the-actual-configured-paper-width-always-renders-at-80mm) | Receipt preview never reflects the actual configured paper width — always renders at 80mm | Settings → Receipt | P1 | 🔴 Open |
-| [UX-096](#ux-096-preview-and-real-thermal-print-use-two-independent-text-renderers-for-free-form-headerfooter-text) | Preview and real thermal print use two independent text renderers for free-form header/footer text | Settings → Receipt | P1 | 🔴 Open |
-| [UX-097](#ux-097-a-real-print-preview-dialog-already-exists-in-the-codebase-but-is-completely-unwired) | A real print-preview dialog already exists in the codebase, but is completely unwired | Settings → Receipt | P2 | 🔴 Open |
-| [UX-098](#ux-098-qr-code-support-is-fully-documented-in-the-receipt-schema-but-never-actually-emitted) | QR code support is fully documented in the receipt schema, but never actually emitted | Settings → Receipt | P3 | 🔴 Open |
-| [UX-099](#ux-099-receipt-preview-barcode-is-explicitly-decorative-and-not-scannable-by-the-codes-own-admission) | Receipt preview barcode is explicitly decorative and not scannable, by the code's own admission | Settings → Receipt | P3 | 🔴 Open |
-| [UX-100](#ux-100-shop-logo-has-no-size-guidance-and-no-real-dithering-step-for-thermal-print-quality) | Shop Logo has no size guidance and no real dithering step for thermal print quality | Settings → Receipt | P2 | 🔴 Open |
-| [UX-101](#ux-101-receipt-customization-is-fragmented-across-3-disconnected-settings-pages) | Receipt customization is fragmented across 3 disconnected Settings pages | Settings → Receipt, Hardware, Documents | P2 | 🔴 Open |
-| [UX-102](#ux-102-system-security-tab-field-truncation-couldnt-reproduce-from-code-same-widget-class-as-ux-092) | System Security tab field truncation — couldn't reproduce from code, same widget class as UX-092 | Settings → System | P2 | 🔴 Open |
-| [UX-103](#ux-103-network-mode-icon-is-a-raw-emoji-not-the-apps-icon-system-explaining-the-black-background) | Network mode icon is a raw emoji, not the app's icon system — explaining the black background | Settings → Network | P2 | 🔴 Open |
-| [UX-104](#ux-104-network-page-has-almost-no-explanatory-text-which-is-exactly-why-mode-vs-lan-sync-reads-as-redundant) | Network page has almost no explanatory text, which is exactly why Mode vs. LAN Sync reads as redundant | Settings → Network | P1 | 🔴 Open |
-| [UX-105](#ux-105-lan-sync-tab-hardcodes-english-strings-bypassing-i18n-entirely) | LAN Sync tab hardcodes English strings, bypassing i18n entirely | Settings → Network | P2 | 🔴 Open |
-| [UX-106](#ux-106-payment-method-cards-are-a-7th-confirmed-instance-of-the-navy-palette) | Payment method cards are a 7th confirmed instance of the navy palette | Settings → Payments | P2 | 🔴 Open |
-| [UX-107](#ux-107-cashs-narrower-button-row-breaks-column-alignment-across-payment-method-rows) | Cash's narrower button row breaks column alignment across payment method rows | Settings → Payments | P2 | 🔴 Open |
-| [UX-108](#ux-108-only-cash-shows-a-shortcutbehavior-tag-because-only-cash-was-ever-seeded-with-one) | Only Cash shows a shortcut/behavior tag — because only Cash was ever seeded with one | Settings → Payments | P3 | 🔴 Open |
-| [UX-109](#ux-109-cashs-tag-labels-arent-translated-in-sinhala-or-tamil) | Cash's tag labels aren't translated in Sinhala or Tamil | Settings → Payments | P3 | 🔴 Open |
-| [UX-110](#ux-110-backup-list-loads-synchronously-with-no-loading-indicator-despite-the-pattern-already-existing-in-the-same-file) | Backup list loads synchronously with no loading indicator, despite the pattern already existing in the same file | Settings → Data Safety | P2 | 🔴 Open |
-| [UX-111](#ux-111-the-18-pre-restore-backups-shown-are-very-likely-a-test-isolation-bug-leaking-into-a-real-user-folder) | The 18 pre-restore backups shown are very likely a test-isolation bug leaking into a real user folder | Settings → Data Safety | P2 | 🔴 Open |
-| [UX-112](#ux-112-pre-restore-backups-are-permanently-exempt-from-cleanup-and-have-no-delete-option-anywhere) | Pre-restore backups are permanently exempt from cleanup, and have no delete option anywhere | Settings → Data Safety | P1 | 🔴 Open |
-| [UX-113](#ux-113-database-file-path-is-visually-truncated-by-a-qformlayout-sizing-bug-not-a-data-bug) | Database file path is visually truncated by a QFormLayout sizing bug, not a data bug | Settings → Admin Tools | P2 | 🔴 Open |
-| [UX-114](#ux-114-admin-tools-hardware-tab-duplicates-two-test-buttons-already-on-settings-hardware) | Admin Tools' Hardware tab duplicates two test buttons already on Settings → Hardware | Settings → Admin Tools | P3 | 🔴 Open |
-| [UX-115](#ux-115-a-working-database-integrity-check-already-exists-but-is-never-wired-to-any-button) | A working database integrity-check already exists, but is never wired to any button | Settings → Admin Tools | P3 | 🔴 Open |
+| ID | Title | Screen | Severity | Status | GitHub |
+|----|-------|--------|----------|--------|--------|
+| [UX-001](#ux-001-empty-cart-hides-the-entire-table-including-its-header) | Empty cart hides the entire table, including its header | POS main (Sales) | P1 | 🔴 Open | [#256](https://github.com/HMAHD/CB-POS/issues/256) |
+| [UX-002](#ux-002-cart-table-numeric-columns-are-inconsistently-aligned-discounted-price-format-doesnt-match-regular-one) | Cart table numeric columns are inconsistently aligned, discounted price format doesn't match regular one | POS main (Sales) | P1 | 🔴 Open | [#350](https://github.com/HMAHD/CB-POS/issues/350) |
+| [UX-003](#ux-003-customer-card-and-loyalty-points-are-two-disconnected-elements) | Customer card and loyalty points are two disconnected elements | POS main (Sales), ActionPanel | P1 | 🔴 Open | [#255](https://github.com/HMAHD/CB-POS/issues/255) |
+| [UX-004](#ux-004-discount-highlight-only-tints-one-cell-of-the-row) | Discount highlight only tints one cell of the row | POS main (Sales) | P2 | 🔴 Open | [#265](https://github.com/HMAHD/CB-POS/issues/265) |
+| [UX-005](#ux-005-empty-cart-placeholder-is-plain-text-with-no-visual-anchor) | Empty cart placeholder is plain text with no visual anchor | POS main (Sales) | P3 | 🔴 Open | [#257](https://github.com/HMAHD/CB-POS/issues/257) |
+| [UX-006](#ux-006-customer-icon-bypasses-the-centralized-icon-system-no-points-icon-registered) | Customer icon bypasses the centralized icon system; no points icon registered | `cbpos/ui/widgets/action_panel.py` | P3 | 🔴 Open | [#266](https://github.com/HMAHD/CB-POS/issues/266) |
+| [UX-007](#ux-007-applied-payments-list-is-hard-capped-at-160px-so-it-scrolls-and-clips-the-boundary-rows-remove-button-instead-of-expanding) | Applied Payments list is hard-capped at 160px, so it scrolls and clips the boundary row's remove button instead of expanding | Payment dialog | P1 | 🔴 Open | [#267](https://github.com/HMAHD/CB-POS/issues/267) |
+| [UX-008](#ux-008-change-quantitychange-price-on-a-cart-line-use-a-raw-native-dialog-instead-of-the-apps-own-styled-one) | "Change Quantity"/"Change Price" on a cart line use a raw native dialog instead of the app's own styled one | POS main (Sales), cart line actions | P1 | 🔴 Open | [#268](https://github.com/HMAHD/CB-POS/issues/268) |
+| [UX-009](#ux-009-select-customer-dialog-cannot-be-confirmed-from-the-keyboard-at-all) | Select Customer dialog cannot be confirmed from the keyboard at all | Select Customer dialog | P1 | 🔴 Open | [#264](https://github.com/HMAHD/CB-POS/issues/264) |
+| [UX-010](#ux-010-select-customer-table-truncates-real-customer-names) | Select Customer table truncates real customer names | Select Customer dialog | P1 | 🔴 Open | [#351](https://github.com/HMAHD/CB-POS/issues/351) |
+| [UX-011](#ux-011-select-customer-header-alignment-doesnt-match-cell-alignment-same-pattern-as-ux-002) | Select Customer header alignment doesn't match cell alignment — same pattern as UX-002 | Select Customer dialog | P2 | 🔴 Open | [#352](https://github.com/HMAHD/CB-POS/issues/352) |
+| [UX-012](#ux-012-select-customer-table-skips-3-conventions-every-other-table-in-the-app-follows) | Select Customer table skips 3 conventions every other table in the app follows | Select Customer dialog | P2 | 🔴 Open | [#353](https://github.com/HMAHD/CB-POS/issues/353) |
+| [UX-013](#ux-013-periodic-reports-date-picker-calendar-popup-renders-broken-reproduced-exactly) | Periodic Reports date-picker calendar popup renders broken (reproduced exactly) | Dashboard | P1 | 🔴 Open | [#364](https://github.com/HMAHD/CB-POS/issues/364) |
+| [UX-014](#ux-014-total-sales-kpi-number-appears-clipped-in-the-reported-screenshot-couldnt-reproduce-yet) | Total Sales KPI number appears clipped in the reported screenshot (couldn't reproduce yet) | Dashboard | P1 | 🔴 Open | [#269](https://github.com/HMAHD/CB-POS/issues/269) |
+| [UX-015](#ux-015-both-dashboard-background-workers-swallow-errors-silently-and-leave-the-ui-stuck) | Both dashboard background workers swallow errors silently and leave the UI stuck | Dashboard | P1 | 🔴 Open | [#270](https://github.com/HMAHD/CB-POS/issues/270) |
+| [UX-016](#ux-016-periodic-reports-date-range-has-no-sanity-bounds-and-isnt-remembered) | Periodic Reports date range has no sanity bounds and isn't remembered | Dashboard | P2 | 🔴 Open | [#271](https://github.com/HMAHD/CB-POS/issues/271) |
+| [UX-017](#ux-017-inventory-table-truncates-product-names-third-confirmed-instance-of-the-ux-010-pattern) | Inventory table truncates product names — third confirmed instance of the UX-010 pattern | Inventory | P1 | 🔴 Open | [#354](https://github.com/HMAHD/CB-POS/issues/354) |
+| [UX-018](#ux-018-three-different-numeric-input-conventions-in-the-app-one-of-them-flagged-as-broken-in-its-own-code-comment-and-still-used-for-price) | Three different numeric-input conventions in the app — one of them flagged as broken in its own code comment, and still used for Price | Product Editor + app-wide | P1 | 🔴 Open | [#263](https://github.com/HMAHD/CB-POS/issues/263) |
+| [UX-019](#ux-019-label-preview-dialog-has-a-hardcoded-navy-background-that-doesnt-match-the-dark-theme) | Label Preview dialog has a hardcoded navy background that doesn't match the dark theme | Label Preview dialog | P1 | 🔴 Open | [#272](https://github.com/HMAHD/CB-POS/issues/272) |
+| [UX-020](#ux-020-csv-import-dialog-floating-thumbnail-investigated-likely-not-an-app-bug) | CSV Import dialog floating thumbnail — investigated, likely not an app bug | Import CSV dialog | ⚪ N/A | ⚪ Won't Fix | [#273](https://github.com/HMAHD/CB-POS/issues/273) |
+| [UX-021](#ux-021-category-manager-tree-has-no-column-resize-mode-configured-causing-a-horizontal-scrollbar-and-a-squeezed-header) | Category Manager tree has no column resize-mode configured, causing a horizontal scrollbar and a squeezed header | Category Manager dialog | P2 | 🔴 Open | [#355](https://github.com/HMAHD/CB-POS/issues/355) |
+| [UX-022](#ux-022-secondarydanger-button-class-convention-is-inconsistently-applied-across-3-dialogs) | Secondary/danger button class convention is inconsistently applied across 3 dialogs | Category Manager, Unit Manager, Label Print | P3 | 🔴 Open | [#274](https://github.com/HMAHD/CB-POS/issues/274) |
+| [UX-023](#ux-023-management-view-shows-a-completely-blank-screen-until-the-first-sidebar-click-confirmed-regression) | Management view shows a completely blank screen until the first sidebar click (confirmed regression) | Management (all tabs) | P1 | 🔴 Open | [#275](https://github.com/HMAHD/CB-POS/issues/275) |
+| [UX-024](#ux-024-management-sidebar-gets-permanently-stuck-collapsed-across-restarts-confirmed-root-cause) | Management sidebar gets permanently stuck collapsed across restarts (confirmed root cause) | Management, `CollapsibleSidebar` | P1 | 🔴 Open | [#276](https://github.com/HMAHD/CB-POS/issues/276) |
+| [UX-025](#ux-025-add-supplier-dialog-has-zero-dialog-specific-styling-no-objectname-no-size-no-qss-at-all) | Add Supplier dialog has zero dialog-specific styling — no objectName, no size, no QSS at all | Suppliers tab | P1 | 🔴 Open | [#277](https://github.com/HMAHD/CB-POS/issues/277) |
+| [UX-026](#ux-026-new-grn-add-product-search-is-a-genuinely-broken-feature-not-just-unpolished) | New GRN "Add Product" search is a genuinely broken feature, not just unpolished | New GRN tab | P0 | 🔴 Open | [#278](https://github.com/HMAHD/CB-POS/issues/278) |
+| [UX-027](#ux-027-new-grn-header-row-supplierrefdate-has-no-width-balancing-date-field-looks-tiny) | New GRN header row (Supplier/Ref#/Date) has no width balancing — Date field looks tiny | New GRN tab | P2 | 🔴 Open | [#279](https://github.com/HMAHD/CB-POS/issues/279) |
+| [UX-028](#ux-028-supplier-selection-combos-in-purchasing-are-plain-non-searchable-comboboxes) | Supplier-selection combos in Purchasing are plain, non-searchable comboboxes | New GRN, GRN History tabs | P1 | 🔴 Open | [#280](https://github.com/HMAHD/CB-POS/issues/280) |
+| [UX-029](#ux-029-grn-history-status-filter-shows-all-suppliers-instead-of-all-statuses) | GRN History "Status" filter shows "All Suppliers" instead of "All Statuses" | GRN History tab | P2 | 🔴 Open | [#281](https://github.com/HMAHD/CB-POS/issues/281) |
+| [UX-030](#ux-030-grn-history-and-payables-tables-have-no-empty-state-message) | GRN History and Payables tables have no empty-state message | GRN History, Payables tabs | P2 | 🔴 Open | [#258](https://github.com/HMAHD/CB-POS/issues/258) |
+| [UX-031](#ux-031-payables-uses-a-deliberate-but-undocumented-navy-sub-theme-shared-with-credit-book) | Payables uses a deliberate but undocumented navy sub-theme, shared with Credit Book — DECIDED: retire app-wide, 6 locations confirmed | Payables, Credit Book, Reports, Document Browser, Price Lists, Payment Methods | P1 | 🔴 Open | [#260](https://github.com/HMAHD/CB-POS/issues/260) |
+| [UX-032](#ux-032-payables-supplier-list-is-double-click-only-same-pattern-as-ux-009) | Payables supplier list is double-click-only — same pattern as UX-009 | Payables tab | P1 | 🔴 Open | [#372](https://github.com/HMAHD/CB-POS/issues/372) |
+| [UX-033](#ux-033-payables-ledger-shows-zero-entries-despite-a-non-zero-balance-needs-one-live-check-to-fully-confirm) | Payables ledger shows zero entries despite a non-zero balance (needs one live check to fully confirm) | Payables tab | P1 | 🔴 Open | [#282](https://github.com/HMAHD/CB-POS/issues/282) |
+| [UX-034](#ux-034-credit-book-outstanding-debt-column-header-is-clipped-to-tstanding-di) | Credit Book "Outstanding Debt" column header is clipped to "TSTANDING DI" | Credit Book | P1 | 🔴 Open | [#356](https://github.com/HMAHD/CB-POS/issues/356) |
+| [UX-035](#ux-035-credit-book-customer-list-is-double-click-only-same-pattern-as-ux-009ux-032) | Credit Book customer list is double-click-only — same pattern as UX-009/UX-032 | Credit Book | P1 | 🔴 Open | [#373](https://github.com/HMAHD/CB-POS/issues/373) |
+| [UX-036](#ux-036-adjust-balance-button-uses-the-apps-warning-color-for-a-routine-action) | "Adjust Balance" button uses the app's warning color for a routine action | Credit Book, customer detail | P2 | 🔴 Open | [#283](https://github.com/HMAHD/CB-POS/issues/283) |
+| [UX-037](#ux-037-credit-book-ledger-shows-zero-entries-despite-a-non-zero-debt-same-pattern-as-ux-033-now-confirmed-on-a-second-screen) | Credit Book ledger shows zero entries despite a non-zero debt — same pattern as UX-033, now confirmed on a second screen | Credit Book, customer detail | P1 | 🔴 Open | [#284](https://github.com/HMAHD/CB-POS/issues/284) |
+| [UX-038](#ux-038-new-customer-dialogs-commercial-tab-has-mismatched-field-widths-recurring-pattern-to-watch-for) | New Customer dialog's Commercial tab has mismatched field widths — recurring pattern to watch for | Customer Editor, Commercial tab | P1 | 🔴 Open | [#367](https://github.com/HMAHD/CB-POS/issues/367) |
+| [UX-039](#ux-039-only-2-of-15-date-pickers-in-the-app-have-any-styling-at-all) | Only 2 of 15 date pickers in the app have any styling at all | App-wide (`QDateEdit`) | P1 | 🔴 Open | [#262](https://github.com/HMAHD/CB-POS/issues/262) |
+| [UX-040](#ux-040-customer-statement-dialog-has-uneven-filter-row-and-summary-spacing) | Customer Statement dialog has uneven filter-row and summary spacing | Print Statement dialog | P2 | 🔴 Open | [#285](https://github.com/HMAHD/CB-POS/issues/285) |
+| [UX-041](#ux-041-reports-screen-is-a-third-independent-navy-themed-screen-not-shared-with-ux-031) | Reports screen is a third, independent navy-themed screen — not shared with UX-031 | Reports | P1 | 🔴 Open | [#345](https://github.com/HMAHD/CB-POS/issues/345) |
+| [UX-042](#ux-042-reports-category-panel-scales-far-wider-than-its-content-needs) | Reports category panel scales far wider than its content needs | Reports | P2 | 🔴 Open | [#286](https://github.com/HMAHD/CB-POS/issues/286) |
+| [UX-043](#ux-043-no-shared-empty-state-component-every-screen-hand-builds-its-own) | No shared empty-state component — every screen hand-builds its own | App-wide | P3 | 🔴 Open | [#254](https://github.com/HMAHD/CB-POS/issues/254) |
+| [UX-044](#ux-044-current-nav-item-highlight-is-much-weaker-when-the-sidebar-is-collapsed) | Current nav item highlight is much weaker when the sidebar is collapsed | Main sidebar (all screens) | P2 | 🔴 Open | [#287](https://github.com/HMAHD/CB-POS/issues/287) |
+| [UX-045](#ux-045-pos-logout-buttons-still-use-the-leftover-string-padding-hack) | POS / Logout buttons still use the leftover string-padding hack | Main sidebar (all screens) | P3 | 🔴 Open | [#288](https://github.com/HMAHD/CB-POS/issues/288) |
+| [UX-046](#ux-046-sidebar-widthexpanded-header-in-the-screenshot-doesnt-match-the-widths-in-code-needs-a-live-render-to-confirm) | Sidebar width/expanded header in the screenshot doesn't match the widths in code (needs a live render to confirm) | Main sidebar (all screens) | P2 | 🔴 Open | [#289](https://github.com/HMAHD/CB-POS/issues/289) |
+| [UX-047](#ux-047-reports-date-picker-has-a-near-invisible-click-target-and-no-fixed-display-format) | Reports date picker has a near-invisible click target and no fixed display format | Reports | P1 | 🔴 Open | [#365](https://github.com/HMAHD/CB-POS/issues/365) |
+| [UX-048](#ux-048-report-tables-last-column-always-stretches-truncating-the-first-columns-labels) | Report table's last column always stretches, truncating the first column's labels | Reports | P1 | 🔴 Open | [#357](https://github.com/HMAHD/CB-POS/issues/357) |
+| [UX-049](#ux-049-every-report-type-shares-one-generic-renderer-with-zero-report-specific-treatment) | Every report type shares one generic renderer with zero report-specific treatment | Reports | P2 | 🔴 Open | [#290](https://github.com/HMAHD/CB-POS/issues/290) |
+| [UX-050](#ux-050-pagination-controls-render-even-when-there-is-only-one-page) | Pagination controls render even when there is only one page | Reports | P3 | 🔴 Open | [#291](https://github.com/HMAHD/CB-POS/issues/291) |
+| [UX-051](#ux-051-one-dialog-has-three-different-names-for-the-same-feature) | One dialog has three different names for the same feature | Document Browser | P1 | 🔴 Open | [#292](https://github.com/HMAHD/CB-POS/issues/292) |
+| [UX-052](#ux-052-document-browser-table-has-three-competing-stretch-columns-truncating-type-and-total) | Document Browser table has three competing stretch columns, truncating TYPE and TOTAL | Document Browser | P1 | 🔴 Open | [#358](https://github.com/HMAHD/CB-POS/issues/358) |
+| [UX-053](#ux-053-document-browser-doesnt-explain-what-its-for-or-why-to-use-it) | Document Browser doesn't explain what it's for or why to use it | Document Browser | P2 | 🔴 Open | [#293](https://github.com/HMAHD/CB-POS/issues/293) |
+| [UX-054](#ux-054-proforma-dialogs-customer-field-looks-searchable-but-isnt) | Proforma dialog's Customer field looks searchable but isn't | Proforma/Quotation dialog | P1 | 🔴 Open | [#294](https://github.com/HMAHD/CB-POS/issues/294) |
+| [UX-055](#ux-055-proforma-dialogs-validity-field-uses-the-same-known-broken-spinbox-stepper-pattern) | Proforma dialog's Validity field uses the same known-broken spinbox stepper pattern | Proforma/Quotation dialog | P2 | 🔴 Open | [#368](https://github.com/HMAHD/CB-POS/issues/368) |
+| [UX-056](#ux-056-proforma-dialogs-line-items-table-has-no-empty-state-message) | Proforma dialog's line-items table has no empty-state message | Proforma/Quotation dialog | P2 | 🔴 Open | [#259](https://github.com/HMAHD/CB-POS/issues/259) |
+| [UX-057](#ux-057-users-table-shows-the-same-id-number-twice) | Users table shows the same ID number twice | Users | P3 | 🔴 Open | [#295](https://github.com/HMAHD/CB-POS/issues/295) |
+| [UX-058](#ux-058-no-ui-exists-to-createrenamedelete-a-role-even-though-the-backend-already-fully-supports-it) | No UI exists to create/rename/delete a role, even though the backend already fully supports it | Users | P1 | 🔴 Open | [#296](https://github.com/HMAHD/CB-POS/issues/296) |
+| [UX-059](#ux-059-manage-permissions-save-changes-calls-a-method-that-doesnt-exist-every-save-will-crash) | "Manage Permissions" Save Changes calls a method that doesn't exist — every save will crash | Users, Manage Permissions dialog | P0 | 🔴 Open | [#297](https://github.com/HMAHD/CB-POS/issues/297) |
+| [UX-060](#ux-060-permission-manager-isnt-missing-permissions-its-hiding-most-of-them-below-the-fold) | Permission Manager isn't missing permissions — it's hiding most of them below the fold | Users, Manage Permissions dialog | P2 | 🔴 Open | [#298](https://github.com/HMAHD/CB-POS/issues/298) |
+| [UX-061](#ux-061-activity-log-details-column-is-forced-to-the-same-width-as-every-other-column) | Activity Log DETAILS column is forced to the same width as every other column | Users, Activity Log | P1 | 🔴 Open | [#359](https://github.com/HMAHD/CB-POS/issues/359) |
+| [UX-062](#ux-062-the-apps-one-central-audit-logging-method-is-dead-code-and-would-crash-if-called-and-a-live-caller-has-the-same-bug) | The app's one central audit-logging method is dead code and would crash if called — and a live caller has the same bug | App-wide (audit logging) | P0 | 🔴 Open | [#299](https://github.com/HMAHD/CB-POS/issues/299) |
+| [UX-063](#ux-063-void-refund-permission-changes-purchasing-and-credit-adjustments-have-zero-audit-trail) | Void, Refund, Permission changes, Purchasing, and Credit adjustments have zero audit trail | App-wide (audit logging) | P1 | 🔴 Open | [#300](https://github.com/HMAHD/CB-POS/issues/300) |
+| [UX-064](#ux-064-activity-log-has-no-color-or-icon-coding-by-event-type) | Activity Log has no color or icon coding by event type | Users, Activity Log | P2 | 🔴 Open | [#301](https://github.com/HMAHD/CB-POS/issues/301) |
+| [UX-065](#ux-065-activity-log-is-hardcoded-to-the-10-most-recent-rows-with-no-filter-ui) | Activity Log is hardcoded to the 10 most recent rows, with no filter UI | Users, Activity Log | P2 | 🔴 Open | [#302](https://github.com/HMAHD/CB-POS/issues/302) |
+| [UX-066](#ux-066-valid-na-to-na-is-real-and-once-set-a-price-lists-dates-can-never-be-changed) | "Valid: N/A to N/A" is real, and once set, a price list's dates can never be changed | Price Lists | P1 | 🔴 Open | [#303](https://github.com/HMAHD/CB-POS/issues/303) |
+| [UX-067](#ux-067-price-editing-is-double-click-only-and-reuses-the-same-known-broken-spinbox-stepper) | Price editing is double-click-only, and reuses the same known-broken spinbox stepper | Price Lists | P1 | 🔴 Open | [#369](https://github.com/HMAHD/CB-POS/issues/369) |
+| [UX-068](#ux-068-a-price-list-cant-be-renamed-and-a-product-override-cant-be-removed-once-set) | A price list can't be renamed, and a product override can't be removed once set | Price Lists | P1 | 🔴 Open | [#304](https://github.com/HMAHD/CB-POS/issues/304) |
+| [UX-069](#ux-069-new-price-list-dialogs-date-fields-work-but-are-unstyled-app-wide-gap) | New Price List dialog's date fields work but are unstyled (app-wide gap) | Price Lists | P2 | 🔴 Open | [#366](https://github.com/HMAHD/CB-POS/issues/366) |
+| [UX-070](#ux-070-status-column-shows-the-same-static-list-level-value-on-every-product-row) | STATUS column shows the same static, list-level value on every product row | Price Lists | P2 | 🔴 Open | [#305](https://github.com/HMAHD/CB-POS/issues/305) |
+| [UX-071](#ux-071-price-list-sidebar-is-cramped-plain-text-with-no-visual-hierarchy) | Price List sidebar is cramped, plain text with no visual hierarchy | Price Lists | P2 | 🔴 Open | [#306](https://github.com/HMAHD/CB-POS/issues/306) |
+| [UX-072](#ux-072-promotions-arent-wired-into-checkout-at-all-the-feature-currently-affects-zero-real-sales) | Promotions aren't wired into checkout at all — the feature currently affects zero real sales | Promotions & Campaigns | P0 | 🔴 Open | [#307](https://github.com/HMAHD/CB-POS/issues/307) |
+| [UX-073](#ux-073-promotions-have-zero-crud-beyond-create-no-edit-delete-or-deactivate-exists-anywhere) | Promotions have zero CRUD beyond Create — no edit, delete, or deactivate exists anywhere | Promotions & Campaigns | P1 | 🔴 Open | [#308](https://github.com/HMAHD/CB-POS/issues/308) |
+| [UX-074](#ux-074-status-is-a-stored-flag-set-once-at-creation-and-never-re-evaluated-every-promotion-shows-active-forever) | STATUS is a stored flag set once at creation and never re-evaluated — every promotion shows "Active" forever | Promotions & Campaigns | P1 | 🔴 Open | [#309](https://github.com/HMAHD/CB-POS/issues/309) |
+| [UX-075](#ux-075-promotions-name-column-truncates-the-same-global-stretch-pattern-found-repeatedly-elsewhere) | Promotions NAME column truncates — the same global-stretch pattern found repeatedly elsewhere | Promotions & Campaigns | P1 | 🔴 Open | [#360](https://github.com/HMAHD/CB-POS/issues/360) |
+| [UX-076](#ux-076-create-promotion-dialog-is-generic-and-cant-actually-target-specific-products) | Create Promotion dialog is generic, and can't actually target specific products | Promotions & Campaigns | P1 | 🔴 Open | [#310](https://github.com/HMAHD/CB-POS/issues/310) |
+| [UX-077](#ux-077-nearly-every-table-in-the-app-has-the-same-headercontent-alignment-defect) | Nearly every table in the app has the same header/content alignment defect | App-wide (every table reviewed so far) | P1 | 🔴 Open | [#261](https://github.com/HMAHD/CB-POS/issues/261) |
+| [UX-078](#ux-078-the-counted-column-collapses-to-almost-nothing-making-its-own-input-editor-nearly-invisible) | The COUNTED column collapses to almost nothing, making its own input editor nearly invisible | Stock Take | P1 | 🔴 Open | [#361](https://github.com/HMAHD/CB-POS/issues/361) |
+| [UX-079](#ux-079-stock-take-button-colors-contradict-the-apps-own-documented-palette-and-each-other) | Stock Take button colors contradict the app's own documented palette, and each other | Stock Take | P2 | 🔴 Open | [#311](https://github.com/HMAHD/CB-POS/issues/311) |
+| [UX-080](#ux-080-draft-stock-counts-in-history-are-orphaned-no-way-to-resume-edit-or-delete-them) | DRAFT stock counts in History are orphaned — no way to resume, edit, or delete them | Stock Take | P1 | 🔴 Open | [#312](https://github.com/HMAHD/CB-POS/issues/312) |
+| [UX-081](#ux-081-save-draft-is-a-no-op-counts-are-already-auto-saved-per-keystroke) | "Save Draft" is a no-op — counts are already auto-saved per keystroke | Stock Take | P2 | 🔴 Open | [#313](https://github.com/HMAHD/CB-POS/issues/313) |
+| [UX-082](#ux-082-sidebar-nav-icons-and-labels-have-zero-gap-correcting-ux-045) | Sidebar nav icons and labels have zero gap (correcting UX-045) | Main sidebar (all screens) | P1 | 🔴 Open | [#314](https://github.com/HMAHD/CB-POS/issues/314) |
+| [UX-083](#ux-083-sidebar-redesign-dull-flat-treatment-and-poslogout-need-real-visual-hierarchy) | Sidebar redesign: dull flat treatment, and POS/Logout need real visual hierarchy | Main sidebar (all screens) | P2 | 🔴 Open | [#315](https://github.com/HMAHD/CB-POS/issues/315) |
+| [UX-084](#ux-084-management-screens-use-4-different-navigation-patterns-with-no-consistent-page-title) | Management screens use 4 different navigation patterns, with no consistent page title | App-wide (Management section) | P1 | 🔴 Open | [#316](https://github.com/HMAHD/CB-POS/issues/316) |
+| [UX-085](#ux-085-settings-footer-bar-being-hidden-not-reserved-creates-a-70px-height-jump-between-pages) | Settings' footer bar being hidden (not reserved) creates a 70px height jump between pages | Settings | P2 | 🔴 Open | [#317](https://github.com/HMAHD/CB-POS/issues/317) |
+| [UX-086](#ux-086-settings-appearance-tab-has-3-mismatched-field-widths-and-the-same-broken-spinbox-stepper) | Settings Appearance tab has 3 mismatched field widths, and the same broken spinbox stepper | Settings | P2 | 🔴 Open | [#370](https://github.com/HMAHD/CB-POS/issues/370) |
+| [UX-087](#ux-087-report-time-and-sales-tax-fields-have-the-same-mismatched-width-problem-the-fix-is-already-in-the-same-file) | Report Time and Sales Tax fields have the same mismatched-width problem — the fix is already in the same file | Settings | P2 | 🔴 Open | [#371](https://github.com/HMAHD/CB-POS/issues/371) |
+| [UX-088](#ux-088-good-pattern-worth-reusing-the-gmail-help-guide-should-become-the-apps-standard-for-technical-fields) | Good pattern worth reusing: the Gmail help guide should become the app's standard for technical fields | Settings, app-wide | P3 | 🔴 Open | [#318](https://github.com/HMAHD/CB-POS/issues/318) |
+| [UX-089](#ux-089-checkbox-hover-is-already-universal-in-css-the-perceived-inconsistency-traces-to-ux-060-instead) | Checkbox hover is already universal in CSS — the perceived inconsistency traces to UX-060 instead | Settings, app-wide | P3 | 🔴 Open | [#319](https://github.com/HMAHD/CB-POS/issues/319) |
+| [UX-090](#ux-090-daily-auto-report-has-two-independent-reliability-bugs-confirming-your-suspicion) | Daily Auto-Report has two independent reliability bugs, confirming your suspicion | Settings → Shop Info → Email | P1 | 🔴 Open | [#320](https://github.com/HMAHD/CB-POS/issues/320) |
+| [UX-091](#ux-091-cut-drawer-tab-label-is-silently-eaten-by-qts-mnemonic-parser) | "Cut & Drawer" tab label is silently eaten by Qt's mnemonic parser | Settings → Hardware | P1 | 🔴 Open | [#321](https://github.com/HMAHD/CB-POS/issues/321) |
+| [UX-092](#ux-092-copies-field-box-proportions-make-its-value-easy-to-misread-as-blank-couldnt-confirm-a-code-level-bug) | "Copies" field box proportions make its value easy to misread as blank (couldn't confirm a code-level bug) | Settings → Hardware | P2 | 🔴 Open | [#322](https://github.com/HMAHD/CB-POS/issues/322) |
+| [UX-093](#ux-093-printer-list-never-rescans-a-newly-connected-printer-needs-a-full-app-restart-to-appear) | Printer list never rescans — a newly connected printer needs a full app restart to appear | Settings → Hardware | P2 | 🔴 Open | [#323](https://github.com/HMAHD/CB-POS/issues/323) |
+| [UX-094](#ux-094-good-pattern-already-built-the-section-divider-helper-should-be-reused-in-the-sidebar-redesign) | Good pattern already built: the section-divider helper should be reused in the sidebar redesign | Settings → Hardware, app-wide | P3 | 🔴 Open | [#324](https://github.com/HMAHD/CB-POS/issues/324) |
+| [UX-095](#ux-095-receipt-preview-never-reflects-the-actual-configured-paper-width-always-renders-at-80mm) | Receipt preview never reflects the actual configured paper width — always renders at 80mm | Settings → Receipt | P1 | 🔴 Open | [#325](https://github.com/HMAHD/CB-POS/issues/325) |
+| [UX-096](#ux-096-preview-and-real-thermal-print-use-two-independent-text-renderers-for-free-form-headerfooter-text) | Preview and real thermal print use two independent text renderers for free-form header/footer text | Settings → Receipt | P1 | 🔴 Open | [#326](https://github.com/HMAHD/CB-POS/issues/326) |
+| [UX-097](#ux-097-a-real-print-preview-dialog-already-exists-in-the-codebase-but-is-completely-unwired) | A real print-preview dialog already exists in the codebase, but is completely unwired | Settings → Receipt | P2 | 🔴 Open | [#327](https://github.com/HMAHD/CB-POS/issues/327) |
+| [UX-098](#ux-098-qr-code-support-is-fully-documented-in-the-receipt-schema-but-never-actually-emitted) | QR code support is fully documented in the receipt schema, but never actually emitted | Settings → Receipt | P3 | 🔴 Open | [#328](https://github.com/HMAHD/CB-POS/issues/328) |
+| [UX-099](#ux-099-receipt-preview-barcode-is-explicitly-decorative-and-not-scannable-by-the-codes-own-admission) | Receipt preview barcode is explicitly decorative and not scannable, by the code's own admission | Settings → Receipt | P3 | 🔴 Open | [#329](https://github.com/HMAHD/CB-POS/issues/329) |
+| [UX-100](#ux-100-shop-logo-has-no-size-guidance-and-no-real-dithering-step-for-thermal-print-quality) | Shop Logo has no size guidance and no real dithering step for thermal print quality | Settings → Receipt | P2 | 🔴 Open | [#330](https://github.com/HMAHD/CB-POS/issues/330) |
+| [UX-101](#ux-101-receipt-customization-is-fragmented-across-3-disconnected-settings-pages) | Receipt customization is fragmented across 3 disconnected Settings pages | Settings → Receipt, Hardware, Documents | P2 | 🔴 Open | [#331](https://github.com/HMAHD/CB-POS/issues/331) |
+| [UX-102](#ux-102-system-security-tab-field-truncation-couldnt-reproduce-from-code-same-widget-class-as-ux-092) | System Security tab field truncation — couldn't reproduce from code, same widget class as UX-092 | Settings → System | P2 | 🔴 Open | [#332](https://github.com/HMAHD/CB-POS/issues/332) |
+| [UX-103](#ux-103-network-mode-icon-is-a-raw-emoji-not-the-apps-icon-system-explaining-the-black-background) | Network mode icon is a raw emoji, not the app's icon system — explaining the black background | Settings → Network | P2 | 🔴 Open | [#333](https://github.com/HMAHD/CB-POS/issues/333) |
+| [UX-104](#ux-104-network-page-has-almost-no-explanatory-text-which-is-exactly-why-mode-vs-lan-sync-reads-as-redundant) | Network page has almost no explanatory text, which is exactly why Mode vs. LAN Sync reads as redundant | Settings → Network | P1 | 🔴 Open | [#334](https://github.com/HMAHD/CB-POS/issues/334) |
+| [UX-105](#ux-105-lan-sync-tab-hardcodes-english-strings-bypassing-i18n-entirely) | LAN Sync tab hardcodes English strings, bypassing i18n entirely | Settings → Network | P2 | 🔴 Open | [#335](https://github.com/HMAHD/CB-POS/issues/335) |
+| [UX-106](#ux-106-payment-method-cards-are-a-7th-confirmed-instance-of-the-navy-palette) | Payment method cards are a 7th confirmed instance of the navy palette | Settings → Payments | P2 | 🔴 Open | [#346](https://github.com/HMAHD/CB-POS/issues/346) |
+| [UX-107](#ux-107-cashs-narrower-button-row-breaks-column-alignment-across-payment-method-rows) | Cash's narrower button row breaks column alignment across payment method rows | Settings → Payments | P2 | 🔴 Open | [#336](https://github.com/HMAHD/CB-POS/issues/336) |
+| [UX-108](#ux-108-only-cash-shows-a-shortcutbehavior-tag-because-only-cash-was-ever-seeded-with-one) | Only Cash shows a shortcut/behavior tag — because only Cash was ever seeded with one | Settings → Payments | P3 | 🔴 Open | [#337](https://github.com/HMAHD/CB-POS/issues/337) |
+| [UX-109](#ux-109-cashs-tag-labels-arent-translated-in-sinhala-or-tamil) | Cash's tag labels aren't translated in Sinhala or Tamil | Settings → Payments | P3 | 🔴 Open | [#338](https://github.com/HMAHD/CB-POS/issues/338) |
+| [UX-110](#ux-110-backup-list-loads-synchronously-with-no-loading-indicator-despite-the-pattern-already-existing-in-the-same-file) | Backup list loads synchronously with no loading indicator, despite the pattern already existing in the same file | Settings → Data Safety | P2 | 🔴 Open | [#339](https://github.com/HMAHD/CB-POS/issues/339) |
+| [UX-111](#ux-111-the-18-pre-restore-backups-shown-are-very-likely-a-test-isolation-bug-leaking-into-a-real-user-folder) | The 18 pre-restore backups shown are very likely a test-isolation bug leaking into a real user folder | Settings → Data Safety | P2 | 🔴 Open | [#340](https://github.com/HMAHD/CB-POS/issues/340) |
+| [UX-112](#ux-112-pre-restore-backups-are-permanently-exempt-from-cleanup-and-have-no-delete-option-anywhere) | Pre-restore backups are permanently exempt from cleanup, and have no delete option anywhere | Settings → Data Safety | P1 | 🔴 Open | [#341](https://github.com/HMAHD/CB-POS/issues/341) |
+| [UX-113](#ux-113-database-file-path-is-visually-truncated-by-a-qformlayout-sizing-bug-not-a-data-bug) | Database file path is visually truncated by a QFormLayout sizing bug, not a data bug | Settings → Admin Tools | P2 | 🔴 Open | [#342](https://github.com/HMAHD/CB-POS/issues/342) |
+| [UX-114](#ux-114-admin-tools-hardware-tab-duplicates-two-test-buttons-already-on-settings-hardware) | Admin Tools' Hardware tab duplicates two test buttons already on Settings → Hardware | Settings → Admin Tools | P3 | 🔴 Open | [#343](https://github.com/HMAHD/CB-POS/issues/343) |
+| [UX-115](#ux-115-a-working-database-integrity-check-already-exists-but-is-never-wired-to-any-button) | A working database integrity-check already exists, but is never wired to any button | Settings → Admin Tools | P3 | 🔴 Open | [#344](https://github.com/HMAHD/CB-POS/issues/344) |
 
 ---
 
@@ -180,6 +180,7 @@ don't need re-litigating every time a new screen surfaces the same issue.
 
 **Screen:** POS main screen (Sales view), cart area — screenshot 1 (empty cart)
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#256](https://github.com/HMAHD/CB-POS/issues/256) (sub-issue of [#254](https://github.com/HMAHD/CB-POS/issues/254))
 
 **What you see:** With no items scanned, the whole cart area is just a large
 black rectangle with centered gray text, "Scan or search to add items." No
@@ -219,6 +220,7 @@ empty table with a hint," not "no table at all."
 
 **Screen:** POS main screen (Sales view), cart table — screenshot 2 (item added)
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#350](https://github.com/HMAHD/CB-POS/issues/350) (sub-issue of [#261](https://github.com/HMAHD/CB-POS/issues/261))
 
 **What you see:** With an item in the cart, PRICE/QTY/DISC/TOTAL feel cramped
 and don't read as a clean table — values look like they're floating rather
@@ -268,6 +270,7 @@ whether that number is even a price.
 
 **Screen:** POS main screen (Sales view) → `ActionPanel` widget, right sidebar
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#255](https://github.com/HMAHD/CB-POS/issues/255)
 
 **What you see:** The customer name/phone row sits inside a nicely-styled
 bordered card, but "Points: 150" renders as small yellow text *below and
@@ -330,6 +333,7 @@ noting the card redesign creates room for it if there's appetite later.
 
 **Screen:** POS main screen (Sales view), cart table
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#265](https://github.com/HMAHD/CB-POS/issues/265)
 
 **Not from your notes — flagged during code review.** When a cart line has a
 discount or manual price override, only the **name** cell gets a background
@@ -349,6 +353,7 @@ same loop, no new mechanism needed.
 
 **Screen:** POS main screen (Sales view), cart area — screenshot 1
 **Severity:** P3 · **Status:** 🔴 Open
+**GitHub:** [#257](https://github.com/HMAHD/CB-POS/issues/257) (sub-issue of [#254](https://github.com/HMAHD/CB-POS/issues/254))
 
 **Not from your notes — flagged during code review, ties into UX-001.**
 Right now the empty state is just gray text centered in a large black
@@ -368,6 +373,7 @@ actual focal point instead of just type on black.
 
 **Screen:** `cbpos/ui/widgets/action_panel.py` (code-quality note, not visible to the end user)
 **Severity:** P3 · **Status:** 🔴 Open
+**GitHub:** [#266](https://github.com/HMAHD/CB-POS/issues/266)
 
 **Not from your notes — flagged during code review.** `cbpos/ui/resources/icons.py`
 is this project's own established convention for centralizing every
@@ -389,6 +395,7 @@ purely a consistency cleanup, zero visible behavior change.
 
 **Screen:** Payment dialog, "Applied Payments" section
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#267](https://github.com/HMAHD/CB-POS/issues/267)
 
 **What you flagged:** two things — (a) the applied-payments container doesn't
 grow as more split payments are added, and (b) one row's remove ("×") button
@@ -447,6 +454,7 @@ clipped.
 **Screen:** POS main screen, cart line context menu / F4 shortcut ("Qty" in
 the Orders panel)
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#268](https://github.com/HMAHD/CB-POS/issues/268)
 
 **What you flagged:** the up/down steppers next to the quantity field look
 disconnected from the input (a visible gap + odd dividing line between
@@ -512,6 +520,7 @@ the same pass for consistency.
 
 **Screen:** Select Customer dialog
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#264](https://github.com/HMAHD/CB-POS/issues/264) — parent issue, tracks sub-issues for each confirmed location
 
 **Not from your notes — flagged during code review, but directly relevant
 to this app's own "keyboard-first" design principle.**
@@ -541,6 +550,7 @@ this codebase.
 
 **Screen:** Select Customer dialog
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#351](https://github.com/HMAHD/CB-POS/issues/351) (sub-issue of [#261](https://github.com/HMAHD/CB-POS/issues/261))
 
 **What you'd see if you searched further** — "Malini ..." and "Chaminda ..."
 in the screenshot aren't abbreviations, they're mid-name truncation. This is
@@ -580,6 +590,7 @@ cashier would actually act on.
 
 **Screen:** Select Customer dialog
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#352](https://github.com/HMAHD/CB-POS/issues/352) (sub-issue of [#261](https://github.com/HMAHD/CB-POS/issues/261))
 
 **Not from your notes — flagged during code review.** Same defect class as
 UX-002 (cart table), confirmed here too:
@@ -605,6 +616,7 @@ here for consistency across the app's tables.
 
 **Screen:** Select Customer dialog
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#353](https://github.com/HMAHD/CB-POS/issues/353) (sub-issue of [#261](https://github.com/HMAHD/CB-POS/issues/261))
 
 **Not from your notes — flagged during code review.** Three small things,
 grouped here because they're all "this table didn't follow the pattern
@@ -646,6 +658,7 @@ of what happens with the ID column itself.
 
 **Screen:** Dashboard, "Periodic Reports" date range fields
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#364](https://github.com/HMAHD/CB-POS/issues/364) (sub-issue of [#262](https://github.com/HMAHD/CB-POS/issues/262))
 
 **What you flagged:** the calendar popup doesn't display properly.
 
@@ -714,6 +727,7 @@ custom range is still a real, legitimate need).
 
 **Screen:** Dashboard, top-right summary panel
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#269](https://github.com/HMAHD/CB-POS/issues/269)
 
 **What you flagged:** "Rs. 161,749." cuts off right after the decimal point
 — no cents digits visible, like the text is too big for its box.
@@ -760,6 +774,7 @@ clips in another.
 
 **Screen:** Dashboard (whole screen)
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#270](https://github.com/HMAHD/CB-POS/issues/270)
 
 **Not from your notes — flagged as the system-engineer pass you asked for.**
 This is the same bug *class* already found and fixed in the print/reprint
@@ -798,6 +813,7 @@ message where the KPI/chart would be is enough — this doesn't need a modal).
 
 **Screen:** Dashboard, "Periodic Reports" date range fields
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#271](https://github.com/HMAHD/CB-POS/issues/271)
 
 **Directly answers your "get more accurate data" ask.** Two related gaps,
 both confirmed in code:
@@ -833,6 +849,7 @@ both confirmed in code:
 
 **Screen:** Inventory
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#354](https://github.com/HMAHD/CB-POS/issues/354) (sub-issue of [#261](https://github.com/HMAHD/CB-POS/issues/261))
 
 **What you'd see** — "Atlas A5 Exercise Book 80 ...", "Comfort Fabric Softener
 ...", "Dettol Antiseptic Liquid ...", "Elephant House Cream So..." in the
@@ -870,6 +887,7 @@ together** — same bug, same fix, two files.
 
 **Screen:** Product Editor dialog (Selling Price / Cost Price), app-wide pattern
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#263](https://github.com/HMAHD/CB-POS/issues/263) — parent issue, tracks sub-issues for each confirmed location
 
 **What prompted this** — the Selling Price/Cost Price fields' +/- steppers
 in your screenshot visually resemble the raw, unstyled native dialog already
@@ -927,6 +945,7 @@ app, rather than three ad-hoc conventions competing.
 
 **Screen:** Print Labels → Label Preview dialog
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#272](https://github.com/HMAHD/CB-POS/issues/272)
 
 **What you flagged** — the preview popup's background is a distinct navy
 blue instead of matching the rest of the dark UI.
@@ -972,6 +991,7 @@ matching `CsvImportDialog` right next to it).
 
 **Screen:** Import CSV dialog
 **Severity:** N/A · **Status:** ⚪ Won't Fix (pending your confirmation)
+**GitHub:** [#273](https://github.com/HMAHD/CB-POS/issues/273)
 
 **What you flagged** — a small, unexplained thumbnail-like image floating
 in the dialog's bottom-right corner.
@@ -998,6 +1018,7 @@ artifact explanation.
 
 **Screen:** Manage Categories dialog
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#355](https://github.com/HMAHD/CB-POS/issues/355) (sub-issue of [#261](https://github.com/HMAHD/CB-POS/issues/261))
 
 **What you'd see** — a horizontal scrollbar at the bottom of the category
 tree, and the "Products" column header squeezed down to showing just "P".
@@ -1029,6 +1050,7 @@ too-generous fixed column and an unconfigured one.
 
 **Screen:** Category Manager, Unit Manager, Label Print
 **Severity:** P3 · **Status:** 🔴 Open
+**GitHub:** [#274](https://github.com/HMAHD/CB-POS/issues/274)
 
 **Not from your notes — flagged during code review, a straightforward
 consistency cleanup.** This app has an established button-class convention
@@ -1073,6 +1095,7 @@ whatever the copy-paste happened to produce.
 **Screen:** Management (Dashboard tab specifically, but affects entry into
 Management as a whole)
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#275](https://github.com/HMAHD/CB-POS/issues/275)
 
 **What you flagged:** entering Management after a fresh app restart shows
 nothing at all — no Dashboard, no content, until a sidebar item is clicked.
@@ -1127,6 +1150,7 @@ shortcut already handles this exact class of problem.
 
 **Screen:** Management, `CollapsibleSidebar`
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#276](https://github.com/HMAHD/CB-POS/issues/276)
 
 **What you flagged:** the sidebar shows icon-only, no text labels, on this
 same fresh-restart-then-Management screen.
@@ -1195,6 +1219,7 @@ permanent preference.
 
 **Screen:** Purchasing → Suppliers → Add Supplier
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#277](https://github.com/HMAHD/CB-POS/issues/277)
 
 **What you flagged:** too small, not user-friendly, lacks visuals, not a
 clean UI.
@@ -1231,6 +1256,7 @@ UX-018 rather than adding a 4th inconsistent numeric-input convention.
 
 **Screen:** Purchasing → New GRN
 **Severity:** P0 · **Status:** 🔴 Open
+**GitHub:** [#278](https://github.com/HMAHD/CB-POS/issues/278)
 
 **What you flagged:** doesn't show products when typing.
 
@@ -1279,6 +1305,7 @@ stock into inventory.
 
 **Screen:** Purchasing → New GRN
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#279](https://github.com/HMAHD/CB-POS/issues/279)
 
 **What you flagged:** top element alignments "way off," specifically the
 date selector.
@@ -1304,6 +1331,7 @@ field so it doesn't read as an afterthought next to the other two.
 
 **Screen:** New GRN, GRN History tabs
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#280](https://github.com/HMAHD/CB-POS/issues/280)
 
 **What you flagged:** with 100+ suppliers, a plain dropdown becomes hard to
 use — needs to support typing to filter.
@@ -1333,6 +1361,7 @@ pattern works, this is a copy, not an invention.
 
 **Screen:** Purchasing → GRN History
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#281](https://github.com/HMAHD/CB-POS/issues/281)
 
 **Not from your notes, but visible in the same screenshot — a small,
 concrete copy-paste bug.** `purchase_view.py:530` (populating the Status
@@ -1356,6 +1385,7 @@ copy-pasted from the Supplier combo and the key was never swapped.
 
 **Screen:** GRN History, Payables tabs
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#258](https://github.com/HMAHD/CB-POS/issues/258) (sub-issue of [#254](https://github.com/HMAHD/CB-POS/issues/254))
 
 **Not from your notes — flagged during code review.** `refresh_history()`
 (`purchase_view.py:571-590`) and the Payables supplier table both render a
@@ -1378,6 +1408,7 @@ mechanism.
 **Screen:** Payables, Credit Book, Reports, Document Browser, Price Lists,
 Payment Methods — confirmed app-wide, see the full scope list below
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#260](https://github.com/HMAHD/CB-POS/issues/260) — parent issue, tracks sub-issues for each confirmed location
 
 **What you flagged:** the whole Payables screen is blue, not a good look.
 
@@ -1453,6 +1484,7 @@ color swap repeated.
 
 **Screen:** Payables tab
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#372](https://github.com/HMAHD/CB-POS/issues/372) (sub-issue of [#264](https://github.com/HMAHD/CB-POS/issues/264))
 
 **What you flagged:** the only way to open a supplier's ledger is
 double-clicking a row, and a user might never discover that.
@@ -1476,6 +1508,7 @@ undiscoverable mouse gesture.
 
 **Screen:** Payables tab, supplier detail view
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#282](https://github.com/HMAHD/CB-POS/issues/282)
 
 **What you'd notice** — the header shows "Payable: Rs. 62,000.00" in red,
 but the ledger table below is completely empty and the footer shows
@@ -1522,6 +1555,7 @@ expanding the date range").
 
 **Screen:** Credit Book, customer list
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#356](https://github.com/HMAHD/CB-POS/issues/356) (sub-issue of [#261](https://github.com/HMAHD/CB-POS/issues/261))
 
 **What you flagged:** the credit book is "as like before" — the customer
 list has the same rough edges as the tables reviewed earlier.
@@ -1557,6 +1591,7 @@ value/header), not just Name and Phone.
 
 **Screen:** Credit Book, customer list
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#373](https://github.com/HMAHD/CB-POS/issues/373) (sub-issue of [#264](https://github.com/HMAHD/CB-POS/issues/264))
 
 **What you flagged:** "the only way to select a customer is double click,
 as again it keeps going" — you've now hit this exact gap on three separate
@@ -1590,6 +1625,7 @@ Customer, Payables, and Credit Book in one pass.
 
 **Screen:** Credit Book, customer detail page
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#283](https://github.com/HMAHD/CB-POS/issues/283)
 
 **Not from your notes — found while reviewing the customer detail page you
 sent.** Look at the 4 action buttons: Receive Payment (cyan, active),
@@ -1624,6 +1660,7 @@ explaining why it needs extra care), not just an unexplained color change.
 **Screen:** Credit Book, customer detail page (e.g. Saman Kumara: "Debt:
 Rs. 7,200.00" header, but the ledger table and footer all read Rs. 0.00)
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#284](https://github.com/HMAHD/CB-POS/issues/284)
 
 **What you flagged:** "last two images is customer selected and that also
 bluish, need to fix and check that UI/UX issues as well."
@@ -1660,6 +1697,7 @@ cause.
 
 **Screen:** Credit Book → "+ Add Customer" → Commercial tab
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#367](https://github.com/HMAHD/CB-POS/issues/367) (sub-issue of [#263](https://github.com/HMAHD/CB-POS/issues/263))
 
 **What you flagged:** "Credit Limit, Payment Terms, Price List — those
 [fields] not aligned properly and not clean UI/UX... not just here, if
@@ -1712,6 +1750,7 @@ same behavior, wherever a numeric field appears in a form.
 Dashboard, Stock Take, Data Export, Sale History Reprint, Admin Tools,
 Data Safety
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#262](https://github.com/HMAHD/CB-POS/issues/262) — parent issue, tracks sub-issues for each confirmed location
 
 **What you flagged:** "print statement dialog... date picker not good
 throughout application, have a date picker either fix that widget perfect
@@ -1791,6 +1830,7 @@ place instead of three.
 
 **Screen:** Credit Book → customer detail → "Print Statement"
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#285](https://github.com/HMAHD/CB-POS/issues/285)
 
 **What you flagged:** "print statement dialog have lot issues" (grouped
 with the date-picker complaint above — the date-picker part is now
@@ -1828,6 +1868,7 @@ dialog.
 
 **Screen:** Reports (category sidebar + content pane)
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#345](https://github.com/HMAHD/CB-POS/issues/345) (sub-issue of [#260](https://github.com/HMAHD/CB-POS/issues/260))
 
 **What you flagged:** "same blue problem" — you spotted this on sight,
 correctly, as the same family of issue already logged for Payables/Credit
@@ -1882,6 +1923,7 @@ as a separate cleanup.
 
 **Screen:** Reports, middle category panel
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#286](https://github.com/HMAHD/CB-POS/issues/286)
 
 **What you flagged:** "report list is too wide."
 
@@ -1920,6 +1962,7 @@ professional 3-pane app (email client, IDE) would.
 **Screen:** App-wide (Reports' "Select a Report" placeholder used as the
 trigger for this review)
 **Severity:** P3 · **Status:** 🔴 Open
+**GitHub:** [#254](https://github.com/HMAHD/CB-POS/issues/254) — parent issue, tracks sub-issues for each confirmed location
 
 **Not from your notes — found while checking whether Reports' "Select a
 Report" placeholder reused an existing pattern.** It doesn't. Reports
@@ -1953,6 +1996,7 @@ nothing or a bare text row when empty.
 
 **Screen:** Main sidebar, both collapsed and expanded states, every screen
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#287](https://github.com/HMAHD/CB-POS/issues/287)
 
 **Not from your notes — found while investigating the expand/collapse
 complaint below.** Comparing your two screenshots: collapsed, the current
@@ -1998,6 +2042,7 @@ that Qt may not paint reliably in that display mode.
 
 **Screen:** Main sidebar, bottom section, every screen
 **Severity:** P3 · **Status:** 🔴 Open
+**GitHub:** [#288](https://github.com/HMAHD/CB-POS/issues/288)
 
 **Not from your notes — found while checking sidebar label spacing.**
 Every regular nav button (Dashboard, Inventory, Reports, etc.) gets its
@@ -2028,6 +2073,7 @@ already gives every other item.
 
 **Screen:** Main sidebar, collapsed vs expanded
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#289](https://github.com/HMAHD/CB-POS/issues/289)
 
 **What you flagged:** "when sidebar open to show text instead icon, UX is
 very bad" — pointing at the expanded state specifically.
@@ -2069,6 +2115,7 @@ or header height) turns out to be the actual cause.
 
 **Screen:** Reports, Date Range filter
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#365](https://github.com/HMAHD/CB-POS/issues/365) (sub-issue of [#262](https://github.com/HMAHD/CB-POS/issues/262))
 
 **What you flagged:** "this date picker is weird, can't pick date
 correctly, UI/UX not good and unfriendly."
@@ -2124,6 +2171,7 @@ to match the app's dark theme.
 
 **Screen:** Reports, results table (e.g. Cash Flow Report)
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#357](https://github.com/HMAHD/CB-POS/issues/357) (sub-issue of [#261](https://github.com/HMAHD/CB-POS/issues/261))
 
 **What you flagged:** "alignments are way off" — you're right, and it has
 an exact, single-line cause.
@@ -2164,6 +2212,7 @@ extra space based on what's actually the "detail" column for that report
 
 **Screen:** Reports, all report types
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#290](https://github.com/HMAHD/CB-POS/issues/290)
 
 **What you flagged:** "reports look very generic and don't show details
 clearly."
@@ -2204,6 +2253,7 @@ carries a color tag) fed into the existing `PandasModel`.
 
 **Screen:** Reports, results table footer
 **Severity:** P3 · **Status:** 🔴 Open
+**GitHub:** [#291](https://github.com/HMAHD/CB-POS/issues/291)
 
 **Not from your notes — found while checking the report table's footer
 controls.** The screenshot shows "Showing 1-4 of 4" with a fully-rendered
@@ -2232,6 +2282,7 @@ second page to go to.
 
 **Screen:** Document Browser → "+ New Quotation"
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#292](https://github.com/HMAHD/CB-POS/issues/292)
 
 **What you flagged:** "truth to be told I don't even know what the use of
 it and how valuable this is to my app, so how would users know?" — that
@@ -2286,6 +2337,7 @@ name.
 
 **Screen:** Document Browser, main table
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#358](https://github.com/HMAHD/CB-POS/issues/358) (sub-issue of [#261](https://github.com/HMAHD/CB-POS/issues/261))
 
 **What you flagged:** shown as part of the same screenshot — the TYPE
 column reads "STOCK_C..." and several TOTAL cells read "Rs. ..." with
@@ -2321,6 +2373,7 @@ stops competing by accident.
 
 **Screen:** Document Browser
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#293](https://github.com/HMAHD/CB-POS/issues/293)
 
 **What you flagged, directly:** "truth to be told I don't even know what
 the use of it and how valuable this is to my app."
@@ -2357,6 +2410,7 @@ screen's purpose feels unclear even to you.
 
 **Screen:** Document Browser → "+ New Quotation" dialog
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#294](https://github.com/HMAHD/CB-POS/issues/294)
 
 **Not from your notes — found while reviewing the dialog's fields.** The
 Customer field shows a text cursor and looks like you can type to search
@@ -2385,6 +2439,7 @@ proven correct in `payment_dialog.py`.
 
 **Screen:** Document Browser → "+ New Quotation" dialog
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#368](https://github.com/HMAHD/CB-POS/issues/368) (sub-issue of [#263](https://github.com/HMAHD/CB-POS/issues/263))
 
 **Not from your notes — found while reviewing the dialog's fields.** The
 Validity field ("30 days") shows the same odd stacked +/- stepper buttons
@@ -2414,6 +2469,7 @@ validator, matching the pattern already proven in `product_editor.py`.
 
 **Screen:** Document Browser → "+ New Quotation" dialog
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#259](https://github.com/HMAHD/CB-POS/issues/259) (sub-issue of [#254](https://github.com/HMAHD/CB-POS/issues/254))
 
 **Not from your notes — found while reviewing the dialog.** Before any
 product is added, the PRODUCT/QTY/UNIT PRICE/DISC TYPE/DISC VALUE/TOTAL
@@ -2438,6 +2494,7 @@ here too (e.g. "No products added yet — search above to add one").
 
 **Screen:** Users, main table
 **Severity:** P3 · **Status:** 🔴 Open
+**GitHub:** [#295](https://github.com/HMAHD/CB-POS/issues/295)
 
 **What you flagged:** "a few alignment [issues]" on this screen —
 this is the concrete one.
@@ -2468,6 +2525,7 @@ if it isn't — not both.
 
 **Screen:** Users
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#296](https://github.com/HMAHD/CB-POS/issues/296)
 
 **What you flagged:** "there is no option to CRUD user roles, and every
 user created has a role, so [the ability to manage] roles needs to be
@@ -2504,6 +2562,7 @@ block deletion), which is worth deciding as part of this fix.
 
 **Screen:** Users → "Manage Permissions" dialog
 **Severity:** P0 · **Status:** 🔴 Open
+**GitHub:** [#297](https://github.com/HMAHD/CB-POS/issues/297)
 
 **Not from your notes — found while investigating whether the Permission
 Manager "lacks a lot more permissions" as you suspected. It doesn't (see
@@ -2545,6 +2604,7 @@ invisible until you actually press the button.
 
 **Screen:** Users → "Manage Permissions" dialog
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#298](https://github.com/HMAHD/CB-POS/issues/298)
 
 **What you flagged:** "I think that can be optimized more to get the best
 UI/UX, and lacks a lot more permissions there."
@@ -2608,6 +2668,7 @@ the rest of the app.
 
 **Screen:** Users → Activity Log tab
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#359](https://github.com/HMAHD/CB-POS/issues/359) (sub-issue of [#261](https://github.com/HMAHD/CB-POS/issues/261))
 
 **What you flagged:** "logs not clear" — the free-text reason column is
 exactly the part that needs the most room, and it's the part that's
@@ -2640,6 +2701,7 @@ overload: `setSectionResizeMode(column_index, mode)`).
 
 **Screen:** App-wide (audit logging infrastructure)
 **Severity:** P0 · **Status:** 🔴 Open
+**GitHub:** [#299](https://github.com/HMAHD/CB-POS/issues/299)
 
 **Not from your notes — found while checking your suspicion that
 "functionally wise it doesn't work across the full application." You
@@ -2690,6 +2752,7 @@ already went unnoticed in UX-059.
 
 **Screen:** App-wide (audit logging coverage)
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#300](https://github.com/HMAHD/CB-POS/issues/300)
 
 **What you flagged:** "I don't think functionally wise it works across
 the full application" — confirmed, and CLAUDE.md's own documented claim
@@ -2731,6 +2794,7 @@ how much).
 
 **Screen:** Users → Activity Log tab
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#301](https://github.com/HMAHD/CB-POS/issues/301)
 
 **What you flagged:** "can we add some colored tag to identify logs
 properly."
@@ -2761,6 +2825,7 @@ the EVENT cell.
 
 **Screen:** Users → Activity Log tab
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#302](https://github.com/HMAHD/CB-POS/issues/302)
 
 **Not from your notes — found while checking this tab's data loading.**
 `UserService.get_recent_activity(user_id=None, limit=10)`
@@ -2788,6 +2853,7 @@ close template).
 
 **Screen:** Price Lists
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#303](https://github.com/HMAHD/CB-POS/issues/303)
 
 **What you flagged:** "top right corner shows Valid N/A N/A, that should
 be [a] date, it doesn't show."
@@ -2827,6 +2893,7 @@ new `PriceListService.update_price_list(...)` method.
 
 **Screen:** Price Lists
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#369](https://github.com/HMAHD/CB-POS/issues/369) (sub-issue of [#263](https://github.com/HMAHD/CB-POS/issues/263))
 
 **What you flagged:** "the only way to do changes to product price is
 double click."
@@ -2862,6 +2929,7 @@ approach) instead of a native Qt convenience dialog.
 
 **Screen:** Price Lists
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#304](https://github.com/HMAHD/CB-POS/issues/304)
 
 **What you flagged:** "lack of CRUD operations."
 
@@ -2896,6 +2964,7 @@ falling back to the product's base price.
 
 **Screen:** Price Lists → "+ Add"
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#366](https://github.com/HMAHD/CB-POS/issues/366) (sub-issue of [#262](https://github.com/HMAHD/CB-POS/issues/262))
 
 **What you flagged:** "new price list creation tab has date selection,
 same date picker problem there also."
@@ -2923,6 +2992,7 @@ QSS rule fixes this location along with the rest.
 
 **Screen:** Price Lists, product table
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#305](https://github.com/HMAHD/CB-POS/issues/305)
 
 **Not from your notes — found while checking what STATUS actually
 represents.** Every one of the 80 product rows shows "Active" —
@@ -2955,6 +3025,7 @@ meaningful data instead of a repeated constant.
 
 **Screen:** Price Lists, left sidebar
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#306](https://github.com/HMAHD/CB-POS/issues/306)
 
 **What you flagged:** "price list [shown] in sidebar is too close
 [together], items — make [it] creative, it [keep space and] looks
@@ -2988,6 +3059,7 @@ scanning once there are more than a handful.
 
 **Screen:** Promotions & Campaigns
 **Severity:** P0 · **Status:** 🔴 Open
+**GitHub:** [#307](https://github.com/HMAHD/CB-POS/issues/307)
 
 **Not from your notes directly, but it's the finding that reframes
 everything else you flagged here.** You said "promotions and campaigns
@@ -3027,6 +3099,7 @@ conventions already used for manual discounts in `sales_view.py`.
 
 **Screen:** Promotions & Campaigns
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#308](https://github.com/HMAHD/CB-POS/issues/308)
 
 **What you flagged:** "no CRUD operations whatsoever."
 
@@ -3061,6 +3134,7 @@ actually starts affecting real prices.
 
 **Screen:** Promotions & Campaigns
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#309](https://github.com/HMAHD/CB-POS/issues/309)
 
 **What you flagged:** "promotions should time out automatically when
 dates hit, I don't think that also works correctly." Confirmed — it
@@ -3102,6 +3176,7 @@ means "within its date range today."
 
 **Screen:** Promotions & Campaigns, main table
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#360](https://github.com/HMAHD/CB-POS/issues/360) (sub-issue of [#261](https://github.com/HMAHD/CB-POS/issues/261))
 
 **What you flagged:** as part of "lot of UI/UX issues" — visible directly
 in the screenshot ("Evening Happy Hour - 10% Off ..." cut off).
@@ -3132,6 +3207,7 @@ tables with this exact bug.
 
 **Screen:** Promotions & Campaigns → "Create Promotion"
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#310](https://github.com/HMAHD/CB-POS/issues/310)
 
 **What you flagged:** "create promotion popup also very generic, needs
 attention, clean UI, proper alignment and date picker."
@@ -3190,6 +3266,7 @@ field with 7 day-of-week checkboxes.
 
 **Screen:** App-wide — every screen with a table reviewed so far
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#261](https://github.com/HMAHD/CB-POS/issues/261) — parent issue, tracks sub-issues for each confirmed location
 
 **What you flagged:** "every table I see in the app have misalignment,
 row headers doesn't match with content it appears — that's critical, it
@@ -3277,6 +3354,7 @@ because it's the same few-line mistake repeated over a dozen times, not
 
 **Screen:** Stock Take → New Count
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#361](https://github.com/HMAHD/CB-POS/issues/361) (sub-issue of [#261](https://github.com/HMAHD/CB-POS/issues/261))
 
 **What you flagged:** "the important thing to fix here is the way count
 can be added — as you can see, the second image top product line shows a
@@ -3328,6 +3406,7 @@ counting 79+ items in a row than double-clicking each cell individually.
 
 **Screen:** Stock Take → New Count
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#311](https://github.com/HMAHD/CB-POS/issues/311)
 
 **What you flagged:** "other UI/UX issues can be identified, I see some
 unmatching elements to our system on other pages."
@@ -3378,6 +3457,7 @@ from the rest again.
 
 **Screen:** Stock Take → History
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#312](https://github.com/HMAHD/CB-POS/issues/312)
 
 **Not from your notes — found while checking the History tab's row
 actions.** The screenshot shows 3 stock counts, all in DRAFT status.
@@ -3408,6 +3488,7 @@ abandoned.
 
 **Screen:** Stock Take → New Count
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#313](https://github.com/HMAHD/CB-POS/issues/313)
 
 **Not from your notes — found while tracing what "Save Draft" actually
 does.** It's misleading in a specific, checkable way.
@@ -3438,6 +3519,7 @@ behavior worth having.
 
 **Screen:** Main sidebar, every screen (expanded state)
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#314](https://github.com/HMAHD/CB-POS/issues/314)
 
 **What you flagged:** "as you can see, name and icon have no space" —
 confirmed directly from your screenshot, every nav row (Dashboard,
@@ -3492,6 +3574,7 @@ redundant rather than just inconsistent.
 
 **Screen:** Main sidebar, every screen
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#315](https://github.com/HMAHD/CB-POS/issues/315)
 
 **What you flagged:** "sidebar [is] just a bit dull, need modern clean
 aesthetic that matches the system... logout and back to POS button also
@@ -3559,6 +3642,7 @@ done.
 
 **Screen:** App-wide (every top-level Management screen)
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#316](https://github.com/HMAHD/CB-POS/issues/316)
 
 **What you asked:** "how about your idea in this tab-based pages in this
 application, is it good design or bad as an industry-grade top-level
@@ -3624,6 +3708,7 @@ Book's, rather than being a fourth pattern of its own.
 
 **Screen:** Settings, every sidebar section
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#317](https://github.com/HMAHD/CB-POS/issues/317)
 
 **What you flagged:** "the Save Changes and Cancel buttons don't appear
 on Payments, Data Safety, and Admin Tools — it's okay for them to be
@@ -3681,6 +3766,7 @@ item is active.
 
 **Screen:** Settings → Shop Info → Appearance
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#370](https://github.com/HMAHD/CB-POS/issues/370) (sub-issue of [#263](https://github.com/HMAHD/CB-POS/issues/263))
 
 **What you flagged:** "in the Appearance tab you can see several
 issues, UI/UX not clean and modern — it shows 3 sizes, need proper size
@@ -3720,6 +3806,7 @@ correct in `product_editor.py`.
 
 **Screen:** Settings → Shop Info → Email tab, and Sales Tax page
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#371](https://github.com/HMAHD/CB-POS/issues/371) (sub-issue of [#263](https://github.com/HMAHD/CB-POS/issues/263))
 
 **What you flagged:** "Report Time is hard to see, lacks UI/UX skill...
 Sales Tax page also has the same unmatching-size problem."
@@ -3761,6 +3848,7 @@ found so far.
 
 **Screen:** Settings → Shop Info → Email tab
 **Severity:** P3 · **Status:** 🔴 Open
+**GitHub:** [#318](https://github.com/HMAHD/CB-POS/issues/318)
 
 **What you flagged, positively:** "I love that — we could use that
 style when we have to add info or help, to make things easy for the
@@ -3800,6 +3888,7 @@ one screen.
 
 **Screen:** Settings, app-wide
 **Severity:** P3 · **Status:** 🔴 Open
+**GitHub:** [#319](https://github.com/HMAHD/CB-POS/issues/319)
 
 **What you flagged:** "settings have toggles, but only a few have a
 hover effect — I'd like all of them to have that."
@@ -3844,6 +3933,7 @@ mystery.
 
 **Screen:** Settings → Shop Info → Email tab
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#320](https://github.com/HMAHD/CB-POS/issues/320)
 
 **What you flagged:** "also check that it works or not — [the] report
 timer, I think that functionality [is] not properly set up and
@@ -3904,6 +3994,7 @@ would actually see it — a small banner or the existing Activity Log
 
 **Screen:** Settings → Hardware, sub-tab bar
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#321](https://github.com/HMAHD/CB-POS/issues/321)
 
 **What you flagged:** "tab names are not showing" — the second tab
 reads "Cut Dra..." instead of its full name.
@@ -3953,6 +4044,7 @@ on narrower windows.
 
 **Screen:** Settings → Hardware → Printers → Print Behavior
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#322](https://github.com/HMAHD/CB-POS/issues/322)
 
 **What you'd likely flag if pressed on it — the "Copies" field looks
 completely empty in the screenshot, just a box with +/- steppers and no
@@ -3997,6 +4089,7 @@ would resolve the "looks blank" impression either way.
 
 **Screen:** Settings → Hardware → Printers
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#323](https://github.com/HMAHD/CB-POS/issues/323)
 
 **Not from your notes — found while checking the "No printers found"
 state shown in your screenshot (which is itself a legitimate, expected
@@ -4032,6 +4125,7 @@ repopulates them without needing a restart.
 
 **Screen:** Settings → Hardware (and every other Settings page); relevant to the sidebar redesign discussed in UX-083
 **Severity:** P3 · **Status:** 🔴 Open
+**GitHub:** [#324](https://github.com/HMAHD/CB-POS/issues/324)
 
 **Not from your notes — found while reviewing this page's section
 headers ("Printer Selection," "Print Behavior," "Test Hardware"), and
@@ -4067,6 +4161,7 @@ and the main navigation.
 
 **Screen:** Settings → Receipt
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#325](https://github.com/HMAHD/CB-POS/issues/325)
 
 **What you flagged:** you called this one of the most important features
 in the app and asked for a precise, thorough review — this is the single
@@ -4112,6 +4207,7 @@ underlying text-wrapping logic already exist.
 
 **Screen:** Settings → Receipt
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#326](https://github.com/HMAHD/CB-POS/issues/326)
 
 **Not from your notes directly, but squarely inside what you asked me to
 check — whether this "is far below industry-grade" functionally, not
@@ -4171,6 +4267,7 @@ field so the user can see the real limit while typing.
 **Screen:** App-wide (sales flow — where a real print preview would
 belong)
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#327](https://github.com/HMAHD/CB-POS/issues/327)
 
 **Not from your notes — found while tracing the preview/print pipeline.**
 `cbpos/ui/dialogs/receipt_preview_dialog.py` defines a
@@ -4198,6 +4295,7 @@ the dead file rather than leave a half-built feature sitting unreferenced.
 
 **Screen:** Settings → Receipt
 **Severity:** P3 · **Status:** 🔴 Open
+**GitHub:** [#328](https://github.com/HMAHD/CB-POS/issues/328)
 
 **Not from your notes — found while checking receipt content types
 against what's actually used.** `base_receipt_builder.py:22` explicitly
@@ -4224,6 +4322,7 @@ exists in the schema.
 
 **Screen:** Settings → Receipt
 **Severity:** P3 · **Status:** 🔴 Open
+**GitHub:** [#329](https://github.com/HMAHD/CB-POS/issues/329)
 
 **Not from your notes — found while checking barcode rendering fidelity.**
 `_generate_barcode_bars()` (`receipt_preview_widget.py:226-245`) contains
@@ -4248,6 +4347,7 @@ ever being mistaken for a real scannability check.
 
 **Screen:** Settings → Receipt → Content
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#330](https://github.com/HMAHD/CB-POS/issues/330)
 
 **Not from your notes — found while checking how the logo actually gets
 from a file picker to a thermal printout.** `browse_logo()`
@@ -4292,6 +4392,7 @@ really look in 1-bit thermal output.
 
 **Screen:** Settings → Receipt, Hardware, Documents
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#331](https://github.com/HMAHD/CB-POS/issues/331)
 
 **Not from your notes — found while cataloging everything actually
 configurable for receipts, in response to your ask to find "the most
@@ -4332,6 +4433,7 @@ mental model a user already brings to it.
 
 **Screen:** Settings → System → Security
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#332](https://github.com/HMAHD/CB-POS/issues/332)
 
 **What you flagged:** "the system settings page also isn't correctly
 aligned with each other, because of that text doesn't show up
@@ -4380,6 +4482,7 @@ Settings, sized to their real content including any suffix).
 
 **Screen:** Settings → Network → Mode
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#333](https://github.com/HMAHD/CB-POS/issues/333)
 
 **What you flagged:** "under [the] text [there's a] black background and
 an emoji — that's not professional."
@@ -4416,6 +4519,7 @@ for Network mode — matching every other icon in the app.
 
 **Screen:** Settings → Network
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#334](https://github.com/HMAHD/CB-POS/issues/334)
 
 **What you flagged:** "I'm a bit confused now — do Mode and LAN Sync do
 the same thing, or are they separate? Also, settings pages need some
@@ -4467,6 +4571,7 @@ established, not a new one.
 
 **Screen:** Settings → Network → LAN Sync
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#335](https://github.com/HMAHD/CB-POS/issues/335)
 
 **Not from your notes — found while reading the LAN Sync tab's labels.**
 CLAUDE.md is explicit: "All user-facing text uses the translation
@@ -4494,6 +4599,7 @@ app maintains, on what is otherwise a fully real, working feature.
 
 **Screen:** Settings → Payments
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#346](https://github.com/HMAHD/CB-POS/issues/346) (sub-issue of [#260](https://github.com/HMAHD/CB-POS/issues/260))
 
 **What you flagged:** "this page's payment methods show as a dark blue
 color that doesn't match with system styling, fix it."
@@ -4521,6 +4627,7 @@ covered by the standing decision at the top of this document.
 
 **Screen:** Settings → Payments
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#336](https://github.com/HMAHD/CB-POS/issues/336)
 
 **Not from your notes — found while checking for row-to-row
 inconsistencies, per your "mark any other UI/UX issues" ask.**
@@ -4553,6 +4660,7 @@ actually clickable.
 
 **Screen:** Settings → Payments
 **Severity:** P3 · **Status:** 🔴 Open
+**GitHub:** [#337](https://github.com/HMAHD/CB-POS/issues/337)
 
 **Not from your notes — found while checking why only Cash has a
 subtitle ("Cash · Opens Drawer · F12") and the other 5 methods don't.**
@@ -4588,6 +4696,7 @@ admins know this is available for every method, not just Cash.
 
 **Screen:** Settings → Payments
 **Severity:** P3 · **Status:** 🔴 Open
+**GitHub:** [#338](https://github.com/HMAHD/CB-POS/issues/338)
 
 **Not from your notes — found while checking the tag-building code from
 UX-108.** `tag_cash`/`tag_opens_drawer` i18n keys are left as literal
@@ -4609,6 +4718,7 @@ file.
 
 **Screen:** Settings → Data Safety → Backup
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#339](https://github.com/HMAHD/CB-POS/issues/339)
 
 **What you flagged:** "the main thing is it takes time to show — at
 least show a skeleton and load the data."
@@ -4643,6 +4753,7 @@ call site that was missed.
 
 **Screen:** Settings → Data Safety → Backup
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#340](https://github.com/HMAHD/CB-POS/issues/340)
 
 **What you asked:** "are those really there, or does it just show
 without a backup — check the functionality."
@@ -4688,6 +4799,7 @@ temp directory again.
 
 **Screen:** Settings → Data Safety → Backup
 **Severity:** P1 · **Status:** 🔴 Open
+**GitHub:** [#341](https://github.com/HMAHD/CB-POS/issues/341)
 
 **What you flagged:** "there is no option to delete a backup, rather
 than 'Clean Old Backups' — give a delete option, with a user-friendly
@@ -4728,6 +4840,7 @@ don't need manual attention to stay bounded.
 
 **Screen:** Settings → Admin Tools → Database
 **Severity:** P2 · **Status:** 🔴 Open
+**GitHub:** [#342](https://github.com/HMAHD/CB-POS/issues/342)
 
 **What you'd notice from the screenshot:** "Path:" shows only
 `/Users/akash/` — looks like the filename itself is missing.
@@ -4762,6 +4875,7 @@ text.
 
 **Screen:** Settings → Admin Tools → Hardware
 **Severity:** P3 · **Status:** 🔴 Open
+**GitHub:** [#343](https://github.com/HMAHD/CB-POS/issues/343)
 
 **Not from your notes — found while checking whether this tab overlaps
 with the main Hardware settings page, per your "are there features that
@@ -4794,6 +4908,7 @@ duplicating the buttons, keeping this tab focused on its unique value
 
 **Screen:** Settings → Admin Tools → Database
 **Severity:** P3 · **Status:** 🔴 Open
+**GitHub:** [#344](https://github.com/HMAHD/CB-POS/issues/344)
 
 **Not from your notes — found while checking for missing industry-grade
 admin features, per your explicit ask.**

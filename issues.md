@@ -56,6 +56,15 @@ Nothing gets "fixed" here, only logged.
 | [UX-022](#ux-022-secondarydanger-button-class-convention-is-inconsistently-applied-across-3-dialogs) | Secondary/danger button class convention is inconsistently applied across 3 dialogs | Category Manager, Unit Manager, Label Print | P3 | 🔴 Open |
 | [UX-023](#ux-023-management-view-shows-a-completely-blank-screen-until-the-first-sidebar-click-confirmed-regression) | Management view shows a completely blank screen until the first sidebar click (confirmed regression) | Management (all tabs) | P1 | 🔴 Open |
 | [UX-024](#ux-024-management-sidebar-gets-permanently-stuck-collapsed-across-restarts-confirmed-root-cause) | Management sidebar gets permanently stuck collapsed across restarts (confirmed root cause) | Management, `CollapsibleSidebar` | P1 | 🔴 Open |
+| [UX-025](#ux-025-add-supplier-dialog-has-zero-dialog-specific-styling-no-objectname-no-size-no-qss-at-all) | Add Supplier dialog has zero dialog-specific styling — no objectName, no size, no QSS at all | Suppliers tab | P1 | 🔴 Open |
+| [UX-026](#ux-026-new-grn-add-product-search-is-a-genuinely-broken-feature-not-just-unpolished) | New GRN "Add Product" search is a genuinely broken feature, not just unpolished | New GRN tab | P0 | 🔴 Open |
+| [UX-027](#ux-027-new-grn-header-row-supplierrefdate-has-no-width-balancing-date-field-looks-tiny) | New GRN header row (Supplier/Ref#/Date) has no width balancing — Date field looks tiny | New GRN tab | P2 | 🔴 Open |
+| [UX-028](#ux-028-supplier-selection-combos-in-purchasing-are-plain-non-searchable-comboboxes) | Supplier-selection combos in Purchasing are plain, non-searchable comboboxes | New GRN, GRN History tabs | P1 | 🔴 Open |
+| [UX-029](#ux-029-grn-history-status-filter-shows-all-suppliers-instead-of-all-statuses) | GRN History "Status" filter shows "All Suppliers" instead of "All Statuses" | GRN History tab | P2 | 🔴 Open |
+| [UX-030](#ux-030-grn-history-and-payables-tables-have-no-empty-state-message) | GRN History and Payables tables have no empty-state message | GRN History, Payables tabs | P2 | 🔴 Open |
+| [UX-031](#ux-031-payables-uses-a-deliberate-but-undocumented-navy-sub-theme-shared-with-credit-book) | Payables uses a deliberate but undocumented navy sub-theme, shared with Credit Book | Payables tab (+ likely Credit Book) | P2 | 🔴 Open |
+| [UX-032](#ux-032-payables-supplier-list-is-double-click-only-same-pattern-as-ux-009) | Payables supplier list is double-click-only — same pattern as UX-009 | Payables tab | P1 | 🔴 Open |
+| [UX-033](#ux-033-payables-ledger-shows-zero-entries-despite-a-non-zero-balance-needs-one-live-check-to-fully-confirm) | Payables ledger shows zero entries despite a non-zero balance (needs one live check to fully confirm) | Payables tab | P1 | 🔴 Open |
 
 ---
 
@@ -1075,3 +1084,296 @@ an internal helper that `toggle()` and `handle_resize()` both call, with
 only `toggle()`'s manual-click path doing the `ConfigService.set(...)`),
 so a responsive, temporary layout adjustment can never masquerade as a
 permanent preference.
+
+---
+
+### UX-025: Add Supplier dialog has zero dialog-specific styling — no objectName, no size, no QSS at all
+
+**Screen:** Purchasing → Suppliers → Add Supplier
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** too small, not user-friendly, lacks visuals, not a
+clean UI.
+
+**Root cause (verified in code):** `SupplierDialog.init_ui()`
+(`purchase_view.py:245-287`) never calls `setObjectName()` at all — the
+only dialog in this whole review, across ~15 dialogs checked so far, that
+skips it entirely. Every other dialog gets a dedicated `dark.qss` block
+keyed to its objectName (`QDialog#PaymentDialog`, `QDialog#DiscountDialog`,
+`QDialog#AdvancedSearchDialog`, etc.); this one gets **none**, so it falls
+back to bare generic widget rules only. There's also no
+`setFixedSize`/`setMinimumSize`/`resize()` call anywhere in the class —
+compare with `GRNDetailDialog` right above it in the same file, which does
+set `setMinimumSize(700, 500)`. And the layout itself is a bare
+`QFormLayout(self)` with Save/Cancel appended as *just another form row*
+(`self.form_layout.addRow(btn_box)`), not a docked button bar — no
+sectioning, no visual hierarchy at all.
+
+**Also flagged:** Payment Terms uses a raw `QSpinBox` (line 253) — the
+exact widget class this app's own `product_editor.py:142-143` comment
+already documents as "break[ing] under QSS," the same finding as UX-018.
+One more place that migration never reached.
+
+**Suggested fix:** give it a real `objectName` and a proper `dark.qss`
+block (background surface color, minimum size, section spacing) matching
+the treatment every other data-entry dialog in this app already gets;
+move Save/Cancel into a proper button row instead of a form row; migrate
+Payment Terms to the same `QLineEdit` + validator pattern proposed in
+UX-018 rather than adding a 4th inconsistent numeric-input convention.
+
+---
+
+### UX-026: New GRN "Add Product" search is a genuinely broken feature, not just unpolished
+
+**Screen:** Purchasing → New GRN
+**Severity:** P0 · **Status:** 🔴 Open
+
+**What you flagged:** doesn't show products when typing.
+
+**Confirmed as a real, unambiguous bug — not a threshold/sensitivity
+issue.** `purchase_view.py:399-401`:
+```python
+self.completer = QCompleter()
+self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+self.product_search.setCompleter(self.completer)
+```
+`QCompleter()` is constructed with **no model and no string list at all**
+— not here, not anywhere else in the file (`self.completer` is never
+touched again after these 3 lines). A completer with nothing to complete
+against can never show a popup, no matter what's typed — this isn't a
+tuning problem, the feature has no data source. There's also **no
+`textChanged` connection** on `product_search` — the only signal wired is
+`returnPressed.connect(self.add_product_to_grid)` (line 396), so nothing
+happens at all until Enter is pressed, despite the placeholder text
+("Scan Barcode or Type Product Name...") implying live search.
+
+**And once Enter *is* pressed, it's still not what it looks like it should
+be** — `add_product_to_grid()` (lines 633-661) calls
+`ProductService.search(query)` and, if anything matches, **silently takes
+`products[0]`** with no picker shown for disambiguating between multiple
+matches. Compare with the correct, working pattern one file over —
+`sales_view.py`'s `setup_autocomplete()` builds its `QCompleter` from a
+real, async-loaded product-name list and sets `PopupCompletion` mode
+explicitly; none of that exists here.
+
+**Why P0, not P1:** this directly blocks a core Purchasing workflow —
+receiving stock via GRN — for anyone who doesn't already know to type a
+name and press Enter, and even then it silently guesses which product you
+meant.
+
+**Suggested fix:** wire this the same way `sales_view.py` already does:
+build the completer from a real product-name source (async-loaded, same
+`AutocompleteLoadWorker` pattern already proven there), connect
+`textChanged` for live filtering, and either show a small results list to
+pick from or require an exact/barcode match before adding — don't silently
+take the first fuzzy match for something as consequential as receiving
+stock into inventory.
+
+---
+
+### UX-027: New GRN header row (Supplier/Ref#/Date) has no width balancing — Date field looks tiny
+
+**Screen:** Purchasing → New GRN
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** top element alignments "way off," specifically the
+date selector.
+
+**Root cause (verified in code):** `purchase_view.py:373-391` — a plain
+`QHBoxLayout` with `Supplier` combo, `Ref #` line edit, and `Date`
+(`QDateEdit`) added with **no stretch factors and no width constraints on
+any of the three**. `QComboBox`/`QLineEdit` both grow to fill available
+space by Qt default; `QDateEdit` has no `setCalendarPopup(True)` and no
+size-policy override, so it renders at its bare natural sizeHint — just
+wide enough for the date text plus its always-visible spin arrows — next
+to two widgets that are stretching to fill the row. Not an explicit "make
+this one small" bug, just nothing balancing the row at all.
+
+**Suggested fix:** give the row explicit stretch factors (e.g. Supplier
+2, Ref# 2, Date 1, rather than leaving it to whatever each widget's bare
+sizeHint happens to be), or set a sensible `setMinimumWidth` on the date
+field so it doesn't read as an afterthought next to the other two.
+
+---
+
+### UX-028: Supplier-selection combos in Purchasing are plain, non-searchable comboboxes
+
+**Screen:** New GRN, GRN History tabs
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** with 100+ suppliers, a plain dropdown becomes hard to
+use — needs to support typing to filter.
+
+**Confirmed, and there's already a working pattern in this exact codebase
+to copy.** `purchase_view.py:376` (New GRN) and lines 442/447 (GRN
+History's supplier + status filters) are all plain `QComboBox()` —
+populated via `.addItem(...)`, no `setEditable(True)`, no `QCompleter`
+anywhere. Meanwhile `payment_dialog.py:330-342` already implements exactly
+what's needed, for the Payment dialog's customer selector:
+```python
+self.cmb_customer.setEditable(True)
+self.cmb_customer.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+self.cmb_customer.lineEdit().setPlaceholderText(_t("payment.search_customer_placeholder"))
+completer = QCompleter(names, self)
+completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+completer.setFilterMode(Qt.MatchFlag.MatchContains)
+self.cmb_customer.setCompleter(completer)
+```
+**Suggested fix:** apply this exact recipe to the New GRN supplier combo
+(and GRN History's supplier filter) — same file already proves the
+pattern works, this is a copy, not an invention.
+
+---
+
+### UX-029: GRN History "Status" filter shows "All Suppliers" instead of "All Statuses"
+
+**Screen:** Purchasing → GRN History
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes, but visible in the same screenshot — a small,
+concrete copy-paste bug.** `purchase_view.py:530` (populating the Status
+combo) and line 610 (populating the Supplier combo) both call the exact
+same translation key:
+```python
+self.history_status_combo.addItem(_t("purchase.all_suppliers"), None)
+...
+self.history_supplier_combo.addItem(_t("purchase.all_suppliers"), None)
+```
+There is no `purchase.all_statuses` key anywhere in `en.json`/`si.json`/
+`ta.json` — it was never created; the Status combo's default row was
+copy-pasted from the Supplier combo and the key was never swapped.
+
+**Suggested fix:** add a `purchase.all_statuses` → "All Statuses" key
+(en/si/ta) and use it at line 530 instead of `purchase.all_suppliers`.
+
+---
+
+### UX-030: GRN History and Payables tables have no empty-state message
+
+**Screen:** GRN History, Payables tabs
+**Severity:** P2 · **Status:** 🔴 Open
+
+**Not from your notes — flagged during code review.** `refresh_history()`
+(`purchase_view.py:571-590`) and the Payables supplier table both render a
+completely blank table body when there are zero rows — just headers, no
+message, matching the empty screenshots. This app already has an
+established convention for this: `customer_view.py:97-107`,
+`pricelist_view.py`, `inventory_view.py`, and `reports/report_viewer.py`
+all insert a single spanning, centered, gray placeholder row
+(`_t("...empty_state")`) when a list is empty. GRN History and Payables
+never adopted it.
+
+**Suggested fix:** apply the same spanning-empty-row pattern already used
+in those 4 other views — it's a small, already-proven snippet, not a new
+mechanism.
+
+---
+
+### UX-031: Payables uses a deliberate but undocumented navy sub-theme, shared with Credit Book
+
+**Screen:** Payables tab (and very likely Credit Book — not yet reviewed
+directly, but built from the identical shared QSS)
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** the whole Payables screen is blue, not a good look.
+
+**Worth getting the framing right — this is not the same class of mistake
+as UX-019's `LabelPreviewDialog`.** That one was a single stray rule,
+clearly a forgotten leftover. This one is comprehensive and internally
+consistent: `dark.qss:2666-2900`, explicitly titled in a comment as
+`/* CREDIT BOOK VIEW — Drill-down Navigation */`, contains ~20 rule blocks
+covering essentially every widget in both Payables pages (search input,
+supplier table + selection state, header card, name/phone/balance labels,
+action buttons, date filters, ledger table, footer totals) — and **every
+single `Payable*` selector is paired 1:1 with an equivalent `Credit*`
+selector** for `credit_book_view.py`'s Customer Credit Book feature (e.g.
+`QTableWidget#CreditCustomerTable, QTableWidget#PayableSupplierTable`,
+`QFrame#CreditHeaderCard, QFrame#PayableHeaderCard`, one rule, two
+features). This was authored once, deliberately, as a distinct "ledger
+drill-down" visual language (navy `#0A1929`/`#0D2137` surfaces, `#112240`
+borders, `#00BCEB` cyan accents) and reused across two unrelated features
+— it just never got reconciled with the rest of the app's actual standard
+dark theme (`#1E1E1E`/`#252526`).
+
+**Why it matters:** whatever the original intent, the result today is that
+two specific screens look like they belong to a different app, with no
+visible reason (no theme toggle, no "you're in a special mode" indicator)
+— which is exactly what reads as inconsistent to a user moving between
+tabs.
+
+**Suggested fix:** this is a product decision, not a quick color swap —
+either commit to the navy ledger theme and extend it deliberately (with a
+name and a reason, and probably applied more broadly if it's meant to
+signal "financial ledger" screens), or retire it in favor of the standard
+surface colors used everywhere else. Worth deciding intentionally rather
+than leaving it as an accident of history. If retired, `credit_book_view.py`
+should be checked and fixed in the same pass, since it shares every rule.
+
+---
+
+### UX-032: Payables supplier list is double-click-only — same pattern as UX-009
+
+**Screen:** Payables tab
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** the only way to open a supplier's ledger is
+double-clicking a row, and a user might never discover that.
+
+**Confirmed, identical pattern to UX-009 (Select Customer dialog).**
+`purchase_view.py:770-782` wires exactly one interaction:
+```python
+self.payable_supplier_table.doubleClicked.connect(self._on_payable_supplier_double_click)
+```
+No button, no Enter/Return key handling, no context menu — the same gap
+already logged for Select Customer, now confirmed a second time in a
+completely different part of the app.
+
+**Suggested fix:** same as UX-009 — add a visible "Open"/"View Ledger"
+button and bind Enter to the same handler, rather than relying on an
+undiscoverable mouse gesture.
+
+---
+
+### UX-033: Payables ledger shows zero entries despite a non-zero balance (needs one live check to fully confirm)
+
+**Screen:** Payables tab, supplier detail view
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you'd notice** — the header shows "Payable: Rs. 62,000.00" in red,
+but the ledger table below is completely empty and the footer shows
+"Purchases: Rs. 0.00 / Payments: Rs. 0.00 / Closing: Rs. 0.00" — directly
+contradicting the number right above it on the same screen.
+
+**Most likely explanation, and it's a real code-confirmed distinction:
+the header and the ledger table read from two different places.** The
+header (`_update_payable_header`, `purchase_view.py:989-1007`) shows
+`Supplier.current_payable` — a **denormalized running-total column with no
+date filter at all**. The ledger table (`reload_payable_ledger`,
+`purchase_view.py:1009-1033`) queries `SupplierLedgerEntry` rows **within
+whatever date range is selected**, defaulting to `today − 1 month`
+(`pay_date_from`/`pay_date_to`, lines 866/876) — matching the screenshot's
+"From: 2026-08-06 To: 2026-09-06." If the purchase(s) that produced this
+Rs. 62,000 balance happened more than a month before the screenshot, the
+ledger for "last month" legitimately shows nothing while the unfiltered
+header total is still correct — these can disagree by design, not by bug.
+
+There's already an "All" button (`btn_pay_all` → `show_all_payable_dates`,
+line 1035) that calls the same query with no date bounds — if clicking it
+reveals the missing entries, this confirms the default-filter explanation
+above and the fix is just a friendlier default (see below). **I could not
+verify this against live data** (didn't query the database), so I'm
+flagging the one thing that would fully settle it: **click "All" on this
+exact supplier — if the Rs. 62,000 worth of entries appears, it's the
+filter; if it's still empty, the write path that creates `SupplierLedgerEntry`
+rows when a purchase is committed (`supplier_payable_service.py:97-130`,
+called from `PurchaseService.commit_purchase`) needs tracing next, since
+that would mean the ledger table is never actually getting written for
+this data.**
+
+**Suggested fix (assuming the filter explanation holds):** a header
+balance with a completely empty ledger and a contradicting "Rs. 0.00"
+footer, with no date-range indicator drawing attention to *why*, is
+confusing regardless of correctness — either default the range wider (e.g.
+this year, not last month), or show an inline hint when the visible range
+doesn't account for the full balance ("Showing 0 of Rs. 62,000 — try
+expanding the date range").

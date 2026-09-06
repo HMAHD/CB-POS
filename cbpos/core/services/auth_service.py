@@ -7,7 +7,7 @@ import bcrypt
 from sqlalchemy.orm import joinedload
 
 from cbpos.core.database import Database
-from cbpos.core.models import User
+from cbpos.core.models import User, Role
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +152,12 @@ class AuthService:
         """
         db = Database()
         with db.get_session() as session:
-            users = session.query(User).options(joinedload(User.role)).filter(User.is_active.is_(True)).all()
+            users = (
+                session.query(User)
+                .options(joinedload(User.role).joinedload(Role.permissions))
+                .filter(User.is_active.is_(True))
+                .all()
+            )
 
             for user in users:
                 # Check database-backed lockout
@@ -254,7 +259,7 @@ class AuthService:
         with db.get_session() as session:
             user = (
                 session.query(User)
-                .options(joinedload(User.role))
+                .options(joinedload(User.role).joinedload(Role.permissions))
                 .filter(User.username == username, User.is_active.is_(True))
                 .first()
             )

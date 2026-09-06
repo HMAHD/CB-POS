@@ -135,6 +135,9 @@ don't need re-litigating every time a new screen surfaces the same issue.
 | [UX-079](#ux-079-stock-take-button-colors-contradict-the-apps-own-documented-palette-and-each-other) | Stock Take button colors contradict the app's own documented palette, and each other | Stock Take | P2 | 🔴 Open |
 | [UX-080](#ux-080-draft-stock-counts-in-history-are-orphaned-no-way-to-resume-edit-or-delete-them) | DRAFT stock counts in History are orphaned — no way to resume, edit, or delete them | Stock Take | P1 | 🔴 Open |
 | [UX-081](#ux-081-save-draft-is-a-no-op-counts-are-already-auto-saved-per-keystroke) | "Save Draft" is a no-op — counts are already auto-saved per keystroke | Stock Take | P2 | 🔴 Open |
+| [UX-082](#ux-082-sidebar-nav-icons-and-labels-have-zero-gap-correcting-ux-045) | Sidebar nav icons and labels have zero gap (correcting UX-045) | Main sidebar (all screens) | P1 | 🔴 Open |
+| [UX-083](#ux-083-sidebar-redesign-dull-flat-treatment-and-poslogout-need-real-visual-hierarchy) | Sidebar redesign: dull flat treatment, and POS/Logout need real visual hierarchy | Main sidebar (all screens) | P2 | 🔴 Open |
+| [UX-084](#ux-084-management-screens-use-4-different-navigation-patterns-with-no-consistent-page-title) | Management screens use 4 different navigation patterns, with no consistent page title | App-wide (Management section) | P1 | 🔴 Open |
 
 ---
 
@@ -3397,3 +3400,189 @@ automatic and continuous) or repurpose it into something it can honestly
 do — e.g. an explicit "pause and return to this later" action that's
 distinct from the auto-save already happening, if that's a real
 behavior worth having.
+
+---
+
+### UX-082: Sidebar nav icons and labels have zero gap (correcting UX-045)
+
+**Screen:** Main sidebar, every screen (expanded state)
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you flagged:** "as you can see, name and icon have no space" —
+confirmed directly from your screenshot, every nav row (Dashboard,
+Inventory, Purchasing, Credit Book, Reports, Documents, Users, Price
+Lists, Promotions, Stock Take) shows the icon touching the label text
+with no visible gap at all.
+
+**Correction to UX-045 — I got this wrong earlier and want to be
+upfront about it.** That entry claimed "every regular nav button gets
+its icon/text spacing from real layout + QSS padding (`add_nav_button`,
+no hack)," treating only the POS/Logout buttons' `"   " + text` string
+hack as broken. Your screenshot proves that framing wrong: the "correct"
+buttons have **no real gap either**.
+
+**Root cause (verified in code):** `SidebarButton`
+(`cbpos/ui/widgets/custom_widgets.py:56-70`) is a plain `QToolButton` in
+`ToolButtonTextBesideIcon` mode with `setIconSize(QSize(24, 24))` —
+nothing else controls icon-to-text spacing. The only relevant QSS rule,
+`QToolButton#SidebarButton` (`dark.qss:562-574`), sets:
+```css
+padding-left: 20px;
+```
+This is the padding between the **button's left border and the icon** —
+it has nothing to do with the gap between the icon and the label text
+that follows it. Once any stylesheet is applied to a `QToolButton`, Qt's
+CSS-based style engine takes over the button's internal layout and does
+not reliably insert its native icon-text spacing on its own — and
+nothing in this QSS rule (or anywhere else) supplies one. So the
+"correct" buttons and the "hacky" POS/Logout buttons both lack a real
+gap; the 3 literal spaces in the POS/Logout hack were, ironically, doing
+*something* — likely why the disparity wasn't obvious before seeing this
+exact screenshot.
+
+**Why it matters:** this is the app's primary navigation, visible on
+every single screen — icon and label reading as one glued blob undercuts
+the very first impression of the app on every screen transition.
+
+**Suggested fix:** add an explicit, deliberate gap — either a QSS
+`spacing` treatment isn't reliably supported for `QToolButton`, so the
+more robust fix is to stop relying on the built-in icon+text layout
+entirely: build each nav button's content as an explicit `QHBoxLayout`
+(icon `QLabel` + spacing + text `QLabel`) inside a flat, checkable
+container, or increase `padding-left` further and additionally pad the
+icon's own pixmap with transparent margin so the visual gap becomes
+real and consistent at every DPI — then remove UX-045's leftover
+string-padding hack entirely, since a real fix here makes it fully
+redundant rather than just inconsistent.
+
+---
+
+### UX-083: Sidebar redesign: dull flat treatment, and POS/Logout need real visual hierarchy
+
+**Screen:** Main sidebar, every screen
+**Severity:** P2 · **Status:** 🔴 Open
+
+**What you flagged:** "sidebar [is] just a bit dull, need modern clean
+aesthetic that matches the system... logout and back to POS button also
+need proper view and best looking for better UX, be creative, add
+suitable style dark and light both, make it pretty awesome and
+responsive."
+
+**Where it stands today (verified in code):** the sidebar is flat and
+functional but visually thin — `QToolButton#SidebarButton` (`dark.qss:562-586`)
+gives every state a flat solid-color background change and a 4px left
+border accent, with no rounded corners, no icon-container treatment, no
+transition/elevation on hover beyond an instant color swap, and no
+grouping — all 10 nav items sit in one undifferentiated vertical list
+with equal visual weight, from "Dashboard" down to "Stock Take." The
+bottom POS/Logout section (`btn_pos`/`btn_logout`,
+`collapsible_sidebar.py:87-99`) reuses the exact same `SidebarButton`
+row treatment as regular nav items, just with a solid green/red fill —
+visually, "go back to POS" and "log out" read as two more items in the
+same list rather than the two most consequential actions on the screen
+(one is a full context switch, the other ends the session).
+
+**My recommendation, as the one making the call here:**
+- **Group the list.** A subtle section break (a thin divider + faint
+  uppercase label, similar to what Reports' category sidebar already
+  does) between operational screens (Dashboard, Inventory, Purchasing,
+  Credit Book) and management/admin ones (Users, Price Lists, Promotions,
+  Stock Take, Reports, Documents) gives the eye a resting point instead
+  of one flat 10-item list.
+- **Give the active state real weight, not just a border.** A soft
+  rounded-rect background behind the active item (matching the app's
+  existing 6px radius convention used elsewhere), rather than a flat
+  square block with a hairline accent, reads as noticeably more modern
+  with almost no extra code.
+- **Add a real hover transition.** Even a simple `background-color`
+  cross-fade (a short `QPropertyAnimation` on a custom paint, or at
+  minimum a slightly softer intermediate hover tone) feels considerably
+  more polished than an instant flat-color swap — small effort,
+  disproportionate perceived-quality gain.
+- **Treat POS/Logout as a distinct, separated "exit" cluster**, not two
+  more list rows: pull them visually away from the nav list (a clearer
+  gap plus a top divider is already partly there via `addSpacing(10)`,
+  worth making more deliberate), keep them as solid-color pills but with
+  rounded corners and a subtle icon badge rather than a full-width flat
+  bar — since these two are context-ending actions, their shape should
+  say so before you even read the label.
+- **Light theme needs its own pass, not an inverted dark theme** — check
+  that hover/active states in `light.qss` get equivalent treatment once
+  the dark-theme redesign is settled, not just inverted colors.
+- **Responsive**: this ties directly to UX-046 (the collapsed/expanded
+  width discrepancy still needing a live-render check) — whatever
+  redesign lands here should be verified at both the 250px expanded and
+  70px collapsed widths, and at the narrow-window auto-collapse
+  breakpoint (1024px), so "doesn't affect with display sizes" is
+  actually verified, not just assumed.
+
+**Suggested fix:** the concrete direction above — grouped sections,
+rounded active-state pill, real hover transition, a visually distinct
+POS/Logout cluster — implemented consistently across both themes and
+tested at collapsed/expanded/narrow-window states before calling it
+done.
+
+---
+
+### UX-084: Management screens use 4 different navigation patterns, with no consistent page title
+
+**Screen:** App-wide (every top-level Management screen)
+**Severity:** P1 · **Status:** 🔴 Open
+
+**What you asked:** "how about your idea in this tab-based pages in this
+application, is it good design or bad as an industry-grade top-level
+design application, what are the suggestions... I see some pages use
+full width/height and some have a top page name, all pages don't have
+consistent style and matching appearance, that need to be addressed as
+well. I like full, but what matters is good UI/UX so your call."
+
+**Here's my honest answer, and it's grounded in what's actually in the
+code, not a general impression:** the tab-vs-sidebar choice itself isn't
+the problem — it's actually reasonable that different screens use
+different secondary navigation, because the content shapes are
+genuinely different. The real problem is that **every one of these
+patterns skips a different amount of "where am I" context**, and there
+are more of them than you'd expect:
+
+| Pattern | Screens | Top-level page title? |
+|---|---|---|
+| Flat single page, dedicated title bar | Document Browser (`DocBrowserTitle`), Promotions (`promotion.title`), Credit Book (`credit_book.title`) | ✅ yes |
+| Top tabs, no page title at all | Users (`UserView`, `QTabWidget` at line 123, no title label anywhere in the class), Stock Take (`StockTakeView`, same), Purchasing (`PurchaseView`, same — its only title, `PayablePageTitle`, is scoped to one internal tab, not the screen) | ❌ no |
+| Secondary left sidebar with a small-caps label | Reports ("REPORTS"), Price Lists ("PRICE LISTS") | ❌ no page title — only a compact sidebar-header label |
+| Flat single page, no title at all | Dashboard, Inventory | ❌ no |
+
+That's **4 distinct patterns**, confirmed directly in each view's own
+code (grep for a page-title label object in each file) — not 2 or 3.
+Tabs make sense for Users (2 fixed, always-relevant peer views) and
+sidebar-lists make sense for Price Lists (a variable, user-created list
+of items). That part of the design is defensible. What isn't defensible
+is that **a third of these screens (Users, Stock Take, Purchasing) show
+literally nothing identifying the screen you're on** beyond the sidebar's
+own highlighted item — open Stock Take and the very first thing you see
+is "New Count | History," with no "Stock Take" text anywhere on the
+visible screen.
+
+**My actual recommendation, since you asked for the call:** keep the
+tabs and sidebar-lists exactly where they already make sense for their
+content — don't force everything into one navigation widget. But make
+**one thing** universal across every top-level Management screen: a
+slim, consistent title strip at the very top (the same treatment
+Document Browser/Promotions/Credit Book already use), *before* whatever
+secondary navigation follows it — tabs, a sidebar, or straight into
+content. This doesn't have to cost real estate: it can be a compact
+single-line header (icon + screen name, nothing else), not the full
+~80px title block those 3 screens currently use. That resolves the
+tension in your own question directly — you can keep full-width/height
+content below it (which you said you like) while still never leaving a
+screen with zero identifying context at the top. Right now the
+inconsistency isn't "tabs vs. sidebar," it's "title vs. no title," and
+that's the one piece worth standardizing everywhere.
+
+**Suggested fix:** add a shared, compact `PageHeader` widget (icon +
+screen name, one consistent height/style in both themes) and place it at
+the top of every Management screen that currently has none (Users,
+Stock Take, Purchasing, Dashboard, Inventory, Reports, Price Lists) —
+Reports/Price Lists can keep their sidebar's own internal label as a
+secondary element, but should still get this same top-level strip so
+their header treatment matches Document Browser/Promotions/Credit
+Book's, rather than being a fourth pattern of its own.

@@ -1,7 +1,7 @@
 bcrypt>=5.0.0
 cryptography>=42.0.0
 PyQt6>=6.7.0
-SQLAlchemy>=2.0.30
+SQLAlchemy>=2.0.52
 psycopg2-binary>=2.9.12
 pydantic>=2.7.0
 python-escpos>=3.1

@@ -4,6 +4,7 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
+| 1.3.x   | :white_check_mark: |
 | 1.2.x   | :white_check_mark: |
 | 1.1.x   | :white_check_mark: |
 | 1.0.x   | :x:                |
@@ -42,6 +43,7 @@ The following are in scope for security reports:
 - Unauthorized access to audit logs or financial data
 - Vulnerabilities in the database layer (SQLite/PostgreSQL)
 - Printer driver command injection
+- Multi-Terminal LAN Sync: authentication/token handling, TLS configuration, or any bypass of the Main PC identity guard
 
 ### Out of Scope
 
@@ -55,5 +57,6 @@ The following are in scope for security reports:
 - Always change default PINs (`admin`/`1234`, `cashier`/`0000`) after initial setup
 - Enable session timeout in settings to auto-logout inactive terminals
 - Use PostgreSQL mode with proper credentials for multi-terminal deployments
+- If using Multi-Terminal LAN Sync, keep the shared sync secret private (treat it like a password) and use the "Forget Trusted Main PC" option if the Main PC hardware is ever replaced. Note: LAN Sync's self-signed TLS certificate protects against passive eavesdropping but not an active man-in-the-middle presenting a different certificate — the shared-secret token is what protects against that residual gap
 - Regularly backup your database using the built-in backup feature
 - Keep CB POS updated to the latest supported version

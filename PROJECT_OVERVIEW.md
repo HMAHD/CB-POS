@@ -558,6 +558,8 @@ Login → SalesView → Management/Settings (via side menu) → Back returns to 
 | `receipt_preview_widget.py` | Live receipt preview renderer |
 | `charts.py` | Dashboard chart components |
 | `loading_overlay.py` | Loading spinner overlay |
+| `collapsible_sidebar.py` | Shared animated collapsible sidebar (used by ManagementView and SettingsView) |
+| `sync_status_widget.py` | LAN Sync status indicator (Synced/Syncing/Disconnected/Main PC) in the top bar |
 
 ### 7.5 Themes
 
@@ -976,24 +978,33 @@ class MyView(QWidget):
 
 ## 20. Network Multi-Terminal Support
 
-### Database Modes
+Two coexisting mechanisms are built and checked in:
+
+### 20.1 PostgreSQL Network Mode (original)
 
 | Mode | Backend | Use Case |
 |------|---------|----------|
 | Standalone | SQLite (`cbpos.db`) | Single terminal |
-| Network | PostgreSQL | Multi-terminal |
-
-### Configuration
+| Network | PostgreSQL | Multi-terminal, shared central database |
 
 - Host, port, database name, user, password in `settings.json`
 - Connection testing via `Database.test_connection()`
 - Migration service handles database mode switching
+- Optimistic locking on Product (`version_id`); `StaleDataError` triggers transaction retry
+- Terminal ID in audit logs; per-terminal settings via terminal-prefixed config keys
 
-### Concurrency Handling
+### 20.2 LAN Sync (SQLite-based, added in 1.3.0)
 
-- Optimistic locking on Product (`version_id`)
-- `StaleDataError` triggers transaction retry
-- Terminal ID in audit logs
+A separate, zero-external-dependency alternative for shops that don't want to run PostgreSQL: one PC acts as **Main** (SQLite hub), 2-10 **Terminal** PCs sync over a LAN cable with no internet required.
+
+- **`cbpos/infrastructure/sync_server.py`**: HTTP server (`ThreadingHTTPServer`) run as a `QThread` on the Main PC. Endpoints: `/sync/register`, `/sync/heartbeat`, `/sync/pull-catalog`, `/sync/pull-stock`, `/sync/push-transactions`, `/sync/push-audit`.
+- **`cbpos/infrastructure/sync_client.py`**: Background `QThread` on Terminals — auto-register, push/pull loop (default 3s interval), auto-reconnect with exponential backoff.
+- **`cbpos/core/services/sync_protocol.py`**: JSON serialization preserving `Decimal` as string, envelope format with protocol versioning, `model_to_dict`/`dict_to_model` for all synced models.
+- **`cbpos/infrastructure/sync_tls.py`**: Self-signed certificate generated on first "Main PC" start; all sync traffic served over HTTPS.
+- **Security hardening** (post-launch review): required shared-secret token (`X-Sync-Token` header, encrypted at rest) authenticates every request and enforces the transaction-table push whitelist; a persistent Main-PC `instance_id` guards against two machines both acting as Main PC; the catalog sync watermark uses the Main PC's clock (not the terminal's) to avoid clock-drift data loss; terminal stock movements now actually update `Product.stock_qty` on the Main PC.
+- **`SyncStatusWidget`** (`cbpos/ui/widgets/sync_status_widget.py`): colored-dot indicator in the main window top bar (Synced/Syncing/Disconnected/Main PC), auto-hidden in standalone mode, shows a visible error state if misconfigured.
+- New models: `SyncLog`, `SyncQueue`. New columns: `last_modified` on 12 catalog tables, `synced` on 9 transaction tables, `origin_terminal_id` on `Document`.
+- Status: built and unit/regression-tested (`test_sync_protocol.py`, `test_sync_server.py`, `test_sync_client.py`, `test_sync_tls.py`), but — like the PostgreSQL mode above — not yet verified with real clients in production.
 
 ---
 
@@ -1046,7 +1057,7 @@ main.py
 | Database models | 26 (in 1 file) |
 | Report definitions | 9 |
 | Alembic migrations | 21 |
-| Test files | 17 |
+| Test files | 32 |
 | Translation keys | 1,827 (67 sections) |
 | QSS theme lines | 3,103 (Dark: 1,529, Light: 1,574) |
 | Configurable settings | 76 |

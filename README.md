@@ -12,6 +12,7 @@
 - **Zero-Latency Checkout**: Optimized for sub-50ms barcode scans and instant UI transitions.
 - **Keyboard-First Design**: Full operation without a mouse for maximum cashier efficiency.
 - **Offline-First**: 100% local database (SQLite) ensures operations never stop, even without internet.
+- **Cart Safety Net**: Warns before closing the app with items still in the cart (Hold & Exit / Exit Without Saving / Cancel).
 
 ### Inventory & Financials
 - **Advanced Inventory**: Composite items (bundles), weighted products (kg/g), stock take/count.
@@ -51,7 +52,7 @@
 - **Migrations**: Alembic (21 migrations)
 - **Hardware**: `python-escpos`, `pyusb`
 - **Reports**: `pandas`, `xlsxwriter`, `xhtml2pdf`, `reportlab`
-- **Quality Assurance**: `pytest` (17 test files), `black`, `flake8`, `pre-commit`
+- **Quality Assurance**: `pytest` (32 test files), `black`, `flake8`, `pre-commit`
 
 ## Installation
 
@@ -147,7 +148,7 @@ cbpos/
 ├── main.py             # Entry point
 ├── alembic/            # 21 database migrations
 ├── scripts/            # Seed, validation, debug utilities
-└── tests/              # 17 test files
+└── tests/              # 32 test files
 ```
 
 ## License

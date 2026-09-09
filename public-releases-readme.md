@@ -201,7 +201,7 @@ Yes. The full interface is available in Sinhala, Tamil, and English. You can eve
 Your data stays on your computer — it is never sent anywhere online. We recommend regular backups using the built-in backup feature.
 
 **Can multiple cashiers use it at the same time?**
-Yes. CB POS supports multi-terminal setups. Switch to Network mode in Settings > Network, point each terminal to a shared PostgreSQL database, and assign a unique Terminal ID (TERM-01, TERM-02, etc.) to each machine. All terminals share inventory, customers, and sales data in real time.
+Yes, two ways. The simplest is **LAN Sync**: turn on Settings > Network > LAN Sync, pick one PC as "Main PC" and the rest as "Terminal" — they sync over a LAN cable, no database server or internet needed. If you'd rather run a shared PostgreSQL database instead, Network mode is also available: point each terminal to it and assign a unique Terminal ID (TERM-01, TERM-02, etc.). Either way, all terminals share inventory, customers, and sales data.
 
 **I found a bug / I have a feature request.**
 Open an [Issue](https://github.com/ceybyte/cbpos-releases/issues) on this repository, or contact us at [ceybyte.com](https://ceybyte.com). We read every message.
@@ -215,7 +215,8 @@ No. CB POS is free to use but the source code is proprietary. You may not copy, 
 
 See the [Releases page](https://github.com/ceybyte/cbpos-releases/releases) for the full changelog.
 
-**Current Version: 1.2.2** (March 2026)
+**Current Version: 1.3.0** (September 2026)
+- Multi-Terminal LAN Sync — connect 2-10 registers over a LAN cable, no internet or database server required
 - Sale history browser with search and filters
 - Improved refund workflow
 - First-run database setup (empty or demo)

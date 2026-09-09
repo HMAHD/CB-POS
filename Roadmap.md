@@ -671,12 +671,17 @@
 ### Phase 18: Multi-Terminal *(Built — Needs Real-World Testing)*
 *Goal: Allow multiple PCs to sell from one central database over LAN.*
 
-> **Status:** Code is built and checked in. PostgreSQL support, network configuration UI, concurrency control, and multi-user operations are all implemented. However, this has not been tested with real clients in production. No further development investment until a client needs it.
+> **Status:** Two coexisting approaches are now built and checked in:
+> 1. **PostgreSQL network mode** (original) — dynamic SQLite/PostgreSQL engine switching, network configuration UI, optimistic locking, and multi-user operations.
+> 2. **LAN Sync** (added since this phase was last reviewed) — a zero-external-dependency alternative: one PC acts as Main (SQLite hub), 2-10 Terminal PCs sync over a LAN cable via HTTP/JSON, no PostgreSQL or internet required. Built, then given a dedicated security/correctness hardening pass: added shared-secret token auth and HTTPS (self-signed cert) for traffic that previously had neither, fixed terminal sales not actually updating the Main PC's stock, fixed a server that couldn't shut down cleanly, added a guard against two machines both claiming the Main PC role, and fixed a clock-drift bug in catalog sync. Covered by dedicated unit/regression tests (sync protocol, server, client, TLS).
+>
+> Neither approach has been tested with real clients in production. No further development investment until a client needs it.
 
 - [x] **18.1 Database Engine Factory** — Dynamic SQLite/PostgreSQL switching
 - [x] **18.2 Network Configuration UI** — Mode selector, server settings, test connection
 - [x] **18.3 Concurrency & Locking** — Optimistic locking, conflict handling
 - [x] **18.4 Multi-User Operations** — Simultaneous users, real-time inventory, centralized reporting
+- [x] **18.5 LAN Sync (SQLite-based)** — Sync Server/Client/Protocol, LAN Sync settings tab, sync status widget, security hardening (shared-secret auth, TLS, stock propagation fix, Main PC identity guard, clock-drift fix)
 
 ---
 

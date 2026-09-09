@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QLabel,
     QFrame,
+    QHeaderView,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QPixmap, QIcon
@@ -25,6 +26,7 @@ from cbpos.core.models import Category
 from cbpos.core.services.category_service import CategoryService
 from cbpos.i18n import _t
 from cbpos.core.utils.error_messages import translate_error
+from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +65,13 @@ class CategoryManagerDialog(QDialog):
 
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels([_t("category_manager.col_category"), _t("category_manager.col_products")])
-        self.tree.setColumnWidth(0, 280)
+        configure_table_columns(
+            self.tree.header(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,  # Category - needs the room
+                1: QHeaderView.ResizeMode.ResizeToContents,  # Products
+            },
+        )
         self.tree.setRootIsDecorated(True)
         self.tree.setAlternatingRowColors(True)
         self.tree.currentItemChanged.connect(self._on_selection_changed)

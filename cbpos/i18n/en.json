@@ -262,7 +262,7 @@
     "vat_number": "VAT Number:",
     "tin": "TIN:",
     "credit_limit": "Credit Limit:",
-    "payment_terms": "Payment Terms:",
+    "payment_terms": "Payment Terms (days):",
     "price_list": "Price List:",
     "contacts_header_name": "Name",
     "contacts_header_role": "Role",

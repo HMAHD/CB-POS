@@ -1,11 +1,10 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
     QFormLayout,
     QLineEdit,
-    QDoubleSpinBox,
     QDialogButtonBox,
     QMessageBox,
     QTabWidget,
@@ -17,9 +16,9 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QPushButton,
     QLabel,
-    QSpinBox,
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QDoubleValidator, QIntValidator
 
 
 from cbpos.core.services.customer_service import CustomerService
@@ -29,6 +28,8 @@ from cbpos.core.services.price_list_service import (
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.i18n import _t
+
+COMMERCIAL_FIELD_MIN_WIDTH = 220
 
 
 class CustomerEditor(QDialog):
@@ -112,20 +113,27 @@ class CustomerEditor(QDialog):
         form.setSpacing(12)
 
         self.vat_input = QLineEdit()
+        self.vat_input.setMinimumWidth(COMMERCIAL_FIELD_MIN_WIDTH)
         self._lbl_vat = QLabel(_t("customer_editor.vat_number"))
 
         self.tax_id_input = QLineEdit()
+        self.tax_id_input.setMinimumWidth(COMMERCIAL_FIELD_MIN_WIDTH)
         self.tax_id_input.setPlaceholderText(_t("customer_editor.tin_placeholder"))
 
-        self.limit_input = QDoubleSpinBox()
-        self.limit_input.setRange(0, 10000000)
-        self.limit_input.setDecimals(2)
+        # QLineEdit + validator instead of QDoubleSpinBox/QSpinBox -- native
+        # +/- steppers break under QSS (see product_editor.py's Stock group).
+        self.limit_input = QLineEdit()
+        self.limit_input.setMinimumWidth(COMMERCIAL_FIELD_MIN_WIDTH)
+        self.limit_input.setPlaceholderText("0.00")
+        self.limit_input.setValidator(QDoubleValidator(0.0, 10000000.0, 2, self))
 
-        self.payment_terms_input = QSpinBox()
-        self.payment_terms_input.setRange(0, 365)
-        self.payment_terms_input.setSuffix(" " + _t("customer_editor.days_suffix"))
+        self.payment_terms_input = QLineEdit()
+        self.payment_terms_input.setMinimumWidth(COMMERCIAL_FIELD_MIN_WIDTH)
+        self.payment_terms_input.setPlaceholderText("0")
+        self.payment_terms_input.setValidator(QIntValidator(0, 365, self))
 
         self.price_list_combo = QComboBox()
+        self.price_list_combo.setMinimumWidth(COMMERCIAL_FIELD_MIN_WIDTH)
         self.price_list_combo.addItem(_t("customer_editor.price_list_default"), None)
         # Price list loading deferred until PriceList management UI is complete
 
@@ -265,8 +273,8 @@ class CustomerEditor(QDialog):
 
         self.vat_input.setText(self.customer.vat_number or "")
         self.tax_id_input.setText(self.customer.tax_id or "")
-        self.limit_input.setValue(float(self.customer.credit_limit))
-        self.payment_terms_input.setValue(self.customer.payment_terms)
+        self.limit_input.setText(format(Decimal(self.customer.credit_limit).quantize(Decimal("0.01")), "f"))
+        self.payment_terms_input.setText(str(self.customer.payment_terms))
 
         self.loyalty_code_input.setText(self.customer.loyalty_card_code or "")
         self.points_label.setText(str(self.customer.loyalty_points))
@@ -280,6 +288,28 @@ class CustomerEditor(QDialog):
                 self.contact_table.setItem(row, 1, QTableWidgetItem(contact.role or ""))
                 self.contact_table.setItem(row, 2, QTableWidgetItem(contact.phone or ""))
                 self.contact_table.setItem(row, 3, QTableWidgetItem(contact.email or ""))
+
+    @staticmethod
+    def _parse_credit_limit(text: str) -> Decimal:
+        """Safely parse the Credit Limit QLineEdit value to Decimal."""
+        cleaned = text.strip()
+        if not cleaned:
+            return Decimal("0")
+        try:
+            return Decimal(cleaned)
+        except InvalidOperation:
+            return Decimal("0")
+
+    @staticmethod
+    def _parse_payment_terms(text: str) -> int:
+        """Safely parse the Payment Terms QLineEdit value to int."""
+        cleaned = text.strip()
+        if not cleaned:
+            return 0
+        try:
+            return int(cleaned)
+        except ValueError:
+            return 0
 
     def save(self):
         # Gather Contact Data
@@ -313,8 +343,8 @@ class CustomerEditor(QDialog):
             "company_name": self.company_name_input.text().strip() or None,
             "vat_number": self.vat_input.text().strip() or None,
             "tax_id": self.tax_id_input.text().strip() or None,
-            "credit_limit": Decimal(str(self.limit_input.value())),
-            "payment_terms": self.payment_terms_input.value(),
+            "credit_limit": self._parse_credit_limit(self.limit_input.text()),
+            "payment_terms": self._parse_payment_terms(self.payment_terms_input.text()),
             "loyalty_card_code": self.loyalty_code_input.text().strip() or None,
             "is_active": True,
             "contacts": contacts_data,

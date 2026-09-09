@@ -213,8 +213,8 @@ class SalesView(QWidget):
 
         # Set fixed widths for numeric columns (better alignment)
         self.cart_table.setColumnWidth(1, 140)  # Price
-        self.cart_table.setColumnWidth(2, 50)  # Qty
-        self.cart_table.setColumnWidth(3, 50)  # Disc
+        self.cart_table.setColumnWidth(2, 65)  # Qty
+        self.cart_table.setColumnWidth(3, 65)  # Disc
         self.cart_table.setColumnWidth(4, 120)  # Total
 
         # Guard against columns truncating below readability on small/high-DPI
@@ -376,6 +376,12 @@ class SalesView(QWidget):
                 _t("cart.header_total"),
             ]
         )
+        # Right-align the numeric column headers (Price/Qty/Disc/Total) to
+        # match the right-aligned data beneath them -- ITEM (0) stays left.
+        for col in (1, 2, 3, 4):
+            header_item = self.cart_table.horizontalHeaderItem(col)
+            if header_item:
+                header_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
         # Empty cart placeholder
         self.empty_cart_label.setText(_t("sales.empty_cart"))
@@ -631,13 +637,18 @@ class SalesView(QWidget):
             # Price Display (Strikethrough if discounted/overridden)
             if item.get("original_price") and item["unit_price"] < item["original_price"]:
                 lbl_price = QLabel()
-                lbl_price.setText("<s>{:.2f}</s> <b>{:.2f}</b>".format(item["original_price"], item["unit_price"]))
+                lbl_price.setText(
+                    "<s>{}</s> <b>{}</b>".format(
+                        format_currency(item["original_price"]), format_currency(item["unit_price"])
+                    )
+                )
                 lbl_price.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 lbl_price.setProperty("class", "StrikethroughPrice")
                 self.cart_table.setCellWidget(row, 1, lbl_price)
             else:
                 price_item = QTableWidgetItem(format_currency(item["unit_price"]))
                 price_item.setForeground(text_brush)
+                price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.cart_table.setItem(row, 1, price_item)
 
             # Highlight if discounted (theme-aware)
@@ -659,6 +670,7 @@ class SalesView(QWidget):
                 qty_str = f'{item["qty"]:.3f}'.rstrip("0").rstrip(".") or "0"
             qty_item = QTableWidgetItem(qty_str)
             qty_item.setForeground(text_brush)
+            qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.cart_table.setItem(row, 2, qty_item)
 
             # Disc column
@@ -666,11 +678,13 @@ class SalesView(QWidget):
             disc_text = f"{disc_val}%" if disc_val > 0 else "-"
             disc_item = QTableWidgetItem(disc_text)
             disc_item.setForeground(text_brush)
+            disc_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.cart_table.setItem(row, 3, disc_item)
 
             # Total column
             total_item = QTableWidgetItem(format_currency(item["total"]))
             total_item.setForeground(text_brush)
+            total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.cart_table.setItem(row, 4, total_item)
 
         totals = self.cart_service.get_totals()
@@ -970,9 +984,7 @@ class SalesView(QWidget):
         # on the same window risks Qt treating the key as ambiguous and
         # firing neither one, silently breaking the shortcut that already
         # works -- not something to risk without being able to verify it.
-        change_qty_action = QAction(
-            Icons.get(Icons.QTY, icon_color), _t("cart.context_change_qty") + "\tF4", self
-        )
+        change_qty_action = QAction(Icons.get(Icons.QTY, icon_color), _t("cart.context_change_qty") + "\tF4", self)
         change_qty_action.triggered.connect(self.change_line_quantity)
         menu.addAction(change_qty_action)
 

@@ -16,7 +16,6 @@ from PyQt6.QtWidgets import (
     QFrame,
     QSplitter,
     QButtonGroup,
-    QStackedWidget,
 )
 from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint, QSize, QTimer
 from PyQt6.QtGui import QKeySequence, QShortcut, QAction, QBrush, QColor, QPixmap
@@ -234,18 +233,17 @@ class SalesView(QWidget):
         self.cart_table.customContextMenuRequested.connect(self.show_cart_context_menu)
         self.cart_table.setAlternatingRowColors(True)
 
-        # Empty Cart Placeholder
-        self.empty_cart_label = QLabel("")  # Set by retranslate_ui
+        left_layout.addWidget(self.cart_table)
+
+        # Empty Cart Placeholder -- an overlay centered over the table's own
+        # row area (parented to its viewport), not a whole separate widget
+        # swapped in for the table (#256). The header stays visible at all
+        # times; only the "no rows yet" hint appears/disappears. Positioned
+        # manually the same way the undo toast already is elsewhere in this
+        # file, since a raw QLabel doesn't participate in viewport layout.
+        self.empty_cart_label = QLabel(self.cart_table.viewport())  # Text set by retranslate_ui
         self.empty_cart_label.setObjectName("EmptyCartLabel")
         self.empty_cart_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # Stacked widget to swap between cart table and empty placeholder
-        self.cart_stack = QStackedWidget()
-        self.cart_stack.addWidget(self.empty_cart_label)  # index 0
-        self.cart_stack.addWidget(self.cart_table)  # index 1
-        self.cart_stack.setCurrentIndex(0)
-
-        left_layout.addWidget(self.cart_stack)
 
         # Undo Toast (overlay at bottom of cart area)
         self.undo_toast = QLabel(self.container_left)
@@ -510,6 +508,9 @@ class SalesView(QWidget):
         if self.undo_toast.isVisible():
             self._position_undo_toast()
 
+        if self.empty_cart_label.isVisible():
+            self._position_empty_cart_label()
+
         # If the side menu isn't open, the action panel must always be
         # visible — closing #206, where a maximize/unmaximize while the
         # menu was open could otherwise leave it permanently hidden (only
@@ -622,7 +623,9 @@ class SalesView(QWidget):
 
         self.cart_table.setRowCount(0)
         has_items = len(self.cart_service.items) > 0
-        self.cart_stack.setCurrentIndex(1 if has_items else 0)
+        self.empty_cart_label.setVisible(not has_items)
+        if not has_items:
+            self._position_empty_cart_label()
         for row, item in enumerate(self.cart_service.items):
             self.cart_table.insertRow(row)
             self.cart_table.setRowHeight(row, CART_TABLE_ROW_HEIGHT)
@@ -1128,6 +1131,11 @@ class SalesView(QWidget):
             self.undo_toast.raise_()
 
             QTimer.singleShot(4000, self._clear_undo)
+
+    def _position_empty_cart_label(self) -> None:
+        """Center the empty-cart hint over the table's row area (its viewport)."""
+        viewport = self.cart_table.viewport()
+        self.empty_cart_label.resize(viewport.size())
 
     def _position_undo_toast(self) -> None:
         """Position the undo toast at the bottom-center of the cart area."""

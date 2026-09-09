@@ -140,10 +140,18 @@ class ActionPanel(QWidget):
         layout.setSpacing(0)
 
         # ── 1. Customer Card ─────────────────────────────────────
+        # One card, two internal rows (#255): row 1 is the existing
+        # icon + name/phone + Select button; row 2 is the loyalty-points
+        # badge, inside the same frame/border instead of floating below it
+        # as an unrelated sibling label.
         customer_frame = QFrame()
         customer_frame.setObjectName("CustomerPanel")
-        cust_layout = QHBoxLayout(customer_frame)
-        cust_layout.setContentsMargins(10, 8, 10, 8)
+        customer_frame_layout = QVBoxLayout(customer_frame)
+        customer_frame_layout.setContentsMargins(10, 8, 10, 8)
+        customer_frame_layout.setSpacing(0)
+
+        cust_layout = QHBoxLayout()
+        cust_layout.setContentsMargins(0, 0, 0, 0)
         cust_layout.setSpacing(10)
 
         # Customer icon
@@ -173,13 +181,32 @@ class ActionPanel(QWidget):
         self.btn_cust_select.clicked.connect(self.customer_clicked.emit)
         cust_layout.addWidget(self.btn_cust_select)
 
-        layout.addWidget(customer_frame)
+        customer_frame_layout.addLayout(cust_layout)
 
-        # Points Label (hidden when empty)
+        # Row 2: divider + points badge, hidden entirely for Walk-in
+        # Customer (no loyalty points) instead of just clearing the text,
+        # so the default state doesn't reserve a blank strip of space.
+        self.points_divider = QFrame()
+        self.points_divider.setObjectName("PointsDivider")
+        self.points_divider.setFixedHeight(1)
+        self.points_divider.setVisible(False)
+        customer_frame_layout.addWidget(self.points_divider)
+
+        self.points_row = QWidget()
+        points_row_layout = QHBoxLayout(self.points_row)
+        points_row_layout.setContentsMargins(0, 6, 0, 0)
+        # Indent to line up under the name, not under the icon above it
+        # (icon width 32px + the row's own 10px spacing).
+        points_row_layout.addSpacing(42)
         self.lbl_points = QLabel("")
-        self.lbl_points.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_points.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self.lbl_points.setObjectName("PointsLabel")
-        layout.addWidget(self.lbl_points)
+        points_row_layout.addWidget(self.lbl_points)
+        points_row_layout.addStretch()
+        self.points_row.setVisible(False)
+        customer_frame_layout.addWidget(self.points_row)
+
+        layout.addWidget(customer_frame)
 
         # ── 2. Orders Section ────────────────────────────────────
         layout.addSpacing(10)
@@ -277,7 +304,11 @@ class ActionPanel(QWidget):
     def set_customer_info(self, name, phone, points):
         self.lbl_customer.setText(f"{name} ({phone})")
         self.lbl_points.setText(_t("action_panel.points", points=points))
+        self.points_divider.setVisible(True)
+        self.points_row.setVisible(True)
 
     def clear_customer_info(self):
         self.lbl_customer.setText(_t("action_panel.walk_in_customer"))
         self.lbl_points.setText("")
+        self.points_divider.setVisible(False)
+        self.points_row.setVisible(False)

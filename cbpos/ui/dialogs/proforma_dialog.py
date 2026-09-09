@@ -277,8 +277,8 @@ class ProformaDialog(QDialog):
         if proforma:
             QMessageBox.information(
                 self,
-                "Success",
-                f"Quotation <b>{proforma.document_number}</b> created successfully.",
+                _t("common.success"),
+                _t("proforma.create_success", doc_number=proforma.document_number),
             )
             self.accept()
         else:

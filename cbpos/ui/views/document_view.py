@@ -294,7 +294,7 @@ class DocumentBrowserView(QWidget):
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
         self.title_label.setText(_t("document_browser.title"))
-        self.new_proforma_btn.setText(_t("document_browser.btn_new_quotation"))
+        self.new_proforma_btn.setText(_t("document_browser.btn_new_proforma"))
 
         # Filter labels
         self.lbl_type.setText(_t("document_browser.filter_type"))

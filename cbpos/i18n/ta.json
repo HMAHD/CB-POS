@@ -742,7 +742,7 @@
   },
   "document_browser": {
     "title": "Document Browser",
-    "btn_new_quotation": "+ New Quotation",
+    "btn_new_proforma": "+ New Proforma",
     "filter_type": "Type:",
     "filter_status": "Status:",
     "filter_from": "From:",
@@ -1707,6 +1707,7 @@
     "no_items_msg": "Please add at least one product.",
     "product_not_found": "Product not found.",
     "not_found": "Not Found",
+    "create_success": "Proforma <b>{doc_number}</b> created successfully.",
     "create_failed": "Failed to create proforma invoice."
   },
   "receipt_preview": {

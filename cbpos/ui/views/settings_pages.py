@@ -73,6 +73,11 @@ class SettingsPage(QWidget):
         layout.addWidget(self._page_subtitle)
 
         tabs = QTabWidget()
+        # Native styles (e.g. Windows) elide tab labels with "..." once the
+        # bar is narrower than its tabs' natural width -- ElideNone plus the
+        # scroll buttons QTabBar already enables by default keeps every
+        # label fully readable instead of silently truncating it (#321).
+        tabs.tabBar().setElideMode(Qt.TextElideMode.ElideNone)
         layout.addWidget(tabs, 1)
 
         return layout, tabs

@@ -38,6 +38,13 @@ class ManagementView(QWidget):
         register_language_callback(self.retranslate_ui)
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
+        # Views are now built lazily by switch_tab() (#227), so the stack
+        # starts with zero widgets and nothing to show. Before that change,
+        # all 10 views were built eagerly and QStackedWidget defaulted to
+        # showing the first one added (Dashboard); land on it explicitly
+        # here so entering Management isn't blank until a sidebar click (#275).
+        self.switch_tab(0)
+
     def init_ui(self):
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)

@@ -28,6 +28,7 @@ from cbpos.core.services.suspended_transaction_service import SuspendedTransacti
 from cbpos.ui.dialogs.payment_dialog import PaymentDialog
 from cbpos.ui.dialogs.discount_dialog import DiscountDialog
 from cbpos.ui.dialogs.quantity_dialog import QuantityDialog
+from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
 from cbpos.ui.dialogs.receipt_options_dialog import ReceiptOptionsDialog
 from cbpos.core.services.config_service import ConfigService
 from cbpos.ui.constants import SEARCH_BAR_HEIGHT, CART_TABLE_ROW_HEIGHT
@@ -1045,19 +1046,12 @@ class SalesView(QWidget):
         """Change quantity of selected cart line."""
         row = self.cart_table.currentRow()
         if row >= 0:
-            current_qty = self.cart_service.items[row]["qty"]
-            qty, ok = QInputDialog.getDouble(
-                self,
-                _t("cart.change_qty_title"),
-                _t("cart.change_qty_prompt"),
-                value=float(current_qty),
-                min=0.001,
-                max=999999,
-                decimals=3,
-            )
-            if ok:
-                self.cart_service.items[row]["qty"] = Decimal(str(qty))
-                self.cart_service.items[row]["total"] = Decimal(str(qty)) * self.cart_service.items[row]["unit_price"]
+            item = self.cart_service.items[row]
+            dialog = QuantityDialog(item["product"], parent=self, initial_qty=item["qty"])
+            if dialog.exec():
+                qty = dialog.get_quantity()
+                item["qty"] = qty
+                item["total"] = qty * item["unit_price"]
                 self.update_cart_display()
         self.barcode_input.setFocus()
 
@@ -1107,18 +1101,11 @@ class SalesView(QWidget):
             return
 
         # 2. Get New Price
-        current_price = self.cart_service.items[row]["unit_price"]
-        new_price, ok = QInputDialog.getDouble(
-            self,
-            _t("cart.change_price_title"),
-            _t("cart.change_price_prompt"),
-            value=float(current_price),
-            min=0.01,
-            max=999999,
-            decimals=2,
-        )
-
-        if ok:
+        item = self.cart_service.items[row]
+        current_price = item["unit_price"]
+        dialog = SetItemPriceDialog(item["product"].name_en, current_price, parent=self)
+        if dialog.exec():
+            new_price = dialog.get_price()
             self.cart_service.override_price(row, new_price, authorized_user)
             self.update_cart_display()
         self.barcode_input.setFocus()

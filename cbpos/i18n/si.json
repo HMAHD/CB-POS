@@ -243,7 +243,8 @@
     "search_placeholder": "පාරිභෝගික සොයන්න...",
     "header_id": "ID",
     "header_name": "Name",
-    "header_phone": "Phone"
+    "header_phone": "Phone",
+    "btn_select": "Select"
   },
   "customer_editor": {
     "title_edit": "පාරිභෝගිකයා සංස්කරණය",

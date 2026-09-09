@@ -243,7 +243,8 @@
     "search_placeholder": "வாடிக்கையாளர் தேடு...",
     "header_id": "ID",
     "header_name": "Name",
-    "header_phone": "Phone"
+    "header_phone": "Phone",
+    "btn_select": "Select"
   },
   "customer_editor": {
     "title_edit": "வாடிக்கையாளர் திருத்தம்",

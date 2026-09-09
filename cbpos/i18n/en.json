@@ -243,7 +243,8 @@
     "search_placeholder": "Search by Name or Phone...",
     "header_id": "ID",
     "header_name": "Name",
-    "header_phone": "Phone"
+    "header_phone": "Phone",
+    "btn_select": "Select"
   },
   "customer_editor": {
     "title_edit": "Customer Editor",

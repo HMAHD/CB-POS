@@ -6,7 +6,10 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem,
     QHeaderView,
     QDialogButtonBox,
+    QPushButton,
 )
+from PyQt6.QtGui import QShortcut, QKeySequence
+from PyQt6.QtCore import Qt
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.i18n import _t
 from cbpos.ui.widgets.table_helpers import configure_table_columns
@@ -57,9 +60,18 @@ class CustomerSelectionDialog(QDialog):
         layout.addWidget(self.table)
 
         # Buttons
+        self.btn_select = QPushButton(_t("customer_selection.btn_select"))
+        self.btn_select.setObjectName("BtnCustomerSelect")
+        self.btn_select.setProperty("class", "primary")
+        self.btn_select.clicked.connect(self.select_customer)
+
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
         buttons.rejected.connect(self.reject)
+        buttons.addButton(self.btn_select, QDialogButtonBox.ButtonRole.AcceptRole)
         layout.addWidget(buttons)
+
+        QShortcut(QKeySequence(Qt.Key.Key_Return), self).activated.connect(self.select_customer)
+        QShortcut(QKeySequence(Qt.Key.Key_Enter), self).activated.connect(self.select_customer)
 
     def load_customers(self):
         customers = self.customer_service.get_all_customers()

@@ -168,8 +168,8 @@ class CollapsibleSidebar(QFrame):
 
         Called by the owning view's ``retranslate_ui`` method.
         """
-        self.btn_pos.setText("   " + _t("management.sidebar_pos"))
-        self.btn_logout.setText("   " + _t("management.sidebar_logout"))
+        self.btn_pos.setText(_t("management.sidebar_pos"))
+        self.btn_logout.setText(_t("management.sidebar_logout"))
 
     # ------------------------------------------------------------------
     # Collapse / Expand
@@ -233,11 +233,16 @@ class CollapsibleSidebar(QFrame):
         self._apply_button_style(Qt.ToolButtonStyle.ToolButtonIconOnly)
 
     def _apply_button_style(self, style: Qt.ToolButtonStyle) -> None:
-        """Set the tool-button style on all buttons."""
-        self.btn_pos.setToolButtonStyle(style)
-        self.btn_logout.setToolButtonStyle(style)
-        for btn in self.nav_buttons:
+        """Set the tool-button style on all buttons.
+
+        Also refreshes each button's icon, since SidebarButton pads its
+        icon pixmap differently depending on whether it's showing text
+        beside the icon or collapsed to icon-only (#314).
+        """
+        buttons = [self.btn_pos, self.btn_logout] + self.nav_buttons
+        for btn in buttons:
             btn.setToolButtonStyle(style)
+            btn.update_icon()
 
     def _update_all_styles(self) -> None:
         """Refresh the ``collapsed`` QSS property on every button."""

@@ -2803,6 +2803,32 @@ QPushButton#CreditBackBtn:hover, QPushButton#PayableBackBtn:hover {
     color: #0B5ED7;
 }
 
+/* Payable date-range mismatch hint (#282) */
+QFrame#PayableRangeHint {
+    background-color: rgba(255, 193, 7, 0.12);
+    border: 1px solid #FFC107;
+    border-radius: 6px;
+}
+
+QLabel#PayableRangeHintLabel {
+    background-color: transparent;
+    color: #856404;
+    font-size: 12px;
+}
+
+QPushButton#PayableRangeHintBtn {
+    background-color: #FFC107;
+    color: #212529;
+    font-weight: bold;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+}
+
+QPushButton#PayableRangeHintBtn:hover {
+    background-color: #E0A800;
+}
+
 QFrame#CreditHeaderCard, QFrame#PayableHeaderCard {
     background-color: #F8F9FA;
     border: 1px solid #DEE2E6;

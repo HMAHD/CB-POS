@@ -579,6 +579,7 @@ class PurchaseView(QWidget):
         self.lbl_pay_from.setText(_t("purchase.from"))
         self.lbl_pay_to.setText(_t("purchase.to"))
         self.btn_pay_all.setText(_t("purchase.all"))
+        self.btn_payable_range_hint_show_all.setText(_t("purchase.all"))
 
         # Payable table headers
         self.payable_supplier_table.setHorizontalHeaderLabels(
@@ -942,6 +943,26 @@ class PurchaseView(QWidget):
         filter_layout.addStretch()
         page_layout.addWidget(filter_bar)
 
+        # Range-mismatch hint (#282): current_payable is an unfiltered
+        # running total, but the ledger table honors the selected date
+        # range -- a purchase outside that range can leave the visible
+        # closing balance out of sync with the header balance above, with
+        # nothing on screen explaining why. Shown only when they disagree.
+        self.payable_range_hint = QFrame()
+        self.payable_range_hint.setObjectName("PayableRangeHint")
+        hint_layout = QHBoxLayout(self.payable_range_hint)
+        hint_layout.setContentsMargins(10, 6, 10, 6)
+        self.lbl_payable_range_hint = QLabel()
+        self.lbl_payable_range_hint.setObjectName("PayableRangeHintLabel")
+        self.lbl_payable_range_hint.setWordWrap(True)
+        hint_layout.addWidget(self.lbl_payable_range_hint, 1)
+        self.btn_payable_range_hint_show_all = QPushButton()
+        self.btn_payable_range_hint_show_all.setObjectName("PayableRangeHintBtn")
+        self.btn_payable_range_hint_show_all.clicked.connect(self.show_all_payable_dates)
+        hint_layout.addWidget(self.btn_payable_range_hint_show_all)
+        self.payable_range_hint.setVisible(False)
+        page_layout.addWidget(self.payable_range_hint)
+
         # Ledger Table (full width)
         self.payable_ledger_table = QTableWidget()
         self.payable_ledger_table.setObjectName("PayableLedgerTable")
@@ -1149,6 +1170,26 @@ class PurchaseView(QWidget):
         self.lbl_total_purchases.setText(_t("purchase.purchases_label") + " " + format_currency(total_debit))
         self.lbl_total_payments.setText(_t("purchase.payments_label") + " " + format_currency(total_credit))
         self.lbl_closing.setText(_t("purchase.closing_label") + " " + format_currency(closing_balance))
+
+        self._update_payable_range_hint(closing_balance)
+
+    def _update_payable_range_hint(self, visible_closing_balance: Decimal) -> None:
+        """Warn when the filtered ledger doesn't account for the supplier's
+        full outstanding balance (#282)."""
+        if not self.selected_payable_supplier:
+            self.payable_range_hint.setVisible(False)
+            return
+
+        summary = SupplierPayableService.get_supplier_summary(self.selected_payable_supplier.id)
+        actual_balance = summary["current_payable"] if summary else Decimal("0.00")
+
+        if actual_balance != visible_closing_balance:
+            self.lbl_payable_range_hint.setText(
+                _t("purchase.payable_range_hint", balance=format_currency(actual_balance))
+            )
+            self.payable_range_hint.setVisible(True)
+        else:
+            self.payable_range_hint.setVisible(False)
 
     def make_payment(self) -> None:
         """Open supplier payment dialog."""

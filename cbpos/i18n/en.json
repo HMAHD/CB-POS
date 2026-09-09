@@ -752,6 +752,7 @@
     "purchases_label": "Purchases:",
     "payments_label": "Payments:",
     "closing_label": "Closing:",
+    "payable_range_hint": "This date range doesn't show the full balance ({balance}). Try expanding the range or click All.",
     "no_supplier_title": "No Supplier",
     "no_supplier_msg": "Please select a supplier first.",
     "no_payable_title": "No Payable",

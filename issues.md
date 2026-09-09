@@ -79,7 +79,7 @@ don't need re-litigating every time a new screen surfaces the same issue.
 | [UX-023](#ux-023-management-view-shows-a-completely-blank-screen-until-the-first-sidebar-click-confirmed-regression) | Management view shows a completely blank screen until the first sidebar click (confirmed regression) | Management (all tabs) | P1 | 🔴 Open | [#275](https://github.com/HMAHD/CB-POS/issues/275) |
 | [UX-024](#ux-024-management-sidebar-gets-permanently-stuck-collapsed-across-restarts-confirmed-root-cause) | Management sidebar gets permanently stuck collapsed across restarts (confirmed root cause) | Management, `CollapsibleSidebar` | P1 | 🔴 Open | [#276](https://github.com/HMAHD/CB-POS/issues/276) |
 | [UX-025](#ux-025-add-supplier-dialog-has-zero-dialog-specific-styling-no-objectname-no-size-no-qss-at-all) | Add Supplier dialog has zero dialog-specific styling — no objectName, no size, no QSS at all | Suppliers tab | P1 | 🔴 Open | [#277](https://github.com/HMAHD/CB-POS/issues/277) |
-| [UX-026](#ux-026-new-grn-add-product-search-is-a-genuinely-broken-feature-not-just-unpolished) | New GRN "Add Product" search is a genuinely broken feature, not just unpolished | New GRN tab | P0 | 🔴 Open | [#278](https://github.com/HMAHD/CB-POS/issues/278) |
+| [UX-026](#ux-026-new-grn-add-product-search-is-a-genuinely-broken-feature-not-just-unpolished) | New GRN "Add Product" search is a genuinely broken feature, not just unpolished | New GRN tab | P0 | 🟢 Fixed | [#278](https://github.com/HMAHD/CB-POS/issues/278) |
 | [UX-027](#ux-027-new-grn-header-row-supplierrefdate-has-no-width-balancing-date-field-looks-tiny) | New GRN header row (Supplier/Ref#/Date) has no width balancing — Date field looks tiny | New GRN tab | P2 | 🔴 Open | [#279](https://github.com/HMAHD/CB-POS/issues/279) |
 | [UX-028](#ux-028-supplier-selection-combos-in-purchasing-are-plain-non-searchable-comboboxes) | Supplier-selection combos in Purchasing are plain, non-searchable comboboxes | New GRN, GRN History tabs | P1 | 🔴 Open | [#280](https://github.com/HMAHD/CB-POS/issues/280) |
 | [UX-029](#ux-029-grn-history-status-filter-shows-all-suppliers-instead-of-all-statuses) | GRN History "Status" filter shows "All Suppliers" instead of "All Statuses" | GRN History tab | P2 | 🔴 Open | [#281](https://github.com/HMAHD/CB-POS/issues/281) |
@@ -112,10 +112,10 @@ don't need re-litigating every time a new screen surfaces the same issue.
 | [UX-056](#ux-056-proforma-dialogs-line-items-table-has-no-empty-state-message) | Proforma dialog's line-items table has no empty-state message | Proforma/Quotation dialog | P2 | 🔴 Open | [#259](https://github.com/HMAHD/CB-POS/issues/259) |
 | [UX-057](#ux-057-users-table-shows-the-same-id-number-twice) | Users table shows the same ID number twice | Users | P3 | 🔴 Open | [#295](https://github.com/HMAHD/CB-POS/issues/295) |
 | [UX-058](#ux-058-no-ui-exists-to-createrenamedelete-a-role-even-though-the-backend-already-fully-supports-it) | No UI exists to create/rename/delete a role, even though the backend already fully supports it | Users | P1 | 🔴 Open | [#296](https://github.com/HMAHD/CB-POS/issues/296) |
-| [UX-059](#ux-059-manage-permissions-save-changes-calls-a-method-that-doesnt-exist-every-save-will-crash) | "Manage Permissions" Save Changes calls a method that doesn't exist — every save will crash | Users, Manage Permissions dialog | P0 | 🔴 Open | [#297](https://github.com/HMAHD/CB-POS/issues/297) |
+| [UX-059](#ux-059-manage-permissions-save-changes-calls-a-method-that-doesnt-exist-every-save-will-crash) | "Manage Permissions" Save Changes calls a method that doesn't exist — every save will crash | Users, Manage Permissions dialog | P0 | 🟢 Fixed | [#297](https://github.com/HMAHD/CB-POS/issues/297) |
 | [UX-060](#ux-060-permission-manager-isnt-missing-permissions-its-hiding-most-of-them-below-the-fold) | Permission Manager isn't missing permissions — it's hiding most of them below the fold | Users, Manage Permissions dialog | P2 | 🔴 Open | [#298](https://github.com/HMAHD/CB-POS/issues/298) |
 | [UX-061](#ux-061-activity-log-details-column-is-forced-to-the-same-width-as-every-other-column) | Activity Log DETAILS column is forced to the same width as every other column | Users, Activity Log | P1 | 🔴 Open | [#359](https://github.com/HMAHD/CB-POS/issues/359) |
-| [UX-062](#ux-062-the-apps-one-central-audit-logging-method-is-dead-code-and-would-crash-if-called-and-a-live-caller-has-the-same-bug) | The app's one central audit-logging method is dead code and would crash if called — and a live caller has the same bug | App-wide (audit logging) | P0 | 🔴 Open | [#299](https://github.com/HMAHD/CB-POS/issues/299) |
+| [UX-062](#ux-062-the-apps-one-central-audit-logging-method-is-dead-code-and-would-crash-if-called-and-a-live-caller-has-the-same-bug) | The app's one central audit-logging method is dead code and would crash if called — and a live caller has the same bug | App-wide (audit logging) | P0 | 🟢 Fixed | [#299](https://github.com/HMAHD/CB-POS/issues/299) |
 | [UX-063](#ux-063-void-refund-permission-changes-purchasing-and-credit-adjustments-have-zero-audit-trail) | Void, Refund, Permission changes, Purchasing, and Credit adjustments have zero audit trail | App-wide (audit logging) | P1 | 🔴 Open | [#300](https://github.com/HMAHD/CB-POS/issues/300) |
 | [UX-064](#ux-064-activity-log-has-no-color-or-icon-coding-by-event-type) | Activity Log has no color or icon coding by event type | Users, Activity Log | P2 | 🔴 Open | [#301](https://github.com/HMAHD/CB-POS/issues/301) |
 | [UX-065](#ux-065-activity-log-is-hardcoded-to-the-10-most-recent-rows-with-no-filter-ui) | Activity Log is hardcoded to the 10 most recent rows, with no filter UI | Users, Activity Log | P2 | 🔴 Open | [#302](https://github.com/HMAHD/CB-POS/issues/302) |
@@ -125,7 +125,7 @@ don't need re-litigating every time a new screen surfaces the same issue.
 | [UX-069](#ux-069-new-price-list-dialogs-date-fields-work-but-are-unstyled-app-wide-gap) | New Price List dialog's date fields work but are unstyled (app-wide gap) | Price Lists | P2 | 🔴 Open | [#366](https://github.com/HMAHD/CB-POS/issues/366) |
 | [UX-070](#ux-070-status-column-shows-the-same-static-list-level-value-on-every-product-row) | STATUS column shows the same static, list-level value on every product row | Price Lists | P2 | 🔴 Open | [#305](https://github.com/HMAHD/CB-POS/issues/305) |
 | [UX-071](#ux-071-price-list-sidebar-is-cramped-plain-text-with-no-visual-hierarchy) | Price List sidebar is cramped, plain text with no visual hierarchy | Price Lists | P2 | 🔴 Open | [#306](https://github.com/HMAHD/CB-POS/issues/306) |
-| [UX-072](#ux-072-promotions-arent-wired-into-checkout-at-all-the-feature-currently-affects-zero-real-sales) | Promotions aren't wired into checkout at all — the feature currently affects zero real sales | Promotions & Campaigns | P0 | 🔴 Open | [#307](https://github.com/HMAHD/CB-POS/issues/307) |
+| [UX-072](#ux-072-promotions-arent-wired-into-checkout-at-all-the-feature-currently-affects-zero-real-sales) | Promotions aren't wired into checkout at all — CORRECTED: already worked, now proven by tests | Promotions & Campaigns | P0 | 🟢 Verified | [#307](https://github.com/HMAHD/CB-POS/issues/307) |
 | [UX-073](#ux-073-promotions-have-zero-crud-beyond-create-no-edit-delete-or-deactivate-exists-anywhere) | Promotions have zero CRUD beyond Create — no edit, delete, or deactivate exists anywhere | Promotions & Campaigns | P1 | 🔴 Open | [#308](https://github.com/HMAHD/CB-POS/issues/308) |
 | [UX-074](#ux-074-status-is-a-stored-flag-set-once-at-creation-and-never-re-evaluated-every-promotion-shows-active-forever) | STATUS is a stored flag set once at creation and never re-evaluated — every promotion shows "Active" forever | Promotions & Campaigns | P1 | 🔴 Open | [#309](https://github.com/HMAHD/CB-POS/issues/309) |
 | [UX-075](#ux-075-promotions-name-column-truncates-the-same-global-stretch-pattern-found-repeatedly-elsewhere) | Promotions NAME column truncates — the same global-stretch pattern found repeatedly elsewhere | Promotions & Campaigns | P1 | 🔴 Open | [#360](https://github.com/HMAHD/CB-POS/issues/360) |
@@ -1255,7 +1255,7 @@ UX-018 rather than adding a 4th inconsistent numeric-input convention.
 ### UX-026: New GRN "Add Product" search is a genuinely broken feature, not just unpolished
 
 **Screen:** Purchasing → New GRN
-**Severity:** P0 · **Status:** 🔴 Open
+**Severity:** P0 · **Status:** 🟢 Fixed — regression tests added, verified against the real completer and cache resolution
 **GitHub:** [#278](https://github.com/HMAHD/CB-POS/issues/278)
 
 **What you flagged:** doesn't show products when typing.
@@ -2561,7 +2561,7 @@ block deletion), which is worth deciding as part of this fix.
 ### UX-059: "Manage Permissions" Save Changes calls a method that doesn't exist — every save will crash
 
 **Screen:** Users → "Manage Permissions" dialog
-**Severity:** P0 · **Status:** 🔴 Open
+**Severity:** P0 · **Status:** 🟢 Fixed — regression tests added, watched fail against the original code before fixing
 **GitHub:** [#297](https://github.com/HMAHD/CB-POS/issues/297)
 
 **Not from your notes — found while investigating whether the Permission
@@ -2700,7 +2700,7 @@ overload: `setSectionResizeMode(column_index, mode)`).
 ### UX-062: The app's one central audit-logging method is dead code and would crash if called — and a live caller has the same bug
 
 **Screen:** App-wide (audit logging infrastructure)
-**Severity:** P0 · **Status:** 🔴 Open
+**Severity:** P0 · **Status:** 🟢 Fixed — reproduced the real IntegrityError with a test before fixing
 **GitHub:** [#299](https://github.com/HMAHD/CB-POS/issues/299)
 
 **Not from your notes — found while checking your suspicion that
@@ -3058,8 +3058,8 @@ scanning once there are more than a handful.
 ### UX-072: Promotions aren't wired into checkout at all — the feature currently affects zero real sales
 
 **Screen:** Promotions & Campaigns
-**Severity:** P0 · **Status:** 🔴 Open
-**GitHub:** [#307](https://github.com/HMAHD/CB-POS/issues/307)
+**Severity:** P0 · **Status:** 🟢 Verified working — original finding was wrong, see correction below
+**GitHub:** [#307](https://github.com/HMAHD/CB-POS/issues/307) (closed)
 
 **Not from your notes directly, but it's the finding that reframes
 everything else you flagged here.** You said "promotions and campaigns
@@ -3092,6 +3092,42 @@ quick patch — wire promotion lookup into the sale/cart calculation
 stored-flag bug is also fixed) so an eligible promotion actually applies
 its discount at checkout, matching the tax/discount calculation
 conventions already used for manual discounts in `sales_view.py`.
+
+**Correction (2026-09-09) — this finding was wrong, and it's worth
+recording exactly how, since it's a good lesson for this whole catalog:**
+the original investigation grepped for "promo"/"discount" tied to the
+`Promotion` model across `transaction_service.py` and broadly under
+`cbpos/` — and missed `pricing_service.py` entirely. It exists,
+`PricingService.calculate_price()` already implements complete promotion
+matching (active window, day-of-week, PERCENTAGE/FIXED_AMOUNT, picks the
+best discount for the customer), and `CartService.add_item()` — the real
+path every product-add in `sales_view.py` goes through — already calls
+it for every item. **This has been true in the code all along.** The
+actual gap was that this path had zero test coverage anywhere
+(`test_cart_service.py` mocks `PricingService` out entirely, "no
+promotions"), so nothing had ever verified it end to end — including this
+catalog's own investigation, which read code rather than running it.
+
+7 regression tests were added
+(`tests/unit/test_pricing_service_promotions.py`) against the real,
+unmocked service and a real database, confirming percentage and
+fixed-amount promotions both discount correctly, inactive/wrong-day
+promotions correctly don't apply, the best of multiple active promotions
+is chosen, price never goes negative, and the discounted price flows all
+the way into a real cart line. **No production code changed** — the
+"fix" was proving the feature already works, not building it.
+
+Two things worth still tracking, both filed separately rather than
+folded into this correction:
+- `PromotionService.get_active_promotions()` is genuinely dead code (zero
+  callers) — `PricingService` has its own separate, undocumented inline
+  duplicate of that same query. Worth consolidating whenever UX-074 (the
+  STATUS-display bug) is fixed.
+- Writing these tests surfaced a real, general test-isolation bug (rows
+  created in one test can leak into unrelated tests in other files,
+  regardless of what they're about) — filed as its own issue
+  ([#385](https://github.com/HMAHD/CB-POS/issues/385)), out of scope
+  here.
 
 ---
 

@@ -24,11 +24,10 @@ from PyQt6.QtWidgets import (
     QStackedWidget,
     QFrame,
     QInputDialog,
-    QSpinBox,
     QSizePolicy,
 )
 from PyQt6.QtCore import Qt, QAbstractTableModel, QDate, QStringListModel
-from PyQt6.QtGui import QStandardItemModel, QStandardItem, QColor, QShortcut, QKeySequence
+from PyQt6.QtGui import QStandardItemModel, QStandardItem, QColor, QShortcut, QKeySequence, QIntValidator
 
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.services.purchase_service import PurchaseService
@@ -243,16 +242,29 @@ class SupplierDialog(QDialog):
         self.retranslate_ui()
 
     def init_ui(self):
-        self.form_layout = QFormLayout(self)
+        self.setObjectName("SupplierDialog")
+        self.setMinimumSize(420, 400)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
+
+        self.form_layout = QFormLayout()
+        self.form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        self.form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        self.form_layout.setSpacing(10)
 
         self.company_input = QLineEdit()
         self.contact_input = QLineEdit()
         self.phone_input = QLineEdit()
         self.tax_input = QLineEdit()
         self.details_input = QLineEdit()
-        self.payment_terms_input = QSpinBox()
-        self.payment_terms_input.setRange(0, 365)
-        self.payment_terms_input.setSuffix(" " + _t("purchase.days_suffix"))
+
+        # QLineEdit + validator instead of QSpinBox -- native +/- steppers
+        # break under QSS (see product_editor.py's Stock group comment).
+        self.payment_terms_input = QLineEdit()
+        self.payment_terms_input.setPlaceholderText("0")
+        self.payment_terms_input.setValidator(QIntValidator(0, 365, self))
 
         if self.supplier:
             self.company_input.setText(self.supplier.company_name)
@@ -260,7 +272,7 @@ class SupplierDialog(QDialog):
             self.phone_input.setText(self.supplier.phone or "")
             self.tax_input.setText(self.supplier.tax_number or "")
             self.details_input.setText(self.supplier.contact_details or "")
-            self.payment_terms_input.setValue(getattr(self.supplier, "payment_terms", 0))
+            self.payment_terms_input.setText(str(getattr(self.supplier, "payment_terms", 0)))
 
         self.lbl_company = QLabel()
         self.lbl_contact = QLabel()
@@ -276,15 +288,21 @@ class SupplierDialog(QDialog):
         self.form_layout.addRow(self.lbl_terms, self.payment_terms_input)
         self.form_layout.addRow(self.lbl_details, self.details_input)
 
+        layout.addLayout(self.form_layout)
+        layout.addStretch()
+
         btn_box = QHBoxLayout()
+        btn_box.addStretch()
         self.save_btn = QPushButton()
+        self.save_btn.setObjectName("BtnSave")
         self.save_btn.clicked.connect(self.accept)
         self.cancel_btn = QPushButton()
+        self.cancel_btn.setObjectName("BtnCancel")
         self.cancel_btn.clicked.connect(self.reject)
 
         btn_box.addWidget(self.save_btn)
         btn_box.addWidget(self.cancel_btn)
-        self.form_layout.addRow(btn_box)
+        layout.addLayout(btn_box)
 
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
@@ -308,8 +326,19 @@ class SupplierDialog(QDialog):
             "phone": self.phone_input.text(),
             "tax_number": self.tax_input.text(),
             "contact_details": self.details_input.text(),
-            "payment_terms": self.payment_terms_input.value(),
+            "payment_terms": self._parse_payment_terms(self.payment_terms_input.text()),
         }
+
+    @staticmethod
+    def _parse_payment_terms(text: str) -> int:
+        """Safely parse the Payment Terms QLineEdit value to int."""
+        cleaned = text.strip()
+        if not cleaned:
+            return 0
+        try:
+            return int(cleaned)
+        except ValueError:
+            return 0
 
 
 class PurchaseView(QWidget):

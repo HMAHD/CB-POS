@@ -2368,6 +2368,16 @@ QDialog#CsvImportDialog QLabel {
     color: #212529;
 }
 
+/* ── Add/Edit Supplier Dialog ── */
+QDialog#SupplierDialog {
+    background-color: #F8F9FA;
+}
+
+QDialog#SupplierDialog QLabel {
+    background: transparent;
+    color: #212529;
+}
+
 /* ── Toggle Hint — compact inline description below checkboxes ── */
 /* Reusable: set objectName("ToggleHint") on any QLabel used as a toggle hint */
 QLabel#ToggleHint {

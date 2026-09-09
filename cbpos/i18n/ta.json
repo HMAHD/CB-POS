@@ -683,7 +683,7 @@
     "supplier_dialog_contact": "Contact Person:",
     "supplier_dialog_phone": "Phone:",
     "supplier_dialog_tax": "Tax Number:",
-    "supplier_dialog_terms": "Payment Terms:",
+    "supplier_dialog_terms": "Payment Terms (days):",
     "supplier_dialog_details": "Details:",
     "days_suffix": "days",
     "grn_detail_title": "GRN Details",

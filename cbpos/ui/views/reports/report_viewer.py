@@ -223,8 +223,16 @@ class ReportViewer(QWidget):
         self.table_view.setObjectName("ReportDataView")
         self.table_model = PandasModel()
         self.table_view.setModel(self.table_model)
-        self.table_view.horizontalHeader().setStretchLastSection(True)
-        self.table_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        # Report columns vary per report type (different reports have
+        # different columns entirely), so there's no fixed per-column map to
+        # apply -- but the previous combination of Interactive (fixed once,
+        # from often-empty initial content) + stretchLastSection (forcing
+        # whichever column is last to bloat regardless of its content) meant
+        # every report's "detail" column looked bare while a short column
+        # like TYPE or STATUS absorbed all the extra width. ResizeToContents
+        # sizes every column to its real, current content instead.
+        self.table_view.horizontalHeader().setStretchLastSection(False)
+        self.table_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.table_view.setAlternatingRowColors(True)
         self.table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         self.table_view.verticalHeader().setVisible(False)

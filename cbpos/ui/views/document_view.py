@@ -30,6 +30,7 @@ from cbpos.core.utils.formatters import format_currency
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.core.services.tax_service import TaxService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -147,9 +148,18 @@ class DocumentBrowserView(QWidget):
         self.doc_table = QTableWidget()
         self.doc_table.setObjectName("DocTable")
         self.doc_table.setColumnCount(7)
-        self.doc_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.doc_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.doc_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.doc_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,  # Date
+                1: QHeaderView.ResizeMode.ResizeToContents,  # Doc #
+                2: QHeaderView.ResizeMode.ResizeToContents,  # Type
+                3: QHeaderView.ResizeMode.Stretch,  # Customer/Supplier - needs the room
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Total
+                5: QHeaderView.ResizeMode.ResizeToContents,  # Status
+                6: QHeaderView.ResizeMode.ResizeToContents,  # User
+            },
+        )
         self.doc_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.doc_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.doc_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)

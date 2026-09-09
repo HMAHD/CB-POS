@@ -30,6 +30,7 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.constants.status import DocumentStatus, Precision
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +201,18 @@ class StockCountReportDialog(QDialog):
                 _t("stock_take.col_value"),
             ]
         )
-        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,  # Barcode
+                1: QHeaderView.ResizeMode.Stretch,  # Product - needs the room
+                2: QHeaderView.ResizeMode.ResizeToContents,  # Expected
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Counted
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Variance
+                5: QHeaderView.ResizeMode.ResizeToContents,  # Value
+            },
+            minimum_section_size=70,
+        )
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setAlternatingRowColors(True)
@@ -316,12 +328,21 @@ class StockTakeView(QWidget):
         self.item_table.setModel(self.item_model)
         self.item_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.item_table.setAlternatingRowColors(True)
-        self.item_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.item_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.item_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.item_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.item_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        self.item_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        # minimum_section_size floors COUNTED (col 3) so ResizeToContents --
+        # computed while every cell is still empty at load time -- can't
+        # collapse the column its own live-typed editor then has to render in.
+        configure_table_columns(
+            self.item_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,  # Barcode
+                1: QHeaderView.ResizeMode.Stretch,  # Product - needs the room
+                2: QHeaderView.ResizeMode.ResizeToContents,  # Expected
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Counted
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Variance
+                5: QHeaderView.ResizeMode.ResizeToContents,  # Value
+            },
+            minimum_section_size=70,
+        )
         layout.addWidget(self.item_table, 1)
 
         # Stats bar
@@ -419,12 +440,18 @@ class StockTakeView(QWidget):
                 _t("common.status"),
             ]
         )
-        self.history_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.history_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.history_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.history_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.history_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        self.history_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        configure_table_columns(
+            self.history_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,  # STK #
+                1: QHeaderView.ResizeMode.ResizeToContents,  # Date
+                2: QHeaderView.ResizeMode.Stretch,  # User - needs the room
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Items
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Variance Total
+                5: QHeaderView.ResizeMode.ResizeToContents,  # Status
+            },
+            minimum_section_size=70,
+        )
         self.history_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.history_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.history_table.setAlternatingRowColors(True)

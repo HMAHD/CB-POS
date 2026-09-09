@@ -16,6 +16,7 @@ from cbpos.core.services.import_service import ImportService
 from cbpos.ui.dialogs.product_editor import ProductEditor
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 
 class InventoryModel(QAbstractTableModel):
@@ -133,7 +134,17 @@ class InventoryView(QWidget):
         self.table.setModel(self.model)
         self.table.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         self.table.setAlternatingRowColors(True)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,  # Barcode
+                1: QHeaderView.ResizeMode.Stretch,  # Name - needs the room
+                2: QHeaderView.ResizeMode.ResizeToContents,  # Category
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Price
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Stock
+                5: QHeaderView.ResizeMode.ResizeToContents,  # Unit
+            },
+        )
         self.table.doubleClicked.connect(self.open_edit_dialog)
 
         # Context Menu

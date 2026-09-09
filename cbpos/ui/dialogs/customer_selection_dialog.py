@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
 )
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.i18n import _t
+from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 
 class CustomerSelectionDialog(QDialog):
@@ -42,7 +43,14 @@ class CustomerSelectionDialog(QDialog):
                 _t("customer_selection.header_phone"),
             ]
         )
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,  # ID
+                1: QHeaderView.ResizeMode.Stretch,  # Name - needs the room
+                2: QHeaderView.ResizeMode.ResizeToContents,  # Phone
+            },
+        )
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.doubleClicked.connect(self.select_customer)

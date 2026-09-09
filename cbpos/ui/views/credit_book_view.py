@@ -26,6 +26,7 @@ from cbpos.core.services.auth_service import AuthService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.ui.dialogs.customer_editor import CustomerEditor
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -97,8 +98,16 @@ class CreditBookView(QWidget):
         self.customer_table = QTableWidget()
         self.customer_table.setObjectName("CreditCustomerTable")
         self.customer_table.setColumnCount(5)
-        self.customer_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.customer_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.customer_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,  # ID (hidden)
+                1: QHeaderView.ResizeMode.Stretch,  # Name - needs the room
+                2: QHeaderView.ResizeMode.ResizeToContents,  # Phone
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Outstanding Debt
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Credit Limit
+            },
+        )
         self.customer_table.setColumnHidden(0, True)
         self.customer_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.customer_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)

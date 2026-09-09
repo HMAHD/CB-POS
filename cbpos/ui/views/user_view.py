@@ -19,6 +19,7 @@ from cbpos.core.services.user_service import UserService
 from cbpos.ui.dialogs.permission_dialog import PermissionDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 
 class UserDialog(QDialog):
@@ -175,7 +176,16 @@ class UserView(QWidget):
 
         self.log_table = QTableWidget()
         self.log_table.setColumnCount(5)
-        self.log_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.log_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,  # Time
+                1: QHeaderView.ResizeMode.ResizeToContents,  # User
+                2: QHeaderView.ResizeMode.ResizeToContents,  # Event
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Terminal
+                4: QHeaderView.ResizeMode.Stretch,  # Details - needs the room
+            },
+        )
         self.log_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.log_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 

@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import QDateTime
 from cbpos.core.services.promotion_service import PromotionService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 
 class PromotionView(QWidget):
@@ -53,7 +54,17 @@ class PromotionView(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,  # Name - needs the room
+                1: QHeaderView.ResizeMode.ResizeToContents,  # Type
+                2: QHeaderView.ResizeMode.ResizeToContents,  # Value
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Start
+                4: QHeaderView.ResizeMode.ResizeToContents,  # End
+                5: QHeaderView.ResizeMode.ResizeToContents,  # Status
+            },
+        )
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table)

@@ -27,7 +27,7 @@ from PyQt6.QtWidgets import (
     QSpinBox,
     QSizePolicy,
 )
-from PyQt6.QtCore import Qt, QAbstractTableModel, QDate
+from PyQt6.QtCore import Qt, QAbstractTableModel, QDate, QStringListModel
 from PyQt6.QtGui import QStandardItemModel, QStandardItem, QColor
 
 from cbpos.core.services.supplier_service import SupplierService
@@ -320,6 +320,7 @@ class PurchaseView(QWidget):
         register_language_callback(self.retranslate_ui)
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
         self.refresh_suppliers()
+        self.load_products_for_completer()
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -396,8 +397,10 @@ class PurchaseView(QWidget):
         self.product_search.returnPressed.connect(self.add_product_to_grid)
 
         # Completer
+        self.products_cache = {}
         self.completer = QCompleter()
         self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.product_search.setCompleter(self.completer)
 
         self.lbl_add_product = QLabel()
@@ -630,18 +633,28 @@ class PurchaseView(QWidget):
             SupplierService.create_supplier(**data)
             self.refresh_suppliers()
 
+    def load_products_for_completer(self):
+        """Populate the Add Product completer with real product names/barcodes."""
+        products = ProductService().get_all_products()
+        names = []
+        self.products_cache = {}
+        for p in products:
+            key = f"{p.name_en} [{p.barcode}]"
+            names.append(key)
+            self.products_cache[key] = p
+            self.products_cache[p.barcode] = p
+
+        self.completer.setModel(QStringListModel(names))
+
     def add_product_to_grid(self):
-        query = self.product_search.text()
+        query = self.product_search.text().strip()
         if not query:
             return
 
-        products = ProductService.search(query)
-        if not products:
+        product = self.products_cache.get(query)
+        if not product:
             QMessageBox.warning(self, _t("purchase.not_found_title"), _t("purchase.product_not_found"))
             return
-
-        # For simplicity, pick first match or if exact match
-        product = products[0]
 
         # Add to grid
         qty = Decimal("1.000")

@@ -2428,7 +2428,7 @@ QTableWidget#LabelQueueTable::item {
 
 /* ── Label Preview Dialog ── */
 QDialog#LabelPreviewDialog {
-    background-color: #001F3F;
+    background-color: #1E1E1E;
 }
 
 QDialog#LabelPreviewDialog QLabel {

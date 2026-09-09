@@ -28,7 +28,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
 )
 from PyQt6.QtCore import Qt, QAbstractTableModel, QDate, QStringListModel
-from PyQt6.QtGui import QStandardItemModel, QStandardItem, QColor
+from PyQt6.QtGui import QStandardItemModel, QStandardItem, QColor, QShortcut, QKeySequence
 
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.services.purchase_service import PurchaseService
@@ -544,6 +544,7 @@ class PurchaseView(QWidget):
         self.payables_title_label.setText(_t("purchase.payables_title"))
         self.payable_search.setPlaceholderText(_t("purchase.payable_search_placeholder"))
         self.btn_payable_back.setText(_t("purchase.payables_back"))
+        self.btn_open_payable_supplier.setText(_t("purchase.btn_open_payable_supplier"))
         self.btn_make_payment.setText(_t("purchase.btn_make_payment"))
         self.btn_adjust_payable.setText(_t("purchase.btn_adjust_balance"))
         self.lbl_pay_from.setText(_t("purchase.from"))
@@ -794,6 +795,21 @@ class PurchaseView(QWidget):
         self.payable_supplier_table.doubleClicked.connect(self._on_payable_supplier_double_click)
         page_layout.addWidget(self.payable_supplier_table, 1)
 
+        open_row = QHBoxLayout()
+        open_row.addStretch()
+        self.btn_open_payable_supplier = QPushButton()
+        self.btn_open_payable_supplier.setObjectName("BtnOpenPayableSupplier")
+        self.btn_open_payable_supplier.clicked.connect(self._open_selected_payable_supplier)
+        open_row.addWidget(self.btn_open_payable_supplier)
+        page_layout.addLayout(open_row)
+
+        QShortcut(QKeySequence(Qt.Key.Key_Return), self.payable_supplier_table).activated.connect(
+            self._open_selected_payable_supplier
+        )
+        QShortcut(QKeySequence(Qt.Key.Key_Enter), self.payable_supplier_table).activated.connect(
+            self._open_selected_payable_supplier
+        )
+
         self.payable_stack.addWidget(page)
 
     def _build_payable_detail_page(self) -> None:
@@ -981,7 +997,16 @@ class PurchaseView(QWidget):
 
     def _on_payable_supplier_double_click(self, index) -> None:
         """Drill into the selected supplier's payable ledger."""
-        row = index.row()
+        self._open_payable_supplier_row(index.row())
+
+    def _open_selected_payable_supplier(self) -> None:
+        """Drill into the currently selected supplier's payable ledger (button/Enter key)."""
+        self._open_payable_supplier_row(self.payable_supplier_table.currentRow())
+
+    def _open_payable_supplier_row(self, row: int) -> None:
+        """Drill into the payable ledger for the given table row."""
+        if row < 0:
+            return
         id_item = self.payable_supplier_table.item(row, 0)
         if not id_item:
             return

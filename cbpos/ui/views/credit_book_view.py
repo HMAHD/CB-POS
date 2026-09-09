@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
 )
 from PyQt6.QtCore import Qt, QDate
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QColor, QShortcut, QKeySequence
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.auth_service import AuthService
@@ -116,6 +116,17 @@ class CreditBookView(QWidget):
         self.customer_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.customer_table.doubleClicked.connect(self._on_customer_double_click)
         page_layout.addWidget(self.customer_table, 1)
+
+        open_row = QHBoxLayout()
+        open_row.addStretch()
+        self.btn_open_customer_ledger = QPushButton()
+        self.btn_open_customer_ledger.setObjectName("BtnOpenCustomerLedger")
+        self.btn_open_customer_ledger.clicked.connect(self._open_selected_customer)
+        open_row.addWidget(self.btn_open_customer_ledger)
+        page_layout.addLayout(open_row)
+
+        QShortcut(QKeySequence(Qt.Key.Key_Return), self.customer_table).activated.connect(self._open_selected_customer)
+        QShortcut(QKeySequence(Qt.Key.Key_Enter), self.customer_table).activated.connect(self._open_selected_customer)
 
         # Summary footer
         footer = QFrame()
@@ -297,6 +308,7 @@ class CreditBookView(QWidget):
         """Update all translatable strings."""
         self.title_label.setText(_t("credit_book.title"))
         self.btn_add_customer.setText(_t("credit_book.btn_add_customer"))
+        self.btn_open_customer_ledger.setText(_t("credit_book.btn_open_customer_ledger"))
         self.search_input.setPlaceholderText(_t("credit_book.search_placeholder"))
         self.customer_table.setHorizontalHeaderLabels(
             [
@@ -332,7 +344,16 @@ class CreditBookView(QWidget):
 
     def _on_customer_double_click(self, index) -> None:
         """Drill into the selected customer's ledger."""
-        row = index.row()
+        self._open_customer_row(index.row())
+
+    def _open_selected_customer(self) -> None:
+        """Drill into the currently selected customer's ledger (button/Enter key)."""
+        self._open_customer_row(self.customer_table.currentRow())
+
+    def _open_customer_row(self, row: int) -> None:
+        """Drill into the ledger for the given table row."""
+        if row < 0:
+            return
         customer_id_item = self.customer_table.item(row, 0)
         if not customer_id_item:
             return

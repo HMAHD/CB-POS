@@ -9,7 +9,6 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QPushButton,
     QLabel,
-    QInputDialog,
     QMessageBox,
     QSplitter,
     QDateEdit,
@@ -23,9 +22,10 @@ from PyQt6.QtWidgets import (
     QStackedWidget,
 )
 from PyQt6.QtCore import Qt, QDate
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QColor, QShortcut, QKeySequence
 from cbpos.core.services.price_list_service import PriceListService
 from cbpos.core.services.product_service import ProductService
+from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
@@ -169,6 +169,17 @@ class PriceListView(QWidget):
         self.table.doubleClicked.connect(self.edit_item_price)
         data_layout.addWidget(self.table)
 
+        set_price_row = QHBoxLayout()
+        set_price_row.addStretch()
+        self.btn_set_item_price = QPushButton()
+        self.btn_set_item_price.setObjectName("BtnSetItemPrice")
+        self.btn_set_item_price.clicked.connect(self.edit_selected_item_price)
+        set_price_row.addWidget(self.btn_set_item_price)
+        data_layout.addLayout(set_price_row)
+
+        QShortcut(QKeySequence(Qt.Key.Key_Return), self.table).activated.connect(self.edit_selected_item_price)
+        QShortcut(QKeySequence(Qt.Key.Key_Enter), self.table).activated.connect(self.edit_selected_item_price)
+
         # Footer
         footer = QFrame()
         footer.setObjectName("PriceListFooter")
@@ -215,6 +226,7 @@ class PriceListView(QWidget):
             ]
         )
         self.hint_label.setText(_t("pricelist.footer_hint"))
+        self.btn_set_item_price.setText(_t("pricelist.btn_set_item_price"))
 
     # ------------------------------------------------------------------
     # Status helpers
@@ -365,29 +377,28 @@ class PriceListView(QWidget):
                 QMessageBox.critical(self, _t("common.error"), str(e))
 
     def edit_item_price(self, index):
-        if not self.current_list:
+        self._edit_item_price_row(index.row())
+
+    def edit_selected_item_price(self) -> None:
+        """Open the price editor for the currently selected row (button/Enter key)."""
+        self._edit_item_price_row(self.table.currentRow())
+
+    def _edit_item_price_row(self, row: int) -> None:
+        if not self.current_list or row < 0:
             return
 
-        row = index.row()
         product_id = int(self.table.item(row, 0).text())
         product_name = self.table.item(row, 1).text()
         base_price = Decimal(self.table.item(row, 2).text())
 
         current_val_str = self.table.item(row, 3).text()
-        current_val = float(current_val_str) if current_val_str != "-" else float(base_price)
+        current_price = Decimal(current_val_str) if current_val_str != "-" else base_price
 
-        new_price, ok = QInputDialog.getDouble(
-            self,
-            _t("pricelist.set_price_title"),
-            _t("pricelist.set_price_prompt", product_name=product_name),
-            value=current_val,
-            min=0.01,
-            decimals=2,
-        )
-
-        if ok:
+        dialog = SetItemPriceDialog(product_name, current_price, parent=self)
+        if dialog.exec():
+            new_price = dialog.get_price()
             try:
-                self.price_list_service.set_item_price(self.current_list.id, product_id, Decimal(str(new_price)))
+                self.price_list_service.set_item_price(self.current_list.id, product_id, new_price)
                 self.load_items()
             except Exception as e:
                 QMessageBox.critical(self, _t("common.error"), str(e))

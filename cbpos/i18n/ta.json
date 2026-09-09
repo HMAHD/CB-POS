@@ -618,6 +618,7 @@
     "sales_label": "Sales:",
     "payments_label": "Payments:",
     "closing_label": "Closing:",
+    "credit_range_hint": "This date range doesn't show the full balance ({balance}). Try expanding the range or click All.",
     "no_customers_found": "No credit customers found",
     "customer_count": "{count} customer(s)",
     "total_outstanding": "மொத்த நிலுவை: ரூ. {amount}",

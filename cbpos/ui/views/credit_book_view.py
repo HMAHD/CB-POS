@@ -264,6 +264,27 @@ class CreditBookView(QWidget):
         filter_layout.addStretch()
         page_layout.addWidget(filter_bar)
 
+        # Range-mismatch hint (#284, same pattern as Payables' #282):
+        # current_debt is an unfiltered running total, but the ledger
+        # table honors the selected date range -- a purchase/payment
+        # outside that range can leave the visible closing balance out of
+        # sync with the header balance above, with nothing on screen
+        # explaining why. Shown only when they actually disagree.
+        self.credit_range_hint = QFrame()
+        self.credit_range_hint.setObjectName("CreditRangeHint")
+        hint_layout = QHBoxLayout(self.credit_range_hint)
+        hint_layout.setContentsMargins(10, 6, 10, 6)
+        self.lbl_credit_range_hint = QLabel()
+        self.lbl_credit_range_hint.setObjectName("CreditRangeHintLabel")
+        self.lbl_credit_range_hint.setWordWrap(True)
+        hint_layout.addWidget(self.lbl_credit_range_hint, 1)
+        self.btn_credit_range_hint_show_all = QPushButton()
+        self.btn_credit_range_hint_show_all.setObjectName("CreditRangeHintBtn")
+        self.btn_credit_range_hint_show_all.clicked.connect(self.show_all_dates)
+        hint_layout.addWidget(self.btn_credit_range_hint_show_all)
+        self.credit_range_hint.setVisible(False)
+        page_layout.addWidget(self.credit_range_hint)
+
         # Ledger Table (full width)
         self.ledger_table = QTableWidget()
         self.ledger_table.setObjectName("CreditLedgerTable")
@@ -327,6 +348,7 @@ class CreditBookView(QWidget):
         self.lbl_from.setText(_t("credit_book.from"))
         self.lbl_to.setText(_t("credit_book.to"))
         self.btn_all_dates.setText(_t("credit_book.all"))
+        self.btn_credit_range_hint_show_all.setText(_t("credit_book.all"))
         self.ledger_table.setHorizontalHeaderLabels(
             [
                 _t("credit_book.ledger_header_date"),
@@ -550,6 +572,26 @@ class CreditBookView(QWidget):
         self.lbl_total_sales.setText(_t("credit_book.sales_label") + " " + format_currency(total_debit))
         self.lbl_total_payments.setText(_t("credit_book.payments_label") + " " + format_currency(total_credit))
         self.lbl_closing.setText(_t("credit_book.closing_label") + " " + format_currency(closing_balance))
+
+        self._update_credit_range_hint(closing_balance)
+
+    def _update_credit_range_hint(self, visible_closing_balance: Decimal) -> None:
+        """Warn when the filtered ledger doesn't account for the customer's
+        full outstanding debt (#284)."""
+        if not self.selected_customer:
+            self.credit_range_hint.setVisible(False)
+            return
+
+        summary = CustomerCreditService.get_customer_summary(self.selected_customer.id)
+        actual_balance = summary["current_debt"] if summary else Decimal("0.00")
+
+        if actual_balance != visible_closing_balance:
+            self.lbl_credit_range_hint.setText(
+                _t("credit_book.credit_range_hint", balance=format_currency(actual_balance))
+            )
+            self.credit_range_hint.setVisible(True)
+        else:
+            self.credit_range_hint.setVisible(False)
 
     # ========== Action Methods ==========
 

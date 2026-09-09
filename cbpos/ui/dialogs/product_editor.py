@@ -4,7 +4,6 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QFormLayout,
     QLineEdit,
-    QDoubleSpinBox,
     QDialogButtonBox,
     QCheckBox,
     QMessageBox,
@@ -117,15 +116,15 @@ class ProductEditor(QDialog):
             for sub in sorted(cat.subcategories, key=lambda c: c.name):
                 self.category_combo.addItem(_color_icon(sub.color), f"    {sub.name}", sub.id)
 
-        self.price_input = QDoubleSpinBox()
-        self.price_input.setRange(0, 1000000)
-        self.price_input.setDecimals(2)
-        self.price_input.setPrefix(f"{get_currency_symbol()} ")
+        # QLineEdit + validator instead of QDoubleSpinBox -- native +/-
+        # steppers break under QSS (see the Stock group below).
+        self.price_input = QLineEdit()
+        self.price_input.setPlaceholderText(f"{get_currency_symbol()} 0.00")
+        self.price_input.setValidator(QDoubleValidator(0.0, 1000000.0, 2, self))
 
-        self.cost_input = QDoubleSpinBox()
-        self.cost_input.setRange(0, 1000000)
-        self.cost_input.setDecimals(2)
-        self.cost_input.setPrefix(f"{get_currency_symbol()} ")
+        self.cost_input = QLineEdit()
+        self.cost_input.setPlaceholderText(f"{get_currency_symbol()} 0.00")
+        self.cost_input.setValidator(QDoubleValidator(0.0, 1000000.0, 2, self))
 
         layout.addRow(_t("product_editor.name_en"), self.name_en_input)
         layout.addRow(_t("product_editor.name_si"), self.name_si_input)
@@ -229,9 +228,8 @@ class ProductEditor(QDialog):
         add_layout = QHBoxLayout()
         self.comp_barcode_input = QLineEdit()
         self.comp_barcode_input.setPlaceholderText(_t("product_editor.composition_barcode_placeholder"))
-        self.comp_qty_input = QDoubleSpinBox()
-        self.comp_qty_input.setRange(0.001, 1000)
-        self.comp_qty_input.setValue(1)
+        self.comp_qty_input = QLineEdit("1.00")
+        self.comp_qty_input.setValidator(QDoubleValidator(0.001, 1000.0, 2, self))
         self.btn_add_component = QPushButton(_t("product_editor.btn_add_component"))
         self.btn_add_component.clicked.connect(self.add_component)
         self.comp_barcode_input.returnPressed.connect(self.add_component)
@@ -258,7 +256,7 @@ class ProductEditor(QDialog):
 
     def add_component(self):
         barcode = self.comp_barcode_input.text().strip()
-        qty = self.comp_qty_input.value()
+        qty = self._parse_decimal(self.comp_qty_input.text(), fallback="1")
 
         if not barcode:
             return
@@ -387,8 +385,8 @@ class ProductEditor(QDialog):
         if index >= 0:
             self.category_combo.setCurrentIndex(index)
 
-        self.price_input.setValue(float(self.product.price))
-        self.cost_input.setValue(float(self.product.cost))
+        self.price_input.setText(format(Decimal(self.product.price).quantize(Decimal("0.01")), "f"))
+        self.cost_input.setText(format(Decimal(self.product.cost).quantize(Decimal("0.01")), "f"))
 
         _q = Decimal("0.001")
         self.stock_input.setText(
@@ -458,8 +456,8 @@ class ProductEditor(QDialog):
             "name_si": self.name_si_input.text().strip(),
             "name_ta": self.name_ta_input.text().strip(),
             "category_id": self.category_combo.currentData(),
-            "price": Decimal(str(self.price_input.value())),
-            "cost": Decimal(str(self.cost_input.value())),
+            "price": self._parse_decimal(self.price_input.text()),
+            "cost": self._parse_decimal(self.cost_input.text()),
             "stock_qty": stock_qty,
             "reorder_point": reorder_point,
             "preferred_qty": preferred_qty,

@@ -35,7 +35,6 @@ class StatementReceiptBuilder(BaseReceiptBuilder):
         """
         cls._resolve_receipt_lang(config_override)
         commands: List[Dict[str, Any]] = []
-        gc = cls._get_conf
 
         line_chars = cls._append_header_block(commands, config_override)
 
@@ -102,10 +101,7 @@ class StatementReceiptBuilder(BaseReceiptBuilder):
         commands.append({"type": "feed", "lines": 1})
         commands.append({"type": "text", "val": cls._rt("thank_you"), "align": "center"})
 
-        footer_text = gc("receipt_footer", "", config_override)
-        if footer_text:
-            commands.append({"type": "feed", "lines": 1})
-            commands.append({"type": "text", "val": footer_text, "align": "center"})
+        cls._append_footer_text(commands, line_chars, config_override)
 
         cls._append_branding(commands)
         cls._append_cut(commands, config_override)

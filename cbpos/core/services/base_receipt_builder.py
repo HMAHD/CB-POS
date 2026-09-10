@@ -1,6 +1,7 @@
 """Base receipt builder with shared helpers for all receipt types."""
 
 import logging
+import textwrap
 from typing import List, Dict, Any, Optional
 
 from cbpos.core.services.config_service import ConfigService
@@ -71,6 +72,46 @@ class BaseReceiptBuilder:
         if auto_cut:
             commands.append({"type": "cut", "partial": cut_type == "partial"})
 
+    @staticmethod
+    def _wrap_free_text(text: str, width: int) -> List[str]:
+        """Wrap free-form (shop-entered) text to *width* characters per line.
+
+        Preserves the author's own explicit line breaks (each is wrapped
+        independently) rather than collapsing them into one paragraph, so
+        a shop's multi-line greeting keeps its intended paragraph shape.
+
+        Pre-wrapping here -- once, in the shared builder -- is what lets
+        the preview widget and the real ESC/POS printer agree on exactly
+        where a long header/footer breaks: each receives the identical
+        list of already-line-broken strings instead of independently
+        deciding where to wrap (Qt's HTML engine vs. the printer
+        firmware's own font metrics, which never agreed).
+        """
+        if not text:
+            return []
+        lines: List[str] = []
+        for paragraph in text.split("\n"):
+            if not paragraph.strip():
+                lines.append("")
+                continue
+            lines.extend(textwrap.wrap(paragraph, width=width) or [""])
+        return lines
+
+    @classmethod
+    def _append_footer_text(
+        cls,
+        commands: List[Dict[str, Any]],
+        line_chars: int,
+        config_override: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Append the shop's custom footer text, pre-wrapped to *line_chars*."""
+        footer_text = cls._get_conf("receipt_footer", "", config_override)
+        if not footer_text:
+            return
+        commands.append({"type": "feed", "lines": 1})
+        for line in cls._wrap_free_text(footer_text, line_chars):
+            commands.append({"type": "text", "val": line, "align": "center"})
+
     @classmethod
     def _append_header_block(
         cls,
@@ -85,7 +126,8 @@ class BaseReceiptBuilder:
         # Custom header text (top — greeting/promo before shop identity)
         header_text = gc("receipt_header", "", config_override)
         if header_text:
-            commands.append({"type": "text", "val": header_text, "align": "center"})
+            for line in cls._wrap_free_text(header_text, line_chars):
+                commands.append({"type": "text", "val": line, "align": "center"})
 
         # Logo
         logo_path = gc("receipt_logo_path", "", config_override)

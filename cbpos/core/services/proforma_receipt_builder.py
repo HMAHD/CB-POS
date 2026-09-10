@@ -106,10 +106,7 @@ class ProformaReceiptBuilder(BaseReceiptBuilder):
             {"type": "text", "val": cls._rt("quotation_valid_days", days=proforma.validity_days), "align": "center"}
         )
 
-        footer_text = gc("receipt_footer", "", config_override)
-        if footer_text:
-            commands.append({"type": "feed", "lines": 1})
-            commands.append({"type": "text", "val": footer_text, "align": "center"})
+        cls._append_footer_text(commands, line_chars, config_override)
 
         cls._append_branding(commands)
         cls._append_cut(commands, config_override)

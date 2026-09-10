@@ -1088,15 +1088,33 @@ class ReceiptPage(SettingsPage):
         hf_form.setContentsMargins(0, 0, 0, 0)
         hf_form.setVerticalSpacing(10)
 
+        header_container = QWidget()
+        header_container_layout = QVBoxLayout(header_container)
+        header_container_layout.setContentsMargins(0, 0, 0, 0)
+        header_container_layout.setSpacing(2)
         self.txt_header = QTextEdit()
         self.txt_header.setFixedHeight(64)
+        self.txt_header.textChanged.connect(self._update_header_char_count)
+        header_container_layout.addWidget(self.txt_header)
+        self._lbl_header_char_count = QLabel()
+        self._lbl_header_char_count.setObjectName("CharCountHint")
+        header_container_layout.addWidget(self._lbl_header_char_count)
         self._lbl_header_text = QLabel()
-        hf_form.addRow(self._lbl_header_text, self.txt_header)
+        hf_form.addRow(self._lbl_header_text, header_container)
 
+        footer_container = QWidget()
+        footer_container_layout = QVBoxLayout(footer_container)
+        footer_container_layout.setContentsMargins(0, 0, 0, 0)
+        footer_container_layout.setSpacing(2)
         self.txt_footer = QTextEdit()
         self.txt_footer.setFixedHeight(64)
+        self.txt_footer.textChanged.connect(self._update_footer_char_count)
+        footer_container_layout.addWidget(self.txt_footer)
+        self._lbl_footer_char_count = QLabel()
+        self._lbl_footer_char_count.setObjectName("CharCountHint")
+        footer_container_layout.addWidget(self._lbl_footer_char_count)
         self._lbl_footer_text = QLabel()
-        hf_form.addRow(self._lbl_footer_text, self.txt_footer)
+        hf_form.addRow(self._lbl_footer_text, footer_container)
 
         vbox_content.addLayout(hf_form)
 
@@ -1242,11 +1260,44 @@ class ReceiptPage(SettingsPage):
 
     def _refresh_preview(self) -> None:
         """Build receipt commands from current settings and update the preview."""
+        from cbpos.core.services.config_service import ConfigService
+
+        # paper_width lives on the Hardware tab, not this page's own fields,
+        # so it can't come from self.save() -- read the real saved value
+        # directly. Without this the preview always rendered at a hardcoded
+        # 80mm regardless of what the shop actually configured (#325).
+        self._preview.set_paper_width(ConfigService.get("paper_width", "80mm"))
+
         commands = ReceiptBuilder.build_receipt(
             self._make_dummy_sale(),
             config_override=self.save(),
         )
         self._preview.set_commands(commands)
+        self._update_header_char_count()
+        self._update_footer_char_count()
+
+    def _current_line_chars(self) -> int:
+        """Characters-per-line budget for the shop's configured paper width.
+
+        Mirrors BaseReceiptBuilder._append_header_block's own 58mm=32 /
+        80mm=42 mapping, since that's the real value free-form header/footer
+        text gets pre-wrapped to before printing.
+        """
+        from cbpos.core.services.config_service import ConfigService
+
+        paper_width = ConfigService.get("paper_width", "80mm")
+        return 32 if paper_width == "58mm" else 42
+
+    def _set_char_count_hint(self, label: QLabel, text: str) -> None:
+        line_chars = self._current_line_chars()
+        longest = max((len(line) for line in text.split("\n")), default=0)
+        label.setText(_t("settings.receipt.char_count_hint", longest=longest, limit=line_chars))
+
+    def _update_header_char_count(self) -> None:
+        self._set_char_count_hint(self._lbl_header_char_count, self.txt_header.toPlainText())
+
+    def _update_footer_char_count(self) -> None:
+        self._set_char_count_hint(self._lbl_footer_char_count, self.txt_footer.toPlainText())
 
     # ------------------------------------------------------------------
     # Helpers

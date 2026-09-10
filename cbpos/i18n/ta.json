@@ -1348,6 +1348,7 @@
       "header_placeholder": "Shop greeting or promo (press Enter for new line)",
       "footer_text": "Footer Text:",
       "footer_placeholder": "Thank you message (press Enter for new line)",
+      "char_count_hint": "Longest line: {longest} / {limit} characters — wraps automatically at this width",
       "section_receipt_elements": "Receipt Elements",
       "show_barcode": "Show Barcode:",
       "chk_show_barcode": "Print barcode of the sale reference",

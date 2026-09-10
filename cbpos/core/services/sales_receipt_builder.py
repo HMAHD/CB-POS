@@ -219,10 +219,7 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
             commands.append({"type": "barcode", "val": doc_num, "code": "CODE39", "align": "center"})
 
         # Footer text
-        footer_text = gc("receipt_footer", "", config_override)
-        if footer_text:
-            commands.append({"type": "feed", "lines": 1})
-            commands.append({"type": "text", "val": footer_text, "align": "center"})
+        cls._append_footer_text(commands, line_chars, config_override)
 
         # Duplicate marking (bottom)
         if is_reprint:

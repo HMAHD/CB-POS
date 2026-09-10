@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
+    QGridLayout,
     QLabel,
     QPushButton,
     QDateEdit,
@@ -59,8 +60,12 @@ class CustomerStatementDialog(QDialog):
         header_layout.addStretch()
         layout.addLayout(header_layout)
 
-        # Date filter
-        filter_layout = QHBoxLayout()
+        # Date filter -- given its own tuned spacing instead of just
+        # inheriting the dialog's blanket layout.setSpacing(10), which
+        # wasn't tuned for this row's content at all (#285).
+        self.filter_layout = filter_layout = QHBoxLayout()
+        filter_layout.setContentsMargins(0, 8, 0, 8)
+        filter_layout.setSpacing(10)
         lbl_from = QLabel(_t("common.from"))
         lbl_from.setProperty("class", "transparent")
         filter_layout.addWidget(lbl_from)
@@ -85,8 +90,16 @@ class CustomerStatementDialog(QDialog):
         filter_layout.addStretch()
         layout.addLayout(filter_layout)
 
-        # Summary labels
-        summary_layout = QHBoxLayout()
+        # Summary labels -- a grid instead of one packed row with a
+        # stretch, so the two "starting point" figures (Opening, Sales)
+        # and the two "ending point" figures (Payments, Closing) each
+        # line up into their own column rather than reading as four
+        # differently-styled labels with no predictable rhythm (#285).
+        # Reading order still follows a real statement: Opening + Sales
+        # (debit) - Payments (credit) = Closing.
+        self.summary_layout = summary_layout = QGridLayout()
+        summary_layout.setHorizontalSpacing(24)
+        summary_layout.setVerticalSpacing(6)
         self.lbl_opening = QLabel(_t("customer_statement.opening", value="---"))
         self.lbl_opening.setProperty("class", "transparent")
         self.lbl_total_debit = QLabel(_t("customer_statement.sales", value="---"))
@@ -95,11 +108,11 @@ class CustomerStatementDialog(QDialog):
         self.lbl_total_credit.setProperty("class", "credit")
         self.lbl_closing = QLabel(_t("customer_statement.closing", value="---"))
         self.lbl_closing.setProperty("class", "bold")
-        summary_layout.addWidget(self.lbl_opening)
-        summary_layout.addWidget(self.lbl_total_debit)
-        summary_layout.addWidget(self.lbl_total_credit)
-        summary_layout.addStretch()
-        summary_layout.addWidget(self.lbl_closing)
+        summary_layout.addWidget(self.lbl_opening, 0, 0)
+        summary_layout.addWidget(self.lbl_total_debit, 0, 1)
+        summary_layout.addWidget(self.lbl_total_credit, 1, 0)
+        summary_layout.addWidget(self.lbl_closing, 1, 1)
+        summary_layout.setColumnStretch(2, 1)
         layout.addLayout(summary_layout)
 
         # Entries table

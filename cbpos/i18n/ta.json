@@ -979,6 +979,7 @@
     "backup_type_pre_restore": "Pre-Restore",
     "backup_type_regular": "Regular",
     "backup_creating": "Creating backup...",
+    "backup_list_loading": "Loading backups...",
     "backup_complete_title": "Backup Complete",
     "backup_saved_to": "Backup saved to:\n{path}",
     "backup_pwd_info": "Keep this password safe — you need it to restore.",

@@ -2126,6 +2126,7 @@ QFrame#StatusCard {
 }
 
 QLabel#StatusIcon {
+    background-color: transparent;
     font-size: 32px;
     min-width: 50px;
 }

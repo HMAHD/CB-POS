@@ -27,6 +27,8 @@ from PyQt6.QtGui import QIcon, QIntValidator
 from PyQt6.QtPrintSupport import QPrinterInfo
 from sqlalchemy.engine import URL
 from cbpos.core.services.language_service import LanguageService
+from cbpos.core.services.theme_service import ThemeService
+from cbpos.ui.resources.icons import Icons
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.models import Sale, SaleItem, SalePayment, Product
 from cbpos.config import Config
@@ -1629,8 +1631,9 @@ class NetworkPage(SettingsPage):
         status_layout.setContentsMargins(20, 20, 20, 20)
         status_layout.setSpacing(15)
 
-        self.lbl_mode_icon = QLabel("\U0001f4bb")
+        self.lbl_mode_icon = QLabel()
         self.lbl_mode_icon.setObjectName("StatusIcon")
+        self.lbl_mode_icon.setPixmap(Icons.get("fa5s.desktop", ThemeService.get_accent_color()).pixmap(32, 32))
 
         status_text_layout = QVBoxLayout()
         self.lbl_status_title = QLabel()
@@ -2088,12 +2091,13 @@ class NetworkPage(SettingsPage):
 
     def _on_mode_changed(self, mode: str):
         is_network = mode == "Network"
+        icon_color = ThemeService.get_accent_color()
         if is_network:
-            self.lbl_mode_icon.setText("\U0001f310")
+            self.lbl_mode_icon.setPixmap(Icons.get("fa5s.network-wired", icon_color).pixmap(32, 32))
             self.lbl_status_title.setText(_t("settings.network.network_mode_title"))
             self.lbl_status_subtitle.setText(_t("settings.network.network_mode_subtitle"))
         else:
-            self.lbl_mode_icon.setText("\U0001f4bb")
+            self.lbl_mode_icon.setPixmap(Icons.get("fa5s.desktop", icon_color).pixmap(32, 32))
             self.lbl_status_title.setText(_t("settings.network.single_mode_title"))
             self.lbl_status_subtitle.setText(_t("settings.network.single_mode_subtitle"))
         self.connection_tested = False

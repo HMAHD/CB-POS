@@ -169,6 +169,58 @@ class TestCartLineDiscounts:
 
 
 @patch("cbpos.core.services.cart_service.PricingService.calculate_price", side_effect=_mock_pricing)
+class TestUpdateQuantity:
+    """update_quantity() must keep a line's discount applied, unlike setting
+    qty/total directly -- that silently wiped the discount (money-losing
+    bug: the Disc column kept showing e.g. "10%" while the customer was
+    actually charged full price)."""
+
+    def test_changing_quantity_keeps_the_line_discount_applied(self, mock_pricing):
+        cart = CartService()
+        product = _make_product(price="100.00")
+        cart.add_item(product, qty=Decimal("2"))
+        cart.apply_line_discount(0, "PERCENTAGE", Decimal("10"))
+        assert cart.items[0]["total"] == Decimal("180.00")
+
+        cart.update_quantity(0, Decimal("3"))
+
+        item = cart.items[0]
+        assert item["qty"] == Decimal("3")
+        assert item["subtotal"] == Decimal("300.00")
+        assert item["total"] == Decimal("270.00")  # still 10% off, not full price
+
+    def test_changing_quantity_on_a_fixed_discount_line(self, mock_pricing):
+        cart = CartService()
+        product = _make_product(price="100.00")
+        cart.add_item(product, qty=Decimal("2"))
+        cart.apply_line_discount(0, "FIXED", Decimal("50"))
+        assert cart.items[0]["total"] == Decimal("150.00")
+
+        cart.update_quantity(0, Decimal("4"))
+
+        item = cart.items[0]
+        assert item["subtotal"] == Decimal("400.00")
+        assert item["total"] == Decimal("350.00")  # same Rs.50 fixed discount
+
+    def test_changing_quantity_on_a_plain_line(self, mock_pricing):
+        cart = CartService()
+        product = _make_product(price="100.00")
+        cart.add_item(product, qty=Decimal("1"))
+
+        cart.update_quantity(0, Decimal("5"))
+
+        item = cart.items[0]
+        assert item["qty"] == Decimal("5")
+        assert item["total"] == Decimal("500.00")
+
+    def test_invalid_index_does_nothing(self, mock_pricing):
+        cart = CartService()
+        cart.add_item(_make_product(), Decimal("1"))
+        cart.update_quantity(99, Decimal("5"))
+        assert cart.items[0]["qty"] == Decimal("1")
+
+
+@patch("cbpos.core.services.cart_service.PricingService.calculate_price", side_effect=_mock_pricing)
 class TestCartLevelDiscounts:
     """Cart-level (whole-cart) discount calculations."""
 

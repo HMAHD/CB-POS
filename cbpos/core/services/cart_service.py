@@ -64,6 +64,19 @@ class CartService:
         self._recalculate_line(new_item)
         self.items.append(new_item)
 
+    def update_quantity(self, index: int, qty: Decimal):
+        """Change a line's quantity, keeping any existing discount applied.
+
+        Setting item["qty"]/item["total"] directly (as the UI used to)
+        skipped _recalculate_line(), so a discount already on the line
+        stopped being reflected in the charged total the moment the
+        quantity changed, even though the Disc column kept displaying it.
+        """
+        if 0 <= index < len(self.items):
+            item = self.items[index]
+            item["qty"] = Decimal(str(qty))
+            self._recalculate_line(item)
+
     def remove_item(self, index: int):
         """Remove an item by its index in the list."""
         if 0 <= index < len(self.items):

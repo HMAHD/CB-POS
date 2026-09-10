@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
     QAbstractItemView,
     QMessageBox,
     QDialog,
+    QMenu,
 )
 from PyQt6.QtCore import Qt, QAbstractTableModel, QDate, QModelIndex
 from PyQt6.QtGui import QColor
@@ -456,6 +457,8 @@ class StockTakeView(QWidget):
         self.history_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.history_table.setAlternatingRowColors(True)
         self.history_table.doubleClicked.connect(self.on_history_double_click)
+        self.history_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.history_table.customContextMenuRequested.connect(self.show_history_context_menu)
         layout.addWidget(self.history_table, 1)
 
         # Store IDs for double-click lookup
@@ -746,6 +749,64 @@ class StockTakeView(QWidget):
         if 0 <= row < len(self._history_ids):
             dialog = StockCountReportDialog(self._history_ids[row], self)
             dialog.exec()
+
+    def show_history_context_menu(self, position) -> None:
+        """Offer Resume/Discard on a DRAFT history row (#312).
+
+        Without this, a DRAFT count that outlives the session it was
+        started in (app restart, navigating away) has no way back into an
+        editable state and no way to be discarded either -- it just
+        accumulates as permanent, unfinishable clutter.
+        """
+        row = self.history_table.indexAt(position).row()
+        if row < 0 or row >= len(self._history_ids):
+            return
+        self.history_table.selectRow(row)
+
+        status_item = self.history_table.item(row, 5)
+        if not status_item or status_item.text() != DocumentStatus.DRAFT:
+            return
+
+        stock_count_id = self._history_ids[row]
+
+        menu = QMenu(self)
+        resume_action = menu.addAction(_t("stock_take.context_resume"))
+        resume_action.triggered.connect(lambda: self.resume_draft_count(stock_count_id))
+        discard_action = menu.addAction(_t("stock_take.context_discard_draft"))
+        discard_action.triggered.connect(lambda: self.discard_draft_count(stock_count_id))
+        menu.exec(self.history_table.viewport().mapToGlobal(position))
+
+    def resume_draft_count(self, stock_count_id: int) -> None:
+        """Reload a DRAFT count from History as the active count in New Count."""
+        sc = StockCountService.get_stock_count(stock_count_id)
+        if not sc or sc.status != DocumentStatus.DRAFT:
+            QMessageBox.warning(self, _t("common.error"), _t("stock_take.resume_failed"))
+            return
+
+        self.current_stock_count = sc
+        self.item_model = StockCountItemModel(list(sc.items))
+        self.item_table.setModel(self.item_model)
+        self._update_stats()
+        self.tabs.setCurrentIndex(0)
+
+    def discard_draft_count(self, stock_count_id: int) -> None:
+        """Void an abandoned DRAFT count directly from History."""
+        reply = QMessageBox.question(
+            self,
+            _t("stock_take.confirm_discard_title"),
+            _t("stock_take.confirm_discard_message"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            StockCountService.void_stock_count(stock_count_id)
+            if self.current_stock_count and self.current_stock_count.id == stock_count_id:
+                self.reset_form()
+            self.refresh_history()
+        except ValueError as e:
+            QMessageBox.warning(self, _t("common.error"), str(e))
 
     def set_user(self, user) -> None:
         self.user = user

@@ -1992,7 +1992,12 @@
     "confirm_void_title": "Confirm Void",
     "confirm_void_message": "Are you sure you want to void this stock count?",
     "voided_title": "Voided",
-    "voided_message": "Stock count voided."
+    "voided_message": "Stock count voided.",
+    "context_resume": "Resume Count",
+    "context_discard_draft": "Discard Draft",
+    "resume_failed": "This draft could not be loaded — it may have already been finalized or voided.",
+    "confirm_discard_title": "Discard Draft",
+    "confirm_discard_message": "Discard this draft stock count? It will be marked void and cannot be resumed."
   },
   "sale_history": {
     "title": "Sale History",

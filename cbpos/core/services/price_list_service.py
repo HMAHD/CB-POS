@@ -24,6 +24,53 @@ class PriceListService:
             session.expunge(price_list)
             return price_list
 
+    def update_price_list(
+        self,
+        list_id: int,
+        name: Optional[str] = None,
+        start_date: object = ...,
+        end_date: object = ...,
+    ) -> PriceList:
+        """Update a price list's name and/or validity dates.
+
+        Args:
+            list_id: ID of the price list to update.
+            name: New name (if provided).
+            start_date: New start date, or None to clear. Omit (``...``) to leave unchanged.
+            end_date: New end date, or None to clear. Omit (``...``) to leave unchanged.
+
+        Returns:
+            The updated PriceList.
+
+        Raises:
+            ValueError: If the price list isn't found, the name is empty,
+                or another price list already has that name.
+        """
+        with self.db.get_session() as session:
+            price_list = session.get(PriceList, list_id)
+            if not price_list:
+                raise ValueError(f"Price list with ID {list_id} not found.")
+
+            if name is not None:
+                name = name.strip()
+                if not name:
+                    raise ValueError("Price list name is required.")
+                if name != price_list.name:
+                    dup = session.query(PriceList).filter(PriceList.name == name, PriceList.id != list_id).first()
+                    if dup:
+                        raise ValueError(f"Price list '{name}' already exists.")
+                    price_list.name = name
+
+            if start_date is not ...:
+                price_list.start_date = start_date
+            if end_date is not ...:
+                price_list.end_date = end_date
+
+            session.commit()
+            session.refresh(price_list)
+            session.expunge(price_list)
+            return price_list
+
     def get_all_lists(self) -> List[PriceList]:
         with self.db.get_session() as session:
             stmt = select(PriceList).order_by(PriceList.id)
@@ -64,6 +111,27 @@ class PriceListService:
             session.refresh(item)
             session.expunge(item)
             return item
+
+    def delete_item_price(self, list_id: int, product_id: int) -> None:
+        """Remove a product's price override from a price list.
+
+        Args:
+            list_id: ID of the price list.
+            product_id: ID of the product whose override should be removed.
+
+        Raises:
+            ValueError: If no override exists for this product on this list.
+        """
+        with self.db.get_session() as session:
+            stmt = select(PriceListItem).where(
+                PriceListItem.price_list_id == list_id,
+                PriceListItem.product_id == product_id,
+            )
+            item = session.scalar(stmt)
+            if not item:
+                raise ValueError(f"No price override found for product {product_id} on this list.")
+            session.delete(item)
+            session.commit()
 
     def delete_price_list(self, list_id: int) -> None:
         """Delete a price list and all its items.

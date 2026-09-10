@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QFrame,
     QStackedWidget,
+    QMenu,
 )
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtGui import QColor, QShortcut, QKeySequence
@@ -89,6 +90,11 @@ class PriceListView(QWidget):
         self.btn_add.setObjectName("PriceListAddBtn")
         self.btn_add.clicked.connect(self.add_price_list)
         sidebar_btn_row.addWidget(self.btn_add)
+
+        self.btn_edit = QPushButton()
+        self.btn_edit.setObjectName("PriceListEditBtn")
+        self.btn_edit.clicked.connect(self.edit_price_list)
+        sidebar_btn_row.addWidget(self.btn_edit)
 
         self.btn_delete = QPushButton()
         self.btn_delete.setObjectName("PriceListDeleteBtn")
@@ -167,6 +173,8 @@ class PriceListView(QWidget):
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
         self.table.doubleClicked.connect(self.edit_item_price)
+        self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._show_item_context_menu)
         data_layout.addWidget(self.table)
 
         set_price_row = QHBoxLayout()
@@ -213,6 +221,7 @@ class PriceListView(QWidget):
         """Update all translatable strings."""
         self.sidebar_title.setText(_t("pricelist.sidebar_title"))
         self.btn_add.setText(_t("pricelist.btn_add"))
+        self.btn_edit.setText(_t("pricelist.btn_edit"))
         self.btn_delete.setText(_t("pricelist.btn_delete"))
         self.empty_text.setText(_t("pricelist.empty_title"))
         self.empty_sub.setText(_t("pricelist.empty_subtitle"))
@@ -349,6 +358,36 @@ class PriceListView(QWidget):
             except Exception as e:
                 QMessageBox.critical(self, _t("common.error"), str(e))
 
+    def edit_price_list(self) -> None:
+        """Rename the currently selected price list and/or edit its dates."""
+        if not self.current_list:
+            QMessageBox.information(
+                self,
+                _t("pricelist.no_selection_title"),
+                _t("pricelist.no_selection_edit_msg"),
+            )
+            return
+
+        list_id = self.current_list.id
+        dialog = PriceListDialog(self, price_list=self.current_list)
+        if not dialog.exec():
+            return
+
+        name, start, end = dialog.get_data()
+        try:
+            self.price_list_service.update_price_list(list_id, name=name, start_date=start, end_date=end)
+        except Exception as e:
+            QMessageBox.critical(self, _t("common.error"), str(e))
+            return
+
+        self.load_lists()
+        updated = next((pl for pl in self.price_list_service.get_all_lists() if pl.id == list_id), None)
+        if updated:
+            btn = self._nav_buttons.get(list_id)
+            if btn:
+                btn.setChecked(True)
+            self._on_nav_clicked(updated)
+
     def delete_price_list(self) -> None:
         """Delete the currently selected price list after confirmation."""
         if not self.current_list:
@@ -383,6 +422,45 @@ class PriceListView(QWidget):
         """Open the price editor for the currently selected row (button/Enter key)."""
         self._edit_item_price_row(self.table.currentRow())
 
+    def _show_item_context_menu(self, position) -> None:
+        item = self.table.itemAt(position)
+        if not item or not self.current_list:
+            return
+
+        row = item.row()
+        current_val_str = self.table.item(row, 3).text()
+        if current_val_str == "-":
+            return
+
+        menu = QMenu(self)
+        action_remove = menu.addAction(_t("pricelist.context_remove_override"))
+        chosen = menu.exec(self.table.viewport().mapToGlobal(position))
+        if chosen == action_remove:
+            self._remove_item_override(row)
+
+    def _remove_item_override(self, row: int) -> None:
+        if not self.current_list:
+            return
+
+        product_id = int(self.table.item(row, 0).text())
+        product_name = self.table.item(row, 1).text()
+
+        reply = QMessageBox.question(
+            self,
+            _t("pricelist.confirm_remove_override_title"),
+            _t("pricelist.confirm_remove_override_msg", name=product_name),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            self.price_list_service.delete_item_price(self.current_list.id, product_id)
+            self.load_items()
+        except Exception as e:
+            QMessageBox.critical(self, _t("common.error"), str(e))
+
     def _edit_item_price_row(self, row: int) -> None:
         if not self.current_list or row < 0:
             return
@@ -405,10 +483,22 @@ class PriceListView(QWidget):
 
 
 class PriceListDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, price_list=None):
         super().__init__(parent)
+        self.price_list = price_list
         self.init_ui()
         self.retranslate_ui()
+
+        if price_list:
+            self.name_input.setText(price_list.name)
+            if price_list.start_date:
+                self.start_date.setDate(
+                    QDate(price_list.start_date.year, price_list.start_date.month, price_list.start_date.day)
+                )
+            if price_list.end_date:
+                self.end_date.setDate(
+                    QDate(price_list.end_date.year, price_list.end_date.month, price_list.end_date.day)
+                )
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -444,7 +534,8 @@ class PriceListDialog(QDialog):
 
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
-        self.setWindowTitle(_t("pricelist.dialog_title"))
+        title_key = "pricelist.dialog_edit_title" if self.price_list else "pricelist.dialog_title"
+        self.setWindowTitle(_t(title_key))
         self.lbl_name.setText(_t("pricelist.form_name"))
         self.lbl_start.setText(_t("pricelist.form_start_date"))
         self.lbl_end.setText(_t("pricelist.form_end_date"))

@@ -832,6 +832,7 @@
   "pricelist": {
     "sidebar_title": "PRICE LISTS",
     "btn_add": "புதிய விலை",
+    "btn_edit": "Edit",
     "btn_delete": "நீக்கு",
     "empty_title": "Select a Price List",
     "empty_subtitle": "Choose a price list from the sidebar to view products and prices",
@@ -848,6 +849,7 @@
     "status_upcoming": "Upcoming",
     "status_active": "Active",
     "dialog_title": "New Price List",
+    "dialog_edit_title": "Edit Price List",
     "form_name": "Name:",
     "form_start_date": "Start Date:",
     "form_end_date": "End Date:",
@@ -855,10 +857,14 @@
     "set_price_prompt": "Enter price for {product_name}: ",
     "no_selection_title": "No Selection",
     "no_selection_msg": "Select a price list to delete.",
+    "no_selection_edit_msg": "Select a price list to edit.",
     "confirm_delete_title": "Confirm Delete",
     "confirm_delete_msg": "Are you sure you want to delete \"{name}\"?\n\nThis will also remove all prices assigned to this list.",
     "name_required": "Price list name is required.",
-    "start_before_end": "Start date must be on or before the end date."
+    "start_before_end": "Start date must be on or before the end date.",
+    "context_remove_override": "Remove Override",
+    "confirm_remove_override_title": "Remove Override",
+    "confirm_remove_override_msg": "Remove the list price for \"{name}\"? It will fall back to the product's base price."
   },
   "admin_tools": {
     "title": "Admin Tools",

@@ -1121,6 +1121,12 @@ class SalesView(QWidget):
         """Remove selected item from cart with undo support."""
         row = self.cart_table.currentRow()
         if row >= 0:
+            from cbpos.core.utils.permission_helper import check_permission_with_override
+            from cbpos.core.constants.permissions import Permissions
+
+            if not check_permission_with_override(Permissions.SALES_VOID, self):
+                return
+
             removed_item = self.cart_service.items[row].copy()
             del self.cart_service.items[row]
             self.update_cart_display()

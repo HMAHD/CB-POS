@@ -108,3 +108,40 @@ class TestChangeLinePriceUsesStyledDialog:
         args, _ = fake_dialog_cls.call_args
         assert args[0] == "Test Product"
         assert view.cart_service.items[0]["unit_price"] == Decimal("175.00")
+
+
+class TestRemoveLineItemRequiresPermission:
+    """remove_line_item() had no permission check at all, unlike every
+    other line-mutating context-menu action (apply_line_discount,
+    change_line_price both require SALES_DISCOUNT/SALES_CHANGE_PRICE) --
+    gate it the same way, reusing SALES_VOID since that's the permission
+    already used for removing something from the sale (void_bill)."""
+
+    def test_denied_permission_leaves_the_line_in_place(self, view, monkeypatch):
+        import cbpos.core.utils.permission_helper as permission_helper
+
+        monkeypatch.setattr(permission_helper, "check_permission_with_override", lambda perm, parent: None)
+
+        view.cart_service.add_item(_make_product(price="200.00"))
+        view.update_cart_display()
+        view.cart_table.setCurrentCell(0, 0)
+
+        view.remove_line_item()
+
+        assert len(view.cart_service.items) == 1
+
+    def test_granted_permission_removes_the_line(self, view, monkeypatch):
+        from cbpos.core.models import User
+
+        cashier = User(username="cashier", pin_hash="x", role_id=None, is_active=True)
+        import cbpos.core.utils.permission_helper as permission_helper
+
+        monkeypatch.setattr(permission_helper, "check_permission_with_override", lambda perm, parent: cashier)
+
+        view.cart_service.add_item(_make_product(price="200.00"))
+        view.update_cart_display()
+        view.cart_table.setCurrentCell(0, 0)
+
+        view.remove_line_item()
+
+        assert len(view.cart_service.items) == 0

@@ -204,6 +204,11 @@ class DashboardView(QWidget):
 
         self.lbl_yearly_total = QLabel("Rs. 0")
         self.lbl_yearly_total.setObjectName("SummaryBigValue")
+        # 32px bold with zero safety net (no wrap/elide/max-width) clipped on
+        # at least one real device for a value that rendered fine in every
+        # offscreen test here (#269) -- word-wrap can't clip, it can only
+        # ever fall back to a second line, which this panel has room for.
+        self.lbl_yearly_total.setWordWrap(True)
         vbox.addWidget(self.lbl_yearly_total)
 
         vbox.addSpacing(16)
@@ -221,7 +226,10 @@ class DashboardView(QWidget):
         vbox.addWidget(self.lbl_top_month_total)
 
         vbox.addStretch()
-        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
+        # Wider than the shared 220px floor (#203) -- gives the 32px bold
+        # yearly total headroom for a typical 6-7 digit value before ever
+        # needing the word-wrap fallback above to kick in (#269).
+        panel.setMinimumWidth(260)
         parent_layout.addWidget(panel, 1)
 
     # --- Row 2: Period Header ---

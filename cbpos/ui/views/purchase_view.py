@@ -407,7 +407,7 @@ class PurchaseView(QWidget):
         layout = QVBoxLayout(self.grn_tab)
 
         # Header Form
-        form_layout = QHBoxLayout()
+        self.grn_form_layout = form_layout = QHBoxLayout()
 
         self.supplier_combo = QComboBox()
         # Searchable -- type to filter (#280), same recipe already proven
@@ -424,11 +424,11 @@ class PurchaseView(QWidget):
         self.lbl_grn_date = QLabel()
 
         form_layout.addWidget(self.lbl_grn_supplier)
-        form_layout.addWidget(self.supplier_combo)
+        form_layout.addWidget(self.supplier_combo, 2)
         form_layout.addWidget(self.lbl_grn_ref)
-        form_layout.addWidget(self.invoice_input)
+        form_layout.addWidget(self.invoice_input, 2)
         form_layout.addWidget(self.lbl_grn_date)
-        form_layout.addWidget(self.date_input)
+        form_layout.addWidget(self.date_input, 1)
 
         layout.addLayout(form_layout)
 

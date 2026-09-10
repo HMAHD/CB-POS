@@ -252,6 +252,7 @@ class ShopInfoPage(SettingsPage):
 
         self.time_auto_report = QTimeEdit()
         self.time_auto_report.setDisplayFormat("HH:mm")
+        self.time_auto_report.setFixedWidth(200)
         self._lbl_report_time = QLabel()
         self._form_email.addRow(self._lbl_report_time, self.time_auto_report)
 
@@ -497,6 +498,7 @@ class SalesTaxPage(SettingsPage):
         self._tab_sales, self._form_sales = self._build_form_tab()
 
         self.combo_search_mode = QComboBox()
+        self.combo_search_mode.setFixedWidth(200)
         self._lbl_search_mode = QLabel()
         self._form_sales.addRow(self._lbl_search_mode, self.combo_search_mode)
 
@@ -511,12 +513,14 @@ class SalesTaxPage(SettingsPage):
         self.spin_loyalty_ratio = QSpinBox()
         self.spin_loyalty_ratio.setRange(1, 10000)
         self.spin_loyalty_ratio.setPrefix("Rs. ")
+        self.spin_loyalty_ratio.setFixedWidth(200)
         self._lbl_loyalty_ratio = QLabel()
         self._form_sales.addRow(self._lbl_loyalty_ratio, self.spin_loyalty_ratio)
 
         self.spin_default_credit = QSpinBox()
         self.spin_default_credit.setRange(0, 1000000)
         self.spin_default_credit.setPrefix("Rs. ")
+        self.spin_default_credit.setFixedWidth(200)
         self._lbl_default_credit = QLabel()
         self._form_sales.addRow(self._lbl_default_credit, self.spin_default_credit)
 
@@ -2270,7 +2274,7 @@ class NetworkPage(SettingsPage):
             except Exception:
                 ip = "127.0.0.1"
             port = self.spin_sync_port.value()
-            self.lbl_server_address.setText(f"Terminals should connect to: {ip}:{port}")
+            self.lbl_server_address.setText(_t("settings.network.sync_server_address_display", ip=ip, port=port))
             self.lbl_server_address.setVisible(True)
         else:
             self.lbl_server_address.setVisible(False)
@@ -2279,7 +2283,11 @@ class NetworkPage(SettingsPage):
         """Test the connection to the Main PC sync server."""
         address = self.input_main_pc_addr.text().strip()
         if not address:
-            QMessageBox.warning(self, "Validation Error", "Enter the Main PC address (IP:port)")
+            QMessageBox.warning(
+                self,
+                _t("settings.network.sync_validation_title"),
+                _t("settings.network.sync_validation_message"),
+            )
             return
 
         if address.startswith("http://"):
@@ -2287,7 +2295,7 @@ class NetworkPage(SettingsPage):
         elif not address.startswith("https://"):
             address = f"https://{address}"
 
-        self.lbl_sync_test_status.setText("Testing...")
+        self.lbl_sync_test_status.setText(_t("settings.network.sync_test_testing"))
         self.btn_test_sync.setEnabled(False)
         QApplication.processEvents()
 
@@ -2306,42 +2314,40 @@ class NetworkPage(SettingsPage):
             if data.get("status") == "ok":
                 version = data.get("protocol_version", "?")
                 terminals = data.get("terminals_connected", 0)
-                self.lbl_sync_test_status.setText("✓ Connected")
+                self.lbl_sync_test_status.setText(_t("settings.network.sync_test_connected"))
                 QMessageBox.information(
                     self,
-                    "Connection Successful",
-                    f"Connected to Main PC!\n\n" f"Protocol version: {version}\n" f"Terminals connected: {terminals}",
+                    _t("settings.network.sync_success_title"),
+                    _t("settings.network.sync_success_message", version=version, terminals=terminals),
                 )
             else:
-                self.lbl_sync_test_status.setText("✗ Unexpected response")
+                self.lbl_sync_test_status.setText(_t("settings.network.sync_test_unexpected"))
 
         except urllib.error.HTTPError as e:
             if e.code == 401:
-                self.lbl_sync_test_status.setText("✗ Unauthorized")
+                self.lbl_sync_test_status.setText(_t("settings.network.sync_test_unauthorized"))
                 QMessageBox.critical(
                     self,
-                    "Connection Failed",
-                    "Shared Secret does not match the Main PC's.\n\n"
-                    "Enter the same Shared Secret configured on the Main PC, "
-                    "then try again.",
+                    _t("settings.network.sync_failed_title"),
+                    _t("settings.network.sync_failed_secret_message"),
                 )
             else:
-                self.lbl_sync_test_status.setText("✗ Failed")
+                self.lbl_sync_test_status.setText(_t("settings.network.sync_test_failed"))
                 QMessageBox.critical(
                     self,
-                    "Connection Failed",
-                    f"Cannot reach Main PC at {address}\n\n{e}",
+                    _t("settings.network.sync_failed_title"),
+                    _t("settings.network.sync_failed_message", address=address, error=e),
                 )
         except urllib.error.URLError as e:
-            self.lbl_sync_test_status.setText("✗ Failed")
+            self.lbl_sync_test_status.setText(_t("settings.network.sync_test_failed"))
             QMessageBox.critical(
                 self,
-                "Connection Failed",
-                f"Cannot reach Main PC at {address}\n\n{e}",
+                _t("settings.network.sync_failed_title"),
+                _t("settings.network.sync_failed_message", address=address, error=e),
             )
         except Exception as e:
-            self.lbl_sync_test_status.setText("✗ Error")
-            QMessageBox.critical(self, "Connection Error", str(e))
+            self.lbl_sync_test_status.setText(_t("settings.network.sync_test_error"))
+            QMessageBox.critical(self, _t("settings.network.sync_error_title"), str(e))
         finally:
             self.btn_test_sync.setEnabled(True)
 
@@ -2357,14 +2363,14 @@ class NetworkPage(SettingsPage):
 
         reply = QMessageBox.question(
             self,
-            "Forget Trusted Main PC",
-            "This Terminal will trust whichever Main PC answers at the "
-            "configured address the next time it connects.\n\n"
-            "Only do this if you intentionally replaced the Main PC.",
+            _t("settings.network.btn_forget_main"),
+            _t("settings.network.sync_forget_main_confirm_message"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
             ConfigService.set("sync_known_main_instance_id", "")
             QMessageBox.information(
-                self, "Forget Trusted Main PC", "Done. This Terminal will re-pin on next connection."
+                self,
+                _t("settings.network.btn_forget_main"),
+                _t("settings.network.sync_forget_main_done_message"),
             )

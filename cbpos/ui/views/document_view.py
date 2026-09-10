@@ -87,6 +87,14 @@ class DocumentBrowserView(QWidget):
         title_row.addWidget(self.new_proforma_btn)
         layout.addLayout(title_row)
 
+        # Nothing on this screen explained what it's for -- a flat table
+        # of every document type with filter controls, but no indication
+        # of when a shop owner would come here (#293).
+        self.lbl_subtitle = QLabel()
+        self.lbl_subtitle.setWordWrap(True)
+        self.lbl_subtitle.setProperty("class", "muted")
+        layout.addWidget(self.lbl_subtitle)
+
         # Filter Bar
         filter_frame = QFrame()
         filter_frame.setObjectName("DocFilterBar")
@@ -295,6 +303,7 @@ class DocumentBrowserView(QWidget):
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
         self._page_header.set_title(_t("document_browser.title"))
+        self.lbl_subtitle.setText(_t("document_browser.subtitle"))
         self.new_proforma_btn.setText(_t("document_browser.btn_new_proforma"))
 
         # Filter labels

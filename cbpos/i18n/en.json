@@ -779,6 +779,7 @@
   },
   "document_browser": {
     "title": "Document Browser",
+    "subtitle": "Search and reprint any document your business has created -- invoices, quotations, purchase orders, and more, all in one place.",
     "btn_new_proforma": "+ New Proforma",
     "filter_type": "Type:",
     "filter_status": "Status:",

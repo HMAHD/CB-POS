@@ -61,6 +61,16 @@ class BackupService:
         backup_name = f"cbpos_backup_{timestamp}.zip"
         backup_path = dest / backup_name
 
+        # AESZipFile opens in "w" mode below, which truncates/overwrites
+        # silently -- a second backup within the same second (e.g. a
+        # scheduled backup firing right as someone clicks "Backup Now")
+        # would otherwise destroy the first one with no warning.
+        suffix = 1
+        while backup_path.exists():
+            backup_name = f"cbpos_backup_{timestamp}_{suffix}.zip"
+            backup_path = dest / backup_name
+            suffix += 1
+
         db_file = Config.DATA_DIR / "cbpos.db"
         images_dir = Config.DATA_DIR / "product_images"
 

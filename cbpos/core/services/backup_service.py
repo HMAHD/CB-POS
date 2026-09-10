@@ -238,11 +238,15 @@ class BackupService:
         """
         Delete oldest backups beyond the retention limit.
 
-        Pre-restore snapshots are excluded from cleanup.
+        Regular backups and pre-restore snapshots are retained separately,
+        each keeping up to ``keep_count`` most recent files. Pre-restore
+        snapshots used to be excluded from cleanup entirely, so a shop
+        that ever restored from backup would accumulate them forever,
+        with no way in the app to remove them (#341).
 
         Args:
             backup_dir: Directory containing backup files.
-            keep_count: Number of most recent backups to keep.
+            keep_count: Number of most recent backups to keep, per type.
 
         Returns:
             Number of backups deleted.
@@ -251,15 +255,20 @@ class BackupService:
         if not backup_path.exists():
             return 0
 
-        # Only clean regular backups, not pre-restore snapshots
+        all_backups = list(backup_path.glob("cbpos_backup_*.zip"))
         regular_backups = sorted(
-            [f for f in backup_path.glob("cbpos_backup_*.zip") if ".pre_restore" not in f.name],
+            [f for f in all_backups if ".pre_restore" not in f.name],
+            key=lambda f: f.stat().st_mtime,
+            reverse=True,
+        )
+        pre_restore_backups = sorted(
+            [f for f in all_backups if ".pre_restore" in f.name],
             key=lambda f: f.stat().st_mtime,
             reverse=True,
         )
 
         deleted = 0
-        for old_backup in regular_backups[keep_count:]:
+        for old_backup in regular_backups[keep_count:] + pre_restore_backups[keep_count:]:
             try:
                 old_backup.unlink()
                 logger.info("Deleted old backup: %s", old_backup)
@@ -268,6 +277,29 @@ class BackupService:
                 logger.warning("Could not delete old backup %s: %s", old_backup, e)
 
         return deleted
+
+    @staticmethod
+    def delete_backup(backup_path: str) -> bool:
+        """
+        Permanently delete a single backup file.
+
+        Args:
+            backup_path: Full path to the backup file to delete.
+
+        Returns:
+            True if the file was deleted, False if it didn't exist or
+            couldn't be removed.
+        """
+        path = Path(backup_path)
+        if not path.exists():
+            return False
+        try:
+            path.unlink()
+            logger.info("Deleted backup: %s", path)
+            return True
+        except OSError as e:
+            logger.warning("Could not delete backup %s: %s", path, e)
+            return False
 
     @staticmethod
     def verify_backup(backup_path: str, password: str) -> Dict[str, object]:

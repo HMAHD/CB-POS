@@ -33,8 +33,9 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QDateEdit,
     QApplication,
+    QMenu,
 )
-from PyQt6.QtCore import QDate, QTimer
+from PyQt6.QtCore import Qt, QDate, QTimer
 
 
 from cbpos.core.services.backup_service import BackupService
@@ -125,6 +126,8 @@ class DataSafetyView(QWidget):
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self.backup_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.backup_table.customContextMenuRequested.connect(self._show_backup_context_menu)
         layout.addWidget(self.backup_table, 1)
 
         # Action buttons — use class properties for theme-aware styling
@@ -286,6 +289,46 @@ class DataSafetyView(QWidget):
             _t("data_safety.clean_done_title"),
             _t("data_safety.clean_done_msg", count=deleted),
         )
+
+    def _show_backup_context_menu(self, position) -> None:
+        """Offer a per-row Delete action (#341) -- previously the only way
+        to remove a backup was the bulk "Clean Old Backups" action, which
+        explicitly excludes pre-restore snapshots, leaving no way in the
+        app to ever remove one."""
+        row = self.backup_table.indexAt(position).row()
+        if row < 0 or row >= len(self._backup_data):
+            return
+        self.backup_table.selectRow(row)
+
+        menu = QMenu(self)
+        delete_action = menu.addAction(_t("data_safety.btn_delete_backup"))
+        delete_action.triggered.connect(lambda: self._delete_backup_row(row))
+        menu.exec(self.backup_table.viewport().mapToGlobal(position))
+
+    def _delete_backup_row(self, row: int) -> None:
+        """Permanently delete a single backup file after confirmation."""
+        if row < 0 or row >= len(self._backup_data):
+            return
+        backup = self._backup_data[row]
+
+        reply = QMessageBox.warning(
+            self,
+            _t("data_safety.confirm_delete_backup_title"),
+            _t("data_safety.confirm_delete_backup_msg", filename=backup["filename"]),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        if BackupService.delete_backup(backup["path"]):
+            self._refresh_backup_list()
+        else:
+            QMessageBox.critical(
+                self,
+                _t("common.error"),
+                _t("data_safety.delete_backup_failed_msg", filename=backup["filename"]),
+            )
 
     # ── Restore Tab ───────────────────────────────────────────────────────
 

@@ -250,17 +250,6 @@ class SalesView(QWidget):
         self.undo_toast = QLabel(self.container_left)
         self.undo_toast.setObjectName("UndoToast")
         self.undo_toast.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.undo_toast.setStyleSheet(
-            "QLabel#UndoToast {"
-            "  background-color: rgba(0, 31, 63, 0.92);"
-            "  color: #00BCEB;"
-            "  border: 1px solid #00BCEB;"
-            "  border-radius: 6px;"
-            "  padding: 8px 16px;"
-            "  font-size: 13px;"
-            "  font-weight: bold;"
-            "}"
-        )
         self.undo_toast.setVisible(False)
 
         # 3. Order Bar (Tabs)

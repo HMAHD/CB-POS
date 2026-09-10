@@ -95,7 +95,7 @@ class BackupService:
         return str(backup_path), password
 
     @staticmethod
-    def restore_backup(backup_path: str, password: str) -> bool:
+    def restore_backup(backup_path: str, password: str, snapshot_dir: str = None) -> bool:
         """
         Restore a backup by extracting and replacing the current database and assets.
 
@@ -104,6 +104,13 @@ class BackupService:
         Args:
             backup_path: Path to the encrypted backup zip file.
             password: Decryption password.
+            snapshot_dir: Directory for the pre-restore safety snapshot.
+                Defaults to the same configured backup directory every UI
+                call site already resolves (``ConfigService`` override, or
+                :meth:`get_default_backup_dir`). Callers should not normally
+                need to pass this explicitly -- it exists mainly so tests
+                can pin the snapshot to a temp directory instead of it
+                silently falling back to the real default.
 
         Returns:
             True if restore succeeded.
@@ -133,7 +140,11 @@ class BackupService:
         # Create safety snapshot before restoring
         db_file = Config.DATA_DIR / "cbpos.db"
         if db_file.exists():
-            snapshot_dir = Path(BackupService.get_default_backup_dir())
+            if snapshot_dir is None:
+                from cbpos.core.services.config_service import ConfigService
+
+                snapshot_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
+            snapshot_dir = Path(snapshot_dir)
             snapshot_dir.mkdir(parents=True, exist_ok=True)
             try:
                 snapshot_path, snapshot_pwd = BackupService.create_backup(str(snapshot_dir), password=None)

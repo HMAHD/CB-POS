@@ -1122,6 +1122,11 @@ class ReceiptPage(SettingsPage):
         logo_row.addWidget(self.btn_clear_logo)
         self._lbl_logo = QLabel()
         logo_form.addRow(self._lbl_logo, logo_row)
+
+        self._lbl_logo_hint = QLabel()
+        self._lbl_logo_hint.setProperty("class", "muted")
+        self._lbl_logo_hint.setWordWrap(True)
+        logo_form.addRow("", self._lbl_logo_hint)
         vbox_content.addLayout(logo_form)
 
         # Section: Header & Footer
@@ -1253,6 +1258,7 @@ class ReceiptPage(SettingsPage):
         self.input_logo_path.setPlaceholderText(_t("settings.receipt.logo_placeholder"))
         self.btn_browse_logo.setText(_t("settings.receipt.btn_browse_logo"))
         self.btn_clear_logo.setText(_t("settings.receipt.btn_clear_logo"))
+        self._lbl_logo_hint.setText(_t("settings.receipt.logo_hint"))
         self._lbl_header_text.setText(_t("settings.receipt.header_text"))
         self.txt_header.setPlaceholderText(_t("settings.receipt.header_placeholder"))
         self._lbl_footer_text.setText(_t("settings.receipt.footer_text"))

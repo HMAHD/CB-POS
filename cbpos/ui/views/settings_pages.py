@@ -790,6 +790,7 @@ class HardwarePage(SettingsPage):
 
         self.spin_copies = QSpinBox()
         self.spin_copies.setRange(1, 5)
+        self.spin_copies.setFixedWidth(200)
         self._lbl_copies = QLabel()
         beh_form.addRow(self._lbl_copies, self.spin_copies)
         vbox_printer.addLayout(beh_form)
@@ -1422,6 +1423,11 @@ class SystemPage(SettingsPage):
         self.spin_timeout = QSpinBox()
         self.spin_timeout.setRange(0, 60)
         self.spin_timeout.setSuffix(" min")
+        # Wider than the usual 200px house convention -- its special
+        # value text ("Disabled (no auto-lock)") needs the extra room,
+        # confirmed by rendering it: at 200px it clips to ")led (no
+        # auto-lock)", reproducing the exact truncation #332 described.
+        self.spin_timeout.setFixedWidth(260)
         self._lbl_timeout = QLabel()
         self._form_sec.addRow(self._lbl_timeout, self.spin_timeout)
 
@@ -1431,12 +1437,14 @@ class SystemPage(SettingsPage):
 
         self.spin_max_login = QSpinBox()
         self.spin_max_login.setRange(3, 20)
+        self.spin_max_login.setFixedWidth(200)
         self._lbl_max_login = QLabel()
         self._form_sec.addRow(self._lbl_max_login, self.spin_max_login)
 
         self.spin_lockout = QSpinBox()
         self.spin_lockout.setRange(30, 3600)
         self.spin_lockout.setSuffix(" sec")
+        self.spin_lockout.setFixedWidth(200)
         self._lbl_lockout = QLabel()
         self._form_sec.addRow(self._lbl_lockout, self.spin_lockout)
 

@@ -1346,6 +1346,7 @@
     "receipt": {
       "title": "Receipt",
       "subtitle": "Customize receipt content and display — preview updates live.",
+      "cross_ref_hint": "Looking for print copies or auto-print? See Hardware. Looking for receipt numbering format? See Documents.",
       "tab_content": "Content",
       "tab_display": "Display",
       "section_logo": "Shop Logo",

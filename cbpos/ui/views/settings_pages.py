@@ -1073,6 +1073,17 @@ class ReceiptPage(SettingsPage):
         self._page_subtitle.setProperty("class", "muted")
         root.addWidget(self._page_subtitle)
 
+        # Copies/auto-print (Hardware) and document numbering format
+        # (Documents) are just as much "receipt customization" as anything
+        # on this page, but live on two other, unrelated-sounding sidebar
+        # sections with no link back here -- someone tuning header/footer/
+        # logo would feel done and never realize the rest is elsewhere (#331).
+        self._lbl_receipt_cross_ref = QLabel()
+        self._lbl_receipt_cross_ref.setObjectName("ReceiptCrossRefHint")
+        self._lbl_receipt_cross_ref.setProperty("class", "muted")
+        self._lbl_receipt_cross_ref.setWordWrap(True)
+        root.addWidget(self._lbl_receipt_cross_ref)
+
         # Horizontal split: settings | preview
         split = QHBoxLayout()
         split.setSpacing(16)
@@ -1249,6 +1260,7 @@ class ReceiptPage(SettingsPage):
     def retranslate_ui(self) -> None:
         self._page_title.setText(_t("settings.receipt.title"))
         self._page_subtitle.setText(_t("settings.receipt.subtitle"))
+        self._lbl_receipt_cross_ref.setText(_t("settings.receipt.cross_ref_hint"))
 
         self.tabs.setTabText(0, _t("settings.receipt.tab_content"))
         self.tabs.setTabText(1, _t("settings.receipt.tab_display"))

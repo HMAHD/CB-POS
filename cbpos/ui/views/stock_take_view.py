@@ -318,7 +318,7 @@ class StockTakeView(QWidget):
         header_layout.addWidget(self.category_combo)
 
         self.btn_load = QPushButton(_t("stock_take.btn_load_products"))
-        self.btn_load.setProperty("class", "primary")
+        self.btn_load.setProperty("class", "secondary")
         self.btn_load.clicked.connect(self.load_products)
         header_layout.addWidget(self.btn_load)
 
@@ -382,7 +382,7 @@ class StockTakeView(QWidget):
         btn_layout.addWidget(self.btn_finalize)
 
         self.btn_approve = QPushButton(_t("stock_take.btn_approve_apply"))
-        self.btn_approve.setStyleSheet("background-color: #39FF14; color: black; font-weight: bold; padding: 8px;")
+        self.btn_approve.setProperty("class", "primary")
         self.btn_approve.clicked.connect(self.approve_and_apply)
         btn_layout.addWidget(self.btn_approve)
 
@@ -394,6 +394,7 @@ class StockTakeView(QWidget):
         btn_layout.addStretch()
 
         self.btn_new = QPushButton(_t("stock_take.btn_new_count"))
+        self.btn_new.setProperty("class", "secondary")
         self.btn_new.clicked.connect(self.reset_form)
         btn_layout.addWidget(self.btn_new)
 
@@ -431,7 +432,7 @@ class StockTakeView(QWidget):
         filter_layout.addWidget(self.hist_date_to)
 
         self.hist_refresh_btn = QPushButton(_t("common.refresh"))
-        self.hist_refresh_btn.setProperty("class", "primary")
+        self.hist_refresh_btn.setProperty("class", "secondary")
         self.hist_refresh_btn.clicked.connect(self.refresh_history)
         filter_layout.addWidget(self.hist_refresh_btn)
         filter_layout.addStretch()

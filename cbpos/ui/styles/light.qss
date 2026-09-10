@@ -402,16 +402,17 @@ QPushButton#BtnCancel:hover, QPushButton#VoidBtn:hover, QPushButton[class="dange
     background-color: #BB2D3B;
 }
 
-/* Accent Button (Cyan) */
+/* Accent Button -- was #0099CC, matching neither the dark theme's
+   #00BCEB nor CLAUDE.md's documented light accent (#0D6EFD) */
 QPushButton[class="accent"] {
-    background-color: #0099CC;
+    background-color: #0D6EFD;
     color: #FFFFFF;
     border: none;
     font-weight: bold;
 }
 
 QPushButton[class="accent"]:hover {
-    background-color: #0088B5;
+    background-color: #0B5ED7;
 }
 
 /* Secondary Button (neutral, outlined -- dismiss/close actions that

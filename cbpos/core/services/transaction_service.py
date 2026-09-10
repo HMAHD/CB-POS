@@ -11,6 +11,7 @@ from cbpos.core.models import (
     Customer,
     SalePayment,
     CompositeItem,
+    AuditLog,
 )
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.auth_service import AuthService
@@ -343,6 +344,14 @@ class TransactionService:
                         )
 
                 logger.info("VOID Sale %s by User %s: %s", sale.document_number, user_id, reason)
+
+                log = AuditLog(
+                    user_id=user_id,
+                    action="VOID_SALE",
+                    event_type="TRANSACTION",
+                    details=f"Voided sale {sale.document_number}. Reason: {reason}",
+                )
+                session.add(log)
             return True
         except Exception as e:
             logger.error("Void Sale Failed: %s", e)
@@ -469,6 +478,17 @@ class TransactionService:
                     refund_reason,
                 )
 
+                log = AuditLog(
+                    user_id=user_id,
+                    action="REFUND",
+                    event_type="TRANSACTION",
+                    details=(
+                        f"Refunded sale {original_sale.document_number} as {refund_receipt_no}. "
+                        f"Reason: {refund_reason}"
+                    ),
+                )
+                session.add(log)
+
                 # 6. Print refund voucher (after commit via context manager)
                 TransactionService._print_receipt_async(refund_sale)
 
@@ -502,7 +522,7 @@ class TransactionService:
         """
         Transfer ownership of an order to another user.
         """
-        from cbpos.core.models import User, AuditLog
+        from cbpos.core.models import User
 
         db = Database()
         try:

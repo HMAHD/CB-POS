@@ -1,5 +1,6 @@
 from cbpos.core.models import User
 from cbpos.core.constants.permissions import ADMIN_ROLE_NAME, CRITICAL_ADMIN_PERMISSIONS
+from cbpos.core.services.auth_service import AuthService
 
 
 class PermissionService:
@@ -51,7 +52,7 @@ class PermissionService:
 
         SAFETY: Prevents revoking critical permissions from Admin.
         """
-        from cbpos.core.models import Role, Permission
+        from cbpos.core.models import Role, Permission, AuditLog
         from cbpos.core.database import Database
 
         db = Database()
@@ -78,5 +79,16 @@ class PermissionService:
             # ----------------------------------------------
 
             role.permissions = new_perms
+
+            current_user = AuthService.get_current_user()
+            if current_user is not None:
+                log = AuditLog(
+                    user_id=current_user.id,
+                    action="UPDATE_PERMISSIONS",
+                    event_type="SECURITY",
+                    details=f"Updated permissions for role '{role.name}' ({len(new_perms)} permission(s) granted).",
+                )
+                session.add(log)
+
             session.commit()
             return True

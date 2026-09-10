@@ -283,17 +283,22 @@ class ShopInfoPage(SettingsPage):
         # --- Tab 4: Appearance ---
         self._tab_appear, self._form_appear = self._build_form_tab()
 
-        self.spin_font_size = QSpinBox()
-        self.spin_font_size.setRange(8, 24)
-        self.spin_font_size.setSuffix(" px")
+        # QLineEdit + QIntValidator instead of QSpinBox for clean rendering
+        # (QSpinBox +/- buttons break under QSS), matching the pattern
+        # already proven in product_editor.py's Stock group.
+        self.spin_font_size = QLineEdit()
+        self.spin_font_size.setValidator(QIntValidator(8, 24))
+        self.spin_font_size.setFixedWidth(200)
         self._lbl_font_size = QLabel()
         self._form_appear.addRow(self._lbl_font_size, self.spin_font_size)
 
         self.combo_theme = QComboBox()
+        self.combo_theme.setFixedWidth(200)
         self._lbl_theme = QLabel()
         self._form_appear.addRow(self._lbl_theme, self.combo_theme)
 
         self.combo_language = QComboBox()
+        self.combo_language.setFixedWidth(200)
         languages = LanguageService.get_available_languages()
         for code, name in languages.items():
             self.combo_language.addItem(f"{name} ({code})", code)
@@ -454,7 +459,7 @@ class ShopInfoPage(SettingsPage):
         self.input_smtp_user.setText(settings.get("smtp_user", ""))
         self.input_smtp_pass.setText(settings.get("smtp_pass", ""))
 
-        self.spin_font_size.setValue(settings.get("font_size", 12))
+        self.spin_font_size.setText(str(settings.get("font_size", 12)))
         current_theme = settings.get("theme", "Dark")
         self.combo_theme.setCurrentIndex(0 if current_theme == "Dark" else 1)
         current_lang = settings.get("language", "en")
@@ -482,7 +487,7 @@ class ShopInfoPage(SettingsPage):
             "smtp_port": self.input_smtp_port.text(),
             "smtp_user": self.input_smtp_user.text(),
             "smtp_pass": self.input_smtp_pass.text(),
-            "font_size": self.spin_font_size.value(),
+            "font_size": int(self.spin_font_size.text() or 12),
             "theme": theme_selection,
             "language": lang_code,
         }

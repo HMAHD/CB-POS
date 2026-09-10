@@ -574,7 +574,7 @@ class PurchaseView(QWidget):
         # Repopulate status combo with translations
         current_status = self.history_status_combo.currentData()
         self.history_status_combo.clear()
-        self.history_status_combo.addItem(_t("purchase.all_suppliers"), None)
+        self.history_status_combo.addItem(_t("purchase.all_statuses"), None)
         self.history_status_combo.addItem(_t("purchase.status_completed"), "COMPLETED")
         self.history_status_combo.addItem(_t("purchase.status_draft"), "DRAFT")
         self.history_status_combo.addItem(_t("purchase.status_void"), "VOID")

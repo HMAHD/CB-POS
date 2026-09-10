@@ -673,6 +673,7 @@
     "to": "To:",
     "all": "All",
     "all_suppliers": "All Suppliers",
+    "all_statuses": "All Statuses",
     "search_supplier_placeholder": "Type to search...",
     "status_completed": "நிறைவு",
     "status_draft": "வரைவு",

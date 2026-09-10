@@ -169,6 +169,37 @@ class TestCartLineDiscounts:
         assert item["total"] == Decimal("900.00")
         assert item["subtotal"] == Decimal("900.00")
 
+    def test_line_discount_writes_an_audit_log_entry_when_a_user_is_given(self, mock_pricing):
+        """#398: discount overrides went through the same manager-override
+        permission flow as every other audited action but were never
+        written to AuditLog at all."""
+        cart = CartService()
+        product = _make_product(price="100.00")
+        cart.add_item(product, qty=Decimal("2"))
+
+        user = MagicMock()
+        user.id = 3
+        user.username = "manager"
+
+        with patch("cbpos.core.services.cart_service.LoggingService.log_action") as mock_log:
+            cart.apply_line_discount(0, "PERCENTAGE", Decimal("10"), user=user)
+
+        mock_log.assert_called_once()
+        args, kwargs = mock_log.call_args
+        call = {**dict(zip(["user_id", "action", "event_type", "details"], args)), **kwargs}
+        assert call["user_id"] == 3
+        assert call["event_type"] == "TRANSACTION"
+        assert "10" in call["details"]
+
+    def test_line_discount_without_a_user_writes_no_audit_log_entry(self, mock_pricing):
+        cart = CartService()
+        cart.add_item(_make_product(price="100.00"), qty=Decimal("2"))
+
+        with patch("cbpos.core.services.cart_service.LoggingService.log_action") as mock_log:
+            cart.apply_line_discount(0, "PERCENTAGE", Decimal("10"))
+
+        mock_log.assert_not_called()
+
     @patch("cbpos.core.services.config_service.ConfigService.get", return_value=10)
     def test_fixed_discount_exceeding_the_cap_raises(self, mock_config, mock_pricing):
         """A max_discount_percent cap of 10% must also gate FIXED discounts,
@@ -365,6 +396,28 @@ class TestCartPriceOverride:
         assert cart.items[0]["unit_price"] == Decimal("80.00")
         assert cart.items[0]["is_manual_price"] is True
         assert cart.items[0]["total"] == Decimal("80.00")
+
+    def test_override_price_writes_an_audit_log_entry(self, mock_pricing):
+        """#398: price overrides went through the same manager-override
+        permission flow as every other audited action (refund, void,
+        permission change) but were never written to AuditLog -- only a
+        plain logger.info() line."""
+        cart = CartService()
+        cart.add_item(_make_product(price="100.00"), Decimal("1"))
+
+        user = MagicMock()
+        user.id = 7
+        user.username = "manager"
+
+        with patch("cbpos.core.services.cart_service.LoggingService.log_action") as mock_log:
+            cart.override_price(0, Decimal("80.00"), user)
+
+        mock_log.assert_called_once()
+        args, kwargs = mock_log.call_args
+        call = {**dict(zip(["user_id", "action", "event_type", "details"], args)), **kwargs}
+        assert call["user_id"] == 7
+        assert call["event_type"] == "TRANSACTION"
+        assert "80.00" in call["details"]
 
     def test_override_negative_price_raises(self, mock_pricing):
         """Negative price override raises ValueError."""

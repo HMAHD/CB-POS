@@ -22,6 +22,7 @@ from PyQt6.QtGui import QKeySequence, QShortcut, QAction, QBrush, QColor, QPixma
 from decimal import Decimal
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.cart_service import CartService
+from cbpos.core.services.logging_service import LoggingService
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.services.suspended_transaction_service import SuspendedTransactionService
 from cbpos.ui.dialogs.payment_dialog import PaymentDialog
@@ -894,7 +895,7 @@ class SalesView(QWidget):
 
         from cbpos.core.constants.permissions import Permissions
 
-        authorized_user = check_permission_with_override(Permissions.SALES_VOID, self)  # noqa: F841
+        authorized_user = check_permission_with_override(Permissions.SALES_VOID, self)
         if not authorized_user:
             return
 
@@ -907,8 +908,15 @@ class SalesView(QWidget):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
+            item_count = len(self.cart_service.items)
             self.cart_service.clear()
             self.update_cart_display()
+            LoggingService.log_action(
+                user_id=authorized_user.id,
+                action="VOID_BILL",
+                event_type="TRANSACTION",
+                details=f"Voided in-progress cart with {item_count} item(s)",
+            )
         self.barcode_input.setFocus()
 
     # --- Phase 6: Advanced Search & Cart Enhancements ---
@@ -1080,7 +1088,7 @@ class SalesView(QWidget):
         if dialog.exec():
             disc_type, disc_value = dialog.get_data()
             try:
-                self.cart_service.apply_line_discount(row, disc_type, disc_value)
+                self.cart_service.apply_line_discount(row, disc_type, disc_value, user=authorized_user)
             except ValueError:
                 QMessageBox.warning(
                     self,

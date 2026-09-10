@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional
 from cbpos.core.models import Product, Customer
 from cbpos.core.constants.status import Precision
 from cbpos.core.services.pricing_service import PricingService
+from cbpos.core.services.logging_service import LoggingService
 
 logger = logging.getLogger(__name__)
 
@@ -89,8 +90,14 @@ class CartService:
         self.cart_discount_type = "NONE"
         self.cart_discount_value = Decimal("0.00")
 
-    def apply_line_discount(self, index: int, type: str, value: Decimal):
-        """Apply discount to a specific line item."""
+    def apply_line_discount(self, index: int, type: str, value: Decimal, user: Any = None):
+        """Apply discount to a specific line item.
+
+        `user` is the manager/cashier who authorized this discount
+        (from check_permission_with_override) -- when given, the override
+        is written to AuditLog the same way every other permission-gated
+        action in the app already is (refund, void, permission change).
+        """
         if 0 <= index < len(self.items):
             item = self.items[index]
             gross_line = item["qty"] * item["unit_price"]
@@ -98,6 +105,14 @@ class CartService:
             item["discount_type"] = type
             item["discount_value"] = Decimal(str(value))
             self._recalculate_line(item)
+
+            if user is not None:
+                LoggingService.log_action(
+                    user_id=user.id,
+                    action="LINE_DISCOUNT",
+                    event_type="TRANSACTION",
+                    details=f"Applied {type} discount ({value}) to '{item['product'].name_en}'",
+                )
 
     def apply_cart_discount(self, type: str, value: Decimal):
         """Apply discount to the entire cart."""
@@ -122,7 +137,12 @@ class CartService:
             # Strategy: Keep discount, apply on new price.
             self._recalculate_line(item)
 
-            logger.info("Price override by %s - Item %s to %s", user.username, item["product"].name_en, new_price)
+            LoggingService.log_action(
+                user_id=user.id,
+                action="PRICE_OVERRIDE",
+                event_type="TRANSACTION",
+                details=f"Overrode price of '{item['product'].name_en}' to {new_price}",
+            )
 
     def _validate_discount_cap(
         self, discount_type: str, discount_value: Decimal, reference_amount: Decimal = None

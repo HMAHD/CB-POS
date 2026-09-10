@@ -11,7 +11,7 @@ rest of the cart workflow.
 """
 
 from decimal import Decimal
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -145,3 +145,61 @@ class TestRemoveLineItemRequiresPermission:
         view.remove_line_item()
 
         assert len(view.cart_service.items) == 0
+
+
+class TestVoidBillWritesAnAuditLogEntry:
+    """#398: void_bill() computed an authorized_user from the manager-
+    override permission flow and then discarded it entirely
+    (`# noqa: F841`) -- no record of who cleared the cart was ever kept,
+    unlike every other permission-gated action in the app."""
+
+    def test_confirming_the_void_logs_who_authorized_it(self, view, monkeypatch):
+        from cbpos.core.models import User
+
+        manager = User(username="mgr", pin_hash="x", role_id=None, is_active=True)
+        manager.id = 9
+        import cbpos.core.utils.permission_helper as permission_helper
+
+        monkeypatch.setattr(permission_helper, "check_permission_with_override", lambda perm, parent: manager)
+
+        view.cart_service.add_item(_make_product(price="200.00"))
+        view.update_cart_display()
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(
+                sales_view_module.QMessageBox,
+                "question",
+                lambda *a, **k: sales_view_module.QMessageBox.StandardButton.Yes,
+            )
+            with patch("cbpos.ui.views.sales_view.LoggingService.log_action") as mock_log:
+                view.void_bill()
+
+        assert len(view.cart_service.items) == 0
+        mock_log.assert_called_once()
+        args, kwargs = mock_log.call_args
+        call = {**dict(zip(["user_id", "action", "event_type", "details"], args)), **kwargs}
+        assert call["user_id"] == 9
+        assert call["event_type"] == "TRANSACTION"
+
+    def test_cancelling_the_void_confirmation_logs_nothing(self, view, monkeypatch):
+        from cbpos.core.models import User
+
+        manager = User(username="mgr", pin_hash="x", role_id=None, is_active=True)
+        import cbpos.core.utils.permission_helper as permission_helper
+
+        monkeypatch.setattr(permission_helper, "check_permission_with_override", lambda perm, parent: manager)
+
+        view.cart_service.add_item(_make_product(price="200.00"))
+        view.update_cart_display()
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(
+                sales_view_module.QMessageBox,
+                "question",
+                lambda *a, **k: sales_view_module.QMessageBox.StandardButton.No,
+            )
+            with patch("cbpos.ui.views.sales_view.LoggingService.log_action") as mock_log:
+                view.void_bill()
+
+        assert len(view.cart_service.items) == 1
+        mock_log.assert_not_called()

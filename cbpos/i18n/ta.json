@@ -555,6 +555,7 @@
     "top_customers": "Top Customers",
     "by_spend": "by spend in selected period",
     "loading": "Loading...",
+    "load_error": "Could not load. Tap refresh to try again.",
     "monthly_sales": "Monthly Sales — {year}",
     "periodic_reports_range": "Periodic Reports  ({start} – {end})"
   },

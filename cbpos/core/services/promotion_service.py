@@ -2,6 +2,7 @@ from typing import List, Optional
 from datetime import datetime
 from decimal import Decimal
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from cbpos.core.database import Database
 from cbpos.core.models import Promotion
 
@@ -23,6 +24,7 @@ class PromotionService:
         start_time: datetime,
         end_time: datetime,
         days_of_week: Optional[str] = None,
+        category_id: Optional[int] = None,
     ) -> Promotion:
         self._validate_time_range(start_time, end_time)
         with self.db.get_session() as session:
@@ -33,6 +35,7 @@ class PromotionService:
                 start_time=start_time,
                 end_time=end_time,
                 days_of_week=days_of_week,
+                category_id=category_id,
                 is_active=True,
             )
             session.add(promotion)
@@ -51,6 +54,7 @@ class PromotionService:
         end_time: object = ...,
         days_of_week: object = ...,
         is_active: Optional[bool] = None,
+        category_id: object = ...,
     ) -> Promotion:
         """Update a promotion's fields.
 
@@ -64,6 +68,7 @@ class PromotionService:
             days_of_week: New days-of-week string, or None to clear. Omit (``...``) to leave unchanged.
             is_active: New active flag (if provided) -- a manual on/off switch,
                 independent of whether the promotion's dates currently apply.
+            category_id: New category scope, or None for store-wide. Omit (``...``) to leave unchanged.
 
         Returns:
             The updated Promotion.
@@ -102,6 +107,9 @@ class PromotionService:
             if is_active is not None:
                 promotion.is_active = is_active
 
+            if category_id is not ...:
+                promotion.category_id = category_id
+
             session.commit()
             session.refresh(promotion)
             session.expunge(promotion)
@@ -138,7 +146,7 @@ class PromotionService:
 
     def get_all_promotions(self) -> List[Promotion]:
         with self.db.get_session() as session:
-            stmt = select(Promotion).order_by(Promotion.start_time.desc())
+            stmt = select(Promotion).options(joinedload(Promotion.category)).order_by(Promotion.start_time.desc())
             promos = list(session.scalars(stmt).all())
             for promo in promos:
                 session.expunge(promo)

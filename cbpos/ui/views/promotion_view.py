@@ -18,12 +18,24 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QLabel,
     QMenu,
+    QCheckBox,
 )
 from PyQt6.QtCore import Qt, QDateTime
 from PyQt6.QtGui import QColor
+from cbpos.core.services.category_service import CategoryService
 from cbpos.core.services.promotion_service import PromotionService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.widgets.table_helpers import configure_table_columns
+
+_DAY_KEYS = [
+    "promotion.day_mon",
+    "promotion.day_tue",
+    "promotion.day_wed",
+    "promotion.day_thu",
+    "promotion.day_fri",
+    "promotion.day_sat",
+    "promotion.day_sun",
+]
 
 
 class PromotionView(QWidget):
@@ -56,7 +68,7 @@ class PromotionView(QWidget):
 
         # Table
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
+        self.table.setColumnCount(7)
         configure_table_columns(
             self.table.horizontalHeader(),
             {
@@ -65,7 +77,8 @@ class PromotionView(QWidget):
                 2: QHeaderView.ResizeMode.ResizeToContents,  # Value
                 3: QHeaderView.ResizeMode.ResizeToContents,  # Start
                 4: QHeaderView.ResizeMode.ResizeToContents,  # End
-                5: QHeaderView.ResizeMode.ResizeToContents,  # Status
+                5: QHeaderView.ResizeMode.ResizeToContents,  # Scope
+                6: QHeaderView.ResizeMode.ResizeToContents,  # Status
             },
         )
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -85,6 +98,7 @@ class PromotionView(QWidget):
                 _t("promotion.value"),
                 _t("promotion.start"),
                 _t("promotion.end"),
+                _t("promotion.scope"),
                 _t("common.status"),
             ]
         )
@@ -120,10 +134,13 @@ class PromotionView(QWidget):
             self.table.setItem(row, 3, QTableWidgetItem(p.start_time.strftime("%Y-%m-%d %H:%M")))
             self.table.setItem(row, 4, QTableWidgetItem(p.end_time.strftime("%Y-%m-%d %H:%M")))
 
+            scope_text = p.category.name if p.category_id and p.category else _t("promotion.scope_all_products")
+            self.table.setItem(row, 5, QTableWidgetItem(scope_text))
+
             status_text, status_colour = self._get_promotion_status(p)
             status_item = QTableWidgetItem(status_text)
             status_item.setForeground(status_colour)
-            self.table.setItem(row, 5, status_item)
+            self.table.setItem(row, 6, status_item)
 
     def add_promotion(self):
         dialog = PromotionDialog(self)
@@ -222,7 +239,14 @@ class PromotionDialog(QDialog):
             self.value_input.setValue(float(promotion.value))
             self.start_dt.setDateTime(QDateTime(promotion.start_time))
             self.end_dt.setDateTime(QDateTime(promotion.end_time))
-            self.days_input.setText(promotion.days_of_week or "")
+
+            cat_index = self.category_combo.findData(promotion.category_id)
+            if cat_index >= 0:
+                self.category_combo.setCurrentIndex(cat_index)
+
+            checked_days = set((promotion.days_of_week or "").split(",")) if promotion.days_of_week else None
+            for i, checkbox in enumerate(self.day_checkboxes):
+                checkbox.setChecked(checked_days is None or str(i) in checked_days)
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -232,28 +256,44 @@ class PromotionDialog(QDialog):
 
         self.type_combo = QComboBox()
         self.type_combo.addItems(["PERCENTAGE", "FIXED_AMOUNT", "BOGO"])
+        self.type_combo.setMaximumWidth(200)
 
         self.value_input = QDoubleSpinBox()
         self.value_input.setRange(0, 100000)
         self.value_input.setDecimals(2)
+        self.value_input.setMaximumWidth(150)
+
+        self.category_combo = QComboBox()
+        self.category_combo.setMaximumWidth(250)
+        self.category_combo.addItem(_t("promotion.scope_all_products"), None)
+        for category in CategoryService.get_all():
+            self.category_combo.addItem(category.name, category.id)
 
         self.start_dt = QDateTimeEdit()
         self.start_dt.setDateTime(QDateTime.currentDateTime())
         self.start_dt.setCalendarPopup(True)
+        self.start_dt.setMaximumWidth(220)
 
         self.end_dt = QDateTimeEdit()
         self.end_dt.setDateTime(QDateTime.currentDateTime().addDays(7))
         self.end_dt.setCalendarPopup(True)
+        self.end_dt.setMaximumWidth(220)
 
-        self.days_input = QLineEdit()
-        self.days_input.setPlaceholderText(_t("promotion.days_placeholder"))
+        days_row = QHBoxLayout()
+        self.day_checkboxes = []
+        for key in _DAY_KEYS:
+            checkbox = QCheckBox(_t(key))
+            checkbox.setChecked(True)
+            days_row.addWidget(checkbox)
+            self.day_checkboxes.append(checkbox)
 
         form.addRow(_t("promotion.name_label"), self.name_input)
         form.addRow(_t("promotion.type_label"), self.type_combo)
         form.addRow(_t("promotion.value_label"), self.value_input)
+        form.addRow(_t("promotion.scope_label"), self.category_combo)
         form.addRow(_t("promotion.start_time_label"), self.start_dt)
         form.addRow(_t("promotion.end_time_label"), self.end_dt)
-        form.addRow(_t("promotion.days_label"), self.days_input)
+        form.addRow(_t("promotion.days_label"), days_row)
 
         layout.addLayout(form)
 
@@ -275,11 +315,15 @@ class PromotionDialog(QDialog):
         self.accept()
 
     def get_data(self):
+        checked_indices = [str(i) for i, cb in enumerate(self.day_checkboxes) if cb.isChecked()]
+        all_checked = len(checked_indices) == len(self.day_checkboxes)
+
         return {
             "name": self.name_input.text(),
             "type": self.type_combo.currentText(),
             "value": Decimal(str(self.value_input.value())),
             "start_time": self.start_dt.dateTime().toPyDateTime(),
             "end_time": self.end_dt.dateTime().toPyDateTime(),
-            "days_of_week": self.days_input.text().strip() or None,
+            "days_of_week": None if all_checked else ",".join(checked_indices),
+            "category_id": self.category_combo.currentData(),
         }

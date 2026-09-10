@@ -74,6 +74,10 @@ class PricingService:
                 if promo.days_of_week and current_day not in promo.days_of_week:
                     continue
 
+                # A category-scoped promotion only applies to products in that category
+                if promo.category_id is not None and promo.category_id != product.category_id:
+                    continue
+
                 # Calculate potential new price
                 temp_price = final_price
                 if promo.type == "PERCENTAGE":

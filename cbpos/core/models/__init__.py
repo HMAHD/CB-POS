@@ -112,7 +112,11 @@ class Promotion(Base):
     type: Mapped[str] = mapped_column(String(20), nullable=False)  # PERCENTAGE, FIXED_AMOUNT, BOGO
     value: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Scopes the promotion to one category's products; NULL means store-wide (all products).
+    category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True, index=True)
     last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
+
+    category: Mapped[Optional["Category"]] = relationship()
 
 
 # --- Unified Document Architecture ---

@@ -58,7 +58,7 @@ class TestLiveStatusComputation:
         view.load_promotions()
 
         row = _row_for(view, promo.id)
-        assert view.table.item(row, 5).text() == _t("common.active")
+        assert view.table.item(row, 6).text() == _t("common.active")
 
     def test_expired_promotion_shows_expired_not_active(self, db_session):
         view = PromotionView()
@@ -67,7 +67,7 @@ class TestLiveStatusComputation:
         view.load_promotions()
 
         row = _row_for(view, promo.id)
-        assert view.table.item(row, 5).text() == _t("promotion.status_expired")
+        assert view.table.item(row, 6).text() == _t("promotion.status_expired")
 
     def test_future_promotion_shows_upcoming_not_active(self, db_session):
         view = PromotionView()
@@ -76,7 +76,7 @@ class TestLiveStatusComputation:
         view.load_promotions()
 
         row = _row_for(view, promo.id)
-        assert view.table.item(row, 5).text() == _t("promotion.status_upcoming")
+        assert view.table.item(row, 6).text() == _t("promotion.status_upcoming")
 
     def test_manually_deactivated_promotion_shows_inactive_even_within_its_window(self, db_session):
         view = PromotionView()
@@ -84,7 +84,7 @@ class TestLiveStatusComputation:
         view.load_promotions()
 
         row = _row_for(view, promo.id)
-        assert view.table.item(row, 5).text() == _t("common.inactive")
+        assert view.table.item(row, 6).text() == _t("common.inactive")
 
 
 class TestEditPromotion:
@@ -206,11 +206,20 @@ class TestPromotionDialogEditMode:
         assert dialog.name_input.text() == promo.name
         assert dialog.type_combo.currentText() == "FIXED_AMOUNT"
         assert dialog.value_input.value() == 25.00
-        assert dialog.days_input.text() == "0,1"
+        checked = [i for i, cb in enumerate(dialog.day_checkboxes) if cb.isChecked()]
+        assert checked == [0, 1]
 
     def test_new_dialog_has_empty_name(self, db_session):
         dialog = PromotionDialog()
         assert dialog.name_input.text() == ""
+
+    def test_new_dialog_defaults_to_all_days_checked(self, db_session):
+        dialog = PromotionDialog()
+        assert all(cb.isChecked() for cb in dialog.day_checkboxes)
+
+    def test_new_dialog_defaults_to_all_products_scope(self, db_session):
+        dialog = PromotionDialog()
+        assert dialog.category_combo.currentData() is None
 
     def test_type_combo_includes_bogo(self, db_session):
         dialog = PromotionDialog()

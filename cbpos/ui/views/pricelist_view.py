@@ -22,11 +22,12 @@ from PyQt6.QtWidgets import (
     QStackedWidget,
     QMenu,
 )
-from PyQt6.QtCore import Qt, QDate
+from PyQt6.QtCore import Qt, QDate, QSize
 from PyQt6.QtGui import QColor, QShortcut, QKeySequence
 from cbpos.core.services.price_list_service import PriceListService
 from cbpos.core.services.product_service import ProductService
 from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
+from cbpos.ui.resources.icons import Icons
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
@@ -50,7 +51,6 @@ class PriceListView(QWidget):
         root.setSpacing(0)
 
         from cbpos.ui.widgets.page_header import PageHeader
-        from cbpos.ui.resources.icons import Icons
 
         self._page_header = PageHeader(icon_name=Icons.PRICE_LIST)
         header_row = QHBoxLayout()
@@ -90,7 +90,7 @@ class PriceListView(QWidget):
         self.nav_container.setObjectName("PriceListNavContainer")
         self.nav_layout = QVBoxLayout(self.nav_container)
         self.nav_layout.setContentsMargins(0, 0, 0, 0)
-        self.nav_layout.setSpacing(2)
+        self.nav_layout.setSpacing(6)
         self.nav_layout.addStretch()
 
         scroll.setWidget(self.nav_container)
@@ -291,9 +291,12 @@ class PriceListView(QWidget):
 
         lists = self.price_list_service.get_all_lists()
         for pl in lists:
-            status_text, _ = self._get_price_list_status(pl)
-            btn = QPushButton(f"{pl.name}  [{status_text}]")
+            status_text, status_colour = self._get_price_list_status(pl)
+            btn = QPushButton(pl.name)
             btn.setObjectName("PriceListNavItem")
+            btn.setIcon(Icons.get("fa5s.circle", status_colour.name()))
+            btn.setIconSize(QSize(10, 10))
+            btn.setToolTip(status_text)
             btn.setCheckable(True)
             btn.setAutoExclusive(True)
             btn.setProperty("list_id", pl.id)

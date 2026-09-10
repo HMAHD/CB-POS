@@ -834,6 +834,11 @@ QTableWidget#CartTable {
     gridline-color: #3E3E42;
 }
 
+QTableWidget#CartTable::item:selected {
+    background-color: rgba(0, 188, 235, 0.18);
+    color: #FFFFFF;
+}
+
 QLabel[class="StrikethroughPrice"] {
     background-color: transparent;
     color: white;

@@ -288,15 +288,14 @@ def main():
             DatabaseSetupService.create_empty_database()
             print("[BOOTSTRAP] Empty database ready.")
 
-    # Start scheduler timer for auto-report
+    # Start scheduler timer for auto-report. Settings' save handler also
+    # starts/stops this live when the checkbox changes (#320) -- this call
+    # only covers the case where it was already enabled at launch.
     if ConfigService.get("auto_report_enabled"):
         try:
-            from PyQt6.QtCore import QTimer
             from cbpos.core.services.scheduler_service import SchedulerService
 
-            scheduler_timer = QTimer(app)
-            scheduler_timer.timeout.connect(SchedulerService.check_automation)
-            scheduler_timer.start(60_000)  # Check every 60 seconds
+            SchedulerService.start_timer()
             print("[BOOTSTRAP] Scheduler started.")
         except Exception as e:
             print(f"[BOOTSTRAP] Scheduler failed to start: {e}")

@@ -305,6 +305,17 @@ class SettingsView(QWidget):
 
         ConfigService.update_all(all_settings)
 
+        # Start/stop the auto-report scheduler timer live (#320) -- it used
+        # to only be read once at process launch, so toggling this
+        # checkbox had no effect until the next full app restart.
+        if all_settings.get("auto_report_enabled") != current_config.get("auto_report_enabled"):
+            from cbpos.core.services.scheduler_service import SchedulerService
+
+            if all_settings.get("auto_report_enabled"):
+                SchedulerService.start_timer()
+            else:
+                SchedulerService.stop_timer()
+
         new_theme = all_settings.get("theme", current_theme)
         new_lang = all_settings.get("language", current_lang)
         new_font_size = all_settings.get("font_size", current_font_size)

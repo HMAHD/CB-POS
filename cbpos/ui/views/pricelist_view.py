@@ -179,7 +179,7 @@ class PriceListView(QWidget):
         # Product table
         self.table = QTableWidget()
         self.table.setObjectName("PriceListDataTable")
-        self.table.setColumnCount(5)
+        self.table.setColumnCount(4)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.setColumnHidden(0, True)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -246,7 +246,6 @@ class PriceListView(QWidget):
                 _t("pricelist.header_product"),
                 _t("pricelist.header_base_price"),
                 _t("pricelist.header_list_price"),
-                _t("pricelist.header_status"),
             ]
         )
         self.hint_label.setText(_t("pricelist.footer_hint"))
@@ -333,7 +332,6 @@ class PriceListView(QWidget):
         if not self.current_list:
             return
 
-        status_text, status_colour = self._get_price_list_status(self.current_list)
         products = self.product_service.get_all_products()
         list_items = self.price_list_service.get_items(self.current_list.id)
         price_map = {item.product_id: item.price for item in list_items}
@@ -355,11 +353,6 @@ class PriceListView(QWidget):
                 price_item.setForeground(Qt.GlobalColor.green)
 
             self.table.setItem(row, 3, price_item)
-
-            # Status column
-            status_item = QTableWidgetItem(status_text)
-            status_item.setForeground(status_colour)
-            self.table.setItem(row, 4, status_item)
 
         self.lbl_product_count.setText(_t("pricelist.product_count", count=len(products)))
 

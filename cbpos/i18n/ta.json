@@ -1972,7 +1972,21 @@
     "col_terminal": "Terminal",
     "col_details": "Details",
     "no_role": "None",
-    "unknown_user": "Unknown"
+    "unknown_user": "Unknown",
+    "filter_event_type": "Event Type",
+    "filter_from": "From",
+    "filter_to": "To",
+    "btn_filter": "Filter",
+    "btn_clear": "Clear",
+    "event_all": "All Events",
+    "event_login": "Login",
+    "event_logout": "Logout",
+    "event_timeout": "Timeout",
+    "event_security": "Security",
+    "event_inventory": "Inventory",
+    "event_transaction": "Transaction",
+    "event_credit": "Credit",
+    "event_purchase": "Purchase"
   },
   "promotion": {
     "title": "சலுகை மேலாண்மை",

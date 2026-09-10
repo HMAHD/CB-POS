@@ -1,3 +1,5 @@
+from datetime import datetime, time
+
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -13,9 +15,13 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QMessageBox,
     QTabWidget,
+    QFrame,
+    QDateEdit,
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QDate
+from PyQt6.QtGui import QColor
 from cbpos.core.services.user_service import UserService
+from cbpos.core.services.theme_service import ThemeService
 from cbpos.ui.dialogs.permission_dialog import PermissionDialog
 from cbpos.ui.dialogs.role_manager import RoleManagerDialog
 from cbpos.ui.resources.icons import Icons
@@ -185,6 +191,53 @@ class UserView(QWidget):
     def init_log_tab(self):
         layout = QVBoxLayout(self.log_tab)
 
+        # Filter Bar
+        filter_frame = QFrame()
+        filter_frame.setObjectName("DocFilterBar")
+        filter_layout = QHBoxLayout(filter_frame)
+        filter_layout.setContentsMargins(10, 8, 10, 8)
+        filter_layout.setSpacing(8)
+
+        self.lbl_log_event = QLabel()
+        self.lbl_log_event.setObjectName("DocFilterLabel")
+        filter_layout.addWidget(self.lbl_log_event)
+        self.log_event_filter = QComboBox()
+        self.log_event_filter.setObjectName("DocFilterCombo")
+        self.log_event_filter.setMinimumWidth(130)
+        filter_layout.addWidget(self.log_event_filter)
+
+        self.lbl_log_from = QLabel()
+        self.lbl_log_from.setObjectName("DocFilterLabel")
+        filter_layout.addWidget(self.lbl_log_from)
+        self.log_date_from = QDateEdit()
+        self.log_date_from.setObjectName("DocDateEdit")
+        self.log_date_from.setCalendarPopup(True)
+        self.log_date_from.setDate(QDate.currentDate().addMonths(-1))
+        filter_layout.addWidget(self.log_date_from)
+
+        self.lbl_log_to = QLabel()
+        self.lbl_log_to.setObjectName("DocFilterLabel")
+        filter_layout.addWidget(self.lbl_log_to)
+        self.log_date_to = QDateEdit()
+        self.log_date_to.setObjectName("DocDateEdit")
+        self.log_date_to.setCalendarPopup(True)
+        self.log_date_to.setDate(QDate.currentDate())
+        filter_layout.addWidget(self.log_date_to)
+
+        filter_layout.addStretch(1)
+
+        self.log_filter_btn = QPushButton()
+        self.log_filter_btn.setObjectName("DocFilterBtn")
+        self.log_filter_btn.clicked.connect(self.apply_log_filter)
+        filter_layout.addWidget(self.log_filter_btn)
+
+        self.log_clear_btn = QPushButton()
+        self.log_clear_btn.setObjectName("DocClearBtn")
+        self.log_clear_btn.clicked.connect(self.clear_log_filter)
+        filter_layout.addWidget(self.log_clear_btn)
+
+        layout.addWidget(filter_frame)
+
         self.log_table = QTableWidget()
         self.log_table.setColumnCount(5)
         configure_table_columns(
@@ -227,6 +280,26 @@ class UserView(QWidget):
             ]
         )
 
+        self.lbl_log_event.setText(_t("user.filter_event_type"))
+        self.lbl_log_from.setText(_t("user.filter_from"))
+        self.lbl_log_to.setText(_t("user.filter_to"))
+        self.log_filter_btn.setText(_t("user.btn_filter"))
+        self.log_clear_btn.setText(_t("user.btn_clear"))
+
+        current_event_type = self.log_event_filter.currentData()
+        self.log_event_filter.clear()
+        self.log_event_filter.addItem(_t("user.event_all"), None)
+        self.log_event_filter.addItem(_t("user.event_login"), "LOGIN")
+        self.log_event_filter.addItem(_t("user.event_logout"), "LOGOUT")
+        self.log_event_filter.addItem(_t("user.event_timeout"), "TIMEOUT")
+        self.log_event_filter.addItem(_t("user.event_security"), "SECURITY")
+        self.log_event_filter.addItem(_t("user.event_inventory"), "INVENTORY")
+        self.log_event_filter.addItem(_t("user.event_transaction"), "TRANSACTION")
+        self.log_event_filter.addItem(_t("user.event_credit"), "CREDIT")
+        self.log_event_filter.addItem(_t("user.event_purchase"), "PURCHASE")
+        restored_index = self.log_event_filter.findData(current_event_type)
+        self.log_event_filter.setCurrentIndex(restored_index if restored_index != -1 else 0)
+
     def load_users(self):
         self.users = UserService.get_all_users()
         self.table.setRowCount(len(self.users))
@@ -246,8 +319,51 @@ class UserView(QWidget):
                 item_status.setForeground(Qt.GlobalColor.red)
             self.table.setItem(row, 3, item_status)
 
+    # Destructive actions get flagged red even though their event_type
+    # (TRANSACTION) is shared with routine actions like TRANSFER_ORDER.
+    _DESTRUCTIVE_ACTIONS = {"VOID_SALE", "REFUND"}
+
+    # (dark theme color, light theme color) per event_type. LOGIN/LOGOUT/
+    # TIMEOUT are deliberately absent -- they're the noisy majority of rows
+    # and coloring them would drown out the events that actually need
+    # attention.
+    _EVENT_TYPE_COLORS = {
+        "SECURITY": ("#FFDC00", "#B8860B"),
+        "INVENTORY": ("#20C997", "#0CA678"),
+        "TRANSACTION": ("#00BCEB", "#0D6EFD"),
+        "CREDIT": ("#39FF14", "#198754"),
+        "PURCHASE": ("#B794F6", "#6F42C1"),
+    }
+
+    def _log_event_color(self, log) -> QColor:
+        is_light = ThemeService.current_theme.lower() == "light"
+
+        if log.action in self._DESTRUCTIVE_ACTIONS:
+            return QColor("#DC3545" if is_light else "#FF4136")
+
+        colors = self._EVENT_TYPE_COLORS.get(log.event_type)
+        if colors is None:
+            return None
+        return QColor(colors[1] if is_light else colors[0])
+
+    def apply_log_filter(self):
+        self.load_logs()
+
+    def clear_log_filter(self):
+        self.log_event_filter.setCurrentIndex(0)
+        self.log_date_from.setDate(QDate.currentDate().addMonths(-1))
+        self.log_date_to.setDate(QDate.currentDate())
+        self.load_logs()
+
     def load_logs(self):
-        logs = UserService.get_recent_activity()
+        date_from = datetime.combine(self.log_date_from.date().toPyDate(), time.min)
+        date_to = datetime.combine(self.log_date_to.date().toPyDate(), time.max)
+
+        logs = UserService.get_recent_activity(
+            event_type=self.log_event_filter.currentData(),
+            date_from=date_from,
+            date_to=date_to,
+        )
         self.log_table.setRowCount(len(logs))
 
         for row, log in enumerate(logs):
@@ -257,7 +373,11 @@ class UserView(QWidget):
                 1,
                 QTableWidgetItem(log.user.username if log.user else _t("user.unknown_user")),
             )
-            self.log_table.setItem(row, 2, QTableWidgetItem(log.event_type))
+            event_item = QTableWidgetItem(log.event_type)
+            color = self._log_event_color(log)
+            if color is not None:
+                event_item.setForeground(color)
+            self.log_table.setItem(row, 2, event_item)
             self.log_table.setItem(row, 3, QTableWidgetItem(log.terminal_id or "-"))
             self.log_table.setItem(row, 4, QTableWidgetItem(log.details or ""))
 

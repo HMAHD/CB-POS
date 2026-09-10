@@ -535,8 +535,8 @@ QGroupBox QCheckBox {
 /* Sidebar Container - Dark Mode */
 QFrame#SidebarContainer,
 QFrame#Sidebar {
-    background-color: #1A1A1A;  /* Flat dark gray - matches dashboard cards */
-    border-right: 1px solid #2A2A2A;
+    background-color: #252526;  /* Documented Surface tone -- distinct from the #1E1E1E canvas */
+    border-right: 1px solid #333333;
 }
 
 /* User Profile Section - Dark Mode (KILL THE LINES) */
@@ -653,30 +653,50 @@ QToolButton#SidebarToggle {
     background: transparent;
 }
 
-/* Sidebar Buttons */
+/* Sidebar section break -- a resting point between groups of nav items
+   (operational screens vs. management/admin ones), instead of one flat,
+   undifferentiated 10-item list (#315). The divider line stays visible
+   in collapsed mode; the label text hides (no room for it, see
+   CollapsibleSidebar._update_all_styles). */
+QFrame#SidebarSectionDivider {
+    background-color: #333333;
+    border: none;
+    margin: 6px 16px 0 16px;
+}
+
+QLabel#SidebarSectionLabel {
+    color: #6B7280;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 6px 20px 4px 20px;
+    background: transparent;
+}
+
+/* Sidebar Buttons -- a floating rounded pill (inset margin + radius)
+   instead of a flat, edge-to-edge square with a hairline accent bar. */
 QToolButton#SidebarButton {
     background-color: transparent;
     color: #AAAAAA;
     border: none;
-    border-left: 4px solid transparent;
+    border-radius: 8px;
     text-align: left;
-    padding-left: 20px;
+    padding-left: 16px;
     padding-top: 8px;
     padding-bottom: 8px;
+    margin: 1px 10px;
     min-height: 36px;
     font-size: 15px;  /* Slightly larger for readability */
     font-weight: normal;
 }
 
 QToolButton#SidebarButton:hover {
-    background-color: #252525;  /* Flat gray hover */
+    background-color: rgba(255, 255, 255, 0.06);
     color: white;
 }
 
 QToolButton#SidebarButton:checked, QToolButton#SidebarButton[active="true"] {
-    background-color: #2A2A2A;  /* Flat gray active state */
+    background-color: rgba(0, 188, 235, 0.14);
     color: #00BCEB;
-    border-left: 4px solid #00BCEB;
     font-weight: bold;
 }
 
@@ -685,17 +705,31 @@ QToolButton#SidebarButton[collapsed="true"] {
     padding-left: 0px;
     padding-right: 0px;
     text-align: center;
+    margin: 1px 10px;
 }
 
-/* Special Sidebar Buttons */
+/* Bottom "exit cluster" divider -- pulls POS/Logout visually away from
+   the nav list above, so they read as two consequential actions rather
+   than two more rows in the same list. */
+QFrame#SidebarBottomDivider {
+    background-color: #333333;
+    border: none;
+    margin: 0 16px;
+}
+
+/* Special Sidebar Buttons -- rounded, tinted action chips (matching the
+   bordered-pill treatment BtnLogout already had) instead of a flat,
+   full-width bar. */
 QToolButton#BtnPos {
     color: #39FF14;
-    background-color: rgba(57, 255, 20, 0.1);
-    border: none;
-    min-height: 36px;
-    border-top: 1px solid #333;
+    background-color: rgba(57, 255, 20, 0.12);
+    border: 1px solid rgba(57, 255, 20, 0.35);
+    border-radius: 8px;
+    min-height: 40px;
     text-align: left;
-    padding-left: 24px;
+    padding-left: 16px;
+    margin: 4px 10px;
+    font-weight: bold;
 }
 
 QToolButton#BtnPos:hover {
@@ -705,15 +739,19 @@ QToolButton#BtnPos:hover {
 QToolButton#BtnPos[collapsed="true"] {
     text-align: center;
     padding-left: 0px;
+    margin: 4px 10px;
 }
 
 QToolButton#BtnLogout {
     color: #FF4136;
-    background-color: rgba(255, 65, 54, 0.1);
-    border: none;
-    min-height: 36px;
+    background-color: rgba(255, 65, 54, 0.12);
+    border: 1px solid rgba(255, 65, 54, 0.35);
+    border-radius: 8px;
+    min-height: 40px;
     text-align: left;
-    padding-left: 24px;
+    padding-left: 16px;
+    margin: 4px 10px 8px 10px;
+    font-weight: bold;
 }
 
 QToolButton#BtnLogout:hover {
@@ -723,6 +761,7 @@ QToolButton#BtnLogout:hover {
 QToolButton#BtnLogout[collapsed="true"] {
     text-align: center;
     padding-left: 0px;
+    margin: 4px 10px 8px 10px;
 }
 
 /* --- Sales View Specifics --- */

@@ -662,16 +662,37 @@ QToolButton#SidebarToggle {
     background: transparent;
 }
 
-/* Sidebar Buttons */
+/* Sidebar section break -- a resting point between groups of nav items
+   (operational screens vs. management/admin ones), instead of one flat,
+   undifferentiated 10-item list (#315). The divider line stays visible
+   in collapsed mode; the label text hides (no room for it, see
+   CollapsibleSidebar._update_all_styles). */
+QFrame#SidebarSectionDivider {
+    background-color: #E5E7EB;
+    border: none;
+    margin: 6px 16px 0 16px;
+}
+
+QLabel#SidebarSectionLabel {
+    color: #9CA3AF;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 6px 20px 4px 20px;
+    background: transparent;
+}
+
+/* Sidebar Buttons -- a floating rounded pill (inset margin + radius)
+   instead of a flat, edge-to-edge square with a hairline accent bar. */
 QToolButton#SidebarButton {
     background-color: transparent;
     color: #6B7280;
     border: none;
-    border-left: 4px solid transparent;
+    border-radius: 8px;
     text-align: left;
-    padding-left: 20px;
+    padding-left: 16px;
     padding-top: 8px;
     padding-bottom: 8px;
+    margin: 1px 10px;
     min-height: 36px;
     font-size: 15px;  /* Slightly larger for readability */
     font-weight: normal;
@@ -683,9 +704,8 @@ QToolButton#SidebarButton:hover {
 }
 
 QToolButton#SidebarButton:checked, QToolButton#SidebarButton[active="true"] {
-    background-color: #EFF6FF;  /* Pale blue */
-    color: #0066CC;
-    border-left: 4px solid #0066CC;
+    background-color: rgba(13, 110, 253, 0.10);
+    color: #0D6EFD;
     font-weight: bold;
 }
 
@@ -694,48 +714,63 @@ QToolButton#SidebarButton[collapsed="true"] {
     padding-left: 0px;
     padding-right: 0px;
     text-align: center;
+    margin: 1px 10px;
 }
 
-/* Special Sidebar Buttons */
+/* Bottom "exit cluster" divider -- pulls POS/Logout visually away from
+   the nav list above, so they read as two consequential actions rather
+   than two more rows in the same list. */
+QFrame#SidebarBottomDivider {
+    background-color: #E5E7EB;
+    border: none;
+    margin: 0 16px;
+}
+
+/* Special Sidebar Buttons -- rounded, tinted action chips instead of a
+   flat full-width bar (BtnPos) or a centered outlined block (BtnLogout),
+   so both read as the same family of "exit cluster" action. */
 QToolButton#BtnPos {
     color: #198754;
-    border-top: 1px solid #DEE2E6;
+    background-color: rgba(25, 135, 84, 0.08);
+    border: 1px solid rgba(25, 135, 84, 0.35);
+    border-radius: 8px;
+    min-height: 40px;
     text-align: left;
-    padding-left: 24px;
-    min-height: 36px;
+    padding-left: 16px;
+    margin: 4px 10px;
+    font-weight: bold;
 }
 
 QToolButton#BtnPos:hover {
-    background-color: #E8F5E9; /* Pale Green */
+    background-color: rgba(25, 135, 84, 0.16);
 }
 
 QToolButton#BtnPos[collapsed="true"] {
     text-align: center;
     padding-left: 0px;
+    margin: 4px 10px;
 }
 
-/* Sign Out Button - Professional Outlined Design */
 QToolButton#BtnLogout {
-    color: #DC3545;  /* Bootstrap Red */
-    background-color: transparent;
-    border: 1px solid #DC3545;  /* Red Border */
-    border-radius: 6px;
-    padding: 8px 12px;
-    margin: 10px 15px;  /* Spacing from edges */
-    min-height: 36px;
+    color: #DC3545;
+    background-color: rgba(220, 53, 69, 0.08);
+    border: 1px solid rgba(220, 53, 69, 0.35);
+    border-radius: 8px;
+    min-height: 40px;
+    text-align: left;
+    padding-left: 16px;
+    margin: 4px 10px 8px 10px;
     font-weight: bold;
-    text-align: center;  /* Center text */
 }
 
 QToolButton#BtnLogout:hover {
-    background-color: #DC3545;
-    color: white;  /* White text on Red background */
+    background-color: rgba(220, 53, 69, 0.16);
 }
 
 QToolButton#BtnLogout[collapsed="true"] {
     text-align: center;
-    padding: 8px;
-    margin: 10px 10px;
+    padding-left: 0px;
+    margin: 4px 10px 8px 10px;
 }
 
 /* --- Sales View Specifics --- */

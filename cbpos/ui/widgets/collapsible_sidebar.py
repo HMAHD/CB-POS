@@ -43,6 +43,7 @@ class CollapsibleSidebar(QFrame):
         super().__init__(parent)
         self.is_collapsed = bool(ConfigService.get("sidebar_collapsed"))
         self.nav_buttons: List[SidebarButton] = []
+        self._section_labels: List[QLabel] = []
 
         self.setFixedWidth(EXPANDED_WIDTH)
         self.setObjectName("SidebarContainer")
@@ -83,6 +84,15 @@ class CollapsibleSidebar(QFrame):
         bottom_layout = QVBoxLayout(self._bottom_widget)
         bottom_layout.setContentsMargins(0, 0, 0, 0)
         bottom_layout.setSpacing(0)
+
+        # Pulls POS/Logout visually away from the nav list above, so they
+        # read as a distinct "exit cluster" rather than two more rows in
+        # the same list (#315).
+        self._bottom_divider = QFrame()
+        self._bottom_divider.setObjectName("SidebarBottomDivider")
+        self._bottom_divider.setFixedHeight(1)
+        bottom_layout.addWidget(self._bottom_divider)
+        bottom_layout.addSpacing(8)
 
         self.btn_pos = SidebarButton("", "fa5s.cash-register")
         self.btn_pos.setObjectName("BtnPos")
@@ -137,6 +147,42 @@ class CollapsibleSidebar(QFrame):
         self._layout.addWidget(btn)
         self.nav_buttons.append(btn)
         return btn
+
+    def add_section_label(self, text: str) -> QLabel:
+        """Insert a subtle section-break label into the nav list.
+
+        Gives the eye a resting point between groups of nav items (e.g.
+        day-to-day operational screens vs. management/admin ones)
+        instead of one flat, undifferentiated list (#315). The divider
+        line above the text stays visible even when collapsed; only the
+        text itself hides, since there's no room for it on the icon-only
+        rail -- mirroring ``add_nav_button()``'s own collapsed handling.
+
+        Args:
+            text: Section name, upper-cased automatically.
+
+        Returns:
+            The created label -- callers should call ``.setText(...)``
+            directly on it (upper-cased) to retranslate, same as any
+            other label; this widget doesn't cache the original text.
+        """
+        wrapper = QWidget()
+        wrapper_layout = QVBoxLayout(wrapper)
+        wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        wrapper_layout.setSpacing(0)
+
+        divider = QFrame()
+        divider.setObjectName("SidebarSectionDivider")
+        divider.setFixedHeight(1)
+        wrapper_layout.addWidget(divider)
+
+        label = QLabel(text.upper())
+        label.setObjectName("SidebarSectionLabel")
+        wrapper_layout.addWidget(label)
+
+        self._layout.addWidget(wrapper)
+        self._section_labels.append(label)
+        return label
 
     def finalize(self) -> None:
         """Call after all nav buttons have been added.
@@ -263,6 +309,11 @@ class CollapsibleSidebar(QFrame):
             btn.setProperty("collapsed", self.is_collapsed)
             btn.style().unpolish(btn)
             btn.style().polish(btn)
+
+        # Section-label text has no room on the icon-only rail; the
+        # divider line above each one stays visible either way.
+        for label in self._section_labels:
+            label.setVisible(not self.is_collapsed)
 
     def _load_logo(self) -> None:
         """Load the logo image from the current theme."""

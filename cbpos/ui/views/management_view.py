@@ -60,6 +60,12 @@ class ManagementView(QWidget):
         self.btn_inventory = self.sidebar.add_nav_button("", Icons.INVENTORY, 1)
         self.btn_purchasing = self.sidebar.add_nav_button("", Icons.PURCHASE, 2)
         self.btn_customers = self.sidebar.add_nav_button("", Icons.CREDIT_BOOK, 3)
+
+        # Section break: day-to-day operational screens above, management
+        # and admin screens below -- a resting point instead of one flat,
+        # undifferentiated 10-item list (#315).
+        self.lbl_sidebar_section_management = self.sidebar.add_section_label("")
+
         self.btn_reports = self.sidebar.add_nav_button("", Icons.REPORTS, 4)
         self.btn_documents = self.sidebar.add_nav_button("", Icons.DOCUMENTS, 5)
         self.btn_users = self.sidebar.add_nav_button("", Icons.USERS, 6)
@@ -109,6 +115,7 @@ class ManagementView(QWidget):
         self.btn_inventory.setText(_t("management.sidebar_inventory"))
         self.btn_purchasing.setText(_t("management.sidebar_purchasing"))
         self.btn_customers.setText(_t("management.sidebar_credit_book"))
+        self.lbl_sidebar_section_management.setText(_t("management.sidebar_section_management").upper())
         self.btn_reports.setText(_t("management.sidebar_reports"))
         self.btn_documents.setText(_t("management.sidebar_documents"))
         self.btn_users.setText(_t("management.sidebar_users"))

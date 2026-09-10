@@ -72,6 +72,37 @@ class BackupWorker(QThread):
             self.error.emit(str(e))
 
 
+class BackupListWorker(QThread):
+    """Scans the backup directory in a background thread.
+
+    list_backups() globs and stats every file in the backup directory --
+    on the main thread this could still freeze the UI with zero feedback
+    on a slow or network-mounted backup folder, the exact "takes time to
+    show" symptom reported (#339), even though this page already uses
+    this same worker-thread/LoadingOverlay pattern for every other
+    operation.
+    """
+
+    finished = pyqtSignal(list)
+    error = pyqtSignal(str)
+
+    def __init__(self, backup_dir: str) -> None:
+        super().__init__()
+        self.finished.connect(self.deleteLater)
+        self.error.connect(self.deleteLater)
+        self.backup_dir = backup_dir
+
+    def run(self) -> None:
+        try:
+            from cbpos.core.services.backup_service import BackupService
+
+            backups = BackupService.list_backups(self.backup_dir)
+            self.finished.emit(backups)
+        except Exception as e:
+            logger.error("Listing backups failed: %s", e)
+            self.error.emit(str(e))
+
+
 class RestoreWorker(QThread):
     """Restores a backup in a background thread."""
 

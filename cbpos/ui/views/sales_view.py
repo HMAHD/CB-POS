@@ -22,6 +22,7 @@ from PyQt6.QtGui import QKeySequence, QShortcut, QAction, QBrush, QColor, QPixma
 from decimal import Decimal
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.cart_service import CartService
+from cbpos.core.services.logging_service import LoggingService
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.services.suspended_transaction_service import SuspendedTransactionService
 from cbpos.ui.dialogs.payment_dialog import PaymentDialog
@@ -249,17 +250,6 @@ class SalesView(QWidget):
         self.undo_toast = QLabel(self.container_left)
         self.undo_toast.setObjectName("UndoToast")
         self.undo_toast.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.undo_toast.setStyleSheet(
-            "QLabel#UndoToast {"
-            "  background-color: rgba(0, 31, 63, 0.92);"
-            "  color: #00BCEB;"
-            "  border: 1px solid #00BCEB;"
-            "  border-radius: 6px;"
-            "  padding: 8px 16px;"
-            "  font-size: 13px;"
-            "  font-weight: bold;"
-            "}"
-        )
         self.undo_toast.setVisible(False)
 
         # 3. Order Bar (Tabs)
@@ -638,6 +628,17 @@ class SalesView(QWidget):
             name_item.setToolTip(item["product"].name_en)
             name_item.setForeground(text_brush)
 
+            # Whole-row highlight if discounted (theme-aware) -- computed
+            # once so every cell on the line gets it, not just the name
+            # cell. A single tinted cell in an otherwise plain row read as
+            # half-finished rather than "this whole line is discounted" (#265).
+            is_discounted = item.get("discount_type") != "NONE" or item.get("is_manual_price")
+            row_bg_brush = None
+            if is_discounted:
+                bg_color = QColor(0, 50, 0) if is_dark else QColor(220, 255, 220)
+                row_bg_brush = QBrush(bg_color)
+                name_item.setBackground(row_bg_brush)
+
             # Price Display (Strikethrough if discounted/overridden)
             if item.get("original_price") and item["unit_price"] < item["original_price"]:
                 lbl_price = QLabel()
@@ -648,17 +649,16 @@ class SalesView(QWidget):
                 )
                 lbl_price.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 lbl_price.setProperty("class", "StrikethroughPrice")
+                if row_bg_brush is not None:
+                    lbl_price.setStyleSheet(f"background-color: {bg_color.name()};")
                 self.cart_table.setCellWidget(row, 1, lbl_price)
             else:
                 price_item = QTableWidgetItem(format_currency(item["unit_price"]))
                 price_item.setForeground(text_brush)
                 price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                if row_bg_brush is not None:
+                    price_item.setBackground(row_bg_brush)
                 self.cart_table.setItem(row, 1, price_item)
-
-            # Highlight if discounted (theme-aware)
-            if item.get("discount_type") != "NONE" or item.get("is_manual_price"):
-                bg_color = QColor(0, 50, 0) if is_dark else QColor(220, 255, 220)
-                name_item.setBackground(QBrush(bg_color))
 
             self.cart_table.setItem(row, 0, name_item)
 
@@ -675,20 +675,32 @@ class SalesView(QWidget):
             qty_item = QTableWidgetItem(qty_str)
             qty_item.setForeground(text_brush)
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            if row_bg_brush is not None:
+                qty_item.setBackground(row_bg_brush)
             self.cart_table.setItem(row, 2, qty_item)
 
             # Disc column
             disc_val = item.get("discount_value", Decimal("0.00"))
-            disc_text = f"{disc_val}%" if disc_val > 0 else "-"
+            disc_type = item.get("discount_type", "NONE")
+            if disc_val <= 0:
+                disc_text = "-"
+            elif disc_type == "FIXED":
+                disc_text = format_currency(disc_val)
+            else:
+                disc_text = f"{disc_val}%"
             disc_item = QTableWidgetItem(disc_text)
             disc_item.setForeground(text_brush)
             disc_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            if row_bg_brush is not None:
+                disc_item.setBackground(row_bg_brush)
             self.cart_table.setItem(row, 3, disc_item)
 
             # Total column
             total_item = QTableWidgetItem(format_currency(item["total"]))
             total_item.setForeground(text_brush)
             total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            if row_bg_brush is not None:
+                total_item.setBackground(row_bg_brush)
             self.cart_table.setItem(row, 4, total_item)
 
         totals = self.cart_service.get_totals()
@@ -888,7 +900,7 @@ class SalesView(QWidget):
 
         from cbpos.core.constants.permissions import Permissions
 
-        authorized_user = check_permission_with_override(Permissions.SALES_VOID, self)  # noqa: F841
+        authorized_user = check_permission_with_override(Permissions.SALES_VOID, self)
         if not authorized_user:
             return
 
@@ -901,8 +913,15 @@ class SalesView(QWidget):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
+            item_count = len(self.cart_service.items)
             self.cart_service.clear()
             self.update_cart_display()
+            LoggingService.log_action(
+                user_id=authorized_user.id,
+                action="VOID_BILL",
+                event_type="TRANSACTION",
+                details=f"Voided in-progress cart with {item_count} item(s)",
+            )
         self.barcode_input.setFocus()
 
     # --- Phase 6: Advanced Search & Cart Enhancements ---
@@ -1052,9 +1071,7 @@ class SalesView(QWidget):
             item = self.cart_service.items[row]
             dialog = QuantityDialog(item["product"], parent=self, initial_qty=item["qty"])
             if dialog.exec():
-                qty = dialog.get_quantity()
-                item["qty"] = qty
-                item["total"] = qty * item["unit_price"]
+                self.cart_service.update_quantity(row, dialog.get_quantity())
                 self.update_cart_display()
         self.barcode_input.setFocus()
 
@@ -1076,7 +1093,7 @@ class SalesView(QWidget):
         if dialog.exec():
             disc_type, disc_value = dialog.get_data()
             try:
-                self.cart_service.apply_line_discount(row, disc_type, disc_value)
+                self.cart_service.apply_line_discount(row, disc_type, disc_value, user=authorized_user)
             except ValueError:
                 QMessageBox.warning(
                     self,
@@ -1117,6 +1134,12 @@ class SalesView(QWidget):
         """Remove selected item from cart with undo support."""
         row = self.cart_table.currentRow()
         if row >= 0:
+            from cbpos.core.utils.permission_helper import check_permission_with_override
+            from cbpos.core.constants.permissions import Permissions
+
+            if not check_permission_with_override(Permissions.SALES_VOID, self):
+                return
+
             removed_item = self.cart_service.items[row].copy()
             del self.cart_service.items[row]
             self.update_cart_display()

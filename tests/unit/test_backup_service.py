@@ -226,12 +226,80 @@ class TestBackupService:
         ):
             mock_config.BASE_DIR = tmp_path
             mock_config.DATA_DIR = tmp_path
-            result = BackupService.restore_backup(path, "restore_test")
+            # snapshot_dir pins the pre-restore safety snapshot inside
+            # tmp_path, in its own subdirectory (not backup_dir -- two
+            # create_backup() calls in the same directory within the same
+            # second would collide on an identical timestamped filename).
+            # Without it, restore_backup() used to call
+            # get_default_backup_dir() unconditionally -- hardcoded to
+            # Path.home() / "Documents" / "CB-POS-Backups" -- ignoring the
+            # Config mock above entirely and writing a real
+            # .pre_restore.zip into the developer's actual home directory
+            # on every single test run (#340).
+            result = BackupService.restore_backup(path, "restore_test", snapshot_dir=str(tmp_path / "snapshots"))
 
         mock_database_cls.return_value.engine.dispose.assert_called_once()
 
         assert result is True
         assert db_file.read_text() == "original database"
+
+    def test_restore_backup_snapshot_never_escapes_an_explicit_snapshot_dir(self, tmp_path):
+        """Regression test for #340: the pre-restore snapshot must land in
+        the given snapshot_dir, never in the real get_default_backup_dir()."""
+        db_file = tmp_path / "cbpos.db"
+        db_file.write_text("original database")
+
+        backup_dir = tmp_path / "backups"
+        snapshot_dir = tmp_path / "snapshots"
+
+        with patch("cbpos.core.services.backup_service.Config") as mock_config:
+            mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
+            path, password = BackupService.create_backup(str(backup_dir), password="restore_test")
+
+        with (
+            patch("cbpos.core.services.backup_service.Config") as mock_config,
+            # Prevents the real Database().engine.dispose() from tearing
+            # down the shared in-memory schema every other test relies on.
+            patch("cbpos.core.database.Database"),
+            patch.object(BackupService, "get_default_backup_dir") as mock_default_dir,
+        ):
+            mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
+            BackupService.restore_backup(path, "restore_test", snapshot_dir=str(snapshot_dir))
+
+        mock_default_dir.assert_not_called()
+        snapshots = list(snapshot_dir.glob("*.pre_restore.zip"))
+        assert len(snapshots) == 1
+
+    def test_restore_backup_without_snapshot_dir_prefers_configured_backup_dir(self, tmp_path):
+        """restore_backup() with no explicit snapshot_dir should resolve the
+        same way every UI call site already does -- ConfigService's
+        configured backup_dir first, falling back to
+        get_default_backup_dir() only if nothing is configured."""
+        db_file = tmp_path / "cbpos.db"
+        db_file.write_text("original database")
+
+        backup_dir = tmp_path / "backups"
+        configured_dir = tmp_path / "configured_backups"
+
+        with patch("cbpos.core.services.backup_service.Config") as mock_config:
+            mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
+            path, password = BackupService.create_backup(str(backup_dir), password="restore_test")
+
+        with (
+            patch("cbpos.core.services.backup_service.Config") as mock_config,
+            patch("cbpos.core.database.Database"),
+            patch("cbpos.core.services.config_service.ConfigService.get") as mock_get,
+        ):
+            mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
+            mock_get.return_value = str(configured_dir)
+            BackupService.restore_backup(path, "restore_test")
+
+        snapshots = list(configured_dir.glob("*.pre_restore.zip"))
+        assert len(snapshots) == 1
 
     def test_restore_backup_wrong_password(self, tmp_path):
         """Test restore with wrong password raises ValueError."""

@@ -27,6 +27,8 @@ from PyQt6.QtGui import QIcon, QIntValidator
 from PyQt6.QtPrintSupport import QPrinterInfo
 from sqlalchemy.engine import URL
 from cbpos.core.services.language_service import LanguageService
+from cbpos.core.services.theme_service import ThemeService
+from cbpos.ui.resources.icons import Icons
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.models import Sale, SaleItem, SalePayment, Product
 from cbpos.config import Config
@@ -252,6 +254,7 @@ class ShopInfoPage(SettingsPage):
 
         self.time_auto_report = QTimeEdit()
         self.time_auto_report.setDisplayFormat("HH:mm")
+        self.time_auto_report.setFixedWidth(200)
         self._lbl_report_time = QLabel()
         self._form_email.addRow(self._lbl_report_time, self.time_auto_report)
 
@@ -282,17 +285,22 @@ class ShopInfoPage(SettingsPage):
         # --- Tab 4: Appearance ---
         self._tab_appear, self._form_appear = self._build_form_tab()
 
-        self.spin_font_size = QSpinBox()
-        self.spin_font_size.setRange(8, 24)
-        self.spin_font_size.setSuffix(" px")
+        # QLineEdit + QIntValidator instead of QSpinBox for clean rendering
+        # (QSpinBox +/- buttons break under QSS), matching the pattern
+        # already proven in product_editor.py's Stock group.
+        self.spin_font_size = QLineEdit()
+        self.spin_font_size.setValidator(QIntValidator(8, 24))
+        self.spin_font_size.setFixedWidth(200)
         self._lbl_font_size = QLabel()
         self._form_appear.addRow(self._lbl_font_size, self.spin_font_size)
 
         self.combo_theme = QComboBox()
+        self.combo_theme.setFixedWidth(200)
         self._lbl_theme = QLabel()
         self._form_appear.addRow(self._lbl_theme, self.combo_theme)
 
         self.combo_language = QComboBox()
+        self.combo_language.setFixedWidth(200)
         languages = LanguageService.get_available_languages()
         for code, name in languages.items():
             self.combo_language.addItem(f"{name} ({code})", code)
@@ -453,7 +461,7 @@ class ShopInfoPage(SettingsPage):
         self.input_smtp_user.setText(settings.get("smtp_user", ""))
         self.input_smtp_pass.setText(settings.get("smtp_pass", ""))
 
-        self.spin_font_size.setValue(settings.get("font_size", 12))
+        self.spin_font_size.setText(str(settings.get("font_size", 12)))
         current_theme = settings.get("theme", "Dark")
         self.combo_theme.setCurrentIndex(0 if current_theme == "Dark" else 1)
         current_lang = settings.get("language", "en")
@@ -481,7 +489,7 @@ class ShopInfoPage(SettingsPage):
             "smtp_port": self.input_smtp_port.text(),
             "smtp_user": self.input_smtp_user.text(),
             "smtp_pass": self.input_smtp_pass.text(),
-            "font_size": self.spin_font_size.value(),
+            "font_size": int(self.spin_font_size.text() or 12),
             "theme": theme_selection,
             "language": lang_code,
         }
@@ -497,6 +505,7 @@ class SalesTaxPage(SettingsPage):
         self._tab_sales, self._form_sales = self._build_form_tab()
 
         self.combo_search_mode = QComboBox()
+        self.combo_search_mode.setFixedWidth(200)
         self._lbl_search_mode = QLabel()
         self._form_sales.addRow(self._lbl_search_mode, self.combo_search_mode)
 
@@ -511,12 +520,14 @@ class SalesTaxPage(SettingsPage):
         self.spin_loyalty_ratio = QSpinBox()
         self.spin_loyalty_ratio.setRange(1, 10000)
         self.spin_loyalty_ratio.setPrefix("Rs. ")
+        self.spin_loyalty_ratio.setFixedWidth(200)
         self._lbl_loyalty_ratio = QLabel()
         self._form_sales.addRow(self._lbl_loyalty_ratio, self.spin_loyalty_ratio)
 
         self.spin_default_credit = QSpinBox()
         self.spin_default_credit.setRange(0, 1000000)
         self.spin_default_credit.setPrefix("Rs. ")
+        self.spin_default_credit.setFixedWidth(200)
         self._lbl_default_credit = QLabel()
         self._form_sales.addRow(self._lbl_default_credit, self.spin_default_credit)
 
@@ -758,6 +769,15 @@ class HardwarePage(SettingsPage):
         self._lbl_a4_printer = QLabel()
         sel_form.addRow(self._lbl_a4_printer, self.combo_a4_printer)
 
+        # Printer detection only ever ran once, here at construction time,
+        # and this page is built once and kept alive for the rest of the
+        # session -- a printer plugged in after launch needed a full app
+        # restart to appear (#323).
+        self.btn_refresh_printers = QPushButton()
+        self.btn_refresh_printers.setProperty("class", "secondary")
+        self.btn_refresh_printers.clicked.connect(self._refresh_printer_list)
+        sel_form.addRow("", self.btn_refresh_printers)
+
         self.combo_paper_width = QComboBox()
         self.combo_paper_width.addItems(["80mm", "58mm"])
         self._lbl_paper_width = QLabel()
@@ -779,6 +799,7 @@ class HardwarePage(SettingsPage):
 
         self.spin_copies = QSpinBox()
         self.spin_copies.setRange(1, 5)
+        self.spin_copies.setFixedWidth(200)
         self._lbl_copies = QLabel()
         beh_form.addRow(self._lbl_copies, self.spin_copies)
         vbox_printer.addLayout(beh_form)
@@ -881,6 +902,7 @@ class HardwarePage(SettingsPage):
         # Printers tab
         self._lbl_receipt_printer.setText(_t("settings.hardware.receipt_printer"))
         self._lbl_a4_printer.setText(_t("settings.hardware.a4_printer"))
+        self.btn_refresh_printers.setText(_t("settings.hardware.btn_refresh_printers"))
         self._lbl_paper_width.setText(_t("settings.hardware.paper_width"))
         self._lbl_auto_print.setText(_t("settings.hardware.auto_print"))
         self.chk_auto_print.setText(_t("settings.hardware.chk_auto_print"))
@@ -915,6 +937,29 @@ class HardwarePage(SettingsPage):
         # Scale tab
         self._lbl_barcode_prefix.setText(_t("settings.hardware.barcode_prefix"))
         self._lbl_decimal_places.setText(_t("settings.hardware.decimal_places"))
+
+    def _refresh_printer_list(self) -> None:
+        """Re-scan for connected printers without needing an app restart.
+
+        Preserves each combo's current selection when it's still present
+        in the rescanned list.
+        """
+        current_receipt = self.combo_receipt_printer.currentText()
+        current_a4 = self.combo_a4_printer.currentText()
+
+        available_printers = QPrinterInfo.availablePrinterNames() or [_t("settings.hardware.no_printers")]
+
+        self.combo_receipt_printer.clear()
+        self.combo_receipt_printer.addItems(available_printers)
+        idx = self.combo_receipt_printer.findText(current_receipt)
+        if idx >= 0:
+            self.combo_receipt_printer.setCurrentIndex(idx)
+
+        self.combo_a4_printer.clear()
+        self.combo_a4_printer.addItems(available_printers)
+        idx = self.combo_a4_printer.findText(current_a4)
+        if idx >= 0:
+            self.combo_a4_printer.setCurrentIndex(idx)
 
     def load(self, settings: dict):
         receipt_printer = settings.get("receipt_printer_name", "")
@@ -1028,6 +1073,17 @@ class ReceiptPage(SettingsPage):
         self._page_subtitle.setProperty("class", "muted")
         root.addWidget(self._page_subtitle)
 
+        # Copies/auto-print (Hardware) and document numbering format
+        # (Documents) are just as much "receipt customization" as anything
+        # on this page, but live on two other, unrelated-sounding sidebar
+        # sections with no link back here -- someone tuning header/footer/
+        # logo would feel done and never realize the rest is elsewhere (#331).
+        self._lbl_receipt_cross_ref = QLabel()
+        self._lbl_receipt_cross_ref.setObjectName("ReceiptCrossRefHint")
+        self._lbl_receipt_cross_ref.setProperty("class", "muted")
+        self._lbl_receipt_cross_ref.setWordWrap(True)
+        root.addWidget(self._lbl_receipt_cross_ref)
+
         # Horizontal split: settings | preview
         split = QHBoxLayout()
         split.setSpacing(16)
@@ -1077,6 +1133,11 @@ class ReceiptPage(SettingsPage):
         logo_row.addWidget(self.btn_clear_logo)
         self._lbl_logo = QLabel()
         logo_form.addRow(self._lbl_logo, logo_row)
+
+        self._lbl_logo_hint = QLabel()
+        self._lbl_logo_hint.setProperty("class", "muted")
+        self._lbl_logo_hint.setWordWrap(True)
+        logo_form.addRow("", self._lbl_logo_hint)
         vbox_content.addLayout(logo_form)
 
         # Section: Header & Footer
@@ -1199,6 +1260,7 @@ class ReceiptPage(SettingsPage):
     def retranslate_ui(self) -> None:
         self._page_title.setText(_t("settings.receipt.title"))
         self._page_subtitle.setText(_t("settings.receipt.subtitle"))
+        self._lbl_receipt_cross_ref.setText(_t("settings.receipt.cross_ref_hint"))
 
         self.tabs.setTabText(0, _t("settings.receipt.tab_content"))
         self.tabs.setTabText(1, _t("settings.receipt.tab_display"))
@@ -1208,6 +1270,7 @@ class ReceiptPage(SettingsPage):
         self.input_logo_path.setPlaceholderText(_t("settings.receipt.logo_placeholder"))
         self.btn_browse_logo.setText(_t("settings.receipt.btn_browse_logo"))
         self.btn_clear_logo.setText(_t("settings.receipt.btn_clear_logo"))
+        self._lbl_logo_hint.setText(_t("settings.receipt.logo_hint"))
         self._lbl_header_text.setText(_t("settings.receipt.header_text"))
         self.txt_header.setPlaceholderText(_t("settings.receipt.header_placeholder"))
         self._lbl_footer_text.setText(_t("settings.receipt.footer_text"))
@@ -1411,6 +1474,11 @@ class SystemPage(SettingsPage):
         self.spin_timeout = QSpinBox()
         self.spin_timeout.setRange(0, 60)
         self.spin_timeout.setSuffix(" min")
+        # Wider than the usual 200px house convention -- its special
+        # value text ("Disabled (no auto-lock)") needs the extra room,
+        # confirmed by rendering it: at 200px it clips to ")led (no
+        # auto-lock)", reproducing the exact truncation #332 described.
+        self.spin_timeout.setFixedWidth(260)
         self._lbl_timeout = QLabel()
         self._form_sec.addRow(self._lbl_timeout, self.spin_timeout)
 
@@ -1420,12 +1488,14 @@ class SystemPage(SettingsPage):
 
         self.spin_max_login = QSpinBox()
         self.spin_max_login.setRange(3, 20)
+        self.spin_max_login.setFixedWidth(200)
         self._lbl_max_login = QLabel()
         self._form_sec.addRow(self._lbl_max_login, self.spin_max_login)
 
         self.spin_lockout = QSpinBox()
         self.spin_lockout.setRange(30, 3600)
         self.spin_lockout.setSuffix(" sec")
+        self.spin_lockout.setFixedWidth(200)
         self._lbl_lockout = QLabel()
         self._form_sec.addRow(self._lbl_lockout, self.spin_lockout)
 
@@ -1620,8 +1690,9 @@ class NetworkPage(SettingsPage):
         status_layout.setContentsMargins(20, 20, 20, 20)
         status_layout.setSpacing(15)
 
-        self.lbl_mode_icon = QLabel("\U0001f4bb")
+        self.lbl_mode_icon = QLabel()
         self.lbl_mode_icon.setObjectName("StatusIcon")
+        self.lbl_mode_icon.setPixmap(Icons.get("fa5s.desktop", ThemeService.get_accent_color()).pixmap(32, 32))
 
         status_text_layout = QVBoxLayout()
         self.lbl_status_title = QLabel()
@@ -2079,12 +2150,13 @@ class NetworkPage(SettingsPage):
 
     def _on_mode_changed(self, mode: str):
         is_network = mode == "Network"
+        icon_color = ThemeService.get_accent_color()
         if is_network:
-            self.lbl_mode_icon.setText("\U0001f310")
+            self.lbl_mode_icon.setPixmap(Icons.get("fa5s.network-wired", icon_color).pixmap(32, 32))
             self.lbl_status_title.setText(_t("settings.network.network_mode_title"))
             self.lbl_status_subtitle.setText(_t("settings.network.network_mode_subtitle"))
         else:
-            self.lbl_mode_icon.setText("\U0001f4bb")
+            self.lbl_mode_icon.setPixmap(Icons.get("fa5s.desktop", icon_color).pixmap(32, 32))
             self.lbl_status_title.setText(_t("settings.network.single_mode_title"))
             self.lbl_status_subtitle.setText(_t("settings.network.single_mode_subtitle"))
         self.connection_tested = False
@@ -2270,7 +2342,7 @@ class NetworkPage(SettingsPage):
             except Exception:
                 ip = "127.0.0.1"
             port = self.spin_sync_port.value()
-            self.lbl_server_address.setText(f"Terminals should connect to: {ip}:{port}")
+            self.lbl_server_address.setText(_t("settings.network.sync_server_address_display", ip=ip, port=port))
             self.lbl_server_address.setVisible(True)
         else:
             self.lbl_server_address.setVisible(False)
@@ -2279,7 +2351,11 @@ class NetworkPage(SettingsPage):
         """Test the connection to the Main PC sync server."""
         address = self.input_main_pc_addr.text().strip()
         if not address:
-            QMessageBox.warning(self, "Validation Error", "Enter the Main PC address (IP:port)")
+            QMessageBox.warning(
+                self,
+                _t("settings.network.sync_validation_title"),
+                _t("settings.network.sync_validation_message"),
+            )
             return
 
         if address.startswith("http://"):
@@ -2287,7 +2363,7 @@ class NetworkPage(SettingsPage):
         elif not address.startswith("https://"):
             address = f"https://{address}"
 
-        self.lbl_sync_test_status.setText("Testing...")
+        self.lbl_sync_test_status.setText(_t("settings.network.sync_test_testing"))
         self.btn_test_sync.setEnabled(False)
         QApplication.processEvents()
 
@@ -2306,42 +2382,40 @@ class NetworkPage(SettingsPage):
             if data.get("status") == "ok":
                 version = data.get("protocol_version", "?")
                 terminals = data.get("terminals_connected", 0)
-                self.lbl_sync_test_status.setText("✓ Connected")
+                self.lbl_sync_test_status.setText(_t("settings.network.sync_test_connected"))
                 QMessageBox.information(
                     self,
-                    "Connection Successful",
-                    f"Connected to Main PC!\n\n" f"Protocol version: {version}\n" f"Terminals connected: {terminals}",
+                    _t("settings.network.sync_success_title"),
+                    _t("settings.network.sync_success_message", version=version, terminals=terminals),
                 )
             else:
-                self.lbl_sync_test_status.setText("✗ Unexpected response")
+                self.lbl_sync_test_status.setText(_t("settings.network.sync_test_unexpected"))
 
         except urllib.error.HTTPError as e:
             if e.code == 401:
-                self.lbl_sync_test_status.setText("✗ Unauthorized")
+                self.lbl_sync_test_status.setText(_t("settings.network.sync_test_unauthorized"))
                 QMessageBox.critical(
                     self,
-                    "Connection Failed",
-                    "Shared Secret does not match the Main PC's.\n\n"
-                    "Enter the same Shared Secret configured on the Main PC, "
-                    "then try again.",
+                    _t("settings.network.sync_failed_title"),
+                    _t("settings.network.sync_failed_secret_message"),
                 )
             else:
-                self.lbl_sync_test_status.setText("✗ Failed")
+                self.lbl_sync_test_status.setText(_t("settings.network.sync_test_failed"))
                 QMessageBox.critical(
                     self,
-                    "Connection Failed",
-                    f"Cannot reach Main PC at {address}\n\n{e}",
+                    _t("settings.network.sync_failed_title"),
+                    _t("settings.network.sync_failed_message", address=address, error=e),
                 )
         except urllib.error.URLError as e:
-            self.lbl_sync_test_status.setText("✗ Failed")
+            self.lbl_sync_test_status.setText(_t("settings.network.sync_test_failed"))
             QMessageBox.critical(
                 self,
-                "Connection Failed",
-                f"Cannot reach Main PC at {address}\n\n{e}",
+                _t("settings.network.sync_failed_title"),
+                _t("settings.network.sync_failed_message", address=address, error=e),
             )
         except Exception as e:
-            self.lbl_sync_test_status.setText("✗ Error")
-            QMessageBox.critical(self, "Connection Error", str(e))
+            self.lbl_sync_test_status.setText(_t("settings.network.sync_test_error"))
+            QMessageBox.critical(self, _t("settings.network.sync_error_title"), str(e))
         finally:
             self.btn_test_sync.setEnabled(True)
 
@@ -2357,14 +2431,14 @@ class NetworkPage(SettingsPage):
 
         reply = QMessageBox.question(
             self,
-            "Forget Trusted Main PC",
-            "This Terminal will trust whichever Main PC answers at the "
-            "configured address the next time it connects.\n\n"
-            "Only do this if you intentionally replaced the Main PC.",
+            _t("settings.network.btn_forget_main"),
+            _t("settings.network.sync_forget_main_confirm_message"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
             ConfigService.set("sync_known_main_instance_id", "")
             QMessageBox.information(
-                self, "Forget Trusted Main PC", "Done. This Terminal will re-pin on next connection."
+                self,
+                _t("settings.network.btn_forget_main"),
+                _t("settings.network.sync_forget_main_done_message"),
             )

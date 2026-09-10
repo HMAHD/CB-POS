@@ -40,7 +40,7 @@ from PyQt6.QtCore import Qt, QDate, QTimer
 
 from cbpos.core.services.backup_service import BackupService
 from cbpos.core.services.config_service import ConfigService
-from cbpos.ui.workers import BackupWorker, RestoreWorker
+from cbpos.ui.workers import BackupWorker, BackupListWorker, RestoreWorker
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
@@ -153,8 +153,22 @@ class DataSafetyView(QWidget):
         return tab
 
     def _refresh_backup_list(self) -> None:
+        """Scan the backup directory in the background.
+
+        Runs on a QThread with the LoadingOverlay shown, matching every
+        other operation on this page (create backup, restore, vacuum,
+        integrity check, export) -- this call site was the one missed,
+        so the UI froze with zero feedback while it scanned (#339).
+        """
         backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
-        backups = BackupService.list_backups(backup_dir)
+        self._overlay.show_loading(_t("data_safety.backup_list_loading"))
+        self._backup_list_worker = BackupListWorker(backup_dir)
+        self._backup_list_worker.finished.connect(self._on_backup_list_loaded)
+        self._backup_list_worker.error.connect(self._on_backup_list_error)
+        self._backup_list_worker.start()
+
+    def _on_backup_list_loaded(self, backups: list) -> None:
+        self._overlay.hide_loading()
         self.backup_table.setRowCount(len(backups))
         self._backup_data = backups
 
@@ -168,6 +182,10 @@ class DataSafetyView(QWidget):
                 else _t("data_safety.backup_type_regular")
             )
             self.backup_table.setItem(row, 3, QTableWidgetItem(type_text))
+
+    def _on_backup_list_error(self, message: str) -> None:
+        self._overlay.hide_loading()
+        logger.error("Failed to list backups: %s", message)
 
     def _change_backup_dir(self) -> None:
         current = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()

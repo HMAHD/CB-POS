@@ -115,7 +115,8 @@ class SettingsView(QWidget):
         body_layout.addWidget(self.stack, 1)
         main_layout.addLayout(body_layout, 1)
 
-        # --- Footer Bar (visible only on config pages 0-6) ---
+        # --- Footer Bar (Save/Cancel shown only on config pages 0-6;
+        #     the frame itself always stays visible to reserve its height) ---
         self.footer_frame = QFrame()
         self.footer_frame.setFixedHeight(70)
         self.footer_frame.setObjectName("SettingsFooter")
@@ -140,7 +141,7 @@ class SettingsView(QWidget):
 
         main_layout.addWidget(self.footer_frame)
 
-        # Hide footer on operational pages (they auto-save)
+        # Hide Save/Cancel (not the frame) on operational pages (they auto-save)
         self.stack.currentChanged.connect(self._update_footer_visibility)
 
     def retranslate_ui(self) -> None:
@@ -200,8 +201,14 @@ class SettingsView(QWidget):
         self.stack.setCurrentIndex(index)
 
     def _update_footer_visibility(self, index: int) -> None:
-        """Show footer only on config pages (0-6). Operational pages (7+) auto-save."""
-        self.footer_frame.setVisible(index < len(self.pages))
+        """Hide only the Save/Cancel buttons on operational pages (they
+        auto-save) -- never the whole footer_frame. Hiding the frame
+        itself let Qt reclaim its 70px, making those 3 pages' content
+        area render taller than every config page's, a jump a user would
+        read as "this page feels different" for no visible reason."""
+        has_save = index < len(self.pages)
+        self.btn_save.setVisible(has_save)
+        self.btn_cancel.setVisible(has_save)
 
     def _check_discard_unsaved(self) -> bool:
         """Check for unsaved changes and prompt user. Returns True if safe to proceed."""

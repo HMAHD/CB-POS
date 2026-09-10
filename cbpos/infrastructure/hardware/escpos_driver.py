@@ -7,6 +7,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 
 from cbpos.core.interfaces.iprinter import IPrinter
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.utils.thermal_image import dither_for_thermal_print
 from escpos.printer import Usb, Network
 from PIL import Image
 
@@ -117,11 +118,8 @@ class ESCPOSDriver(IPrinter):
                     if path:
                         try:
                             img = Image.open(path)
-                            max_width = ConfigService.get_int("printer_image_max_width", 500)
-                            if img.width > max_width:
-                                ratio = max_width / img.width
-                                new_height = int(img.height * ratio)
-                                img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+                            paper_width = ConfigService.get("paper_width") or "80mm"
+                            img = dither_for_thermal_print(img, paper_width)
                             self.printer.image(img)
                         except Exception as e:
                             logger.error("Failed to print image: %s", e)

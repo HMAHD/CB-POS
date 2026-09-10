@@ -99,3 +99,58 @@ class TestDiscountedPriceFormatting:
         # (not just the raw number) is what actually catches that.
         assert format_currency(Decimal("110.00")) in text
         assert format_currency(Decimal("60.00")) in text
+
+
+class TestDiscColumnLabeling:
+    """The Disc column always appended "%" regardless of discount type,
+    so a FIXED-amount discount (e.g. Rs. 50 off) displayed as "50.00%" --
+    misrepresenting a currency amount as a percentage."""
+
+    def test_percentage_discount_shows_a_percent_sign(self, view):
+        view.cart_service.add_item(_make_product(price="100.00"), qty=Decimal("2"))
+        view.cart_service.apply_line_discount(0, "PERCENTAGE", Decimal("10"))
+        view.update_cart_display()
+
+        assert view.cart_table.item(0, 3).text() == "10%"
+
+    def test_fixed_discount_shows_a_currency_amount_not_a_percent_sign(self, view):
+        view.cart_service.add_item(_make_product(price="100.00"), qty=Decimal("2"))
+        # Rs.20 off a Rs.200 line is a 10% effective discount, safely under
+        # the app's default max_discount_percent cap (15%) -- this test is
+        # about display formatting, not cap enforcement.
+        view.cart_service.apply_line_discount(0, "FIXED", Decimal("20"))
+        view.update_cart_display()
+
+        disc_text = view.cart_table.item(0, 3).text()
+        assert "%" not in disc_text
+        assert format_currency(Decimal("20")) in disc_text
+
+    def test_no_discount_shows_a_dash(self, view):
+        view.cart_service.add_item(_make_product(price="100.00"))
+        view.update_cart_display()
+
+        assert view.cart_table.item(0, 3).text() == "-"
+
+
+class TestChangeQuantityPreservesDiscount:
+    """Changing a discounted line's quantity must keep the discount applied
+    -- it previously set qty/total directly, silently dropping the
+    discount from the charged total while the Disc column kept showing it."""
+
+    def test_changing_quantity_keeps_the_percentage_discount_applied(self, view):
+        view.cart_service.add_item(_make_product(price="100.00"), qty=Decimal("2"))
+        view.cart_service.apply_line_discount(0, "PERCENTAGE", Decimal("10"))
+        view.update_cart_display()
+        view.cart_table.setCurrentCell(0, 0)
+
+        fake_dialog = MagicMock()
+        fake_dialog.exec.return_value = 1
+        fake_dialog.get_quantity.return_value = Decimal("3")
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr("cbpos.ui.views.sales_view.QuantityDialog", MagicMock(return_value=fake_dialog))
+            view.change_line_quantity()
+
+        item = view.cart_service.items[0]
+        assert item["subtotal"] == Decimal("300.00")
+        assert item["total"] == Decimal("270.00")  # still 10% off, not full price

@@ -18,8 +18,12 @@ class PermissionDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(_t("permission.title"))
-        self.resize(800, 600)
-        self.setMinimumSize(600, 450)
+        # 800x600 only showed 5 of the 10 permission groups (46 rows
+        # total) before scrolling, with no visual hint there was more
+        # below the fold -- reading as "permissions are missing" even
+        # though every group was genuinely there (#298).
+        self.resize(850, 780)
+        self.setMinimumSize(650, 550)
         self.init_ui()
 
     def init_ui(self):

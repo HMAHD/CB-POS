@@ -80,6 +80,45 @@ QDateEdit::drop-down:hover {
     background-color: #333333;
 }
 
+/* Context/dropdown menus - Global Baseline. Previously the only QMenu
+   rule in this file was scoped to QCalendarWidget QMenu, so every other
+   right-click menu in the app (e.g. the Sales screen's cart line-item
+   menu) rendered with the OS's native popup chrome instead of this
+   theme, even though the surrounding code already manually re-tints
+   the menu's icons per theme. A generic selector styles every QMenu at
+   once, the same way QDateEdit/QLineEdit above do for their types. */
+QMenu {
+    background-color: #252526;
+    color: #FFFFFF;
+    border: 1px solid #3E3E42;
+    border-radius: 6px;
+    padding: 4px;
+}
+
+QMenu::item {
+    padding: 8px 24px 8px 12px;
+    border-radius: 4px;
+}
+
+QMenu::item:selected {
+    background-color: rgba(0, 188, 235, 0.14);
+    color: #FFFFFF;
+}
+
+QMenu::item:disabled {
+    color: #666666;
+}
+
+QMenu::separator {
+    height: 1px;
+    background-color: #3E3E42;
+    margin: 4px 8px;
+}
+
+QMenu::icon {
+    padding-left: 8px;
+}
+
 QCalendarWidget {
     background-color: #252526;
     color: #FFFFFF;
@@ -321,6 +360,23 @@ QCheckBox::indicator:checked:hover {
     image: url(cbpos/assets/icons/check-white.svg);
 }
 
+/* Tree/table item checkboxes (e.g. Permission Manager) rendered plain
+   grey native OS squares -- ::indicator on QTreeWidget/QTableWidget
+   picks up the exact same themed style as a real QCheckBox (#298). */
+QTreeWidget::indicator, QTableWidget::indicator {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #666666;
+    border-radius: 4px;
+    background-color: transparent;
+}
+
+QTreeWidget::indicator:checked, QTableWidget::indicator:checked {
+    background-color: #00BCEB;
+    border-color: #00BCEB;
+    image: url(cbpos/assets/icons/check-white.svg);
+}
+
 /* Buttons */
 QPushButton {
     background-color: #2D2D30;
@@ -438,7 +494,6 @@ QListWidget, QTableWidget {
 QListWidget::item, QTableWidget::item {
     padding: 12px;
     border-bottom: 1px solid #3E3E42;
-    color: #FFFFFF;
 }
 
 QListWidget::item:selected, QTableWidget::item:selected {
@@ -535,8 +590,8 @@ QGroupBox QCheckBox {
 /* Sidebar Container - Dark Mode */
 QFrame#SidebarContainer,
 QFrame#Sidebar {
-    background-color: #1A1A1A;  /* Flat dark gray - matches dashboard cards */
-    border-right: 1px solid #2A2A2A;
+    background-color: #252526;  /* Documented Surface tone -- distinct from the #1E1E1E canvas */
+    border-right: 1px solid #333333;
 }
 
 /* User Profile Section - Dark Mode (KILL THE LINES) */
@@ -653,30 +708,50 @@ QToolButton#SidebarToggle {
     background: transparent;
 }
 
-/* Sidebar Buttons */
+/* Sidebar section break -- a resting point between groups of nav items
+   (operational screens vs. management/admin ones), instead of one flat,
+   undifferentiated 10-item list (#315). The divider line stays visible
+   in collapsed mode; the label text hides (no room for it, see
+   CollapsibleSidebar._update_all_styles). */
+QFrame#SidebarSectionDivider {
+    background-color: #333333;
+    border: none;
+    margin: 6px 16px 0 16px;
+}
+
+QLabel#SidebarSectionLabel {
+    color: #6B7280;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 6px 20px 4px 20px;
+    background: transparent;
+}
+
+/* Sidebar Buttons -- a floating rounded pill (inset margin + radius)
+   instead of a flat, edge-to-edge square with a hairline accent bar. */
 QToolButton#SidebarButton {
     background-color: transparent;
     color: #AAAAAA;
     border: none;
-    border-left: 4px solid transparent;
+    border-radius: 8px;
     text-align: left;
-    padding-left: 20px;
+    padding-left: 16px;
     padding-top: 8px;
     padding-bottom: 8px;
+    margin: 1px 10px;
     min-height: 36px;
     font-size: 15px;  /* Slightly larger for readability */
     font-weight: normal;
 }
 
 QToolButton#SidebarButton:hover {
-    background-color: #252525;  /* Flat gray hover */
+    background-color: rgba(255, 255, 255, 0.06);
     color: white;
 }
 
 QToolButton#SidebarButton:checked, QToolButton#SidebarButton[active="true"] {
-    background-color: #2A2A2A;  /* Flat gray active state */
+    background-color: rgba(0, 188, 235, 0.14);
     color: #00BCEB;
-    border-left: 4px solid #00BCEB;
     font-weight: bold;
 }
 
@@ -685,17 +760,31 @@ QToolButton#SidebarButton[collapsed="true"] {
     padding-left: 0px;
     padding-right: 0px;
     text-align: center;
+    margin: 1px 10px;
 }
 
-/* Special Sidebar Buttons */
+/* Bottom "exit cluster" divider -- pulls POS/Logout visually away from
+   the nav list above, so they read as two consequential actions rather
+   than two more rows in the same list. */
+QFrame#SidebarBottomDivider {
+    background-color: #333333;
+    border: none;
+    margin: 0 16px;
+}
+
+/* Special Sidebar Buttons -- rounded, tinted action chips (matching the
+   bordered-pill treatment BtnLogout already had) instead of a flat,
+   full-width bar. */
 QToolButton#BtnPos {
     color: #39FF14;
-    background-color: rgba(57, 255, 20, 0.1);
-    border: none;
-    min-height: 36px;
-    border-top: 1px solid #333;
+    background-color: rgba(57, 255, 20, 0.12);
+    border: 1px solid rgba(57, 255, 20, 0.35);
+    border-radius: 8px;
+    min-height: 40px;
     text-align: left;
-    padding-left: 24px;
+    padding-left: 16px;
+    margin: 4px 10px;
+    font-weight: bold;
 }
 
 QToolButton#BtnPos:hover {
@@ -705,15 +794,19 @@ QToolButton#BtnPos:hover {
 QToolButton#BtnPos[collapsed="true"] {
     text-align: center;
     padding-left: 0px;
+    margin: 4px 10px;
 }
 
 QToolButton#BtnLogout {
     color: #FF4136;
-    background-color: rgba(255, 65, 54, 0.1);
-    border: none;
-    min-height: 36px;
+    background-color: rgba(255, 65, 54, 0.12);
+    border: 1px solid rgba(255, 65, 54, 0.35);
+    border-radius: 8px;
+    min-height: 40px;
     text-align: left;
-    padding-left: 24px;
+    padding-left: 16px;
+    margin: 4px 10px 8px 10px;
+    font-weight: bold;
 }
 
 QToolButton#BtnLogout:hover {
@@ -723,6 +816,7 @@ QToolButton#BtnLogout:hover {
 QToolButton#BtnLogout[collapsed="true"] {
     text-align: center;
     padding-left: 0px;
+    margin: 4px 10px 8px 10px;
 }
 
 /* --- Sales View Specifics --- */
@@ -765,7 +859,7 @@ QLabel#ItemCountLabel {
     background: transparent;
 }
 
-QLabel#EmptyCartLabel {
+QLabel#EmptyCartLabel, QLabel#EmptyTableLabel {
     color: #555555;
     font-size: 16px;
     background: transparent;
@@ -796,9 +890,24 @@ QTableWidget#CartTable {
     gridline-color: #3E3E42;
 }
 
+QTableWidget#CartTable::item:selected {
+    background-color: rgba(0, 188, 235, 0.18);
+    color: #FFFFFF;
+}
+
 QLabel[class="StrikethroughPrice"] {
     background-color: transparent;
     color: white;
+}
+
+QLabel#UndoToast {
+    background-color: rgba(0, 31, 63, 0.92);
+    color: #00BCEB;
+    border: 1px solid #00BCEB;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: bold;
 }
 
 /* Total Widget */
@@ -2034,6 +2143,7 @@ QFrame#StatusCard {
 }
 
 QLabel#StatusIcon {
+    background-color: transparent;
     font-size: 32px;
     min-width: 50px;
 }
@@ -3003,17 +3113,17 @@ QPushButton#CreditPrintBtn:hover {
 }
 
 QPushButton#CreditAdjustBtn, QPushButton#PayableAdjustBtn {
-    background-color: #332800;
-    color: #FFDC00;
+    background-color: #003366;
+    color: #E0E0E0;
     padding: 8px 16px;
     border-radius: 6px;
-    border: 1px solid #554400;
+    border: 1px solid #2D2D30;
     font-size: 13px;
 }
 
 QPushButton#CreditAdjustBtn:hover, QPushButton#PayableAdjustBtn:hover {
-    background-color: #443600;
-    border-color: #FFDC00;
+    border-color: #00BCEB;
+    color: #00BCEB;
 }
 
 QPushButton#CreditEditBtn {
@@ -3317,7 +3427,7 @@ QWidget#PriceListNavContainer {
 
 QPushButton#PriceListNavItem {
     text-align: left;
-    padding: 10px 12px;
+    padding: 14px 14px;
     font-size: 14px;
     color: #AAAAAA;
     background-color: transparent;

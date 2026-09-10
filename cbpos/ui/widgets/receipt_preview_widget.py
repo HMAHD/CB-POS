@@ -14,14 +14,18 @@ re-opens a new content ``<td>``.  This guarantees the line physically spans
 the entire paper table width with zero gaps.
 """
 
+import base64
 import hashlib
+import io
 import logging
 from html import escape
 from typing import List, Dict, Any
 
+from PIL import Image, UnidentifiedImageError
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QVBoxLayout, QWidget, QLabel, QTextBrowser
+from cbpos.core.utils.thermal_image import dither_for_thermal_print
 from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
@@ -106,7 +110,7 @@ class ReceiptPreviewWidget(QWidget):
         ]
 
         for cmd in self._commands:
-            self._render_command(cmd, cols, parts)
+            self._render_command(cmd, cols, parts, self._paper_width)
 
         parts.append("</td></tr></table>")
         parts.append("<div style='height:8px;font-size:1px;'>&nbsp;</div>")
@@ -118,6 +122,7 @@ class ReceiptPreviewWidget(QWidget):
         cmd: Dict[str, Any],
         cols: int,
         parts: list,
+        paper_width: str = "80mm",
     ) -> None:
         """Render a single receipt command into HTML and append to *parts*."""
         ctype = cmd.get("type", "")
@@ -178,12 +183,14 @@ class ReceiptPreviewWidget(QWidget):
         elif ctype == "image":
             path = cmd.get("path", "")
             if path:
-                parts.append(
-                    "<div align='center' style='text-align:center;"
-                    "margin:4px 0;padding:0 %dpx;'>"
-                    "<img src='file:///%s'"
-                    " style='max-width:100%%;height:auto;'></div>" % (p, escape(path))
-                )
+                data_uri = _dithered_logo_data_uri(path, paper_width)
+                if data_uri:
+                    parts.append(
+                        "<div align='center' style='text-align:center;"
+                        "margin:4px 0;padding:0 %dpx;'>"
+                        "<img src='%s'"
+                        " style='max-width:100%%;height:auto;'></div>" % (p, data_uri)
+                    )
 
         elif ctype == "barcode":
             val = cmd.get("val", "")
@@ -221,6 +228,31 @@ class ReceiptPreviewWidget(QWidget):
                 "font-size:8px;color:#999;padding:0;margin:0;'>"
                 "&#9986; cut</div>"
             )
+
+
+def _dithered_logo_data_uri(path: str, paper_width: str) -> str:
+    """Return the logo as a base64 PNG data URI, converted to the real 1-bit
+    thermal output the printer will produce (see thermal_image.py).
+
+    Embedding a processed data URI instead of an ``img src='file:///...'``
+    link to the raw file means the preview shows what will actually print
+    -- a full-color/greyscale logo that looks fine in the file picker can
+    turn into an unreadable grey blob once naively converted to monochrome,
+    which a shop owner would otherwise only discover after wasting real
+    receipt paper (#330). Returns "" if the file can't be read as an image
+    so a bad/missing logo path just omits the image instead of crashing
+    the preview.
+    """
+    try:
+        with Image.open(path) as source:
+            dithered = dither_for_thermal_print(source, paper_width)
+            buffer = io.BytesIO()
+            dithered.convert("L").save(buffer, format="PNG")
+            encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+            return "data:image/png;base64,%s" % encoded
+    except (OSError, UnidentifiedImageError) as e:
+        logger.warning("Could not render logo preview for %s: %s", path, e)
+        return ""
 
 
 def _generate_barcode_bars(value: str) -> str:

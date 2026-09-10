@@ -120,7 +120,7 @@ class ReportViewer(QWidget):
         header_row.addWidget(self._page_header)
         main_layout.addLayout(header_row)
 
-        splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.splitter = splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setObjectName("ReportSplitter")
 
         # ── LEFT: Sidebar Panel ──
@@ -299,6 +299,14 @@ class ReportViewer(QWidget):
         splitter.setSizes([280, 720])
         splitter.setHandleWidth(1)
         sidebar.setMinimumWidth(260)
+        # Without explicit stretch factors, a plain QSplitter keeps its
+        # panels' proportional ratio as the window resizes -- on a large
+        # monitor that stretched a panel whose content is short labels
+        # into far more width than it needs, starving the report content
+        # pane (the one that actually needs the room) of extra space (#286).
+        sidebar.setMaximumWidth(340)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
 
         main_layout.addWidget(splitter, 1)
 
@@ -446,7 +454,8 @@ class ReportViewer(QWidget):
         start = self.pagination.start_index
         end = self.pagination.end_index
         page_df = self._full_df.iloc[start:end].reset_index(drop=True)
-        self.table_model.set_data(page_df)
+        render_hints = self.current_report.get_render_hints() if self.current_report else {}
+        self.table_model.set_data(page_df, render_hints=render_hints)
 
     def _on_page_changed(self, _page: int) -> None:
         self._show_current_page()

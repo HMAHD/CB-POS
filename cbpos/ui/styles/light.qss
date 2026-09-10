@@ -80,6 +80,45 @@ QDateEdit::drop-down:hover {
     background-color: #E9ECEF;
 }
 
+/* Context/dropdown menus - Global Baseline. Previously the only QMenu
+   rule in this file was scoped to QCalendarWidget QMenu, so every other
+   right-click menu in the app (e.g. the Sales screen's cart line-item
+   menu) rendered with the OS's native popup chrome instead of this
+   theme, even though the surrounding code already manually re-tints
+   the menu's icons per theme. A generic selector styles every QMenu at
+   once, the same way QDateEdit/QLineEdit above do for their types. */
+QMenu {
+    background-color: #FFFFFF;
+    color: #212529;
+    border: 1px solid #CED4DA;
+    border-radius: 6px;
+    padding: 4px;
+}
+
+QMenu::item {
+    padding: 8px 24px 8px 12px;
+    border-radius: 4px;
+}
+
+QMenu::item:selected {
+    background-color: #EFF6FF;
+    color: #0D6EFD;
+}
+
+QMenu::item:disabled {
+    color: #ADB5BD;
+}
+
+QMenu::separator {
+    height: 1px;
+    background-color: #E9ECEF;
+    margin: 4px 8px;
+}
+
+QMenu::icon {
+    padding-left: 8px;
+}
+
 QCalendarWidget {
     background-color: #FFFFFF;
     color: #212529;
@@ -321,6 +360,23 @@ QCheckBox::indicator:checked:hover {
     image: url(cbpos/assets/icons/check-white.svg);
 }
 
+/* Tree/table item checkboxes (e.g. Permission Manager) rendered plain
+   grey native OS squares -- ::indicator on QTreeWidget/QTableWidget
+   picks up the exact same themed style as a real QCheckBox (#298). */
+QTreeWidget::indicator, QTableWidget::indicator {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #ADB5BD;
+    border-radius: 4px;
+    background-color: transparent;
+}
+
+QTreeWidget::indicator:checked, QTableWidget::indicator:checked {
+    background-color: #0D6EFD;
+    border-color: #0D6EFD;
+    image: url(cbpos/assets/icons/check-white.svg);
+}
+
 /* Buttons */
 QPushButton {
     background-color: #FFFFFF;
@@ -363,16 +419,17 @@ QPushButton#BtnCancel:hover, QPushButton#VoidBtn:hover, QPushButton[class="dange
     background-color: #BB2D3B;
 }
 
-/* Accent Button (Cyan) */
+/* Accent Button -- was #0099CC, matching neither the dark theme's
+   #00BCEB nor CLAUDE.md's documented light accent (#0D6EFD) */
 QPushButton[class="accent"] {
-    background-color: #0099CC;
+    background-color: #0D6EFD;
     color: #FFFFFF;
     border: none;
     font-weight: bold;
 }
 
 QPushButton[class="accent"]:hover {
-    background-color: #0088B5;
+    background-color: #0B5ED7;
 }
 
 /* Secondary Button (neutral, outlined -- dismiss/close actions that
@@ -439,7 +496,6 @@ QListWidget, QTableWidget {
 QListWidget::item, QTableWidget::item {
     padding: 12px;
     border-bottom: 1px solid #F1F3F5;
-    color: #212529;
 }
 
 QListWidget::item:selected, QTableWidget::item:selected {
@@ -662,16 +718,37 @@ QToolButton#SidebarToggle {
     background: transparent;
 }
 
-/* Sidebar Buttons */
+/* Sidebar section break -- a resting point between groups of nav items
+   (operational screens vs. management/admin ones), instead of one flat,
+   undifferentiated 10-item list (#315). The divider line stays visible
+   in collapsed mode; the label text hides (no room for it, see
+   CollapsibleSidebar._update_all_styles). */
+QFrame#SidebarSectionDivider {
+    background-color: #E5E7EB;
+    border: none;
+    margin: 6px 16px 0 16px;
+}
+
+QLabel#SidebarSectionLabel {
+    color: #9CA3AF;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 6px 20px 4px 20px;
+    background: transparent;
+}
+
+/* Sidebar Buttons -- a floating rounded pill (inset margin + radius)
+   instead of a flat, edge-to-edge square with a hairline accent bar. */
 QToolButton#SidebarButton {
     background-color: transparent;
     color: #6B7280;
     border: none;
-    border-left: 4px solid transparent;
+    border-radius: 8px;
     text-align: left;
-    padding-left: 20px;
+    padding-left: 16px;
     padding-top: 8px;
     padding-bottom: 8px;
+    margin: 1px 10px;
     min-height: 36px;
     font-size: 15px;  /* Slightly larger for readability */
     font-weight: normal;
@@ -683,9 +760,8 @@ QToolButton#SidebarButton:hover {
 }
 
 QToolButton#SidebarButton:checked, QToolButton#SidebarButton[active="true"] {
-    background-color: #EFF6FF;  /* Pale blue */
-    color: #0066CC;
-    border-left: 4px solid #0066CC;
+    background-color: rgba(13, 110, 253, 0.10);
+    color: #0D6EFD;
     font-weight: bold;
 }
 
@@ -694,48 +770,63 @@ QToolButton#SidebarButton[collapsed="true"] {
     padding-left: 0px;
     padding-right: 0px;
     text-align: center;
+    margin: 1px 10px;
 }
 
-/* Special Sidebar Buttons */
+/* Bottom "exit cluster" divider -- pulls POS/Logout visually away from
+   the nav list above, so they read as two consequential actions rather
+   than two more rows in the same list. */
+QFrame#SidebarBottomDivider {
+    background-color: #E5E7EB;
+    border: none;
+    margin: 0 16px;
+}
+
+/* Special Sidebar Buttons -- rounded, tinted action chips instead of a
+   flat full-width bar (BtnPos) or a centered outlined block (BtnLogout),
+   so both read as the same family of "exit cluster" action. */
 QToolButton#BtnPos {
     color: #198754;
-    border-top: 1px solid #DEE2E6;
+    background-color: rgba(25, 135, 84, 0.08);
+    border: 1px solid rgba(25, 135, 84, 0.35);
+    border-radius: 8px;
+    min-height: 40px;
     text-align: left;
-    padding-left: 24px;
-    min-height: 36px;
+    padding-left: 16px;
+    margin: 4px 10px;
+    font-weight: bold;
 }
 
 QToolButton#BtnPos:hover {
-    background-color: #E8F5E9; /* Pale Green */
+    background-color: rgba(25, 135, 84, 0.16);
 }
 
 QToolButton#BtnPos[collapsed="true"] {
     text-align: center;
     padding-left: 0px;
+    margin: 4px 10px;
 }
 
-/* Sign Out Button - Professional Outlined Design */
 QToolButton#BtnLogout {
-    color: #DC3545;  /* Bootstrap Red */
-    background-color: transparent;
-    border: 1px solid #DC3545;  /* Red Border */
-    border-radius: 6px;
-    padding: 8px 12px;
-    margin: 10px 15px;  /* Spacing from edges */
-    min-height: 36px;
+    color: #DC3545;
+    background-color: rgba(220, 53, 69, 0.08);
+    border: 1px solid rgba(220, 53, 69, 0.35);
+    border-radius: 8px;
+    min-height: 40px;
+    text-align: left;
+    padding-left: 16px;
+    margin: 4px 10px 8px 10px;
     font-weight: bold;
-    text-align: center;  /* Center text */
 }
 
 QToolButton#BtnLogout:hover {
-    background-color: #DC3545;
-    color: white;  /* White text on Red background */
+    background-color: rgba(220, 53, 69, 0.16);
 }
 
 QToolButton#BtnLogout[collapsed="true"] {
     text-align: center;
-    padding: 8px;
-    margin: 10px 10px;
+    padding-left: 0px;
+    margin: 4px 10px 8px 10px;
 }
 
 /* --- Sales View Specifics --- */
@@ -782,7 +873,7 @@ QLabel#ItemCountLabel {
     background: transparent;
 }
 
-QLabel#EmptyCartLabel {
+QLabel#EmptyCartLabel, QLabel#EmptyTableLabel {
     color: #AAAAAA;
     font-size: 16px;
     background: transparent;
@@ -857,6 +948,16 @@ QLabel[class="StrikethroughPrice"] {
     color: #DC3545;
 }
 
+QLabel#UndoToast {
+    background-color: rgba(255, 255, 255, 0.96);
+    color: #0D6EFD;
+    border: 1px solid #0D6EFD;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
 /* Total Widget */
 QWidget#TotalWidget {
     background-color: #F1F3F5;
@@ -906,27 +1007,27 @@ QLabel#ActionSectionLabel {
 }
 
 QLabel#CustTitle {
-    color: #FFFFFF;
+    color: #1A1A1A;
     font-size: 13px;
     font-weight: bold;
     background: transparent;
 }
 
 QFrame#CustomerPanel {
-    background-color: #001F3F;  /* Dark Navy */
-    border: 1px solid #001F3F;
+    background-color: #FFFFFF;
+    border: 1px solid #D0D5DB;
     border-radius: 8px;
 }
 
 QFrame#CustomerPanel QLabel {
-    color: white;  /* White text */
+    color: #1A1A1A;
     background: transparent;
 }
 
 QLabel#CustomerLabel {
     font-weight: bold;
     font-size: 14px;
-    color: white;  /* White text on Navy */
+    color: #1A1A1A;
     background: transparent;
 }
 
@@ -949,19 +1050,19 @@ QPushButton#BtnCustomerSelect:pressed {
 }
 
 QFrame#PointsDivider {
-    background-color: rgba(255, 255, 255, 0.25);
+    background-color: #E2E5EA;
     border: none;
 }
 
 /* Explicitly scoped under CustomerPanel (not just QLabel#PointsLabel) so
-   this wins over the broader "QFrame#CustomerPanel QLabel { color: white;
+   this wins over the broader "QFrame#CustomerPanel QLabel { color: ...;
    background: transparent; }" rule above -- equal-looking ID selectors
    don't reliably out-rank a descendant rule in Qt's stylesheet cascade. */
 QFrame#CustomerPanel QLabel#PointsLabel {
-    color: white;  /* White text on Navy */
+    color: #946200;  /* Amber accent, readable on the light card surface */
     font-weight: bold;
     font-size: 12px;
-    background-color: rgba(255, 255, 255, 0.15);
+    background-color: rgba(255, 193, 7, 0.18);
     border-radius: 10px;
     padding: 2px 10px;
 }
@@ -1994,6 +2095,7 @@ QFrame#StatusCard {
 }
 
 QLabel#StatusIcon {
+    background-color: transparent;
     font-size: 32px;
     min-width: 50px;
 }
@@ -2896,17 +2998,17 @@ QPushButton#CreditPrintBtn:hover, QPushButton#CreditEditBtn:hover {
 }
 
 QPushButton#CreditAdjustBtn, QPushButton#PayableAdjustBtn {
-    background-color: #FFF3CD;
-    color: #856404;
+    background-color: #F8F9FA;
+    color: #495057;
     padding: 8px 16px;
     border-radius: 6px;
-    border: 1px solid #FFE69C;
+    border: 1px solid #CED4DA;
     font-size: 13px;
 }
 
 QPushButton#CreditAdjustBtn:hover, QPushButton#PayableAdjustBtn:hover {
-    background-color: #FFECB5;
-    border-color: #FFD666;
+    border-color: #0D6EFD;
+    color: #0D6EFD;
 }
 
 QLabel#CreditFilterLabel, QLabel#PayableFilterLabel {
@@ -3192,7 +3294,7 @@ QWidget#PriceListNavContainer {
 
 QPushButton#PriceListNavItem {
     text-align: left;
-    padding: 10px 12px;
+    padding: 14px 14px;
     font-size: 14px;
     color: #6C757D;
     background-color: transparent;

@@ -126,7 +126,8 @@ class TestCartLineDiscounts:
         assert item["subtotal"] == Decimal("200.00")  # gross
         assert item["total"] == Decimal("180.00")  # net after 10%
 
-    def test_fixed_discount(self, mock_pricing):
+    @patch("cbpos.core.services.config_service.ConfigService.get", return_value=0)
+    def test_fixed_discount(self, mock_config, mock_pricing):
         """Fixed Rs.50 discount on a Rs.200 line → Rs.150."""
         cart = CartService()
         product = _make_product(price="100.00")
@@ -137,7 +138,8 @@ class TestCartLineDiscounts:
         assert item["subtotal"] == Decimal("200.00")
         assert item["total"] == Decimal("150.00")
 
-    def test_discount_capped_at_line_total(self, mock_pricing):
+    @patch("cbpos.core.services.config_service.ConfigService.get", return_value=0)
+    def test_discount_capped_at_line_total(self, mock_config, mock_pricing):
         """Discount larger than line total should cap at line total (no negative)."""
         cart = CartService()
         product = _make_product(price="100.00")
@@ -166,6 +168,116 @@ class TestCartLineDiscounts:
         item = cart.items[0]
         assert item["total"] == Decimal("900.00")
         assert item["subtotal"] == Decimal("900.00")
+
+    def test_line_discount_writes_an_audit_log_entry_when_a_user_is_given(self, mock_pricing):
+        """#398: discount overrides went through the same manager-override
+        permission flow as every other audited action but were never
+        written to AuditLog at all."""
+        cart = CartService()
+        product = _make_product(price="100.00")
+        cart.add_item(product, qty=Decimal("2"))
+
+        user = MagicMock()
+        user.id = 3
+        user.username = "manager"
+
+        with patch("cbpos.core.services.cart_service.LoggingService.log_action") as mock_log:
+            cart.apply_line_discount(0, "PERCENTAGE", Decimal("10"), user=user)
+
+        mock_log.assert_called_once()
+        args, kwargs = mock_log.call_args
+        call = {**dict(zip(["user_id", "action", "event_type", "details"], args)), **kwargs}
+        assert call["user_id"] == 3
+        assert call["event_type"] == "TRANSACTION"
+        assert "10" in call["details"]
+
+    def test_line_discount_without_a_user_writes_no_audit_log_entry(self, mock_pricing):
+        cart = CartService()
+        cart.add_item(_make_product(price="100.00"), qty=Decimal("2"))
+
+        with patch("cbpos.core.services.cart_service.LoggingService.log_action") as mock_log:
+            cart.apply_line_discount(0, "PERCENTAGE", Decimal("10"))
+
+        mock_log.assert_not_called()
+
+    @patch("cbpos.core.services.config_service.ConfigService.get", return_value=10)
+    def test_fixed_discount_exceeding_the_cap_raises(self, mock_config, mock_pricing):
+        """A max_discount_percent cap of 10% must also gate FIXED discounts,
+        not just PERCENTAGE ones -- otherwise a cashier with SALES_DISCOUNT
+        permission (not necessarily manager-only) can zero out any line via
+        a large enough fixed amount, completely bypassing the cap that's
+        supposed to gate exactly this kind of markdown."""
+        cart = CartService()
+        product = _make_product(price="100.00")
+        cart.add_item(product, qty=Decimal("1"))  # gross line = 100.00
+
+        # Rs. 50 fixed off a Rs.100 line is a 50% effective discount, over the 10% cap
+        with pytest.raises(ValueError, match="10"):
+            cart.apply_line_discount(0, "FIXED", Decimal("50"))
+
+    @patch("cbpos.core.services.config_service.ConfigService.get", return_value=10)
+    def test_fixed_discount_within_the_cap_succeeds(self, mock_config, mock_pricing):
+        cart = CartService()
+        product = _make_product(price="100.00")
+        cart.add_item(product, qty=Decimal("1"))  # gross line = 100.00
+
+        # Rs. 5 fixed off a Rs.100 line is a 5% effective discount, under the 10% cap
+        cart.apply_line_discount(0, "FIXED", Decimal("5"))
+
+        assert cart.items[0]["total"] == Decimal("95.00")
+
+
+@patch("cbpos.core.services.cart_service.PricingService.calculate_price", side_effect=_mock_pricing)
+class TestUpdateQuantity:
+    """update_quantity() must keep a line's discount applied, unlike setting
+    qty/total directly -- that silently wiped the discount (money-losing
+    bug: the Disc column kept showing e.g. "10%" while the customer was
+    actually charged full price)."""
+
+    def test_changing_quantity_keeps_the_line_discount_applied(self, mock_pricing):
+        cart = CartService()
+        product = _make_product(price="100.00")
+        cart.add_item(product, qty=Decimal("2"))
+        cart.apply_line_discount(0, "PERCENTAGE", Decimal("10"))
+        assert cart.items[0]["total"] == Decimal("180.00")
+
+        cart.update_quantity(0, Decimal("3"))
+
+        item = cart.items[0]
+        assert item["qty"] == Decimal("3")
+        assert item["subtotal"] == Decimal("300.00")
+        assert item["total"] == Decimal("270.00")  # still 10% off, not full price
+
+    @patch("cbpos.core.services.config_service.ConfigService.get", return_value=0)
+    def test_changing_quantity_on_a_fixed_discount_line(self, mock_config, mock_pricing):
+        cart = CartService()
+        product = _make_product(price="100.00")
+        cart.add_item(product, qty=Decimal("2"))
+        cart.apply_line_discount(0, "FIXED", Decimal("50"))
+        assert cart.items[0]["total"] == Decimal("150.00")
+
+        cart.update_quantity(0, Decimal("4"))
+
+        item = cart.items[0]
+        assert item["subtotal"] == Decimal("400.00")
+        assert item["total"] == Decimal("350.00")  # same Rs.50 fixed discount
+
+    def test_changing_quantity_on_a_plain_line(self, mock_pricing):
+        cart = CartService()
+        product = _make_product(price="100.00")
+        cart.add_item(product, qty=Decimal("1"))
+
+        cart.update_quantity(0, Decimal("5"))
+
+        item = cart.items[0]
+        assert item["qty"] == Decimal("5")
+        assert item["total"] == Decimal("500.00")
+
+    def test_invalid_index_does_nothing(self, mock_pricing):
+        cart = CartService()
+        cart.add_item(_make_product(), Decimal("1"))
+        cart.update_quantity(99, Decimal("5"))
+        assert cart.items[0]["qty"] == Decimal("1")
 
 
 @patch("cbpos.core.services.cart_service.PricingService.calculate_price", side_effect=_mock_pricing)
@@ -284,6 +396,28 @@ class TestCartPriceOverride:
         assert cart.items[0]["unit_price"] == Decimal("80.00")
         assert cart.items[0]["is_manual_price"] is True
         assert cart.items[0]["total"] == Decimal("80.00")
+
+    def test_override_price_writes_an_audit_log_entry(self, mock_pricing):
+        """#398: price overrides went through the same manager-override
+        permission flow as every other audited action (refund, void,
+        permission change) but were never written to AuditLog -- only a
+        plain logger.info() line."""
+        cart = CartService()
+        cart.add_item(_make_product(price="100.00"), Decimal("1"))
+
+        user = MagicMock()
+        user.id = 7
+        user.username = "manager"
+
+        with patch("cbpos.core.services.cart_service.LoggingService.log_action") as mock_log:
+            cart.override_price(0, Decimal("80.00"), user)
+
+        mock_log.assert_called_once()
+        args, kwargs = mock_log.call_args
+        call = {**dict(zip(["user_id", "action", "event_type", "details"], args)), **kwargs}
+        assert call["user_id"] == 7
+        assert call["event_type"] == "TRANSACTION"
+        assert "80.00" in call["details"]
 
     def test_override_negative_price_raises(self, mock_pricing):
         """Negative price override raises ValueError."""

@@ -24,6 +24,9 @@ class ProfitLossReport(BaseReport):
     def get_filter_definitions(self) -> List[Dict[str, Any]]:
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
+    def get_render_hints(self) -> Dict[str, Any]:
+        return {"currency_columns": ["Revenue", "Cost (COGS)", "Gross Profit"]}
+
     def generate(self, filters: Dict[str, Any]) -> pd.DataFrame:
         with get_db_session() as session:
             date_range = filters.get("date_range", {})
@@ -90,6 +93,9 @@ class TaxLiabilityReport(BaseReport):
 
     def get_filter_definitions(self) -> List[Dict[str, Any]]:
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
+
+    def get_render_hints(self) -> Dict[str, Any]:
+        return {"currency_columns": ["Total Sale", "Net Revenue", "VAT (18%)", "SSCL (2.5%)", "Total Tax"]}
 
     def generate(self, filters: Dict[str, Any]) -> pd.DataFrame:
         with get_db_session() as session:

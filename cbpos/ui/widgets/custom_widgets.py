@@ -67,6 +67,7 @@ class SidebarButton(QToolButton):
         super().__init__()
         self.setText(text)
         self.icon_name = icon_name  # Store for theme updates
+        self._is_active = False
 
         self.setCheckable(True)
         self.setAutoExclusive(True)
@@ -80,10 +81,19 @@ class SidebarButton(QToolButton):
 
     def update_icon(self):
         """Update icon color (and icon-only vs beside-text padding) based
-        on current theme and collapse state."""
+        on current theme, active state, and collapse state.
+
+        The active/checked QSS rule recolors the button's background,
+        border, and text -- but a qtawesome icon is a baked pixmap, not
+        something QSS can recolor, so without this the icon glyph stayed
+        the same secondary color regardless of active state. That made
+        the collapsed (icon-only) sidebar rail show almost no visible
+        difference for the current section, since there's no text left
+        to carry the accent color either (#287).
+        """
         from cbpos.core.services.theme_service import ThemeService
 
-        icon_color = ThemeService.get_icon_color()
+        icon_color = ThemeService.get_accent_color() if self._is_active else ThemeService.get_icon_color()
         base_pixmap = Icons.get(self.icon_name, icon_color).pixmap(self._ICON_SIZE, self._ICON_SIZE)
 
         if self.toolButtonStyle() == Qt.ToolButtonStyle.ToolButtonIconOnly:
@@ -103,4 +113,6 @@ class SidebarButton(QToolButton):
 
     def set_active(self, active: bool):
         """Set the active state of the button and update styling."""
+        self._is_active = active
         self.setChecked(active)
+        self.update_icon()

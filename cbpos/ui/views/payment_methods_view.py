@@ -184,7 +184,7 @@ class _MethodCard(QFrame):
         layout.addWidget(status_label)
 
         # --- Right: Action buttons ---
-        btn_layout = QHBoxLayout()
+        self.btn_layout = btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
 
         btn_edit = QPushButton(_t("payment_methods.btn_edit"))
@@ -206,13 +206,21 @@ class _MethodCard(QFrame):
         btn_toggle.clicked.connect(lambda: self._parent_view._toggle_method(self.method))
         btn_layout.addWidget(btn_toggle)
 
-        if not self.method.is_cash:
-            btn_delete = QPushButton(_t("payment_methods.btn_delete"))
-            btn_delete.setObjectName("PMCardBtn")
-            btn_delete.setProperty("class", "danger")
-            btn_delete.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-            btn_delete.clicked.connect(lambda: self._parent_view._delete_method(self.method))
-            btn_layout.addWidget(btn_delete)
+        # Cash can't be deleted, but the button still gets added (just
+        # hidden, with its layout slot retained) rather than omitted --
+        # otherwise Cash's narrower 2-button group shifts left, landing
+        # its Edit button out of line with every other row's Edit button.
+        self.btn_delete = QPushButton(_t("payment_methods.btn_delete"))
+        self.btn_delete.setObjectName("PMCardBtn")
+        self.btn_delete.setProperty("class", "danger")
+        self.btn_delete.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_delete.clicked.connect(lambda: self._parent_view._delete_method(self.method))
+        if self.method.is_cash:
+            self.btn_delete.setVisible(False)
+            size_policy = self.btn_delete.sizePolicy()
+            size_policy.setRetainSizeWhenHidden(True)
+            self.btn_delete.setSizePolicy(size_policy)
+        btn_layout.addWidget(self.btn_delete)
 
         layout.addLayout(btn_layout)
 

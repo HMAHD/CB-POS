@@ -22,11 +22,12 @@ from PyQt6.QtWidgets import (
     QStackedWidget,
     QMenu,
 )
-from PyQt6.QtCore import Qt, QDate
+from PyQt6.QtCore import Qt, QDate, QSize
 from PyQt6.QtGui import QColor, QShortcut, QKeySequence
 from cbpos.core.services.price_list_service import PriceListService
 from cbpos.core.services.product_service import ProductService
 from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
+from cbpos.ui.resources.icons import Icons
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
@@ -50,7 +51,6 @@ class PriceListView(QWidget):
         root.setSpacing(0)
 
         from cbpos.ui.widgets.page_header import PageHeader
-        from cbpos.ui.resources.icons import Icons
 
         self._page_header = PageHeader(icon_name=Icons.PRICE_LIST)
         header_row = QHBoxLayout()
@@ -90,7 +90,7 @@ class PriceListView(QWidget):
         self.nav_container.setObjectName("PriceListNavContainer")
         self.nav_layout = QVBoxLayout(self.nav_container)
         self.nav_layout.setContentsMargins(0, 0, 0, 0)
-        self.nav_layout.setSpacing(2)
+        self.nav_layout.setSpacing(6)
         self.nav_layout.addStretch()
 
         scroll.setWidget(self.nav_container)
@@ -179,7 +179,7 @@ class PriceListView(QWidget):
         # Product table
         self.table = QTableWidget()
         self.table.setObjectName("PriceListDataTable")
-        self.table.setColumnCount(5)
+        self.table.setColumnCount(4)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.setColumnHidden(0, True)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -246,7 +246,6 @@ class PriceListView(QWidget):
                 _t("pricelist.header_product"),
                 _t("pricelist.header_base_price"),
                 _t("pricelist.header_list_price"),
-                _t("pricelist.header_status"),
             ]
         )
         self.hint_label.setText(_t("pricelist.footer_hint"))
@@ -292,9 +291,12 @@ class PriceListView(QWidget):
 
         lists = self.price_list_service.get_all_lists()
         for pl in lists:
-            status_text, _ = self._get_price_list_status(pl)
-            btn = QPushButton(f"{pl.name}  [{status_text}]")
+            status_text, status_colour = self._get_price_list_status(pl)
+            btn = QPushButton(pl.name)
             btn.setObjectName("PriceListNavItem")
+            btn.setIcon(Icons.get("fa5s.circle", status_colour.name()))
+            btn.setIconSize(QSize(10, 10))
+            btn.setToolTip(status_text)
             btn.setCheckable(True)
             btn.setAutoExclusive(True)
             btn.setProperty("list_id", pl.id)
@@ -333,7 +335,6 @@ class PriceListView(QWidget):
         if not self.current_list:
             return
 
-        status_text, status_colour = self._get_price_list_status(self.current_list)
         products = self.product_service.get_all_products()
         list_items = self.price_list_service.get_items(self.current_list.id)
         price_map = {item.product_id: item.price for item in list_items}
@@ -355,11 +356,6 @@ class PriceListView(QWidget):
                 price_item.setForeground(Qt.GlobalColor.green)
 
             self.table.setItem(row, 3, price_item)
-
-            # Status column
-            status_item = QTableWidgetItem(status_text)
-            status_item.setForeground(status_colour)
-            self.table.setItem(row, 4, status_item)
 
         self.lbl_product_count.setText(_t("pricelist.product_count", count=len(products)))
 

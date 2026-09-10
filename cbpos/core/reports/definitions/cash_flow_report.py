@@ -22,6 +22,15 @@ class CashFlowReport(BaseReport):
     def get_filter_definitions(self) -> List[Dict[str, Any]]:
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
+    def get_render_hints(self) -> Dict[str, Any]:
+        return {
+            "currency_columns": ["Amount"],
+            "total_row_column": "Type",
+            "total_row_values": ["Net"],
+            "color_column": "Type",
+            "color_map": {"Inflow": "#39FF14", "Outflow": "#FF4136"},
+        }
+
     def generate(self, filters: Dict[str, Any] = None) -> pd.DataFrame:
         if filters is None:
             filters = {}

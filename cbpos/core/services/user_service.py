@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy.orm import joinedload
@@ -71,10 +72,16 @@ class UserService:
             return False
 
     @staticmethod
-    def get_recent_activity(user_id: Optional[int] = None, limit: int = 10) -> list:
+    def get_recent_activity(
+        user_id: Optional[int] = None,
+        limit: int = 200,
+        event_type: Optional[str] = None,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
+    ) -> list:
         """
-        Retrieve recent audit logs.
-        If user_id is provided, filter by user. Otherwise return all.
+        Retrieve recent audit logs, optionally narrowed by user, event type,
+        or a timestamp range.
         """
         try:
             with Database().get_session() as session:
@@ -82,6 +89,15 @@ class UserService:
 
                 if user_id is not None:
                     query = query.filter(AuditLog.user_id == user_id)
+
+                if event_type is not None:
+                    query = query.filter(AuditLog.event_type == event_type)
+
+                if date_from is not None:
+                    query = query.filter(AuditLog.timestamp >= date_from)
+
+                if date_to is not None:
+                    query = query.filter(AuditLog.timestamp <= date_to)
 
                 logs = query.options(joinedload(AuditLog.user)).order_by(AuditLog.timestamp.desc()).limit(limit).all()
                 # Detach objects for UI use

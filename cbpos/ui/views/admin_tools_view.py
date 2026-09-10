@@ -130,6 +130,11 @@ class AdminToolsView(QWidget):
 
         self.lbl_db_path = QLabel("--")
         self.lbl_db_path.setWordWrap(True)
+        # QFormLayout can't compute a wrapped QLabel's sizeHint correctly
+        # at layout time (chicken/egg: the wrap depends on the width it
+        # hasn't been given yet), so without an explicit minimum only the
+        # first fragment of a real path ever painted.
+        self.lbl_db_path.setMinimumWidth(400)
         self.lbl_db_path.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.lbl_db_path_label = QLabel()
         file_layout.addRow(self.lbl_db_path_label, self.lbl_db_path)

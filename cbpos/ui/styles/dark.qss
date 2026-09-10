@@ -842,7 +842,7 @@ QLabel#ItemCountLabel {
     background: transparent;
 }
 
-QLabel#EmptyCartLabel {
+QLabel#EmptyCartLabel, QLabel#EmptyTableLabel {
     color: #555555;
     font-size: 16px;
     background: transparent;

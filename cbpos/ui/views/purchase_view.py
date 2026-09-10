@@ -532,6 +532,16 @@ class PurchaseView(QWidget):
         self.history_table.doubleClicked.connect(self.on_history_double_click)
         layout.addWidget(self.history_table, 1)
 
+        # QTableView + model has no built-in empty-row mechanism the way
+        # a plain QTableWidget does, so this mirrors sales_view.py's
+        # empty_cart_label: an overlay positioned over the viewport,
+        # shown/hidden by refresh_history() based on whether there are
+        # any rows.
+        self.empty_history_label = QLabel(self.history_table.viewport())
+        self.empty_history_label.setObjectName("EmptyTableLabel")
+        self.empty_history_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_history_label.setVisible(False)
+
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
         self._page_header.set_title(_t("management.sidebar_purchasing"))
@@ -540,6 +550,7 @@ class PurchaseView(QWidget):
         self.tabs.setTabText(1, _t("purchase.tab_new_grn"))
         self.tabs.setTabText(2, _t("purchase.tab_grn_history"))
         self.tabs.setTabText(3, _t("purchase.tab_payables"))
+        self.empty_history_label.setText(_t("purchase.grn_history_empty_state"))
 
         # Supplier tab
         self.btn_add_supplier.setText(_t("purchase.btn_add_supplier"))
@@ -637,6 +648,14 @@ class PurchaseView(QWidget):
 
         self.history_model = PurchaseHistoryModel(purchases)
         self.history_table.setModel(self.history_model)
+        self.empty_history_label.setVisible(not purchases)
+        if not purchases:
+            self._position_empty_history_label()
+
+    def _position_empty_history_label(self) -> None:
+        """Center the empty-history hint over the table's row area (its viewport)."""
+        viewport = self.history_table.viewport()
+        self.empty_history_label.resize(viewport.size())
 
     def on_history_double_click(self, index) -> None:
         """Open GRN detail dialog on double-click."""
@@ -1045,6 +1064,17 @@ class PurchaseView(QWidget):
     def _populate_payable_table(self, suppliers: list) -> None:
         """Populate the payable supplier table with color-coded status."""
         self.payable_supplier_table.setRowCount(0)
+
+        if not suppliers:
+            self.payable_supplier_table.insertRow(0)
+            empty_item = QTableWidgetItem(_t("purchase.payables_empty_state"))
+            empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty_item.setForeground(QColor("gray"))
+            empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
+            self.payable_supplier_table.setItem(0, 0, empty_item)
+            self.payable_supplier_table.setSpan(0, 0, 1, self.payable_supplier_table.columnCount())
+            return
+
         for supplier in suppliers:
             row = self.payable_supplier_table.rowCount()
             self.payable_supplier_table.insertRow(row)

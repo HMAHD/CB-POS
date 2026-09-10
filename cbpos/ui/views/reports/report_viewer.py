@@ -454,7 +454,8 @@ class ReportViewer(QWidget):
         start = self.pagination.start_index
         end = self.pagination.end_index
         page_df = self._full_df.iloc[start:end].reset_index(drop=True)
-        self.table_model.set_data(page_df)
+        render_hints = self.current_report.get_render_hints() if self.current_report else {}
+        self.table_model.set_data(page_df, render_hints=render_hints)
 
     def _on_page_changed(self, _page: int) -> None:
         self._show_current_page()

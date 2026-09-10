@@ -188,7 +188,9 @@
   },
   "quantity": {
     "title": "அளவை உள்ளிடுக",
-    "unit_hint": "அலகு: {abbr}"
+    "unit_hint": "அலகு: {abbr}",
+    "invalid_title": "Invalid Quantity",
+    "invalid_message": "Please enter a quantity greater than zero."
   },
   "receipt_options": {
     "title": "Receipt Options",
@@ -856,6 +858,8 @@
     "form_end_date": "End Date:",
     "set_price_title": "Set List Price",
     "set_price_prompt": "Enter price for {product_name}: ",
+    "set_price_invalid_title": "Invalid Price",
+    "set_price_invalid_message": "Please enter a price greater than zero.",
     "no_selection_title": "No Selection",
     "no_selection_msg": "Select a price list to delete.",
     "no_selection_edit_msg": "Select a price list to edit.",

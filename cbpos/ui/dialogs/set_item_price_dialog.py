@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QDialogButtonBox,
+    QMessageBox,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QDoubleValidator, QShortcut, QKeySequence
@@ -56,13 +57,30 @@ class SetItemPriceDialog(QDialog):
 
         self.price_input.setFocus()
 
-    def get_price(self) -> Decimal:
-        """Return the entered price as Decimal, falling back to 0.01 if invalid."""
+    def _parsed_price(self):
+        """Return the entered price as Decimal, or None if not a positive number."""
         text = self.price_input.text().strip()
         try:
             price = Decimal(text)
-            if price <= 0:
-                return Decimal("0.01")
-            return price
         except InvalidOperation:
-            return Decimal("0.01")
+            return None
+        return price if price > 0 else None
+
+    def accept(self):
+        if self._parsed_price() is None:
+            QMessageBox.warning(
+                self,
+                _t("pricelist.set_price_invalid_title"),
+                _t("pricelist.set_price_invalid_message"),
+            )
+            return
+        super().accept()
+
+    def get_price(self) -> Decimal:
+        """Return the entered price as Decimal, falling back to 0.01 if invalid.
+
+        Only meaningful after accept() -- callers read this from an
+        accepted (exec() returned True) dialog, so the value is already
+        known to be a positive number.
+        """
+        return self._parsed_price() or Decimal("0.01")

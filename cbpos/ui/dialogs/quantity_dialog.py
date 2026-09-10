@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QDialogButtonBox,
+    QMessageBox,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QShortcut, QKeySequence
@@ -88,13 +89,30 @@ class QuantityDialog(QDialog):
         self._disabled_shortcuts.clear()
         super().done(result)
 
-    def get_quantity(self) -> Decimal:
-        """Return the entered quantity as Decimal."""
+    def _parsed_quantity(self):
+        """Return the entered quantity as Decimal, or None if not a positive number."""
         text = self.qty_input.text().strip()
         try:
             qty = Decimal(text)
-            if qty <= 0:
-                return Decimal("1")
-            return qty
         except (InvalidOperation, ValueError):
-            return Decimal("1")
+            return None
+        return qty if qty > 0 else None
+
+    def accept(self):
+        if self._parsed_quantity() is None:
+            QMessageBox.warning(
+                self,
+                _t("quantity.invalid_title"),
+                _t("quantity.invalid_message"),
+            )
+            return
+        super().accept()
+
+    def get_quantity(self) -> Decimal:
+        """Return the entered quantity as Decimal.
+
+        Only meaningful after accept() -- callers read this from an
+        accepted (exec() returned True) dialog, so the value is already
+        known to be a positive number.
+        """
+        return self._parsed_quantity() or Decimal("1")

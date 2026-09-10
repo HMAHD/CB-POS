@@ -906,27 +906,27 @@ QLabel#ActionSectionLabel {
 }
 
 QLabel#CustTitle {
-    color: #FFFFFF;
+    color: #1A1A1A;
     font-size: 13px;
     font-weight: bold;
     background: transparent;
 }
 
 QFrame#CustomerPanel {
-    background-color: #001F3F;  /* Dark Navy */
-    border: 1px solid #001F3F;
+    background-color: #FFFFFF;
+    border: 1px solid #D0D5DB;
     border-radius: 8px;
 }
 
 QFrame#CustomerPanel QLabel {
-    color: white;  /* White text */
+    color: #1A1A1A;
     background: transparent;
 }
 
 QLabel#CustomerLabel {
     font-weight: bold;
     font-size: 14px;
-    color: white;  /* White text on Navy */
+    color: #1A1A1A;
     background: transparent;
 }
 
@@ -949,19 +949,19 @@ QPushButton#BtnCustomerSelect:pressed {
 }
 
 QFrame#PointsDivider {
-    background-color: rgba(255, 255, 255, 0.25);
+    background-color: #E2E5EA;
     border: none;
 }
 
 /* Explicitly scoped under CustomerPanel (not just QLabel#PointsLabel) so
-   this wins over the broader "QFrame#CustomerPanel QLabel { color: white;
+   this wins over the broader "QFrame#CustomerPanel QLabel { color: ...;
    background: transparent; }" rule above -- equal-looking ID selectors
    don't reliably out-rank a descendant rule in Qt's stylesheet cascade. */
 QFrame#CustomerPanel QLabel#PointsLabel {
-    color: white;  /* White text on Navy */
+    color: #946200;  /* Amber accent, readable on the light card surface */
     font-weight: bold;
     font-size: 12px;
-    background-color: rgba(255, 255, 255, 0.15);
+    background-color: rgba(255, 193, 7, 0.18);
     border-radius: 10px;
     padding: 2px 10px;
 }

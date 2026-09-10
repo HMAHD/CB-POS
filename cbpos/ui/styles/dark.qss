@@ -438,7 +438,6 @@ QListWidget, QTableWidget {
 QListWidget::item, QTableWidget::item {
     padding: 12px;
     border-bottom: 1px solid #3E3E42;
-    color: #FFFFFF;
 }
 
 QListWidget::item:selected, QTableWidget::item:selected {

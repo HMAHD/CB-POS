@@ -14,10 +14,12 @@ from cbpos.core.services.email_service import EmailService
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.receipt_service import ReceiptService
+from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.core.models import Sale
 from cbpos.core.utils.formatters import format_currency
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.dialogs.receipt_preview_dialog import ReceiptPreviewDialog
 from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
@@ -28,7 +30,7 @@ class ReceiptOptionsDialog(QDialog):
         super().__init__(parent)
         self.sale = sale
         self.setWindowTitle(_t("receipt_options.title"))
-        self.setFixedSize(440, 420)
+        self.setFixedSize(440, 474)
         self.setObjectName("ReceiptOptionsDialog")
         self.init_ui()
 
@@ -77,6 +79,16 @@ class ReceiptOptionsDialog(QDialog):
         is_dark = ThemeService.current_theme.lower() == "dark"
         icon_clr = "#FFFFFF" if is_dark else "#212529"
 
+        self.btn_preview = QPushButton("")
+        self.btn_preview.setObjectName("ReceiptBtnPreview")
+        self.btn_preview.setIcon(Icons.get("fa5s.eye", icon_clr))
+        self.btn_preview.setIconSize(QSize(18, 18))
+        self.btn_preview.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_preview.setFixedHeight(44)
+        self.btn_preview.clicked.connect(self.show_preview)
+        layout.addWidget(self.btn_preview)
+        layout.addSpacing(10)
+
         self.btn_print = QPushButton("")
         self.btn_print.setObjectName("ReceiptBtnPrint")
         self.btn_print.setIcon(Icons.get("fa5s.print", icon_clr))
@@ -120,9 +132,21 @@ class ReceiptOptionsDialog(QDialog):
         self.setWindowTitle(_t("receipt_options.title"))
         self.lbl_title.setText(_t("receipt_options.completed"))
         self.lbl_order.setText(_t("receipt_options.order_number", number=self.sale.document_number))
+        self.btn_preview.setText("  " + _t("receipt_options.btn_preview"))
         self.btn_print.setText("  " + _t("receipt_options.btn_print"))
         self.btn_email.setText("  " + _t("receipt_options.btn_email"))
         self.btn_close.setText(_t("receipt_options.btn_close"))
+
+    def show_preview(self) -> None:
+        """Show what will actually print, built from the real completed sale."""
+        try:
+            commands = ReceiptBuilder.build_receipt(self.sale)
+            ReceiptPreviewDialog(commands, self).exec()
+        except Exception as e:
+            logger.error("Receipt preview failed: %s", e)
+            QMessageBox.warning(
+                self, _t("receipt_options.print_error_title"), _t("receipt_options.print_error_message", error=str(e))
+            )
 
     def print_thermal(self) -> None:
         """Print receipt via thermal printer. Auto-closes on success, shows retry on failure."""

@@ -197,6 +197,7 @@
     "completed": "Transaction Completed!",
     "order_number": "Order #{number}",
     "btn_print": "Print Receipt",
+    "btn_preview": "Preview",
     "btn_email": "Email Receipt",
     "btn_close": "Close",
     "print_error_retry": "Retry",

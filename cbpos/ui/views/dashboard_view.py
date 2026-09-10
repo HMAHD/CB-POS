@@ -35,6 +35,7 @@ from cbpos.ui.widgets.charts import (
 )
 from cbpos.core.utils.formatters import format_currency
 from cbpos.core.services.tax_service import TaxService
+from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 logger = logging.getLogger(__name__)
@@ -260,7 +261,6 @@ class DashboardView(QWidget):
         self.date_from.setObjectName("PeriodDateEdit")
         self.date_from.setCalendarPopup(True)
         self.date_from.setDisplayFormat("dd.MM.yyyy")
-        self.date_from.setDate(QDate(date.today().year, 1, 1))
         hbox.addWidget(self.date_from)
 
         dash = QLabel("\u2014")
@@ -271,8 +271,28 @@ class DashboardView(QWidget):
         self.date_to.setObjectName("PeriodDateEdit")
         self.date_to.setCalendarPopup(True)
         self.date_to.setDisplayFormat("dd.MM.yyyy")
-        self.date_to.setDate(QDate.currentDate())
         hbox.addWidget(self.date_to)
+
+        # There's no sales data from the future and a reversed range is
+        # never meaningful, so make both structurally impossible instead
+        # of just unlikely (#271): neither field can go past today, and
+        # each field live-constrains the other so date_from can never
+        # land after date_to (or vice versa).
+        today = QDate.currentDate()
+        self.date_from.setMaximumDate(today)
+        self.date_to.setMaximumDate(today)
+        self.date_from.dateChanged.connect(lambda d: self.date_to.setMinimumDate(d))
+        self.date_to.dateChanged.connect(lambda d: self.date_from.setMaximumDate(min(d, today)))
+
+        # Restore the last-used range so a daily habit (e.g. always
+        # checking "Last Month") doesn't have to be re-picked every
+        # time -- falls back to the existing Jan 1 -> today default when
+        # nothing's been saved yet.
+        saved_from = ConfigService.get("dashboard_periodic_date_from")
+        saved_to = ConfigService.get("dashboard_periodic_date_to")
+        default_from = QDate(date.today().year, 1, 1)
+        self.date_from.setDate(QDate.fromString(saved_from, "yyyy-MM-dd") if saved_from else default_from)
+        self.date_to.setDate(QDate.fromString(saved_to, "yyyy-MM-dd") if saved_to else today)
 
         self.btn_refresh = QToolButton()
         self.btn_refresh.setText("\u21bb")
@@ -541,6 +561,9 @@ class DashboardView(QWidget):
         """Refresh period-scoped data (Rows 3-4) based on the date range."""
         sd = self.date_from.date().toPyDate()
         ed = self.date_to.date().toPyDate()
+
+        ConfigService.set("dashboard_periodic_date_from", sd.strftime("%Y-%m-%d"))
+        ConfigService.set("dashboard_periodic_date_to", ed.strftime("%Y-%m-%d"))
 
         self.lbl_period.setText(
             _t(

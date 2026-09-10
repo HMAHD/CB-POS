@@ -1976,6 +1976,7 @@
     "title": "ප්‍රවර්ධන කළමනාකරණය",
     "create_promotion": "Create Promotion",
     "new_promotion": "New Promotion",
+    "edit_promotion": "Edit Promotion",
     "type": "Type",
     "value": "Value",
     "start": "Start",
@@ -1986,7 +1987,17 @@
     "start_time_label": "Start Time:",
     "end_time_label": "End Time:",
     "days_label": "Days (Optional):",
-    "days_placeholder": "0,1,2 (0=Mon, 6=Sun) - Leave empty for all"
+    "days_placeholder": "0,1,2 (0=Mon, 6=Sun) - Leave empty for all",
+    "name_required": "Promotion name is required.",
+    "start_before_end": "Start time must be before the end time.",
+    "status_expired": "Expired",
+    "status_upcoming": "Upcoming",
+    "context_edit": "Edit",
+    "context_activate": "Activate",
+    "context_deactivate": "Deactivate",
+    "context_delete": "Delete",
+    "confirm_delete_title": "Delete Promotion",
+    "confirm_delete_msg": "Delete promotion \"{name}\"? This cannot be undone."
   },
   "reorder": {
     "title": "නැවත ඇණවුම් වාර්තාව",

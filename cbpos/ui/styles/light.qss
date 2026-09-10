@@ -80,6 +80,45 @@ QDateEdit::drop-down:hover {
     background-color: #E9ECEF;
 }
 
+/* Context/dropdown menus - Global Baseline. Previously the only QMenu
+   rule in this file was scoped to QCalendarWidget QMenu, so every other
+   right-click menu in the app (e.g. the Sales screen's cart line-item
+   menu) rendered with the OS's native popup chrome instead of this
+   theme, even though the surrounding code already manually re-tints
+   the menu's icons per theme. A generic selector styles every QMenu at
+   once, the same way QDateEdit/QLineEdit above do for their types. */
+QMenu {
+    background-color: #FFFFFF;
+    color: #212529;
+    border: 1px solid #CED4DA;
+    border-radius: 6px;
+    padding: 4px;
+}
+
+QMenu::item {
+    padding: 8px 24px 8px 12px;
+    border-radius: 4px;
+}
+
+QMenu::item:selected {
+    background-color: #EFF6FF;
+    color: #0D6EFD;
+}
+
+QMenu::item:disabled {
+    color: #ADB5BD;
+}
+
+QMenu::separator {
+    height: 1px;
+    background-color: #E9ECEF;
+    margin: 4px 8px;
+}
+
+QMenu::icon {
+    padding-left: 8px;
+}
+
 QCalendarWidget {
     background-color: #FFFFFF;
     color: #212529;

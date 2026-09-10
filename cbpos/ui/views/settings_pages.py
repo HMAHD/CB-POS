@@ -1550,6 +1550,17 @@ class NetworkPage(SettingsPage):
         # --- Tab 1: Mode ---
         tab_mode, mode_layout = self._build_vbox_tab()
 
+        # One-line framing so this tab doesn't read as a duplicate of
+        # LAN Sync (#334) -- Mode/Server/Migration configure switching the
+        # whole app to one *shared* PostgreSQL database; LAN Sync instead
+        # keeps *separate* SQLite databases synced between terminals. Two
+        # genuinely different multi-terminal strategies with nothing on
+        # either tab explaining which is which.
+        self.lbl_mode_explainer = QLabel()
+        self.lbl_mode_explainer.setWordWrap(True)
+        self.lbl_mode_explainer.setProperty("class", "muted")
+        mode_layout.addWidget(self.lbl_mode_explainer)
+
         # Status Card
         self.status_card = QFrame()
         self.status_card.setObjectName("StatusCard")
@@ -1744,14 +1755,11 @@ class NetworkPage(SettingsPage):
         sync_card_layout.setContentsMargins(25, 25, 25, 25)
         sync_card_layout.setSpacing(18)
 
-        self.lbl_sync_title = QLabel("Multi-Terminal LAN Sync")
+        self.lbl_sync_title = QLabel()
         self.lbl_sync_title.setObjectName("CardTitle")
         sync_card_layout.addWidget(self.lbl_sync_title)
 
-        self.lbl_sync_desc = QLabel(
-            "Connect multiple registers over a LAN cable. "
-            "One PC acts as the Main (hub), others connect as Terminals."
-        )
+        self.lbl_sync_desc = QLabel()
         self.lbl_sync_desc.setWordWrap(True)
         self.lbl_sync_desc.setObjectName("MigrationInfo")
         sync_card_layout.addWidget(self.lbl_sync_desc)
@@ -1763,27 +1771,26 @@ class NetworkPage(SettingsPage):
         sync_grid.setColumnStretch(1, 1)
 
         # Terminal Mode selector
-        self.lbl_terminal_mode = QLabel("Terminal Mode:")
+        self.lbl_terminal_mode = QLabel()
         self.lbl_terminal_mode.setObjectName("FormLabel")
         self.cmb_terminal_mode = QComboBox()
-        self.cmb_terminal_mode.addItem("Standalone (Single PC)", "standalone")
-        self.cmb_terminal_mode.addItem("Main PC (Hub)", "main")
-        self.cmb_terminal_mode.addItem("Terminal (Connect to Main)", "terminal")
+        self.cmb_terminal_mode.addItem("", "standalone")
+        self.cmb_terminal_mode.addItem("", "main")
+        self.cmb_terminal_mode.addItem("", "terminal")
         self.cmb_terminal_mode.currentIndexChanged.connect(self._on_terminal_mode_changed)
         sync_grid.addWidget(self.lbl_terminal_mode, 0, 0, Qt.AlignmentFlag.AlignLeft)
         sync_grid.addWidget(self.cmb_terminal_mode, 0, 1)
 
         # Terminal ID
-        self.lbl_sync_terminal_id = QLabel("Terminal ID:")
+        self.lbl_sync_terminal_id = QLabel()
         self.lbl_sync_terminal_id.setObjectName("FormLabel")
         self.input_terminal_id = QLineEdit()
         self.input_terminal_id.setObjectName("InputNetwork")
-        self.input_terminal_id.setPlaceholderText("TERM-01")
         sync_grid.addWidget(self.lbl_sync_terminal_id, 1, 0, Qt.AlignmentFlag.AlignLeft)
         sync_grid.addWidget(self.input_terminal_id, 1, 1)
 
         # Sync server port (Main PC mode)
-        self.lbl_sync_port = QLabel("Sync Port:")
+        self.lbl_sync_port = QLabel()
         self.lbl_sync_port.setObjectName("FormLabel")
         self.spin_sync_port = QSpinBox()
         self.spin_sync_port.setObjectName("InputNetwork")
@@ -1794,33 +1801,30 @@ class NetworkPage(SettingsPage):
         sync_grid.addWidget(self.spin_sync_port, 2, 1)
 
         # Main PC address (Terminal mode)
-        self.lbl_main_pc_addr = QLabel("Main PC Address:")
+        self.lbl_main_pc_addr = QLabel()
         self.lbl_main_pc_addr.setObjectName("FormLabel")
         self.input_main_pc_addr = QLineEdit()
         self.input_main_pc_addr.setObjectName("InputNetwork")
-        self.input_main_pc_addr.setPlaceholderText("192.168.1.100:5555")
         sync_grid.addWidget(self.lbl_main_pc_addr, 3, 0, Qt.AlignmentFlag.AlignLeft)
         sync_grid.addWidget(self.input_main_pc_addr, 3, 1)
 
         # Sync interval
-        self.lbl_sync_interval = QLabel("Sync Interval:")
+        self.lbl_sync_interval = QLabel()
         self.lbl_sync_interval.setObjectName("FormLabel")
         self.spin_sync_interval = QSpinBox()
         self.spin_sync_interval.setObjectName("InputNetwork")
         self.spin_sync_interval.setFixedHeight(38)
         self.spin_sync_interval.setRange(1, 60)
-        self.spin_sync_interval.setSuffix(" seconds")
         self.spin_sync_interval.setValue(3)
         sync_grid.addWidget(self.lbl_sync_interval, 4, 0, Qt.AlignmentFlag.AlignLeft)
         sync_grid.addWidget(self.spin_sync_interval, 4, 1)
 
         # Shared secret — required on both Main PC and every Terminal
-        self.lbl_sync_secret = QLabel("Shared Secret:")
+        self.lbl_sync_secret = QLabel()
         self.lbl_sync_secret.setObjectName("FormLabel")
         self.input_sync_secret = QLineEdit()
         self.input_sync_secret.setObjectName("InputNetwork")
         self.input_sync_secret.setEchoMode(QLineEdit.EchoMode.Password)
-        self.input_sync_secret.setPlaceholderText("Required — same value on every PC")
         sync_grid.addWidget(self.lbl_sync_secret, 5, 0, Qt.AlignmentFlag.AlignLeft)
         sync_grid.addWidget(self.input_sync_secret, 5, 1)
 
@@ -1828,7 +1832,7 @@ class NetworkPage(SettingsPage):
 
         # Test LAN Sync Connection button
         sync_test_layout = QHBoxLayout()
-        self.btn_test_sync = QPushButton("Test Sync Connection")
+        self.btn_test_sync = QPushButton()
         self.btn_test_sync.setObjectName("BtnTestNetwork")
         self.btn_test_sync.clicked.connect(self._test_sync_connection)
         self.lbl_sync_test_status = QLabel("")
@@ -1839,11 +1843,8 @@ class NetworkPage(SettingsPage):
 
         # Forget Trusted Main PC — recovery path after intentionally
         # replacing the Main PC (see SyncClient._check_main_identity)
-        self.btn_forget_main = QPushButton("Forget Trusted Main PC")
+        self.btn_forget_main = QPushButton()
         self.btn_forget_main.setObjectName("BtnTestNetwork")
-        self.btn_forget_main.setToolTip(
-            "Only needed if you replaced the Main PC and this Terminal now " "refuses to sync with it."
-        )
         self.btn_forget_main.clicked.connect(self._forget_trusted_main_pc)
         sync_card_layout.addWidget(self.btn_forget_main)
 
@@ -1882,10 +1883,12 @@ class NetworkPage(SettingsPage):
         self.tabs.setTabText(0, _t("settings.network.tab_mode"))
         self.tabs.setTabText(1, _t("settings.network.tab_server"))
         self.tabs.setTabText(2, _t("settings.network.tab_migration"))
-        self.tabs.setTabText(3, "LAN Sync")
+        self.tabs.setTabText(3, _t("settings.network.tab_lan_sync"))
 
         # Mode tab
+        self.lbl_mode_explainer.setText(_t("settings.network.mode_explainer"))
         self.lbl_db_mode.setText(_t("settings.network.database_mode"))
+        self.cmb_db_mode.setToolTip(_t("settings.network.tooltip_db_mode"))
 
         # Re-populate db mode combo preserving selection
         current_data = self.cmb_db_mode.currentData()
@@ -1915,19 +1918,69 @@ class NetworkPage(SettingsPage):
         self.lbl_local_ip.setText(_t("settings.network.local_ip").format(ip=self._local_ip))
         self.lbl_host.setText(_t("settings.network.host_ip"))
         self.input_host.setPlaceholderText(_t("settings.network.host_placeholder"))
+        self.input_host.setToolTip(_t("settings.network.tooltip_host"))
         self.lbl_port.setText(_t("settings.network.port"))
+        self.input_port.setToolTip(_t("settings.network.tooltip_port"))
         self.lbl_dbname.setText(_t("settings.network.database_name"))
         self.input_dbname.setPlaceholderText(_t("settings.network.database_name_placeholder"))
+        self.input_dbname.setToolTip(_t("settings.network.tooltip_dbname"))
         self.lbl_user.setText(_t("settings.network.username"))
         self.input_user.setPlaceholderText(_t("settings.network.username_placeholder"))
+        self.input_user.setToolTip(_t("settings.network.tooltip_user"))
         self.lbl_password.setText(_t("settings.network.password"))
         self.input_password.setPlaceholderText(_t("settings.network.password_placeholder"))
+        self.input_password.setToolTip(_t("settings.network.tooltip_password"))
         self.btn_test.setText(_t("settings.network.btn_test_connection"))
+        self.btn_test.setToolTip(_t("settings.network.tooltip_test_connection"))
 
         # Migration tab
         self.lbl_migration_title.setText(_t("settings.network.migration_title"))
         self.lbl_migration_info.setText(_t("settings.network.migration_info"))
         self.btn_migrate.setText(_t("settings.network.btn_upload"))
+        self.btn_migrate.setToolTip(_t("settings.network.tooltip_migrate"))
+
+        # LAN Sync tab
+        self.lbl_sync_title.setText(_t("settings.network.sync_title"))
+        self.lbl_sync_desc.setText(_t("settings.network.sync_desc"))
+
+        self.lbl_terminal_mode.setText(_t("settings.network.terminal_mode"))
+        current_terminal_mode = self.cmb_terminal_mode.currentData()
+        self.cmb_terminal_mode.blockSignals(True)
+        self.cmb_terminal_mode.clear()
+        self.cmb_terminal_mode.addItem(_t("settings.network.terminal_mode_standalone"), "standalone")
+        self.cmb_terminal_mode.addItem(_t("settings.network.terminal_mode_main"), "main")
+        self.cmb_terminal_mode.addItem(_t("settings.network.terminal_mode_terminal"), "terminal")
+        if current_terminal_mode:
+            tm_idx = self.cmb_terminal_mode.findData(current_terminal_mode)
+            if tm_idx >= 0:
+                self.cmb_terminal_mode.setCurrentIndex(tm_idx)
+        self.cmb_terminal_mode.blockSignals(False)
+        self.cmb_terminal_mode.setToolTip(_t("settings.network.tooltip_terminal_mode"))
+
+        self.lbl_sync_terminal_id.setText(_t("settings.network.sync_terminal_id"))
+        self.input_terminal_id.setPlaceholderText(_t("settings.network.sync_terminal_id_placeholder"))
+        self.input_terminal_id.setToolTip(_t("settings.network.tooltip_terminal_id"))
+
+        self.lbl_sync_port.setText(_t("settings.network.sync_port"))
+        self.spin_sync_port.setToolTip(_t("settings.network.tooltip_sync_port"))
+
+        self.lbl_main_pc_addr.setText(_t("settings.network.main_pc_address"))
+        self.input_main_pc_addr.setPlaceholderText(_t("settings.network.main_pc_address_placeholder"))
+        self.input_main_pc_addr.setToolTip(_t("settings.network.tooltip_main_pc_address"))
+
+        self.lbl_sync_interval.setText(_t("settings.network.sync_interval"))
+        self.spin_sync_interval.setSuffix(_t("settings.network.sync_interval_suffix"))
+        self.spin_sync_interval.setToolTip(_t("settings.network.tooltip_sync_interval"))
+
+        self.lbl_sync_secret.setText(_t("settings.network.sync_secret"))
+        self.input_sync_secret.setPlaceholderText(_t("settings.network.sync_secret_placeholder"))
+        self.input_sync_secret.setToolTip(_t("settings.network.tooltip_sync_secret"))
+
+        self.btn_test_sync.setText(_t("settings.network.btn_test_sync"))
+        self.btn_test_sync.setToolTip(_t("settings.network.tooltip_test_sync"))
+
+        self.btn_forget_main.setText(_t("settings.network.btn_forget_main"))
+        self.btn_forget_main.setToolTip(_t("settings.network.tooltip_forget_main"))
 
     def load(self, settings: dict):
         db_mode = settings.get("db_mode", "standalone")

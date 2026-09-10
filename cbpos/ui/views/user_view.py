@@ -1,3 +1,4 @@
+import weakref
 from datetime import datetime, time
 
 from PyQt6.QtWidgets import (
@@ -123,7 +124,22 @@ class UserView(QWidget):
 
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui)
-        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+        # A plain `lambda: unregister_language_callback(self.retranslate_ui)`
+        # closes over self, so self -> destroyed signal -> lambda -> self is
+        # a reference cycle that only the cyclic GC can break. When that GC
+        # pass runs late enough to have to unwind a QObject whose C++ side is
+        # already mid-teardown, calling back into it here segfaults instead
+        # of raising. A weakref avoids creating the cycle in the first place,
+        # so plain refcounting reclaims the view without ever needing a GC
+        # pass to touch it.
+        self_ref = weakref.ref(self)
+
+        def _unregister():
+            view = self_ref()
+            if view is not None:
+                unregister_language_callback(view.retranslate_ui)
+
+        self.destroyed.connect(_unregister)
 
     def init_ui(self):
         layout = QVBoxLayout(self)

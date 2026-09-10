@@ -360,6 +360,23 @@ QCheckBox::indicator:checked:hover {
     image: url(cbpos/assets/icons/check-white.svg);
 }
 
+/* Tree/table item checkboxes (e.g. Permission Manager) rendered plain
+   grey native OS squares -- ::indicator on QTreeWidget/QTableWidget
+   picks up the exact same themed style as a real QCheckBox (#298). */
+QTreeWidget::indicator, QTableWidget::indicator {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #666666;
+    border-radius: 4px;
+    background-color: transparent;
+}
+
+QTreeWidget::indicator:checked, QTableWidget::indicator:checked {
+    background-color: #00BCEB;
+    border-color: #00BCEB;
+    image: url(cbpos/assets/icons/check-white.svg);
+}
+
 /* Buttons */
 QPushButton {
     background-color: #2D2D30;

@@ -16,7 +16,6 @@ from PyQt6.QtWidgets import (
     QDateTimeEdit,
     QDialogButtonBox,
     QMessageBox,
-    QLabel,
     QMenu,
     QCheckBox,
 )
@@ -54,10 +53,11 @@ class PromotionView(QWidget):
 
         # Header
         header = QHBoxLayout()
-        self.lbl_title = QLabel()
-        self.lbl_title.setProperty("class", "dialog-title")
-        header.addWidget(self.lbl_title)
-        header.addStretch()
+        from cbpos.ui.widgets.page_header import PageHeader
+        from cbpos.ui.resources.icons import Icons
+
+        self._page_header = PageHeader(icon_name=Icons.PROMOTION)
+        header.addWidget(self._page_header, 1)
 
         self.btn_add = QPushButton()
         self.btn_add.setProperty("class", "accent")
@@ -89,7 +89,7 @@ class PromotionView(QWidget):
         layout.addWidget(self.table)
 
     def retranslate_ui(self):
-        self.lbl_title.setText(_t("promotion.title"))
+        self._page_header.set_title(_t("promotion.title"))
         self.btn_add.setText(_t("promotion.create_promotion"))
         self.table.setHorizontalHeaderLabels(
             [

@@ -274,6 +274,15 @@ class StockTakeView(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
+        from cbpos.ui.widgets.page_header import PageHeader
+        from cbpos.ui.resources.icons import Icons
+
+        self._page_header = PageHeader(icon_name=Icons.STOCK_TAKE)
+        header_row = QHBoxLayout()
+        header_row.setContentsMargins(16, 12, 16, 0)
+        header_row.addWidget(self._page_header)
+        layout.addLayout(header_row)
+
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs)
 
@@ -466,6 +475,7 @@ class StockTakeView(QWidget):
 
     def retranslate_ui(self) -> None:
         """Update all widget text from the translation system."""
+        self._page_header.set_title(_t("management.sidebar_stock_take"))
         # Tabs
         self.tabs.setTabText(0, _t("stock_take.tab_new_count"))
         self.tabs.setTabText(1, _t("stock_take.tab_history"))

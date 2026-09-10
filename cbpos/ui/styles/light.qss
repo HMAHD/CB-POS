@@ -2929,6 +2929,25 @@ QPushButton#CreditAllDatesBtn:hover, QPushButton#PayableAllDatesBtn:hover {
 }
 
 /* ===================================================================
+   PAGE HEADER — Shared icon+title strip for every Management screen (Light)
+   ================================================================ */
+
+QWidget#PageHeader {
+    background-color: transparent;
+}
+
+QLabel#PageHeaderIcon {
+    background-color: transparent;
+}
+
+QLabel#PageHeaderTitle {
+    font-size: 18px;
+    font-weight: bold;
+    color: #0D6EFD;
+    background-color: transparent;
+}
+
+/* ===================================================================
    DOCUMENT BROWSER VIEW — Full-width with Detail Panel (Light)
    ================================================================ */
 

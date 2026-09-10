@@ -77,10 +77,11 @@ class CreditBookView(QWidget):
 
         # Header row
         header_row = QHBoxLayout()
-        self.title_label = QLabel()
-        self.title_label.setObjectName("CreditPageTitle")
-        header_row.addWidget(self.title_label)
-        header_row.addStretch()
+        from cbpos.ui.widgets.page_header import PageHeader
+        from cbpos.ui.resources.icons import Icons
+
+        self._page_header = PageHeader(icon_name=Icons.CREDIT_BOOK)
+        header_row.addWidget(self._page_header, 1)
 
         self.btn_add_customer = QPushButton()
         self.btn_add_customer.setObjectName("CreditAddBtn")
@@ -327,7 +328,7 @@ class CreditBookView(QWidget):
 
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
-        self.title_label.setText(_t("credit_book.title"))
+        self._page_header.set_title(_t("credit_book.title"))
         self.btn_add_customer.setText(_t("credit_book.btn_add_customer"))
         self.btn_open_customer_ledger.setText(_t("credit_book.btn_open_customer_ledger"))
         self.search_input.setPlaceholderText(_t("credit_book.search_placeholder"))

@@ -111,6 +111,15 @@ class ReportViewer(QWidget):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
+        from cbpos.ui.widgets.page_header import PageHeader
+        from cbpos.ui.resources.icons import Icons
+
+        self._page_header = PageHeader(icon_name=Icons.REPORTS)
+        header_row = QHBoxLayout()
+        header_row.setContentsMargins(16, 12, 16, 0)
+        header_row.addWidget(self._page_header)
+        main_layout.addLayout(header_row)
+
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setObjectName("ReportSplitter")
 
@@ -291,7 +300,7 @@ class ReportViewer(QWidget):
         splitter.setHandleWidth(1)
         sidebar.setMinimumWidth(260)
 
-        main_layout.addWidget(splitter)
+        main_layout.addWidget(splitter, 1)
 
         # Loading overlay
         self._overlay = LoadingOverlay(self)
@@ -301,6 +310,7 @@ class ReportViewer(QWidget):
 
     def retranslate_ui(self) -> None:
         """Set all translatable text using _t()."""
+        self._page_header.set_title(_t("management.sidebar_reports"))
         self.sidebar_title.setText(_t("report_viewer.sidebar_title"))
         self.btn_run.setText(_t("report_viewer.btn_run"))
         self.empty_text.setText(_t("report_viewer.empty_title"))

@@ -45,9 +45,23 @@ class PriceListView(QWidget):
         self.load_lists()
 
     def init_ui(self):
-        layout = QHBoxLayout(self)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        from cbpos.ui.widgets.page_header import PageHeader
+        from cbpos.ui.resources.icons import Icons
+
+        self._page_header = PageHeader(icon_name=Icons.PRICE_LIST)
+        header_row = QHBoxLayout()
+        header_row.setContentsMargins(16, 12, 16, 0)
+        header_row.addWidget(self._page_header)
+        root.addLayout(header_row)
+
+        layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
+        root.addLayout(layout, 1)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setObjectName("PriceListSplitter")
@@ -219,6 +233,7 @@ class PriceListView(QWidget):
 
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
+        self._page_header.set_title(_t("management.sidebar_price_lists"))
         self.sidebar_title.setText(_t("pricelist.sidebar_title"))
         self.btn_add.setText(_t("pricelist.btn_add"))
         self.btn_edit.setText(_t("pricelist.btn_edit"))

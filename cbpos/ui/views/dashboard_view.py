@@ -112,6 +112,15 @@ class DashboardView(QWidget):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
 
+        from cbpos.ui.widgets.page_header import PageHeader
+        from cbpos.ui.resources.icons import Icons
+
+        self._page_header = PageHeader(icon_name=Icons.DASHBOARD)
+        header_row = QHBoxLayout()
+        header_row.setContentsMargins(16, 12, 16, 0)
+        header_row.addWidget(self._page_header)
+        outer.addLayout(header_row)
+
         # Scroll area for the dashboard content
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -479,6 +488,7 @@ class DashboardView(QWidget):
 
     def retranslate_ui(self) -> None:
         """Update all widget text from the translation system."""
+        self._page_header.set_title(_t("management.sidebar_dashboard"))
         self.lbl_monthly_title.setText(_t("dashboard.monthly_sales", year=self._current_year))
         self.lbl_total_sales_title.setText(_t("dashboard.total_sales"))
         self.lbl_top_month_title.setText(_t("dashboard.top_performing_month"))

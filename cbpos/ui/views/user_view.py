@@ -122,6 +122,11 @@ class UserView(QWidget):
     def init_ui(self):
         layout = QVBoxLayout(self)
 
+        from cbpos.ui.widgets.page_header import PageHeader
+
+        self._page_header = PageHeader(icon_name=Icons.USERS)
+        layout.addWidget(self._page_header)
+
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs)
 
@@ -198,6 +203,7 @@ class UserView(QWidget):
         layout.addWidget(self.log_table)
 
     def retranslate_ui(self):
+        self._page_header.set_title(_t("management.sidebar_users"))
         self.tabs.setTabText(0, _t("user.tab_users"))
         self.tabs.setTabText(1, _t("user.tab_activity_log"))
         self.btn_add.setText(_t("user.add_user"))

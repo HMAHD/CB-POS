@@ -156,3 +156,22 @@ class ThemeService:
         else:
             # Dark theme needs WHITE icons
             return "white"  # Strict white for Dark Mode
+
+    @staticmethod
+    def get_accent_color() -> str:
+        """
+        Returns the hex color string for the current theme's accent color.
+
+        Matches the ``:checked``/``[active="true"]`` QSS accent already
+        used for active-state text and borders (dark.qss/light.qss), so
+        Python-side icon recoloring (e.g. a sidebar item's active icon
+        glyph) stays in sync with the stylesheet instead of hardcoding
+        its own copy of the accent value.
+
+        Returns:
+            str: Hex color string.
+        """
+        if ThemeService.current_theme.lower() == "light":
+            return "#0D6EFD"
+        else:
+            return "#00BCEB"

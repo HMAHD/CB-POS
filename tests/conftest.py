@@ -48,6 +48,17 @@ def db_session(test_engine):
     """
     Transactional fixture that rolls back after each test.
     Patches Database.SessionLocal to return this session.
+
+    Uses SQLAlchemy 2.0's documented "join a Session into an external
+    transaction" recipe: the SAVEPOINT is tracked as a Core-level
+    ``connection.begin_nested()`` handle, not a ``session.begin_nested()``
+    one. The previous version tracked it at the ORM/session level, which
+    let a service's ``session.commit()`` (e.g. any read-only
+    ``get_session()`` call) collapse the SAVEPOINT into the connection's
+    real outer transaction -- so anything written earlier in the same
+    test via a bare ``db_session.add(...); db_session.flush()`` (no
+    commit) silently survived this fixture's rollback and leaked into
+    every later test sharing the same in-memory database.
     """
     connection = test_engine.connect()
     transaction = connection.begin()
@@ -69,15 +80,18 @@ def db_session(test_engine):
 
     db.SessionLocal = lambda: session
 
-    # Nested transaction (savepoint) for extra safety if needed,
-    # but connection-level transaction is usually enough for rollback.
-    session.begin_nested()
+    # Core-level SAVEPOINT, restarted whenever it ends (e.g. a service's
+    # own session.commit()/rollback() releases it) so writes always stay
+    # nested inside `transaction`, the one this fixture actually rolls
+    # back at teardown.
+    nested = connection.begin_nested()
 
     @event.listens_for(session, "after_transaction_end")
-    def restart_savepoint(session, transaction):
-        if transaction.nested and not transaction._parent.nested:
+    def restart_savepoint(session, _transaction):
+        nonlocal nested
+        if not nested.is_active:
             session.expire_all()
-            session.begin_nested()
+            nested = connection.begin_nested()
 
     yield session
 

@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QToolButton
 from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QIcon, QPixmap, QPainter
 from cbpos.ui.resources.icons import Icons
 
 
@@ -53,15 +54,20 @@ class SidebarButton(QToolButton):
     Supports dynamic icon color updates when theme changes.
     """
 
+    # Once any stylesheet applies to a QToolButton, Qt's CSS-based style
+    # engine takes over its internal layout and does not reliably insert
+    # real icon-to-text spacing on its own (#314) -- padding the icon
+    # pixmap itself with transparent margin makes the gap real regardless
+    # of style-engine quirks, without touching the QToolButtonIconOnly/
+    # ToolButtonTextBesideIcon collapse-mode switching this button relies on.
+    _ICON_SIZE = 24
+    _ICON_TEXT_GAP = 12
+
     def __init__(self, text: str, icon_name: str):
         super().__init__()
         self.setText(text)
         self.icon_name = icon_name  # Store for theme updates
 
-        # Set initial icon with theme-appropriate color
-        self.update_icon()
-
-        self.setIconSize(QSize(24, 24))
         self.setCheckable(True)
         self.setAutoExclusive(True)
         self.setFixedHeight(50)
@@ -69,12 +75,31 @@ class SidebarButton(QToolButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setObjectName("SidebarButton")
 
+        # Set initial icon with theme-appropriate color
+        self.update_icon()
+
     def update_icon(self):
-        """Update icon color based on current theme."""
+        """Update icon color (and icon-only vs beside-text padding) based
+        on current theme and collapse state."""
         from cbpos.core.services.theme_service import ThemeService
 
         icon_color = ThemeService.get_icon_color()
-        self.setIcon(Icons.get(self.icon_name, icon_color))
+        base_pixmap = Icons.get(self.icon_name, icon_color).pixmap(self._ICON_SIZE, self._ICON_SIZE)
+
+        if self.toolButtonStyle() == Qt.ToolButtonStyle.ToolButtonIconOnly:
+            # Collapsed rail: icon-only, centered -- no trailing text to
+            # make room for, so no padding.
+            self.setIconSize(QSize(self._ICON_SIZE, self._ICON_SIZE))
+            self.setIcon(QIcon(base_pixmap))
+            return
+
+        padded = QPixmap(self._ICON_SIZE + self._ICON_TEXT_GAP, self._ICON_SIZE)
+        padded.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(padded)
+        painter.drawPixmap(0, 0, base_pixmap)
+        painter.end()
+        self.setIconSize(QSize(self._ICON_SIZE + self._ICON_TEXT_GAP, self._ICON_SIZE))
+        self.setIcon(QIcon(padded))
 
     def set_active(self, active: bool):
         """Set the active state of the button and update styling."""

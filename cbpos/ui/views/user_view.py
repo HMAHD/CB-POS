@@ -17,8 +17,10 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from cbpos.core.services.user_service import UserService
 from cbpos.ui.dialogs.permission_dialog import PermissionDialog
+from cbpos.ui.dialogs.role_manager import RoleManagerDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 
 class UserDialog(QDialog):
@@ -120,6 +122,11 @@ class UserView(QWidget):
     def init_ui(self):
         layout = QVBoxLayout(self)
 
+        from cbpos.ui.widgets.page_header import PageHeader
+
+        self._page_header = PageHeader(icon_name=Icons.USERS)
+        layout.addWidget(self._page_header)
+
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs)
 
@@ -154,8 +161,13 @@ class UserView(QWidget):
         self.btn_perms.setIcon(Icons.get("fa5s.lock"))
         self.btn_perms.clicked.connect(self.manage_permissions)
 
+        self.btn_roles = QPushButton()
+        self.btn_roles.setIcon(Icons.get("fa5s.user-tag"))
+        self.btn_roles.clicked.connect(self.manage_roles)
+
         toolbar.addWidget(self.btn_add)
         toolbar.addWidget(self.btn_perms)
+        toolbar.addWidget(self.btn_roles)
         toolbar.addStretch()
 
         layout.addLayout(toolbar)
@@ -175,17 +187,28 @@ class UserView(QWidget):
 
         self.log_table = QTableWidget()
         self.log_table.setColumnCount(5)
-        self.log_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.log_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,  # Time
+                1: QHeaderView.ResizeMode.ResizeToContents,  # User
+                2: QHeaderView.ResizeMode.ResizeToContents,  # Event
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Terminal
+                4: QHeaderView.ResizeMode.Stretch,  # Details - needs the room
+            },
+        )
         self.log_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.log_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
         layout.addWidget(self.log_table)
 
     def retranslate_ui(self):
+        self._page_header.set_title(_t("management.sidebar_users"))
         self.tabs.setTabText(0, _t("user.tab_users"))
         self.tabs.setTabText(1, _t("user.tab_activity_log"))
         self.btn_add.setText(_t("user.add_user"))
         self.btn_perms.setText(_t("user.manage_permissions"))
+        self.btn_roles.setText(_t("user.manage_roles"))
         self.table.setHorizontalHeaderLabels(
             [
                 _t("common.id"),
@@ -280,3 +303,14 @@ class UserView(QWidget):
 
         dialog = PermissionDialog(parent=self)
         dialog.exec()
+
+    def manage_roles(self):
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.core.constants.permissions import Permissions
+
+        if not check_permission_with_override(Permissions.ADMIN_MANAGE_ROLES, self):
+            return
+
+        dialog = RoleManagerDialog(parent=self)
+        dialog.exec()
+        self.load_users()

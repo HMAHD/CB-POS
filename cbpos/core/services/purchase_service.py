@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
-from cbpos.core.models import Purchase, PurchaseItem, Product, StockMovement, Supplier
+from cbpos.core.models import Purchase, PurchaseItem, Product, StockMovement, Supplier, AuditLog
 from cbpos.core.database import Database
 from cbpos.core.constants.status import Precision
 from cbpos.core.services.document_service import DocumentService
@@ -136,6 +136,17 @@ class PurchaseService:
                     supplier.current_payable,
                     purchase.user_id,
                 )
+
+            log = AuditLog(
+                user_id=purchase.user_id,
+                action="COMMIT_PURCHASE",
+                event_type="PURCHASE",
+                details=(
+                    f"Committed GRN {purchase.document_number} "
+                    f"({len(items_data)} item(s), total cost {total_purchase_cost:.2f})."
+                ),
+            )
+            session.add(log)
 
             session.commit()
             session.refresh(purchase)

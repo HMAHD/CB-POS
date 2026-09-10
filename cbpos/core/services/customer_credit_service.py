@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 from sqlalchemy import func
 from cbpos.core.database import Database
-from cbpos.core.models import Customer, CustomerPayment, CustomerLedgerEntry
+from cbpos.core.models import Customer, CustomerPayment, CustomerLedgerEntry, AuditLog
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +88,17 @@ class CustomerCreditService:
                 payment_method,
                 customer.current_debt,
             )
+
+            log = AuditLog(
+                user_id=user_id,
+                action="CREDIT_PAYMENT",
+                event_type="CREDIT",
+                details=(
+                    f"Recorded {payment_method} payment of {amount:.2f} for {customer.name}. "
+                    f"New balance: {customer.current_debt:.2f}."
+                ),
+            )
+            session.add(log)
 
             # Expunge for safe return
             session.flush()
@@ -213,6 +224,17 @@ class CustomerCreditService:
                 customer.current_debt,
                 note,
             )
+
+            log = AuditLog(
+                user_id=user_id,
+                action="CREDIT_ADJUSTMENT",
+                event_type="CREDIT",
+                details=(
+                    f"Adjusted {customer.name}'s balance by {amount:.2f}. "
+                    f"New balance: {customer.current_debt:.2f}. Note: {note}"
+                ),
+            )
+            session.add(log)
             return True
 
     @staticmethod

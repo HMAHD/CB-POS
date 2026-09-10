@@ -15,7 +15,7 @@ from cbpos.i18n import _t
 class QuantityDialog(QDialog):
     """Prompt for quantity when adding a product to the cart."""
 
-    def __init__(self, product, parent=None):
+    def __init__(self, product, parent=None, initial_qty: Decimal = None):
         super().__init__(parent)
         self.setWindowTitle(_t("quantity.title"))
         self.setObjectName("QuantityDialog")
@@ -39,7 +39,8 @@ class QuantityDialog(QDialog):
         if hasattr(product, "unit") and product.unit:
             unit_abbr = product.unit.abbreviation or ""
 
-        self.qty_input = QLineEdit("1")
+        initial_text = format(initial_qty.quantize(Decimal("0.001")), "f") if initial_qty is not None else "1"
+        self.qty_input = QLineEdit(initial_text)
         self.qty_input.setObjectName("QtyInput")
         self.qty_input.setMinimumHeight(44)
         self.qty_input.setAlignment(Qt.AlignmentFlag.AlignCenter)

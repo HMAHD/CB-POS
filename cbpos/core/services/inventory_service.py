@@ -114,6 +114,7 @@ class InventoryService:
             audit_log = AuditLog(
                 user_id=user_id,
                 action="STOCK_ADJUSTMENT",
+                event_type="INVENTORY",
                 details=(
                     f"Product {product.name_en} ({product.barcode}) "
                     f"stock adjusted by {qty_change}. Reason: {reason}"

@@ -48,6 +48,101 @@ QLineEdit:focus {
     background-color: #F8F9FA;
 }
 
+/* Date pickers - Global Baseline (13 of 15 sites in the app had no styling
+   at all before this; only #ReportDateEdit/#PeriodDateEdit had one-off
+   rules). A generic type selector styles every QDateEdit automatically,
+   including any without an objectName. */
+QDateEdit {
+    background-color: #FFFFFF;
+    border: 1px solid #CED4DA;
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-size: 14px;
+    color: #212529;
+}
+
+QDateEdit:focus {
+    border: 2px solid #0D6EFD;
+    background-color: #F8F9FA;
+}
+
+QDateEdit::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 24px;
+    border-left: 1px solid #CED4DA;
+    background-color: #F1F3F5;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+QDateEdit::drop-down:hover {
+    background-color: #E9ECEF;
+}
+
+QCalendarWidget {
+    background-color: #FFFFFF;
+    color: #212529;
+    border: 1px solid #CED4DA;
+    border-radius: 4px;
+}
+
+QCalendarWidget QWidget#qt_calendar_navigationbar {
+    background-color: #F8F9FA;
+}
+
+QCalendarWidget QToolButton {
+    background-color: transparent;
+    color: #212529;
+    font-size: 13px;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+}
+
+QCalendarWidget QToolButton:hover {
+    background-color: #E9ECEF;
+}
+
+QCalendarWidget QMenu {
+    background-color: #FFFFFF;
+    color: #212529;
+    border: 1px solid #CED4DA;
+}
+
+QCalendarWidget QSpinBox {
+    background-color: #F8F9FA;
+    color: #212529;
+    border: 1px solid #CED4DA;
+    border-radius: 4px;
+}
+
+QCalendarWidget QAbstractItemView:enabled {
+    background-color: #FFFFFF;
+    color: #212529;
+    selection-background-color: #0D6EFD;
+    selection-color: #FFFFFF;
+    outline: none;
+}
+
+QCalendarWidget QAbstractItemView:disabled {
+    color: #ADB5BD;
+}
+
+/* The app-wide QHeaderView::section rule (bold, 10px padding, meant for
+   real tables) also matches QCalendarWidget's internal day-name header
+   row -- this scoped override keeps the popup's header compact instead of
+   an oversized bar. */
+QCalendarWidget QHeaderView::section {
+    background-color: #F1F3F5;
+    color: #495057;
+    padding: 4px;
+    font-weight: normal;
+    font-size: 12px;
+    border: none;
+    border-bottom: 1px solid #DEE2E6;
+}
+
 /* ComboBox - Dropdown Selector */
 QComboBox {
     background-color: #FFFFFF;
@@ -853,11 +948,22 @@ QPushButton#BtnCustomerSelect:pressed {
     background-color: #0096C7;
 }
 
-QLabel#PointsLabel {
+QFrame#PointsDivider {
+    background-color: rgba(255, 255, 255, 0.25);
+    border: none;
+}
+
+/* Explicitly scoped under CustomerPanel (not just QLabel#PointsLabel) so
+   this wins over the broader "QFrame#CustomerPanel QLabel { color: white;
+   background: transparent; }" rule above -- equal-looking ID selectors
+   don't reliably out-rank a descendant rule in Qt's stylesheet cascade. */
+QFrame#CustomerPanel QLabel#PointsLabel {
     color: white;  /* White text on Navy */
     font-weight: bold;
     font-size: 12px;
-    background: transparent;
+    background-color: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    padding: 2px 10px;
 }
 
 /* ===== 3. ACTION BUTTONS (Light theme) ===== */
@@ -2262,6 +2368,16 @@ QDialog#CsvImportDialog QLabel {
     color: #212529;
 }
 
+/* ── Add/Edit Supplier Dialog ── */
+QDialog#SupplierDialog {
+    background-color: #F8F9FA;
+}
+
+QDialog#SupplierDialog QLabel {
+    background: transparent;
+    color: #212529;
+}
+
 /* ── Toggle Hint — compact inline description below checkboxes ── */
 /* Reusable: set objectName("ToggleHint") on any QLabel used as a toggle hint */
 QLabel#ToggleHint {
@@ -2285,19 +2401,19 @@ QLabel#ProductImagePreview {
    ═══════════════════════════════════════════════════════════════════════ */
 
 #ReportViewer {
-    background-color: #F5F7FA;
+    background-color: #F8F9FA;
 }
 
 /* ── Splitter ── */
 #ReportSplitter::handle {
-    background-color: #E2E8F0;
+    background-color: #E9ECEF;
     width: 1px;
 }
 
 /* ── Sidebar ── */
 #ReportSidebarPanel {
     background-color: #FFFFFF;
-    border-right: 1px solid #E2E8F0;
+    border-right: 1px solid #E9ECEF;
 }
 
 #ReportSidebarTitle {
@@ -2307,7 +2423,7 @@ QLabel#ProductImagePreview {
     letter-spacing: 3px;
     padding: 18px 20px 14px 20px;
     background: transparent;
-    border-bottom: 1px solid #E2E8F0;
+    border-bottom: 1px solid #E9ECEF;
 }
 
 #ReportSidebarScroll {
@@ -2321,7 +2437,7 @@ QLabel#ProductImagePreview {
 
 /* Category header */
 #ReportCategoryLabel {
-    color: #94A3B8;
+    color: #ADB5BD;
     font-size: 11px;
     font-weight: bold;
     letter-spacing: 2px;
@@ -2329,8 +2445,8 @@ QLabel#ProductImagePreview {
 }
 
 #ReportCategoryCount {
-    color: #94A3B8;
-    background-color: #F1F5F9;
+    color: #ADB5BD;
+    background-color: #F8F9FA;
     font-size: 10px;
     font-weight: bold;
     border-radius: 8px;
@@ -2341,7 +2457,7 @@ QLabel#ProductImagePreview {
 /* Report nav items */
 QPushButton#ReportNavItem {
     background-color: transparent;
-    color: #64748B;
+    color: #6C757D;
     border: none;
     border-left: 3px solid transparent;
     border-radius: 0px;
@@ -2351,13 +2467,13 @@ QPushButton#ReportNavItem {
 }
 
 QPushButton#ReportNavItem:hover {
-    background-color: #F0F4FF;
-    color: #1E293B;
-    border-left: 3px solid #CBD5E1;
+    background-color: #F8F9FA;
+    color: #212529;
+    border-left: 3px solid #CED4DA;
 }
 
 QPushButton#ReportNavItem:checked {
-    background-color: #EBF2FF;
+    background-color: #E9ECEF;
     color: #0D6EFD;
     border-left: 3px solid #0D6EFD;
     font-weight: bold;
@@ -2365,17 +2481,17 @@ QPushButton#ReportNavItem:checked {
 
 /* ── Content Panel ── */
 #ReportContentPanel {
-    background-color: #F5F7FA;
+    background-color: #F8F9FA;
 }
 
 /* ── Report Header ── */
 #ReportHeader {
     background-color: #FFFFFF;
-    border-bottom: 1px solid #E2E8F0;
+    border-bottom: 1px solid #E9ECEF;
 }
 
 #ReportTitle {
-    color: #1E293B;
+    color: #212529;
     font-size: 20px;
     font-weight: bold;
     background: transparent;
@@ -2390,7 +2506,7 @@ QPushButton#ReportNavItem:checked {
 /* ── Filter Bar ── */
 #ReportFilterBar {
     background-color: #FFFFFF;
-    border-bottom: 1px solid #E2E8F0;
+    border-bottom: 1px solid #E9ECEF;
     min-height: 48px;
 }
 
@@ -2399,15 +2515,15 @@ QPushButton#ReportNavItem:checked {
 }
 
 #ReportFilterLabel {
-    color: #64748B;
+    color: #6C757D;
     font-size: 13px;
     background: transparent;
 }
 
 #ReportDateEdit {
-    background-color: #F8FAFC;
-    color: #1E293B;
-    border: 1px solid #CBD5E1;
+    background-color: #F8F9FA;
+    color: #212529;
+    border: 1px solid #CED4DA;
     border-radius: 4px;
     padding: 6px 10px;
     min-width: 120px;
@@ -2419,14 +2535,23 @@ QPushButton#ReportNavItem:checked {
 }
 
 #ReportDateEdit::drop-down {
-    border: none;
-    width: 20px;
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 24px;
+    border-left: 1px solid #CED4DA;
+    background-color: #E9ECEF;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+#ReportDateEdit::drop-down:hover {
+    background-color: #CED4DA;
 }
 
 #ReportFilterCombo {
-    background-color: #F8FAFC;
-    color: #1E293B;
-    border: 1px solid #CBD5E1;
+    background-color: #F8F9FA;
+    color: #212529;
+    border: 1px solid #CED4DA;
     border-radius: 4px;
     padding: 6px 10px;
     min-width: 130px;
@@ -2457,24 +2582,24 @@ QPushButton#ReportNavItem:checked {
 }
 
 #RunReportBtn:disabled {
-    background-color: #E2E8F0;
-    color: #94A3B8;
+    background-color: #E9ECEF;
+    color: #ADB5BD;
 }
 
 /* ── Empty State ── */
 #ReportEmptyState {
-    background-color: #F5F7FA;
+    background-color: #F8F9FA;
 }
 
 #ReportEmptyIcon {
-    color: #CBD5E1;
+    color: #CED4DA;
     font-size: 56px;
     background: transparent;
     padding-bottom: 4px;
 }
 
 #ReportEmptyText {
-    color: #64748B;
+    color: #6C757D;
     font-size: 20px;
     font-weight: bold;
     background: transparent;
@@ -2482,7 +2607,7 @@ QPushButton#ReportNavItem:checked {
 }
 
 #ReportEmptySubtext {
-    color: #94A3B8;
+    color: #ADB5BD;
     font-size: 14px;
     background: transparent;
     padding-top: 4px;
@@ -2491,11 +2616,11 @@ QPushButton#ReportNavItem:checked {
 /* ── Data Table ── */
 #ReportDataView {
     background-color: #FFFFFF;
-    alternate-background-color: #F8FAFC;
-    color: #1E293B;
+    alternate-background-color: #F8F9FA;
+    color: #212529;
     border: none;
-    gridline-color: #E2E8F0;
-    selection-background-color: #EBF2FF;
+    gridline-color: #E9ECEF;
+    selection-background-color: #E9ECEF;
     selection-color: #0D6EFD;
     font-size: 13px;
 }
@@ -2506,29 +2631,29 @@ QPushButton#ReportNavItem:checked {
 }
 
 #ReportDataView QHeaderView::section {
-    background-color: #F8FAFC;
+    background-color: #F8F9FA;
     color: #0D6EFD;
     font-weight: bold;
     font-size: 12px;
     padding: 10px 12px;
     border: none;
-    border-right: 1px solid #E2E8F0;
+    border-right: 1px solid #E9ECEF;
     border-bottom: 2px solid #0D6EFD;
 }
 
 #ReportDataView QHeaderView::section:hover {
-    background-color: #EBF2FF;
+    background-color: #E9ECEF;
 }
 
 /* ── Action Bar ── */
 #ReportActionBar {
     background-color: #FFFFFF;
-    border-top: 1px solid #E2E8F0;
+    border-top: 1px solid #E9ECEF;
     min-height: 44px;
 }
 
 #ReportRowCount {
-    color: #64748B;
+    color: #6C757D;
     font-size: 13px;
     background: transparent;
     font-weight: bold;
@@ -2538,9 +2663,9 @@ QPushButton#ReportNavItem:checked {
 #ReportExportExcelBtn,
 #ReportExportPdfBtn,
 #ReportEmailBtn {
-    background-color: #F8FAFC;
-    color: #64748B;
-    border: 1px solid #CBD5E1;
+    background-color: #F8F9FA;
+    color: #6C757D;
+    border: 1px solid #CED4DA;
     border-radius: 4px;
     padding: 7px 18px;
     font-size: 13px;
@@ -2550,8 +2675,8 @@ QPushButton#ReportNavItem:checked {
 #ReportExportExcelBtn:hover,
 #ReportExportPdfBtn:hover,
 #ReportEmailBtn:hover {
-    background-color: #EBF2FF;
-    color: #1E293B;
+    background-color: #E9ECEF;
+    color: #212529;
     border-color: #0D6EFD;
 }
 
@@ -2614,7 +2739,7 @@ QTableWidget#PayableSupplierTable, QTableWidget#PayableLedgerTable {
 
 QTableWidget#CreditCustomerTable::item:selected, QTableWidget#CreditLedgerTable::item:selected,
 QTableWidget#PayableSupplierTable::item:selected, QTableWidget#PayableLedgerTable::item:selected {
-    background-color: #E7F1FF;
+    background-color: #E9ECEF;
     color: #0D6EFD;
 }
 
@@ -2676,6 +2801,32 @@ QPushButton#CreditBackBtn, QPushButton#PayableBackBtn {
 
 QPushButton#CreditBackBtn:hover, QPushButton#PayableBackBtn:hover {
     color: #0B5ED7;
+}
+
+/* Payable/Credit date-range mismatch hint (#282/#284) */
+QFrame#PayableRangeHint, QFrame#CreditRangeHint {
+    background-color: rgba(255, 193, 7, 0.12);
+    border: 1px solid #FFC107;
+    border-radius: 6px;
+}
+
+QLabel#PayableRangeHintLabel, QLabel#CreditRangeHintLabel {
+    background-color: transparent;
+    color: #856404;
+    font-size: 12px;
+}
+
+QPushButton#PayableRangeHintBtn, QPushButton#CreditRangeHintBtn {
+    background-color: #FFC107;
+    color: #212529;
+    font-weight: bold;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+}
+
+QPushButton#PayableRangeHintBtn:hover, QPushButton#CreditRangeHintBtn:hover {
+    background-color: #E0A800;
 }
 
 QFrame#CreditHeaderCard, QFrame#PayableHeaderCard {
@@ -2778,6 +2929,25 @@ QPushButton#CreditAllDatesBtn:hover, QPushButton#PayableAllDatesBtn:hover {
 }
 
 /* ===================================================================
+   PAGE HEADER — Shared icon+title strip for every Management screen (Light)
+   ================================================================ */
+
+QWidget#PageHeader {
+    background-color: transparent;
+}
+
+QLabel#PageHeaderIcon {
+    background-color: transparent;
+}
+
+QLabel#PageHeaderTitle {
+    font-size: 18px;
+    font-weight: bold;
+    color: #0D6EFD;
+    background-color: transparent;
+}
+
+/* ===================================================================
    DOCUMENT BROWSER VIEW — Full-width with Detail Panel (Light)
    ================================================================ */
 
@@ -2866,7 +3036,7 @@ QTableWidget#DocTable {
 }
 
 QTableWidget#DocTable::item:selected {
-    background-color: #E7F1FF;
+    background-color: #E9ECEF;
     color: #0D6EFD;
 }
 
@@ -3037,7 +3207,7 @@ QPushButton#PriceListNavItem:hover {
 }
 
 QPushButton#PriceListNavItem:checked {
-    background-color: #E7F1FF;
+    background-color: #E9ECEF;
     color: #0D6EFD;
     font-weight: bold;
     border-left: 3px solid #0D6EFD;
@@ -3072,7 +3242,7 @@ QPushButton#PriceListDeleteBtn:hover {
 }
 
 QWidget#PriceListContentPanel {
-    background-color: #F5F7FA;
+    background-color: #F8F9FA;
 }
 
 QLabel#PriceListEmptyText {
@@ -3118,7 +3288,7 @@ QTableWidget#PriceListDataTable {
 }
 
 QTableWidget#PriceListDataTable::item:selected {
-    background-color: #E7F1FF;
+    background-color: #E9ECEF;
     color: #0D6EFD;
 }
 

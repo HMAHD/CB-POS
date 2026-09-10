@@ -94,22 +94,28 @@ class PermissionDialog(QDialog):
         for i in range(len(headers)):
             self.tree.header().setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
 
+    @staticmethod
+    def collect_role_permission_map(tree: QTreeWidget, roles: list) -> dict:
+        """Build {role_id: [checked permission ids]} from the tree's current check states."""
+        role_permission_map = {role.id: [] for role in roles}
+        root = tree.invisibleRootItem()
+        for i in range(root.childCount()):
+            group_item = root.child(i)
+            for j in range(group_item.childCount()):
+                perm_item = group_item.child(j)
+                perm_id = perm_item.data(0, Qt.ItemDataRole.UserRole)
+
+                for k, role in enumerate(roles):
+                    col_index = k + 1
+                    if perm_item.checkState(col_index) == Qt.CheckState.Checked:
+                        role_permission_map[role.id].append(perm_id)
+        return role_permission_map
+
     def save_changes(self):
         try:
-            # Iterate through all items
-            root = self.tree.invisibleRootItem()
-            for i in range(root.childCount()):
-                group_item = root.child(i)
-                for j in range(group_item.childCount()):
-                    perm_item = group_item.child(j)
-                    perm_id = perm_item.data(0, Qt.ItemDataRole.UserRole)
-
-                    for k, role in enumerate(self.roles):
-                        col_index = k + 1
-                        is_checked = perm_item.checkState(col_index) == Qt.CheckState.Checked
-
-                        # Update role permission
-                        PermissionService.update_role_permission(role.id, perm_id, is_checked)
+            role_permission_map = self.collect_role_permission_map(self.tree, self.roles)
+            for role_id, permission_ids in role_permission_map.items():
+                PermissionService.update_role_permissions(role_id, permission_ids)
 
             QMessageBox.information(self, _t("common.success"), _t("permission.save_success"))
             self.accept()

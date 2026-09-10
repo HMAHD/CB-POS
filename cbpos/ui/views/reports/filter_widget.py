@@ -55,9 +55,11 @@ class FilterWidget(QWidget):
         start_edit = QDateEdit()
         start_edit.setObjectName("ReportDateEdit")
         start_edit.setCalendarPopup(True)
+        start_edit.setDisplayFormat("yyyy-MM-dd")
         end_edit = QDateEdit()
         end_edit.setObjectName("ReportDateEdit")
         end_edit.setCalendarPopup(True)
+        end_edit.setDisplayFormat("yyyy-MM-dd")
 
         default_start = definition.get("default_start", date.today())
         default_end = definition.get("default_end", date.today())

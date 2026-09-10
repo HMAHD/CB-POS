@@ -19,13 +19,14 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
 )
 from PyQt6.QtCore import Qt, QDate
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QColor, QShortcut, QKeySequence
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.ui.dialogs.customer_editor import CustomerEditor
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -76,10 +77,11 @@ class CreditBookView(QWidget):
 
         # Header row
         header_row = QHBoxLayout()
-        self.title_label = QLabel()
-        self.title_label.setObjectName("CreditPageTitle")
-        header_row.addWidget(self.title_label)
-        header_row.addStretch()
+        from cbpos.ui.widgets.page_header import PageHeader
+        from cbpos.ui.resources.icons import Icons
+
+        self._page_header = PageHeader(icon_name=Icons.CREDIT_BOOK)
+        header_row.addWidget(self._page_header, 1)
 
         self.btn_add_customer = QPushButton()
         self.btn_add_customer.setObjectName("CreditAddBtn")
@@ -97,8 +99,16 @@ class CreditBookView(QWidget):
         self.customer_table = QTableWidget()
         self.customer_table.setObjectName("CreditCustomerTable")
         self.customer_table.setColumnCount(5)
-        self.customer_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.customer_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.customer_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,  # ID (hidden)
+                1: QHeaderView.ResizeMode.Stretch,  # Name - needs the room
+                2: QHeaderView.ResizeMode.ResizeToContents,  # Phone
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Outstanding Debt
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Credit Limit
+            },
+        )
         self.customer_table.setColumnHidden(0, True)
         self.customer_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.customer_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -107,6 +117,17 @@ class CreditBookView(QWidget):
         self.customer_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.customer_table.doubleClicked.connect(self._on_customer_double_click)
         page_layout.addWidget(self.customer_table, 1)
+
+        open_row = QHBoxLayout()
+        open_row.addStretch()
+        self.btn_open_customer_ledger = QPushButton()
+        self.btn_open_customer_ledger.setObjectName("BtnOpenCustomerLedger")
+        self.btn_open_customer_ledger.clicked.connect(self._open_selected_customer)
+        open_row.addWidget(self.btn_open_customer_ledger)
+        page_layout.addLayout(open_row)
+
+        QShortcut(QKeySequence(Qt.Key.Key_Return), self.customer_table).activated.connect(self._open_selected_customer)
+        QShortcut(QKeySequence(Qt.Key.Key_Enter), self.customer_table).activated.connect(self._open_selected_customer)
 
         # Summary footer
         footer = QFrame()
@@ -244,6 +265,27 @@ class CreditBookView(QWidget):
         filter_layout.addStretch()
         page_layout.addWidget(filter_bar)
 
+        # Range-mismatch hint (#284, same pattern as Payables' #282):
+        # current_debt is an unfiltered running total, but the ledger
+        # table honors the selected date range -- a purchase/payment
+        # outside that range can leave the visible closing balance out of
+        # sync with the header balance above, with nothing on screen
+        # explaining why. Shown only when they actually disagree.
+        self.credit_range_hint = QFrame()
+        self.credit_range_hint.setObjectName("CreditRangeHint")
+        hint_layout = QHBoxLayout(self.credit_range_hint)
+        hint_layout.setContentsMargins(10, 6, 10, 6)
+        self.lbl_credit_range_hint = QLabel()
+        self.lbl_credit_range_hint.setObjectName("CreditRangeHintLabel")
+        self.lbl_credit_range_hint.setWordWrap(True)
+        hint_layout.addWidget(self.lbl_credit_range_hint, 1)
+        self.btn_credit_range_hint_show_all = QPushButton()
+        self.btn_credit_range_hint_show_all.setObjectName("CreditRangeHintBtn")
+        self.btn_credit_range_hint_show_all.clicked.connect(self.show_all_dates)
+        hint_layout.addWidget(self.btn_credit_range_hint_show_all)
+        self.credit_range_hint.setVisible(False)
+        page_layout.addWidget(self.credit_range_hint)
+
         # Ledger Table (full width)
         self.ledger_table = QTableWidget()
         self.ledger_table.setObjectName("CreditLedgerTable")
@@ -286,8 +328,9 @@ class CreditBookView(QWidget):
 
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
-        self.title_label.setText(_t("credit_book.title"))
+        self._page_header.set_title(_t("credit_book.title"))
         self.btn_add_customer.setText(_t("credit_book.btn_add_customer"))
+        self.btn_open_customer_ledger.setText(_t("credit_book.btn_open_customer_ledger"))
         self.search_input.setPlaceholderText(_t("credit_book.search_placeholder"))
         self.customer_table.setHorizontalHeaderLabels(
             [
@@ -306,6 +349,7 @@ class CreditBookView(QWidget):
         self.lbl_from.setText(_t("credit_book.from"))
         self.lbl_to.setText(_t("credit_book.to"))
         self.btn_all_dates.setText(_t("credit_book.all"))
+        self.btn_credit_range_hint_show_all.setText(_t("credit_book.all"))
         self.ledger_table.setHorizontalHeaderLabels(
             [
                 _t("credit_book.ledger_header_date"),
@@ -323,7 +367,16 @@ class CreditBookView(QWidget):
 
     def _on_customer_double_click(self, index) -> None:
         """Drill into the selected customer's ledger."""
-        row = index.row()
+        self._open_customer_row(index.row())
+
+    def _open_selected_customer(self) -> None:
+        """Drill into the currently selected customer's ledger (button/Enter key)."""
+        self._open_customer_row(self.customer_table.currentRow())
+
+    def _open_customer_row(self, row: int) -> None:
+        """Drill into the ledger for the given table row."""
+        if row < 0:
+            return
         customer_id_item = self.customer_table.item(row, 0)
         if not customer_id_item:
             return
@@ -520,6 +573,26 @@ class CreditBookView(QWidget):
         self.lbl_total_sales.setText(_t("credit_book.sales_label") + " " + format_currency(total_debit))
         self.lbl_total_payments.setText(_t("credit_book.payments_label") + " " + format_currency(total_credit))
         self.lbl_closing.setText(_t("credit_book.closing_label") + " " + format_currency(closing_balance))
+
+        self._update_credit_range_hint(closing_balance)
+
+    def _update_credit_range_hint(self, visible_closing_balance: Decimal) -> None:
+        """Warn when the filtered ledger doesn't account for the customer's
+        full outstanding debt (#284)."""
+        if not self.selected_customer:
+            self.credit_range_hint.setVisible(False)
+            return
+
+        summary = CustomerCreditService.get_customer_summary(self.selected_customer.id)
+        actual_balance = summary["current_debt"] if summary else Decimal("0.00")
+
+        if actual_balance != visible_closing_balance:
+            self.lbl_credit_range_hint.setText(
+                _t("credit_book.credit_range_hint", balance=format_currency(actual_balance))
+            )
+            self.credit_range_hint.setVisible(True)
+        else:
+            self.credit_range_hint.setVisible(False)
 
     # ========== Action Methods ==========
 

@@ -254,3 +254,83 @@ class TestBackupService:
         """Test restore of non-existent file raises FileNotFoundError."""
         with pytest.raises(FileNotFoundError):
             BackupService.restore_backup(str(tmp_path / "missing.zip"), "pwd")
+
+
+class TestCleanupOldBackupsRetainsPreRestoreSeparately:
+    """cleanup_old_backups() used to skip pre_restore snapshots entirely
+    (`if ".pre_restore" not in f.name`), so a shop that ever restored from
+    backup would accumulate them forever with no way in the app to remove
+    them (#341). Regular and pre-restore backups are now each retained up
+    to keep_count, rather than one type being retained and the other never
+    touched at all."""
+
+    @staticmethod
+    def _make_backup_file(backup_dir: Path, name: str, mtime_offset_seconds: int) -> Path:
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        path = backup_dir / name
+        path.write_bytes(b"fake zip content")
+        # Distinct mtimes so "most recent" ordering is deterministic
+        # regardless of filesystem timestamp resolution.
+        mtime = os.path.getmtime(path) + mtime_offset_seconds
+        os.utime(path, (mtime, mtime))
+        return path
+
+    def test_pre_restore_backups_beyond_keep_count_are_now_deleted(self, tmp_path):
+        backup_dir = tmp_path / "backups"
+        for i in range(4):
+            self._make_backup_file(backup_dir, f"cbpos_backup_2026010{i + 1}_000000.pre_restore.zip", i)
+
+        deleted = BackupService.cleanup_old_backups(str(backup_dir), keep_count=2)
+
+        remaining = sorted(p.name for p in backup_dir.glob("*.zip"))
+        assert deleted == 2
+        assert len(remaining) == 2
+
+    def test_the_most_recent_pre_restore_backups_are_kept(self, tmp_path):
+        backup_dir = tmp_path / "backups"
+        oldest = self._make_backup_file(backup_dir, "cbpos_backup_20260101_000000.pre_restore.zip", 0)
+        newest = self._make_backup_file(backup_dir, "cbpos_backup_20260103_000000.pre_restore.zip", 200)
+        self._make_backup_file(backup_dir, "cbpos_backup_20260102_000000.pre_restore.zip", 100)
+
+        BackupService.cleanup_old_backups(str(backup_dir), keep_count=1)
+
+        remaining = list(backup_dir.glob("*.zip"))
+        assert len(remaining) == 1
+        assert remaining[0].name == newest.name
+        assert not oldest.exists()
+
+    def test_regular_and_pre_restore_retention_are_independent(self, tmp_path):
+        backup_dir = tmp_path / "backups"
+        for i in range(3):
+            self._make_backup_file(backup_dir, f"cbpos_backup_2026020{i + 1}_000000.zip", i)
+        for i in range(3):
+            self._make_backup_file(backup_dir, f"cbpos_backup_2026010{i + 1}_000000.pre_restore.zip", i + 10)
+
+        BackupService.cleanup_old_backups(str(backup_dir), keep_count=1)
+
+        remaining = sorted(p.name for p in backup_dir.glob("*.zip"))
+        assert len(remaining) == 2
+        assert any(".pre_restore" in name for name in remaining)
+        assert any(".pre_restore" not in name for name in remaining)
+
+
+class TestDeleteBackup:
+    """No per-row delete action existed anywhere in the app -- the only
+    deletion path was the bulk cleanup_old_backups(), which can't target
+    one specific file (#341)."""
+
+    def test_deletes_an_existing_backup_file(self, tmp_path):
+        backup_file = tmp_path / "cbpos_backup_20260101_000000.zip"
+        backup_file.write_bytes(b"fake zip content")
+
+        result = BackupService.delete_backup(str(backup_file))
+
+        assert result is True
+        assert not backup_file.exists()
+
+    def test_returns_false_for_a_missing_file(self, tmp_path):
+        missing = tmp_path / "does_not_exist.zip"
+
+        result = BackupService.delete_backup(str(missing))
+
+        assert result is False

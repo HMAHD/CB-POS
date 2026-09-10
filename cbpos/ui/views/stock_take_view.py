@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
     QAbstractItemView,
     QMessageBox,
     QDialog,
+    QMenu,
 )
 from PyQt6.QtCore import Qt, QAbstractTableModel, QDate, QModelIndex
 from PyQt6.QtGui import QColor
@@ -30,6 +31,7 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.constants.status import DocumentStatus, Precision
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +202,18 @@ class StockCountReportDialog(QDialog):
                 _t("stock_take.col_value"),
             ]
         )
-        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,  # Barcode
+                1: QHeaderView.ResizeMode.Stretch,  # Product - needs the room
+                2: QHeaderView.ResizeMode.ResizeToContents,  # Expected
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Counted
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Variance
+                5: QHeaderView.ResizeMode.ResizeToContents,  # Value
+            },
+            minimum_section_size=70,
+        )
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setAlternatingRowColors(True)
@@ -261,6 +274,15 @@ class StockTakeView(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
+        from cbpos.ui.widgets.page_header import PageHeader
+        from cbpos.ui.resources.icons import Icons
+
+        self._page_header = PageHeader(icon_name=Icons.STOCK_TAKE)
+        header_row = QHBoxLayout()
+        header_row.setContentsMargins(16, 12, 16, 0)
+        header_row.addWidget(self._page_header)
+        layout.addLayout(header_row)
+
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs)
 
@@ -316,12 +338,21 @@ class StockTakeView(QWidget):
         self.item_table.setModel(self.item_model)
         self.item_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.item_table.setAlternatingRowColors(True)
-        self.item_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.item_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.item_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.item_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.item_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        self.item_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        # minimum_section_size floors COUNTED (col 3) so ResizeToContents --
+        # computed while every cell is still empty at load time -- can't
+        # collapse the column its own live-typed editor then has to render in.
+        configure_table_columns(
+            self.item_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,  # Barcode
+                1: QHeaderView.ResizeMode.Stretch,  # Product - needs the room
+                2: QHeaderView.ResizeMode.ResizeToContents,  # Expected
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Counted
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Variance
+                5: QHeaderView.ResizeMode.ResizeToContents,  # Value
+            },
+            minimum_section_size=70,
+        )
         layout.addWidget(self.item_table, 1)
 
         # Stats bar
@@ -419,16 +450,24 @@ class StockTakeView(QWidget):
                 _t("common.status"),
             ]
         )
-        self.history_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.history_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.history_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.history_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.history_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        self.history_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        configure_table_columns(
+            self.history_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,  # STK #
+                1: QHeaderView.ResizeMode.ResizeToContents,  # Date
+                2: QHeaderView.ResizeMode.Stretch,  # User - needs the room
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Items
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Variance Total
+                5: QHeaderView.ResizeMode.ResizeToContents,  # Status
+            },
+            minimum_section_size=70,
+        )
         self.history_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.history_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.history_table.setAlternatingRowColors(True)
         self.history_table.doubleClicked.connect(self.on_history_double_click)
+        self.history_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.history_table.customContextMenuRequested.connect(self.show_history_context_menu)
         layout.addWidget(self.history_table, 1)
 
         # Store IDs for double-click lookup
@@ -436,6 +475,7 @@ class StockTakeView(QWidget):
 
     def retranslate_ui(self) -> None:
         """Update all widget text from the translation system."""
+        self._page_header.set_title(_t("management.sidebar_stock_take"))
         # Tabs
         self.tabs.setTabText(0, _t("stock_take.tab_new_count"))
         self.tabs.setTabText(1, _t("stock_take.tab_history"))
@@ -719,6 +759,64 @@ class StockTakeView(QWidget):
         if 0 <= row < len(self._history_ids):
             dialog = StockCountReportDialog(self._history_ids[row], self)
             dialog.exec()
+
+    def show_history_context_menu(self, position) -> None:
+        """Offer Resume/Discard on a DRAFT history row (#312).
+
+        Without this, a DRAFT count that outlives the session it was
+        started in (app restart, navigating away) has no way back into an
+        editable state and no way to be discarded either -- it just
+        accumulates as permanent, unfinishable clutter.
+        """
+        row = self.history_table.indexAt(position).row()
+        if row < 0 or row >= len(self._history_ids):
+            return
+        self.history_table.selectRow(row)
+
+        status_item = self.history_table.item(row, 5)
+        if not status_item or status_item.text() != DocumentStatus.DRAFT:
+            return
+
+        stock_count_id = self._history_ids[row]
+
+        menu = QMenu(self)
+        resume_action = menu.addAction(_t("stock_take.context_resume"))
+        resume_action.triggered.connect(lambda: self.resume_draft_count(stock_count_id))
+        discard_action = menu.addAction(_t("stock_take.context_discard_draft"))
+        discard_action.triggered.connect(lambda: self.discard_draft_count(stock_count_id))
+        menu.exec(self.history_table.viewport().mapToGlobal(position))
+
+    def resume_draft_count(self, stock_count_id: int) -> None:
+        """Reload a DRAFT count from History as the active count in New Count."""
+        sc = StockCountService.get_stock_count(stock_count_id)
+        if not sc or sc.status != DocumentStatus.DRAFT:
+            QMessageBox.warning(self, _t("common.error"), _t("stock_take.resume_failed"))
+            return
+
+        self.current_stock_count = sc
+        self.item_model = StockCountItemModel(list(sc.items))
+        self.item_table.setModel(self.item_model)
+        self._update_stats()
+        self.tabs.setCurrentIndex(0)
+
+    def discard_draft_count(self, stock_count_id: int) -> None:
+        """Void an abandoned DRAFT count directly from History."""
+        reply = QMessageBox.question(
+            self,
+            _t("stock_take.confirm_discard_title"),
+            _t("stock_take.confirm_discard_message"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+            StockCountService.void_stock_count(stock_count_id)
+            if self.current_stock_count and self.current_stock_count.id == stock_count_id:
+                self.reset_form()
+            self.refresh_history()
+        except ValueError as e:
+            QMessageBox.warning(self, _t("common.error"), str(e))
 
     def set_user(self, user) -> None:
         self.user = user

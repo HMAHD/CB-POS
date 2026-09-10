@@ -24,11 +24,10 @@ from PyQt6.QtWidgets import (
     QStackedWidget,
     QFrame,
     QInputDialog,
-    QSpinBox,
     QSizePolicy,
 )
-from PyQt6.QtCore import Qt, QAbstractTableModel, QDate
-from PyQt6.QtGui import QStandardItemModel, QStandardItem, QColor
+from PyQt6.QtCore import Qt, QAbstractTableModel, QDate, QStringListModel
+from PyQt6.QtGui import QStandardItemModel, QStandardItem, QColor, QShortcut, QKeySequence, QIntValidator
 
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.services.purchase_service import PurchaseService
@@ -243,16 +242,29 @@ class SupplierDialog(QDialog):
         self.retranslate_ui()
 
     def init_ui(self):
-        self.form_layout = QFormLayout(self)
+        self.setObjectName("SupplierDialog")
+        self.setMinimumSize(420, 400)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
+
+        self.form_layout = QFormLayout()
+        self.form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        self.form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        self.form_layout.setSpacing(10)
 
         self.company_input = QLineEdit()
         self.contact_input = QLineEdit()
         self.phone_input = QLineEdit()
         self.tax_input = QLineEdit()
         self.details_input = QLineEdit()
-        self.payment_terms_input = QSpinBox()
-        self.payment_terms_input.setRange(0, 365)
-        self.payment_terms_input.setSuffix(" " + _t("purchase.days_suffix"))
+
+        # QLineEdit + validator instead of QSpinBox -- native +/- steppers
+        # break under QSS (see product_editor.py's Stock group comment).
+        self.payment_terms_input = QLineEdit()
+        self.payment_terms_input.setPlaceholderText("0")
+        self.payment_terms_input.setValidator(QIntValidator(0, 365, self))
 
         if self.supplier:
             self.company_input.setText(self.supplier.company_name)
@@ -260,7 +272,7 @@ class SupplierDialog(QDialog):
             self.phone_input.setText(self.supplier.phone or "")
             self.tax_input.setText(self.supplier.tax_number or "")
             self.details_input.setText(self.supplier.contact_details or "")
-            self.payment_terms_input.setValue(getattr(self.supplier, "payment_terms", 0))
+            self.payment_terms_input.setText(str(getattr(self.supplier, "payment_terms", 0)))
 
         self.lbl_company = QLabel()
         self.lbl_contact = QLabel()
@@ -276,15 +288,21 @@ class SupplierDialog(QDialog):
         self.form_layout.addRow(self.lbl_terms, self.payment_terms_input)
         self.form_layout.addRow(self.lbl_details, self.details_input)
 
+        layout.addLayout(self.form_layout)
+        layout.addStretch()
+
         btn_box = QHBoxLayout()
+        btn_box.addStretch()
         self.save_btn = QPushButton()
+        self.save_btn.setObjectName("BtnSave")
         self.save_btn.clicked.connect(self.accept)
         self.cancel_btn = QPushButton()
+        self.cancel_btn.setObjectName("BtnCancel")
         self.cancel_btn.clicked.connect(self.reject)
 
         btn_box.addWidget(self.save_btn)
         btn_box.addWidget(self.cancel_btn)
-        self.form_layout.addRow(btn_box)
+        layout.addLayout(btn_box)
 
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
@@ -308,8 +326,19 @@ class SupplierDialog(QDialog):
             "phone": self.phone_input.text(),
             "tax_number": self.tax_input.text(),
             "contact_details": self.details_input.text(),
-            "payment_terms": self.payment_terms_input.value(),
+            "payment_terms": self._parse_payment_terms(self.payment_terms_input.text()),
         }
+
+    @staticmethod
+    def _parse_payment_terms(text: str) -> int:
+        """Safely parse the Payment Terms QLineEdit value to int."""
+        cleaned = text.strip()
+        if not cleaned:
+            return 0
+        try:
+            return int(cleaned)
+        except ValueError:
+            return 0
 
 
 class PurchaseView(QWidget):
@@ -320,9 +349,16 @@ class PurchaseView(QWidget):
         register_language_callback(self.retranslate_ui)
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
         self.refresh_suppliers()
+        self.load_products_for_completer()
 
     def init_ui(self):
         layout = QVBoxLayout(self)
+
+        from cbpos.ui.widgets.page_header import PageHeader
+        from cbpos.ui.resources.icons import Icons
+
+        self._page_header = PageHeader(icon_name=Icons.PURCHASE)
+        layout.addWidget(self._page_header)
 
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs)
@@ -374,6 +410,12 @@ class PurchaseView(QWidget):
         form_layout = QHBoxLayout()
 
         self.supplier_combo = QComboBox()
+        # Searchable -- type to filter (#280), same recipe already proven
+        # for payment_dialog.py's customer combo. The QCompleter itself is
+        # (re)built in refresh_suppliers() where the current supplier list
+        # is available.
+        self.supplier_combo.setEditable(True)
+        self.supplier_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.invoice_input = QLineEdit()
         self.date_input = QDateEdit(QDate.currentDate())
 
@@ -396,8 +438,10 @@ class PurchaseView(QWidget):
         self.product_search.returnPressed.connect(self.add_product_to_grid)
 
         # Completer
+        self.products_cache = {}
         self.completer = QCompleter()
         self.completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.product_search.setCompleter(self.completer)
 
         self.lbl_add_product = QLabel()
@@ -440,6 +484,8 @@ class PurchaseView(QWidget):
         self.lbl_hist_supplier = QLabel()
         filter_layout.addWidget(self.lbl_hist_supplier)
         self.history_supplier_combo = QComboBox()
+        self.history_supplier_combo.setEditable(True)
+        self.history_supplier_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         filter_layout.addWidget(self.history_supplier_combo)
 
         self.lbl_hist_status = QLabel()
@@ -488,6 +534,7 @@ class PurchaseView(QWidget):
 
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
+        self._page_header.set_title(_t("management.sidebar_purchasing"))
         # Tabs
         self.tabs.setTabText(0, _t("purchase.tab_suppliers"))
         self.tabs.setTabText(1, _t("purchase.tab_new_grn"))
@@ -541,11 +588,13 @@ class PurchaseView(QWidget):
         self.payables_title_label.setText(_t("purchase.payables_title"))
         self.payable_search.setPlaceholderText(_t("purchase.payable_search_placeholder"))
         self.btn_payable_back.setText(_t("purchase.payables_back"))
+        self.btn_open_payable_supplier.setText(_t("purchase.btn_open_payable_supplier"))
         self.btn_make_payment.setText(_t("purchase.btn_make_payment"))
         self.btn_adjust_payable.setText(_t("purchase.btn_adjust_balance"))
         self.lbl_pay_from.setText(_t("purchase.from"))
         self.lbl_pay_to.setText(_t("purchase.to"))
         self.btn_pay_all.setText(_t("purchase.all"))
+        self.btn_payable_range_hint_show_all.setText(_t("purchase.all"))
 
         # Payable table headers
         self.payable_supplier_table.setHorizontalHeaderLabels(
@@ -599,11 +648,17 @@ class PurchaseView(QWidget):
     def refresh_suppliers(self):
         self.suppliers = SupplierService.get_all_suppliers()
         self.supplier_table.setModel(SupplierTableModel(self.suppliers))
+        names = [s.company_name for s in self.suppliers]
 
         # Update GRN Combo
         self.supplier_combo.clear()
         for s in self.suppliers:
             self.supplier_combo.addItem(s.company_name, s.id)
+        self.supplier_combo.lineEdit().setPlaceholderText(_t("purchase.search_supplier_placeholder"))
+        supplier_completer = QCompleter(names, self)
+        supplier_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        supplier_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.supplier_combo.setCompleter(supplier_completer)
 
         # Update History Combo
         if hasattr(self, "history_supplier_combo"):
@@ -612,6 +667,11 @@ class PurchaseView(QWidget):
             self.history_supplier_combo.addItem(_t("purchase.all_suppliers"), None)
             for s in self.suppliers:
                 self.history_supplier_combo.addItem(s.company_name, s.id)
+            self.history_supplier_combo.lineEdit().setPlaceholderText(_t("purchase.search_supplier_placeholder"))
+            history_completer = QCompleter([_t("purchase.all_suppliers")] + names, self)
+            history_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+            history_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+            self.history_supplier_combo.setCompleter(history_completer)
             # Restore selection
             if current_data:
                 for i in range(self.history_supplier_combo.count()):
@@ -630,18 +690,28 @@ class PurchaseView(QWidget):
             SupplierService.create_supplier(**data)
             self.refresh_suppliers()
 
+    def load_products_for_completer(self):
+        """Populate the Add Product completer with real product names/barcodes."""
+        products = ProductService().get_all_products()
+        names = []
+        self.products_cache = {}
+        for p in products:
+            key = f"{p.name_en} [{p.barcode}]"
+            names.append(key)
+            self.products_cache[key] = p
+            self.products_cache[p.barcode] = p
+
+        self.completer.setModel(QStringListModel(names))
+
     def add_product_to_grid(self):
-        query = self.product_search.text()
+        query = self.product_search.text().strip()
         if not query:
             return
 
-        products = ProductService.search(query)
-        if not products:
+        product = self.products_cache.get(query)
+        if not product:
             QMessageBox.warning(self, _t("purchase.not_found_title"), _t("purchase.product_not_found"))
             return
-
-        # For simplicity, pick first match or if exact match
-        product = products[0]
 
         # Add to grid
         qty = Decimal("1.000")
@@ -781,6 +851,21 @@ class PurchaseView(QWidget):
         self.payable_supplier_table.doubleClicked.connect(self._on_payable_supplier_double_click)
         page_layout.addWidget(self.payable_supplier_table, 1)
 
+        open_row = QHBoxLayout()
+        open_row.addStretch()
+        self.btn_open_payable_supplier = QPushButton()
+        self.btn_open_payable_supplier.setObjectName("BtnOpenPayableSupplier")
+        self.btn_open_payable_supplier.clicked.connect(self._open_selected_payable_supplier)
+        open_row.addWidget(self.btn_open_payable_supplier)
+        page_layout.addLayout(open_row)
+
+        QShortcut(QKeySequence(Qt.Key.Key_Return), self.payable_supplier_table).activated.connect(
+            self._open_selected_payable_supplier
+        )
+        QShortcut(QKeySequence(Qt.Key.Key_Enter), self.payable_supplier_table).activated.connect(
+            self._open_selected_payable_supplier
+        )
+
         self.payable_stack.addWidget(page)
 
     def _build_payable_detail_page(self) -> None:
@@ -884,6 +969,26 @@ class PurchaseView(QWidget):
         filter_layout.addStretch()
         page_layout.addWidget(filter_bar)
 
+        # Range-mismatch hint (#282): current_payable is an unfiltered
+        # running total, but the ledger table honors the selected date
+        # range -- a purchase outside that range can leave the visible
+        # closing balance out of sync with the header balance above, with
+        # nothing on screen explaining why. Shown only when they disagree.
+        self.payable_range_hint = QFrame()
+        self.payable_range_hint.setObjectName("PayableRangeHint")
+        hint_layout = QHBoxLayout(self.payable_range_hint)
+        hint_layout.setContentsMargins(10, 6, 10, 6)
+        self.lbl_payable_range_hint = QLabel()
+        self.lbl_payable_range_hint.setObjectName("PayableRangeHintLabel")
+        self.lbl_payable_range_hint.setWordWrap(True)
+        hint_layout.addWidget(self.lbl_payable_range_hint, 1)
+        self.btn_payable_range_hint_show_all = QPushButton()
+        self.btn_payable_range_hint_show_all.setObjectName("PayableRangeHintBtn")
+        self.btn_payable_range_hint_show_all.clicked.connect(self.show_all_payable_dates)
+        hint_layout.addWidget(self.btn_payable_range_hint_show_all)
+        self.payable_range_hint.setVisible(False)
+        page_layout.addWidget(self.payable_range_hint)
+
         # Ledger Table (full width)
         self.payable_ledger_table = QTableWidget()
         self.payable_ledger_table.setObjectName("PayableLedgerTable")
@@ -968,7 +1073,16 @@ class PurchaseView(QWidget):
 
     def _on_payable_supplier_double_click(self, index) -> None:
         """Drill into the selected supplier's payable ledger."""
-        row = index.row()
+        self._open_payable_supplier_row(index.row())
+
+    def _open_selected_payable_supplier(self) -> None:
+        """Drill into the currently selected supplier's payable ledger (button/Enter key)."""
+        self._open_payable_supplier_row(self.payable_supplier_table.currentRow())
+
+    def _open_payable_supplier_row(self, row: int) -> None:
+        """Drill into the payable ledger for the given table row."""
+        if row < 0:
+            return
         id_item = self.payable_supplier_table.item(row, 0)
         if not id_item:
             return
@@ -1082,6 +1196,26 @@ class PurchaseView(QWidget):
         self.lbl_total_purchases.setText(_t("purchase.purchases_label") + " " + format_currency(total_debit))
         self.lbl_total_payments.setText(_t("purchase.payments_label") + " " + format_currency(total_credit))
         self.lbl_closing.setText(_t("purchase.closing_label") + " " + format_currency(closing_balance))
+
+        self._update_payable_range_hint(closing_balance)
+
+    def _update_payable_range_hint(self, visible_closing_balance: Decimal) -> None:
+        """Warn when the filtered ledger doesn't account for the supplier's
+        full outstanding balance (#282)."""
+        if not self.selected_payable_supplier:
+            self.payable_range_hint.setVisible(False)
+            return
+
+        summary = SupplierPayableService.get_supplier_summary(self.selected_payable_supplier.id)
+        actual_balance = summary["current_payable"] if summary else Decimal("0.00")
+
+        if actual_balance != visible_closing_balance:
+            self.lbl_payable_range_hint.setText(
+                _t("purchase.payable_range_hint", balance=format_currency(actual_balance))
+            )
+            self.payable_range_hint.setVisible(True)
+        else:
+            self.payable_range_hint.setVisible(False)
 
     def make_payment(self) -> None:
         """Open supplier payment dialog."""

@@ -91,6 +91,12 @@ class EmailService:
         thread.start()
 
     @staticmethod
-    def send_email_with_pdf(to_email: str, subject: str, body: str, pdf_path: str):
+    def send_email_with_pdf(
+        to_email: str,
+        subject: str,
+        body: str,
+        pdf_path: str,
+        callback: Optional[Callable[[bool, str], None]] = None,
+    ):
         """Alias for send_email with a PDF attachment."""
-        EmailService.send_email(to_email, subject, body, pdf_path)
+        EmailService.send_email(to_email, subject, body, pdf_path, callback=callback)

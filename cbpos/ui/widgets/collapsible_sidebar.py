@@ -168,29 +168,47 @@ class CollapsibleSidebar(QFrame):
 
         Called by the owning view's ``retranslate_ui`` method.
         """
-        self.btn_pos.setText("   " + _t("management.sidebar_pos"))
-        self.btn_logout.setText("   " + _t("management.sidebar_logout"))
+        self.btn_pos.setText(_t("management.sidebar_pos"))
+        self.btn_logout.setText(_t("management.sidebar_logout"))
 
     # ------------------------------------------------------------------
     # Collapse / Expand
     # ------------------------------------------------------------------
 
     def toggle(self) -> None:
-        """Animate between expanded and collapsed states."""
+        """Animate between expanded and collapsed states (manual user action -- persisted)."""
+        self._apply_collapse(not self.is_collapsed, persist=True)
+
+    def set_collapsed(self, collapsed: bool) -> None:
+        """Programmatically set collapsed state (e.g. for responsive layout).
+
+        Unlike ``toggle()``, this does not persist the change as a user
+        preference -- a transient, automatic layout adjustment (see
+        ``handle_resize()``) must never masquerade as the user's own
+        explicit collapse/expand choice (#276), or a later, valid resize
+        can never undo it.
+        """
+        if collapsed == self.is_collapsed:
+            return
+        self._apply_collapse(collapsed, persist=False)
+
+    def _apply_collapse(self, collapsed: bool, persist: bool) -> None:
+        """Animate to the given collapsed state, optionally persisting it."""
         start = self.width()
 
-        if self.is_collapsed:
-            end = EXPANDED_WIDTH
-            self.lbl_logo.setVisible(True)
-            style = Qt.ToolButtonStyle.ToolButtonTextBesideIcon
-            self.is_collapsed = False
-        else:
+        if collapsed:
             end = COLLAPSED_WIDTH
             self.lbl_logo.setVisible(False)
             style = Qt.ToolButtonStyle.ToolButtonIconOnly
-            self.is_collapsed = True
+        else:
+            end = EXPANDED_WIDTH
+            self.lbl_logo.setVisible(True)
+            style = Qt.ToolButtonStyle.ToolButtonTextBesideIcon
 
-        ConfigService.set("sidebar_collapsed", self.is_collapsed)
+        self.is_collapsed = collapsed
+
+        if persist:
+            ConfigService.set("sidebar_collapsed", self.is_collapsed)
 
         self._anim_min.setStartValue(start)
         self._anim_min.setEndValue(end)
@@ -202,12 +220,6 @@ class CollapsibleSidebar(QFrame):
 
         self._apply_button_style(style)
         self._update_all_styles()
-
-    def set_collapsed(self, collapsed: bool) -> None:
-        """Programmatically set collapsed state (e.g. for responsive layout)."""
-        if collapsed == self.is_collapsed:
-            return
-        self.toggle()
 
     def handle_resize(self, width: int) -> None:
         """Auto-collapse/expand based on parent width.
@@ -233,11 +245,16 @@ class CollapsibleSidebar(QFrame):
         self._apply_button_style(Qt.ToolButtonStyle.ToolButtonIconOnly)
 
     def _apply_button_style(self, style: Qt.ToolButtonStyle) -> None:
-        """Set the tool-button style on all buttons."""
-        self.btn_pos.setToolButtonStyle(style)
-        self.btn_logout.setToolButtonStyle(style)
-        for btn in self.nav_buttons:
+        """Set the tool-button style on all buttons.
+
+        Also refreshes each button's icon, since SidebarButton pads its
+        icon pixmap differently depending on whether it's showing text
+        beside the icon or collapsed to icon-only (#314).
+        """
+        buttons = [self.btn_pos, self.btn_logout] + self.nav_buttons
+        for btn in buttons:
             btn.setToolButtonStyle(style)
+            btn.update_icon()
 
     def _update_all_styles(self) -> None:
         """Refresh the ``collapsed`` QSS property on every button."""

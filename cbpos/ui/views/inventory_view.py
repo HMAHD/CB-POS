@@ -16,6 +16,7 @@ from cbpos.core.services.import_service import ImportService
 from cbpos.ui.dialogs.product_editor import ProductEditor
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 
 class InventoryModel(QAbstractTableModel):
@@ -97,6 +98,12 @@ class InventoryView(QWidget):
     def init_ui(self):
         layout = QVBoxLayout(self)
 
+        from cbpos.ui.widgets.page_header import PageHeader
+        from cbpos.ui.resources.icons import Icons
+
+        self._page_header = PageHeader(icon_name=Icons.INVENTORY)
+        layout.addWidget(self._page_header)
+
         # Top Bar
         top_bar = QHBoxLayout()
 
@@ -133,7 +140,17 @@ class InventoryView(QWidget):
         self.table.setModel(self.model)
         self.table.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         self.table.setAlternatingRowColors(True)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,  # Barcode
+                1: QHeaderView.ResizeMode.Stretch,  # Name - needs the room
+                2: QHeaderView.ResizeMode.ResizeToContents,  # Category
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Price
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Stock
+                5: QHeaderView.ResizeMode.ResizeToContents,  # Unit
+            },
+        )
         self.table.doubleClicked.connect(self.open_edit_dialog)
 
         # Context Menu
@@ -158,6 +175,7 @@ class InventoryView(QWidget):
 
     def retranslate_ui(self) -> None:
         """Update all widget text from the translation system."""
+        self._page_header.set_title(_t("management.sidebar_inventory"))
         self.search_input.setPlaceholderText(_t("inventory.search_placeholder"))
         self.add_btn.setText(_t("inventory.btn_add_product"))
         self.import_btn.setText(_t("inventory.btn_import_csv"))

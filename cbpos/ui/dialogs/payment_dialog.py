@@ -155,14 +155,19 @@ class PaymentDialog(QDialog):
         self.lbl_applied.setObjectName("PaymentMethodsHeader")
         left_layout.addWidget(self.lbl_applied)
 
-        # Payment List — compact, grows only as needed
+        # Payment List — compact, grows only as needed. The cap is raised
+        # to fit 4-5 typical split payments (#267): 160px only ever fit
+        # ~2.5 rows, so a 3rd+ payment scrolled internally and the row
+        # sitting right at the 160px cutoff got visually clipped mid-render.
+        # The trailing stretch that used to follow this list handed any
+        # leftover vertical space to empty space below instead of the list
+        # itself -- giving the list its own layout stretch factor instead
+        # makes it the thing that grows into freed-up space, up to the cap.
         self.list_payments = QListWidget()
         self.list_payments.setObjectName("PaymentList")
-        self.list_payments.setMaximumHeight(160)
-        self.list_payments.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        left_layout.addWidget(self.list_payments)
-
-        left_layout.addStretch()
+        self.list_payments.setMaximumHeight(280)
+        self.list_payments.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        left_layout.addWidget(self.list_payments, 1)
         content_layout.addWidget(left_widget, stretch=4)
 
         # --- RIGHT COLUMN: Amount Input + Numpad + Add Button ---
@@ -276,9 +281,7 @@ class PaymentDialog(QDialog):
         self.btn_finish.setObjectName("BtnFinishSale")
         self.btn_finish.setFixedHeight(48)
         self.btn_finish.setEnabled(False)
-        self.btn_finish.setToolTip(
-            _t("payment.finish_tooltip_remaining", amount=format_currency(self.total_amount))
-        )
+        self.btn_finish.setToolTip(_t("payment.finish_tooltip_remaining", amount=format_currency(self.total_amount)))
         self.btn_finish.clicked.connect(self._finish_sale)
 
         action_layout.addWidget(self.btn_cancel, stretch=1)

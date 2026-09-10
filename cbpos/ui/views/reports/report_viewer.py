@@ -111,6 +111,15 @@ class ReportViewer(QWidget):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
+        from cbpos.ui.widgets.page_header import PageHeader
+        from cbpos.ui.resources.icons import Icons
+
+        self._page_header = PageHeader(icon_name=Icons.REPORTS)
+        header_row = QHBoxLayout()
+        header_row.setContentsMargins(16, 12, 16, 0)
+        header_row.addWidget(self._page_header)
+        main_layout.addLayout(header_row)
+
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setObjectName("ReportSplitter")
 
@@ -223,8 +232,16 @@ class ReportViewer(QWidget):
         self.table_view.setObjectName("ReportDataView")
         self.table_model = PandasModel()
         self.table_view.setModel(self.table_model)
-        self.table_view.horizontalHeader().setStretchLastSection(True)
-        self.table_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        # Report columns vary per report type (different reports have
+        # different columns entirely), so there's no fixed per-column map to
+        # apply -- but the previous combination of Interactive (fixed once,
+        # from often-empty initial content) + stretchLastSection (forcing
+        # whichever column is last to bloat regardless of its content) meant
+        # every report's "detail" column looked bare while a short column
+        # like TYPE or STATUS absorbed all the extra width. ResizeToContents
+        # sizes every column to its real, current content instead.
+        self.table_view.horizontalHeader().setStretchLastSection(False)
+        self.table_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.table_view.setAlternatingRowColors(True)
         self.table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         self.table_view.verticalHeader().setVisible(False)
@@ -283,7 +300,7 @@ class ReportViewer(QWidget):
         splitter.setHandleWidth(1)
         sidebar.setMinimumWidth(260)
 
-        main_layout.addWidget(splitter)
+        main_layout.addWidget(splitter, 1)
 
         # Loading overlay
         self._overlay = LoadingOverlay(self)
@@ -293,6 +310,7 @@ class ReportViewer(QWidget):
 
     def retranslate_ui(self) -> None:
         """Set all translatable text using _t()."""
+        self._page_header.set_title(_t("management.sidebar_reports"))
         self.sidebar_title.setText(_t("report_viewer.sidebar_title"))
         self.btn_run.setText(_t("report_viewer.btn_run"))
         self.empty_text.setText(_t("report_viewer.empty_title"))

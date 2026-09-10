@@ -1495,7 +1495,24 @@
       "btn_test_sync": "Test Sync Connection",
       "tooltip_test_sync": "Checks that this Terminal can reach the Main PC with the address and Shared Secret above.",
       "btn_forget_main": "Forget Trusted Main PC",
-      "tooltip_forget_main": "Only needed if you replaced the Main PC and this Terminal now refuses to sync with it."
+      "tooltip_forget_main": "Only needed if you replaced the Main PC and this Terminal now refuses to sync with it.",
+      "sync_server_address_display": "Terminals should connect to: {ip}:{port}",
+      "sync_validation_title": "Validation Error",
+      "sync_validation_message": "Enter the Main PC address (IP:port)",
+      "sync_test_testing": "Testing...",
+      "sync_test_connected": "✓ Connected",
+      "sync_test_unexpected": "✗ Unexpected response",
+      "sync_test_unauthorized": "✗ Unauthorized",
+      "sync_test_failed": "✗ Failed",
+      "sync_test_error": "✗ Error",
+      "sync_success_title": "Connection Successful",
+      "sync_success_message": "Connected to Main PC!\n\nProtocol version: {version}\nTerminals connected: {terminals}",
+      "sync_failed_title": "Connection Failed",
+      "sync_failed_secret_message": "Shared Secret does not match the Main PC's.\n\nEnter the same Shared Secret configured on the Main PC, then try again.",
+      "sync_failed_message": "Cannot reach Main PC at {address}\n\n{error}",
+      "sync_error_title": "Connection Error",
+      "sync_forget_main_confirm_message": "This Terminal will trust whichever Main PC answers at the configured address the next time it connects.\n\nOnly do this if you intentionally replaced the Main PC.",
+      "sync_forget_main_done_message": "Done. This Terminal will re-pin on next connection."
     }
   },
   "receipt_strings": {

@@ -92,8 +92,9 @@ class CartService:
     def apply_line_discount(self, index: int, type: str, value: Decimal):
         """Apply discount to a specific line item."""
         if 0 <= index < len(self.items):
-            self._validate_discount_cap(type, value)
             item = self.items[index]
+            gross_line = item["qty"] * item["unit_price"]
+            self._validate_discount_cap(type, value, reference_amount=gross_line)
             item["discount_type"] = type
             item["discount_value"] = Decimal(str(value))
             self._recalculate_line(item)
@@ -123,8 +124,16 @@ class CartService:
 
             logger.info("Price override by %s - Item %s to %s", user.username, item["product"].name_en, new_price)
 
-    def _validate_discount_cap(self, discount_type: str, discount_value: Decimal) -> None:
-        """Validate discount does not exceed the configured max_discount_percent."""
+    def _validate_discount_cap(
+        self, discount_type: str, discount_value: Decimal, reference_amount: Decimal = None
+    ) -> None:
+        """Validate discount does not exceed the configured max_discount_percent.
+
+        A FIXED discount is checked against the same cap by converting it to
+        its equivalent percentage of reference_amount -- otherwise the cap
+        only ever gated PERCENTAGE discounts, letting anyone with discount
+        permission zero out a line via a large enough fixed amount.
+        """
         try:
             from cbpos.core.services.config_service import ConfigService
 
@@ -138,6 +147,13 @@ class CartService:
 
         if discount_type == "PERCENTAGE" and Decimal(str(discount_value)) > max_pct:
             raise ValueError(f"Discount cannot exceed {max_pct}%. Manager override required.")
+
+        if discount_type == "FIXED" and reference_amount:
+            reference_amount = Decimal(str(reference_amount))
+            if reference_amount > 0:
+                effective_pct = (Decimal(str(discount_value)) / reference_amount) * Decimal("100")
+                if effective_pct > max_pct:
+                    raise ValueError(f"Discount cannot exceed {max_pct}%. Manager override required.")
 
     def _recalculate_line(self, item: Dict[str, Any]):
         """Recalculate the total for a single line item."""

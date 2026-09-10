@@ -115,12 +115,15 @@ class TestDiscColumnLabeling:
 
     def test_fixed_discount_shows_a_currency_amount_not_a_percent_sign(self, view):
         view.cart_service.add_item(_make_product(price="100.00"), qty=Decimal("2"))
-        view.cart_service.apply_line_discount(0, "FIXED", Decimal("50"))
+        # Rs.20 off a Rs.200 line is a 10% effective discount, safely under
+        # the app's default max_discount_percent cap (15%) -- this test is
+        # about display formatting, not cap enforcement.
+        view.cart_service.apply_line_discount(0, "FIXED", Decimal("20"))
         view.update_cart_display()
 
         disc_text = view.cart_table.item(0, 3).text()
         assert "%" not in disc_text
-        assert format_currency(Decimal("50")) in disc_text
+        assert format_currency(Decimal("20")) in disc_text
 
     def test_no_discount_shows_a_dash(self, view):
         view.cart_service.add_item(_make_product(price="100.00"))

@@ -126,7 +126,8 @@ class TestCartLineDiscounts:
         assert item["subtotal"] == Decimal("200.00")  # gross
         assert item["total"] == Decimal("180.00")  # net after 10%
 
-    def test_fixed_discount(self, mock_pricing):
+    @patch("cbpos.core.services.config_service.ConfigService.get", return_value=0)
+    def test_fixed_discount(self, mock_config, mock_pricing):
         """Fixed Rs.50 discount on a Rs.200 line → Rs.150."""
         cart = CartService()
         product = _make_product(price="100.00")
@@ -137,7 +138,8 @@ class TestCartLineDiscounts:
         assert item["subtotal"] == Decimal("200.00")
         assert item["total"] == Decimal("150.00")
 
-    def test_discount_capped_at_line_total(self, mock_pricing):
+    @patch("cbpos.core.services.config_service.ConfigService.get", return_value=0)
+    def test_discount_capped_at_line_total(self, mock_config, mock_pricing):
         """Discount larger than line total should cap at line total (no negative)."""
         cart = CartService()
         product = _make_product(price="100.00")
@@ -167,6 +169,32 @@ class TestCartLineDiscounts:
         assert item["total"] == Decimal("900.00")
         assert item["subtotal"] == Decimal("900.00")
 
+    @patch("cbpos.core.services.config_service.ConfigService.get", return_value=10)
+    def test_fixed_discount_exceeding_the_cap_raises(self, mock_config, mock_pricing):
+        """A max_discount_percent cap of 10% must also gate FIXED discounts,
+        not just PERCENTAGE ones -- otherwise a cashier with SALES_DISCOUNT
+        permission (not necessarily manager-only) can zero out any line via
+        a large enough fixed amount, completely bypassing the cap that's
+        supposed to gate exactly this kind of markdown."""
+        cart = CartService()
+        product = _make_product(price="100.00")
+        cart.add_item(product, qty=Decimal("1"))  # gross line = 100.00
+
+        # Rs. 50 fixed off a Rs.100 line is a 50% effective discount, over the 10% cap
+        with pytest.raises(ValueError, match="10"):
+            cart.apply_line_discount(0, "FIXED", Decimal("50"))
+
+    @patch("cbpos.core.services.config_service.ConfigService.get", return_value=10)
+    def test_fixed_discount_within_the_cap_succeeds(self, mock_config, mock_pricing):
+        cart = CartService()
+        product = _make_product(price="100.00")
+        cart.add_item(product, qty=Decimal("1"))  # gross line = 100.00
+
+        # Rs. 5 fixed off a Rs.100 line is a 5% effective discount, under the 10% cap
+        cart.apply_line_discount(0, "FIXED", Decimal("5"))
+
+        assert cart.items[0]["total"] == Decimal("95.00")
+
 
 @patch("cbpos.core.services.cart_service.PricingService.calculate_price", side_effect=_mock_pricing)
 class TestUpdateQuantity:
@@ -189,7 +217,8 @@ class TestUpdateQuantity:
         assert item["subtotal"] == Decimal("300.00")
         assert item["total"] == Decimal("270.00")  # still 10% off, not full price
 
-    def test_changing_quantity_on_a_fixed_discount_line(self, mock_pricing):
+    @patch("cbpos.core.services.config_service.ConfigService.get", return_value=0)
+    def test_changing_quantity_on_a_fixed_discount_line(self, mock_config, mock_pricing):
         cart = CartService()
         product = _make_product(price="100.00")
         cart.add_item(product, qty=Decimal("2"))

@@ -769,6 +769,15 @@ class HardwarePage(SettingsPage):
         self._lbl_a4_printer = QLabel()
         sel_form.addRow(self._lbl_a4_printer, self.combo_a4_printer)
 
+        # Printer detection only ever ran once, here at construction time,
+        # and this page is built once and kept alive for the rest of the
+        # session -- a printer plugged in after launch needed a full app
+        # restart to appear (#323).
+        self.btn_refresh_printers = QPushButton()
+        self.btn_refresh_printers.setProperty("class", "secondary")
+        self.btn_refresh_printers.clicked.connect(self._refresh_printer_list)
+        sel_form.addRow("", self.btn_refresh_printers)
+
         self.combo_paper_width = QComboBox()
         self.combo_paper_width.addItems(["80mm", "58mm"])
         self._lbl_paper_width = QLabel()
@@ -893,6 +902,7 @@ class HardwarePage(SettingsPage):
         # Printers tab
         self._lbl_receipt_printer.setText(_t("settings.hardware.receipt_printer"))
         self._lbl_a4_printer.setText(_t("settings.hardware.a4_printer"))
+        self.btn_refresh_printers.setText(_t("settings.hardware.btn_refresh_printers"))
         self._lbl_paper_width.setText(_t("settings.hardware.paper_width"))
         self._lbl_auto_print.setText(_t("settings.hardware.auto_print"))
         self.chk_auto_print.setText(_t("settings.hardware.chk_auto_print"))
@@ -927,6 +937,29 @@ class HardwarePage(SettingsPage):
         # Scale tab
         self._lbl_barcode_prefix.setText(_t("settings.hardware.barcode_prefix"))
         self._lbl_decimal_places.setText(_t("settings.hardware.decimal_places"))
+
+    def _refresh_printer_list(self) -> None:
+        """Re-scan for connected printers without needing an app restart.
+
+        Preserves each combo's current selection when it's still present
+        in the rescanned list.
+        """
+        current_receipt = self.combo_receipt_printer.currentText()
+        current_a4 = self.combo_a4_printer.currentText()
+
+        available_printers = QPrinterInfo.availablePrinterNames() or [_t("settings.hardware.no_printers")]
+
+        self.combo_receipt_printer.clear()
+        self.combo_receipt_printer.addItems(available_printers)
+        idx = self.combo_receipt_printer.findText(current_receipt)
+        if idx >= 0:
+            self.combo_receipt_printer.setCurrentIndex(idx)
+
+        self.combo_a4_printer.clear()
+        self.combo_a4_printer.addItems(available_printers)
+        idx = self.combo_a4_printer.findText(current_a4)
+        if idx >= 0:
+            self.combo_a4_printer.setCurrentIndex(idx)
 
     def load(self, settings: dict):
         receipt_printer = settings.get("receipt_printer_name", "")

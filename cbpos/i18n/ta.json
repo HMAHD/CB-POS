@@ -1310,6 +1310,7 @@
       "section_printer_selection": "Printer Selection",
       "receipt_printer": "Receipt Printer:",
       "a4_printer": "A4 Printer:",
+      "btn_refresh_printers": "Refresh Printer List",
       "paper_width": "Paper Width:",
       "no_printers": "No printers found",
       "section_print_behavior": "Print Behavior",

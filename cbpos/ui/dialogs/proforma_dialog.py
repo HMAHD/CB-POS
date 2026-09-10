@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
     QCompleter,
 )
 from PyQt6.QtCore import Qt, QStringListModel
-from PyQt6.QtGui import QIntValidator
+from PyQt6.QtGui import QIntValidator, QColor
 
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.customer_service import CustomerService
@@ -39,6 +39,7 @@ class ProformaDialog(QDialog):
         self.items: list[dict] = []
         self.products_cache: dict = {}
         self.init_ui()
+        self.refresh_table()
         self.load_products()
         self.load_customers()
 
@@ -209,6 +210,17 @@ class ProformaDialog(QDialog):
         """Refresh items table and total."""
         self.items_table.setRowCount(0)
         total = Decimal("0.00")
+
+        if not self.items:
+            self.items_table.insertRow(0)
+            empty_item = QTableWidgetItem(_t("proforma.items_empty_state"))
+            empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty_item.setForeground(QColor("gray"))
+            empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
+            self.items_table.setItem(0, 0, empty_item)
+            self.items_table.setSpan(0, 0, 1, self.items_table.columnCount())
+            self.total_label.setText(f"<b>Total: {format_currency(total)}</b>")
+            return
 
         for row, item in enumerate(self.items):
             self.items_table.insertRow(row)

@@ -404,6 +404,12 @@ class PurchaseView(QWidget):
         form_layout = QHBoxLayout()
 
         self.supplier_combo = QComboBox()
+        # Searchable -- type to filter (#280), same recipe already proven
+        # for payment_dialog.py's customer combo. The QCompleter itself is
+        # (re)built in refresh_suppliers() where the current supplier list
+        # is available.
+        self.supplier_combo.setEditable(True)
+        self.supplier_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.invoice_input = QLineEdit()
         self.date_input = QDateEdit(QDate.currentDate())
 
@@ -472,6 +478,8 @@ class PurchaseView(QWidget):
         self.lbl_hist_supplier = QLabel()
         filter_layout.addWidget(self.lbl_hist_supplier)
         self.history_supplier_combo = QComboBox()
+        self.history_supplier_combo.setEditable(True)
+        self.history_supplier_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         filter_layout.addWidget(self.history_supplier_combo)
 
         self.lbl_hist_status = QLabel()
@@ -633,11 +641,17 @@ class PurchaseView(QWidget):
     def refresh_suppliers(self):
         self.suppliers = SupplierService.get_all_suppliers()
         self.supplier_table.setModel(SupplierTableModel(self.suppliers))
+        names = [s.company_name for s in self.suppliers]
 
         # Update GRN Combo
         self.supplier_combo.clear()
         for s in self.suppliers:
             self.supplier_combo.addItem(s.company_name, s.id)
+        self.supplier_combo.lineEdit().setPlaceholderText(_t("purchase.search_supplier_placeholder"))
+        supplier_completer = QCompleter(names, self)
+        supplier_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        supplier_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.supplier_combo.setCompleter(supplier_completer)
 
         # Update History Combo
         if hasattr(self, "history_supplier_combo"):
@@ -646,6 +660,11 @@ class PurchaseView(QWidget):
             self.history_supplier_combo.addItem(_t("purchase.all_suppliers"), None)
             for s in self.suppliers:
                 self.history_supplier_combo.addItem(s.company_name, s.id)
+            self.history_supplier_combo.lineEdit().setPlaceholderText(_t("purchase.search_supplier_placeholder"))
+            history_completer = QCompleter([_t("purchase.all_suppliers")] + names, self)
+            history_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+            history_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+            self.history_supplier_combo.setCompleter(history_completer)
             # Restore selection
             if current_data:
                 for i in range(self.history_supplier_combo.count()):

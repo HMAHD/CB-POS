@@ -53,8 +53,15 @@ class ProformaDialog(QDialog):
         form.setContentsMargins(16, 16, 16, 16)
         form.setSpacing(12)
 
+        # Searchable -- type to filter (#294), same recipe already proven
+        # for payment_dialog.py's customer combo. setEditable(True) alone
+        # (the prior state here) makes it look searchable without actually
+        # filtering anything -- worse than a plain combo, since it invites
+        # typing that then does nothing. The QCompleter itself is built in
+        # load_customers() where the current customer list is available.
         self.customer_combo = QComboBox()
         self.customer_combo.setEditable(True)
+        self.customer_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.customer_combo.addItem(_t("proforma.no_customer"), None)
         form.addRow(_t("proforma.customer"), self.customer_combo)
 
@@ -147,6 +154,13 @@ class ProformaDialog(QDialog):
         customers = CustomerService().get_all_customers()
         for c in customers:
             self.customer_combo.addItem(c.name, c.id)
+
+        self.customer_combo.lineEdit().setPlaceholderText(_t("proforma.search_customer_placeholder"))
+        names = [_t("proforma.no_customer")] + [c.name for c in customers]
+        completer = QCompleter(names, self)
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.customer_combo.setCompleter(completer)
 
     def add_product(self) -> None:
         """Add selected product to items grid."""

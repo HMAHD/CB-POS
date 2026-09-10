@@ -26,8 +26,14 @@ class _FakeConfigStore:
     def __init__(self, initial: dict):
         self._data = dict(initial)
 
-    def get(self, key, default=None):
-        return self._data.get(key, default)
+    def get(self, key):
+        # Real ConfigService.get() takes only `key` and falls back to
+        # DEFAULTS internally -- no `default` parameter. A more permissive
+        # mock here previously hid a real TypeError: production code called
+        # ConfigService.get("paper_width", "80mm") and crashed the app on
+        # launch, while this test's own get(key, default=None) silently
+        # accepted the extra argument and passed anyway.
+        return self._data.get(key)
 
     def get_all(self):
         return dict(self._data)

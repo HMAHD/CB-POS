@@ -1266,7 +1266,7 @@ class ReceiptPage(SettingsPage):
         # so it can't come from self.save() -- read the real saved value
         # directly. Without this the preview always rendered at a hardcoded
         # 80mm regardless of what the shop actually configured (#325).
-        self._preview.set_paper_width(ConfigService.get("paper_width", "80mm"))
+        self._preview.set_paper_width(ConfigService.get("paper_width"))
 
         commands = ReceiptBuilder.build_receipt(
             self._make_dummy_sale(),
@@ -1285,7 +1285,7 @@ class ReceiptPage(SettingsPage):
         """
         from cbpos.core.services.config_service import ConfigService
 
-        paper_width = ConfigService.get("paper_width", "80mm")
+        paper_width = ConfigService.get("paper_width")
         return 32 if paper_width == "58mm" else 42
 
     def _set_char_count_hint(self, label: QLabel, text: str) -> None:

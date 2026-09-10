@@ -26,8 +26,9 @@ class _FakeConfigStore:
     def __init__(self, initial: dict):
         self._data = dict(initial)
 
-    def get(self, key, default=None):
-        return self._data.get(key, default)
+    def get(self, key):
+        # Real ConfigService.get() takes only `key` -- no `default` param.
+        return self._data.get(key)
 
     def get_all(self):
         return dict(self._data)

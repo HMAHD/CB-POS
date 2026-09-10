@@ -628,6 +628,17 @@ class SalesView(QWidget):
             name_item.setToolTip(item["product"].name_en)
             name_item.setForeground(text_brush)
 
+            # Whole-row highlight if discounted (theme-aware) -- computed
+            # once so every cell on the line gets it, not just the name
+            # cell. A single tinted cell in an otherwise plain row read as
+            # half-finished rather than "this whole line is discounted" (#265).
+            is_discounted = item.get("discount_type") != "NONE" or item.get("is_manual_price")
+            row_bg_brush = None
+            if is_discounted:
+                bg_color = QColor(0, 50, 0) if is_dark else QColor(220, 255, 220)
+                row_bg_brush = QBrush(bg_color)
+                name_item.setBackground(row_bg_brush)
+
             # Price Display (Strikethrough if discounted/overridden)
             if item.get("original_price") and item["unit_price"] < item["original_price"]:
                 lbl_price = QLabel()
@@ -638,17 +649,16 @@ class SalesView(QWidget):
                 )
                 lbl_price.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 lbl_price.setProperty("class", "StrikethroughPrice")
+                if row_bg_brush is not None:
+                    lbl_price.setStyleSheet(f"background-color: {bg_color.name()};")
                 self.cart_table.setCellWidget(row, 1, lbl_price)
             else:
                 price_item = QTableWidgetItem(format_currency(item["unit_price"]))
                 price_item.setForeground(text_brush)
                 price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                if row_bg_brush is not None:
+                    price_item.setBackground(row_bg_brush)
                 self.cart_table.setItem(row, 1, price_item)
-
-            # Highlight if discounted (theme-aware)
-            if item.get("discount_type") != "NONE" or item.get("is_manual_price"):
-                bg_color = QColor(0, 50, 0) if is_dark else QColor(220, 255, 220)
-                name_item.setBackground(QBrush(bg_color))
 
             self.cart_table.setItem(row, 0, name_item)
 
@@ -665,6 +675,8 @@ class SalesView(QWidget):
             qty_item = QTableWidgetItem(qty_str)
             qty_item.setForeground(text_brush)
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            if row_bg_brush is not None:
+                qty_item.setBackground(row_bg_brush)
             self.cart_table.setItem(row, 2, qty_item)
 
             # Disc column
@@ -679,12 +691,16 @@ class SalesView(QWidget):
             disc_item = QTableWidgetItem(disc_text)
             disc_item.setForeground(text_brush)
             disc_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            if row_bg_brush is not None:
+                disc_item.setBackground(row_bg_brush)
             self.cart_table.setItem(row, 3, disc_item)
 
             # Total column
             total_item = QTableWidgetItem(format_currency(item["total"]))
             total_item.setForeground(text_brush)
             total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            if row_bg_brush is not None:
+                total_item.setBackground(row_bg_brush)
             self.cart_table.setItem(row, 4, total_item)
 
         totals = self.cart_service.get_totals()

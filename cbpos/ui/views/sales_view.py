@@ -679,7 +679,13 @@ class SalesView(QWidget):
 
             # Disc column
             disc_val = item.get("discount_value", Decimal("0.00"))
-            disc_text = f"{disc_val}%" if disc_val > 0 else "-"
+            disc_type = item.get("discount_type", "NONE")
+            if disc_val <= 0:
+                disc_text = "-"
+            elif disc_type == "FIXED":
+                disc_text = format_currency(disc_val)
+            else:
+                disc_text = f"{disc_val}%"
             disc_item = QTableWidgetItem(disc_text)
             disc_item.setForeground(text_brush)
             disc_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
@@ -1052,9 +1058,7 @@ class SalesView(QWidget):
             item = self.cart_service.items[row]
             dialog = QuantityDialog(item["product"], parent=self, initial_qty=item["qty"])
             if dialog.exec():
-                qty = dialog.get_quantity()
-                item["qty"] = qty
-                item["total"] = qty * item["unit_price"]
+                self.cart_service.update_quantity(row, dialog.get_quantity())
                 self.update_cart_display()
         self.barcode_input.setFocus()
 

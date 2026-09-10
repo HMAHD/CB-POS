@@ -2107,7 +2107,7 @@
     "products_loaded": "{count} products added to stock count.",
     "not_found_title": "Not Found",
     "product_not_found": "Product not found.",
-    "draft_saved": "Stock count saved as draft.",
+    "draft_saved": "This count is already saved automatically as you enter each item -- nothing more to do.",
     "finalized_title": "Finalized",
     "finalized_message": "Stock count {number} finalized.\nTotal variance: {variance}\n\nClick 'Approve & Apply' to adjust stock.",
     "confirm_approval_title": "Confirm Approval",

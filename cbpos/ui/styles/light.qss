@@ -2979,17 +2979,17 @@ QPushButton#CreditPrintBtn:hover, QPushButton#CreditEditBtn:hover {
 }
 
 QPushButton#CreditAdjustBtn, QPushButton#PayableAdjustBtn {
-    background-color: #FFF3CD;
-    color: #856404;
+    background-color: #F8F9FA;
+    color: #495057;
     padding: 8px 16px;
     border-radius: 6px;
-    border: 1px solid #FFE69C;
+    border: 1px solid #CED4DA;
     font-size: 13px;
 }
 
 QPushButton#CreditAdjustBtn:hover, QPushButton#PayableAdjustBtn:hover {
-    background-color: #FFECB5;
-    border-color: #FFD666;
+    border-color: #0D6EFD;
+    color: #0D6EFD;
 }
 
 QLabel#CreditFilterLabel, QLabel#PayableFilterLabel {

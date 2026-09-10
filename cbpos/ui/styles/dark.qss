@@ -3095,17 +3095,17 @@ QPushButton#CreditPrintBtn:hover {
 }
 
 QPushButton#CreditAdjustBtn, QPushButton#PayableAdjustBtn {
-    background-color: #332800;
-    color: #FFDC00;
+    background-color: #003366;
+    color: #E0E0E0;
     padding: 8px 16px;
     border-radius: 6px;
-    border: 1px solid #554400;
+    border: 1px solid #2D2D30;
     font-size: 13px;
 }
 
 QPushButton#CreditAdjustBtn:hover, QPushButton#PayableAdjustBtn:hover {
-    background-color: #443600;
-    border-color: #FFDC00;
+    border-color: #00BCEB;
+    color: #00BCEB;
 }
 
 QPushButton#CreditEditBtn {

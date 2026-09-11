@@ -520,7 +520,8 @@
     "loyalty_points": "Points: {points}",
     "customer_title": "පාරිභෝගික",
     "walk_in_customer": "ගමන් මාර්ග පාරිභෝගික",
-    "points": "ලකුණු: {points}"
+    "points": "{points} ලකුණු",
+    "clear_customer": "Clear customer (reset to Walk-in)"
   },
   "management": {
     "sidebar_dashboard": "උපකරණ පුවරුව",

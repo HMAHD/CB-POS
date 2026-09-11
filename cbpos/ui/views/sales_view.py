@@ -140,7 +140,11 @@ class SalesView(QWidget):
         self.container_left = QWidget()
         self.container_left.setMinimumWidth(400)
         left_layout = QVBoxLayout(self.container_left)
-        left_layout.setContentsMargins(10, 10, 10, 10)
+        # Extra bottom margin: the totals row below can grow up to 4 lines
+        # tall (item count/subtotal/discount/tax+exempt) plus the 48px
+        # grand-total text, and a bare 10px left it sitting uncomfortably
+        # close to the window's bottom edge on compact POS-hardware screens.
+        left_layout.setContentsMargins(10, 10, 10, 16)
         left_layout.setSpacing(10)
 
         # 1. Search Bar (Top)
@@ -267,8 +271,14 @@ class SalesView(QWidget):
         total_layout = QHBoxLayout(total_widget)
         total_layout.setContentsMargins(20, 10, 20, 10)
 
-        # Subtotals (Left)
+        # Subtotals (Left). With all 5 possible lines visible (item count,
+        # subtotal, discount, tax, exempt) this column could grow tall
+        # enough to sit uncomfortably close to the window's bottom edge on
+        # a compact POS-hardware screen -- tighter spacing plus sharing the
+        # tax/exempt line (they're the same breakdown anyway) keeps the
+        # worst case to 4 lines instead of 5.
         subtotal_layout = QVBoxLayout()
+        subtotal_layout.setSpacing(2)
         self.lbl_item_count = QLabel("")
         self.lbl_item_count.setObjectName("ItemCountLabel")
         self.lbl_subtotal = QLabel("")
@@ -283,8 +293,14 @@ class SalesView(QWidget):
         subtotal_layout.addWidget(self.lbl_item_count)
         subtotal_layout.addWidget(self.lbl_subtotal)
         subtotal_layout.addWidget(self.lbl_discount)
-        subtotal_layout.addWidget(self.lbl_tax)
-        subtotal_layout.addWidget(self.lbl_exempt)
+
+        tax_row = QHBoxLayout()
+        tax_row.setSpacing(12)
+        tax_row.addWidget(self.lbl_tax)
+        tax_row.addWidget(self.lbl_exempt)
+        tax_row.addStretch()
+        subtotal_layout.addLayout(tax_row)
+
         total_layout.addLayout(subtotal_layout)
 
         total_layout.addStretch()
@@ -307,6 +323,7 @@ class SalesView(QWidget):
 
         # Connect Action Panel Signals
         self.action_panel.customer_clicked.connect(self.select_customer)
+        self.action_panel.customer_cleared.connect(self.clear_customer)
         self.action_panel.pay_clicked.connect(self.process_payment)
 
         self.action_panel.action_f2.connect(self.select_customer)
@@ -791,9 +808,11 @@ class SalesView(QWidget):
     def set_customer(self, customer):
         self.customer = customer
         self.action_panel.set_customer_info(self.customer.name, self.customer.phone, self.customer.loyalty_points)
-
-        # Trigger price recalculation if needed (Phase 2)
-        # self.cart_service.recalculate_prices(customer.price_list_id)
+        # CartService tracks its own customer for pricing (customer-specific
+        # price lists), independently of this view's own display state --
+        # without this, selecting a customer here never actually applied
+        # their pricing to items added afterward.
+        self.cart_service.set_customer(customer)
 
     def show_customer_menu(self, pos):
         menu = QMenu(self)
@@ -821,6 +840,7 @@ class SalesView(QWidget):
     def clear_customer(self):
         self.customer = None
         self.action_panel.clear_customer_info()
+        self.cart_service.set_customer(None)
 
     def process_payment(self):
         if getattr(self, "_processing", False):
@@ -869,6 +889,11 @@ class SalesView(QWidget):
         held_id = SuspendedTransactionService.hold_bill(self.cart_service)
         if held_id:
             self.cart_service.clear()
+            # The held bill's own customer was already saved with it
+            # (restored on recall) -- clear the display here so the next
+            # cart starts on Walk-in Customer instead of visually keeping
+            # whoever was selected for the bill just put away.
+            self.clear_customer()
             self.update_cart_display()
             self.order_bar.refresh_tabs()
             QMessageBox.information(self, _t("orders.held_title"), _t("orders.held_message", id=held_id))
@@ -884,6 +909,15 @@ class SalesView(QWidget):
             return
 
         if SuspendedTransactionService.recall_bill(suspended.id, self.cart_service):
+            # recall_bill() already restored (or cleared) the customer on
+            # cart_service itself -- sync this view's own display state
+            # (the action panel, self.customer) to match.
+            recalled_customer = self.cart_service.get_customer()
+            if recalled_customer:
+                self.set_customer(recalled_customer)
+            else:
+                self.clear_customer()
+
             self.order_bar.set_active_bill(suspended.id)
             self.update_cart_display()
             self.order_bar.refresh_tabs()
@@ -917,6 +951,7 @@ class SalesView(QWidget):
         if reply == QMessageBox.StandardButton.Yes:
             item_count = len(self.cart_service.items)
             self.cart_service.clear()
+            self.clear_customer()
             self.update_cart_display()
             LoggingService.log_action(
                 user_id=authorized_user.id,

@@ -192,8 +192,13 @@ class MainWindow(QMainWindow):
         """Handle proforma-to-sale conversion by loading items into the SalesView cart."""
         from decimal import Decimal
 
-        # Clear existing cart
+        # Clear existing cart and customer -- routed through the view's own
+        # clear_customer() (not cart_service directly) so the action panel
+        # display and self.customer stay in sync with cart_service instead
+        # of silently keeping whatever customer was selected before this
+        # conversion started.
         self.sales_view.cart_service.clear()
+        self.sales_view.clear_customer()
 
         # Load proforma items into cart
         for item in cart_data.get("items", []):
@@ -202,13 +207,17 @@ class MainWindow(QMainWindow):
             if product:
                 self.sales_view.cart_service.add_item(product, qty)
 
-        # Set customer if specified
+        # Set customer if specified -- via the view's own set_customer() so
+        # the action panel actually shows who the proforma was for, instead
+        # of the customer being attached to cart_service (for pricing) while
+        # the display and self.customer (used for the resulting Sale's own
+        # customer_id) stayed on Walk-in.
         if cart_data.get("customer_id"):
             from cbpos.core.services.customer_service import CustomerService
 
             customer = CustomerService().get_customer(cart_data["customer_id"])
             if customer:
-                self.sales_view.cart_service.set_customer(customer)
+                self.sales_view.set_customer(customer)
 
         # Store proforma_id for marking as converted after sale completes
         self.sales_view._pending_proforma_id = cart_data.get("proforma_id")

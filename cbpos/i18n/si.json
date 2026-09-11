@@ -1063,6 +1063,7 @@
     "form_open_drawer": "Open Drawer:",
     "chk_is_cash": "This is a cash-type method",
     "chk_open_drawer": "Open cash drawer on payment",
+    "form_hint": "Set a keyboard shortcut and drawer-open behavior for faster checkout -- available for any payment method, not just Cash.",
     "tag_cash": "මුදල්",
     "tag_opens_drawer": "මුදල් පෙට්ටිය විවෘත කරයි",
     "status_active": "සක්‍රීය",

@@ -1092,6 +1092,7 @@
     "form_open_drawer": "Open Drawer:",
     "chk_is_cash": "This is a cash-type method",
     "chk_open_drawer": "Open cash drawer on payment",
+    "form_hint": "Set a keyboard shortcut and drawer-open behavior for faster checkout -- available for any payment method, not just Cash.",
     "tag_cash": "Cash",
     "tag_opens_drawer": "Opens Drawer",
     "status_active": "Active",

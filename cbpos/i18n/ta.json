@@ -938,7 +938,11 @@
     "logs_clear_title": "Clear Logs",
     "logs_clear_msg": "This will delete all log entries.\n\nContinue?",
     "logs_clear_error": "Could not clear logs:\n{error}",
-    "db_btn_refresh": "Refresh"
+    "db_btn_refresh": "Refresh",
+    "db_btn_check_integrity": "Check Integrity",
+    "db_integrity_checking": "Checking...",
+    "db_integrity_passed": "Database integrity check passed. No corruption detected.",
+    "db_integrity_failed": "Integrity check found a problem: {message}"
   },
   "data_safety": {
     "title": "Data Safety",

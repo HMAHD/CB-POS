@@ -172,13 +172,24 @@ class AdminToolsView(QWidget):
 
         layout.addWidget(self.grp_tables, 1)
 
-        # Refresh button
+        # Refresh / Integrity Check buttons
         btn_layout = QHBoxLayout()
         self.btn_db_refresh = QPushButton()
         self.btn_db_refresh.setProperty("class", "accent")
         self.btn_db_refresh.setFixedWidth(120)
         self.btn_db_refresh.clicked.connect(self._load_db_info)
         btn_layout.addWidget(self.btn_db_refresh)
+
+        self.btn_check_integrity = QPushButton()
+        self.btn_check_integrity.setProperty("class", "accent")
+        self.btn_check_integrity.setFixedWidth(180)
+        self.btn_check_integrity.clicked.connect(self._check_integrity)
+        btn_layout.addWidget(self.btn_check_integrity)
+
+        self.lbl_integrity_status = QLabel("")
+        self.lbl_integrity_status.setWordWrap(True)
+        btn_layout.addWidget(self.lbl_integrity_status, 1)
+
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
 
@@ -202,6 +213,35 @@ class AdminToolsView(QWidget):
                 self.table_counts.setItem(row, 1, rows_item)
         except Exception as e:
             logger.warning("Could not load full DB info: %s", e)
+
+    def _check_integrity(self) -> None:
+        """Run PRAGMA integrity_check in a background thread.
+
+        Reuses the same IntegrityCheckWorker already wired up on the
+        Data Safety screen's Maintenance section, rather than
+        duplicating it -- only the call site here was missing (#344).
+        """
+        self.btn_check_integrity.setEnabled(False)
+        self.btn_check_integrity.setText(_t("admin_tools.db_integrity_checking"))
+        self.lbl_integrity_status.setText("")
+
+        from cbpos.ui.workers import IntegrityCheckWorker
+
+        self._integrity_worker = IntegrityCheckWorker()
+        self._integrity_worker.finished.connect(self._on_integrity_check_finished)
+        self._integrity_worker.start()
+
+    def _on_integrity_check_finished(self, ok: bool, message: str) -> None:
+        self.btn_check_integrity.setEnabled(True)
+        self.btn_check_integrity.setText(_t("admin_tools.db_btn_check_integrity"))
+        if ok:
+            self.lbl_integrity_status.setProperty("class", "credit")
+            self.lbl_integrity_status.setText(_t("admin_tools.db_integrity_passed"))
+        else:
+            self.lbl_integrity_status.setProperty("class", "debit")
+            self.lbl_integrity_status.setText(_t("admin_tools.db_integrity_failed", message=message))
+        self.lbl_integrity_status.style().unpolish(self.lbl_integrity_status)
+        self.lbl_integrity_status.style().polish(self.lbl_integrity_status)
 
     # ── Error Logs Tab ───────────────────────────────────────────────────
 
@@ -717,6 +757,7 @@ class AdminToolsView(QWidget):
         self.lbl_db_size_label.setText(_t("admin_tools.db_size"))
         self.lbl_db_modified_label.setText(_t("admin_tools.db_last_modified"))
         self.lbl_sqlite_version_label.setText(_t("admin_tools.db_sqlite_version"))
+        self.btn_check_integrity.setText(_t("admin_tools.db_btn_check_integrity"))
         self.grp_tables.setTitle(_t("admin_tools.db_group_table_counts"))
         self.table_counts.setHorizontalHeaderLabels(
             [_t("admin_tools.db_header_table"), _t("admin_tools.db_header_rows")]

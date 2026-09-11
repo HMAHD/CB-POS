@@ -789,9 +789,11 @@ class SalesView(QWidget):
     def set_customer(self, customer):
         self.customer = customer
         self.action_panel.set_customer_info(self.customer.name, self.customer.phone, self.customer.loyalty_points)
-
-        # Trigger price recalculation if needed (Phase 2)
-        # self.cart_service.recalculate_prices(customer.price_list_id)
+        # CartService tracks its own customer for pricing (customer-specific
+        # price lists), independently of this view's own display state --
+        # without this, selecting a customer here never actually applied
+        # their pricing to items added afterward.
+        self.cart_service.set_customer(customer)
 
     def show_customer_menu(self, pos):
         menu = QMenu(self)
@@ -819,6 +821,7 @@ class SalesView(QWidget):
     def clear_customer(self):
         self.customer = None
         self.action_panel.clear_customer_info()
+        self.cart_service.set_customer(None)
 
     def process_payment(self):
         if getattr(self, "_processing", False):
@@ -867,6 +870,11 @@ class SalesView(QWidget):
         held_id = SuspendedTransactionService.hold_bill(self.cart_service)
         if held_id:
             self.cart_service.clear()
+            # The held bill's own customer was already saved with it
+            # (restored on recall) -- clear the display here so the next
+            # cart starts on Walk-in Customer instead of visually keeping
+            # whoever was selected for the bill just put away.
+            self.clear_customer()
             self.update_cart_display()
             self.order_bar.refresh_tabs()
             QMessageBox.information(self, _t("orders.held_title"), _t("orders.held_message", id=held_id))
@@ -882,6 +890,15 @@ class SalesView(QWidget):
             return
 
         if SuspendedTransactionService.recall_bill(suspended.id, self.cart_service):
+            # recall_bill() already restored (or cleared) the customer on
+            # cart_service itself -- sync this view's own display state
+            # (the action panel, self.customer) to match.
+            recalled_customer = self.cart_service.get_customer()
+            if recalled_customer:
+                self.set_customer(recalled_customer)
+            else:
+                self.clear_customer()
+
             self.order_bar.set_active_bill(suspended.id)
             self.update_cart_display()
             self.order_bar.refresh_tabs()
@@ -915,6 +932,7 @@ class SalesView(QWidget):
         if reply == QMessageBox.StandardButton.Yes:
             item_count = len(self.cart_service.items)
             self.cart_service.clear()
+            self.clear_customer()
             self.update_cart_display()
             LoggingService.log_action(
                 user_id=authorized_user.id,

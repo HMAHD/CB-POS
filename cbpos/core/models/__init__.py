@@ -506,6 +506,9 @@ class SuspendedTransaction(Base):
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     data: Mapped[str] = mapped_column(String, nullable=False)  # JSON string of cart items
     note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    customer_id: Mapped[Optional[int]] = mapped_column(ForeignKey("customers.id"), nullable=True, index=True)
+
+    customer: Mapped[Optional["Customer"]] = relationship()
 
 
 class CustomerPayment(Base):

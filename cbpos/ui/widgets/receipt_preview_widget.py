@@ -205,6 +205,15 @@ class ReceiptPreviewWidget(QWidget):
                     "padding:0 %dpx 4px;font-size:9px;color:#000;"
                     "%s'>%s</div>" % (p, _FONT, escape(val))
                 )
+                # This rendering is decorative bars derived from a hash of
+                # the value, not a real barcode encoding -- it can never be
+                # scanned, so nothing here validates real print quality
+                # (#329).
+                parts.append(
+                    "<div align='center' style='text-align:center;"
+                    "padding:0 %dpx 6px;font-size:8px;color:#999;"
+                    "font-style:italic;%s'>%s</div>" % (p, _FONT, escape(_t("receipt_preview.barcode_not_scannable")))
+                )
 
         elif ctype == "feed":
             lines = cmd.get("lines", 1)

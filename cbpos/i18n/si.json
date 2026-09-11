@@ -1813,7 +1813,8 @@
     "create_failed": "Failed to create proforma invoice."
   },
   "receipt_preview": {
-    "title": "Receipt Preview"
+    "title": "Receipt Preview",
+    "barcode_not_scannable": "Preview only — not a real, scannable barcode"
   },
   "receipt_reprint": {
     "title": "රිසිට්පත නැවත මුද්‍රණය",

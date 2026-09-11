@@ -938,6 +938,7 @@
     "hw_receipt_printer": "Receipt Printer:",
     "hw_a4_printer": "A4 Printer:",
     "hw_paper_width": "Paper Width:",
+    "hw_config_hint": "This is a read-only summary. To change printer selection or paper width, go to Settings → Hardware.",
     "hw_group_receipt_test": "Receipt Printer Test",
     "hw_receipt_desc": "Send a test page to the configured receipt printer to verify connectivity.",
     "hw_btn_test_printer": "Print Test Page",

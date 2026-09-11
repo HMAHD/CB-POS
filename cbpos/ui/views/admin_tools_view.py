@@ -480,6 +480,15 @@ class AdminToolsView(QWidget):
 
         layout.addWidget(self.grp_config)
 
+        # This tab only ever displays and tests hardware -- printer
+        # selection and paper width can only actually be changed on the
+        # main Hardware settings page, which isn't obvious from this
+        # screen alone (#343).
+        self.lbl_hw_config_hint = QLabel()
+        self.lbl_hw_config_hint.setProperty("class", "muted")
+        self.lbl_hw_config_hint.setWordWrap(True)
+        layout.addWidget(self.lbl_hw_config_hint)
+
         # Receipt Printer Test group
         self.grp_printer = QGroupBox()
         printer_layout = QVBoxLayout(self.grp_printer)
@@ -739,6 +748,7 @@ class AdminToolsView(QWidget):
         self.lbl_hw_receipt_label.setText(_t("admin_tools.hw_receipt_printer"))
         self.lbl_hw_a4_label.setText(_t("admin_tools.hw_a4_printer"))
         self.lbl_hw_paper_label.setText(_t("admin_tools.hw_paper_width"))
+        self.lbl_hw_config_hint.setText(_t("admin_tools.hw_config_hint"))
         self.grp_printer.setTitle(_t("admin_tools.hw_group_receipt_test"))
         self.lbl_printer_desc.setText(_t("admin_tools.hw_receipt_desc"))
         self.btn_test_printer.setText(_t("admin_tools.hw_btn_test_printer"))

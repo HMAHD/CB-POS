@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.widgets.elided_label import ElidedLabel
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 _BTN_H = 70
@@ -113,6 +114,7 @@ class ActionPanel(QWidget):
     """Right-side control panel for Sales View."""
 
     customer_clicked = pyqtSignal()
+    customer_cleared = pyqtSignal()
     pay_clicked = pyqtSignal()
 
     action_f2 = pyqtSignal()
@@ -128,6 +130,7 @@ class ActionPanel(QWidget):
         super().__init__(parent)
         self._section_labels: list[SectionLabel] = []
         self._action_btns: list[ActionBtn] = []
+        self._has_customer = False
         self.init_ui()
 
         self.retranslate_ui()
@@ -157,29 +160,47 @@ class ActionPanel(QWidget):
         # Customer icon
         self.lbl_cust_icon = QLabel()
         self.lbl_cust_icon.setFixedSize(32, 32)
-        self.lbl_cust_icon.setPixmap(Icons.get("fa5s.user-circle", "#00BCEB").pixmap(28, 28))
+        self.lbl_cust_icon.setPixmap(Icons.get(Icons.CUSTOMER, "#00BCEB").pixmap(28, 28))
         self.lbl_cust_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_cust_icon.setStyleSheet("background: transparent;")
         cust_layout.addWidget(self.lbl_cust_icon)
 
-        # Customer info (name + subtitle)
+        # Customer info (name + subtitle). ElidedLabel keeps a long name
+        # from silently overflowing past the card's edge with no visual
+        # indication or way to read the rest -- the full string stays
+        # available as a tooltip and via .text().
         cust_info = QVBoxLayout()
         cust_info.setSpacing(0)
         self.lbl_cust_title = QLabel()
         self.lbl_cust_title.setObjectName("CustTitle")
         cust_info.addWidget(self.lbl_cust_title)
-        self.lbl_customer = QLabel()
+        self.lbl_customer = ElidedLabel()
         self.lbl_customer.setObjectName("CustomerLabel")
         cust_info.addWidget(self.lbl_customer)
-        cust_layout.addLayout(cust_info)
-
-        cust_layout.addStretch()
+        # Give the name/phone column priority over the fixed-width Select
+        # button when the panel is at its narrow end (280px) -- without a
+        # stretch factor here, addStretch() below claimed all the slack
+        # and this column only ever got its bare minimum width.
+        cust_layout.addLayout(cust_info, 1)
 
         self.btn_cust_select = QPushButton()
         self.btn_cust_select.setObjectName("BtnCustomerSelect")
         self.btn_cust_select.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_cust_select.clicked.connect(self.customer_clicked.emit)
         cust_layout.addWidget(self.btn_cust_select)
+
+        # Manual reset to Walk-in Customer -- previously only reachable
+        # through a right-click context menu on the name, easy to miss.
+        # Only visible once a real customer is actually selected.
+        self.btn_cust_clear = QPushButton()
+        self.btn_cust_clear.setObjectName("BtnCustomerClear")
+        self.btn_cust_clear.setIcon(Icons.get("fa5s.user-slash", "#888888"))
+        self.btn_cust_clear.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_cust_clear.setFixedSize(28, 28)
+        self.btn_cust_clear.setToolTip(_t("action_panel.clear_customer"))
+        self.btn_cust_clear.clicked.connect(self.customer_cleared.emit)
+        self.btn_cust_clear.setVisible(False)
+        cust_layout.addWidget(self.btn_cust_clear)
 
         customer_frame_layout.addLayout(cust_layout)
 
@@ -195,9 +216,16 @@ class ActionPanel(QWidget):
         self.points_row = QWidget()
         points_row_layout = QHBoxLayout(self.points_row)
         points_row_layout.setContentsMargins(0, 6, 0, 0)
+        points_row_layout.setSpacing(6)
         # Indent to line up under the name, not under the icon above it
         # (icon width 32px + the row's own 10px spacing).
         points_row_layout.addSpacing(42)
+
+        self.lbl_points_icon = QLabel()
+        self.lbl_points_icon.setPixmap(Icons.get(Icons.POINTS, "#FFDC00").pixmap(12, 12))
+        self.lbl_points_icon.setStyleSheet("background: transparent;")
+        points_row_layout.addWidget(self.lbl_points_icon)
+
         self.lbl_points = QLabel("")
         self.lbl_points.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self.lbl_points.setObjectName("PointsLabel")
@@ -291,8 +319,14 @@ class ActionPanel(QWidget):
     def retranslate_ui(self) -> None:
         """Update all translatable widget text (called on language change)."""
         self.lbl_cust_title.setText(_t("action_panel.customer_title"))
-        self.lbl_customer.setText(_t("action_panel.walk_in_customer"))
+        # A language switch used to always overwrite the name field with
+        # "Walk-in Customer," even while a real customer was selected --
+        # only re-apply the placeholder text when there's genuinely no
+        # customer selected right now.
+        if not self._has_customer:
+            self.lbl_customer.setText(_t("action_panel.walk_in_customer"))
         self.btn_cust_select.setText(_t("action_panel.select_customer"))
+        self.btn_cust_clear.setToolTip(_t("action_panel.clear_customer"))
         self.btn_pay.setText(_t("action_panel.btn_pay"))
 
         for lbl in self._section_labels:
@@ -302,13 +336,17 @@ class ActionPanel(QWidget):
             btn.retranslate()
 
     def set_customer_info(self, name, phone, points):
+        self._has_customer = True
         self.lbl_customer.setText(f"{name} ({phone})")
         self.lbl_points.setText(_t("action_panel.points", points=points))
         self.points_divider.setVisible(True)
         self.points_row.setVisible(True)
+        self.btn_cust_clear.setVisible(True)
 
     def clear_customer_info(self):
+        self._has_customer = False
         self.lbl_customer.setText(_t("action_panel.walk_in_customer"))
         self.lbl_points.setText("")
         self.points_divider.setVisible(False)
         self.points_row.setVisible(False)
+        self.btn_cust_clear.setVisible(False)

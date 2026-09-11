@@ -520,7 +520,8 @@
     "loyalty_points": "Points: {points}",
     "customer_title": "Customer",
     "walk_in_customer": "Walk-in Customer",
-    "points": "Points: {points}"
+    "points": "{points} pts",
+    "clear_customer": "Clear customer (reset to Walk-in)"
   },
   "management": {
     "sidebar_dashboard": "Dashboard",

@@ -139,7 +139,11 @@ class SalesView(QWidget):
         self.container_left = QWidget()
         self.container_left.setMinimumWidth(400)
         left_layout = QVBoxLayout(self.container_left)
-        left_layout.setContentsMargins(10, 10, 10, 10)
+        # Extra bottom margin: the totals row below can grow up to 4 lines
+        # tall (item count/subtotal/discount/tax+exempt) plus the 48px
+        # grand-total text, and a bare 10px left it sitting uncomfortably
+        # close to the window's bottom edge on compact POS-hardware screens.
+        left_layout.setContentsMargins(10, 10, 10, 16)
         left_layout.setSpacing(10)
 
         # 1. Search Bar (Top)
@@ -265,8 +269,14 @@ class SalesView(QWidget):
         total_layout = QHBoxLayout(total_widget)
         total_layout.setContentsMargins(20, 10, 20, 10)
 
-        # Subtotals (Left)
+        # Subtotals (Left). With all 5 possible lines visible (item count,
+        # subtotal, discount, tax, exempt) this column could grow tall
+        # enough to sit uncomfortably close to the window's bottom edge on
+        # a compact POS-hardware screen -- tighter spacing plus sharing the
+        # tax/exempt line (they're the same breakdown anyway) keeps the
+        # worst case to 4 lines instead of 5.
         subtotal_layout = QVBoxLayout()
+        subtotal_layout.setSpacing(2)
         self.lbl_item_count = QLabel("")
         self.lbl_item_count.setObjectName("ItemCountLabel")
         self.lbl_subtotal = QLabel("")
@@ -281,8 +291,14 @@ class SalesView(QWidget):
         subtotal_layout.addWidget(self.lbl_item_count)
         subtotal_layout.addWidget(self.lbl_subtotal)
         subtotal_layout.addWidget(self.lbl_discount)
-        subtotal_layout.addWidget(self.lbl_tax)
-        subtotal_layout.addWidget(self.lbl_exempt)
+
+        tax_row = QHBoxLayout()
+        tax_row.setSpacing(12)
+        tax_row.addWidget(self.lbl_tax)
+        tax_row.addWidget(self.lbl_exempt)
+        tax_row.addStretch()
+        subtotal_layout.addLayout(tax_row)
+
         total_layout.addLayout(subtotal_layout)
 
         total_layout.addStretch()
@@ -305,6 +321,7 @@ class SalesView(QWidget):
 
         # Connect Action Panel Signals
         self.action_panel.customer_clicked.connect(self.select_customer)
+        self.action_panel.customer_cleared.connect(self.clear_customer)
         self.action_panel.pay_clicked.connect(self.process_payment)
 
         self.action_panel.action_f2.connect(self.select_customer)

@@ -520,7 +520,8 @@
     "loyalty_points": "Points: {points}",
     "customer_title": "வாடிக்கையாளர்",
     "walk_in_customer": "நடந்துவரும் வாடிக்கையாளர்",
-    "points": "புள்ளிகள்: {points}"
+    "points": "{points} புள்ளிகள்",
+    "clear_customer": "Clear customer (reset to Walk-in)"
   },
   "management": {
     "sidebar_dashboard": "முகப்பு பலகை",

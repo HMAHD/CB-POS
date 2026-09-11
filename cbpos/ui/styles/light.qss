@@ -880,6 +880,27 @@ QLabel#EmptyCartLabel, QLabel#EmptyTableLabel {
     padding: 40px;
 }
 
+/* EmptyStateWidget's own layout already centers and spaces its icon/
+   title/subtitle, so these carry no padding of their own (unlike the
+   plain-label overlays above, which relied on padding to keep text off
+   the container's edges). */
+QLabel#EmptyStateIcon {
+    background: transparent;
+}
+
+QLabel#EmptyStateTitle {
+    color: #AAAAAA;
+    font-size: 16px;
+    background: transparent;
+}
+
+QLabel#EmptyStateSubtitle {
+    color: #6C757D;
+    font-size: 13px;
+    background: transparent;
+    padding: 0 40px;
+}
+
 /* ===== 5. SEARCH BAR & FILTER BUTTONS ===== */
 QWidget#SearchWidget {
     background-color: transparent;
@@ -2686,33 +2707,6 @@ QPushButton#ReportNavItem:checked {
 #RunReportBtn:disabled {
     background-color: #E9ECEF;
     color: #ADB5BD;
-}
-
-/* ── Empty State ── */
-#ReportEmptyState {
-    background-color: #F8F9FA;
-}
-
-#ReportEmptyIcon {
-    color: #CED4DA;
-    font-size: 56px;
-    background: transparent;
-    padding-bottom: 4px;
-}
-
-#ReportEmptyText {
-    color: #6C757D;
-    font-size: 20px;
-    font-weight: bold;
-    background: transparent;
-    padding-top: 12px;
-}
-
-#ReportEmptySubtext {
-    color: #ADB5BD;
-    font-size: 14px;
-    background: transparent;
-    padding-top: 4px;
 }
 
 /* ── Data Table ── */

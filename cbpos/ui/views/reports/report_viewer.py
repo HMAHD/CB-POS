@@ -14,8 +14,7 @@ from PyQt6.QtWidgets import (
     QFrame,
     QSizePolicy,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QRectF
-from PyQt6.QtGui import QPainter, QPen
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 import pandas as pd
 
 from cbpos.core.reports.registry import ReportRegistry
@@ -25,6 +24,8 @@ from cbpos.ui.views.reports.pandas_model import PandasModel
 from cbpos.ui.workers import ExportWorker
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
+from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
+from cbpos.ui.resources.icons import Icons
 from cbpos.core.services.tax_service import TaxService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
@@ -50,49 +51,6 @@ class ReportWorker(QThread):
             self.error.emit(str(e))
 
 
-class _ReportPlaceholderIcon(QWidget):
-    """Painted bar-chart icon for the empty state."""
-
-    _SIZE = 64
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.setFixedSize(self._SIZE, self._SIZE)
-        self.setObjectName("ReportEmptyIcon")
-
-    def paintEvent(self, event) -> None:  # noqa: N802
-        p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        # Use palette foreground so the icon adapts to dark/light theme
-        theme_color = self.palette().color(self.foregroundRole())
-        theme_color.setAlpha(120)
-        bar_color = theme_color
-        line_color = theme_color
-
-        s = self._SIZE
-        margin = 8
-        base_y = s - margin
-        bar_w = 8
-        gap = 6
-        bars = [0.35, 0.6, 0.45, 0.85, 0.55]
-        max_h = s - margin * 2 - 4
-
-        p.setPen(QPen(line_color, 1.5))
-        p.drawLine(margin, base_y, s - margin, base_y)
-
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(bar_color)
-        total_w = len(bars) * bar_w + (len(bars) - 1) * gap
-        x_start = (s - total_w) / 2
-        for i, ratio in enumerate(bars):
-            bh = max_h * ratio
-            x = x_start + i * (bar_w + gap)
-            p.drawRoundedRect(QRectF(x, base_y - bh, bar_w, bh), 2, 2)
-
-        p.end()
-
-
 class ReportViewer(QWidget):
     def __init__(self):
         super().__init__()
@@ -112,7 +70,6 @@ class ReportViewer(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
 
         from cbpos.ui.widgets.page_header import PageHeader
-        from cbpos.ui.resources.icons import Icons
 
         self._page_header = PageHeader(icon_name=Icons.REPORTS)
         header_row = QHBoxLayout()
@@ -203,29 +160,10 @@ class ReportViewer(QWidget):
         self.content_stack = QStackedWidget()
         self.content_stack.setObjectName("ReportContentStack")
 
-        # Page 0: Empty State
-        empty_state = QWidget()
-        empty_state.setObjectName("ReportEmptyState")
-        empty_layout = QVBoxLayout(empty_state)
-        empty_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        icon_container = QHBoxLayout()
-        icon_container.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        empty_icon = _ReportPlaceholderIcon()
-        icon_container.addWidget(empty_icon)
-        empty_layout.addLayout(icon_container)
-
-        self.empty_text = QLabel("")
-        self.empty_text.setObjectName("ReportEmptyText")
-        self.empty_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        empty_layout.addWidget(self.empty_text)
-
-        self.empty_subtext = QLabel("")
-        self.empty_subtext.setObjectName("ReportEmptySubtext")
-        self.empty_subtext.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        empty_layout.addWidget(self.empty_subtext)
-
-        self.content_stack.addWidget(empty_state)
+        # Page 0: Empty State -- the shared EmptyStateWidget (#254) instead
+        # of this screen's own custom-painted icon + label pair.
+        self.empty_state_widget = EmptyStateWidget(Icons.REPORTS)
+        self.content_stack.addWidget(self.empty_state_widget)
 
         # Page 1: Data Table
         self.table_view = QTableView()
@@ -321,8 +259,8 @@ class ReportViewer(QWidget):
         self._page_header.set_title(_t("management.sidebar_reports"))
         self.sidebar_title.setText(_t("report_viewer.sidebar_title"))
         self.btn_run.setText(_t("report_viewer.btn_run"))
-        self.empty_text.setText(_t("report_viewer.empty_title"))
-        self.empty_subtext.setText(_t("report_viewer.empty_subtitle"))
+        self.empty_state_widget.set_title(_t("report_viewer.empty_title"))
+        self.empty_state_widget.set_subtitle(_t("report_viewer.empty_subtitle"))
         self.btn_print.setText(_t("common.print"))
         self.btn_export_excel.setText(_t("report_viewer.btn_excel"))
         self.btn_export_pdf.setText(_t("report_viewer.btn_pdf"))

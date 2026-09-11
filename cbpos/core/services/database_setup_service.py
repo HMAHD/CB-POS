@@ -146,8 +146,8 @@ class DatabaseSetupService:
 
             # 5. Payment methods
             payment_methods = [
-                PaymentMethod(name="Cash", is_cash=True, open_drawer=True, is_active=True),
-                PaymentMethod(name="Card", is_active=True),
+                PaymentMethod(name="Cash", is_cash=True, open_drawer=True, is_active=True, shortcut="F12"),
+                PaymentMethod(name="Card", is_active=True, shortcut="F11"),
                 PaymentMethod(name="Credit", is_active=True),
                 PaymentMethod(name="QR/Mobile", is_active=True),
                 PaymentMethod(name="Cheque", is_active=True),

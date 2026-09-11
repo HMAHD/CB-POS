@@ -22,13 +22,14 @@ from PyQt6.QtWidgets import (
     QDialog,
     QTabWidget,
 )
-from PyQt6.QtCore import Qt, QTime, QSize
-from PyQt6.QtGui import QIcon, QIntValidator
+from PyQt6.QtCore import Qt, QTime
+from PyQt6.QtGui import QIntValidator
 from PyQt6.QtPrintSupport import QPrinterInfo
 from sqlalchemy.engine import URL
 from cbpos.core.services.language_service import LanguageService
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.widgets.help_icon_button import HelpIconButton
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.models import Sale, SaleItem, SalePayment, Product
 from cbpos.config import Config
@@ -236,14 +237,7 @@ class ShopInfoPage(SettingsPage):
         self.btn_gmail.clicked.connect(self._prefill_gmail)
         email_btn_row.addWidget(self.btn_gmail)
 
-        self.btn_help = QPushButton()
-        info_icon_path = str(Config.BASE_DIR / "cbpos" / "assets" / "icons" / "info-circle-cyan.svg")
-        self.btn_help.setIcon(QIcon(info_icon_path))
-        self.btn_help.setIconSize(QSize(24, 24))
-        self.btn_help.setFixedSize(28, 28)
-        self.btn_help.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_help.setObjectName("BtnInfoIcon")
-        self.btn_help.clicked.connect(self._show_smtp_guide)
+        self.btn_help = HelpIconButton(on_click=self._show_smtp_guide)
         email_btn_row.addWidget(self.btn_help)
 
         self._form_email.addRow(email_btn_row)
@@ -559,13 +553,20 @@ class SalesTaxPage(SettingsPage):
         self._lbl_sscl_rate = QLabel()
         self._form_tax.addRow(self._lbl_sscl_rate, self.spin_sscl)
 
+        sscl_turnover_row = QHBoxLayout()
         self.spin_sscl_turnover = QDoubleSpinBox()
         self.spin_sscl_turnover.setRange(0, 100)
         self.spin_sscl_turnover.setDecimals(1)
         self.spin_sscl_turnover.setSuffix("%")
         self.spin_sscl_turnover.setFixedWidth(200)
+        sscl_turnover_row.addWidget(self.spin_sscl_turnover)
+
+        self.btn_sscl_turnover_help = HelpIconButton()
+        sscl_turnover_row.addWidget(self.btn_sscl_turnover_help)
+        sscl_turnover_row.addStretch()
+
         self._lbl_sscl_turnover = QLabel()
-        self._form_tax.addRow(self._lbl_sscl_turnover, self.spin_sscl_turnover)
+        self._form_tax.addRow(self._lbl_sscl_turnover, sscl_turnover_row)
 
         # Separator
         sep = QFrame()
@@ -616,6 +617,7 @@ class SalesTaxPage(SettingsPage):
         self._lbl_vat_rate.setText(_t("settings.sales_tax.vat_rate"))
         self._lbl_sscl_rate.setText(_t("settings.sales_tax.sscl_rate"))
         self._lbl_sscl_turnover.setText(_t("settings.sales_tax.sscl_turnover_base"))
+        self.btn_sscl_turnover_help.setToolTip(_t("settings.sales_tax.sscl_turnover_help"))
         self.chk_item_tax_exemptions.setText(_t("settings.sales_tax.item_tax_exemptions"))
         self.chk_item_tax_exemptions.setToolTip(_t("settings.sales_tax.tooltip_item_tax_exemptions"))
 
@@ -1229,6 +1231,27 @@ class ReceiptPage(SettingsPage):
         elem_form.addRow(self._lbl_tax_breakdown, self.chk_show_tax)
         vbox_display.addLayout(elem_form)
 
+        # Section: QR Code -- the schema and config keys
+        # (show_qr_on_receipt/receipt_qr_content) already existed, just
+        # never wired to a toggle, a builder emission, or a printer
+        # command (#328).
+        self._header_qr = self._make_section_header(_t("settings.receipt.section_qr"))
+        vbox_display.addWidget(self._header_qr)
+
+        qr_form = QFormLayout()
+        self.configure_form_layout(qr_form)
+        qr_form.setContentsMargins(0, 0, 0, 0)
+        qr_form.setVerticalSpacing(10)
+
+        self.chk_show_qr = QCheckBox()
+        self._lbl_show_qr = QLabel()
+        qr_form.addRow(self._lbl_show_qr, self.chk_show_qr)
+
+        self.txt_qr_content = QLineEdit()
+        self._lbl_qr_content = QLabel()
+        qr_form.addRow(self._lbl_qr_content, self.txt_qr_content)
+        vbox_display.addLayout(qr_form)
+
         # Section: Staff & Terminal
         self._header_staff = self._make_section_header(_t("settings.receipt.section_staff_terminal"))
         vbox_display.addWidget(self._header_staff)
@@ -1291,6 +1314,11 @@ class ReceiptPage(SettingsPage):
         self._lbl_tax_breakdown.setText(_t("settings.receipt.tax_breakdown"))
         self.chk_show_tax.setText(_t("settings.receipt.chk_show_tax"))
         self.chk_show_tax.setToolTip(_t("settings.receipt.tooltip_show_tax"))
+        self._lbl_show_qr.setText(_t("settings.receipt.show_qr"))
+        self.chk_show_qr.setText(_t("settings.receipt.chk_show_qr"))
+        self.chk_show_qr.setToolTip(_t("settings.receipt.tooltip_show_qr"))
+        self._lbl_qr_content.setText(_t("settings.receipt.qr_content"))
+        self.txt_qr_content.setPlaceholderText(_t("settings.receipt.qr_content_placeholder"))
         self._lbl_cashier_name.setText(_t("settings.receipt.cashier_name"))
         self.chk_show_cashier.setText(_t("settings.receipt.chk_show_cashier"))
         self.chk_show_cashier.setToolTip(_t("settings.receipt.tooltip_show_cashier"))
@@ -1314,6 +1342,8 @@ class ReceiptPage(SettingsPage):
         self.chk_show_barcode.stateChanged.connect(trigger)
         self.chk_merge_items.stateChanged.connect(trigger)
         self.chk_show_tax.stateChanged.connect(trigger)
+        self.chk_show_qr.stateChanged.connect(trigger)
+        self.txt_qr_content.textChanged.connect(trigger)
         self.chk_show_cashier.stateChanged.connect(trigger)
         self.chk_show_terminal.stateChanged.connect(trigger)
 
@@ -1391,6 +1421,8 @@ class ReceiptPage(SettingsPage):
         self.chk_show_barcode.setChecked(settings.get("show_barcode", _d["show_barcode"]))
         self.chk_merge_items.setChecked(settings.get("merge_items", _d["merge_items"]))
         self.chk_show_tax.setChecked(settings.get("show_tax_breakdown", _d["show_tax_breakdown"]))
+        self.chk_show_qr.setChecked(settings.get("show_qr_on_receipt", _d["show_qr_on_receipt"]))
+        self.txt_qr_content.setText(settings.get("receipt_qr_content", _d["receipt_qr_content"]))
         self.chk_show_cashier.setChecked(settings.get("show_cashier_on_receipt", _d["show_cashier_on_receipt"]))
         self.chk_show_terminal.setChecked(settings.get("show_terminal_on_receipt", _d["show_terminal_on_receipt"]))
 
@@ -1411,6 +1443,8 @@ class ReceiptPage(SettingsPage):
             "show_barcode": self.chk_show_barcode.isChecked(),
             "merge_items": self.chk_merge_items.isChecked(),
             "show_tax_breakdown": self.chk_show_tax.isChecked(),
+            "show_qr_on_receipt": self.chk_show_qr.isChecked(),
+            "receipt_qr_content": self.txt_qr_content.text().strip(),
             "show_cashier_on_receipt": self.chk_show_cashier.isChecked(),
             "show_terminal_on_receipt": self.chk_show_terminal.isChecked(),
             "receipt_language": self.combo_receipt_lang.currentData() or "",

@@ -69,6 +69,15 @@ class PaymentMethodDialog(QDialog):
 
         layout.addLayout(self._form)
 
+        # Shortcut/drawer-open only ever got set for Cash in seed data --
+        # nothing in the code special-cases it, but that made it look like
+        # a Cash-only feature rather than something available to any
+        # method (#337).
+        self.lbl_hint = QLabel()
+        self.lbl_hint.setProperty("class", "muted")
+        self.lbl_hint.setWordWrap(True)
+        layout.addWidget(self.lbl_hint)
+
         # Buttons
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
@@ -106,6 +115,7 @@ class PaymentMethodDialog(QDialog):
         self.chk_cash.setText(_t("payment_methods.chk_is_cash"))
         self._lbl_drawer.setText(_t("payment_methods.form_open_drawer"))
         self.chk_drawer.setText(_t("payment_methods.chk_open_drawer"))
+        self.lbl_hint.setText(_t("payment_methods.form_hint"))
         self.btn_cancel.setText(_t("common.cancel"))
         self.btn_save.setText(_t("common.save"))
 

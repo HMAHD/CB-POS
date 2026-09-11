@@ -135,7 +135,10 @@ class PaginationWidget(QWidget):
             self.setVisible(False)
             return
 
-        self.setVisible(True)
+        # A disabled-looking-but-not-disabled Previous/Next pair with
+        # "Page 1 of 1" is noise when there's nothing to actually page
+        # through -- hide the whole control, not just its buttons (#291).
+        self.setVisible(self.total_pages > 1)
         start = self.start_index + 1
         end = self.end_index
         self._info_label.setText(_t("common.showing_range", start=start, end=end, total=total))

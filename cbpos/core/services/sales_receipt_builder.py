@@ -218,6 +218,12 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
         if show_barcode:
             commands.append({"type": "barcode", "val": doc_num, "code": "CODE39", "align": "center"})
 
+        # QR code (shop-configured link -- WhatsApp, website, digital receipt, etc.)
+        show_qr = gc("show_qr_on_receipt", False, config_override)
+        qr_content = gc("receipt_qr_content", "", config_override)
+        if show_qr and qr_content:
+            commands.append({"type": "barcode", "val": qr_content, "code": "QR", "align": "center"})
+
         # Footer text
         cls._append_footer_text(commands, line_chars, config_override)
 

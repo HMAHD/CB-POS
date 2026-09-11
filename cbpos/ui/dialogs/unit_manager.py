@@ -113,14 +113,16 @@ class UnitManagerDialog(QDialog):
         btn_layout.addWidget(sep)
 
         self.btn_clear = QPushButton(_t("unit_manager.clear_new"))
+        self.btn_clear.setProperty("class", "secondary")
         self.btn_clear.clicked.connect(self._clear_form)
         btn_layout.addWidget(self.btn_clear)
 
         btn_layout.addStretch()
 
-        btn_close = QPushButton(_t("common.close"))
-        btn_close.clicked.connect(self.accept)
-        btn_layout.addWidget(btn_close)
+        self.btn_close = QPushButton(_t("common.close"))
+        self.btn_close.setProperty("class", "secondary")
+        self.btn_close.clicked.connect(self.accept)
+        btn_layout.addWidget(self.btn_close)
 
         right.addLayout(btn_layout)
 

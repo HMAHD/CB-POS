@@ -1,0 +1,38 @@
+"""Small info-icon affordance for a field a non-technical shop owner
+might not know how to fill in.
+
+Extracted from the Shop Info -> Email tab's SMTP help icon, which paired
+a hover tooltip with a real 4-step setup guide dialog on click -- a
+genuinely useful pattern this app had exactly one instance of, even
+though several other fields (Purchasing's Payment Terms, Price Lists'
+date ranges, Sales Tax's own VAT/SSCL fields) are just as unfamiliar to
+a non-technical user (#318).
+"""
+
+from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QPushButton
+from cbpos.config import Config
+
+
+class HelpIconButton(QPushButton):
+    """A small circular info-icon button with a tooltip and, optionally,
+    a click handler that opens a guide dialog.
+
+    Pass ``on_click`` (e.g. a method that builds and ``exec()``s a guide
+    dialog, as the SMTP setup guide already does) for a field complex
+    enough to need step-by-step help; omit it for a tooltip-only hint.
+    """
+
+    def __init__(self, tooltip: str = "", on_click=None, parent=None) -> None:
+        super().__init__(parent)
+        info_icon_path = str(Config.BASE_DIR / "cbpos" / "assets" / "icons" / "info-circle-cyan.svg")
+        self.setIcon(QIcon(info_icon_path))
+        self.setIconSize(QSize(24, 24))
+        self.setFixedSize(28, 28)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setObjectName("BtnInfoIcon")
+        if tooltip:
+            self.setToolTip(tooltip)
+        if on_click:
+            self.clicked.connect(on_click)

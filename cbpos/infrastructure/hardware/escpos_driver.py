@@ -128,7 +128,13 @@ class ESCPOSDriver(IPrinter):
                     code = cmd.get("val")
                     bc_type = cmd.get("code", "CODE39")
                     try:
-                        self.printer.barcode(code, bc_type, function_type="B")
+                        if bc_type == "QR":
+                            # QR is 2D and needs its own ESC/POS command --
+                            # printer.barcode() only knows 1D symbologies
+                            # (CODE39/CODE128/EAN/etc).
+                            self.printer.qr(code, center=(cmd.get("align", "left") == "center"))
+                        else:
+                            self.printer.barcode(code, bc_type, function_type="B")
                     except Exception as e:
                         logger.error("Failed to print barcode: %s", e)
 

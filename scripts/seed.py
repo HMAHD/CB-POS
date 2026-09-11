@@ -1638,7 +1638,7 @@ def seed_data():  # noqa: C901
         print("Seeding Payment Methods...")
         payment_methods = [
             PaymentMethod(name="Cash", is_cash=True, open_drawer=True, shortcut="F12"),
-            PaymentMethod(name="Card", is_cash=False, open_drawer=False),
+            PaymentMethod(name="Card", is_cash=False, open_drawer=False, shortcut="F11"),
             PaymentMethod(name="Credit", is_cash=False, open_drawer=False),
             PaymentMethod(name="QR/Mobile", is_cash=False, open_drawer=False),
             PaymentMethod(name="Cheque", is_cash=False, open_drawer=False),

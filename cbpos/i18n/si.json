@@ -910,6 +910,7 @@
     "hw_receipt_printer": "Receipt Printer:",
     "hw_a4_printer": "A4 Printer:",
     "hw_paper_width": "Paper Width:",
+    "hw_config_hint": "This is a read-only summary. To change printer selection or paper width, go to Settings → Hardware.",
     "hw_group_receipt_test": "Receipt Printer Test",
     "hw_receipt_desc": "Send a test page to the configured receipt printer to verify connectivity.",
     "hw_btn_test_printer": "Print Test Page",
@@ -938,7 +939,11 @@
     "logs_clear_title": "Clear Logs",
     "logs_clear_msg": "This will delete all log entries.\n\nContinue?",
     "logs_clear_error": "Could not clear logs:\n{error}",
-    "db_btn_refresh": "Refresh"
+    "db_btn_refresh": "Refresh",
+    "db_btn_check_integrity": "Check Integrity",
+    "db_integrity_checking": "Checking...",
+    "db_integrity_passed": "Database integrity check passed. No corruption detected.",
+    "db_integrity_failed": "Integrity check found a problem: {message}"
   },
   "data_safety": {
     "title": "දත්ත ආරක්ෂාව",
@@ -1059,8 +1064,9 @@
     "form_open_drawer": "Open Drawer:",
     "chk_is_cash": "This is a cash-type method",
     "chk_open_drawer": "Open cash drawer on payment",
-    "tag_cash": "Cash",
-    "tag_opens_drawer": "Opens Drawer",
+    "form_hint": "Set a keyboard shortcut and drawer-open behavior for faster checkout -- available for any payment method, not just Cash.",
+    "tag_cash": "මුදල්",
+    "tag_opens_drawer": "මුදල් පෙට්ටිය විවෘත කරයි",
     "status_active": "සක්‍රීය",
     "status_inactive": "අක්‍රීය",
     "btn_edit": "සංස්කරණය",
@@ -1280,6 +1286,7 @@
       "vat_rate": "VAT Rate:",
       "sscl_rate": "SSCL Rate:",
       "sscl_turnover_base": "SSCL Turnover Base:",
+      "sscl_turnover_help": "The percentage of turnover treated as liable for SSCL -- Sri Lanka's Inland Revenue currently sets this at 50%. Only change it if your accountant tells you to.",
       "item_tax_exemptions": "Enable item-level tax exemptions",
       "tooltip_item_tax_exemptions": "When enabled, products in categories marked as tax-exempt will not have VAT/SSCL calculated on them. Useful for mixed-goods retailers selling both taxable and exempt items (e.g. rice, pharmaceuticals, books).",
       "search_mode_all": "ALL",
@@ -1374,6 +1381,12 @@
       "tax_breakdown": "Tax Breakdown:",
       "chk_show_tax": "Show VAT and SSCL breakdown on receipt",
       "tooltip_show_tax": "Display VAT and SSCL tax amounts separately on the receipt",
+      "section_qr": "QR Code",
+      "show_qr": "QR Code:",
+      "chk_show_qr": "Show QR code on receipt",
+      "tooltip_show_qr": "Print a scannable QR code linking to your shop's WhatsApp, website, or a digital copy of the receipt",
+      "qr_content": "QR Content (URL):",
+      "qr_content_placeholder": "e.g. https://wa.me/94771234567",
       "section_staff_terminal": "Staff & Terminal",
       "cashier_name": "Cashier Name:",
       "chk_show_cashier": "Print cashier username on receipt",
@@ -1814,7 +1827,8 @@
     "create_failed": "Failed to create proforma invoice."
   },
   "receipt_preview": {
-    "title": "Receipt Preview"
+    "title": "Receipt Preview",
+    "barcode_not_scannable": "Preview only — not a real, scannable barcode"
   },
   "receipt_reprint": {
     "title": "රිසිට්පත නැවත මුද්‍රණය",

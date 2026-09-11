@@ -162,14 +162,17 @@ class LabelPrintDialog(QDialog):
         btn_layout.addStretch()
 
         btn_remove = QPushButton(_t("label_print.remove_selected"))
+        btn_remove.setProperty("class", "danger")
         btn_remove.clicked.connect(self._remove_selected)
         btn_layout.addWidget(btn_remove)
 
         btn_clear = QPushButton(_t("label_print.clear_all"))
+        btn_clear.setProperty("class", "danger")
         btn_clear.clicked.connect(self._clear_all)
         btn_layout.addWidget(btn_clear)
 
         btn_preview = QPushButton(_t("label_print.preview_label"))
+        btn_preview.setProperty("class", "secondary")
         btn_preview.clicked.connect(self._preview_label)
         btn_layout.addWidget(btn_preview)
 

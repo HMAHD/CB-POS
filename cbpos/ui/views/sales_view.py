@@ -40,6 +40,7 @@ from cbpos.ui.widgets.order_bar import OrderBar
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.side_menu import SideMenu
 from cbpos.ui.widgets.action_panel import ActionPanel
+from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 from cbpos.core.utils.formatters import format_currency
 from cbpos.core.services.sound_service import SoundService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
@@ -245,10 +246,11 @@ class SalesView(QWidget):
         # swapped in for the table (#256). The header stays visible at all
         # times; only the "no rows yet" hint appears/disappears. Positioned
         # manually the same way the undo toast already is elsewhere in this
-        # file, since a raw QLabel doesn't participate in viewport layout.
-        self.empty_cart_label = QLabel(self.cart_table.viewport())  # Text set by retranslate_ui
-        self.empty_cart_label.setObjectName("EmptyCartLabel")
-        self.empty_cart_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # file, since a plain widget doesn't participate in viewport layout.
+        # Uses the shared EmptyStateWidget (icon + text) instead of bare
+        # text in a black rectangle -- the least-designed part of the
+        # screen otherwise (#254/#257).
+        self.empty_cart_label = EmptyStateWidget(Icons.SALES, self.cart_table.viewport())
 
         # Undo Toast (overlay at bottom of cart area)
         self.undo_toast = QLabel(self.container_left)
@@ -390,7 +392,7 @@ class SalesView(QWidget):
                 header_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
         # Empty cart placeholder
-        self.empty_cart_label.setText(_t("sales.empty_cart"))
+        self.empty_cart_label.set_title(_t("sales.empty_cart"))
 
         # Totals — refresh display with current values
         self.update_cart_display()

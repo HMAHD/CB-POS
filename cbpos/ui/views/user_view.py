@@ -200,6 +200,11 @@ class UserView(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        # Qt's default row-number gutter and the real "ID" column both show
+        # the same number (users are created sequentially, so the PK
+        # almost always equals the row number) -- keep the genuinely
+        # useful ID column, drop the redundant gutter (#295).
+        self.table.verticalHeader().setVisible(False)
         self.table.doubleClicked.connect(self.edit_user)
 
         layout.addWidget(self.table)

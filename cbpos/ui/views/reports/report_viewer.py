@@ -437,7 +437,6 @@ class ReportViewer(QWidget):
             row_count = len(df)
             self.row_count_label.setText(_t("common.row_count", count=row_count))
             self.action_bar.setVisible(True)
-            self.pagination.setVisible(True)
         else:
             self.table_model.set_data(df)
             self.content_stack.setCurrentIndex(0)

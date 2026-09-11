@@ -157,7 +157,7 @@ class ActionPanel(QWidget):
         # Customer icon
         self.lbl_cust_icon = QLabel()
         self.lbl_cust_icon.setFixedSize(32, 32)
-        self.lbl_cust_icon.setPixmap(Icons.get("fa5s.user-circle", "#00BCEB").pixmap(28, 28))
+        self.lbl_cust_icon.setPixmap(Icons.get(Icons.CUSTOMER, "#00BCEB").pixmap(28, 28))
         self.lbl_cust_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_cust_icon.setStyleSheet("background: transparent;")
         cust_layout.addWidget(self.lbl_cust_icon)

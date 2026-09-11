@@ -1314,6 +1314,7 @@
       "vat_rate": "VAT Rate:",
       "sscl_rate": "SSCL Rate:",
       "sscl_turnover_base": "SSCL Turnover Base:",
+      "sscl_turnover_help": "The percentage of turnover treated as liable for SSCL -- Sri Lanka's Inland Revenue currently sets this at 50%. Only change it if your accountant tells you to.",
       "item_tax_exemptions": "Enable item-level tax exemptions",
       "tooltip_item_tax_exemptions": "When enabled, products in categories marked as tax-exempt will not have VAT/SSCL calculated on them. Useful for mixed-goods retailers selling both taxable and exempt items (e.g. rice, pharmaceuticals, books).",
       "search_mode_all": "ALL",

@@ -446,10 +446,30 @@ class PaymentDialog(QDialog):
         self.txt_amount.setFocus()
 
     def _add_payment_list_item(self, index: int, method_name: str, amount: Decimal):
-        """Add a payment entry to the list with a remove button."""
+        """Add a payment entry to the list with a remove button.
+
+        The row separator used to be QListWidget::item's own QSS
+        border-bottom (plus padding). That box model is invisible to
+        Qt's layout code -- it's applied by the view AFTER
+        setSizeHint() reserves a rect, not accounted for inside it -- so
+        no fixed pixel buffer added to the sizeHint here could reliably
+        match it across different fonts/platforms/DPI (confirmed: it
+        clipped the fixed 44px remove button's bottom border in
+        production despite a manually tuned buffer that looked correct
+        in local testing). Drawing the separator as a real child widget
+        inside item_widget instead means item_widget.sizeHint() is the
+        complete, exact truth -- nothing external can silently eat into
+        the space Qt reserves for it.
+        """
         item_widget = QWidget()
         item_widget.setObjectName("PaymentListItemWidget")
-        item_layout = QHBoxLayout(item_widget)
+        outer_layout = QVBoxLayout(item_widget)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
+        row_widget = QWidget()
+        row_widget.setObjectName("PaymentListItemRow")
+        item_layout = QHBoxLayout(row_widget)
         item_layout.setContentsMargins(8, 8, 14, 8)
         item_layout.setSpacing(8)
 
@@ -472,10 +492,15 @@ class PaymentDialog(QDialog):
         btn_remove.clicked.connect(lambda: self._remove_payment(item))
         item_layout.addWidget(btn_remove)
 
+        outer_layout.addWidget(row_widget)
+
+        separator = QFrame()
+        separator.setObjectName("PaymentListItemSeparator")
+        separator.setFixedHeight(1)
+        outer_layout.addWidget(separator)
+
         item = QListWidgetItem()
-        hint = item_widget.sizeHint()
-        hint.setHeight(max(hint.height(), 48))
-        item.setSizeHint(hint)
+        item.setSizeHint(item_widget.sizeHint())
         self.list_payments.addItem(item)
         self.list_payments.setItemWidget(item, item_widget)
 

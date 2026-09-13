@@ -12,7 +12,7 @@ column went to empty space below the list instead of the list itself.
 from decimal import Decimal
 
 import pytest
-from PyQt6.QtWidgets import QSizePolicy
+from PyQt6.QtWidgets import QFrame, QSizePolicy
 
 from cbpos.core.models import PaymentMethod
 from cbpos.ui.dialogs.payment_dialog import PaymentDialog
@@ -56,3 +56,34 @@ class TestAppliedPaymentsListSize:
 
     def test_size_policy_lets_the_list_grow_vertically(self, dialog):
         assert dialog.list_payments.sizePolicy().verticalPolicy() == QSizePolicy.Policy.Expanding
+
+
+class TestPaymentRowSeparatorIsARealChildWidget:
+    """QListWidget::item's own QSS (padding + border-bottom) used to draw
+    the row separator. That box model is applied by the view AFTER
+    setSizeHint() already reserved a rect -- invisible to the Python
+    layout code -- so no fixed pixel buffer added to the sizeHint could
+    reliably match it across different fonts/platforms/DPI (confirmed:
+    a manually tuned +5px buffer still clipped the fixed 44px remove
+    button's bottom border in production). The separator is now a real
+    QFrame child of the row widget, so sizeHint() is the complete,
+    self-contained truth with nothing external able to eat into it.
+    """
+
+    def test_row_size_hint_leaves_room_for_the_44px_button_plus_its_margins(self, dialog):
+        dialog.txt_amount.setText("100")
+        dialog.add_payment()
+
+        row_height = dialog.list_payments.item(0).sizeHint().height()
+
+        # 44px button + 8px top/bottom layout margins + 1px separator.
+        assert row_height >= 44 + 16 + 1
+
+    def test_row_widget_owns_a_real_separator_frame(self, dialog):
+        dialog.txt_amount.setText("100")
+        dialog.add_payment()
+
+        item_widget = dialog.list_payments.itemWidget(dialog.list_payments.item(0))
+        separator = item_widget.findChild(QFrame, "PaymentListItemSeparator")
+
+        assert separator is not None

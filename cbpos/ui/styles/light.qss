@@ -1315,14 +1315,27 @@ QListWidget#PaymentList {
     border-radius: 6px;
 }
 
+/* Overrides the generic "QListWidget::item, QTableWidget::item { padding:
+   12px; border-bottom: 1px; }" rule above for this specific list. That
+   box model is applied by the view AFTER setSizeHint() already reserved
+   a rect for the row, invisible to the Python layout code -- it was
+   insetting the embedded row widget by 12+12+1=25px inside whatever
+   height setSizeHint() reserved, squeezing a 61px-tall row down to a
+   36px-tall widget and badly clipping both the remove button and the
+   row's own text. The separator is a real child widget inside the row
+   now (see PaymentListItemSeparator), so this list needs none of the
+   generic rule's own decoration. */
 QListWidget#PaymentList::item {
-    padding: 2px 4px;
-    border-bottom: 1px solid #F0F0F0;
-    min-height: 44px;
+    padding: 0;
+    border-bottom: none;
 }
 
-QWidget#PaymentListItemWidget {
+QWidget#PaymentListItemWidget, QWidget#PaymentListItemRow {
     background: transparent;
+}
+
+QFrame#PaymentListItemSeparator {
+    background-color: #F0F0F0;
 }
 
 QLabel#PaymentListItemLabel {

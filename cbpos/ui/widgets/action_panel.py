@@ -12,6 +12,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.elided_label import ElidedLabel
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.core.utils.formatters import format_short_name
 
 _BTN_H = 70
 
@@ -143,15 +144,17 @@ class ActionPanel(QWidget):
         layout.setSpacing(0)
 
         # ── 1. Customer Card ─────────────────────────────────────
-        # One card, two internal rows (#255): row 1 is the existing
-        # icon + name/phone + Select button; row 2 is the loyalty-points
-        # badge, inside the same frame/border instead of floating below it
-        # as an unrelated sibling label.
+        # Three internal rows: row 1 is icon + name/phone (full card
+        # width, so a long name/translated phone gets real room instead
+        # of being squeezed against a fixed-width button); row 2 is the
+        # Select/Clear controls; row 3 (#255) is the loyalty-points
+        # badge -- all inside the same frame/border instead of floating
+        # below it as unrelated sibling widgets.
         customer_frame = QFrame()
         customer_frame.setObjectName("CustomerPanel")
         customer_frame_layout = QVBoxLayout(customer_frame)
-        customer_frame_layout.setContentsMargins(10, 8, 10, 8)
-        customer_frame_layout.setSpacing(0)
+        customer_frame_layout.setContentsMargins(10, 10, 10, 10)
+        customer_frame_layout.setSpacing(8)
 
         cust_layout = QHBoxLayout()
         cust_layout.setContentsMargins(0, 0, 0, 0)
@@ -168,7 +171,11 @@ class ActionPanel(QWidget):
         # Customer info (name + subtitle). ElidedLabel keeps a long name
         # from silently overflowing past the card's edge with no visual
         # indication or way to read the rest -- the full string stays
-        # available as a tooltip and via .text().
+        # available as a tooltip and via .text(). Now the only other
+        # thing sharing this row is the icon, so it gets the full card
+        # width instead of being cut down to a handful of characters by
+        # a same-row Select button (worse still with long translated
+        # button labels, e.g. Sinhala/Tamil).
         cust_info = QVBoxLayout()
         cust_info.setSpacing(0)
         self.lbl_cust_title = QLabel()
@@ -177,17 +184,24 @@ class ActionPanel(QWidget):
         self.lbl_customer = ElidedLabel()
         self.lbl_customer.setObjectName("CustomerLabel")
         cust_info.addWidget(self.lbl_customer)
-        # Give the name/phone column priority over the fixed-width Select
-        # button when the panel is at its narrow end (280px) -- without a
-        # stretch factor here, addStretch() below claimed all the slack
-        # and this column only ever got its bare minimum width.
         cust_layout.addLayout(cust_info, 1)
+
+        customer_frame_layout.addLayout(cust_layout)
+
+        # Row 2: Select (grows to fill) + Clear (fixed, only once a real
+        # customer is selected) -- its own full-width row instead of
+        # squeezed into row 1, and a bigger touch target to match the
+        # rest of the panel's touch-friendly controls.
+        cust_btn_row = QHBoxLayout()
+        cust_btn_row.setContentsMargins(0, 0, 0, 0)
+        cust_btn_row.setSpacing(8)
 
         self.btn_cust_select = QPushButton()
         self.btn_cust_select.setObjectName("BtnCustomerSelect")
         self.btn_cust_select.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_cust_select.setMinimumHeight(32)
         self.btn_cust_select.clicked.connect(self.customer_clicked.emit)
-        cust_layout.addWidget(self.btn_cust_select)
+        cust_btn_row.addWidget(self.btn_cust_select, 1)
 
         # Manual reset to Walk-in Customer -- previously only reachable
         # through a right-click context menu on the name, easy to miss.
@@ -196,13 +210,13 @@ class ActionPanel(QWidget):
         self.btn_cust_clear.setObjectName("BtnCustomerClear")
         self.btn_cust_clear.setIcon(Icons.get("fa5s.user-slash", "#888888"))
         self.btn_cust_clear.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_cust_clear.setFixedSize(28, 28)
+        self.btn_cust_clear.setFixedSize(32, 32)
         self.btn_cust_clear.setToolTip(_t("action_panel.clear_customer"))
         self.btn_cust_clear.clicked.connect(self.customer_cleared.emit)
         self.btn_cust_clear.setVisible(False)
-        cust_layout.addWidget(self.btn_cust_clear)
+        cust_btn_row.addWidget(self.btn_cust_clear)
 
-        customer_frame_layout.addLayout(cust_layout)
+        customer_frame_layout.addLayout(cust_btn_row)
 
         # Row 2: divider + points badge, hidden entirely for Walk-in
         # Customer (no loyalty points) instead of just clearing the text,
@@ -214,6 +228,12 @@ class ActionPanel(QWidget):
         customer_frame_layout.addWidget(self.points_divider)
 
         self.points_row = QWidget()
+        # A plain QWidget paints the app's global background color (Qt's
+        # global "QWidget { background-color: ... }" rule) instead of
+        # letting the parent CustomerPanel's surface color show through --
+        # it needs its own objectName to opt out of that with a targeted
+        # "background: transparent" rule.
+        self.points_row.setObjectName("PointsRow")
         points_row_layout = QHBoxLayout(self.points_row)
         points_row_layout.setContentsMargins(0, 6, 0, 0)
         points_row_layout.setSpacing(6)
@@ -337,7 +357,11 @@ class ActionPanel(QWidget):
 
     def set_customer_info(self, name, phone, points):
         self._has_customer = True
-        self.lbl_customer.setText(f"{name} ({phone})")
+        # The full name + phone is still there on hover -- the card only
+        # has room for a short label, and a phone number adds little at
+        # a glance once a customer is already selected.
+        self.lbl_customer.setText(format_short_name(name))
+        self.lbl_customer.setToolTip(f"{name} ({phone})" if phone else name)
         self.lbl_points.setText(_t("action_panel.points", points=points))
         self.points_divider.setVisible(True)
         self.points_row.setVisible(True)

@@ -1075,21 +1075,22 @@ QFrame#PointsDivider {
     border: none;
 }
 
-/* Explicitly scoped under CustomerPanel (not just QLabel#PointsLabel) so
-   this wins over the broader "QFrame#CustomerPanel QLabel { color: ...;
-   background: transparent; }" rule above -- equal-looking ID selectors
-   don't reliably out-rank a descendant rule in Qt's stylesheet cascade.
-   A solid tinted background + matching border reads as a real badge
-   instead of the previous translucent rgba() fill, which read as a
-   muddy smear rather than a crisp chip. */
+/* Without this, the row paints Qt's global QWidget background
+   (#F8F9FA) instead of letting CustomerPanel's own white surface show
+   through, showing up as a separate off-white block under the points
+   row. */
+QWidget#PointsRow {
+    background: transparent;
+}
+
+/* No fill/border at all -- plain colored text on the card's own white
+   surface, matching how every other label in this panel is styled,
+   instead of a separate highlighted badge box. */
 QFrame#CustomerPanel QLabel#PointsLabel {
     color: #946200;  /* Amber accent, readable on the light card surface */
     font-weight: bold;
     font-size: 12px;
-    background-color: #FFF3CD;
-    border: 1px solid #E0A800;
-    border-radius: 10px;
-    padding: 2px 10px;
+    background: transparent;
 }
 
 QPushButton#BtnCustomerClear {

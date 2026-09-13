@@ -1024,22 +1024,24 @@ QFrame#PointsDivider {
     border: none;
 }
 
-/* Explicitly scoped under CustomerPanel (not just QLabel#PointsLabel) so
-   this wins over the broader "QFrame#CustomerPanel QLabel { background:
-   transparent; }" rule above -- equal-looking ID selectors don't
-   reliably out-rank a descendant rule in Qt's stylesheet cascade.
-   A solid tinted background + matching border reads as a real badge
-   (mirroring QLabel#PMCardStatus's own pattern) -- the previous
-   translucent rgba() fill read as a muddy smear rather than a crisp
-   chip, especially at the ~12% alpha it was set to. */
+/* Without this, the row paints Qt's global QWidget background
+   (#1E1E1E) instead of letting CustomerPanel's own #252528 surface
+   show through, showing up as a separate darker block under the
+   points row. */
+QWidget#PointsRow {
+    background: transparent;
+}
+
+/* No fill/border at all -- a badge/chip here read as a separate
+   highlighted box floating on the card instead of plain card content,
+   whatever tint it used. Plain colored text on the card's own theme
+   background (transparent, so it shows the card's #252528) matches how
+   every other label in this panel is styled. */
 QFrame#CustomerPanel QLabel#PointsLabel {
     color: #FFDC00;
     font-weight: bold;
     font-size: 12px;
-    background-color: #3D3410;
-    border: 1px solid #FFDC00;
-    border-radius: 10px;
-    padding: 2px 10px;
+    background: transparent;
 }
 
 QPushButton#BtnCustomerClear {

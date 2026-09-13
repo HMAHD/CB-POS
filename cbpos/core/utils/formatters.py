@@ -4,6 +4,23 @@ from typing import Union
 from cbpos.core.services.config_service import ConfigService
 
 
+def format_short_name(full_name: str) -> str:
+    """
+    Shortens a full name to its first part plus an initial for each
+    remaining part, for display in space-constrained UI.
+    Example: "Nimal Kasun Perera" -> "Nimal K P".
+    """
+    if not full_name:
+        return ""
+
+    parts = full_name.split()
+    if len(parts) <= 1:
+        return full_name
+
+    initials = " ".join(part[0].upper() for part in parts[1:])
+    return f"{parts[0]} {initials}"
+
+
 def format_currency(value: Union[Decimal, float, int, str]) -> str:
     """
     Format a monetary value using the configured currency symbol.

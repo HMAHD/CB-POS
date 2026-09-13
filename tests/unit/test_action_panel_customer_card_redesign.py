@@ -28,7 +28,9 @@ class TestCustomerNameFieldElides:
 
         panel.set_customer_info("Wanninayake Mudiyanselage Dissanayake", "0771234567", 320)
 
-        assert panel.lbl_customer.text() == "Wanninayake Mudiyanselage Dissanayake (0771234567)"
+        # The card only shows a shortened name (first name + initials);
+        # the full name and phone are still recoverable via tooltip.
+        assert panel.lbl_customer.text() == "Wanninayake M D"
         assert panel.lbl_customer.toolTip() == "Wanninayake Mudiyanselage Dissanayake (0771234567)"
 
 
@@ -66,7 +68,8 @@ class TestRetranslateDoesNotClobberARealCustomer:
 
         panel.retranslate_ui()
 
-        assert panel.lbl_customer.text() == "Jane Doe (0771234567)"
+        assert panel.lbl_customer.text() == "Jane D"
+        assert panel.lbl_customer.toolTip() == "Jane Doe (0771234567)"
 
     def test_retranslate_still_shows_walk_in_when_no_customer_selected(self):
         panel = ActionPanel()

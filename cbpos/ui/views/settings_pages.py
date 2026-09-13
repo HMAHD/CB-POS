@@ -1101,8 +1101,41 @@ class ReceiptPage(SettingsPage):
         split.addWidget(left_panel, 55)
 
         # --- Right: Live preview ---
+        right_panel = QWidget()
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(8)
+
+        # Independent of the real Hardware-tab paper width -- lets a shop
+        # see how the OTHER paper size would look without touching their
+        # actual printer configuration just to check.
+        preview_width_row = QHBoxLayout()
+        preview_width_row.addStretch()
+        self._lbl_preview_width = QLabel()
+        self._lbl_preview_width.setProperty("class", "muted")
+        preview_width_row.addWidget(self._lbl_preview_width)
+        self.combo_preview_width = QComboBox()
+        self.combo_preview_width.addItem("80mm", "80mm")
+        self.combo_preview_width.addItem("58mm", "58mm")
+        self.combo_preview_width.currentIndexChanged.connect(self._schedule_refresh)
+        preview_width_row.addWidget(self.combo_preview_width)
+        preview_width_row.addStretch()
+        right_layout.addLayout(preview_width_row)
+
+        # ReceiptPreviewWidget sizes its browser to the full receipt height
+        # rather than scrolling internally -- a receipt with many items
+        # easily exceeds the window's visible height, so this scroll area
+        # (kept below the width selector, which stays fixed at the top) is
+        # what actually lets the rest of a tall receipt be reached.
+        preview_scroll = QScrollArea()
+        preview_scroll.setWidgetResizable(True)
+        preview_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        preview_scroll.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
         self._preview = ReceiptPreviewWidget()
-        split.addWidget(self._preview, 45)
+        preview_scroll.setWidget(self._preview)
+        right_layout.addWidget(preview_scroll, 1)
+
+        split.addWidget(right_panel, 45)
 
         root.addLayout(split, 1)
 
@@ -1130,16 +1163,16 @@ class ReceiptPage(SettingsPage):
         self.btn_browse_logo.clicked.connect(self.browse_logo)
         self.btn_clear_logo = QPushButton()
         self.btn_clear_logo.clicked.connect(self._clear_logo)
+        # A hover tooltip instead of a permanent 3-line paragraph (#330's
+        # original guidance) -- same info, without it dominating the tab
+        # next to the handful of actual controls.
+        self.btn_logo_help = HelpIconButton()
         logo_row.addWidget(self.input_logo_path, 1)
         logo_row.addWidget(self.btn_browse_logo)
         logo_row.addWidget(self.btn_clear_logo)
+        logo_row.addWidget(self.btn_logo_help)
         self._lbl_logo = QLabel()
         logo_form.addRow(self._lbl_logo, logo_row)
-
-        self._lbl_logo_hint = QLabel()
-        self._lbl_logo_hint.setProperty("class", "muted")
-        self._lbl_logo_hint.setWordWrap(True)
-        logo_form.addRow("", self._lbl_logo_hint)
         vbox_content.addLayout(logo_form)
 
         # Section: Header & Footer
@@ -1190,19 +1223,28 @@ class ReceiptPage(SettingsPage):
         lang_form.setContentsMargins(0, 0, 0, 0)
         lang_form.setVerticalSpacing(10)
 
+        lang_row = QHBoxLayout()
         self.combo_receipt_lang = QComboBox()
         self.combo_receipt_lang.addItem(_t("settings.receipt.lang_same_as_ui"), "")
         self.combo_receipt_lang.addItem("English", "en")
         self.combo_receipt_lang.addItem("සිංහල (Sinhala)", "si")
         self.combo_receipt_lang.addItem("தமிழ் (Tamil)", "ta")
+        lang_row.addWidget(self.combo_receipt_lang)
+        self.btn_receipt_lang_help = HelpIconButton()
+        lang_row.addWidget(self.btn_receipt_lang_help)
+        lang_row.addStretch()
         self._lbl_receipt_lang = QLabel()
-        lang_form.addRow(self._lbl_receipt_lang, self.combo_receipt_lang)
-
-        self._lbl_receipt_lang_hint = QLabel()
-        self._lbl_receipt_lang_hint.setProperty("class", "muted")
-        self._lbl_receipt_lang_hint.setWordWrap(True)
-        lang_form.addRow("", self._lbl_receipt_lang_hint)
+        lang_form.addRow(self._lbl_receipt_lang, lang_row)
         vbox_content.addLayout(lang_form)
+
+        # Without this, the scroll area's inner widget stretches to fill
+        # the tab's full height (QScrollArea.setWidgetResizable), and with
+        # no trailing stretch item to absorb that surplus, Qt hands it to
+        # whichever field widgets can grow -- ballooning the header/footer
+        # char-count labels dozens of pixels past their own text (visible
+        # as odd gaps before Footer Text / Receipt Language) instead of
+        # leaving it as plain empty space below the last section.
+        vbox_content.addStretch()
 
         self.tabs.addTab(tab_content, "")
 
@@ -1271,6 +1313,8 @@ class ReceiptPage(SettingsPage):
         staff_form.addRow(self._lbl_terminal_id, self.chk_show_terminal)
         vbox_display.addLayout(staff_form)
 
+        vbox_display.addStretch()
+
         self.tabs.addTab(tab_display, "")
 
         # --- Connect all inputs to live preview refresh ---
@@ -1287,21 +1331,27 @@ class ReceiptPage(SettingsPage):
 
         self.tabs.setTabText(0, _t("settings.receipt.tab_content"))
         self.tabs.setTabText(1, _t("settings.receipt.tab_display"))
+        self._lbl_preview_width.setText(_t("settings.receipt.preview_width_label"))
 
         # Content tab
         self._lbl_logo.setText(_t("settings.receipt.logo_label"))
         self.input_logo_path.setPlaceholderText(_t("settings.receipt.logo_placeholder"))
         self.btn_browse_logo.setText(_t("settings.receipt.btn_browse_logo"))
         self.btn_clear_logo.setText(_t("settings.receipt.btn_clear_logo"))
-        self._lbl_logo_hint.setText(_t("settings.receipt.logo_hint"))
+        self.btn_logo_help.setToolTip(_t("settings.receipt.logo_hint"))
         self._lbl_header_text.setText(_t("settings.receipt.header_text"))
         self.txt_header.setPlaceholderText(_t("settings.receipt.header_placeholder"))
         self._lbl_footer_text.setText(_t("settings.receipt.footer_text"))
         self.txt_footer.setPlaceholderText(_t("settings.receipt.footer_placeholder"))
+        # Re-localize the char-count text and tooltip -- otherwise a
+        # language switch leaves them in whichever language was active the
+        # last time the header/footer text actually changed.
+        self._update_header_char_count()
+        self._update_footer_char_count()
 
         # Receipt language
         self._lbl_receipt_lang.setText(_t("settings.receipt.receipt_language"))
-        self._lbl_receipt_lang_hint.setText(_t("settings.receipt.receipt_language_hint"))
+        self.btn_receipt_lang_help.setToolTip(_t("settings.receipt.receipt_language_hint"))
         self.combo_receipt_lang.setItemText(0, _t("settings.receipt.lang_same_as_ui"))
 
         # Display tab
@@ -1353,38 +1403,44 @@ class ReceiptPage(SettingsPage):
 
     def _refresh_preview(self) -> None:
         """Build receipt commands from current settings and update the preview."""
-        from cbpos.core.services.config_service import ConfigService
+        # The preview width selector is independent of the real Hardware-tab
+        # paper_width -- it lets a shop check the OTHER paper size's layout
+        # without touching their actual printer configuration. self.save()
+        # never includes paper_width (that field lives on the Hardware tab),
+        # so injecting the previewed width into a copy of it here only
+        # affects this dummy preview build, never anything persisted (#325).
+        preview_width = self.combo_preview_width.currentData() or "80mm"
+        self._preview.set_paper_width(preview_width)
 
-        # paper_width lives on the Hardware tab, not this page's own fields,
-        # so it can't come from self.save() -- read the real saved value
-        # directly. Without this the preview always rendered at a hardcoded
-        # 80mm regardless of what the shop actually configured (#325).
-        self._preview.set_paper_width(ConfigService.get("paper_width"))
-
+        config = self.save()
+        config["paper_width"] = preview_width
         commands = ReceiptBuilder.build_receipt(
             self._make_dummy_sale(),
-            config_override=self.save(),
+            config_override=config,
         )
         self._preview.set_commands(commands)
         self._update_header_char_count()
         self._update_footer_char_count()
 
     def _current_line_chars(self) -> int:
-        """Characters-per-line budget for the shop's configured paper width.
+        """Characters-per-line budget for the currently *previewed* paper width.
 
         Mirrors BaseReceiptBuilder._append_header_block's own 58mm=32 /
-        80mm=42 mapping, since that's the real value free-form header/footer
-        text gets pre-wrapped to before printing.
+        80mm=42 mapping, kept in sync with whichever width the live preview
+        to the right is currently showing (not necessarily the real
+        Hardware-tab setting -- see _refresh_preview).
         """
-        from cbpos.core.services.config_service import ConfigService
-
-        paper_width = ConfigService.get("paper_width")
+        paper_width = self.combo_preview_width.currentData()
         return 32 if paper_width == "58mm" else 42
 
     def _set_char_count_hint(self, label: QLabel, text: str) -> None:
         line_chars = self._current_line_chars()
         longest = max((len(line) for line in text.split("\n")), default=0)
         label.setText(_t("settings.receipt.char_count_hint", longest=longest, limit=line_chars))
+        # The wrap explanation only needs saying once, not on every line of
+        # every field -- move it off the always-visible label and onto a
+        # hover tooltip, same as the Logo/Receipt Language hints.
+        label.setToolTip(_t("settings.receipt.char_count_tooltip"))
 
     def _update_header_char_count(self) -> None:
         self._set_char_count_hint(self._lbl_header_char_count, self.txt_header.toPlainText())
@@ -1431,6 +1487,14 @@ class ReceiptPage(SettingsPage):
         idx = self.combo_receipt_lang.findData(receipt_lang)
         if idx >= 0:
             self.combo_receipt_lang.setCurrentIndex(idx)
+
+        # Preview width defaults to whatever's really configured on the
+        # Hardware tab -- from there the shop can switch it to check the
+        # other size without touching that real setting.
+        real_paper_width = ConfigService.get("paper_width") or "80mm"
+        idx = self.combo_preview_width.findData(real_paper_width)
+        if idx >= 0:
+            self.combo_preview_width.setCurrentIndex(idx)
 
         # Single refresh after all fields loaded
         self._refresh_preview()

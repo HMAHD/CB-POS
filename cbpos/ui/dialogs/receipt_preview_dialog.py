@@ -1,9 +1,12 @@
 from typing import List, Dict, Any
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
     QPushButton,
+    QScrollArea,
+    QFrame,
 )
 
 from cbpos.ui.widgets.receipt_preview_widget import ReceiptPreviewWidget
@@ -24,8 +27,17 @@ class ReceiptPreviewDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
 
+        # ReceiptPreviewWidget sizes its browser to the full receipt
+        # height rather than scrolling internally -- a receipt with many
+        # items easily exceeds this dialog's fixed 600px height, so this
+        # scroll area is what actually lets the rest of it be reached.
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         self._preview = ReceiptPreviewWidget()
-        layout.addWidget(self._preview, 1)
+        scroll.setWidget(self._preview)
+        layout.addWidget(scroll, 1)
 
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()

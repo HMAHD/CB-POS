@@ -58,10 +58,23 @@ class ReceiptPreviewWidget(QWidget):
         self._paper_width = "80mm"
         self._init_ui()
 
+    # Extra width beyond the paper's own pixel width, split evenly as a
+    # visible grey margin on each side of the white paper -- without this
+    # the browser's edge would touch the paper's edge exactly, with no
+    # "resting on a surface" look.
+    _BROWSER_MARGIN_PX = 40
+
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
+        # A containing QScrollArea with setWidgetResizable(True) stretches
+        # this widget to fill its whole viewport whenever that viewport is
+        # taller than the receipt -- without pinning to the top, this
+        # layout would center the title+paper in that surplus height,
+        # leaving an odd empty gap above them instead of just blank space
+        # below (which is what an unused scroll area normally looks like).
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         self._lbl_title = QLabel(_t("receipt_preview.title"))
         self._lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -71,6 +84,14 @@ class ReceiptPreviewWidget(QWidget):
         self._browser = QTextBrowser()
         self._browser.setObjectName("ReceiptPreviewBrowser")
         self._browser.setOpenExternalLinks(False)
+        # The browser is resized to fit its whole document (see
+        # _resize_to_content) instead of scrolling internally, so a
+        # scrollbar should never actually be needed -- but disable both
+        # explicitly rather than merely relying on that always holding,
+        # since an internal scrollbar reserves layout space the instant
+        # it appears, throwing off the centered-paper width math.
+        self._browser.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._browser.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         # Force black text -- QTextBrowser ignores inline CSS color and uses
         # the widget palette.  Set both palette AND document stylesheet so
         # black text survives any QSS theme override.
@@ -80,7 +101,20 @@ class ReceiptPreviewWidget(QWidget):
         self._browser.document().setDefaultStyleSheet("body { color: #000000; } b { color: #000000; }")
         # Eliminate default document margin so our table fills the viewport.
         self._browser.document().setDocumentMargin(0)
-        layout.addWidget(self._browser)
+        # Fixed width matching the paper size (updated in set_paper_width)
+        # instead of stretching to fill whatever space the parent layout
+        # gives this widget -- otherwise the grey "surface" behind the
+        # paper stays a large fixed box regardless of paper width, with
+        # the paper floating in the middle of it looking unfinished.
+        self._browser.setFixedWidth(self._target_browser_width())
+        layout.addWidget(self._browser, 0, Qt.AlignmentFlag.AlignHCenter)
+        # An explicit stretch item, not just setAlignment(AlignTop) above --
+        # a containing QScrollArea's setWidgetResizable(True) stretches
+        # this widget to fill its whole viewport when the receipt is
+        # shorter than it, and only a real stretch item reliably claims
+        # that surplus instead of Qt handing it to the fixed-height
+        # browser anyway and pushing it away from the top.
+        layout.addStretch()
 
     def set_commands(self, commands: List[Dict[str, Any]]) -> None:
         """Replace the current receipt with *commands* and re-render."""
@@ -94,7 +128,31 @@ class ReceiptPreviewWidget(QWidget):
         if width != self._paper_width:
             self._paper_width = width
             self._lbl_title.setText(_t("receipt_preview.title") + " (%s)" % width)
+            self._browser.setFixedWidth(self._target_browser_width())
             self._render()
+
+    def _target_browser_width(self) -> int:
+        """Browser width for the current paper size plus a fixed side margin.
+
+        No scrollbar-space compensation needed -- the browser never
+        scrolls internally (see _resize_to_content), so its full width is
+        always just the paper plus its resting margin.
+        """
+        return self._PAPER_PX[self._paper_width] + self._BROWSER_MARGIN_PX
+
+    def _resize_to_content(self) -> None:
+        """Grow the browser's height to fit its whole document.
+
+        Without this, the browser keeps whatever height its parent layout
+        happens to hand it and scrolls internally to show the rest of a
+        tall receipt -- cramming the preview into a small window-within-
+        a-window instead of just showing the full paper (the outer page
+        already scrolls for content taller than the window, same as
+        every other settings tab).
+        """
+        doc = self._browser.document()
+        doc.setTextWidth(self._browser.width())
+        self._browser.setFixedHeight(int(doc.size().height()) + 4)
 
     def _render(self) -> None:
         """Convert the command list into styled HTML and display it."""
@@ -116,6 +174,7 @@ class ReceiptPreviewWidget(QWidget):
         parts.append("<div style='height:8px;font-size:1px;'>&nbsp;</div>")
         parts.append("</body></html>")
         self._browser.setHtml("".join(parts))
+        self._resize_to_content()
 
     @staticmethod
     def _render_command(

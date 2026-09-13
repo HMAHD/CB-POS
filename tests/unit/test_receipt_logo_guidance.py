@@ -5,6 +5,11 @@ to black & white dots. A logo that looks fine as a full-color PNG in
 the file picker can turn into an unreadable grey blob once converted,
 which a shop owner would only discover after wasting real receipt
 paper. Add a short hint next to the Logo field.
+
+The hint started as an always-visible 3-line paragraph, which by itself
+made the Content tab feel dense next to its handful of actual controls.
+Moved to a HelpIconButton tooltip (the same pattern already used
+elsewhere on this page) -- same guidance, on hover instead of always on.
 """
 
 import pytest
@@ -15,10 +20,10 @@ pytestmark = pytest.mark.usefixtures("qapp")
 
 
 class TestLogoFieldHasGuidance:
-    def test_hint_label_exists_and_is_not_empty(self):
+    def test_hint_tooltip_exists_and_is_not_empty(self):
         page = ReceiptPage()
-        assert page._lbl_logo_hint.text() != ""
+        assert page.btn_logo_help.toolTip() != ""
 
     def test_hint_mentions_black_and_white(self):
         page = ReceiptPage()
-        assert "black" in page._lbl_logo_hint.text().lower()
+        assert "black" in page.btn_logo_help.toolTip().lower()

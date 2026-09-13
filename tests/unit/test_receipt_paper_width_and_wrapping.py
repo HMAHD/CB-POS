@@ -77,24 +77,30 @@ def page(qapp, config_store):
 
 
 class TestReceiptPagePaperWidthSync:
-    def test_refresh_preview_applies_the_real_configured_paper_width(self, page, config_store):
-        config_store.set("paper_width", "58mm")
-
-        page._refresh_preview()
-
-        assert page._preview._paper_width == "58mm"
-
-    def test_defaults_to_80mm_when_unset(self, page, config_store):
-        page._refresh_preview()
-
-        assert page._preview._paper_width == "80mm"
-
-    def test_loading_settings_also_syncs_the_preview_width(self, page, config_store):
+    def test_loading_settings_defaults_the_preview_to_the_real_configured_width(self, page, config_store):
         config_store.set("paper_width", "58mm")
 
         page.load({"receipt_header": "", "receipt_footer": ""})
 
         assert page._preview._paper_width == "58mm"
+
+    def test_defaults_to_80mm_when_unset(self, page, config_store):
+        page.load({"receipt_header": "", "receipt_footer": ""})
+
+        assert page._preview._paper_width == "80mm"
+
+    def test_preview_width_can_be_switched_independently_of_the_real_setting(self, page, config_store):
+        # A shop can check how the OTHER paper size would look without
+        # touching their actual Hardware-tab printer configuration.
+        config_store.set("paper_width", "58mm")
+        page.load({"receipt_header": "", "receipt_footer": ""})
+
+        idx = page.combo_preview_width.findData("80mm")
+        page.combo_preview_width.setCurrentIndex(idx)
+        page._refresh_preview()
+
+        assert page._preview._paper_width == "80mm"
+        assert config_store.get("paper_width") == "58mm"
 
 
 class TestCharCountHint:

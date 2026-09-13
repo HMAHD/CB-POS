@@ -2138,22 +2138,30 @@ QLabel#StatusIcon {
     min-width: 50px;
 }
 
+/* Every QLabel below needs its own "background: transparent" -- none of
+   them set a background-color, so without it Qt's global
+   "QWidget { background-color: #F8F9FA; }" rule still wins for that one
+   property despite these more specific ID selectors, showing up as a
+   separate off-white block behind the text on every white card here. */
 QLabel#StatusTitle {
     font-size: 18px;
     font-weight: bold;
     color: #111827;
+    background: transparent;
 }
 
 QLabel#StatusSubtitle {
     color: #6B7280;
     font-size: 14px;
     margin-top: 4px;
+    background: transparent;
 }
 
 QLabel#StatusModeLabel {
     color: #6B7280;
     font-size: 12px;
     margin-bottom: 4px;
+    background: transparent;
 }
 
 QComboBox#StatusModeSelector {
@@ -2179,6 +2187,7 @@ QLabel#CardTitle {
     font-weight: bold;
     color: #111827;
     margin-bottom: 10px;
+    background: transparent;
 }
 
 QLabel#IPHelper {
@@ -2196,6 +2205,7 @@ QLabel#FormLabel {
     font-weight: bold;
     min-width: 110px;
     padding-right: 8px;
+    background: transparent;
 }
 
 /* Network Input Fields */
@@ -2268,6 +2278,7 @@ QLabel#TestStatus {
     font-size: 14px;
     font-weight: bold;
     padding-left: 10px;
+    background: transparent;
 }
 
 /* Migration Card (Purple Accent) */

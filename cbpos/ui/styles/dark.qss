@@ -1459,8 +1459,15 @@ QLineEdit#QtyInput:focus {
 }
 
 /* Discount Dialog */
+/* This dialog used to be styled entirely in a "navy" palette
+   (#001F3F/#002B55/#003366/#004080) left over from before the app's
+   navy-retirement pass (#260) -- every OTHER dialog in this app (e.g.
+   QDialog#PaymentDialog) uses the real dark theme's #1E1E1E/#252526
+   surfaces, so this dialog visibly looked like it belonged to a
+   different, older app. The bright accent colors (#00BCEB cyan, #39FF14
+   green, #FF4136 red) were already correct and are unchanged below. */
 QDialog#DiscountDialog {
-    background-color: #001F3F;
+    background-color: #1E1E1E;
     color: white;
 }
 
@@ -1472,22 +1479,30 @@ QDialog#DiscountDialog QLabel[class="dialog-title"] {
 }
 
 QFrame#DiscountTypeFrame {
-    background-color: #002B55;
+    background-color: #252526;
     border: 1px solid #3E3E42;
     border-radius: 6px;
 }
 
-QRadioButton#RbPercent, QRadioButton#RbFixed {
+/* Checkable QPushButtons, not QRadioButtons -- see discount_dialog.py.
+   QPushButton centers its own text, which a segmented control needs. */
+QPushButton#RbPercent, QPushButton#RbFixed {
+    background-color: transparent;
+    color: #FFFFFF;
     font-size: 15px;
     font-weight: bold;
-    color: #FFFFFF;
-    padding: 8px 12px;
-    spacing: 8px;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 4px;
 }
 
-QRadioButton#RbPercent::indicator, QRadioButton#RbFixed::indicator {
-    width: 18px;
-    height: 18px;
+QPushButton#RbPercent:hover, QPushButton#RbFixed:hover {
+    background-color: rgba(0, 188, 235, 0.12);
+}
+
+QPushButton#RbPercent:checked, QPushButton#RbFixed:checked {
+    background-color: #00BCEB;
+    color: #1E1E1E;
 }
 
 QDoubleSpinBox#DiscountValueInput {
@@ -1496,7 +1511,7 @@ QDoubleSpinBox#DiscountValueInput {
     padding: 12px;
     border: 2px solid #00BCEB;
     border-radius: 8px;
-    background-color: #003366;
+    background-color: #252526;
     color: #FFFFFF;
     min-height: 50px;
 }
@@ -1511,7 +1526,7 @@ QDoubleSpinBox#DiscountValueInput::down-button {
 }
 
 QPushButton[class="PresetBtn"] {
-    background-color: #003366;
+    background-color: #252526;
     color: #00BCEB;
     font-weight: bold;
     font-size: 15px;
@@ -1521,17 +1536,17 @@ QPushButton[class="PresetBtn"] {
 }
 
 QPushButton[class="PresetBtn"]:hover {
-    background-color: #004080;
+    background-color: rgba(0, 188, 235, 0.15);
     color: #FFFFFF;
 }
 
 QPushButton[class="PresetBtn"]:pressed {
     background-color: #00BCEB;
-    color: #001F3F;
+    color: #1E1E1E;
 }
 
 QPushButton[class="PresetBtn"]:disabled {
-    background-color: #1a2a3a;
+    background-color: #1A1A1A;
     color: #555;
     border-color: #333;
 }

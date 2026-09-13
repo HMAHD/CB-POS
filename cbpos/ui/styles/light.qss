@@ -1520,12 +1520,25 @@ QFrame#DiscountTypeFrame {
     border-radius: 6px;
 }
 
-QRadioButton#RbPercent, QRadioButton#RbFixed {
+/* Checkable QPushButtons, not QRadioButtons -- see discount_dialog.py.
+   QPushButton centers its own text, which a segmented control needs. */
+QPushButton#RbPercent, QPushButton#RbFixed {
+    background-color: transparent;
+    color: #212529;
     font-size: 15px;
     font-weight: bold;
-    color: #212529;
-    padding: 8px 12px;
-    spacing: 8px;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 4px;
+}
+
+QPushButton#RbPercent:hover, QPushButton#RbFixed:hover {
+    background-color: rgba(13, 110, 253, 0.08);
+}
+
+QPushButton#RbPercent:checked, QPushButton#RbFixed:checked {
+    background-color: #0D6EFD;
+    color: #FFFFFF;
 }
 
 QDoubleSpinBox#DiscountValueInput {

@@ -6,7 +6,6 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QDoubleSpinBox,
     QPushButton,
-    QRadioButton,
     QButtonGroup,
     QGridLayout,
     QLabel,
@@ -21,7 +20,18 @@ class DiscountDialog(QDialog):
     def __init__(self, parent=None, original_amount: Decimal = Decimal("0.00")):
         super().__init__(parent)
         self.setWindowTitle(_t("discount.title"))
-        self.setFixedSize(420, 440)
+        # Fixed WIDTH only -- a hardcoded fixed HEIGHT (previously 440)
+        # has no slack for font-metric differences across systems/fonts,
+        # and this dialog's content is already right at that edge: on a
+        # system whose fonts render even slightly taller, the content
+        # stops fitting and QGridLayout silently collapses the preset
+        # buttons' vertical spacing to 0 to force everything into the
+        # fixed height, visibly merging the two preset rows together.
+        # Letting height follow the layout's real sizeHint means it is
+        # always exactly tall enough, on any system, font, or language
+        # (including a future Sinhala/Tamil translation of this dialog's
+        # own labels, which may need more vertical room than English).
+        self.setFixedWidth(420)
         self.setObjectName("DiscountDialog")
 
         self.discount_type = "PERCENTAGE"
@@ -50,17 +60,32 @@ class DiscountDialog(QDialog):
 
         self.type_group = QButtonGroup(self)
 
-        self.rb_percent = QRadioButton("")
+        # Checkable QPushButtons instead of QRadioButtons -- a radio
+        # button's indicator+text always render left-anchored inside
+        # whatever width the layout gives it, leaving a lopsided gap of
+        # empty space on the right of each segment. QPushButton centers
+        # its text by default, which is what an actual segmented control
+        # needs; this is also the same checkable-QPushButton pattern
+        # already used for tab-like toggles elsewhere in this app (e.g.
+        # sale_history_dialog.py, sales_view.py's quick filters).
+        self.rb_percent = QPushButton("")
+        self.rb_percent.setCheckable(True)
         self.rb_percent.setChecked(True)
         self.rb_percent.setObjectName("RbPercent")
+        self.rb_percent.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.type_group.addButton(self.rb_percent)
 
-        self.rb_fixed = QRadioButton("")
+        self.rb_fixed = QPushButton("")
+        self.rb_fixed.setCheckable(True)
         self.rb_fixed.setObjectName("RbFixed")
+        self.rb_fixed.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.type_group.addButton(self.rb_fixed)
 
-        type_layout.addWidget(self.rb_percent)
-        type_layout.addWidget(self.rb_fixed)
+        # Equal stretch so both segments split the frame 50/50 regardless
+        # of "Percentage (%)" and "Fixed Amount (Rs)" having different
+        # text lengths.
+        type_layout.addWidget(self.rb_percent, 1)
+        type_layout.addWidget(self.rb_fixed, 1)
         layout.addWidget(type_frame)
 
         self.type_group.buttonClicked.connect(self.on_type_changed)
@@ -180,6 +205,17 @@ class DiscountDialog(QDialog):
                 widget = self.presets_layout.itemAt(i).widget()
                 if widget:
                     widget.setEnabled(False)
+
+    def showEvent(self, event):
+        """Focus and pre-select the value field so a cashier can start
+        typing a discount immediately -- this app is keyboard-first by
+        product principle, and this dialog's entire job is entering one
+        number quickly. Matches the same pattern already used by
+        ManagerOverrideDialog for its PIN field.
+        """
+        super().showEvent(event)
+        self.spin_value.setFocus()
+        self.spin_value.selectAll()
 
     def get_data(self):
         return self.discount_type, self.spin_value.value()

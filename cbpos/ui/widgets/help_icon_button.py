@@ -11,7 +11,7 @@ a non-technical user (#318).
 
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import QPushButton
+from PyQt6.QtWidgets import QPushButton, QToolTip
 from cbpos.config import Config
 
 
@@ -36,3 +36,14 @@ class HelpIconButton(QPushButton):
             self.setToolTip(tooltip)
         if on_click:
             self.clicked.connect(on_click)
+        else:
+            # A hover-only tooltip never appears on a touchscreen POS
+            # terminal -- tapping is the only gesture available there, so
+            # a tooltip-only button (no on_click guide dialog) needs to
+            # also show its tooltip on tap, or it does nothing when
+            # clicked.
+            self.clicked.connect(self._show_tooltip_on_click)
+
+    def _show_tooltip_on_click(self) -> None:
+        if self.toolTip():
+            QToolTip.showText(self.mapToGlobal(self.rect().bottomLeft()), self.toolTip(), self)

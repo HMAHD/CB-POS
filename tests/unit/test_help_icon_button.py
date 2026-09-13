@@ -6,11 +6,18 @@ though several other unfamiliar fields across the app (Purchasing's
 Payment Terms, Price Lists' date ranges, Sales Tax's own VAT/SSCL
 fields) could use the same kind of help. HelpIconButton extracts the
 reusable icon+tooltip+optional-guide-dialog part.
+
+A tooltip-only button appeared to do nothing when tapped, since Qt only
+shows a hover tooltip on mouse-over -- which never happens on a
+touchscreen POS terminal (tapping is the only gesture available there).
+Clicking a tooltip-only HelpIconButton now shows the same tooltip text
+via QToolTip directly.
 """
 
 from unittest.mock import MagicMock
 
 import pytest
+from PyQt6.QtWidgets import QToolTip
 
 from cbpos.ui.widgets.help_icon_button import HelpIconButton
 from cbpos.ui.views.settings_pages import SalesTaxPage, ShopInfoPage
@@ -19,9 +26,18 @@ pytestmark = pytest.mark.usefixtures("qapp")
 
 
 class TestHelpIconButtonBasics:
-    def test_tooltip_only_usage_sets_no_click_handler(self):
+    def test_tooltip_only_usage_has_no_extra_click_side_effect(self):
         btn = HelpIconButton(tooltip="Explains the field")
         assert btn.toolTip() == "Explains the field"
+
+    def test_clicking_a_tooltip_only_button_shows_the_tooltip(self):
+        btn = HelpIconButton(tooltip="Explains the field")
+        btn.show()
+
+        btn.click()
+
+        assert QToolTip.isVisible()
+        assert QToolTip.text() == "Explains the field"
 
     def test_on_click_callback_fires_when_clicked(self):
         callback = MagicMock()

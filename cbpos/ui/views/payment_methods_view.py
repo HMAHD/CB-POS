@@ -5,21 +5,21 @@ Card-based list with inline toggle, edit, and delete actions.
 
 import logging
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QLabel,
+    QCheckBox,
     QDialog,
     QFormLayout,
-    QLineEdit,
-    QCheckBox,
-    QMessageBox,
-    QScrollArea,
     QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt
 
 from cbpos.core.services.payment_service import PaymentService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback

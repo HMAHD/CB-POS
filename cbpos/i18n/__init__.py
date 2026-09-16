@@ -14,7 +14,7 @@ To switch language at runtime::
     set_language("si")  # Sinhala
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 from cbpos.i18n.translation_service import TranslationService
 

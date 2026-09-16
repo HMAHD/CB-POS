@@ -1,27 +1,30 @@
+import contextlib
 import logging
 from datetime import datetime
+
+from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QDateEdit,
     QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QSplitter,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QDateEdit,
-    QLineEdit,
-    QPushButton,
-    QLabel,
-    QMessageBox,
-    QSplitter,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QDate
-from cbpos.core.services.transaction_service import TransactionService
-from cbpos.core.services.sale_query_service import SaleQueryService
-from cbpos.core.services.receipt_service import ReceiptService
+
 from cbpos.core.services.auth_service import AuthService
-from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.core.services.receipt_service import ReceiptService
+from cbpos.core.services.sale_query_service import SaleQueryService
+from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
 logger = logging.getLogger(__name__)
 
@@ -267,16 +270,16 @@ class HistoryView(QWidget):
         """Display sale details in details panel"""
         cashier = sale.user.username if sale.user else _t("history.unknown")
         details_text = f"""
-        <b>{_t('history.detail_receipt')}:</b> {sale.document_number}<br>
-        <b>{_t('common.date')}:</b> {sale.date.strftime("%Y-%m-%d %H:%M:%S")}<br>
-        <b>{_t('history.col_cashier')}:</b> {cashier}<br>
-        <b>{_t('common.total')}:</b> {format_currency(sale.total_amount)}<br>
-        <b>{_t('history.detail_payment')}:</b> {sale.payment_method}<br>
-        <b>{_t('common.status')}:</b> {sale.status}
+        <b>{_t("history.detail_receipt")}:</b> {sale.document_number}<br>
+        <b>{_t("common.date")}:</b> {sale.date.strftime("%Y-%m-%d %H:%M:%S")}<br>
+        <b>{_t("history.col_cashier")}:</b> {cashier}<br>
+        <b>{_t("common.total")}:</b> {format_currency(sale.total_amount)}<br>
+        <b>{_t("history.detail_payment")}:</b> {sale.payment_method}<br>
+        <b>{_t("common.status")}:</b> {sale.status}
         """
 
         if sale.refund_of_sale_id:
-            details_text += f"<br><b>{_t('history.refund_of_sale')}:</b> #{sale.refund_of_sale_id}"  # noqa: E231
+            details_text += f"<br><b>{_t('history.refund_of_sale')}:</b> #{sale.refund_of_sale_id}"
 
         self.details_label.setText(details_text)
 
@@ -290,17 +293,17 @@ class HistoryView(QWidget):
             self.items_table.setItem(row_idx, 0, QTableWidgetItem(product_name))
 
             # Quantity
-            qty_item = QTableWidgetItem("{:.3f}".format(item.qty))
+            qty_item = QTableWidgetItem(f"{item.qty:.3f}")
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(row_idx, 1, qty_item)
 
             # Unit Price
-            price_item = QTableWidgetItem("{:.2f}".format(item.unit_price))
+            price_item = QTableWidgetItem(f"{item.unit_price:.2f}")
             price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(row_idx, 2, price_item)
 
             # Subtotal
-            subtotal_item = QTableWidgetItem("{:.2f}".format(item.subtotal))
+            subtotal_item = QTableWidgetItem(f"{item.subtotal:.2f}")
             subtotal_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(row_idx, 3, subtotal_item)
 
@@ -333,10 +336,8 @@ class HistoryView(QWidget):
                 worker.error_occurred.disconnect(self._on_reprint_error)
             except TypeError:
                 pass  # not connected yet
-            try:
+            with contextlib.suppress(TypeError):
                 worker.job_completed.disconnect(self._on_reprint_finished)
-            except TypeError:
-                pass
             worker.error_occurred.connect(self._on_reprint_error)
             worker.job_completed.connect(self._on_reprint_finished)
 
@@ -375,7 +376,7 @@ class HistoryView(QWidget):
             f"<b>{_t('history.refund_transaction_q')}</b><br><br>"
             f"{_t('history.detail_receipt')}: {self.current_sale.document_number}<br>"
             f"{_t('common.amount')}: {format_currency(self.current_sale.total_amount)}<br><br>"
-            f"<b style='color: #FF4136'>{_t('common.warning')}:</b> "  # noqa: E231
+            f"<b style='color: #FF4136'>{_t('common.warning')}:</b> "
             f"{_t('history.refund_warning')}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,

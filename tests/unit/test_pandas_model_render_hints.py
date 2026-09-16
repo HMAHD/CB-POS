@@ -10,10 +10,10 @@ lives with the report definition, not hardcoded per report type in the
 view.
 """
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
 import pandas as pd
 import pytest
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
 
 from cbpos.ui.views.reports.pandas_model import PandasModel
 

@@ -3,13 +3,12 @@
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
 
 from sqlalchemy.orm import joinedload
 
-from cbpos.core.database import Database
-from cbpos.core.models import StockCount, StockCountItem, Product
 from cbpos.core.constants.status import DocumentStatus, Precision
+from cbpos.core.database import Database
+from cbpos.core.models import Product, StockCount, StockCountItem
 from cbpos.core.services.document_service import DocumentService
 from cbpos.core.services.stock_service import StockService
 
@@ -20,7 +19,7 @@ class StockCountService:
     """Service for physical stock count lifecycle."""
 
     @staticmethod
-    def create_stock_count(user_id: int, note: Optional[str] = None) -> StockCount:
+    def create_stock_count(user_id: int, note: str | None = None) -> StockCount:
         """
         Create a new stock count document in DRAFT status.
 
@@ -50,7 +49,7 @@ class StockCountService:
             return stock_count
 
     @staticmethod
-    def add_all_products(stock_count_id: int, category_id: Optional[int] = None) -> int:
+    def add_all_products(stock_count_id: int, category_id: int | None = None) -> int:
         """
         Snapshot current stock for all active products as expected quantities.
 
@@ -68,12 +67,12 @@ class StockCountService:
                 raise ValueError("Stock count not found or not in DRAFT status.")
 
             # Get existing product IDs in this count (select only the column needed)
-            existing_ids = set(
+            existing_ids = {
                 row[0]
                 for row in session.query(StockCountItem.product_id)
                 .filter(StockCountItem.stock_count_id == stock_count_id)
                 .all()
-            )
+            }
 
             query = session.query(Product).filter(
                 Product.is_active.is_(True),
@@ -335,7 +334,7 @@ class StockCountService:
             return stock_count
 
     @staticmethod
-    def get_stock_count(stock_count_id: int) -> Optional[StockCount]:
+    def get_stock_count(stock_count_id: int) -> StockCount | None:
         """Get a stock count with eager-loaded items and products."""
         db = Database()
         with db.get_session() as session:
@@ -353,10 +352,10 @@ class StockCountService:
 
     @staticmethod
     def get_all_stock_counts(
-        status: Optional[str] = None,
-        date_from: Optional[datetime] = None,
-        date_to: Optional[datetime] = None,
-    ) -> List[StockCount]:
+        status: str | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> list[StockCount]:
         """
         Get stock count history with optional filters.
 

@@ -111,8 +111,8 @@ class TestHoldAndVoidResetCustomerToWalkIn:
         assert view.cart_service.get_customer() is None
 
     def test_void_bill_clears_the_selected_customer(self, view, db_session, monkeypatch):
-        from cbpos.core.models import User
         import cbpos.core.utils.permission_helper as permission_helper
+        from cbpos.core.models import User
 
         manager = User(username="mgr_sync", pin_hash="x", role_id=None, is_active=True)
         manager.id = 99
@@ -123,11 +123,13 @@ class TestHoldAndVoidResetCustomerToWalkIn:
         view.cart_service.add_item(_make_mock_product())
         view.update_cart_display()
 
-        with patch.object(
-            sales_view_module.QMessageBox, "question", return_value=sales_view_module.QMessageBox.StandardButton.Yes
+        with (
+            patch.object(
+                sales_view_module.QMessageBox, "question", return_value=sales_view_module.QMessageBox.StandardButton.Yes
+            ),
+            patch("cbpos.ui.views.sales_view.LoggingService.log_action"),
         ):
-            with patch("cbpos.ui.views.sales_view.LoggingService.log_action"):
-                view.void_bill()
+            view.void_bill()
 
         assert view.customer is None
         assert view.cart_service.get_customer() is None

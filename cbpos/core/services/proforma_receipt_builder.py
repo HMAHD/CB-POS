@@ -1,6 +1,6 @@
 """Proforma/quotation receipt builder — generates receipt commands for proformas."""
 
-from typing import List, Dict, Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from cbpos.core.services.base_receipt_builder import BaseReceiptBuilder
 from cbpos.core.utils.formatters import format_currency
@@ -14,8 +14,8 @@ class ProformaReceiptBuilder(BaseReceiptBuilder):
 
     @classmethod
     def build_proforma(
-        cls, proforma: "Proforma", config_override: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+        cls, proforma: "Proforma", config_override: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """
         Generates receipt commands for a Proforma/Quotation.
 
@@ -24,7 +24,7 @@ class ProformaReceiptBuilder(BaseReceiptBuilder):
             config_override: Optional dictionary to override ConfigService values.
         """
         cls._resolve_receipt_lang(config_override)
-        commands: List[Dict[str, Any]] = []
+        commands: list[dict[str, Any]] = []
         gc = cls._get_conf
 
         line_chars = cls._append_header_block(commands, config_override)
@@ -55,11 +55,7 @@ class ProformaReceiptBuilder(BaseReceiptBuilder):
         # Items
         for item in proforma.items:
             commands.append({"type": "text", "val": item.product_name, "align": "left"})
-            line = "{} x {} = {}".format(
-                item.quantity,
-                format_currency(item.unit_price),
-                format_currency(item.line_total),
-            )
+            line = f"{item.quantity} x {format_currency(item.unit_price)} = {format_currency(item.line_total)}"
             commands.append({"type": "text", "val": line, "align": "right"})
 
         commands.append({"type": "text", "val": "-" * line_chars, "align": "center"})

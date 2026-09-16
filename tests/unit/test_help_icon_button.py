@@ -19,8 +19,8 @@ from unittest.mock import MagicMock
 import pytest
 from PyQt6.QtWidgets import QToolTip
 
-from cbpos.ui.widgets.help_icon_button import HelpIconButton
 from cbpos.ui.views.settings_pages import SalesTaxPage, ShopInfoPage
+from cbpos.ui.widgets.help_icon_button import HelpIconButton
 
 pytestmark = pytest.mark.usefixtures("qapp")
 

@@ -7,7 +7,6 @@ and retrieve printer configuration.
 
 import logging
 from datetime import datetime
-from typing import Dict, Tuple
 
 from cbpos.core.interfaces.iprinter import IPrinter
 from cbpos.core.services.config_service import ConfigService
@@ -19,7 +18,7 @@ class HardwareTestService:
     """Test hardware connectivity and functionality."""
 
     @staticmethod
-    def _get_printer() -> Tuple[IPrinter, str]:
+    def _get_printer() -> tuple[IPrinter, str]:
         """Instantiate the correct printer driver based on config.
 
         Returns:
@@ -38,7 +37,7 @@ class HardwareTestService:
             return NullPrinter(), p_type
 
     @staticmethod
-    def test_receipt_printer() -> Tuple[bool, str]:
+    def test_receipt_printer() -> tuple[bool, str]:
         """Send a test print to the configured receipt printer.
 
         Returns:
@@ -73,7 +72,7 @@ class HardwareTestService:
             printer.disconnect()
 
     @staticmethod
-    def test_cash_drawer() -> Tuple[bool, str]:
+    def test_cash_drawer() -> tuple[bool, str]:
         """Send a kick signal to the cash drawer.
 
         Returns:
@@ -98,7 +97,7 @@ class HardwareTestService:
             printer.disconnect()
 
     @staticmethod
-    def get_printer_info() -> Dict[str, str]:
+    def get_printer_info() -> dict[str, str]:
         """Read printer configuration from settings.
 
         Returns:

@@ -1,5 +1,4 @@
 import logging
-from typing import List, Optional
 
 from cbpos.core.database import Database
 from cbpos.core.models import PaymentMethod, SalePayment
@@ -11,7 +10,7 @@ class PaymentService:
     """Service to manage Payment Methods."""
 
     @staticmethod
-    def get_all_methods() -> List[PaymentMethod]:
+    def get_all_methods() -> list[PaymentMethod]:
         """Get all payment methods."""
         db = Database()
         with db.get_session() as session:
@@ -21,7 +20,7 @@ class PaymentService:
             return results
 
     @staticmethod
-    def get_active_methods() -> List[PaymentMethod]:
+    def get_active_methods() -> list[PaymentMethod]:
         """Get only active payment methods."""
         db = Database()
         with db.get_session() as session:
@@ -35,7 +34,7 @@ class PaymentService:
         name: str,
         is_cash: bool = False,
         open_drawer: bool = False,
-        shortcut: Optional[str] = None,
+        shortcut: str | None = None,
     ) -> PaymentMethod:
         """Create a new payment method.
 
@@ -58,7 +57,7 @@ class PaymentService:
         with db.get_session() as session:
             existing = session.query(PaymentMethod).filter(PaymentMethod.name == name.strip()).first()
             if existing:
-                raise ValueError("Payment method '{0}' already exists".format(name.strip()))
+                raise ValueError(f"Payment method '{name.strip()}' already exists")
 
             method = PaymentMethod(
                 name=name.strip(),
@@ -77,12 +76,12 @@ class PaymentService:
     @staticmethod
     def update_method(
         method_id: int,
-        name: Optional[str] = None,
-        is_cash: Optional[bool] = None,
-        open_drawer: Optional[bool] = None,
-        shortcut: Optional[str] = None,
-        is_active: Optional[bool] = None,
-    ) -> Optional[PaymentMethod]:
+        name: str | None = None,
+        is_cash: bool | None = None,
+        open_drawer: bool | None = None,
+        shortcut: str | None = None,
+        is_active: bool | None = None,
+    ) -> PaymentMethod | None:
         """Update an existing payment method.
 
         Args:
@@ -119,7 +118,7 @@ class PaymentService:
                     .first()
                 )
                 if conflict:
-                    raise ValueError("Payment method '{0}' already exists".format(name))
+                    raise ValueError(f"Payment method '{name}' already exists")
                 method.name = name
             if is_cash is not None:
                 method.is_cash = is_cash

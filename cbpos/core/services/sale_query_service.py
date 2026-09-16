@@ -1,6 +1,8 @@
 import logging
 from datetime import datetime
+
 from sqlalchemy.orm import joinedload
+
 from cbpos.core.database import Database
 from cbpos.core.models import (
     Sale,

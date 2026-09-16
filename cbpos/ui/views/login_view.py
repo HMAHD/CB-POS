@@ -1,18 +1,19 @@
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QIntValidator, QKeySequence, QPixmap, QShortcut
 from PyQt6.QtWidgets import (
-    QWidget,
+    QApplication,
+    QGridLayout,
     QHBoxLayout,
-    QVBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
-    QGridLayout,
     QSizePolicy,
-    QApplication,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPixmap, QIntValidator, QKeySequence, QShortcut
-from cbpos.core.services.auth_service import AuthService
+
 from cbpos.config import Config
+from cbpos.core.services.auth_service import AuthService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 # Numpad geometry constants

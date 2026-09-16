@@ -13,24 +13,24 @@ import logging
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
     QHBoxLayout,
-    QTreeWidget,
-    QTreeWidgetItem,
-    QPushButton,
+    QHeaderView,
     QLineEdit,
     QMessageBox,
-    QFormLayout,
-    QGroupBox,
-    QFrame,
-    QHeaderView,
+    QPushButton,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
 )
 
 from cbpos.core.constants.permissions import ADMIN_ROLE_NAME
 from cbpos.core.services.role_service import RoleService
 from cbpos.core.services.user_service import UserService
-from cbpos.i18n import _t
 from cbpos.core.utils.error_messages import translate_error
+from cbpos.i18n import _t
 from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 logger = logging.getLogger(__name__)

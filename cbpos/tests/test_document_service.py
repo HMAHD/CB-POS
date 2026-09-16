@@ -1,4 +1,5 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from cbpos.core.services.document_service import DocumentService
 
 
@@ -47,7 +48,7 @@ def test_generate_number_custom_pattern(mock_config, mock_db):
 
     # Execute
     with patch("cbpos.core.services.document_service.datetime") as mock_date:
-        mock_date.now.return_value.strftime.side_effect = lambda fmt: ("2023" if fmt == "%Y" else "01")
+        mock_date.now.return_value.strftime.side_effect = lambda fmt: "2023" if fmt == "%Y" else "01"
 
         doc_num = DocumentService.generate_number("SALE")
 

@@ -1,18 +1,19 @@
+from PyQt6.QtCore import QSize, Qt, pyqtSignal
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QFrame,
+    QGraphicsDropShadowEffect,
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QFrame,
-    QGraphicsDropShadowEffect,
     QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QSize
-from PyQt6.QtGui import QColor
-from cbpos.ui.resources.icons import Icons
-from cbpos.ui.constants import SIDEBAR_WIDTH, ACTION_BTN_HEIGHT
+
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.constants import ACTION_BTN_HEIGHT, SIDEBAR_WIDTH
+from cbpos.ui.resources.icons import Icons
 
 
 class NavTile(QPushButton):

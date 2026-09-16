@@ -2,10 +2,11 @@ import logging
 import smtplib
 import ssl
 import threading
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+from collections.abc import Callable
 from email.mime.application import MIMEApplication
-from typing import Optional, Callable
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 from cbpos.core.services.config_service import ConfigService
 
 logger = logging.getLogger(__name__)
@@ -15,8 +16,8 @@ def _send_email_task(
     to_email: str,
     subject: str,
     body: str,
-    attachment_path: Optional[str],
-    callback: Optional[Callable[[bool, str], None]],
+    attachment_path: str | None,
+    callback: Callable[[bool, str], None] | None,
 ) -> None:
     """Background task that sends an email via SMTP."""
     config = ConfigService.get_all()
@@ -70,8 +71,8 @@ class EmailService:
         to_email: str,
         subject: str,
         body: str,
-        attachment_path: Optional[str] = None,
-        callback: Optional[Callable[[bool, str], None]] = None,
+        attachment_path: str | None = None,
+        callback: Callable[[bool, str], None] | None = None,
     ):
         """
         Send an email in a background thread.
@@ -96,7 +97,7 @@ class EmailService:
         subject: str,
         body: str,
         pdf_path: str,
-        callback: Optional[Callable[[bool, str], None]] = None,
+        callback: Callable[[bool, str], None] | None = None,
     ):
         """Alias for send_email with a PDF attachment."""
         EmailService.send_email(to_email, subject, body, pdf_path, callback=callback)

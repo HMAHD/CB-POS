@@ -3,12 +3,12 @@
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional, Dict, Any
+from typing import Any
 
 from sqlalchemy import func
 
 from cbpos.core.database import Database
-from cbpos.core.models import Supplier, SupplierPayment, SupplierLedgerEntry
+from cbpos.core.models import Supplier, SupplierLedgerEntry, SupplierPayment
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +22,8 @@ class SupplierPayableService:
         amount: Decimal,
         payment_method: str,
         user_id: int,
-        reference: Optional[str] = None,
-        note: Optional[str] = None,
+        reference: str | None = None,
+        note: str | None = None,
     ) -> SupplierPayment:
         """
         Record a payment made to a supplier.
@@ -186,9 +186,9 @@ class SupplierPayableService:
     @staticmethod
     def get_ledger(
         supplier_id: int,
-        date_from: Optional[datetime] = None,
-        date_to: Optional[datetime] = None,
-    ) -> List[SupplierLedgerEntry]:
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> list[SupplierLedgerEntry]:
         """
         Get chronological ledger entries for a supplier.
 
@@ -215,7 +215,7 @@ class SupplierPayableService:
             return entries
 
     @staticmethod
-    def get_overdue_suppliers() -> List[Dict[str, Any]]:
+    def get_overdue_suppliers() -> list[dict[str, Any]]:
         """
         Get suppliers with outstanding payable who are overdue based on payment_terms.
 
@@ -288,7 +288,7 @@ class SupplierPayableService:
             return results
 
     @staticmethod
-    def get_supplier_summary(supplier_id: int) -> Dict[str, Any]:
+    def get_supplier_summary(supplier_id: int) -> dict[str, Any]:
         """
         Get a summary of a supplier's payable status.
 

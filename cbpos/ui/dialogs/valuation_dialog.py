@@ -1,15 +1,16 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
     QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QPushButton,
     QTableWidget,
     QTableWidgetItem,
-    QPushButton,
-    QHeaderView,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import Qt
+
 from cbpos.core.services.report_service import ReportService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t

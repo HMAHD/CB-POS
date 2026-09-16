@@ -1,21 +1,22 @@
+from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PyQt6.QtGui import QBrush, QColor
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
     QHBoxLayout,
-    QLineEdit,
-    QPushButton,
-    QTableView,
     QHeaderView,
     QLabel,
+    QLineEdit,
+    QPushButton,
     QStackedWidget,
+    QTableView,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex
-from PyQt6.QtGui import QColor, QBrush
-from cbpos.core.services.inventory_service import InventoryService
+
 from cbpos.core.services.import_service import ImportService
+from cbpos.core.services.inventory_service import InventoryService
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.dialogs.product_editor import ProductEditor
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 
@@ -46,9 +47,9 @@ class InventoryModel(QAbstractTableModel):
             elif col == 2:
                 return product.category.name if product.category else "-"
             elif col == 3:
-                return "{:.2f}".format(product.price)
+                return f"{product.price:.2f}"
             elif col == 4:
-                return "{:.3f}".format(product.stock_qty)
+                return f"{product.stock_qty:.3f}"
             elif col == 5:
                 if product.unit:
                     return product.unit.abbreviation
@@ -98,8 +99,8 @@ class InventoryView(QWidget):
     def init_ui(self):
         layout = QVBoxLayout(self)
 
-        from cbpos.ui.widgets.page_header import PageHeader
         from cbpos.ui.resources.icons import Icons
+        from cbpos.ui.widgets.page_header import PageHeader
 
         self._page_header = PageHeader(icon_name=Icons.INVENTORY)
         layout.addWidget(self._page_header)
@@ -228,8 +229,8 @@ class InventoryView(QWidget):
         self._update_empty_state()
 
     def open_add_dialog(self):
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.INVENTORY_EDIT, self):
             return
@@ -239,8 +240,8 @@ class InventoryView(QWidget):
             self.load_data()
 
     def open_edit_dialog(self, index):
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.INVENTORY_EDIT, self):
             return
@@ -271,6 +272,7 @@ class InventoryView(QWidget):
 
     def open_context_menu(self, position):
         from PyQt6.QtWidgets import QMenu
+
         from cbpos.ui.dialogs.stock_history_dialog import StockHistoryDialog
 
         index = self.table.indexAt(position)

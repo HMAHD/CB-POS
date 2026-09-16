@@ -1,22 +1,23 @@
-from typing import List, Dict, Any
+from typing import Any
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
+    QFrame,
     QHBoxLayout,
     QPushButton,
     QScrollArea,
-    QFrame,
+    QVBoxLayout,
 )
 
-from cbpos.ui.widgets.receipt_preview_widget import ReceiptPreviewWidget
 from cbpos.i18n import _t
+from cbpos.ui.widgets.receipt_preview_widget import ReceiptPreviewWidget
 
 
 class ReceiptPreviewDialog(QDialog):
     """Dialog to preview the receipt as it would appear on a thermal printer."""
 
-    def __init__(self, commands: List[Dict[str, Any]], parent=None):
+    def __init__(self, commands: list[dict[str, Any]], parent=None):
         super().__init__(parent)
         self.setWindowTitle(_t("receipt_preview.title"))
         self.setFixedSize(400, 600)

@@ -8,7 +8,7 @@ registered with Qt before any UI components are initialized.
 
 import os
 from pathlib import Path
-from typing import List, Optional
+
 from PyQt6.QtGui import QFontDatabase
 
 
@@ -21,8 +21,8 @@ class ResourceLoader:
     correct order and handles errors gracefully.
     """
 
-    _loaded_font_families: List[str] = []
-    _primary_font: Optional[str] = None
+    _loaded_font_families: list[str] = []
+    _primary_font: str | None = None
 
     @classmethod
     def load_fonts(cls) -> str:
@@ -56,7 +56,7 @@ class ResourceLoader:
         failed_count = 0
 
         # Walk through the fonts directory recursively
-        for root, dirs, files in os.walk(fonts_dir):
+        for root, _dirs, files in os.walk(fonts_dir):
             for filename in files:
                 if filename.lower().endswith((".ttf", ".otf")):
                     font_path = os.path.join(root, filename)
@@ -103,7 +103,7 @@ class ResourceLoader:
         return cls._primary_font or "Arial"
 
     @classmethod
-    def get_loaded_families(cls) -> List[str]:
+    def get_loaded_families(cls) -> list[str]:
         """
         Get list of all loaded font families.
 

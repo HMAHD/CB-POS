@@ -1,15 +1,16 @@
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
+    QDialogButtonBox,
+    QHeaderView,
     QLineEdit,
+    QPushButton,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QDialogButtonBox,
-    QPushButton,
+    QVBoxLayout,
 )
-from PyQt6.QtGui import QShortcut, QKeySequence
-from PyQt6.QtCore import Qt
+
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.i18n import _t
 from cbpos.ui.widgets.table_helpers import configure_table_columns

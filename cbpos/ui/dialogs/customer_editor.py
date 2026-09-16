@@ -1,31 +1,31 @@
 from decimal import Decimal, InvalidOperation
-from PyQt6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QFormLayout,
-    QLineEdit,
-    QDialogButtonBox,
-    QMessageBox,
-    QTabWidget,
-    QWidget,
-    QCheckBox,
-    QComboBox,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
-    QPushButton,
-    QLabel,
-)
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QDoubleValidator, QIntValidator
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
-
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.services.price_list_service import (
     PriceListService,
 )  # Assuming this exists or will be needed
-from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.i18n import _t
 
@@ -238,7 +238,7 @@ class CustomerEditor(QDialog):
 
             self.history_table.setItem(row, 0, QTableWidgetItem(sale.date.strftime("%Y-%m-%d %H:%M")))
             self.history_table.setItem(row, 1, QTableWidgetItem(str(sale.id)))
-            self.history_table.setItem(row, 2, QTableWidgetItem("{:.2f}".format(sale.total_amount)))
+            self.history_table.setItem(row, 2, QTableWidgetItem(f"{sale.total_amount:.2f}"))
 
             status_item = QTableWidgetItem(sale.status)
             if sale.status == "VOID":

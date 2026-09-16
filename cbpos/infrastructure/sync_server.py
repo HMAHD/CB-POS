@@ -14,8 +14,8 @@ import secrets
 import socket
 import threading
 from datetime import datetime
-from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
-from typing import Any, Dict, List, Optional
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import Any, Optional
 
 from PyQt6.QtCore import QThread, pyqtSignal
 from sqlalchemy.orm.exc import StaleDataError
@@ -28,21 +28,21 @@ from cbpos.core.models import (
 )
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.sync_protocol import (
-    SYNC_PROTOCOL_VERSION,
+    CATALOG_TABLES,
     EP_HEARTBEAT,
-    EP_REGISTER,
-    EP_PUSH_TRANSACTIONS,
     EP_PULL_CATALOG,
     EP_PULL_STOCK,
     EP_PUSH_AUDIT,
-    CATALOG_TABLES,
+    EP_PUSH_TRANSACTIONS,
+    EP_REGISTER,
+    SYNC_PROTOCOL_VERSION,
     TRANSACTION_TABLES,
-    model_to_dict,
     dict_to_model,
+    get_model_for_table,
+    model_to_dict,
     sync_json_dumps,
     sync_json_loads,
     validate_envelope,
-    get_model_for_table,
 )
 
 logger = logging.getLogger(__name__)
@@ -72,12 +72,12 @@ class TerminalInfo:
     """In-memory state for a connected terminal."""
 
     __slots__ = (
-        "terminal_id",
         "ip_address",
-        "registered_at",
+        "last_catalog_sync",
         "last_heartbeat",
         "last_push_sequence",
-        "last_catalog_sync",
+        "registered_at",
+        "terminal_id",
     )
 
     def __init__(self, terminal_id: str, ip_address: str):
@@ -86,9 +86,9 @@ class TerminalInfo:
         self.registered_at = datetime.now()
         self.last_heartbeat = datetime.now()
         self.last_push_sequence: int = 0
-        self.last_catalog_sync: Optional[datetime] = None
+        self.last_catalog_sync: datetime | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "terminal_id": self.terminal_id,
             "ip_address": self.ip_address,
@@ -103,7 +103,7 @@ class TerminalRegistry:
     """Thread-safe registry of connected terminals."""
 
     def __init__(self):
-        self._terminals: Dict[str, TerminalInfo] = {}
+        self._terminals: dict[str, TerminalInfo] = {}
         self._lock = threading.Lock()
 
     def register(self, terminal_id: str, ip_address: str) -> TerminalInfo:
@@ -127,11 +127,11 @@ class TerminalRegistry:
                 return True
             return False
 
-    def get(self, terminal_id: str) -> Optional[TerminalInfo]:
+    def get(self, terminal_id: str) -> TerminalInfo | None:
         with self._lock:
             return self._terminals.get(terminal_id)
 
-    def get_all(self) -> List[TerminalInfo]:
+    def get_all(self) -> list[TerminalInfo]:
         with self._lock:
             return list(self._terminals.values())
 
@@ -179,7 +179,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _read_json(self) -> Optional[Dict[str, Any]]:
+    def _read_json(self) -> dict[str, Any] | None:
         """Read and parse the JSON request body."""
         try:
             length = int(self.headers.get("Content-Length", 0))
@@ -281,7 +281,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         Returns all catalog records modified after ``since``.
         If ``since`` is omitted, returns all records (full sync).
         """
-        from urllib.parse import urlparse, parse_qs
+        from urllib.parse import parse_qs, urlparse
 
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
@@ -296,7 +296,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
                 self._send_json({"error": f"Invalid since format: {since_str}"}, 400)
                 return
 
-        payload: Dict[str, List[Dict[str, Any]]] = {}
+        payload: dict[str, list[dict[str, Any]]] = {}
         total_records = 0
 
         # Captured before querying, not after: a row edited while this
@@ -412,7 +412,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         db = Database()
         max_attempts = 3
         records_applied = 0
-        errors: List[str] = []
+        errors: list[str] = []
 
         for attempt in range(1, max_attempts + 1):
             records_applied = 0
@@ -494,7 +494,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         session,
         model_class,
         table_name: str,
-        record_data: Dict[str, Any],
+        record_data: dict[str, Any],
     ) -> None:
         """Apply a single synced record to the database.
 
@@ -599,7 +599,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         direction: str,
         sync_type: str,
         records_count: int,
-        errors: List[str],
+        errors: list[str],
     ) -> None:
         """Write a SyncLog entry to the database."""
         try:
@@ -662,7 +662,7 @@ class SyncServer(QThread):
     def __init__(self, port: int = 5555, parent=None):
         super().__init__(parent)
         self._port = port
-        self._server: Optional[_ThreadedHTTPServer] = None
+        self._server: _ThreadedHTTPServer | None = None
         self._running = False
 
     @property

@@ -4,20 +4,20 @@ from contextlib import contextmanager
 from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import func, Integer
+from sqlalchemy import Integer, func
 from sqlalchemy.orm import joinedload
 
+from cbpos.core.constants.status import ShiftStatus
 from cbpos.core.database import Database
 from cbpos.core.models import (
-    Sale,
-    Product,
-    Shift,
-    SaleItem,
-    SalePayment,
     Category,
     Customer,
+    Product,
+    Sale,
+    SaleItem,
+    SalePayment,
+    Shift,
 )
-from cbpos.core.constants.status import ShiftStatus
 
 MONTH_NAMES = [
     "January",

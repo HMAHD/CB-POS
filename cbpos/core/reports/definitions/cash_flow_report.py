@@ -1,9 +1,11 @@
-from typing import List, Dict, Any
+from typing import Any
+
 import pandas as pd
 from sqlalchemy import func
-from cbpos.core.reports.base_report import BaseReport
+
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Sale
+from cbpos.core.reports.base_report import BaseReport
 
 
 class CashFlowReport(BaseReport):
@@ -19,10 +21,10 @@ class CashFlowReport(BaseReport):
     def category(self) -> str:
         return "Financial"
 
-    def get_filter_definitions(self) -> List[Dict[str, Any]]:
+    def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
-    def get_render_hints(self) -> Dict[str, Any]:
+    def get_render_hints(self) -> dict[str, Any]:
         return {
             "currency_columns": ["Amount"],
             "total_row_column": "Type",
@@ -31,7 +33,7 @@ class CashFlowReport(BaseReport):
             "color_map": {"Inflow": "#39FF14", "Outflow": "#FF4136"},
         }
 
-    def generate(self, filters: Dict[str, Any] = None) -> pd.DataFrame:
+    def generate(self, filters: dict[str, Any] = None) -> pd.DataFrame:
         if filters is None:
             filters = {}
 

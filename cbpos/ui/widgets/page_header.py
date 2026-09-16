@@ -8,7 +8,8 @@ them without touching whatever secondary navigation (tabs, a sidebar,
 or none) each screen already uses for its own content (#316).
 """
 
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QWidget
+
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.ui.resources.icons import Icons
 

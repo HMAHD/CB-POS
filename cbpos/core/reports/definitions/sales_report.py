@@ -1,11 +1,12 @@
-from typing import List, Dict, Any
-import pandas as pd
-from sqlalchemy import select, func
 from datetime import date
+from typing import Any
 
-from cbpos.core.reports.base_report import BaseReport
-from cbpos.core.models import Sale
+import pandas as pd
+from sqlalchemy import func, select
+
 from cbpos.core.database import Database
+from cbpos.core.models import Sale
+from cbpos.core.reports.base_report import BaseReport
 
 
 class DailySalesSummaryReport(BaseReport):
@@ -21,7 +22,7 @@ class DailySalesSummaryReport(BaseReport):
     def category(self) -> str:
         return "Sales"
 
-    def get_filter_definitions(self) -> List[Dict[str, Any]]:
+    def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [
             {
                 "name": "date_range",
@@ -32,7 +33,7 @@ class DailySalesSummaryReport(BaseReport):
             }
         ]
 
-    def generate(self, filters: Dict[str, Any]) -> pd.DataFrame:
+    def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         start_date = filters.get("date_range", {}).get("start")
         end_date = filters.get("date_range", {}).get("end")
 

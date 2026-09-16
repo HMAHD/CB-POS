@@ -2,38 +2,38 @@ import logging
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
+from PyQt6.QtCore import QAbstractTableModel, QDate, QStringListModel, Qt
+from PyQt6.QtGui import QColor, QIntValidator, QKeySequence, QShortcut, QStandardItem, QStandardItemModel
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QAbstractItemView,
+    QComboBox,
+    QCompleter,
+    QDateEdit,
+    QDialog,
+    QFormLayout,
+    QFrame,
     QHBoxLayout,
-    QTabWidget,
-    QTableView,
-    QPushButton,
+    QHeaderView,
+    QInputDialog,
     QLabel,
     QLineEdit,
-    QFormLayout,
-    QDialog,
     QMessageBox,
-    QComboBox,
-    QDateEdit,
-    QHeaderView,
-    QAbstractItemView,
-    QCompleter,
+    QPushButton,
+    QSizePolicy,
+    QStackedWidget,
+    QTableView,
     QTableWidget,
     QTableWidgetItem,
-    QStackedWidget,
-    QFrame,
-    QInputDialog,
-    QSizePolicy,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QAbstractTableModel, QDate, QStringListModel
-from PyQt6.QtGui import QStandardItemModel, QStandardItem, QColor, QShortcut, QKeySequence, QIntValidator
 
-from cbpos.core.services.supplier_service import SupplierService
-from cbpos.core.services.purchase_service import PurchaseService
-from cbpos.core.services.product_service import ProductService
-from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.auth_service import AuthService
+from cbpos.core.services.product_service import ProductService
+from cbpos.core.services.purchase_service import PurchaseService
+from cbpos.core.services.supplier_payable_service import SupplierPayableService
+from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
@@ -206,7 +206,7 @@ class GRNDetailDialog(QDialog):
             table.setItem(row, 0, QTableWidgetItem(product_name))
             table.setItem(row, 1, QTableWidgetItem(barcode))
 
-            qty_item = QTableWidgetItem(f"{item.qty_received:.3f}")  # noqa: E231
+            qty_item = QTableWidgetItem(f"{item.qty_received:.3f}")
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             table.setItem(row, 2, qty_item)
 
@@ -354,8 +354,8 @@ class PurchaseView(QWidget):
     def init_ui(self):
         layout = QVBoxLayout(self)
 
-        from cbpos.ui.widgets.page_header import PageHeader
         from cbpos.ui.resources.icons import Icons
+        from cbpos.ui.widgets.page_header import PageHeader
 
         self._page_header = PageHeader(icon_name=Icons.PURCHASE)
         layout.addWidget(self._page_header)
@@ -687,7 +687,7 @@ class PurchaseView(QWidget):
             for s in self.suppliers:
                 self.history_supplier_combo.addItem(s.company_name, s.id)
             self.history_supplier_combo.lineEdit().setPlaceholderText(_t("purchase.search_supplier_placeholder"))
-            history_completer = QCompleter([_t("purchase.all_suppliers")] + names, self)
+            history_completer = QCompleter([_t("purchase.all_suppliers"), *names], self)
             history_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
             history_completer.setFilterMode(Qt.MatchFlag.MatchContains)
             self.history_supplier_combo.setCompleter(history_completer)
@@ -1084,7 +1084,7 @@ class PurchaseView(QWidget):
             self.payable_supplier_table.setItem(row, 2, QTableWidgetItem(supplier.phone or ""))
 
             payable = getattr(supplier, "current_payable", Decimal("0.00"))
-            payable_item = QTableWidgetItem(f"{payable:.2f}")  # noqa: E231
+            payable_item = QTableWidgetItem(f"{payable:.2f}")
             payable_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
             terms = getattr(supplier, "payment_terms", 0) or 0
@@ -1202,7 +1202,7 @@ class PurchaseView(QWidget):
 
             if entry.amount > 0:
                 # Debit (purchase increases payable)
-                debit_item = QTableWidgetItem(f"{entry.amount:.2f}")  # noqa: E231
+                debit_item = QTableWidgetItem(f"{entry.amount:.2f}")
                 debit_item.setForeground(QColor("#FF4136"))
                 debit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.payable_ledger_table.setItem(row, 3, debit_item)
@@ -1211,13 +1211,13 @@ class PurchaseView(QWidget):
             else:
                 # Credit (payment reduces payable)
                 self.payable_ledger_table.setItem(row, 3, QTableWidgetItem(""))
-                credit_item = QTableWidgetItem(f"{abs(entry.amount):.2f}")  # noqa: E231
+                credit_item = QTableWidgetItem(f"{abs(entry.amount):.2f}")
                 credit_item.setForeground(QColor("#39FF14"))
                 credit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.payable_ledger_table.setItem(row, 4, credit_item)
                 total_credit += abs(entry.amount)
 
-            balance_item = QTableWidgetItem(f"{entry.balance_after:.2f}")  # noqa: E231
+            balance_item = QTableWidgetItem(f"{entry.balance_after:.2f}")
             balance_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.payable_ledger_table.setItem(row, 5, balance_item)
 
@@ -1249,8 +1249,8 @@ class PurchaseView(QWidget):
 
     def make_payment(self) -> None:
         """Open supplier payment dialog."""
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.PURCHASE_MAKE_PAYMENT, self):
             return
@@ -1283,8 +1283,8 @@ class PurchaseView(QWidget):
 
     def adjust_payable(self) -> None:
         """Adjust supplier payable balance."""
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.PURCHASE_ADJUST_PAYABLE, self):
             return

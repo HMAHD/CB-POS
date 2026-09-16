@@ -1,8 +1,9 @@
 import csv
 import logging
+from collections.abc import Callable
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Callable, Dict, Optional
+
 from cbpos.core.services.inventory_service import InventoryService
 
 logger = logging.getLogger(__name__)
@@ -27,14 +28,14 @@ class ImportService:
             raise FileNotFoundError(f"File not found: {file_path}")
         return resolved
 
-    def import_products_from_csv(self, file_path: str) -> Dict[str, int]:
+    def import_products_from_csv(self, file_path: str) -> dict[str, int]:
         return self._import_csv(file_path, progress_callback=None)
 
     def import_products_from_csv_with_progress(
         self,
         file_path: str,
-        progress_callback: Optional[Callable[[int], None]] = None,
-    ) -> Dict[str, int]:
+        progress_callback: Callable[[int], None] | None = None,
+    ) -> dict[str, int]:
         """Import products with a progress callback called after each row.
 
         Args:
@@ -46,13 +47,13 @@ class ImportService:
     def _import_csv(
         self,
         file_path: str,
-        progress_callback: Optional[Callable[[int], None]] = None,
-    ) -> Dict[str, int]:
+        progress_callback: Callable[[int], None] | None = None,
+    ) -> dict[str, int]:
         results = {"success": 0, "failed": 0, "skipped": 0}
 
         try:
             validated_path = self._validate_file_path(file_path)
-            with open(validated_path, mode="r", encoding="utf-8-sig", newline="") as csvfile:
+            with open(validated_path, encoding="utf-8-sig", newline="") as csvfile:
                 reader = csv.DictReader(csvfile)
 
                 field_map = {}

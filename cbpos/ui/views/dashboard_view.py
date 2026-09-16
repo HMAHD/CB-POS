@@ -11,32 +11,32 @@ Layout:
 import logging
 from datetime import date
 
+from PyQt6.QtCore import QDate, Qt, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
+    QDateEdit,
     QFrame,
-    QTableWidget,
+    QHBoxLayout,
     QHeaderView,
+    QLabel,
+    QScrollArea,
+    QTableWidget,
     QTableWidgetItem,
     QToolButton,
-    QDateEdit,
-    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QDate, QThread, pyqtSignal
 
+from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.tax_service import TaxService
+from cbpos.core.utils.formatters import format_currency
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.widgets.charts import (
-    VerticalBarChart,
+    HOURLY_COLORS,
+    MONTH_COLORS,
     DonutChart,
     HorizontalBarChart,
-    MONTH_COLORS,
-    HOURLY_COLORS,
+    VerticalBarChart,
 )
-from cbpos.core.utils.formatters import format_currency
-from cbpos.core.services.tax_service import TaxService
-from cbpos.core.services.config_service import ConfigService
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 logger = logging.getLogger(__name__)
 
@@ -113,8 +113,8 @@ class DashboardView(QWidget):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
 
-        from cbpos.ui.widgets.page_header import PageHeader
         from cbpos.ui.resources.icons import Icons
+        from cbpos.ui.widgets.page_header import PageHeader
 
         self._page_header = PageHeader(icon_name=Icons.DASHBOARD)
         header_row = QHBoxLayout()
@@ -533,7 +533,7 @@ class DashboardView(QWidget):
     # Data loading
     # ------------------------------------------------------------------
 
-    def showEvent(self, event) -> None:  # noqa: N802
+    def showEvent(self, event) -> None:
         """Auto-refresh when dashboard becomes visible."""
         super().showEvent(event)
         self.refresh_all()
@@ -652,7 +652,7 @@ class DashboardView(QWidget):
         items_text = format(items, ",.3f") if items % 1 else format(int(items), ",")
         self.lbl_items_sold.setText(items_text)
         self.lbl_unique_customers.setText(str(stats["unique_customers"]))
-        self.lbl_txn_count.setText(f'{stats["txn_count"]:,}')  # noqa: E231
+        self.lbl_txn_count.setText(f"{stats['txn_count']:,}")
 
         # Categories donut
         self.category_chart.set_data([{"label": c["name"], "value": c["total"]} for c in categories])

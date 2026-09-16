@@ -1,16 +1,17 @@
 import logging
 import logging.handlers
+import os
 import shutil
 import sys
-import os
 from pathlib import Path
-from PyQt6.QtWidgets import QApplication
+
+from PyQt6.QtCore import QtMsgType, qInstallMessageHandler
 from PyQt6.QtGui import QFont
-from PyQt6.QtCore import qInstallMessageHandler, QtMsgType
+from PyQt6.QtWidgets import QApplication
+
 from cbpos.config import Config
 from cbpos.infrastructure.resource_loader import ResourceLoader
 from cbpos.ui.main_window import MainWindow
-
 
 # Buffer for early messages emitted before the logging system is ready.
 # Flushed to the logger by ``_flush_early_log()`` after ``setup_logging()``.
@@ -43,11 +44,12 @@ def run_migrations() -> None:
         return  # No database yet — will be created by DatabaseSetupService
 
     try:
-        from alembic.config import Config as AlembicConfig
-        from alembic import command
-        from alembic.script import ScriptDirectory
-        from alembic.migration import MigrationContext
         from sqlalchemy import create_engine, inspect
+
+        from alembic import command
+        from alembic.config import Config as AlembicConfig
+        from alembic.migration import MigrationContext
+        from alembic.script import ScriptDirectory
 
         alembic_cfg = AlembicConfig(str(Config.BASE_DIR / "alembic.ini"))
         alembic_cfg.set_main_option("script_location", str(Config.BASE_DIR / "alembic"))
@@ -80,7 +82,7 @@ def run_migrations() -> None:
         engine.dispose()
 
     except Exception as e:
-        _early_log.append("WARNING: Auto-migration failed: %s" % e)
+        _early_log.append(f"WARNING: Auto-migration failed: {e}")
 
 
 def ensure_data_dir() -> None:
@@ -108,16 +110,16 @@ def ensure_data_dir() -> None:
     if not legacy_db.exists():
         return  # Truly fresh install, nothing to migrate
 
-    _early_log.append("Migrating user data to %s" % data_dir)
+    _early_log.append(f"Migrating user data to {data_dir}")
     for filename in ("cbpos.db", "settings.json", ".encryption_key"):
         src = exe_dir / filename
         dst = data_dir / filename
         if src.exists() and not dst.exists():
             try:
                 shutil.copy2(str(src), str(dst))
-                _early_log.append("Migrated %s" % filename)
+                _early_log.append(f"Migrated {filename}")
             except OSError as e:
-                _early_log.append("WARNING: Could not copy %s: %s" % (filename, e))
+                _early_log.append(f"WARNING: Could not copy {filename}: {e}")
 
     # Migrate product images
     legacy_images = exe_dir / "cbpos" / "assets" / "products"
@@ -127,7 +129,7 @@ def ensure_data_dir() -> None:
             shutil.copytree(str(legacy_images), str(new_images))
             _early_log.append("Migrated product images")
         except OSError as e:
-            _early_log.append("WARNING: Could not copy product images: %s" % e)
+            _early_log.append(f"WARNING: Could not copy product images: {e}")
 
     _early_log.append("Data migration complete.")
 
@@ -237,8 +239,8 @@ def main():
     print(f"[BOOTSTRAP] Application font set to: {primary_font_family}")
 
     # Initialize Theme (Load from settings or default to Dark)
-    from cbpos.core.services.theme_service import ThemeService
     from cbpos.core.services.config_service import ConfigService
+    from cbpos.core.services.theme_service import ThemeService
 
     # Inject stylesheet handler so ThemeService doesn't need PyQt imports
     ThemeService.set_stylesheet_handler(lambda css: app.setStyleSheet(css))
@@ -369,6 +371,7 @@ def main():
     # Check for updates 3 seconds after startup (non-blocking).
     # The thread reference is kept on the app object to prevent GC.
     from PyQt6.QtCore import QTimer
+
     from cbpos.ui.dialogs.update_dialog import check_for_updates_async
 
     def _deferred_update_check():

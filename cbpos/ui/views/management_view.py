@@ -1,26 +1,27 @@
 import logging
 
-from PyQt6.QtWidgets import (
-    QWidget,
-    QHBoxLayout,
-    QVBoxLayout,
-    QStackedWidget,
-)
 from PyQt6.QtCore import pyqtSignal
-from cbpos.core.services.permission_service import PermissionService
+from PyQt6.QtWidgets import (
+    QHBoxLayout,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
+
 from cbpos.core.constants.permissions import Permissions
-from cbpos.ui.widgets.collapsible_sidebar import CollapsibleSidebar
+from cbpos.core.services.permission_service import PermissionService
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.resources.icons import Icons
-from cbpos.ui.views.dashboard_view import DashboardView
-from cbpos.ui.views.inventory_view import InventoryView
-from cbpos.ui.views.purchase_view import PurchaseView
 from cbpos.ui.views.credit_book_view import CreditBookView
-from cbpos.ui.views.reports.report_viewer import ReportViewer
-from cbpos.ui.views.user_view import UserView
+from cbpos.ui.views.dashboard_view import DashboardView
+from cbpos.ui.views.document_view import DocumentBrowserView
+from cbpos.ui.views.inventory_view import InventoryView
 from cbpos.ui.views.pricelist_view import PriceListView
 from cbpos.ui.views.promotion_view import PromotionView
-from cbpos.ui.views.document_view import DocumentBrowserView
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.views.purchase_view import PurchaseView
+from cbpos.ui.views.reports.report_viewer import ReportViewer
+from cbpos.ui.views.user_view import UserView
+from cbpos.ui.widgets.collapsible_sidebar import CollapsibleSidebar
 
 logger = logging.getLogger(__name__)
 

@@ -7,8 +7,8 @@ now use instead.
 
 import pytest
 
-from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 
 pytestmark = pytest.mark.usefixtures("qapp")
 

@@ -13,14 +13,13 @@ import struct
 import tempfile
 import wave
 from pathlib import Path
-from typing import Dict, Optional
 
 from cbpos.core.services.config_service import ConfigService
 
 logger = logging.getLogger(__name__)
 
 # Tone definitions: (frequency_hz, duration_ms, volume 0-1)
-_TONE_DEFS: Dict[str, list] = {
+_TONE_DEFS: dict[str, list] = {
     "scan_success": [(1200, 80, 0.4)],
     "scan_error": [(400, 150, 0.4), (300, 200, 0.4)],
     "payment_complete": [(800, 100, 0.35), (1000, 100, 0.35), (1200, 150, 0.35)],
@@ -51,8 +50,8 @@ def _generate_wav(tones: list) -> bytes:
 class SoundService:
     """Plays short audio feedback sounds using QSoundEffect."""
 
-    _cache: Dict[str, object] = {}
-    _temp_dir: Optional[Path] = None
+    _cache: dict[str, object] = {}
+    _temp_dir: Path | None = None
     _initialized: bool = False
 
     @classmethod
@@ -63,8 +62,8 @@ class SoundService:
 
         cls._initialized = True
         try:
-            from PyQt6.QtMultimedia import QSoundEffect
             from PyQt6.QtCore import QUrl
+            from PyQt6.QtMultimedia import QSoundEffect
         except ImportError:
             logger.debug("QSoundEffect not available — sounds disabled")
             return False

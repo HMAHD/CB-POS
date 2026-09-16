@@ -1,19 +1,21 @@
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 # Ensure project root is in sys.path
 sys.path.append(os.getcwd())
 
-from cbpos.config import Config  # noqa: E402
-from cbpos.core.database import Base, Database  # noqa: E402
-from sqlalchemy import event  # noqa: E402
-from sqlalchemy.orm import Session  # noqa: E402
+from sqlalchemy import event
+from sqlalchemy.orm import Session
+
+from cbpos.config import Config
+from cbpos.core.database import Base, Database
 
 # Force in-memory DB for tests
 # We import Config from cbpos.core.database to ensure we patch the exact object
 # used there
-from cbpos.core.database import Config as DBConfig  # noqa: E402
+from cbpos.core.database import Config as DBConfig
 
 DBConfig.DB_URI = "sqlite:///:memory:"
 Config.DB_URI = "sqlite:///:memory:"  # Patch global config too just in case

@@ -9,8 +9,9 @@ import json
 import logging
 import threading
 import weakref
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +23,10 @@ class TranslationService:
 
     def __init__(self) -> None:
         self.current_language: str = "en"
-        self._translations: Dict[str, Dict[str, str]] = {}
+        self._translations: dict[str, dict[str, str]] = {}
         # Use weak references to prevent preventing GC of Qt widgets.
         # WeakMethod for bound methods, plain weakref.ref for functions.
-        self._change_callbacks: List[weakref.ref] = []
+        self._change_callbacks: list[weakref.ref] = []
         self._i18n_dir = Path(__file__).parent
         self._lock = threading.Lock()
 
@@ -39,7 +40,7 @@ class TranslationService:
             logger.warning("Translation file not found: %s", json_path)
             return
         try:
-            with open(json_path, "r", encoding="utf-8") as f:
+            with open(json_path, encoding="utf-8") as f:
                 data = json.load(f)
             # Flatten nested JSON into dot-notation keys
             flattened = self._flatten(data)
@@ -66,7 +67,7 @@ class TranslationService:
             self.current_language = lang_code
 
         # Notify all live callbacks, pruning dead weak references
-        live: List[weakref.ref] = []
+        live: list[weakref.ref] = []
         for ref in self._change_callbacks:
             cb = ref()
             if cb is not None:
@@ -154,13 +155,13 @@ class TranslationService:
 
         return text
 
-    def get_missing_keys(self, lang_code: str) -> List[str]:
+    def get_missing_keys(self, lang_code: str) -> list[str]:
         """Return keys present in English but missing in the given language."""
         en_keys = set(self._translations.get("en", {}).keys())
         lang_keys = set(self._translations.get(lang_code, {}).keys())
         return sorted(en_keys - lang_keys)
 
-    def get_all_keys(self) -> List[str]:
+    def get_all_keys(self) -> list[str]:
         """Return all known English translation keys."""
         return sorted(self._translations.get("en", {}).keys())
 
@@ -187,13 +188,13 @@ class TranslationService:
                 return None
 
     @staticmethod
-    def _flatten(data: Dict, prefix: str = "") -> Dict[str, str]:
+    def _flatten(data: dict, prefix: str = "") -> dict[str, str]:
         """Flatten nested JSON into dot-notation keys.
 
         Example: ``{"login": {"title": "Hi"}}`` → ``{"login.title": "Hi"}``
         Skips keys starting with ``_`` (metadata).
         """
-        result: Dict[str, str] = {}
+        result: dict[str, str] = {}
         for key, value in data.items():
             if key.startswith("_"):
                 continue

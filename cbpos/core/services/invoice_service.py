@@ -1,24 +1,26 @@
 from decimal import Decimal
 from pathlib import Path
-from cbpos.core.services.config_service import ConfigService
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
+
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
 from reportlab.platypus import (
+    Image,
+    Paragraph,
     SimpleDocTemplate,
+    Spacer,
     Table,
     TableStyle,
-    Paragraph,
-    Spacer,
-    Image,
 )
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+
 from cbpos.core.models import Sale
-from cbpos.core.services.tax_service import TaxService
-from cbpos.core.utils.formatters import format_currency
-from cbpos.core.utils.amount_to_words import amount_to_words
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.document_service import DocumentService
+from cbpos.core.services.tax_service import TaxService
+from cbpos.core.utils.amount_to_words import amount_to_words
+from cbpos.core.utils.formatters import format_currency
 
 
 class InvoiceService:
@@ -112,7 +114,7 @@ class InvoiceService:
         invoice_data = [
             [
                 "Invoice No:",
-                "INV-{0: 06d}".format(sale.id),
+                f"INV-{sale.id: 06d}",
                 "Date:",
                 sale.date.strftime("%Y-%m-%d"),
             ],
@@ -144,7 +146,7 @@ class InvoiceService:
 
         for item in sale.items:
             item_name = item.product.name if item.product else "Unknown Item"
-            qty = "{0: .3f}".format(item.quantity) if item.quantity % 1 != 0 else "{0}".format(int(item.quantity))
+            qty = f"{item.quantity: .3f}" if item.quantity % 1 != 0 else f"{int(item.quantity)}"
             unit_price = format_currency(item.unit_price)
             discount = format_currency(item.discount) if item.discount else format_currency(Decimal("0.00"))
             net_amount = format_currency(item.unit_price * item.quantity - item.discount)
@@ -463,11 +465,11 @@ class InvoiceService:
 
         def _whole_lkr(value: Decimal) -> str:
             """Format amount as whole LKR (no cents) with comma separators."""
-            return "{:,.0f}".format(int(value))
+            return f"{int(value):,.0f}"
 
         for idx, item in enumerate(sale.items, start=1):
             item_name = item.product.name_en if item.product else "Unknown Item"
-            qty_str = "{:.3f}".format(item.qty) if item.qty % 1 != 0 else str(int(item.qty))
+            qty_str = f"{item.qty:.3f}" if item.qty % 1 != 0 else str(int(item.qty))
             items_data.append(
                 [
                     str(idx),
@@ -562,7 +564,7 @@ class InvoiceService:
             fontSize=10,
             fontName="Helvetica-Oblique",
         )
-        words_label = "<b>Amount in Words:</b> {}".format(words)
+        words_label = f"<b>Amount in Words:</b> {words}"
         elements.append(Paragraph(words_label, words_style))
         elements.append(Spacer(1, 8 * mm))
 

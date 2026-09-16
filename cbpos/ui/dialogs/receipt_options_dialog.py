@@ -1,26 +1,29 @@
+import contextlib
 import logging
+
+from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
     QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QMessageBox,
     QInputDialog,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
     QWidget,
 )
-from PyQt6.QtCore import Qt, QSize
-from cbpos.core.services.email_service import EmailService
-from cbpos.core.services.theme_service import ThemeService
-from cbpos.core.services.config_service import ConfigService
-from cbpos.core.services.receipt_service import ReceiptService
-from cbpos.core.services.receipt_builder import ReceiptBuilder
-from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+
 from cbpos.core.models import Sale
+from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.email_service import EmailService
+from cbpos.core.services.receipt_builder import ReceiptBuilder
+from cbpos.core.services.receipt_service import ReceiptService
+from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.utils.formatters import format_currency
-from cbpos.ui.resources.icons import Icons
-from cbpos.ui.dialogs.receipt_preview_dialog import ReceiptPreviewDialog
 from cbpos.i18n import _t
+from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.ui.dialogs.receipt_preview_dialog import ReceiptPreviewDialog
+from cbpos.ui.resources.icons import Icons
 
 logger = logging.getLogger(__name__)
 
@@ -166,10 +169,8 @@ class ReceiptOptionsDialog(QDialog):
                 worker.error_occurred.disconnect(self._on_print_error)
             except TypeError:
                 pass  # not connected yet
-            try:
+            with contextlib.suppress(TypeError):
                 worker.job_completed.disconnect(self._on_print_finished)
-            except TypeError:
-                pass
             worker.error_occurred.connect(self._on_print_error)
             worker.job_completed.connect(self._on_print_finished)
 

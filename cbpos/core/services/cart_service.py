@@ -1,10 +1,11 @@
 import logging
 from decimal import Decimal
-from typing import List, Dict, Any, Optional
-from cbpos.core.models import Product, Customer
+from typing import Any
+
 from cbpos.core.constants.status import Precision
-from cbpos.core.services.pricing_service import PricingService
+from cbpos.core.models import Customer, Product
 from cbpos.core.services.logging_service import LoggingService
+from cbpos.core.services.pricing_service import PricingService
 
 logger = logging.getLogger(__name__)
 
@@ -16,19 +17,19 @@ class CartService:
     """
 
     def __init__(self):
-        self.items: List[Dict[str, Any]] = []
-        self._customer: Optional[Customer] = None
+        self.items: list[dict[str, Any]] = []
+        self._customer: Customer | None = None
         self.cart_discount_type = "NONE"
         self.cart_discount_value = Decimal("0.00")
 
-    def set_customer(self, customer: Optional[Customer]):
+    def set_customer(self, customer: Customer | None):
         """
         Set the customer for the current cart and recalculate prices.
         """
         self._customer = customer
         self._recalculate_all_prices()
 
-    def get_customer(self) -> Optional[Customer]:
+    def get_customer(self) -> Customer | None:
         return self._customer
 
     def add_item(self, product: Product, qty: Decimal = Decimal("1.000")):
@@ -175,7 +176,7 @@ class CartService:
                 if effective_pct > max_pct:
                     raise ValueError(f"Discount cannot exceed {max_pct}%. Manager override required.")
 
-    def _recalculate_line(self, item: Dict[str, Any]):
+    def _recalculate_line(self, item: dict[str, Any]):
         """Recalculate the total for a single line item."""
         # 1. Gross Line Total
         gross_line = item["qty"] * item["unit_price"]
@@ -209,7 +210,7 @@ class CartService:
 
             self._recalculate_line(item)
 
-    def _is_item_tax_exempt(self, item: Dict[str, Any]) -> bool:
+    def _is_item_tax_exempt(self, item: dict[str, Any]) -> bool:
         """Check if a cart item is tax exempt via its category."""
         try:
             product = item.get("product")
@@ -220,10 +221,10 @@ class CartService:
             pass
         return False
 
-    def get_totals(self) -> Dict[str, Any]:
+    def get_totals(self) -> dict[str, Any]:
         """Return the cart totals."""
-        from cbpos.core.services.tax_service import TaxService
         from cbpos.core.services.config_service import ConfigService
+        from cbpos.core.services.tax_service import TaxService
 
         # 1. Sum Net Lines
         subtotal = sum((item["total"] for item in self.items), Decimal("0.00"))

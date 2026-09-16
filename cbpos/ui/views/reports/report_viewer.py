@@ -1,33 +1,33 @@
-from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QTableView,
-    QPushButton,
-    QMessageBox,
-    QFileDialog,
-    QSplitter,
-    QLabel,
-    QStackedWidget,
-    QHeaderView,
-    QScrollArea,
-    QFrame,
-    QSizePolicy,
-)
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
 import pandas as pd
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtWidgets import (
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QSplitter,
+    QStackedWidget,
+    QTableView,
+    QVBoxLayout,
+    QWidget,
+)
 
 from cbpos.core.reports.registry import ReportRegistry
 from cbpos.core.services.export_service import ExportService
-from cbpos.ui.views.reports.filter_widget import FilterWidget
-from cbpos.ui.views.reports.pandas_model import PandasModel
-from cbpos.ui.workers import ExportWorker
-from cbpos.ui.widgets.loading_overlay import LoadingOverlay
-from cbpos.ui.widgets.pagination_widget import PaginationWidget
-from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
-from cbpos.ui.resources.icons import Icons
 from cbpos.core.services.tax_service import TaxService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.resources.icons import Icons
+from cbpos.ui.views.reports.filter_widget import FilterWidget
+from cbpos.ui.views.reports.pandas_model import PandasModel
+from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
+from cbpos.ui.widgets.loading_overlay import LoadingOverlay
+from cbpos.ui.widgets.pagination_widget import PaginationWidget
+from cbpos.ui.workers import ExportWorker
 
 
 class ReportWorker(QThread):
@@ -277,7 +277,7 @@ class ReportViewer(QWidget):
         vat_active = TaxService.is_vat_active()
         rendered_any = False
 
-        for idx, category in enumerate(categories):
+        for _idx, category in enumerate(categories):
             all_reports = self.registry.get_reports_by_category(category)
             # Filter out VAT-only reports when VAT is not active
             reports = [r for r in all_reports if not getattr(r, "requires_vat", False) or vat_active]
@@ -407,8 +407,8 @@ class ReportViewer(QWidget):
     # ------------------------------------------------------------------
 
     def export_excel(self) -> None:
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.REPORTS_EXPORT, self):
             return
@@ -423,8 +423,8 @@ class ReportViewer(QWidget):
             self._start_export(self._full_df, filename, "excel")
 
     def export_pdf(self) -> None:
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.REPORTS_EXPORT, self):
             return
@@ -471,8 +471,8 @@ class ReportViewer(QWidget):
         self.btn_email.setEnabled(enabled)
 
     def print_report(self):
-        from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
         from PyQt6.QtGui import QTextDocument
+        from PyQt6.QtPrintSupport import QPrintDialog, QPrinter
 
         df = self._full_df
         if df.empty:
@@ -531,11 +531,13 @@ class ReportViewer(QWidget):
             document.print(printer)
 
     def email_report(self):
-        from cbpos.core.services.email_service import EmailService
-        from cbpos.core.services.config_service import ConfigService
-        import tempfile
         import os
+        import tempfile
+
         from PyQt6.QtWidgets import QInputDialog
+
+        from cbpos.core.services.config_service import ConfigService
+        from cbpos.core.services.email_service import EmailService
 
         df = self._full_df
         if df.empty:

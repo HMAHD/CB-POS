@@ -1,5 +1,6 @@
 import logging
 import os
+
 from cbpos.config import Config
 
 logger = logging.getLogger(__name__)

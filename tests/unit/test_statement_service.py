@@ -1,10 +1,11 @@
 """Tests for StatementService customer account statements."""
 
-from decimal import Decimal
 from datetime import datetime, timedelta
-from cbpos.core.services.statement_service import StatementService
-from cbpos.core.models import Customer, CustomerLedgerEntry, User, Role, Permission
+from decimal import Decimal
 from unittest.mock import patch
+
+from cbpos.core.models import Customer, CustomerLedgerEntry, Permission, Role, User
+from cbpos.core.services.statement_service import StatementService
 
 
 class TestStatementService:
@@ -17,7 +18,7 @@ class TestStatementService:
         TestStatementService._phone_counter += 1
         customer = Customer(
             name="Test Customer",
-            phone=f"077{TestStatementService._phone_counter:07d}",  # noqa: E231
+            phone=f"077{TestStatementService._phone_counter:07d}",
             current_debt=debt,
             credit_limit=Decimal("10000"),
         )

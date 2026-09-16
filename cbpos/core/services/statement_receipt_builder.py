@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Dict, Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from cbpos.core.services.base_receipt_builder import BaseReceiptBuilder
 from cbpos.core.utils.formatters import format_currency
@@ -18,11 +18,11 @@ class StatementReceiptBuilder(BaseReceiptBuilder):
     def build_customer_statement(
         cls,
         customer: "Customer",
-        entries: List["CustomerLedgerEntry"],
+        entries: list["CustomerLedgerEntry"],
         period_from: datetime,
         period_to: datetime,
-        config_override: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+        config_override: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Generates receipt commands for a customer credit statement.
 
@@ -34,7 +34,7 @@ class StatementReceiptBuilder(BaseReceiptBuilder):
             config_override: Optional dictionary to override ConfigService values.
         """
         cls._resolve_receipt_lang(config_override)
-        commands: List[Dict[str, Any]] = []
+        commands: list[dict[str, Any]] = []
 
         line_chars = cls._append_header_block(commands, config_override)
 
@@ -72,10 +72,10 @@ class StatementReceiptBuilder(BaseReceiptBuilder):
             doc = entry.reference_doc or entry.note or entry.entry_type
 
             if entry.amount > 0:
-                line = f"{date_str} {doc:<20} +{entry.amount:.2f}"  # noqa: E231
+                line = f"{date_str} {doc:<20} +{entry.amount:.2f}"
                 total_debit += entry.amount
             else:
-                line = f"{date_str} {doc:<20} {entry.amount:.2f}"  # noqa: E231
+                line = f"{date_str} {doc:<20} {entry.amount:.2f}"
                 total_credit += abs(entry.amount)
 
             commands.append({"type": "text", "val": line, "align": "left"})

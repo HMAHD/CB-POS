@@ -7,10 +7,9 @@ from unittest.mock import patch
 
 import pytest
 
-from cbpos.core.services.shift_service import ShiftService
-from cbpos.core.models import User, Role, Permission, Shift
 from cbpos.core.constants.status import ShiftStatus
-
+from cbpos.core.models import Permission, Role, Shift, User
+from cbpos.core.services.shift_service import ShiftService
 
 # ── Shared Fixtures ──────────────────────────────────────────────────────
 

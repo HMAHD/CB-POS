@@ -9,8 +9,8 @@ from decimal import Decimal
 
 import pytest
 
+from cbpos.core.models import Customer, CustomerLedgerEntry, Permission, Role, User
 from cbpos.core.services.customer_credit_service import CustomerCreditService
-from cbpos.core.models import Customer, User, Role, Permission, CustomerLedgerEntry
 
 
 def _setup_user(db_session, suffix="credit"):

@@ -1,23 +1,78 @@
-[tool.black]
+[tool.ruff]
+# Match current project settings
 line-length = 120
-target-version = ['py312']
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-)/
-'''
+target-version = "py312"
 
-[tool.flake8]
-max-line-length = 120
-extend-ignore = "E203"
-exclude = ".git,__pycache__,docs/source/conf.py,old,build,dist"
+# Exclude directories from linting and formatting
+exclude = [
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".tox",
+    ".venv",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "__pycache__",
+    "docs/source/conf.py",
+    "old",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # Pyflakes
+    "I",     # isort — import sorting
+    "UP",    # pyupgrade — modernize syntax for Python 3.12+
+    "B",     # flake8-bugbear — catches common bugs & design issues
+    "C4",    # flake8-comprehensions — better list/dict/set comprehensions
+    "SIM",   # flake8-simplify — simplify code
+    "PIE",   # flake8-pie — misc lint improvements
+    "RUF",   # Ruff-specific rules
+    "T20",   # flake8-print — catches stray print() calls (use logger instead)
+]
+
+ignore = [
+    "E203",   # Whitespace before ':' — conflicts with Black-style formatting
+    "E501",   # Line too long — handled by formatter
+    "B008",   # Function call in default argument — common in PyQt signal/slot patterns
+    "B904",   # raise-without-from — existing pattern, refactor gradually
+    "SIM102", # Collapsible if — readability preference, nested ifs can be clearer
+    "SIM105", # Use contextlib.suppress — existing try/except/pass pattern, refactor gradually
+    "SIM108", # Use ternary operator — readability preference, not always clearer
+    "SIM115", # Use context manager for open() — existing pattern
+    "SIM117", # Multiple with statements — existing pattern, refactor gradually
+    "UP007",  # Use X | Y for union type — keep Optional[] for clarity
+    "UP031",  # printf-string-formatting — existing %-format strings, refactor gradually
+    "UP038",  # Use X | Y in isinstance — isinstance(x, (A, B)) is clearer
+    "RUF012", # Mutable class variables — too noisy with PyQt class attributes
+    "RUF013", # Implicit Optional — changing signatures in bulk is risky, fix gradually
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Match original .flake8 per-file-ignores
+"cbpos/ui/views/history_view.py" = ["E221", "E222", "E231", "E702"]
+"scripts/seed.py" = ["E231", "T20"]
+# Test files can use print and assert
+"tests/**" = ["T20"]
+# Scripts can use print
+"scripts/**" = ["T20"]
+# Main entry point has legitimate startup prints
+"main.py" = ["T20"]
+# Infrastructure/hardware drivers may use print for debug
+"cbpos/infrastructure/**" = ["T20"]
+# Build script uses print for CLI output
+"create_installer.py" = ["T20"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["cbpos"]
+
+[tool.ruff.format]
+# Black-compatible formatting
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

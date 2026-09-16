@@ -1,22 +1,23 @@
-from PyQt6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QFormLayout,
-    QLineEdit,
-    QComboBox,
-    QPushButton,
-    QDialogButtonBox,
-    QHBoxLayout,
-    QColorDialog,
-    QLabel,
-    QMessageBox,
-)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
+from PyQt6.QtWidgets import (
+    QColorDialog,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+)
+
 from cbpos.core.models import Category
 from cbpos.core.services.category_service import CategoryService
-from cbpos.i18n import _t
 from cbpos.core.utils.error_messages import translate_error
+from cbpos.i18n import _t
 
 
 class CategoryDialog(QDialog):
@@ -53,7 +54,7 @@ class CategoryDialog(QDialog):
         color_layout = QHBoxLayout()
         self.lbl_color = QLabel()
         self.lbl_color.setFixedSize(30, 30)
-        style = f"background-color: {self.selected_color}; border: 1px solid gray;"  # noqa: E702,E231
+        style = f"background-color: {self.selected_color}; border: 1px solid gray;"
         self.lbl_color.setStyleSheet(style)
 
         btn_color = QPushButton(_t("category_dialog.pick_color"))
@@ -86,9 +87,7 @@ class CategoryDialog(QDialog):
         color = QColorDialog.getColor(QColor(self.selected_color), self, _t("category_dialog.select_color"))
         if color.isValid():
             self.selected_color = color.name()
-            self.lbl_color.setStyleSheet(
-                f"background-color: {self.selected_color}; border: 1px solid gray;"  # noqa: E702,E231
-            )
+            self.lbl_color.setStyleSheet(f"background-color: {self.selected_color}; border: 1px solid gray;")
 
     def load_data(self):
         self.name_input.setText(self.category.name)

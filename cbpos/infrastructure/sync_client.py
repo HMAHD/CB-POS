@@ -12,43 +12,43 @@ Features:
 """
 
 import logging
-import urllib.request
 import urllib.error
+import urllib.request
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from cbpos.core.database import Database
-from cbpos.core.services.config_service import ConfigService
 from cbpos.core.models import (
-    Document,
-    Sale,
-    Purchase,
-    StockMovement,
     AuditLog,
-    Shift,
     CashMovement,
-    CustomerPayment,
     CustomerLedgerEntry,
-    SupplierPayment,
-    SupplierLedgerEntry,
+    CustomerPayment,
+    Document,
     Product,
+    Purchase,
+    Sale,
+    Shift,
+    StockMovement,
+    SupplierLedgerEntry,
+    SupplierPayment,
 )
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.sync_protocol import (
-    EP_REGISTER,
-    EP_PUSH_TRANSACTIONS,
+    CATALOG_TABLES,
     EP_PULL_CATALOG,
     EP_PULL_STOCK,
     EP_PUSH_AUDIT,
-    CATALOG_TABLES,
-    model_to_dict,
+    EP_PUSH_TRANSACTIONS,
+    EP_REGISTER,
     dict_to_model,
+    get_model_for_table,
     make_envelope,
+    model_to_dict,
     sync_json_dumps,
     sync_json_loads,
-    get_model_for_table,
 )
 
 logger = logging.getLogger(__name__)
@@ -93,7 +93,7 @@ class SyncClient(QThread):
         self._running = False
         self._state = self.STATE_DISCONNECTED
         self._push_sequence = 0
-        self._last_catalog_sync: Optional[datetime] = None
+        self._last_catalog_sync: datetime | None = None
         self._initial_sync_done = False
         self._consecutive_failures = 0
         self._max_retries = 3
@@ -143,9 +143,9 @@ class SyncClient(QThread):
         self,
         method: str,
         endpoint: str,
-        data: Optional[Dict] = None,
+        data: dict | None = None,
         timeout: int = 10,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Make an HTTP request to the sync server.
 
         Returns the parsed JSON response or None on error.
@@ -258,7 +258,7 @@ class SyncClient(QThread):
             return True
         return False
 
-    def _check_main_identity(self, main_instance_id: Optional[str]) -> bool:
+    def _check_main_identity(self, main_instance_id: str | None) -> bool:
         """Verify the Main PC we just registered with is the one we've
         trusted since our first successful connection.
 
@@ -312,7 +312,7 @@ class SyncClient(QThread):
         Returns the number of records pushed, or -1 on error.
         """
         db = Database()
-        payload: Dict[str, List[Dict[str, Any]]] = {}
+        payload: dict[str, list[dict[str, Any]]] = {}
 
         try:
             with db.get_session() as session:
@@ -450,7 +450,7 @@ class SyncClient(QThread):
             logger.warning("Push failed: %s", result)
             return -1
 
-    def _mark_as_synced(self, payload: Dict[str, List[Dict[str, Any]]]) -> None:
+    def _mark_as_synced(self, payload: dict[str, list[dict[str, Any]]]) -> None:
         """Mark local records as synced after successful push."""
         db = Database()
         try:
@@ -556,7 +556,7 @@ class SyncClient(QThread):
         return records_applied
 
     @staticmethod
-    def _parse_server_timestamp(result: Dict[str, Any]) -> datetime:
+    def _parse_server_timestamp(result: dict[str, Any]) -> datetime:
         """Return the Main PC's own clock reading from a pull-catalog
         response, used as the next ``since`` watermark.
 

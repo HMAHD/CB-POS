@@ -1,8 +1,9 @@
 import logging
-from typing import List, Optional
+
 from sqlalchemy import select
-from cbpos.core.models import Supplier
+
 from cbpos.core.database import Database
+from cbpos.core.models import Supplier
 from cbpos.core.utils.formatters import escape_like
 
 logger = logging.getLogger(__name__)
@@ -16,12 +17,12 @@ class SupplierService:
     @staticmethod
     def create_supplier(
         company_name: str,
-        phone: Optional[str] = None,
-        contact_person: Optional[str] = None,
-        email: Optional[str] = None,
-        address: Optional[str] = None,
-        tax_number: Optional[str] = None,
-        contact_details: Optional[str] = None,
+        phone: str | None = None,
+        contact_person: str | None = None,
+        email: str | None = None,
+        address: str | None = None,
+        tax_number: str | None = None,
+        contact_details: str | None = None,
         payment_terms: int = 0,
     ) -> Supplier:
         """
@@ -47,16 +48,16 @@ class SupplierService:
     @staticmethod
     def update_supplier(
         supplier_id: int,
-        company_name: Optional[str] = None,
-        phone: Optional[str] = None,
-        contact_person: Optional[str] = None,
-        email: Optional[str] = None,
-        address: Optional[str] = None,
-        tax_number: Optional[str] = None,
-        contact_details: Optional[str] = None,
-        payment_terms: Optional[int] = None,
-        is_active: Optional[bool] = None,
-    ) -> Optional[Supplier]:
+        company_name: str | None = None,
+        phone: str | None = None,
+        contact_person: str | None = None,
+        email: str | None = None,
+        address: str | None = None,
+        tax_number: str | None = None,
+        contact_details: str | None = None,
+        payment_terms: int | None = None,
+        is_active: bool | None = None,
+    ) -> Supplier | None:
         """
         Update an existing supplier.
         """
@@ -90,7 +91,7 @@ class SupplierService:
             return supplier
 
     @staticmethod
-    def get_all_suppliers(active_only: bool = True) -> List[Supplier]:
+    def get_all_suppliers(active_only: bool = True) -> list[Supplier]:
         """
         Get all suppliers.
         """
@@ -102,7 +103,7 @@ class SupplierService:
             return list(session.scalars(stmt).all())
 
     @staticmethod
-    def search_suppliers(query: str) -> List[Supplier]:
+    def search_suppliers(query: str) -> list[Supplier]:
         """
         Search suppliers by name, phone, or contact person.
         """
@@ -117,7 +118,7 @@ class SupplierService:
             return list(session.scalars(stmt).all())
 
     @staticmethod
-    def get_supplier_by_id(supplier_id: int) -> Optional[Supplier]:
+    def get_supplier_by_id(supplier_id: int) -> Supplier | None:
         """
         Get a supplier by ID.
         """

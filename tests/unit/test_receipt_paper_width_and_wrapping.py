@@ -11,11 +11,10 @@ text -- only the fixed two-column price rows were guaranteed identical
 between the two renderers.
 """
 
-from cbpos.core.services.config_service import ConfigService
-
 import pytest
 
 from cbpos.core.services.base_receipt_builder import BaseReceiptBuilder
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.sales_receipt_builder import SalesReceiptBuilder
 from cbpos.ui.views.settings_pages import ReceiptPage
 
@@ -144,9 +143,10 @@ class TestWrapFreeText:
 
 class TestReceiptBuilderEmitsPreWrappedHeaderAndFooter:
     def _dummy_sale(self):
-        from decimal import Decimal
         from datetime import datetime
-        from cbpos.core.models import Sale, SaleItem, Product
+        from decimal import Decimal
+
+        from cbpos.core.models import Product, Sale, SaleItem
 
         sale = Sale(
             id=1,

@@ -1,35 +1,37 @@
+import contextlib
 import logging
 from datetime import datetime
+
+from PyQt6.QtCore import QDate, Qt, pyqtSignal
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QComboBox,
+    QDateEdit,
+    QFrame,
     QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QDateEdit,
-    QLineEdit,
-    QPushButton,
-    QLabel,
-    QMessageBox,
-    QComboBox,
-    QFrame,
-    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QDate, pyqtSignal
-from PyQt6.QtGui import QColor
 
+from cbpos.core.constants.status import DocumentStatus
+from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.document_browser_service import DocumentBrowserService
 from cbpos.core.services.proforma_service import ProformaService
 from cbpos.core.services.receipt_service import ReceiptService
-from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.services.sale_query_service import SaleQueryService
-from cbpos.core.services.auth_service import AuthService
-from cbpos.core.constants.status import DocumentStatus
-from cbpos.core.utils.formatters import format_currency
-from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.core.services.tax_service import TaxService
+from cbpos.core.services.transaction_service import TransactionService
+from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 logger = logging.getLogger(__name__)
@@ -75,8 +77,8 @@ class DocumentBrowserView(QWidget):
 
         # Title row
         title_row = QHBoxLayout()
-        from cbpos.ui.widgets.page_header import PageHeader
         from cbpos.ui.resources.icons import Icons
+        from cbpos.ui.widgets.page_header import PageHeader
 
         self._page_header = PageHeader(icon_name=Icons.DOCUMENTS)
         title_row.addWidget(self._page_header, 1)
@@ -527,10 +529,10 @@ class DocumentBrowserView(QWidget):
         self.detail_title.setText(f"{type_labels.get(doc['type'], doc['type'])} — {doc['document_number']}")
 
         html = (
-            f"<b>{_t('document_browser.detail_date')}:</b> "  # noqa: E231
+            f"<b>{_t('document_browser.detail_date')}:</b> "
             f"{doc['date'].strftime('%Y-%m-%d %H:%M:%S') if doc['date'] else 'N/A'}<br>"
-            f"<b>{_t('document_browser.detail_status')}:</b> {doc['status']}<br>"  # noqa: E231
-            f"<b>{_t('document_browser.detail_user')}:</b> {doc.get('username', '')}<br>"  # noqa: E231
+            f"<b>{_t('document_browser.detail_status')}:</b> {doc['status']}<br>"
+            f"<b>{_t('document_browser.detail_user')}:</b> {doc.get('username', '')}<br>"
         )
 
         entity = doc.get("entity_name", "")
@@ -540,47 +542,38 @@ class DocumentBrowserView(QWidget):
                 if doc["type"] == "purchase"
                 else _t("document_browser.detail_customer")
             )
-            html += f"<b>{label}:</b> {entity}<br>"  # noqa: E231
+            html += f"<b>{label}:</b> {entity}<br>"
 
         total = doc.get("total_amount")
         if total is not None:
-            html += f"<b>{_t('document_browser.detail_total')}:</b> {format_currency(total)}<br>"  # noqa: E231
+            html += f"<b>{_t('document_browser.detail_total')}:</b> {format_currency(total)}<br>"
 
         if doc["type"] == "sale" and (TaxService.is_vat_active() or doc.get("tax_vat", 0) > 0):
             tax_vat = doc.get("tax_vat")
             if tax_vat is not None:
-                html += f"<b>{_t('document_browser.detail_vat')}:</b> {format_currency(tax_vat)}<br>"  # noqa: E231
+                html += f"<b>{_t('document_browser.detail_vat')}:</b> {format_currency(tax_vat)}<br>"
             tax_sscl = doc.get("tax_sscl")
             if tax_sscl is not None:
-                html += f"<b>{_t('document_browser.detail_sscl')}:</b> {format_currency(tax_sscl)}<br>"  # noqa: E231
+                html += f"<b>{_t('document_browser.detail_sscl')}:</b> {format_currency(tax_sscl)}<br>"
             net_revenue = doc.get("net_revenue")
             if net_revenue is not None:
-                html += (
-                    f"<b>{_t('document_browser.detail_net_revenue')}:</b> "  # noqa: E231
-                    f"{format_currency(net_revenue)}<br>"
-                )
+                html += f"<b>{_t('document_browser.detail_net_revenue')}:</b> {format_currency(net_revenue)}<br>"
 
         if doc["type"] == "proforma":
             if doc.get("validity_days"):
                 html += (
-                    f"<b>{_t('document_browser.detail_validity')}:</b> "  # noqa: E231
+                    f"<b>{_t('document_browser.detail_validity')}:</b> "
                     f"{doc['validity_days']} {_t('document_browser.detail_days')}<br>"
                 )
             if doc.get("expiry_date"):
-                html += f"<b>{_t('document_browser.detail_expiry')}:</b> {doc['expiry_date']}<br>"  # noqa: E231
+                html += f"<b>{_t('document_browser.detail_expiry')}:</b> {doc['expiry_date']}<br>"
             if doc.get("notes"):
-                html += f"<b>{_t('document_browser.detail_notes')}:</b> {doc['notes']}<br>"  # noqa: E231
+                html += f"<b>{_t('document_browser.detail_notes')}:</b> {doc['notes']}<br>"
             if doc.get("converted_sale_id"):
-                html += (
-                    f"<b>{_t('document_browser.detail_converted_to_sale')}:</b> "  # noqa: E231
-                    f"#{doc['converted_sale_id']}<br>"
-                )
+                html += f"<b>{_t('document_browser.detail_converted_to_sale')}:</b> #{doc['converted_sale_id']}<br>"
 
         if doc.get("refund_of_sale_id"):
-            html += (
-                f"<b>{_t('document_browser.detail_refund_of_sale')}:</b> "  # noqa: E231
-                f"#{doc['refund_of_sale_id']}<br>"
-            )
+            html += f"<b>{_t('document_browser.detail_refund_of_sale')}:</b> #{doc['refund_of_sale_id']}<br>"
 
         self.details_label.setText(html)
 
@@ -591,7 +584,7 @@ class DocumentBrowserView(QWidget):
             self.items_table.insertRow(idx)
             self.items_table.setItem(idx, 0, QTableWidgetItem(item.get("product_name", "")))
 
-            qty_item = QTableWidgetItem(f"{item['quantity']:.3f}")  # noqa: E231
+            qty_item = QTableWidgetItem(f"{item['quantity']:.3f}")
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(idx, 1, qty_item)
 
@@ -614,9 +607,7 @@ class DocumentBrowserView(QWidget):
             pay_lines = []
             for p in payments:
                 pay_lines.append(f"{p['method']}: {format_currency(p['amount'])}")
-            self.payment_label.setText(
-                f"<b>{_t('document_browser.detail_payments')}:</b> " + " | ".join(pay_lines)  # noqa: E231
-            )
+            self.payment_label.setText(f"<b>{_t('document_browser.detail_payments')}:</b> " + " | ".join(pay_lines))
         else:
             self.payment_label.setText("")
 
@@ -714,10 +705,8 @@ class DocumentBrowserView(QWidget):
             worker.error_occurred.disconnect(self._on_reprint_error)
         except TypeError:
             pass  # not connected yet
-        try:
+        with contextlib.suppress(TypeError):
             worker.job_completed.disconnect(self._on_reprint_finished)
-        except TypeError:
-            pass
         worker.error_occurred.connect(self._on_reprint_error)
         worker.job_completed.connect(self._on_reprint_finished)
         return worker
@@ -748,7 +737,7 @@ class DocumentBrowserView(QWidget):
             f"<b>{_t('document_browser.refund_question')}</b><br><br>"
             f"{_t('document_browser.detail_receipt')}: {self.current_doc['document_number']}<br>"
             f"{_t('common.amount')}: {format_currency(self.current_doc['total_amount'])}<br><br>"
-            f"<b style='color: #FF4136'>{_t('common.warning')}:</b> "  # noqa: E231
+            f"<b style='color: #FF4136'>{_t('common.warning')}:</b> "
             f"{_t('document_browser.refund_warning')}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
@@ -811,8 +800,8 @@ class DocumentBrowserView(QWidget):
 
     def void_document(self) -> None:
         """Void the selected document."""
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.DOCUMENTS_VOID, self):
             return

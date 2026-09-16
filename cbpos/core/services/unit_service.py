@@ -3,8 +3,9 @@ Service for managing units of measurement.
 """
 
 import logging
-from typing import List, Optional
+
 from sqlalchemy import select
+
 from cbpos.core.database import Database
 from cbpos.core.models import Unit
 
@@ -15,7 +16,7 @@ class UnitService:
     """CRUD operations for units of measurement."""
 
     @staticmethod
-    def get_all(active_only: bool = True) -> List[Unit]:
+    def get_all(active_only: bool = True) -> list[Unit]:
         """Get all units, optionally filtering active only."""
         db = Database()
         with db.get_session() as session:
@@ -28,7 +29,7 @@ class UnitService:
             return results
 
     @staticmethod
-    def get_by_id(unit_id: int) -> Optional[Unit]:
+    def get_by_id(unit_id: int) -> Unit | None:
         """Get a single unit by ID."""
         db = Database()
         with db.get_session() as session:

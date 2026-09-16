@@ -1,21 +1,22 @@
 from decimal import Decimal, InvalidOperation
-from typing import Optional
+
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
+    QComboBox,
     QDialog,
-    QVBoxLayout,
+    QFormLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
-    QComboBox,
     QMessageBox,
-    QFormLayout,
-    QFrame,
+    QPushButton,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import Qt
+
+from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.customer_service import CustomerService
-from cbpos.core.services.auth_service import AuthService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 
@@ -23,7 +24,7 @@ from cbpos.i18n import _t
 class ReceivePaymentDialog(QDialog):
     """Dialog to record a customer payment against their outstanding credit debt."""
 
-    def __init__(self, customer_id: Optional[int] = None, parent: Optional[object] = None):
+    def __init__(self, customer_id: int | None = None, parent: object | None = None):
         super().__init__(parent)
         self.customer_service = CustomerService()
         self.selected_customer_id = customer_id
@@ -98,8 +99,8 @@ class ReceivePaymentDialog(QDialog):
 
         # Payment Method (loaded from DB, excluding Credit)
         self.cmb_method = QComboBox()
-        from cbpos.core.services.payment_service import PaymentService
         from cbpos.core.constants.status import PaymentMethodType
+        from cbpos.core.services.payment_service import PaymentService
 
         for m in PaymentService.get_active_methods():
             if m.name.upper() != PaymentMethodType.CREDIT.upper():

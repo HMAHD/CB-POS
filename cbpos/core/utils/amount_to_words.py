@@ -5,7 +5,6 @@ Supports English, with Sinhala and Tamil placeholders.
 
 from decimal import Decimal
 
-
 _ONES = [
     "",
     "One",

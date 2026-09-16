@@ -1,8 +1,10 @@
-from typing import List, Dict, Any
+from typing import Any
+
 import pandas as pd
-from cbpos.core.reports.base_report import BaseReport
+
 from cbpos.core.database import get_db_session
-from cbpos.core.models import Product, Category
+from cbpos.core.models import Category, Product
+from cbpos.core.reports.base_report import BaseReport
 
 
 class InventoryValuationReport(BaseReport):
@@ -18,7 +20,7 @@ class InventoryValuationReport(BaseReport):
     def category(self) -> str:
         return "Inventory"
 
-    def get_filter_definitions(self) -> List[Dict[str, Any]]:
+    def get_filter_definitions(self) -> list[dict[str, Any]]:
         with get_db_session() as session:
             categories = session.query(Category).all()
             cat_options = [{"id": c.id, "label": c.name} for c in categories]
@@ -28,11 +30,11 @@ class InventoryValuationReport(BaseReport):
                 "name": "category_id",
                 "label": "Category",
                 "type": "combo",
-                "options": [{"id": None, "label": "All Categories"}] + cat_options,
+                "options": [{"id": None, "label": "All Categories"}, *cat_options],
             }
         ]
 
-    def generate(self, filters: Dict[str, Any]) -> pd.DataFrame:
+    def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         with get_db_session() as session:
             query = session.query(Product).filter(Product.is_active)
 
@@ -76,10 +78,10 @@ class LowStockReport(BaseReport):
     def category(self) -> str:
         return "Inventory"
 
-    def get_filter_definitions(self) -> List[Dict[str, Any]]:
+    def get_filter_definitions(self) -> list[dict[str, Any]]:
         return []
 
-    def generate(self, filters: Dict[str, Any]) -> pd.DataFrame:
+    def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         with get_db_session() as session:
             # Filter products where stock <= reorder_point
             products = (

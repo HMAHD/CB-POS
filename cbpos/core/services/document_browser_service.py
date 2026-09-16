@@ -1,18 +1,18 @@
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any
 
 from sqlalchemy.orm import joinedload
 
 from cbpos.core.database import Database
 from cbpos.core.models import (
     Document,
-    Sale,
-    SaleItem,
-    Purchase,
-    PurchaseItem,
     Proforma,
     ProformaItem,
+    Purchase,
+    PurchaseItem,
+    Sale,
+    SaleItem,
 )
 from cbpos.core.utils.formatters import escape_like
 
@@ -24,14 +24,14 @@ class DocumentBrowserService:
 
     @staticmethod
     def search_documents(
-        doc_type: Optional[str] = None,
-        status: Optional[str] = None,
-        date_from: Optional[datetime] = None,
-        date_to: Optional[datetime] = None,
-        search_term: Optional[str] = None,
+        doc_type: str | None = None,
+        status: str | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+        search_term: str | None = None,
         page: int = 1,
         per_page: int = 50,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Search documents across all types with filtering and pagination.
 
@@ -115,7 +115,7 @@ class DocumentBrowserService:
             }
 
     @staticmethod
-    def get_document_details(doc_id: int, doc_type: str) -> Optional[Dict[str, Any]]:
+    def get_document_details(doc_id: int, doc_type: str) -> dict[str, Any] | None:
         """
         Get full document details with line items based on type.
 
@@ -153,7 +153,7 @@ class DocumentBrowserService:
                 return None
 
     @staticmethod
-    def _get_sale_details(session: Any, doc_id: int) -> Optional[Dict[str, Any]]:
+    def _get_sale_details(session: Any, doc_id: int) -> dict[str, Any] | None:
         """Get sale details with items and payments."""
         sale = (
             session.query(Sale)
@@ -205,7 +205,7 @@ class DocumentBrowserService:
         }
 
     @staticmethod
-    def _get_purchase_details(session: Any, doc_id: int) -> Optional[Dict[str, Any]]:
+    def _get_purchase_details(session: Any, doc_id: int) -> dict[str, Any] | None:
         """Get purchase details with items."""
         purchase = (
             session.query(Purchase)
@@ -247,7 +247,7 @@ class DocumentBrowserService:
         }
 
     @staticmethod
-    def _get_proforma_details(session: Any, doc_id: int) -> Optional[Dict[str, Any]]:
+    def _get_proforma_details(session: Any, doc_id: int) -> dict[str, Any] | None:
         """Get proforma details with items."""
         proforma = (
             session.query(Proforma)

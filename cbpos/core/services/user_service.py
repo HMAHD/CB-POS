@@ -1,11 +1,10 @@
 import logging
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy.orm import joinedload
 
 from cbpos.core.database import Database
-from cbpos.core.models import User, AuditLog
+from cbpos.core.models import AuditLog, User
 from cbpos.core.services.auth_service import AuthService
 
 
@@ -73,11 +72,11 @@ class UserService:
 
     @staticmethod
     def get_recent_activity(
-        user_id: Optional[int] = None,
+        user_id: int | None = None,
         limit: int = 200,
-        event_type: Optional[str] = None,
-        date_from: Optional[datetime] = None,
-        date_to: Optional[datetime] = None,
+        event_type: str | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
     ) -> list:
         """
         Retrieve recent audit logs, optionally narrowed by user, event type,
@@ -127,9 +126,9 @@ class UserService:
         """Retrieve all roles."""
         try:
             with Database().get_session() as session:
-                from cbpos.core.models import Role
-
                 from sqlalchemy.orm import joinedload
+
+                from cbpos.core.models import Role
 
                 roles = session.query(Role).options(joinedload(Role.permissions)).all()
                 return roles
@@ -170,7 +169,7 @@ class UserService:
             raise e
 
     @staticmethod
-    def update_user(user_id: int, username: str, pin: Optional[str], role_id: int, is_active: bool) -> bool:
+    def update_user(user_id: int, username: str, pin: str | None, role_id: int, is_active: bool) -> bool:
         """Update an existing user."""
         try:
             with Database().get_session() as session:

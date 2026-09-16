@@ -7,13 +7,12 @@ to CSV, Excel, or PDF via ExportService.
 
 import logging
 from datetime import datetime
-from typing import Optional
 
 import pandas as pd
 from sqlalchemy.orm import joinedload
 
 from cbpos.core.database import Database
-from cbpos.core.models import Product, Customer, Sale
+from cbpos.core.models import Customer, Product, Sale
 
 logger = logging.getLogger(__name__)
 
@@ -87,8 +86,8 @@ class DataExportService:
 
     @staticmethod
     def get_sales_dataframe(
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
     ) -> pd.DataFrame:
         """
         Get sales with optional date range filter.

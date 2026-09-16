@@ -2,17 +2,16 @@
 Unit tests for TransactionService — atomic commits, void, and refund workflows.
 """
 
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
 
-from cbpos.core.services.transaction_service import TransactionService
-from cbpos.core.services.tax_service import TaxService
-from cbpos.core.models import Product, User, Role, Sale, Permission, SaleItem, StockMovement
+from cbpos.core.models import Permission, Product, Role, Sale, SaleItem, StockMovement, User
 from cbpos.core.services.cart_service import CartService
-
+from cbpos.core.services.tax_service import TaxService
+from cbpos.core.services.transaction_service import TransactionService
 
 # ── Shared Fixtures ──────────────────────────────────────────────────────
 
@@ -42,7 +41,7 @@ def test_product(db_session):
         name_en=f"Product_{_counter}",
         price=100.0,
         stock_qty=10.0,
-        barcode=f"TST{_counter:04d}",  # noqa: E231
+        barcode=f"TST{_counter:04d}",
     )
     db_session.add(product)
     db_session.flush()

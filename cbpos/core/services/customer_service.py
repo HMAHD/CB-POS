@@ -1,7 +1,9 @@
-from typing import List, Optional, Dict, Any
 from decimal import Decimal
-from sqlalchemy import select, or_, desc
+from typing import Any
+
+from sqlalchemy import desc, or_, select
 from sqlalchemy.orm import selectinload
+
 from cbpos.core.database import Database
 from cbpos.core.models import Customer, CustomerContact, Sale
 from cbpos.core.services.config_service import ConfigService
@@ -12,7 +14,7 @@ class CustomerService:
     def __init__(self):
         self.db = Database()
 
-    def create_customer(self, data: Dict[str, Any]) -> Customer:
+    def create_customer(self, data: dict[str, Any]) -> Customer:
         contacts_data = data.pop("contacts", [])
         with self.db.get_session() as session:
             customer = Customer(**data)
@@ -29,7 +31,7 @@ class CustomerService:
             session.expunge(customer)
             return customer
 
-    def update_customer(self, customer_id: int, data: Dict[str, Any]) -> Optional[Customer]:
+    def update_customer(self, customer_id: int, data: dict[str, Any]) -> Customer | None:
         contacts_data = data.pop("contacts", None)
 
         with self.db.get_session() as session:
@@ -99,7 +101,7 @@ class CustomerService:
             session.commit()
             return points_to_add
 
-    def search_customers(self, query: str) -> List[Customer]:
+    def search_customers(self, query: str) -> list[Customer]:
         with self.db.get_session() as session:
             safe_query = escape_like(query)
             stmt = (
@@ -121,7 +123,7 @@ class CustomerService:
                 session.expunge(customer)
             return customers
 
-    def get_customer(self, customer_id: int) -> Optional[Customer]:
+    def get_customer(self, customer_id: int) -> Customer | None:
         with self.db.get_session() as session:
             stmt = select(Customer).where(Customer.id == customer_id).options(selectinload(Customer.contacts))
             customer = session.scalar(stmt)
@@ -129,7 +131,7 @@ class CustomerService:
                 session.expunge(customer)
             return customer
 
-    def get_all_customers(self) -> List[Customer]:
+    def get_all_customers(self) -> list[Customer]:
         with self.db.get_session() as session:
             stmt = select(Customer).where(Customer.is_active.is_(True)).options(selectinload(Customer.contacts))
             customers = list(session.scalars(stmt).all())
@@ -137,7 +139,7 @@ class CustomerService:
                 session.expunge(customer)
             return customers
 
-    def get_purchase_history(self, customer_id: int, limit: int = 20) -> List[Sale]:
+    def get_purchase_history(self, customer_id: int, limit: int = 20) -> list[Sale]:
         with self.db.get_session() as session:
             stmt = select(Sale).where(Sale.customer_id == customer_id).order_by(desc(Sale.date)).limit(limit)
             sales = list(session.scalars(stmt).all())
@@ -180,7 +182,7 @@ class CustomerService:
                 return customer.current_debt
             return Decimal(0)
 
-    def find_by_loyalty_card(self, card_code: str) -> Optional[Customer]:
+    def find_by_loyalty_card(self, card_code: str) -> Customer | None:
         with self.db.get_session() as session:
             stmt = (
                 select(Customer)

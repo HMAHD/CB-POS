@@ -1,13 +1,14 @@
-from PyQt6.QtWidgets import (
-    QFrame,
-    QVBoxLayout,
-    QLabel,
-    QHBoxLayout,
-    QGraphicsDropShadowEffect,
-    QSizePolicy,
-)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
+from PyQt6.QtWidgets import (
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QHBoxLayout,
+    QLabel,
+    QSizePolicy,
+    QVBoxLayout,
+)
+
 from cbpos.ui.resources.icons import Icons
 
 

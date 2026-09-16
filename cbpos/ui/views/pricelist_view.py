@@ -1,34 +1,36 @@
 from datetime import datetime
 from decimal import Decimal
+
+from PyQt6.QtCore import QDate, QSize, Qt
+from PyQt6.QtGui import QColor, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
-    QPushButton,
-    QLabel,
-    QMessageBox,
-    QSplitter,
     QDateEdit,
     QDialog,
-    QFormLayout,
     QDialogButtonBox,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
     QLineEdit,
+    QMenu,
+    QMessageBox,
+    QPushButton,
     QScrollArea,
     QSizePolicy,
-    QFrame,
+    QSplitter,
     QStackedWidget,
-    QMenu,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QDate, QSize
-from PyQt6.QtGui import QColor, QShortcut, QKeySequence
+
 from cbpos.core.services.price_list_service import PriceListService
 from cbpos.core.services.product_service import ProductService
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
 from cbpos.ui.resources.icons import Icons
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
 class PriceListView(QWidget):
@@ -320,9 +322,7 @@ class PriceListView(QWidget):
         status_text, status_colour = self._get_price_list_status(price_list)
         self.lbl_status.setText(status_text)
         colour_name = status_colour.name()
-        self.lbl_status.setStyleSheet(
-            "color: %s; font-weight: bold; padding: 2px 8px; border-radius: 4px;" % colour_name
-        )
+        self.lbl_status.setStyleSheet(f"color: {colour_name}; font-weight: bold; padding: 2px 8px; border-radius: 4px;")
 
         self.load_items()
         self.content_stack.setCurrentIndex(1)
@@ -346,10 +346,10 @@ class PriceListView(QWidget):
 
             self.table.setItem(row, 0, QTableWidgetItem(str(p.id)))
             self.table.setItem(row, 1, QTableWidgetItem(p.name_en))
-            self.table.setItem(row, 2, QTableWidgetItem("{:.2f}".format(p.price)))
+            self.table.setItem(row, 2, QTableWidgetItem(f"{p.price:.2f}"))
 
             list_price = price_map.get(p.id)
-            price_display = "{:.2f}".format(list_price) if list_price is not None else "-"
+            price_display = f"{list_price:.2f}" if list_price is not None else "-"
 
             price_item = QTableWidgetItem(price_display)
             if list_price is not None:

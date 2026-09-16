@@ -1,6 +1,7 @@
-from typing import List, Dict, Any
 from datetime import date
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QDateEdit, QComboBox
+from typing import Any
+
+from PyQt6.QtWidgets import QComboBox, QDateEdit, QHBoxLayout, QLabel, QWidget
 
 
 class FilterWidget(QWidget):
@@ -24,7 +25,7 @@ class FilterWidget(QWidget):
                 widget.deleteLater()
         self.inputs = {}
 
-    def build_filters(self, definitions: List[Dict[str, Any]]):
+    def build_filters(self, definitions: list[dict[str, Any]]):
         """
         Builds filter widgets based on the provided definitions.
         """
@@ -45,12 +46,12 @@ class FilterWidget(QWidget):
 
         self.layout.addStretch()
 
-    def _add_date_range(self, name: str, label: str, definition: Dict):
+    def _add_date_range(self, name: str, label: str, definition: dict):
         container = QWidget()
         layout = QHBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        lbl = QLabel("{}:".format(label))
+        lbl = QLabel(f"{label}:")
         lbl.setObjectName("ReportFilterLabel")
         start_edit = QDateEdit()
         start_edit.setObjectName("ReportDateEdit")
@@ -75,12 +76,12 @@ class FilterWidget(QWidget):
         self.layout.addWidget(container)
         self.inputs[name] = {"type": "date_range", "start": start_edit, "end": end_edit}
 
-    def _add_combo(self, name: str, label: str, definition: Dict):
+    def _add_combo(self, name: str, label: str, definition: dict):
         container = QWidget()
         layout = QHBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        lbl = QLabel("{}:".format(label))
+        lbl = QLabel(f"{label}:")
         lbl.setObjectName("ReportFilterLabel")
         combo = QComboBox()
         combo.setObjectName("ReportFilterCombo")
@@ -99,7 +100,7 @@ class FilterWidget(QWidget):
         self.layout.addWidget(container)
         self.inputs[name] = {"type": "combo", "widget": combo}
 
-    def get_filter_values(self) -> Dict[str, Any]:
+    def get_filter_values(self) -> dict[str, Any]:
         """
         Returns a dictionary of current filter values.
         """

@@ -61,7 +61,7 @@ class TestChangeLineQuantityUsesStyledDialog:
             mp.setattr(sales_view_module, "QuantityDialog", fake_dialog_cls)
             view.change_line_quantity()
 
-        args, kwargs = fake_dialog_cls.call_args
+        _args, kwargs = fake_dialog_cls.call_args
         assert kwargs["initial_qty"] == Decimal("2")
 
         assert view.cart_service.items[0]["qty"] == Decimal("5")
@@ -177,7 +177,7 @@ class TestVoidBillWritesAnAuditLogEntry:
         assert len(view.cart_service.items) == 0
         mock_log.assert_called_once()
         args, kwargs = mock_log.call_args
-        call = {**dict(zip(["user_id", "action", "event_type", "details"], args)), **kwargs}
+        call = {**dict(zip(["user_id", "action", "event_type", "details"], args, strict=False)), **kwargs}
         assert call["user_id"] == 9
         assert call["event_type"] == "TRANSACTION"
 

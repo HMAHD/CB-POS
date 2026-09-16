@@ -1,26 +1,28 @@
 from datetime import datetime
 from decimal import Decimal
+
+from PyQt6.QtCore import QDateTime, Qt
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QCheckBox,
+    QComboBox,
+    QDateTimeEdit,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
+    QFormLayout,
     QHBoxLayout,
+    QHeaderView,
+    QLineEdit,
+    QMenu,
+    QMessageBox,
+    QPushButton,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QPushButton,
-    QDialog,
-    QFormLayout,
-    QLineEdit,
-    QComboBox,
-    QDoubleSpinBox,
-    QDateTimeEdit,
-    QDialogButtonBox,
-    QMessageBox,
-    QMenu,
-    QCheckBox,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QDateTime
-from PyQt6.QtGui import QColor
+
 from cbpos.core.services.category_service import CategoryService
 from cbpos.core.services.promotion_service import PromotionService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
@@ -53,8 +55,8 @@ class PromotionView(QWidget):
 
         # Header
         header = QHBoxLayout()
-        from cbpos.ui.widgets.page_header import PageHeader
         from cbpos.ui.resources.icons import Icons
+        from cbpos.ui.widgets.page_header import PageHeader
 
         self._page_header = PageHeader(icon_name=Icons.PROMOTION)
         header.addWidget(self._page_header, 1)
@@ -130,7 +132,7 @@ class PromotionView(QWidget):
 
             self.table.setItem(row, 0, QTableWidgetItem(p.name))
             self.table.setItem(row, 1, QTableWidgetItem(p.type))
-            self.table.setItem(row, 2, QTableWidgetItem("{:.2f}".format(p.value)))
+            self.table.setItem(row, 2, QTableWidgetItem(f"{p.value:.2f}"))
             self.table.setItem(row, 3, QTableWidgetItem(p.start_time.strftime("%Y-%m-%d %H:%M")))
             self.table.setItem(row, 4, QTableWidgetItem(p.end_time.strftime("%Y-%m-%d %H:%M")))
 

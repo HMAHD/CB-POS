@@ -8,7 +8,6 @@ Log format: %(asctime)s | %(levelname)-8s | %(name)s | %(message)s
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from cbpos.config import Config
 
@@ -22,7 +21,7 @@ class ErrorLogService:
     LOG_NAME = "cbpos.log"
 
     @classmethod
-    def get_log_files(cls) -> List[Path]:
+    def get_log_files(cls) -> list[Path]:
         """
         Return all log files (main + rotated), newest first.
 
@@ -36,12 +35,12 @@ class ErrorLogService:
     @classmethod
     def read_logs(
         cls,
-        level: Optional[str] = None,
-        date_from: Optional[datetime] = None,
-        date_to: Optional[datetime] = None,
-        search: Optional[str] = None,
+        level: str | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+        search: str | None = None,
         max_entries: int = 500,
-    ) -> List[Dict[str, str]]:
+    ) -> list[dict[str, str]]:
         """
         Read and filter log entries from all log files.
 
@@ -56,11 +55,11 @@ class ErrorLogService:
             List of dicts with keys: timestamp, level, source, message.
             Newest entries first.
         """
-        entries: List[Dict[str, str]] = []
+        entries: list[dict[str, str]] = []
 
         for log_file in cls.get_log_files():
             try:
-                with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+                with open(log_file, encoding="utf-8", errors="replace") as f:
                     for line in f:
                         parsed = cls._parse_line(line)
                         if parsed is None:
@@ -98,17 +97,17 @@ class ErrorLogService:
         return entries[:max_entries]
 
     @classmethod
-    def get_log_stats(cls) -> Dict[str, int]:
+    def get_log_stats(cls) -> dict[str, int]:
         """
         Count log entries by level.
 
         Returns:
             Dict with keys: WARNING, ERROR, CRITICAL and their counts.
         """
-        stats: Dict[str, int] = {"WARNING": 0, "ERROR": 0, "CRITICAL": 0}
+        stats: dict[str, int] = {"WARNING": 0, "ERROR": 0, "CRITICAL": 0}
         for log_file in cls.get_log_files():
             try:
-                with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+                with open(log_file, encoding="utf-8", errors="replace") as f:
                     for line in f:
                         parsed = cls._parse_line(line)
                         if parsed and parsed["level"] in stats:
@@ -118,7 +117,7 @@ class ErrorLogService:
         return stats
 
     @classmethod
-    def export_logs(cls, filepath: str, entries: List[Dict[str, str]]) -> None:
+    def export_logs(cls, filepath: str, entries: list[dict[str, str]]) -> None:
         """
         Export log entries to a text file.
 
@@ -132,18 +131,15 @@ class ErrorLogService:
             f.write(f"Entries: {len(entries)}\n")
             f.write("=" * 80 + "\n\n")
             for entry in entries:
-                f.write(
-                    f"{entry['timestamp']} | {entry['level']:<8} | "  # noqa: E231
-                    f"{entry['source']} | {entry['message']}\n"
-                )
+                f.write(f"{entry['timestamp']} | {entry['level']:<8} | {entry['source']} | {entry['message']}\n")
 
     @classmethod
     def get_total_log_size(cls) -> str:
         """Return human-readable combined size of all log files."""
         total = sum(f.stat().st_size for f in cls.get_log_files() if f.exists())
         if total >= 1024 * 1024:
-            return f"{total / (1024 * 1024):.1f} MB"  # noqa: E231
-        return f"{total / 1024:.1f} KB"  # noqa: E231
+            return f"{total / (1024 * 1024):.1f} MB"
+        return f"{total / 1024:.1f} KB"
 
     @classmethod
     def clear_logs(cls) -> None:
@@ -160,7 +156,7 @@ class ErrorLogService:
                     logger.debug("Could not delete rotated log %s: %s", f, e)
 
     @classmethod
-    def _parse_line(cls, line: str) -> Optional[Dict[str, str]]:
+    def _parse_line(cls, line: str) -> dict[str, str] | None:
         """
         Parse a single log line into a dict.
 

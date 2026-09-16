@@ -1,12 +1,12 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Dict, Any
+from typing import Any
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
+from cbpos.core.constants.status import DocumentStatus, PaymentMethodType, ShiftStatus
 from cbpos.core.database import Database
-from cbpos.core.models import Shift, CashMovement, Sale, SalePayment
-from cbpos.core.constants.status import ShiftStatus, DocumentStatus, PaymentMethodType
+from cbpos.core.models import CashMovement, Sale, SalePayment, Shift
 from cbpos.core.services.config_service import ConfigService
 
 
@@ -42,7 +42,7 @@ class ShiftService:
             session.refresh(shift)
             return shift
 
-    def get_current_shift(self, user_id: int) -> Optional[Shift]:
+    def get_current_shift(self, user_id: int) -> Shift | None:
         with self.db.get_session() as session:
             terminal_id = ConfigService.get("terminal_id") or "TERM-01"
             return session.scalars(
@@ -74,7 +74,7 @@ class ShiftService:
             session.refresh(movement)
             return movement
 
-    def get_shift_summary(self, shift_id: int) -> Dict[str, Any]:
+    def get_shift_summary(self, shift_id: int) -> dict[str, Any]:
         with self.db.get_session() as session:
             shift = session.get(Shift, shift_id)
             if not shift:
@@ -178,7 +178,7 @@ class ShiftService:
                 "total_sscl": tax_row[1] or Decimal(0) if tax_row else Decimal(0),
             }
 
-    def close_shift(self, shift_id: int, counted_cash: Decimal, notes: str = None) -> Dict[str, Any]:
+    def close_shift(self, shift_id: int, counted_cash: Decimal, notes: str = None) -> dict[str, Any]:
         with self.db.get_session() as session:
             shift = session.get(Shift, shift_id)
             if not shift or shift.status != ShiftStatus.OPEN:

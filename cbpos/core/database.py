@@ -1,11 +1,11 @@
 import logging
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator, Optional
 
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import URL
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from cbpos.config import Config
@@ -19,8 +19,6 @@ _MAX_RETRIES = 2
 
 class Base(DeclarativeBase):
     """Base class for all SQLAlchemy models."""
-
-    pass
 
 
 class Database:
@@ -38,7 +36,7 @@ class Database:
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(Database, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
             cls._instance._initialize()
         return cls._instance
 
@@ -119,11 +117,11 @@ class Database:
     @staticmethod
     def test_connection(
         mode: str = "standalone",
-        host: Optional[str] = None,
-        port: Optional[int] = None,
-        dbname: Optional[str] = None,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
+        host: str | None = None,
+        port: int | None = None,
+        dbname: str | None = None,
+        user: str | None = None,
+        password: str | None = None,
     ) -> tuple[bool, str]:
         """Test database connection without modifying the singleton instance.
 
@@ -163,7 +161,7 @@ class Database:
             return True, "Connection successful"
 
         except Exception as e:
-            return False, f"Connection failed: {str(e)}"
+            return False, f"Connection failed: {e!s}"
 
     def create_tables(self):
         """Create all tables defined in Base metadata."""
@@ -184,7 +182,7 @@ class Database:
                           phantom reads (stock checks, credit updates,
                           document number generation).
         """
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         retries = _MAX_RETRIES if self._db_mode == "network" else 0
 
         for attempt in range(1 + retries):

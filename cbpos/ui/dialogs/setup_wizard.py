@@ -1,18 +1,19 @@
+from PyQt6.QtCore import Qt
+from PyQt6.QtPrintSupport import QPrinterInfo
 from PyQt6.QtWidgets import (
+    QComboBox,
     QDialog,
-    QVBoxLayout,
+    QFormLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
-    QComboBox,
-    QStackedWidget,
-    QWidget,
-    QFormLayout,
     QMessageBox,
+    QPushButton,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtPrintSupport import QPrinterInfo
+
 from cbpos.i18n import _t
 
 

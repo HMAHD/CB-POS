@@ -1,12 +1,13 @@
-import sys
 import os
+import sys
 
 sys.path.append(os.getcwd())
 
-from cbpos.core.database import get_db_session, Database  # noqa: E402
-from cbpos.core.models import Product, Category, User  # noqa: E402
-from cbpos.core.services.stock_service import StockService  # noqa: E402
-from decimal import Decimal  # noqa: E402
+from decimal import Decimal
+
+from cbpos.core.database import Database, get_db_session
+from cbpos.core.models import Category, Product, User
+from cbpos.core.services.stock_service import StockService
 
 
 def verify_advanced_inventory():

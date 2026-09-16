@@ -1,16 +1,16 @@
 import sys
-from pathlib import Path
 from decimal import Decimal
+from pathlib import Path
 
 # Add project root to python path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
 from cbpos.core.database import Database  # noqa: E402
-from cbpos.core.models import Product, Customer, PriceList, PriceListItem  # noqa: E402
-from cbpos.core.services.pricing_service import PricingService  # noqa: E402
-from cbpos.core.services.document_service import DocumentService  # noqa: E402
+from cbpos.core.models import Customer, PriceList, PriceListItem, Product  # noqa: E402
 from cbpos.core.services.cart_service import CartService  # noqa: E402
+from cbpos.core.services.document_service import DocumentService  # noqa: E402
+from cbpos.core.services.pricing_service import PricingService  # noqa: E402
 
 
 def test_logic():
@@ -64,7 +64,7 @@ def test_logic():
                 # However, we passed 'product' which might be detached.
                 # PricingService uses product.id, so it should be fine.
                 price_b = PricingService.calculate_price(product, customer)
-                print(f"Price (Wholesale Customer): {price_b['final_price']} " f"({price_b['applied_rule']})")
+                print(f"Price (Wholesale Customer): {price_b['final_price']} ({price_b['applied_rule']})")
                 assert price_b["final_price"] < product.price
                 assert "Wholesale" in price_b["applied_rule"]
             else:

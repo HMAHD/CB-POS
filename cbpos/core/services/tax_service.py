@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Dict, Optional
+
 from cbpos.core.constants.status import Precision
 from cbpos.core.services.config_service import ConfigService
 
@@ -39,8 +39,8 @@ class TaxService:
     @staticmethod
     def calculate_taxes(
         total_mrp: Decimal,
-        taxable_amount: Optional[Decimal] = None,
-    ) -> Dict[str, Decimal]:
+        taxable_amount: Decimal | None = None,
+    ) -> dict[str, Decimal]:
         """
         Calculate tax breakdown from the MRP (Tax Inclusive Price).
 

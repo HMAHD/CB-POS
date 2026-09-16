@@ -1,13 +1,13 @@
-from cbpos.core.reports.registry import ReportRegistry
-from cbpos.core.reports.definitions.sales_report import DailySalesSummaryReport
 from cbpos.core.reports.definitions.inventory_reports import (
     InventoryValuationReport,
     LowStockReport,
 )
+from cbpos.core.reports.definitions.sales_report import DailySalesSummaryReport
 from cbpos.core.reports.definitions.sales_reports import (
-    SalesByCategoryReport,
     CashierPerformanceReport,
+    SalesByCategoryReport,
 )
+from cbpos.core.reports.registry import ReportRegistry
 
 
 def register_all_reports():
@@ -26,12 +26,12 @@ def register_all_reports():
     registry.register(LowStockReport)
 
     # Financial
+    from cbpos.core.reports.definitions.cash_flow_report import CashFlowReport
     from cbpos.core.reports.definitions.financial_reports import (
         ProfitLossReport,
-        TaxLiabilityReport,
         TaxFilingSummaryReport,
+        TaxLiabilityReport,
     )
-    from cbpos.core.reports.definitions.cash_flow_report import CashFlowReport
 
     registry.register(ProfitLossReport)
     registry.register(TaxLiabilityReport)
@@ -40,8 +40,8 @@ def register_all_reports():
 
     # Audit
     from cbpos.core.reports.definitions.audit_reports import (
-        StockMovementReport,
         CashMovementAuditReport,
+        StockMovementReport,
     )
 
     registry.register(StockMovementReport)
@@ -49,8 +49,8 @@ def register_all_reports():
 
     # Void/Refund & Payment Method
     from cbpos.core.reports.definitions.void_refund_report import (
-        VoidRefundReport,
         PaymentMethodSummaryReport,
+        VoidRefundReport,
     )
 
     registry.register(VoidRefundReport)

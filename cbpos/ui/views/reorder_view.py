@@ -1,17 +1,19 @@
+from decimal import Decimal
+
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QFont
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
+    QMessageBox,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QMessageBox,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont, QColor
-from decimal import Decimal
+
 from cbpos.core.services.stock_service import StockService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
@@ -107,19 +109,19 @@ class ReorderView(QWidget):
             self.table.setItem(row, 1, QTableWidgetItem(product.barcode))
 
             # Current Stock
-            stock_item = QTableWidgetItem("{0:.3f}".format(product.stock_qty))
+            stock_item = QTableWidgetItem(f"{product.stock_qty:.3f}")
             stock_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             if product.stock_qty <= 0:
                 stock_item.setForeground(QColor("#FF4136"))
             self.table.setItem(row, 2, stock_item)
 
             # Reorder Point
-            reorder_item = QTableWidgetItem("{0:.3f}".format(product.reorder_point))
+            reorder_item = QTableWidgetItem(f"{product.reorder_point:.3f}")
             reorder_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.table.setItem(row, 3, reorder_item)
 
             # Preferred Qty
-            preferred_item = QTableWidgetItem("{0:.3f}".format(product.preferred_qty))
+            preferred_item = QTableWidgetItem(f"{product.preferred_qty:.3f}")
             preferred_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.table.setItem(row, 4, preferred_item)
 
@@ -140,7 +142,7 @@ class ReorderView(QWidget):
         Create purchase order from selected items.
         Navigate to PurchaseView with pre-filled quantities.
         """
-        selected_rows = set(item.row() for item in self.table.selectedItems())
+        selected_rows = {item.row() for item in self.table.selectedItems()}
 
         if not selected_rows:
             QMessageBox.warning(

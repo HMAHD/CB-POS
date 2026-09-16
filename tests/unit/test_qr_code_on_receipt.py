@@ -58,9 +58,10 @@ def page(qapp, config_store):
 
 
 def _dummy_sale():
-    from decimal import Decimal
     from datetime import datetime
-    from cbpos.core.models import Sale, SaleItem, Product
+    from decimal import Decimal
+
+    from cbpos.core.models import Product, Sale, SaleItem
 
     sale = Sale(
         id=1,

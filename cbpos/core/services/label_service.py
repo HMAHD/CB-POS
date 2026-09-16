@@ -3,7 +3,8 @@ Service for generating barcode label print commands for thermal printers.
 """
 
 import logging
-from typing import List, Dict, Any
+from typing import Any
+
 from cbpos.core.models import Product
 from cbpos.core.utils.formatters import format_currency
 
@@ -14,7 +15,7 @@ class LabelService:
     """Generates barcode label commands for thermal printer output."""
 
     @staticmethod
-    def _build_single_label(product: Product) -> List[Dict[str, Any]]:
+    def _build_single_label(product: Product) -> list[dict[str, Any]]:
         """
         Build print commands for a single barcode label.
 
@@ -35,7 +36,7 @@ class LabelService:
         ]
 
     @staticmethod
-    def generate_label_commands(product: Product, quantity: int = 1) -> List[List[Dict[str, Any]]]:
+    def generate_label_commands(product: Product, quantity: int = 1) -> list[list[dict[str, Any]]]:
         """
         Generate label print commands for a product.
 
@@ -52,8 +53,8 @@ class LabelService:
 
     @staticmethod
     def generate_batch_commands(
-        products_with_qty: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
+        products_with_qty: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
         """
         Generate all label commands as a single flat command list.
 
@@ -63,7 +64,7 @@ class LabelService:
         Returns:
             Flat list of print commands for all labels.
         """
-        all_commands: List[Dict[str, Any]] = []
+        all_commands: list[dict[str, Any]] = []
 
         for item in products_with_qty:
             product = item["product"]

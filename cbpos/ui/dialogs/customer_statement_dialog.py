@@ -2,28 +2,31 @@
 Dialog for viewing and printing customer account statements.
 """
 
+import contextlib
 import logging
 from datetime import datetime
+
+from PyQt6.QtCore import QDate
 from PyQt6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QGridLayout,
-    QLabel,
-    QPushButton,
     QDateEdit,
+    QDialog,
+    QGridLayout,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QMessageBox,
+    QPushButton,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QMessageBox,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import QDate
-from cbpos.core.services.statement_service import StatementService
-from cbpos.core.services.receipt_builder import ReceiptBuilder
+
 from cbpos.core.services.customer_credit_service import CustomerCreditService
-from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.core.services.receipt_builder import ReceiptBuilder
+from cbpos.core.services.statement_service import StatementService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
+from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
 logger = logging.getLogger(__name__)
 
@@ -226,10 +229,8 @@ class CustomerStatementDialog(QDialog):
             worker.error_occurred.disconnect(self._on_print_error)
         except TypeError:
             pass  # not connected yet
-        try:
+        with contextlib.suppress(TypeError):
             worker.job_completed.disconnect(self._on_print_finished)
-        except TypeError:
-            pass
         worker.error_occurred.connect(self._on_print_error)
         worker.job_completed.connect(self._on_print_finished)
         worker.add_job("print_commands", commands)

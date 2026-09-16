@@ -5,29 +5,32 @@ Uses QStyledItemDelegate for the Qty column so that editing and rendering
 go through Qt's model/view pipeline — QSS styling applies correctly.
 """
 
+import contextlib
 import logging
+
+from PyQt6.QtCore import QStringListModel, Qt
+from PyQt6.QtGui import QIntValidator
 from PyQt6.QtWidgets import (
+    QCompleter,
     QDialog,
-    QVBoxLayout,
     QHBoxLayout,
+    QHeaderView,
+    QLabel,
     QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QStyledItemDelegate,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QPushButton,
-    QLabel,
-    QMessageBox,
-    QCompleter,
-    QStyledItemDelegate,
+    QVBoxLayout,
     QWidget,
 )
-from PyQt6.QtCore import Qt, QStringListModel
-from PyQt6.QtGui import QIntValidator
-from cbpos.core.services.product_service import ProductService
+
 from cbpos.core.services.label_service import LabelService
-from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.core.services.product_service import ProductService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
+from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
 logger = logging.getLogger(__name__)
 
@@ -403,10 +406,8 @@ class LabelPrintDialog(QDialog):
                 worker.error_occurred.disconnect(self._on_print_error)
             except TypeError:
                 pass  # not connected yet
-            try:
+            with contextlib.suppress(TypeError):
                 worker.job_completed.disconnect(self._on_print_finished)
-            except TypeError:
-                pass
             worker.error_occurred.connect(self._on_print_error)
             worker.job_completed.connect(self._on_print_finished)
             worker.add_job("print_commands", commands)

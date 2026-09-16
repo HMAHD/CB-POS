@@ -1,18 +1,19 @@
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QAction, QBrush, QColor
 from PyQt6.QtWidgets import (
+    QColorDialog,
     QDialog,
-    QVBoxLayout,
     QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QMenu,
+    QMessageBox,
     QPushButton,
     QTreeWidget,
     QTreeWidgetItem,
-    QMenu,
-    QInputDialog,
-    QMessageBox,
-    QColorDialog,
-    QLabel,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QBrush, QAction
+
 from cbpos.core.services.category_service import CategoryService
 from cbpos.i18n import _t
 
@@ -220,4 +221,4 @@ class CategoryTreeDialog(QDialog):
         # Note: This is a simplified handler. Full implementation would need
         # to properly detect parent changes and update the database.
         # For now, we'll disable automatic updates and require manual confirmation.
-        pass  # Implement if drag & drop persistence is needed
+        # Implement if drag & drop persistence is needed

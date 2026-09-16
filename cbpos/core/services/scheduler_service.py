@@ -2,15 +2,14 @@ import logging
 import os
 import tempfile
 from datetime import datetime
-from typing import Optional, Tuple
 
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
 
+from cbpos.core.reports.definitions.sales_report import DailySalesSummaryReport
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.email_service import EmailService
 from cbpos.core.services.export_service import ExportService
-from cbpos.core.reports.definitions.sales_report import DailySalesSummaryReport
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +24,11 @@ class SchedulerService:
     instead of only being read once at process launch (#320).
     """
 
-    _timer: Optional[QTimer] = None
+    _timer: QTimer | None = None
     # Set by the email callback (fired on a background thread) and read
     # back on the next main-thread tick -- avoids writing to ConfigService
     # from a non-Qt thread, which isn't guaranteed safe here.
-    _pending_email_result: Optional[Tuple[bool, str, str]] = None
+    _pending_email_result: tuple[bool, str, str] | None = None
 
     @classmethod
     def start_timer(cls) -> None:

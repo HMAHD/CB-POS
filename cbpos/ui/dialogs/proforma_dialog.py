@@ -1,27 +1,27 @@
 import logging
 from decimal import Decimal
 
+from PyQt6.QtCore import QStringListModel, Qt
+from PyQt6.QtGui import QColor, QIntValidator
 from PyQt6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QFormLayout,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QTextEdit,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
-    QMessageBox,
     QComboBox,
     QCompleter,
+    QDialog,
+    QFormLayout,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QTextEdit,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import Qt, QStringListModel
-from PyQt6.QtGui import QIntValidator, QColor
 
-from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.customer_service import CustomerService
+from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.proforma_service import ProformaService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
@@ -174,7 +174,7 @@ class ProformaDialog(QDialog):
         product = self.products_cache.get(text)
         if not product:
             # Try barcode lookup
-            for key, p in self.products_cache.items():
+            for _key, p in self.products_cache.items():
                 if hasattr(p, "barcode") and p.barcode == text:
                     product = p
                     break
@@ -227,17 +227,17 @@ class ProformaDialog(QDialog):
 
             self.items_table.setItem(row, 0, QTableWidgetItem(item["product_name"]))
 
-            qty_item = QTableWidgetItem(f"{item['quantity']:.3f}")  # noqa: E231
+            qty_item = QTableWidgetItem(f"{item['quantity']:.3f}")
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(row, 1, qty_item)
 
-            price_item = QTableWidgetItem(f"{item['unit_price']:.2f}")  # noqa: E231
+            price_item = QTableWidgetItem(f"{item['unit_price']:.2f}")
             price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(row, 2, price_item)
 
             self.items_table.setItem(row, 3, QTableWidgetItem(item["discount_type"]))
 
-            disc_item = QTableWidgetItem(f"{item['discount_value']:.2f}")  # noqa: E231
+            disc_item = QTableWidgetItem(f"{item['discount_value']:.2f}")
             disc_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(row, 4, disc_item)
 

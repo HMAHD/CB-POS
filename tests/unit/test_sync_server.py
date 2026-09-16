@@ -119,7 +119,7 @@ class TestPushTableWhitelist:
             sequence=1,
         )
 
-        response, status = _push(envelope)
+        response, _status = _push(envelope)
 
         assert response["records_applied"] == 0
         assert any("not allowed" in e for e in response["errors"])
@@ -151,7 +151,7 @@ class TestStockPropagation:
             sequence=1,
         )
 
-        response, status = _push(envelope)
+        response, _status = _push(envelope)
 
         assert response["records_applied"] == 1
         db_session.refresh(test_product)

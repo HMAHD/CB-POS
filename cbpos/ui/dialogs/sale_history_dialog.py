@@ -1,26 +1,29 @@
+import contextlib
 import logging
 from datetime import datetime, timedelta
+
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QBrush, QColor
 from PyQt6.QtWidgets import (
+    QAbstractItemView,
     QDialog,
-    QVBoxLayout,
+    QFrame,
     QHBoxLayout,
-    QTableWidget,
-    QTableWidgetItem,
     QHeaderView,
-    QPushButton,
     QLabel,
     QLineEdit,
-    QTextEdit,
-    QSplitter,
-    QWidget,
     QMessageBox,
-    QFrame,
-    QAbstractItemView,
+    QPushButton,
+    QSplitter,
+    QTableWidget,
+    QTableWidgetItem,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QColor, QBrush
-from cbpos.core.services.transaction_service import TransactionService
+
 from cbpos.core.services.sale_query_service import SaleQueryService
+from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 
@@ -488,10 +491,8 @@ class SaleHistoryDialog(QDialog):
                 worker.error_occurred.disconnect(self._on_reprint_error)
             except TypeError:
                 pass  # not connected yet
-            try:
+            with contextlib.suppress(TypeError):
                 worker.job_completed.disconnect(self._on_reprint_finished)
-            except TypeError:
-                pass
             worker.error_occurred.connect(self._on_reprint_error)
             worker.job_completed.connect(self._on_reprint_finished)
             worker.add_job("print_receipt", commands)

@@ -8,7 +8,6 @@ for the Data Safety dialog and Admin Tools view.
 import logging
 import sqlite3
 from datetime import datetime
-from typing import Dict, List, Tuple
 
 from sqlalchemy import func, select, table, text
 
@@ -22,7 +21,7 @@ class MaintenanceService:
     """Database maintenance operations: vacuum, integrity check, info."""
 
     @staticmethod
-    def vacuum_database() -> Dict[str, str]:
+    def vacuum_database() -> dict[str, str]:
         """
         Run VACUUM on the SQLite database to reclaim unused space.
 
@@ -47,8 +46,8 @@ class MaintenanceService:
 
         def _fmt(size: int) -> str:
             if size >= 1024 * 1024:
-                return f"{size / (1024 * 1024):.1f} MB"  # noqa: E231
-            return f"{size / 1024:.1f} KB"  # noqa: E231
+                return f"{size / (1024 * 1024):.1f} MB"
+            return f"{size / 1024:.1f} KB"
 
         return {
             "size_before": _fmt(size_before),
@@ -57,7 +56,7 @@ class MaintenanceService:
         }
 
     @staticmethod
-    def get_database_info() -> Dict[str, object]:
+    def get_database_info() -> dict[str, object]:
         """
         Get database file size and record counts.
 
@@ -68,11 +67,11 @@ class MaintenanceService:
         size = db_path.stat().st_size if db_path.exists() else 0
 
         if size >= 1024 * 1024:
-            size_str = f"{size / (1024 * 1024):.1f} MB"  # noqa: E231
+            size_str = f"{size / (1024 * 1024):.1f} MB"
         else:
-            size_str = f"{size / 1024:.1f} KB"  # noqa: E231
+            size_str = f"{size / 1024:.1f} KB"
 
-        info: Dict[str, object] = {"size": size_str, "products": 0, "customers": 0, "sales": 0}
+        info: dict[str, object] = {"size": size_str, "products": 0, "customers": 0, "sales": 0}
 
         db = Database()
         try:
@@ -90,7 +89,7 @@ class MaintenanceService:
         return info
 
     @staticmethod
-    def get_full_database_info() -> Dict[str, object]:
+    def get_full_database_info() -> dict[str, object]:
         """
         Get comprehensive database information for Admin Tools view.
 
@@ -102,9 +101,9 @@ class MaintenanceService:
         size = db_path.stat().st_size if db_path.exists() else 0
 
         if size >= 1024 * 1024:
-            size_str = f"{size / (1024 * 1024):.1f} MB"  # noqa: E231
+            size_str = f"{size / (1024 * 1024):.1f} MB"
         else:
-            size_str = f"{size / 1024:.1f} KB"  # noqa: E231
+            size_str = f"{size / 1024:.1f} KB"
 
         last_modified = ""
         if db_path.exists():
@@ -113,7 +112,7 @@ class MaintenanceService:
 
         sqlite_version = sqlite3.sqlite_version
 
-        tables: List[Dict[str, object]] = []
+        tables: list[dict[str, object]] = []
         db = Database()
         try:
             with db.get_session() as session:
@@ -140,7 +139,7 @@ class MaintenanceService:
         }
 
     @staticmethod
-    def integrity_check() -> Tuple[bool, str]:
+    def integrity_check() -> tuple[bool, str]:
         """
         Run PRAGMA integrity_check on the database.
 

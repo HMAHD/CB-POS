@@ -1,5 +1,5 @@
-from cbpos.core.models import User
 from cbpos.core.constants.permissions import ADMIN_ROLE_NAME, CRITICAL_ADMIN_PERMISSIONS
+from cbpos.core.models import User
 from cbpos.core.services.auth_service import AuthService
 
 
@@ -27,17 +27,13 @@ class PermissionService:
         if user.role.name == ADMIN_ROLE_NAME:
             return True
 
-        for perm in user.role.permissions:
-            if perm.code == permission_code:
-                return True
-
-        return False
+        return any(perm.code == permission_code for perm in user.role.permissions)
 
     @staticmethod
     def get_all_permissions():
         """Get all available permissions."""
-        from cbpos.core.models import Permission
         from cbpos.core.database import Database
+        from cbpos.core.models import Permission
 
         db = Database()
         with db.get_session() as session:
@@ -52,8 +48,8 @@ class PermissionService:
 
         SAFETY: Prevents revoking critical permissions from Admin.
         """
-        from cbpos.core.models import Role, Permission, AuditLog
         from cbpos.core.database import Database
+        from cbpos.core.models import AuditLog, Permission, Role
 
         db = Database()
         with db.get_session() as session:

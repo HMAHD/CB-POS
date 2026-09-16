@@ -1,31 +1,33 @@
+import contextlib
 import json
 import logging
 
+from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QFrame,
     QHBoxLayout,
+    QMessageBox,
     QPushButton,
     QStackedWidget,
-    QFrame,
-    QMessageBox,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import pyqtSignal
-from cbpos.core.services.config_service import ConfigService
-from cbpos.core.services.theme_service import ThemeService
-from cbpos.core.services.permission_service import PermissionService
+
 from cbpos.core.constants.permissions import Permissions
-from cbpos.ui.widgets.collapsible_sidebar import CollapsibleSidebar
+from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.permission_service import PermissionService
+from cbpos.core.services.theme_service import ThemeService
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.views.settings_pages import (
-    ShopInfoPage,
-    SalesTaxPage,
     DocumentPage,
     HardwarePage,
-    ReceiptPage,
-    SystemPage,
     NetworkPage,
+    ReceiptPage,
+    SalesTaxPage,
+    ShopInfoPage,
+    SystemPage,
 )
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.widgets.collapsible_sidebar import CollapsibleSidebar
 
 logger = logging.getLogger(__name__)
 
@@ -99,9 +101,9 @@ class SettingsView(QWidget):
             self.stack.addWidget(page)
 
         # Operational views (self-contained, no load/save)
-        from cbpos.ui.views.payment_methods_view import PaymentMethodsView
-        from cbpos.ui.views.data_safety_view import DataSafetyView
         from cbpos.ui.views.admin_tools_view import AdminToolsView
+        from cbpos.ui.views.data_safety_view import DataSafetyView
+        from cbpos.ui.views.payment_methods_view import PaymentMethodsView
 
         self.payment_methods_view = PaymentMethodsView()
         self.stack.addWidget(self.payment_methods_view)
@@ -175,10 +177,8 @@ class SettingsView(QWidget):
         """Collect current values from all config pages for dirty comparison."""
         snapshot: dict = {}
         for page in self.pages:
-            try:
+            with contextlib.suppress(ValueError, Exception):
                 snapshot.update(page.save())
-            except (ValueError, Exception):
-                pass
         return snapshot
 
     def switch_page(self, index: int) -> None:
@@ -289,9 +289,9 @@ class SettingsView(QWidget):
                 tax_changes[key] = {"old": old_val, "new": new_val}
 
         if tax_changes:
-            from cbpos.core.services.auth_service import AuthService
             from cbpos.core.database import Database
             from cbpos.core.models import AuditLog
+            from cbpos.core.services.auth_service import AuthService
 
             user = AuthService.get_current_user()
             if user:

@@ -1,9 +1,10 @@
 import logging
 import os
 import re
-from cbpos.infrastructure.resource_loader import ResourceLoader
-from cbpos.core.services.config_service import ConfigService
+
 from cbpos.config import Config
+from cbpos.core.services.config_service import ConfigService
+from cbpos.infrastructure.resource_loader import ResourceLoader
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ class ThemeService:
         style_path = os.path.join(str(Config.BASE_DIR), "cbpos", "ui", "styles", theme_file)
 
         try:
-            with open(style_path, "r", encoding="utf-8") as f:
+            with open(style_path, encoding="utf-8") as f:
                 style_content = f.read()
 
             # Variable Injection

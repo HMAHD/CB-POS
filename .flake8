@@ -1,8 +1,0 @@
-[flake8]
-per-file-ignores =
-    cbpos/ui/views/history_view.py:E221,E222,E231,E702
-    cbpos\ui\views\history_view.py:E221,E222,E231,E702
-    scripts/seed.py:E231
-    scripts\seed.py:E231
-max-line-length = 120
-extend-ignore = E203

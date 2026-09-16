@@ -6,11 +6,12 @@ Create Date: 2025-11-25 18:05:16.803331
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
+from typing import Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "50ffff66bd6a"
@@ -42,7 +43,7 @@ def upgrade() -> None:
         sa.Column("shift_id", sa.Integer(), nullable=True),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("type", sa.String(length=20), nullable=False),
-        sa.Column("amount", sa.Numeric(precision=10, scale=2), nullable=False),  # noqa: E501
+        sa.Column("amount", sa.Numeric(precision=10, scale=2), nullable=False),
         sa.Column("reason", sa.String(length=200), nullable=False),
         sa.Column("timestamp", sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(

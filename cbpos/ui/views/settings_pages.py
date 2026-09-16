@@ -1,41 +1,43 @@
-from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QGridLayout,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QFormLayout,
-    QCheckBox,
-    QSpinBox,
-    QDoubleSpinBox,
-    QComboBox,
-    QTextEdit,
-    QFileDialog,
-    QTimeEdit,
-    QFrame,
-    QMessageBox,
-    QApplication,
-    QProgressDialog,
-    QScrollArea,
-    QDialog,
-    QTabWidget,
-)
+import decimal
+import socket
+
 from PyQt6.QtCore import Qt, QTime
 from PyQt6.QtGui import QIntValidator
 from PyQt6.QtPrintSupport import QPrinterInfo
+from PyQt6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QDoubleSpinBox,
+    QFileDialog,
+    QFormLayout,
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QProgressDialog,
+    QPushButton,
+    QScrollArea,
+    QSpinBox,
+    QTabWidget,
+    QTextEdit,
+    QTimeEdit,
+    QVBoxLayout,
+    QWidget,
+)
 from sqlalchemy.engine import URL
+
+from cbpos.config import Config
+from cbpos.core.models import Product, Sale, SaleItem, SalePayment
 from cbpos.core.services.language_service import LanguageService
+from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.theme_service import ThemeService
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.help_icon_button import HelpIconButton
-from cbpos.core.services.receipt_builder import ReceiptBuilder
-from cbpos.core.models import Sale, SaleItem, SalePayment, Product
-from cbpos.config import Config
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
-import decimal
-import socket
 
 
 class SettingsPage(QWidget):
@@ -47,11 +49,9 @@ class SettingsPage(QWidget):
 
     def init_ui(self):
         """Initialize the UI. Override in subclasses."""
-        pass
 
     def load(self, settings: dict):
         """Load settings into UI. Override in subclasses."""
-        pass
 
     def save(self) -> dict:
         """Return a dictionary of settings to save. Override in subclasses."""
@@ -1060,6 +1060,7 @@ class ReceiptPage(SettingsPage):
 
     def init_ui(self):
         from PyQt6.QtCore import QTimer
+
         from cbpos.ui.widgets.receipt_preview_widget import ReceiptPreviewWidget
 
         # --- Custom layout: split-pane instead of standard vertical ---
@@ -2467,8 +2468,8 @@ class NetworkPage(SettingsPage):
 
         try:
             import json
-            import urllib.request
             import urllib.error
+            import urllib.request
 
             from cbpos.infrastructure.sync_tls import build_client_ssl_context
 

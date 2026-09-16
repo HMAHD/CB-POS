@@ -1,11 +1,11 @@
-from typing import Any, Dict, Optional
+from typing import Any
 
-from PyQt6.QtCore import Qt, QAbstractTableModel, QModelIndex
-from PyQt6.QtGui import QColor, QFont
 import pandas as pd
+from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PyQt6.QtGui import QColor, QFont
 
-from cbpos.core.utils.formatters import format_currency
 from cbpos.core.services.theme_service import ThemeService
+from cbpos.core.utils.formatters import format_currency
 
 
 class PandasModel(QAbstractTableModel):
@@ -28,7 +28,7 @@ class PandasModel(QAbstractTableModel):
         color_map (dict[str, str]): tag value -> hex color string.
     """
 
-    def __init__(self, data: pd.DataFrame = None, render_hints: Optional[Dict[str, Any]] = None):
+    def __init__(self, data: pd.DataFrame = None, render_hints: dict[str, Any] | None = None):
         super().__init__()
         self._data = data if data is not None else pd.DataFrame()
         self._hints = render_hints or {}
@@ -61,7 +61,7 @@ class PandasModel(QAbstractTableModel):
 
             if isinstance(value, (float, int)) and not isinstance(value, bool):
                 if isinstance(value, float):
-                    return "{:.2f}".format(value)
+                    return f"{value:.2f}"
                 return str(value)
 
             return str(value)
@@ -102,7 +102,7 @@ class PandasModel(QAbstractTableModel):
             return str(self._data.columns[col])
         return None
 
-    def set_data(self, data: pd.DataFrame, render_hints: Optional[Dict[str, Any]] = None):
+    def set_data(self, data: pd.DataFrame, render_hints: dict[str, Any] | None = None):
         self.beginResetModel()
         self._data = data
         self._hints = render_hints or {}

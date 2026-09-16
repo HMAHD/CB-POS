@@ -16,12 +16,12 @@ certificate pinning with a confirm-fingerprint step on first connect,
 which is a larger UX addition left for later.
 """
 
+import contextlib
 import logging
 import os
-import stat
 import ssl
-from datetime import datetime, timedelta, timezone
-from typing import Tuple
+import stat
+from datetime import UTC, datetime, timedelta
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -42,13 +42,11 @@ def _write_restricted(path: str, data: bytes) -> None:
     fd = os.open(path, flags, stat.S_IRUSR | stat.S_IWUSR)
     with os.fdopen(fd, "wb") as f:
         f.write(data)
-    try:
+    with contextlib.suppress(OSError):
         os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
-    except OSError:
-        pass
 
 
-def get_or_create_certificate() -> Tuple[str, str]:
+def get_or_create_certificate() -> tuple[str, str]:
     """Return (cert_path, key_path) for the Main PC's sync server,
     generating a self-signed certificate on first call. Safe to call on
     every startup — a fast no-op once the files exist."""
@@ -57,7 +55,7 @@ def get_or_create_certificate() -> Tuple[str, str]:
 
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "CB POS LAN Sync")])
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     cert = (
         x509.CertificateBuilder()
         .subject_name(name)

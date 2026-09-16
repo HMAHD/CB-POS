@@ -14,14 +14,14 @@ Design:
 
 import logging
 
+from PyQt6.QtCore import Qt, pyqtSlot
+from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import (
-    QWidget,
     QHBoxLayout,
     QLabel,
     QToolTip,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, pyqtSlot
-from PyQt6.QtGui import QCursor
 
 logger = logging.getLogger(__name__)
 

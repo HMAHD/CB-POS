@@ -4,35 +4,36 @@ Handles one-click migration from SQLite (Standalone) to PostgreSQL (Network).
 """
 
 import logging
-from typing import Tuple
 import re
-from sqlalchemy import create_engine, text, inspect
+
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
+
 from cbpos.core.database import Base
 from cbpos.core.models import (
-    User,
-    Role,
-    Permission,
+    AuditLog,
+    CashMovement,
     Category,
+    CompositeItem,
     Customer,
     CustomerContact,
-    Supplier,
+    Permission,
+    PriceList,
+    PriceListItem,
     Product,
-    CompositeItem,
+    Promotion,
+    Purchase,
+    PurchaseItem,
+    Role,
     Sale,
     SaleItem,
     SalePayment,
-    Purchase,
-    PurchaseItem,
-    StockMovement,
-    VoidReason,
-    PriceList,
-    PriceListItem,
-    Promotion,
-    AuditLog,
-    SuspendedTransaction,
     Shift,
-    CashMovement,
+    StockMovement,
+    Supplier,
+    SuspendedTransaction,
+    User,
+    VoidReason,
 )
 
 # Setup logger for this module
@@ -90,7 +91,7 @@ class MigrationService:
     ]
 
     @staticmethod
-    def migrate_sqlite_to_postgres(sqlite_url: str, postgres_url: str) -> Tuple[bool, str]:
+    def migrate_sqlite_to_postgres(sqlite_url: str, postgres_url: str) -> tuple[bool, str]:
         """
         Migrate all data from SQLite to PostgreSQL.
 
@@ -117,7 +118,7 @@ class MigrationService:
                 with target_engine.connect() as tgt_conn:
                     tgt_conn.execute(text("SELECT 1"))
             except Exception as e:
-                return False, f"Connection test failed: {str(e)}"
+                return False, f"Connection test failed: {e!s}"
 
             # 3. Check if target database has data
             inspector = inspect(target_engine)
@@ -216,13 +217,13 @@ class MigrationService:
 
             except Exception as e:
                 tgt_session.rollback()
-                return False, f"Migration failed during data transfer: {str(e)}"
+                return False, f"Migration failed during data transfer: {e!s}"
             finally:
                 src_session.close()
                 tgt_session.close()
 
         except Exception as e:
-            return False, f"Migration setup error: {str(e)}"
+            return False, f"Migration setup error: {e!s}"
         finally:
             # Dispose engines to close all connections
             if source_engine:
@@ -231,7 +232,7 @@ class MigrationService:
                 target_engine.dispose()
 
     @staticmethod
-    def get_table_counts(db_url: str) -> Tuple[bool, dict]:
+    def get_table_counts(db_url: str) -> tuple[bool, dict]:
         """
         Get record counts for all tables in a database.
 

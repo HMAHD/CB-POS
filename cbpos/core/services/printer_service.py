@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import tempfile
+
 from cbpos.core.models import Sale
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.invoice_service import InvoiceService
@@ -53,7 +54,7 @@ class PrinterService:
                 return
 
             temp_dir = tempfile.gettempdir()
-            pdf_path = os.path.join(temp_dir, "invoice_{0}.pdf".format(sale.id))
+            pdf_path = os.path.join(temp_dir, f"invoice_{sale.id}.pdf")
 
             InvoiceService.generate_pdf(sale, pdf_path)
             logger.info("[PrinterService] Generated A4 invoice: %s", pdf_path)
@@ -118,7 +119,7 @@ class PrinterService:
                 [
                     "powershell",
                     "-Command",
-                    'Start-Process -FilePath "{0}" -Verb Print -WindowStyle Hidden'.format(pdf_path),
+                    f'Start-Process -FilePath "{pdf_path}" -Verb Print -WindowStyle Hidden',
                 ],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,

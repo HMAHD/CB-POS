@@ -1,5 +1,4 @@
 from decimal import Decimal
-from typing import Dict, Optional
 
 
 class ScaleService:
@@ -27,9 +26,9 @@ class ScaleService:
     @staticmethod
     def parse_barcode(
         barcode: str,
-        prefix: Optional[str] = None,
-        decimal_places: Optional[int] = None,
-    ) -> Optional[Dict]:
+        prefix: str | None = None,
+        decimal_places: int | None = None,
+    ) -> dict | None:
         """
         Parse a price-embedded barcode from an electronic scale.
 
@@ -110,7 +109,7 @@ class ScaleService:
             return False
 
     @staticmethod
-    def is_scale_barcode(barcode: str, prefix: Optional[str] = None) -> bool:
+    def is_scale_barcode(barcode: str, prefix: str | None = None) -> bool:
         """
         Check if a barcode is a scale-generated barcode.
 

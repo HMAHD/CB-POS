@@ -7,8 +7,9 @@ nothing about whether the real printed barcode will scan. Add a small
 scannability check.
 """
 
-from cbpos.ui.widgets.receipt_preview_widget import ReceiptPreviewWidget
 import pytest
+
+from cbpos.ui.widgets.receipt_preview_widget import ReceiptPreviewWidget
 
 pytestmark = pytest.mark.usefixtures("qapp")
 

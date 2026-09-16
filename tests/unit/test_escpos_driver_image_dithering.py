@@ -9,11 +9,11 @@ width instead of one fixed pixel cap regardless of paper size.
 
 from unittest.mock import MagicMock
 
-from PIL import Image
 import pytest
+from PIL import Image
 
-from cbpos.infrastructure.hardware.escpos_driver import ESCPOSDriver
 from cbpos.core.utils.thermal_image import PAPER_DOT_WIDTH
+from cbpos.infrastructure.hardware.escpos_driver import ESCPOSDriver
 
 
 @pytest.fixture

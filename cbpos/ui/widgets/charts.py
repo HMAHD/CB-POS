@@ -6,17 +6,15 @@ for the CB POS dashboard. All rendering via QPainter — no
 external charting dependencies required.
 """
 
-from typing import Optional
-
-from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import (
-    Qt,
-    QRectF,
-    QPropertyAnimation,
     QEasingCurve,
+    QPropertyAnimation,
+    QRectF,
+    Qt,
     pyqtProperty,
 )
-from PyQt6.QtGui import QPainter, QColor, QPen, QBrush, QPainterPath, QFont
+from PyQt6.QtGui import QBrush, QColor, QFont, QPainter, QPainterPath, QPen
+from PyQt6.QtWidgets import QWidget
 
 # 12 distinct month colors (vibrant, readable on both themes)
 MONTH_COLORS: list[str] = [
@@ -85,10 +83,10 @@ def _get_grid_color() -> QColor:
 def _format_abbrev(val: float) -> str:
     """Abbreviate large numbers: 1500 → '1.5K', 1200000 → '1.2M'."""
     if val >= 1_000_000:
-        return f"{val / 1_000_000:.1f}M"  # noqa: E231
+        return f"{val / 1_000_000:.1f}M"
     elif val >= 1_000:
-        return f"{val / 1_000:.1f}K"  # noqa: E231
-    return f"{val:.0f}"  # noqa: E231
+        return f"{val / 1_000:.1f}K"
+    return f"{val:.0f}"
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +98,7 @@ class VerticalBarChart(QWidget):
     Data format: list of dicts with keys 'label', 'value', and optional 'color'.
     """
 
-    def __init__(self, parent: Optional[QWidget] = None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._data: list[dict] = []
         self._progress: float = 0.0
@@ -135,7 +133,7 @@ class VerticalBarChart(QWidget):
         self._anim.setEndValue(1.0)
         self._anim.start()
 
-    def paintEvent(self, event) -> None:  # noqa: N802
+    def paintEvent(self, event) -> None:
         if not self._data:
             return
 
@@ -244,7 +242,7 @@ class DonutChart(QWidget):
     Data format: list of dicts with 'label', 'value', and optional 'color'.
     """
 
-    def __init__(self, parent: Optional[QWidget] = None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._data: list[dict] = []
         self._progress: float = 0.0
@@ -277,7 +275,7 @@ class DonutChart(QWidget):
         self._anim.setEndValue(1.0)
         self._anim.start()
 
-    def paintEvent(self, event) -> None:  # noqa: N802
+    def paintEvent(self, event) -> None:
         if not self._data:
             return
 
@@ -354,7 +352,7 @@ class DonutChart(QWidget):
 
             # Label + value
             pct = (d["value"] / total) * 100 if total > 0 else 0
-            label_text = f'{d["label"]}  ({pct:.0f}%)'  # noqa: E231
+            label_text = f"{d['label']}  ({pct:.0f}%)"
             painter.setPen(QPen(text_color))
             painter.drawText(
                 QRectF(legend_x + 18, legend_y, w - legend_x - 25, 18),
@@ -375,7 +373,7 @@ class HorizontalBarChart(QWidget):
     Data format: list of dicts with 'label' and 'value'.
     """
 
-    def __init__(self, parent: Optional[QWidget] = None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._data: list[dict] = []
         self._progress: float = 0.0
@@ -408,7 +406,7 @@ class HorizontalBarChart(QWidget):
         self._anim.setEndValue(1.0)
         self._anim.start()
 
-    def paintEvent(self, event) -> None:  # noqa: N802
+    def paintEvent(self, event) -> None:
         if not self._data:
             return
 

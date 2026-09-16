@@ -1,11 +1,12 @@
 """Tests for DataExportService DataFrame generation."""
 
-import pandas as pd
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
 
+import pandas as pd
+
+from cbpos.core.models import Category, Customer, Product, Unit
 from cbpos.core.services.data_export_service import DataExportService
-from cbpos.core.models import Product, Customer, Category, Unit
 
 
 class TestDataExportService:

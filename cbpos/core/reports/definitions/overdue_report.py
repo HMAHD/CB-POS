@@ -1,5 +1,7 @@
-from typing import List, Dict, Any
+from typing import Any
+
 import pandas as pd
+
 from cbpos.core.reports.base_report import BaseReport
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 
@@ -19,10 +21,10 @@ class OverdueCustomersReport(BaseReport):
     def category(self) -> str:
         return "Financial"
 
-    def get_filter_definitions(self) -> List[Dict[str, Any]]:
+    def get_filter_definitions(self) -> list[dict[str, Any]]:
         return []
 
-    def generate(self, filters: Dict[str, Any]) -> pd.DataFrame:
+    def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         overdue = CustomerCreditService.get_overdue_customers()
 
         data = []

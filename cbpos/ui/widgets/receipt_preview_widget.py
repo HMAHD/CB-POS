@@ -19,12 +19,13 @@ import hashlib
 import io
 import logging
 from html import escape
-from typing import List, Dict, Any
+from typing import Any
 
 from PIL import Image, UnidentifiedImageError
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QPalette
-from PyQt6.QtWidgets import QVBoxLayout, QWidget, QLabel, QTextBrowser
+from PyQt6.QtWidgets import QLabel, QTextBrowser, QVBoxLayout, QWidget
+
 from cbpos.core.utils.thermal_image import dither_for_thermal_print
 from cbpos.i18n import _t
 
@@ -54,7 +55,7 @@ class ReceiptPreviewWidget(QWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._commands: List[Dict[str, Any]] = []
+        self._commands: list[dict[str, Any]] = []
         self._paper_width = "80mm"
         self._init_ui()
 
@@ -116,7 +117,7 @@ class ReceiptPreviewWidget(QWidget):
         # browser anyway and pushing it away from the top.
         layout.addStretch()
 
-    def set_commands(self, commands: List[Dict[str, Any]]) -> None:
+    def set_commands(self, commands: list[dict[str, Any]]) -> None:
         """Replace the current receipt with *commands* and re-render."""
         self._commands = commands or []
         self._render()
@@ -127,7 +128,7 @@ class ReceiptPreviewWidget(QWidget):
             width = "80mm"
         if width != self._paper_width:
             self._paper_width = width
-            self._lbl_title.setText(_t("receipt_preview.title") + " (%s)" % width)
+            self._lbl_title.setText(_t("receipt_preview.title") + f" ({width})")
             self._browser.setFixedWidth(self._target_browser_width())
             self._render()
 
@@ -160,7 +161,7 @@ class ReceiptPreviewWidget(QWidget):
         cols = self._CHAR_COLS[self._paper_width]
 
         parts: list[str] = [
-            "<html><head><style>%s</style></head><body>" % _CSS,
+            f"<html><head><style>{_CSS}</style></head><body>",
             "<div style='height:8px;font-size:1px;'>&nbsp;</div>",
             "<table width='%d' cellpadding='0' cellspacing='0'"
             " bgcolor='#ffffff' align='center'>"
@@ -178,7 +179,7 @@ class ReceiptPreviewWidget(QWidget):
 
     @staticmethod
     def _render_command(
-        cmd: Dict[str, Any],
+        cmd: dict[str, Any],
         cols: int,
         parts: list,
         paper_width: str = "80mm",
@@ -200,12 +201,12 @@ class ReceiptPreviewWidget(QWidget):
                 parts.append(
                     "</td></tr>"
                     "<tr><td style='padding:4px 0;'>"
-                    "<table width='100%%' cellpadding='0' cellspacing='0'>"
+                    "<table width='100%' cellpadding='0' cellspacing='0'>"
                     "<tr><td bgcolor='#000000' style='height:1px;"
                     "font-size:1px;line-height:1px;'>"
                     "&nbsp;</td></tr></table>"
                     "</td></tr>"
-                    "<tr><td style='padding:0;%s'>" % _FONT
+                    f"<tr><td style='padding:0;{_FONT}'>"
                 )
                 return
 
@@ -216,8 +217,8 @@ class ReceiptPreviewWidget(QWidget):
                 lv = escape(left_val or "")
                 rv = escape(right_val or "")
                 if bold:
-                    lv = "<b>%s</b>" % lv if lv else lv
-                    rv = "<b>%s</b>" % rv if rv else rv
+                    lv = f"<b>{lv}</b>" if lv else lv
+                    rv = f"<b>{rv}</b>" if rv else rv
                 parts.append(
                     "<table width='100%%' cellpadding='0' cellspacing='0'>"
                     "<tr>"
@@ -233,7 +234,7 @@ class ReceiptPreviewWidget(QWidget):
             align = cmd.get("align", "left")
             val = escape(raw).replace("\n", "<br>")
             if bold:
-                val = "<b>%s</b>" % val
+                val = f"<b>{val}</b>"
             parts.append(
                 "<div align='%s' style='margin:0;padding:1px %dpx;"
                 "%stext-align:%s;'>%s</div>" % (align, p, _FONT, align, val)
@@ -261,13 +262,12 @@ class ReceiptPreviewWidget(QWidget):
                 if data_uri:
                     parts.append(
                         "<div align='center' style='text-align:center;"
-                        "margin:6px 0 2px;'><img src='%s' width='120' height='120'></div>" % data_uri
+                        f"margin:6px 0 2px;'><img src='{data_uri}' width='120' height='120'></div>"
                     )
             elif val:
                 barcode_html = _generate_barcode_bars(val)
                 parts.append(
-                    "<div align='center' style='text-align:center;"
-                    "padding:6px %dpx 2px;'>%s</div>" % (p, barcode_html)
+                    "<div align='center' style='text-align:center;padding:6px %dpx 2px;'>%s</div>" % (p, barcode_html)
                 )
                 parts.append(
                     "<div align='center' style='text-align:center;"
@@ -294,12 +294,12 @@ class ReceiptPreviewWidget(QWidget):
             parts.append(
                 "</td></tr>"
                 "<tr><td style='padding:4px 0;'>"
-                "<table width='100%%' cellpadding='0' cellspacing='0'>"
+                "<table width='100%' cellpadding='0' cellspacing='0'>"
                 "<tr><td bgcolor='#000000' style='height:1px;"
                 "font-size:1px;line-height:1px;'>"
                 "&nbsp;</td></tr></table>"
                 "</td></tr>"
-                "<tr><td style='padding:0;%s'>" % _FONT
+                f"<tr><td style='padding:0;{_FONT}'>"
             )
             parts.append(
                 "<div align='center' style='text-align:center;"
@@ -327,7 +327,7 @@ def _dithered_logo_data_uri(path: str, paper_width: str) -> str:
             buffer = io.BytesIO()
             dithered.convert("L").save(buffer, format="PNG")
             encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
-            return "data:image/png;base64,%s" % encoded
+            return f"data:image/png;base64,{encoded}"
     except (OSError, UnidentifiedImageError) as e:
         logger.warning("Could not render logo preview for %s: %s", path, e)
         return ""
@@ -349,7 +349,7 @@ def _qr_code_data_uri(content: str) -> str:
         buffer = io.BytesIO()
         img.save(buffer, format="PNG")
         encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
-        return "data:image/png;base64,%s" % encoded
+        return f"data:image/png;base64,{encoded}"
     except Exception as e:
         logger.warning("Could not render QR code preview: %s", e)
         return ""
@@ -373,5 +373,5 @@ def _generate_barcode_bars(value: str) -> str:
         is_black = i % 2 == 0
         w = (n % 3) + 1
         color = "#000" if is_black else "#fff"
-        cells.append("<td bgcolor='%s' style='width:%dpx;height:32px;" "font-size:1px;'>&nbsp;</td>" % (color, w))
-    return "<table cellpadding='0' cellspacing='0' align='center'>" "<tr>%s</tr></table>" % "".join(cells)
+        cells.append("<td bgcolor='%s' style='width:%dpx;height:32px;font-size:1px;'>&nbsp;</td>" % (color, w))
+    return "<table cellpadding='0' cellspacing='0' align='center'><tr>{}</tr></table>".format("".join(cells))

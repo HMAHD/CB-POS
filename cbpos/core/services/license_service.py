@@ -1,5 +1,5 @@
-import platform
 import hashlib
+import platform
 
 
 class LicenseService:

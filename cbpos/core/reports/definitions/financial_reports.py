@@ -1,11 +1,12 @@
 from decimal import Decimal
-from typing import List, Dict, Any
+from typing import Any
+
 import pandas as pd
 from sqlalchemy import func
 
-from cbpos.core.reports.base_report import BaseReport
 from cbpos.core.database import get_db_session
-from cbpos.core.models import Sale, SaleItem, Product
+from cbpos.core.models import Product, Sale, SaleItem
+from cbpos.core.reports.base_report import BaseReport
 
 
 class ProfitLossReport(BaseReport):
@@ -21,13 +22,13 @@ class ProfitLossReport(BaseReport):
     def category(self) -> str:
         return "Financial"
 
-    def get_filter_definitions(self) -> List[Dict[str, Any]]:
+    def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
-    def get_render_hints(self) -> Dict[str, Any]:
+    def get_render_hints(self) -> dict[str, Any]:
         return {"currency_columns": ["Revenue", "Cost (COGS)", "Gross Profit"]}
 
-    def generate(self, filters: Dict[str, Any]) -> pd.DataFrame:
+    def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         with get_db_session() as session:
             date_range = filters.get("date_range", {})
             start_date = date_range.get("start")
@@ -69,7 +70,7 @@ class ProfitLossReport(BaseReport):
                         "Revenue": revenue,
                         "Cost (COGS)": cogs,
                         "Gross Profit": gross_profit,
-                        "Margin %": f"{margin_pct:.2f}%",  # noqa: E231
+                        "Margin %": f"{margin_pct:.2f}%",
                     }
                 )
 
@@ -91,13 +92,13 @@ class TaxLiabilityReport(BaseReport):
     def category(self) -> str:
         return "Financial"
 
-    def get_filter_definitions(self) -> List[Dict[str, Any]]:
+    def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
-    def get_render_hints(self) -> Dict[str, Any]:
+    def get_render_hints(self) -> dict[str, Any]:
         return {"currency_columns": ["Total Sale", "Net Revenue", "VAT (18%)", "SSCL (2.5%)", "Total Tax"]}
 
-    def generate(self, filters: Dict[str, Any]) -> pd.DataFrame:
+    def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         with get_db_session() as session:
             date_range = filters.get("date_range", {})
             start_date = date_range.get("start")
@@ -147,7 +148,7 @@ class TaxFilingSummaryReport(BaseReport):
     def category(self) -> str:
         return "Financial"
 
-    def get_filter_definitions(self) -> List[Dict[str, Any]]:
+    def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [
             {
                 "name": "period",
@@ -162,7 +163,7 @@ class TaxFilingSummaryReport(BaseReport):
             {"name": "date_range", "label": "Date Range", "type": "date_range"},
         ]
 
-    def generate(self, filters: Dict[str, Any]) -> pd.DataFrame:
+    def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """Generate tax filing summary for the selected period.
 
         Excludes voided sales. Refunds are subtracted from taxable amounts.
@@ -237,7 +238,7 @@ class TaxFilingSummaryReport(BaseReport):
                 .filter(Sale.status != "VOID")
             ).group_by(SalePayment.payment_method)
 
-            payment_totals: Dict[str, Decimal] = {}
+            payment_totals: dict[str, Decimal] = {}
             for method, total in payment_q.all():
                 payment_totals[method] = Decimal(str(total or 0))
 

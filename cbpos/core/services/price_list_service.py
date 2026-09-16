@@ -1,7 +1,8 @@
-from typing import List, Optional
 from datetime import datetime
 from decimal import Decimal
-from sqlalchemy import select, or_
+
+from sqlalchemy import or_, select
+
 from cbpos.core.database import Database
 from cbpos.core.models import PriceList, PriceListItem
 
@@ -13,8 +14,8 @@ class PriceListService:
     def create_price_list(
         self,
         name: str,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
     ) -> PriceList:
         with self.db.get_session() as session:
             price_list = PriceList(name=name, start_date=start_date, end_date=end_date, is_active=True)
@@ -27,7 +28,7 @@ class PriceListService:
     def update_price_list(
         self,
         list_id: int,
-        name: Optional[str] = None,
+        name: str | None = None,
         start_date: object = ...,
         end_date: object = ...,
     ) -> PriceList:
@@ -71,7 +72,7 @@ class PriceListService:
             session.expunge(price_list)
             return price_list
 
-    def get_all_lists(self) -> List[PriceList]:
+    def get_all_lists(self) -> list[PriceList]:
         with self.db.get_session() as session:
             stmt = select(PriceList).order_by(PriceList.id)
             lists = list(session.scalars(stmt).all())
@@ -79,7 +80,7 @@ class PriceListService:
                 session.expunge(pl)
             return lists
 
-    def get_active_lists(self) -> List[PriceList]:
+    def get_active_lists(self) -> list[PriceList]:
         now = datetime.now()
         with self.db.get_session() as session:
             stmt = select(PriceList).where(
@@ -151,7 +152,7 @@ class PriceListService:
             session.delete(price_list)
             session.commit()
 
-    def get_items(self, list_id: int) -> List[PriceListItem]:
+    def get_items(self, list_id: int) -> list[PriceListItem]:
         with self.db.get_session() as session:
             stmt = (
                 select(PriceListItem).where(PriceListItem.price_list_id == list_id).join(PriceListItem.product)

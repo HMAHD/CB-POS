@@ -1,9 +1,11 @@
-from typing import List, Dict, Any
+from typing import Any
+
 import pandas as pd
 from sqlalchemy import func
-from cbpos.core.reports.base_report import BaseReport
+
 from cbpos.core.database import get_db_session
-from cbpos.core.models import StockMovement, Product, User, CashMovement
+from cbpos.core.models import CashMovement, Product, StockMovement, User
+from cbpos.core.reports.base_report import BaseReport
 
 
 class StockMovementReport(BaseReport):
@@ -19,10 +21,10 @@ class StockMovementReport(BaseReport):
     def category(self) -> str:
         return "Audit"
 
-    def get_filter_definitions(self) -> List[Dict[str, Any]]:
+    def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
-    def generate(self, filters: Dict[str, Any]) -> pd.DataFrame:
+    def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         with get_db_session() as session:
             date_range = filters.get("date_range", {})
             start_date = date_range.get("start")
@@ -67,10 +69,10 @@ class CashMovementAuditReport(BaseReport):
     def category(self) -> str:
         return "Audit"
 
-    def get_filter_definitions(self) -> List[Dict[str, Any]]:
+    def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
-    def generate(self, filters: Dict[str, Any]) -> pd.DataFrame:
+    def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         with get_db_session() as session:
             date_range = filters.get("date_range", {})
             start_date = date_range.get("start")

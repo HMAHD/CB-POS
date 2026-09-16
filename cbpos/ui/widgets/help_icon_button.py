@@ -9,9 +9,10 @@ date ranges, Sales Tax's own VAT/SSCL fields) are just as unfamiliar to
 a non-technical user (#318).
 """
 
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QPushButton, QToolTip
+
 from cbpos.config import Config
 
 

@@ -19,16 +19,16 @@ class ElidedLabel(QLabel):
         super().__init__(parent)
         self._full_text = ""
 
-    def setText(self, text: str) -> None:  # noqa: N802 (Qt override)
+    def setText(self, text: str) -> None:
         self._full_text = text or ""
         self.setToolTip(self._full_text)
         self._apply_elided_text()
 
-    def text(self) -> str:  # noqa: N802 (Qt override)
+    def text(self) -> str:
         """Return the real, un-elided text -- not what's currently painted."""
         return self._full_text
 
-    def resizeEvent(self, event) -> None:  # noqa: N802 (Qt override)
+    def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._apply_elided_text()
 

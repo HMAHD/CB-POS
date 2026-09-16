@@ -7,9 +7,9 @@ and handles downloading + launching the installer.
 import logging
 import subprocess
 import sys
-from typing import Any, Dict
+from typing import Any
 
-from PyQt6.QtCore import QThread, Qt, pyqtSignal
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
@@ -72,7 +72,7 @@ class _CheckThread(QThread):
 class UpdateDialog(QDialog):
     """Dialog shown when a new version is available."""
 
-    def __init__(self, manifest: Dict[str, Any], parent=None) -> None:
+    def __init__(self, manifest: dict[str, Any], parent=None) -> None:
         super().__init__(parent)
         self._manifest = manifest
         self._download_thread: _DownloadThread | None = None
@@ -111,7 +111,7 @@ class UpdateDialog(QDialog):
 
         # Changelog
         if changelog:
-            cl_label = QLabel(f"<b>{_t('update.whats_new')}:</b><br>{changelog}")  # noqa: E231
+            cl_label = QLabel(f"<b>{_t('update.whats_new')}:</b><br>{changelog}")
             cl_label.setWordWrap(True)
             layout.addWidget(cl_label)
 
@@ -166,9 +166,7 @@ class UpdateDialog(QDialog):
         self._progress.setValue(pct)
         mb = downloaded / (1024 * 1024)
         total_mb = total / (1024 * 1024)
-        self._status.setText(
-            _t("update.downloading_progress", downloaded="{:.1f}".format(mb), total="{:.1f}".format(total_mb))
-        )
+        self._status.setText(_t("update.downloading_progress", downloaded=f"{mb:.1f}", total=f"{total_mb:.1f}"))
 
     def _on_download_ok(self, path: str) -> None:
         self._progress.setValue(100)
@@ -185,7 +183,7 @@ class UpdateDialog(QDialog):
             else:
                 # Non-Windows: automatic launch is not supported
                 logger.warning(
-                    "Automatic installer launch is only supported on Windows. " "Installer was downloaded to: %s",
+                    "Automatic installer launch is only supported on Windows. Installer was downloaded to: %s",
                     path,
                 )
                 QMessageBox.information(
@@ -225,7 +223,7 @@ def check_for_updates_async(parent=None, silent: bool = True) -> _CheckThread:
         The running ``_CheckThread`` (caller must keep a reference).
     """
 
-    def _on_update(manifest: Dict[str, Any]) -> None:
+    def _on_update(manifest: dict[str, Any]) -> None:
         dlg = UpdateDialog(manifest, parent)
         dlg.exec()
 

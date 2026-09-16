@@ -11,33 +11,33 @@ import logging
 import time
 from datetime import datetime
 
+from PyQt6.QtCore import QDate, Qt, QTimer
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QTabWidget,
-    QLabel,
-    QPushButton,
-    QLineEdit,
     QComboBox,
     QDateEdit,
+    QFileDialog,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QGroupBox,
-    QFormLayout,
-    QMessageBox,
-    QFileDialog,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QDate, QTimer
-from PyQt6.QtGui import QColor
 
 from cbpos.config import Config
-from cbpos.core.services.maintenance_service import MaintenanceService
 from cbpos.core.services.error_log_service import ErrorLogService
 from cbpos.core.services.hardware_test_service import HardwareTestService
-from cbpos.ui.widgets.pagination_widget import PaginationWidget
+from cbpos.core.services.maintenance_service import MaintenanceService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.widgets.pagination_widget import PaginationWidget
 
 logger = logging.getLogger(__name__)
 
@@ -722,10 +722,10 @@ class AdminToolsView(QWidget):
         avg_ms = (sum(intervals) / len(intervals)) * 1000
 
         if avg_ms < 50:
-            detection_text = _t("admin_tools.hw_scanner_detected", ms=f"{avg_ms:.0f}")  # noqa: E231
+            detection_text = _t("admin_tools.hw_scanner_detected", ms=f"{avg_ms:.0f}")
             self.lbl_scanner_detection.setProperty("class", "credit")
         else:
-            detection_text = _t("admin_tools.hw_scanner_manual", ms=f"{avg_ms:.0f}")  # noqa: E231
+            detection_text = _t("admin_tools.hw_scanner_manual", ms=f"{avg_ms:.0f}")
             self.lbl_scanner_detection.setProperty("class", "debit")
 
         self.lbl_scanner_detection.setText(detection_text)

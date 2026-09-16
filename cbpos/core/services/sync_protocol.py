@@ -7,9 +7,9 @@ sync envelope format, and shared constants for the sync server/client.
 
 import json
 import logging
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, Optional, Type
+from typing import Any
 
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import RelationshipProperty
@@ -119,7 +119,7 @@ def sync_json_loads(s: str) -> Any:
 # ---------------------------------------------------------------------------
 # Model ↔ Dict Conversion
 # ---------------------------------------------------------------------------
-def model_to_dict(instance: Base, include_relationships: bool = False) -> Dict[str, Any]:
+def model_to_dict(instance: Base, include_relationships: bool = False) -> dict[str, Any]:
     """Convert a SQLAlchemy model instance to a plain dict.
 
     Only scalar (column) attributes are included by default.
@@ -136,7 +136,7 @@ def model_to_dict(instance: Base, include_relationships: bool = False) -> Dict[s
         Dict with column names as keys and Python values.
     """
     mapper = sa_inspect(type(instance))
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
 
     # Scalar columns
     for col in mapper.columns:
@@ -158,7 +158,7 @@ def model_to_dict(instance: Base, include_relationships: bool = False) -> Dict[s
     return result
 
 
-def dict_to_model(model_class: Type[Base], data: Dict[str, Any]) -> Base:
+def dict_to_model(model_class: type[Base], data: dict[str, Any]) -> Base:
     """Create a SQLAlchemy model instance from a dict.
 
     Handles type coercion:
@@ -229,8 +229,8 @@ def make_envelope(
     terminal_id: str,
     msg_type: str,
     payload: Any,
-    sequence: Optional[int] = None,
-) -> Dict[str, Any]:
+    sequence: int | None = None,
+) -> dict[str, Any]:
     """Create a sync envelope for transmission.
 
     Args:
@@ -252,7 +252,7 @@ def make_envelope(
     }
 
 
-def validate_envelope(data: Dict[str, Any]) -> tuple[bool, str]:
+def validate_envelope(data: dict[str, Any]) -> tuple[bool, str]:
     """Validate a received sync envelope.
 
     Returns:
@@ -273,10 +273,10 @@ def validate_envelope(data: Dict[str, Any]) -> tuple[bool, str]:
 # ---------------------------------------------------------------------------
 # Table name → Model class mapping (lazy-loaded to avoid circular imports)
 # ---------------------------------------------------------------------------
-_TABLE_MODEL_MAP: Optional[Dict[str, Type[Base]]] = None
+_TABLE_MODEL_MAP: dict[str, type[Base]] | None = None
 
 
-def get_table_model_map() -> Dict[str, Type[Base]]:
+def get_table_model_map() -> dict[str, type[Base]]:
     """Return a dict mapping table names to their SQLAlchemy model classes.
 
     Lazy-loaded on first call to avoid circular import issues.
@@ -286,43 +286,43 @@ def get_table_model_map() -> Dict[str, Type[Base]]:
         return _TABLE_MODEL_MAP
 
     from cbpos.core.models import (
-        Role,
-        Permission,
-        User,
-        PriceList,
-        PriceListItem,
-        Promotion,
-        VoidReason,
-        Unit,
+        AuditLog,
+        CashMovement,
         Category,
-        Product,
+        CompositeItem,
         Customer,
         CustomerContact,
-        Supplier,
-        CompositeItem,
-        PaymentMethod,
+        CustomerLedgerEntry,
+        CustomerPayment,
         Document,
+        InventoryLog,
+        PaymentMethod,
+        Permission,
+        PriceList,
+        PriceListItem,
+        Product,
+        Proforma,
+        ProformaItem,
+        Promotion,
+        Purchase,
+        PurchaseItem,
+        Role,
         Sale,
         SaleItem,
         SalePayment,
-        Purchase,
-        PurchaseItem,
-        Proforma,
-        ProformaItem,
-        StockMovement,
-        AuditLog,
-        InventoryLog,
         Shift,
-        CashMovement,
-        SuspendedTransaction,
-        CustomerPayment,
-        CustomerLedgerEntry,
         StockCount,
         StockCountItem,
-        SupplierPayment,
+        StockMovement,
+        Supplier,
         SupplierLedgerEntry,
+        SupplierPayment,
+        SuspendedTransaction,
         SyncLog,
         SyncQueue,
+        Unit,
+        User,
+        VoidReason,
     )
 
     _TABLE_MODEL_MAP = {
@@ -367,6 +367,6 @@ def get_table_model_map() -> Dict[str, Type[Base]]:
     return _TABLE_MODEL_MAP
 
 
-def get_model_for_table(table_name: str) -> Optional[Type[Base]]:
+def get_model_for_table(table_name: str) -> type[Base] | None:
     """Return the SQLAlchemy model class for a given table name."""
     return get_table_model_map().get(table_name)

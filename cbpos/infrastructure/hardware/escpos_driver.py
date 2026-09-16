@@ -1,15 +1,15 @@
 import logging
 import queue
 import time
-from typing import List, Dict, Any
+from typing import Any
 
+from escpos.printer import Network, Usb
+from PIL import Image
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from cbpos.core.interfaces.iprinter import IPrinter
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.utils.thermal_image import dither_for_thermal_print
-from escpos.printer import Usb, Network
-from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class NullPrinter(IPrinter):
     def cut(self) -> None:
         pass
 
-    def print_commands(self, commands: List[Dict[str, Any]]) -> None:
+    def print_commands(self, commands: list[dict[str, Any]]) -> None:
         pass
 
     def kick_drawer(self) -> None:
@@ -99,7 +99,7 @@ class ESCPOSDriver(IPrinter):
         if self.printer:
             self.printer.cut()
 
-    def print_commands(self, commands: List[Dict[str, Any]]) -> None:
+    def print_commands(self, commands: list[dict[str, Any]]) -> None:
         if not self.printer:
             return
 
@@ -235,7 +235,7 @@ class PrintWorker(QThread):
 
             try:
                 if not current_printer.connect():
-                    msg = "Printer not available — skipping %s job. " "Check printer settings in Settings > Hardware."
+                    msg = "Printer not available — skipping %s job. Check printer settings in Settings > Hardware."
                     logger.warning(msg, job_type)
                     self.error_occurred.emit("Printer not available. Check Settings > Hardware.")
                     continue
@@ -246,11 +246,11 @@ class PrintWorker(QThread):
                     if drawer_cash_only:
                         # data = list of payment method strings
                         if not data:
-                            logger.info("Drawer skipped — no payment methods provided " "(drawer_on_cash_only=True)")
+                            logger.info("Drawer skipped — no payment methods provided (drawer_on_cash_only=True)")
                             continue
                         has_cash = any(isinstance(m, str) and m.strip().upper() == "CASH" for m in data)
                         if not has_cash:
-                            logger.info("Drawer skipped — no cash payment " "(drawer_on_cash_only=True)")
+                            logger.info("Drawer skipped — no cash payment (drawer_on_cash_only=True)")
                             continue
                     current_printer.kick_drawer()
                 elif job_type == "print_receipt":

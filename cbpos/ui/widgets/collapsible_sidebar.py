@@ -1,21 +1,20 @@
-from typing import List, Optional
-
+from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, Qt, pyqtSignal
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QFrame,
-    QVBoxLayout,
     QHBoxLayout,
-    QWidget,
     QLabel,
-    QToolButton,
     QSizePolicy,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QPixmap
-from cbpos.i18n import _t
-from cbpos.ui.widgets.custom_widgets import SidebarButton
-from cbpos.ui.resources.icons import Icons
-from cbpos.core.services.theme_service import ThemeService
+
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.theme_service import ThemeService
+from cbpos.i18n import _t
+from cbpos.ui.resources.icons import Icons
+from cbpos.ui.widgets.custom_widgets import SidebarButton
 
 EXPANDED_WIDTH = 250
 COLLAPSED_WIDTH = 70
@@ -39,11 +38,11 @@ class CollapsibleSidebar(QFrame):
     pos_clicked = pyqtSignal()
     logout_clicked = pyqtSignal()
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.is_collapsed = bool(ConfigService.get("sidebar_collapsed"))
-        self.nav_buttons: List[SidebarButton] = []
-        self._section_labels: List[QLabel] = []
+        self.nav_buttons: list[SidebarButton] = []
+        self._section_labels: list[QLabel] = []
 
         self.setFixedWidth(EXPANDED_WIDTH)
         self.setObjectName("SidebarContainer")
@@ -297,14 +296,14 @@ class CollapsibleSidebar(QFrame):
         icon pixmap differently depending on whether it's showing text
         beside the icon or collapsed to icon-only (#314).
         """
-        buttons = [self.btn_pos, self.btn_logout] + self.nav_buttons
+        buttons = [self.btn_pos, self.btn_logout, *self.nav_buttons]
         for btn in buttons:
             btn.setToolButtonStyle(style)
             btn.update_icon()
 
     def _update_all_styles(self) -> None:
         """Refresh the ``collapsed`` QSS property on every button."""
-        buttons = self.nav_buttons + [self.btn_pos, self.btn_logout]
+        buttons = [*self.nav_buttons, self.btn_pos, self.btn_logout]
         for btn in buttons:
             btn.setProperty("collapsed", self.is_collapsed)
             btn.style().unpolish(btn)
@@ -327,7 +326,7 @@ class CollapsibleSidebar(QFrame):
 
     def _on_theme_changed(self) -> None:
         """Refresh all icons and the logo when the theme changes."""
-        buttons = self.nav_buttons + [self.btn_pos, self.btn_logout]
+        buttons = [*self.nav_buttons, self.btn_pos, self.btn_logout]
         for btn in buttons:
             if hasattr(btn, "update_icon"):
                 btn.update_icon()

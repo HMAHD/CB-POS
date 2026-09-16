@@ -3,24 +3,26 @@ Advanced Product Search Dialog ([F3]).
 Supports filters: Category, Supplier, Price Range.
 """
 
+from decimal import Decimal
+
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QBrush, QColor, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
     QComboBox,
+    QDialog,
+    QDoubleSpinBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
     QLineEdit,
+    QPushButton,
     QTableWidget,
     QTableWidgetItem,
-    QPushButton,
-    QLabel,
-    QDoubleSpinBox,
-    QHeaderView,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QShortcut, QKeySequence, QBrush, QColor
-from decimal import Decimal
-from cbpos.core.services.product_service import ProductService
+
 from cbpos.core.services.category_service import CategoryService
+from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.formatters import format_currency, get_currency_symbol
 from cbpos.i18n import _t
@@ -222,7 +224,7 @@ class AdvancedSearchDialog(QDialog):
             barcode_item.setForeground(text_brush)
             self.table.setItem(row, 1, barcode_item)
 
-            stock_item = QTableWidgetItem(f"{float(product.stock_qty):.2f}")  # noqa: E231
+            stock_item = QTableWidgetItem(f"{float(product.stock_qty):.2f}")
             stock_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             stock_item.setForeground(text_brush)
             self.table.setItem(row, 2, stock_item)

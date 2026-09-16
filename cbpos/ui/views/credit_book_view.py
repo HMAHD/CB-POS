@@ -1,31 +1,33 @@
 import logging
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
+
+from PyQt6.QtCore import QDate, Qt
+from PyQt6.QtGui import QColor, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QDateEdit,
+    QFrame,
     QHBoxLayout,
+    QHeaderView,
+    QInputDialog,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QSizePolicy,
     QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QLineEdit,
-    QLabel,
-    QPushButton,
-    QFrame,
-    QDateEdit,
-    QMessageBox,
-    QInputDialog,
-    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QDate
-from PyQt6.QtGui import QColor, QShortcut, QKeySequence
-from cbpos.core.services.customer_service import CustomerService
-from cbpos.core.services.customer_credit_service import CustomerCreditService
+
 from cbpos.core.services.auth_service import AuthService
+from cbpos.core.services.customer_credit_service import CustomerCreditService
+from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.utils.formatters import format_currency
-from cbpos.ui.dialogs.customer_editor import CustomerEditor
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.dialogs.customer_editor import CustomerEditor
 from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 logger = logging.getLogger(__name__)
@@ -77,8 +79,8 @@ class CreditBookView(QWidget):
 
         # Header row
         header_row = QHBoxLayout()
-        from cbpos.ui.widgets.page_header import PageHeader
         from cbpos.ui.resources.icons import Icons
+        from cbpos.ui.widgets.page_header import PageHeader
 
         self._page_header = PageHeader(icon_name=Icons.CREDIT_BOOK)
         header_row.addWidget(self._page_header, 1)
@@ -438,10 +440,10 @@ class CreditBookView(QWidget):
             self.customer_table.setItem(row, 2, QTableWidgetItem(customer.phone or ""))
 
             # Debt with color coding
-            debt_item = QTableWidgetItem(f"{customer.current_debt:.2f}")  # noqa: E231
+            debt_item = QTableWidgetItem(f"{customer.current_debt:.2f}")
             debt_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
-            limit_item = QTableWidgetItem(f"{customer.credit_limit:.2f}")  # noqa: E231
+            limit_item = QTableWidgetItem(f"{customer.credit_limit:.2f}")
             limit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
             if customer.credit_limit > 0:
@@ -548,7 +550,7 @@ class CreditBookView(QWidget):
 
             # Debit / Credit
             if entry.amount > 0:
-                debit_item = QTableWidgetItem(f"{entry.amount:.2f}")  # noqa: E231
+                debit_item = QTableWidgetItem(f"{entry.amount:.2f}")
                 debit_item.setForeground(QColor("#FF4136"))
                 debit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.ledger_table.setItem(row, 3, debit_item)
@@ -556,14 +558,14 @@ class CreditBookView(QWidget):
                 total_debit += entry.amount
             else:
                 self.ledger_table.setItem(row, 3, QTableWidgetItem(""))
-                credit_item = QTableWidgetItem(f"{abs(entry.amount):.2f}")  # noqa: E231
+                credit_item = QTableWidgetItem(f"{abs(entry.amount):.2f}")
                 credit_item.setForeground(QColor("#39FF14"))
                 credit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.ledger_table.setItem(row, 4, credit_item)
                 total_credit += abs(entry.amount)
 
             # Balance
-            balance_item = QTableWidgetItem(f"{entry.balance_after:.2f}")  # noqa: E231
+            balance_item = QTableWidgetItem(f"{entry.balance_after:.2f}")
             balance_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.ledger_table.setItem(row, 5, balance_item)
 
@@ -598,8 +600,8 @@ class CreditBookView(QWidget):
 
     def receive_payment(self) -> None:
         """Open the Receive Payment dialog for the selected customer."""
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.CREDIT_RECEIVE_PAYMENT, self):
             return
@@ -647,8 +649,8 @@ class CreditBookView(QWidget):
 
     def adjust_balance(self) -> None:
         """Adjust the customer's balance (correction)."""
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.CREDIT_ADJUST_BALANCE, self):
             return

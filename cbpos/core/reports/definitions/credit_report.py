@@ -1,10 +1,11 @@
-from typing import List, Dict, Any
+from typing import Any
+
 import pandas as pd
 from sqlalchemy import select
 
-from cbpos.core.reports.base_report import BaseReport
-from cbpos.core.models import Customer
 from cbpos.core.database import Database
+from cbpos.core.models import Customer
+from cbpos.core.reports.base_report import BaseReport
 
 
 class CustomerCreditReport(BaseReport):
@@ -22,10 +23,10 @@ class CustomerCreditReport(BaseReport):
     def category(self) -> str:
         return "Financial"
 
-    def get_filter_definitions(self) -> List[Dict[str, Any]]:
+    def get_filter_definitions(self) -> list[dict[str, Any]]:
         return []
 
-    def generate(self, filters: Dict[str, Any]) -> pd.DataFrame:
+    def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         with Database().get_session() as session:
             stmt = (
                 select(

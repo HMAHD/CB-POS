@@ -2,6 +2,7 @@
 
 from decimal import Decimal
 from unittest.mock import MagicMock
+
 from cbpos.core.services.label_service import LabelService
 
 
@@ -33,7 +34,7 @@ class TestLabelService:
         assert commands[0]["align"] == "center"
 
         # Barcode command
-        barcode_cmd = [c for c in commands if c["type"] == "barcode"][0]
+        barcode_cmd = next(c for c in commands if c["type"] == "barcode")
         assert barcode_cmd["val"] == "1234567890"
         assert barcode_cmd["code"] == "CODE128"
 

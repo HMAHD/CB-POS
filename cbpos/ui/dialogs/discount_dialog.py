@@ -1,18 +1,19 @@
 from decimal import Decimal
 
-from PyQt6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QDoubleSpinBox,
-    QPushButton,
-    QButtonGroup,
-    QGridLayout,
-    QLabel,
-    QFrame,
-    QMessageBox,
-)
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QButtonGroup,
+    QDialog,
+    QDoubleSpinBox,
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+)
+
 from cbpos.i18n import _t
 
 
@@ -182,8 +183,8 @@ class DiscountDialog(QDialog):
             discount_amt = value
 
         after = max(original - discount_amt, Decimal("0.00"))
-        orig_str = "{:,.2f}".format(original)
-        disc_str = "{:,.2f}".format(after)
+        orig_str = f"{original:,.2f}"
+        disc_str = f"{after:,.2f}"
         self.lbl_preview.setText(_t("discount.preview", original=orig_str, discounted=disc_str))
 
     def on_type_changed(self, button):

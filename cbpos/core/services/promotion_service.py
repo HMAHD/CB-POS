@@ -1,8 +1,9 @@
-from typing import List, Optional
 from datetime import datetime
 from decimal import Decimal
+
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
+
 from cbpos.core.database import Database
 from cbpos.core.models import Promotion
 
@@ -23,8 +24,8 @@ class PromotionService:
         value: Decimal,
         start_time: datetime,
         end_time: datetime,
-        days_of_week: Optional[str] = None,
-        category_id: Optional[int] = None,
+        days_of_week: str | None = None,
+        category_id: int | None = None,
     ) -> Promotion:
         self._validate_time_range(start_time, end_time)
         with self.db.get_session() as session:
@@ -47,13 +48,13 @@ class PromotionService:
     def update_promotion(
         self,
         promotion_id: int,
-        name: Optional[str] = None,
-        type: Optional[str] = None,
-        value: Optional[Decimal] = None,
+        name: str | None = None,
+        type: str | None = None,
+        value: Decimal | None = None,
         start_time: object = ...,
         end_time: object = ...,
         days_of_week: object = ...,
-        is_active: Optional[bool] = None,
+        is_active: bool | None = None,
         category_id: object = ...,
     ) -> Promotion:
         """Update a promotion's fields.
@@ -131,7 +132,7 @@ class PromotionService:
             session.delete(promotion)
             session.commit()
 
-    def get_active_promotions(self) -> List[Promotion]:
+    def get_active_promotions(self) -> list[Promotion]:
         now = datetime.now()
         with self.db.get_session() as session:
             stmt = select(Promotion).where(
@@ -144,7 +145,7 @@ class PromotionService:
                 session.expunge(promo)
             return promos
 
-    def get_all_promotions(self) -> List[Promotion]:
+    def get_all_promotions(self) -> list[Promotion]:
         with self.db.get_session() as session:
             stmt = select(Promotion).options(joinedload(Promotion.category)).order_by(Promotion.start_time.desc())
             promos = list(session.scalars(stmt).all())

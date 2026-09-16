@@ -1,22 +1,24 @@
+import logging
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
     QMainWindow,
     QStackedWidget,
-    QWidget,
     QVBoxLayout,
-    QHBoxLayout,
-    QApplication,
+    QWidget,
 )
-from PyQt6.QtGui import QKeySequence, QShortcut
-from PyQt6.QtCore import Qt
-from cbpos.ui.views.login_view import LoginView
-from cbpos.ui.views.sales_view import SalesView
-from cbpos.ui.views.management_view import ManagementView
-from cbpos.ui.views.settings_view import SettingsView
-from cbpos.infrastructure.hardware.scanner import BarcodeScanner
-from cbpos.infrastructure.session_watchdog import SessionWatchdog
+
 from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
-import logging
+from cbpos.infrastructure.hardware.scanner import BarcodeScanner
+from cbpos.infrastructure.session_watchdog import SessionWatchdog
+from cbpos.ui.views.login_view import LoginView
+from cbpos.ui.views.management_view import ManagementView
+from cbpos.ui.views.sales_view import SalesView
+from cbpos.ui.views.settings_view import SettingsView
 
 logger = logging.getLogger(__name__)
 

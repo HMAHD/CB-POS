@@ -1,26 +1,25 @@
 """Dialog to record a payment to a supplier against their outstanding payable."""
 
 from decimal import Decimal, InvalidOperation
-from typing import Optional
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
+    QComboBox,
     QDialog,
-    QVBoxLayout,
+    QFormLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
-    QComboBox,
     QMessageBox,
-    QFormLayout,
-    QFrame,
+    QPushButton,
+    QVBoxLayout,
     QWidget,
 )
-from PyQt6.QtCore import Qt
 
+from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.supplier_service import SupplierService
-from cbpos.core.services.auth_service import AuthService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 
@@ -28,7 +27,7 @@ from cbpos.i18n import _t
 class SupplierPaymentDialog(QDialog):
     """Dialog to record a payment made to a supplier."""
 
-    def __init__(self, supplier_id: int, parent: Optional[QWidget] = None):
+    def __init__(self, supplier_id: int, parent: QWidget | None = None):
         super().__init__(parent)
         self.supplier_id = supplier_id
         self.recorded_payment = None
@@ -108,8 +107,8 @@ class SupplierPaymentDialog(QDialog):
 
         # Payment Method (loaded from DB, excluding Credit)
         self.cmb_method = QComboBox()
-        from cbpos.core.services.payment_service import PaymentService
         from cbpos.core.constants.status import PaymentMethodType
+        from cbpos.core.services.payment_service import PaymentService
 
         for m in PaymentService.get_active_methods():
             if m.name.upper() != PaymentMethodType.CREDIT.upper():

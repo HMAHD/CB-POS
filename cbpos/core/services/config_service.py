@@ -1,11 +1,12 @@
 import base64
+import contextlib
 import hashlib
 import json
 import logging
 import os
 import platform
 import stat
-from typing import Dict, Any
+from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken
 
@@ -103,8 +104,7 @@ class ConfigService:
         "lockout_duration_seconds": 300,  # Lockout duration in seconds (5 min default)
         # Customer Defaults
         "default_credit_limit": 0,  # Default credit limit for new customers (0 = no credit)
-        "loyalty_points_ratio": 100,  # Spend this much to earn 1 loyalty point
-        "auto_select_barcode_match": True,
+        "loyalty_points_ratio": 100,
         # Terminal Identification
         "terminal_id": "TERM-01",
         # Multi-Terminal LAN Sync
@@ -131,7 +131,7 @@ class ConfigService:
         "sidebar_collapsed": False,
     }
 
-    _settings: Dict[str, Any] = {}
+    _settings: dict[str, Any] = {}
 
     # Keys that are per-terminal in network mode.  When ``db_mode`` is
     # ``"network"`` these are stored under a terminal-prefixed key
@@ -180,10 +180,8 @@ class ConfigService:
             raise
         # Belt-and-suspenders: chmod again in case the OS ignored the
         # mode in os.open (Windows does).
-        try:
+        with contextlib.suppress(OSError):
             os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
-        except OSError:
-            pass
 
     @classmethod
     def _get_fernet(cls) -> Fernet:
@@ -195,7 +193,7 @@ class ConfigService:
         """
         if cls._fernet is None:
             if os.path.exists(cls._KEY_FILE):
-                with open(cls._KEY_FILE, "r", encoding="ascii") as f:
+                with open(cls._KEY_FILE, encoding="ascii") as f:
                     key = f.read().strip().encode("ascii")
             else:
                 # First run — derive from machine identity (matches old behaviour)
@@ -238,11 +236,11 @@ class ConfigService:
         """Load settings from file, or create with defaults if not exists."""
         if os.path.exists(cls.SETTINGS_FILE):
             try:
-                with open(cls.SETTINGS_FILE, "r", encoding="utf-8") as f:
+                with open(cls.SETTINGS_FILE, encoding="utf-8") as f:
                     cls._settings = json.load(f)
                 # Decode sensitive values after loading
                 for key in cls._SENSITIVE_KEYS:
-                    if key in cls._settings and cls._settings[key]:
+                    if cls._settings.get(key):
                         cls._settings[key] = cls._decode_sensitive(cls._settings[key])
             except Exception as e:
                 logger.error("Error loading settings: %s. Using defaults.", e)
@@ -258,7 +256,7 @@ class ConfigService:
             # Create a copy with sensitive values encoded
             save_data = cls._settings.copy()
             for key in cls._SENSITIVE_KEYS:
-                if key in save_data and save_data[key]:
+                if save_data.get(key):
                     save_data[key] = cls._encode_sensitive(save_data[key])
             cls._write_restricted(
                 cls.SETTINGS_FILE,
@@ -313,14 +311,14 @@ class ConfigService:
         cls.save()
 
     @classmethod
-    def get_all(cls) -> Dict[str, Any]:
+    def get_all(cls) -> dict[str, Any]:
         """Get all settings."""
         if not cls._settings:
             cls.load()
         return cls._settings.copy()
 
     @classmethod
-    def update_all(cls, data: Dict[str, Any]):
+    def update_all(cls, data: dict[str, Any]):
         """Update multiple settings at once."""
         if not cls._settings:
             cls.load()

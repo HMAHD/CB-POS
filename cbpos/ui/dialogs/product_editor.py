@@ -1,34 +1,35 @@
 from decimal import Decimal
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor, QDoubleValidator, QIcon, QPixmap
 from PyQt6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QFormLayout,
-    QLineEdit,
-    QDialogButtonBox,
     QCheckBox,
-    QMessageBox,
-    QTabWidget,
-    QWidget,
     QComboBox,
-    QTableWidget,
-    QTableWidgetItem,
-    QPushButton,
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
+    QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QGroupBox,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QIcon, QPixmap, QColor, QDoubleValidator
 
-from cbpos.core.models import Product
-from cbpos.core.services.inventory_service import InventoryService
-from cbpos.core.services.category_service import CategoryService
-from cbpos.core.services.supplier_service import SupplierService
 from cbpos.config import Config
+from cbpos.core.models import Product
+from cbpos.core.services.category_service import CategoryService
+from cbpos.core.services.inventory_service import InventoryService
+from cbpos.core.services.supplier_service import SupplierService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import get_currency_symbol
 from cbpos.i18n import _t
-from cbpos.core.utils.error_messages import translate_error
 
 
 def _color_icon(hex_color: str, size: int = 12) -> QIcon:
@@ -339,9 +340,10 @@ class ProductEditor(QDialog):
         self.current_image_path = None
 
     def upload_image(self):
-        from PyQt6.QtWidgets import QFileDialog
-        import shutil
         import os
+        import shutil
+
+        from PyQt6.QtWidgets import QFileDialog
 
         file_path, _ = QFileDialog.getOpenFileName(
             self, _t("product_editor.select_image_title"), "", "Images (*.png *.jpg *.jpeg)"
@@ -365,8 +367,9 @@ class ProductEditor(QDialog):
         self.lbl_image.setText(_t("product_editor.no_image"))
 
     def show_image(self, path):
-        from PyQt6.QtGui import QPixmap
         import os
+
+        from PyQt6.QtGui import QPixmap
 
         if os.path.exists(path):
             pixmap = QPixmap(path)

@@ -14,7 +14,6 @@ import string
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import pyzipper
 
@@ -39,7 +38,7 @@ class BackupService:
         return "".join(secrets.choice(alphabet) for _ in range(length))
 
     @staticmethod
-    def create_backup(destination_dir: str, password: str = None) -> Tuple[str, str]:
+    def create_backup(destination_dir: str, password: str = None) -> tuple[str, str]:
         """
         Create an AES-encrypted zip backup of the database, images, and settings.
 
@@ -157,7 +156,7 @@ class BackupService:
             snapshot_dir = Path(snapshot_dir)
             snapshot_dir.mkdir(parents=True, exist_ok=True)
             try:
-                snapshot_path, snapshot_pwd = BackupService.create_backup(str(snapshot_dir), password=None)
+                snapshot_path, _snapshot_pwd = BackupService.create_backup(str(snapshot_dir), password=None)
                 # Rename to mark as pre-restore snapshot
                 pre_restore_path = snapshot_path.replace(".zip", ".pre_restore.zip")
                 os.rename(snapshot_path, pre_restore_path)
@@ -209,7 +208,7 @@ class BackupService:
         return True
 
     @staticmethod
-    def list_backups(backup_dir: str) -> List[Dict[str, str]]:
+    def list_backups(backup_dir: str) -> list[dict[str, str]]:
         """
         List available backup files in a directory, sorted newest first.
 
@@ -219,7 +218,7 @@ class BackupService:
         Returns:
             List of dicts with keys: path, filename, date, size.
         """
-        backups: List[Dict[str, str]] = []
+        backups: list[dict[str, str]] = []
         backup_path = Path(backup_dir)
 
         if not backup_path.exists():
@@ -245,7 +244,7 @@ class BackupService:
                     "path": str(f),
                     "filename": f.name,
                     "date": date_str,
-                    "size": f"{size_mb:.1f} MB",  # noqa: E231
+                    "size": f"{size_mb:.1f} MB",
                     "is_pre_restore": ".pre_restore" in f.name,
                 }
             )
@@ -323,7 +322,7 @@ class BackupService:
             return False
 
     @staticmethod
-    def verify_backup(backup_path: str, password: str) -> Dict[str, object]:
+    def verify_backup(backup_path: str, password: str) -> dict[str, object]:
         """
         Verify a backup file without extracting it.
 
@@ -334,7 +333,7 @@ class BackupService:
         Returns:
             Dict with keys: valid (bool), files (list), size (str), error (str or None).
         """
-        result: Dict[str, object] = {
+        result: dict[str, object] = {
             "valid": False,
             "files": [],
             "size": "0 MB",
@@ -347,7 +346,7 @@ class BackupService:
             return result
 
         size_mb = backup_file.stat().st_size / (1024 * 1024)
-        result["size"] = f"{size_mb:.1f} MB"  # noqa: E231
+        result["size"] = f"{size_mb:.1f} MB"
 
         try:
             with pyzipper.AESZipFile(backup_file, "r") as zf:

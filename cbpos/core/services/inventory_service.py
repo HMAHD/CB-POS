@@ -1,10 +1,12 @@
 import logging
-from typing import List, Optional, Dict, Any
 from decimal import Decimal
+from typing import Any
+
 from sqlalchemy import select
 from sqlalchemy.orm.exc import StaleDataError
+
 from cbpos.core.database import Database
-from cbpos.core.models import Product, InventoryLog, AuditLog, CompositeItem
+from cbpos.core.models import AuditLog, CompositeItem, InventoryLog, Product
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +15,7 @@ class InventoryService:
     def __init__(self):
         self.db = Database()
 
-    def create_product(self, data: Dict[str, Any]) -> Product:
+    def create_product(self, data: dict[str, Any]) -> Product:
         """Create a new product with optional composite items."""
         with self.db.get_session() as session:
             # Extract composite items data if present
@@ -35,7 +37,7 @@ class InventoryService:
             session.refresh(product)
             return product
 
-    def update_product(self, product_id: int, data: Dict[str, Any]) -> Optional[Product]:
+    def update_product(self, product_id: int, data: dict[str, Any]) -> Product | None:
         """Update an existing product."""
         with self.db.get_session() as session:
             product = session.get(Product, product_id)
@@ -68,7 +70,7 @@ class InventoryService:
                 session.commit()
             except StaleDataError:
                 session.rollback()
-                raise ValueError("This product was modified by another user. " "Please reload and try again.")
+                raise ValueError("This product was modified by another user. Please reload and try again.")
             session.refresh(product)
             return product
 
@@ -83,7 +85,7 @@ class InventoryService:
             session.commit()
             return True
 
-    def get_low_stock_items(self) -> List[Product]:
+    def get_low_stock_items(self) -> list[Product]:
         """Get products where stock is at or below reorder level."""
         with self.db.get_session() as session:
             stmt = select(Product).where(Product.is_active.is_(True), Product.stock_qty <= Product.reorder_level)
@@ -116,8 +118,7 @@ class InventoryService:
                 action="STOCK_ADJUSTMENT",
                 event_type="INVENTORY",
                 details=(
-                    f"Product {product.name_en} ({product.barcode}) "
-                    f"stock adjusted by {qty_change}. Reason: {reason}"
+                    f"Product {product.name_en} ({product.barcode}) stock adjusted by {qty_change}. Reason: {reason}"
                 ),
             )
             session.add(audit_log)
@@ -126,10 +127,10 @@ class InventoryService:
                 session.commit()
             except StaleDataError:
                 session.rollback()
-                raise ValueError("This product's stock was modified by another user. " "Please reload and try again.")
+                raise ValueError("This product's stock was modified by another user. Please reload and try again.")
             return True
 
-    def get_composite_items(self, product_id: int) -> List[Dict[str, Any]]:
+    def get_composite_items(self, product_id: int) -> list[dict[str, Any]]:
         """Get composite (bundle) child items for a product."""
         with self.db.get_session() as session:
             stmt = select(CompositeItem).where(CompositeItem.parent_product_id == product_id)
@@ -146,7 +147,7 @@ class InventoryService:
                 )
             return result
 
-    def get_all_products(self, limit: int = 1000, offset: int = 0) -> List[Product]:
+    def get_all_products(self, limit: int = 1000, offset: int = 0) -> list[Product]:
         """Get active products with categories, with pagination support."""
         with self.db.get_session() as session:
             stmt = (
@@ -162,7 +163,7 @@ class InventoryService:
             stmt = select(func.count()).select_from(Product).where(Product.is_active.is_(True))
             return session.scalar(stmt) or 0
 
-    def get_product_by_barcode(self, barcode: str) -> Optional[Product]:
+    def get_product_by_barcode(self, barcode: str) -> Product | None:
         """Get a single product by its barcode."""
         with self.db.get_session() as session:
             stmt = select(Product).where(Product.barcode == barcode)

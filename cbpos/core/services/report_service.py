@@ -1,15 +1,17 @@
 from datetime import date, datetime
-from typing import Dict, List, Any
-from sqlalchemy import select, func, desc, extract
+from typing import Any
+
+from sqlalchemy import desc, extract, func, select
+
 from cbpos.core.database import Database
-from cbpos.core.models import Sale, SaleItem, SalePayment, Product
+from cbpos.core.models import Product, Sale, SaleItem, SalePayment
 
 
 class ReportService:
     def __init__(self):
         self.db = Database()
 
-    def get_daily_sales(self, report_date: date) -> Dict[str, Any]:
+    def get_daily_sales(self, report_date: date) -> dict[str, Any]:
         with self.db.get_session() as session:
             # Filter by date
             start_dt = datetime.combine(report_date, datetime.min.time())
@@ -41,10 +43,10 @@ class ReportService:
                 "date": report_date,
                 "total_sales": total_sales,
                 "total_tax": total_tax,
-                "payment_breakdown": {method: amount for method, amount in payment_breakdown},
+                "payment_breakdown": dict(payment_breakdown),
             }
 
-    def get_top_products(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_top_products(self, limit: int = 10) -> list[dict[str, Any]]:
         with self.db.get_session() as session:
             # Top selling products by quantity
             results = session.execute(
@@ -57,7 +59,7 @@ class ReportService:
 
             return [{"name": name, "qty": qty} for name, qty in results]
 
-    def get_hourly_sales(self, report_date: date) -> List[Dict[str, Any]]:
+    def get_hourly_sales(self, report_date: date) -> list[dict[str, Any]]:
         with self.db.get_session() as session:
             start_dt = datetime.combine(report_date, datetime.min.time())
             end_dt = datetime.combine(report_date, datetime.max.time())
@@ -82,7 +84,7 @@ class ReportService:
 
             return final_data
 
-    def get_stock_valuation(self) -> Dict[str, Any]:
+    def get_stock_valuation(self) -> dict[str, Any]:
         """
         Calculate stock valuation metrics.
 
@@ -95,8 +97,9 @@ class ReportService:
             }
         """
         with self.db.get_session() as session:
-            from cbpos.core.models import Category
             from decimal import Decimal
+
+            from cbpos.core.models import Category
 
             # Calculate total stock value
             total_cost = session.scalar(

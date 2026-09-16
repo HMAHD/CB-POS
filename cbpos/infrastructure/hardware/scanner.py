@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QObject, QEvent, pyqtSignal, QTimer
+from PyQt6.QtCore import QEvent, QObject, QTimer, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
 

@@ -1,11 +1,13 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Dict, Any, Optional
-from sqlalchemy.orm import joinedload
+from typing import Any
+
 from sqlalchemy import func
-from cbpos.core.models import Purchase, PurchaseItem, Product, StockMovement, Supplier, AuditLog
-from cbpos.core.database import Database
+from sqlalchemy.orm import joinedload
+
 from cbpos.core.constants.status import Precision
+from cbpos.core.database import Database
+from cbpos.core.models import AuditLog, Product, Purchase, PurchaseItem, StockMovement, Supplier
 from cbpos.core.services.document_service import DocumentService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 
@@ -20,7 +22,7 @@ class PurchaseService:
         supplier_id: int,
         reference_external: str,  # Vendor Invoice #
         user_id: int,
-        date_received: Optional[datetime] = None,
+        date_received: datetime | None = None,
     ) -> Purchase:
         """
         Create a new purchase (GRN) header in DRAFT status.
@@ -49,7 +51,7 @@ class PurchaseService:
             return purchase
 
     @staticmethod
-    def commit_purchase(purchase_id: int, items_data: List[Dict[str, Any]]) -> Purchase:
+    def commit_purchase(purchase_id: int, items_data: list[dict[str, Any]]) -> Purchase:
         """
         Commit a purchase:
         1. Create PurchaseItems.
@@ -154,12 +156,12 @@ class PurchaseService:
 
     @staticmethod
     def get_all_purchases(
-        status: Optional[str] = None,
-        supplier_id: Optional[int] = None,
-        date_from: Optional[datetime] = None,
-        date_to: Optional[datetime] = None,
+        status: str | None = None,
+        supplier_id: int | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
         limit: int = 500,
-    ) -> List[Purchase]:
+    ) -> list[Purchase]:
         """
         Get filtered list of purchases with eager-loaded relationships.
 
@@ -203,7 +205,7 @@ class PurchaseService:
             return session.query(func.count(Purchase.id)).scalar() or 0
 
     @staticmethod
-    def get_purchase(purchase_id: int) -> Optional[Purchase]:
+    def get_purchase(purchase_id: int) -> Purchase | None:
         db = Database()
         with db.get_session() as session:
             purchase = (

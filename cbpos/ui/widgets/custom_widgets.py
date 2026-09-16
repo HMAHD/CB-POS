@@ -1,6 +1,7 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QToolButton
-from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QIcon, QPixmap, QPainter
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QIcon, QPainter, QPixmap
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QToolButton, QVBoxLayout, QWidget
+
 from cbpos.ui.resources.icons import Icons
 
 
@@ -29,7 +30,7 @@ class InfoCard(QWidget):
         text_layout.setSpacing(5)
 
         self.val_lbl = QLabel(value)
-        style = "font-size: 28px; font-weight: bold; color: {}; ".format(color)
+        style = f"font-size: 28px; font-weight: bold; color: {color}; "
         self.val_lbl.setStyleSheet(style)
         self.val_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
 

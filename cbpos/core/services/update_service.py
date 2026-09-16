@@ -25,7 +25,7 @@ import os
 import tempfile
 import urllib.error
 import urllib.request
-from typing import Any, Dict, Optional
+from typing import Any
 
 from packaging.version import InvalidVersion, Version
 
@@ -39,7 +39,7 @@ _MANIFEST_URL = "https://raw.githubusercontent.com/ceybyte/cbpos-releases/main/l
 _TIMEOUT = 15
 
 
-def _safe_version(v: str) -> Optional[Version]:
+def _safe_version(v: str) -> Version | None:
     """Parse a PEP 440 version string, returning None on failure."""
     try:
         return Version(v.strip())
@@ -51,7 +51,7 @@ class UpdateService:
     """Check for and download application updates."""
 
     @staticmethod
-    def check_for_update() -> Optional[Dict[str, Any]]:
+    def check_for_update() -> dict[str, Any] | None:
         """Check the remote manifest for a newer version.
 
         Returns:
@@ -61,7 +61,7 @@ class UpdateService:
         try:
             req = urllib.request.Request(_MANIFEST_URL, headers={"User-Agent": "CBPOS-Updater"})
             with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
-                data: Dict[str, Any] = json.loads(resp.read().decode("utf-8"))
+                data: dict[str, Any] = json.loads(resp.read().decode("utf-8"))
         except (urllib.error.URLError, json.JSONDecodeError, OSError) as e:
             logger.info("Update check failed (network): %s", e)
             return None
@@ -139,7 +139,7 @@ class UpdateService:
         if actual.lower() != expected_sha256.lower():
             os.unlink(tmp.name)
             raise RuntimeError(
-                "Checksum mismatch — download may be corrupt.\n" f"Expected: {expected_sha256}\n" f"Got:      {actual}"
+                f"Checksum mismatch — download may be corrupt.\nExpected: {expected_sha256}\nGot:      {actual}"
             )
 
         logger.info("Installer downloaded: %s (%d bytes)", tmp.name, downloaded)

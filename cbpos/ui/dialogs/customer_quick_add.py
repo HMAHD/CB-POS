@@ -1,12 +1,13 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
+    QDialogButtonBox,
     QFormLayout,
     QLineEdit,
-    QDialogButtonBox,
     QMessageBox,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import Qt
+
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.i18n import _t
 

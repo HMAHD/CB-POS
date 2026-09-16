@@ -1,10 +1,12 @@
 import logging
-from decimal import Decimal
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from decimal import Decimal
+from typing import Any
+
 from sqlalchemy import func
+
 from cbpos.core.database import Database
-from cbpos.core.models import Customer, CustomerPayment, CustomerLedgerEntry, AuditLog
+from cbpos.core.models import AuditLog, Customer, CustomerLedgerEntry, CustomerPayment
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +20,8 @@ class CustomerCreditService:
         amount: Decimal,
         payment_method: str,
         user_id: int,
-        reference: Optional[str] = None,
-        note: Optional[str] = None,
+        reference: str | None = None,
+        note: str | None = None,
     ) -> CustomerPayment:
         """
         Record a customer payment against their existing debt.
@@ -240,9 +242,9 @@ class CustomerCreditService:
     @staticmethod
     def get_ledger(
         customer_id: int,
-        date_from: Optional[datetime] = None,
-        date_to: Optional[datetime] = None,
-    ) -> List[CustomerLedgerEntry]:
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> list[CustomerLedgerEntry]:
         """
         Get chronological ledger entries for a customer.
 
@@ -269,7 +271,7 @@ class CustomerCreditService:
             return entries
 
     @staticmethod
-    def get_overdue_customers() -> List[Dict[str, Any]]:
+    def get_overdue_customers() -> list[dict[str, Any]]:
         """
         Get customers with outstanding debt who are overdue based on payment_terms.
 
@@ -333,7 +335,7 @@ class CustomerCreditService:
             return results
 
     @staticmethod
-    def get_customer_summary(customer_id: int) -> Dict[str, Any]:
+    def get_customer_summary(customer_id: int) -> dict[str, Any]:
         """
         Get a summary of a customer's credit status.
 

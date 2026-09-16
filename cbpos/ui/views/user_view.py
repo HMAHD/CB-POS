@@ -1,32 +1,33 @@
 import weakref
 from datetime import datetime, time
 
+from PyQt6.QtCore import QDate, Qt
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QTableWidget,
-    QTableWidgetItem,
-    QPushButton,
-    QHeaderView,
+    QCheckBox,
+    QComboBox,
+    QDateEdit,
     QDialog,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
-    QComboBox,
-    QCheckBox,
     QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
     QTabWidget,
-    QFrame,
-    QDateEdit,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QDate
-from PyQt6.QtGui import QColor
-from cbpos.core.services.user_service import UserService
+
 from cbpos.core.services.theme_service import ThemeService
+from cbpos.core.services.user_service import UserService
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.dialogs.permission_dialog import PermissionDialog
 from cbpos.ui.dialogs.role_manager import RoleManagerDialog
 from cbpos.ui.resources.icons import Icons
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 
@@ -409,8 +410,8 @@ class UserView(QWidget):
             self.load_logs()
 
     def add_user(self):
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.ADMIN_MANAGE_USERS, self):
             return
@@ -420,8 +421,8 @@ class UserView(QWidget):
             self.load_users()
 
     def edit_user(self):
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.ADMIN_MANAGE_USERS, self):
             return
@@ -436,8 +437,8 @@ class UserView(QWidget):
             self.load_users()
 
     def manage_permissions(self):
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.ADMIN_MANAGE_ROLES, self):
             return
@@ -446,8 +447,8 @@ class UserView(QWidget):
         dialog.exec()
 
     def manage_roles(self):
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.ADMIN_MANAGE_ROLES, self):
             return

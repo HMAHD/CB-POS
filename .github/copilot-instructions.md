@@ -72,9 +72,8 @@ alembic/               # Database migrations
 ```
 
 **Key Configuration Files:**
-- `pyproject.toml` - Black formatter config (line-length: 88, target: py312)
-- `.pre-commit-config.yaml` - Pre-commit hooks (Black, Flake8)
-- `.flake8` - Flake8 per-file ignores
+- `pyproject.toml` - Ruff linter + formatter config (line-length: 120, target: py312)
+- `.pre-commit-config.yaml` - Pre-commit hooks (Ruff linter + formatter)
 - `alembic.ini` - Database migration configuration
 - `settings.json` - Runtime application settings
 
@@ -99,8 +98,8 @@ Use the **EAFP** pattern (Easier to Ask for Forgiveness than Permission).
 Use absolute imports: `from cbpos.core.services import ...`
 
 ### Code Style
-- **Formatter:** Black (88 char line length)
-- **Linter:** Flake8 (max 120 chars, ignore E203, W503)
+- **Linter + Formatter:** Ruff (120 char line length, Black-compatible formatting)
+- **Rules:** pycodestyle (E/W), Pyflakes (F), isort (I), bugbear (B), pyupgrade (UP), and more. See `pyproject.toml`
 
 ---
 
@@ -192,13 +191,14 @@ alembic upgrade head
 ### Code Quality (Always Run Before Committing)
 
 ```bash
-# Run all pre-commit hooks (Black + Flake8)
+# Run all pre-commit hooks (Ruff linter + formatter)
 pre-commit run --all-files
 
 # Individual checks
-black --check .           # Format check
-black .                   # Auto-format
-flake8 . --max-line-length=120 --ignore=E203,W503
+ruff check .              # Lint check
+ruff check --fix .        # Lint + auto-fix
+ruff format --check .     # Format check
+ruff format .             # Auto-format
 ```
 
 ### Running Tests
@@ -242,6 +242,7 @@ pyinstaller cbpos.spec
 
 ```python
 from cbpos.core.database import Database
+
 db = Database()
 with db.get_session() as session:
     # Your database operations here

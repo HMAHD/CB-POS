@@ -3,7 +3,6 @@ Service for managing product categories.
 """
 
 import logging
-from typing import List, Optional, Set
 
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
@@ -18,7 +17,7 @@ class CategoryService:
     """CRUD operations for product categories."""
 
     @staticmethod
-    def get_all(active_only: bool = True) -> List[Category]:
+    def get_all(active_only: bool = True) -> list[Category]:
         """Get all categories, ordered by name.
 
         Args:
@@ -37,7 +36,7 @@ class CategoryService:
             return results
 
     @staticmethod
-    def get_tree() -> List[Category]:
+    def get_tree() -> list[Category]:
         """Get all categories for tree building (includes parent_id info).
 
         Returns:
@@ -52,7 +51,7 @@ class CategoryService:
             return results
 
     @staticmethod
-    def get_by_id(category_id: int) -> Optional[Category]:
+    def get_by_id(category_id: int) -> Category | None:
         """Get a single category by ID.
 
         Args:
@@ -69,7 +68,7 @@ class CategoryService:
             return category
 
     @staticmethod
-    def get_top_level_with_subcategories() -> List[Category]:
+    def get_top_level_with_subcategories() -> list[Category]:
         """Get root categories with subcategories eagerly loaded, ordered by name.
 
         Returns:
@@ -91,7 +90,7 @@ class CategoryService:
             return results
 
     @staticmethod
-    def get_top_level_with_subcategories_and_products() -> List[Category]:
+    def get_top_level_with_subcategories_and_products() -> list[Category]:
         """Get root categories with subcategories and products eagerly loaded.
 
         Used by CategoryManagerDialog for product counts.
@@ -118,7 +117,7 @@ class CategoryService:
             return results
 
     @staticmethod
-    def get_descendant_ids(category_id: int) -> Set[int]:
+    def get_descendant_ids(category_id: int) -> set[int]:
         """Get all descendant category IDs (not including the given ID).
 
         Args:
@@ -131,12 +130,12 @@ class CategoryService:
         with db.get_session() as session:
             # Build children map
             all_cats = session.execute(select(Category.id, Category.parent_id)).all()
-            children_map: dict[Optional[int], list[int]] = {}
+            children_map: dict[int | None, list[int]] = {}
             for cid, pid in all_cats:
                 children_map.setdefault(pid, []).append(cid)
 
             # BFS
-            result: Set[int] = set()
+            result: set[int] = set()
             queue = list(children_map.get(category_id, []))
             while queue:
                 current = queue.pop(0)
@@ -145,7 +144,7 @@ class CategoryService:
             return result
 
     @staticmethod
-    def get_product_count_for_ids(category_ids: Set[int]) -> int:
+    def get_product_count_for_ids(category_ids: set[int]) -> int:
         """Count products with category_id in the given set.
 
         Args:
@@ -157,8 +156,9 @@ class CategoryService:
         if not category_ids:
             return 0
 
-        from cbpos.core.models import Product
         from sqlalchemy import func
+
+        from cbpos.core.models import Product
 
         db = Database()
         with db.get_session() as session:
@@ -185,7 +185,7 @@ class CategoryService:
 
             # Collect all IDs including self
             all_cats = session.execute(select(Category.id, Category.parent_id)).all()
-            children_map: dict[Optional[int], list[int]] = {}
+            children_map: dict[int | None, list[int]] = {}
             for cid, pid in all_cats:
                 children_map.setdefault(pid, []).append(cid)
 
@@ -204,7 +204,7 @@ class CategoryService:
                     session.delete(cat)
 
     @staticmethod
-    def create(name: str, parent_id: Optional[int] = None, color: Optional[str] = None) -> Category:
+    def create(name: str, parent_id: int | None = None, color: str | None = None) -> Category:
         """Create a new category.
 
         Args:
@@ -237,8 +237,8 @@ class CategoryService:
     @staticmethod
     def update(
         category_id: int,
-        name: Optional[str] = None,
-        color: Optional[str] = None,
+        name: str | None = None,
+        color: str | None = None,
         parent_id: object = ...,
     ) -> Category:
         """Update an existing category.
@@ -303,7 +303,7 @@ class CategoryService:
             session.delete(category)
 
     @staticmethod
-    def reparent(category_id: int, new_parent_id: Optional[int]) -> Category:
+    def reparent(category_id: int, new_parent_id: int | None) -> Category:
         """Move a category under a new parent.
 
         Args:

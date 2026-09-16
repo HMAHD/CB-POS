@@ -1,15 +1,16 @@
 from decimal import Decimal, InvalidOperation
 
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
+    QDialogButtonBox,
     QLabel,
     QLineEdit,
-    QDialogButtonBox,
     QMessageBox,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QShortcut, QKeySequence
+
 from cbpos.i18n import _t
 
 

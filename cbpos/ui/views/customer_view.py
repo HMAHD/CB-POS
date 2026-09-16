@@ -1,20 +1,22 @@
 from decimal import Decimal
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
     QHBoxLayout,
+    QHeaderView,
+    QLineEdit,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QLineEdit,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
+
 from cbpos.core.services.customer_service import CustomerService
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.dialogs.customer_editor import CustomerEditor
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 
 class CustomerView(QWidget):
@@ -112,10 +114,10 @@ class CustomerView(QWidget):
             self.table.setItem(row, 0, QTableWidgetItem(str(customer.id)))
             self.table.setItem(row, 1, QTableWidgetItem(customer.name))
             self.table.setItem(row, 2, QTableWidgetItem(customer.phone or ""))
-            limit_str = "{:.2f}".format(customer.credit_limit)
+            limit_str = f"{customer.credit_limit:.2f}"
             self.table.setItem(row, 3, QTableWidgetItem(limit_str))
 
-            debt_str = "{:.2f}".format(customer.current_debt)
+            debt_str = f"{customer.current_debt:.2f}"
             debt_item = QTableWidgetItem(debt_str)
             # Highlight high debt ( > 90% of limit)
             if customer.credit_limit > 0 and customer.current_debt >= (customer.credit_limit * Decimal("0.9")):

@@ -31,7 +31,7 @@ class Config:
         # Running from source — keep everything in the project root.
         DATA_DIR = BASE_DIR
 
-    DB_URI = f"sqlite:///{DATA_DIR / 'cbpos.db'}"  # noqa: E231
+    DB_URI = f"sqlite:///{DATA_DIR / 'cbpos.db'}"
 
     # Theme Colors
     COLOR_NAVY = "#001F3F"

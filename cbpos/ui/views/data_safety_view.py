@@ -13,36 +13,35 @@ No hardcoded colors — works with both dark and light themes.
 
 import logging
 
+from PyQt6.QtCore import QDate, Qt, QTimer
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QTabWidget,
-    QLabel,
-    QPushButton,
-    QLineEdit,
-    QFileDialog,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
-    QMessageBox,
-    QGroupBox,
-    QFormLayout,
-    QFrame,
-    QDialog,
+    QApplication,
     QComboBox,
     QDateEdit,
-    QApplication,
+    QDialog,
+    QFileDialog,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
     QMenu,
+    QMessageBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QDate, QTimer
-
 
 from cbpos.core.services.backup_service import BackupService
 from cbpos.core.services.config_service import ConfigService
-from cbpos.ui.workers import BackupWorker, BackupListWorker, RestoreWorker
-from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.widgets.loading_overlay import LoadingOverlay
+from cbpos.ui.workers import BackupListWorker, BackupWorker, RestoreWorker
 
 logger = logging.getLogger(__name__)
 
@@ -196,8 +195,8 @@ class DataSafetyView(QWidget):
             self._refresh_backup_list()
 
     def _create_backup(self) -> None:
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.DATA_SAFETY_BACKUP, self):
             return
@@ -456,8 +455,8 @@ class DataSafetyView(QWidget):
         self.lbl_verify_result.style().polish(self.lbl_verify_result)
 
     def _restore_backup(self) -> None:
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.DATA_SAFETY_RESTORE, self):
             return

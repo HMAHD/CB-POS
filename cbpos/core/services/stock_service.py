@@ -1,6 +1,5 @@
 import logging
 from decimal import Decimal
-from typing import List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
@@ -29,16 +28,16 @@ class StockService:
         qty_change: Decimal,
         movement_type: str,
         user_id: int,
-        document_id: Optional[int] = None,
-        session: Optional[Session] = None,
-    ) -> Optional[StockMovement]:
+        document_id: int | None = None,
+        session: Session | None = None,
+    ) -> StockMovement | None:
         """
         Record a stock movement and update product quantity.
         Atomic operation with negative stock validation.
         """
         if movement_type not in _VALID_MOVEMENT_TYPES:
             raise ValueError(
-                "Invalid movement type '{0}'. Must be one of: {1}".format(
+                "Invalid movement type '{}'. Must be one of: {}".format(
                     movement_type, ", ".join(sorted(_VALID_MOVEMENT_TYPES))
                 )
             )
@@ -73,12 +72,12 @@ class StockService:
         qty_change: Decimal,
         movement_type: str,
         user_id: int,
-        document_id: Optional[int],
+        document_id: int | None,
         commit: bool,
-    ) -> Optional[StockMovement]:
+    ) -> StockMovement | None:
         product = session.get(Product, product_id)
         if not product:
-            raise ValueError("Product {0} not found".format(product_id))
+            raise ValueError(f"Product {product_id} not found")
 
         # Skip inventory tracking for service items
         if product.is_service:
@@ -94,11 +93,7 @@ class StockService:
             new_balance = product.stock_qty + qty_change
             if not allow_negative and new_balance < 0:
                 raise ValueError(
-                    "Insufficient Stock: {0} (Available: {1:.3f}, Required: {2:.3f})".format(
-                        product.name_en,
-                        product.stock_qty,
-                        abs(qty_change),
-                    )
+                    f"Insufficient Stock: {product.name_en} (Available: {product.stock_qty:.3f}, Required: {abs(qty_change):.3f})"
                 )
 
         # Update Stock
@@ -127,7 +122,7 @@ class StockService:
         return movement
 
     @staticmethod
-    def get_history(product_id: int, limit: int = 500) -> List[StockMovement]:
+    def get_history(product_id: int, limit: int = 500) -> list[StockMovement]:
         """Get stock movement history for a product."""
         db = Database()
         with db.get_session() as session:
@@ -143,7 +138,7 @@ class StockService:
             return results
 
     @staticmethod
-    def get_reorder_list() -> List[Product]:
+    def get_reorder_list() -> list[Product]:
         """Get list of products that need reordering."""
         db = Database()
         with db.get_session() as session:

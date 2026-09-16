@@ -1,6 +1,6 @@
-import subprocess
 import os
 import shutil
+import subprocess
 
 
 def create_installer():

@@ -12,8 +12,8 @@ Usage::
     overlay.hide_loading()
 """
 
-from PyQt6.QtCore import Qt, QTimer, QRectF, QEvent
-from PyQt6.QtGui import QPainter, QColor, QPen, QFont
+from PyQt6.QtCore import QEvent, QRectF, Qt, QTimer
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen
 from PyQt6.QtWidgets import QWidget
 
 
@@ -66,7 +66,7 @@ class LoadingOverlay(QWidget):
         self._angle = (self._angle + 6) % 360
         self.update()
 
-    def paintEvent(self, event) -> None:  # noqa: N802
+    def paintEvent(self, event) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -96,7 +96,7 @@ class LoadingOverlay(QWidget):
 
         painter.end()
 
-    def eventFilter(self, obj, event) -> bool:  # noqa: N802
+    def eventFilter(self, obj, event) -> bool:
         """Resize overlay when parent resizes."""
         if obj is self.parent() and event.type() == QEvent.Type.Resize:
             self.resize(event.size())

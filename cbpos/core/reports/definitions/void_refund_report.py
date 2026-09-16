@@ -1,12 +1,13 @@
-from typing import List, Dict, Any
-import pandas as pd
-from sqlalchemy import select, func
 from datetime import date
+from typing import Any
 
-from cbpos.core.reports.base_report import BaseReport
-from cbpos.core.models import Sale, User
+import pandas as pd
+from sqlalchemy import func, select
+
 from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.database import Database
+from cbpos.core.models import Sale, User
+from cbpos.core.reports.base_report import BaseReport
 
 
 class VoidRefundReport(BaseReport):
@@ -24,7 +25,7 @@ class VoidRefundReport(BaseReport):
     def category(self) -> str:
         return "Audit"
 
-    def get_filter_definitions(self) -> List[Dict[str, Any]]:
+    def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [
             {
                 "name": "date_range",
@@ -35,7 +36,7 @@ class VoidRefundReport(BaseReport):
             }
         ]
 
-    def generate(self, filters: Dict[str, Any]) -> pd.DataFrame:
+    def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         date_range = filters.get("date_range", {})
         start_date = date_range.get("start")
         end_date = date_range.get("end")
@@ -90,7 +91,7 @@ class PaymentMethodSummaryReport(BaseReport):
     def category(self) -> str:
         return "Sales"
 
-    def get_filter_definitions(self) -> List[Dict[str, Any]]:
+    def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [
             {
                 "name": "date_range",
@@ -101,7 +102,7 @@ class PaymentMethodSummaryReport(BaseReport):
             }
         ]
 
-    def generate(self, filters: Dict[str, Any]) -> pd.DataFrame:
+    def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         from cbpos.core.models import SalePayment
 
         date_range = filters.get("date_range", {})

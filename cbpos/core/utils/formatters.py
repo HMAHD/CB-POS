@@ -1,6 +1,7 @@
+from datetime import date, datetime
 from decimal import Decimal
-from datetime import datetime, date
 from typing import Union
+
 from cbpos.core.services.config_service import ConfigService
 
 
@@ -36,7 +37,7 @@ def format_currency(value: Union[Decimal, float, int, str]) -> str:
 
     symbol = ConfigService.get("currency_symbol") or "Rs."
     # Format with commas and 2 decimal places
-    formatted_number = "{:,.2f}".format(d_value)
+    formatted_number = f"{d_value:,.2f}"
     return f"{symbol} {formatted_number}"
 
 

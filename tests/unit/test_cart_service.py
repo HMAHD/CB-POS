@@ -6,12 +6,12 @@ quantity management, price overrides, and total calculations.
 """
 
 from decimal import Decimal
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from cbpos.core.services.cart_service import CartService
 from cbpos.core.constants.status import Precision
+from cbpos.core.services.cart_service import CartService
 
 
 def _make_product(product_id=1, name="Test Product", price="100.00", stock=10.0, barcode="TEST001"):
@@ -186,7 +186,7 @@ class TestCartLineDiscounts:
 
         mock_log.assert_called_once()
         args, kwargs = mock_log.call_args
-        call = {**dict(zip(["user_id", "action", "event_type", "details"], args)), **kwargs}
+        call = {**dict(zip(["user_id", "action", "event_type", "details"], args, strict=False)), **kwargs}
         assert call["user_id"] == 3
         assert call["event_type"] == "TRANSACTION"
         assert "10" in call["details"]
@@ -414,7 +414,7 @@ class TestCartPriceOverride:
 
         mock_log.assert_called_once()
         args, kwargs = mock_log.call_args
-        call = {**dict(zip(["user_id", "action", "event_type", "details"], args)), **kwargs}
+        call = {**dict(zip(["user_id", "action", "event_type", "details"], args, strict=False)), **kwargs}
         assert call["user_id"] == 7
         assert call["event_type"] == "TRANSACTION"
         assert "80.00" in call["details"]

@@ -7,7 +7,7 @@ application startup (see main.py / MainWindow) via ``set_override_handler``.
 """
 
 import logging
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from cbpos.core.models import User
 from cbpos.core.services.auth_service import AuthService
@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 
 # Type alias for the override handler callback.
 # Signature: (permission_code: str, parent: Any) -> Optional[User]
-OverrideHandler = Callable[..., Optional[User]]
+OverrideHandler = Callable[..., User | None]
 
-_override_handler: Optional[OverrideHandler] = None
+_override_handler: OverrideHandler | None = None
 
 
 def set_override_handler(handler: OverrideHandler) -> None:
@@ -33,7 +33,7 @@ def set_override_handler(handler: OverrideHandler) -> None:
     _override_handler = handler
 
 
-def check_permission_with_override(permission_code: str, parent_widget=None) -> Optional[User]:
+def check_permission_with_override(permission_code: str, parent_widget=None) -> User | None:
     """Check if current user has the given permission.
 
     If not, delegates to the registered override handler (typically a dialog).

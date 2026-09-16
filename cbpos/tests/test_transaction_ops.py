@@ -1,6 +1,7 @@
-from unittest.mock import patch, MagicMock
-from cbpos.core.services.transaction_service import TransactionService
+from unittest.mock import MagicMock, patch
+
 from cbpos.core.models import Sale, User
+from cbpos.core.services.transaction_service import TransactionService
 
 
 @patch("cbpos.core.services.transaction_service.Database")

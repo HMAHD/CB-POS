@@ -10,8 +10,9 @@ full-page placeholder) or as a widget manually positioned over a
 table's viewport (e.g. the cart), same as any other QWidget.
 """
 
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget
+
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.ui.resources.icons import Icons
 

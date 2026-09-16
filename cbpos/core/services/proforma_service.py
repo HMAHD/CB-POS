@@ -1,15 +1,15 @@
 import logging
-from datetime import datetime, timedelta, date
+from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Optional, List, Dict, Any
+from typing import Any
 
 from sqlalchemy.orm import joinedload
 
+from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.database import Database
 from cbpos.core.models import Proforma, ProformaItem
-from cbpos.core.constants.status import DocumentStatus
-from cbpos.core.services.document_service import DocumentService
 from cbpos.core.services.auth_service import AuthService
+from cbpos.core.services.document_service import DocumentService
 from cbpos.core.services.tax_service import TaxService
 
 logger = logging.getLogger(__name__)
@@ -20,11 +20,11 @@ class ProformaService:
 
     @staticmethod
     def create_proforma(
-        items: List[Dict[str, Any]],
-        customer_id: Optional[int] = None,
+        items: list[dict[str, Any]],
+        customer_id: int | None = None,
         validity_days: int = 30,
-        notes: Optional[str] = None,
-    ) -> Optional[Proforma]:
+        notes: str | None = None,
+    ) -> Proforma | None:
         """
         Create a new proforma/quotation.
 
@@ -101,11 +101,11 @@ class ProformaService:
 
     @staticmethod
     def get_proformas(
-        date_from: Optional[datetime] = None,
-        date_to: Optional[datetime] = None,
-        customer_id: Optional[int] = None,
-        status: Optional[str] = None,
-    ) -> List[Proforma]:
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+        customer_id: int | None = None,
+        status: str | None = None,
+    ) -> list[Proforma]:
         """Get proformas with optional filters."""
         db = Database()
         with db.get_session() as session:
@@ -126,7 +126,7 @@ class ProformaService:
             return query.order_by(Proforma.date.desc()).all()
 
     @staticmethod
-    def get_proforma_details(proforma_id: int) -> Optional[Proforma]:
+    def get_proforma_details(proforma_id: int) -> Proforma | None:
         """Get a proforma with eager-loaded items."""
         db = Database()
         with db.get_session() as session:
@@ -142,7 +142,7 @@ class ProformaService:
             )
 
     @staticmethod
-    def convert_to_sale(proforma_id: int) -> Optional[Dict[str, Any]]:
+    def convert_to_sale(proforma_id: int) -> dict[str, Any] | None:
         """
         Prepare proforma data for conversion to a sale.
 
@@ -206,7 +206,7 @@ class ProformaService:
                 return False
 
     @staticmethod
-    def void_proforma(proforma_id: int, reason_id: Optional[int] = None) -> bool:
+    def void_proforma(proforma_id: int, reason_id: int | None = None) -> bool:
         """Void a proforma/quotation."""
         db = Database()
         with db.get_session() as session:

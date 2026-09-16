@@ -12,23 +12,23 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+from PyQt6.QtCore import QDate, Qt
+from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
+    QApplication,
     QCheckBox,
     QComboBox,
-    QFileDialog,
-    QGroupBox,
     QDateEdit,
-    QMessageBox,
-    QApplication,
+    QDialog,
+    QFileDialog,
     QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import Qt, QDate
-from PyQt6.QtGui import QCursor
 
 from cbpos.core.services.data_export_service import DataExportService
 from cbpos.core.services.export_service import ExportService
@@ -141,8 +141,8 @@ class DataExportDialog(QDialog):
         self.grp_dates.setVisible(checked)
 
     def _do_export(self) -> None:
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.REPORTS_EXPORT, self):
             return

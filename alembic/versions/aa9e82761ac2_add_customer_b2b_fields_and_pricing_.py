@@ -6,11 +6,12 @@ Create Date: 2025-11-30 19:39:39.686674
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
+from typing import Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "aa9e82761ac2"
@@ -49,7 +50,6 @@ def upgrade() -> None:
         )
         # batch_op.create_foreign_key('fk_customers_price_list_id', 'price_lists', ['price_list_id'], ['id'])
 
-    pass
     # ### end Alembic commands ###
 
 

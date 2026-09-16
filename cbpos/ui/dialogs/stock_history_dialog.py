@@ -1,15 +1,16 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
-    QTableWidget,
-    QTableWidgetItem,
     QHeaderView,
     QLabel,
     QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import Qt
-from cbpos.core.services.stock_service import StockService
+
 from cbpos.core.models import Product
+from cbpos.core.services.stock_service import StockService
 from cbpos.i18n import _t
 
 
@@ -70,11 +71,11 @@ class StockHistoryDialog(QDialog):
             self.table.setItem(row, 3, QTableWidgetItem(user_name))
 
             # Change Column (Color Coded)
-            change_item = QTableWidgetItem(f"{move.qty_change:+.3f}")  # noqa: E231
+            change_item = QTableWidgetItem(f"{move.qty_change:+.3f}")
             if move.qty_change > 0:
                 change_item.setForeground(Qt.GlobalColor.green)
             elif move.qty_change < 0:
                 change_item.setForeground(Qt.GlobalColor.red)
             self.table.setItem(row, 4, change_item)
 
-            self.table.setItem(row, 5, QTableWidgetItem(f"{move.balance_after:.3f}"))  # noqa: E231
+            self.table.setItem(row, 5, QTableWidgetItem(f"{move.balance_after:.3f}"))

@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QObject, QTimer, QEvent, pyqtSignal
+from PyQt6.QtCore import QEvent, QObject, QTimer, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
 
@@ -37,14 +37,13 @@ class SessionWatchdog(QObject):
 
     def eventFilter(self, obj, event):
         """Intercept events to reset the timer."""
-        if self._monitoring:
-            if event.type() in (
-                QEvent.Type.MouseMove,
-                QEvent.Type.KeyPress,
-                QEvent.Type.MouseButtonPress,
-                QEvent.Type.TouchBegin,
-            ):
-                self.reset_timer()
+        if self._monitoring and event.type() in (
+            QEvent.Type.MouseMove,
+            QEvent.Type.KeyPress,
+            QEvent.Type.MouseButtonPress,
+            QEvent.Type.TouchBegin,
+        ):
+            self.reset_timer()
 
         return super().eventFilter(obj, event)
 
@@ -59,9 +58,9 @@ class SessionWatchdog(QObject):
 
         # Log Timeout
         try:
-            from cbpos.core.services.auth_service import AuthService
             from cbpos.core.database import Database
             from cbpos.core.models import AuditLog
+            from cbpos.core.services.auth_service import AuthService
 
             user = AuthService.get_current_user()
             if user:

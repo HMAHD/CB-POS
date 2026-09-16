@@ -1,20 +1,22 @@
 import logging
+
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
+    QGroupBox,
     QHBoxLayout,
+    QHeaderView,
+    QLabel,
     QLineEdit,
+    QMessageBox,
+    QPushButton,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QPushButton,
-    QLabel,
     QTextEdit,
-    QMessageBox,
-    QGroupBox,
+    QVBoxLayout,
 )
-from cbpos.core.services.transaction_service import TransactionService
+
 from cbpos.core.services.sale_query_service import SaleQueryService
+from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.core.utils.permission_helper import check_permission_with_override
 from cbpos.i18n import _t

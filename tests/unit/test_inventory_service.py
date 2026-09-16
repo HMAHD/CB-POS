@@ -6,8 +6,9 @@ out uncaught. A stock adjustment could fail outright rather than merely
 fail to log.
 """
 
-import pytest
 from decimal import Decimal
+
+import pytest
 
 from cbpos.core.models import AuditLog, InventoryLog, Product, User
 from cbpos.core.services.inventory_service import InventoryService

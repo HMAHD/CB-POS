@@ -11,11 +11,11 @@ This module re-exports a unified ReceiptBuilder class that delegates
 to the appropriate builder, so existing callers don't need to change.
 """
 
-from cbpos.core.services.sales_receipt_builder import SalesReceiptBuilder  # noqa: F401
-from cbpos.core.services.void_receipt_builder import VoidReceiptBuilder  # noqa: F401
-from cbpos.core.services.refund_receipt_builder import RefundReceiptBuilder  # noqa: F401
-from cbpos.core.services.proforma_receipt_builder import ProformaReceiptBuilder  # noqa: F401
-from cbpos.core.services.statement_receipt_builder import StatementReceiptBuilder  # noqa: F401
+from cbpos.core.services.proforma_receipt_builder import ProformaReceiptBuilder
+from cbpos.core.services.refund_receipt_builder import RefundReceiptBuilder
+from cbpos.core.services.sales_receipt_builder import SalesReceiptBuilder
+from cbpos.core.services.statement_receipt_builder import StatementReceiptBuilder
+from cbpos.core.services.void_receipt_builder import VoidReceiptBuilder
 
 
 class ReceiptBuilder(
@@ -26,5 +26,3 @@ class ReceiptBuilder(
     StatementReceiptBuilder,
 ):
     """Backward-compatible facade delegating to focused builders."""
-
-    pass

@@ -209,7 +209,7 @@ class DocumentService:
                             if digits:
                                 new_seq = int(digits) + 1
 
-                    final_number = f"{prefix}{new_seq:04d}"  # noqa: E231
+                    final_number = f"{prefix}{new_seq:04d}"
 
                     exists = session.query(Document).filter_by(document_number=final_number).first()
                     if not exists:

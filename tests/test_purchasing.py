@@ -1,15 +1,15 @@
 import sys
-from pathlib import Path
 from decimal import Decimal
+from pathlib import Path
 
 # Add project root to python path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
 from cbpos.core.database import Database  # noqa: E402
-from cbpos.core.models import Product, User, StockMovement  # noqa: E402
-from cbpos.core.services.supplier_service import SupplierService  # noqa: E402
+from cbpos.core.models import Product, StockMovement, User  # noqa: E402
 from cbpos.core.services.purchase_service import PurchaseService  # noqa: E402
+from cbpos.core.services.supplier_service import SupplierService  # noqa: E402
 
 
 def test_purchasing():

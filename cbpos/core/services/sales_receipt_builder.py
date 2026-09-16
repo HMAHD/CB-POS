@@ -1,7 +1,7 @@
 """Sales receipt builder — generates receipt commands for completed sales."""
 
 from decimal import Decimal
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 from cbpos.core.models import Sale, SaleItem
 from cbpos.core.services.base_receipt_builder import BaseReceiptBuilder
@@ -35,9 +35,9 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
     def build_receipt(
         cls,
         sale: Sale,
-        config_override: Optional[Dict[str, Any]] = None,
+        config_override: dict[str, Any] | None = None,
         is_reprint: bool = False,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Generates receipt commands for a given Sale.
 
@@ -47,10 +47,10 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
             is_reprint: If True, adds DUPLICATE marking.
         """
         cls._resolve_receipt_lang(config_override)
-        commands: List[Dict[str, Any]] = []
+        commands: list[dict[str, Any]] = []
         gc = cls._get_conf
 
-        def _sep() -> Dict[str, Any]:
+        def _sep() -> dict[str, Any]:
             return {"type": "text", "val": "-" * line_chars, "align": "center"}
 
         # Duplicate marking (top)
@@ -114,7 +114,7 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
 
         for idx, item in enumerate(display_items, 1):
             name = item.product.name_en if hasattr(item, "product") and item.product else item.name
-            sn = "{:02d}".format(idx)
+            sn = f"{idx:02d}"
             qty = item.qty
             price = item.unit_price
             total = item.subtotal
@@ -126,7 +126,7 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
             if has_discount:
                 # Show product name with original price struck through
                 commands.append({"type": "text", "val": f"{sn} {name}", "align": "left"})
-                detail = "   {} x {}".format(qty, format_currency(price))
+                detail = f"   {qty} x {format_currency(price)}"
                 commands.append(cls._split_row(detail, format_currency(total), line_chars))
                 # Show savings per unit
                 saving = orig_price - price
@@ -134,13 +134,13 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
                 commands.append(
                     cls._split_row(
                         "   {}".format(cls._rt("was_price", price=format_currency(orig_price), pct=disc_pct)),
-                        "-{}".format(format_currency(saving * qty)),
+                        f"-{format_currency(saving * qty)}",
                         line_chars,
                     )
                 )
             else:
                 commands.append({"type": "text", "val": f"{sn} {name}", "align": "left"})
-                detail = "   {} x {}".format(qty, format_currency(price))
+                detail = f"   {qty} x {format_currency(price)}"
                 commands.append(cls._split_row(detail, format_currency(total), line_chars))
 
         # Items count + totals
@@ -163,10 +163,10 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
                 items_subtotal = sum(i.subtotal for i in display_items)
                 disc_amount = items_subtotal * disc_val / Decimal("100")
                 disc_label = cls._rt("discount_pct", pct=disc_val)
-                disc_display = "-{}".format(format_currency(disc_amount))
+                disc_display = f"-{format_currency(disc_amount)}"
             else:
                 disc_label = cls._rt("discount_label")
-                disc_display = "-{}".format(format_currency(disc_val))
+                disc_display = f"-{format_currency(disc_val)}"
             commands.append(cls._split_row(disc_label, disc_display, line_chars))
 
         commands.append(
@@ -254,12 +254,12 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
         return cls._rt("doc_title_cash")
 
     @staticmethod
-    def _merge_items(items: List[SaleItem]) -> List[Any]:
+    def _merge_items(items: list[SaleItem]) -> list[Any]:
         """
         Merges SaleItems with the same product_id.
         Returns a list of objects with product, qty, unit_price, subtotal attributes.
         """
-        merged: Dict[Any, ItemDisplay] = {}
+        merged: dict[Any, ItemDisplay] = {}
         for item in items:
             pid = item.product_id if item.product_id is not None else id(item.product)
             if pid in merged:

@@ -8,8 +8,8 @@ dither_for_thermal_print() the printer now uses, embedded as a data URI
 so the preview shows the real thermal output.
 """
 
-from PIL import Image
 import pytest
+from PIL import Image
 
 from cbpos.ui.widgets.receipt_preview_widget import ReceiptPreviewWidget
 

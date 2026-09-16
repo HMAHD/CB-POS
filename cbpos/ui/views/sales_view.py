@@ -1,49 +1,51 @@
 import logging
+from decimal import Decimal
+
+from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QSize, Qt, QTimer
+from PyQt6.QtGui import QAction, QBrush, QColor, QKeySequence, QPixmap, QShortcut
 from PyQt6.QtWidgets import (
-    QWidget,
-    QHBoxLayout,
-    QVBoxLayout,
-    QTableWidget,
-    QTableWidgetItem,
-    QLineEdit,
-    QLabel,
-    QHeaderView,
-    QMessageBox,
-    QMenu,
-    QToolButton,
-    QInputDialog,
+    QButtonGroup,
     QCompleter,
     QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QInputDialog,
+    QLabel,
+    QLineEdit,
+    QMenu,
+    QMessageBox,
     QSplitter,
-    QButtonGroup,
+    QTableWidget,
+    QTableWidgetItem,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint, QSize, QTimer
-from PyQt6.QtGui import QKeySequence, QShortcut, QAction, QBrush, QColor, QPixmap
-from decimal import Decimal
-from cbpos.core.services.product_service import ProductService
+
 from cbpos.core.services.cart_service import CartService
-from cbpos.core.services.logging_service import LoggingService
-from cbpos.core.services.transaction_service import TransactionService
-from cbpos.core.services.suspended_transaction_service import SuspendedTransactionService
-from cbpos.ui.dialogs.payment_dialog import PaymentDialog
-from cbpos.ui.dialogs.discount_dialog import DiscountDialog
-from cbpos.ui.dialogs.quantity_dialog import QuantityDialog
-from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
-from cbpos.ui.dialogs.receipt_options_dialog import ReceiptOptionsDialog
 from cbpos.core.services.config_service import ConfigService
-from cbpos.ui.constants import SEARCH_BAR_HEIGHT, CART_TABLE_ROW_HEIGHT
-from cbpos.ui.dialogs.customer_selection_dialog import CustomerSelectionDialog
+from cbpos.core.services.customer_service import CustomerService
+from cbpos.core.services.logging_service import LoggingService
+from cbpos.core.services.product_service import ProductService
+from cbpos.core.services.sound_service import SoundService
+from cbpos.core.services.suspended_transaction_service import SuspendedTransactionService
+from cbpos.core.services.transaction_service import TransactionService
+from cbpos.core.utils.formatters import format_currency
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.constants import CART_TABLE_ROW_HEIGHT, SEARCH_BAR_HEIGHT
 from cbpos.ui.dialogs.advanced_search_dialog import AdvancedSearchDialog
 from cbpos.ui.dialogs.customer_quick_add import CustomerQuickAddDialog
-from cbpos.core.services.customer_service import CustomerService
-from cbpos.ui.widgets.order_bar import OrderBar
+from cbpos.ui.dialogs.customer_selection_dialog import CustomerSelectionDialog
+from cbpos.ui.dialogs.discount_dialog import DiscountDialog
+from cbpos.ui.dialogs.payment_dialog import PaymentDialog
+from cbpos.ui.dialogs.quantity_dialog import QuantityDialog
+from cbpos.ui.dialogs.receipt_options_dialog import ReceiptOptionsDialog
+from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
 from cbpos.ui.resources.icons import Icons
-from cbpos.ui.widgets.side_menu import SideMenu
 from cbpos.ui.widgets.action_panel import ActionPanel
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
-from cbpos.core.utils.formatters import format_currency
-from cbpos.core.services.sound_service import SoundService
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.widgets.order_bar import OrderBar
+from cbpos.ui.widgets.side_menu import SideMenu
 
 logger = logging.getLogger(__name__)
 
@@ -410,8 +412,9 @@ class SalesView(QWidget):
 
     def update_logo(self):
         """Update logo based on current theme (called on theme change)."""
-        from cbpos.core.services.theme_service import ThemeService
         from pathlib import Path
+
+        from cbpos.core.services.theme_service import ThemeService
 
         logo_path = Path(ThemeService.get_logo_path())
 
@@ -688,9 +691,9 @@ class SalesView(QWidget):
             product = item["product"]
             if product.unit is not None:
                 dp = product.unit.decimal_places
-                qty_str = f'{item["qty"]:.{dp}f}'
+                qty_str = f"{item['qty']:.{dp}f}"
             else:
-                qty_str = f'{item["qty"]:.3f}'.rstrip("0").rstrip(".") or "0"
+                qty_str = f"{item['qty']:.3f}".rstrip("0").rstrip(".") or "0"
             qty_item = QTableWidgetItem(qty_str)
             qty_item.setForeground(text_brush)
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
@@ -932,9 +935,8 @@ class SalesView(QWidget):
             return
 
         # 1. Check Permission (with manager override)
-        from cbpos.core.utils.permission_helper import check_permission_with_override
-
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         authorized_user = check_permission_with_override(Permissions.SALES_VOID, self)
         if not authorized_user:
@@ -1118,8 +1120,8 @@ class SalesView(QWidget):
         if row < 0:
             return
 
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         authorized_user = check_permission_with_override(Permissions.SALES_DISCOUNT, self)
         if not authorized_user:
@@ -1149,9 +1151,8 @@ class SalesView(QWidget):
             return
 
         # 1. Check Permission (with manager override)
-        from cbpos.core.utils.permission_helper import check_permission_with_override
-
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         authorized_user = check_permission_with_override(Permissions.SALES_CHANGE_PRICE, self)
         if not authorized_user:
@@ -1171,8 +1172,8 @@ class SalesView(QWidget):
         """Remove selected item from cart with undo support."""
         row = self.cart_table.currentRow()
         if row >= 0:
-            from cbpos.core.utils.permission_helper import check_permission_with_override
             from cbpos.core.constants.permissions import Permissions
+            from cbpos.core.utils.permission_helper import check_permission_with_override
 
             if not check_permission_with_override(Permissions.SALES_VOID, self):
                 return

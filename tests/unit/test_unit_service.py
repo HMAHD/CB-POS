@@ -1,8 +1,9 @@
 """Tests for UnitService CRUD operations."""
 
 import pytest
+
+from cbpos.core.models import Product, Unit
 from cbpos.core.services.unit_service import UnitService
-from cbpos.core.models import Unit, Product
 
 
 class TestUnitService:

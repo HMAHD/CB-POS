@@ -1,7 +1,7 @@
 """Void receipt builder — generates receipt commands for voided sales."""
 
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 from cbpos.core.models import Sale
 from cbpos.core.services.base_receipt_builder import BaseReceiptBuilder
@@ -17,9 +17,9 @@ class VoidReceiptBuilder(BaseReceiptBuilder):
         sale: Sale,
         void_reason: str = "",
         authorized_by: str = "",
-        config_override: Optional[Dict[str, Any]] = None,
-        void_timestamp: Optional[datetime] = None,
-    ) -> List[Dict[str, Any]]:
+        config_override: dict[str, Any] | None = None,
+        void_timestamp: datetime | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Generates a VOID receipt with distinct visual treatment.
 
@@ -31,7 +31,7 @@ class VoidReceiptBuilder(BaseReceiptBuilder):
             void_timestamp: Timestamp for the void (defaults to now).
         """
         cls._resolve_receipt_lang(config_override)
-        commands: List[Dict[str, Any]] = []
+        commands: list[dict[str, Any]] = []
 
         line_chars = cls._append_header_block(commands, config_override)
 
@@ -64,7 +64,7 @@ class VoidReceiptBuilder(BaseReceiptBuilder):
                 commands.append(
                     cls._split_row(
                         "  {}".format(cls._rt("vat_reversed", vat=cls._rt("vat"))),
-                        "-{}".format(format_currency(sale.tax_vat)),
+                        f"-{format_currency(sale.tax_vat)}",
                         line_chars,
                     )
                 )
@@ -72,7 +72,7 @@ class VoidReceiptBuilder(BaseReceiptBuilder):
                 commands.append(
                     cls._split_row(
                         "  {}".format(cls._rt("sscl_reversed", sscl=cls._rt("sscl"))),
-                        "-{}".format(format_currency(sale.tax_sscl)),
+                        f"-{format_currency(sale.tax_sscl)}",
                         line_chars,
                     )
                 )
@@ -91,7 +91,7 @@ class VoidReceiptBuilder(BaseReceiptBuilder):
         # Items (for reference)
         for item in sale.items:
             product_name = item.product.name_en if hasattr(item, "product") and item.product else "Unknown"
-            line = "{} x {} = {}".format(item.qty, format_currency(item.unit_price), format_currency(item.subtotal))
+            line = f"{item.qty} x {format_currency(item.unit_price)} = {format_currency(item.subtotal)}"
             commands.append({"type": "text", "val": product_name, "align": "left"})
             commands.append({"type": "text", "val": line, "align": "right"})
 

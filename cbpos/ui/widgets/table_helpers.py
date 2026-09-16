@@ -17,16 +17,14 @@ deliberate mode per column, with `stretchLastSection` off unless asked
 for -- the easy, obvious thing to reach for instead.
 """
 
-from typing import Dict, Optional
-
 from PyQt6.QtWidgets import QHeaderView
 
 
 def configure_table_columns(
     header: QHeaderView,
-    column_modes: Dict[int, QHeaderView.ResizeMode],
+    column_modes: dict[int, QHeaderView.ResizeMode],
     stretch_last_section: bool = False,
-    minimum_section_size: Optional[int] = None,
+    minimum_section_size: int | None = None,
 ) -> None:
     """Apply an explicit resize mode to every listed column.
 

@@ -7,13 +7,14 @@ and a signal when the page changes so the parent view can update its table.
 
 from typing import TypeVar
 
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QWidget,
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 T = TypeVar("T")

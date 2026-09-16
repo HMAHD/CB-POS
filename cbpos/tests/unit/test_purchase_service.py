@@ -1,14 +1,15 @@
-import pytest
 from decimal import Decimal
+
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from cbpos.config import Config
-from cbpos.core.database import Database, Base
-from cbpos.core.models import Product, User, Role
-from cbpos.core.services.supplier_service import SupplierService
-from cbpos.core.services.purchase_service import PurchaseService
-
 from sqlalchemy.pool import StaticPool
+
+from cbpos.config import Config
+from cbpos.core.database import Base, Database
+from cbpos.core.models import Product, Role, User
+from cbpos.core.services.purchase_service import PurchaseService
+from cbpos.core.services.supplier_service import SupplierService
 
 # Use in-memory database for testing
 Config.DB_URI = "sqlite:///:memory:"

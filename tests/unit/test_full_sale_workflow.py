@@ -10,22 +10,21 @@ from unittest.mock import patch
 
 import pytest
 
-from cbpos.core.services.transaction_service import TransactionService
-from cbpos.core.services.cart_service import CartService
-from cbpos.core.services.tax_service import TaxService
 from cbpos.core.models import (
-    Product,
-    User,
-    Role,
+    Customer,
+    CustomerLedgerEntry,
     Permission,
+    Product,
+    Role,
     Sale,
     SaleItem,
     SalePayment,
     StockMovement,
-    Customer,
-    CustomerLedgerEntry,
+    User,
 )
-
+from cbpos.core.services.cart_service import CartService
+from cbpos.core.services.tax_service import TaxService
+from cbpos.core.services.transaction_service import TransactionService
 
 _counter = 0
 

@@ -1,8 +1,10 @@
-import pytest
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
-from cbpos.core.services.cart_service import CartService
+
+import pytest
+
 from cbpos.core.models import Product
+from cbpos.core.services.cart_service import CartService
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@
 
 import logging
 import textwrap
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import _t, translate_in
@@ -27,7 +27,7 @@ class BaseReceiptBuilder:
 
     # Per-build receipt language cache.  Set by _resolve_receipt_lang()
     # so that _rt() doesn't call ConfigService.get() on every invocation.
-    _receipt_lang: Optional[str] = None
+    _receipt_lang: str | None = None
 
     @classmethod
     def _rt(cls, key: str, **kwargs) -> str:
@@ -42,12 +42,12 @@ class BaseReceiptBuilder:
         return _t(f"receipt_strings.{key}", **kwargs)
 
     @classmethod
-    def _resolve_receipt_lang(cls, config_override: Optional[Dict[str, Any]] = None) -> None:
+    def _resolve_receipt_lang(cls, config_override: dict[str, Any] | None = None) -> None:
         """Cache the effective receipt language for the current build call."""
         cls._receipt_lang = cls._get_conf("receipt_language", "", config_override) or None
 
     @classmethod
-    def _get_conf(cls, key: str, default: Any = None, config_override: Optional[Dict[str, Any]] = None) -> Any:
+    def _get_conf(cls, key: str, default: Any = None, config_override: dict[str, Any] | None = None) -> Any:
         """Helper to get config value with override support."""
         if config_override and key in config_override:
             return config_override[key]
@@ -55,14 +55,14 @@ class BaseReceiptBuilder:
         return val if val is not None else default
 
     @classmethod
-    def _append_branding(cls, commands: List[Dict[str, Any]]) -> None:
+    def _append_branding(cls, commands: list[dict[str, Any]]) -> None:
         """Append CB POS branding to receipt."""
         commands.append({"type": "feed", "lines": 1})
         commands.append({"type": "text", "val": "Powered by CB POS", "align": "center"})
         commands.append({"type": "text", "val": "ceybyte.com", "align": "center"})
 
     @classmethod
-    def _append_cut(cls, commands: List[Dict[str, Any]], config_override: Optional[Dict[str, Any]] = None) -> None:
+    def _append_cut(cls, commands: list[dict[str, Any]], config_override: dict[str, Any] | None = None) -> None:
         """Append configurable feed + cut commands."""
         auto_cut = cls._get_conf("auto_cut_paper", True, config_override)
         feed_lines = cls._get_conf("feed_lines_before_cut", 3, config_override)
@@ -73,7 +73,7 @@ class BaseReceiptBuilder:
             commands.append({"type": "cut", "partial": cut_type == "partial"})
 
     @staticmethod
-    def _wrap_free_text(text: str, width: int) -> List[str]:
+    def _wrap_free_text(text: str, width: int) -> list[str]:
         """Wrap free-form (shop-entered) text to *width* characters per line.
 
         Preserves the author's own explicit line breaks (each is wrapped
@@ -89,7 +89,7 @@ class BaseReceiptBuilder:
         """
         if not text:
             return []
-        lines: List[str] = []
+        lines: list[str] = []
         for paragraph in text.split("\n"):
             if not paragraph.strip():
                 lines.append("")
@@ -100,9 +100,9 @@ class BaseReceiptBuilder:
     @classmethod
     def _append_footer_text(
         cls,
-        commands: List[Dict[str, Any]],
+        commands: list[dict[str, Any]],
         line_chars: int,
-        config_override: Optional[Dict[str, Any]] = None,
+        config_override: dict[str, Any] | None = None,
     ) -> None:
         """Append the shop's custom footer text, pre-wrapped to *line_chars*."""
         footer_text = cls._get_conf("receipt_footer", "", config_override)
@@ -115,8 +115,8 @@ class BaseReceiptBuilder:
     @classmethod
     def _append_header_block(
         cls,
-        commands: List[Dict[str, Any]],
-        config_override: Optional[Dict[str, Any]] = None,
+        commands: list[dict[str, Any]],
+        config_override: dict[str, Any] | None = None,
     ) -> int:
         """Append header text, logo, shop info, TIN. Returns line_chars."""
         paper_width = cls._get_conf("paper_width", "80mm", config_override)
@@ -168,7 +168,7 @@ class BaseReceiptBuilder:
         right: str,
         width: int,
         bold: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Build a two-column text command with both printer val and preview split."""
         return {
             "type": "text",

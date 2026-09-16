@@ -1,12 +1,13 @@
-from PyQt6.QtWidgets import (
-    QWidget,
-    QHBoxLayout,
-    QPushButton,
-    QLabel,
-    QScrollArea,
-    QFrame,
-)
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QWidget,
+)
+
 from cbpos.core.services.suspended_transaction_service import SuspendedTransactionService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
@@ -104,7 +105,7 @@ class OrderBar(QWidget):
         # Fetch from DB
         held_bills = SuspendedTransactionService.get_held_bills()
 
-        for i, bill in enumerate(held_bills):
+        for _i, bill in enumerate(held_bills):
             # Format: "Order {ID} ({Time})"
             time_str = bill.timestamp.strftime("%H:%M")
             label = f"#{bill.id} {time_str}"

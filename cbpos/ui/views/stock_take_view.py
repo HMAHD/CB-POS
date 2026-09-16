@@ -4,31 +4,31 @@ import logging
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
+from PyQt6.QtCore import QAbstractTableModel, QDate, QModelIndex, Qt
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QAbstractItemView,
+    QComboBox,
+    QDateEdit,
+    QDialog,
     QHBoxLayout,
-    QTabWidget,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMenu,
+    QMessageBox,
+    QPushButton,
     QTableView,
     QTableWidget,
     QTableWidgetItem,
-    QPushButton,
-    QLabel,
-    QLineEdit,
-    QComboBox,
-    QDateEdit,
-    QHeaderView,
-    QAbstractItemView,
-    QMessageBox,
-    QDialog,
-    QMenu,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QAbstractTableModel, QDate, QModelIndex
-from PyQt6.QtGui import QColor
 
-from cbpos.core.services.stock_count_service import StockCountService
-from cbpos.core.services.product_service import ProductService
 from cbpos.core.constants.status import DocumentStatus, Precision
+from cbpos.core.services.product_service import ProductService
+from cbpos.core.services.stock_count_service import StockCountService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.widgets.table_helpers import configure_table_columns
@@ -76,11 +76,11 @@ class StockCountItemModel(QAbstractTableModel):
             if col == 1:
                 return item.product.name_en if item.product else _t("stock_take.unknown_product")
             if col == 2:
-                return f"{item.expected_qty:.3f}"  # noqa: E231
+                return f"{item.expected_qty:.3f}"
             if col == 3:
-                return f"{item.counted_qty:.3f}" if item.counted_qty is not None else ""  # noqa: E231
+                return f"{item.counted_qty:.3f}" if item.counted_qty is not None else ""
             if col == 4:
-                return f"{item.variance_qty:.3f}" if item.variance_qty is not None else ""  # noqa: E231
+                return f"{item.variance_qty:.3f}" if item.variance_qty is not None else ""
             if col == 5:
                 return format_currency(item.variance_value) if item.variance_value is not None else ""
 
@@ -231,7 +231,7 @@ class StockCountReportDialog(QDialog):
                 (3, item.counted_qty),
                 (4, item.variance_qty),
             ]:
-                text = f"{val:.3f}" if val is not None else ""  # noqa: E231
+                text = f"{val:.3f}" if val is not None else ""
                 cell = QTableWidgetItem(text)
                 cell.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 if col == 4 and val is not None:
@@ -274,8 +274,8 @@ class StockTakeView(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        from cbpos.ui.widgets.page_header import PageHeader
         from cbpos.ui.resources.icons import Icons
+        from cbpos.ui.widgets.page_header import PageHeader
 
         self._page_header = PageHeader(icon_name=Icons.STOCK_TAKE)
         header_row = QHBoxLayout()
@@ -683,8 +683,8 @@ class StockTakeView(QWidget):
 
     def void_count(self) -> None:
         """Void the current stock count."""
-        from cbpos.core.utils.permission_helper import check_permission_with_override
         from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.STOCK_TAKE_APPROVE, self):
             return

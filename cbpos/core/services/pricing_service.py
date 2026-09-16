@@ -1,8 +1,9 @@
-from decimal import Decimal
 from datetime import datetime
-from typing import Optional, Dict, Any
+from decimal import Decimal
+from typing import Any
+
 from cbpos.core.database import Database
-from cbpos.core.models import Product, Customer, PriceListItem, Promotion
+from cbpos.core.models import Customer, PriceListItem, Product, Promotion
 
 
 class PricingService:
@@ -12,7 +13,7 @@ class PricingService:
     """
 
     @staticmethod
-    def calculate_price(product: Product, customer: Optional[Customer] = None) -> Dict[str, Any]:
+    def calculate_price(product: Product, customer: Customer | None = None) -> dict[str, Any]:
         """
         Calculate the final price for a product.
 

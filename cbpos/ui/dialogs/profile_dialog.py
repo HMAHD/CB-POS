@@ -1,13 +1,14 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
     QFormLayout,
-    QLineEdit,
-    QPushButton,
     QLabel,
+    QLineEdit,
     QMessageBox,
+    QPushButton,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import Qt
+
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.user_service import UserService
 from cbpos.i18n import _t

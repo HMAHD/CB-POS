@@ -39,7 +39,7 @@ def update_translations():
     for ts_file in ts_files:
         # Construct command
         # pylupdate6 [source_files] -ts [ts_file]
-        cmd = ["pylupdate6"] + source_files + ["-ts", ts_file]
+        cmd = ["pylupdate6", *source_files, "-ts", ts_file]
 
         print(f"Updating {os.path.basename(ts_file)}...")
         try:
@@ -48,7 +48,7 @@ def update_translations():
         except subprocess.CalledProcessError as e:
             print(f"Error updating {os.path.basename(ts_file)}: {e}")
         except FileNotFoundError:
-            print("Error: pylupdate6 not found. Please install PyQt6 tools " "(pip install PyQt6).")
+            print("Error: pylupdate6 not found. Please install PyQt6 tools (pip install PyQt6).")
             return
 
 

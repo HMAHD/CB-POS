@@ -5,11 +5,12 @@ Service for generating customer account statements.
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Dict, Any
+from typing import Any
+
 from cbpos.core.database import Database
 from cbpos.core.models import Customer, CustomerLedgerEntry
-from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.customer_credit_service import CustomerCreditService
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ class StatementService:
         customer_id: int,
         date_from: datetime,
         date_to: datetime,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate statement data for a customer within a date range.
 
@@ -67,7 +68,7 @@ class StatementService:
             opening_balance = StatementService._get_balance_before(db, customer_id, date_from)
             closing_balance = opening_balance
 
-        rows: List[Dict[str, Any]] = []
+        rows: list[dict[str, Any]] = []
         for entry in entries:
             if entry.amount > 0:
                 total_debit += entry.amount

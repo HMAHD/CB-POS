@@ -1,30 +1,31 @@
 from decimal import Decimal
+
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QDoubleValidator, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QCompleter,
     QDialog,
-    QVBoxLayout,
+    QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
-    QGridLayout,
-    QMessageBox,
-    QWidget,
     QListWidget,
     QListWidgetItem,
-    QComboBox,
-    QCompleter,
-    QFrame,
+    QMessageBox,
+    QPushButton,
     QSizePolicy,
-    QApplication,
+    QVBoxLayout,
+    QWidget,
 )
 
-from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QDoubleValidator, QKeySequence, QShortcut
-from cbpos.core.services.payment_service import PaymentService
 from cbpos.core.services.customer_service import CustomerService
+from cbpos.core.services.payment_service import PaymentService
 from cbpos.core.utils.formatters import format_currency
-from cbpos.ui.resources.icons import Icons
 from cbpos.i18n import _t
+from cbpos.ui.resources.icons import Icons
 
 
 class PaymentDialog(QDialog):
@@ -370,7 +371,7 @@ class PaymentDialog(QDialog):
         # Auto-fill remaining amount for all methods
         remaining = self.get_remaining_amount()
         if remaining > 0:
-            self.txt_amount.setText(f"{remaining:.2f}")  # noqa: E231
+            self.txt_amount.setText(f"{remaining:.2f}")
         else:
             self.txt_amount.clear()
 
@@ -391,7 +392,7 @@ class PaymentDialog(QDialog):
             self.select_method(cash_method, cash_btn)
             remaining = self.get_remaining_amount()
             if remaining > 0:
-                self.txt_amount.setText(f"{remaining:.2f}")  # noqa: E231
+                self.txt_amount.setText(f"{remaining:.2f}")
                 self.add_payment()
                 if self.get_remaining_amount() <= 0:
                     self.accept()

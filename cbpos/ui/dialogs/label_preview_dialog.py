@@ -6,16 +6,18 @@ CODE128-style barcode bars, barcode text, and price.
 """
 
 import hashlib
+
+from PyQt6.QtCore import QRectF, Qt
+from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPen
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
-    QWidget,
-    QPushButton,
     QHBoxLayout,
     QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QRectF
-from PyQt6.QtGui import QPainter, QFont, QColor, QPen, QLinearGradient
+
 from cbpos.core.models import Product
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
@@ -71,7 +73,7 @@ class _LabelCard(QWidget):
         self.setFixedSize(LABEL_W, LABEL_H)
         self.setObjectName("LabelCard")
 
-    def paintEvent(self, event) -> None:  # noqa: N802
+    def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
 

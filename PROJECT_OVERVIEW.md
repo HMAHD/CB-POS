@@ -947,6 +947,7 @@ new_cost = (old_cost * old_qty + purchase_cost * purchase_qty) / (old_qty + purc
 ```python
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
+
 class MyView(QWidget):
     def __init__(self):
         super().__init__()

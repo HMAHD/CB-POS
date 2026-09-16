@@ -1,13 +1,12 @@
 import hashlib
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 
 import bcrypt
 from sqlalchemy.orm import joinedload
 
 from cbpos.core.database import Database
-from cbpos.core.models import User, Role
+from cbpos.core.models import Role, User
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,7 @@ class AuthService:
       and is shared across all terminals in network mode.
     """
 
-    _current_user: Optional[User] = None
+    _current_user: User | None = None
 
     # ------------------------------------------------------------------
     # PIN hashing helpers (used by UserService and seed script too)
@@ -87,9 +86,7 @@ class AuthService:
     @staticmethod
     def _is_locked_out_db(user: User) -> bool:
         """Check if a user is currently locked out based on DB columns."""
-        if user.locked_until and user.locked_until > datetime.now():
-            return True
-        return False
+        return bool(user.locked_until and user.locked_until > datetime.now())
 
     @staticmethod
     def _record_failed_attempt_db(session, user: User) -> None:
@@ -138,7 +135,7 @@ class AuthService:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def verify_pin(pin: str) -> Optional[User]:
+    def verify_pin(pin: str) -> User | None:
         """Verify the provided PIN against the database.
 
         Includes brute-force protection and automatic migration from
@@ -243,7 +240,7 @@ class AuthService:
         return None
 
     @staticmethod
-    def verify_pin_for_user(username: str, pin: str) -> Optional[User]:
+    def verify_pin_for_user(username: str, pin: str) -> User | None:
         """Verify a PIN for a specific username (used where username is known).
 
         Includes brute-force protection and automatic bcrypt migration.
@@ -300,7 +297,7 @@ class AuthService:
             return user
 
     @staticmethod
-    def get_current_user() -> Optional[User]:
+    def get_current_user() -> User | None:
         """Return the currently logged-in user."""
         return AuthService._current_user
 

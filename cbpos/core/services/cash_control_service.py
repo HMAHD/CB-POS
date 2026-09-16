@@ -1,15 +1,14 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 
-from cbpos.core.database import Database
-from cbpos.core.models import Shift, CashMovement
 from cbpos.core.constants.status import ShiftStatus
+from cbpos.core.database import Database
+from cbpos.core.models import CashMovement, Shift
 
 
 class CashControlService:
     @staticmethod
-    def start_shift(user_id: int, start_float: Decimal) -> Optional[Shift]:
+    def start_shift(user_id: int, start_float: Decimal) -> Shift | None:
         db = Database()
         with db.get_session() as session:
             # Check if user already has an open shift
@@ -30,7 +29,7 @@ class CashControlService:
             return shift
 
     @staticmethod
-    def end_shift(user_id: int, end_cash: Decimal) -> Optional[Shift]:
+    def end_shift(user_id: int, end_cash: Decimal) -> Shift | None:
         db = Database()
         with db.get_session() as session:
             shift = session.query(Shift).filter_by(user_id=user_id, status=ShiftStatus.OPEN).first()
@@ -46,7 +45,7 @@ class CashControlService:
             return shift
 
     @staticmethod
-    def get_current_shift(user_id: int) -> Optional[Shift]:
+    def get_current_shift(user_id: int) -> Shift | None:
         db = Database()
         with db.get_session() as session:
             shift = session.query(Shift).filter_by(user_id=user_id, status=ShiftStatus.OPEN).first()

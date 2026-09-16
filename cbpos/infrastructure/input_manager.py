@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QObject, QEvent, QTimer
+from PyQt6.QtCore import QEvent, QObject, QTimer
 
 
 class InputManager(QObject):

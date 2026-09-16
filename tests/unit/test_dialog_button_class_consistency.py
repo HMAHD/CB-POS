@@ -11,10 +11,10 @@ identical plain gray buttons with no differentiation.
 import pytest
 from PyQt6.QtWidgets import QPushButton
 
-from cbpos.ui.dialogs.category_manager import CategoryManagerDialog
-from cbpos.ui.dialogs.unit_manager import UnitManagerDialog
-from cbpos.ui.dialogs.label_print_dialog import LabelPrintDialog
 from cbpos.i18n import _t
+from cbpos.ui.dialogs.category_manager import CategoryManagerDialog
+from cbpos.ui.dialogs.label_print_dialog import LabelPrintDialog
+from cbpos.ui.dialogs.unit_manager import UnitManagerDialog
 
 pytestmark = pytest.mark.usefixtures("qapp")
 

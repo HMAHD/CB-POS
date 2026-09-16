@@ -1,4 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont
+
 from cbpos.core.models import Sale
 from cbpos.core.services.config_service import ConfigService
 
@@ -49,7 +50,7 @@ class ReceiptService:
 
         for item in sale.items:
             name = item.product.name_en[:20]
-            lines.append("{:<20} {:>5.0f} {:>7.2f} {:>8.2f}".format(name, item.qty, item.unit_price, item.subtotal))
+            lines.append(f"{name:<20} {item.qty:>5.0f} {item.unit_price:>7.2f} {item.subtotal:>8.2f}")
 
         lines.append("-" * ReceiptService.WIDTH_CHARS)
 
@@ -96,7 +97,7 @@ class ReceiptService:
         try:
             # Windows usually has Arial or Segoe UI
             font = ImageFont.truetype("arial.ttf", ReceiptService.FONT_SIZE)
-        except IOError:
+        except OSError:
             font = ImageFont.load_default()
 
         draw.text((10, 10), text_content, fill="black", font=font)
@@ -135,7 +136,7 @@ class ReceiptService:
         lines.append("SALES BREAKDOWN")
         lines.append(ReceiptService._ROW_FMT.format("Method", "Amount"))
         for method, amount in summary.get("sales_by_method", {}).items():
-            lines.append(ReceiptService._ROW_FMT.format(method, "{:.2f}".format(amount)))
+            lines.append(ReceiptService._ROW_FMT.format(method, f"{amount:.2f}"))
         lines.append("-" * ReceiptService.WIDTH_CHARS)
         lines.append(ReceiptService._ROW_FMT.format("TOTAL SALES", "{:.2f}".format(summary.get("total_sales", 0))))
         lines.append("-" * ReceiptService.WIDTH_CHARS)
@@ -152,7 +153,7 @@ class ReceiptService:
 
         variance = summary.get("variance", 0)
         var_label = "VARIANCE"
-        lines.append(ReceiptService._ROW_FMT.format(var_label, "{:.2f}".format(variance)))
+        lines.append(ReceiptService._ROW_FMT.format(var_label, f"{variance:.2f}"))
         if summary.get("notes"):
             lines.append(f"Note: {summary['notes']}")
 

@@ -1,24 +1,26 @@
-import uuid
 import logging
-from decimal import Decimal
+import uuid
 from datetime import datetime
-from sqlalchemy.orm import joinedload, Session
+from decimal import Decimal
+
+from sqlalchemy.orm import Session, joinedload
+
 from cbpos.core.database import Database
 from cbpos.core.models import (
+    AuditLog,
+    CompositeItem,
+    Customer,
+    Product,
     Sale,
     SaleItem,
-    Product,
-    Customer,
     SalePayment,
-    CompositeItem,
-    AuditLog,
 )
-from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.auth_service import AuthService
+from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.config_service import ConfigService
-from cbpos.core.services.stock_service import StockService
-from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
+from cbpos.core.services.receipt_service import ReceiptService
+from cbpos.core.services.stock_service import StockService
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
 logger = logging.getLogger(__name__)
@@ -483,8 +485,7 @@ class TransactionService:
                     action="REFUND",
                     event_type="TRANSACTION",
                     details=(
-                        f"Refunded sale {original_sale.document_number} as {refund_receipt_no}. "
-                        f"Reason: {refund_reason}"
+                        f"Refunded sale {original_sale.document_number} as {refund_receipt_no}. Reason: {refund_reason}"
                     ),
                 )
                 session.add(log)

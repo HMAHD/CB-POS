@@ -40,7 +40,7 @@ def flatten(data: dict, prefix: str = "") -> dict:
 def load_flat(lang_code: str) -> dict:
     """Load and flatten a language file."""
     path = I18N_DIR / f"{lang_code}.json"
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return flatten(json.load(f))
 
 
@@ -140,12 +140,12 @@ def main():
         total = len(en)
 
         print(f"\n{'=' * 50}")
-        print(f"  {lang.upper()} — {translated}/{total} translated ({100*translated//total}%)")
+        print(f"  {lang.upper()} — {translated}/{total} translated ({100 * translated // total}%)")
         print(f"  {untranslated} still English, {len(key_issues)} missing keys")
         print(f"{'=' * 50}")
 
         if param_issues:
-            print(f"\n  FORMAT PARAMETER ISSUES ({len(param_issues)}):")  # noqa: E231
+            print(f"\n  FORMAT PARAMETER ISSUES ({len(param_issues)}):")
             for issue in param_issues:
                 if issue["type"] == "missing_param":
                     print(f"    MISSING {issue['key']}: {issue['missing']}")
@@ -155,7 +155,7 @@ def main():
                     print(f"    EXTRA {issue['key']}: {issue['extra']}")
 
         if brace_issues:
-            print(f"\n  MALFORMED BRACES ({len(brace_issues)}):")  # noqa: E231
+            print(f"\n  MALFORMED BRACES ({len(brace_issues)}):")
             for issue in brace_issues:
                 opens = issue["opens"]
                 closes = issue["closes"]

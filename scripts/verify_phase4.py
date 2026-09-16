@@ -1,13 +1,14 @@
-import sys
 import os
+import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from cbpos.core.services.cash_control_service import CashControlService  # noqa: E402
-from cbpos.core.services.license_service import LicenseService  # noqa: E402
-from cbpos.core.models import User  # noqa: E402
-from cbpos.core.database import Database  # noqa: E402
-from decimal import Decimal  # noqa: E402
+from decimal import Decimal
+
+from cbpos.core.database import Database
+from cbpos.core.models import User
+from cbpos.core.services.cash_control_service import CashControlService
+from cbpos.core.services.license_service import LicenseService
 
 
 def test_financials():

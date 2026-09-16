@@ -3,22 +3,24 @@ Dialog for managing units of measurement (CRUD).
 """
 
 import logging
+
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
     QHBoxLayout,
+    QHeaderView,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QPushButton,
-    QLineEdit,
-    QSpinBox,
-    QMessageBox,
-    QFormLayout,
-    QGroupBox,
-    QFrame,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import Qt
+
 from cbpos.core.services.unit_service import UnitService
 from cbpos.i18n import _t
 

@@ -9,9 +9,8 @@ from contextlib import contextmanager
 from decimal import Decimal
 from unittest.mock import patch
 
-from cbpos.core.services.tax_service import TaxService
 from cbpos.core.constants.status import Precision
-
+from cbpos.core.services.tax_service import TaxService
 
 # Default config rates for mocking (VAT-registered business)
 DEFAULT_CONFIG = {

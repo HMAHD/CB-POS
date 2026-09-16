@@ -10,16 +10,16 @@ import logging
 
 import bcrypt
 
-from cbpos.core.database import Database, Base
-from cbpos.core.models import (
-    User,
-    Role,
-    Permission,
-    VoidReason,
-    PaymentMethod,
-    Unit,
-)
 from cbpos.core.constants.permissions import Permissions
+from cbpos.core.database import Base, Database
+from cbpos.core.models import (
+    PaymentMethod,
+    Permission,
+    Role,
+    Unit,
+    User,
+    VoidReason,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +39,9 @@ class DatabaseSetupService:
         know the schema is already up to date and don't try to re-apply.
         """
         try:
-            from cbpos.config import Config
-            from alembic.config import Config as AlembicConfig
             from alembic import command
+            from alembic.config import Config as AlembicConfig
+            from cbpos.config import Config
 
             alembic_cfg = AlembicConfig(str(Config.BASE_DIR / "alembic.ini"))
             alembic_cfg.set_main_option("script_location", str(Config.BASE_DIR / "alembic"))

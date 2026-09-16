@@ -1,6 +1,7 @@
 import json
 import logging
 from decimal import Decimal
+
 from cbpos.core.database import Database
 from cbpos.core.models import SuspendedTransaction
 from cbpos.core.services.product_service import ProductService

@@ -5,21 +5,9 @@ Tests serialization roundtrips, envelope validation, and model mapping.
 """
 
 import json
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
 
-from cbpos.core.services.sync_protocol import (
-    sync_json_dumps,
-    sync_json_loads,
-    model_to_dict,
-    dict_to_model,
-    make_envelope,
-    validate_envelope,
-    get_model_for_table,
-    CATALOG_TABLES,
-    TRANSACTION_TABLES,
-    SYNC_PROTOCOL_VERSION,
-)
 from cbpos.core.models import (
     Product,
     Sale,
@@ -28,7 +16,18 @@ from cbpos.core.models import (
     SyncLog,
     SyncQueue,
 )
-
+from cbpos.core.services.sync_protocol import (
+    CATALOG_TABLES,
+    SYNC_PROTOCOL_VERSION,
+    TRANSACTION_TABLES,
+    dict_to_model,
+    get_model_for_table,
+    make_envelope,
+    model_to_dict,
+    sync_json_dumps,
+    sync_json_loads,
+    validate_envelope,
+)
 
 # ---------------------------------------------------------------------------
 # SyncEncoder Tests
@@ -287,7 +286,7 @@ class TestEnvelope:
         """Minor version changes are compatible."""
         env = make_envelope("TERM-01", "TEST", {})
         env["protocol_version"] = "1.5"
-        ok, err = validate_envelope(env)
+        ok, _err = validate_envelope(env)
         assert ok is True
 
 
@@ -380,7 +379,7 @@ class TestFullRoundtrip:
 
         # Simulate network transfer
         received = sync_json_loads(json_str)
-        ok, err = validate_envelope(received)
+        ok, _err = validate_envelope(received)
         assert ok is True
 
         # Deserialize

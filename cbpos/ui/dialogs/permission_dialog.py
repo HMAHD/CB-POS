@@ -1,14 +1,15 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
     QHBoxLayout,
+    QHeaderView,
+    QMessageBox,
     QPushButton,
     QTreeWidget,
     QTreeWidgetItem,
-    QMessageBox,
-    QHeaderView,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import Qt
+
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.user_service import UserService
 from cbpos.i18n import _t

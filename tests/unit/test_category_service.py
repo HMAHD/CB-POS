@@ -4,9 +4,8 @@ Unit tests for CategoryService — CRUD operations and hierarchy.
 
 import pytest
 
-from cbpos.core.services.category_service import CategoryService
 from cbpos.core.models import Category, Product
-
+from cbpos.core.services.category_service import CategoryService
 
 # ── Shared Fixtures ──────────────────────────────────────────────────────
 
@@ -79,7 +78,7 @@ def test_delete_category_with_products(db_session, test_category):
     suffix = _next_suffix()
     product = Product(
         name_en=f"Product_{suffix}",
-        barcode="DEL{:0>4}".format(suffix),
+        barcode=f"DEL{suffix:0>4}",
         price=100.0,
         stock_qty=5.0,
         category_id=test_category.id,

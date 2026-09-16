@@ -1,23 +1,25 @@
-from PyQt6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QStackedWidget,
-    QWidget,
-    QTextEdit,
-    QMessageBox,
-    QApplication,
-)
+from decimal import Decimal
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QCursor
-from decimal import Decimal
+from PyQt6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QStackedWidget,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
+from cbpos.core.services.receipt_service import ReceiptService
+from cbpos.core.services.shift_service import ShiftService
+from cbpos.i18n import _t
 from cbpos.ui.widgets.denomination_widget import DenominationWidget
 from cbpos.ui.workers import BackupWorker
-from cbpos.core.services.shift_service import ShiftService
-from cbpos.core.services.receipt_service import ReceiptService
-from cbpos.i18n import _t
 
 
 class ShiftClosingDialog(QDialog):
@@ -114,9 +116,9 @@ class ShiftClosingDialog(QDialog):
             expected = self.summary.get("expected_cash", Decimal(0))
             variance = self.counted_cash - expected
 
-            self.lbl_expected.setText(_t("shift_closing.expected", amount="{:,.2f}".format(expected)))
-            self.lbl_actual.setText(_t("shift_closing.actual", amount="{:,.2f}".format(self.counted_cash)))
-            self.lbl_variance.setText(_t("shift_closing.variance", amount="{:,.2f}".format(variance)))
+            self.lbl_expected.setText(_t("shift_closing.expected", amount=f"{expected:,.2f}"))
+            self.lbl_actual.setText(_t("shift_closing.actual", amount=f"{self.counted_cash:,.2f}"))
+            self.lbl_variance.setText(_t("shift_closing.variance", amount=f"{variance:,.2f}"))
 
             # colour handling via property (style sheet defined in theme.qss)
             self.lbl_variance.setProperty(
@@ -177,8 +179,9 @@ class ShiftClosingDialog(QDialog):
         if reply != QMessageBox.StandardButton.Yes:
             return False
 
-        from cbpos.core.services.backup_service import BackupService
         from PyQt6.QtWidgets import QFileDialog
+
+        from cbpos.core.services.backup_service import BackupService
 
         default_dir = BackupService.get_default_backup_dir()
         chosen_dir = QFileDialog.getExistingDirectory(self, _t("shift_closing.choose_backup_location"), default_dir)

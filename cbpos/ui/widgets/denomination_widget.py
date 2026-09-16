@@ -1,14 +1,13 @@
 from decimal import Decimal
-from typing import List
 
+from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
-    QWidget,
+    QDoubleSpinBox,
     QGridLayout,
     QLabel,
     QSpinBox,
-    QDoubleSpinBox,
+    QWidget,
 )
-from PyQt6.QtCore import pyqtSignal
 
 from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
@@ -23,7 +22,7 @@ class DenominationWidget(QWidget):
 
     total_changed = pyqtSignal(Decimal)
 
-    def __init__(self, denominations: List[int] = None, parent=None):
+    def __init__(self, denominations: list[int] = None, parent=None):
         super().__init__(parent)
 
         # 1. Load denominations (Sri Lankan currency by default)
@@ -46,7 +45,7 @@ class DenominationWidget(QWidget):
 
         for idx, denom in enumerate(self.denominations):
             row, col = divmod(idx, 2)  # two columns
-            lbl = QLabel("{:,}".format(denom))
+            lbl = QLabel(f"{denom:,}")
             spin = QSpinBox() if denom >= 20 else QDoubleSpinBox()
             spin.setRange(0, 9999)
             spin.setSingleStep(1 if denom >= 20 else 0.01)
@@ -87,10 +86,10 @@ class DenominationWidget(QWidget):
             # update per-row total label
             lbl = spin.property("lbl_total")
             if lbl:
-                lbl.setText("{:,.2f}".format(subtotal))
+                lbl.setText(f"{subtotal:,.2f}")
 
         self._current_total = total
-        self.lbl_grand_total.setText("{:,.2f}".format(total))
+        self.lbl_grand_total.setText(f"{total:,.2f}")
         self.total_changed.emit(total)
 
     def get_total(self) -> Decimal:

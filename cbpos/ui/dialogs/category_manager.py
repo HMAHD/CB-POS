@@ -3,29 +3,31 @@ Dialog for managing product categories (CRUD) with tree view and inline editing.
 """
 
 import logging
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor, QIcon, QPixmap
 from PyQt6.QtWidgets import (
+    QColorDialog,
+    QComboBox,
     QDialog,
-    QVBoxLayout,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
     QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
     QTreeWidget,
     QTreeWidgetItem,
-    QComboBox,
-    QPushButton,
-    QLineEdit,
-    QColorDialog,
-    QMessageBox,
-    QFormLayout,
-    QGroupBox,
-    QLabel,
-    QFrame,
-    QHeaderView,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QPixmap, QIcon
+
 from cbpos.core.models import Category
 from cbpos.core.services.category_service import CategoryService
-from cbpos.i18n import _t
 from cbpos.core.utils.error_messages import translate_error
+from cbpos.i18n import _t
 from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 logger = logging.getLogger(__name__)
@@ -306,8 +308,7 @@ class CategoryManagerDialog(QDialog):
     def _update_color_preview(self) -> None:
         """Update the color swatch label."""
         self.lbl_color.setStyleSheet(
-            f"background-color: {self.selected_color}; "  # noqa: E702
-            f"border: 1px solid #3E3E42; border-radius: 4px;"  # noqa: E702, E231
+            f"background-color: {self.selected_color}; border: 1px solid #3E3E42; border-radius: 4px;"
         )
 
     def _clear_form(self) -> None:

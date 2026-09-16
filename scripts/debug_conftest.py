@@ -1,10 +1,10 @@
-import sys
 import os
+import sys
 
 sys.path.append(os.getcwd())
 
 # Import Config first to see what it is
-from cbpos.config import Config  # noqa: E402
+from cbpos.config import Config
 
 print(f"Initial Config.DB_URI: {Config.DB_URI}")
 

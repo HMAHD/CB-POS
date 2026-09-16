@@ -92,12 +92,14 @@ class TestTestSyncConnectionIsTranslated:
 
 class TestForgetTrustedMainPcIsTranslated:
     def test_confirmation_and_done_dialogs_render_through_translation(self, page, fake_translate):
-        with patch(
-            "cbpos.ui.views.settings_pages.QMessageBox.question",
-            return_value=QMessageBox.StandardButton.Yes,
-        ) as mock_question:
-            with patch("cbpos.ui.views.settings_pages.QMessageBox.information") as mock_info:
-                page._forget_trusted_main_pc()
+        with (
+            patch(
+                "cbpos.ui.views.settings_pages.QMessageBox.question",
+                return_value=QMessageBox.StandardButton.Yes,
+            ) as mock_question,
+            patch("cbpos.ui.views.settings_pages.QMessageBox.information") as mock_info,
+        ):
+            page._forget_trusted_main_pc()
 
         args, _ = mock_question.call_args
         assert args[1] == "[[settings.network.btn_forget_main]]"

@@ -7,18 +7,19 @@ from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
+    QFileDialog,
+    QFrame,
     QHBoxLayout,
     QLabel,
-    QPushButton,
-    QFileDialog,
-    QProgressBar,
     QMessageBox,
-    QFrame,
+    QProgressBar,
+    QPushButton,
+    QVBoxLayout,
 )
+
 from cbpos.core.services.import_service import ImportService
-from cbpos.ui.workers import CsvImportWorker
 from cbpos.i18n import _t
+from cbpos.ui.workers import CsvImportWorker
 
 logger = logging.getLogger(__name__)
 

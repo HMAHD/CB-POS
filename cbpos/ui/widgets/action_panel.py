@@ -1,18 +1,19 @@
-from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QGridLayout,
-    QPushButton,
-    QLabel,
-    QFrame,
-    QHBoxLayout,
-    QSizePolicy,
-)
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import (
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
+
+from cbpos.core.utils.formatters import format_short_name
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.elided_label import ElidedLabel
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
-from cbpos.core.utils.formatters import format_short_name
 
 _BTN_H = 70
 

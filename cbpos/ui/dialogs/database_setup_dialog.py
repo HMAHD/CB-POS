@@ -1,14 +1,16 @@
 import logging
+
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
+    QApplication,
     QDialog,
-    QVBoxLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QFrame,
-    QApplication,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import Qt
+
 from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)

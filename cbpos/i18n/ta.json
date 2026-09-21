@@ -592,20 +592,20 @@
     "periodic_reports_range": "காலமுறை அறிக்கைகள்  ({start} – {end})"
   },
   "inventory": {
-    "header_barcode": "Barcode",
-    "header_name": "Name",
-    "header_category": "Category",
-    "header_price": "Price",
-    "header_stock": "Stock",
-    "header_unit": "Unit",
+    "header_barcode": "பார்கோட்",
+    "header_name": "பேர்",
+    "header_category": "வகை",
+    "header_price": "விலை",
+    "header_stock": "சரக்கு",
+    "header_unit": "அலகு",
     "btn_add_product": "புதிய பொருள்",
-    "btn_import_csv": "Import CSV",
-    "btn_manage_categories": "Manage Categories",
+    "btn_import_csv": "CSV இம்போர்ட் பண்ணுங்க",
+    "btn_manage_categories": "வகை மேலாண்மை",
     "btn_units": "அலகுகள்",
-    "btn_print_labels": "Print Labels",
+    "btn_print_labels": "லேபிள் பிரிண்ட் பண்ணுங்க",
     "search_placeholder": "பெயர், பார்கோடு அல்லது வகையில் தேடுங்கள்...",
-    "empty_state": "No products match your search",
-    "context_stock_history": "View Stock History"
+    "empty_state": "நீங்க தேடுனதுக்கு பொருத்தமான பொருள் இல்ல",
+    "context_stock_history": "சரக்கு வரலாற்றைப் பாருங்க"
   },
   "customer_view": {
     "header_id": "ID",

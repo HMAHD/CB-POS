@@ -592,20 +592,20 @@
     "periodic_reports_range": "කාලීන වාර්තා  ({start} – {end})"
   },
   "inventory": {
-    "header_barcode": "Barcode",
-    "header_name": "Name",
-    "header_category": "Category",
-    "header_price": "Price",
-    "header_stock": "Stock",
-    "header_unit": "Unit",
+    "header_barcode": "බාර්කෝඩ්",
+    "header_name": "නම",
+    "header_category": "කාණ්ඩය",
+    "header_price": "මිල",
+    "header_stock": "තොග",
+    "header_unit": "ඒකකය",
     "btn_add_product": "නව භාණ්ඩය",
-    "btn_import_csv": "Import CSV",
-    "btn_manage_categories": "Manage Categories",
+    "btn_import_csv": "CSV එකක් ඉම්පෝර්ට් කරන්න",
+    "btn_manage_categories": "කාණ්ඩ කළමනාකරණය",
     "btn_units": "ඒකක",
-    "btn_print_labels": "Print Labels",
+    "btn_print_labels": "ලේබල් ප්‍රින්ට් කරන්න",
     "search_placeholder": "නම, බාර්කෝඩය හෝ ප්‍රවර්ගයෙන් සොයන්න...",
-    "empty_state": "No products match your search",
-    "context_stock_history": "View Stock History"
+    "empty_state": "සොයපු දේට ගැලපෙන අයිතම නැහැ",
+    "context_stock_history": "තොග ඉතිහාසය බලන්න"
   },
   "customer_view": {
     "header_id": "ID",

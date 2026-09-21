@@ -82,11 +82,11 @@
   "main_window": {
     "title": "CB POS",
     "fullscreen_hint": "முழுத்திரையிலிருந்து வெளியேற F11 அழுத்தவும்",
-    "exit_confirm_title": "Cart Has Items",
-    "exit_confirm_message": "You have {count} item(s) in your cart. Do you want to hold the bill before closing?",
-    "exit_hold_and_exit": "Hold && Exit",
-    "exit_without_saving": "Exit Without Saving",
-    "exit_cancel": "Cancel"
+    "exit_confirm_title": "வண்டியில பொருள் இருக்கு",
+    "exit_confirm_message": "உங்க வண்டியில {count} பொருள் இருக்கு. மூடுறதுக்கு முன்னாடி பில்லை வச்சிக்கணுமா?",
+    "exit_hold_and_exit": "வச்சிட்டு போ",
+    "exit_without_saving": "சேவ் பண்ணாம வெளியேறு",
+    "exit_cancel": "ரத்து"
   },
   "sync_status": {
     "tooltip": "சிங்க் விவரங்களுக்கு அழுத்துங்க",
@@ -204,13 +204,13 @@
     "title": "தள்ளுபடி",
     "type_percentage": "சதவீதம் (%)",
     "type_fixed": "நிலையான தொகை (ரூ)",
-    "tooltip_percentage": "Discount as a percentage of the total",
-    "tooltip_fixed": "Fixed amount discount in Rupees",
-    "preview": "Original: Rs {original} → After discount: Rs {discounted}",
+    "tooltip_percentage": "மொத்தத்தில் சதவீதமா தள்ளுபடி",
+    "tooltip_fixed": "ரூபாவில் நிலையான தள்ளுபடி",
+    "preview": "முதல் விலை: ரூ {original} → தள்ளுபடிக்குப் பிறகு: ரூ {discounted}",
     "btn_cancel": "ரத்து",
     "btn_apply": "தள்ளுபடி செய்",
-    "invalid_title": "Invalid Input",
-    "invalid_message": "Please enter a valid discount value."
+    "invalid_title": "தப்பான மதிப்பு",
+    "invalid_message": "சரியான தள்ளுபடி மதிப்பை போடுங்க."
   },
   "quantity": {
     "title": "அளவை உள்ளிடுக",
@@ -505,7 +505,7 @@
     "vat_placeholder": "VAT பதிவு எண்"
   },
   "side_menu": {
-    "section_title": "MENU",
+    "section_title": "மெனு",
     "management": "மேலாண்மை",
     "sales_history": "விற்பனை வரலாறு",
     "documents": "ஆவணங்கள்",
@@ -530,8 +530,8 @@
     "exit_tooltip": "வெளியேறு"
   },
   "action_panel": {
-    "customer_label": "Customer",
-    "walkin_customer": "Walk-in Customer",
+    "customer_label": "வாடிக்கையாளர்",
+    "walkin_customer": "சாதாரண வாடிக்கையாளர்",
     "select_customer": "வாடிக்கையாளரைத் தேர்ந்தெடுக்கவும்",
     "section_orders": "ஆர்டர்கள்",
     "section_transaction": "பரிவர்த்தனை",
@@ -544,11 +544,11 @@
     "btn_void": "ரத்து",
     "btn_refund": "திருப்பி",
     "btn_pay": "பணம் செலுத்து",
-    "loyalty_points": "Points: {points}",
+    "loyalty_points": "பாயிண்ட்ஸ்: {points}",
     "customer_title": "வாடிக்கையாளர்",
-    "walk_in_customer": "நடந்துவரும் வாடிக்கையாளர்",
+    "walk_in_customer": "சாதாரண வாடிக்கையாளர்",
     "points": "{points} புள்ளிகள்",
-    "clear_customer": "Clear customer (reset to Walk-in)"
+    "clear_customer": "வாடிக்கையாளரை நீக்குங்க (சாதாரண வாடிக்கையாளருக்கு மாறும்)"
   },
   "management": {
     "sidebar_dashboard": "முகப்பு பலகை",

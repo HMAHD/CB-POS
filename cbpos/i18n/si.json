@@ -82,11 +82,11 @@
   "main_window": {
     "title": "CB POS",
     "fullscreen_hint": "පූර්ණ තිරයෙන් පිටවීමට F11 ඔබන්න",
-    "exit_confirm_title": "Cart Has Items",
-    "exit_confirm_message": "You have {count} item(s) in your cart. Do you want to hold the bill before closing?",
-    "exit_hold_and_exit": "Hold && Exit",
-    "exit_without_saving": "Exit Without Saving",
-    "exit_cancel": "Cancel"
+    "exit_confirm_title": "කරත්තේ අයිතම තියෙනවා",
+    "exit_confirm_message": "ඔයාගේ කරත්තේ අයිතම {count}ක් තියෙනවා. වහන්නවට කලින් බිල් එක තියාගන්නද?",
+    "exit_hold_and_exit": "තියාගෙන යන්න",
+    "exit_without_saving": "සේව් නොකර යන්න",
+    "exit_cancel": "අවලංගු"
   },
   "sync_status": {
     "tooltip": "සින්ක් විස්තර බලන්න ඔබන්න",
@@ -206,11 +206,11 @@
     "type_fixed": "ස්ථාවර මුදල (රු)",
     "tooltip_percentage": "එකතුවෙන් ප්‍රතිශතයක් ලෙස වට්ටම",
     "tooltip_fixed": "රුපියල් වලින් ස්ථාවර වට්ටම",
-    "preview": "Original: Rs {original} → After discount: Rs {discounted}",
+    "preview": "මුල් මිල: රු {original} → වට්ටමෙන් පස්සේ: රු {discounted}",
     "btn_cancel": "අවලංගු",
     "btn_apply": "වට්ටම යොදන්න",
-    "invalid_title": "Invalid Input",
-    "invalid_message": "Please enter a valid discount value."
+    "invalid_title": "වැරදි අගයක්",
+    "invalid_message": "හරි වට්ටම් අගයක් දාන්න."
   },
   "quantity": {
     "title": "ප්‍රමාණය ඇතුළත් කරන්න",
@@ -505,7 +505,7 @@
     "vat_placeholder": "VAT ලියාපදිංචි අංකය"
   },
   "side_menu": {
-    "section_title": "MENU",
+    "section_title": "මෙනු",
     "management": "කළමනාකරණය",
     "sales_history": "විකුණුම් ඉතිහාසය",
     "documents": "ලේඛන",
@@ -530,8 +530,8 @@
     "exit_tooltip": "පිටවීම"
   },
   "action_panel": {
-    "customer_label": "Customer",
-    "walkin_customer": "Walk-in Customer",
+    "customer_label": "පාරිභෝගිකයා",
+    "walkin_customer": "සාමාන්‍ය පාරිභෝගික",
     "select_customer": "පාරිභෝගිකයා තෝරන්න",
     "section_orders": "ඇණවුම්",
     "section_transaction": "ගනුදෙනු",
@@ -544,11 +544,11 @@
     "btn_void": "අවලංගු",
     "btn_refund": "ආපසු",
     "btn_pay": "ගෙවීම",
-    "loyalty_points": "Points: {points}",
+    "loyalty_points": "පොයින්ට්ස්: {points}",
     "customer_title": "පාරිභෝගික",
-    "walk_in_customer": "ගමන් මාර්ග පාරිභෝගික",
+    "walk_in_customer": "සාමාන්‍ය පාරිභෝගික",
     "points": "{points} ලකුණු",
-    "clear_customer": "Clear customer (reset to Walk-in)"
+    "clear_customer": "පාරිභෝගිකයා ඉවත් කරන්න (සාමාන්‍ය පාරිභෝගිකයාට මාරු වෙනවා)"
   },
   "management": {
     "sidebar_dashboard": "උපකරණ පුවරුව",

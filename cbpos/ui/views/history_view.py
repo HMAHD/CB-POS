@@ -242,7 +242,7 @@ class HistoryView(QWidget):
                 status_item.setForeground(Qt.GlobalColor.red)
             elif sale.payment_method == "REFUND":
                 status_item.setForeground(Qt.GlobalColor.yellow)
-                status_item.setText("REFUND")
+                status_item.setText(_t("history.status_refund"))
             self.transaction_table.setItem(row, 5, status_item)
 
     def on_selection_changed(self):

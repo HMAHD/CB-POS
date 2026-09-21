@@ -1981,6 +1981,7 @@
     "line_items": "Line Items",
     "reprint_receipt": "Reprint Receipt",
     "process_refund": "Process Refund",
+    "status_refund": "ரீஃபண்ட்",
     "unknown": "Unknown",
     "detail_receipt": "Receipt",
     "detail_payment": "Payment",

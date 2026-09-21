@@ -189,6 +189,7 @@
   "quantity": {
     "title": "Enter Quantity",
     "unit_hint": "Unit: {abbr}",
+    "placeholder_example": "e.g. 1.5 {abbr}",
     "invalid_title": "Invalid Quantity",
     "invalid_message": "Please enter a quantity greater than zero."
   },

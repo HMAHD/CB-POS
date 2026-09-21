@@ -189,8 +189,9 @@
   "quantity": {
     "title": "அளவை உள்ளிடுக",
     "unit_hint": "அலகு: {abbr}",
-    "invalid_title": "Invalid Quantity",
-    "invalid_message": "Please enter a quantity greater than zero."
+    "placeholder_example": "உதா: 1.5 {abbr}",
+    "invalid_title": "தவறான அளவு",
+    "invalid_message": "சுழியத்தை விட கூடுதலான அளவைப் போடுங்க."
   },
   "receipt_options": {
     "title": "Receipt Options",

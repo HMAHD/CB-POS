@@ -272,9 +272,9 @@
     "title": "පාරිභෝගිකයා තෝරන්න",
     "search_placeholder": "පාරිභෝගික සොයන්න...",
     "header_id": "ID",
-    "header_name": "Name",
-    "header_phone": "Phone",
-    "btn_select": "Select"
+    "header_name": "නම",
+    "header_phone": "දුරකථනය",
+    "btn_select": "තෝරන්න"
   },
   "customer_editor": {
     "title_edit": "පාරිභෝගිකයා සංස්කරණය",
@@ -319,14 +319,14 @@
   },
   "customer_quick_add": {
     "title": "ඉක්මන් පාරිභෝගික එකතු කිරීම",
-    "name_label": "Name:",
-    "phone_label": "Phone:",
-    "name_required": "Customer name is required."
+    "name_label": "නම:",
+    "phone_label": "දුරකථනය:",
+    "name_required": "පාරිභෝගික නම අවශ්‍යයි"
   },
   "customer_menu": {
-    "quick_add_new": "Quick Add New",
-    "view_details": "View Details",
-    "clear_customer": "Clear Customer"
+    "quick_add_new": "ඉක්මන් එකතුව",
+    "view_details": "විස්තර බලන්න",
+    "clear_customer": "පාරිභෝගිකයා ඉවත් කරන්න"
   },
   "product_editor": {
     "title_edit": "භාණ්ඩය සංස්කරණය",
@@ -609,15 +609,15 @@
   },
   "customer_view": {
     "header_id": "ID",
-    "header_name": "Name",
-    "header_phone": "Phone",
-    "header_credit_limit": "Credit Limit",
-    "header_current_debt": "Current Debt",
-    "header_points": "Points",
-    "btn_add_customer": "Add Customer",
+    "header_name": "නම",
+    "header_phone": "දුරකථනය",
+    "header_credit_limit": "ණය සීමාව",
+    "header_current_debt": "දැනට තියෙන ණය",
+    "header_points": "පොයින්ට්ස්",
+    "btn_add_customer": "පාරිභෝගිකයෙක් එකතු කරන්න",
     "search_placeholder": "පාරිභෝගික සොයන්න...",
-    "empty_state": "No customers found",
-    "high_debt_tooltip": "High Debt Warning!"
+    "empty_state": "පාරිභෝගිකයෝ හම්බ වුනේ නැහැ",
+    "high_debt_tooltip": "ණය වැඩියි!"
   },
   "credit_book": {
     "title": "ණය පොත",

@@ -272,9 +272,9 @@
     "title": "வாடிக்கையாளரைத் தேர்ந்தெடு",
     "search_placeholder": "வாடிக்கையாளர் தேடு...",
     "header_id": "ID",
-    "header_name": "Name",
-    "header_phone": "Phone",
-    "btn_select": "Select"
+    "header_name": "பேர்",
+    "header_phone": "போன்",
+    "btn_select": "தேர்ந்தெடு"
   },
   "customer_editor": {
     "title_edit": "வாடிக்கையாளர் திருத்தம்",
@@ -319,14 +319,14 @@
   },
   "customer_quick_add": {
     "title": "விரைவு வாடிக்கையாளர் சேர்ப்பு",
-    "name_label": "Name:",
-    "phone_label": "Phone:",
-    "name_required": "Customer name is required."
+    "name_label": "பேர்:",
+    "phone_label": "போன்:",
+    "name_required": "வாடிக்கையாளர் பெயர் தேவை"
   },
   "customer_menu": {
-    "quick_add_new": "Quick Add New",
-    "view_details": "View Details",
-    "clear_customer": "Clear Customer"
+    "quick_add_new": "விரைவு சேர்ப்பு",
+    "view_details": "விவரங்களைப் பாருங்க",
+    "clear_customer": "வாடிக்கையாளரை நீக்குங்க"
   },
   "product_editor": {
     "title_edit": "பொருள் திருத்தம்",
@@ -609,15 +609,15 @@
   },
   "customer_view": {
     "header_id": "ID",
-    "header_name": "Name",
-    "header_phone": "Phone",
-    "header_credit_limit": "Credit Limit",
-    "header_current_debt": "Current Debt",
-    "header_points": "Points",
-    "btn_add_customer": "Add Customer",
+    "header_name": "பேர்",
+    "header_phone": "போன்",
+    "header_credit_limit": "கடன் வரம்பு",
+    "header_current_debt": "இப்ப இருக்கிற கடன்",
+    "header_points": "பாயிண்ட்ஸ்",
+    "btn_add_customer": "வாடிக்கையாளரைச் சேருங்க",
     "search_placeholder": "வாடிக்கையாளர் தேடு...",
-    "empty_state": "No customers found",
-    "high_debt_tooltip": "High Debt Warning!"
+    "empty_state": "வாடிக்கையாளர்கள் கிடைக்கல",
+    "high_debt_tooltip": "கடன் அதிகம்!"
   },
   "credit_book": {
     "title": "கடன் புத்தகம்",

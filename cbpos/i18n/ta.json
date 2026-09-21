@@ -56,7 +56,7 @@
     "page_info": "பக்கம் {current} / {total}",
     "row_count": "{count} வரிசைகள்",
     "validation_error": "தப்பான மதிப்பு",
-    "saved": "சேவ் ஆச்சு",
+    "saved": "சேமிச்சாச்சு",
     "cb_pos": "CB POS",
     "ceylon_byte_pos": "Ceylon Byte POS",
     "powered_by": "Powered by CB POS",
@@ -85,7 +85,7 @@
     "exit_confirm_title": "வண்டியில பொருள் இருக்கு",
     "exit_confirm_message": "உங்க வண்டியில {count} பொருள் இருக்கு. மூடுறதுக்கு முன்னாடி பில்லை வச்சிக்கணுமா?",
     "exit_hold_and_exit": "வச்சிட்டு போ",
-    "exit_without_saving": "சேவ் பண்ணாம வெளியேறு",
+    "exit_without_saving": "சேமிக்காம வெளியேறு",
     "exit_cancel": "ரத்து"
   },
   "sync_status": {
@@ -397,11 +397,11 @@
     "import_complete_message": "இம்போர்ட் முடிஞ்சது. வெற்றி: {success} | தோல்வி: {failed} | தவிர்த்தது: {skipped}",
     "import_failed_title": "இம்போர்ட் தோல்வி",
     "import_failed_message": "CSV இம்போர்ட் பண்ணும்போது தப்பு: {error}",
-    "save_template_title": "CSV டெம்ப்ளேட்டை சேவ் பண்ணுங்க",
+    "save_template_title": "CSV டெம்ப்ளேட்டை சேமியுங்க",
     "select_csv_title": "CSV ஃபைலைத் தேர்ந்தெடு",
     "step1_description": "இம்போர்ட் பண்ண பொருள் தகவல் இருக்கிற CSV ஃபைலைத் தேர்ந்தெடு.",
-    "template_save_error": "டெம்ப்ளேட்டை சேவ் பண்ண முடியல: {error}",
-    "template_saved": "டெம்ப்ளேட் {path}-ல சேவ் ஆச்சு"
+    "template_save_error": "டெம்ப்ளேட்டை சேமிக்க முடியல: {error}",
+    "template_saved": "டெம்ப்ளேட் {path}-ல சேமிச்சாச்சு"
   },
   "advanced_search": {
     "title": "மேம்பட்ட தேடல்",
@@ -1657,7 +1657,7 @@
     "color_label": "நிறம்:",
     "pick_color": "நிறத்தைத் தேர்ந்தெடு",
     "select_color": "நிறத்தைத் தேர்ந்தெடு",
-    "save_new": "புதுசா சேவ் பண்ணுங்க",
+    "save_new": "புதுசா சேமியுங்க",
     "update": "அப்டேட் பண்ணுங்க",
     "delete_selected": "தேர்ந்தெடுத்ததை நீக்குங்க",
     "clear_new": "நீக்கு / புது",
@@ -1952,7 +1952,7 @@
     "details": "அலகு விவரங்கள்",
     "abbreviation": "சுருக்கம்:",
     "decimal_places": "தசம இடங்கள்:",
-    "save_new": "புதுசா சேவ் பண்ணுங்க",
+    "save_new": "புதுசா சேமியுங்க",
     "delete_selected": "தேர்ந்தெடுத்ததை நீக்குங்க",
     "clear_new": "நீக்கு / புது",
     "name_required": "அலகின் பெயர் தேவை.",

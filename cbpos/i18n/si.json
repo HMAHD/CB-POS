@@ -56,7 +56,7 @@
     "page_info": "පිටුව {current} / {total}",
     "row_count": "පේළි {count}ක්",
     "validation_error": "වැරදි අගයක්",
-    "saved": "සේව් උනා",
+    "saved": "සුරැකුනා",
     "cb_pos": "CB POS",
     "ceylon_byte_pos": "Ceylon Byte POS",
     "powered_by": "Powered by CB POS",
@@ -85,7 +85,7 @@
     "exit_confirm_title": "කරත්තේ අයිතම තියෙනවා",
     "exit_confirm_message": "ඔයාගේ කරත්තේ අයිතම {count}ක් තියෙනවා. වහන්නවට කලින් බිල් එක තියාගන්නද?",
     "exit_hold_and_exit": "තියාගෙන යන්න",
-    "exit_without_saving": "සේව් නොකර යන්න",
+    "exit_without_saving": "සුරකින්නෙ නැතුව යන්න",
     "exit_cancel": "අවලංගු"
   },
   "sync_status": {
@@ -397,11 +397,11 @@
     "import_complete_message": "ආයාතය අවසන්. සාර්ථක: {success} | අසාර්ථක: {failed} | මඟ හැරුණ: {skipped}",
     "import_failed_title": "ආයාතය අසාර්ථකයි",
     "import_failed_message": "CSV ආයාත කරන කොට වැරැද්දක්: {error}",
-    "save_template_title": "CSV ටෙම්ප්ලේට් එක සේව් කරන්න",
+    "save_template_title": "CSV ටෙම්ප්ලේට් එක සුරකින්න",
     "select_csv_title": "CSV ෆයිල් එක තෝරන්න",
     "step1_description": "ආයාත කරන්න අයිතම දත්ත තියෙන CSV ෆයිල් එකක් තෝරන්න.",
-    "template_save_error": "ටෙම්ප්ලේට් එක සේව් කරන්න බැරි උනා: {error}",
-    "template_saved": "ටෙම්ප්ලේට් එක {path} එකට සේව් උනා"
+    "template_save_error": "ටෙම්ප්ලේට් එක සුරකින්න බැරි උනා: {error}",
+    "template_saved": "ටෙම්ප්ලේට් එක {path} එකට සුරැකුනා"
   },
   "advanced_search": {
     "title": "උසස් සෙවීම",
@@ -1657,7 +1657,7 @@
     "color_label": "වර්ණය:",
     "pick_color": "වර්ණයක් තෝරන්න",
     "select_color": "වර්ණය තෝරන්න",
-    "save_new": "අලුතින් සේව් කරන්න",
+    "save_new": "අලුතින් සුරකින්න",
     "update": "අප්ඩේට් කරන්න",
     "delete_selected": "තෝරපු ඒවා මකන්න",
     "clear_new": "මකන්න / අලුත්",
@@ -1952,7 +1952,7 @@
     "details": "ඒකකයේ විස්තර",
     "abbreviation": "කෙටි යෙදුම:",
     "decimal_places": "දශම ස්ථාන:",
-    "save_new": "අලුතින් සේව් කරන්න",
+    "save_new": "අලුතින් සුරකින්න",
     "delete_selected": "තෝරපු ඒවා මකන්න",
     "clear_new": "මකන්න / අලුත්",
     "name_required": "ඒකකයේ නම අවශ්‍යයි.",

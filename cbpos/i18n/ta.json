@@ -1933,7 +1933,11 @@
     "abbr_required": "Abbreviation is required.",
     "name_placeholder": "அலகு பெயர்",
     "abbr_placeholder": "e.g., kg",
-    "decimals_tooltip": "Decimal places for quantities (0 = whole numbers)"
+    "decimals_tooltip": "Decimal places for quantities (0 = whole numbers)",
+    "unit_updated": "'{name}' அலகு அப்டேட் ஆச்சு.",
+    "unit_added": "'{name}' அலகு சேர்த்தாச்சு.",
+    "confirm_delete_title": "நீக்கவா?",
+    "confirm_delete_message": "'{name}' அலகை நீக்கவா?\n\nஇது அலகை செயலிழக்க வைக்கும்."
   },
   "update": {
     "title": "Update Available",

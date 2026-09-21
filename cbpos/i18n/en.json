@@ -1963,7 +1963,11 @@
     "abbr_required": "Abbreviation is required.",
     "name_placeholder": "e.g., Kilogram",
     "abbr_placeholder": "e.g., kg",
-    "decimals_tooltip": "Decimal places for quantities (0 = whole numbers)"
+    "decimals_tooltip": "Decimal places for quantities (0 = whole numbers)",
+    "unit_updated": "Unit '{name}' updated.",
+    "unit_added": "Unit '{name}' added.",
+    "confirm_delete_title": "Confirm Delete",
+    "confirm_delete_message": "Delete unit '{name}'?\n\nThis will deactivate it."
   },
   "update": {
     "title": "Update Available",

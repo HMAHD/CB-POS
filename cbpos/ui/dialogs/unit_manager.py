@@ -192,14 +192,14 @@ class UnitManagerDialog(QDialog):
                     abbreviation=abbr,
                     decimal_places=decimals,
                 )
-                QMessageBox.information(self, "Success", f"Unit '{name}' updated.")
+                QMessageBox.information(self, _t("common.success"), _t("unit_manager.unit_updated", name=name))
             else:
                 UnitService.create(name=name, abbreviation=abbr, decimal_places=decimals)
-                QMessageBox.information(self, "Success", f"Unit '{name}' added.")
+                QMessageBox.information(self, _t("common.success"), _t("unit_manager.unit_added", name=name))
             self._load_units()
             self._clear_form()
         except ValueError as e:
-            QMessageBox.warning(self, "Error", str(e))
+            QMessageBox.warning(self, _t("common.error"), str(e))
 
     def _delete_unit(self) -> None:
         """Delete (deactivate) selected unit."""
@@ -212,8 +212,8 @@ class UnitManagerDialog(QDialog):
 
         reply = QMessageBox.question(
             self,
-            "Confirm Delete",
-            f"Delete unit '{unit_name}'?\n\nThis will deactivate it.",
+            _t("unit_manager.confirm_delete_title"),
+            _t("unit_manager.confirm_delete_message", name=unit_name),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -224,7 +224,7 @@ class UnitManagerDialog(QDialog):
             self._load_units()
             self._clear_form()
         except ValueError as e:
-            QMessageBox.warning(self, "Error", str(e))
+            QMessageBox.warning(self, _t("common.error"), str(e))
 
     def _clear_form(self) -> None:
         """Clear form and reset to 'add new' mode."""

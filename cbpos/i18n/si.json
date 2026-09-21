@@ -1933,7 +1933,11 @@
     "abbr_required": "Abbreviation is required.",
     "name_placeholder": "ඒකක නම",
     "abbr_placeholder": "e.g., kg",
-    "decimals_tooltip": "Decimal places for quantities (0 = whole numbers)"
+    "decimals_tooltip": "Decimal places for quantities (0 = whole numbers)",
+    "unit_updated": "'{name}' ඒකකය අප්ඩේට් කළා.",
+    "unit_added": "'{name}' ඒකකය එකතු කළා.",
+    "confirm_delete_title": "මකන්න ද?",
+    "confirm_delete_message": "'{name}' ඒකකය මකන්න ද?\n\nමේකෙන් ඒකකය නිෂ්ක්‍රිය වෙනවා."
   },
   "update": {
     "title": "Update Available",

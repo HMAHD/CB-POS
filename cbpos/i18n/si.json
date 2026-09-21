@@ -1635,14 +1635,14 @@
     "record_title": "Cash Movement Record"
   },
   "category_dialog": {
-    "new_title": "New Category",
-    "edit_title": "Edit Category",
+    "new_title": "අලුත් කාණ්ඩයක්",
+    "edit_title": "කාණ්ඩය සංස්කරණය",
     "name": "කාණ්ඩ නම:",
-    "parent_category": "Parent Category:",
-    "color": "Color:",
-    "none": "None (Top Level)",
-    "pick_color": "Pick Color",
-    "select_color": "Select Category Color",
+    "parent_category": "මව් කාණ්ඩය:",
+    "color": "වර්ණය:",
+    "none": "කිසිවක් නැහැ (ඉහළම මට්ටම)",
+    "pick_color": "වර්ණයක් තෝරන්න",
+    "select_color": "කාණ්ඩයේ වර්ණය තෝරන්න",
     "name_required": "කාණ්ඩ නම අවශ්‍යයි"
   },
   "category_manager": {
@@ -1690,18 +1690,18 @@
   },
   "category_tree": {
     "title": "කාණ්ඩ ගස",
-    "heading": "Categories",
-    "col_name": "Name",
-    "col_color": "Color",
-    "add_root": "Add Root Category",
-    "add_subcategory": "Add Subcategory",
-    "change_color": "Change Color",
-    "add_root_title": "Add Root Category",
-    "add_sub_title": "Add Subcategory",
-    "edit_title": "Edit Category",
-    "category_name_prompt": "Category name:",
-    "delete_title": "Delete Category",
-    "delete_confirm": "Delete '{name}' and all subcategories?"
+    "heading": "කාණ්ඩ",
+    "col_name": "නම",
+    "col_color": "වර්ණය",
+    "add_root": "මූල කාණ්ඩයක් එකතු කරන්න",
+    "add_subcategory": "උප කාණ්ඩයක් එකතු කරන්න",
+    "change_color": "වර්ණය මාරු කරන්න",
+    "add_root_title": "මූල කාණ්ඩයක් එකතු කරන්න",
+    "add_sub_title": "උප කාණ්ඩයක් එකතු කරන්න",
+    "edit_title": "කාණ්ඩය සංස්කරණය",
+    "category_name_prompt": "කාණ්ඩයේ නම:",
+    "delete_title": "කාණ්ඩය මකන්න",
+    "delete_confirm": "'{name}' සහ ඒකේ උප කාණ්ඩ මකන්නද?"
   },
   "customer_statement": {
     "title": "පාරිභෝගික ප්‍රකාශනය",

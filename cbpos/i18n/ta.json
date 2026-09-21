@@ -1635,14 +1635,14 @@
     "record_title": "Cash Movement Record"
   },
   "category_dialog": {
-    "new_title": "New Category",
-    "edit_title": "Edit Category",
+    "new_title": "புது வகை",
+    "edit_title": "வகையைத் திருத்து",
     "name": "வகை பெயர்:",
-    "parent_category": "Parent Category:",
-    "color": "Color:",
-    "none": "None (Top Level)",
-    "pick_color": "Pick Color",
-    "select_color": "Select Category Color",
+    "parent_category": "மூல வகை:",
+    "color": "நிறம்:",
+    "none": "ஒன்றுமில்ல (உயர் மட்டம்)",
+    "pick_color": "நிறத்தைத் தேர்ந்தெடு",
+    "select_color": "வகையின் நிறத்தைத் தேர்ந்தெடு",
     "name_required": "வகை பெயர் தேவை"
   },
   "category_manager": {
@@ -1690,18 +1690,18 @@
   },
   "category_tree": {
     "title": "வகை மரம்",
-    "heading": "Categories",
-    "col_name": "Name",
-    "col_color": "Color",
-    "add_root": "Add Root Category",
-    "add_subcategory": "Add Subcategory",
-    "change_color": "Change Color",
-    "add_root_title": "Add Root Category",
-    "add_sub_title": "Add Subcategory",
-    "edit_title": "Edit Category",
-    "category_name_prompt": "Category name:",
-    "delete_title": "Delete Category",
-    "delete_confirm": "Delete '{name}' and all subcategories?"
+    "heading": "வகைகள்",
+    "col_name": "பேர்",
+    "col_color": "நிறம்",
+    "add_root": "மூல வகையைச் சேருங்க",
+    "add_subcategory": "உப வகையைச் சேருங்க",
+    "change_color": "நிறத்தை மாத்துங்க",
+    "add_root_title": "மூல வகையைச் சேருங்க",
+    "add_sub_title": "உப வகையைச் சேருங்க",
+    "edit_title": "வகையைத் திருத்து",
+    "category_name_prompt": "வகையின் பேர்:",
+    "delete_title": "வகையை நீக்குங்க",
+    "delete_confirm": "'{name}' மற்றும் அதோட உப வகைகளையும் நீக்கவா?"
   },
   "customer_statement": {
     "title": "வாடிக்கையாளர் அறிக்கை",

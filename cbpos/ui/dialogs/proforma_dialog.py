@@ -122,7 +122,7 @@ class ProformaDialog(QDialog):
         # Footer: Total + Create
         footer = QHBoxLayout()
 
-        self.total_label = QLabel(f"<b>Total: {format_currency(0)}</b>")
+        self.total_label = QLabel(f"<b>{_t('common.total')}: {format_currency(0)}</b>")
         self.total_label.setStyleSheet("font-size: 16px;")
         footer.addWidget(self.total_label)
 
@@ -219,7 +219,7 @@ class ProformaDialog(QDialog):
             empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
             self.items_table.setItem(0, 0, empty_item)
             self.items_table.setSpan(0, 0, 1, self.items_table.columnCount())
-            self.total_label.setText(f"<b>Total: {format_currency(total)}</b>")
+            self.total_label.setText(f"<b>{_t('common.total')}: {format_currency(total)}</b>")
             return
 
         for row, item in enumerate(self.items):
@@ -248,7 +248,7 @@ class ProformaDialog(QDialog):
 
             total += line_total
 
-        self.total_label.setText(f"<b>Total: {format_currency(total)}</b>")
+        self.total_label.setText(f"<b>{_t('common.total')}: {format_currency(total)}</b>")
 
     def show_context_menu(self, position) -> None:
         """Show context menu for editing/removing items."""

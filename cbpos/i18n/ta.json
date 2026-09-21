@@ -70,14 +70,14 @@
   },
   "login": {
     "welcome": "Welcome / ආයුබෝවන් / வணக்கம்",
-    "subtitle": "Free POS software built for Sri Lankan businesses",
-    "enter_your_pin": "Enter Your PIN",
-    "enter_pin_placeholder": "Enter PIN",
-    "forgot_pin_hint": "Forgot PIN? Contact your administrator.",
-    "invalid_pin": "Invalid PIN. Please try again.",
+    "subtitle": "இலங்கை பிசினஸ்களுக்கு ஃப்ரீ POS சாஃப்ட்வேர்",
+    "enter_your_pin": "உங்க PIN-ஐ போடுங்க",
+    "enter_pin_placeholder": "PIN போடுங்க",
+    "forgot_pin_hint": "PIN மறந்துட்டீங்களா? அட்மினிட்ட பேசுங்க.",
+    "invalid_pin": "PIN தப்பு. மறுபடியும் முயற்சி பண்ணுங்க.",
     "logo_fallback": "CB POS",
-    "version_footer": "Version {version} | © 2026 Ceylon Byte",
-    "enter_pin": "Enter PIN"
+    "version_footer": "வெர்ஷன் {version} | © 2026 Ceylon Byte",
+    "enter_pin": "PIN போடுங்க"
   },
   "main_window": {
     "title": "CB POS",

@@ -490,18 +490,18 @@
     "address_placeholder": "கடை முகவரி",
     "invalid_title": "செல்லாது",
     "mismatch_title": "பொருந்தவில்லை",
-    "none_detected": "கண்டறியப்படவில்லை",
+    "none_detected": "கிடைக்கல",
     "phone_placeholder": "+94 XX XXX XXXX",
-    "pin_confirm_placeholder": "PIN மீண்டும் உள்ளிடவும்",
-    "pin_digits_only": "PIN எண்களை மட்டுமே கொண்டிருக்க வேண்டும்",
-    "pin_min_length": "PIN குறைந்தது 4 எண்கள் இருக்க வேண்டும்",
-    "pin_mismatch": "PIN பொருந்தவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.",
-    "pin_placeholder": "4-6 எண்கள்",
-    "pin_update_failed": "நிர்வாகி PIN புதுப்பிப்பு தோல்வி: {error}",
+    "pin_confirm_placeholder": "PIN-ஐ மறுபடி போடுங்க",
+    "pin_digits_only": "PIN-ல் இலக்கங்கள் மட்டும்தான் இருக்கணும்",
+    "pin_min_length": "PIN குறைஞ்சது 4 இலக்கமா இருக்கணும்",
+    "pin_mismatch": "PIN பொருந்தல. மறுபடி முயற்சி பண்ணுங்க.",
+    "pin_placeholder": "4-6 இலக்கங்கள்",
+    "pin_update_failed": "நிர்வாகி PIN-ஐ அப்டேட் செய்ய முடியல: {error}",
     "required_title": "தேவை",
-    "security_info": "நிர்வாகி PIN அமைப்பது அமைப்பைப் பாதுகாக்கும். இந்த PIN மறக்க வேண்டாம்.",
-    "shop_name_placeholder": "உங்கள் கடை பெயர்",
-    "shop_name_required": "கடை பெயர் தேவை",
+    "security_info": "நிர்வாகி PIN சிஸ்டத்தை பாதுகாக்கும். இந்த PIN-ஐ மறக்காதீங்க.",
+    "shop_name_placeholder": "உங்க கடை பேர்",
+    "shop_name_required": "கடை பெயர் போடணும்",
     "vat_placeholder": "VAT பதிவு எண்"
   },
   "side_menu": {
@@ -1857,8 +1857,8 @@
     "create_failed": "மேற்கோளை உருவாக்க முடியல."
   },
   "receipt_preview": {
-    "title": "Receipt Preview",
-    "barcode_not_scannable": "Preview only — not a real, scannable barcode"
+    "title": "ரசீது முன்னோட்டம்",
+    "barcode_not_scannable": "முன்னோட்டத்துக்கு மட்டும் — இது ஸ்கேன் பண்ண முடியிற உண்மை பார்கோடு இல்ல"
   },
   "receipt_reprint": {
     "title": "ரசீது மறுஅச்சு",

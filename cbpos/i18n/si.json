@@ -467,7 +467,7 @@
   },
   "setup_wizard": {
     "title": "CB POS සැකසුම් විශාරද",
-    "welcome": "CB POS වෙත සාදරයෙන් පිළිගනිමු!",
+    "welcome": "CB POS එකට සාදරයෙන් පිළිගන්නවා!",
     "step1": "පියවර 1/3 — සාප්පු තොරතුරු",
     "step2": "පියවර 2/3 — දෘඩාංග",
     "step3": "පියවර 3/3 — ආරක්ෂාව",
@@ -490,18 +490,18 @@
     "address_placeholder": "සාප්පු ලිපිනය",
     "invalid_title": "වලංගු නොවේ",
     "mismatch_title": "නොගැලපේ",
-    "none_detected": "හමු නොවිණි",
+    "none_detected": "හම්බුනේ නැහැ",
     "phone_placeholder": "+94 XX XXX XXXX",
     "pin_confirm_placeholder": "PIN නැවත ඇතුළත් කරන්න",
-    "pin_digits_only": "PIN හි ඉලක්කම් පමණක් අඩංගු විය යුතුය",
-    "pin_min_length": "PIN අවම වශයෙන් ඉලක්කම් 4ක් විය යුතුය",
-    "pin_mismatch": "PIN නොගැලපේ. කරුණාකර නැවත උත්සාහ කරන්න.",
+    "pin_digits_only": "PIN එකේ ඉලක්කම් විතරක් තියෙන්න ඕන",
+    "pin_min_length": "PIN එක අවම වශයෙන් ඉලක්කම් 4ක් වෙන්න ඕන",
+    "pin_mismatch": "PIN එක ගැලපෙන්නේ නැහැ. ආයෙත් උත්සාහ කරන්න.",
     "pin_placeholder": "ඉලක්කම් 4-6",
-    "pin_update_failed": "පරිපාලක PIN යාවත්කාලීන කිරීම අසාර්ථකයි: {error}",
+    "pin_update_failed": "පරිපාලක PIN එක අප්ඩේට් කරන්න බැරි උනා: {error}",
     "required_title": "අවශ්‍යයි",
-    "security_info": "පරිපාලක PIN සැකසීම පද්ධතිය ආරක්ෂා කරයි. මෙම PIN අමතක නොකරන්න.",
+    "security_info": "පරිපාලක PIN එක සිස්ටම් එක ආරක්ෂා කරනවා. මේ PIN එක අමතක කරන්න එපා.",
     "shop_name_placeholder": "ඔබේ සාප්පුවේ නම",
-    "shop_name_required": "සාප්පුවේ නම අවශ්‍යයි",
+    "shop_name_required": "සාප්පුවේ නම දාන්න ඕන",
     "vat_placeholder": "VAT ලියාපදිංචි අංකය"
   },
   "side_menu": {
@@ -1857,8 +1857,8 @@
     "create_failed": "කෝටේෂන් එක හදන්න බැරි උනා."
   },
   "receipt_preview": {
-    "title": "Receipt Preview",
-    "barcode_not_scannable": "Preview only — not a real, scannable barcode"
+    "title": "රිසිට් පෙරදසුන",
+    "barcode_not_scannable": "පෙරදසුනට විතරයි — මේක ස්කෑන් කරන්න බැරි ඇත්ත බාර්කෝඩ් එකක් නෙවෙයි"
   },
   "receipt_reprint": {
     "title": "රිසිට්පත නැවත මුද්‍රණය",

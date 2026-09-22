@@ -30,3 +30,19 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
+
+  # Pre-commit hooks (keeps .pre-commit-config.yaml pins from drifting
+  # out of sync with the matching tool's requirements.txt floor)
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "pre-commit"

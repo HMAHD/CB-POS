@@ -47,7 +47,7 @@ class QuantityDialog(QDialog):
         self.qty_input.setMinimumHeight(44)
         self.qty_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
         if unit_abbr:
-            self.qty_input.setPlaceholderText(f"e.g. 1.5 {unit_abbr}")
+            self.qty_input.setPlaceholderText(_t("quantity.placeholder_example", abbr=unit_abbr))
         from PyQt6.QtGui import QDoubleValidator
 
         validator = QDoubleValidator(0.001, 999999.0, 3, self)

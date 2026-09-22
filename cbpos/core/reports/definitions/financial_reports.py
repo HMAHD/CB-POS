@@ -7,6 +7,7 @@ from sqlalchemy import func
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Product, Sale, SaleItem
 from cbpos.core.reports.base_report import BaseReport
+from cbpos.i18n import _t
 
 
 class ProfitLossReport(BaseReport):
@@ -16,11 +17,11 @@ class ProfitLossReport(BaseReport):
 
     @property
     def name(self) -> str:
-        return "Profit & Loss Statement"
+        return _t("reports.profit_loss")
 
     @property
     def category(self) -> str:
-        return "Financial"
+        return _t("reports.category_financial")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
@@ -86,11 +87,11 @@ class TaxLiabilityReport(BaseReport):
 
     @property
     def name(self) -> str:
-        return "Tax Liability Report"
+        return _t("reports.tax_liability")
 
     @property
     def category(self) -> str:
-        return "Financial"
+        return _t("reports.category_financial")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
@@ -142,11 +143,11 @@ class TaxFilingSummaryReport(BaseReport):
 
     @property
     def name(self) -> str:
-        return "Tax Filing Summary"
+        return _t("reports.tax_filing_summary")
 
     @property
     def category(self) -> str:
-        return "Financial"
+        return _t("reports.category_financial")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [

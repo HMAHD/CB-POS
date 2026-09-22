@@ -88,6 +88,32 @@
     "exit_without_saving": "Exit Without Saving",
     "exit_cancel": "Cancel"
   },
+  "sync_status": {
+    "tooltip": "Click for sync details",
+    "disabled": "Sync disabled — see Settings",
+    "main_label": "Main PC · {count} terminals",
+    "synced": "Synced",
+    "synced_pending": "Synced · {pending} pending",
+    "syncing": "Syncing · {pending} pending",
+    "error_label": "Sync Error",
+    "disconnected": "Disconnected",
+    "detail_mode_label": "Mode",
+    "detail_error_prefix": "LAN Sync is not running:",
+    "detail_fix_hint": "Fix this in Settings → Network → LAN Sync.",
+    "detail_mode_main": "Main PC (Sync Server)",
+    "detail_mode_terminal": "Terminal",
+    "detail_mode_standalone": "Standalone (no sync)",
+    "detail_address": "Address",
+    "detail_connected_terminals": "Connected terminals",
+    "detail_main_pc": "Main PC",
+    "detail_pending": "Pending",
+    "detail_pending_records": "{count} records",
+    "detail_last_sync": "Last sync",
+    "status_connected": "Connected",
+    "status_syncing": "Syncing",
+    "status_error": "Error",
+    "status_disconnected": "Disconnected"
+  },
   "sales": {
     "search_placeholder_all": "Scan or type product... (Enter)",
     "search_placeholder_barcode": "Scan barcode...",
@@ -189,6 +215,7 @@
   "quantity": {
     "title": "Enter Quantity",
     "unit_hint": "Unit: {abbr}",
+    "placeholder_example": "e.g. 1.5 {abbr}",
     "invalid_title": "Invalid Quantity",
     "invalid_message": "Please enter a quantity greater than zero."
   },
@@ -579,6 +606,7 @@
     "line_items": "Line Items",
     "reprint_receipt": "Reprint Receipt",
     "process_refund": "Process Refund",
+    "status_refund": "REFUND",
     "unknown": "Unknown",
     "detail_receipt": "Receipt",
     "detail_payment": "Payment",
@@ -922,6 +950,7 @@
     "db_header_table": "Table",
     "db_header_rows": "Rows",
     "logs_level": "Level:",
+    "logs_level_all": "All",
     "logs_from": "From:",
     "logs_to": "To:",
     "logs_search_placeholder": "Search logs...",
@@ -1800,9 +1829,6 @@
     "email_sending": "Email sending started in background...",
     "email_prepare_failed": "Failed to prepare email: {error}"
   },
-  "errors": {
-    "insufficient_stock": "Insufficient stock"
-  },
   "manager_override": {
     "title": "Manager Override",
     "pin_placeholder": "Enter manager PIN",
@@ -1961,7 +1987,11 @@
     "abbr_required": "Abbreviation is required.",
     "name_placeholder": "e.g., Kilogram",
     "abbr_placeholder": "e.g., kg",
-    "decimals_tooltip": "Decimal places for quantities (0 = whole numbers)"
+    "decimals_tooltip": "Decimal places for quantities (0 = whole numbers)",
+    "unit_updated": "Unit '{name}' updated.",
+    "unit_added": "Unit '{name}' added.",
+    "confirm_delete_title": "Confirm Delete",
+    "confirm_delete_message": "Delete unit '{name}'?\n\nThis will deactivate it."
   },
   "update": {
     "title": "Update Available",
@@ -2042,6 +2072,9 @@
     "new_promotion": "New Promotion",
     "edit_promotion": "Edit Promotion",
     "type": "Type",
+    "type_percentage": "Percentage",
+    "type_fixed_amount": "Fixed Amount",
+    "type_bogo": "Buy One Get One",
     "value": "Value",
     "start": "Start",
     "end": "End",
@@ -2214,6 +2247,7 @@
     "concurrent_modification": "This record was modified by another user. Please reload and try again.",
     "circular_reference": "A category cannot be its own parent.",
     "payment_amount_zero": "Payment amount must be greater than zero.",
-    "customer_not_found": "Customer not found."
+    "customer_not_found": "Customer not found.",
+    "insufficient_stock": "Insufficient stock"
   }
 }

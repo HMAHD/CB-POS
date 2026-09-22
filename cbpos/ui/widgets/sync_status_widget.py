@@ -23,6 +23,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+
 logger = logging.getLogger(__name__)
 
 
@@ -50,6 +52,12 @@ class SyncStatusWidget(QWidget):
         self._config_error: str = ""
 
         self._setup_ui()
+        register_language_callback(self.retranslate_ui)
+        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+
+    def retranslate_ui(self) -> None:
+        self.setToolTip(_t("sync_status.tooltip"))
+        self._update_display()
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
@@ -67,7 +75,7 @@ class SyncStatusWidget(QWidget):
         layout.addWidget(self._label)
 
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.setToolTip("Click for sync details")
+        self.setToolTip(_t("sync_status.tooltip"))
 
         # Start hidden — only show when mode is main or terminal
         self.setVisible(False)
@@ -80,22 +88,32 @@ class SyncStatusWidget(QWidget):
     def _build_details_text(self) -> str:
         lines = []
         if self._config_error:
-            lines.append(f"<b>LAN Sync is not running:</b> {self._config_error}")
-            lines.append("Fix this in Settings &rarr; Network &rarr; LAN Sync.")
+            lines.append(f"<b>{_t('sync_status.detail_error_prefix')}</b> {self._config_error}")
+            lines.append(_t("sync_status.detail_fix_hint"))
             return "<br>".join(lines)
+        mode_label = _t("sync_status.detail_mode_label")
         if self._mode == "main":
-            lines.append("<b>Mode:</b> Main PC (Sync Server)")
-            lines.append(f"<b>Address:</b> {self._server_address}")
-            lines.append(f"<b>Connected terminals:</b> {self._connected_terminals}")
+            lines.append(f"<b>{mode_label}:</b> {_t('sync_status.detail_mode_main')}")
+            lines.append(f"<b>{_t('sync_status.detail_address')}:</b> {self._server_address}")
+            lines.append(f"<b>{_t('sync_status.detail_connected_terminals')}:</b> {self._connected_terminals}")
         elif self._mode == "terminal":
-            lines.append("<b>Mode:</b> Terminal")
-            lines.append(f"<b>Main PC:</b> {self._server_address}")
-            lines.append(f"<b>Status:</b> {self._state.title()}")
-            lines.append(f"<b>Pending:</b> {self._pending} records")
+            state_labels = {
+                "connected": _t("sync_status.status_connected"),
+                "syncing": _t("sync_status.status_syncing"),
+                "error": _t("sync_status.status_error"),
+                "disconnected": _t("sync_status.status_disconnected"),
+            }
+            lines.append(f"<b>{mode_label}:</b> {_t('sync_status.detail_mode_terminal')}")
+            lines.append(f"<b>{_t('sync_status.detail_main_pc')}:</b> {self._server_address}")
+            lines.append(f"<b>{_t('common.status')}:</b> {state_labels.get(self._state, self._state)}")
+            lines.append(
+                f"<b>{_t('sync_status.detail_pending')}:</b> "
+                f"{_t('sync_status.detail_pending_records', count=self._pending)}"
+            )
             if self._last_sync:
-                lines.append(f"<b>Last sync:</b> {self._last_sync}")
+                lines.append(f"<b>{_t('sync_status.detail_last_sync')}:</b> {self._last_sync}")
         else:
-            lines.append("<b>Mode:</b> Standalone (no sync)")
+            lines.append(f"<b>{mode_label}:</b> {_t('sync_status.detail_mode_standalone')}")
 
         return "<br>".join(lines)
 
@@ -171,23 +189,23 @@ class SyncStatusWidget(QWidget):
         """Refresh the dot color and label text based on current state."""
         if self._config_error:
             color = self.COLORS["error"]
-            text = "Sync disabled — see Settings"
+            text = _t("sync_status.disabled")
         elif self._mode == "main":
             color = self.COLORS["main"]
-            text = f"Main PC · {self._connected_terminals} terminals"
+            text = _t("sync_status.main_label", count=self._connected_terminals)
         elif self._mode == "terminal":
             color = self.COLORS.get(self._state, self.COLORS["disconnected"])
             if self._state == "connected":
                 if self._pending > 0:
-                    text = f"Synced · {self._pending} pending"
+                    text = _t("sync_status.synced_pending", pending=self._pending)
                 else:
-                    text = "Synced"
+                    text = _t("sync_status.synced")
             elif self._state == "syncing":
-                text = f"Syncing · {self._pending} pending"
+                text = _t("sync_status.syncing", pending=self._pending)
             elif self._state == "error":
-                text = "Sync Error"
+                text = _t("sync_status.error_label")
             else:
-                text = "Disconnected"
+                text = _t("sync_status.disconnected")
         else:
             color = self.COLORS["standalone"]
             text = ""

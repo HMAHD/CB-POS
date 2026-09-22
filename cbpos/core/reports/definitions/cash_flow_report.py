@@ -6,6 +6,7 @@ from sqlalchemy import func
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Sale
 from cbpos.core.reports.base_report import BaseReport
+from cbpos.i18n import _t
 
 
 class CashFlowReport(BaseReport):
@@ -15,11 +16,11 @@ class CashFlowReport(BaseReport):
 
     @property
     def name(self) -> str:
-        return "Cash Flow Report"
+        return _t("reports.cash_flow")
 
     @property
     def category(self) -> str:
-        return "Financial"
+        return _t("reports.category_financial")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]

@@ -819,7 +819,7 @@ class DataSafetyView(QWidget):
         data_type = self.cmb_export_data.currentText()
         fmt_text = self.cmb_export_format.currentText()
 
-        if "Excel" in fmt_text:
+        if fmt_text == _t("data_safety.export_format_excel"):
             ext = ".xlsx"
             fmt = "excel"
         else:

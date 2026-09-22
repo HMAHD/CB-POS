@@ -6,6 +6,7 @@ from sqlalchemy import select
 from cbpos.core.database import Database
 from cbpos.core.models import Customer
 from cbpos.core.reports.base_report import BaseReport
+from cbpos.i18n import _t
 
 
 class CustomerCreditReport(BaseReport):
@@ -17,11 +18,11 @@ class CustomerCreditReport(BaseReport):
 
     @property
     def name(self) -> str:
-        return "Customer Credit Report"
+        return _t("reports.customer_credit")
 
     @property
     def category(self) -> str:
-        return "Financial"
+        return _t("reports.category_financial")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         return []

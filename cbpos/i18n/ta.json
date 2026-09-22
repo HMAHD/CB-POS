@@ -1919,7 +1919,7 @@
     "close_cancel": "உரையாடலை மூடு / ரத்து செய்"
   },
   "stock_history": {
-    "title": "இருப்பு வரலாறு - {product}",
+    "title": "இருப்பு வரலாறு - {name}",
     "heading": "இருப்பு வரலாறு: {product}",
     "change": "மாற்றம்",
     "balance": "இருப்பு",
@@ -2075,6 +2075,9 @@
     "new_promotion": "புது சலுகை",
     "edit_promotion": "சலுகையைத் திருத்து",
     "type": "வகை",
+    "type_percentage": "சதவீதம்",
+    "type_fixed_amount": "நிலையான தொகை",
+    "type_bogo": "ஒன்னு வாங்கினா ஒன்னு ஃப்ரீ",
     "value": "மதிப்பு",
     "start": "தொடக்கம்",
     "end": "முடிவு",

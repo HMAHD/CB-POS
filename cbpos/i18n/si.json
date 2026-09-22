@@ -1919,7 +1919,7 @@
     "close_cancel": "කවුළුව වහන්න / අවලංගු කරන්න"
   },
   "stock_history": {
-    "title": "තොග ඉතිහාසය - {product}",
+    "title": "තොග ඉතිහාසය - {name}",
     "heading": "තොග ඉතිහාසය: {product}",
     "change": "වෙනස්කම",
     "balance": "ශේෂය",
@@ -2075,6 +2075,9 @@
     "new_promotion": "අලුත් ප්‍රවර්ධනයක්",
     "edit_promotion": "ප්‍රවර්ධනය සංස්කරණය",
     "type": "වර්ගය",
+    "type_percentage": "ප්‍රතිශතය",
+    "type_fixed_amount": "නියත මුදල",
+    "type_bogo": "එකක් ගන්න එකක් ෆ්‍රී",
     "value": "අගය",
     "start": "පටන්",
     "end": "අවසන්",

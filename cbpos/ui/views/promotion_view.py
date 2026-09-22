@@ -235,7 +235,7 @@ class PromotionDialog(QDialog):
 
         if promotion:
             self.name_input.setText(promotion.name)
-            index = self.type_combo.findText(promotion.type)
+            index = self.type_combo.findData(promotion.type)
             if index >= 0:
                 self.type_combo.setCurrentIndex(index)
             self.value_input.setValue(float(promotion.value))
@@ -257,7 +257,9 @@ class PromotionDialog(QDialog):
         self.name_input = QLineEdit()
 
         self.type_combo = QComboBox()
-        self.type_combo.addItems(["PERCENTAGE", "FIXED_AMOUNT", "BOGO"])
+        self.type_combo.addItem(_t("promotion.type_percentage"), "PERCENTAGE")
+        self.type_combo.addItem(_t("promotion.type_fixed_amount"), "FIXED_AMOUNT")
+        self.type_combo.addItem(_t("promotion.type_bogo"), "BOGO")
         self.type_combo.setMaximumWidth(200)
 
         self.value_input = QDoubleSpinBox()
@@ -322,7 +324,7 @@ class PromotionDialog(QDialog):
 
         return {
             "name": self.name_input.text(),
-            "type": self.type_combo.currentText(),
+            "type": self.type_combo.currentData(),
             "value": Decimal(str(self.value_input.value())),
             "start_time": self.start_dt.dateTime().toPyDateTime(),
             "end_time": self.end_dt.dateTime().toPyDateTime(),

@@ -204,7 +204,7 @@ class TestPromotionDialogEditMode:
         dialog = PromotionDialog(promotion=promo)
 
         assert dialog.name_input.text() == promo.name
-        assert dialog.type_combo.currentText() == "FIXED_AMOUNT"
+        assert dialog.type_combo.currentData() == "FIXED_AMOUNT"
         assert dialog.value_input.value() == 25.00
         checked = [i for i, cb in enumerate(dialog.day_checkboxes) if cb.isChecked()]
         assert checked == [0, 1]
@@ -223,7 +223,7 @@ class TestPromotionDialogEditMode:
 
     def test_type_combo_includes_bogo(self, db_session):
         dialog = PromotionDialog()
-        items = [dialog.type_combo.itemText(i) for i in range(dialog.type_combo.count())]
+        items = [dialog.type_combo.itemData(i) for i in range(dialog.type_combo.count())]
         assert "BOGO" in items
 
     def test_rejects_end_before_start_without_crashing(self, db_session):

@@ -260,7 +260,9 @@ class AdminToolsView(QWidget):
         filter_layout.addWidget(self.lbl_level)
 
         self.combo_log_level = QComboBox()
-        self.combo_log_level.addItems(["All", "WARNING", "ERROR", "CRITICAL"])
+        self.combo_log_level.addItem(_t("admin_tools.logs_level_all"), "All")
+        for level in ("WARNING", "ERROR", "CRITICAL"):
+            self.combo_log_level.addItem(level, level)
         self.combo_log_level.setFixedWidth(120)
         filter_layout.addWidget(self.combo_log_level)
 
@@ -357,7 +359,7 @@ class AdminToolsView(QWidget):
     def _load_logs(self) -> None:
         """Load and display log entries based on current filters."""
         try:
-            level = self.combo_log_level.currentText()
+            level = self.combo_log_level.currentData()
             if level == "All":
                 level = None
 
@@ -766,6 +768,7 @@ class AdminToolsView(QWidget):
 
         # Logs tab
         self.lbl_level.setText(_t("admin_tools.logs_level"))
+        self.combo_log_level.setItemText(0, _t("admin_tools.logs_level_all"))
         self.lbl_from.setText(_t("admin_tools.logs_from"))
         self.lbl_to.setText(_t("admin_tools.logs_to"))
         self.input_log_search.setPlaceholderText(_t("admin_tools.logs_search_placeholder"))

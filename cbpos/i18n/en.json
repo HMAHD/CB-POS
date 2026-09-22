@@ -950,6 +950,7 @@
     "db_header_table": "Table",
     "db_header_rows": "Rows",
     "logs_level": "Level:",
+    "logs_level_all": "All",
     "logs_from": "From:",
     "logs_to": "To:",
     "logs_search_placeholder": "Search logs...",

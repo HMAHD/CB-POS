@@ -1863,17 +1863,17 @@
   "receipt_reprint": {
     "title": "ரசீது மறுஅச்சு",
     "search_placeholder": "விலைப்பட்டி# தேடு...",
-    "col_receipt": "Receipt #",
-    "col_customer": "Customer",
-    "btn_reprint": "Reprint",
-    "select_sale": "Select a sale to reprint.",
-    "no_selection": "No Selection",
-    "reprinting": "Reprinting...",
-    "reprint_success": "Receipt sent to printer.",
-    "reprint_failed": "Failed to reprint receipt.",
-    "search_failed": "Search failed.",
-    "sending": "Sending...",
-    "walk_in": "Walk-in"
+    "col_receipt": "ரசீது #",
+    "col_customer": "வாடிக்கையாளர்",
+    "btn_reprint": "மறுபிரிண்ட்",
+    "select_sale": "மறுபிரிண்ட் செய்ய ஒரு விற்பனையைத் தேர்ந்தெடு.",
+    "no_selection": "எதுவும் தேர்ந்தெடுக்கல",
+    "reprinting": "மறுபிரிண்ட் செய்கிறோம்...",
+    "reprint_success": "ரசீது பிரிண்டருக்கு அனுப்பப்பட்டது.",
+    "reprint_failed": "ரசீதை மறுபிரிண்ட் செய்ய முடியல.",
+    "search_failed": "தேடல் தோல்வி.",
+    "sending": "அனுப்புகிறோம்...",
+    "walk_in": "சாதாரண வாடிக்கையாளர்"
   },
   "shift_closing": {
     "title": "ஷிப்ட் மூடல்",

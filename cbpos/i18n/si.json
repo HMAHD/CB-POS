@@ -1863,17 +1863,17 @@
   "receipt_reprint": {
     "title": "රිසිට්පත නැවත මුද්‍රණය",
     "search_placeholder": "ඉන්වොයිස# සොයන්න...",
-    "col_receipt": "Receipt #",
-    "col_customer": "Customer",
-    "btn_reprint": "Reprint",
-    "select_sale": "Select a sale to reprint.",
-    "no_selection": "No Selection",
-    "reprinting": "Reprinting...",
-    "reprint_success": "Receipt sent to printer.",
-    "reprint_failed": "Failed to reprint receipt.",
-    "search_failed": "Search failed.",
-    "sending": "Sending...",
-    "walk_in": "Walk-in"
+    "col_receipt": "රිසිට් #",
+    "col_customer": "පාරිභෝගිකයා",
+    "btn_reprint": "යළි මුද්‍රණය",
+    "select_sale": "යළි මුද්‍රණය කරන්න විකිණුමක් තෝරන්න.",
+    "no_selection": "කිසිවක් තෝරලා නැහැ",
+    "reprinting": "යළි මුද්‍රණය කරමින්...",
+    "reprint_success": "රිසිට් එක ප්‍රින්ටරයට යැව්වා.",
+    "reprint_failed": "රිසිට් එක යළි මුද්‍රණය කරන්න බැරි උනා.",
+    "search_failed": "සෙවීම අසාර්ථකයි.",
+    "sending": "යවමින්...",
+    "walk_in": "සාමාන්‍ය පාරිභෝගිකයා"
   },
   "shift_closing": {
     "title": "මුරය වසීම",

@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. Never delete added changes; you may rewrite them, but never delete.
 
+## [Unreleased]
+
+### Added — Complete Sinhala/Tamil Trilingual Translation
+
+- **Full UI translation coverage**: Translated the remaining ~700+ untranslated keys across document browser, admin tools, stock take, user management, report viewer, data export, shift closing, keyboard shortcuts, update dialog, receipt options/strings/reprint, database setup, setup wizard, and payment methods — bringing translation coverage to 2,090 keys, 97%+ translated in both Sinhala and Tamil, in casual native-speaker register matching the app's established tone.
+- **Translation validation**: Ran `scripts/validate_translations.py --strict` (0 missing keys, 0 format-parameter issues), a full key-parity audit (2,090/2,090 keys match across en/si/ta), and a duplicate-value cross-reference audit confirming no copy-paste translation errors remain.
+
+### Fixed — i18n bugs found during translation audit
+
+- **Hardcoded enum values shown to users**: A log-level filter combo (Admin Tools) and a promotion-type combo displayed raw internal constants (`WARNING`/`ERROR`, `PERCENTAGE`/`FIXED_AMOUNT`/`BOGO`) directly instead of translated labels — neither was ever wired to `_t()`. Rewired both to display a translated label while keeping the underlying stored/compared value unchanged.
+- **Broken format placeholder**: `stock_history.title` referenced `{product}` in Sinhala/Tamil when the code actually passes `name=...`, silently showing a literal `{product}` in the dialog title bar instead of the product name.
+- **Duplicate JSON key**: A duplicate top-level `"errors"` key existed in all three translation files — JSON parsers silently keep only the last occurrence, so an entire block (`insufficient_stock`) was unreachable dead data. Merged and translated.
+- **Stale cross-references to translated labels**: Several messages told users to navigate to a menu item or click a button by its English name (e.g. "Settings > Hardware", "Host, Database Name, Username", quoting `"Mode"` or `'Use Gmail'`) after those labels had since been translated elsewhere, which would confuse a Sinhala/Tamil-only user. Updated all references to match the actual translated labels.
+- **Register/vocabulary consistency**: Fixed several places using archaic literary verb forms or formal/clinical phrasing inconsistent with the casual, spoken-register tone used throughout the rest of the app (most notably the entire `setup_wizard` — the first screen every new shop owner sees — and the shared `errors` section used across many features), plus vocabulary drift for "export" (native word vs. loanword) and "role" (Tamil) between sections.
+
 ## [1.3.0] - 2026-09-03
 
 ### Added — Multi-Terminal LAN Sync

@@ -108,7 +108,7 @@
 │   ├── i18n/                  # Internationalization
 │   │   ├── __init__.py        # _t(), register/unregister callbacks
 │   │   ├── translation_service.py  # Thread-safe TranslationService
-│   │   ├── en.json            # English (1,827 keys — complete)
+│   │   ├── en.json            # English (2,090 keys — complete)
 │   │   ├── si.json            # Sinhala translations
 │   │   └── ta.json            # Tamil translations
 │   │
@@ -920,9 +920,9 @@ new_cost = (old_cost * old_qty + purchase_cost * purchase_qty) / (old_qty + purc
 
 | Language | Code | Font | Translation Status |
 |----------|------|------|--------------------|
-| English | `en` | Noto Sans | Complete (1,827 keys) |
-| Sinhala | `si` | Noto Sans Sinhala | Core UI translated (~400 keys) |
-| Tamil | `ta` | Noto Sans Tamil | Core UI translated (~350 keys) |
+| English | `en` | Noto Sans | Complete (2,090 keys) |
+| Sinhala | `si` | Noto Sans Sinhala | 97%+ translated (2,032/2,090 keys) |
+| Tamil | `ta` | Noto Sans Tamil | 97%+ translated (2,030/2,090 keys) |
 
 ### Architecture
 
@@ -938,7 +938,7 @@ new_cost = (old_cost * old_qty + purchase_cost * purchase_qty) / (old_qty + purc
 
 **JSON Files** (`cbpos/i18n/en.json`, `si.json`, `ta.json`):
 
-- 67 sections, 1,827 keys (English complete)
+- 70 sections, 2,090 keys (English complete; Sinhala/Tamil 97%+ translated)
 - Flat or nested JSON, flattened to dot notation at load time
 - Keys starting with `_` are metadata (skipped)
 

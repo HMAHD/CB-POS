@@ -33,7 +33,7 @@
 
 ### Internationalization (i18n)
 - **Trilingual Support**: English, Sinhala (සිංහල), Tamil (தமிழ்).
-- **1,827 Translation Keys**: Comprehensive coverage across all UI screens.
+- **2,090 Translation Keys**: 97%+ translated across all UI screens in casual, native-speaker register — the remaining untranslated keys are intentional (brand names, VAT/SSCL/TIN technical abbreviations, format placeholders).
 - **Live Language Switching**: Change language without restarting the application.
 - **Independent Receipt Language**: Print receipts in a different language than the UI.
 - **Format Parameter Safety**: Validated `{parameter}` interpolation across all translations.

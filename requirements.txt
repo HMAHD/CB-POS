@@ -1,6 +1,6 @@
 bcrypt>=5.0.0
 cryptography>=42.0.0
-PyQt6>=6.7.0
+PyQt6>=6.7.0,<6.11.0  # 6.11.0 regresses PaymentDialog row sizeHint, see #427
 SQLAlchemy>=2.0.54
 psycopg2-binary>=2.9.13
 pydantic>=2.7.0

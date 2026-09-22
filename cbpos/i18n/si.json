@@ -557,13 +557,13 @@
     "sidebar_credit_book": "ණය පොත",
     "sidebar_section_management": "කළමනාකරණය",
     "sidebar_reports": "වාර්තා",
-    "sidebar_documents": "Documents",
+    "sidebar_documents": "ලේඛන",
     "sidebar_users": "පරිශීලකයින්",
-    "sidebar_price_lists": "Price Lists",
+    "sidebar_price_lists": "මිල ලැයිස්තු",
     "sidebar_promotions": "ප්‍රවර්ධන",
-    "sidebar_stock_take": "Stock Take",
-    "sidebar_pos": "POS / Sales",
-    "sidebar_logout": "Logout",
+    "sidebar_stock_take": "තොග ගණන් කිරීම",
+    "sidebar_pos": "POS / විකුණුම්",
+    "sidebar_logout": "පිටවීම",
     "logo_fallback": "CB POS"
   },
   "dashboard": {
@@ -1803,9 +1803,9 @@
   },
   "manager_override": {
     "title": "කළමනාකරු අනුමැතිය",
-    "pin_placeholder": "Enter manager PIN",
-    "verify": "Verify",
-    "access_denied": "Access Denied",
+    "pin_placeholder": "මැනේජර් PIN එක දාන්න",
+    "verify": "තහවුරු කරන්න",
+    "access_denied": "ඇතුල් වෙන්න බැහැ",
     "invalid_pin": "වලංගු නොවන PIN",
     "invalid_pin_msg": "වැරදි PIN. කරුණාකර නැවත උත්සාහ කරන්න.",
     "no_permission": "අවසර නැත"
@@ -1819,15 +1819,15 @@
   },
   "profile": {
     "title": "පරිශීලක පැතිකඩ",
-    "display_name": "Display Name",
+    "display_name": "පෙන්වන නම",
     "current_pin": "වත්මන් PIN:",
     "new_pin": "නව PIN:",
-    "new_pin_placeholder": "Leave blank to keep current",
-    "pin_required": "Current PIN is required to make changes.",
-    "invalid_pin": "Current PIN is incorrect.",
-    "btn_update": "Update Profile",
-    "update_success": "Profile updated successfully.",
-    "update_failed": "Failed to update profile."
+    "new_pin_placeholder": "වෙනස් කරන්නේ නැත්නම් හිස්ව තියන්න",
+    "pin_required": "වෙනස් කරන්න වත්මන් PIN එක දාන්න ඕන.",
+    "invalid_pin": "වත්මන් PIN එක වැරදියි.",
+    "btn_update": "පැතිකඩ අප්ඩේට් කරන්න",
+    "update_success": "පැතිකඩ අප්ඩේට් උනා.",
+    "update_failed": "පැතිකඩ අප්ඩේට් කරන්න බැරි උනා."
   },
   "proforma": {
     "title": "කෝටේෂන් / ප්‍රොෆෝමා",

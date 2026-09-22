@@ -557,13 +557,13 @@
     "sidebar_credit_book": "கடன் புத்தகம்",
     "sidebar_section_management": "மேலாண்மை",
     "sidebar_reports": "அறிக்கைகள்",
-    "sidebar_documents": "Documents",
+    "sidebar_documents": "ஆவணங்கள்",
     "sidebar_users": "பயனர்கள்",
-    "sidebar_price_lists": "Price Lists",
+    "sidebar_price_lists": "விலைப் பட்டியல்கள்",
     "sidebar_promotions": "சலுகைகள்",
-    "sidebar_stock_take": "Stock Take",
-    "sidebar_pos": "POS / Sales",
-    "sidebar_logout": "Logout",
+    "sidebar_stock_take": "சரக்கு எண்ணிக்கை",
+    "sidebar_pos": "POS / விற்பனை",
+    "sidebar_logout": "வெளியேறு",
     "logo_fallback": "CB POS"
   },
   "dashboard": {
@@ -1803,9 +1803,9 @@
   },
   "manager_override": {
     "title": "மேலாளர் அங்கீகாரம்",
-    "pin_placeholder": "Enter manager PIN",
-    "verify": "Verify",
-    "access_denied": "Access Denied",
+    "pin_placeholder": "மேனேஜர் PIN போடுங்க",
+    "verify": "உறுதிப்படுத்துங்க",
+    "access_denied": "அனுமதி இல்ல",
     "invalid_pin": "செல்லாத PIN",
     "invalid_pin_msg": "தவறான PIN. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.",
     "no_permission": "அனுமதி இல்லை"
@@ -1819,15 +1819,15 @@
   },
   "profile": {
     "title": "பயனர் சுயவிவரம்",
-    "display_name": "Display Name",
+    "display_name": "காட்டும் பேர்",
     "current_pin": "தற்போதைய PIN:",
     "new_pin": "புதிய PIN:",
-    "new_pin_placeholder": "Leave blank to keep current",
-    "pin_required": "Current PIN is required to make changes.",
-    "invalid_pin": "Current PIN is incorrect.",
-    "btn_update": "Update Profile",
-    "update_success": "Profile updated successfully.",
-    "update_failed": "Failed to update profile."
+    "new_pin_placeholder": "மாத்தலைன்னா காலியா விடுங்க",
+    "pin_required": "மாத்த தற்போதைய PIN தேவை.",
+    "invalid_pin": "தற்போதைய PIN தப்பு.",
+    "btn_update": "சுயவிவரத்தை அப்டேட் பண்ணுங்க",
+    "update_success": "சுயவிவரம் அப்டேட் ஆச்சு.",
+    "update_failed": "சுயவிவரத்தை அப்டேட் பண்ண முடியல."
   },
   "proforma": {
     "title": "மேற்கோள்கள் / புரோஃபார்மா",

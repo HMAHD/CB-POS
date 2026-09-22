@@ -39,8 +39,9 @@ class DatabaseSetupService:
         know the schema is already up to date and don't try to re-apply.
         """
         try:
-            from alembic import command
             from alembic.config import Config as AlembicConfig
+
+            from alembic import command
             from cbpos.config import Config
 
             alembic_cfg = AlembicConfig(str(Config.BASE_DIR / "alembic.ini"))

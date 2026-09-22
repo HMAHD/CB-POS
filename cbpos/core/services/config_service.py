@@ -6,6 +6,7 @@ import logging
 import os
 import platform
 import stat
+import tempfile
 from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -160,28 +161,35 @@ class ConfigService:
 
     @staticmethod
     def _write_restricted(path: str, content: str, encoding: str = "utf-8") -> None:
-        """Write *content* to *path* with owner-only permissions (0600).
+        """Write *content* to *path* with owner-only permissions (0600), atomically.
+
+        Writes to a temp file in the same directory first, then renames it
+        onto *path* with ``os.replace()`` -- atomic on the same filesystem
+        on both POSIX and Windows, so a crash or power cut mid-write can
+        never leave *path* truncated or half-written.
 
         On Windows ``os.chmod`` sets the read-only attribute which is not
         equivalent to POSIX permissions, but it is the best we can do
         without pulling in ``pywin32``.  The file is still protected by
         the per-user AppData directory ACL set by the OS.
         """
-        # Use os.open with explicit mode bits so the file is never
-        # world-readable even for a brief instant.
-        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
-        fd = os.open(path, flags, stat.S_IRUSR | stat.S_IWUSR)  # 0600
+        directory = os.path.dirname(path) or "."
+        # Use mkstemp with explicit mode bits so the file is never
+        # world-readable even for a brief instant, and lives on the same
+        # filesystem as *path* so the final rename is atomic.
+        fd, tmp_path = tempfile.mkstemp(dir=directory, prefix=f".{os.path.basename(path)}.", suffix=".tmp")
         try:
             with os.fdopen(fd, "w", encoding=encoding) as f:
                 f.write(content)
+            # Belt-and-suspenders: chmod again in case the OS ignored the
+            # mode in mkstemp (Windows does).
+            with contextlib.suppress(OSError):
+                os.chmod(tmp_path, stat.S_IRUSR | stat.S_IWUSR)
+            os.replace(tmp_path, path)
         except BaseException:
-            # fd is already closed by os.fdopen on success; on error we
-            # must NOT close it twice — os.fdopen takes ownership.
+            with contextlib.suppress(OSError):
+                os.remove(tmp_path)
             raise
-        # Belt-and-suspenders: chmod again in case the OS ignored the
-        # mode in os.open (Windows does).
-        with contextlib.suppress(OSError):
-            os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
 
     @classmethod
     def _get_fernet(cls) -> Fernet:

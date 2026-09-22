@@ -198,7 +198,7 @@
     "invalid_amount_title": "වලංගු නොවන මුදල",
     "invalid_amount_message": "කරුණාකර වලංගු මුදලක් ඇතුළත් කරන්න.",
     "credit_no_customer": "ණය විකුණුමට පාරිභෝගිකයෙකු තෝරන්න.",
-    "credit_customer_not_found": "'{name}' පාරිභෝගිකයා හමු නොවිණි."
+    "credit_customer_not_found": "'{name}' පාරිභෝගිකයා හම්බ වුනේ නැහැ."
   },
   "discount": {
     "title": "වට්ටම යොදන්න",
@@ -1799,9 +1799,6 @@
     "email_sending": "ඊමේල් එක පසුබිමින් යවමින් තියෙනවා...",
     "email_prepare_failed": "ඊමේල් සූදානම් කරන්න බැරි උනා: {error}"
   },
-  "errors": {
-    "insufficient_stock": "Insufficient stock"
-  },
   "manager_override": {
     "title": "කළමනාකරු අනුමැතිය",
     "pin_placeholder": "මැනේජර් PIN එක දාන්න",
@@ -1941,7 +1938,7 @@
     "note_placeholder": "සටහනක් (අවශ්‍ය නැහැ)",
     "record": "ගෙවීම වාර්තා කරන්න",
     "enter_amount": "මුදලක් දාන්න.",
-    "invalid_amount": "වැරදි මුදලක්. බින්දුවට වඩා වැඩි විය යුතුයි.",
+    "invalid_amount": "වැරදි මුදලක්. බින්දුවට වඩා වැඩි වෙන්න ඕන.",
     "no_user": "කවුරුවත් ලොග් වෙලා නැහැ.",
     "recorded_success": "{amount} ගෙවීම වාර්තා කළා.",
     "record_failed": "ගෙවීම වාර්තා කරන්න බැරි උනා: {error}"
@@ -2244,12 +2241,13 @@
     "loading": "\u0daf\u0dad\u0dca\u0dad \u0dc3\u0db8\u0dd4\u0daf\u0dcf\u0dba \u0dc3\u0d9a\u0dc3\u0db8\u0dd2\u0db1\u0dca..."
   },
   "errors": {
-    "already_exists": "එම නමින් අයිතමයක් දැනටමත් පවතී.",
-    "not_found": "ඉල්ලූ අයිතමය සොයාගත නොහැක.",
-    "cannot_delete_in_use": "භාවිතයේ ඇති නිසා මකා දැමිය නොහැක.",
-    "concurrent_modification": "මෙම වාර්තාව වෙනත් පරිශීලකයෙකු විසින් වෙනස් කර ඇත. කරුණාකර නැවත පූරණය කර උත්සාහ කරන්න.",
-    "circular_reference": "ප්‍රවර්ගයකට තමාගේම මව් ප්‍රවර්ගය විය නොහැක.",
-    "payment_amount_zero": "ගෙවීමේ මුදල ශුන්‍යයට වඩා වැඩි විය යුතුය.",
-    "customer_not_found": "පාරිභෝගිකයා සොයාගත නොහැක."
+    "already_exists": "එම නමින් අයිතමයක් දැනටමත් තියෙනවා.",
+    "not_found": "ඉල්ලූ අයිතමය හම්බ වුනේ නැහැ.",
+    "cannot_delete_in_use": "පාවිච්චි වෙනවා නිසා මකන්න බැහැ.",
+    "concurrent_modification": "මේ වාර්තාව වෙන කෙනෙක් වෙනස් කරලා. ආයෙත් ලෝඩ් කරලා උත්සාහ කරන්න.",
+    "circular_reference": "කාණ්ඩයකට තමන්ගේම මව් කාණ්ඩය වෙන්න බැහැ.",
+    "payment_amount_zero": "ගෙවීමේ මුදල බින්දුවට වඩා වැඩි වෙන්න ඕන.",
+    "customer_not_found": "පාරිභෝගිකයා හම්බ වුනේ නැහැ.",
+    "insufficient_stock": "ප්‍රමාණවත් තොග නැහැ"
   }
 }

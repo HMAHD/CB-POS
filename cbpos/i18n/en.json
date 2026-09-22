@@ -1829,9 +1829,6 @@
     "email_sending": "Email sending started in background...",
     "email_prepare_failed": "Failed to prepare email: {error}"
   },
-  "errors": {
-    "insufficient_stock": "Insufficient stock"
-  },
   "manager_override": {
     "title": "Manager Override",
     "pin_placeholder": "Enter manager PIN",
@@ -2250,6 +2247,7 @@
     "concurrent_modification": "This record was modified by another user. Please reload and try again.",
     "circular_reference": "A category cannot be its own parent.",
     "payment_amount_zero": "Payment amount must be greater than zero.",
-    "customer_not_found": "Customer not found."
+    "customer_not_found": "Customer not found.",
+    "insufficient_stock": "Insufficient stock"
   }
 }

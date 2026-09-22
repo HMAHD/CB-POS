@@ -198,7 +198,7 @@
     "invalid_amount_title": "தவறான தொகை",
     "invalid_amount_message": "சரியான தொகையை உள்ளிடுக.",
     "credit_no_customer": "கடன் விற்பனைக்கு வாடிக்கையாளரைத் தேர்வு செய்யுங்கள்.",
-    "credit_customer_not_found": "'{name}' வாடிக்கையாளர் கிடைக்கவில்லை."
+    "credit_customer_not_found": "'{name}' வாடிக்கையாளர் கிடைக்கல."
   },
   "discount": {
     "title": "தள்ளுபடி",
@@ -1799,9 +1799,6 @@
     "email_sending": "மின்னஞ்சல் பின்னணியில் அனுப்பப்படுது...",
     "email_prepare_failed": "மின்னஞ்சலைத் தயார் செய்ய முடியல: {error}"
   },
-  "errors": {
-    "insufficient_stock": "Insufficient stock"
-  },
   "manager_override": {
     "title": "மேலாளர் அங்கீகாரம்",
     "pin_placeholder": "மேனேஜர் PIN போடுங்க",
@@ -2244,12 +2241,13 @@
     "loading": "\u0b9f\u0bc7\u0b9f\u0bcd\u0b9f\u0bbe\u0baa\u0bc7\u0bb8\u0bc8 \u0b85\u0bae\u0bc8\u0b95\u0bcd\u0b95\u0bc1\u0ba4\u0bc1..."
   },
   "errors": {
-    "already_exists": "அந்தப் பெயரில் ஒரு உருப்படி ஏற்கனவே உள்ளது.",
-    "not_found": "கோரிய உருப்படி கண்டுபிடிக்கப்படவில்லை.",
-    "cannot_delete_in_use": "பயன்பாட்டில் உள்ளதால் நீக்க முடியாது.",
-    "concurrent_modification": "இந்தப் பதிவு மற்றொரு பயனரால் மாற்றப்பட்டுள்ளது. மீண்டும் ஏற்றி முயற்சிக்கவும்.",
-    "circular_reference": "ஒரு வகைப்பிரிவு தன்னையே பெற்றோர் வகைப்பிரிவாகக் கொண்டிருக்க முடியாது.",
-    "payment_amount_zero": "பணம் செலுத்தும் தொகை பூஜ்ஜியத்தை விட அதிகமாக இருக்க வேண்டும்.",
-    "customer_not_found": "வாடிக்கையாளர் கண்டுபிடிக்கப்படவில்லை."
+    "already_exists": "அந்த பேரில் ஒரு பொருள் ஏற்கனவே இருக்கு.",
+    "not_found": "கேட்ட பொருள் கிடைக்கல.",
+    "cannot_delete_in_use": "பயன்பாட்டுல இருக்கிறதால நீக்க முடியல.",
+    "concurrent_modification": "இந்த பதிவை வேற ஒருத்தர் மாத்திட்டாங்க. மறுபடி லோட் பண்ணி முயற்சி பண்ணுங்க.",
+    "circular_reference": "ஒரு வகைக்கு அதே வகையை மூல வகையா வைக்க முடியாது.",
+    "payment_amount_zero": "பணம் செலுத்தும் தொகை பூஜ்ஜியத்தை விட அதிகமா இருக்கணும்.",
+    "customer_not_found": "வாடிக்கையாளர் கிடைக்கல.",
+    "insufficient_stock": "போதிய ஸ்டாக் இல்ல"
   }
 }

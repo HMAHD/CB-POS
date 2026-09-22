@@ -1227,7 +1227,7 @@
   "settings": {
     "title": "සැකසුම්",
     "sidebar_shop_info": "සාප්පුවේ තොරතුරු",
-    "sidebar_sales_tax": "විකුණුම් සහ බදු",
+    "sidebar_sales_tax": "විකුණුම් && බදු",
     "sidebar_documents": "ලේඛන",
     "sidebar_hardware": "හාඩ්වෙයාර්",
     "sidebar_receipt": "රිසිට්",

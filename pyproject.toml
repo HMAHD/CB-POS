@@ -47,7 +47,6 @@ ignore = [
     "SIM117", # Multiple with statements — existing pattern, refactor gradually
     "UP007",  # Use X | Y for union type — keep Optional[] for clarity
     "UP031",  # printf-string-formatting — existing %-format strings, refactor gradually
-    "UP038",  # Use X | Y in isinstance — isinstance(x, (A, B)) is clearer
     "RUF012", # Mutable class variables — too noisy with PyQt class attributes
     "RUF013", # Implicit Optional — changing signatures in bulk is risky, fix gradually
 ]

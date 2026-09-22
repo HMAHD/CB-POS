@@ -26,6 +26,39 @@ def _flush_early_log() -> None:
     _early_log.clear()
 
 
+def _report_crash(exc_type, exc_value, exc_traceback) -> None:
+    """Log an uncaught exception and show a crash dialog if possible.
+
+    Installed as ``sys.excepthook`` so a crash on the packaged Windows
+    build (built with ``console=False`` in cbpos.spec) is never silently
+    swallowed -- printing to stdout alone writes to a console that doesn't
+    exist there. Also used as the fallback for exceptions raised before
+    ``sys.excepthook`` is installed (e.g. during ``ensure_data_dir()``).
+    """
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    try:
+        logging.getLogger("cbpos.crash").critical("Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback))
+    except Exception:
+        # Logging isn't configured yet (crash happened before setup_logging()) --
+        # fall back to stderr, which at least helps when running from a console.
+        import traceback
+
+        traceback.print_exception(exc_type, exc_value, exc_traceback)
+
+    app = QApplication.instance()
+    if app is not None:
+        from PyQt6.QtWidgets import QMessageBox
+
+        QMessageBox.critical(
+            None,
+            "CB POS",
+            "CB POS encountered an unexpected error and needs to close.\n\nDetails were saved to the logs folder.",
+        )
+
+
 def run_migrations() -> None:
     """Apply pending Alembic migrations to bring the database schema up to date.
 
@@ -44,12 +77,12 @@ def run_migrations() -> None:
         return  # No database yet — will be created by DatabaseSetupService
 
     try:
-        from sqlalchemy import create_engine, inspect
-
-        from alembic import command
         from alembic.config import Config as AlembicConfig
         from alembic.migration import MigrationContext
         from alembic.script import ScriptDirectory
+        from sqlalchemy import create_engine, inspect
+
+        from alembic import command
 
         alembic_cfg = AlembicConfig(str(Config.BASE_DIR / "alembic.ini"))
         alembic_cfg.set_main_option("script_location", str(Config.BASE_DIR / "alembic"))
@@ -213,6 +246,10 @@ def main():
     # Set up file-based error logging
     setup_logging()
     _flush_early_log()
+
+    # Route uncaught exceptions to the log + a crash dialog instead of a
+    # stdout that doesn't exist on the packaged (console=False) build.
+    sys.excepthook = _report_crash
 
     # Install custom message handler to suppress Qt internal warnings
     qInstallMessageHandler(qt_message_handler)
@@ -386,7 +423,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception:
-        import traceback
-
-        traceback.print_exc()
+        _report_crash(*sys.exc_info())
         sys.exit(1)

@@ -1668,25 +1668,25 @@
     "cannot_delete_title": "මකන්න බැහැ"
   },
   "role_manager": {
-    "title": "Manage Roles",
-    "col_role": "Role",
-    "col_users": "Users",
-    "details_group": "Role Details",
-    "name_label": "Role Name:",
-    "name_placeholder": "e.g. Supervisor",
-    "save_new": "Add Role",
-    "update": "Update Role",
-    "delete_selected": "Delete Selected",
-    "clear_new": "Clear / New",
-    "name_required": "Please enter a role name.",
-    "builtin_suffix": " (Built-in)",
-    "confirm_delete_title": "Delete Role",
-    "confirm_delete_msg": "Delete role '{name}'? This cannot be undone.",
-    "cannot_delete_title": "Cannot Delete Role",
-    "cannot_delete_admin_msg": "The built-in Admin role cannot be deleted.",
-    "cannot_delete_in_use_msg": "'{name}' is still assigned to {count} user(s). Reassign them to a different role first.",
-    "cannot_rename_title": "Cannot Rename Role",
-    "cannot_rename_admin_msg": "The built-in Admin role cannot be renamed."
+    "title": "භූමිකා කළමනාකරණය",
+    "col_role": "භූමිකාව",
+    "col_users": "පරිශීලකයෝ",
+    "details_group": "භූමිකාවේ විස්තර",
+    "name_label": "භූමිකාවේ නම:",
+    "name_placeholder": "උදා: සුපර්වයිසර්",
+    "save_new": "භූමිකාවක් එකතු කරන්න",
+    "update": "භූමිකාව අප්ඩේට් කරන්න",
+    "delete_selected": "තෝරපු ඒවා මකන්න",
+    "clear_new": "මකන්න / අලුත්",
+    "name_required": "භූමිකාවේ නම දාන්න.",
+    "builtin_suffix": " (පෙරනිමි)",
+    "confirm_delete_title": "භූමිකාව මකන්න",
+    "confirm_delete_msg": "'{name}' භූමිකාව මකන්නද? මේක ආපහු හරවන්න බැහැ.",
+    "cannot_delete_title": "භූමිකාව මකන්න බැහැ",
+    "cannot_delete_admin_msg": "පෙරනිමි Admin භූමිකාව මකන්න බැහැ.",
+    "cannot_delete_in_use_msg": "'{name}' භූමිකාව තාම පරිශීලකයෝ {count}කට දීලා තියෙනවා. මුලින්ම ඒගොල්ලන්ට වෙන භූමිකාවක් දෙන්න.",
+    "cannot_rename_title": "භූමිකාවේ නම මාරු කරන්න බැහැ",
+    "cannot_rename_admin_msg": "පෙරනිමි Admin භූමිකාවේ නම මාරු කරන්න බැහැ."
   },
   "category_tree": {
     "title": "කාණ්ඩ ගස",
@@ -1811,11 +1811,11 @@
     "no_permission": "අවසර නැත"
   },
   "permission": {
-    "title": "Manage Permissions",
-    "col_permission": "Permission",
-    "save_changes": "Save Changes",
-    "save_success": "Permissions saved successfully.",
-    "save_failed": "Failed to save permissions."
+    "title": "අවසර කළමනාකරණය",
+    "col_permission": "අවසරය",
+    "save_changes": "වෙනස්කම් සුරකින්න",
+    "save_success": "අවසර සුරැකුනා.",
+    "save_failed": "අවසර සුරකින්න බැරි උනා."
   },
   "profile": {
     "title": "පරිශීලක පැතිකඩ",

@@ -1668,25 +1668,25 @@
     "cannot_delete_title": "நீக்க முடியாது"
   },
   "role_manager": {
-    "title": "Manage Roles",
-    "col_role": "Role",
-    "col_users": "Users",
-    "details_group": "Role Details",
-    "name_label": "Role Name:",
-    "name_placeholder": "e.g. Supervisor",
-    "save_new": "Add Role",
-    "update": "Update Role",
-    "delete_selected": "Delete Selected",
-    "clear_new": "Clear / New",
-    "name_required": "Please enter a role name.",
-    "builtin_suffix": " (Built-in)",
-    "confirm_delete_title": "Delete Role",
-    "confirm_delete_msg": "Delete role '{name}'? This cannot be undone.",
-    "cannot_delete_title": "Cannot Delete Role",
-    "cannot_delete_admin_msg": "The built-in Admin role cannot be deleted.",
-    "cannot_delete_in_use_msg": "'{name}' is still assigned to {count} user(s). Reassign them to a different role first.",
-    "cannot_rename_title": "Cannot Rename Role",
-    "cannot_rename_admin_msg": "The built-in Admin role cannot be renamed."
+    "title": "ரோல் மேலாண்மை",
+    "col_role": "ரோல்",
+    "col_users": "பயனர்கள்",
+    "details_group": "ரோல் விவரங்கள்",
+    "name_label": "ரோல் பேர்:",
+    "name_placeholder": "உதா: சூப்பர்வைசர்",
+    "save_new": "ரோல் சேருங்க",
+    "update": "ரோலை அப்டேட் பண்ணுங்க",
+    "delete_selected": "தேர்ந்தெடுத்ததை நீக்குங்க",
+    "clear_new": "நீக்கு / புது",
+    "name_required": "ரோல் பேரைப் போடுங்க.",
+    "builtin_suffix": " (இயல்பான)",
+    "confirm_delete_title": "ரோலை நீக்கு",
+    "confirm_delete_msg": "'{name}' ரோலை நீக்கவா? இதை மறுபடியும் மாத்த முடியாது.",
+    "cannot_delete_title": "ரோலை நீக்க முடியாது",
+    "cannot_delete_admin_msg": "இயல்பான Admin ரோலை நீக்க முடியாது.",
+    "cannot_delete_in_use_msg": "'{name}' ரோல் இன்னும் {count} பயனர்களுக்கு கொடுக்கப்பட்டிருக்கு. முதல்ல அவங்களுக்கு வேற ரோல் கொடுங்க.",
+    "cannot_rename_title": "ரோல் பேரை மாத்த முடியாது",
+    "cannot_rename_admin_msg": "இயல்பான Admin ரோல் பேரை மாத்த முடியாது."
   },
   "category_tree": {
     "title": "வகை மரம்",
@@ -1811,11 +1811,11 @@
     "no_permission": "அனுமதி இல்லை"
   },
   "permission": {
-    "title": "Manage Permissions",
-    "col_permission": "Permission",
-    "save_changes": "Save Changes",
-    "save_success": "Permissions saved successfully.",
-    "save_failed": "Failed to save permissions."
+    "title": "அனுமதி மேலாண்மை",
+    "col_permission": "அனுமதி",
+    "save_changes": "மாற்றங்களை சேமியுங்க",
+    "save_success": "அனுமதிகள் சேமிச்சாச்சு.",
+    "save_failed": "அனுமதிகளை சேமிக்க முடியல."
   },
   "profile": {
     "title": "பயனர் சுயவிவரம்",

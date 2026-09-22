@@ -8,6 +8,7 @@ from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.database import Database
 from cbpos.core.models import Sale, User
 from cbpos.core.reports.base_report import BaseReport
+from cbpos.i18n import _t
 
 
 class VoidRefundReport(BaseReport):
@@ -19,11 +20,11 @@ class VoidRefundReport(BaseReport):
 
     @property
     def name(self) -> str:
-        return "Void & Refund Report"
+        return _t("reports.void_refund")
 
     @property
     def category(self) -> str:
-        return "Audit"
+        return _t("reports.category_audit")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [
@@ -85,11 +86,11 @@ class PaymentMethodSummaryReport(BaseReport):
 
     @property
     def name(self) -> str:
-        return "Payment Method Summary"
+        return _t("reports.payment_method_summary")
 
     @property
     def category(self) -> str:
-        return "Sales"
+        return _t("reports.category_sales")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [

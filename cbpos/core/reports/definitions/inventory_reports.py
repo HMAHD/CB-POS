@@ -5,6 +5,7 @@ import pandas as pd
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Category, Product
 from cbpos.core.reports.base_report import BaseReport
+from cbpos.i18n import _t
 
 
 class InventoryValuationReport(BaseReport):
@@ -14,11 +15,11 @@ class InventoryValuationReport(BaseReport):
 
     @property
     def name(self) -> str:
-        return "Inventory Valuation"
+        return _t("reports.inventory_valuation")
 
     @property
     def category(self) -> str:
-        return "Inventory"
+        return _t("reports.category_inventory")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         with get_db_session() as session:
@@ -72,11 +73,11 @@ class LowStockReport(BaseReport):
 
     @property
     def name(self) -> str:
-        return "Low Stock Alert"
+        return _t("reports.low_stock")
 
     @property
     def category(self) -> str:
-        return "Inventory"
+        return _t("reports.category_inventory")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         return []

@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from cbpos.core.database import Database
 from cbpos.core.models import Sale
 from cbpos.core.reports.base_report import BaseReport
+from cbpos.i18n import _t
 
 
 class DailySalesSummaryReport(BaseReport):
@@ -16,11 +17,11 @@ class DailySalesSummaryReport(BaseReport):
 
     @property
     def name(self) -> str:
-        return "Daily Sales Summary"
+        return _t("reports.daily_sales_summary")
 
     @property
     def category(self) -> str:
-        return "Sales"
+        return _t("reports.category_sales")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [

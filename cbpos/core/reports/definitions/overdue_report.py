@@ -4,6 +4,7 @@ import pandas as pd
 
 from cbpos.core.reports.base_report import BaseReport
 from cbpos.core.services.customer_credit_service import CustomerCreditService
+from cbpos.i18n import _t
 
 
 class OverdueCustomersReport(BaseReport):
@@ -15,11 +16,11 @@ class OverdueCustomersReport(BaseReport):
 
     @property
     def name(self) -> str:
-        return "Overdue Customers"
+        return _t("reports.overdue_customers")
 
     @property
     def category(self) -> str:
-        return "Financial"
+        return _t("reports.category_financial")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         return []

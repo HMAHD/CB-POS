@@ -6,6 +6,7 @@ from sqlalchemy import func
 from cbpos.core.database import get_db_session
 from cbpos.core.models import CashMovement, Product, StockMovement, User
 from cbpos.core.reports.base_report import BaseReport
+from cbpos.i18n import _t
 
 
 class StockMovementReport(BaseReport):
@@ -15,11 +16,11 @@ class StockMovementReport(BaseReport):
 
     @property
     def name(self) -> str:
-        return "Stock Movement Audit"
+        return _t("reports.stock_movement")
 
     @property
     def category(self) -> str:
-        return "Audit"
+        return _t("reports.category_audit")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
@@ -63,11 +64,11 @@ class CashMovementAuditReport(BaseReport):
 
     @property
     def name(self) -> str:
-        return "Cash Movement Audit"
+        return _t("reports.cash_movement_audit")
 
     @property
     def category(self) -> str:
-        return "Audit"
+        return _t("reports.category_audit")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]

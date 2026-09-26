@@ -18,6 +18,13 @@ class PageHeader(QWidget):
     """Compact icon + title strip, placed at the very top of a screen."""
 
     def __init__(self, icon_name: str = "", title: str = "", parent=None) -> None:
+        """Build the icon+title row and register for theme-driven icon refresh.
+
+        Args:
+            icon_name: Initial ``Icons.*`` FontAwesome icon name.
+            title: Initial screen-name text.
+            parent: Optional parent widget.
+        """
         super().__init__(parent)
         self.setObjectName("PageHeader")
         self._icon_name = icon_name

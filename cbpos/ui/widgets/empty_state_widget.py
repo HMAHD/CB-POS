@@ -21,6 +21,12 @@ class EmptyStateWidget(QWidget):
     """Large muted icon, a title, and an optional subtitle, all centered."""
 
     def __init__(self, icon_name: str, parent=None) -> None:
+        """Build the centered icon/title/subtitle layout.
+
+        Args:
+            icon_name: qtawesome icon name for the muted center icon.
+            parent: Optional parent widget.
+        """
         super().__init__(parent)
         self.setObjectName("EmptyStateWidget")
         self._icon_name = icon_name

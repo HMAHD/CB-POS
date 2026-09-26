@@ -23,6 +23,7 @@ class OrderBar(QWidget):
     new_tab_requested = pyqtSignal()  # Request to clear current and start new
 
     def __init__(self, parent=None):
+        """Build the bar and populate it with the currently held bills."""
         super().__init__(parent)
         self.setFixedHeight(60)
         self.setObjectName("OrderBar")
@@ -35,6 +36,7 @@ class OrderBar(QWidget):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self):
+        """Lay out the title label, scrollable tab strip, and new-order button."""
         layout = QHBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
         layout.setSpacing(10)

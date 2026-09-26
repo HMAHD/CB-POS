@@ -22,6 +22,15 @@ class ActionBtn(QPushButton):
     """Action tile — shortcut top-left, icon center, label bottom."""
 
     def __init__(self, shortcut_text, label_key, icon_name=None, color=None, parent=None):
+        """Build the tile layout: shortcut label, icon, and text.
+
+        Args:
+            shortcut_text: Keyboard shortcut shown top-left (e.g. "F2").
+            label_key: i18n key for the bottom label, applied by ``retranslate()``.
+            icon_name: qtawesome icon name shown in the center.
+            color: Optional ``btnColor`` QSS property value for tinting.
+            parent: Optional parent widget.
+        """
         super().__init__(parent)
         self.setObjectName("ActionGridBtn")
         self._icon_name = icon_name
@@ -103,6 +112,12 @@ class SectionLabel(QLabel):
     """Section header label for grouping action buttons."""
 
     def __init__(self, text_key: str, parent=None):
+        """Create a section label bound to an i18n key.
+
+        Args:
+            text_key: i18n key applied by ``retranslate()``.
+            parent: Optional parent widget.
+        """
         super().__init__(parent=parent)
         self._text_key = text_key
         self.setObjectName("ActionSectionLabel")
@@ -129,6 +144,7 @@ class ActionPanel(QWidget):
     action_ref = pyqtSignal()
 
     def __init__(self, parent=None):
+        """Build the panel and register for live language updates."""
         super().__init__(parent)
         self._section_labels: list[SectionLabel] = []
         self._action_btns: list[ActionBtn] = []
@@ -140,6 +156,7 @@ class ActionPanel(QWidget):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self):
+        """Lay out the customer card, action button grids, and pay button."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(0)
@@ -357,6 +374,13 @@ class ActionPanel(QWidget):
             btn.retranslate()
 
     def set_customer_info(self, name, phone, points):
+        """Show the selected customer's short name, points, and clear button.
+
+        Args:
+            name: Customer's full name (shown elided; full name + phone as tooltip).
+            phone: Customer's phone number, included in the tooltip if present.
+            points: Loyalty points balance shown in the points row.
+        """
         self._has_customer = True
         # The full name + phone is still there on hover -- the card only
         # has room for a short label, and a phone number adds little at
@@ -369,6 +393,7 @@ class ActionPanel(QWidget):
         self.btn_cust_clear.setVisible(True)
 
     def clear_customer_info(self):
+        """Reset the customer card back to the Walk-in Customer placeholder."""
         self._has_customer = False
         self.lbl_customer.setText(_t("action_panel.walk_in_customer"))
         self.lbl_points.setText("")

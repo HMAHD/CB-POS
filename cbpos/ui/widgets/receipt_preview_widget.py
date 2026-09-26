@@ -54,6 +54,7 @@ class ReceiptPreviewWidget(QWidget):
     _CHAR_COLS = {"80mm": 42, "58mm": 32}
 
     def __init__(self, parent: QWidget | None = None) -> None:
+        """Create an empty 80mm preview; call ``set_commands()`` to render a receipt."""
         super().__init__(parent)
         self._commands: list[dict[str, Any]] = []
         self._paper_width = "80mm"

@@ -63,8 +63,7 @@ scripts/               # Utility scripts
 ├── seed.py            # Database seeding with sample data
 ├── update_translations.py  # Qt translation file generation
 ├── debug_conftest.py  # Test debugging utilities
-├── debug_db.py        # Database debugging utilities
-└── verify_phase4.py   # Phase 4 verification script
+└── debug_db.py        # Database debugging utilities
 
 alembic/               # Database migrations
 ├── versions/          # Migration scripts

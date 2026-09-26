@@ -39,6 +39,19 @@ class PrinterService:
             PrinterService._print_thermal_receipt(sale, is_reprint=is_reprint)
 
     @staticmethod
+    def maybe_print_b2b_invoice(sale: Sale) -> None:
+        """Additionally print an A4 Tax Invoice if `sale` is for a VAT-registered customer.
+
+        This is additive, not a replacement for the thermal receipt: call it
+        alongside the normal receipt print, not instead of it. No-ops (with a
+        log line) if no A4 printer is configured -- most shops only have a
+        thermal printer, so this must never block or replace the receipt they
+        do have.
+        """
+        if sale.customer and sale.customer.vat_number:
+            PrinterService._print_a4_invoice(sale)
+
+    @staticmethod
     def _print_a4_invoice(sale: Sale) -> None:
         """
         Generate and print A4 Tax Invoice for B2B customers.

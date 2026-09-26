@@ -61,19 +61,19 @@
     cd cb-pos
     ```
 
-2. **Create Virtual Environment**
+2. **Install [uv](https://docs.astral.sh/uv/)** (if you don't already have it)
     ```bash
-    python -m venv .venv
+    # macOS/Linux
+    curl -LsSf https://astral.sh/uv/install.sh | sh
     # Windows
-    .\.venv\Scripts\activate
-    # Linux/Mac
-    source .venv/bin/activate
+    powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
     ```
 
 3. **Install Dependencies**
     ```bash
-    pip install -r requirements.txt
+    uv sync
     ```
+    This creates `.venv` and installs the exact versions pinned in `uv.lock`. No manual `venv`/`activate` step needed — prefix commands with `uv run`, or activate `.venv` as usual if you prefer.
 
 4. **Initialize Database**
     ```bash
@@ -94,7 +94,7 @@
 
 ### Running the App
 ```bash
-python main.py
+uv run python main.py
 ```
 
 ### Default Credentials

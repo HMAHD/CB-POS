@@ -15,33 +15,33 @@ Welcome to the CB POS team! This guide will help you set up your development env
     cd cbpos
     ```
 
-2.  **Create a virtual environment:**
+2.  **Install [uv](https://docs.astral.sh/uv/):**
     ```bash
-    python -m venv .venv
     # Windows
-    .venv\Scripts\activate
+    powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
     # Linux/Mac
-    source .venv/bin/activate
+    curl -LsSf https://astral.sh/uv/install.sh | sh
     ```
 
 3.  **Install dependencies:**
     ```bash
-    pip install -r requirements.txt
+    uv sync
     ```
+    Creates `.venv` and installs the exact versions from `uv.lock`. No activation needed — prefix commands with `uv run`.
 
 4.  **Install pre-commit hooks:**
     ```bash
-    pre-commit install
+    uv run pre-commit install
     ```
 
 5.  **Seed the database:**
     ```bash
-    python scripts/seed.py
+    uv run python scripts/seed.py
     ```
 
 6.  **Run the application:**
     ```bash
-    python main.py
+    uv run python main.py
     ```
 
 ## Project Structure

@@ -148,7 +148,7 @@ class Document(Base):
     """Base class for all transactional documents via joined-table inheritance.
 
     Sale, Purchase, Proforma, and StockCount all extend this, sharing document
-    numbering, the `type` polymorphic discriminator, voiding, and audit fields.
+    numbering, the ``type`` polymorphic discriminator, voiding, and audit fields.
     See CLAUDE.md's Document Polymorphism section.
     """
 

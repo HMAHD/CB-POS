@@ -20,9 +20,9 @@ class HelpIconButton(QPushButton):
     """A small circular info-icon button with a tooltip and, optionally,
     a click handler that opens a guide dialog.
 
-    Pass ``on_click`` (e.g. a method that builds and ``exec()``s a guide
-    dialog, as the SMTP setup guide already does) for a field complex
-    enough to need step-by-step help; omit it for a tooltip-only hint.
+    Pass ``on_click`` (e.g. a method that builds a guide dialog and calls
+    ``exec()`` on it, as the SMTP setup guide already does) for a field
+    complex enough to need step-by-step help; omit it for a tooltip-only hint.
     """
 
     def __init__(self, tooltip: str = "", on_click=None, parent=None) -> None:

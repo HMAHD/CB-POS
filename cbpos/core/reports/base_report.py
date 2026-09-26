@@ -26,18 +26,19 @@ class BaseReport(ABC):
 
     @abstractmethod
     def get_filter_definitions(self) -> list[dict[str, Any]]:
-        """
-        Returns a list of filter definitions required for this report.
-        Example:
-        [
-            {'name': 'date_range', 'type': 'date_range', 'label': 'Date Range'},
-            {
-                'name': 'category_id',
-                'type': 'combo',
-                'label': 'Category',
-                'options': [...]
-            },
-        ]
+        """Returns a list of filter definitions required for this report.
+
+        Example::
+
+            [
+                {'name': 'date_range', 'type': 'date_range', 'label': 'Date Range'},
+                {
+                    'name': 'category_id',
+                    'type': 'combo',
+                    'label': 'Category',
+                    'options': [...]
+                },
+            ]
         """
 
     @abstractmethod

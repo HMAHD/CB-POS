@@ -5,6 +5,7 @@ Runs a background QThread on Terminal PCs.  Periodically pushes
 local transactions to the Main PC and pulls catalog/stock updates.
 
 Features:
+
 - Automatic reconnection on network failure
 - Resumable sync via sequence numbers
 - Qt signals for UI status feedback
@@ -58,12 +59,12 @@ class SyncClient(QThread):
     """Background sync client that connects to the Main PC.
 
     Signals:
-        status_changed: Emitted when connection status changes
-            (status: 'connected', 'syncing', 'disconnected', 'error')
-        sync_completed: Emitted after a sync cycle completes
-            (pushed_count, pulled_count)
-        initial_sync_completed: Emitted after the first full catalog sync.
-        error_signal: Emitted on errors (error message).
+
+    - status_changed: connection status changed ('connected', 'syncing',
+      'disconnected', 'error')
+    - sync_completed: a sync cycle finished (pushed_count, pulled_count)
+    - initial_sync_completed: the first full catalog sync finished
+    - error_signal: an error occurred (error message)
     """
 
     status_changed = pyqtSignal(str)  # status string

@@ -25,7 +25,7 @@ class DocumentStatus:
 
 
 class DocumentType:
-    """The `type` discriminator for `Document`'s joined-table-inheritance hierarchy."""
+    """The ``type`` discriminator for `Document`'s joined-table-inheritance hierarchy."""
 
     SALE = "SALE"
     PURCHASE = "PURCHASE"

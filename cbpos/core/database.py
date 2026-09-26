@@ -35,6 +35,7 @@ class Database:
     _instance = None
 
     def __new__(cls):
+        """Return the singleton instance, initializing the engine/session factory on first call."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialize()

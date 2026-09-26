@@ -24,7 +24,12 @@ logger = logging.getLogger(__name__)
 
 
 class MainWindow(QMainWindow):
+    """Top-level window: owns the view stack (login/sales/management/settings),
+    the barcode scanner and session watchdog, and cross-view navigation/signal wiring.
+    """
+
     def __init__(self):
+        """Build the window chrome, hook the scanner/watchdog, and initialize all views."""
         super().__init__()
         self.setWindowTitle("")
         self.resize(1280, 800)
@@ -76,6 +81,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(_t("main_window.title"))
 
     def init_views(self):
+        """Create login/sales/management/settings views, wire their signals, and add them to the stack."""
         # 0. Login View
         self.login_view = LoginView()
         self.login_view.login_success.connect(self.on_login_success)
@@ -121,11 +127,13 @@ class MainWindow(QMainWindow):
         self.stack.currentChanged.connect(self.on_stack_changed)
 
     def on_stack_changed(self, index):
+        """Record the last non-Settings view index, so the Settings back button returns to it."""
         # Don't track SettingsView (index 3) as a history point
         if index != 3:
             self.last_index = index
 
     def go_back(self):
+        """Return to whichever view was active before switching to Settings."""
         self.stack.setCurrentIndex(self.last_index)
 
     def _navigate_to_pos(self) -> None:
@@ -133,6 +141,7 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentWidget(self.sales_view)
 
     def on_login_success(self, user):
+        """Start the session watchdog, propagate the logged-in user to views, and show Sales."""
         self.user = user
 
         # Start Watchdog
@@ -152,6 +161,7 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentWidget(self.sales_view)
 
     def logout(self):
+        """Clear the current user, stop the watchdog, and return to the login screen."""
         self.user = None
 
         # Stop Watchdog
@@ -160,22 +170,26 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentWidget(self.login_view)
 
     def on_barcode_scanned(self, barcode):
+        """Route a global scanner event to whichever view is currently active."""
         # Pass to current view
         current = self.stack.currentWidget()
         if hasattr(current, "process_barcode_external"):
             current.process_barcode_external(barcode)
 
     def switch_to_management(self):
+        """Show the Management view and close the Sales view's side menu."""
         self.stack.setCurrentWidget(self.management_view)
         # Hide side menu in sales view if open
         self.sales_view.side_menu.setVisible(False)
 
     def switch_to_documents(self):
+        """Show Management pre-switched to its Documents tab."""
         self.stack.setCurrentWidget(self.management_view)
         self.management_view.switch_tab(5)  # Documents is index 5
         self.sales_view.side_menu.setVisible(False)
 
     def switch_to_settings(self):
+        """Show Settings, remembering the current view so Settings' back button can return to it."""
         # Save current index before switching
         self.last_index = self.stack.currentIndex()
         self.stack.setCurrentWidget(self.settings_view)
@@ -183,6 +197,7 @@ class MainWindow(QMainWindow):
         self.sales_view.side_menu.setVisible(False)
 
     def toggle_fullscreen(self):
+        """Toggle between fullscreen and normal window state."""
         if self.isFullScreen():
             self.showNormal()
         else:
@@ -277,5 +292,6 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)
 
     def exit_fullscreen(self):
+        """Leave fullscreen mode if currently fullscreen (bound to the Escape shortcut)."""
         if self.isFullScreen():
             self.showNormal()

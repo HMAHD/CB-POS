@@ -5,6 +5,10 @@ from pathlib import Path
 
 
 class Config:
+    """App-wide constants: version, theme colors, and the DB/data-directory paths
+    resolved for the current environment (dev vs. installed, per-OS AppData).
+    """
+
     APP_NAME = "CB POS"
     VERSION = "1.3.0"
 

@@ -163,7 +163,11 @@ cbpos/
 | [SECURITY.md](SECURITY.md) | Vulnerability reporting policy |
 | [docs/archive/](docs/archive/) | Superseded project-inception planning docs (historical only) |
 
-Built API/architecture docs (Sphinx) can be generated locally with `uv run sphinx-build -b html docs docs/_build/html`.
+Built API/architecture docs (Sphinx, including the full auto-generated module reference) can be regenerated locally with:
+```bash
+QT_QPA_PLATFORM=offscreen uv run sphinx-apidoc -f -o docs/api cbpos --separate --module-first
+uv run sphinx-build -b html docs docs/_build/html
+```
 
 ## License
 

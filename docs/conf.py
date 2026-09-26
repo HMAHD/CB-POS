@@ -61,4 +61,5 @@ def _skip_foreign_instance_docstrings(app, what, name, obj, options, lines):
 
 
 def setup(app):
+    """Register the foreign-instance-docstring filter (Sphinx extension entry point)."""
     app.connect("autodoc-process-docstring", _skip_foreign_instance_docstrings)

@@ -1,48 +1,48 @@
-# name: Documentation
-# 
-# on:
-#   push:
-#     branches: [ "main" ]
-#     paths:
-#       - 'docs/**'
-#       - 'cbpos/**/*.py'
-#       - '.github/workflows/docs.yml'
-# 
-# permissions:
-#   contents: write
-# 
-# jobs:
-#   build-docs:
-#     name: Build and Deploy Documentation
-#     runs-on: ubuntu-latest
-#     env:
-#       QT_QPA_PLATFORM: offscreen  # PyQt6 modules are imported by autodoc
-#
-#     steps:
-#     - name: Checkout code
-#       uses: actions/checkout@v6
-#       
-#     - name: Install uv
-#       uses: astral-sh/setup-uv@v10
-#       with:
-#         python-version: "3.12"
-#         enable-cache: true
-#         
-#     - name: Install dependencies
-#       run: uv sync --locked
-#
-#     - name: Generate API documentation
-#       run: uv run sphinx-apidoc -f -o docs/api cbpos --separate --module-first
-#
-#     - name: Build documentation
-#       run: uv run sphinx-build -b html docs docs/_build/html
-#         
-#     - name: Deploy to GitHub Pages
-#       if: github.ref == 'refs/heads/main'
-#       uses: peaceiris/actions-gh-pages@v4
-#       with:
-#         github_token: ${{ secrets.GITHUB_TOKEN }}
-#         publish_dir: ./docs/_build/html
-#         publish_branch: gh-pages
-#         user_name: 'github-actions[bot]'
-#         user_email: 'github-actions[bot]@users.noreply.github.com'
+name: Documentation
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'docs/**'
+      - 'cbpos/**/*.py'
+      - '.github/workflows/docs.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-docs:
+    name: Build and Deploy Documentation
+    runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen  # PyQt6 modules are imported by autodoc
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v10
+      with:
+        python-version: "3.12"
+        enable-cache: true
+
+    - name: Install dependencies
+      run: uv sync --locked
+
+    - name: Generate API documentation
+      run: uv run sphinx-apidoc -f -o docs/api cbpos --separate --module-first
+
+    - name: Build documentation
+      run: uv run sphinx-build -b html docs docs/_build/html
+
+    - name: Deploy to GitHub Pages
+      if: github.ref == 'refs/heads/main'
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs/_build/html
+        publish_branch: gh-pages
+        user_name: 'github-actions[bot]'
+        user_email: 'github-actions[bot]@users.noreply.github.com'

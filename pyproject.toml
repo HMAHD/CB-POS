@@ -78,6 +78,9 @@ select = [
     "PIE",   # flake8-pie — misc lint improvements
     "RUF",   # Ruff-specific rules
     "T20",   # flake8-print — catches stray print() calls (use logger instead)
+    "D101",  # pydocstyle — undocumented public class
+    "D102",  # pydocstyle — undocumented public method
+    "D103",  # pydocstyle — undocumented public function
 ]
 
 ignore = [
@@ -100,19 +103,26 @@ ignore = [
 # Match original .flake8 per-file-ignores
 "cbpos/ui/views/history_view.py" = ["E221", "E222", "E231", "E702"]
 "scripts/seed.py" = ["E231", "T20"]
-# Test files can use print and assert
-"tests/**" = ["T20"]
-# Scripts can use print
-"scripts/**" = ["T20"]
+# Test files can use print and assert. Docstrings aren't required here either:
+# test names are self-documenting, unlike application code.
+"tests/**" = ["T20", "D101", "D102", "D103"]
+"cbpos/tests/**" = ["D101", "D102", "D103"]
+# Scripts can use print; docstrings aren't required for informal dev tools.
+"scripts/**" = ["T20", "D101", "D102", "D103"]
 # Main entry point has legitimate startup prints
 "main.py" = ["T20"]
 # Infrastructure/hardware drivers may use print for debug
 "cbpos/infrastructure/**" = ["T20"]
 # Build script uses print for CLI output
-"create_installer.py" = ["T20"]
+"create_installer.py" = ["T20", "D103"]
+# Auto-generated boilerplate, never hand-documented
+"alembic/versions/**" = ["D101", "D102", "D103"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["cbpos"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.ruff.format]
 # Black-compatible formatting

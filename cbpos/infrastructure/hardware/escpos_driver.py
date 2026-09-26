@@ -23,34 +23,44 @@ class NullPrinter(IPrinter):
     """
 
     def connect(self) -> bool:
+        """No-op connect; always succeeds since there is no real device."""
         return True
 
     def disconnect(self) -> None:
-        pass
+        """No-op disconnect."""
 
     def print_text(self, text: str) -> None:
-        pass
+        """Discard the text instead of printing it."""
 
     def print_line(self, text: str) -> None:
-        pass
+        """Discard the line instead of printing it."""
 
     def cut(self) -> None:
-        pass
+        """No-op cut."""
 
     def print_commands(self, commands: list[dict[str, Any]]) -> None:
-        pass
+        """Discard the command batch instead of printing it."""
 
     def kick_drawer(self) -> None:
-        pass
+        """No-op drawer kick."""
 
 
 class ESCPOSDriver(IPrinter):
     """Real ESC/POS implementation using python-escpos for USB and Network printers."""
 
     def __init__(self) -> None:
+        """Create the driver with no printer connection established yet."""
         self.printer = None
 
     def connect(self) -> bool:
+        """Connect to the USB or Network printer configured in settings.
+
+        Returns:
+            True if connected. False (without raising) if the configured
+            printer type is unrecognized, required settings are missing
+            (VID:PID for USB, IP address for Network), or the underlying
+            connection attempt raises an exception.
+        """
         settings = ConfigService.get_all()
         p_type = settings.get("printer_type", "NONE")
         p_path = settings.get("printer_path", "")
@@ -81,6 +91,7 @@ class ESCPOSDriver(IPrinter):
             return False
 
     def disconnect(self) -> None:
+        """Close the printer connection, ignoring errors if already disconnected."""
         if self.printer:
             try:
                 self.printer.close()
@@ -88,18 +99,27 @@ class ESCPOSDriver(IPrinter):
                 logger.debug("Printer disconnect error (non-critical): %s", e)
 
     def print_text(self, text: str) -> None:
+        """Send raw text to the printer, if connected."""
         if self.printer:
             self.printer.text(text)
 
     def print_line(self, text: str) -> None:
+        """Send text followed by a newline, if connected."""
         if self.printer:
             self.printer.text(text + "\n")
 
     def cut(self) -> None:
+        """Send a full paper cut command, if connected."""
         if self.printer:
             self.printer.cut()
 
     def print_commands(self, commands: list[dict[str, Any]]) -> None:
+        """Execute a batch of print commands (text, image, barcode, feed, cut).
+
+        No-op if the printer is not connected. Each command is a dict with
+        a "type" key; a failing command (e.g. a missing image file) is
+        logged and skipped so it doesn't abort the rest of the receipt.
+        """
         if not self.printer:
             return
 
@@ -153,6 +173,7 @@ class ESCPOSDriver(IPrinter):
                 logger.error("Error processing print command %s: %s", cmd.get("type"), e)
 
     def kick_drawer(self) -> None:
+        """Pulse the cash drawer kick pin, if connected."""
         if self.printer:
             self.printer.cashdraw(2)
 
@@ -174,6 +195,13 @@ class PrintWorker(QThread):
     _instance: "PrintWorker | None" = None
 
     def __init__(self, printer: IPrinter | None = None) -> None:
+        """Create the worker with an optional fixed printer and an empty job queue.
+
+        Args:
+            printer: Printer to use for every job, bypassing settings-based
+                resolution. If None, ``_resolve_printer`` picks one from
+                settings on each run.
+        """
         super().__init__()
         self.printer = printer
         self._queue: queue.Queue[tuple[str, Any]] = queue.Queue()
@@ -223,6 +251,15 @@ class PrintWorker(QThread):
         self.running = False
 
     def run(self) -> None:
+        """Process queued jobs until stopped.
+
+        Resolves the printer fresh per job (so a mid-session settings
+        change takes effect), connects, runs the job, then disconnects.
+        A job whose printer fails to connect is skipped and logged rather
+        than retried. For "kick_drawer" jobs, honors the
+        ``drawer_on_cash_only`` setting by skipping the drawer pulse
+        unless a cash payment method was included in the job data.
+        """
         while self.running:
             try:
                 job_type, data = self._queue.get(timeout=1)

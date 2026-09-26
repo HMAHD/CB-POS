@@ -85,6 +85,19 @@ class SyncClient(QThread):
         shared_secret: str = "",
         parent=None,
     ):
+        """Initialize the client for a given terminal and Main PC address.
+
+        Normalizes ``server_address`` to always use ``https://`` — sync is
+        always over TLS regardless of whether a bare "host:port" or a
+        leftover pre-TLS "http://" value was configured.
+
+        Args:
+            terminal_id: This terminal's identifier, sent on every request.
+            server_address: Main PC host[:port], with or without a scheme.
+            sync_interval: Seconds between sync cycles.
+            shared_secret: Token sent as ``X-Sync-Token`` on every request.
+            parent: Optional QObject parent.
+        """
         super().__init__(parent)
         self._terminal_id = terminal_id
         self._server_address = server_address.rstrip("/")
@@ -112,14 +125,17 @@ class SyncClient(QThread):
 
     @property
     def state(self) -> str:
+        """Return the current connection state string."""
         return self._state
 
     @property
     def terminal_id(self) -> str:
+        """Return this terminal's configured identifier."""
         return self._terminal_id
 
     @property
     def is_connected(self) -> bool:
+        """Return True if currently connected or mid-sync-cycle."""
         return self._state in (self.STATE_CONNECTED, self.STATE_SYNCING)
 
     @property

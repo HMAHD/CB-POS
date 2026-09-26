@@ -11,6 +11,7 @@ class BarcodeScanner(QObject):
     barcode_scanned = pyqtSignal(str)
 
     def __init__(self, app: QApplication):
+        """Install a global key-event filter on the application to catch scanner input."""
         super().__init__()
         self.app = app
         self.buffer = ""
@@ -22,6 +23,13 @@ class BarcodeScanner(QObject):
         self.app.installEventFilter(self)
 
     def eventFilter(self, obj, event):
+        """Buffer printable keystrokes and emit ``barcode_scanned`` on Enter.
+
+        The buffer is cleared after 50ms of inactivity, since a real
+        scanner sends its whole payload faster than that; a human typing
+        normally won't trigger a false match. Consumes the Enter keystroke
+        (returns True) only when it completed a non-empty scan.
+        """
         if event.type() == QEvent.Type.KeyPress:
             # Check if it's a printable character
             text = event.text()
@@ -43,4 +51,5 @@ class BarcodeScanner(QObject):
         return super().eventFilter(obj, event)
 
     def clear_buffer(self):
+        """Clear the keystroke buffer (called when the inter-key timer expires)."""
         self.buffer = ""

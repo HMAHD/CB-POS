@@ -143,6 +143,7 @@ class SideMenu(QWidget):
     receive_payment_clicked = pyqtSignal()
     reprint_receipt_clicked = pyqtSignal()
     refund_clicked = pyqtSignal()
+    close_shift_clicked = pyqtSignal()
     logout_clicked = pyqtSignal()
     settings_clicked = pyqtSignal()
     fullscreen_clicked = pyqtSignal()
@@ -221,6 +222,11 @@ class SideMenu(QWidget):
         self.btn_refund.clicked.connect(self._on_refund)
         nav_layout.addWidget(self.btn_refund)
         self._nav_buttons.append(self.btn_refund)
+
+        self.btn_close_shift = NavTile("side_menu.close_shift", "fa5s.calculator")
+        self.btn_close_shift.clicked.connect(self._on_close_shift)
+        nav_layout.addWidget(self.btn_close_shift)
+        self._nav_buttons.append(self.btn_close_shift)
 
         main_layout.addWidget(nav_container)
 
@@ -361,6 +367,10 @@ class SideMenu(QWidget):
     def _on_refund(self) -> None:
         self._set_active(self.btn_refund)
         self.refund_clicked.emit()
+
+    def _on_close_shift(self) -> None:
+        self._set_active(self.btn_close_shift)
+        self.close_shift_clicked.emit()
 
     # ── Translation ──────────────────────────────────────────────
 

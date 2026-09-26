@@ -512,6 +512,7 @@
     "receive_payment": "Receive Payment",
     "reprint_receipt": "Reprint Receipt",
     "refund": "Refund",
+    "close_shift": "Close Shift",
     "user_guest": "Guest",
     "user_no_role": "No Role",
     "user_not_logged_in": "Not Logged In",
@@ -1909,6 +1910,7 @@
     "expected": "Expected: {amount}",
     "actual": "Actual: {amount}",
     "variance": "Variance: {amount}",
+    "no_open_shift": "No open shift found for your account.",
     "variance_reason_label": "Reason for Variance (required if not 0):",
     "reason_category": {
       "till_error": "Till Error",
@@ -1929,6 +1931,11 @@
     "backup_saved": "Encrypted backup saved to:\n{path}\n\nPassword: {password}\n\nKeep this password safe — you need it to restore.",
     "backup_failed": "Backup Failed",
     "backup_error": "Backup failed: {error}"
+  },
+  "start_shift": {
+    "title": "Start Shift",
+    "header": "Count your starting cash float before you begin selling.",
+    "start_button": "Start Shift"
   },
   "shortcuts": {
     "title": "Keyboard Shortcuts",

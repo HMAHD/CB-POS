@@ -12,9 +12,11 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.shift_service import ShiftService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 from cbpos.infrastructure.session_watchdog import SessionWatchdog
+from cbpos.ui.dialogs.start_shift_dialog import StartShiftDialog
 from cbpos.ui.views.login_view import LoginView
 from cbpos.ui.views.management_view import ManagementView
 from cbpos.ui.views.sales_view import SalesView
@@ -96,6 +98,8 @@ class MainWindow(QMainWindow):
         self.sales_view.side_menu.reprint_receipt_clicked.connect(self.sales_view.open_reprint_receipt)
         self.sales_view.side_menu.refund_clicked.connect(self.sales_view.open_sale_history)
         self.sales_view.side_menu.history_clicked.connect(self.sales_view.open_sale_history)
+        self.sales_view.side_menu.close_shift_clicked.connect(self.sales_view.open_shift_closing)
+        self.sales_view.shift_closed.connect(self.logout)
         self.sales_view.side_menu.logout_clicked.connect(self.logout)
         self.sales_view.side_menu.settings_clicked.connect(self.switch_to_settings)
         self.sales_view.side_menu.fullscreen_clicked.connect(self.toggle_fullscreen)
@@ -156,6 +160,12 @@ class MainWindow(QMainWindow):
 
         if hasattr(self.sales_view, "side_menu"):
             self.sales_view.side_menu.set_user(user)
+
+        # A shift must be open before reaching Sales -- prompt for the
+        # starting float if one isn't already (e.g. after a crash/relogin
+        # mid-shift, the existing shift is reused instead of re-prompting).
+        if ShiftService().get_current_shift(user.id) is None:
+            StartShiftDialog(user.id, parent=self).exec()
 
         # Switch to Sales View (Default)
         self.stack.setCurrentWidget(self.sales_view)

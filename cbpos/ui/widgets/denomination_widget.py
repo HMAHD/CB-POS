@@ -43,6 +43,7 @@ class DenominationWidget(QWidget):
 
         self._current_total = Decimal(0)
         self.counts: dict[int, QSpinBox | QDoubleSpinBox] = {}
+        self._row_totals: dict[int, QLabel] = {}
 
         self._build_ui()
         self.calculate_total()
@@ -56,14 +57,15 @@ class DenominationWidget(QWidget):
             spin = QSpinBox() if denom >= 20 else QDoubleSpinBox()
             spin.setRange(0, 9999)
             spin.setSingleStep(1 if denom >= 20 else 0.01)
-            spin.setProperty("lbl_total", QLabel())  # placeholder for row total
+            lbl_row_total = QLabel()
             spin.valueChanged.connect(self.calculate_total)
 
             self.counts[denom] = spin
+            self._row_totals[denom] = lbl_row_total
 
             layout.addWidget(lbl, row, col * 3)
             layout.addWidget(spin, row, col * 3 + 1)
-            layout.addWidget(spin.property("lbl_total"), row, col * 3 + 2)
+            layout.addWidget(lbl_row_total, row, col * 3 + 2)
 
         # Grand total label (spans both columns)
         self.lbl_grand_total = QLabel("0.00")
@@ -94,9 +96,7 @@ class DenominationWidget(QWidget):
             total += subtotal
 
             # update per-row total label
-            lbl = spin.property("lbl_total")
-            if lbl:
-                lbl.setText(f"{subtotal:,.2f}")
+            self._row_totals[denom].setText(f"{subtotal:,.2f}")
 
         self._current_total = total
         self.lbl_grand_total.setText(f"{total:,.2f}")

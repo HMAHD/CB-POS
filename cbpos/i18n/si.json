@@ -8,10 +8,10 @@
   },
   "common": {
     "save": "සුරකින්න",
-    "cancel": "අවලංගු",
+    "cancel": "අවලංගු කරන්න",
     "close": "වසන්න",
     "delete": "මකන්න",
-    "edit": "සංස්කරණය",
+    "edit": "සංස්කරණය කරන්න",
     "add": "එකතු කරන්න",
     "remove": "ඉවත් කරන්න",
     "refresh": "නැවුම් කරන්න",
@@ -53,7 +53,7 @@
     "type": "වර්ගය",
     "items": "අයිතම: {count}",
     "showing_range": "{start}–{end} / {total} පෙන්වමින්",
-    "page_info": "පිටුව {current} / {total}",
+    "page_info": "{current} පිටුව / {total}",
     "row_count": "පේළි {count}ක්",
     "validation_error": "වැරදි අගයක්",
     "saved": "සුරැකුනා",
@@ -61,7 +61,7 @@
     "ceylon_byte_pos": "Ceylon Byte POS",
     "powered_by": "Powered by CB POS",
     "website": "ceybyte.com",
-    "page_of": "පිටුව {page} / {total}",
+    "page_of": "{page} පිටුව / {total}",
     "category": "කාණ්ඩය",
     "notes": "සටහන්",
     "update": "අප්ඩේට්",
@@ -512,6 +512,7 @@
     "receive_payment": "ගෙවීම් ලබාගැනීම",
     "reprint_receipt": "රිසිට්පත නැවත මුද්‍රණය",
     "refund": "ආපසු ගෙවීම",
+    "close_shift": "මුරය වහන්න",
     "user_guest": "අමුත්තා",
     "user_no_role": "භූමිකාවක් නැත",
     "user_not_logged_in": "පිවිසී නැත",
@@ -1879,6 +1880,7 @@
     "expected": "අපේක්ෂිත: {amount}",
     "actual": "සැබෑ: {amount}",
     "variance": "වෙනස: {amount}",
+    "no_open_shift": "ඔයාගේ ගිණුමට විවෘත මුරයක් නැහැ.",
     "variance_reason_label": "වෙනසට හේතුව (0 නොවේ නම් අනිවාර්යයි):",
     "reason_category": {
       "till_error": "මුදල් පෙට්ටියේ වැරැද්දක්",
@@ -1899,6 +1901,11 @@
     "backup_saved": "එන්ක්‍රිප්ට් කරපු බැකප් එක මෙතනට සුරැකුනා:\n{path}\n\nමුරපදය: {password}\n\nමේ මුරපදය ආරක්ෂිතව තියාගන්න — රිස්ටෝර් කරන්න මේක ඕන වෙනවා.",
     "backup_failed": "බැකප් එක අසාර්ථකයි",
     "backup_error": "බැකප් එකක් හදන්න බැරි උනා: {error}"
+  },
+  "start_shift": {
+    "title": "මුරය පටන් ගන්න",
+    "header": "විකුණන්න පටන් ගන්න කලින් ආරම්භක මුදල ගණන් කරන්න.",
+    "start_button": "මුරය පටන් ගන්න"
   },
   "shortcuts": {
     "title": "යතුරුපුවරු කෙටිමං",

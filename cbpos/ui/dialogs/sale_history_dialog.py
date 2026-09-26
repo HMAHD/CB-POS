@@ -34,6 +34,7 @@ class SaleHistoryDialog(QDialog):
     """Dialog to browse recent sales, view details, reprint receipts, and process refunds."""
 
     def __init__(self, parent=None):
+        """Build the dialog defaulting to today's sales."""
         super().__init__(parent)
         self.setObjectName("SaleHistoryDialog")
         self.setWindowTitle(_t("sale_history.title"))

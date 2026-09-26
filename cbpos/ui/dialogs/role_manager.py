@@ -42,6 +42,7 @@ class RoleManagerDialog(QDialog):
     """Role manager with a flat list, inline form, and Admin-role guards."""
 
     def __init__(self, parent=None):
+        """Build the dialog and load the current role list."""
         super().__init__(parent)
         self.setWindowTitle(_t("role_manager.title"))
         self.setMinimumSize(560, 460)

@@ -23,6 +23,7 @@ class SetItemPriceDialog(QDialog):
     """
 
     def __init__(self, product_name: str, current_price: Decimal, parent=None):
+        """Build the price prompt for `product_name`, pre-filled with `current_price`."""
         super().__init__(parent)
         self.setWindowTitle(_t("pricelist.set_price_title"))
         self.setObjectName("SetItemPriceDialog")
@@ -68,6 +69,7 @@ class SetItemPriceDialog(QDialog):
         return price if price > 0 else None
 
     def accept(self):
+        """Reject the input with a warning if the price isn't a positive number, else accept."""
         if self._parsed_price() is None:
             QMessageBox.warning(
                 self,

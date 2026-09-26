@@ -33,6 +33,7 @@ class ProformaDialog(QDialog):
     """Dialog for creating a new Proforma / Quotation."""
 
     def __init__(self, parent=None) -> None:
+        """Build the dialog and load products/customers for a fresh proforma."""
         super().__init__(parent)
         self.setWindowTitle(_t("proforma.title"))
         self.setMinimumSize(700, 550)
@@ -44,6 +45,7 @@ class ProformaDialog(QDialog):
         self.load_customers()
 
     def init_ui(self) -> None:
+        """Build the header form, product search, items grid, and footer controls."""
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
 

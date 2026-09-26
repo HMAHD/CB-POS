@@ -18,6 +18,7 @@ class ReceiptPreviewDialog(QDialog):
     """Dialog to preview the receipt as it would appear on a thermal printer."""
 
     def __init__(self, commands: list[dict[str, Any]], parent=None):
+        """Build the dialog and render the given ESC/POS `commands` in the preview widget."""
         super().__init__(parent)
         self.setWindowTitle(_t("receipt_preview.title"))
         self.setFixedSize(400, 600)

@@ -28,6 +28,7 @@ class RefundDialog(QDialog):
     """Dialog to search an original sale and process a full refund."""
 
     def __init__(self, parent=None):
+        """Build the dialog with an empty receipt search field."""
         super().__init__(parent)
         self.setWindowTitle(_t("refund.title"))
         self.setMinimumSize(650, 500)

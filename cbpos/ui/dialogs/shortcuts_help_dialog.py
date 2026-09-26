@@ -37,6 +37,7 @@ class ShortcutsHelpDialog(QDialog):
         ]
 
     def __init__(self, parent=None):
+        """Build the dialog listing the Sales view's keyboard shortcuts."""
         super().__init__(parent)
         self.setWindowTitle(_t("shortcuts.title"))
         self.setFixedSize(450, 580)
@@ -44,6 +45,7 @@ class ShortcutsHelpDialog(QDialog):
         self.init_ui()
 
     def init_ui(self):
+        """Build the title, shortcuts table, and close button."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(25, 25, 25, 25)
         layout.setSpacing(15)

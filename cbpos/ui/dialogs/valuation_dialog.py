@@ -23,6 +23,7 @@ class ValuationDialog(QDialog):
     """
 
     def __init__(self, parent=None):
+        """Build the dialog and load the current stock valuation report."""
         super().__init__(parent)
         self.setWindowTitle(_t("valuation.title"))
         self.setObjectName("ValuationDialog")
@@ -32,6 +33,7 @@ class ValuationDialog(QDialog):
         self.load_data()
 
     def init_ui(self):
+        """Build the summary value cards and the category breakdown table."""
         layout = QVBoxLayout(self)
 
         # Title

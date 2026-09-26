@@ -25,6 +25,7 @@ class ReceivePaymentDialog(QDialog):
     """Dialog to record a customer payment against their outstanding credit debt."""
 
     def __init__(self, customer_id: int | None = None, parent: object | None = None):
+        """Build the dialog, optionally pre-selecting a customer to receive payment from."""
         super().__init__(parent)
         self.customer_service = CustomerService()
         self.selected_customer_id = customer_id
@@ -40,6 +41,7 @@ class ReceivePaymentDialog(QDialog):
             self.load_customer(customer_id)
 
     def init_ui(self) -> None:
+        """Build the customer selector, balance display, payment form, and action buttons."""
         layout = QVBoxLayout(self)
         layout.setSpacing(16)
         layout.setContentsMargins(20, 20, 20, 20)

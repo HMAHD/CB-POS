@@ -26,6 +26,7 @@ class ShiftClosingDialog(QDialog):
     """Wizard that guides the user through end-of-day cash reconciliation."""
 
     def __init__(self, shift_id: int, parent=None):
+        """Build the dialog and load the sales/cash summary for `shift_id`."""
         super().__init__(parent)
         self.shift_id = shift_id
         self.shift_service = ShiftService()

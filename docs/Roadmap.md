@@ -427,9 +427,14 @@
 ### Phase 21: Document Management System ✅
 *Goal: Comprehensive transaction documentation.*
 
-- [x] **21.1 Document Types** — Sales, Proforma/Quotation, Purchase, Adjustment
+- [x] **21.1 Document Types** — Sales, Proforma/Quotation, Purchase are the three browsable
+  `Document`-hierarchy types (view/void/reprint via the Documents tab). "Adjustment" is a
+  document-numbering prefix (`ADJ-{Y}-{seq}`) reused by stock-count and credit-ledger
+  adjustment entries, not a fourth browsable document type — those are ledger records, not
+  customer-facing documents, so this is by design rather than a gap.
 - [x] **21.2 Document Properties** — Header, items, totals, payment info — all complete
-- [x] **21.3 Document Operations** — View, create, void, print/export — all complete
+- [x] **21.3 Document Operations** — View, create, void, reprint — all complete. PDF export is
+  not yet available for documents (tracked in #486).
 - [x] **21.4 Proforma/Quotation System** — Create quotes, convert to sale, custom template
 - [x] **21.5 Document Filters** — Date range, type, paid status, customer/supplier, number, user
 

@@ -81,6 +81,7 @@ class TerminalInfo:
     )
 
     def __init__(self, terminal_id: str, ip_address: str):
+        """Initialize registration and heartbeat timestamps for a newly connected terminal."""
         self.terminal_id = terminal_id
         self.ip_address = ip_address
         self.registered_at = datetime.now()
@@ -89,6 +90,7 @@ class TerminalInfo:
         self.last_catalog_sync: datetime | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize this terminal's state to a JSON-friendly dict."""
         return {
             "terminal_id": self.terminal_id,
             "ip_address": self.ip_address,
@@ -103,10 +105,12 @@ class TerminalRegistry:
     """Thread-safe registry of connected terminals."""
 
     def __init__(self):
+        """Initialize an empty, thread-safe terminal registry."""
         self._terminals: dict[str, TerminalInfo] = {}
         self._lock = threading.Lock()
 
     def register(self, terminal_id: str, ip_address: str) -> TerminalInfo:
+        """Register a terminal by ID, or refresh its IP and heartbeat if already known."""
         with self._lock:
             if terminal_id in self._terminals:
                 info = self._terminals[terminal_id]
@@ -120,6 +124,11 @@ class TerminalRegistry:
             return info
 
     def heartbeat(self, terminal_id: str) -> bool:
+        """Update the last-heartbeat timestamp for a terminal.
+
+        Returns:
+            True if the terminal was known and updated, False otherwise.
+        """
         with self._lock:
             info = self._terminals.get(terminal_id)
             if info:
@@ -128,26 +137,31 @@ class TerminalRegistry:
             return False
 
     def get(self, terminal_id: str) -> TerminalInfo | None:
+        """Return the TerminalInfo for a terminal ID, or None if not registered."""
         with self._lock:
             return self._terminals.get(terminal_id)
 
     def get_all(self) -> list[TerminalInfo]:
+        """Return a snapshot list of all registered terminals."""
         with self._lock:
             return list(self._terminals.values())
 
     def update_push_sequence(self, terminal_id: str, sequence: int) -> None:
+        """Record the highest push sequence number seen from a terminal."""
         with self._lock:
             info = self._terminals.get(terminal_id)
             if info:
                 info.last_push_sequence = max(info.last_push_sequence, sequence)
 
     def update_catalog_sync(self, terminal_id: str) -> None:
+        """Record that a terminal just completed a catalog pull."""
         with self._lock:
             info = self._terminals.get(terminal_id)
             if info:
                 info.last_catalog_sync = datetime.now()
 
     def remove(self, terminal_id: str) -> None:
+        """Unregister a terminal."""
         with self._lock:
             self._terminals.pop(terminal_id, None)
             logger.info("Terminal %s unregistered", terminal_id)
@@ -168,6 +182,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
 
     # Suppress default logging to stderr
     def log_message(self, fmt, *args):
+        """Redirect BaseHTTPRequestHandler's default stderr access log to the app logger."""
         logger.debug("SyncServer HTTP: %s", fmt % args)
 
     def _send_json(self, data: Any, status: int = 200) -> None:
@@ -207,6 +222,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
     # --- Routing ---
 
     def do_GET(self):
+        """Route an authorized GET request to heartbeat, pull-catalog, or pull-stock; 401/404 otherwise."""
         if not self._authorized():
             self._send_json({"error": "Unauthorized"}, 401)
             return
@@ -220,6 +236,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "Not found"}, 404)
 
     def do_POST(self):
+        """Route an authorized POST request to register, push-transactions, or push-audit; 401/404 otherwise."""
         if not self._authorized():
             self._send_json({"error": "Unauthorized"}, 401)
             return
@@ -636,6 +653,7 @@ class _ThreadedHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
 
     def handle_error(self, request, client_address):
+        """Log an unhandled request error instead of printing a traceback to stderr."""
         logger.error("SyncServer error from %s", client_address, exc_info=True)
 
 
@@ -660,6 +678,12 @@ class SyncServer(QThread):
     error_signal = pyqtSignal(str)  # error message
 
     def __init__(self, port: int = 5555, parent=None):
+        """Initialize the server thread on the given port, not yet listening.
+
+        Args:
+            port: TCP port to bind when ``run()`` starts the HTTP server.
+            parent: Optional QObject parent.
+        """
         super().__init__(parent)
         self._port = port
         self._server: _ThreadedHTTPServer | None = None
@@ -667,10 +691,12 @@ class SyncServer(QThread):
 
     @property
     def port(self) -> int:
+        """Return the configured listening port."""
         return self._port
 
     @property
     def registry(self) -> TerminalRegistry:
+        """Return the shared registry of connected terminals."""
         return _registry
 
     def get_server_address(self) -> str:

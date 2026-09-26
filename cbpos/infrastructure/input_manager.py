@@ -10,6 +10,7 @@ class InputManager(QObject):
     """
 
     def __init__(self):
+        """Initialize scanner buffer state and the inter-keystroke timeout timer."""
         super().__init__()
         self.current_view = None
         self.scanner_buffer = ""
@@ -18,9 +19,17 @@ class InputManager(QObject):
         self.scanner_timer.timeout.connect(self.clear_scanner_buffer)
 
     def clear_scanner_buffer(self):
+        """Clear the scanner input buffer (called when the inter-key timer expires)."""
         self.scanner_buffer = ""
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+        """Accumulate printable keystrokes into the scanner buffer.
+
+        The buffer resets after a 50ms gap, which is enough to tell a
+        scanner's rapid-fire burst apart from normal human typing. Enter
+        handling was intentionally removed here (moved to individual
+        views); this filter never consumes events itself.
+        """
         if event.type() == QEvent.Type.KeyPress:
             # Handle Scanner Input (Fast bursts)
             if event.text():

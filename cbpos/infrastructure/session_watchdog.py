@@ -10,6 +10,14 @@ class SessionWatchdog(QObject):
     session_expired = pyqtSignal()
 
     def __init__(self, timeout_minutes: int = 0, parent=None):
+        """Create the watchdog with the given inactivity timeout.
+
+        Args:
+            timeout_minutes: Minutes of inactivity before the session
+                expires. 0 disables monitoring (``start_monitoring``
+                becomes a no-op).
+            parent: Optional QObject parent.
+        """
         super().__init__(parent)
         self.timeout_minutes = timeout_minutes
         self.timeout_ms = timeout_minutes * 60 * 1000

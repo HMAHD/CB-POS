@@ -20,7 +20,10 @@ from cbpos.ui.widgets.pagination_widget import PaginationWidget
 
 
 class CustomerView(QWidget):
+    """Paginated, searchable table of customers with add/edit access."""
+
     def __init__(self):
+        """Build the UI and load the first page of customers."""
         super().__init__()
         self.customer_service = CustomerService()
         self._all_customers: list = []
@@ -32,6 +35,7 @@ class CustomerView(QWidget):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self):
+        """Build the search bar, customer table, and pagination controls."""
         layout = QVBoxLayout(self)
 
         # Top Bar
@@ -77,10 +81,12 @@ class CustomerView(QWidget):
         )
 
     def load_customers(self):
+        """Load all customers and display the current page."""
         self._all_customers = self.customer_service.get_all_customers()
         self._apply_pagination()
 
     def filter_customers(self, text):
+        """Filter the customer list by search text, or reload all if empty."""
         if not text:
             self._all_customers = self.customer_service.get_all_customers()
         else:
@@ -128,11 +134,13 @@ class CustomerView(QWidget):
             self.table.setItem(row, 5, QTableWidgetItem(str(customer.loyalty_points)))
 
     def open_add_dialog(self):
+        """Open the customer editor to create a new customer."""
         dialog = CustomerEditor(parent=self)
         if dialog.exec():
             self.load_customers()
 
     def open_edit_dialog(self, index):
+        """Open the customer editor for the double-clicked row."""
         row = index.row()
         customer_id = int(self.table.item(row, 0).text())
         customer = self.customer_service.get_customer(customer_id)

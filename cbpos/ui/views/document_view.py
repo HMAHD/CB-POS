@@ -56,6 +56,7 @@ class DocumentBrowserView(QWidget):
     }
 
     def __init__(self) -> None:
+        """Build the filter bar, document table, and detail panel, then load the first page."""
         super().__init__()
         self.setObjectName("DocumentBrowserView")
         self.current_doc: dict | None = None
@@ -71,6 +72,7 @@ class DocumentBrowserView(QWidget):
             logger.error("Failed to load documents on init: %s", e)
 
     def init_ui(self) -> None:
+        """Build the filter bar, document table, detail panel, and pagination bar."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(10)
@@ -888,11 +890,13 @@ class DocumentBrowserView(QWidget):
         self.next_btn.setEnabled(self.current_page < total_pages)
 
     def prev_page(self) -> None:
+        """Go to the previous page of documents, if not already on the first."""
         if self.current_page > 1:
             self.current_page -= 1
             self.load_documents()
 
     def next_page(self) -> None:
+        """Go to the next page of documents, if not already on the last."""
         total_pages = max(1, (self.total_docs + 49) // 50)
         if self.current_page < total_pages:
             self.current_page += 1

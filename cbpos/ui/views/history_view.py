@@ -35,6 +35,7 @@ class HistoryView(QWidget):
     """
 
     def __init__(self):
+        """Build the UI and load today's transactions."""
         super().__init__()
         self.current_sale = None
         self.init_ui()

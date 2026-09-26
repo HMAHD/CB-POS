@@ -47,6 +47,10 @@ def register_all_reports():
     registry.register(StockMovementReport)
     registry.register(CashMovementAuditReport)
 
+    from cbpos.core.reports.definitions.shift_variance_report import ShiftVarianceReport
+
+    registry.register(ShiftVarianceReport)
+
     # Void/Refund & Payment Method
     from cbpos.core.reports.definitions.void_refund_report import (
         PaymentMethodSummaryReport,

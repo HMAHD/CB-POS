@@ -1145,6 +1145,7 @@
     "cashier_performance": "කැෂියර් කාර්යසාධනය",
     "stock_movement": "තොග චලන විගණනය",
     "cash_movement_audit": "මුදල් ප්‍රවාහන විගණනය",
+    "shift_variance": "මුර වෙනස්කම් වාර්තාව",
     "void_refund": "අවලංගු && ආපසු ගෙවීම් වාර්තාව",
     "payment_method_summary": "ගෙවීම් ක්‍රම සාරාංශය",
     "overdue_customers": "පැහැර හැරුනු පාරිභෝගිකයෝ",

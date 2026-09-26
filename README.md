@@ -51,7 +51,9 @@
 - **Migrations**: Alembic (21 migrations)
 - **Hardware**: `python-escpos`, `pyusb`
 - **Reports**: `pandas`, `xlsxwriter`, `xhtml2pdf`, `reportlab`
-- **Quality Assurance**: `pytest` (17 test files), `black`, `flake8`, `pre-commit`
+- **Quality Assurance**: `pytest` (850+ tests), `ruff` (lint + format), `pre-commit`
+- **Dependency Management**: [`uv`](https://docs.astral.sh/uv/)
+- **Docs**: Sphinx, 98.8% docstring coverage, enforced on every commit via `ruff`'s pydocstyle rules
 
 ## Installation
 
@@ -78,10 +80,10 @@
 4. **Initialize Database**
     ```bash
     # Recommended: Fresh database with sample data
-    python scripts/seed.py
+    uv run python scripts/seed.py
 
     # Alternative: Alembic migrations (for existing databases)
-    alembic upgrade head
+    uv run alembic upgrade head
     ```
 
 5. **Configuration**
@@ -104,25 +106,25 @@ uv run python main.py
 
 ### Building Executable
 ```bash
-pyinstaller cbpos.spec
+uv run pyinstaller cbpos.spec
 # Output: dist/cbpos executable
 ```
 
 ### Code Quality Checks
 ```bash
-pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
 ### Running Tests
 ```bash
 export QT_QPA_PLATFORM=offscreen  # Linux/Mac headless
-python -m pytest tests/unit/ -v
+uv run python -m pytest tests/unit/ -v
 ```
 
 ### Translation Validation
 ```bash
-python scripts/validate_translations.py          # Report issues
-python scripts/validate_translations.py --strict  # Fail on issues (CI)
+uv run python scripts/validate_translations.py          # Report issues
+uv run python scripts/validate_translations.py --strict  # Fail on issues (CI)
 ```
 
 ## Project Structure
@@ -163,7 +165,7 @@ cbpos/
 | [SECURITY.md](SECURITY.md) | Vulnerability reporting policy |
 | [docs/archive/](docs/archive/) | Superseded project-inception planning docs (historical only) |
 
-Built API/architecture docs (Sphinx, including the full auto-generated module reference) can be regenerated locally with:
+A full Sphinx API reference (auto-generated from docstrings across all of `cbpos/`, 98.8% coverage) builds on every push to `main` via `docs.yml` and uploads as a CI artifact — **not published to GitHub Pages**, since CB-POS is closed-source and Pages is public. Download the `sphinx-docs` artifact from the workflow run, or build it locally:
 ```bash
 QT_QPA_PLATFORM=offscreen uv run sphinx-apidoc -f -o docs/api cbpos --separate --module-first
 uv run sphinx-build -b html docs docs/_build/html

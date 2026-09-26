@@ -658,6 +658,7 @@
     "customer_header_phone": "Phone",
     "customer_header_debt": "Outstanding Debt",
     "customer_header_limit": "Credit Limit",
+    "customer_header_points": "Points",
     "ledger_header_date": "Date",
     "ledger_header_type": "Type",
     "ledger_header_doc": "Doc #",

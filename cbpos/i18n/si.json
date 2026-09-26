@@ -628,6 +628,7 @@
     "customer_header_phone": "දුරකථනය",
     "customer_header_debt": "හිඟ ණය",
     "customer_header_limit": "ණය සීමාව",
+    "customer_header_points": "පොයින්ට්ස්",
     "ledger_header_date": "දිනය",
     "ledger_header_type": "වර්ගය",
     "ledger_header_doc": "ලේඛන #",

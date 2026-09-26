@@ -113,7 +113,7 @@ class CreditBookView(QWidget):
         # Customer table (full width)
         self.customer_table = QTableWidget()
         self.customer_table.setObjectName("CreditCustomerTable")
-        self.customer_table.setColumnCount(5)
+        self.customer_table.setColumnCount(6)
         configure_table_columns(
             self.customer_table.horizontalHeader(),
             {
@@ -122,6 +122,7 @@ class CreditBookView(QWidget):
                 2: QHeaderView.ResizeMode.ResizeToContents,  # Phone
                 3: QHeaderView.ResizeMode.ResizeToContents,  # Outstanding Debt
                 4: QHeaderView.ResizeMode.ResizeToContents,  # Credit Limit
+                5: QHeaderView.ResizeMode.ResizeToContents,  # Loyalty Points
             },
         )
         self.customer_table.setColumnHidden(0, True)
@@ -354,6 +355,7 @@ class CreditBookView(QWidget):
                 _t("credit_book.customer_header_phone"),
                 _t("credit_book.customer_header_debt"),
                 _t("credit_book.customer_header_limit"),
+                _t("credit_book.customer_header_points"),
             ]
         )
         self.btn_back.setText(_t("credit_book.btn_back"))
@@ -470,8 +472,12 @@ class CreditBookView(QWidget):
             elif customer.current_debt > 0:
                 debt_item.setForeground(QColor("#FF4136"))
 
+            points_item = QTableWidgetItem(str(customer.loyalty_points))
+            points_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+
             self.customer_table.setItem(row, 3, debt_item)
             self.customer_table.setItem(row, 4, limit_item)
+            self.customer_table.setItem(row, 5, points_item)
 
             total_outstanding += customer.current_debt
 

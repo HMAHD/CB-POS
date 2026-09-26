@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file. Never delet
 
 ## [Unreleased]
 
+### Added — Full API documentation coverage + Sphinx docs build
+
+- **Docstring coverage: 51% → 98.8%** (1,385/1,402 public classes/functions across `cbpos/`; the remaining gap is entirely `tests/`, deliberately out of scope since test names are self-documenting).
+- **Sphinx API reference regenerated from 5 hand-picked files to the full 142-module `cbpos/` package** via `sphinx-apidoc`, so it can no longer silently go stale the way the old hand-maintained `docs/api_reference.rst` did.
+- **Root-caused and fixed a real SQLAlchemy/Sphinx-autodoc bug**: importing `cbpos.core.models` a second time in the same process crashed (SQLAlchemy's declarative Table/mapper registry is a process-global singleton) — reproducible independently of Sphinx. Fixed with a one-line documented pre-import in `docs/conf.py`.
+- **106 Sphinx build warnings fixed to 0 visible**, each root-caused rather than suppressed blind: PyQt6's `pyqtSignal` and SQLAlchemy's `MetaData` leaking their own library docstrings into ours (autodoc hook), missing `myst_heading_anchors` config (22 broken TOC links), a handful of real docstring RST bugs, and `docs/TAX.md`'s heading hierarchy.
+- **`ruff`'s pydocstyle rules (D101/D102/D103) now enforced on every commit** for `cbpos/` — a docstring-less new class or function fails `pre-commit`/CI going forward, scoped to skip `tests/`, `scripts/`, and Alembic's auto-generated migrations.
+- Removed 3 dead scaffold packages found while auditing autodoc's output: `cbpos/infrastructure/{repositories,database}/` and `cbpos/ui/controllers/` (empty `__init__.py`, zero references anywhere).
+- `docs.yml` CI workflow builds the full docs on every push touching `docs/**` or `cbpos/**/*.py` and uploads them as a private, collaborator-only build artifact — **not published to GitHub Pages**, since CB-POS is closed-source software and Pages is public. Revisit if the project ever open-sources.
+
+### Changed — Documentation reorganization
+
+- Root-level docs pruned to what GitHub expects there (`README.md`, `CHANGELOG.md`, `SECURITY.md`) plus `PRODUCT.md` (a tool-convention file); `PROJECT_OVERVIEW.md` and `Roadmap.md` moved into `docs/`, alongside the existing `TAX.md` and `onboarding.md`.
+- Two project-inception planning docs (`PRD.md`, the original "Software Architecture Document") moved to `docs/archive/`, marked superseded, and excluded from the Sphinx build — kept for history, not treated as current.
+- `README.md` gained a Documentation table linking every doc in one place.
+
+### Changed — Migrate dependency management from pip to uv
+
+- `requirements.txt` replaced with `pyproject.toml`'s `[project.dependencies]` (runtime) and `[dependency-groups]` (`dev`, `build`) — `uv.lock` pins exact resolved versions and is committed.
+- `release.yml`'s Windows installer build now uses `astral-sh/setup-uv` + `uv sync --locked --no-dev --group build`, installing only packaging tools, not the full dev/test toolchain.
+- New contributor setup is `uv sync` instead of `python -m venv` + `pip install -r requirements.txt` (updated in `README.md`, `docs/onboarding.md`, `.github/copilot-instructions.md`, and the macOS setup workflow).
+
+### Fixed — Reliability hardening
+
+- **Global crash handler**: an uncaught exception on the packaged Windows build previously vanished into nowhere (no console); `sys.excepthook` now logs it via the existing rotating log handler before the process exits, so a crash report survives to be diagnosed.
+- **Atomic settings/encryption-key writes**: `ConfigService` now writes `settings.json` and the encryption key to a temp file first, then `os.replace()`s it onto the real path — a crash or power cut mid-write can no longer leave either file truncated or half-written.
+- **`PyQt6` capped below 6.11.0**: 6.11.0 regresses `PaymentDialog`'s row `sizeHint()` (tracked upstream as #427); pinned in `requirements.txt`/`pyproject.toml` until fixed.
+
 ### Added — Complete Sinhala/Tamil Trilingual Translation
 
 - **Full UI translation coverage**: Translated the remaining ~700+ untranslated keys across document browser, admin tools, stock take, user management, report viewer, data export, shift closing, keyboard shortcuts, update dialog, receipt options/strings/reprint, database setup, setup wizard, and payment methods — bringing translation coverage to 2,090 keys, 97%+ translated in both Sinhala and Tamil, in casual native-speaker register matching the app's established tone.

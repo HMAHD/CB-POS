@@ -367,7 +367,9 @@ def main():
             "unauthenticated."
         )
         window.sync_status.set_mode(terminal_mode)
-        window.sync_status.set_config_error("Shared Secret is required")
+        from cbpos.i18n import _t
+
+        window.sync_status.set_config_error(_t("sync_status.error_shared_secret_required"))
 
     elif terminal_mode == "main":
         print("[BOOTSTRAP] Starting sync server (Main PC mode)...")
@@ -401,7 +403,9 @@ def main():
         else:
             print("[BOOTSTRAP] Terminal mode but no main_pc_address configured")
             window.sync_status.set_mode("terminal")
-            window.sync_status.set_config_error("Main PC Address is required")
+            from cbpos.i18n import _t
+
+            window.sync_status.set_config_error(_t("sync_status.error_main_pc_address_required"))
     else:
         window.sync_status.set_mode("standalone")
 

@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.unit_service import UnitService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
@@ -200,7 +201,7 @@ class UnitManagerDialog(QDialog):
             self._load_units()
             self._clear_form()
         except ValueError as e:
-            QMessageBox.warning(self, _t("common.error"), str(e))
+            QMessageBox.warning(self, _t("common.error"), translate_error(str(e)))
 
     def _delete_unit(self) -> None:
         """Delete (deactivate) selected unit."""
@@ -225,7 +226,7 @@ class UnitManagerDialog(QDialog):
             self._load_units()
             self._clear_form()
         except ValueError as e:
-            QMessageBox.warning(self, _t("common.error"), str(e))
+            QMessageBox.warning(self, _t("common.error"), translate_error(str(e)))
 
     def _clear_form(self) -> None:
         """Clear form and reset to 'add new' mode."""

@@ -66,6 +66,7 @@
     "notes": "குறிப்புகள்",
     "update": "அப்டேட்",
     "na": "N/A",
+    "unknown": "தெரியாத",
     "important": "முக்கியம்"
   },
   "login": {
@@ -99,6 +100,8 @@
     "disconnected": "கனெக்ட் இல்ல",
     "detail_mode_label": "மோட்",
     "detail_error_prefix": "LAN சிங்க் வேலை செய்யல:",
+    "error_shared_secret_required": "ஷேர் பண்ண சீக்ரெட் தேவை",
+    "error_main_pc_address_required": "மெயின் பிசி அட்ரஸ் தேவை",
     "detail_fix_hint": "இதை செட்டிங்ஸ் → நெட்வொர்க் → LAN சிங்க்ல சரி பண்ணுங்க.",
     "detail_mode_main": "மெயின் பிசி (சிங்க் சர்வர்)",
     "detail_mode_terminal": "டெர்மினல்",

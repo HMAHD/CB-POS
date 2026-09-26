@@ -66,6 +66,7 @@
     "notes": "Notes",
     "update": "Update",
     "na": "N/A",
+    "unknown": "Unknown",
     "important": "Important"
   },
   "login": {
@@ -99,6 +100,8 @@
     "disconnected": "Disconnected",
     "detail_mode_label": "Mode",
     "detail_error_prefix": "LAN Sync is not running:",
+    "error_shared_secret_required": "Shared Secret is required",
+    "error_main_pc_address_required": "Main PC Address is required",
     "detail_fix_hint": "Fix this in Settings → Network → LAN Sync.",
     "detail_mode_main": "Main PC (Sync Server)",
     "detail_mode_terminal": "Terminal",

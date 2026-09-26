@@ -83,15 +83,16 @@
 ├── main.py                    # Application entry point
 ├── cbpos.db                   # SQLite database
 ├── cbpos.spec                 # PyInstaller build specification
-├── requirements.txt           # Python dependencies (24 packages)
-├── pyproject.toml             # Black & Flake8 configuration
+├── uv.lock                    # Locked dependency versions (uv, committed to git)
+├── pyproject.toml             # Project metadata, dependencies (uv) & Ruff configuration
 ├── alembic.ini                # Alembic migration configuration
 ├── settings.json              # Runtime settings (auto-generated)
 ├── settings.json.example      # Example settings template
 ├── README.md                  # Project documentation
 ├── CLAUDE.md                  # Development guidelines
 ├── CHANGELOG.md               # Version history
-├── Roadmap.md                 # Feature roadmap
+├── SECURITY.md                # Security policy
+├── PRODUCT.md                 # Product context (vision, users, principles)
 │
 ├── cbpos/                     # Main application package
 │   ├── __init__.py
@@ -170,10 +171,16 @@
 │   └── test_purchasing.py
 │
 └── docs/                      # Documentation
-    ├── PRD.md                 # Product Requirements Document
-    ├── TAX.md                 # Sri Lankan tax guide
-    ├── Docs.md                # Technical documentation
-    └── onboarding.md
+    ├── index.rst              # Sphinx docs root
+    ├── conf.py                # Sphinx configuration
+    ├── api_reference.rst      # Sphinx-generated API reference
+    ├── onboarding.md          # Developer onboarding guide
+    ├── PROJECT_OVERVIEW.md    # This file
+    ├── Roadmap.md             # Feature roadmap
+    ├── TAX.md                 # Sri Lankan tax calculation guide
+    └── archive/               # Superseded project-inception docs (historical only)
+        ├── PRD.md
+        └── Docs.md
 ```
 
 ---
@@ -742,23 +749,26 @@ python -m pytest tests/unit/test_transaction_service.py::TestTransactionService:
 
 ## 13. Configuration Files
 
-### requirements.txt (24 packages)
+### pyproject.toml + uv.lock (dependencies)
+
+Runtime dependencies live in `pyproject.toml`'s `[project.dependencies]`; dev-only and build-only tools live in `[dependency-groups]` (`dev`, `build`). `uv.lock` pins the exact resolved versions for reproducible installs (`uv sync`).
 
 | Category | Packages |
 |----------|----------|
 | UI | PyQt6>=6.7.0 |
-| ORM | SQLAlchemy>=2.0.30, alembic>=1.13.1 |
+| ORM | SQLAlchemy>=2.0.54, alembic>=1.20.0 |
 | Database | psycopg2-binary (PostgreSQL) |
 | Validation | pydantic>=2.7.0 |
 | Printing | python-escpos>=3.1 |
 | Reports | reportlab, pandas, xlsxwriter, xhtml2pdf |
-| Testing | pytest, pytest-qt |
-| Code Quality | black, flake8, pre-commit |
+| Testing (dev group) | pytest, pytest-qt |
+| Code Quality (dev group) | ruff, pre-commit |
+| Packaging (build group) | pyinstaller |
 
-### pyproject.toml
+### pyproject.toml (tool config)
 
-- Black: 120 char line length, Python 3.12 target
-- Flake8: max 120 chars, ignore E203 (black compatibility)
+- `[tool.uv]`: `package = false` (CB-POS is a shipped app, not an installable library)
+- `[tool.ruff]`: 120 char line length, Python 3.12 target, Black-compatible formatting
 
 ### settings.json (76 configurable settings)
 

@@ -1,3 +1,11 @@
+---
+orphan: true
+---
+
+> **Archived — project-inception snapshot (v1.0).** Superseded by the living
+> architecture reference: [`docs/PROJECT_OVERVIEW.md`](../PROJECT_OVERVIEW.md).
+> Kept for historical reference only — do not treat as current.
+
 # DOCUMENT 1: SOFTWARE ARCHITECTURE DOCUMENT (SAD)
 
 **Project:** CB POS (Ceylon Byte Point of Sale)

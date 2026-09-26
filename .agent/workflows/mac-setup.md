@@ -7,22 +7,21 @@ description: how to setup and run CB POS on macOS
    ```bash
    brew install libusb cairo pkg-config
    ```
-3. Create and activate a virtual environment:
+3. Install [uv](https://docs.astral.sh/uv/) if needed:
    ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
+   curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
 4. Install Python dependencies:
    ```bash
-   pip install -r requirements.txt
-   pip install qtawesome  # Required for GUI icons
+   uv sync
    ```
+   Creates `.venv` and installs the exact versions from `uv.lock` (qtawesome included).
 5. Initialize the database:
    ```bash
    # Full reset and seed with default data
-   python scripts/seed.py
+   uv run python scripts/seed.py
    ```
 6. Run the application:
    ```bash
-   python main.py
+   uv run python main.py
    ```

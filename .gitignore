@@ -45,3 +45,11 @@ cbpos.db-wal
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# graphify's local knowledge graph + LLM extraction cache — regenerable,
+# not committed (run `/graphify .` or `graphify update .`).
+/graphify-out/
+*.graphify-bak
+
+# Sphinx build output — regenerable (run `uv run sphinx-build -b html docs docs/_build/html`).
+docs/_build/

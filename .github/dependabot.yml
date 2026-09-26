@@ -32,7 +32,7 @@ updates:
       - "github-actions"
 
   # Pre-commit hooks (keeps .pre-commit-config.yaml pins from drifting
-  # out of sync with the matching tool's requirements.txt floor)
+  # out of sync with the matching tool's pyproject.toml floor)
   - package-ecosystem: "pre-commit"
     directory: "/"
     schedule:

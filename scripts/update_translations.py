@@ -48,7 +48,7 @@ def update_translations():
         except subprocess.CalledProcessError as e:
             print(f"Error updating {os.path.basename(ts_file)}: {e}")
         except FileNotFoundError:
-            print("Error: pylupdate6 not found. Please install PyQt6 tools (pip install PyQt6).")
+            print("Error: pylupdate6 not found. Please install PyQt6 tools (uv sync).")
             return
 
 

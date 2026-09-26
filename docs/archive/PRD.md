@@ -1,3 +1,12 @@
+---
+orphan: true
+---
+
+> **Archived — project-inception snapshot (v1.0).** Superseded by the living
+> product/roadmap docs: `PRODUCT.md` (repo root — current product context)
+> and [`docs/Roadmap.md`](../Roadmap.md) (current status/phases).
+> Kept for historical reference only — do not treat as current.
+
 # 🚀 PRODUCT REQUIREMENTS DOCUMENT (PRD)
 ## **Product Name:** CB POS (Ceylon Byte Point of Sale)
 **Version:** 1.0 (Master Blueprint)

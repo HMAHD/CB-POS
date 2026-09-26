@@ -11,6 +11,9 @@ Welcome to CB POS's documentation!
    :caption: Contents:
 
    onboarding
+   PROJECT_OVERVIEW
+   Roadmap
+   TAX
    api_reference
 
 Indices and tables

@@ -1,3 +1,48 @@
+[project]
+name = "cbpos"
+version = "1.3.0"
+description = "CB POS — industrial-grade Point of Sale system for Sri Lankan retail markets"
+requires-python = ">=3.12"
+dependencies = [
+    "bcrypt>=5.0.0",
+    "cryptography>=42.0.0",
+    "PyQt6>=6.7.0,<6.11.0", # 6.11.0 regresses PaymentDialog row sizeHint, see #427
+    "SQLAlchemy>=2.0.54",
+    "psycopg2-binary>=2.9.13",
+    "pydantic>=2.7.0",
+    "python-escpos>=3.1",
+    "pyusb>=1.3.1",
+    "alembic>=1.20.0",
+    "qtawesome>=1.3.0",
+    "python-barcode>=0.16.1",
+    "qrcode>=8.2",
+    "Pillow>=12.3.0",
+    "reportlab>=4.4.10",
+    "pandas>=3.0.3",
+    "xlsxwriter>=3.2.9",
+    "openpyxl>=3.1.0",
+    "xhtml2pdf>=0.2.20",
+    "pyzipper>=0.3.6",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-qt>=4.5.0",
+    "ruff>=0.16.8",
+    "pre-commit>=4.6.2",
+    "sphinx",
+    "myst-parser",
+]
+build = [
+    "pyinstaller>=6.22.3",
+]
+
+[tool.uv]
+# CB-POS is a shipped desktop application, not an installable library -
+# don't build/install it into its own environment.
+package = false
+
 [tool.ruff]
 # Match current project settings
 line-length = 120

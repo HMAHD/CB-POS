@@ -164,13 +164,12 @@ Use `QThread` or `QRunnable` with Signals for these tasks.
 ### Environment Setup (Required First)
 
 ```bash
-# Create and activate virtual environment
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate   # Windows
+# Install uv (https://docs.astral.sh/uv/) if you don't have it
+curl -LsSf https://astral.sh/uv/install.sh | sh   # Linux/Mac
+# powershell -c "irm https://astral.sh/uv/install.ps1 | iex"   # Windows
 
-# Install all dependencies
-pip install -r requirements.txt
+# Install all dependencies (creates .venv, installs exact versions from uv.lock)
+uv sync
 ```
 
 ### Database Initialization
@@ -179,11 +178,11 @@ pip install -r requirements.txt
 
 ```bash
 # Recommended for development (creates tables + sample data)
-python scripts/seed.py
+uv run python scripts/seed.py
 
 # Alternative: Alembic migrations (for existing databases)
 # NOTE: Only run on fresh database or after tables are dropped
-alembic upgrade head
+uv run alembic upgrade head
 ```
 
 **Seed Data Includes:** Admin/Cashier users, sample products, categories, suppliers, permissions, and roles.
@@ -192,13 +191,13 @@ alembic upgrade head
 
 ```bash
 # Run all pre-commit hooks (Ruff linter + formatter)
-pre-commit run --all-files
+uv run pre-commit run --all-files
 
 # Individual checks
-ruff check .              # Lint check
-ruff check --fix .        # Lint + auto-fix
-ruff format --check .     # Format check
-ruff format .             # Auto-format
+uv run ruff check .              # Lint check
+uv run ruff check --fix .        # Lint + auto-fix
+uv run ruff format --check .     # Format check
+uv run ruff format .             # Auto-format
 ```
 
 ### Running Tests
@@ -210,10 +209,10 @@ ruff format .             # Auto-format
 export QT_QPA_PLATFORM=offscreen
 
 # Run unit tests
-python -m pytest tests/unit/ -v
+uv run python -m pytest tests/unit/ -v
 
 # Run specific test file
-python -m pytest tests/unit/test_transaction_service.py -v
+uv run python -m pytest tests/unit/test_transaction_service.py -v
 ```
 
 **Note:** Tests require `libEGL`, `libxkbcommon`, and other Qt dependencies on Linux.
@@ -221,7 +220,7 @@ python -m pytest tests/unit/test_transaction_service.py -v
 ### Running the Application
 
 ```bash
-python main.py
+uv run python main.py
 ```
 
 **Default Credentials:** Admin: `admin` / `1234` | Cashier: `cashier` / `0000`
@@ -229,7 +228,7 @@ python main.py
 ### Building Executable
 
 ```bash
-pyinstaller cbpos.spec
+uv run pyinstaller cbpos.spec
 # Output: dist/cbpos executable
 ```
 

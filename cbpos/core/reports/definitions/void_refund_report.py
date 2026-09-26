@@ -16,17 +16,21 @@ class VoidRefundReport(BaseReport):
 
     @property
     def id(self) -> str:
+        """Report identifier."""
         return "void_refund"
 
     @property
     def name(self) -> str:
+        """Display name."""
         return _t("reports.void_refund")
 
     @property
     def category(self) -> str:
+        """Report category."""
         return _t("reports.category_audit")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
+        """Date range filter, defaulting to today."""
         return [
             {
                 "name": "date_range",
@@ -38,6 +42,10 @@ class VoidRefundReport(BaseReport):
         ]
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
+        """List voided/refunded sales within the date range, newest first.
+
+        Includes the acting user, amount, status, and payment method.
+        """
         date_range = filters.get("date_range", {})
         start_date = date_range.get("start")
         end_date = date_range.get("end")
@@ -82,17 +90,21 @@ class PaymentMethodSummaryReport(BaseReport):
 
     @property
     def id(self) -> str:
+        """Report identifier."""
         return "payment_method_summary"
 
     @property
     def name(self) -> str:
+        """Display name."""
         return _t("reports.payment_method_summary")
 
     @property
     def category(self) -> str:
+        """Report category."""
         return _t("reports.category_sales")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
+        """Date range filter, defaulting to today."""
         return [
             {
                 "name": "date_range",
@@ -104,6 +116,7 @@ class PaymentMethodSummaryReport(BaseReport):
         ]
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
+        """Sum transaction count and total amount per payment method for completed sales."""
         from cbpos.core.models import SalePayment
 
         date_range = filters.get("date_range", {})

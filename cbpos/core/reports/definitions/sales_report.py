@@ -11,19 +11,25 @@ from cbpos.i18n import _t
 
 
 class DailySalesSummaryReport(BaseReport):
+    """Transaction count and total sales revenue grouped by day."""
+
     @property
     def id(self) -> str:
+        """Report identifier."""
         return "daily_sales_summary"
 
     @property
     def name(self) -> str:
+        """Display name."""
         return _t("reports.daily_sales_summary")
 
     @property
     def category(self) -> str:
+        """Report category."""
         return _t("reports.category_sales")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
+        """Date range filter, defaulting to today."""
         return [
             {
                 "name": "date_range",
@@ -35,6 +41,10 @@ class DailySalesSummaryReport(BaseReport):
         ]
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
+        """Group sales by calendar date within the range, summing count and total.
+
+        Returns an empty DataFrame if no date range is provided.
+        """
         start_date = filters.get("date_range", {}).get("start")
         end_date = filters.get("date_range", {}).get("end")
 

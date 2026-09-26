@@ -10,22 +10,33 @@ from cbpos.i18n import _t
 
 
 class StockMovementReport(BaseReport):
+    """Audit trail of every stock change (sale, purchase, adjustment, return, void)."""
+
     @property
     def id(self) -> str:
+        """Report identifier."""
         return "stock_movement"
 
     @property
     def name(self) -> str:
+        """Display name."""
         return _t("reports.stock_movement")
 
     @property
     def category(self) -> str:
+        """Report category."""
         return _t("reports.category_audit")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
+        """Date range filter only."""
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
+        """List stock movements within the date range, newest first.
+
+        Includes user, product, movement type, quantity change, resulting
+        balance, and the originating document (sale/purchase) if any.
+        """
         with get_db_session() as session:
             date_range = filters.get("date_range", {})
             start_date = date_range.get("start")
@@ -58,22 +69,29 @@ class StockMovementReport(BaseReport):
 
 
 class CashMovementAuditReport(BaseReport):
+    """Audit trail of manual cash drawer movements (e.g. cash-in, cash-out, float)."""
+
     @property
     def id(self) -> str:
+        """Report identifier."""
         return "cash_movement_audit"
 
     @property
     def name(self) -> str:
+        """Display name."""
         return _t("reports.cash_movement_audit")
 
     @property
     def category(self) -> str:
+        """Report category."""
         return _t("reports.category_audit")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
+        """Date range filter only."""
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
+        """List cash movements within the date range, newest first, with user and reason."""
         with get_db_session() as session:
             date_range = filters.get("date_range", {})
             start_date = date_range.get("start")

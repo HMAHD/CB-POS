@@ -10,22 +10,29 @@ from cbpos.i18n import _t
 
 
 class CashFlowReport(BaseReport):
+    """Net cash flow for a period: sales inflow minus refunds and expenses outflow."""
+
     @property
     def id(self) -> str:
+        """Report identifier."""
         return "cash_flow"
 
     @property
     def name(self) -> str:
+        """Display name."""
         return _t("reports.cash_flow")
 
     @property
     def category(self) -> str:
+        """Report category."""
         return _t("reports.category_financial")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
+        """Date range filter only."""
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
     def get_render_hints(self) -> dict[str, Any]:
+        """Color inflow/outflow rows and bold the Net Cash Flow total row."""
         return {
             "currency_columns": ["Amount"],
             "total_row_column": "Type",
@@ -35,6 +42,12 @@ class CashFlowReport(BaseReport):
         }
 
     def generate(self, filters: dict[str, Any] = None) -> pd.DataFrame:
+        """Compute total sales inflow vs. refund/expense outflow for the date range.
+
+        Refunds are identified via ``Sale.refund_of_sale_id``. Expenses are a
+        static 0.00 placeholder pending a dedicated Expense model. Net Cash
+        Flow = sales - refunds - expenses.
+        """
         if filters is None:
             filters = {}
 

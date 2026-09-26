@@ -18,6 +18,7 @@ class ManagerOverrideDialog(QDialog):
     """
 
     def __init__(self, permission_required: str, parent=None):
+        """Initialize the dialog for the permission code that requires manager approval."""
         super().__init__(parent)
         self.permission_required = permission_required
         self.authorized_user = None
@@ -28,6 +29,7 @@ class ManagerOverrideDialog(QDialog):
         self.init_ui()
 
     def init_ui(self):
+        """Build the PIN input and verify/cancel buttons."""
         layout = QVBoxLayout(self)
 
         self.pin_input = QLineEdit()
@@ -47,10 +49,12 @@ class ManagerOverrideDialog(QDialog):
         layout.addWidget(btn_cancel)
 
     def showEvent(self, event):
+        """Focus the PIN input when the dialog is shown."""
         super().showEvent(event)
         self.pin_input.setFocus()
 
     def verify_pin(self):
+        """Verify the entered PIN and, if the user holds the required permission, accept the dialog."""
         pin = self.pin_input.text()
         if not pin:
             return

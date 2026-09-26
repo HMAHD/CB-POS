@@ -18,7 +18,10 @@ from cbpos.i18n import _t
 
 
 class DiscountDialog(QDialog):
+    """Dialog for entering a percentage or fixed-amount discount, with live preview against the original amount."""
+
     def __init__(self, parent=None, original_amount: Decimal = Decimal("0.00")):
+        """Initialize the dialog with the amount the discount will be applied against."""
         super().__init__(parent)
         self.setWindowTitle(_t("discount.title"))
         # Fixed WIDTH only -- a hardcoded fixed HEIGHT (previously 440)
@@ -42,6 +45,7 @@ class DiscountDialog(QDialog):
         self.init_ui()
 
     def init_ui(self):
+        """Build the discount type toggle, value input, presets, and preview label."""
         layout = QVBoxLayout(self)
         layout.setSpacing(16)
         layout.setContentsMargins(24, 20, 24, 20)
@@ -188,6 +192,7 @@ class DiscountDialog(QDialog):
         self.lbl_preview.setText(_t("discount.preview", original=orig_str, discounted=disc_str))
 
     def on_type_changed(self, button):
+        """Switch the value input's range/suffix and preset buttons between percentage and fixed-amount mode."""
         if button == self.rb_percent:
             self.discount_type = "PERCENTAGE"
             self.spin_value.setSuffix("%")
@@ -219,9 +224,11 @@ class DiscountDialog(QDialog):
         self.spin_value.selectAll()
 
     def get_data(self):
+        """Return the chosen discount type ("PERCENTAGE" or "FIXED") and its value."""
         return self.discount_type, self.spin_value.value()
 
     def accept(self):
+        """Reject a zero/negative discount value, otherwise accept the dialog."""
         if self.spin_value.value() <= 0:
             QMessageBox.warning(
                 self,

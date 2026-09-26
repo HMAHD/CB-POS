@@ -40,6 +40,7 @@ class _QtyDelegate(QStyledItemDelegate):
     a validated QLineEdit editor accepting integers 1-999."""
 
     def createEditor(self, parent: QWidget, option, index) -> QLineEdit:
+        """Return a centered, integer-validated (1-999) editor for the Qty cell."""
         editor = QLineEdit(parent)
         editor.setValidator(QIntValidator(1, 999))
         editor.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -67,11 +68,13 @@ class _QtyDelegate(QStyledItemDelegate):
         return editor
 
     def setEditorData(self, editor: QLineEdit, index) -> None:
+        """Populate the editor with the cell's current quantity, defaulting to 1."""
         value = index.data(Qt.ItemDataRole.DisplayRole)
         editor.setText(value if value else "1")
         editor.selectAll()
 
     def setModelData(self, editor: QLineEdit, model, index) -> None:
+        """Write the edited quantity back to the model, clamped to at least 1."""
         text = editor.text().strip()
         try:
             val = max(1, int(text)) if text else 1
@@ -80,6 +83,7 @@ class _QtyDelegate(QStyledItemDelegate):
         model.setData(index, str(val), Qt.ItemDataRole.EditRole)
 
     def displayText(self, value, locale) -> str:
+        """Render the stored value as a positive integer, defaulting to 1."""
         try:
             return str(max(1, int(value))) if value else "1"
         except (ValueError, TypeError):
@@ -90,6 +94,7 @@ class LabelPrintDialog(QDialog):
     """Dialog to search products, set quantities, and print barcode labels."""
 
     def __init__(self, parent=None):
+        """Initialize the dialog and load the product cache for search/autocomplete."""
         super().__init__(parent)
         self.setWindowTitle(_t("label_print.title"))
         self.setMinimumSize(700, 500)

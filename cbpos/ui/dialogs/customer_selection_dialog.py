@@ -17,7 +17,10 @@ from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 
 class CustomerSelectionDialog(QDialog):
+    """Dialog for searching and selecting a customer from the customer list."""
+
     def __init__(self, parent=None):
+        """Initialize the dialog and load the customer list."""
         super().__init__(parent)
         self.setWindowTitle(_t("customer_selection.title"))
         self.setMinimumWidth(500)
@@ -29,6 +32,7 @@ class CustomerSelectionDialog(QDialog):
         self.load_customers()
 
     def setup_ui(self):
+        """Build the search box, results table, and select/cancel buttons."""
         layout = QVBoxLayout(self)
 
         # Search
@@ -83,10 +87,12 @@ class CustomerSelectionDialog(QDialog):
         QShortcut(QKeySequence(Qt.Key.Key_Enter), self).activated.connect(self.select_customer)
 
     def load_customers(self):
+        """Load all customers into the results table."""
         customers = self.customer_service.get_all_customers()
         self.populate_table(customers)
 
     def filter_customers(self, text):
+        """Filter the results table by the search text, or reload all customers if empty."""
         if not text:
             self.load_customers()
             return
@@ -94,6 +100,7 @@ class CustomerSelectionDialog(QDialog):
         self.populate_table(customers)
 
     def populate_table(self, customers):
+        """Fill the results table with the given list of customers."""
         self.table.setRowCount(0)
         for customer in customers:
             row = self.table.rowCount()
@@ -110,6 +117,7 @@ class CustomerSelectionDialog(QDialog):
             self.table.setItem(row, 2, phone_item)
 
     def select_customer(self):
+        """Set the selected customer from the current row and accept the dialog."""
         row = self.table.currentRow()
         if row >= 0:
             customer_id = self.table.item(row, 1).data(Qt.ItemDataRole.UserRole)

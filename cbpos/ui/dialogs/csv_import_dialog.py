@@ -28,6 +28,7 @@ class CsvImportDialog(QDialog):
     """Two-step dialog: download CSV template, then import filled CSV."""
 
     def __init__(self, import_service: ImportService, parent=None) -> None:
+        """Initialize the dialog for template download and CSV import."""
         super().__init__(parent)
         self.setWindowTitle(_t("csv_import.title"))
         self.setMinimumWidth(480)

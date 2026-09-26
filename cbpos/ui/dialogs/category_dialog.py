@@ -21,7 +21,10 @@ from cbpos.i18n import _t
 
 
 class CategoryDialog(QDialog):
+    """Dialog for creating or editing a category (name, parent category, and color)."""
+
     def __init__(self, category: Category = None, parent=None):
+        """Initialize the dialog, pre-filling fields when editing an existing category."""
         super().__init__(parent)
         self.category = category
         self.setWindowTitle(_t("category_dialog.edit_title") if category else _t("category_dialog.new_title"))
@@ -36,6 +39,7 @@ class CategoryDialog(QDialog):
             self.load_data()
 
     def setup_ui(self):
+        """Build the name, parent category, and color picker form."""
         layout = QVBoxLayout(self)
         form = QFormLayout()
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
@@ -76,6 +80,7 @@ class CategoryDialog(QDialog):
         layout.addWidget(buttons)
 
     def load_categories(self):
+        """Populate the parent category combo, excluding the category being edited."""
         categories = CategoryService.get_all()
         for cat in categories:
             # Avoid self-parenting
@@ -84,18 +89,21 @@ class CategoryDialog(QDialog):
             self.parent_combo.addItem(cat.name, cat.id)
 
     def pick_color(self):
+        """Open a color picker and update the selected color swatch."""
         color = QColorDialog.getColor(QColor(self.selected_color), self, _t("category_dialog.select_color"))
         if color.isValid():
             self.selected_color = color.name()
             self.lbl_color.setStyleSheet(f"background-color: {self.selected_color}; border: 1px solid gray;")
 
     def load_data(self):
+        """Populate the form fields from the category being edited."""
         self.name_input.setText(self.category.name)
         index = self.parent_combo.findData(self.category.parent_id)
         if index >= 0:
             self.parent_combo.setCurrentIndex(index)
 
     def save(self):
+        """Validate input and create or update the category via CategoryService."""
         name = self.name_input.text().strip()
         if not name:
             QMessageBox.warning(self, _t("common.error"), _t("category_dialog.name_required"))

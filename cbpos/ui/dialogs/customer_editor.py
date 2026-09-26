@@ -33,7 +33,11 @@ COMMERCIAL_FIELD_MIN_WIDTH = 220
 
 
 class CustomerEditor(QDialog):
+    """Tabbed dialog for creating or editing a customer: general info, commercial terms, contacts, loyalty,
+    and (when editing) purchase history."""
+
     def __init__(self, customer=None, parent=None):
+        """Initialize the dialog, pre-filling fields when editing an existing customer."""
         super().__init__(parent)
         self.customer = customer
         self.customer_service = CustomerService()
@@ -53,6 +57,7 @@ class CustomerEditor(QDialog):
             self.load_data()
 
     def setup_ui(self):
+        """Build the tab widget (General, Commercial, Contacts, optional Loyalty/History) and save/cancel buttons."""
         layout = QVBoxLayout(self)
 
         # Tabs
@@ -77,6 +82,7 @@ class CustomerEditor(QDialog):
         layout.addWidget(buttons)
 
     def create_general_tab(self):
+        """Build the General tab: name, phone, email, address, and company toggle."""
         widget = QWidget()
         form = QFormLayout(widget)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
@@ -105,6 +111,7 @@ class CustomerEditor(QDialog):
         return widget
 
     def create_commercial_tab(self):
+        """Build the Commercial tab: VAT/TIN numbers, credit limit, payment terms, and price list."""
         widget = QWidget()
         form = QFormLayout(widget)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
@@ -150,6 +157,7 @@ class CustomerEditor(QDialog):
         return widget
 
     def create_contacts_tab(self):
+        """Build the Contacts tab: an editable table of additional contact people."""
         widget = QWidget()
         layout = QVBoxLayout(widget)
 
@@ -182,6 +190,7 @@ class CustomerEditor(QDialog):
         return widget
 
     def create_loyalty_tab(self):
+        """Build the Loyalty tab: loyalty card code and current points balance."""
         widget = QWidget()
         form = QFormLayout(widget)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
@@ -200,6 +209,7 @@ class CustomerEditor(QDialog):
         return widget
 
     def create_history_tab(self):
+        """Build the History tab: a read-only table of the customer's past sales."""
         widget = QWidget()
         layout = QVBoxLayout(widget)
 
@@ -222,10 +232,12 @@ class CustomerEditor(QDialog):
         return widget
 
     def on_tab_changed(self, index):
+        """Lazily load purchase history the first time the History tab is opened."""
         if self.tabs.tabText(index) == _t("customer_editor.tab_history"):
             self.load_history()
 
     def load_history(self):
+        """Load the customer's purchase history into the history table."""
         if not self.customer:
             return
 
@@ -250,6 +262,7 @@ class CustomerEditor(QDialog):
             self.history_table.setItem(row, 4, QTableWidgetItem(sale.payment_method))
 
     def add_contact_row(self):
+        """Append a blank editable row to the contacts table."""
         row = self.contact_table.rowCount()
         self.contact_table.insertRow(row)
         self.contact_table.setItem(row, 0, QTableWidgetItem(_t("customer_editor.new_contact")))
@@ -258,11 +271,13 @@ class CustomerEditor(QDialog):
         self.contact_table.setItem(row, 3, QTableWidgetItem(""))
 
     def remove_contact_row(self):
+        """Remove the currently selected row from the contacts table."""
         row = self.contact_table.currentRow()
         if row >= 0:
             self.contact_table.removeRow(row)
 
     def load_data(self):
+        """Populate all tabs' fields from the customer being edited."""
         self.name_input.setText(self.customer.name)
         self.phone_input.setText(self.customer.phone or "")
         self.email_input.setText(self.customer.email or "")
@@ -312,6 +327,7 @@ class CustomerEditor(QDialog):
             return 0
 
     def save(self):
+        """Validate all fields and create or update the customer via CustomerService."""
         # Gather Contact Data
         contacts_data = []
         for row in range(self.contact_table.rowCount()):

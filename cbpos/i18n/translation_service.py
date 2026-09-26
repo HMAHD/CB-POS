@@ -22,6 +22,7 @@ class TranslationService:
     SUPPORTED_LANGUAGES = ("en", "si", "ta")
 
     def __init__(self) -> None:
+        """Initialize with English loaded as the always-available fallback language."""
         self.current_language: str = "en"
         self._translations: dict[str, dict[str, str]] = {}
         # Use weak references to prevent preventing GC of Qt widgets.

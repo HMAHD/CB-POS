@@ -22,6 +22,7 @@ class CsvImportWorker(QThread):
     progress = pyqtSignal(int, int)  # (current_row, total_rows)
 
     def __init__(self, import_service: object, file_path: str) -> None:
+        """Set up the import job; connects finished/error to deleteLater for cleanup."""
         super().__init__()
         self.finished.connect(self.deleteLater)
         self.error.connect(self.deleteLater)
@@ -29,6 +30,7 @@ class CsvImportWorker(QThread):
         self.file_path = file_path
 
     def run(self) -> None:
+        """Count CSV rows for progress reporting, then import products, emitting progress/finished/error."""
         try:
             # Count rows with a lightweight line count (skip header)
             try:
@@ -55,12 +57,14 @@ class BackupWorker(QThread):
     error = pyqtSignal(str)
 
     def __init__(self, destination_dir: str) -> None:
+        """Set up the backup job for the given destination directory."""
         super().__init__()
         self.finished.connect(self.deleteLater)
         self.error.connect(self.deleteLater)
         self.destination_dir = destination_dir
 
     def run(self) -> None:
+        """Create an encrypted backup and emit its path and password, or emit error on failure."""
         try:
             from cbpos.core.services.backup_service import BackupService
 
@@ -86,12 +90,14 @@ class BackupListWorker(QThread):
     error = pyqtSignal(str)
 
     def __init__(self, backup_dir: str) -> None:
+        """Set up the scan job for the given backup directory."""
         super().__init__()
         self.finished.connect(self.deleteLater)
         self.error.connect(self.deleteLater)
         self.backup_dir = backup_dir
 
     def run(self) -> None:
+        """List available backups in the directory, emitting the result or an error."""
         try:
             from cbpos.core.services.backup_service import BackupService
 
@@ -109,6 +115,7 @@ class RestoreWorker(QThread):
     error = pyqtSignal(str)
 
     def __init__(self, backup_path: str, password: str) -> None:
+        """Set up the restore job with the backup file and its password."""
         super().__init__()
         self.finished.connect(self.deleteLater)
         self.error.connect(self.deleteLater)
@@ -116,6 +123,7 @@ class RestoreWorker(QThread):
         self.password = password
 
     def run(self) -> None:
+        """Restore the given encrypted backup, emitting success/failure."""
         try:
             from cbpos.core.services.backup_service import BackupService
 
@@ -133,11 +141,13 @@ class VacuumWorker(QThread):
     error = pyqtSignal(str)
 
     def __init__(self) -> None:
+        """Set up the VACUUM job."""
         super().__init__()
         self.finished.connect(self.deleteLater)
         self.error.connect(self.deleteLater)
 
     def run(self) -> None:
+        """Run database VACUUM and emit the before/after/saved size stats."""
         try:
             from cbpos.core.services.maintenance_service import MaintenanceService
 
@@ -154,10 +164,12 @@ class PrinterTestWorker(QThread):
     finished = pyqtSignal(bool, str)  # (success, message)
 
     def __init__(self) -> None:
+        """Set up the printer connectivity test job."""
         super().__init__()
         self.finished.connect(self.deleteLater)
 
     def run(self) -> None:
+        """Test the configured receipt printer and emit (success, message)."""
         try:
             from cbpos.core.services.hardware_test_service import HardwareTestService
 
@@ -174,10 +186,12 @@ class DrawerTestWorker(QThread):
     finished = pyqtSignal(bool, str)  # (success, message)
 
     def __init__(self) -> None:
+        """Set up the cash drawer kick test job."""
         super().__init__()
         self.finished.connect(self.deleteLater)
 
     def run(self) -> None:
+        """Test the configured cash drawer kick and emit (success, message)."""
         try:
             from cbpos.core.services.hardware_test_service import HardwareTestService
 
@@ -194,10 +208,12 @@ class IntegrityCheckWorker(QThread):
     finished = pyqtSignal(bool, str)  # (ok, message)
 
     def __init__(self) -> None:
+        """Set up the database integrity check job."""
         super().__init__()
         self.finished.connect(self.deleteLater)
 
     def run(self) -> None:
+        """Run the database integrity check and emit (ok, message)."""
         try:
             from cbpos.core.services.maintenance_service import MaintenanceService
 
@@ -222,6 +238,7 @@ class ExportWorker(QThread):
         report_name: str,
         fmt: str = "excel",
     ) -> None:
+        """Set up the export job with the data, destination path, report name, and format."""
         super().__init__()
         self.finished.connect(self.deleteLater)
         self.error.connect(self.deleteLater)
@@ -232,6 +249,7 @@ class ExportWorker(QThread):
         self.fmt = fmt
 
     def run(self) -> None:
+        """Export the DataFrame to the requested format (excel/pdf/csv), emitting success or error."""
         try:
             if self.fmt == "excel":
                 self.export_service.export_to_excel(self.df, self.filepath, self.report_name)
@@ -254,12 +272,14 @@ class AutocompleteLoadWorker(QThread):
     finished = pyqtSignal(list)  # list[str]
 
     def __init__(self, product_service, limit: int) -> None:
+        """Set up the autocomplete-preload job for up to `limit` product names."""
         super().__init__()
         self.finished.connect(self.deleteLater)
         self.product_service = product_service
         self.limit = limit
 
     def run(self) -> None:
+        """Fetch top product names for autocomplete, emitting the list (or empty list on failure)."""
         try:
             names = self.product_service.get_top_products(self.limit)
             self.finished.emit(names)

@@ -354,8 +354,6 @@
     - [x] Header (Logo, Address).
     - [x] Body (Items, Qty, Price).
     - [x] Footer (Tax breakdown, Thank you message).
-- [x] **13.2 Routing**
-    - [x] Logic to print to Kitchen vs Counter based on Category.
 - [x] **13.3 Advanced Receipt Features**
     - [x] **Company Logo:** Image printing support
     - [x] **Custom Header/Footer:** Configurable text
@@ -364,11 +362,12 @@
     - [x] **Payment Details:** Show payment types and change
     - [x] **Item Merging:** Combine duplicate items
     - [x] **Receipt vs Invoice:** Different formats
-- [x] **13.4 Template Customization**
-    - [x] Visual template designer
-    - [x] Multiple template support
+- [x] **13.4 Receipt Customization**
+    - [x] Settings-form customization (logo, header/footer text) + live preview -- not a drag/drop visual designer
     - [x] Test print functionality
     - [x] Preview before printing
+
+> **Corrected during Roadmap Completeness Audit (#466):** removed "13.2 Kitchen vs Counter routing" -- that's a restaurant/F&B feature, out of scope per this roadmap's own "Future Addon: Restaurant Module" section; it was never built and shouldn't be. Also downgraded "13.4 Visual template designer" and "Multiple template support" -- neither exists; what's actually built is settings-form customization of one receipt format, which is what a thermal-receipt product realistically needs.
 
 ---
 

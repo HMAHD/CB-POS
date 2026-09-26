@@ -411,7 +411,8 @@
 *Goal: User customizability.*
 
 - [x] **15.1 Config UI** — Hardware, Business Details, Tax Rates
-- [x] **15.2 Feature Flags** — Toggle features (Loyalty, Touch Mode, etc.)
+- [x] **15.2 Feature Flags** — Toggle features (Loyalty, etc.). "Touch Mode" was never built —
+  see #494.
 - [x] **15.3 Comprehensive Settings** — General, Order & Payment, Product, Document, Print, User settings — all complete
 
 ---
@@ -419,7 +420,9 @@
 ### Phase 16: Theme & Localization ✅
 *Goal: Ceylon Byte Branding.*
 
-- [x] **16.1 Theme Engine** — Ceylon Night/Day themes, high-contrast, touch-optimized, color customization
+- [x] **16.1 Theme Engine** — `ThemeService` supports exactly two themes, Dark and Light
+  (`get_available_themes()`), each with a fixed accent/icon color. High-contrast,
+  touch-optimized, and user color customization were never built — see #494.
 - [x] **16.2 Localization** — Sinhala/Tamil translations, runtime language switcher, Unicode fonts, locale formatting
 
 ---

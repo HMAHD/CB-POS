@@ -305,7 +305,7 @@
     - [x] Credit Limit logic.
     - [x] **Company Information:** Separate company fields
     - [x] **Multiple Contacts:** Phone, email, address
-    - [x] **Customer Type:** Customer vs Supplier flag
+    - [x] ~~Customer Type: Customer vs Supplier flag~~ *(inaccurate as written -- Customer and Supplier are correctly separate tables/entities, not one entity with a type flag; a unified flag would be a worse design, not a missing one)*
 - [x] **11.2 Loyalty**
     - [x] Points Engine (Earn X points per Y spent).
     - [x] Redemption Logic at checkout.
@@ -435,7 +435,7 @@
 - [x] **25.1 Credit Sale Features** — Credit payment type, unpaid tracking, outstanding balance
 - [x] **25.2 Settling Credit Balance** — Credit payments screen, automatic distribution, partial payments, receipt
 - [x] **25.3 Credit Management** — Credit limit, terms, block if over limit, reports
-- [x] **25.4 Payment Allocation** — Auto distribution to oldest invoices, partial payments, receipts
+- [x] **25.4 Payment Allocation** — running-balance model (`Customer.current_debt`), not literal FIFO allocation across individual invoices; partial payments and receipts work correctly against the running balance
 
 ---
 

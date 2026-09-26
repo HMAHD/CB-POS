@@ -4,6 +4,13 @@ CRITICAL_ADMIN_PERMISSIONS = ["manage_users", "manage_permissions"]
 
 
 class Permissions:
+    """Permission code constants, checked via `check_permission_with_override()`.
+
+    Each value is a `"group.action"` string stored on `Role`/`User` permission
+    grants. Grouped below by feature area; `get_groups()` mirrors this grouping
+    for UI display (e.g. the Role Manager dialog's permission checklist).
+    """
+
     # Sales Group
     SALES_VIEW = "sales.view"
     SALES_ADD_ITEM = "sales.add_item"
@@ -60,10 +67,12 @@ class Permissions:
 
     @classmethod
     def get_all(cls):
+        """Return every permission code as a flat list (for "grant all" / validation)."""
         return [value for name, value in vars(cls).items() if name.isupper()]
 
     @classmethod
     def get_groups(cls):
+        """Return permission codes grouped by feature area, keyed by display label."""
         return {
             "Sales": [
                 cls.SALES_VIEW,

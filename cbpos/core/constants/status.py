@@ -7,6 +7,13 @@ from decimal import Decimal
 
 
 class DocumentStatus:
+    """Lifecycle states for `Document`-derived records (Sale, Purchase, Proforma, StockCount).
+
+    Not every status applies to every document type: SUSPENDED/CONVERTED are
+    sale-and-proforma specific (held carts, proforma-to-sale conversion),
+    QUOTE/EXPIRED apply to proformas, and COUNTED applies to stock counts.
+    """
+
     COMPLETED = "COMPLETED"
     VOID = "VOID"
     DRAFT = "DRAFT"
@@ -18,6 +25,8 @@ class DocumentStatus:
 
 
 class DocumentType:
+    """The `type` discriminator for `Document`'s joined-table-inheritance hierarchy."""
+
     SALE = "SALE"
     PURCHASE = "PURCHASE"
     RETURN = "RETURN"
@@ -27,11 +36,15 @@ class DocumentType:
 
 
 class ShiftStatus:
+    """State of a cashier's cash-drawer shift (opening float through closing reconciliation)."""
+
     OPEN = "OPEN"
     CLOSED = "CLOSED"
 
 
 class MovementType:
+    """Reason code recorded on every `StockMovement` row, per CLAUDE.md's inventory-costing rules."""
+
     SALE = "SALE"
     PURCHASE = "PURCHASE"
     ADJUSTMENT = "ADJUSTMENT"
@@ -40,6 +53,8 @@ class MovementType:
 
 
 class PaymentMethodType:
+    """Built-in payment method identifiers; shops can also define custom methods in settings."""
+
     CASH = "Cash"
     CARD = "Card"
     CREDIT = "Credit"

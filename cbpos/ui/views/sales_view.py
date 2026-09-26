@@ -1341,6 +1341,24 @@ class SalesView(QWidget):
         dialog.exec()
         self.barcode_input.setFocus()
 
+    def open_shift_status(self) -> None:
+        """Open the read-only mid-shift status snapshot (X-Read) for the current user's open shift."""
+        from cbpos.core.services.auth_service import AuthService
+        from cbpos.core.services.shift_service import ShiftService
+        from cbpos.ui.dialogs.shift_status_dialog import ShiftStatusDialog
+
+        user = AuthService.get_current_user()
+        shift = ShiftService().get_current_shift(user.id) if user else None
+        if shift is None:
+            QMessageBox.warning(self, _t("common.warning"), _t("shift_closing.no_open_shift"))
+            return
+
+        if self.side_menu.isVisible():
+            self.toggle_side_menu()
+        dialog = ShiftStatusDialog(shift.id, parent=self)
+        dialog.exec()
+        self.barcode_input.setFocus()
+
     def open_shift_closing(self) -> None:
         """Open the shift-closing wizard for the current user's open shift.
 

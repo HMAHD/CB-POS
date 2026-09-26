@@ -512,6 +512,7 @@
     "receive_payment": "Receive Payment",
     "reprint_receipt": "Reprint Receipt",
     "refund": "Refund",
+    "shift_status": "Shift Status",
     "close_shift": "Close Shift",
     "user_guest": "Guest",
     "user_no_role": "No Role",
@@ -1936,6 +1937,21 @@
     "title": "Start Shift",
     "header": "Count your starting cash float before you begin selling.",
     "start_button": "Start Shift"
+  },
+  "shift_status": {
+    "title": "Shift Status",
+    "starting_cash": "Starting Cash",
+    "cash_sales": "Cash Sales",
+    "card_sales": "Card Sales",
+    "credit_sales": "Credit Sales",
+    "qr_mobile_sales": "QR/Mobile Sales",
+    "cheque_sales": "Cheque Sales",
+    "transfer_sales": "Bank Transfer Sales",
+    "cash_in": "Cash In",
+    "cash_out": "Cash Out",
+    "expected_cash": "Expected Cash",
+    "txn_count": "Transactions",
+    "void_count": "Voids"
   },
   "shortcuts": {
     "title": "Keyboard Shortcuts",

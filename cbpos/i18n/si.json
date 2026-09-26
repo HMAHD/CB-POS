@@ -512,6 +512,7 @@
     "receive_payment": "ගෙවීම් ලබාගැනීම",
     "reprint_receipt": "රිසිට්පත නැවත මුද්‍රණය",
     "refund": "ආපසු ගෙවීම",
+    "shift_status": "මුරයේ තත්ත්වය",
     "close_shift": "මුරය වහන්න",
     "user_guest": "අමුත්තා",
     "user_no_role": "භූමිකාවක් නැත",
@@ -1906,6 +1907,21 @@
     "title": "මුරය පටන් ගන්න",
     "header": "විකුණන්න පටන් ගන්න කලින් ආරම්භක මුදල ගණන් කරන්න.",
     "start_button": "මුරය පටන් ගන්න"
+  },
+  "shift_status": {
+    "title": "මුරයේ තත්ත්වය",
+    "starting_cash": "ආරම්භක මුදල",
+    "cash_sales": "මුදල් විකුණුම්",
+    "card_sales": "කාඩ් විකුණුම්",
+    "credit_sales": "ණය විකුණුම්",
+    "qr_mobile_sales": "QR/ජංගම විකුණුම්",
+    "cheque_sales": "චෙක්පත් විකුණුම්",
+    "transfer_sales": "බැංකු මාරු විකුණුම්",
+    "cash_in": "මුදල් ඇතුල් කිරීම්",
+    "cash_out": "මුදල් පිටවීම්",
+    "expected_cash": "අපේක්ෂිත මුදල",
+    "txn_count": "ගනුදෙනු ගණන",
+    "void_count": "අවලංගු කිරීම්"
   },
   "shortcuts": {
     "title": "යතුරුපුවරු කෙටිමං",

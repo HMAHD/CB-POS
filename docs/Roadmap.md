@@ -225,9 +225,11 @@
     - [x] **Group Discounts:** Category-based discounts
     - [x] **Discount Precedence:** Product > Group > Customer
 - [x] **7.4 Price Override**
-    - [x] **Manual Price Change:** If allowed by product settings
+    - [x] **Manual Price Change:** gated by a global `SALES_CHANGE_PRICE` cashier permission,
+      not a per-product setting — see #490
     - [x] **Permission Check:** Require higher access level
-    - [x] **Price History:** Log original price
+    - [ ] **Price History:** original price is not logged anywhere — no audit trail for manual
+      overrides — see #480
 
 ---
 
@@ -646,10 +648,11 @@
     - [x] Percentage or fixed amount
     - [x] Automatic application with precedence rules
     - [x] Discount tracking and reports
-- [x] **23.3 Price Change Control** *(already implemented)*
-    - [x] Per-product "price change allowed" flag
+- [x] **23.3 Price Change Control** *(partially implemented)*
+    - [ ] Per-product "price change allowed" flag — not implemented; only the global
+      `SALES_CHANGE_PRICE` permission exists — see #490
     - [x] Permission-based override
-    - [x] Price history logging
+    - [ ] Price history logging — not implemented, see #480
 - [x] **23.4 Basic Promotions** *(already implemented)*
     - [x] Percentage discount promotions (`promotion_service.py`, `promotion_view.py`)
     - [x] Fixed price promotions

@@ -42,6 +42,7 @@ class StockCountItemModel(QAbstractTableModel):
     COL_COUNTED = 3
 
     def __init__(self, items=None):
+        """Initialize the model with the given stock count items."""
         super().__init__()
         self.items = items or []
         self._headers = [
@@ -59,12 +60,15 @@ class StockCountItemModel(QAbstractTableModel):
         self.headerDataChanged.emit(Qt.Orientation.Horizontal, 0, len(headers) - 1)
 
     def rowCount(self, parent=None):
+        """Return the number of stock count item rows."""
         return len(self.items)
 
     def columnCount(self, parent=None):
+        """Return the number of columns."""
         return len(self._headers)
 
     def data(self, index, role):
+        """Return display text, color, alignment, or edit value for a cell."""
         if not index.isValid():
             return None
         item = self.items[index.row()]
@@ -104,6 +108,7 @@ class StockCountItemModel(QAbstractTableModel):
         return None
 
     def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
+        """Persist an edited Counted value and recompute the row's variance."""
         if role != Qt.ItemDataRole.EditRole or index.column() != self.COL_COUNTED:
             return False
 
@@ -131,17 +136,20 @@ class StockCountItemModel(QAbstractTableModel):
             return False
 
     def flags(self, index):
+        """Mark the Counted column as editable."""
         flags = super().flags(index)
         if index.column() == self.COL_COUNTED:
             flags |= Qt.ItemFlag.ItemIsEditable
         return flags
 
     def headerData(self, section, orientation, role):
+        """Return the translated header label for a column."""
         if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             return self._headers[section]
         return None
 
     def get_item(self, row: int):
+        """Return the stock count item at the given row, or None."""
         if 0 <= row < len(self.items):
             return self.items[row]
         return None
@@ -151,6 +159,7 @@ class StockCountReportDialog(QDialog):
     """Read-only dialog showing stock count variance report."""
 
     def __init__(self, stock_count_id: int, parent=None):
+        """Initialize the dialog and build the report for the given stock count."""
         super().__init__(parent)
         self.setWindowTitle(_t("stock_take.report_title"))
         self.setMinimumSize(700, 500)
@@ -158,6 +167,7 @@ class StockCountReportDialog(QDialog):
         self.init_ui(stock_count_id)
 
     def init_ui(self, stock_count_id: int) -> None:
+        """Build the header info and read-only items table for the report."""
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
         layout.setContentsMargins(16, 16, 16, 16)
@@ -262,6 +272,7 @@ class StockTakeView(QWidget):
     """Stock take view with New Count and History tabs."""
 
     def __init__(self) -> None:
+        """Initialize the view, build its UI, and register for language updates."""
         super().__init__()
         self.current_stock_count = None
         self.init_ui()
@@ -271,6 +282,7 @@ class StockTakeView(QWidget):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self) -> None:
+        """Build the page header and the New Count / History tabs."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
@@ -297,6 +309,7 @@ class StockTakeView(QWidget):
         self.tabs.addTab(self.history_tab, _t("stock_take.tab_history"))
 
     def setup_new_count_tab(self) -> None:
+        """Build the New Count tab: header controls, items table, stats bar, and action buttons."""
         layout = QVBoxLayout(self.new_count_tab)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
@@ -401,6 +414,7 @@ class StockTakeView(QWidget):
         layout.addLayout(btn_layout)
 
     def setup_history_tab(self) -> None:
+        """Build the History tab: status/date filters and the count history table."""
         layout = QVBoxLayout(self.history_tab)
         layout.setContentsMargins(10, 10, 10, 10)
 
@@ -820,4 +834,5 @@ class StockTakeView(QWidget):
             QMessageBox.warning(self, _t("common.error"), str(e))
 
     def set_user(self, user) -> None:
+        """Store the logged-in user for permission checks and count creation."""
         self.user = user

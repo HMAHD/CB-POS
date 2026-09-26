@@ -1,3 +1,5 @@
+"""Promotion view for listing, creating, and managing discount promotions."""
+
 from datetime import datetime
 from decimal import Decimal
 
@@ -40,7 +42,10 @@ _DAY_KEYS = [
 
 
 class PromotionView(QWidget):
+    """Promotion list view with add, edit, activate/deactivate, and delete actions."""
+
     def __init__(self):
+        """Initialize the promotion service, build the UI, and load existing promotions."""
         super().__init__()
         self.promotion_service = PromotionService()
         self.init_ui()
@@ -51,6 +56,7 @@ class PromotionView(QWidget):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self):
+        """Build the header and promotions table layout."""
         layout = QVBoxLayout(self)
 
         # Header
@@ -91,6 +97,7 @@ class PromotionView(QWidget):
         layout.addWidget(self.table)
 
     def retranslate_ui(self):
+        """Update all translatable strings."""
         self._page_header.set_title(_t("promotion.title"))
         self.btn_add.setText(_t("promotion.create_promotion"))
         self.table.setHorizontalHeaderLabels(
@@ -124,6 +131,7 @@ class PromotionView(QWidget):
         return _t("common.active"), QColor("#39FF14")
 
     def load_promotions(self):
+        """Reload promotions from the service and repopulate the table."""
         self.promotions = self.promotion_service.get_all_promotions()
         self.table.setRowCount(0)
         for p in self.promotions:
@@ -145,6 +153,7 @@ class PromotionView(QWidget):
             self.table.setItem(row, 6, status_item)
 
     def add_promotion(self):
+        """Open the create dialog and persist a new promotion on accept."""
         dialog = PromotionDialog(self)
         if dialog.exec():
             data = dialog.get_data()
@@ -176,6 +185,7 @@ class PromotionView(QWidget):
             self._delete_promotion_row(row)
 
     def edit_promotion(self, index) -> None:
+        """Open the edit dialog for the double-clicked table row."""
         self._edit_promotion_row(index.row())
 
     def _edit_promotion_row(self, row: int) -> None:
@@ -226,7 +236,10 @@ class PromotionView(QWidget):
 
 
 class PromotionDialog(QDialog):
+    """Dialog for creating or editing a promotion's type, value, scope, and schedule."""
+
     def __init__(self, parent=None, promotion=None):
+        """Build the form and pre-fill fields when editing an existing promotion."""
         super().__init__(parent)
         self.promotion = promotion
         self.setWindowTitle(_t("promotion.edit_promotion") if promotion else _t("promotion.new_promotion"))
@@ -251,6 +264,7 @@ class PromotionDialog(QDialog):
                 checkbox.setChecked(checked_days is None or str(i) in checked_days)
 
     def init_ui(self):
+        """Build the name, type, value, scope, schedule, and days-of-week form."""
         layout = QVBoxLayout(self)
         form = QFormLayout()
 
@@ -319,6 +333,7 @@ class PromotionDialog(QDialog):
         self.accept()
 
     def get_data(self):
+        """Return the form values as a dict of promotion fields for the service layer."""
         checked_indices = [str(i) for i, cb in enumerate(self.day_checkboxes) if cb.isChecked()]
         all_checked = len(checked_indices) == len(self.day_checkboxes)
 

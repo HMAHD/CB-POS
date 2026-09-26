@@ -1,3 +1,5 @@
+"""User management view: accounts, roles, permissions, and activity log."""
+
 import weakref
 from datetime import datetime, time
 
@@ -32,7 +34,10 @@ from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 
 class UserDialog(QDialog):
+    """Modal dialog to create or edit a user's username, PIN, role, and active status."""
+
     def __init__(self, user=None, parent=None):
+        """Set the dialog title and build the form, pre-filling fields when editing an existing user."""
         super().__init__(parent)
         self.user = user
         self.setWindowTitle(_t("user.add_user") if not user else _t("user.edit_user"))
@@ -40,6 +45,7 @@ class UserDialog(QDialog):
         self.init_ui()
 
     def init_ui(self):
+        """Build the username, PIN, role, and active-status form fields plus Save/Cancel buttons."""
         layout = QVBoxLayout(self)
 
         # Username
@@ -87,6 +93,7 @@ class UserDialog(QDialog):
         layout.addLayout(btn_layout)
 
     def save(self):
+        """Validate the form and create or update the user via UserService, closing the dialog on success."""
         username = self.txt_username.text().strip()
         pin = self.txt_pin.text().strip()
         role_id = self.cmb_role.currentData()
@@ -119,7 +126,10 @@ class UserDialog(QDialog):
 
 
 class UserView(QWidget):
+    """User management screen with tabs for the user list and the activity log."""
+
     def __init__(self):
+        """Build the UI and register the translation callback with a weakref-safe unregister on destroy."""
         super().__init__()
         self.init_ui()
 
@@ -143,6 +153,7 @@ class UserView(QWidget):
         self.destroyed.connect(_unregister)
 
     def init_ui(self):
+        """Build the page header and the Users/Activity Log tabs, then load their initial data."""
         layout = QVBoxLayout(self)
 
         from cbpos.ui.widgets.page_header import PageHeader
@@ -171,6 +182,7 @@ class UserView(QWidget):
         self.tabs.currentChanged.connect(self.on_tab_changed)
 
     def init_user_tab(self):
+        """Build the user tab's toolbar (add/permissions/roles) and the user table."""
         layout = QVBoxLayout(self.user_tab)
 
         # Toolbar
@@ -211,6 +223,7 @@ class UserView(QWidget):
         layout.addWidget(self.table)
 
     def init_log_tab(self):
+        """Build the activity log tab's filter bar (event type, date range) and log table."""
         layout = QVBoxLayout(self.log_tab)
 
         # Filter Bar
@@ -278,6 +291,7 @@ class UserView(QWidget):
         layout.addWidget(self.log_table)
 
     def retranslate_ui(self):
+        """Update all widget text, table headers, and event-type filter options from the translation system."""
         self._page_header.set_title(_t("management.sidebar_users"))
         self.tabs.setTabText(0, _t("user.tab_users"))
         self.tabs.setTabText(1, _t("user.tab_activity_log"))
@@ -323,6 +337,7 @@ class UserView(QWidget):
         self.log_event_filter.setCurrentIndex(restored_index if restored_index != -1 else 0)
 
     def load_users(self):
+        """Refresh the user table from UserService, highlighting inactive users in red."""
         self.users = UserService.get_all_users()
         self.table.setRowCount(len(self.users))
 
@@ -369,15 +384,18 @@ class UserView(QWidget):
         return QColor(colors[1] if is_light else colors[0])
 
     def apply_log_filter(self):
+        """Reload the activity log using the current filter settings."""
         self.load_logs()
 
     def clear_log_filter(self):
+        """Reset the event-type and date-range filters to their defaults and reload the log."""
         self.log_event_filter.setCurrentIndex(0)
         self.log_date_from.setDate(QDate.currentDate().addMonths(-1))
         self.log_date_to.setDate(QDate.currentDate())
         self.load_logs()
 
     def load_logs(self):
+        """Fetch activity log entries matching the current filters and populate the log table."""
         date_from = datetime.combine(self.log_date_from.date().toPyDate(), time.min)
         date_to = datetime.combine(self.log_date_to.date().toPyDate(), time.max)
 
@@ -404,12 +422,14 @@ class UserView(QWidget):
             self.log_table.setItem(row, 4, QTableWidgetItem(log.details or ""))
 
     def on_tab_changed(self, index):
+        """Refresh the users table or the activity log when the active tab changes."""
         if index == 0:
             self.load_users()
         else:
             self.load_logs()
 
     def add_user(self):
+        """Check permission, then open the add-user dialog and refresh the table on save."""
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
@@ -421,6 +441,7 @@ class UserView(QWidget):
             self.load_users()
 
     def edit_user(self):
+        """Check permission, then open the edit dialog for the selected row and refresh the table on save."""
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
@@ -437,6 +458,7 @@ class UserView(QWidget):
             self.load_users()
 
     def manage_permissions(self):
+        """Check permission, then open the permission-management dialog."""
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
@@ -447,6 +469,7 @@ class UserView(QWidget):
         dialog.exec()
 
     def manage_roles(self):
+        """Check permission, then open the role-manager dialog and refresh the user table afterward."""
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.utils.permission_helper import check_permission_with_override
 

@@ -1,3 +1,5 @@
+"""Individual tabbed pages shown inside the Settings screen (shop info, tax, hardware, receipt, system, network)."""
+
 import decimal
 import socket
 
@@ -44,6 +46,7 @@ class SettingsPage(QWidget):
     """Base class for settings pages with standardized tab-based layout."""
 
     def __init__(self):
+        """Build the page UI by calling init_ui()."""
         super().__init__()
         self.init_ui()
 
@@ -177,6 +180,7 @@ class ShopInfoPage(SettingsPage):
     """Consolidated: General + Payment banking + Automation email settings."""
 
     def init_ui(self):
+        """Build the Business, Banking, Email and Appearance tabs."""
         _, self.tabs = self._create_page_layout("", "")
 
         # --- Tab 1: Business ---
@@ -312,6 +316,7 @@ class ShopInfoPage(SettingsPage):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def retranslate_ui(self) -> None:
+        """Update all widget text and tab labels from the translation system."""
         self._page_title.setText(_t("settings.shop_info.title"))
         self._page_subtitle.setText(_t("settings.shop_info.subtitle"))
 
@@ -436,6 +441,7 @@ class ShopInfoPage(SettingsPage):
         dlg.exec()
 
     def load(self, settings: dict):
+        """Populate business, banking, email and appearance fields from the settings dict."""
         self.input_shop_name.setText(settings.get("shop_name", ""))
         self.input_address.setText(settings.get("shop_address", ""))
         self.input_phone.setText(settings.get("shop_phone", ""))
@@ -464,6 +470,7 @@ class ShopInfoPage(SettingsPage):
             self.combo_language.setCurrentIndex(index)
 
     def save(self) -> dict:
+        """Return business, banking, email and appearance fields as a settings dict."""
         theme_selection = "Dark" if self.combo_theme.currentIndex() == 0 else "Light"
         lang_code = self.combo_language.currentData()
         return {
@@ -493,6 +500,7 @@ class SalesTaxPage(SettingsPage):
     """Sales search mode + Tax configuration."""
 
     def init_ui(self):
+        """Build the Sales and Tax tabs."""
         _, self.tabs = self._create_page_layout("", "")
 
         # --- Tab 1: Sales ---
@@ -583,6 +591,7 @@ class SalesTaxPage(SettingsPage):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def retranslate_ui(self) -> None:
+        """Update all widget text and tab labels from the translation system."""
         self._page_title.setText(_t("settings.sales_tax.title"))
         self._page_subtitle.setText(_t("settings.sales_tax.subtitle"))
 
@@ -630,6 +639,7 @@ class SalesTaxPage(SettingsPage):
         self.chk_item_tax_exemptions.setEnabled(enabled)
 
     def load(self, settings: dict):
+        """Populate sales and tax fields from the settings dict."""
         mode = settings.get("default_search_mode", "ALL")
         idx = self.combo_search_mode.findData(mode)
         if idx >= 0:
@@ -645,6 +655,7 @@ class SalesTaxPage(SettingsPage):
         self._toggle_tax_fields()
 
     def save(self) -> dict:
+        """Return sales and tax fields as a settings dict."""
         return {
             "default_search_mode": self.combo_search_mode.currentData() or "ALL",
             "max_discount_percent": self.spin_max_discount.value(),
@@ -662,6 +673,7 @@ class DocumentPage(SettingsPage):
     """Documents + Terminal ID."""
 
     def init_ui(self):
+        """Build the document numbering tab (terminal ID, reset period, number formats)."""
         _, self.tabs = self._create_page_layout("", "")
 
         self._tab_docs, self._form_docs = self._build_form_tab()
@@ -693,6 +705,7 @@ class DocumentPage(SettingsPage):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def retranslate_ui(self) -> None:
+        """Update all widget text and tab labels from the translation system."""
         self._page_title.setText(_t("settings.documents.title"))
         self._page_subtitle.setText(_t("settings.documents.subtitle"))
 
@@ -722,6 +735,7 @@ class DocumentPage(SettingsPage):
         self.input_fmt_return.setPlaceholderText(_t("settings.documents.return_format_placeholder"))
 
     def load(self, settings: dict):
+        """Populate terminal ID, reset period and document number formats from the settings dict."""
         self.input_terminal_id.setText(settings.get("terminal_id", "TERM-01"))
         period = settings.get("doc_reset_period", "YEARLY")
         idx = self.combo_reset_period.findData(period)
@@ -732,6 +746,7 @@ class DocumentPage(SettingsPage):
         self.input_fmt_return.setText(settings.get("doc_format_return", "CN-{Y}-{seq:05d}"))
 
     def save(self) -> dict:
+        """Return terminal ID, reset period and document number formats as a settings dict."""
         return {
             "terminal_id": self.input_terminal_id.text().strip() or "TERM-01",
             "doc_reset_period": self.combo_reset_period.currentData() or "YEARLY",
@@ -745,6 +760,7 @@ class HardwarePage(SettingsPage):
     """Hardware + Paper Width."""
 
     def init_ui(self):
+        """Build the Printers, Paper Cut & Drawer, and Weighing Scale tabs."""
         _, self.tabs = self._create_page_layout("", "")
 
         # --- Tab 1: Printers ---
@@ -894,6 +910,7 @@ class HardwarePage(SettingsPage):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def retranslate_ui(self) -> None:
+        """Update all widget text and tab labels from the translation system."""
         self._page_title.setText(_t("settings.hardware.title"))
         self._page_subtitle.setText(_t("settings.hardware.subtitle"))
 
@@ -964,6 +981,7 @@ class HardwarePage(SettingsPage):
             self.combo_a4_printer.setCurrentIndex(idx)
 
     def load(self, settings: dict):
+        """Populate printer selection, print behavior, paper cut, drawer and scale fields from the settings dict."""
         receipt_printer = settings.get("receipt_printer_name", "")
         if receipt_printer:
             idx = self.combo_receipt_printer.findText(receipt_printer)
@@ -996,6 +1014,11 @@ class HardwarePage(SettingsPage):
         self.chk_drawer_cash_only.setChecked(settings.get("drawer_on_cash_only", True))
 
     def save(self) -> dict:
+        """Return printer, print behavior, paper cut, drawer and scale fields as a settings dict.
+
+        Raises:
+            ValueError: If the scale barcode prefix is not exactly 2 digits.
+        """
         prefix = self.input_scale_prefix.text()
         if len(prefix) != 2 or not prefix.isdigit():
             raise ValueError(_t("settings.hardware.scale_prefix_error"))
@@ -1059,6 +1082,7 @@ class ReceiptPage(SettingsPage):
     """
 
     def init_ui(self):
+        """Build the split-pane layout: Content/Display settings tabs on the left, live preview on the right."""
         from PyQt6.QtCore import QTimer
 
         from cbpos.ui.widgets.receipt_preview_widget import ReceiptPreviewWidget
@@ -1326,6 +1350,7 @@ class ReceiptPage(SettingsPage):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def retranslate_ui(self) -> None:
+        """Update all widget text and tab labels from the translation system."""
         self._page_title.setText(_t("settings.receipt.title"))
         self._page_subtitle.setText(_t("settings.receipt.subtitle"))
         self._lbl_receipt_cross_ref.setText(_t("settings.receipt.cross_ref_hint"))
@@ -1454,6 +1479,7 @@ class ReceiptPage(SettingsPage):
     # ------------------------------------------------------------------
 
     def browse_logo(self) -> None:
+        """Prompt for an image file and set it as the receipt logo path."""
         path, _ = QFileDialog.getOpenFileName(
             self,
             _t("settings.receipt.select_logo_title"),
@@ -1467,6 +1493,7 @@ class ReceiptPage(SettingsPage):
         self.input_logo_path.clear()
 
     def load(self, settings: dict) -> None:
+        """Populate logo, header/footer, receipt elements and language fields, then refresh the live preview."""
         # Block signals during bulk load to avoid N refreshes
         self._refresh_timer.stop()
         self.input_logo_path.setText(settings.get("receipt_logo_path", ""))
@@ -1501,6 +1528,7 @@ class ReceiptPage(SettingsPage):
         self._refresh_preview()
 
     def save(self) -> dict:
+        """Return logo, header/footer, receipt elements and language fields as a settings dict."""
         return {
             "receipt_logo_path": self.input_logo_path.text(),
             "receipt_header": self.txt_header.toPlainText(),
@@ -1565,6 +1593,7 @@ class SystemPage(SettingsPage):
     """System settings: session security, feature toggles, and behavior."""
 
     def init_ui(self):
+        """Build the Security, POS Behavior, Features and Backup tabs."""
         _, self.tabs = self._create_page_layout("", "")
 
         # --- Tab 1: Security ---
@@ -1670,6 +1699,7 @@ class SystemPage(SettingsPage):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def retranslate_ui(self) -> None:
+        """Update all widget text and tab labels from the translation system."""
         self._page_title.setText(_t("settings.system.title"))
         self._page_subtitle.setText(_t("settings.system.subtitle"))
 
@@ -1723,6 +1753,7 @@ class SystemPage(SettingsPage):
             self.input_backup_dir.setText(chosen)
 
     def load(self, settings: dict):
+        """Populate session security, POS behavior, feature toggle and backup fields from the settings dict."""
         self.spin_timeout.setValue(int(settings.get("session_timeout_minutes", 0)))
         self.chk_void_reason.setChecked(settings.get("require_void_reason", True))
         self.spin_max_login.setValue(int(settings.get("max_login_attempts", 5)))
@@ -1739,6 +1770,7 @@ class SystemPage(SettingsPage):
         self.input_backup_dir.setText(settings.get("backup_dir", ""))
 
     def save(self) -> dict:
+        """Return session security, POS behavior, feature toggle and backup fields as a settings dict."""
         return {
             "session_timeout_minutes": self.spin_timeout.value(),
             "require_void_reason": self.chk_void_reason.isChecked(),
@@ -1761,10 +1793,12 @@ class NetworkPage(SettingsPage):
     """Network database configuration for multi-terminal setup."""
 
     def __init__(self):
+        """Reset the connection-tested flag, then build the page UI."""
         self.connection_tested = False
         super().__init__()
 
     def init_ui(self):
+        """Build the Mode, Server Configuration, Migration and LAN Sync tabs."""
         _, self.tabs = self._create_page_layout("", "")
 
         # --- Tab 1: Mode ---
@@ -2098,6 +2132,7 @@ class NetworkPage(SettingsPage):
         QTimer.singleShot(0, _fix_spinbox_heights)
 
     def retranslate_ui(self) -> None:
+        """Update all widget text and tab labels from the translation system."""
         self._page_title.setText(_t("settings.network.title"))
         self._page_subtitle.setText(_t("settings.network.subtitle"))
 
@@ -2204,6 +2239,7 @@ class NetworkPage(SettingsPage):
         self.btn_forget_main.setToolTip(_t("settings.network.tooltip_forget_main"))
 
     def load(self, settings: dict):
+        """Populate database mode, server connection and LAN sync fields from the settings dict."""
         db_mode = settings.get("db_mode", "standalone")
         mode_data = "Standalone" if db_mode == "standalone" else "Network"
         idx = self.cmb_db_mode.findData(mode_data)
@@ -2229,6 +2265,7 @@ class NetworkPage(SettingsPage):
         self.input_sync_secret.setText(settings.get("sync_shared_secret", ""))
 
     def save(self) -> dict:
+        """Return database mode, server connection and LAN sync fields as a settings dict."""
         mode_data = self.cmb_db_mode.currentData() or "Standalone"
         db_mode = "standalone" if mode_data == "Standalone" else "network"
         return {

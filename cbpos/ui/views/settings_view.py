@@ -1,3 +1,5 @@
+"""Top-level Settings screen with sidebar navigation to configuration pages."""
+
 import contextlib
 import json
 import logging
@@ -33,11 +35,14 @@ logger = logging.getLogger(__name__)
 
 
 class SettingsView(QWidget):
+    """Settings screen with a sidebar for config pages and operational tools (payments, data safety, admin)."""
+
     close_requested = pyqtSignal()
     logout_requested = pyqtSignal()
     request_pos_view = pyqtSignal()
 
     def __init__(self):
+        """Build the UI, load current settings, and register the translation callback."""
         super().__init__()
         self._settings_dirty = False
         self._saved_snapshot: dict = {}
@@ -49,6 +54,7 @@ class SettingsView(QWidget):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self):
+        """Build the sidebar, stacked config/operational pages, and Save/Cancel footer."""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -250,12 +256,21 @@ class SettingsView(QWidget):
     # ------------------------------------------------------------------
 
     def load_settings(self):
+        """Load current settings into every config page and snapshot the values for dirty-checking."""
         settings = ConfigService.get_all()
         for page in self.pages:
             page.load(settings)
         self._saved_snapshot = self._take_snapshot()
 
     def save_all(self):
+        """Validate and save all config pages, then apply the changes live.
+
+        Checks the ADMIN_SETTINGS permission, audits tax-rate changes to
+        AuditLog, persists settings, restarts the scheduler timer if the
+        auto-report toggle changed, applies the new theme/language
+        immediately, and prompts for a restart if font size or
+        terminal/db mode changed.
+        """
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
         if not check_permission_with_override(Permissions.ADMIN_SETTINGS, self):

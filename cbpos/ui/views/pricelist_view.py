@@ -1,3 +1,5 @@
+"""Price list view for managing named price lists and per-item price overrides."""
+
 from datetime import datetime
 from decimal import Decimal
 
@@ -34,7 +36,10 @@ from cbpos.ui.resources.icons import Icons
 
 
 class PriceListView(QWidget):
+    """Price list management view with a sidebar of lists and a per-product price table."""
+
     def __init__(self):
+        """Initialize services, build the UI, and load existing price lists."""
         super().__init__()
         self.setObjectName("PriceListView")
         self.price_list_service = PriceListService()
@@ -48,6 +53,7 @@ class PriceListView(QWidget):
         self.load_lists()
 
     def init_ui(self):
+        """Build the sidebar navigation panel and the product price table layout."""
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
@@ -332,6 +338,7 @@ class PriceListView(QWidget):
     # ------------------------------------------------------------------
 
     def load_items(self):
+        """Populate the product table with base prices and any list-price overrides."""
         if not self.current_list:
             return
 
@@ -360,6 +367,7 @@ class PriceListView(QWidget):
         self.lbl_product_count.setText(_t("pricelist.product_count", count=len(products)))
 
     def add_price_list(self):
+        """Open the create dialog and persist a new price list on accept."""
         dialog = PriceListDialog(self)
         if dialog.exec():
             name, start, end = dialog.get_data()
@@ -427,6 +435,7 @@ class PriceListView(QWidget):
                 QMessageBox.critical(self, _t("common.error"), str(e))
 
     def edit_item_price(self, index):
+        """Open the price editor for the double-clicked table row."""
         self._edit_item_price_row(index.row())
 
     def edit_selected_item_price(self) -> None:
@@ -494,7 +503,10 @@ class PriceListView(QWidget):
 
 
 class PriceListDialog(QDialog):
+    """Dialog for creating or editing a price list's name and validity dates."""
+
     def __init__(self, parent=None, price_list=None):
+        """Build the form and pre-fill fields when editing an existing price list."""
         super().__init__(parent)
         self.price_list = price_list
         self.init_ui()
@@ -512,6 +524,7 @@ class PriceListDialog(QDialog):
                 )
 
     def init_ui(self):
+        """Build the name and date-range form with Save/Cancel buttons."""
         layout = QVBoxLayout(self)
         form = QFormLayout()
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
@@ -575,6 +588,7 @@ class PriceListDialog(QDialog):
         self.accept()
 
     def get_data(self):
+        """Return the entered name and start/end datetimes as (name, start, end)."""
         start = datetime.combine(self.start_date.date().toPyDate(), datetime.min.time())
         end = datetime.combine(self.end_date.date().toPyDate(), datetime.max.time())
         return self.name_input.text().strip(), start, end

@@ -1,3 +1,5 @@
+"""Report filter widget for building dynamic date-range and combo-box filter inputs."""
+
 from datetime import date
 from typing import Any
 
@@ -10,6 +12,7 @@ class FilterWidget(QWidget):
     """
 
     def __init__(self):
+        """Initialize the widget with an empty horizontal filter layout."""
         super().__init__()
         self.setObjectName("ReportFilterWidget")
         self.layout = QHBoxLayout(self)

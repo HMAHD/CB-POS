@@ -51,7 +51,10 @@ logger = logging.getLogger(__name__)
 
 
 class SalesView(QWidget):
+    """Main checkout screen: cart, barcode scanning, product search, and payment flow."""
+
     def __init__(self):
+        """Initialize services, build the UI, and wire up the side menu and print-error listener."""
         super().__init__()
         self.cart_service = CartService()
         self.product_service = ProductService()
@@ -91,6 +94,7 @@ class SalesView(QWidget):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self):
+        """Build the header, cart/totals panel, action panel, and keyboard shortcuts."""
         # 1. Main Layout (Vertical)
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -438,6 +442,7 @@ class SalesView(QWidget):
         self.update_cart_display()
 
     def setup_shortcuts(self):
+        """Register the POS keyboard shortcuts (F1-F12, Ctrl+D/Z, Delete, Page Up/Down, Enter)."""
         self.shortcut_f1 = QShortcut(QKeySequence("F1"), self)
         self.shortcut_f1.activated.connect(self.show_shortcuts_help)
 
@@ -498,6 +503,7 @@ class SalesView(QWidget):
         self.shortcut_undo.activated.connect(self._undo_remove)
 
     def resizeEvent(self, event):
+        """Reposition the side menu, undo toast, and empty-cart hint; compact the total font on short windows."""
         super().resizeEvent(event)
         menu_width = self.side_menu.width()
         if self.side_menu.isVisible():
@@ -532,6 +538,7 @@ class SalesView(QWidget):
             self.action_panel.setVisible(True)
 
     def toggle_side_menu(self):
+        """Slide the side menu open or closed, hiding the action panel while it's open."""
         menu_width = self.side_menu.width()
         start_pos = self.side_menu.pos()
 
@@ -562,6 +569,7 @@ class SalesView(QWidget):
             self.menu_animation.start()
 
     def eventFilter(self, source, event):
+        """Close the side menu when a click lands outside it."""
         if event.type() == event.Type.MouseButtonPress and self.side_menu.isVisible():
             # Check if click is outside menu
             if not self.side_menu.geometry().contains(event.pos()) and source is not self.menu_button:
@@ -570,6 +578,7 @@ class SalesView(QWidget):
         return super().eventFilter(source, event)
 
     def showEvent(self, event):
+        """Restore the action panel and refresh order tabs when returning to this view."""
         super().showEvent(event)
         # Restore action panel when returning to POS from other views
         if self.side_menu.isVisible():
@@ -803,12 +812,14 @@ class SalesView(QWidget):
             self._highlight_timer.start(600)
 
     def select_customer(self):
+        """Open the customer selection dialog and apply the chosen customer (F2)."""
         dialog = CustomerSelectionDialog(self)
         if dialog.exec():
             self.set_customer(dialog.selected_customer)
         self.barcode_input.setFocus()
 
     def set_customer(self, customer):
+        """Display the given customer and apply their pricing to the cart."""
         self.customer = customer
         self.action_panel.set_customer_info(self.customer.name, self.customer.phone, self.customer.loyalty_points)
         # CartService tracks its own customer for pricing (customer-specific
@@ -818,6 +829,7 @@ class SalesView(QWidget):
         self.cart_service.set_customer(customer)
 
     def show_customer_menu(self, pos):
+        """Show the customer button's context menu (quick add, view details, clear)."""
         menu = QMenu(self)
 
         quick_add = QAction(_t("customer_menu.quick_add_new"), self)
@@ -835,17 +847,20 @@ class SalesView(QWidget):
         menu.exec(self.btn_cust.mapToGlobal(pos))
 
     def quick_add_customer(self):
+        """Open the quick-add customer dialog and select the newly created customer."""
         dialog = CustomerQuickAddDialog(self)
         if dialog.exec():
             self.set_customer(dialog.created_customer)
         self.barcode_input.setFocus()
 
     def clear_customer(self):
+        """Reset the sale back to Walk-in Customer."""
         self.customer = None
         self.action_panel.clear_customer_info()
         self.cart_service.set_customer(None)
 
     def process_payment(self):
+        """Open the payment dialog and complete the sale on confirmation (F5/F10)."""
         if getattr(self, "_processing", False):
             return
         totals = self.cart_service.get_totals()
@@ -886,6 +901,7 @@ class SalesView(QWidget):
         self.barcode_input.setFocus()
 
     def hold_bill(self):
+        """Suspend the current cart as a held bill and clear the view for a new one (F6)."""
         if not self.cart_service.items:
             return
 
@@ -905,6 +921,7 @@ class SalesView(QWidget):
         self.barcode_input.setFocus()
 
     def recall_bill(self):
+        """Recall the most recently held bill back into the cart (F7)."""
         suspended = SuspendedTransactionService.get_latest_suspended()
         if not suspended:
             QMessageBox.information(self, _t("orders.empty_title"), _t("orders.empty_message"))
@@ -930,6 +947,7 @@ class SalesView(QWidget):
         self.barcode_input.setFocus()
 
     def void_bill(self):
+        """Void the in-progress cart after permission check and confirmation (Delete)."""
         # If cart is empty, nothing to void
         if not self.cart_service.items:
             return
@@ -992,6 +1010,7 @@ class SalesView(QWidget):
             btn.setIcon(Icons.get(icon_name, color=color))
 
     def set_search_mode(self, mode: str, icon: str):
+        """Check the segmented-control button for the given search mode."""
         # Legacy support or external call
         # Find button with this mode and check it
         for btn in self.mode_group.buttons():

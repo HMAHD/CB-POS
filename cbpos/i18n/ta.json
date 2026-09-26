@@ -512,6 +512,7 @@
     "receive_payment": "பணம் பெறு",
     "reprint_receipt": "ரசீது மறுஅச்சு",
     "refund": "திரும்பப் பெறு",
+    "shift_status": "ஷிப்ட் நிலை",
     "close_shift": "ஷிப்ட்டை மூடு",
     "user_guest": "விருந்தினர்",
     "user_no_role": "பதவி இல்லை",
@@ -1906,6 +1907,21 @@
     "title": "ஷிப்ட் ஆரம்பி",
     "header": "விக்க ஆரம்பிக்கிற முன்னாடி ஆரம்ப காசை எண்ணுங்க.",
     "start_button": "ஷிப்ட் ஆரம்பி"
+  },
+  "shift_status": {
+    "title": "ஷிப்ட் நிலை",
+    "starting_cash": "ஆரம்ப காசு",
+    "cash_sales": "காசு விற்பனை",
+    "card_sales": "கார்டு விற்பனை",
+    "credit_sales": "கடன் விற்பனை",
+    "qr_mobile_sales": "QR/மொபைல் விற்பனை",
+    "cheque_sales": "காசோலை விற்பனை",
+    "transfer_sales": "வங்கி பரிமாற்ற விற்பனை",
+    "cash_in": "காசு உள்ளே",
+    "cash_out": "காசு வெளியே",
+    "expected_cash": "எதிர்பார்க்கும் காசு",
+    "txn_count": "பரிவர்த்தனைகள்",
+    "void_count": "வாய்ட்கள்"
   },
   "shortcuts": {
     "title": "விசைப்பலகை குறுக்குவழிகள்",

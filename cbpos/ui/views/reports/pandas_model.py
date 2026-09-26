@@ -1,3 +1,5 @@
+"""Qt table model that adapts a pandas DataFrame for display in a QTableView."""
+
 from typing import Any
 
 import pandas as pd
@@ -29,14 +31,17 @@ class PandasModel(QAbstractTableModel):
     """
 
     def __init__(self, data: pd.DataFrame = None, render_hints: dict[str, Any] | None = None):
+        """Initialize the model with a DataFrame and optional render hints."""
         super().__init__()
         self._data = data if data is not None else pd.DataFrame()
         self._hints = render_hints or {}
 
     def rowCount(self, parent=QModelIndex()):
+        """Return the number of rows in the underlying DataFrame."""
         return self._data.shape[0]
 
     def columnCount(self, parent=QModelIndex()):
+        """Return the number of columns in the underlying DataFrame."""
         return self._data.shape[1]
 
     def _is_total_row(self, row: int) -> bool:
@@ -47,6 +52,7 @@ class PandasModel(QAbstractTableModel):
         return self._data.iloc[row][total_col] in total_values
 
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        """Return the display value, alignment, font, or color for a cell based on role and render hints."""
         if not index.isValid():
             return None
 
@@ -98,15 +104,18 @@ class PandasModel(QAbstractTableModel):
         return None
 
     def headerData(self, col, orientation, role):
+        """Return the column name for horizontal header labels, or None otherwise."""
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             return str(self._data.columns[col])
         return None
 
     def set_data(self, data: pd.DataFrame, render_hints: dict[str, Any] | None = None):
+        """Replace the underlying DataFrame and render hints, resetting the model."""
         self.beginResetModel()
         self._data = data
         self._hints = render_hints or {}
         self.endResetModel()
 
     def get_dataframe(self) -> pd.DataFrame:
+        """Return the underlying DataFrame."""
         return self._data

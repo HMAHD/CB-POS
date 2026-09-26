@@ -1,3 +1,5 @@
+"""Reorder view listing products that have fallen at or below their reorder point."""
+
 from decimal import Decimal
 
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -27,6 +29,7 @@ class ReorderView(QWidget):
     navigate_to_purchase = pyqtSignal(list)  # Signal to navigate with pre-filled items
 
     def __init__(self):
+        """Build the UI and load the initial reorder list."""
         super().__init__()
         self.init_ui()
         self.load_reorder_items()
@@ -36,6 +39,7 @@ class ReorderView(QWidget):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self):
+        """Build the title, info text, reorder table, and action buttons."""
         layout = QVBoxLayout(self)
 
         # Title
@@ -73,6 +77,7 @@ class ReorderView(QWidget):
         layout.addLayout(btn_layout)
 
     def retranslate_ui(self):
+        """Update all translatable strings."""
         self.lbl_title.setText(_t("reorder.title"))
         self.lbl_info.setText(_t("reorder.info_text"))
         self.btn_refresh.setText(_t("common.refresh"))

@@ -1,3 +1,5 @@
+"""Purchases view: supplier management, GRN intake, purchase history, and payables."""
+
 import logging
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -41,17 +43,23 @@ logger = logging.getLogger(__name__)
 
 
 class SupplierTableModel(QAbstractTableModel):
+    """Table model for the supplier list table."""
+
     def __init__(self, suppliers):
+        """Store the suppliers to display."""
         super().__init__()
         self.suppliers = suppliers
 
     def rowCount(self, parent=None):
+        """Return the number of suppliers."""
         return len(self.suppliers)
 
     def columnCount(self, parent=None):
+        """Return the fixed column count (5)."""
         return 5
 
     def data(self, index, role):
+        """Return display text for the given supplier cell."""
         if role == Qt.ItemDataRole.DisplayRole:
             supplier = self.suppliers[index.row()]
             if index.column() == 0:
@@ -67,6 +75,7 @@ class SupplierTableModel(QAbstractTableModel):
         return None
 
     def headerData(self, section, orientation, role):
+        """Return translated column header labels."""
         if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             headers = [
                 _t("purchase.supplier_header_id"),
@@ -83,16 +92,20 @@ class PurchaseHistoryModel(QAbstractTableModel):
     """Table model for GRN history list."""
 
     def __init__(self, purchases=None):
+        """Store the purchases to display, defaulting to an empty list."""
         super().__init__()
         self.purchases = purchases or []
 
     def rowCount(self, parent=None):
+        """Return the number of purchases."""
         return len(self.purchases)
 
     def columnCount(self, parent=None):
+        """Return the fixed column count (7)."""
         return 7
 
     def data(self, index, role):
+        """Return display text and column alignment for the given purchase cell."""
         if not index.isValid():
             return None
         purchase = self.purchases[index.row()]
@@ -119,6 +132,7 @@ class PurchaseHistoryModel(QAbstractTableModel):
         return None
 
     def headerData(self, section, orientation, role):
+        """Return translated column header labels."""
         if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             headers = [
                 _t("purchase.history_header_grn"),
@@ -143,6 +157,7 @@ class GRNDetailDialog(QDialog):
     """Read-only detail view of a completed GRN."""
 
     def __init__(self, purchase_id: int, parent=None):
+        """Configure the dialog window and build its read-only layout for the given purchase."""
         super().__init__(parent)
         self.setWindowTitle(_t("purchase.grn_detail_title"))
         self.setMinimumSize(700, 500)
@@ -150,6 +165,7 @@ class GRNDetailDialog(QDialog):
         self.init_ui(purchase_id)
 
     def init_ui(self, purchase_id: int) -> None:
+        """Load the purchase and render its header info, item table, and total cost."""
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
         layout.setContentsMargins(16, 16, 16, 16)
@@ -235,13 +251,17 @@ class GRNDetailDialog(QDialog):
 
 
 class SupplierDialog(QDialog):
+    """Modal dialog for creating or editing a supplier."""
+
     def __init__(self, parent=None, supplier=None):
+        """Store the supplier being edited (None for a new supplier) and build the form."""
         super().__init__(parent)
         self.supplier = supplier
         self.init_ui()
         self.retranslate_ui()
 
     def init_ui(self):
+        """Build the supplier form fields and Save/Cancel buttons."""
         self.setObjectName("SupplierDialog")
         self.setMinimumSize(420, 400)
 
@@ -320,6 +340,7 @@ class SupplierDialog(QDialog):
         self.cancel_btn.setText(_t("common.cancel"))
 
     def get_data(self):
+        """Return the entered supplier field values as a dict."""
         return {
             "company_name": self.company_input.text(),
             "contact_person": self.contact_input.text(),
@@ -342,7 +363,10 @@ class SupplierDialog(QDialog):
 
 
 class PurchaseView(QWidget):
+    """Purchases view with Suppliers, New GRN, GRN History, and Payables tabs."""
+
     def __init__(self):
+        """Build the UI, wire the language callback, and load initial supplier and product data."""
         super().__init__()
         self.init_ui()
         self.retranslate_ui()
@@ -352,6 +376,7 @@ class PurchaseView(QWidget):
         self.load_products_for_completer()
 
     def init_ui(self):
+        """Build the page header and the four purchase tabs."""
         layout = QVBoxLayout(self)
 
         from cbpos.ui.resources.icons import Icons
@@ -384,6 +409,7 @@ class PurchaseView(QWidget):
         self.tabs.addTab(self.payables_tab, "")
 
     def setup_supplier_tab(self):
+        """Build the Suppliers tab: toolbar and supplier table."""
         layout = QVBoxLayout(self.supplier_tab)
 
         # Toolbar
@@ -404,6 +430,7 @@ class PurchaseView(QWidget):
         layout.addWidget(self.supplier_table)
 
     def setup_grn_tab(self):
+        """Build the New GRN tab: header form, product search, line items grid, and commit footer."""
         layout = QVBoxLayout(self.grn_tab)
 
         # Header Form
@@ -665,6 +692,7 @@ class PurchaseView(QWidget):
             dialog.exec()
 
     def refresh_suppliers(self):
+        """Reload suppliers and refresh the supplier table, GRN combo, history filter combo, and payables list."""
         self.suppliers = SupplierService.get_all_suppliers()
         self.supplier_table.setModel(SupplierTableModel(self.suppliers))
         names = [s.company_name for s in self.suppliers]
@@ -703,6 +731,7 @@ class PurchaseView(QWidget):
             self.load_payable_suppliers()
 
     def add_supplier(self):
+        """Open the Add Supplier dialog and persist the new supplier on accept."""
         dialog = SupplierDialog(self)
         if dialog.exec():
             data = dialog.get_data()
@@ -723,6 +752,7 @@ class PurchaseView(QWidget):
         self.completer.setModel(QStringListModel(names))
 
     def add_product_to_grid(self):
+        """Look up the searched product and add it as a new GRN line item."""
         query = self.product_search.text().strip()
         if not query:
             return
@@ -750,14 +780,17 @@ class PurchaseView(QWidget):
         self.update_total()
 
     def update_total(self):
+        """Recalculate and display the running total cost of the GRN line items."""
         total = sum(item["qty"] * item["cost"] for item in self.grn_items)
         total_str = format(total, ".2f")
         self.total_label.setText(f"{_t('purchase.total_cost_label')}: {total_str}")
 
     def set_user(self, user):
+        """Store the logged-in user for use when committing a GRN."""
         self.user = user
 
     def commit_grn(self):
+        """Validate the GRN form, create the purchase, commit received stock, and reset the form on success."""
         supplier_id = self.supplier_combo.currentData()
         ref_no = self.invoice_input.text()
 

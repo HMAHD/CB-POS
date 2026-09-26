@@ -1,3 +1,5 @@
+"""Report viewer view for browsing, running, and exporting reports."""
+
 import pandas as pd
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -37,6 +39,7 @@ class ReportWorker(QThread):
     error = pyqtSignal(str)
 
     def __init__(self, report, filters):
+        """Initialize the worker with a report instance and its filter values."""
         super().__init__()
         self.finished.connect(self.deleteLater)
         self.error.connect(self.deleteLater)
@@ -44,6 +47,7 @@ class ReportWorker(QThread):
         self.filters = filters
 
     def run(self):
+        """Generate the report's DataFrame and emit the result, or emit an error message on failure."""
         try:
             df = self.report.generate(self.filters)
             self.finished.emit(df)
@@ -52,7 +56,10 @@ class ReportWorker(QThread):
 
 
 class ReportViewer(QWidget):
+    """Report viewer view listing available reports, running them, and displaying results."""
+
     def __init__(self):
+        """Initialize the view, register language callbacks, and build the UI."""
         super().__init__()
         self.setObjectName("ReportViewer")
         self.registry = ReportRegistry()
@@ -66,6 +73,7 @@ class ReportViewer(QWidget):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self):
+        """Build the sidebar, filter bar, data table, and action bar layout."""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -349,6 +357,7 @@ class ReportViewer(QWidget):
     # ------------------------------------------------------------------
 
     def run_report(self):
+        """Run the currently selected report in a background thread using the active filter values."""
         if not self.current_report:
             return
 
@@ -407,6 +416,7 @@ class ReportViewer(QWidget):
     # ------------------------------------------------------------------
 
     def export_excel(self) -> None:
+        """Prompt for a save path and export the full report DataFrame to Excel."""
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
@@ -423,6 +433,7 @@ class ReportViewer(QWidget):
             self._start_export(self._full_df, filename, "excel")
 
     def export_pdf(self) -> None:
+        """Prompt for a save path and export the full report DataFrame to PDF."""
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
@@ -471,6 +482,7 @@ class ReportViewer(QWidget):
         self.btn_email.setEnabled(enabled)
 
     def print_report(self):
+        """Render the full report DataFrame as an HTML table and send it to the system print dialog."""
         from PyQt6.QtGui import QTextDocument
         from PyQt6.QtPrintSupport import QPrintDialog, QPrinter
 
@@ -531,6 +543,7 @@ class ReportViewer(QWidget):
             document.print(printer)
 
     def email_report(self):
+        """Prompt for a recipient, export the report to a temporary PDF, and email it as an attachment."""
         import os
         import tempfile
 

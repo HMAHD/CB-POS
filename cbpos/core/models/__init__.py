@@ -540,6 +540,8 @@ class Shift(Base):
     status: Mapped[str] = mapped_column(String(20), default="OPEN", index=True)  # OPEN, CLOSED
     terminal_id: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     synced: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    reason_category: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     user: Mapped["User"] = relationship()
 

@@ -1880,6 +1880,12 @@
     "actual": "உண்மையானது: {amount}",
     "variance": "வித்தியாசம்: {amount}",
     "variance_reason_label": "வித்தியாசத்துக்கான காரணம் (0 இல்லைன்னா அவசியம்):",
+    "reason_category": {
+      "till_error": "காசு பெட்டி பிழை",
+      "miscounted": "தவறாக எண்ணப்பட்டது",
+      "unexplained_shortage": "விளக்க முடியாத பற்றாக்குறை",
+      "other": "மற்றவை"
+    },
     "reason_placeholder": "வித்தியாசத்துக்கான காரணத்தை எழுதுங்க...",
     "reason_required": "வித்தியாசத்துக்கு ஒரு காரணத்தைக் கொடுங்க.",
     "close_and_print": "ஷிப்ட்டை மூடு && பிரிண்ட் செய்",

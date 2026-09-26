@@ -107,3 +107,26 @@ def test_close_shift(mock_config, db_session, test_user, shift_service):
     db_session.expire_all()
     closed_shift = db_session.get(Shift, shift.id)
     assert closed_shift.status == ShiftStatus.CLOSED
+    assert closed_shift.notes == "All good"
+
+
+@patch("cbpos.core.services.shift_service.ConfigService.get", return_value="TERM-01")
+def test_close_shift_persists_reason_category(mock_config, db_session, test_user, shift_service):
+    """Closing a shift with a variance persists both the reason category and notes to the DB.
+
+    Regression test for #457: the dialog required a reason on variance, but
+    close_shift() silently discarded it instead of writing it to the shift row.
+    """
+    shift = shift_service.start_shift(test_user.id, Decimal("5000.00"))
+
+    shift_service.close_shift(
+        shift.id,
+        counted_cash=Decimal("4950.00"),
+        notes="Miscounted the drawer at open",
+        reason_category="MISCOUNTED",
+    )
+
+    db_session.expire_all()
+    closed_shift = db_session.get(Shift, shift.id)
+    assert closed_shift.reason_category == "MISCOUNTED"
+    assert closed_shift.notes == "Miscounted the drawer at open"

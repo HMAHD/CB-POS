@@ -201,12 +201,19 @@ class ShiftService:
                 "total_sscl": tax_row[1] or Decimal(0) if tax_row else Decimal(0),
             }
 
-    def close_shift(self, shift_id: int, counted_cash: Decimal, notes: str = None) -> dict[str, Any]:
+    def close_shift(
+        self,
+        shift_id: int,
+        counted_cash: Decimal,
+        notes: str = None,
+        reason_category: str = None,
+    ) -> dict[str, Any]:
         """Close an open shift, comparing physically counted cash against the expected total.
 
-        Persists the counted/expected cash on the shift and returns the shift summary
-        (see `get_shift_summary`) augmented with `end_time`, `actual_cash`, `variance`
-        (counted minus expected), and `notes`.
+        Persists the counted/expected cash, the shortage/overage reason category, and the
+        free-text notes on the shift, and returns the shift summary (see `get_shift_summary`)
+        augmented with `end_time`, `actual_cash`, `variance` (counted minus expected), and
+        `notes`.
 
         Raises:
             ValueError: If the shift does not exist or is already closed.
@@ -225,8 +232,8 @@ class ShiftService:
             shift.actual_cash = counted_cash
             shift.expected_cash = expected_cash
             shift.status = ShiftStatus.CLOSED
-            # We might want to store notes/variance in the shift model if we add those fields later
-            # For now, we rely on the calculated values
+            shift.reason_category = reason_category
+            shift.notes = notes
 
             session.commit()
 

@@ -1880,6 +1880,12 @@
     "actual": "සැබෑ: {amount}",
     "variance": "වෙනස: {amount}",
     "variance_reason_label": "වෙනසට හේතුව (0 නොවේ නම් අනිවාර්යයි):",
+    "reason_category": {
+      "till_error": "මුදල් පෙට්ටියේ වැරැද්දක්",
+      "miscounted": "වැරදි ගණන් කිරීමක්",
+      "unexplained_shortage": "හේතුවක් නැති හිඟයක්",
+      "other": "වෙනත්"
+    },
     "reason_placeholder": "වෙනස වුනේ ඇයි කියලා ලියන්න...",
     "reason_required": "වෙනසට හේතුවක් දාන්න.",
     "close_and_print": "මුරය වසන්න && ප්‍රින්ට් කරන්න",

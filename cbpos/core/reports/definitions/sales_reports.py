@@ -10,22 +10,29 @@ from cbpos.i18n import _t
 
 
 class SalesByCategoryReport(BaseReport):
+    """Quantity sold and gross revenue per product category within a date range."""
+
     @property
     def id(self) -> str:
+        """Report identifier."""
         return "sales_by_category"
 
     @property
     def name(self) -> str:
+        """Display name."""
         return _t("reports.sales_by_category")
 
     @property
     def category(self) -> str:
+        """Report category."""
         return _t("reports.category_sales")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
+        """Date range filter only."""
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
+        """Sum quantity sold and gross revenue (sale item subtotal) per category."""
         with get_db_session() as session:
             date_range = filters.get("date_range", {})
             start_date = date_range.get("start")
@@ -65,22 +72,29 @@ class SalesByCategoryReport(BaseReport):
 
 
 class CashierPerformanceReport(BaseReport):
+    """Transaction count and total sales per cashier within a date range."""
+
     @property
     def id(self) -> str:
+        """Report identifier."""
         return "cashier_performance"
 
     @property
     def name(self) -> str:
+        """Display name."""
         return _t("reports.cashier_performance")
 
     @property
     def category(self) -> str:
+        """Report category."""
         return _t("reports.category_sales")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
+        """Date range filter only."""
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
+        """Sum transaction count and total sales per cashier (user)."""
         with get_db_session() as session:
             date_range = filters.get("date_range", {})
             start_date = date_range.get("start")

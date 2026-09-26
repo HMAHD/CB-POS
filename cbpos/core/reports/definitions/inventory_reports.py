@@ -9,19 +9,25 @@ from cbpos.i18n import _t
 
 
 class InventoryValuationReport(BaseReport):
+    """Current stock quantity and cost/retail value per active product."""
+
     @property
     def id(self) -> str:
+        """Report identifier."""
         return "inventory_valuation"
 
     @property
     def name(self) -> str:
+        """Display name."""
         return _t("reports.inventory_valuation")
 
     @property
     def category(self) -> str:
+        """Report category."""
         return _t("reports.category_inventory")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
+        """Optional category filter, populated from active categories in the DB."""
         with get_db_session() as session:
             categories = session.query(Category).all()
             cat_options = [{"id": c.id, "label": c.name} for c in categories]
@@ -36,6 +42,12 @@ class InventoryValuationReport(BaseReport):
         ]
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
+        """List active products with on-hand qty, cost, retail price, and their totals.
+
+        Total Cost Value / Total Retail Value are ``stock_qty * cost`` and
+        ``stock_qty * price`` respectively. Filter by ``category_id`` to scope
+        to one category.
+        """
         with get_db_session() as session:
             query = session.query(Product).filter(Product.is_active)
 
@@ -67,22 +79,29 @@ class InventoryValuationReport(BaseReport):
 
 
 class LowStockReport(BaseReport):
+    """Active products at or below their reorder point, for restocking."""
+
     @property
     def id(self) -> str:
+        """Report identifier."""
         return "low_stock"
 
     @property
     def name(self) -> str:
+        """Display name."""
         return _t("reports.low_stock")
 
     @property
     def category(self) -> str:
+        """Report category."""
         return _t("reports.category_inventory")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
+        """No filters; always shows all products at or below their reorder point."""
         return []
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
+        """List products where stock <= reorder point, with their default supplier."""
         with get_db_session() as session:
             # Filter products where stock <= reorder_point
             products = (

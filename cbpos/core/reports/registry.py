@@ -11,6 +11,7 @@ class ReportRegistry:
     _all_reports: dict[str, BaseReport] = {}
 
     def __new__(cls):
+        """Return the shared singleton instance, creating it on first access."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._reports = {}

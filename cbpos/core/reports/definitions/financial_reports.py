@@ -11,25 +11,38 @@ from cbpos.i18n import _t
 
 
 class ProfitLossReport(BaseReport):
+    """Per-sale-line revenue, cost, gross profit, and margin within a date range."""
+
     @property
     def id(self) -> str:
+        """Report identifier."""
         return "profit_loss"
 
     @property
     def name(self) -> str:
+        """Display name."""
         return _t("reports.profit_loss")
 
     @property
     def category(self) -> str:
+        """Report category."""
         return _t("reports.category_financial")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
+        """Date range filter only."""
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
     def get_render_hints(self) -> dict[str, Any]:
+        """Format Revenue, Cost (COGS), and Gross Profit as currency."""
         return {"currency_columns": ["Revenue", "Cost (COGS)", "Gross Profit"]}
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
+        """List revenue/cost/profit per sale item, one row per (sale, line item).
+
+        COGS uses the product's *current* cost as a proxy — it is not the
+        historical AVCO cost at the time of sale, so margins for products
+        whose cost has since changed will be approximate.
+        """
         with get_db_session() as session:
             date_range = filters.get("date_range", {})
             start_date = date_range.get("start")
@@ -79,27 +92,40 @@ class ProfitLossReport(BaseReport):
 
 
 class TaxLiabilityReport(BaseReport):
+    """Per-sale VAT and SSCL breakdown within a date range."""
+
     requires_vat = True
 
     @property
     def id(self) -> str:
+        """Report identifier."""
         return "tax_liability"
 
     @property
     def name(self) -> str:
+        """Display name."""
         return _t("reports.tax_liability")
 
     @property
     def category(self) -> str:
+        """Report category."""
         return _t("reports.category_financial")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
+        """Date range filter only."""
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
     def get_render_hints(self) -> dict[str, Any]:
+        """Format the sale total, net revenue, VAT, SSCL, and total tax columns as currency."""
         return {"currency_columns": ["Total Sale", "Net Revenue", "VAT (18%)", "SSCL (2.5%)", "Total Tax"]}
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
+        """List each sale's total, net revenue, VAT (18%), and SSCL (2.5%) within the range.
+
+        VAT and SSCL are read from ``Sale.tax_vat``/``Sale.tax_sscl``, which
+        were already computed backward from the MRP-inclusive sale total at
+        the time of sale — this report does not recompute tax.
+        """
         with get_db_session() as session:
             date_range = filters.get("date_range", {})
             start_date = date_range.get("start")
@@ -139,17 +165,21 @@ class TaxFilingSummaryReport(BaseReport):
 
     @property
     def id(self) -> str:
+        """Report identifier."""
         return "tax_filing_summary"
 
     @property
     def name(self) -> str:
+        """Display name."""
         return _t("reports.tax_filing_summary")
 
     @property
     def category(self) -> str:
+        """Report category."""
         return _t("reports.category_financial")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
+        """Period preset (monthly/quarterly/custom) plus the date range it resolves to."""
         return [
             {
                 "name": "period",

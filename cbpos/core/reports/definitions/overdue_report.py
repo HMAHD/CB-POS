@@ -12,20 +12,28 @@ class OverdueCustomersReport(BaseReport):
 
     @property
     def id(self) -> str:
+        """Report identifier."""
         return "overdue_customers"
 
     @property
     def name(self) -> str:
+        """Display name."""
         return _t("reports.overdue_customers")
 
     @property
     def category(self) -> str:
+        """Report category."""
         return _t("reports.category_financial")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
+        """No filters; always shows all customers currently overdue."""
         return []
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
+        """List overdue customers with outstanding balance, credit limit, and days overdue.
+
+        Delegates the overdue calculation to ``CustomerCreditService``.
+        """
         overdue = CustomerCreditService.get_overdue_customers()
 
         data = []

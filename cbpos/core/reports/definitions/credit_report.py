@@ -14,20 +14,29 @@ class CustomerCreditReport(BaseReport):
 
     @property
     def id(self) -> str:
+        """Report identifier."""
         return "customer_credit"
 
     @property
     def name(self) -> str:
+        """Display name."""
         return _t("reports.customer_credit")
 
     @property
     def category(self) -> str:
+        """Report category."""
         return _t("reports.category_financial")
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
+        """No filters; always shows all customers with an outstanding balance."""
         return []
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
+        """List customers with debt > 0, ordered highest debt first.
+
+        Includes credit limit and remaining available credit
+        (limit minus current debt).
+        """
         with Database().get_session() as session:
             stmt = (
                 select(

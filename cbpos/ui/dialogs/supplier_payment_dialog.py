@@ -28,6 +28,7 @@ class SupplierPaymentDialog(QDialog):
     """Dialog to record a payment made to a supplier."""
 
     def __init__(self, supplier_id: int, parent: QWidget | None = None):
+        """Build the dialog for recording a payment to the supplier identified by `supplier_id`."""
         super().__init__(parent)
         self.supplier_id = supplier_id
         self.recorded_payment = None
@@ -39,6 +40,7 @@ class SupplierPaymentDialog(QDialog):
         self.init_ui()
 
     def init_ui(self) -> None:
+        """Build the title, supplier info, payment form, and action buttons."""
         layout = QVBoxLayout(self)
         layout.setSpacing(16)
         layout.setContentsMargins(20, 20, 20, 20)

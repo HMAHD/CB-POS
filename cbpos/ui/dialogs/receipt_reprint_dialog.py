@@ -30,6 +30,7 @@ class ReceiptReprintDialog(QDialog):
     """Dialog to search past sales and reprint receipts."""
 
     def __init__(self, parent=None):
+        """Build the dialog with an empty search bar and results table."""
         super().__init__(parent)
         self.setWindowTitle(_t("receipt_reprint.title"))
         self.setMinimumSize(700, 500)

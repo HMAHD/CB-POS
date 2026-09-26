@@ -18,6 +18,7 @@ class QuantityDialog(QDialog):
     """Prompt for quantity when adding a product to the cart."""
 
     def __init__(self, product, parent=None, initial_qty: Decimal = None):
+        """Build the quantity prompt for `product`, pre-filled with `initial_qty` (default 1)."""
         super().__init__(parent)
         self.setWindowTitle(_t("quantity.title"))
         self.setObjectName("QuantityDialog")
@@ -100,6 +101,7 @@ class QuantityDialog(QDialog):
         return qty if qty > 0 else None
 
     def accept(self):
+        """Reject the input with a warning if the quantity isn't a positive number, else accept."""
         if self._parsed_quantity() is None:
             QMessageBox.warning(
                 self,

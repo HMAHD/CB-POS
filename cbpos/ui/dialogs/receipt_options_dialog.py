@@ -29,7 +29,10 @@ logger = logging.getLogger(__name__)
 
 
 class ReceiptOptionsDialog(QDialog):
+    """Post-checkout dialog offering to preview, print, or email the receipt for a completed sale."""
+
     def __init__(self, sale: Sale, parent=None):
+        """Build the dialog for the given completed `sale`."""
         super().__init__(parent)
         self.sale = sale
         self.setWindowTitle(_t("receipt_options.title"))
@@ -38,6 +41,7 @@ class ReceiptOptionsDialog(QDialog):
         self.init_ui()
 
     def init_ui(self) -> None:
+        """Build the success icon, order info card, and preview/print/email/close buttons."""
         layout = QVBoxLayout(self)
         layout.setSpacing(0)
         layout.setContentsMargins(32, 28, 32, 24)
@@ -207,6 +211,7 @@ class ReceiptOptionsDialog(QDialog):
             self.accept()
 
     def email_receipt(self) -> None:
+        """Prompt for an email address (pre-filled from the customer, if any) and send the receipt."""
         default_email = ""
         try:
             if self.sale.customer and self.sale.customer.email:
@@ -224,6 +229,7 @@ class ReceiptOptionsDialog(QDialog):
             QMessageBox.information(self, _t("receipt_options.sending_title"), _t("receipt_options.sending_message"))
 
     def on_email_finished(self, success: bool, message: str) -> None:
+        """Show an error message if the background email send failed."""
         if not success:
             QMessageBox.warning(
                 self,

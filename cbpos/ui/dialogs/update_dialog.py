@@ -36,11 +36,13 @@ class _DownloadThread(QThread):
     finished_err = pyqtSignal(str)  # error message
 
     def __init__(self, url: str, sha256: str, parent=None) -> None:
+        """Store the installer `url` and expected `sha256` checksum to download."""
         super().__init__(parent)
         self._url = url
         self._sha256 = sha256
 
     def run(self) -> None:
+        """Download and checksum-verify the installer, emitting `finished_ok`/`finished_err`."""
         try:
             path = UpdateService.download_installer(
                 self._url,
@@ -62,6 +64,7 @@ class _CheckThread(QThread):
     no_update = pyqtSignal()
 
     def run(self) -> None:
+        """Check for an available update, emitting `update_available` or `no_update`."""
         result = UpdateService.check_for_update()
         if result:
             self.update_available.emit(result)
@@ -73,6 +76,7 @@ class UpdateDialog(QDialog):
     """Dialog shown when a new version is available."""
 
     def __init__(self, manifest: dict[str, Any], parent=None) -> None:
+        """Build the dialog showing the new version, changelog, and download button from `manifest`."""
         super().__init__(parent)
         self._manifest = manifest
         self._download_thread: _DownloadThread | None = None

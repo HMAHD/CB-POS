@@ -21,6 +21,7 @@ class SetupWizard(QDialog):
     """First-run 3-step setup wizard for new CB-POS installations."""
 
     def __init__(self, parent=None):
+        """Build the wizard, starting on step 1 (shop information)."""
         super().__init__(parent)
         self.setWindowTitle(_t("setup_wizard.title"))
         self.setFixedSize(600, 500)
@@ -28,6 +29,7 @@ class SetupWizard(QDialog):
         self.init_ui()
 
     def init_ui(self):
+        """Build the three stacked pages (shop info, hardware, admin PIN) and navigation buttons."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(40, 30, 40, 30)
         layout.setSpacing(20)
@@ -184,6 +186,7 @@ class SetupWizard(QDialog):
         self.btn_cancel.setText(_t("setup_wizard.btn_cancel"))
 
     def go_next(self):
+        """Validate the current step and advance, or run `finish_wizard()` on the last step."""
         current = self.stack.currentIndex()
 
         if current == 0:
@@ -224,6 +227,7 @@ class SetupWizard(QDialog):
             self.finish_wizard()
 
     def go_back(self):
+        """Return to the previous step, updating the step label and button text."""
         current = self.stack.currentIndex()
         if current > 0:
             self.stack.setCurrentIndex(current - 1)

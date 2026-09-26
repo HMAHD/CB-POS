@@ -31,6 +31,7 @@ class UnitManagerDialog(QDialog):
     """Dialog to view, add, edit, and delete units of measurement."""
 
     def __init__(self, parent=None):
+        """Build the dialog and load the current list of units."""
         super().__init__(parent)
         self.setWindowTitle(_t("unit_manager.title"))
         self.setMinimumSize(620, 460)

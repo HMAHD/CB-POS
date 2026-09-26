@@ -15,7 +15,10 @@ from cbpos.i18n import _t
 
 
 class StockHistoryDialog(QDialog):
+    """Dialog listing a product's stock movement history (audit trail of every quantity change)."""
+
     def __init__(self, product: Product, parent=None):
+        """Build the dialog and load the stock movement history for `product`."""
         super().__init__(parent)
         self.product = product
         self.stock_service = StockService()
@@ -27,6 +30,7 @@ class StockHistoryDialog(QDialog):
         self.load_data()
 
     def setup_ui(self):
+        """Build the header, movement history table, and close button."""
         layout = QVBoxLayout(self)
 
         # Header
@@ -56,6 +60,7 @@ class StockHistoryDialog(QDialog):
         layout.addWidget(btn_close)
 
     def load_data(self):
+        """Fetch the product's stock movement history and populate the table, color-coding the change column."""
         history = self.stock_service.get_history(self.product.id)
         self.table.setRowCount(0)
 

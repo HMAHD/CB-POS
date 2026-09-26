@@ -20,7 +20,10 @@ from cbpos.i18n import _t
 
 
 class StockAdjustmentDialog(QDialog):
+    """Dialog to record a manual stock quantity change (count, damage, return, etc.) for a product."""
+
     def __init__(self, product: Product, parent=None):
+        """Build the dialog for adjusting stock of `product`."""
         super().__init__(parent)
         self.product = product
 
@@ -29,6 +32,7 @@ class StockAdjustmentDialog(QDialog):
         self.init_ui()
 
     def init_ui(self):
+        """Build the current-stock display, adjustment amount field, reason combo, and buttons."""
         layout = QVBoxLayout(self)
 
         form_layout = QFormLayout()
@@ -73,6 +77,7 @@ class StockAdjustmentDialog(QDialog):
         layout.addLayout(btn_layout)
 
     def save_adjustment(self):
+        """Check permission, validate the entered change, and apply it via `InventoryService.adjust_stock`."""
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.utils.permission_helper import check_permission_with_override
 

@@ -133,7 +133,7 @@
     - [x] **Service Items:** Non-stock items (don't track inventory)
     - [x] **Stock History View:** Complete movement audit trail
     - [x] **Prevent Negative Inventory:** Optional blocking with override
-    - [x] **Stock Valuation Report:** FIFO/LIFO/Weighted Average
+    - [x] **Stock Valuation Report:** Weighted Average (AVCO) -- the only costing method this system uses per CLAUDE.md; FIFO/LIFO were never built and would contradict that domain rule if added
 - [x] **4.5 Category Management**
     - [x] Hierarchical category tree (unlimited depth)
     - [x] Full Category Manager dialog (tree view CRUD, add/edit/delete, subcategories)

@@ -1145,6 +1145,7 @@
     "cashier_performance": "கேஷியர் செயல்பாடு",
     "stock_movement": "சரக்கு நகர்வு தணிக்கை",
     "cash_movement_audit": "பண நகர்வு தணிக்கை",
+    "shift_variance": "ஷிப்ட் வித்தியாச அறிக்கை",
     "void_refund": "ரத்து && ரீஃபண்ட் அறிக்கை",
     "payment_method_summary": "பணம் செலுத்தும் முறை சுருக்கம்",
     "overdue_customers": "தாமதமான வாடிக்கையாளர்கள்",

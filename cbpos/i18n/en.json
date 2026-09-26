@@ -1175,6 +1175,7 @@
     "cashier_performance": "Cashier Performance",
     "stock_movement": "Stock Movement Audit",
     "cash_movement_audit": "Cash Movement Audit",
+    "shift_variance": "Shift Variance Report",
     "void_refund": "Void & Refund Report",
     "payment_method_summary": "Payment Method Summary",
     "overdue_customers": "Overdue Customers",

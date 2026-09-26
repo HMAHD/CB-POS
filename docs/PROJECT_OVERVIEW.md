@@ -465,9 +465,9 @@ Login → SalesView → Management/Settings (via side menu) → Back returns to 
 | **SettingsView** | `settings_view.py` | Category-based settings, live theme preview |
 | **DashboardView** | `dashboard_view.py` | Real-time KPIs, low stock alerts |
 | **InventoryView** | `inventory_view.py` | Product CRUD, stock adjustment, category assignment |
-| **CustomerView** | `customer_view.py` | Customer management, credit tracking |
-| **CreditBookView** | `credit_book_view.py` | Customer credit ledger and balance tracking |
+| **CreditBookView** | `credit_book_view.py` | Customer list/CRUD, credit ledger and balance tracking (the sidebar's "Customers" entry) |
 | **PurchaseView** | `purchase_view.py` | Purchase orders, supplier selection, auto stock increase |
+| **ReorderView** | `reorder_view.py` | Low-stock product list; selected items feed a pre-filled GRN in PurchaseView |
 | **HistoryView** | `history_view.py` | Transaction history, void/refund capabilities |
 | **DocumentView** | `document_view.py` | Unified document browser (sales, purchases, credit notes) |
 | **UserView** | `user_view.py` | User CRUD, role assignment, PIN management |

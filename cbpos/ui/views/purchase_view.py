@@ -777,6 +777,12 @@ class PurchaseView(QWidget):
         qty = Decimal("1.000")
         cost = product.cost  # Default to current cost
 
+        self._add_grn_row(product, qty, cost)
+        self.product_search.clear()
+        self.update_total()
+
+    def _add_grn_row(self, product, qty: Decimal, cost: Decimal) -> None:
+        """Append one line item to the GRN grid and the underlying grn_items list."""
         self.grn_items.append({"product": product, "qty": qty, "cost": cost})
 
         row = self.grn_model.rowCount()
@@ -787,7 +793,26 @@ class PurchaseView(QWidget):
         self.grn_model.setItem(row, 3, QStandardItem(str(cost)))
         self.grn_model.setItem(row, 4, QStandardItem(str(qty * cost)))
 
-        self.product_search.clear()
+    def prefill_grn_items(self, items: list[dict]) -> None:
+        """Switch to the New GRN tab and pre-fill it from Reorder's selected items.
+
+        Each item is {product_id, product_name, barcode, current_stock,
+        order_qty, supplier} (see ReorderView.create_purchase_order). Looks
+        products up by barcode -- the same lookup used for manual product
+        search -- and skips any that no longer resolve (e.g. deactivated
+        since the reorder list was built) rather than failing the whole batch.
+        """
+        self.tabs.setCurrentWidget(self.grn_tab)
+        self.grn_items = []
+        self.grn_model.setRowCount(0)
+
+        for item in items:
+            product = ProductService.get_by_barcode(item["barcode"])
+            if not product:
+                continue
+            qty = item["order_qty"] if item["order_qty"] > 0 else Decimal("1.000")
+            self._add_grn_row(product, qty, product.cost)
+
         self.update_total()
 
     def update_total(self):

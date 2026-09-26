@@ -20,6 +20,7 @@ from cbpos.ui.views.inventory_view import InventoryView
 from cbpos.ui.views.pricelist_view import PriceListView
 from cbpos.ui.views.promotion_view import PromotionView
 from cbpos.ui.views.purchase_view import PurchaseView
+from cbpos.ui.views.reorder_view import ReorderView
 from cbpos.ui.views.reports.report_viewer import ReportViewer
 from cbpos.ui.views.user_view import UserView
 from cbpos.ui.widgets.collapsible_sidebar import CollapsibleSidebar
@@ -92,6 +93,7 @@ class ManagementView(QWidget):
         self.btn_pricelists = self.sidebar.add_nav_button("", Icons.PRICE_LIST, 7)
         self.btn_promotions = self.sidebar.add_nav_button("", Icons.PROMOTION, 8)
         self.btn_stock_take = self.sidebar.add_nav_button("", Icons.STOCK_TAKE, 9)
+        self.btn_reorder = self.sidebar.add_nav_button("", Icons.REORDER, 10)
 
         self.sidebar.finalize()
         main_layout.addWidget(self.sidebar)
@@ -122,6 +124,7 @@ class ManagementView(QWidget):
             7: "pricelist_view",
             8: "promotion_view",
             9: "stock_take_view",
+            10: "reorder_view",
         }
 
     def retranslate_ui(self) -> None:
@@ -142,6 +145,7 @@ class ManagementView(QWidget):
         self.btn_pricelists.setText(_t("management.sidebar_price_lists"))
         self.btn_promotions.setText(_t("management.sidebar_promotions"))
         self.btn_stock_take.setText(_t("management.sidebar_stock_take"))
+        self.btn_reorder.setText(_t("management.sidebar_reorder"))
 
         # Bottom buttons
         self.sidebar.retranslate_pos_logout()
@@ -180,7 +184,18 @@ class ManagementView(QWidget):
             from cbpos.ui.views.stock_take_view import StockTakeView
 
             return StockTakeView()
+        if index == 10:
+            view = ReorderView()
+            view.navigate_to_purchase.connect(self._handle_reorder_navigation)
+            return view
         raise ValueError(f"No view factory for nav index {index}")
+
+    def _handle_reorder_navigation(self, items: list) -> None:
+        """Switch to the Purchase tab and pre-fill a new GRN from Reorder's selection."""
+        purchase_view = self._get_or_create_view(2)
+        purchase_view.prefill_grn_items(items)
+        self.stack.setCurrentWidget(purchase_view)
+        self.sidebar.highlight(2)
 
     def _get_or_create_view(self, index: int):
         if index not in self._view_widgets:

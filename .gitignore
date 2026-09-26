@@ -53,3 +53,6 @@ cbpos.db-wal
 
 # Sphinx build output — regenerable (run `uv run sphinx-build -b html docs docs/_build/html`).
 docs/_build/
+
+# Sphinx autodoc stubs — regenerated fresh each build (see docs.yml / README).
+docs/api/

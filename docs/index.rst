@@ -14,7 +14,7 @@ Welcome to CB POS's documentation!
    PROJECT_OVERVIEW
    Roadmap
    TAX
-   api_reference
+   api/modules
 
 Indices and tables
 ==================

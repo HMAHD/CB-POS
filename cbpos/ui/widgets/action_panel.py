@@ -1,3 +1,5 @@
+import weakref
+
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QFrame,
@@ -153,7 +155,17 @@ class ActionPanel(QWidget):
 
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui)
-        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+        # weakref avoids a self -> destroyed-connection -> lambda -> self
+        # reference cycle that only a full gc.collect() can break, which
+        # can segfault mid-teardown (#392).
+        self_ref = weakref.ref(self)
+
+        def _unregister():
+            widget = self_ref()
+            if widget is not None:
+                unregister_language_callback(widget.retranslate_ui)
+
+        self.destroyed.connect(_unregister)
 
     def init_ui(self):
         """Lay out the customer card, action button grids, and pay button."""

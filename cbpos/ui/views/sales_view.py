@@ -1,4 +1,5 @@
 import logging
+import weakref
 from decimal import Decimal
 
 from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QSize, Qt, QTimer, pyqtSignal
@@ -94,7 +95,17 @@ class SalesView(QWidget):
 
         # Register for language changes
         register_language_callback(self.retranslate_ui)
-        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+        # weakref avoids a self -> destroyed-connection -> lambda -> self
+        # reference cycle that only a full gc.collect() can break, which
+        # can segfault mid-teardown (#392).
+        self_ref = weakref.ref(self)
+
+        def _unregister():
+            view = self_ref()
+            if view is not None:
+                unregister_language_callback(view.retranslate_ui)
+
+        self.destroyed.connect(_unregister)
 
     def init_ui(self):
         """Build the header, cart/totals panel, action panel, and keyboard shortcuts."""

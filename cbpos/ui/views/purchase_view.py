@@ -1,6 +1,7 @@
 """Purchases view: supplier management, GRN intake, purchase history, and payables."""
 
 import logging
+import weakref
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
@@ -371,7 +372,17 @@ class PurchaseView(QWidget):
         self.init_ui()
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui)
-        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+        # weakref avoids a self -> destroyed-connection -> lambda -> self
+        # reference cycle that only a full gc.collect() can break, which
+        # can segfault mid-teardown (#392).
+        self_ref = weakref.ref(self)
+
+        def _unregister():
+            view = self_ref()
+            if view is not None:
+                unregister_language_callback(view.retranslate_ui)
+
+        self.destroyed.connect(_unregister)
         self.refresh_suppliers()
         self.load_products_for_completer()
 

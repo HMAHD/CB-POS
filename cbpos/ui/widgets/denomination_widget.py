@@ -1,3 +1,4 @@
+import weakref
 from decimal import Decimal
 
 from PyQt6.QtCore import pyqtSignal
@@ -75,7 +76,17 @@ class DenominationWidget(QWidget):
         layout.addWidget(self._lbl_grand_total_label, total_row, 0, 1, 2)
 
         register_language_callback(self._retranslate_ui)
-        self.destroyed.connect(lambda: unregister_language_callback(self._retranslate_ui))
+        # weakref avoids a self -> destroyed-connection -> lambda -> self
+        # reference cycle that only a full gc.collect() can break, which
+        # can segfault mid-teardown (#392).
+        self_ref = weakref.ref(self)
+
+        def _unregister():
+            widget = self_ref()
+            if widget is not None:
+                unregister_language_callback(widget._retranslate_ui)
+
+        self.destroyed.connect(_unregister)
         layout.addWidget(self.lbl_grand_total, total_row, 2, 1, 4)
 
         # Coins are assumed to be covered by the denominations list (e.g. 10, 5, 2, 1)

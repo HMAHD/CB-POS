@@ -1,4 +1,5 @@
 import logging
+import weakref
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
@@ -76,7 +77,19 @@ class MainWindow(QMainWindow):
 
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui)
-        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+        # A plain lambda closing over `self` creates a reference cycle
+        # (self -> Qt's destroyed-signal connection list -> the lambda ->
+        # self) that only a full gc.collect() pass can break -- and can
+        # segfault if that pass runs while the QObject's C++ side is mid-
+        # teardown (#392). A weakref avoids creating the cycle at all.
+        self_ref = weakref.ref(self)
+
+        def _unregister():
+            view = self_ref()
+            if view is not None:
+                unregister_language_callback(view.retranslate_ui)
+
+        self.destroyed.connect(_unregister)
 
     def retranslate_ui(self) -> None:
         """Update all translatable text in the window."""

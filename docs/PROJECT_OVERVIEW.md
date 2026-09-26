@@ -273,7 +273,7 @@ with db.get_session() as session:
 | Model | Purpose |
 |-------|---------|
 | **VoidReason** | Standardized void/cancellation reasons |
-| **Document** (Base) | Common fields: `document_number`, `type`, `date`, `user_id`, `status`, `void_reason_id` |
+| **Document** (Base) | Common fields: ``document_number``, ``type``, ``date``, ``user_id``, ``status``, ``void_reason_id`` |
 | **Sale** (extends Document) | Tax calculations, payment method, customer, refund tracking |
 | **Purchase** (extends Document) | Supplier, total cost |
 

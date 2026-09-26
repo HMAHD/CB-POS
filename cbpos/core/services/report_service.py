@@ -91,11 +91,11 @@ class ReportService:
             return final_data
 
     def get_stock_valuation(self) -> dict[str, Any]:
-        """
-        Calculate stock valuation metrics.
+        """Calculate stock valuation metrics.
 
-        Returns:
-            dict: {
+        Returns::
+
+            {
                 'total_cost_value': Decimal,
                 'total_retail_value': Decimal,
                 'potential_profit': Decimal,

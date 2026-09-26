@@ -1,5 +1,7 @@
 """Report viewer view for browsing, running, and exporting reports."""
 
+import weakref
+
 import pandas as pd
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -70,7 +72,17 @@ class ReportViewer(QWidget):
 
         # Register for language changes
         register_language_callback(self.retranslate_ui)
-        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+        # weakref avoids a self -> destroyed-connection -> lambda -> self
+        # reference cycle that only a full gc.collect() can break, which
+        # can segfault mid-teardown (#392).
+        self_ref = weakref.ref(self)
+
+        def _unregister():
+            view = self_ref()
+            if view is not None:
+                unregister_language_callback(view.retranslate_ui)
+
+        self.destroyed.connect(_unregister)
 
     def init_ui(self):
         """Build the sidebar, filter bar, data table, and action bar layout."""

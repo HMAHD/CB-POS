@@ -9,6 +9,7 @@ Layout:
 """
 
 import logging
+import weakref
 from datetime import date
 
 from PyQt6.QtCore import QDate, Qt, QThread, pyqtSignal
@@ -109,7 +110,17 @@ class DashboardView(QWidget):
 
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui)
-        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+        # weakref avoids a self -> destroyed-connection -> lambda -> self
+        # reference cycle that only a full gc.collect() can break, which
+        # can segfault mid-teardown (#392).
+        self_ref = weakref.ref(self)
+
+        def _unregister():
+            view = self_ref()
+            if view is not None:
+                unregister_language_callback(view.retranslate_ui)
+
+        self.destroyed.connect(_unregister)
 
     # ------------------------------------------------------------------
     # UI construction

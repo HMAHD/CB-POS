@@ -4,6 +4,7 @@ Card-based list with inline toggle, edit, and delete actions.
 """
 
 import logging
+import weakref
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -39,7 +40,17 @@ class PaymentMethodDialog(QDialog):
         self._init_ui()
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui)
-        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+        # weakref avoids a self -> destroyed-connection -> lambda -> self
+        # reference cycle that only a full gc.collect() can break, which
+        # can segfault mid-teardown (#392).
+        self_ref = weakref.ref(self)
+
+        def _unregister():
+            view = self_ref()
+            if view is not None:
+                unregister_language_callback(view.retranslate_ui)
+
+        self.destroyed.connect(_unregister)
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -249,7 +260,17 @@ class PaymentMethodsView(QWidget):
         self._init_ui()
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui)
-        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+        # weakref avoids a self -> destroyed-connection -> lambda -> self
+        # reference cycle that only a full gc.collect() can break, which
+        # can segfault mid-teardown (#392).
+        self_ref = weakref.ref(self)
+
+        def _unregister():
+            view = self_ref()
+            if view is not None:
+                unregister_language_callback(view.retranslate_ui)
+
+        self.destroyed.connect(_unregister)
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)

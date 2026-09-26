@@ -32,13 +32,15 @@ class TestDatabaseTabHasAnIntegrityCheckButton:
 
     def test_passing_result_shows_a_positive_status(self, db_session):
         view = AdminToolsView()
-        view._check_integrity()
+        with patch("cbpos.ui.workers.IntegrityCheckWorker.start"):
+            view._check_integrity()
         view._on_integrity_check_finished(True, "ok")
         assert view.btn_check_integrity.isEnabled() is True
         assert view.lbl_integrity_status.text() != ""
 
     def test_failing_result_shows_the_failure_message(self, db_session):
         view = AdminToolsView()
-        view._check_integrity()
+        with patch("cbpos.ui.workers.IntegrityCheckWorker.start"):
+            view._check_integrity()
         view._on_integrity_check_finished(False, "corruption detected")
         assert "corruption detected" in view.lbl_integrity_status.text()

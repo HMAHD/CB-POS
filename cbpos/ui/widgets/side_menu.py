@@ -1,3 +1,5 @@
+import weakref
+
 from PyQt6.QtCore import QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
@@ -173,7 +175,17 @@ class SideMenu(QWidget):
 
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui)
-        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+        # weakref avoids a self -> destroyed-connection -> lambda -> self
+        # reference cycle that only a full gc.collect() can break, which
+        # can segfault mid-teardown (#392).
+        self_ref = weakref.ref(self)
+
+        def _unregister():
+            widget = self_ref()
+            if widget is not None:
+                unregister_language_callback(widget.retranslate_ui)
+
+        self.destroyed.connect(_unregister)
 
     def init_ui(self) -> None:
         """Lay out the nav tiles, user profile/sign-out block, and bottom toolbar."""

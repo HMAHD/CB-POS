@@ -11,10 +11,18 @@ from cbpos.core.utils.formatters import escape_like
 
 
 class CustomerService:
+    """Manages customer records, contacts, loyalty points, and credit balances."""
+
     def __init__(self):
+        """Bind this service instance to the database singleton."""
         self.db = Database()
 
     def create_customer(self, data: dict[str, Any]) -> Customer:
+        """Create a customer, along with any nested contacts, from a data dict.
+
+        `data` is mutated: the "contacts" key (a list of contact dicts) is popped
+        off before the remaining keys are passed to the Customer constructor.
+        """
         contacts_data = data.pop("contacts", [])
         with self.db.get_session() as session:
             customer = Customer(**data)
@@ -32,6 +40,11 @@ class CustomerService:
             return customer
 
     def update_customer(self, customer_id: int, data: dict[str, Any]) -> Customer | None:
+        """Update a customer's fields and, if "contacts" is present in `data`, replace its
+        contacts wholesale (existing contacts are cleared, not diffed against the new list).
+
+        Returns None if no customer with `customer_id` exists.
+        """
         contacts_data = data.pop("contacts", None)
 
         with self.db.get_session() as session:
@@ -102,6 +115,7 @@ class CustomerService:
             return points_to_add
 
     def search_customers(self, query: str) -> list[Customer]:
+        """Search active customers by name, phone, company name, or exact loyalty card code."""
         with self.db.get_session() as session:
             safe_query = escape_like(query)
             stmt = (
@@ -124,6 +138,7 @@ class CustomerService:
             return customers
 
     def get_customer(self, customer_id: int) -> Customer | None:
+        """Fetch a single customer by id, with contacts eager-loaded."""
         with self.db.get_session() as session:
             stmt = select(Customer).where(Customer.id == customer_id).options(selectinload(Customer.contacts))
             customer = session.scalar(stmt)
@@ -132,6 +147,7 @@ class CustomerService:
             return customer
 
     def get_all_customers(self) -> list[Customer]:
+        """Return all active customers, with contacts eager-loaded."""
         with self.db.get_session() as session:
             stmt = select(Customer).where(Customer.is_active.is_(True)).options(selectinload(Customer.contacts))
             customers = list(session.scalars(stmt).all())
@@ -140,6 +156,7 @@ class CustomerService:
             return customers
 
     def get_purchase_history(self, customer_id: int, limit: int = 20) -> list[Sale]:
+        """Return the customer's most recent sales, newest first."""
         with self.db.get_session() as session:
             stmt = select(Sale).where(Sale.customer_id == customer_id).order_by(desc(Sale.date)).limit(limit)
             sales = list(session.scalars(stmt).all())
@@ -148,6 +165,10 @@ class CustomerService:
             return sales
 
     def get_outstanding_balance(self, customer_id: int) -> Decimal:
+        """Return the customer's outstanding credit balance (their `current_debt`).
+
+        Returns Decimal(0) if the customer does not exist.
+        """
         with self.db.get_session() as session:
             # Sum of total_amount for sales where payment_method is 'Credit' and
             # status is not 'PAID'
@@ -183,6 +204,7 @@ class CustomerService:
             return Decimal(0)
 
     def find_by_loyalty_card(self, card_code: str) -> Customer | None:
+        """Look up an active customer by their exact loyalty card code."""
         with self.db.get_session() as session:
             stmt = (
                 select(Customer)

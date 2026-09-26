@@ -9,7 +9,10 @@ from cbpos.core.models import Promotion
 
 
 class PromotionService:
+    """Manages time-boxed promotions (e.g. happy-hour or category discounts)."""
+
     def __init__(self):
+        """Bind this service instance to the database singleton."""
         self.db = Database()
 
     @staticmethod
@@ -27,6 +30,11 @@ class PromotionService:
         days_of_week: str | None = None,
         category_id: int | None = None,
     ) -> Promotion:
+        """Create a new active promotion, scoped to a category if given, else store-wide.
+
+        Raises:
+            ValueError: If end_time is not after start_time.
+        """
         self._validate_time_range(start_time, end_time)
         with self.db.get_session() as session:
             promotion = Promotion(
@@ -133,6 +141,7 @@ class PromotionService:
             session.commit()
 
     def get_active_promotions(self) -> list[Promotion]:
+        """Return promotions that are active and whose start/end window covers now."""
         now = datetime.now()
         with self.db.get_session() as session:
             stmt = select(Promotion).where(
@@ -146,6 +155,7 @@ class PromotionService:
             return promos
 
     def get_all_promotions(self) -> list[Promotion]:
+        """Return every promotion, with its category eager-loaded, newest start first."""
         with self.db.get_session() as session:
             stmt = select(Promotion).options(joinedload(Promotion.category)).order_by(Promotion.start_time.desc())
             promos = list(session.scalars(stmt).all())

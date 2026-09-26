@@ -12,7 +12,10 @@ logger = logging.getLogger(__name__)
 
 
 class InventoryService:
+    """Manages product records, composite (bundle) items, and stock-level adjustments."""
+
     def __init__(self):
+        """Bind this service instance to the database singleton."""
         self.db = Database()
 
     def create_product(self, data: dict[str, Any]) -> Product:

@@ -7,8 +7,18 @@ from cbpos.core.models import CashMovement, Shift
 
 
 class CashControlService:
+    """Legacy cash-drawer service: opening float, closing count, and cash in/out movements.
+
+    Superseded by ``ShiftService`` for new shift/reconciliation logic, but still
+    used where a simpler single-terminal shift model is sufficient.
+    """
+
     @staticmethod
     def start_shift(user_id: int, start_float: Decimal) -> Shift | None:
+        """Open a new shift for the user with the given starting cash float.
+
+        Returns None (without raising) if the user already has an open shift.
+        """
         db = Database()
         with db.get_session() as session:
             # Check if user already has an open shift
@@ -30,6 +40,10 @@ class CashControlService:
 
     @staticmethod
     def end_shift(user_id: int, end_cash: Decimal) -> Shift | None:
+        """Close the user's open shift, recording the counted end cash.
+
+        Returns None if the user has no open shift.
+        """
         db = Database()
         with db.get_session() as session:
             shift = session.query(Shift).filter_by(user_id=user_id, status=ShiftStatus.OPEN).first()
@@ -46,6 +60,7 @@ class CashControlService:
 
     @staticmethod
     def get_current_shift(user_id: int) -> Shift | None:
+        """Return the user's currently open shift, or None if none is open."""
         db = Database()
         with db.get_session() as session:
             shift = session.query(Shift).filter_by(user_id=user_id, status=ShiftStatus.OPEN).first()
@@ -55,10 +70,12 @@ class CashControlService:
 
     @staticmethod
     def record_cash_in(user_id: int, amount: Decimal, reason: str) -> bool:
+        """Log a manual cash-in movement (e.g. till top-up) against the user's shift, if any."""
         return CashControlService._record_movement(user_id, "IN", amount, reason)
 
     @staticmethod
     def record_cash_out(user_id: int, amount: Decimal, reason: str) -> bool:
+        """Log a manual cash-out movement (e.g. petty cash, cash drop) against the user's shift, if any."""
         return CashControlService._record_movement(user_id, "OUT", amount, reason)
 
     @staticmethod

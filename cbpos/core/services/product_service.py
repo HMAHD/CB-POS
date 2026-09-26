@@ -23,6 +23,7 @@ class ProductService:
     SEARCH_MODE_NAME = "NAME"
 
     def __init__(self):
+        """Bind this service instance to the database singleton."""
         self.db = Database()
 
     def search_products(self, query: str, mode: str = "ALL", limit: int = 50) -> list[Product]:

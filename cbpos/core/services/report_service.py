@@ -8,10 +8,14 @@ from cbpos.core.models import Product, Sale, SaleItem, SalePayment
 
 
 class ReportService:
+    """Ad-hoc reporting queries: daily sales, top products, hourly trends, and stock valuation."""
+
     def __init__(self):
+        """Bind this service instance to the database singleton."""
         self.db = Database()
 
     def get_daily_sales(self, report_date: date) -> dict[str, Any]:
+        """Return total sales, total VAT+SSCL, and a payment-method breakdown for one calendar day."""
         with self.db.get_session() as session:
             # Filter by date
             start_dt = datetime.combine(report_date, datetime.min.time())
@@ -47,6 +51,7 @@ class ReportService:
             }
 
     def get_top_products(self, limit: int = 10) -> list[dict[str, Any]]:
+        """Return the top-selling products across all time, ranked by quantity sold."""
         with self.db.get_session() as session:
             # Top selling products by quantity
             results = session.execute(
@@ -60,6 +65,7 @@ class ReportService:
             return [{"name": name, "qty": qty} for name, qty in results]
 
     def get_hourly_sales(self, report_date: date) -> list[dict[str, Any]]:
+        """Return sales totals for every hour (0-23) of one calendar day, zero-filled for gaps."""
         with self.db.get_session() as session:
             start_dt = datetime.combine(report_date, datetime.min.time())
             end_dt = datetime.combine(report_date, datetime.max.time())

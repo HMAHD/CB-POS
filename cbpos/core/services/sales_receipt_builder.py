@@ -20,6 +20,7 @@ class ItemDisplay:
         name: str,
         original_price: Any = None,
     ) -> None:
+        """Store the fields needed to render one (possibly merged) receipt line."""
         self.product = product
         self.qty = qty
         self.unit_price = unit_price

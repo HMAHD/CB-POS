@@ -96,6 +96,7 @@ class SyncEncoder(json.JSONEncoder):
     """
 
     def default(self, obj: Any) -> Any:
+        """Convert Decimal/datetime/date to their JSON-safe representations; defer everything else."""
         if isinstance(obj, Decimal):
             return str(obj)
         if isinstance(obj, datetime):

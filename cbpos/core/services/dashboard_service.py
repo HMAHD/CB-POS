@@ -49,6 +49,8 @@ def _decimal(value) -> Decimal:
 
 
 class DashboardService:
+    """Read-only aggregation queries backing the management dashboard's KPIs and charts."""
+
     # ------------------------------------------------------------------
     # Today / Yesterday KPIs (kept for backward compatibility)
     # ------------------------------------------------------------------

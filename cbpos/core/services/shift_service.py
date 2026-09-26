@@ -11,10 +11,18 @@ from cbpos.core.services.config_service import ConfigService
 
 
 class ShiftService:
+    """Manages per-terminal cashier shifts: opening, cash movements, and cash-up reconciliation."""
+
     def __init__(self):
+        """Bind this service instance to the database singleton."""
         self.db = Database()
 
     def start_shift(self, user_id: int, float_amount: Decimal) -> Shift:
+        """Open a new shift for the user on the current terminal with the given starting cash float.
+
+        Raises:
+            ValueError: If the user already has an open shift on this terminal.
+        """
         with self.db.get_session() as session:
             terminal_id = ConfigService.get("terminal_id") or "TERM-01"
 
@@ -43,6 +51,7 @@ class ShiftService:
             return shift
 
     def get_current_shift(self, user_id: int) -> Shift | None:
+        """Return the user's currently open shift on this terminal, or None if none is open."""
         with self.db.get_session() as session:
             terminal_id = ConfigService.get("terminal_id") or "TERM-01"
             return session.scalars(
@@ -56,6 +65,11 @@ class ShiftService:
     def record_cash_movement(
         self, shift_id: int, type: str, amount: Decimal, reason: str, user_id: int
     ) -> CashMovement:
+        """Record a manual cash movement (drop, payout, or in) against an open shift.
+
+        Raises:
+            ValueError: If the shift does not exist or is not open.
+        """
         with self.db.get_session() as session:
             shift = session.get(Shift, shift_id)
             if not shift or shift.status != ShiftStatus.OPEN:
@@ -75,6 +89,15 @@ class ShiftService:
             return movement
 
     def get_shift_summary(self, shift_id: int) -> dict[str, Any]:
+        """Build a full reconciliation summary for a shift: sales by payment method, cash
+        movements, expected drawer cash, void stats, transaction count, and VAT/SSCL totals.
+
+        Expected cash is starting float + cash sales + cash-ins - drops - payouts. Can be
+        called on an open or closed shift (an open shift covers up to "now").
+
+        Raises:
+            ValueError: If the shift does not exist.
+        """
         with self.db.get_session() as session:
             shift = session.get(Shift, shift_id)
             if not shift:
@@ -179,6 +202,15 @@ class ShiftService:
             }
 
     def close_shift(self, shift_id: int, counted_cash: Decimal, notes: str = None) -> dict[str, Any]:
+        """Close an open shift, comparing physically counted cash against the expected total.
+
+        Persists the counted/expected cash on the shift and returns the shift summary
+        (see `get_shift_summary`) augmented with `end_time`, `actual_cash`, `variance`
+        (counted minus expected), and `notes`.
+
+        Raises:
+            ValueError: If the shift does not exist or is already closed.
+        """
         with self.db.get_session() as session:
             shift = session.get(Shift, shift_id)
             if not shift or shift.status != ShiftStatus.OPEN:

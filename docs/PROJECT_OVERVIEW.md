@@ -350,8 +350,7 @@ with db.get_session() as session:
 
 | Service | Responsibility |
 |---------|----------------|
-| **shift_service.py** | Open/close cashier shifts, expected vs actual cash variance |
-| **cash_control_service.py** | Safe drops, petty cash, cash IN/OUT |
+| **shift_service.py** | Open/close cashier shifts, expected vs actual cash variance, safe drops, petty cash, cash IN/OUT |
 | **payment_service.py** | Split payment handling, credit balance management |
 
 ### Customer & Pricing
@@ -700,7 +699,6 @@ alembic revision --autogenerate -m "msg"       # Generate new
 | `scripts/update_translations.py` | i18n string extraction |
 | `scripts/debug_db.py` | Database inspection tool |
 | `scripts/debug_conftest.py` | Test configuration debugging |
-| `scripts/verify_phase4.py` | Manual testing script |
 
 ### Seed Data (via `seed.py`)
 

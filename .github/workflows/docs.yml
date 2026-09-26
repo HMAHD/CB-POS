@@ -8,12 +8,9 @@ on:
       - 'cbpos/**/*.py'
       - '.github/workflows/docs.yml'
 
-permissions:
-  contents: write
-
 jobs:
   build-docs:
-    name: Build and Deploy Documentation
+    name: Build Documentation
     runs-on: ubuntu-latest
     env:
       QT_QPA_PLATFORM: offscreen  # PyQt6 modules are imported by autodoc
@@ -37,12 +34,14 @@ jobs:
     - name: Build documentation
       run: uv run sphinx-build -b html docs docs/_build/html
 
-    - name: Deploy to GitHub Pages
-      if: github.ref == 'refs/heads/main'
-      uses: peaceiris/actions-gh-pages@v4
+    # CB-POS is closed-source: not published to GitHub Pages (which is
+    # public). Built docs are uploaded as a private CI artifact instead --
+    # downloadable by repo collaborators, catches broken docs on every
+    # push, nothing goes public. Re-add a "Deploy to GitHub Pages" step
+    # (see git history before this comment) if the project ever open-sources.
+    - name: Upload documentation artifact
+      uses: actions/upload-artifact@v7
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./docs/_build/html
-        publish_branch: gh-pages
-        user_name: 'github-actions[bot]'
-        user_email: 'github-actions[bot]@users.noreply.github.com'
+        name: sphinx-docs
+        path: docs/_build/html
+        retention-days: 14

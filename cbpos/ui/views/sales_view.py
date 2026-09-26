@@ -1,11 +1,12 @@
 import logging
 from decimal import Decimal
 
-from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QSize, Qt, QTimer
+from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QBrush, QColor, QKeySequence, QPixmap, QShortcut
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QCompleter,
+    QDialog,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -52,6 +53,8 @@ logger = logging.getLogger(__name__)
 
 class SalesView(QWidget):
     """Main checkout screen: cart, barcode scanning, product search, and payment flow."""
+
+    shift_closed = pyqtSignal()
 
     def __init__(self):
         """Initialize services, build the UI, and wire up the side menu and print-error listener."""
@@ -1337,6 +1340,31 @@ class SalesView(QWidget):
         dialog = SaleHistoryDialog(parent=self)
         dialog.exec()
         self.barcode_input.setFocus()
+
+    def open_shift_closing(self) -> None:
+        """Open the shift-closing wizard for the current user's open shift.
+
+        Closing a shift ends the cashier's session -- emits `shift_closed`
+        so MainWindow can log out, forcing the next user to start a fresh
+        shift on login.
+        """
+        from cbpos.core.services.auth_service import AuthService
+        from cbpos.core.services.shift_service import ShiftService
+        from cbpos.ui.dialogs.shift_closing_dialog import ShiftClosingDialog
+
+        user = AuthService.get_current_user()
+        shift = ShiftService().get_current_shift(user.id) if user else None
+        if shift is None:
+            QMessageBox.warning(self, _t("common.warning"), _t("shift_closing.no_open_shift"))
+            return
+
+        if self.side_menu.isVisible():
+            self.toggle_side_menu()
+        dialog = ShiftClosingDialog(shift.id, parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.shift_closed.emit()
+        else:
+            self.barcode_input.setFocus()
 
     def open_cash_drawer(self) -> None:
         """Open the cash drawer via PrintWorker (F8 / Ctrl+D)."""

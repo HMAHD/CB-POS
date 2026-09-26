@@ -10,7 +10,10 @@ logger = logging.getLogger(__name__)
 
 
 class ImportService:
+    """Bulk-imports products from CSV files into inventory."""
+
     def __init__(self):
+        """Create an InventoryService instance used to create/lookup imported products."""
         self.inventory_service = InventoryService()
 
     @staticmethod
@@ -29,6 +32,13 @@ class ImportService:
         return resolved
 
     def import_products_from_csv(self, file_path: str) -> dict[str, int]:
+        """Import products from a CSV file without progress reporting.
+
+        Returns:
+            dict with "success", "failed", and "skipped" row counts. Rows missing a
+            barcode/name, with an invalid price/cost/stock number, or whose barcode
+            already exists are counted as failed/skipped rather than raising.
+        """
         return self._import_csv(file_path, progress_callback=None)
 
     def import_products_from_csv_with_progress(

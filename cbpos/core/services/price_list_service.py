@@ -8,7 +8,10 @@ from cbpos.core.models import PriceList, PriceListItem
 
 
 class PriceListService:
+    """Manages price lists (e.g. wholesale, promotional) and their per-product price overrides."""
+
     def __init__(self):
+        """Bind this service instance to the database singleton."""
         self.db = Database()
 
     def create_price_list(
@@ -17,6 +20,7 @@ class PriceListService:
         start_date: datetime | None = None,
         end_date: datetime | None = None,
     ) -> PriceList:
+        """Create a new active price list, optionally scoped to a validity date range."""
         with self.db.get_session() as session:
             price_list = PriceList(name=name, start_date=start_date, end_date=end_date, is_active=True)
             session.add(price_list)
@@ -73,6 +77,7 @@ class PriceListService:
             return price_list
 
     def get_all_lists(self) -> list[PriceList]:
+        """Return every price list, active or not, ordered by id."""
         with self.db.get_session() as session:
             stmt = select(PriceList).order_by(PriceList.id)
             lists = list(session.scalars(stmt).all())
@@ -81,6 +86,7 @@ class PriceListService:
             return lists
 
     def get_active_lists(self) -> list[PriceList]:
+        """Return price lists that are active and currently within their validity window."""
         now = datetime.now()
         with self.db.get_session() as session:
             stmt = select(PriceList).where(
@@ -94,6 +100,7 @@ class PriceListService:
             return lists
 
     def set_item_price(self, list_id: int, product_id: int, price: Decimal) -> PriceListItem:
+        """Create or update a product's price override on a price list (upsert)."""
         with self.db.get_session() as session:
             # Check if exists
             stmt = select(PriceListItem).where(
@@ -153,6 +160,7 @@ class PriceListService:
             session.commit()
 
     def get_items(self, list_id: int) -> list[PriceListItem]:
+        """Return a price list's product overrides, with each item's product eager-loaded."""
         with self.db.get_session() as session:
             stmt = (
                 select(PriceListItem).where(PriceListItem.price_list_id == list_id).join(PriceListItem.product)

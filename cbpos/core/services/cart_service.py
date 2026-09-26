@@ -17,6 +17,7 @@ class CartService:
     """
 
     def __init__(self):
+        """Start an empty cart with no customer and no cart-level discount."""
         self.items: list[dict[str, Any]] = []
         self._customer: Customer | None = None
         self.cart_discount_type = "NONE"
@@ -30,6 +31,7 @@ class CartService:
         self._recalculate_all_prices()
 
     def get_customer(self) -> Customer | None:
+        """Return the customer currently attached to the cart, if any."""
         return self._customer
 
     def add_item(self, product: Product, qty: Decimal = Decimal("1.000")):

@@ -3,6 +3,8 @@ import platform
 
 
 class LicenseService:
+    """Hardware fingerprinting and license/trial status checks."""
+
     @staticmethod
     def get_machine_id() -> str:
         """Generate a unique machine ID based on hardware."""
@@ -25,6 +27,7 @@ class LicenseService:
 
     @staticmethod
     def get_license_status() -> str:
+        """Return a human-readable license state: "Licensed" or "Trial Mode"."""
         if LicenseService.validate_license():
             return "Licensed"
         else:

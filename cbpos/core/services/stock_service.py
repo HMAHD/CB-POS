@@ -22,6 +22,9 @@ _VALID_MOVEMENT_TYPES = frozenset(
 
 
 class StockService:
+    """Records stock movements (sale, purchase, adjustment, return, void) and keeps
+    `Product.stock_qty` in sync, enforcing the negative-stock policy."""
+
     @staticmethod
     def record_movement(
         product_id: int,

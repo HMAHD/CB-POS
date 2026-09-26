@@ -48,6 +48,7 @@ class SchedulerService:
 
     @classmethod
     def is_timer_running(cls) -> bool:
+        """Return whether the periodic automation check is currently running."""
         return cls._timer is not None and cls._timer.isActive()
 
     @staticmethod

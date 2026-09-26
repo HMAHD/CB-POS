@@ -206,6 +206,7 @@ class PurchaseService:
 
     @staticmethod
     def get_purchase(purchase_id: int) -> Purchase | None:
+        """Fetch a single purchase by id with items (and their products), supplier, and user eager-loaded."""
         db = Database()
         with db.get_session() as session:
             purchase = (

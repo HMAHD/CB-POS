@@ -567,6 +567,7 @@
     "sidebar_price_lists": "விலைப் பட்டியல்கள்",
     "sidebar_promotions": "சலுகைகள்",
     "sidebar_stock_take": "சரக்கு எண்ணிக்கை",
+    "sidebar_reorder": "மறு ஆர்டர்",
     "sidebar_pos": "POS / விற்பனை",
     "sidebar_logout": "வெளியேறு",
     "logo_fallback": "CB POS"
@@ -611,18 +612,6 @@
     "search_placeholder": "பெயர், பார்கோடு அல்லது வகையில் தேடுங்கள்...",
     "empty_state": "நீங்க தேடுனதுக்கு பொருத்தமான பொருள் இல்ல",
     "context_stock_history": "சரக்கு வரலாற்றைப் பாருங்க"
-  },
-  "customer_view": {
-    "header_id": "ID",
-    "header_name": "பேர்",
-    "header_phone": "போன்",
-    "header_credit_limit": "கடன் வரம்பு",
-    "header_current_debt": "இப்ப இருக்கிற கடன்",
-    "header_points": "பாயிண்ட்ஸ்",
-    "btn_add_customer": "வாடிக்கையாளரைச் சேருங்க",
-    "search_placeholder": "வாடிக்கையாளர் தேடு...",
-    "empty_state": "வாடிக்கையாளர்கள் கிடைக்கல",
-    "high_debt_tooltip": "கடன் அதிகம்!"
   },
   "credit_book": {
     "title": "கடன் புத்தகம்",

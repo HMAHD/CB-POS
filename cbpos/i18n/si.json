@@ -567,6 +567,7 @@
     "sidebar_price_lists": "මිල ලැයිස්තු",
     "sidebar_promotions": "ප්‍රවර්ධන",
     "sidebar_stock_take": "තොග ගණන් කිරීම",
+    "sidebar_reorder": "නැවත ඇණවුම්",
     "sidebar_pos": "POS / විකුණුම්",
     "sidebar_logout": "පිටවීම",
     "logo_fallback": "CB POS"
@@ -611,18 +612,6 @@
     "search_placeholder": "නම, බාර්කෝඩය හෝ ප්‍රවර්ගයෙන් සොයන්න...",
     "empty_state": "සොයපු දේට ගැලපෙන අයිතම නැහැ",
     "context_stock_history": "තොග ඉතිහාසය බලන්න"
-  },
-  "customer_view": {
-    "header_id": "ID",
-    "header_name": "නම",
-    "header_phone": "දුරකථනය",
-    "header_credit_limit": "ණය සීමාව",
-    "header_current_debt": "දැනට තියෙන ණය",
-    "header_points": "පොයින්ට්ස්",
-    "btn_add_customer": "පාරිභෝගිකයෙක් එකතු කරන්න",
-    "search_placeholder": "පාරිභෝගික සොයන්න...",
-    "empty_state": "පාරිභෝගිකයෝ හම්බ වුනේ නැහැ",
-    "high_debt_tooltip": "ණය වැඩියි!"
   },
   "credit_book": {
     "title": "ණය පොත",

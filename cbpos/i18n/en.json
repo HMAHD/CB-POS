@@ -567,6 +567,7 @@
     "sidebar_price_lists": "Price Lists",
     "sidebar_promotions": "Promotions",
     "sidebar_stock_take": "Stock Take",
+    "sidebar_reorder": "Reorder",
     "sidebar_pos": "POS / Sales",
     "sidebar_logout": "Logout",
     "logo_fallback": "CB POS"
@@ -641,18 +642,6 @@
     "search_placeholder": "Search by Barcode or Name...",
     "empty_state": "No products match your search",
     "context_stock_history": "View Stock History"
-  },
-  "customer_view": {
-    "header_id": "ID",
-    "header_name": "Name",
-    "header_phone": "Phone",
-    "header_credit_limit": "Credit Limit",
-    "header_current_debt": "Current Debt",
-    "header_points": "Points",
-    "btn_add_customer": "Add Customer",
-    "search_placeholder": "Search by Name or Phone...",
-    "empty_state": "No customers found",
-    "high_debt_tooltip": "High Debt Warning!"
   },
   "credit_book": {
     "title": "Credit Book",

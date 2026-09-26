@@ -173,6 +173,7 @@ class ReorderView(QWidget):
         for row in sorted(selected_rows):
             product_id = self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
             product_name = self.table.item(row, 0).text()
+            barcode = self.table.item(row, 1).text()
             current_stock = Decimal(self.table.item(row, 2).text())
             preferred_qty = Decimal(self.table.item(row, 4).text())
             supplier = self.table.item(row, 5).data(Qt.ItemDataRole.UserRole + 1)
@@ -183,6 +184,7 @@ class ReorderView(QWidget):
                 {
                     "product_id": product_id,
                     "product_name": product_name,
+                    "barcode": barcode,
                     "current_stock": current_stock,
                     "order_qty": order_qty,
                     "supplier": supplier or "",

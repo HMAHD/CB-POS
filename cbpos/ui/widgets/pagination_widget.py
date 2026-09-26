@@ -32,6 +32,12 @@ class PaginationWidget(QWidget):
     page_changed = pyqtSignal(int)
 
     def __init__(self, page_size: int = DEFAULT_PAGE_SIZE, parent: QWidget | None = None) -> None:
+        """Create the pagination bar at page 0 with no items yet.
+
+        Args:
+            page_size: Number of items shown per page.
+            parent: Optional parent widget.
+        """
         super().__init__(parent)
         self._page_size = page_size
         self._total_items = 0
@@ -86,24 +92,29 @@ class PaginationWidget(QWidget):
 
     @property
     def page_size(self) -> int:
+        """Number of items shown per page."""
         return self._page_size
 
     @property
     def current_page(self) -> int:
+        """Current page index (0-based)."""
         return self._current_page
 
     @property
     def total_pages(self) -> int:
+        """Total number of pages, at least 1."""
         if self._total_items == 0:
             return 1
         return (self._total_items + self._page_size - 1) // self._page_size
 
     @property
     def start_index(self) -> int:
+        """Index of the first item on the current page."""
         return self._current_page * self._page_size
 
     @property
     def end_index(self) -> int:
+        """Index one past the last item on the current page, clamped to the total."""
         return min(self.start_index + self._page_size, self._total_items)
 
     # ------------------------------------------------------------------

@@ -12,6 +12,14 @@ class InfoCard(QWidget):
     """
 
     def __init__(self, title: str, value: str, icon_name: str, color: str = "#00BCEB"):
+        """Build the icon + value + title layout.
+
+        Args:
+            title: Small caption shown under the value (upper-cased for display).
+            value: Big value text (e.g. a formatted count or currency amount).
+            icon_name: qtawesome icon name.
+            color: Accent color used for the icon and value text.
+        """
         super().__init__()
         self.setFixedSize(220, 120)
         self.setObjectName("InfoCard")
@@ -46,6 +54,7 @@ class InfoCard(QWidget):
         layout.addLayout(text_layout)
 
     def set_value(self, value: str):
+        """Update the displayed value text."""
         self.val_lbl.setText(value)
 
 
@@ -65,6 +74,13 @@ class SidebarButton(QToolButton):
     _ICON_TEXT_GAP = 12
 
     def __init__(self, text: str, icon_name: str):
+        """Create a checkable, auto-exclusive sidebar button.
+
+        Args:
+            text: Button label.
+            icon_name: qtawesome icon name; recolored on theme/active-state
+                changes via ``update_icon()``.
+        """
         super().__init__()
         self.setText(text)
         self.icon_name = icon_name  # Store for theme updates

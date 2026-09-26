@@ -23,6 +23,13 @@ class DenominationWidget(QWidget):
     total_changed = pyqtSignal(Decimal)
 
     def __init__(self, denominations: list[int] = None, parent=None):
+        """Build the spin-box grid for each denomination and compute the initial total.
+
+        Args:
+            denominations: Currency denominations to count; defaults to the
+                configured ``currency_denominations`` (Sri Lankan notes/coins).
+            parent: Optional parent widget.
+        """
         super().__init__(parent)
 
         # 1. Load denominations (Sri Lankan currency by default)
@@ -76,6 +83,9 @@ class DenominationWidget(QWidget):
         self._lbl_grand_total_label.setText(_t("denomination.grand_total"))
 
     def calculate_total(self):
+        """Recompute the grand total from all spin-box counts, update the
+        per-row and grand total labels, and emit ``total_changed``.
+        """
         total = Decimal(0)
 
         for denom, spin in self.counts.items():
@@ -93,4 +103,5 @@ class DenominationWidget(QWidget):
         self.total_changed.emit(total)
 
     def get_total(self) -> Decimal:
+        """Return the last-computed total."""
         return self._current_total

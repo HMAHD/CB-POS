@@ -39,6 +39,12 @@ class CollapsibleSidebar(QFrame):
     logout_clicked = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
+        """Build the header, bottom POS/Logout section, and collapse animation.
+
+        Restores the last-persisted collapsed state via ``ConfigService``.
+        Call ``add_nav_button()``/``add_section_label()`` to populate the nav
+        list, then ``finalize()`` once done.
+        """
         super().__init__(parent)
         self.is_collapsed = bool(ConfigService.get("sidebar_collapsed"))
         self.nav_buttons: list[SidebarButton] = []

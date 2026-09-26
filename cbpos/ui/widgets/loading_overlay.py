@@ -26,6 +26,11 @@ class LoadingOverlay(QWidget):
     _INTERVAL_MS = 30  # ~33 fps
 
     def __init__(self, parent: QWidget) -> None:
+        """Create a hidden overlay sized to *parent* and track its resizes.
+
+        Args:
+            parent: Widget the overlay covers entirely while shown.
+        """
         super().__init__(parent)
         self._angle: float = 0.0
         self._text: str = ""
@@ -67,6 +72,7 @@ class LoadingOverlay(QWidget):
         self.update()
 
     def paintEvent(self, event) -> None:
+        """Paint the dark backdrop, spinning arc, and status text."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 

@@ -26,6 +26,13 @@ class HelpIconButton(QPushButton):
     """
 
     def __init__(self, tooltip: str = "", on_click=None, parent=None) -> None:
+        """Create the circular info-icon button.
+
+        Args:
+            tooltip: Hover/tap hint text; shown on tap when *on_click* is omitted.
+            on_click: Optional handler, e.g. one that opens a step-by-step guide dialog.
+            parent: Optional parent widget.
+        """
         super().__init__(parent)
         info_icon_path = str(Config.BASE_DIR / "cbpos" / "assets" / "icons" / "info-circle-cyan.svg")
         self.setIcon(QIcon(info_icon_path))

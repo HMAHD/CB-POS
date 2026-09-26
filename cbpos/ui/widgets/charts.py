@@ -99,6 +99,7 @@ class VerticalBarChart(QWidget):
     """
 
     def __init__(self, parent: QWidget | None = None):
+        """Create an empty vertical bar chart with a 0.8s grow-in animation."""
         super().__init__(parent)
         self._data: list[dict] = []
         self._progress: float = 0.0
@@ -134,6 +135,7 @@ class VerticalBarChart(QWidget):
         self._anim.start()
 
     def paintEvent(self, event) -> None:
+        """Draw the y-axis grid, bars, value labels, and x-axis labels."""
         if not self._data:
             return
 
@@ -243,6 +245,7 @@ class DonutChart(QWidget):
     """
 
     def __init__(self, parent: QWidget | None = None):
+        """Create an empty donut chart with a 0.9s sweep-in animation."""
         super().__init__(parent)
         self._data: list[dict] = []
         self._progress: float = 0.0
@@ -261,6 +264,7 @@ class DonutChart(QWidget):
     animProgress = pyqtProperty(float, _get_progress, _set_progress)
 
     def set_data(self, data: list[dict]) -> None:
+        """Set segment data (label/value/color) and trigger the sweep animation."""
         self._data = [
             {
                 "label": d.get("label", ""),
@@ -276,6 +280,7 @@ class DonutChart(QWidget):
         self._anim.start()
 
     def paintEvent(self, event) -> None:
+        """Draw the donut segments, center total, and right-side legend."""
         if not self._data:
             return
 
@@ -374,6 +379,7 @@ class HorizontalBarChart(QWidget):
     """
 
     def __init__(self, parent: QWidget | None = None):
+        """Create an empty horizontal bar chart with a 0.7s grow-in animation."""
         super().__init__(parent)
         self._data: list[dict] = []
         self._progress: float = 0.0
@@ -393,6 +399,7 @@ class HorizontalBarChart(QWidget):
     animProgress = pyqtProperty(float, _get_progress, _set_progress)
 
     def set_data(self, data: list[dict]) -> None:
+        """Set bar data (label/value) and trigger the grow animation."""
         self._data = [
             {
                 "label": d.get("label", ""),
@@ -407,6 +414,7 @@ class HorizontalBarChart(QWidget):
         self._anim.start()
 
     def paintEvent(self, event) -> None:
+        """Draw each row's label, bar, and value text."""
         if not self._data:
             return
 

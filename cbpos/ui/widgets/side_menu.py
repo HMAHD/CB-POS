@@ -20,6 +20,13 @@ class NavTile(QPushButton):
     """Large navigation tile — icon above text, 2-column grid layout."""
 
     def __init__(self, text_key: str, icon_name: str, parent=None):
+        """Build the icon-above-text tile layout.
+
+        Args:
+            text_key: i18n key for the label, applied by ``retranslate()``.
+            icon_name: qtawesome icon name.
+            parent: Optional parent widget.
+        """
         super().__init__(parent)
         self.setObjectName("NavTile")
         self.icon_name = icon_name
@@ -90,6 +97,13 @@ class IconButton(QPushButton):
     """Icon-only button for the bottom toolbar."""
 
     def __init__(self, icon_name: str, tooltip_key: str, color: str | None = None):
+        """Create a fixed-size icon-only toolbar button.
+
+        Args:
+            icon_name: qtawesome icon name.
+            tooltip_key: i18n key for the tooltip, applied by ``retranslate()``.
+            color: Optional fixed icon color; theme-based when omitted.
+        """
         super().__init__()
         self.setObjectName("IconButton")
 
@@ -117,6 +131,11 @@ class IconButton(QPushButton):
 
 
 class SideMenu(QWidget):
+    """Slide-in overlay menu: navigation tiles, user profile/sign-out block,
+    and a bottom toolbar (settings/fullscreen/power). Hidden until shown by
+    the owning window.
+    """
+
     # Signals
     management_clicked = pyqtSignal()
     history_clicked = pyqtSignal()
@@ -130,6 +149,7 @@ class SideMenu(QWidget):
     power_clicked = pyqtSignal()
 
     def __init__(self, parent=None):
+        """Build the menu (hidden until shown) and register for live language updates."""
         super().__init__(parent)
         self.setFixedWidth(SIDEBAR_WIDTH)
         self.setVisible(False)
@@ -154,6 +174,7 @@ class SideMenu(QWidget):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self) -> None:
+        """Lay out the nav tiles, user profile/sign-out block, and bottom toolbar."""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)

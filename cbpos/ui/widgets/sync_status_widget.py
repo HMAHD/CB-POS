@@ -42,6 +42,10 @@ class SyncStatusWidget(QWidget):
     }
 
     def __init__(self, parent=None):
+        """Create the hidden status indicator (dot + label).
+
+        Made visible once a sync mode is set via ``set_mode()``.
+        """
         super().__init__(parent)
         self._mode: str = "standalone"  # standalone, main, terminal
         self._state: str = "disconnected"
@@ -56,6 +60,7 @@ class SyncStatusWidget(QWidget):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def retranslate_ui(self) -> None:
+        """Update the tooltip and status text from i18n (called on language change)."""
         self.setToolTip(_t("sync_status.tooltip"))
         self._update_display()
 

@@ -13,6 +13,10 @@ from cbpos.ui.resources.icons import Icons
 
 
 class InfoCard(QFrame):
+    """Dashboard stat card: icon and title on top, a big value, and an
+    optional trend indicator below, with a drop-shadow.
+    """
+
     def __init__(
         self,
         title,
@@ -22,6 +26,17 @@ class InfoCard(QFrame):
         trend_positive=True,
         parent=None,
     ):
+        """Build the icon+title row, value label, and trend label.
+
+        Args:
+            title: Card title text.
+            value: Big value text.
+            icon_name: qtawesome icon name.
+            trend_text: Optional trend text (e.g. "+12%"); the trend row is
+                blank when omitted.
+            trend_positive: Whether the trend is styled as positive or negative.
+            parent: Optional parent widget.
+        """
         super().__init__(parent)
         self.setObjectName("InfoCard")  # For QSS styling
         self.setMinimumSize(250, 140)

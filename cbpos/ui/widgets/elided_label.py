@@ -15,11 +15,21 @@ from PyQt6.QtWidgets import QLabel
 
 
 class ElidedLabel(QLabel):
+    """QLabel that elides its text to fit the current width, keeping the
+    full string available via tooltip and ``text()``.
+    """
+
     def __init__(self, parent=None) -> None:
+        """Create the label with no text yet."""
         super().__init__(parent)
         self._full_text = ""
 
     def setText(self, text: str) -> None:
+        """Set the label text, displaying an elided version if it overflows.
+
+        Args:
+            text: Full text; also becomes the tooltip.
+        """
         self._full_text = text or ""
         self.setToolTip(self._full_text)
         self._apply_elided_text()
@@ -29,6 +39,7 @@ class ElidedLabel(QLabel):
         return self._full_text
 
     def resizeEvent(self, event) -> None:
+        """Re-elide the text to fit the label's new width."""
         super().resizeEvent(event)
         self._apply_elided_text()
 

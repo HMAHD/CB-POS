@@ -50,3 +50,6 @@ cbpos.db-wal
 # not committed (run `/graphify .` or `graphify update .`).
 /graphify-out/
 *.graphify-bak
+
+# Sphinx build output — regenerable (run `uv run sphinx-build -b html docs docs/_build/html`).
+docs/_build/

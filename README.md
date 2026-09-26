@@ -150,6 +150,21 @@ cbpos/
 └── tests/              # 17 test files
 ```
 
+## Documentation
+
+| Doc | What it covers |
+|-----|-----------------|
+| [docs/onboarding.md](docs/onboarding.md) | New-contributor setup walkthrough |
+| [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md) | Full architecture reference — layers, boot sequence, module map |
+| [docs/Roadmap.md](docs/Roadmap.md) | Feature roadmap and phase status |
+| [docs/TAX.md](docs/TAX.md) | Sri Lankan VAT/SSCL backward-calculation reference |
+| [PRODUCT.md](PRODUCT.md) | Product context — users, positioning, principles |
+| [CHANGELOG.md](CHANGELOG.md) | Version history |
+| [SECURITY.md](SECURITY.md) | Vulnerability reporting policy |
+| [docs/archive/](docs/archive/) | Superseded project-inception planning docs (historical only) |
+
+Built API/architecture docs (Sphinx) can be generated locally with `uv run sphinx-build -b html docs docs/_build/html`.
+
 ## License
 
 **Proprietary Software**.

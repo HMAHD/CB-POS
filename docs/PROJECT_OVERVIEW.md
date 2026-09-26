@@ -91,7 +91,8 @@
 ├── README.md                  # Project documentation
 ├── CLAUDE.md                  # Development guidelines
 ├── CHANGELOG.md               # Version history
-├── Roadmap.md                 # Feature roadmap
+├── SECURITY.md                # Security policy
+├── PRODUCT.md                 # Product context (vision, users, principles)
 │
 ├── cbpos/                     # Main application package
 │   ├── __init__.py
@@ -170,10 +171,16 @@
 │   └── test_purchasing.py
 │
 └── docs/                      # Documentation
-    ├── PRD.md                 # Product Requirements Document
-    ├── TAX.md                 # Sri Lankan tax guide
-    ├── Docs.md                # Technical documentation
-    └── onboarding.md
+    ├── index.rst              # Sphinx docs root
+    ├── conf.py                # Sphinx configuration
+    ├── api_reference.rst      # Sphinx-generated API reference
+    ├── onboarding.md          # Developer onboarding guide
+    ├── PROJECT_OVERVIEW.md    # This file
+    ├── Roadmap.md             # Feature roadmap
+    ├── TAX.md                 # Sri Lankan tax calculation guide
+    └── archive/               # Superseded project-inception docs (historical only)
+        ├── PRD.md
+        └── Docs.md
 ```
 
 ---

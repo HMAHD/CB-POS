@@ -1,3 +1,4 @@
+import gc
 import os
 import sys
 
@@ -43,6 +44,34 @@ def test_engine():
     Base.metadata.create_all(bind=db.engine)
 
     return db.engine
+
+
+@pytest.fixture(autouse=True)
+def _collect_garbage_after_each_test():
+    """Force a GC pass after every test.
+
+    Views/dialogs following the register_language_callback pattern used to
+    leak forever via a reference cycle (self -> destroyed-connection ->
+    lambda -> self) that only a full gc.collect() could break -- fixed
+    across 26 files in #392. Any surviving cycle of that shape (or a
+    similar one not yet found) keeps a widget, and anything it owns (a
+    debounce QTimer, etc.), alive past its test. A leaked timer can then
+    fire during a *later*, unrelated test and touch the shared db_session
+    fixture concurrently with that test's own DB activity -- the exact
+    mechanism behind #389's and #501's intermittent, always-a-different-
+    test failures (observed error:
+    ``IllegalStateChangeError: rollback() can't be called here; commit()
+    already in progress``).
+
+    Placed textually before ``db_session`` so it tears down *after*
+    db_session's own cleanup (autouse fixtures set up before, and tear
+    down after, other fixtures of the same scope) -- any stray callback
+    this collection pass triggers hits a fresh, non-test session via the
+    already-restored original SessionLocal factory, not a session
+    mid-rollback.
+    """
+    yield
+    gc.collect()
 
 
 @pytest.fixture

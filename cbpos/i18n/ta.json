@@ -628,6 +628,7 @@
     "customer_header_phone": "போன்",
     "customer_header_debt": "நிலுவை கடன்",
     "customer_header_limit": "கடன் வரம்பு",
+    "customer_header_points": "பாயிண்ட்ஸ்",
     "ledger_header_date": "தேதி",
     "ledger_header_type": "வகை",
     "ledger_header_doc": "ஆவணம் #",

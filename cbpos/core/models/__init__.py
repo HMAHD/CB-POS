@@ -37,6 +37,8 @@ role_permissions = Table(
 
 # --- Auth & Permissions ---
 class Role(Base):
+    """A named permission bundle (Admin/Manager/Cashier, or custom) assigned to users."""
+
     __tablename__ = "roles"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -47,6 +49,8 @@ class Role(Base):
 
 
 class Permission(Base):
+    """A single grantable permission code; `group` clusters codes for UI display (see `Permissions` constants)."""
+
     __tablename__ = "permissions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -59,6 +63,8 @@ class Permission(Base):
 
 
 class User(Base):
+    """A login account (cashier, manager, or admin) with PIN-based auth and database-backed brute-force lockout."""
+
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -77,6 +83,8 @@ class User(Base):
 
 # --- Pricing Engine ---
 class PriceList(Base):
+    """A named, optionally time-boxed set of per-product price overrides (e.g. wholesale, VIP), assignable to customers."""
+
     __tablename__ = "price_lists"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -90,6 +98,8 @@ class PriceList(Base):
 
 
 class PriceListItem(Base):
+    """One product's price override within a `PriceList`."""
+
     __tablename__ = "price_list_items"
     __table_args__ = (UniqueConstraint("price_list_id", "product_id", name="uq_pricelist_product"),)
 
@@ -103,6 +113,8 @@ class PriceListItem(Base):
 
 
 class Promotion(Base):
+    """A scheduled discount rule (percentage/fixed/BOGO) scoped to one category, or store-wide when `category_id` is NULL."""
+
     __tablename__ = "promotions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -122,6 +134,8 @@ class Promotion(Base):
 
 # --- Unified Document Architecture ---
 class VoidReason(Base):
+    """A selectable reason code required when voiding a document, kept for audit purposes."""
+
     __tablename__ = "void_reasons"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -131,6 +145,13 @@ class VoidReason(Base):
 
 
 class Document(Base):
+    """Base class for all transactional documents via joined-table inheritance.
+
+    Sale, Purchase, Proforma, and StockCount all extend this, sharing document
+    numbering, the `type` polymorphic discriminator, voiding, and audit fields.
+    See CLAUDE.md's Document Polymorphism section.
+    """
+
     __tablename__ = "documents"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -156,6 +177,8 @@ class Document(Base):
 
 
 class Sale(Document):
+    """A completed (or voided/refunded) point-of-sale transaction: line items, payments, tax breakdown, and an optional link back to the original sale for refunds."""
+
     __tablename__ = "sales"
 
     id: Mapped[int] = mapped_column(ForeignKey("documents.id"), primary_key=True)
@@ -180,6 +203,8 @@ class Sale(Document):
 
 
 class Purchase(Document):
+    """A goods-received transaction from a supplier; updates stock and the supplier's payable balance."""
+
     __tablename__ = "purchases"
 
     id: Mapped[int] = mapped_column(ForeignKey("documents.id"), primary_key=True)
@@ -195,6 +220,8 @@ class Purchase(Document):
 
 
 class Proforma(Document):
+    """A non-binding quote that can expire or be converted into a real `Sale`."""
+
     __tablename__ = "proformas"
 
     id: Mapped[int] = mapped_column(ForeignKey("documents.id"), primary_key=True)
@@ -217,6 +244,8 @@ class Proforma(Document):
 
 
 class ProformaItem(Base):
+    """One line item on a `Proforma`, denormalized (product name/price) so a historical quote stays accurate even if the product changes later."""
+
     __tablename__ = "proforma_items"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -250,6 +279,8 @@ class Unit(Base):
 
 
 class Category(Base):
+    """A product category. Supports one level of parent/subcategory nesting and can be marked tax-exempt."""
+
     __tablename__ = "categories"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -265,6 +296,13 @@ class Category(Base):
 
 
 class Product(Base):
+    """A sellable/purchasable item: pricing, stock quantity, unit, category, and
+    optional composite-item/variant relationships.
+
+    Uses SQLAlchemy optimistic locking (`version_id`) to guard concurrent
+    stock updates across terminals.
+    """
+
     __tablename__ = "products"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -305,6 +343,8 @@ class Product(Base):
 
 
 class Customer(Base):
+    """A customer record, optionally a company, with credit-limit/current-debt tracking for the Credit Book and loyalty points."""
+
     __tablename__ = "customers"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -331,6 +371,8 @@ class Customer(Base):
 
 
 class CustomerContact(Base):
+    """An additional contact person for a company customer (e.g. an accounts-payable contact)."""
+
     __tablename__ = "customer_contacts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -344,6 +386,8 @@ class CustomerContact(Base):
 
 
 class Supplier(Base):
+    """A goods supplier, with a running payable balance and the products they supply."""
+
     __tablename__ = "suppliers"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -365,6 +409,8 @@ class Supplier(Base):
 
 # --- Details & Logs ---
 class SaleItem(Base):
+    """One product line within a `Sale`, capturing the price actually charged (post-discount/manual-override) alongside the original price for reporting."""
+
     __tablename__ = "sale_items"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -383,6 +429,8 @@ class SaleItem(Base):
 
 
 class SalePayment(Base):
+    """One payment applied to a `Sale`; a sale can be split across multiple payment methods."""
+
     __tablename__ = "sale_payments"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -394,6 +442,8 @@ class SalePayment(Base):
 
 
 class PurchaseItem(Base):
+    """One product line received in a `Purchase`, at the cost paid to the supplier."""
+
     __tablename__ = "purchase_items"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -407,6 +457,8 @@ class PurchaseItem(Base):
 
 
 class StockMovement(Base):
+    """An audit-trail row for every stock quantity change: the reason (`MovementType`) and the running balance immediately after the change."""
+
     __tablename__ = "stock_movements"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -426,6 +478,8 @@ class StockMovement(Base):
 
 
 class CompositeItem(Base):
+    """A bill-of-materials line: how many units of a child product make up one unit of a composite/bundle parent product."""
+
     __tablename__ = "composite_items"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -438,6 +492,8 @@ class CompositeItem(Base):
 
 
 class AuditLog(Base):
+    """A record of a security-relevant or critical action (login, logout, timeout, void, etc.) for compliance auditing."""
+
     __tablename__ = "audit_logs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -453,6 +509,8 @@ class AuditLog(Base):
 
 
 class InventoryLog(Base):
+    """A human-readable log entry for manual stock adjustments, capturing the reason and who made the change."""
+
     __tablename__ = "inventory_logs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -468,6 +526,8 @@ class InventoryLog(Base):
 
 
 class Shift(Base):
+    """A cashier's cash-drawer session from open to close: starting float versus expected and actual cash counted at close."""
+
     __tablename__ = "shifts"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -485,6 +545,8 @@ class Shift(Base):
 
 
 class CashMovement(Base):
+    """A non-sale cash-drawer event (cash in/out, safe drop, payout) recorded against a shift."""
+
     __tablename__ = "cash_movements"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -501,6 +563,8 @@ class CashMovement(Base):
 
 
 class SuspendedTransaction(Base):
+    """A cart set aside mid-sale (a "hold") for later resumption; the cart contents are serialized as JSON in `data`."""
+
     __tablename__ = "suspended_transactions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -513,6 +577,8 @@ class SuspendedTransaction(Base):
 
 
 class CustomerPayment(Base):
+    """A payment received from a customer against their credit balance (Credit Book)."""
+
     __tablename__ = "customer_payments"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -530,6 +596,8 @@ class CustomerPayment(Base):
 
 
 class CustomerLedgerEntry(Base):
+    """A running-balance ledger row for customer credit: a sale increases debt, a payment decreases it."""
+
     __tablename__ = "customer_ledger"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -622,6 +690,8 @@ class SupplierLedgerEntry(Base):
 
 
 class PaymentMethod(Base):
+    """A configurable payment method available at checkout (e.g. Cash, Card, a custom mobile wallet), with drawer-opening and keyboard-shortcut behavior."""
+
     __tablename__ = "payment_methods"
 
     id: Mapped[int] = mapped_column(primary_key=True)

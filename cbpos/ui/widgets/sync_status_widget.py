@@ -121,7 +121,7 @@ class SyncStatusWidget(QWidget):
             }
             lines.append(f"<b>{mode_label}:</b> {_t('sync_status.detail_mode_terminal')}")
             lines.append(f"<b>{_t('sync_status.detail_main_pc')}:</b> {self._server_address}")
-            lines.append(f"<b>{_t('common.status')}:</b> {state_labels.get(self._state, self._state)}")
+            lines.append(f"<b>{_t('common.status')}:</b> {state_labels.get(self._state, _t('common.unknown'))}")
             lines.append(
                 f"<b>{_t('sync_status.detail_pending')}:</b> "
                 f"{_t('sync_status.detail_pending_records', count=self._pending)}"

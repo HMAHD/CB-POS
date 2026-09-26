@@ -66,6 +66,7 @@
     "notes": "සටහන්",
     "update": "අප්ඩේට්",
     "na": "N/A",
+    "unknown": "නොදන්නා",
     "important": "වැදගත්"
   },
   "login": {
@@ -99,6 +100,8 @@
     "disconnected": "සම්බන්ධ නැහැ",
     "detail_mode_label": "ක්‍රමය",
     "detail_error_prefix": "LAN සින්ක් ක්‍රියා වෙන්නේ නැහැ:",
+    "error_shared_secret_required": "ෂෙයාර් කරපු රහස අවශ්‍යයි",
+    "error_main_pc_address_required": "මේන් පීසී ලිපිනය අවශ්‍යයි",
     "detail_fix_hint": "මේක සෙටින්ග්ස් → නෙට්වර්ක් → LAN සින්ක් එකෙන් හදාගන්න.",
     "detail_mode_main": "මේන් පීසී (සින්ක් සර්වර්)",
     "detail_mode_terminal": "ටර්මිනල්",

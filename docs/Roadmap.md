@@ -88,12 +88,16 @@
 *Goal: Protect the system from unauthorized access.*
 
 - [x] **3.1 Security Logic**
-    - [x] Implement SHA-256 PIN Hashing.
+    - [x] Implement PIN hashing — upgraded beyond the original plan to bcrypt, with automatic
+      transparent migration of legacy SHA-256 hashes on login.
     - [x] Create `AuthService.login(pin)`.
-    - [x] Create `SessionManager` (Singleton).
+    - [x] Session state (login/logout/timeout) is tracked via `AuditLog` entries keyed by
+      `terminal_id`, plus `SessionWatchdog` for inactivity timeout — not a dedicated
+      `SessionManager` singleton class.
 - [x] **3.2 RBAC (Role-Based Access Control)**
     - [x] Define Permissions (`CAN_VOID`, `CAN_REFUND`, `CAN_SEE_REPORTS`).
-    - [x] Implement `check_permission` decorator for sensitive functions.
+    - [x] Implement `check_permission_with_override()` helper — called explicitly at each
+      guarded action site, not a decorator.
     - [x] **Access Level System (0-9):** Numeric hierarchy like Aronium
     - [x] **Operation-Level Permissions:** Granular control per feature
     - [x] **Permission Groups:** Sales, Management, Documents, Reports, Settings
@@ -105,7 +109,9 @@
     - [x] Auto-logout on inactivity (configurable timeout)
     - [x] Session activity logging
     - [x] Multi-user session tracking (for networked version)
-    - [x] Password recovery mechanism (email-based)
+    - [ ] ~~Password recovery mechanism (email-based)~~ — not implemented. The login screen
+      shows a static "Forgot PIN? Contact your administrator." hint; there is no self-service
+      email reset flow. See #491.
 
 ---
 

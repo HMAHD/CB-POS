@@ -31,6 +31,7 @@ class PaymentMethodDialog(QDialog):
     """Dialog to add or edit a payment method."""
 
     def __init__(self, method=None, parent=None):
+        """Build the form, pre-filled with `method`'s values when editing."""
         super().__init__(parent)
         self.method = method
         self.setMinimumWidth(400)
@@ -103,6 +104,7 @@ class PaymentMethodDialog(QDialog):
             self.chk_drawer.setChecked(self.method.open_drawer)
 
     def retranslate_ui(self) -> None:
+        """Update all translatable strings, including the Add/Edit window title."""
         if self.method:
             self.setWindowTitle(_t("payment_methods.dialog_edit_title"))
         else:
@@ -143,6 +145,7 @@ class _MethodCard(QFrame):
     """A single payment method row card."""
 
     def __init__(self, method, parent_view: "PaymentMethodsView", parent=None):
+        """Build the card showing the method's name, tags, status, and action buttons."""
         super().__init__(parent)
         self.method = method
         self._parent_view = parent_view
@@ -239,6 +242,7 @@ class PaymentMethodsView(QWidget):
     """Payment Methods management — card-based list with actions."""
 
     def __init__(self, parent=None):
+        """Build the header, add button, and scrollable card list."""
         super().__init__(parent)
         self.setObjectName("PaymentMethodsView")
         self._methods = []
@@ -295,12 +299,14 @@ class PaymentMethodsView(QWidget):
         layout.addWidget(self._hint)
 
     def retranslate_ui(self) -> None:
+        """Update all translatable strings."""
         self._title.setText(_t("payment_methods.title"))
         self._subtitle.setText(_t("payment_methods.subtitle"))
         self.btn_add.setText("  " + _t("payment_methods.btn_add_method") + "  ")
         self._hint.setText(_t("payment_methods.hint"))
 
     def showEvent(self, event) -> None:
+        """Reload the method list when the view becomes visible."""
         super().showEvent(event)
         self._load_methods()
 

@@ -48,10 +48,12 @@ class _YearlyWorker(QThread):
     error_occurred = pyqtSignal(str)
 
     def __init__(self, year: int) -> None:
+        """Store the year to fetch data for."""
         super().__init__()
         self._year = year
 
     def run(self) -> None:
+        """Fetch the monthly chart and yearly summary, then emit `finished`."""
         from cbpos.core.services.dashboard_service import DashboardService
 
         try:
@@ -70,11 +72,13 @@ class _PeriodicWorker(QThread):
     error_occurred = pyqtSignal(str)
 
     def __init__(self, start_date: date, end_date: date) -> None:
+        """Store the date range to fetch data for."""
         super().__init__()
         self._start = start_date
         self._end = end_date
 
     def run(self) -> None:
+        """Fetch products, hourly sales, stats, categories, customers, and tax data, then emit `finished`."""
         from cbpos.core.services.dashboard_service import DashboardService
 
         try:
@@ -91,7 +95,10 @@ class _PeriodicWorker(QThread):
 
 
 class DashboardView(QWidget):
+    """Business insights screen: yearly and period-scoped sales charts and stats."""
+
     def __init__(self):
+        """Build the panels and set up the loading overlay for the monthly chart."""
         super().__init__()
         self._current_year = date.today().year
         self.init_ui()
@@ -109,6 +116,7 @@ class DashboardView(QWidget):
     # ------------------------------------------------------------------
 
     def init_ui(self) -> None:
+        """Build the header and the four scrollable rows of charts and panels."""
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)

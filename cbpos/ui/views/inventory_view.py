@@ -21,18 +21,24 @@ from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 
 class InventoryModel(QAbstractTableModel):
+    """Table model backing the inventory table: barcode, name, category, price, stock, unit."""
+
     def __init__(self, products=None):
+        """Store the initial page of products to display."""
         super().__init__()
         self.products = products or []
         self.headers = ["", "", "", "", "", ""]
 
     def rowCount(self, parent=QModelIndex()):
+        """Return the number of products currently loaded."""
         return len(self.products)
 
     def columnCount(self, parent=QModelIndex()):
+        """Return the number of columns (matches `headers`)."""
         return len(self.headers)
 
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        """Return the display text for a cell, or a background tint for low-stock rows."""
         if not index.isValid():
             return None
 
@@ -68,11 +74,13 @@ class InventoryModel(QAbstractTableModel):
         return None
 
     def headerData(self, section, orientation, role):
+        """Return the translated column header text."""
         if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             return self.headers[section]
         return None
 
     def update_data(self, products):
+        """Replace the displayed products and reset the model."""
         self.beginResetModel()
         self.products = products
         self.endResetModel()
@@ -84,7 +92,10 @@ class InventoryModel(QAbstractTableModel):
 
 
 class InventoryView(QWidget):
+    """Paginated, searchable product table with add/import/category/unit/label actions."""
+
     def __init__(self):
+        """Build the UI and load the first page of products."""
         super().__init__()
         self.inventory_service = InventoryService()
         self.import_service = ImportService()
@@ -97,6 +108,7 @@ class InventoryView(QWidget):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self):
+        """Build the toolbar, product table, empty-state placeholder, and pagination."""
         layout = QVBoxLayout(self)
 
         from cbpos.ui.resources.icons import Icons
@@ -203,11 +215,13 @@ class InventoryView(QWidget):
             self.table_stack.setCurrentIndex(0)
 
     def load_data(self):
+        """Load all products and display the current page."""
         self.all_products = self.inventory_service.get_all_products()
         self._filtered_products = self.all_products
         self._apply_pagination()
 
     def filter_data(self, text):
+        """Filter products by barcode or name, or show all if text is empty."""
         if not text:
             self._filtered_products = self.all_products
         else:
@@ -229,6 +243,7 @@ class InventoryView(QWidget):
         self._update_empty_state()
 
     def open_add_dialog(self):
+        """Open the product editor to create a new product, if permitted."""
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
@@ -240,6 +255,7 @@ class InventoryView(QWidget):
             self.load_data()
 
     def open_edit_dialog(self, index):
+        """Open the product editor for the double-clicked row, if permitted."""
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
@@ -252,6 +268,7 @@ class InventoryView(QWidget):
             self.load_data()
 
     def open_category_dialog(self):
+        """Open the category manager and reload products afterward."""
         from cbpos.ui.dialogs.category_manager import CategoryManagerDialog
 
         dialog = CategoryManagerDialog(parent=self)
@@ -259,18 +276,21 @@ class InventoryView(QWidget):
         self.load_data()
 
     def open_unit_manager(self):
+        """Open the unit manager dialog."""
         from cbpos.ui.dialogs.unit_manager import UnitManagerDialog
 
         dialog = UnitManagerDialog(parent=self)
         dialog.exec()
 
     def open_label_print(self):
+        """Open the label printing dialog."""
         from cbpos.ui.dialogs.label_print_dialog import LabelPrintDialog
 
         dialog = LabelPrintDialog(parent=self)
         dialog.exec()
 
     def open_context_menu(self, position):
+        """Show the right-click context menu with a stock history action."""
         from PyQt6.QtWidgets import QMenu
 
         from cbpos.ui.dialogs.stock_history_dialog import StockHistoryDialog
@@ -290,6 +310,7 @@ class InventoryView(QWidget):
             dialog.exec()
 
     def import_csv(self) -> None:
+        """Open the CSV import dialog and reload products afterward."""
         from cbpos.ui.dialogs.csv_import_dialog import CsvImportDialog
 
         dialog = CsvImportDialog(self.import_service, parent=self)

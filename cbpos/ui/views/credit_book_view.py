@@ -41,6 +41,7 @@ class CreditBookView(QWidget):
     """
 
     def __init__(self) -> None:
+        """Build the two-page stack and load the customer list."""
         super().__init__()
         self.setObjectName("CreditBookView")
         self.customer_service = CustomerService()
@@ -52,6 +53,7 @@ class CreditBookView(QWidget):
         self.load_customers()
 
     def init_ui(self) -> None:
+        """Build the customer list page and the customer detail/ledger page."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)

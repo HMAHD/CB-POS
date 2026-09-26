@@ -50,6 +50,7 @@ class DataSafetyView(QWidget):
     """Tabbed view for backup, restore, maintenance, and export operations."""
 
     def __init__(self) -> None:
+        """Build the Backup, Restore, Maintenance, and Export tabs."""
         super().__init__()
         self._init_ui()
         self._overlay = LoadingOverlay(self)
@@ -243,6 +244,7 @@ class DataSafetyView(QWidget):
         btn_toggle.setFixedWidth(60)
 
         def toggle_visibility():
+            """Toggle the backup password field between hidden and plain text."""
             if pwd_input.echoMode() == QLineEdit.EchoMode.Password:
                 pwd_input.setEchoMode(QLineEdit.EchoMode.Normal)
                 btn_toggle.setText(_t("data_safety.btn_hide"))

@@ -28,9 +28,16 @@ _NUMPAD_W = _NUM_COLS * _BTN_SIZE + (_NUM_COLS - 1) * _BTN_GAP
 
 
 class LoginView(QWidget):
+    """PIN-entry login screen with a branding panel and on-screen numpad.
+
+    Emits ``login_success`` with the authenticated user once a valid PIN
+    is entered.
+    """
+
     login_success = pyqtSignal(object)
 
     def __init__(self):
+        """Build the UI and register the theme/language callbacks."""
         super().__init__()
         self.logo_label = None  # Store reference for theme updates
         self.init_ui()
@@ -45,6 +52,7 @@ class LoginView(QWidget):
         self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
 
     def init_ui(self):
+        """Build the branding panel (logo, welcome text, tagline) and the PIN entry panel with numpad."""
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -267,11 +275,13 @@ class LoginView(QWidget):
             self.pin_input.setText(current_text + digit)
 
     def clear_pin(self) -> None:
+        """Clear the PIN input (called by the numpad's C button)."""
         self.lbl_error.setVisible(False)
         self.pin_input.clear()
         self.pin_input.setFocus()
 
     def attempt_login(self) -> None:
+        """Verify the entered PIN and emit `login_success`, or show an error."""
         pin = self.pin_input.text()
         if not pin:
             return

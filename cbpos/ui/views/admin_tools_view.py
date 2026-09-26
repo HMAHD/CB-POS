@@ -60,6 +60,7 @@ class AdminToolsView(QWidget):
     """Tabbed view for database info, error logs, and hardware testing."""
 
     def __init__(self) -> None:
+        """Build the Database, Error Logs, and Hardware tabs."""
         super().__init__()
         self._current_log_entries: list = []
         self._init_ui()

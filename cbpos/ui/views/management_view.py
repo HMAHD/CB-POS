@@ -27,11 +27,18 @@ logger = logging.getLogger(__name__)
 
 
 class ManagementView(QWidget):
+    """Sidebar-navigated shell for inventory, purchasing, reports, and admin screens.
+
+    Individual tab views are created lazily on first visit via
+    `switch_tab()` rather than all up front.
+    """
+
     logout_requested = pyqtSignal()
     request_pos_view = pyqtSignal()
     convert_proforma_to_sale = pyqtSignal(dict)
 
     def __init__(self):
+        """Build the sidebar and content stack, then show the Dashboard tab."""
         super().__init__()
         self.init_ui()
 
@@ -47,6 +54,7 @@ class ManagementView(QWidget):
         self.switch_tab(0)
 
     def init_ui(self):
+        """Build the collapsible sidebar and the (initially empty) content stack."""
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -128,6 +136,7 @@ class ManagementView(QWidget):
         self.sidebar.retranslate_pos_logout()
 
     def switch_tab(self, index: int) -> None:
+        """Show the view at the given sidebar nav index, creating it on first use."""
         widget = self._get_or_create_view(index)
         self.stack.setCurrentWidget(widget)
         self.sidebar.highlight(index)
@@ -179,6 +188,7 @@ class ManagementView(QWidget):
         return self._view_widgets[index]
 
     def set_user(self, user) -> None:
+        """Store the logged-in user, apply admin-only nav visibility, and propagate to created views."""
         self.user = user
 
         is_admin = PermissionService.user_has_permission(user, Permissions.ADMIN_MANAGE_USERS)

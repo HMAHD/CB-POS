@@ -41,6 +41,7 @@ class DataExportDialog(QDialog):
     """Dialog for exporting Products, Customers, and Sales data."""
 
     def __init__(self, parent=None):
+        """Initialize the dialog with default data selection and export options."""
         super().__init__(parent)
         self.setWindowTitle(_t("data_export.title"))
         self.setMinimumSize(520, 480)

@@ -40,7 +40,10 @@ def _color_icon(hex_color: str, size: int = 12) -> QIcon:
 
 
 class ProductEditor(QDialog):
+    """Tabbed dialog for creating or editing a product: general info, inventory, bundle composition, and image."""
+
     def __init__(self, product: Product = None, parent=None):
+        """Initialize the dialog, pre-filling fields when editing an existing product."""
         super().__init__(parent)
         self.product = product
         self.inventory_service = InventoryService()
@@ -59,12 +62,15 @@ class ProductEditor(QDialog):
             self.load_data()
 
     def load_categories(self):
+        """Load top-level categories (with subcategories) for the category combo."""
         self.categories = CategoryService.get_top_level_with_subcategories()
 
     def load_suppliers(self):
+        """Load all suppliers, including inactive ones, for the default supplier combo."""
         self.suppliers = SupplierService.get_all_suppliers(active_only=False)
 
     def setup_ui(self):
+        """Build the General, Inventory, Composition, and Image tabs plus save/cancel buttons."""
         layout = QVBoxLayout(self)
         self.tabs = QTabWidget()
 
@@ -96,6 +102,7 @@ class ProductEditor(QDialog):
         layout.addWidget(buttons)
 
     def setup_general_tab(self):
+        """Build the General tab: names (EN/SI/TA), barcode, category, selling price, and cost price."""
         layout = QFormLayout(self.tab_general)
         layout.setVerticalSpacing(12)
         layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
@@ -136,6 +143,7 @@ class ProductEditor(QDialog):
         layout.addRow(_t("product_editor.cost_price"), self.cost_input)
 
     def setup_inventory_tab(self):
+        """Build the Inventory tab: stock levels, supplier/unit selection, and weighted/service item toggles."""
         layout = QVBoxLayout(self.tab_inventory)
         layout.setSpacing(10)
 
@@ -223,6 +231,7 @@ class ProductEditor(QDialog):
         layout.addStretch()
 
     def setup_composition_tab(self):
+        """Build the Composition tab: add-by-barcode row and the table of bundled component products."""
         layout = QVBoxLayout(self.tab_composition)
 
         # Add component area
@@ -256,6 +265,7 @@ class ProductEditor(QDialog):
         layout.addWidget(self.comp_table)
 
     def add_component(self):
+        """Look up the product by the entered barcode and add it as a bundle component row."""
         barcode = self.comp_barcode_input.text().strip()
         qty = self._parse_decimal(self.comp_qty_input.text(), fallback="1")
 
@@ -308,6 +318,7 @@ class ProductEditor(QDialog):
                     btn.clicked.connect(lambda checked, idx=r: self._remove_component(idx))
 
     def setup_image_tab(self):
+        """Build the Image tab: preview label and upload/clear buttons."""
         layout = QVBoxLayout(self.tab_image)
 
         # Center everything vertically and horizontally
@@ -340,6 +351,7 @@ class ProductEditor(QDialog):
         self.current_image_path = None
 
     def upload_image(self):
+        """Let the user pick an image file, copy it into the product images folder, and show it."""
         import os
         import shutil
 
@@ -362,11 +374,13 @@ class ProductEditor(QDialog):
             self.show_image(target_path)
 
     def clear_image(self):
+        """Clear the selected product image."""
         self.current_image_path = None
         self.lbl_image.clear()
         self.lbl_image.setText(_t("product_editor.no_image"))
 
     def show_image(self, path):
+        """Display the image at the given path in the preview label, or a not-found message."""
         import os
 
         from PyQt6.QtGui import QPixmap
@@ -378,6 +392,7 @@ class ProductEditor(QDialog):
             self.lbl_image.setText(_t("product_editor.image_not_found"))
 
     def load_data(self):
+        """Populate all tabs' fields, including bundle components, from the product being edited."""
         self.barcode_input.setText(self.product.barcode)
         self.barcode_input.setReadOnly(True)
         self.name_en_input.setText(self.product.name_en)
@@ -443,6 +458,7 @@ class ProductEditor(QDialog):
         return Decimal(cleaned)
 
     def save_product(self):
+        """Validate all fields and create or update the product (with its bundle components) via InventoryService."""
         try:
             stock_qty = self._parse_decimal(self.stock_input.text())
             reorder_point = self._parse_decimal(self.reorder_input.text())

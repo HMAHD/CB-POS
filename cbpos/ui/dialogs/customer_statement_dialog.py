@@ -35,6 +35,7 @@ class CustomerStatementDialog(QDialog):
     """Dialog to view and print a customer account statement."""
 
     def __init__(self, customer, parent=None):
+        """Initialize the dialog and load the statement for the given customer."""
         super().__init__(parent)
         self.customer = customer
         self.statement_data = None

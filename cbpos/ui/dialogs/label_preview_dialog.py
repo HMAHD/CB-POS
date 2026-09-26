@@ -68,12 +68,14 @@ class _LabelCard(QWidget):
     """Paints a realistic thermal-label preview."""
 
     def __init__(self, product: Product, parent=None) -> None:
+        """Initialize the label card widget for the given product."""
         super().__init__(parent)
         self.product = product
         self.setFixedSize(LABEL_W, LABEL_H)
         self.setObjectName("LabelCard")
 
     def paintEvent(self, event) -> None:
+        """Paint the mock thermal label: product name, barcode bars, barcode text, and price."""
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -168,6 +170,7 @@ class LabelPreviewDialog(QDialog):
     """Dialog showing a realistic thermal-label preview."""
 
     def __init__(self, product: Product, parent=None) -> None:
+        """Initialize the dialog and build the header, label preview card, and close button."""
         super().__init__(parent)
         self.setWindowTitle(_t("label_preview.title"))
         self.setObjectName("LabelPreviewDialog")

@@ -46,6 +46,7 @@ class CategoryManagerDialog(QDialog):
     """Category manager with tree view, inline form, and subcategory support."""
 
     def __init__(self, parent=None):
+        """Initialize the dialog and load the category tree."""
         super().__init__(parent)
         self.setWindowTitle(_t("category_manager.title"))
         self.setMinimumSize(640, 500)

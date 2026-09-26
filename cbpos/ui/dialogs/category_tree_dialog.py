@@ -25,6 +25,7 @@ class CategoryTreeDialog(QDialog):
     """
 
     def __init__(self, parent=None):
+        """Initialize the dialog and load the category tree."""
         super().__init__(parent)
         self.setWindowTitle(_t("category_tree.title"))
         self.setMinimumSize(600, 500)
@@ -32,6 +33,7 @@ class CategoryTreeDialog(QDialog):
         self.load_categories()
 
     def init_ui(self):
+        """Build the tree widget and its add/refresh/close buttons."""
         layout = QVBoxLayout(self)
 
         # Title

@@ -18,6 +18,7 @@ class ProfileDialog(QDialog):
     """Standalone dialog for user profile and PIN change."""
 
     def __init__(self, parent=None):
+        """Initialize the dialog and load the current user's profile."""
         super().__init__(parent)
         self.setWindowTitle(_t("profile.title"))
         self.setFixedSize(400, 300)
@@ -26,6 +27,7 @@ class ProfileDialog(QDialog):
         self.load_user()
 
     def init_ui(self):
+        """Build the display name and PIN change form."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(20)
@@ -61,11 +63,13 @@ class ProfileDialog(QDialog):
         layout.addWidget(self.btn_update)
 
     def load_user(self):
+        """Populate the display name field from the currently logged-in user."""
         user = AuthService.get_current_user()
         if user:
             self.input_name.setText(user.username)
 
     def update_profile(self):
+        """Verify the current PIN, then update the display name and optionally the PIN."""
         user = AuthService.get_current_user()
         if not user:
             return

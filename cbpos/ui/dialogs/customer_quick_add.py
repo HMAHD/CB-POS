@@ -13,7 +13,10 @@ from cbpos.i18n import _t
 
 
 class CustomerQuickAddDialog(QDialog):
+    """Lightweight dialog for adding a customer (name and phone only) without leaving checkout."""
+
     def __init__(self, parent=None):
+        """Initialize the dialog and build the quick-add form."""
         super().__init__(parent)
         self.customer_service = CustomerService()
         self.created_customer = None
@@ -25,6 +28,7 @@ class CustomerQuickAddDialog(QDialog):
         self.setup_ui()
 
     def setup_ui(self):
+        """Build the name and phone input form with save/cancel buttons."""
         layout = QVBoxLayout(self)
         form = QFormLayout()
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
@@ -48,6 +52,7 @@ class CustomerQuickAddDialog(QDialog):
         self.name_input.setFocus()
 
     def save(self):
+        """Validate the name, create the customer, and accept the dialog."""
         data = {
             "name": self.name_input.text().strip(),
             "phone": self.phone_input.text().strip() or None,

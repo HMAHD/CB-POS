@@ -37,6 +37,7 @@ class AdvancedSearchDialog(QDialog):
     product_selected = pyqtSignal(object)  # Emits selected Product
 
     def __init__(self, parent=None):
+        """Initialize the dialog and load filter options."""
         super().__init__(parent)
         self.setWindowTitle(_t("advanced_search.title"))
         self.setMinimumSize(950, 620)
@@ -46,6 +47,7 @@ class AdvancedSearchDialog(QDialog):
         self.load_filters()
 
     def init_ui(self):
+        """Build the search filters, results table, and keyboard shortcuts."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)

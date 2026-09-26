@@ -29,7 +29,12 @@ from cbpos.ui.resources.icons import Icons
 
 
 class PaymentDialog(QDialog):
+    """Dialog for splitting checkout payment across one or more methods (cash, card, credit, etc.) and confirming
+    the sale."""
+
     def __init__(self, total_amount: Decimal, parent=None):
+        """Initialize the dialog for the given total, load payment methods, and disable the parent's Enter
+        shortcuts while this dialog is open."""
         super().__init__(parent)
         self.total_amount = total_amount
         self.payments = []  # List of {'method': str, 'amount': Decimal}
@@ -65,9 +70,11 @@ class PaymentDialog(QDialog):
         super().done(result)
 
     def load_payment_methods(self):
+        """Load the active payment methods from PaymentService."""
         self.payment_methods = PaymentService.get_active_methods()
 
     def init_ui(self):
+        """Build the method tiles, applied-payments list, numpad, and action buttons."""
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(16, 16, 16, 16)
         main_layout.setSpacing(12)
@@ -312,6 +319,7 @@ class PaymentDialog(QDialog):
         self.btn_finish.setText(_t("payment.finish_sale"))
 
     def setup_shortcuts(self):
+        """Wire the Enter key, F12 quick-cash shortcut, and each payment method's configured shortcut key."""
         # Dialog-scoped Enter shortcut to add payment
         QShortcut(QKeySequence(Qt.Key.Key_Return), self).activated.connect(self.add_payment)
         QShortcut(QKeySequence(Qt.Key.Key_Enter), self).activated.connect(self.add_payment)
@@ -332,6 +340,7 @@ class PaymentDialog(QDialog):
                     logging.getLogger(__name__).warning("Invalid shortcut '%s': %s", method.shortcut, e)
 
     def load_customers(self):
+        """Populate the searchable customer combo used for CREDIT payments."""
         customers = CustomerService().get_all_customers()
         self.customers_map = {c.name: c.id for c in customers}
         names = list(self.customers_map.keys())
@@ -346,6 +355,7 @@ class PaymentDialog(QDialog):
         self.cmb_customer.setCompleter(completer)
 
     def select_method(self, method, btn: QPushButton = None):
+        """Set the active payment method, update tile styling, and auto-fill the remaining amount."""
         self.current_method = method
         self.lbl_selected_method.setText(method.name)
 
@@ -398,10 +408,13 @@ class PaymentDialog(QDialog):
                     self.accept()
 
     def get_remaining_amount(self) -> Decimal:
+        """Return the amount still owed after payments already applied."""
         paid = sum(p["amount"] for p in self.payments)
         return self.total_amount - paid
 
     def add_payment(self):
+        """Validate the entered amount and append it as a payment for the current method, requiring a
+        customer for CREDIT."""
         from cbpos.core.constants.status import PaymentMethodType
 
         if not self.current_method:
@@ -527,6 +540,7 @@ class PaymentDialog(QDialog):
             )
 
     def update_balance(self):
+        """Refresh the remaining/change label and enable Finish once the total is fully covered."""
         remaining = self.get_remaining_amount()
 
         if remaining > 0:
@@ -578,4 +592,5 @@ class PaymentDialog(QDialog):
 
     @property
     def payment_data(self):
+        """Return the list of applied payments and the selected customer id, if any."""
         return self.payments, self.customer_id

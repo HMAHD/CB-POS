@@ -23,6 +23,7 @@ class DatabaseSetupDialog(QDialog):
     CHOICE_DEMO = "demo"
 
     def __init__(self, parent=None):
+        """Initialize the dialog with the empty-database and demo-database option cards."""
         super().__init__(parent)
         self.setWindowTitle(_t("db_setup.title"))
         self.setFixedSize(520, 380)

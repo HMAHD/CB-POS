@@ -16,7 +16,11 @@ from cbpos.i18n import _t
 
 
 class PermissionDialog(QDialog):
+    """Dialog for editing which permissions each role grants, as a tree of permission groups with a checkbox
+    column per role."""
+
     def __init__(self, parent=None):
+        """Initialize the dialog and build the permission tree."""
         super().__init__(parent)
         self.setWindowTitle(_t("permission.title"))
         # 800x600 only showed 5 of the 10 permission groups (46 rows
@@ -28,6 +32,7 @@ class PermissionDialog(QDialog):
         self.init_ui()
 
     def init_ui(self):
+        """Build the permission tree and the save/close buttons."""
         layout = QVBoxLayout(self)
 
         # Tree Widget
@@ -51,6 +56,7 @@ class PermissionDialog(QDialog):
         layout.addLayout(btn_layout)
 
     def load_data(self):
+        """Load roles and permissions, and populate the tree with one checkbox column per role."""
         self.roles = UserService.get_all_roles()
         self.permissions = PermissionService.get_all_permissions()
 
@@ -117,6 +123,7 @@ class PermissionDialog(QDialog):
         return role_permission_map
 
     def save_changes(self):
+        """Apply the tree's checked permissions to each role via PermissionService."""
         try:
             role_permission_map = self.collect_role_permission_map(self.tree, self.roles)
             for role_id, permission_ids in role_permission_map.items():

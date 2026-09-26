@@ -15,7 +15,10 @@ from cbpos.i18n import _t
 
 
 class CashMovementDialog(QDialog):
+    """Dialog for recording a manual cash drawer movement (cash in/out) with amount and reason."""
+
     def __init__(self, movement_type="IN", parent=None):
+        """Initialize the dialog for the given movement type ("IN" or "OUT")."""
         super().__init__(parent)
         self.movement_type = movement_type
         self.setWindowTitle(_t("cash_movement.title", type=movement_type))
@@ -26,6 +29,7 @@ class CashMovementDialog(QDialog):
         self.reason = ""
 
     def init_ui(self):
+        """Build the amount, reason, and save/cancel controls."""
         layout = QVBoxLayout(self)
 
         # Title
@@ -67,6 +71,7 @@ class CashMovementDialog(QDialog):
         layout.addLayout(btn_layout)
 
     def validate_and_save(self):
+        """Validate the amount and reason, then store them and accept the dialog."""
         amount_text = self.txt_amount.text().strip()
         reason = self.txt_reason.text().strip()
 

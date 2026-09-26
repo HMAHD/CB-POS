@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from cbpos.core.models import Permission, Product, Role, Sale, SaleItem, StockMovement, User
+from cbpos.core.models import Customer, Permission, Product, Role, Sale, SaleItem, StockMovement, User
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.services.transaction_service import TransactionService
@@ -338,3 +338,46 @@ def test_refund_nonexistent_sale(db_session):
     with patch("cbpos.core.services.transaction_service.PrintWorker"):
         result = TransactionService.process_refund(999999, "Ghost sale", 1)
     assert result is False
+
+
+# ── Test Case L: B2B customers additionally get an A4 Tax Invoice ───────
+
+
+def test_b2b_sale_triggers_invoice_print(db_session, test_user, test_product):
+    """A sale for a VAT-registered customer additionally calls the A4 invoice path."""
+    customer = Customer(name="Registered Co", vat_number="VAT-12345")
+    db_session.add(customer)
+    db_session.commit()
+
+    with (
+        patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user),
+        patch("cbpos.core.services.transaction_service.PrintWorker"),
+        patch("cbpos.core.services.transaction_service.PrinterService") as mock_printer,
+    ):
+        cart_service = CartService()
+        cart_service.add_item(test_product, qty=Decimal("2.0"))
+        payments = [{"method": "CASH", "amount": Decimal("200.0")}]
+
+        result = TransactionService.process_sale(cart_service, payments, customer_id=customer.id)
+
+    assert result is not None
+    mock_printer.maybe_print_b2b_invoice.assert_called_once()
+
+
+def test_walkin_sale_does_not_error_on_invoice_check(db_session, test_user, test_product):
+    """A walk-in (no customer) sale still calls the B2B check, which is a safe no-op."""
+    db_session.commit()
+
+    with (
+        patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user),
+        patch("cbpos.core.services.transaction_service.PrintWorker"),
+        patch("cbpos.core.services.transaction_service.PrinterService") as mock_printer,
+    ):
+        cart_service = CartService()
+        cart_service.add_item(test_product, qty=Decimal("2.0"))
+        payments = [{"method": "CASH", "amount": Decimal("200.0")}]
+
+        result = TransactionService.process_sale(cart_service, payments)
+
+    assert result is not None
+    mock_printer.maybe_print_b2b_invoice.assert_called_once()

@@ -19,6 +19,7 @@ from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
+from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.core.services.stock_service import StockService
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
@@ -87,6 +88,10 @@ class TransactionService:
         else:
             receipt_image = ReceiptService.build_receipt_image(sale)
             worker.add_job("print_image", receipt_image)
+
+        # Additionally print a formal A4 Tax Invoice for VAT-registered (B2B)
+        # customers. Additive only -- never replaces the thermal receipt above.
+        PrinterService.maybe_print_b2b_invoice(sale)
 
     @staticmethod
     def _execute_sale(cart_service: CartService, payments: list, customer_id: int = None) -> Sale:

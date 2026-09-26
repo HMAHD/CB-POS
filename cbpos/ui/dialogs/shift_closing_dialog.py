@@ -4,6 +4,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import (
     QApplication,
+    QComboBox,
     QDialog,
     QHBoxLayout,
     QLabel,
@@ -24,6 +25,8 @@ from cbpos.ui.workers import BackupWorker
 
 class ShiftClosingDialog(QDialog):
     """Wizard that guides the user through end-of-day cash reconciliation."""
+
+    REASON_CATEGORIES = ["TILL_ERROR", "MISCOUNTED", "UNEXPLAINED_SHORTAGE", "OTHER"]
 
     def __init__(self, shift_id: int, parent=None):
         """Build the dialog and load the sales/cash summary for `shift_id`."""
@@ -68,6 +71,12 @@ class ShiftClosingDialog(QDialog):
             review_layout.addWidget(lbl)
 
         review_layout.addWidget(QLabel(_t("shift_closing.variance_reason_label")))
+
+        self.combo_reason_category = QComboBox()
+        for category in self.REASON_CATEGORIES:
+            self.combo_reason_category.addItem(_t(f"shift_closing.reason_category.{category.lower()}"), category)
+        review_layout.addWidget(self.combo_reason_category)
+
         self.txt_reason = QTextEdit()
         self.txt_reason.setPlaceholderText(_t("shift_closing.reason_placeholder"))
         review_layout.addWidget(self.txt_reason)
@@ -150,8 +159,10 @@ class ShiftClosingDialog(QDialog):
             )
             return
 
+        reason_category = self.combo_reason_category.currentData() if variance != 0 else None
+
         try:
-            final_summary = self.shift_service.close_shift(self.shift_id, self.counted_cash, reason)
+            final_summary = self.shift_service.close_shift(self.shift_id, self.counted_cash, reason, reason_category)
             # Generate Z-Report (printing is delegated to hardware layer)
             ReceiptService.print_z_report(final_summary)
 

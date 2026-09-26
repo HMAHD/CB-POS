@@ -1910,6 +1910,12 @@
     "actual": "Actual: {amount}",
     "variance": "Variance: {amount}",
     "variance_reason_label": "Reason for Variance (required if not 0):",
+    "reason_category": {
+      "till_error": "Till Error",
+      "miscounted": "Miscounted",
+      "unexplained_shortage": "Unexplained Shortage",
+      "other": "Other"
+    },
     "reason_placeholder": "Enter reason for discrepancy...",
     "reason_required": "Please provide a reason for the variance.",
     "close_and_print": "Close Shift && Print",

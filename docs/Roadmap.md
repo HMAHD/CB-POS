@@ -39,11 +39,13 @@
 - [x] **1.2 Version Control & Config**
     - [x] Initialize Git repository.
     - [x] Create `.gitignore` (Python, PyCharm, VSCode specific).
-    - [x] Create `config.py` using `pydantic-settings` for strongly typed env vars.
+    - [x] Create `config.py` — a plain Python class reading `os.environ`/`pathlib`, not
+      `pydantic-settings` (no pydantic dependency exists in the project at all).
 - [x] **1.3 Dependency Management**
-    - [x] Create virtual environment (`.venv`).
-    - [x] Generate `requirements.txt` with pinned versions (`PyQt6==6.7.0`, `SQLAlchemy==2.0.30`).
-    - [x] Setup `pre-commit` hooks (Black, Flake8) for code quality.
+    - [x] Create virtual environment (`.venv`), managed via `uv` (superseded the original
+      `requirements.txt` plan — see `pyproject.toml` + `uv.lock`).
+    - [x] Setup `pre-commit` hooks — consolidated onto **Ruff** (lint + format), which
+      supersedes the originally planned Black + Flake8 combination.
 - [x] **1.4 Documentation Structure**
     - [x] Create `docs/` folder with README.md
     - [x] Setup API documentation framework (Sphinx/MkDocs)
@@ -127,8 +129,9 @@
     - [x] Create Product Editor Dialog.
     - [x] Implement CSV Import Wizard (`pandas` integration).
     - [x] **Product Image Upload:** Support product photos
-    - [x] **Multiple Barcode Support:** Pipe-separated barcodes per product
-    - [x] **Age Restriction Flag:** For controlled items
+    - [ ] **Multiple Barcode Support:** not implemented — `Product` has a single `barcode`
+      field, no pipe-separated support — see #484
+    - [ ] **Age Restriction Flag:** not implemented — see #485
 - [x] **4.3 Stock Control**
     - [x] Implement `StockAdjustment` (Damage/Expired/Correction).
     - [x] Create "Low Stock" logic and UI indicators.
@@ -154,10 +157,15 @@
 *Goal: Write code once, run on any hardware.*
 
 - [x] **5.1 Architecture**
-    - [x] Define Interfaces: `IPrinter`, `IScanner`, `IDisplay`.
+    - [x] Define Interfaces: only `IPrinter` exists as a formal ABC
+      (`cbpos/core/interfaces/iprinter.py`); scanner and cash drawer are concrete classes with
+      no separate interface — works fine, but `IScanner`/`IDisplay` were never built.
     - [x] **Cash Drawer Interface:** Standard kick commands
-    - [x] **Weighing Scale Interface:** Serial communication protocol
-    - [x] **Customer Display Interface:** Secondary screen support
+    - [ ] **Weighing Scale Interface:** no live serial connection exists — only
+      embedded-barcode weight parsing (`ScaleService`, see 5.3 below), which solves the same
+      business problem without needing a wired scale
+    - [ ] **Customer Display Interface:** not implemented — no secondary-screen output
+      anywhere in the codebase — see #498
 - [x] **5.2 Printing (ESC/POS)**
     - [x] Implement `ThermalPrinter` driver using `python-escpos`.
     - [x] Support USB and Network printers.
@@ -439,7 +447,8 @@
   customer-facing documents, so this is by design rather than a gap.
 - [x] **21.2 Document Properties** — Header, items, totals, payment info — all complete
 - [x] **21.3 Document Operations** — View, create, void, reprint — all complete. PDF export is
-  not yet available for documents (tracked in #486).
+  not yet available for documents (tracked in #482 — corrected from an earlier wrong
+  issue reference).
 - [x] **21.4 Proforma/Quotation System** — Create quotes, convert to sale, custom template
 - [x] **21.5 Document Filters** — Date range, type, paid status, customer/supplier, number, user
 
@@ -568,7 +577,9 @@
     - [x] Sample data option for demo
 - [x] **20.5 Licensing**
     - [x] Machine ID generation
-    - [x] License key verification
+    - [ ] License key verification — `LicenseService.validate_license()` is a permanent stub
+      that always returns `False` (Trial Mode); no real verification was built. Consistent
+      with CB POS's free-software model — no gap, just correcting the claim.
 - [x] **20.6 CI/CD Pipeline**
     - [x] GitHub Actions: tag push → build exe → Inno Setup → publish to ceybyte/cbpos-releases
     - [x] Auto-generate latest.json manifest with SHA-256
@@ -580,7 +591,8 @@
 
 - [x] **22.1 Goods Received Note (GRN)**
     - [x] Receive stock against purchase order
-    - [x] Verify quantities against PO
+    - [ ] Verify quantities against PO — no PO-vs-received quantity verification exists in
+      the GRN flow — see #486
     - [x] Update stock on confirmation
     - [x] External document reference (supplier invoice number)
     - [x] GRN History tab with filters and detail dialog

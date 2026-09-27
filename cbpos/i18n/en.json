@@ -131,6 +131,8 @@
     "logo_fallback": "CEYLON BYTE POS",
     "not_found_title": "Not Found",
     "not_found_message": "Product not found.",
+    "age_restriction_title": "Age Verification Required",
+    "age_restriction_confirm": "'{product}' is an age-restricted item. Confirm the customer meets the minimum age to purchase?",
     "disabled": "Disabled",
     "quick_pay_disabled": "Quick Pay is disabled in settings.",
     "printer_error_title": "Printer Error",
@@ -385,6 +387,8 @@
     "service_hint": "Service items have no stock tracking",
     "price_change_allowed": "Allow Price Override at Checkout",
     "price_change_hint": "Turn off for fixed/regulated-price items — no cashier can override, even with permission",
+    "age_restricted": "Age-Restricted Item",
+    "age_restricted_hint": "Cashier must confirm age at checkout (e.g. alcohol, tobacco)",
     "stock_qty": "Stock Qty",
     "weighted_hint": "Weighted items are sold by weight (kg, g, etc.)"
   },

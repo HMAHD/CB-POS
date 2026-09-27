@@ -43,6 +43,7 @@ def _make_product(price="200.00"):
     product.price = Decimal(price)
     product.stock_qty = Decimal("10")
     product.unit = None
+    product.is_age_restricted = False
     return product
 
 
@@ -139,6 +140,52 @@ class TestChangeLinePriceRespectsPerProductLock:
         fake_dialog_cls.assert_not_called()
         mock_warning.assert_called_once()
         assert view.cart_service.items[0]["unit_price"] == Decimal("200.00")
+
+
+class TestAgeRestrictionConfirmation:
+    """#485: adding an age-restricted product (alcohol, tobacco) via barcode
+    scan or advanced search requires an explicit cashier confirmation."""
+
+    def test_non_restricted_product_skips_confirmation(self, view):
+        product = _make_product()
+        assert view._confirm_age_restriction(product) is True
+
+    def test_confirmed_restricted_product_returns_true(self, view, monkeypatch):
+        product = _make_product()
+        product.is_age_restricted = True
+        monkeypatch.setattr(
+            "cbpos.ui.views.sales_view.QMessageBox.question",
+            lambda *a, **k: sales_view_module.QMessageBox.StandardButton.Yes,
+        )
+        assert view._confirm_age_restriction(product) is True
+
+    def test_declined_restricted_product_returns_false(self, view, monkeypatch):
+        product = _make_product()
+        product.is_age_restricted = True
+        monkeypatch.setattr(
+            "cbpos.ui.views.sales_view.QMessageBox.question",
+            lambda *a, **k: sales_view_module.QMessageBox.StandardButton.No,
+        )
+        assert view._confirm_age_restriction(product) is False
+
+    def test_advanced_search_selection_is_not_added_when_confirmation_declined(self, view, monkeypatch):
+        product = _make_product()
+        product.is_age_restricted = True
+
+        fake_dialog = MagicMock()
+        fake_dialog.exec.return_value = 1
+        fake_dialog.get_quantity.return_value = Decimal("1")
+        fake_dialog_cls = MagicMock(return_value=fake_dialog)
+
+        monkeypatch.setattr(sales_view_module, "QuantityDialog", fake_dialog_cls)
+        monkeypatch.setattr(
+            "cbpos.ui.views.sales_view.QMessageBox.question",
+            lambda *a, **k: sales_view_module.QMessageBox.StandardButton.No,
+        )
+
+        view.on_advanced_search_product_selected(product)
+
+        assert len(view.cart_service.items) == 0
 
 
 class TestRemoveLineItemRequiresPermission:

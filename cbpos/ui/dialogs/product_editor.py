@@ -238,6 +238,16 @@ class ProductEditor(QDialog):
         row_price_change.addStretch()
         type_layout.addLayout(row_price_change)
 
+        row_age_restricted = QHBoxLayout()
+        row_age_restricted.setSpacing(6)
+        self.age_restricted_check = QCheckBox(_t("product_editor.age_restricted"))
+        row_age_restricted.addWidget(self.age_restricted_check)
+        self.age_restricted_hint = QLabel(_t("product_editor.age_restricted_hint"))
+        self.age_restricted_hint.setObjectName("ToggleHint")
+        row_age_restricted.addWidget(self.age_restricted_hint)
+        row_age_restricted.addStretch()
+        type_layout.addLayout(row_age_restricted)
+
         layout.addWidget(grp_type)
         layout.addStretch()
 
@@ -430,6 +440,7 @@ class ProductEditor(QDialog):
         self.weighted_check.setChecked(self.product.is_weighted)
         self.service_check.setChecked(self.product.is_service)
         self.price_change_allowed_check.setChecked(self.product.price_change_allowed)
+        self.age_restricted_check.setChecked(self.product.is_age_restricted)
 
         # Load unit
         if self.product.unit_id:
@@ -497,6 +508,7 @@ class ProductEditor(QDialog):
             "is_weighted": self.weighted_check.isChecked(),
             "is_service": self.service_check.isChecked(),
             "price_change_allowed": self.price_change_allowed_check.isChecked(),
+            "is_age_restricted": self.age_restricted_check.isChecked(),
             "image_path": getattr(self, "current_image_path", None),
             "is_active": True,
         }

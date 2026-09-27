@@ -53,11 +53,10 @@ class TestReorderNavigatesToPurchaseWithPrefill:
                 "barcode": low_stock_product.barcode,
                 "current_stock": low_stock_product.stock_qty,
                 "order_qty": Decimal("18.000"),
-                "supplier": "",
             }
         ]
 
-        management_view._handle_reorder_navigation(items)
+        management_view._handle_reorder_navigation(items, None)
         purchase_view = management_view.purchase_view
 
         assert isinstance(purchase_view, PurchaseView)
@@ -77,11 +76,10 @@ class TestReorderNavigatesToPurchaseWithPrefill:
                 "barcode": "DOES-NOT-EXIST",
                 "current_stock": Decimal("0"),
                 "order_qty": Decimal("5.000"),
-                "supplier": "",
             }
         ]
 
-        management_view._handle_reorder_navigation(items)
+        management_view._handle_reorder_navigation(items, None)
         purchase_view = management_view.purchase_view
 
         assert purchase_view.grn_items == []

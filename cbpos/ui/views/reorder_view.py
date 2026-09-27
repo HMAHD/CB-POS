@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from cbpos.core.services.purchase_order_service import PurchaseOrderService
 from cbpos.core.services.stock_service import StockService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
@@ -27,11 +28,14 @@ class ReorderView(QWidget):
     Displays items where stock_qty <= reorder_point.
     """
 
-    navigate_to_purchase = pyqtSignal(list)  # Signal to navigate with pre-filled items
+    # Signal to navigate to Purchase View with pre-filled items and the id
+    # of the Purchase Order just persisted for them (#486).
+    navigate_to_purchase = pyqtSignal(list, int)
 
     def __init__(self):
         """Build the UI and load the initial reorder list."""
         super().__init__()
+        self.user = None
         self.init_ui()
         self.load_reorder_items()
 
@@ -104,6 +108,10 @@ class ReorderView(QWidget):
             ]
         )
 
+    def set_user(self, user):
+        """Store the logged-in user for use when persisting a Purchase Order."""
+        self.user = user
+
     def load_reorder_items(self):
         """Load products where stock_qty <= reorder_point."""
         products = StockService.get_reorder_list()
@@ -141,13 +149,14 @@ class ReorderView(QWidget):
             preferred_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.table.setItem(row, 4, preferred_item)
 
-            # Supplier (first one if exists) — store None sentinel in UserRole
+            # Supplier (first one if exists) — store its id in UserRole+1
+            # (None sentinel if the product has no supplier assigned) so
+            # create_purchase_order() can persist a real Purchase Order
+            # against it (#486).
             has_supplier = bool(product.suppliers)
             supplier_name = product.suppliers[0].company_name if has_supplier else _t("reorder.no_supplier")
             supplier_item = QTableWidgetItem(supplier_name)
-            supplier_item.setData(
-                Qt.ItemDataRole.UserRole + 1, product.suppliers[0].company_name if has_supplier else None
-            )
+            supplier_item.setData(Qt.ItemDataRole.UserRole + 1, product.suppliers[0].id if has_supplier else None)
             self.table.setItem(row, 5, supplier_item)
 
             # Store product ID in row data
@@ -155,8 +164,12 @@ class ReorderView(QWidget):
 
     def create_purchase_order(self):
         """
-        Create purchase order from selected items.
-        Navigate to PurchaseView with pre-filled quantities.
+        Create a real Purchase Order (#486) from selected items, then
+        navigate to PurchaseView with the GRN pre-filled from it.
+
+        All selected rows must share the same (non-empty) supplier, since a
+        Purchase Order is placed with one supplier -- this mirrors the
+        existing one-supplier-per-GRN constraint on the New GRN tab.
         """
         selected_rows = {item.row() for item in self.table.selectedItems()}
 
@@ -170,13 +183,15 @@ class ReorderView(QWidget):
 
         # Collect items with calculated order quantities from table data
         po_items = []
+        supplier_ids = set()
         for row in sorted(selected_rows):
             product_id = self.table.item(row, 0).data(Qt.ItemDataRole.UserRole)
             product_name = self.table.item(row, 0).text()
             barcode = self.table.item(row, 1).text()
             current_stock = Decimal(self.table.item(row, 2).text())
             preferred_qty = Decimal(self.table.item(row, 4).text())
-            supplier = self.table.item(row, 5).data(Qt.ItemDataRole.UserRole + 1)
+            supplier_id = self.table.item(row, 5).data(Qt.ItemDataRole.UserRole + 1)
+            supplier_ids.add(supplier_id)
 
             order_qty = max(preferred_qty - current_stock, Decimal("0"))
 
@@ -187,14 +202,34 @@ class ReorderView(QWidget):
                     "barcode": barcode,
                     "current_stock": current_stock,
                     "order_qty": order_qty,
-                    "supplier": supplier or "",
                 }
             )
 
-        # Emit signal to navigate to Purchase View with items
-        self.navigate_to_purchase.emit(po_items)
+        if supplier_ids != {next(iter(supplier_ids))} or None in supplier_ids:
+            QMessageBox.warning(
+                self,
+                _t("reorder.mixed_supplier_title"),
+                _t("reorder.mixed_supplier_msg"),
+            )
+            return
+
+        supplier_id = next(iter(supplier_ids))
+        order = PurchaseOrderService.create_purchase_order(
+            supplier_id=supplier_id,
+            user_id=self.user.id,
+            items=[
+                {
+                    "product_id": item["product_id"],
+                    "qty_ordered": item["order_qty"] if item["order_qty"] > 0 else Decimal("1.000"),
+                }
+                for item in po_items
+            ],
+        )
+
+        # Emit signal to navigate to Purchase View with items and the order id
+        self.navigate_to_purchase.emit(po_items, order.id)
         QMessageBox.information(
             self,
             _t("reorder.purchase_order"),
-            _t("reorder.purchase_order_created", count=len(po_items)),
+            _t("reorder.purchase_order_created", count=len(po_items), doc_number=order.document_number),
         )

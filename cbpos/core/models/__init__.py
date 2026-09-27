@@ -213,12 +213,37 @@ class Purchase(Document):
     input_vat: Mapped[Decimal] = mapped_column(
         Numeric(12, 2), default=0
     )  # VAT paid to supplier, from their invoice -- deductible against Output VAT
+    purchase_order_id: Mapped[int | None] = mapped_column(ForeignKey("purchase_orders.id"), nullable=True)
 
     supplier: Mapped["Supplier"] = relationship(back_populates="purchases")
     items: Mapped[list["PurchaseItem"]] = relationship(back_populates="purchase", cascade="all, delete-orphan")
+    purchase_order: Mapped["PurchaseOrder | None"] = relationship(foreign_keys=[purchase_order_id])
 
     __mapper_args__ = {
         "polymorphic_identity": "purchase",
+    }
+
+
+class PurchaseOrder(Document):
+    """A supplier order awaiting receipt, created from Reorder suggestions.
+
+    Tracked independently of the `Purchase` (GRN) row(s) that eventually
+    receive it, so one order can be received in full or partially across
+    multiple separate GRNs (#486).
+    """
+
+    __tablename__ = "purchase_orders"
+
+    id: Mapped[int] = mapped_column(ForeignKey("documents.id"), primary_key=True)
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"))
+
+    supplier: Mapped["Supplier"] = relationship("Supplier")
+    items: Mapped[list["PurchaseOrderItem"]] = relationship(
+        back_populates="purchase_order", cascade="all, delete-orphan"
+    )
+
+    __mapper_args__ = {
+        "polymorphic_identity": "purchase_order",
     }
 
 
@@ -457,8 +482,25 @@ class PurchaseItem(Base):
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
     qty_received: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
     unit_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    purchase_order_item_id: Mapped[int | None] = mapped_column(ForeignKey("purchase_order_items.id"), nullable=True)
 
     purchase: Mapped["Purchase"] = relationship(back_populates="items")
+    product: Mapped["Product"] = relationship("Product")
+    purchase_order_item: Mapped["PurchaseOrderItem | None"] = relationship()
+
+
+class PurchaseOrderItem(Base):
+    """One product line on a `PurchaseOrder`, with the running quantity received against it (#486)."""
+
+    __tablename__ = "purchase_order_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    purchase_order_id: Mapped[int] = mapped_column(ForeignKey("purchase_orders.id"), index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
+    qty_ordered: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+    qty_received: Mapped[Decimal] = mapped_column(Numeric(10, 3), default=0)
+
+    purchase_order: Mapped["PurchaseOrder"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship("Product")
 
 

@@ -190,10 +190,10 @@ class ManagementView(QWidget):
             return view
         raise ValueError(f"No view factory for nav index {index}")
 
-    def _handle_reorder_navigation(self, items: list) -> None:
-        """Switch to the Purchase tab and pre-fill a new GRN from Reorder's selection."""
+    def _handle_reorder_navigation(self, items: list, purchase_order_id: int) -> None:
+        """Switch to the Purchase tab and pre-fill a new GRN from the Purchase Order just created."""
         purchase_view = self._get_or_create_view(2)
-        purchase_view.prefill_grn_items(items)
+        purchase_view.prefill_grn_items(items, purchase_order_id=purchase_order_id)
         self.stack.setCurrentWidget(purchase_view)
         self.sidebar.highlight(2)
 
@@ -204,10 +204,10 @@ class ManagementView(QWidget):
             setattr(self, self._view_attr_names[index], widget)
             self.stack.addWidget(widget)
 
-            # These two views need the current user as soon as they're
+            # These views need the current user as soon as they're
             # created, not just on the next login (set_user() already
             # re-applies to existing views below).
-            if index in (2, 9):
+            if index in (2, 9, 10):
                 user = getattr(self, "user", None)
                 if user is not None:
                     widget.set_user(user)
@@ -227,6 +227,8 @@ class ManagementView(QWidget):
             self.purchase_view.set_user(user)
         if hasattr(self, "stock_take_view"):
             self.stock_take_view.set_user(user)
+        if hasattr(self, "reorder_view"):
+            self.reorder_view.set_user(user)
 
     def resizeEvent(self, event) -> None:
         """Auto-collapse sidebar on narrow screens."""

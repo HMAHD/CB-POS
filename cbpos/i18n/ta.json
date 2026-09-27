@@ -702,6 +702,12 @@
     "form_add_product": "பொருள் சேருங்க:",
     "grn_input_vat_label": "இன்வாய்ஸில் VAT:",
     "input_vat_tooltip": "சப்ளையர் இன்வாய்ஸில் காட்டப்பட்ட VAT தொகை. Output VAT-ல் இருந்து கழிக்கலாம் (Tax Liability அறிக்கை).",
+    "open_po_label": "ஆர்டருக்கு எதிராக பெறவும்:",
+    "select_open_order": "திறந்த கொள்முதல் ஆர்டர் ஒன்றைத் தேர்ந்தெடுக்கவும்...",
+    "btn_load_po": "லோட் செய்",
+    "discrepancy_title": "அளவு பொருந்தவில்லை",
+    "discrepancy_confirm": "இந்த பொருட்களுக்கு பெறப்பட்ட அளவு ஆர்டர் செய்த அளவுடன் பொருந்தவில்லை:\n\n{details}\n\nஇந்த GRN-ஐ இருந்தும் சமர்ப்பிக்கவா?",
+    "discrepancy_line": "{product}: ஆர்டர் {outstanding}, பெறுவது {received}",
     "from": "இருந்து:",
     "to": "வரை:",
     "all": "எல்லாம்",
@@ -2155,8 +2161,10 @@
     "no_supplier": "வழங்குநர் இல்லை",
     "no_selection": "தேர்வு இல்லை",
     "no_selection_msg": "தயவுசெய்து கொள்முதலுக்கு பொருட்கள் தேர்ந்தெடுக்கவும்",
+    "mixed_supplier_title": "கலப்பு வழங்குநர்கள்",
+    "mixed_supplier_msg": "கொள்முதல் ஆர்டர் உருவாக்க ஒரே வழங்குநரின் பொருட்களை மட்டும் தேர்ந்தெடுக்கவும்",
     "purchase_order": "கொள்முதல் ஆர்டர்",
-    "purchase_order_created": "{count} பொருட்களுடன் கொள்முதல் ஆர்டர் உருவாக்கப்பட்டது"
+    "purchase_order_created": "{doc_number} — {count} பொருட்களுடன் கொள்முதல் ஆர்டர் உருவாக்கப்பட்டது"
   },
   "stock_take": {
     "tab_new_count": "புதிய எண்ணிக்கை",

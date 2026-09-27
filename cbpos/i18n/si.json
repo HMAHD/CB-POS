@@ -702,6 +702,12 @@
     "form_add_product": "අයිතමයක් එකතු කරන්න:",
     "grn_input_vat_label": "ඉන්වොයිසියේ VAT:",
     "input_vat_tooltip": "සැපයුම්කරුගේ ඉන්වොයිසියේ පෙන්වා ඇති VAT මුදල. Output VAT ගෙවීමෙන් අඩු කරගත හැක (බදු වගකීම් වාර්තාව).",
+    "open_po_label": "ඇණවුමට එරෙහිව ලබා ගන්න:",
+    "select_open_order": "විවෘත මිලදී ගැනීමේ ඇණවුමක් තෝරන්න...",
+    "btn_load_po": "පූරණය කරන්න",
+    "discrepancy_title": "ප්‍රමාණ නොගැලපීම",
+    "discrepancy_confirm": "මෙම අයිතම සඳහා ලැබුණු ප්‍රමාණය ඇණවුම් කළ ප්‍රමාණයට නොගැලපේ:\n\n{details}\n\nමෙම GRN එක තවමත් සම්පූර්ණ කරන්නද?",
+    "discrepancy_line": "{product}: ඇණවුම් කළේ {outstanding}, ලැබෙන්නේ {received}",
     "from": "සිට:",
     "to": "දක්වා:",
     "all": "සියල්ල",
@@ -2155,8 +2161,10 @@
     "no_supplier": "සැපයුම්කරු නැත",
     "no_selection": "තේරීමක් නැත",
     "no_selection_msg": "කරුණාකර මිලදී ගැනීම සඳහා අයිතම තෝරන්න",
+    "mixed_supplier_title": "සැපයුම්කරුවන් මිශ්‍රව ඇත",
+    "mixed_supplier_msg": "මිලදී ගැනීමේ ඇණවුමක් සෑදීමට එකම සැපයුම්කරුගේ අයිතම පමණක් තෝරන්න",
     "purchase_order": "මිලදී ගැනීමේ ඇණවුම",
-    "purchase_order_created": "අයිතම {count}ක් සමඟ මිලදී ගැනීමේ ඇණවුම සාදන ලදී"
+    "purchase_order_created": "{doc_number} — අයිතම {count}ක් සමඟ මිලදී ගැනීමේ ඇණවුම සාදන ලදී"
   },
   "stock_take": {
     "tab_new_count": "නව ගණන් කිරීම",

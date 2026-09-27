@@ -27,17 +27,32 @@ class SupplierService:
     ) -> Supplier:
         """
         Create a new supplier.
+
+        Raises:
+            ValueError: if company_name is blank, or if company_name/phone
+                collides with an existing supplier (#522 -- previously this
+                reached the DB's UNIQUE constraint uncaught and crashed the app).
         """
+        company_name = (company_name or "").strip()
+        if not company_name:
+            raise ValueError("Company name is required.")
+        phone = (phone or "").strip() or None
+
         db = Database()
         with db.get_session() as session:
+            if session.query(Supplier).filter(Supplier.company_name == company_name).first():
+                raise ValueError(f"A supplier named '{company_name}' already exists.")
+            if phone and session.query(Supplier).filter(Supplier.phone == phone).first():
+                raise ValueError(f"A supplier with phone '{phone}' already exists.")
+
             supplier = Supplier(
                 company_name=company_name,
                 phone=phone,
-                contact_person=contact_person,
-                email=email,
-                address=address,
-                tax_number=tax_number,
-                contact_details=contact_details,
+                contact_person=(contact_person or "").strip() or None,
+                email=(email or "").strip() or None,
+                address=(address or "").strip() or None,
+                tax_number=(tax_number or "").strip() or None,
+                contact_details=(contact_details or "").strip() or None,
                 payment_terms=payment_terms,
             )
             session.add(supplier)
@@ -60,6 +75,10 @@ class SupplierService:
     ) -> Supplier | None:
         """
         Update an existing supplier.
+
+        Raises:
+            ValueError: if company_name is provided but blank, or if the new
+                company_name/phone collides with a *different* supplier (#522).
         """
         db = Database()
         with db.get_session() as session:
@@ -68,19 +87,30 @@ class SupplierService:
                 return None
 
             if company_name is not None:
+                company_name = company_name.strip()
+                if not company_name:
+                    raise ValueError("Company name is required.")
+                dup = session.query(Supplier).filter(Supplier.company_name == company_name, Supplier.id != supplier_id)
+                if dup.first():
+                    raise ValueError(f"A supplier named '{company_name}' already exists.")
                 supplier.company_name = company_name
             if phone is not None:
+                phone = phone.strip() or None
+                if phone:
+                    dup = session.query(Supplier).filter(Supplier.phone == phone, Supplier.id != supplier_id)
+                    if dup.first():
+                        raise ValueError(f"A supplier with phone '{phone}' already exists.")
                 supplier.phone = phone
             if contact_person is not None:
-                supplier.contact_person = contact_person
+                supplier.contact_person = contact_person.strip() or None
             if email is not None:
-                supplier.email = email
+                supplier.email = email.strip() or None
             if address is not None:
-                supplier.address = address
+                supplier.address = address.strip() or None
             if tax_number is not None:
-                supplier.tax_number = tax_number
+                supplier.tax_number = tax_number.strip() or None
             if contact_details is not None:
-                supplier.contact_details = contact_details
+                supplier.contact_details = contact_details.strip() or None
             if payment_terms is not None:
                 supplier.payment_terms = payment_terms
             if is_active is not None:

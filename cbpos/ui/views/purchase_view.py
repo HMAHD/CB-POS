@@ -317,7 +317,7 @@ class SupplierDialog(QDialog):
         btn_box.addStretch()
         self.save_btn = QPushButton()
         self.save_btn.setObjectName("BtnSave")
-        self.save_btn.clicked.connect(self.accept)
+        self.save_btn.clicked.connect(self.save)
         self.cancel_btn = QPushButton()
         self.cancel_btn.setObjectName("BtnCancel")
         self.cancel_btn.clicked.connect(self.reject)
@@ -341,14 +341,24 @@ class SupplierDialog(QDialog):
         self.save_btn.setText(_t("common.save"))
         self.cancel_btn.setText(_t("common.cancel"))
 
+    def save(self) -> None:
+        """Validate required fields before accepting -- an empty company name
+        would otherwise reach SupplierService and raise there instead of
+        giving the cashier immediate, in-dialog feedback (#522)."""
+        if not self.company_input.text().strip():
+            QMessageBox.warning(self, _t("common.validation_error"), _t("purchase.supplier_name_required"))
+            self.company_input.setFocus()
+            return
+        self.accept()
+
     def get_data(self):
         """Return the entered supplier field values as a dict."""
         return {
-            "company_name": self.company_input.text(),
-            "contact_person": self.contact_input.text(),
-            "phone": self.phone_input.text(),
-            "tax_number": self.tax_input.text(),
-            "contact_details": self.details_input.text(),
+            "company_name": self.company_input.text().strip(),
+            "contact_person": self.contact_input.text().strip(),
+            "phone": self.phone_input.text().strip(),
+            "tax_number": self.tax_input.text().strip(),
+            "contact_details": self.details_input.text().strip(),
             "payment_terms": self._parse_payment_terms(self.payment_terms_input.text()),
         }
 
@@ -428,9 +438,15 @@ class PurchaseView(QWidget):
         toolbar = QHBoxLayout()
         self.btn_add_supplier = QPushButton()
         self.btn_add_supplier.clicked.connect(self.add_supplier)
+        self.btn_edit_supplier = QPushButton()
+        self.btn_edit_supplier.clicked.connect(self.edit_supplier)
+        self.btn_deactivate_supplier = QPushButton()
+        self.btn_deactivate_supplier.clicked.connect(self.deactivate_supplier)
         self.btn_refresh_suppliers = QPushButton()
         self.btn_refresh_suppliers.clicked.connect(self.refresh_suppliers)
         toolbar.addWidget(self.btn_add_supplier)
+        toolbar.addWidget(self.btn_edit_supplier)
+        toolbar.addWidget(self.btn_deactivate_supplier)
         toolbar.addWidget(self.btn_refresh_suppliers)
         toolbar.addStretch()
         layout.addLayout(toolbar)
@@ -439,6 +455,7 @@ class PurchaseView(QWidget):
         self.supplier_table = QTableView()
         self.supplier_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.supplier_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.supplier_table.doubleClicked.connect(self.edit_supplier)
         layout.addWidget(self.supplier_table)
 
     def setup_grn_tab(self):
@@ -616,6 +633,8 @@ class PurchaseView(QWidget):
 
         # Supplier tab
         self.btn_add_supplier.setText(_t("purchase.btn_add_supplier"))
+        self.btn_edit_supplier.setText(_t("purchase.btn_edit_supplier"))
+        self.btn_deactivate_supplier.setText(_t("purchase.btn_deactivate_supplier"))
         self.btn_refresh_suppliers.setText(_t("purchase.btn_refresh"))
 
         # GRN tab
@@ -775,7 +794,56 @@ class PurchaseView(QWidget):
         dialog = SupplierDialog(self)
         if dialog.exec():
             data = dialog.get_data()
-            SupplierService.create_supplier(**data)
+            try:
+                SupplierService.create_supplier(**data)
+            except ValueError as e:
+                QMessageBox.warning(self, _t("common.validation_error"), str(e))
+                return
+            self.refresh_suppliers()
+
+    def _selected_supplier(self):
+        """Return the Supplier for the currently selected supplier_table row, or None."""
+        row = self.supplier_table.currentIndex().row()
+        if row < 0 or row >= len(self.suppliers):
+            return None
+        return self.suppliers[row]
+
+    def edit_supplier(self):
+        """Open the Edit Supplier dialog for the selected row and persist changes on accept (#523)."""
+        supplier = self._selected_supplier()
+        if not supplier:
+            return
+
+        dialog = SupplierDialog(self, supplier=supplier)
+        if dialog.exec():
+            data = dialog.get_data()
+            try:
+                SupplierService.update_supplier(supplier.id, **data)
+            except ValueError as e:
+                QMessageBox.warning(self, _t("common.validation_error"), str(e))
+                return
+            self.refresh_suppliers()
+
+    def deactivate_supplier(self):
+        """Deactivate the selected supplier after confirmation (#523).
+
+        A soft delete via the same is_active flag Product/Customer/User
+        already use -- SupplierService.update_supplier already supports it,
+        this was purely an unwired UI gap.
+        """
+        supplier = self._selected_supplier()
+        if not supplier:
+            return
+
+        reply = QMessageBox.question(
+            self,
+            _t("purchase.confirm_deactivate_title"),
+            _t("purchase.confirm_deactivate_message", company=supplier.company_name),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            SupplierService.update_supplier(supplier.id, is_active=False)
             self.refresh_suppliers()
 
     def load_products_for_completer(self):

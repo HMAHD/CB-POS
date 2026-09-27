@@ -139,6 +139,7 @@
     "transaction_failed": "Transaction failed: {error}"
   },
   "cart": {
+    "price_change_not_allowed": "This product's price cannot be changed.",
     "header_item": "Item",
     "header_price": "Price",
     "header_qty": "Qty",
@@ -382,6 +383,8 @@
     "reorder_point": "Reorder Point",
     "select_image_title": "Select Product Image",
     "service_hint": "Service items have no stock tracking",
+    "price_change_allowed": "Allow Price Override at Checkout",
+    "price_change_hint": "Turn off for fixed/regulated-price items — no cashier can override, even with permission",
     "stock_qty": "Stock Qty",
     "weighted_hint": "Weighted items are sold by weight (kg, g, etc.)"
   },

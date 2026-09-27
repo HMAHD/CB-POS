@@ -1193,6 +1193,12 @@ class SalesView(QWidget):
 
         # 2. Get New Price
         item = self.cart_service.items[row]
+
+        if not item["product"].price_change_allowed:
+            QMessageBox.warning(self, _t("common.warning"), _t("cart.price_change_not_allowed"))
+            self.barcode_input.setFocus()
+            return
+
         current_price = item["unit_price"]
         dialog = SetItemPriceDialog(item["product"].name_en, current_price, parent=self)
         if dialog.exec():

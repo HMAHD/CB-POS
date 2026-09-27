@@ -110,6 +110,37 @@ class TestChangeLinePriceUsesStyledDialog:
         assert view.cart_service.items[0]["unit_price"] == Decimal("175.00")
 
 
+class TestChangeLinePriceRespectsPerProductLock:
+    """#490: price_change_allowed=False on the product is a hard lock
+    beneath the permission check -- even an authorized manager can't
+    override it, and the price dialog should never even open."""
+
+    def test_locked_product_shows_a_warning_and_never_opens_the_dialog(self, view, monkeypatch):
+        from cbpos.core.models import User
+
+        manager = User(username="mgr", pin_hash="x", role_id=None, is_active=True)
+        import cbpos.core.utils.permission_helper as permission_helper
+
+        monkeypatch.setattr(permission_helper, "check_permission_with_override", lambda perm, parent: manager)
+
+        product = _make_product(price="200.00")
+        product.price_change_allowed = False
+        view.cart_service.add_item(product)
+        view.update_cart_display()
+        view.cart_table.setCurrentCell(0, 0)
+
+        fake_dialog_cls = MagicMock()
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(sales_view_module, "SetItemPriceDialog", fake_dialog_cls)
+            with patch("cbpos.ui.views.sales_view.QMessageBox.warning") as mock_warning:
+                view.change_line_price()
+
+        fake_dialog_cls.assert_not_called()
+        mock_warning.assert_called_once()
+        assert view.cart_service.items[0]["unit_price"] == Decimal("200.00")
+
+
 class TestRemoveLineItemRequiresPermission:
     """remove_line_item() had no permission check at all, unlike every
     other line-mutating context-menu action (apply_line_discount,

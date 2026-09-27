@@ -54,6 +54,31 @@ class TestPriceFieldDataRoundTrip:
         assert saved.price == Decimal("499.99")
         assert saved.cost == Decimal("250.00")
 
+    def test_price_change_allowed_checkbox_defaults_to_checked(self, db_session):
+        dialog = ProductEditor()
+        assert dialog.price_change_allowed_check.isChecked() is True
+
+    def test_price_change_allowed_round_trips_through_load_and_save(self, db_session):
+        product = Product(
+            barcode="PE-TEST-3",
+            name_en="Regulated Product",
+            price=Decimal("100.00"),
+            cost=Decimal("50.00"),
+            price_change_allowed=False,
+        )
+        db_session.add(product)
+        db_session.flush()
+
+        dialog = ProductEditor(product=product)
+        assert dialog.price_change_allowed_check.isChecked() is False
+
+        dialog.price_change_allowed_check.setChecked(True)
+        dialog.save_product()
+
+        db_session.expire_all()
+        saved = db_session.query(Product).filter_by(barcode="PE-TEST-3").one()
+        assert saved.price_change_allowed is True
+
     def test_add_component_parses_quantity_from_text_field(self, db_session):
         child = Product(barcode="PE-CHILD-1", name_en="Component Product", price=Decimal("10.00"), cost=Decimal("5.00"))
         db_session.add(child)

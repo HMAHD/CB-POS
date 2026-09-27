@@ -124,16 +124,30 @@ class CartService:
         self.cart_discount_value = Decimal(str(value))
         # No line recalculation needed, just totals
 
-    def override_price(self, index: int, new_price: Decimal, user: Any):
+    def override_price(self, index: int, new_price: Decimal, user: Any) -> bool:
         """
         Override the price of a specific line item.
-        Requires permission check (handled by caller or decorator).
+
+        Requires permission check (handled by caller or decorator). Also
+        blocked outright if the product has `price_change_allowed=False`
+        (e.g. a regulated/fixed-price item) -- that's a per-product lock
+        beneath the permission check, not something an authorized user can
+        override (#490).
+
+        Returns:
+            True if the price was changed, False if blocked because this
+            product doesn't allow price changes.
         """
         if new_price < Decimal("0"):
             raise ValueError("Price cannot be negative")
 
         if 0 <= index < len(self.items):
             item = self.items[index]
+
+            if not item["product"].price_change_allowed:
+                return False
+
+            original_price = item["unit_price"]
             item["unit_price"] = Decimal(str(new_price))
             item["is_manual_price"] = True
             # Reset discount if price is manually overridden?
@@ -144,8 +158,10 @@ class CartService:
                 user_id=user.id,
                 action="PRICE_OVERRIDE",
                 event_type="TRANSACTION",
-                details=f"Overrode price of '{item['product'].name_en}' to {new_price}",
+                details=(f"Overrode price of '{item['product'].name_en}' from {original_price} to {new_price}"),
             )
+            return True
+        return False
 
     def _validate_discount_cap(
         self, discount_type: str, discount_value: Decimal, reference_amount: Decimal = None

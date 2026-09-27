@@ -881,7 +881,13 @@
     "void_not_supported": "இந்த வகை ஆவணத்துக்கு ரத்து செய்யறது ஆதரிக்கப்படல.",
     "void_success": "ஆவணம் {doc_number} ரத்து செய்யப்பட்டது.",
     "void_failed": "ஆவணத்தை ரத்து செய்ய முடியல.",
-    "void_error": "ரத்து செய்தல் தோல்வி: {error}"
+    "void_error": "ரத்து செய்தல் தோல்வி: {error}",
+    "btn_transfer": "மாற்று",
+    "transfer_title": "ஆர்டரை மாற்று",
+    "transfer_prompt": "இந்த விற்பனையை மாற்று:",
+    "transfer_no_other_users": "இந்த ஆர்டரை மாற்ற வேறு செயலில் இருக்கும் பயனர் இல்லை.",
+    "transfer_success": "ஆர்டர் {doc_number} {user}-க்கு மாற்றப்பட்டது.",
+    "transfer_failed": "ஆர்டரை மாற்ற முடியல."
   },
   "pricelist": {
     "sidebar_title": "விலைப் பட்டியல்கள்",

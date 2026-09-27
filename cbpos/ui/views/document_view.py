@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QHeaderView,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -283,6 +284,12 @@ class DocumentBrowserView(QWidget):
         self.void_btn.setEnabled(False)
         action_row.addWidget(self.void_btn)
 
+        self.transfer_btn = QPushButton()
+        self.transfer_btn.setObjectName("DocTransferBtn")
+        self.transfer_btn.clicked.connect(self.transfer_order)
+        self.transfer_btn.setEnabled(False)
+        action_row.addWidget(self.transfer_btn)
+
         detail_layout.addLayout(action_row)
         layout.addWidget(self.detail_panel, 2)
 
@@ -394,6 +401,7 @@ class DocumentBrowserView(QWidget):
         self.convert_btn.setText(_t("document_browser.btn_convert_to_sale"))
         self.refund_btn.setText(_t("document_browser.btn_refund"))
         self.void_btn.setText(_t("document_browser.btn_void"))
+        self.transfer_btn.setText(_t("document_browser.btn_transfer"))
 
         # Pagination
         self.prev_btn.setText(_t("document_browser.btn_previous"))
@@ -639,6 +647,7 @@ class DocumentBrowserView(QWidget):
         self.refund_btn.setEnabled(False)
         self.convert_btn.setEnabled(False)
         self.void_btn.setEnabled(False)
+        self.transfer_btn.setEnabled(False)
 
     def update_action_buttons(self, doc: dict) -> None:
         """Enable relevant action buttons based on document type and status."""
@@ -660,6 +669,8 @@ class DocumentBrowserView(QWidget):
                 DocumentStatus.EXPIRED,
             )
         )
+
+        self.transfer_btn.setEnabled(doc_type == "sale" and status == DocumentStatus.COMPLETED)
 
     def reprint_document(self) -> None:
         """Reprint the selected document."""
@@ -878,6 +889,57 @@ class DocumentBrowserView(QWidget):
                 _t("common.error"),
                 _t("document_browser.void_error", error=str(e)),
             )
+
+    def transfer_order(self) -> None:
+        """Reassign the selected sale's cashier-of-record to another user (#479)."""
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.services.user_service import UserService
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        if not check_permission_with_override(Permissions.DOCUMENTS_TRANSFER, self):
+            return
+
+        if not self.current_doc or self.current_doc.get("type") != "sale":
+            return
+
+        current_username = self.current_doc.get("username", "")
+        candidates = [u for u in UserService.get_all_users() if u.is_active and u.username != current_username]
+
+        if not candidates:
+            QMessageBox.information(
+                self, _t("document_browser.info_title"), _t("document_browser.transfer_no_other_users")
+            )
+            return
+
+        usernames = [u.username for u in candidates]
+        choice, ok = QInputDialog.getItem(
+            self,
+            _t("document_browser.transfer_title"),
+            _t("document_browser.transfer_prompt"),
+            usernames,
+            0,
+            False,
+        )
+        if not ok or not choice:
+            return
+
+        target_user = next(u for u in candidates if u.username == choice)
+        doc_number = self.current_doc.get("document_number", "")
+
+        try:
+            success = TransactionService.transfer_order(self.current_doc["id"], target_user.id)
+            if success:
+                QMessageBox.information(
+                    self,
+                    _t("common.success"),
+                    _t("document_browser.transfer_success", doc_number=doc_number, user=target_user.username),
+                )
+                self.load_documents()
+            else:
+                QMessageBox.critical(self, _t("common.error"), _t("document_browser.transfer_failed"))
+        except Exception as e:
+            QMessageBox.critical(self, _t("common.error"), _t("document_browser.transfer_failed"))
+            logger.error("Transfer order failed: %s", e)
 
     def open_proforma_dialog(self) -> None:
         """Open the dialog to create a new proforma/quotation."""

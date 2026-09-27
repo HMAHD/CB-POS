@@ -35,6 +35,7 @@ class Permissions:
     DOCUMENTS_CREATE_PROFORMA = "documents.create_proforma"
     DOCUMENTS_CONVERT_PROFORMA = "documents.convert_proforma"
     DOCUMENTS_VOID = "documents.void"
+    DOCUMENTS_TRANSFER = "documents.transfer"
 
     # Credit
     CREDIT_RECEIVE_PAYMENT = "credit.receive_payment"
@@ -94,6 +95,7 @@ class Permissions:
                 cls.DOCUMENTS_CREATE_PROFORMA,
                 cls.DOCUMENTS_CONVERT_PROFORMA,
                 cls.DOCUMENTS_VOID,
+                cls.DOCUMENTS_TRANSFER,
             ],
             "Credit": [
                 cls.CREDIT_RECEIVE_PAYMENT,

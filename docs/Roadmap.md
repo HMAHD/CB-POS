@@ -251,7 +251,10 @@
     - [x] **Hold Bill:** Serialize cart to "Pending" table.
     - [x] **Recall Bill:** Restore from Pending.
     - [x] **Void Bill:** Record void reason.
-    - [x] **Lock Order:** Save and prevent modifications
+    - [ ] ~~**Lock Order:** Save and prevent modifications~~ — not planned. No
+      `is_locked`/order-lock state exists anywhere in the codebase, and no one
+      has asked for this capability. Product decision (#479): correct the
+      roadmap rather than build it speculatively.
     - [x] **Transfer Order:** Split to another order/user
 - [x] **8.3 Multiple Open Orders**
     - [x] **Unlimited Simultaneous Orders:** Per user

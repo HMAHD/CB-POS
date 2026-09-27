@@ -613,14 +613,14 @@ class SalesView(QWidget):
         if not query:
             return
 
-        # 1. Check for Loyalty Card (e.g. Starts with L- or specific length)
-        # Assuming L- prefix for now as per request
-        if query.startswith("L-") or (len(query) == 12 and query.isdigit()):
-            customer = self.customer_service.find_by_loyalty_card(query)
-            if customer:
-                self.set_customer(customer)
-                self.barcode_input.clear()
-                return
+        # 1. Check for Loyalty Card. loyalty_card_code is free text (set in
+        # CustomerEditor, no fixed prefix/length -- #488), so match it
+        # directly rather than guessing at a shape first.
+        customer = self.customer_service.find_by_loyalty_card(query)
+        if customer:
+            self.set_customer(customer)
+            self.barcode_input.clear()
+            return
 
         # Use product_service with current search mode
         products = self.product_service.search_products(query, mode=self.current_search_mode)

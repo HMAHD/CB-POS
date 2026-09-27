@@ -628,7 +628,7 @@ class SalesView(QWidget):
         if len(products) == 1:
             SoundService.play("scan_success")
             dialog = QuantityDialog(products[0], self)
-            if dialog.exec():
+            if dialog.exec() and self._confirm_age_restriction(products[0]):
                 self.cart_service.add_item(products[0], qty=dialog.get_quantity())
                 self.update_cart_display()
             self.barcode_input.clear()
@@ -1276,10 +1276,22 @@ class SalesView(QWidget):
     def on_advanced_search_product_selected(self, product):
         """Handle product selection from advanced search."""
         dialog = QuantityDialog(product, self)
-        if dialog.exec():
+        if dialog.exec() and self._confirm_age_restriction(product):
             self.cart_service.add_item(product, qty=dialog.get_quantity())
             self.update_cart_display()
         self.barcode_input.setFocus()
+
+    def _confirm_age_restriction(self, product) -> bool:
+        """Require cashier confirmation before adding an age-restricted product (#485)."""
+        if not product.is_age_restricted:
+            return True
+        reply = QMessageBox.question(
+            self,
+            _t("sales.age_restriction_title"),
+            _t("sales.age_restriction_confirm", product=product.name_en),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        return reply == QMessageBox.StandardButton.Yes
 
     def switch_to_order(self, suspended_id):
         """

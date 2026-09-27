@@ -1,10 +1,8 @@
 import weakref
 
 from PyQt6.QtCore import QSize, Qt, pyqtSignal
-from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QFrame,
-    QGraphicsDropShadowEffect,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -162,12 +160,13 @@ class SideMenu(QWidget):
         # Critical: QWidget doesn't paint QSS background without this
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
-        shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(30)
-        shadow.setXOffset(-5)
-        shadow.setYOffset(0)
-        shadow.setColor(QColor(0, 0, 0, 140))
-        self.setGraphicsEffect(shadow)
+        # A QGraphicsDropShadowEffect used to sit here for a soft depth cue.
+        # Removed (#524): it forces the *entire* panel through an offscreen
+        # blur-composite pass on every repaint of any child, including a
+        # single nav button's hover/pressed state change -- measured at a
+        # ~35x repaint-cost increase (0.06ms -> 2.05ms per repaint) versus
+        # no effect at all. The QSS border-left on #POSSideMenu still gives
+        # a visible edge without that cost.
 
         self.raise_()
         self._nav_buttons: list[NavTile] = []

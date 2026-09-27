@@ -1253,6 +1253,10 @@
   },
   "settings": {
     "title": "Settings - CB POS",
+    "btn_reset_defaults": "Reset to Defaults",
+    "reset_defaults_title": "Reset to Defaults",
+    "reset_defaults_confirm": "Reset all settings on this page to their default values? This cannot be undone.",
+    "reset_defaults_done": "This page's settings have been reset to their defaults.",
     "sidebar_shop_info": "Shop Info",
     "sidebar_sales_tax": "Sales && Tax",
     "sidebar_documents": "Documents",

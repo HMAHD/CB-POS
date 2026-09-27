@@ -1223,6 +1223,10 @@
   },
   "settings": {
     "title": "සැකසුම්",
+    "btn_reset_defaults": "පෙරනිමියට යළි සකසන්න",
+    "reset_defaults_title": "පෙරනිමියට යළි සකසන්න",
+    "reset_defaults_confirm": "මේ පිටුවේ සියලුම සැකසුම් පෙරනිමි අගයන්ට යළි සකසන්නද? මෙය අහෝසි කරන්න බැහැ.",
+    "reset_defaults_done": "මේ පිටුවේ සැකසුම් පෙරනිමි අගයන්ට යළි සකසා ඇත.",
     "sidebar_shop_info": "සාප්පුවේ තොරතුරු",
     "sidebar_sales_tax": "විකුණුම් && බදු",
     "sidebar_documents": "ලේඛන",

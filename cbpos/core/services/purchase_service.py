@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 
 from cbpos.core.constants.status import Precision
 from cbpos.core.database import Database
-from cbpos.core.models import AuditLog, Product, Purchase, PurchaseItem, StockMovement, Supplier
+from cbpos.core.models import AuditLog, Product, Purchase, PurchaseItem, PurchaseOrder, StockMovement, Supplier
 from cbpos.core.services.document_service import DocumentService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 
@@ -23,9 +23,15 @@ class PurchaseService:
         reference_external: str,  # Vendor Invoice #
         user_id: int,
         date_received: datetime | None = None,
+        purchase_order_id: int | None = None,
     ) -> Purchase:
         """
         Create a new purchase (GRN) header in DRAFT status.
+
+        Args:
+            purchase_order_id: the Purchase Order this GRN is receiving
+                against, if any (#486). A single order may be received via
+                multiple separate GRNs over time.
         """
         if date_received is None:
             date_received = datetime.now()
@@ -44,6 +50,7 @@ class PurchaseService:
                 reference_external=reference_external,
                 supplier_id=supplier_id,
                 total_cost=Decimal("0.00"),
+                purchase_order_id=purchase_order_id,
             )
             session.add(purchase)
             session.commit()
@@ -77,6 +84,13 @@ class PurchaseService:
             if purchase.status == "COMPLETED":
                 raise ValueError("Purchase already committed")
 
+            order = None
+            order_items_by_product = {}
+            if purchase.purchase_order_id:
+                order = session.get(PurchaseOrder, purchase.purchase_order_id)
+                if order:
+                    order_items_by_product = {item.product_id: item for item in order.items}
+
             total_purchase_cost = Decimal("0.00")
 
             for item_data in items_data:
@@ -84,12 +98,17 @@ class PurchaseService:
                 qty_received = Decimal(str(item_data["qty"]))
                 unit_cost = Decimal(str(item_data["cost"]))
 
+                order_item = order_items_by_product.get(product_id)
+                if order_item:
+                    order_item.qty_received += qty_received
+
                 # Create Purchase Item
                 purchase_item = PurchaseItem(
                     purchase_id=purchase.id,
                     product_id=product_id,
                     qty_received=qty_received,
                     unit_cost=unit_cost,
+                    purchase_order_item_id=order_item.id if order_item else None,
                 )
                 session.add(purchase_item)
 
@@ -132,6 +151,13 @@ class PurchaseService:
             purchase.total_cost = total_purchase_cost
             purchase.input_vat = input_vat
             purchase.status = "COMPLETED"
+
+            if order:
+                order.status = (
+                    "RECEIVED"
+                    if all(item.qty_received >= item.qty_ordered for item in order.items)
+                    else "PARTIALLY_RECEIVED"
+                )
 
             # Update supplier payable
             supplier = session.get(Supplier, purchase.supplier_id)

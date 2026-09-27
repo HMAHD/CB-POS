@@ -732,6 +732,12 @@
     "form_add_product": "Add Product:",
     "grn_input_vat_label": "VAT on Invoice:",
     "input_vat_tooltip": "VAT amount shown on the supplier's invoice for this delivery. Deductible against Output VAT owed (Tax Liability Report).",
+    "open_po_label": "Receive against Order:",
+    "select_open_order": "Select an open Purchase Order...",
+    "btn_load_po": "Load",
+    "discrepancy_title": "Quantity Mismatch",
+    "discrepancy_confirm": "The received quantity doesn't match what was ordered for these items:\n\n{details}\n\nCommit this GRN anyway?",
+    "discrepancy_line": "{product}: ordered {outstanding}, receiving {received}",
     "from": "From:",
     "to": "To:",
     "all": "All",
@@ -2155,8 +2161,10 @@
     "no_supplier": "No Supplier",
     "no_selection": "No Selection",
     "no_selection_msg": "Please select items to add to purchase order.",
+    "mixed_supplier_title": "Mixed Suppliers",
+    "mixed_supplier_msg": "Select items from a single supplier to create a Purchase Order.",
     "purchase_order": "Purchase Order",
-    "purchase_order_created": "Created purchase order with {count} items.\nNavigating to Purchase view..."
+    "purchase_order_created": "Created Purchase Order {doc_number} with {count} items.\nNavigating to Purchase view..."
   },
   "stock_take": {
     "tab_new_count": "New Count",

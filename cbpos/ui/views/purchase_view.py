@@ -34,6 +34,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.product_service import ProductService
+from cbpos.core.services.purchase_order_service import PurchaseOrderService
 from cbpos.core.services.purchase_service import PurchaseService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.supplier_service import SupplierService
@@ -470,6 +471,18 @@ class PurchaseView(QWidget):
 
         layout.addLayout(form_layout)
 
+        # Open Purchase Orders — receive against an existing order (#486),
+        # possibly partially, possibly across more than one GRN over time.
+        po_layout = QHBoxLayout()
+        self.lbl_open_po = QLabel()
+        self.open_po_combo = QComboBox()
+        self.btn_load_po = QPushButton()
+        self.btn_load_po.clicked.connect(self.load_selected_purchase_order)
+        po_layout.addWidget(self.lbl_open_po)
+        po_layout.addWidget(self.open_po_combo, 2)
+        po_layout.addWidget(self.btn_load_po)
+        layout.addLayout(po_layout)
+
         # Product Search
         search_layout = QHBoxLayout()
         self.product_search = QLineEdit()
@@ -521,6 +534,7 @@ class PurchaseView(QWidget):
 
         # Data
         self.grn_items = []  # List of dicts
+        self.current_purchase_order_id = None
 
     def setup_history_tab(self) -> None:
         """Setup the GRN History tab with filters and table."""
@@ -609,6 +623,9 @@ class PurchaseView(QWidget):
         self.invoice_input.setPlaceholderText(_t("purchase.invoice_placeholder"))
         self.lbl_grn_ref.setText(_t("purchase.form_ref"))
         self.lbl_grn_date.setText(_t("purchase.form_date"))
+        self.lbl_open_po.setText(_t("purchase.open_po_label"))
+        self.btn_load_po.setText(_t("purchase.btn_load_po"))
+        self.refresh_open_orders()
         self.lbl_add_product.setText(_t("purchase.form_add_product"))
         self.lbl_grn_input_vat.setText(_t("purchase.grn_input_vat_label"))
         self.input_vat_field.setToolTip(_t("purchase.input_vat_tooltip"))
@@ -805,18 +822,24 @@ class PurchaseView(QWidget):
         self.grn_model.setItem(row, 3, QStandardItem(str(cost)))
         self.grn_model.setItem(row, 4, QStandardItem(str(qty * cost)))
 
-    def prefill_grn_items(self, items: list[dict]) -> None:
+    def prefill_grn_items(self, items: list[dict], purchase_order_id: int | None = None) -> None:
         """Switch to the New GRN tab and pre-fill it from Reorder's selected items.
 
         Each item is {product_id, product_name, barcode, current_stock,
-        order_qty, supplier} (see ReorderView.create_purchase_order). Looks
-        products up by barcode -- the same lookup used for manual product
-        search -- and skips any that no longer resolve (e.g. deactivated
-        since the reorder list was built) rather than failing the whole batch.
+        order_qty} (see ReorderView.create_purchase_order). Looks products
+        up by barcode -- the same lookup used for manual product search --
+        and skips any that no longer resolve (e.g. deactivated since the
+        reorder list was built) rather than failing the whole batch.
+
+        Args:
+            purchase_order_id: the Purchase Order these items were ordered
+                against, if any (#486) -- tracked so commit_grn() can flag
+                received-vs-ordered discrepancies.
         """
         self.tabs.setCurrentWidget(self.grn_tab)
         self.grn_items = []
         self.grn_model.setRowCount(0)
+        self.current_purchase_order_id = purchase_order_id
 
         for item in items:
             product = ProductService.get_by_barcode(item["barcode"])
@@ -824,6 +847,42 @@ class PurchaseView(QWidget):
                 continue
             qty = item["order_qty"] if item["order_qty"] > 0 else Decimal("1.000")
             self._add_grn_row(product, qty, product.cost)
+
+        self.update_total()
+
+    def refresh_open_orders(self) -> None:
+        """Repopulate the Open Purchase Orders combo (#486)."""
+        self.open_po_combo.clear()
+        self.open_po_combo.addItem(_t("purchase.select_open_order"), None)
+        for order in PurchaseOrderService.get_open_orders():
+            supplier_name = order.supplier.company_name if order.supplier else ""
+            self.open_po_combo.addItem(f"{order.document_number} — {supplier_name}", order.id)
+
+    def load_selected_purchase_order(self) -> None:
+        """Load the Open Purchase Orders combo's current selection into the GRN grid,
+        pre-filling each line with its outstanding (not yet received) quantity (#486)."""
+        order_id = self.open_po_combo.currentData()
+        if not order_id:
+            return
+
+        order = PurchaseOrderService.get_order(order_id)
+        if not order:
+            return
+
+        self.tabs.setCurrentWidget(self.grn_tab)
+        self.grn_items = []
+        self.grn_model.setRowCount(0)
+        self.current_purchase_order_id = order.id
+
+        supplier_index = self.supplier_combo.findData(order.supplier_id)
+        if supplier_index >= 0:
+            self.supplier_combo.setCurrentIndex(supplier_index)
+
+        for item in order.items:
+            outstanding = item.qty_ordered - item.qty_received
+            if outstanding <= 0:
+                continue
+            self._add_grn_row(item.product, outstanding, item.product.cost)
 
         self.update_total()
 
@@ -859,14 +918,7 @@ class PurchaseView(QWidget):
             return
 
         try:
-            # 1. Create Draft
-            purchase = PurchaseService.create_purchase(
-                supplier_id=supplier_id,
-                reference_external=ref_no,
-                user_id=self.user.id,
-            )
-
-            # 2. Prepare Items
+            # 1. Prepare Items
             items_data = []
             for i in range(self.grn_model.rowCount()):
                 # Read from table in case user edited
@@ -876,7 +928,39 @@ class PurchaseView(QWidget):
 
                 items_data.append({"product_id": prod_id, "qty": qty, "cost": cost})
 
-            # 3. Commit
+            # 2. Flag PO-vs-received discrepancies before committing anything (#486)
+            if self.current_purchase_order_id:
+                discrepancies = PurchaseOrderService.check_receipt_discrepancies(
+                    self.current_purchase_order_id, items_data
+                )
+                if discrepancies:
+                    details = "\n".join(
+                        _t(
+                            "purchase.discrepancy_line",
+                            product=d["product_name"],
+                            outstanding=d["outstanding"],
+                            received=d["received"],
+                        )
+                        for d in discrepancies
+                    )
+                    reply = QMessageBox.question(
+                        self,
+                        _t("purchase.discrepancy_title"),
+                        _t("purchase.discrepancy_confirm", details=details),
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    )
+                    if reply != QMessageBox.StandardButton.Yes:
+                        return
+
+            # 3. Create Draft
+            purchase = PurchaseService.create_purchase(
+                supplier_id=supplier_id,
+                reference_external=ref_no,
+                user_id=self.user.id,
+                purchase_order_id=self.current_purchase_order_id,
+            )
+
+            # 4. Commit
             vat_text = self.input_vat_field.text().strip()
             try:
                 input_vat = Decimal(vat_text) if vat_text else Decimal("0.00")
@@ -896,7 +980,9 @@ class PurchaseView(QWidget):
             self.grn_items = []
             self.invoice_input.clear()
             self.input_vat_field.clear()
+            self.current_purchase_order_id = None
             self.update_total()
+            self.refresh_open_orders()
 
         except Exception as e:
             QMessageBox.critical(self, _t("common.error"), str(e))

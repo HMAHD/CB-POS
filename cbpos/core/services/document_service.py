@@ -44,6 +44,7 @@ class DocumentService:
         defaults = {
             "SALE": "INV-{Y}-{seq:05d}",
             "PURCHASE": "GRN-{Y}-{seq:05d}",
+            "PURCHASE_ORDER": "PO-{Y}-{seq:05d}",
             "RETURN": "CN-{Y}-{seq:05d}",
             "STOCK_COUNT": "STK-{Y}-{seq:05d}",
             "ADJUSTMENT": "ADJ-{Y}-{seq:05d}",

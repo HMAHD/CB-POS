@@ -175,14 +175,17 @@ class MainWindow(QMainWindow):
         if hasattr(self.sales_view, "side_menu"):
             self.sales_view.side_menu.set_user(user)
 
+        # Switch to Sales View first (#526) -- StartShiftDialog is modal and
+        # blocks synchronously, so if it opened before this the login/PIN
+        # page would still be the visually active page underneath it the
+        # whole time the dialog is open.
+        self.stack.setCurrentWidget(self.sales_view)
+
         # A shift must be open before reaching Sales -- prompt for the
         # starting float if one isn't already (e.g. after a crash/relogin
         # mid-shift, the existing shift is reused instead of re-prompting).
         if ShiftService().get_current_shift(user.id) is None:
             StartShiftDialog(user.id, parent=self).exec()
-
-        # Switch to Sales View (Default)
-        self.stack.setCurrentWidget(self.sales_view)
 
     def logout(self):
         """Clear the current user, stop the watchdog, and return to the login screen."""

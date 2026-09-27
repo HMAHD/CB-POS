@@ -1,7 +1,7 @@
 import weakref
 from decimal import Decimal
 
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QDoubleSpinBox,
     QGridLayout,
@@ -51,14 +51,23 @@ class DenominationWidget(QWidget):
 
     def _build_ui(self):
         layout = QGridLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setHorizontalSpacing(12)
+        layout.setVerticalSpacing(10)
 
         for idx, denom in enumerate(self.denominations):
             row, col = divmod(idx, 2)  # two columns
             lbl = QLabel(f"{denom:,}")
+            lbl.setObjectName("DenomLabel")
             spin = QSpinBox() if denom >= 20 else QDoubleSpinBox()
+            spin.setObjectName("DenomSpin")
             spin.setRange(0, 9999)
             spin.setSingleStep(1 if denom >= 20 else 0.01)
+            spin.setMinimumHeight(36)
             lbl_row_total = QLabel()
+            lbl_row_total.setObjectName("DenomRowTotal")
+            lbl_row_total.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            lbl_row_total.setMinimumWidth(80)
             spin.valueChanged.connect(self.calculate_total)
 
             self.counts[denom] = spin
@@ -70,10 +79,14 @@ class DenominationWidget(QWidget):
 
         # Grand total label (spans both columns)
         self.lbl_grand_total = QLabel("0.00")
+        self.lbl_grand_total.setObjectName("DenomGrandTotalValue")
+        self.lbl_grand_total.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         # Place it below the last row of denominations
         total_row = (len(self.denominations) + 1) // 2
         self._lbl_grand_total_label = QLabel(_t("denomination.grand_total"))
+        self._lbl_grand_total_label.setObjectName("DenomGrandTotalLabel")
         layout.addWidget(self._lbl_grand_total_label, total_row, 0, 1, 2)
+        layout.setRowMinimumHeight(total_row, 44)
 
         register_language_callback(self._retranslate_ui)
         # weakref avoids a self -> destroyed-connection -> lambda -> self

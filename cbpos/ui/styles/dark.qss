@@ -1682,6 +1682,26 @@ QPushButton#ReceiptBtnEmail:pressed {
     background-color: #333336;
 }
 
+QPushButton#ReceiptBtnSavePdf {
+    background-color: #252526;
+    color: #FFFFFF;
+    border: 1px solid #3E3E42;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    padding-left: 16px;
+    text-align: left;
+}
+
+QPushButton#ReceiptBtnSavePdf:hover {
+    background-color: #2D2D30;
+    border-color: #555555;
+}
+
+QPushButton#ReceiptBtnSavePdf:pressed {
+    background-color: #333336;
+}
+
 QPushButton#ReceiptBtnClose {
     background-color: transparent;
     color: #888888;

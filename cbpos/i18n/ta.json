@@ -232,6 +232,7 @@
     "btn_print": "ரசீதை பிரிண்ட் செய்",
     "btn_preview": "முன்னோட்டம்",
     "btn_email": "ரசீதை மின்னஞ்சல் செய்",
+    "btn_save_pdf": "PDF ஆக சேவ் செய்",
     "btn_close": "மூடு",
     "print_error_retry": "மறுபடி முயற்சி",
     "print_error_skip": "தவிர்",
@@ -242,7 +243,13 @@
     "email_failed_title": "மின்னஞ்சல் தோல்வி",
     "email_failed_message": "மின்னஞ்சல் அனுப்ப முடியல: {error}",
     "print_error_title": "பிரிண்ட் பிழை",
-    "print_error_message": "ரசீதை பிரிண்ட் செய்ய முடியல: {error}"
+    "print_error_message": "ரசீதை பிரிண்ட் செய்ய முடியல: {error}",
+    "save_pdf_title": "ரசீதை PDF ஆக சேவ் செய்",
+    "pdf_filter": "PDF கோப்புகள் (*.pdf)",
+    "pdf_saved_title": "சேவ் ஆச்சு",
+    "pdf_saved_message": "ரசீது {path}-ல் சேவ் ஆச்சு",
+    "pdf_error_title": "சேவ் தோல்வி",
+    "pdf_error_message": "ரசீது PDF-ஐ சேவ் செய்ய முடியல: {error}"
   },
   "refund": {
     "title": "திருப்பிச்செலுத்தல்",

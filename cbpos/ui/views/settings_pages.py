@@ -71,9 +71,12 @@ class SettingsPage(QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
 
+        title_row = QHBoxLayout()
         self._page_title = QLabel(title_text)
         self._page_title.setProperty("class", "dialog-title")
-        layout.addWidget(self._page_title)
+        title_row.addWidget(self._page_title, 1)
+        title_row.addWidget(self._make_reset_defaults_button())
+        layout.addLayout(title_row)
 
         self._page_subtitle = QLabel(subtitle_text)
         self._page_subtitle.setProperty("class", "muted")
@@ -151,6 +154,39 @@ class SettingsPage(QWidget):
         form_layout.setFormAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+
+    def _make_reset_defaults_button(self) -> QPushButton:
+        """Create the per-page 'Reset to Defaults' button, wired to `_reset_to_defaults`."""
+        self.btn_reset_defaults = QPushButton()
+        self.btn_reset_defaults.setObjectName("BtnResetDefaults")
+        self.btn_reset_defaults.setProperty("class", "secondary")
+        self.btn_reset_defaults.clicked.connect(self._reset_to_defaults)
+        return self.btn_reset_defaults
+
+    def _reset_to_defaults(self) -> None:
+        """Reset this page's own settings keys to their defaults, after confirmation.
+
+        Scoped to only the keys this page's own `save()` returns -- resetting
+        Hardware never touches Tax, resetting Tax never touches Shop Info, etc.
+        (#425: per-section reset, not one all-or-nothing wipe).
+        """
+        from cbpos.core.services.config_service import ConfigService
+
+        reply = QMessageBox.question(
+            self,
+            _t("settings.reset_defaults_title"),
+            _t("settings.reset_defaults_confirm"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        page_keys = self.save().keys()
+        defaults = {k: ConfigService.DEFAULTS[k] for k in page_keys if k in ConfigService.DEFAULTS}
+        self.load(defaults)
+        ConfigService.update_all(defaults)
+
+        QMessageBox.information(self, _t("common.success"), _t("settings.reset_defaults_done"))
 
     @staticmethod
     def _make_section_header(title: str) -> QWidget:
@@ -329,6 +365,7 @@ class ShopInfoPage(SettingsPage):
     def retranslate_ui(self) -> None:
         """Update all widget text and tab labels from the translation system."""
         self._page_title.setText(_t("settings.shop_info.title"))
+        self.btn_reset_defaults.setText(_t("settings.btn_reset_defaults"))
         self._page_subtitle.setText(_t("settings.shop_info.subtitle"))
 
         # Tab titles
@@ -614,6 +651,7 @@ class SalesTaxPage(SettingsPage):
     def retranslate_ui(self) -> None:
         """Update all widget text and tab labels from the translation system."""
         self._page_title.setText(_t("settings.sales_tax.title"))
+        self.btn_reset_defaults.setText(_t("settings.btn_reset_defaults"))
         self._page_subtitle.setText(_t("settings.sales_tax.subtitle"))
 
         self.tabs.setTabText(0, _t("settings.sales_tax.tab_sales"))
@@ -738,6 +776,7 @@ class DocumentPage(SettingsPage):
     def retranslate_ui(self) -> None:
         """Update all widget text and tab labels from the translation system."""
         self._page_title.setText(_t("settings.documents.title"))
+        self.btn_reset_defaults.setText(_t("settings.btn_reset_defaults"))
         self._page_subtitle.setText(_t("settings.documents.subtitle"))
 
         self.tabs.setTabText(0, _t("settings.documents.tab_numbering"))
@@ -953,6 +992,7 @@ class HardwarePage(SettingsPage):
     def retranslate_ui(self) -> None:
         """Update all widget text and tab labels from the translation system."""
         self._page_title.setText(_t("settings.hardware.title"))
+        self.btn_reset_defaults.setText(_t("settings.btn_reset_defaults"))
         self._page_subtitle.setText(_t("settings.hardware.subtitle"))
 
         self.tabs.setTabText(0, _t("settings.hardware.tab_printers"))
@@ -1133,9 +1173,12 @@ class ReceiptPage(SettingsPage):
         root.setContentsMargins(20, 20, 20, 20)
         root.setSpacing(8)
 
+        title_row = QHBoxLayout()
         self._page_title = QLabel()
         self._page_title.setProperty("class", "dialog-title")
-        root.addWidget(self._page_title)
+        title_row.addWidget(self._page_title, 1)
+        title_row.addWidget(self._make_reset_defaults_button())
+        root.addLayout(title_row)
 
         self._page_subtitle = QLabel()
         self._page_subtitle.setProperty("class", "muted")
@@ -1403,6 +1446,7 @@ class ReceiptPage(SettingsPage):
     def retranslate_ui(self) -> None:
         """Update all widget text and tab labels from the translation system."""
         self._page_title.setText(_t("settings.receipt.title"))
+        self.btn_reset_defaults.setText(_t("settings.btn_reset_defaults"))
         self._page_subtitle.setText(_t("settings.receipt.subtitle"))
         self._lbl_receipt_cross_ref.setText(_t("settings.receipt.cross_ref_hint"))
 
@@ -1762,6 +1806,7 @@ class SystemPage(SettingsPage):
     def retranslate_ui(self) -> None:
         """Update all widget text and tab labels from the translation system."""
         self._page_title.setText(_t("settings.system.title"))
+        self.btn_reset_defaults.setText(_t("settings.btn_reset_defaults"))
         self._page_subtitle.setText(_t("settings.system.subtitle"))
 
         self.tabs.setTabText(0, _t("settings.system.tab_security"))
@@ -2205,6 +2250,7 @@ class NetworkPage(SettingsPage):
     def retranslate_ui(self) -> None:
         """Update all widget text and tab labels from the translation system."""
         self._page_title.setText(_t("settings.network.title"))
+        self.btn_reset_defaults.setText(_t("settings.btn_reset_defaults"))
         self._page_subtitle.setText(_t("settings.network.subtitle"))
 
         self.tabs.setTabText(0, _t("settings.network.tab_mode"))

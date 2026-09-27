@@ -10,7 +10,10 @@
 ;
 ; Data safety:
 ;   - User data (database, settings, logs) lives in %LOCALAPPDATA%\CB POS
-;   - This installer ONLY writes to Program Files — never touches user data
+;   - This installer only writes application files to Program Files; the
+;     one exception is creating the (empty) %LOCALAPPDATA%\CB POS folder
+;     on first install if it doesn't exist yet -- it never reads, deletes,
+;     or overwrites anything already inside it
 ;   - Updates install cleanly over the previous version
 ; ============================================================================
 

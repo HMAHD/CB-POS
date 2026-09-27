@@ -881,7 +881,13 @@
     "void_not_supported": "මේ වර්ගයේ ලේඛනයට අවලංගු කිරීම සහාය දක්වන්නේ නැහැ.",
     "void_success": "ලේඛනය {doc_number} අවලංගු කරන ලදී",
     "void_failed": "ලේඛනය අවලංගු කරන්න බැරි උනා.",
-    "void_error": "අවලංගු කිරීමේ දෝෂය: {error}"
+    "void_error": "අවලංගු කිරීමේ දෝෂය: {error}",
+    "btn_transfer": "මාරු කරන්න",
+    "transfer_title": "ඇණවුම මාරු කරන්න",
+    "transfer_prompt": "මේ විකුණුම මාරු කරන්න:",
+    "transfer_no_other_users": "මේ ඇණවුම මාරු කරන්න වෙනත් ක්‍රියාකාරී පරිශීලකයෙක් නැහැ.",
+    "transfer_success": "ඇණවුම {doc_number} {user} වෙත මාරු කරන ලදී.",
+    "transfer_failed": "ඇණවුම මාරු කරන්න බැරි උනා."
   },
   "pricelist": {
     "sidebar_title": "මිල ලැයිස්තු",

@@ -911,7 +911,13 @@
     "void_not_supported": "Void not supported for this document type.",
     "void_success": "Document {doc_number} voided.",
     "void_failed": "Failed to void document.",
-    "void_error": "Void failed: {error}"
+    "void_error": "Void failed: {error}",
+    "btn_transfer": "Transfer",
+    "transfer_title": "Transfer Order",
+    "transfer_prompt": "Reassign this sale to:",
+    "transfer_no_other_users": "No other active users to transfer this order to.",
+    "transfer_success": "Order {doc_number} transferred to {user}.",
+    "transfer_failed": "Failed to transfer order."
   },
   "pricelist": {
     "sidebar_title": "PRICE LISTS",

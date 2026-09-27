@@ -4,6 +4,7 @@ import logging
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import (
     QDialog,
+    QFileDialog,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -16,6 +17,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.models import Sale
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.email_service import EmailService
+from cbpos.core.services.invoice_service import InvoiceService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.core.services.theme_service import ThemeService
@@ -36,7 +38,7 @@ class ReceiptOptionsDialog(QDialog):
         super().__init__(parent)
         self.sale = sale
         self.setWindowTitle(_t("receipt_options.title"))
-        self.setFixedSize(440, 474)
+        self.setFixedSize(440, 528)
         self.setObjectName("ReceiptOptionsDialog")
         self.init_ui()
 
@@ -114,6 +116,16 @@ class ReceiptOptionsDialog(QDialog):
         self.btn_email.setFixedHeight(44)
         self.btn_email.clicked.connect(self.email_receipt)
         layout.addWidget(self.btn_email)
+        layout.addSpacing(10)
+
+        self.btn_save_pdf = QPushButton("")
+        self.btn_save_pdf.setObjectName("ReceiptBtnSavePdf")
+        self.btn_save_pdf.setIcon(Icons.get("fa5s.file-pdf", icon_clr))
+        self.btn_save_pdf.setIconSize(QSize(18, 18))
+        self.btn_save_pdf.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_save_pdf.setFixedHeight(44)
+        self.btn_save_pdf.clicked.connect(self.save_as_pdf)
+        layout.addWidget(self.btn_save_pdf)
 
         layout.addStretch(1)
 
@@ -142,6 +154,7 @@ class ReceiptOptionsDialog(QDialog):
         self.btn_preview.setText("  " + _t("receipt_options.btn_preview"))
         self.btn_print.setText("  " + _t("receipt_options.btn_print"))
         self.btn_email.setText("  " + _t("receipt_options.btn_email"))
+        self.btn_save_pdf.setText("  " + _t("receipt_options.btn_save_pdf"))
         self.btn_close.setText(_t("receipt_options.btn_close"))
 
     def show_preview(self) -> None:
@@ -235,4 +248,24 @@ class ReceiptOptionsDialog(QDialog):
                 self,
                 _t("receipt_options.email_failed_title"),
                 _t("receipt_options.email_failed_message", error=message),
+            )
+
+    def save_as_pdf(self) -> None:
+        """Prompt for a save location and write a PDF copy of the receipt (#482)."""
+        default_name = f"{self.sale.document_number}.pdf"
+        filepath, _ = QFileDialog.getSaveFileName(
+            self, _t("receipt_options.save_pdf_title"), default_name, _t("receipt_options.pdf_filter")
+        )
+        if not filepath:
+            return
+
+        try:
+            InvoiceService.generate_pdf(self.sale, filepath)
+            QMessageBox.information(
+                self, _t("receipt_options.pdf_saved_title"), _t("receipt_options.pdf_saved_message", path=filepath)
+            )
+        except Exception as e:
+            logger.error("Receipt PDF save failed: %s", e)
+            QMessageBox.warning(
+                self, _t("receipt_options.pdf_error_title"), _t("receipt_options.pdf_error_message", error=str(e))
             )

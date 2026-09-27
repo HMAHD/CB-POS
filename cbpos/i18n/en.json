@@ -232,6 +232,7 @@
     "btn_print": "Print Receipt",
     "btn_preview": "Preview",
     "btn_email": "Email Receipt",
+    "btn_save_pdf": "Save as PDF",
     "btn_close": "Close",
     "print_error_retry": "Retry",
     "print_error_skip": "Skip",
@@ -242,7 +243,13 @@
     "email_failed_title": "Email Failed",
     "email_failed_message": "Failed to send email: {error}",
     "print_error_title": "Print Error",
-    "print_error_message": "Failed to print receipt: {error}"
+    "print_error_message": "Failed to print receipt: {error}",
+    "save_pdf_title": "Save Receipt as PDF",
+    "pdf_filter": "PDF Files (*.pdf)",
+    "pdf_saved_title": "Saved",
+    "pdf_saved_message": "Receipt saved to {path}",
+    "pdf_error_title": "Save Failed",
+    "pdf_error_message": "Failed to save receipt PDF: {error}"
   },
   "refund": {
     "title": "Process Refund",

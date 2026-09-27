@@ -232,6 +232,7 @@
     "btn_print": "රිසිට් ප්‍රින්ට් කරන්න",
     "btn_preview": "පෙරදසුන",
     "btn_email": "රිසිට් ඊමේල් කරන්න",
+    "btn_save_pdf": "PDF ලෙස සේව් කරන්න",
     "btn_close": "වහන්න",
     "print_error_retry": "ආයෙත් උත්සාහ කරන්න",
     "print_error_skip": "මගහරින්න",
@@ -242,7 +243,13 @@
     "email_failed_title": "ඊමේල් අසාර්ථකයි",
     "email_failed_message": "ඊමේල් යවන්න බැරි උනා: {error}",
     "print_error_title": "ප්‍රින්ට් දෝෂයක්",
-    "print_error_message": "රිසිට් ප්‍රින්ට් කරන්න බැරි උනා: {error}"
+    "print_error_message": "රිසිට් ප්‍රින්ට් කරන්න බැරි උනා: {error}",
+    "save_pdf_title": "රිසිට් එක PDF ලෙස සේව් කරන්න",
+    "pdf_filter": "PDF ගොනු (*.pdf)",
+    "pdf_saved_title": "සේව් කළා",
+    "pdf_saved_message": "රිසිට් එක {path} වෙත සේව් කළා",
+    "pdf_error_title": "සේව් කරන්න බැරි උනා",
+    "pdf_error_message": "රිසිට් PDF එක සේව් කරන්න බැරි උනා: {error}"
   },
   "refund": {
     "title": "ආපසු ගෙවීම",

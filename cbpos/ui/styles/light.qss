@@ -1713,6 +1713,26 @@ QPushButton#ReceiptBtnEmail:pressed {
     background-color: #E9ECEF;
 }
 
+QPushButton#ReceiptBtnSavePdf {
+    background-color: #FFFFFF;
+    color: #212529;
+    border: 1px solid #DEE2E6;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    padding-left: 16px;
+    text-align: left;
+}
+
+QPushButton#ReceiptBtnSavePdf:hover {
+    background-color: #F0F0F0;
+    border-color: #ADB5BD;
+}
+
+QPushButton#ReceiptBtnSavePdf:pressed {
+    background-color: #E9ECEF;
+}
+
 QPushButton#ReceiptBtnClose {
     background-color: transparent;
     color: #6C757D;

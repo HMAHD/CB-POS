@@ -419,6 +419,54 @@ class TestCartPriceOverride:
         assert call["event_type"] == "TRANSACTION"
         assert "80.00" in call["details"]
 
+    def test_audit_log_details_include_the_original_price(self, mock_pricing):
+        """#480: the log entry recorded the new price but not what it was
+        changed FROM, making it useless as an audit trail."""
+        cart = CartService()
+        cart.add_item(_make_product(price="100.00"), Decimal("1"))
+        user = MagicMock()
+        user.id = 1
+
+        with patch("cbpos.core.services.cart_service.LoggingService.log_action") as mock_log:
+            cart.override_price(0, Decimal("80.00"), user)
+
+        details = mock_log.call_args.kwargs.get("details") or mock_log.call_args.args[3]
+        assert "100.00" in details
+        assert "80.00" in details
+
+    def test_price_change_not_allowed_blocks_the_override(self, mock_pricing):
+        """#490: a per-product price_change_allowed=False flag is a hard
+        lock beneath the permission check -- an authorized user still can't
+        override it."""
+        cart = CartService()
+        product = _make_product(price="100.00")
+        product.price_change_allowed = False
+        cart.add_item(product, Decimal("1"))
+        user = MagicMock()
+        user.id = 1
+
+        with patch("cbpos.core.services.cart_service.LoggingService.log_action") as mock_log:
+            result = cart.override_price(0, Decimal("80.00"), user)
+
+        assert result is False
+        assert cart.items[0]["unit_price"] == Decimal("100.00")
+        assert cart.items[0]["is_manual_price"] is False
+        mock_log.assert_not_called()
+
+    def test_price_change_allowed_true_still_works(self, mock_pricing):
+        """Explicit True (the model default) doesn't accidentally block anything."""
+        cart = CartService()
+        product = _make_product(price="100.00")
+        product.price_change_allowed = True
+        cart.add_item(product, Decimal("1"))
+        user = MagicMock()
+        user.id = 1
+
+        result = cart.override_price(0, Decimal("80.00"), user)
+
+        assert result is True
+        assert cart.items[0]["unit_price"] == Decimal("80.00")
+
     def test_override_negative_price_raises(self, mock_pricing):
         """Negative price override raises ValueError."""
         cart = CartService()

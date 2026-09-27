@@ -227,6 +227,17 @@ class ProductEditor(QDialog):
         row_service.addStretch()
         type_layout.addLayout(row_service)
 
+        row_price_change = QHBoxLayout()
+        row_price_change.setSpacing(6)
+        self.price_change_allowed_check = QCheckBox(_t("product_editor.price_change_allowed"))
+        self.price_change_allowed_check.setChecked(True)
+        row_price_change.addWidget(self.price_change_allowed_check)
+        self.price_change_hint = QLabel(_t("product_editor.price_change_hint"))
+        self.price_change_hint.setObjectName("ToggleHint")
+        row_price_change.addWidget(self.price_change_hint)
+        row_price_change.addStretch()
+        type_layout.addLayout(row_price_change)
+
         layout.addWidget(grp_type)
         layout.addStretch()
 
@@ -418,6 +429,7 @@ class ProductEditor(QDialog):
         )
         self.weighted_check.setChecked(self.product.is_weighted)
         self.service_check.setChecked(self.product.is_service)
+        self.price_change_allowed_check.setChecked(self.product.price_change_allowed)
 
         # Load unit
         if self.product.unit_id:
@@ -484,6 +496,7 @@ class ProductEditor(QDialog):
             "unit_id": self.unit_combo.currentData(),
             "is_weighted": self.weighted_check.isChecked(),
             "is_service": self.service_check.isChecked(),
+            "price_change_allowed": self.price_change_allowed_check.isChecked(),
             "image_path": getattr(self, "current_image_path", None),
             "is_active": True,
         }

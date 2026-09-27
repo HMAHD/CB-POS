@@ -427,6 +427,7 @@ class SaleItem(Base):
     discount_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     is_manual_price: Mapped[bool] = mapped_column(Boolean, default=False)
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)  # internal-only, never printed
 
     sale: Mapped["Sale"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship("Product")

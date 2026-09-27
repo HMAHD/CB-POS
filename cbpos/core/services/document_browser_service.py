@@ -179,6 +179,7 @@ class DocumentBrowserService:
                     "discount_type": item.discount_type,
                     "discount_value": item.discount_value,
                     "line_total": item.subtotal,
+                    "notes": item.notes,
                 }
             )
 

@@ -106,6 +106,27 @@ def test_process_sale_atomic(db_session, test_user, test_product):
         assert sale.items[0].qty == 2.0
 
 
+def test_process_sale_persists_the_cart_line_note(db_session, test_user, test_product):
+    """#481: the cart already captured a per-line note (add_line_note in
+    sales_view.py) but SaleItem had no column for it -- the note was
+    silently discarded the instant the sale completed."""
+    db_session.commit()
+
+    with (
+        patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user),
+        patch("cbpos.core.services.transaction_service.PrintWorker"),
+    ):
+        cart_service = CartService()
+        cart_service.add_item(test_product, qty=Decimal("1.0"))
+        cart_service.items[0]["note"] = "Gift wrap please"
+        payments = [{"method": "CASH", "amount": Decimal("100.0")}]
+
+        TransactionService.process_sale(cart_service, payments)
+
+        sale = db_session.query(Sale).order_by(Sale.id.desc()).first()
+        assert sale.items[0].notes == "Gift wrap please"
+
+
 def test_process_sale_rollback_on_error(db_session, test_user, test_product):
     """Transaction rolls back on error — stock unchanged."""
     db_session.commit()

@@ -20,10 +20,59 @@ env:
 
 jobs:
   # ──────────────────────────────────────────────────────────────────────
-  # 1. Build Windows executable + Inno Setup installer
+  # 1. Re-verify the exact commit being released -- a tag push previously
+  #    went straight to building/publishing with no automated check that
+  #    the tagged commit's tests actually pass.
+  # ──────────────────────────────────────────────────────────────────────
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+
+      - name: Install Qt system libraries (headless PyQt6 tests)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1-mesa-glx \
+            libegl1-mesa \
+            libxkbcommon-x11-0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-xinerama0 \
+            libxcb-xfixes0 \
+            x11-utils
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Run tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: uv run pytest tests/unit/ -q
+
+  # ──────────────────────────────────────────────────────────────────────
+  # 2. Build Windows executable + Inno Setup installer
   # ──────────────────────────────────────────────────────────────────────
   build:
     name: Build Windows Installer
+    needs: test
     runs-on: windows-latest
 
     outputs:
@@ -106,7 +155,16 @@ jobs:
           retention-days: 5
 
   # ──────────────────────────────────────────────────────────────────────
-  # 2. Publish to the PUBLIC releases repo (ceybyte/cbpos-releases)
+  # 3. Publish to the PUBLIC releases repo (ceybyte/cbpos-releases)
+  #
+  #    Order matters here: the GitHub Release (with the actual installer
+  #    asset) is created BEFORE latest.json is updated and pushed. Doing
+  #    it the other way around -- as this previously did -- means that if
+  #    "Create GitHub Release" ever fails after latest.json already went
+  #    live, every running app's auto-updater would advertise a new
+  #    version whose download URL 404s. This order fails safe: if release
+  #    creation fails, latest.json (and therefore the live update check)
+  #    never changes.
   # ──────────────────────────────────────────────────────────────────────
   publish:
     name: Publish to Releases Repo
@@ -120,38 +178,9 @@ jobs:
           name: installer
           path: ./dist
 
-      - name: Generate latest.json
-        shell: bash
-        run: |
-          cat > latest.json << 'MANIFEST'
-          {
-              "version": "${{ needs.build.outputs.version }}",
-              "release_date": "$(date -u +%Y-%m-%d)",
-              "download_url": "https://github.com/ceybyte/cbpos-releases/releases/download/v${{ needs.build.outputs.version }}/${{ needs.build.outputs.installer_name }}",
-              "changelog": "",
-              "min_version": "1.0.0",
-              "sha256": "${{ needs.build.outputs.sha256 }}"
-          }
-          MANIFEST
-
-          # Fix the date (heredoc doesn't expand $(date))
-          sed -i "s/\$(date -u +%Y-%m-%d)/$(date -u +%Y-%m-%d)/g" latest.json
-          echo "Generated latest.json:"
-          cat latest.json
-
       - name: Clone releases repo
         run: |
           git clone https://x-access-token:${{ secrets.RELEASES_PAT }}@github.com/ceybyte/cbpos-releases.git releases-repo
-
-      - name: Update latest.json in releases repo
-        run: |
-          cp latest.json releases-repo/latest.json
-          cd releases-repo
-          git config user.name "CB POS Bot"
-          git config user.email "bot@ceybyte.com"
-          git add latest.json
-          git diff --cached --quiet || git commit -m "Update latest.json to v${{ needs.build.outputs.version }}"
-          git push
 
       - name: Create GitHub Release on releases repo
         env:
@@ -166,3 +195,29 @@ jobs:
 
           **SHA-256:** \`${{ needs.build.outputs.sha256 }}\`" \
             ../dist/${{ needs.build.outputs.installer_name }}
+
+      - name: Generate latest.json
+        shell: bash
+        run: |
+          cat > latest.json << MANIFEST
+          {
+              "version": "${{ needs.build.outputs.version }}",
+              "release_date": "$(date -u +%Y-%m-%d)",
+              "download_url": "https://github.com/ceybyte/cbpos-releases/releases/download/v${{ needs.build.outputs.version }}/${{ needs.build.outputs.installer_name }}",
+              "changelog": "",
+              "min_version": "1.0.0",
+              "sha256": "${{ needs.build.outputs.sha256 }}"
+          }
+          MANIFEST
+          echo "Generated latest.json:"
+          cat latest.json
+
+      - name: Update latest.json in releases repo
+        run: |
+          cp latest.json releases-repo/latest.json
+          cd releases-repo
+          git config user.name "CB POS Bot"
+          git config user.email "bot@ceybyte.com"
+          git add latest.json
+          git diff --cached --quiet || git commit -m "Update latest.json to v${{ needs.build.outputs.version }}"
+          git push

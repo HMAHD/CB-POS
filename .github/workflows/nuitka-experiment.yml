@@ -1,0 +1,91 @@
+name: Nuitka Build Experiment (not used for releases)
+
+# Manual-only, isolated experiment comparing Nuitka against the real
+# PyInstaller release pipeline (release.yml). This workflow:
+#   - never runs automatically (no push/tag trigger)
+#   - never touches pyproject.toml/uv.lock (Nuitka is installed ephemerally
+#     via `uv run --with`, exactly like the local macOS smoke test)
+#   - never publishes anything -- output is a short-lived CI artifact only,
+#     for manual download and testing on real Windows hardware
+#
+# Run it from the Actions tab ("Run workflow") whenever you want to check
+# whether Nuitka still builds cleanly against the current dependency set.
+on:
+  workflow_dispatch: {}
+
+env:
+  PYTHON_VERSION: "3.12"
+  # Nuitka's on-disk C-compilation cache -- explicit path so actions/cache
+  # can target it without relying on an undocumented default location.
+  NUITKA_CACHE_DIR: ${{ github.workspace }}\.nuitka-cache
+
+jobs:
+  build:
+    name: Build with Nuitka (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+
+      - name: Install project dependencies (no Nuitka in the lockfile)
+        run: uv sync --locked --no-dev --group build
+
+      - name: Cache Nuitka compilation cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NUITKA_CACHE_DIR }}
+          key: nuitka-cache-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            nuitka-cache-${{ runner.os }}-
+
+      - name: Build with Nuitka
+        run: >
+          uv run --with nuitka python -m nuitka
+          --standalone
+          --mode=app
+          --enable-plugin=pyqt6
+          --include-package-data=escpos
+          --include-data-dir=cbpos/assets=cbpos/assets
+          --include-data-dir=cbpos/ui/styles=cbpos/ui/styles
+          --include-data-dir=cbpos/i18n=cbpos/i18n
+          --include-data-dir=alembic=alembic
+          --include-data-files=alembic.ini=alembic.ini
+          --windows-icon-from-ico=cbpos/assets/ico/cbpos_multi.ico
+          --output-filename=cbpos.exe
+          --output-dir=nuitka-dist
+          --assume-yes-for-downloads
+          main.py
+
+        # Known from the macOS backend-only smoke test that produced this
+        # workflow: escpos ships capabilities.json as package data that
+        # Nuitka's static analysis doesn't auto-detect (same reason
+        # cbpos.spec needs collect_all('escpos') for PyInstaller) --
+        # --include-package-data=escpos above already covers it. Anything
+        # ELSE that surfaces here (a missing hidden import, another
+        # package's data file) is new, real signal this experiment exists
+        # to find -- add the matching --include-module / --include-data-*
+        # flag and re-run rather than treating a failure as disqualifying.
+
+      - name: Report build output
+        shell: bash
+        run: |
+          echo "--- Nuitka output ---"
+          find nuitka-dist -maxdepth 2 -type d
+          echo "--- size ---"
+          du -sh nuitka-dist/main.dist || du -sh nuitka-dist/*
+          echo "--- file count ---"
+          find nuitka-dist -type f | wc -l
+
+      - name: Upload build for manual testing
+        uses: actions/upload-artifact@v7
+        with:
+          name: cbpos-nuitka-build
+          path: nuitka-dist/main.dist
+          retention-days: 5

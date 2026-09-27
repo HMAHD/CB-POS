@@ -5,7 +5,7 @@ import pandas as pd
 from sqlalchemy import func
 
 from cbpos.core.database import get_db_session
-from cbpos.core.models import Product, Sale, SaleItem
+from cbpos.core.models import Product, Purchase, Sale, SaleItem
 from cbpos.core.reports.base_report import BaseReport
 from cbpos.i18n import _t
 
@@ -92,7 +92,7 @@ class ProfitLossReport(BaseReport):
 
 
 class TaxLiabilityReport(BaseReport):
-    """Per-sale VAT and SSCL breakdown within a date range."""
+    """Per-sale VAT and SSCL breakdown, plus net VAT liability (Output - Input), within a date range."""
 
     requires_vat = True
 
@@ -116,15 +116,31 @@ class TaxLiabilityReport(BaseReport):
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
     def get_render_hints(self) -> dict[str, Any]:
-        """Format the sale total, net revenue, VAT, SSCL, and total tax columns as currency."""
-        return {"currency_columns": ["Total Sale", "Net Revenue", "VAT (18%)", "SSCL (2.5%)", "Total Tax"]}
+        """Format money columns as currency and bold the net-liability summary row."""
+        return {
+            "currency_columns": [
+                "Total Sale",
+                "Net Revenue",
+                "VAT (18%)",
+                "SSCL (2.5%)",
+                "Total Tax",
+                "Input VAT",
+                "Net VAT Liability",
+            ],
+            "total_row_column": "Invoice #",
+            "total_row_values": ["NET VAT LIABILITY"],
+        }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
-        """List each sale's total, net revenue, VAT (18%), and SSCL (2.5%) within the range.
+        """List each sale's total, net revenue, VAT (18%), and SSCL (2.5%) within the range,
+        followed by one summary row: total Output VAT collected minus total Input VAT paid
+        to suppliers (entered manually at GRN time, ``Purchase.input_vat``) = net VAT owed.
 
         VAT and SSCL are read from ``Sale.tax_vat``/``Sale.tax_sscl``, which
         were already computed backward from the MRP-inclusive sale total at
-        the time of sale — this report does not recompute tax.
+        the time of sale — this report does not recompute tax. Input VAT
+        is not computed either; it's whatever was typed in from the
+        supplier's invoice, summed across completed purchases in the range.
         """
         with get_db_session() as session:
             date_range = filters.get("date_range", {})
@@ -132,16 +148,16 @@ class TaxLiabilityReport(BaseReport):
             end_date = date_range.get("end")
 
             query = session.query(Sale)
-
             if start_date:
                 query = query.filter(func.date(Sale.date) >= start_date)
             if end_date:
                 query = query.filter(func.date(Sale.date) <= end_date)
-
             sales = query.all()
 
             data = []
+            output_vat_total = Decimal("0")
             for sale in sales:
+                output_vat_total += sale.tax_vat
                 data.append(
                     {
                         "Date": sale.date.strftime("%Y-%m-%d"),
@@ -151,8 +167,31 @@ class TaxLiabilityReport(BaseReport):
                         "VAT (18%)": sale.tax_vat,
                         "SSCL (2.5%)": sale.tax_sscl,
                         "Total Tax": sale.tax_vat + sale.tax_sscl,
+                        "Input VAT": None,
+                        "Net VAT Liability": None,
                     }
                 )
+
+            purchase_query = session.query(Purchase).filter(Purchase.status == "COMPLETED")
+            if start_date:
+                purchase_query = purchase_query.filter(func.date(Purchase.date) >= start_date)
+            if end_date:
+                purchase_query = purchase_query.filter(func.date(Purchase.date) <= end_date)
+            input_vat_total = sum((p.input_vat for p in purchase_query.all()), Decimal("0"))
+
+            data.append(
+                {
+                    "Date": "",
+                    "Invoice #": "NET VAT LIABILITY",
+                    "Total Sale": None,
+                    "Net Revenue": None,
+                    "VAT (18%)": output_vat_total,
+                    "SSCL (2.5%)": None,
+                    "Total Tax": None,
+                    "Input VAT": input_vat_total,
+                    "Net VAT Liability": output_vat_total - input_vat_total,
+                }
+            )
 
             return pd.DataFrame(data)
 

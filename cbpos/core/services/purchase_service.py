@@ -51,7 +51,9 @@ class PurchaseService:
             return purchase
 
     @staticmethod
-    def commit_purchase(purchase_id: int, items_data: list[dict[str, Any]]) -> Purchase:
+    def commit_purchase(
+        purchase_id: int, items_data: list[dict[str, Any]], input_vat: Decimal = Decimal("0.00")
+    ) -> Purchase:
         """
         Commit a purchase:
         1. Create PurchaseItems.
@@ -61,6 +63,11 @@ class PurchaseService:
         5. Mark purchase as COMPLETED.
 
         items_data format: [{'product_id': int, 'qty': Decimal, 'cost': Decimal}]
+
+        Args:
+            input_vat: VAT amount shown on the supplier's invoice for this
+                GRN, entered manually (not computed). Deductible against
+                Output VAT in TaxLiabilityReport.
         """
         db = Database()
         with db.get_session() as session:
@@ -123,6 +130,7 @@ class PurchaseService:
 
             # Finalize Purchase
             purchase.total_cost = total_purchase_cost
+            purchase.input_vat = input_vat
             purchase.status = "COMPLETED"
 
             # Update supplier payable

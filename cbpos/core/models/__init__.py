@@ -210,6 +210,9 @@ class Purchase(Document):
     id: Mapped[int] = mapped_column(ForeignKey("documents.id"), primary_key=True)
     supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"))
     total_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    input_vat: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), default=0
+    )  # VAT paid to supplier, from their invoice -- deductible against Output VAT
 
     supplier: Mapped["Supplier"] = relationship(back_populates="purchases")
     items: Mapped[list["PurchaseItem"]] = relationship(back_populates="purchase", cascade="all, delete-orphan")

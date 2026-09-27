@@ -497,6 +497,13 @@ class PurchaseView(QWidget):
 
         # Footer
         footer_layout = QHBoxLayout()
+
+        self.lbl_grn_input_vat = QLabel()
+        self.input_vat_field = QLineEdit()
+        self.input_vat_field.setPlaceholderText("0.00")
+        self.input_vat_field.setFixedWidth(100)
+        self.input_vat_field.setToolTip(_t("purchase.input_vat_tooltip"))
+
         self.total_label = QLabel()
         self.total_label.setStyleSheet("font-size: 16px; font-weight: bold;")
 
@@ -505,6 +512,9 @@ class PurchaseView(QWidget):
         self.btn_commit.clicked.connect(self.commit_grn)
 
         footer_layout.addStretch()
+        footer_layout.addWidget(self.lbl_grn_input_vat)
+        footer_layout.addWidget(self.input_vat_field)
+        footer_layout.addSpacing(16)
         footer_layout.addWidget(self.total_label)
         footer_layout.addWidget(self.btn_commit)
         layout.addLayout(footer_layout)
@@ -600,6 +610,8 @@ class PurchaseView(QWidget):
         self.lbl_grn_ref.setText(_t("purchase.form_ref"))
         self.lbl_grn_date.setText(_t("purchase.form_date"))
         self.lbl_add_product.setText(_t("purchase.form_add_product"))
+        self.lbl_grn_input_vat.setText(_t("purchase.grn_input_vat_label"))
+        self.input_vat_field.setToolTip(_t("purchase.input_vat_tooltip"))
         self.product_search.setPlaceholderText(_t("purchase.product_search_placeholder"))
         self.grn_model.setHorizontalHeaderLabels(
             [
@@ -865,7 +877,13 @@ class PurchaseView(QWidget):
                 items_data.append({"product_id": prod_id, "qty": qty, "cost": cost})
 
             # 3. Commit
-            PurchaseService.commit_purchase(purchase.id, items_data)
+            vat_text = self.input_vat_field.text().strip()
+            try:
+                input_vat = Decimal(vat_text) if vat_text else Decimal("0.00")
+            except InvalidOperation:
+                QMessageBox.warning(self, _t("common.error"), _t("purchase.error_invalid_vat"))
+                return
+            PurchaseService.commit_purchase(purchase.id, items_data, input_vat=input_vat)
 
             QMessageBox.information(
                 self,
@@ -877,6 +895,7 @@ class PurchaseView(QWidget):
             self.grn_model.removeRows(0, self.grn_model.rowCount())
             self.grn_items = []
             self.invoice_input.clear()
+            self.input_vat_field.clear()
             self.update_total()
 
         except Exception as e:

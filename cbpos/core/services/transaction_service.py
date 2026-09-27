@@ -251,6 +251,7 @@ class TransactionService:
                     unit_price=item["unit_price"],
                     original_price=item["original_price"],
                     subtotal=item["total"],
+                    notes=item.get("note") or None,
                 )
                 session.add(sale_item)
 

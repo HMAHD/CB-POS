@@ -595,7 +595,12 @@ class DocumentBrowserView(QWidget):
         self.items_table.setRowCount(0)
         for idx, item in enumerate(items):
             self.items_table.insertRow(idx)
-            self.items_table.setItem(idx, 0, QTableWidgetItem(item.get("product_name", "")))
+            product_name = item.get("product_name", "")
+            note = item.get("notes")
+            name_item = QTableWidgetItem(f"\U0001f4dd {product_name}" if note else product_name)
+            if note:
+                name_item.setToolTip(note)
+            self.items_table.setItem(idx, 0, name_item)
 
             qty_item = QTableWidgetItem(f"{item['quantity']:.3f}")
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)

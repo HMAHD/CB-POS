@@ -1,6 +1,7 @@
 import gc
 import os
 import sys
+import threading
 
 import pytest
 
@@ -48,7 +49,7 @@ def test_engine():
 
 @pytest.fixture(autouse=True)
 def _collect_garbage_after_each_test():
-    """Force a GC pass after every test.
+    """Force a GC pass after every test, then wait out any background thread left running.
 
     Views/dialogs following the register_language_callback pattern used to
     leak forever via a reference cycle (self -> destroyed-connection ->
@@ -63,6 +64,30 @@ def _collect_garbage_after_each_test():
     ``IllegalStateChangeError: rollback() can't be called here; commit()
     already in progress``).
 
+    That covers leaked *widgets*, but #501 kept recurring after #392/#389
+    because a second, distinct source produces the identical symptom: a
+    genuine background ``QThread`` (dashboard's ``_PeriodicWorker`` /
+    ``_YearlyWorker``, which call ``DashboardService`` -- real DB queries
+    -- straight from ``run()``) started by a test via ``.start()`` and
+    never waited on. That thread keeps executing on a real OS thread after
+    its own test returns, and whichever *later* test happens to be running
+    when it eventually calls ``Database().get_session()`` gets raced --
+    hence a different unrelated test failing every run (observed directly
+    as ``SAWarning: nested transaction already deassociated from
+    connection`` in test_dashboard_periodic_date_bounds.py, which calls
+    ``DashboardView.refresh_periodic()`` and never joins the worker it
+    starts). ``PrintWorker`` is the other realistic offender, but it's a
+    documented infinite loop until ``.stop()`` -- waiting on it here
+    without stopping it first would hang the suite, so it gets its own
+    explicit, idempotent shutdown (safe even when no instance exists).
+    Any other QThread (CSV import, backup, etc.) is bounded and self-
+    deletes on ``finished``, so a plain ``.wait()`` is enough to drain it
+    before the next test's db_session takes over Database.SessionLocal.
+    EmailService is the same hazard via a plain ``threading.Thread``
+    instead of QThread (its own docstring: "no PyQt dependency"), so
+    ``threading.enumerate()`` -- the one registry covering every live
+    thread regardless of kind -- gets the same treatment.
+
     Placed textually before ``db_session`` so it tears down *after*
     db_session's own cleanup (autouse fixtures set up before, and tear
     down after, other fixtures of the same scope) -- any stray callback
@@ -72,6 +97,38 @@ def _collect_garbage_after_each_test():
     """
     yield
     gc.collect()
+
+    from PyQt6.QtCore import QThread
+
+    from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+
+    PrintWorker.shutdown()
+
+    for obj in gc.get_objects():
+        try:
+            if isinstance(obj, QThread) and obj.isRunning():
+                obj.wait(2000)
+        except RuntimeError:
+            # The Python wrapper is still gc-tracked but its underlying
+            # C++ QObject was already destroyed (deleteLater() fired) --
+            # nothing to wait on.
+            continue
+
+    # EmailService uses a plain threading.Thread, not QThread (see its own
+    # docstring: "no PyQt dependency") -- invisible to the QThread sweep
+    # above but the same hazard: it can still be running when a later
+    # test's db_session takes over. threading.enumerate() is the one
+    # registry that covers every live thread regardless of kind.
+    for thread in threading.enumerate():
+        if thread is threading.main_thread() or not thread.is_alive():
+            continue
+        try:
+            thread.join(timeout=2)
+        except AssertionError:
+            # A "dummy thread" -- Python's placeholder for a foreign
+            # (non-Python-created) OS thread calling back into the
+            # interpreter, e.g. Qt's own thread pool. Not ours to join.
+            continue
 
 
 @pytest.fixture

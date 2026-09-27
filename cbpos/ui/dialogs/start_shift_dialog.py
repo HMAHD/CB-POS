@@ -32,9 +32,11 @@ class StartShiftDialog(QDialog):
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(28, 24, 28, 24)
+        layout.setSpacing(16)
 
         self.lbl_header = QLabel(_t("start_shift.header"))
-        self.lbl_header.setObjectName("stepHeader")
+        self.lbl_header.setProperty("class", "SectionHeader")
         self.lbl_header.setWordWrap(True)
         layout.addWidget(self.lbl_header)
 
@@ -43,6 +45,8 @@ class StartShiftDialog(QDialog):
         layout.addWidget(self.denomination_widget)
 
         self.btn_start = QPushButton(_t("start_shift.start_button"))
+        self.btn_start.setProperty("class", "primary")
+        self.btn_start.setMinimumHeight(44)
         self.btn_start.clicked.connect(self._start_shift)
         layout.addWidget(self.btn_start)
 

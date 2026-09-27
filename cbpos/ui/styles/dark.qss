@@ -324,6 +324,30 @@ QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
     height: 12px;
 }
 
+/* Denomination Widget (Start Shift / Shift Closing cash count, #525) */
+QLabel#DenomLabel {
+    font-size: 14px;
+    font-weight: bold;
+    color: #E0E0E0;
+}
+
+QLabel#DenomRowTotal {
+    font-size: 13px;
+    color: #AAAAAA;
+}
+
+QLabel#DenomGrandTotalLabel {
+    font-size: 16px;
+    font-weight: bold;
+    color: #00BCEB;
+}
+
+QLabel#DenomGrandTotalValue {
+    font-size: 20px;
+    font-weight: bold;
+    color: #39FF14;
+}
+
 /* Checkboxes - Toggle Style with Checkmark */
 QCheckBox {
     spacing: 10px;

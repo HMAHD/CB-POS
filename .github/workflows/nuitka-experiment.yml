@@ -38,7 +38,7 @@ jobs:
         run: uv sync --locked --no-dev --group build
 
       - name: Cache Nuitka compilation cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.NUITKA_CACHE_DIR }}
           key: nuitka-cache-${{ runner.os }}-${{ hashFiles('uv.lock') }}

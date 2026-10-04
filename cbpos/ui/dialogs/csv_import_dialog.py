@@ -159,7 +159,7 @@ class CsvImportDialog(QDialog):
 
         self._csv_worker = CsvImportWorker(self.import_service, self._selected_file)
         self._csv_worker.progress.connect(self._on_progress)
-        self._csv_worker.finished.connect(self._on_finished)
+        self._csv_worker.result.connect(self._on_finished)
         self._csv_worker.error.connect(self._on_error)
         self._csv_worker.start()
 

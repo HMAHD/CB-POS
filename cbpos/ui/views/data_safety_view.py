@@ -174,7 +174,7 @@ class DataSafetyView(QWidget):
         backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
         self._overlay.show_loading(_t("data_safety.backup_list_loading"))
         self._backup_list_worker = BackupListWorker(backup_dir)
-        self._backup_list_worker.finished.connect(self._on_backup_list_loaded)
+        self._backup_list_worker.result.connect(self._on_backup_list_loaded)
         self._backup_list_worker.error.connect(self._on_backup_list_error)
         self._backup_list_worker.start()
 
@@ -218,7 +218,7 @@ class DataSafetyView(QWidget):
 
         backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
         self._backup_worker = BackupWorker(backup_dir)
-        self._backup_worker.finished.connect(self._on_backup_finished)
+        self._backup_worker.result.connect(self._on_backup_finished)
         self._backup_worker.error.connect(self._on_backup_error)
         self._backup_worker.start()
 
@@ -506,7 +506,7 @@ class DataSafetyView(QWidget):
         self._overlay.show_loading(_t("data_safety.restore_restoring"))
 
         self._restore_worker = RestoreWorker(path, password)
-        self._restore_worker.finished.connect(self._on_restore_finished)
+        self._restore_worker.result.connect(self._on_restore_finished)
         self._restore_worker.error.connect(self._on_restore_error)
         self._restore_worker.start()
 
@@ -662,7 +662,7 @@ class DataSafetyView(QWidget):
         from cbpos.ui.workers import VacuumWorker
 
         self._vacuum_worker = VacuumWorker()
-        self._vacuum_worker.finished.connect(self._on_vacuum_finished)
+        self._vacuum_worker.result.connect(self._on_vacuum_finished)
         self._vacuum_worker.error.connect(self._on_vacuum_error)
         self._vacuum_worker.start()
 
@@ -694,7 +694,7 @@ class DataSafetyView(QWidget):
         from cbpos.ui.workers import IntegrityCheckWorker
 
         self._integrity_worker = IntegrityCheckWorker()
-        self._integrity_worker.finished.connect(self._on_integrity_finished)
+        self._integrity_worker.result.connect(self._on_integrity_finished)
         self._integrity_worker.start()
 
     def _on_integrity_finished(self, ok: bool, message: str) -> None:
@@ -870,7 +870,7 @@ class DataSafetyView(QWidget):
         self._export_row_count = len(df)
 
         self._export_worker = ExportWorker(ExportService(), df, filepath, title, fmt)
-        self._export_worker.finished.connect(self._on_export_finished)
+        self._export_worker.result.connect(self._on_export_finished)
         self._export_worker.error.connect(self._on_export_error)
         self._export_worker.start()
 

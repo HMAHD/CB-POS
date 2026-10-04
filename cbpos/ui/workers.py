@@ -17,20 +17,19 @@ logger = logging.getLogger(__name__)
 class CsvImportWorker(QThread):
     """Imports products from a CSV file in a background thread."""
 
-    finished = pyqtSignal(dict)  # {"success": int, "failed": int, "skipped": int}
+    result = pyqtSignal(dict)  # {"success": int, "failed": int, "skipped": int}
     error = pyqtSignal(str)
     progress = pyqtSignal(int, int)  # (current_row, total_rows)
 
     def __init__(self, import_service: object, file_path: str) -> None:
-        """Set up the import job; connects finished/error to deleteLater for cleanup."""
+        """Set up the import job; QThread.finished deletes it once run() returns."""
         super().__init__()
         self.finished.connect(self.deleteLater)
-        self.error.connect(self.deleteLater)
         self.import_service = import_service
         self.file_path = file_path
 
     def run(self) -> None:
-        """Count CSV rows for progress reporting, then import products, emitting progress/finished/error."""
+        """Count CSV rows for progress reporting, then import products, emitting progress/result/error."""
         try:
             # Count rows with a lightweight line count (skip header)
             try:
@@ -44,7 +43,7 @@ class CsvImportWorker(QThread):
                 progress_callback=lambda current: self.progress.emit(current, total),
             )
 
-            self.finished.emit(results)
+            self.result.emit(results)
         except Exception as e:
             logger.error("CSV import failed: %s", e)
             self.error.emit(str(e))
@@ -53,14 +52,13 @@ class CsvImportWorker(QThread):
 class BackupWorker(QThread):
     """Creates an encrypted database backup in a background thread."""
 
-    finished = pyqtSignal(str, str)  # (backup_path, password)
+    result = pyqtSignal(str, str)  # (backup_path, password)
     error = pyqtSignal(str)
 
     def __init__(self, destination_dir: str) -> None:
         """Set up the backup job for the given destination directory."""
         super().__init__()
         self.finished.connect(self.deleteLater)
-        self.error.connect(self.deleteLater)
         self.destination_dir = destination_dir
 
     def run(self) -> None:
@@ -69,7 +67,7 @@ class BackupWorker(QThread):
             from cbpos.core.services.backup_service import BackupService
 
             backup_path, password = BackupService.create_backup(self.destination_dir)
-            self.finished.emit(backup_path, password)
+            self.result.emit(backup_path, password)
         except Exception as e:
             logger.error("Backup failed: %s", e)
             self.error.emit(str(e))
@@ -86,14 +84,13 @@ class BackupListWorker(QThread):
     operation.
     """
 
-    finished = pyqtSignal(list)
+    result = pyqtSignal(list)
     error = pyqtSignal(str)
 
     def __init__(self, backup_dir: str) -> None:
         """Set up the scan job for the given backup directory."""
         super().__init__()
         self.finished.connect(self.deleteLater)
-        self.error.connect(self.deleteLater)
         self.backup_dir = backup_dir
 
     def run(self) -> None:
@@ -102,7 +99,7 @@ class BackupListWorker(QThread):
             from cbpos.core.services.backup_service import BackupService
 
             backups = BackupService.list_backups(self.backup_dir)
-            self.finished.emit(backups)
+            self.result.emit(backups)
         except Exception as e:
             logger.error("Listing backups failed: %s", e)
             self.error.emit(str(e))
@@ -111,14 +108,13 @@ class BackupListWorker(QThread):
 class RestoreWorker(QThread):
     """Restores a backup in a background thread."""
 
-    finished = pyqtSignal(bool)  # success
+    result = pyqtSignal(bool)  # success
     error = pyqtSignal(str)
 
     def __init__(self, backup_path: str, password: str) -> None:
         """Set up the restore job with the backup file and its password."""
         super().__init__()
         self.finished.connect(self.deleteLater)
-        self.error.connect(self.deleteLater)
         self.backup_path = backup_path
         self.password = password
 
@@ -128,7 +124,7 @@ class RestoreWorker(QThread):
             from cbpos.core.services.backup_service import BackupService
 
             result = BackupService.restore_backup(self.backup_path, self.password)
-            self.finished.emit(result)
+            self.result.emit(result)
         except Exception as e:
             logger.error("Restore failed: %s", e)
             self.error.emit(str(e))
@@ -137,14 +133,13 @@ class RestoreWorker(QThread):
 class VacuumWorker(QThread):
     """Runs database VACUUM in a background thread."""
 
-    finished = pyqtSignal(dict)  # {size_before, size_after, saved}
+    result = pyqtSignal(dict)  # {size_before, size_after, saved}
     error = pyqtSignal(str)
 
     def __init__(self) -> None:
         """Set up the VACUUM job."""
         super().__init__()
         self.finished.connect(self.deleteLater)
-        self.error.connect(self.deleteLater)
 
     def run(self) -> None:
         """Run database VACUUM and emit the before/after/saved size stats."""
@@ -152,7 +147,7 @@ class VacuumWorker(QThread):
             from cbpos.core.services.maintenance_service import MaintenanceService
 
             result = MaintenanceService.vacuum_database()
-            self.finished.emit(result)
+            self.result.emit(result)
         except Exception as e:
             logger.error("Vacuum failed: %s", e)
             self.error.emit(str(e))
@@ -161,7 +156,7 @@ class VacuumWorker(QThread):
 class PrinterTestWorker(QThread):
     """Tests receipt printer connectivity in a background thread."""
 
-    finished = pyqtSignal(bool, str)  # (success, message)
+    result = pyqtSignal(bool, str)  # (success, message)
 
     def __init__(self) -> None:
         """Set up the printer connectivity test job."""
@@ -174,16 +169,16 @@ class PrinterTestWorker(QThread):
             from cbpos.core.services.hardware_test_service import HardwareTestService
 
             success, message = HardwareTestService.test_receipt_printer()
-            self.finished.emit(success, message)
+            self.result.emit(success, message)
         except Exception as e:
             logger.error("Printer test worker failed: %s", e)
-            self.finished.emit(False, str(e))
+            self.result.emit(False, str(e))
 
 
 class DrawerTestWorker(QThread):
     """Tests cash drawer kick in a background thread."""
 
-    finished = pyqtSignal(bool, str)  # (success, message)
+    result = pyqtSignal(bool, str)  # (success, message)
 
     def __init__(self) -> None:
         """Set up the cash drawer kick test job."""
@@ -196,16 +191,16 @@ class DrawerTestWorker(QThread):
             from cbpos.core.services.hardware_test_service import HardwareTestService
 
             success, message = HardwareTestService.test_cash_drawer()
-            self.finished.emit(success, message)
+            self.result.emit(success, message)
         except Exception as e:
             logger.error("Drawer test worker failed: %s", e)
-            self.finished.emit(False, str(e))
+            self.result.emit(False, str(e))
 
 
 class IntegrityCheckWorker(QThread):
     """Runs database integrity check in a background thread."""
 
-    finished = pyqtSignal(bool, str)  # (ok, message)
+    result = pyqtSignal(bool, str)  # (ok, message)
 
     def __init__(self) -> None:
         """Set up the database integrity check job."""
@@ -218,16 +213,16 @@ class IntegrityCheckWorker(QThread):
             from cbpos.core.services.maintenance_service import MaintenanceService
 
             ok, message = MaintenanceService.integrity_check()
-            self.finished.emit(ok, message)
+            self.result.emit(ok, message)
         except Exception as e:
             logger.error("Integrity check failed: %s", e)
-            self.finished.emit(False, str(e))
+            self.result.emit(False, str(e))
 
 
 class ExportWorker(QThread):
     """Exports report data to Excel or PDF in a background thread."""
 
-    finished = pyqtSignal(str)  # success message
+    result = pyqtSignal(str)  # success message
     error = pyqtSignal(str)
 
     def __init__(
@@ -241,7 +236,6 @@ class ExportWorker(QThread):
         """Set up the export job with the data, destination path, report name, and format."""
         super().__init__()
         self.finished.connect(self.deleteLater)
-        self.error.connect(self.deleteLater)
         self.export_service = export_service
         self.df = df
         self.filepath = filepath
@@ -257,7 +251,7 @@ class ExportWorker(QThread):
                 self.export_service.export_to_pdf(self.df, self.filepath, self.report_name)
             elif self.fmt == "csv":
                 self.export_service.export_to_csv(self.df, self.filepath)
-            self.finished.emit("Export successful!")
+            self.result.emit("Export successful!")
         except Exception as e:
             logger.error("Export failed: %s", e)
             self.error.emit(str(e))
@@ -269,7 +263,7 @@ class AutocompleteLoadWorker(QThread):
     run synchronously in SalesView.__init__, causing a visible freeze
     at startup and after every multi-user login switch."""
 
-    finished = pyqtSignal(list)  # list[str]
+    result = pyqtSignal(list)  # list[str]
 
     def __init__(self, product_service, limit: int) -> None:
         """Set up the autocomplete-preload job for up to `limit` product names."""
@@ -282,7 +276,7 @@ class AutocompleteLoadWorker(QThread):
         """Fetch top product names for autocomplete, emitting the list (or empty list on failure)."""
         try:
             names = self.product_service.get_top_products(self.limit)
-            self.finished.emit(names)
+            self.result.emit(names)
         except Exception as e:
             logger.error("Autocomplete load worker failed: %s", e)
-            self.finished.emit([])
+            self.result.emit([])

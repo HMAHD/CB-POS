@@ -12,6 +12,7 @@ import time
 import weakref
 from datetime import datetime
 
+from PyQt6 import sip
 from PyQt6.QtCore import QDate, Qt, QTimer
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
@@ -240,7 +241,7 @@ class AdminToolsView(QWidget):
         from cbpos.ui.workers import IntegrityCheckWorker
 
         self._integrity_worker = IntegrityCheckWorker()
-        self._integrity_worker.finished.connect(self._on_integrity_check_finished)
+        self._integrity_worker.result.connect(self._on_integrity_check_finished)
         self._integrity_worker.start()
 
     def _on_integrity_check_finished(self, ok: bool, message: str) -> None:
@@ -653,13 +654,15 @@ class AdminToolsView(QWidget):
         from cbpos.ui.workers import PrinterTestWorker
 
         self._printer_worker = PrinterTestWorker()
-        self._printer_worker.finished.connect(self._on_printer_test_done)
+        self._printer_worker.result.connect(self._on_printer_test_done)
         self._printer_worker.start()
         QTimer.singleShot(15000, self._on_printer_test_timeout)
 
     def _on_printer_test_timeout(self) -> None:
         """Handle printer test timeout after 15 seconds."""
-        if hasattr(self, "_printer_worker") and self._printer_worker.isRunning():
+        worker = getattr(self, "_printer_worker", None)
+        # The worker deletes itself via QThread.finished -> deleteLater (#632).
+        if worker is not None and not sip.isdeleted(worker) and worker.isRunning():
             self.btn_test_printer.setEnabled(True)
             self.btn_test_printer.setText(_t("admin_tools.hw_btn_test_printer"))
             self.lbl_printer_status.setText(_t("admin_tools.hw_printer_timeout"))
@@ -684,13 +687,15 @@ class AdminToolsView(QWidget):
         from cbpos.ui.workers import DrawerTestWorker
 
         self._drawer_worker = DrawerTestWorker()
-        self._drawer_worker.finished.connect(self._on_drawer_test_done)
+        self._drawer_worker.result.connect(self._on_drawer_test_done)
         self._drawer_worker.start()
         QTimer.singleShot(15000, self._on_drawer_test_timeout)
 
     def _on_drawer_test_timeout(self) -> None:
         """Handle drawer test timeout after 15 seconds."""
-        if hasattr(self, "_drawer_worker") and self._drawer_worker.isRunning():
+        worker = getattr(self, "_drawer_worker", None)
+        # The worker deletes itself via QThread.finished -> deleteLater (#632).
+        if worker is not None and not sip.isdeleted(worker) and worker.isRunning():
             self.btn_test_drawer.setEnabled(True)
             self.btn_test_drawer.setText(_t("admin_tools.hw_btn_open_drawer"))
             self.lbl_drawer_status.setText(_t("admin_tools.hw_drawer_timeout"))

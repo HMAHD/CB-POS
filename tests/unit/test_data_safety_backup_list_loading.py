@@ -34,10 +34,10 @@ def view(qapp, db_session, tmp_path, monkeypatch):
 
 
 class TestBackupListWorkerRun:
-    def test_run_emits_finished_with_the_backup_list(self, tmp_path):
+    def test_run_emits_result_with_the_backup_list(self, tmp_path):
         worker = BackupListWorker(str(tmp_path))
         received = []
-        worker.finished.connect(lambda backups: received.append(backups))
+        worker.result.connect(lambda backups: received.append(backups))
 
         with patch("cbpos.core.services.backup_service.BackupService.list_backups", return_value=[{"a": 1}]):
             worker.run()

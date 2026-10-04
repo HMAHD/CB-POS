@@ -1046,7 +1046,7 @@ class SalesView(QWidget):
         from cbpos.ui.workers import AutocompleteLoadWorker
 
         self._autocomplete_worker = AutocompleteLoadWorker(self.product_service, limit=500)
-        self._autocomplete_worker.finished.connect(self._on_autocomplete_loaded)
+        self._autocomplete_worker.result.connect(self._on_autocomplete_loaded)
         self._autocomplete_worker.start()
 
     def _on_autocomplete_loaded(self, names: list) -> None:

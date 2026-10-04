@@ -37,14 +37,13 @@ from cbpos.ui.workers import ExportWorker
 class ReportWorker(QThread):
     """Background thread for report generation to avoid freezing the UI."""
 
-    finished = pyqtSignal(object)
+    result = pyqtSignal(object)
     error = pyqtSignal(str)
 
     def __init__(self, report, filters):
         """Initialize the worker with a report instance and its filter values."""
         super().__init__()
         self.finished.connect(self.deleteLater)
-        self.error.connect(self.deleteLater)
         self.report = report
         self.filters = filters
 
@@ -52,7 +51,7 @@ class ReportWorker(QThread):
         """Generate the report's DataFrame and emit the result, or emit an error message on failure."""
         try:
             df = self.report.generate(self.filters)
-            self.finished.emit(df)
+            self.result.emit(df)
         except Exception as e:
             self.error.emit(str(e))
 
@@ -379,7 +378,7 @@ class ReportViewer(QWidget):
         self.btn_run.setEnabled(False)
 
         self._report_worker = ReportWorker(self.current_report, filters)
-        self._report_worker.finished.connect(self._on_report_finished)
+        self._report_worker.result.connect(self._on_report_finished)
         self._report_worker.error.connect(self._on_report_error)
         self._report_worker.start()
 
@@ -473,7 +472,7 @@ class ReportViewer(QWidget):
             self.current_report.name,
             fmt,
         )
-        self._export_worker.finished.connect(self._on_export_finished)
+        self._export_worker.result.connect(self._on_export_finished)
         self._export_worker.error.connect(self._on_export_error)
         self._export_worker.start()
 

@@ -206,7 +206,7 @@ class ShiftClosingDialog(QDialog):
         QApplication.setOverrideCursor(QCursor(Qt.CursorShape.WaitCursor))
 
         self._backup_worker = BackupWorker(chosen_dir)
-        self._backup_worker.finished.connect(self._on_backup_finished)
+        self._backup_worker.result.connect(self._on_backup_finished)
         self._backup_worker.error.connect(self._on_backup_error)
         self._backup_worker.start()
         return True

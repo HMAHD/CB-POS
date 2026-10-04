@@ -59,7 +59,7 @@ def _report_crash(exc_type, exc_value, exc_traceback) -> None:
         )
 
 
-def run_migrations() -> None:
+def run_migrations() -> str | None:
     """Apply pending Alembic migrations to bring the database schema up to date.
 
     For databases created via ``Base.metadata.create_all()`` (first-run) that
@@ -69,12 +69,16 @@ def run_migrations() -> None:
 
     Safe to call on every startup — if the DB is already at head, this is a
     fast no-op.
+
+    Returns:
+        None on success, or the error message if migration failed -- the
+        caller must not continue on an out-of-date schema (#630).
     """
     from cbpos.config import Config
 
     db_path = Config.DATA_DIR / "cbpos.db"
     if not db_path.exists():
-        return  # No database yet — will be created by DatabaseSetupService
+        return None  # No database yet — will be created by DatabaseSetupService
 
     try:
         from alembic.config import Config as AlembicConfig
@@ -87,6 +91,8 @@ def run_migrations() -> None:
         alembic_cfg = AlembicConfig(str(Config.BASE_DIR / "alembic.ini"))
         alembic_cfg.set_main_option("script_location", str(Config.BASE_DIR / "alembic"))
         alembic_cfg.set_main_option("sqlalchemy.url", Config.DB_URI)
+        # Don't let env.py fileConfig() over our logging (logging.config isn't bundled, #630).
+        alembic_cfg.attributes["configure_logger"] = False
 
         engine = create_engine(Config.DB_URI)
 
@@ -115,7 +121,9 @@ def run_migrations() -> None:
         engine.dispose()
 
     except Exception as e:
-        _early_log.append(f"WARNING: Auto-migration failed: {e}")
+        _early_log.append(f"ERROR: Auto-migration failed: {e}")
+        return str(e)
+    return None
 
 
 def ensure_data_dir() -> None:
@@ -232,7 +240,9 @@ def main():
     ensure_data_dir()
 
     # Apply any pending database schema migrations
-    run_migrations()
+    migration_error = run_migrations()
+    if "--migrate-only" in sys.argv:  # CI smoke test of the frozen exe (#630)
+        sys.exit(1 if migration_error else 0)
 
     # Create a named mutex so the Inno Setup installer can detect a running instance.
     # On non-Windows this is harmless — ctypes.windll doesn't exist.
@@ -289,6 +299,19 @@ def main():
 
     saved_language = ConfigService.get("language") or "en"
     set_language(saved_language)
+
+    # Never run on an out-of-date schema -- a failed migration must block startup (#630).
+    if migration_error:
+        from PyQt6.QtWidgets import QMessageBox
+
+        from cbpos.i18n import _t
+
+        QMessageBox.critical(
+            None,
+            _t("main_window.migration_failed_title"),
+            _t("main_window.migration_failed_body", error=migration_error),
+        )
+        sys.exit(1)
 
     # Register Reports
     from cbpos.core.reports import register_all_reports

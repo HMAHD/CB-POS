@@ -82,6 +82,8 @@
   },
   "main_window": {
     "title": "CB POS - Industrial Retail System",
+    "migration_failed_title": "Database Update Failed",
+    "migration_failed_body": "CB POS couldn't update its database for this version, so it can't start safely.\n\nPlease contact CB POS support. Details were saved to the logs folder.\n\nError: {error}",
     "fullscreen_hint": "Press Esc to exit fullscreen",
     "exit_confirm_title": "Cart Has Items",
     "exit_confirm_message": "You have {count} item(s) in your cart. Do you want to hold the bill before closing?",

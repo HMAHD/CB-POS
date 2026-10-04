@@ -130,6 +130,42 @@ jobs:
           echo "Exe size: $(stat -c%s dist/cbpos/cbpos.exe 2>/dev/null || stat -f%z dist/cbpos/cbpos.exe) bytes"
           echo "Total files: $(find dist/cbpos -type f | wc -l)"
 
+      # The frozen exe must be able to migrate an older database to head --
+      # alembic/ ships as data, so a missing hidden import only shows up here (#630).
+      - name: Smoke-test DB migration in the frozen exe
+        shell: bash
+        run: |
+          export CBPOS_DB="$RUNNER_TEMP/appdata/CB POS/cbpos.db"
+          uv run --no-sync python - <<'EOF'
+          import os
+          from pathlib import Path
+          from alembic import command
+          from alembic.config import Config
+          from sqlalchemy import create_engine
+          from cbpos.core.models import Base
+          db = Path(os.environ["CBPOS_DB"])
+          db.parent.mkdir(parents=True)
+          uri = f"sqlite:///{db}"
+          Base.metadata.create_all(create_engine(uri))
+          # Real previous schema: stamp head, then run the head migration's downgrade.
+          cfg = Config("alembic.ini")
+          cfg.set_main_option("sqlalchemy.url", uri)
+          cfg.attributes["configure_logger"] = False
+          command.stamp(cfg, "head")
+          command.downgrade(cfg, "-1")
+          print("Fixture DB downgraded one revision from head")
+          EOF
+          LOCALAPPDATA="$RUNNER_TEMP/appdata" ./dist/cbpos/cbpos.exe --migrate-only
+          uv run --no-sync python - <<'EOF'
+          import os, sqlite3, sys
+          from alembic.script import ScriptDirectory
+          head = ScriptDirectory("alembic").get_current_head()
+          with sqlite3.connect(os.environ["CBPOS_DB"]) as conn:
+              (current,) = conn.execute("SELECT version_num FROM alembic_version").fetchone()
+          print(f"alembic_version={current} head={head}")
+          sys.exit(current != head)
+          EOF
+
       - name: Build Inno Setup installer
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.9
         env:

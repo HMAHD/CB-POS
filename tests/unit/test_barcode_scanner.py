@@ -8,7 +8,7 @@ only be consumed when it completes a genuine scanner burst.
 import pytest
 from PyQt6.QtCore import Qt
 from PyQt6.QtTest import QTest
-from PyQt6.QtWidgets import QApplication, QLineEdit
+from PyQt6.QtWidgets import QApplication, QLineEdit, QPushButton
 
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 
@@ -45,10 +45,29 @@ class TestBarcodeScannerEnter:
         assert returns == [""]
         assert scans == []
 
-    def test_fast_burst_plus_enter_is_a_scan(self, scanner_and_field):
+    def test_burst_into_text_field_is_submitted_by_the_field_not_routed(self, scanner_and_field):
+        """Scan typed into a QLineEdit submits via its own returnPressed (Sales search,
+        Stock Take add, scanner test); routing it to the view too would double-handle it."""
         _scanner, field, scans, returns = scanner_and_field
         QTest.keyClicks(field, "4791234567890")
         QTest.keyClick(field, Qt.Key.Key_Return)
 
+        assert returns == ["4791234567890"]
+        assert scans == []
+
+    def test_burst_with_no_text_field_focused_is_routed_as_a_scan(self, scanner_and_field):
+        scanner, _field, scans, _returns = scanner_and_field
+        button = QPushButton()
+        QTest.keyClicks(button, "4791234567890")
+        QTest.keyClick(button, Qt.Key.Key_Return)
+
         assert scans == ["4791234567890"]
-        assert returns == []  # scan Enter is consumed, as before
+        assert scanner.buffer == ""
+
+    def test_readonly_field_does_not_swallow_scan(self, scanner_and_field):
+        _scanner, field, scans, _returns = scanner_and_field
+        field.setReadOnly(True)
+        QTest.keyClicks(field, "4791234567890")
+        QTest.keyClick(field, Qt.Key.Key_Return)
+
+        assert scans == ["4791234567890"]

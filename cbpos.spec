@@ -43,6 +43,9 @@ hiddenimports = [
     'escpos.printer',
     'usb.core',
     'usb.backend.libusb1',
+    # alembic/ ships as data, so imports inside env.py/migrations are invisible to analysis (#630)
+    'logging.config',
+    'logging.handlers',
 ]
 
 # Collect all submodules/data for packages with dynamic imports

@@ -830,6 +830,12 @@
     "done_title": "Done",
     "balance_adjusted_msg": "Balance adjusted successfully."
   },
+  "void_reason_dialog": {
+    "reason": "Reason",
+    "select_reason": "-- Select a reason --",
+    "note": "Note (optional)",
+    "note_placeholder": "Add more detail if needed"
+  },
   "document_browser": {
     "title": "Document Browser",
     "subtitle": "Search and reprint any document your business has created -- invoices, quotations, purchase orders, and more, all in one place.",

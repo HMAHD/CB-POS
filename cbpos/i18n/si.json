@@ -800,6 +800,12 @@
     "done_title": "හරි",
     "balance_adjusted_msg": "ශේෂය සකස් කළා."
   },
+  "void_reason_dialog": {
+    "reason": "හේතුව",
+    "select_reason": "-- හේතුවක් තෝරන්න --",
+    "note": "සටහන (ඕන නම්)",
+    "note_placeholder": "තව විස්තර තියෙනවා නම් මෙතන ලියන්න"
+  },
   "document_browser": {
     "title": "ලේඛන බ්‍රව්සරය",
     "btn_new_proforma": "+ අලුත් කෝටේෂන් එකක්",

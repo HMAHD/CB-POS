@@ -1470,7 +1470,7 @@ QPushButton#BtnSearchSelect:hover {
 }
 
 /* Quantity Dialog */
-QDialog#QuantityDialog {
+QDialog#QuantityDialog, QDialog#VoidReasonDialog {
     background-color: #1E1E1E;
 }
 

@@ -800,6 +800,12 @@
     "done_title": "முடிந்தது",
     "balance_adjusted_msg": "இருப்பு சரிசெய்யப்பட்டது."
   },
+  "void_reason_dialog": {
+    "reason": "காரணம்",
+    "select_reason": "-- ஒரு காரணத்தை தேர்ந்தெடுங்க --",
+    "note": "குறிப்பு (தேவைன்னா)",
+    "note_placeholder": "இன்னும் ஏதாவது சொல்லணும்னா இங்க எழுதுங்க"
+  },
   "document_browser": {
     "title": "ஆவண உலாவி",
     "btn_new_proforma": "+ புதிய மேற்கோள்",

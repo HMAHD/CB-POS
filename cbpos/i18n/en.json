@@ -2012,7 +2012,13 @@
     "change": "Change",
     "balance": "Balance",
     "reference": "Reference",
-    "user": "User"
+    "user": "User",
+    "type_sale": "Sale",
+    "type_purchase": "Purchase",
+    "type_adjustment": "Adjustment",
+    "type_return": "Return",
+    "type_void": "Void",
+    "system": "System"
   },
   "supplier_payment": {
     "title": "Make Supplier Payment",

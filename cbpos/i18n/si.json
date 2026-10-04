@@ -1982,7 +1982,13 @@
     "change": "වෙනස්කම",
     "balance": "ශේෂය",
     "reference": "යොමුව",
-    "user": "පරිශීලකයා"
+    "user": "පරිශීලකයා",
+    "type_sale": "විකුණුම",
+    "type_purchase": "මිලදී ගැනීම",
+    "type_adjustment": "සකස් කිරීම",
+    "type_return": "ආපසු එවීම",
+    "type_void": "අවලංගු කිරීම",
+    "system": "සිස්ටම් එක"
   },
   "supplier_payment": {
     "title": "සැපයුම්කරු ගෙවීම",

@@ -126,12 +126,21 @@ class StockService:
 
     @staticmethod
     def get_history(product_id: int, limit: int = 500) -> list[StockMovement]:
-        """Get stock movement history for a product."""
+        """Get stock movement history for a product, newest first.
+
+        Args:
+            product_id: Product whose movements to fetch.
+            limit: Maximum number of rows to return.
+
+        Returns:
+            Detached movements with ``user`` and ``document`` eager-loaded.
+        """
         db = Database()
         with db.get_session() as session:
             stmt = (
                 select(StockMovement)
                 .where(StockMovement.product_id == product_id)
+                .options(joinedload(StockMovement.user), joinedload(StockMovement.document))
                 .order_by(StockMovement.timestamp.desc())
                 .limit(limit)
             )

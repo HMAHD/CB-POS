@@ -119,3 +119,116 @@ class TestDeletePromotion:
     def test_promotion_not_found_raises(self, db_session, service):
         with pytest.raises(ValueError, match="not found"):
             service.delete_promotion(999999)
+
+
+def _create(service, **overrides):
+    now = datetime.now()
+    kwargs = {
+        "name": f"Rule_{_next_suffix()}",
+        "type": "PERCENTAGE",
+        "value": Decimal("10.00"),
+        "start_time": now,
+        "end_time": now + timedelta(days=7),
+    }
+    kwargs.update(overrides)
+    return service.create_promotion(**kwargs)
+
+
+@pytest.fixture
+def scoped_category(db_session):
+    """A category whose most expensive active product costs 100.00 (#634)."""
+    from cbpos.core.models import Category, Product
+
+    cat = Category(name=f"RuleCat_{_next_suffix()}", color="#FF0000")
+    db_session.add(cat)
+    db_session.flush()
+    for price in ("40.00", "100.00"):
+        suffix = _next_suffix()
+        db_session.add(
+            Product(name_en=f"RuleProd_{suffix}", barcode=f"RULE{suffix}", price=Decimal(price), category_id=cat.id)
+        )
+    db_session.flush()
+    return cat
+
+
+class TestPromotionValueAndDayRules:
+    """#634: a typo'd value or an empty day selection must not reach checkout."""
+
+    @pytest.mark.parametrize("value", ["0", "-5", "100.01", "500"])
+    def test_rejects_percentage_outside_0_to_100(self, db_session, service, value):
+        with pytest.raises(ValueError):
+            _create(service, value=Decimal(value))
+
+    def test_accepts_100_percent(self, db_session, service):
+        assert _create(service, value=Decimal("100")).value == Decimal("100")
+
+    @pytest.mark.parametrize("value", ["0", "-1"])
+    def test_rejects_non_positive_fixed_amount(self, db_session, service, value):
+        with pytest.raises(ValueError):
+            _create(service, type="FIXED_AMOUNT", value=Decimal(value))
+
+    def test_rejects_fixed_amount_at_or_above_every_price_in_scope(self, db_session, service, scoped_category):
+        with pytest.raises(ValueError):
+            _create(service, type="FIXED_AMOUNT", value=Decimal("100.00"), category_id=scoped_category.id)
+
+    def test_accepts_fixed_amount_below_the_top_price_in_scope(self, db_session, service, scoped_category):
+        promo = _create(service, type="FIXED_AMOUNT", value=Decimal("50.00"), category_id=scoped_category.id)
+        assert promo.value == Decimal("50.00")
+
+    def test_rejects_empty_day_selection(self, db_session, service):
+        with pytest.raises(ValueError):
+            _create(service, days_of_week="")
+
+    def test_update_rejects_bad_value(self, db_session, service, test_promotion):
+        with pytest.raises(ValueError):
+            service.update_promotion(test_promotion.id, value=Decimal("500"))
+
+    def test_update_rejects_empty_day_selection(self, db_session, service, test_promotion):
+        with pytest.raises(ValueError):
+            service.update_promotion(test_promotion.id, days_of_week="")
+
+    def test_update_rejects_switch_to_fixed_amount_above_prices(
+        self, db_session, service, test_promotion, scoped_category
+    ):
+        with pytest.raises(ValueError):
+            service.update_promotion(
+                test_promotion.id, type="FIXED_AMOUNT", value=Decimal("150"), category_id=scoped_category.id
+            )
+
+    def test_toggling_active_skips_value_rules(self, db_session, service):
+        """A legacy bad promotion must still be switchable off."""
+        from cbpos.core.models import Promotion
+
+        now = datetime.now()
+        bad = Promotion(
+            name="Legacy 500%", type="PERCENTAGE", value=Decimal("500"), start_time=now, end_time=now + timedelta(1)
+        )
+        db_session.add(bad)
+        db_session.flush()
+
+        assert service.update_promotion(bad.id, is_active=False).is_active is False
+
+
+class TestBogoNotSupported:
+    """#635: BOGO is never applied at checkout, so it can't be created."""
+
+    def test_create_rejects_bogo(self, db_session, service):
+        with pytest.raises(ValueError):
+            _create(service, type="BOGO", value=Decimal("1"))
+
+    def test_update_rejects_switching_to_bogo(self, db_session, service, test_promotion):
+        with pytest.raises(ValueError):
+            service.update_promotion(test_promotion.id, type="BOGO")
+
+    def test_existing_bogo_can_still_be_edited(self, db_session, service):
+        from cbpos.core.models import Promotion
+
+        now = datetime.now()
+        legacy = Promotion(
+            name="Legacy BOGO", type="BOGO", value=Decimal("0"), start_time=now, end_time=now + timedelta(days=1)
+        )
+        db_session.add(legacy)
+        db_session.flush()
+
+        updated = service.update_promotion(legacy.id, name="Renamed BOGO", type="BOGO", value=Decimal("0"))
+        assert updated.name == "Renamed BOGO"

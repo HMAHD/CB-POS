@@ -1,11 +1,16 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import select
-from sqlalchemy.orm import joinedload
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, joinedload
 
 from cbpos.core.database import Database
-from cbpos.core.models import Promotion
+from cbpos.core.models import Product, Promotion
+from cbpos.i18n import _t
+
+# Types pricing_service.calculate_price() actually applies. BOGO has no branch
+# there, so it can't be created (#635); legacy BOGO rows stay editable.
+SUPPORTED_TYPES = ("PERCENTAGE", "FIXED_AMOUNT")
 
 
 class PromotionService:
@@ -20,6 +25,47 @@ class PromotionService:
         if end_time <= start_time:
             raise ValueError("End time must be after the start time.")
 
+    @staticmethod
+    def _check_rules(
+        session: Session, type: str, value: Decimal, days_of_week: str | None, category_id: int | None
+    ) -> None:
+        """Reject values/schedules that would give goods away at checkout (#634).
+
+        Args:
+            session: Open session used to look up the top price in scope.
+            type: Promotion type.
+            value: Percentage or fixed amount.
+            days_of_week: Comma-separated weekday indices, or None for every day.
+            category_id: Category scope, or None for store-wide.
+
+        Raises:
+            ValueError: With a translated message describing the broken rule.
+        """
+        if type == "PERCENTAGE" and not (0 < value <= 100):
+            raise ValueError(_t("promotion.percentage_out_of_range"))
+        if type == "FIXED_AMOUNT":
+            if value <= 0:
+                raise ValueError(_t("promotion.amount_must_be_positive"))
+            stmt = select(func.max(Product.price)).where(Product.is_active.is_(True))
+            if category_id is not None:
+                stmt = stmt.where(Product.category_id == category_id)
+            top_price = session.scalar(stmt)
+            if top_price is not None and value >= top_price:
+                raise ValueError(_t("promotion.amount_exceeds_prices", price=f"{top_price:,.2f}"))
+        if days_of_week is not None and not days_of_week.strip():
+            raise ValueError(_t("promotion.days_required"))
+
+    def validate_promotion(
+        self, type: str, value: Decimal, days_of_week: str | None = None, category_id: int | None = None
+    ) -> None:
+        """Check a promotion's type, value and days without saving it.
+
+        Raises:
+            ValueError: With a translated message describing the broken rule.
+        """
+        with self.db.get_session() as session:
+            self._check_rules(session, type, value, days_of_week, category_id)
+
     def create_promotion(
         self,
         name: str,
@@ -33,10 +79,14 @@ class PromotionService:
         """Create a new active promotion, scoped to a category if given, else store-wide.
 
         Raises:
-            ValueError: If end_time is not after start_time.
+            ValueError: If end_time is not after start_time, the type is unsupported
+                (e.g. BOGO), or the value/days break a rule in ``_check_rules``.
         """
         self._validate_time_range(start_time, end_time)
+        if type not in SUPPORTED_TYPES:
+            raise ValueError(_t("promotion.type_not_supported"))
         with self.db.get_session() as session:
+            self._check_rules(session, type, value, days_of_week, category_id)
             promotion = Promotion(
                 name=name,
                 type=type,
@@ -84,7 +134,9 @@ class PromotionService:
 
         Raises:
             ValueError: If the promotion isn't found, the name is empty,
-                or the resulting date range has the end at or before the start.
+                the resulting date range has the end at or before the start,
+                the type is switched to an unsupported one, or a changed
+                type/value/days/scope breaks a rule in ``_check_rules``.
         """
         with self.db.get_session() as session:
             promotion = session.get(Promotion, promotion_id)
@@ -98,6 +150,8 @@ class PromotionService:
                 promotion.name = name
 
             if type is not None:
+                if type not in SUPPORTED_TYPES and type != promotion.type:
+                    raise ValueError(_t("promotion.type_not_supported"))
                 promotion.type = type
 
             if value is not None:
@@ -118,6 +172,13 @@ class PromotionService:
 
             if category_id is not ...:
                 promotion.category_id = category_id
+
+            # Only re-check when a rule field changed, so a legacy bad promotion can still be switched off.
+            if type is not None or value is not None or days_of_week is not ... or category_id is not ...:
+                with session.no_autoflush:
+                    self._check_rules(
+                        session, promotion.type, promotion.value, promotion.days_of_week, promotion.category_id
+                    )
 
             session.commit()
             session.refresh(promotion)

@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QEvent, QObject, QTimer, pyqtSignal
+from PyQt6.QtCore import QEvent, QObject, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
 
@@ -9,6 +9,10 @@ class BarcodeScanner(QObject):
     """
 
     barcode_scanned = pyqtSignal(str)
+
+    # ponytail: fixed threshold; a fast typist's 1-2 keys + Enter inside the
+    # 50ms window stay plain Enter. Make configurable if shops use <3-char codes.
+    MIN_SCAN_LENGTH = 3
 
     def __init__(self, app: QApplication):
         """Install a global key-event filter on the application to catch scanner input."""
@@ -28,25 +32,20 @@ class BarcodeScanner(QObject):
         The buffer is cleared after 50ms of inactivity, since a real
         scanner sends its whole payload faster than that; a human typing
         normally won't trigger a false match. Consumes the Enter keystroke
-        (returns True) only when it completed a non-empty scan.
+        (returns True) only when it completed a scanner burst of at least
+        ``MIN_SCAN_LENGTH`` characters; any other Enter reaches the focused
+        widget so ``returnPressed`` fires normally (#546).
         """
         if event.type() == QEvent.Type.KeyPress:
-            # Check if it's a printable character
-            text = event.text()
-            if text:
-                self.buffer += text
+            if event.key() in (Qt.Key.Key_Return.value, Qt.Key.Key_Enter.value):
+                barcode = self.buffer.strip()
+                self.buffer = ""
+                if len(barcode) >= self.MIN_SCAN_LENGTH:
+                    self.barcode_scanned.emit(barcode)
+                    return True
+            elif event.text():
+                self.buffer += event.text()
                 self.timer.start(50)  # Reset buffer if no input for 50ms (Scanner is fast)
-
-                # If Enter is pressed, emit signal
-                if event.key() == 16777220 or event.key() == 16777221:  # Enter keys
-                    if self.buffer.strip():
-                        self.barcode_scanned.emit(self.buffer.strip())
-                    self.buffer = ""
-                    return True  # Consume event? Maybe not, let it propagate if needed.
-                    # Actually, for a global hook, we might want to consume it if we are sure it's a barcode.
-                    # But usually, we just let it go to the focused widget if it's a text input.
-                    # However, the requirement is "process instantly without losing focus".
-                    # If we emit the signal, the main window can handle it.
 
         return super().eventFilter(obj, event)
 

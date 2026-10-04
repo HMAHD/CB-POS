@@ -33,9 +33,10 @@ def test_worker_does_not_shadow_qthread_finished(cls):
 def _run_to_completion(view: AdminToolsView) -> None:
     worker = view._printer_worker
     assert worker.wait(5000)
-    # Deliver the queued result/finished signals, then the deferred delete.
+    # Deliver the queued result/finished signals, then this worker's deferred delete
+    # only -- flushing every pending DeferredDelete deletes other tests' objects (segfault).
     QCoreApplication.processEvents()
-    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete.value)
+    QCoreApplication.sendPostedEvents(worker, QEvent.Type.DeferredDelete.value)
 
 
 def test_printer_test_runs_twice_without_runtime_error(db_session):

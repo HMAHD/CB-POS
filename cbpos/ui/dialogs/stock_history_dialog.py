@@ -63,16 +63,23 @@ class StockHistoryDialog(QDialog):
         """Fetch the product's stock movement history and populate the table, color-coding the change column."""
         history = self.stock_service.get_history(self.product.id)
         self.table.setRowCount(0)
+        type_labels = {
+            "SALE": _t("stock_history.type_sale"),
+            "PURCHASE": _t("stock_history.type_purchase"),
+            "ADJUSTMENT": _t("stock_history.type_adjustment"),
+            "RETURN": _t("stock_history.type_return"),
+            "VOID": _t("stock_history.type_void"),
+        }
 
         for move in history:
             row = self.table.rowCount()
             self.table.insertRow(row)
 
             self.table.setItem(row, 0, QTableWidgetItem(move.timestamp.strftime("%Y-%m-%d %H:%M")))
-            self.table.setItem(row, 1, QTableWidgetItem(move.type))
-            self.table.setItem(row, 2, QTableWidgetItem(move.reference))
+            self.table.setItem(row, 1, QTableWidgetItem(type_labels.get(move.type, move.type)))
+            self.table.setItem(row, 2, QTableWidgetItem(move.document.document_number if move.document else ""))
 
-            user_name = move.user.username if move.user else "System"
+            user_name = move.user.username if move.user else _t("stock_history.system")
             self.table.setItem(row, 3, QTableWidgetItem(user_name))
 
             # Change Column (Color Coded)

@@ -1982,7 +1982,13 @@
     "change": "மாற்றம்",
     "balance": "இருப்பு",
     "reference": "ரெஃபரன்ஸ்",
-    "user": "பயனர்"
+    "user": "பயனர்",
+    "type_sale": "விற்பனை",
+    "type_purchase": "கொள்முதல்",
+    "type_adjustment": "சரிசெய்தல்",
+    "type_return": "திருப்பி அனுப்புதல்",
+    "type_void": "ரத்து",
+    "system": "சிஸ்டம்"
   },
   "supplier_payment": {
     "title": "வழங்குநர் பணம் செலுத்தல்",

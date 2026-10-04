@@ -4,6 +4,7 @@ from typing import Any
 
 from cbpos.core.database import Database
 from cbpos.core.models import Customer, PriceListItem, Product, Promotion
+from cbpos.core.services.price_list_service import live_price_list_condition
 
 
 class PricingService:
@@ -35,7 +36,7 @@ class PricingService:
         with db.get_session() as session:
             # 1. Check Price List
             if customer and customer.price_list_id:
-                # Re-query price list to ensure it's active and load items
+                # Re-query price list to ensure it's live (switched on and within its dates)
                 # Note: We query PriceListItem directly for efficiency
                 price_list_item = (
                     session.query(PriceListItem)
@@ -43,7 +44,7 @@ class PricingService:
                     .filter(
                         PriceListItem.product_id == product.id,
                         PriceListItem.price_list_id == customer.price_list_id,
-                        PriceListItem.price_list.has(is_active=True),
+                        live_price_list_condition(datetime.now()),
                     )
                     .first()
                 )

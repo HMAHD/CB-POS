@@ -8,6 +8,7 @@ from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QComboBox,
     QDateEdit,
+    QDialog,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -25,6 +26,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.services.auth_service import AuthService
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.document_browser_service import DocumentBrowserService
 from cbpos.core.services.proforma_service import ProformaService
 from cbpos.core.services.receipt_service import ReceiptService
@@ -34,6 +36,7 @@ from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.ui.dialogs.void_reason_dialog import VoidReasonDialog
 from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 logger = logging.getLogger(__name__)
@@ -841,27 +844,26 @@ class DocumentBrowserView(QWidget):
         doc_type = self.current_doc.get("type", "")
         doc_number = self.current_doc.get("document_number", "")
 
-        reply = QMessageBox.question(
+        dialog = VoidReasonDialog(
+            TransactionService.get_void_reasons(),
+            bool(ConfigService.get("require_void_reason")),
+            doc_number,
             self,
-            _t("document_browser.confirm_void_title"),
-            f"<b>{_t('document_browser.void_question', doc_number=doc_number)}</b><br><br>"
-            f"<b style='color: #FF4136'>{_t('document_browser.void_warning')}</b>",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
         )
-
-        if reply != QMessageBox.StandardButton.Yes:
+        if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
         try:
             if doc_type == "proforma":
-                success = ProformaService.void_proforma(self.current_doc["id"])
+                success = ProformaService.void_proforma(self.current_doc["id"], dialog.reason_id)
             elif doc_type == "sale":
                 current_user = AuthService.get_current_user()
                 if not current_user:
                     QMessageBox.warning(self, _t("common.error"), _t("document_browser.no_user_msg"))
                     return
-                success = TransactionService.void_sale(self.current_doc["id"], current_user.id)
+                success = TransactionService.void_sale(
+                    self.current_doc["id"], current_user.id, dialog.reason_text, reason_id=dialog.reason_id
+                )
             else:
                 QMessageBox.information(
                     self,

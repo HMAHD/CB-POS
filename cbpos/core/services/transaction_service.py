@@ -14,6 +14,7 @@ from cbpos.core.models import (
     Sale,
     SaleItem,
     SalePayment,
+    VoidReason,
 )
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.cart_service import CartService
@@ -304,11 +305,32 @@ class TransactionService:
             return sale
 
     @staticmethod
-    def void_sale(sale_id: int, user_id: int, reason: str) -> bool:
+    def get_void_reasons() -> list[dict]:
+        """List the selectable void reason codes.
+
+        Returns:
+            list[dict]: ``{"id", "code", "description"}`` per VoidReason row, ordered by id.
         """
-        Mark sale as VOID and reverse stock deduction.
+        db = Database()
+        with db.get_session() as session:
+            rows = session.query(VoidReason).order_by(VoidReason.id).all()
+            return [{"id": r.id, "code": r.code, "description": r.description} for r in rows]
+
+    @staticmethod
+    def void_sale(sale_id: int, user_id: int, reason: str, reason_id: int | None = None) -> bool:
+        """Mark sale as VOID and reverse stock deduction.
+
         Security: Caller must ensure user has permission.
         Uses StockService for proper audit trail and handles composites.
+
+        Args:
+            sale_id: ID of the sale to void.
+            user_id: User performing the void.
+            reason: Human-readable reason, written to the audit log.
+            reason_id: Optional VoidReason id, stored on the document.
+
+        Returns:
+            bool: True if the sale was voided.
         """
         db = Database()
         try:
@@ -321,6 +343,8 @@ class TransactionService:
                     return False  # Already voided
 
                 sale.status = "VOID"
+                if reason_id:
+                    sale.void_reason_id = reason_id
 
                 # Pre-fetch composite items for all products in sale
                 product_ids = [item.product_id for item in sale.items]

@@ -136,24 +136,27 @@ jobs:
         shell: bash
         run: |
           export CBPOS_DB="$RUNNER_TEMP/appdata/CB POS/cbpos.db"
-          uv run python - <<'EOF'
-          import os, sqlite3
+          uv run --no-sync python - <<'EOF'
+          import os
           from pathlib import Path
+          from alembic import command
+          from alembic.config import Config
           from sqlalchemy import create_engine
-          from alembic.script import ScriptDirectory
           from cbpos.core.models import Base
           db = Path(os.environ["CBPOS_DB"])
           db.parent.mkdir(parents=True)
-          Base.metadata.create_all(create_engine(f"sqlite:///{db}"))
-          script = ScriptDirectory("alembic")
-          prev = script.get_revision(script.get_current_head()).down_revision
-          with sqlite3.connect(db) as conn:
-              conn.execute("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)")
-              conn.execute("INSERT INTO alembic_version VALUES (?)", (prev,))
-          print(f"Fixture DB stamped at {prev}")
+          uri = f"sqlite:///{db}"
+          Base.metadata.create_all(create_engine(uri))
+          # Real previous schema: stamp head, then run the head migration's downgrade.
+          cfg = Config("alembic.ini")
+          cfg.set_main_option("sqlalchemy.url", uri)
+          cfg.attributes["configure_logger"] = False
+          command.stamp(cfg, "head")
+          command.downgrade(cfg, "-1")
+          print("Fixture DB downgraded one revision from head")
           EOF
           LOCALAPPDATA="$RUNNER_TEMP/appdata" ./dist/cbpos/cbpos.exe --migrate-only
-          uv run python - <<'EOF'
+          uv run --no-sync python - <<'EOF'
           import os, sqlite3, sys
           from alembic.script import ScriptDirectory
           head = ScriptDirectory("alembic").get_current_head()

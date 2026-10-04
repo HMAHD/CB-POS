@@ -43,7 +43,9 @@ hiddenimports = [
     'escpos.printer',
     'usb.core',
     'usb.backend.libusb1',
-    # alembic/ ships as data, so imports inside env.py/migrations are invisible to analysis (#630)
+    # Safety net only: env.py no longer imports logging.config when run by the app
+    # (configure_logger=False), but alembic/ ships as data so its imports are
+    # invisible to analysis -- keep these in case a migration ever needs them (#630)
     'logging.config',
     'logging.handlers',
 ]

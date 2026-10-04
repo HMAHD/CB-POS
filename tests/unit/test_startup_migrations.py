@@ -9,10 +9,12 @@ import sqlite3
 import sys
 
 import pytest
+from alembic.config import Config as AlembicConfig
 from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine
 
 import main
+from alembic import command
 from cbpos.config import Config
 from cbpos.core.models import Base
 
@@ -23,21 +25,26 @@ def _script() -> ScriptDirectory:
 
 @pytest.fixture
 def old_db(tmp_path, monkeypatch):
-    """A current-schema DB stamped one revision behind head, in a temp DATA_DIR."""
+    """A DB at the real previous schema: create_all -> stamp head -> downgrade one step.
+
+    Stamping an already-head schema one revision back would make the next
+    schema-changing migration fail on "duplicate column", so actually run the
+    head migration's downgrade instead.
+    """
     db_path = tmp_path / "cbpos.db"
     uri = f"sqlite:///{db_path}"
     engine = create_engine(uri)
     Base.metadata.create_all(engine)
     engine.dispose()
 
-    script = _script()
-    prev = script.get_revision(script.get_current_head()).down_revision
-    with sqlite3.connect(db_path) as conn:
-        conn.execute("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)")
-        conn.execute("INSERT INTO alembic_version VALUES (?)", (prev,))
-
     monkeypatch.setattr(Config, "DATA_DIR", tmp_path)
     monkeypatch.setattr(Config, "DB_URI", uri)
+
+    cfg = AlembicConfig(str(Config.BASE_DIR / "alembic.ini"))
+    cfg.set_main_option("script_location", str(Config.BASE_DIR / "alembic"))
+    cfg.attributes["configure_logger"] = False
+    command.stamp(cfg, "head")
+    command.downgrade(cfg, "-1")
     return db_path
 
 

@@ -7,6 +7,7 @@ from decimal import Decimal
 from PyQt6.QtCore import QDate, QSize, Qt
 from PyQt6.QtGui import QColor, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QDateEdit,
     QDialog,
     QDialogButtonBox,
@@ -276,20 +277,14 @@ class PriceListView(QWidget):
 
     @staticmethod
     def _get_price_list_status(price_list) -> tuple[str, QColor]:
-        """Return (label, colour) based on the price list dates vs today.
+        """Return (label, colour) for the list's status -- the same rule checkout uses.
 
         Returns:
             A tuple of (status_text, foreground_colour).
         """
-        today = datetime.now()
-        start = price_list.start_date
-        end = price_list.end_date
-
-        if end and end < today:
-            return _t("pricelist.status_expired"), QColor("#888888")
-        if start and start > today:
-            return _t("pricelist.status_upcoming"), QColor("#5599FF")
-        return _t("pricelist.status_active"), QColor("#39FF14")
+        status = PriceListService.get_status(price_list)
+        colour = {"disabled": "#888888", "expired": "#888888", "upcoming": "#5599FF"}.get(status, "#39FF14")
+        return _t(f"pricelist.status_{status}"), QColor(colour)
 
     # ------------------------------------------------------------------
     # Sidebar Navigation
@@ -381,9 +376,9 @@ class PriceListView(QWidget):
         """Open the create dialog and persist a new price list on accept."""
         dialog = PriceListDialog(self)
         if dialog.exec():
-            name, start, end = dialog.get_data()
+            name, start, end, is_active = dialog.get_data()
             try:
-                self.price_list_service.create_price_list(name, start, end)
+                self.price_list_service.create_price_list(name, start, end, is_active=is_active)
                 self.load_lists()
             except Exception as e:
                 QMessageBox.critical(self, _t("common.error"), str(e))
@@ -403,9 +398,11 @@ class PriceListView(QWidget):
         if not dialog.exec():
             return
 
-        name, start, end = dialog.get_data()
+        name, start, end, is_active = dialog.get_data()
         try:
-            self.price_list_service.update_price_list(list_id, name=name, start_date=start, end_date=end)
+            self.price_list_service.update_price_list(
+                list_id, name=name, start_date=start, end_date=end, is_active=is_active
+            )
         except Exception as e:
             QMessageBox.critical(self, _t("common.error"), str(e))
             return
@@ -533,6 +530,7 @@ class PriceListDialog(QDialog):
                 self.end_date.setDate(
                     QDate(price_list.end_date.year, price_list.end_date.month, price_list.end_date.day)
                 )
+            self.active_check.setChecked(bool(price_list.is_active))
 
     def init_ui(self):
         """Build the name and date-range form with Save/Cancel buttons."""
@@ -552,13 +550,18 @@ class PriceListDialog(QDialog):
         self.end_date.setDate(QDate.currentDate().addYears(1))
         self.end_date.setCalendarPopup(True)
 
+        self.active_check = QCheckBox()
+        self.active_check.setChecked(True)
+
         self.lbl_name = QLabel()
         self.lbl_start = QLabel()
         self.lbl_end = QLabel()
+        self.lbl_active = QLabel()
 
         form.addRow(self.lbl_name, self.name_input)
         form.addRow(self.lbl_start, self.start_date)
         form.addRow(self.lbl_end, self.end_date)
+        form.addRow(self.lbl_active, self.active_check)
 
         layout.addLayout(form)
 
@@ -574,6 +577,8 @@ class PriceListDialog(QDialog):
         self.lbl_name.setText(_t("pricelist.form_name"))
         self.lbl_start.setText(_t("pricelist.form_start_date"))
         self.lbl_end.setText(_t("pricelist.form_end_date"))
+        self.lbl_active.setText(_t("pricelist.form_active"))
+        self.active_check.setText(_t("pricelist.form_active_hint"))
 
     def validate_and_accept(self) -> None:
         """Validate form fields before accepting the dialog."""
@@ -599,7 +604,7 @@ class PriceListDialog(QDialog):
         self.accept()
 
     def get_data(self):
-        """Return the entered name and start/end datetimes as (name, start, end)."""
+        """Return the entered (name, start, end, is_active)."""
         start = datetime.combine(self.start_date.date().toPyDate(), datetime.min.time())
         end = datetime.combine(self.end_date.date().toPyDate(), datetime.max.time())
-        return self.name_input.text().strip(), start, end
+        return self.name_input.text().strip(), start, end, self.active_check.isChecked()

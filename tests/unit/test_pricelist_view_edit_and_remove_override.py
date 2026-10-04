@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from cbpos.core.models import Product
+from cbpos.i18n import _t
 from cbpos.ui.views import pricelist_view as pricelist_view_module
 from cbpos.ui.views.pricelist_view import PriceListDialog, PriceListView
 
@@ -54,6 +55,37 @@ class TestPriceListDialogEditMode:
         dialog = PriceListDialog()
         assert dialog.name_input.text() == ""
 
+    def test_active_checkbox_defaults_on_and_reflects_an_existing_list(self, db_session):
+        """#633: the list's on/off switch had no UI at all."""
+        assert PriceListDialog().get_data()[3] is True
+
+        view = PriceListView()
+        price_list = view.price_list_service.create_price_list(f"Off_{_next_suffix()}", is_active=False)
+        dialog = PriceListDialog(price_list=price_list)
+
+        assert dialog.active_check.isChecked() is False
+        assert dialog.get_data()[3] is False
+
+
+class TestDisabledStatus:
+    def test_switching_a_list_off_saves_it_and_shows_disabled(self, db_session):
+        """#633: a switched-off list must show "Disabled", matching checkout which no longer applies it."""
+        view = PriceListView()
+        price_list = view.price_list_service.create_price_list(f"Live_{_next_suffix()}")
+        view.load_lists()
+        view._on_nav_clicked(price_list)
+
+        fake_dialog = MagicMock()
+        fake_dialog.exec.return_value = 1
+        fake_dialog.get_data.return_value = (price_list.name, None, None, False)
+
+        with patch.object(pricelist_view_module, "PriceListDialog", return_value=fake_dialog):
+            view.edit_price_list()
+
+        updated = next(pl for pl in view.price_list_service.get_all_lists() if pl.id == price_list.id)
+        assert updated.is_active is False
+        assert PriceListView._get_price_list_status(updated)[0] == _t("pricelist.status_disabled")
+
 
 class TestEditPriceList:
     def test_no_selection_shows_information_and_does_not_open_dialog(self, db_session):
@@ -78,7 +110,7 @@ class TestEditPriceList:
         new_name = f"New Name_{_next_suffix()}"
         fake_dialog = MagicMock()
         fake_dialog.exec.return_value = 1
-        fake_dialog.get_data.return_value = (new_name, price_list.start_date, price_list.end_date)
+        fake_dialog.get_data.return_value = (new_name, price_list.start_date, price_list.end_date, True)
 
         with patch.object(pricelist_view_module, "PriceListDialog", return_value=fake_dialog):
             view.edit_price_list()
@@ -112,7 +144,7 @@ class TestEditPriceList:
 
         fake_dialog = MagicMock()
         fake_dialog.exec.return_value = 1
-        fake_dialog.get_data.return_value = (other.name, price_list.start_date, price_list.end_date)
+        fake_dialog.get_data.return_value = (other.name, price_list.start_date, price_list.end_date, True)
 
         with (
             patch.object(pricelist_view_module, "PriceListDialog", return_value=fake_dialog),

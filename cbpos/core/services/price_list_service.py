@@ -1,10 +1,23 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import or_, select
+from sqlalchemy import ColumnElement, and_, or_, select
 
 from cbpos.core.database import Database
 from cbpos.core.models import PriceList, PriceListItem
+
+
+def live_price_list_condition(now: datetime) -> ColumnElement[bool]:
+    """SQL condition for a price list that is switched on and inside its date range at ``now``.
+
+    Shared by checkout pricing and :meth:`PriceListService.get_active_lists` so both agree;
+    :meth:`PriceListService.get_status` is the in-memory mirror of the same rule.
+    """
+    return and_(
+        PriceList.is_active.is_(True),
+        or_(PriceList.start_date.is_(None), PriceList.start_date <= now),
+        or_(PriceList.end_date.is_(None), PriceList.end_date >= now),
+    )
 
 
 class PriceListService:
@@ -19,10 +32,11 @@ class PriceListService:
         name: str,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
+        is_active: bool = True,
     ) -> PriceList:
-        """Create a new active price list, optionally scoped to a validity date range."""
+        """Create a new price list, optionally date-scoped; pass is_active=False to create it switched off."""
         with self.db.get_session() as session:
-            price_list = PriceList(name=name, start_date=start_date, end_date=end_date, is_active=True)
+            price_list = PriceList(name=name, start_date=start_date, end_date=end_date, is_active=is_active)
             session.add(price_list)
             session.commit()
             session.refresh(price_list)
@@ -35,14 +49,16 @@ class PriceListService:
         name: str | None = None,
         start_date: object = ...,
         end_date: object = ...,
+        is_active: bool | None = None,
     ) -> PriceList:
-        """Update a price list's name and/or validity dates.
+        """Update a price list's name, validity dates and/or on/off switch.
 
         Args:
             list_id: ID of the price list to update.
             name: New name (if provided).
             start_date: New start date, or None to clear. Omit (``...``) to leave unchanged.
             end_date: New end date, or None to clear. Omit (``...``) to leave unchanged.
+            is_active: Switch the list on/off for checkout (if provided).
 
         Returns:
             The updated PriceList.
@@ -70,6 +86,8 @@ class PriceListService:
                 price_list.start_date = start_date
             if end_date is not ...:
                 price_list.end_date = end_date
+            if is_active is not None:
+                price_list.is_active = is_active
 
             session.commit()
             session.refresh(price_list)
@@ -89,15 +107,31 @@ class PriceListService:
         """Return price lists that are active and currently within their validity window."""
         now = datetime.now()
         with self.db.get_session() as session:
-            stmt = select(PriceList).where(
-                PriceList.is_active.is_(True),
-                or_(PriceList.start_date.is_(None), PriceList.start_date <= now),
-                or_(PriceList.end_date.is_(None), PriceList.end_date >= now),
-            )
+            stmt = select(PriceList).where(live_price_list_condition(now))
             lists = list(session.scalars(stmt).all())
             for pl in lists:
                 session.expunge(pl)
             return lists
+
+    @staticmethod
+    def get_status(price_list: PriceList, now: datetime | None = None) -> str:
+        """Classify a price list the same way checkout does (see ``live_price_list_condition``).
+
+        Args:
+            price_list: The price list to classify.
+            now: Moment to evaluate at; defaults to the current time.
+
+        Returns:
+            One of ``"disabled"``, ``"expired"``, ``"upcoming"`` or ``"active"``.
+        """
+        now = now or datetime.now()
+        if not price_list.is_active:
+            return "disabled"
+        if price_list.end_date and price_list.end_date < now:
+            return "expired"
+        if price_list.start_date and price_list.start_date > now:
+            return "upcoming"
+        return "active"
 
     def set_item_price(self, list_id: int, product_id: int, price: Decimal) -> PriceListItem:
         """Create or update a product's price override on a price list (upsert)."""

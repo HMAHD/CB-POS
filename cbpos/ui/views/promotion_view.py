@@ -27,7 +27,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.category_service import CategoryService
-from cbpos.core.services.promotion_service import PromotionService
+from cbpos.core.services.promotion_service import SUPPORTED_TYPES, PromotionService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.widgets.table_helpers import configure_table_columns
 
@@ -133,6 +133,9 @@ class PromotionView(QWidget):
         """
         if not promotion.is_active:
             return _t("common.inactive"), QColor("#888888")
+        # Checkout has no BOGO branch, so such a promotion never applies (#635).
+        if promotion.type not in SUPPORTED_TYPES:
+            return _t("promotion.status_not_applied"), QColor("#FF4136")
 
         now = datetime.now()
         if promotion.end_time < now:
@@ -259,6 +262,9 @@ class PromotionDialog(QDialog):
 
         if promotion:
             self.name_input.setText(promotion.name)
+            # Keep a legacy BOGO promotion loadable/editable; new ones can't pick it (#635).
+            if promotion.type == "BOGO":
+                self.type_combo.addItem(_t("promotion.type_bogo"), "BOGO")
             index = self.type_combo.findData(promotion.type)
             if index >= 0:
                 self.type_combo.setCurrentIndex(index)
@@ -284,7 +290,6 @@ class PromotionDialog(QDialog):
         self.type_combo = QComboBox()
         self.type_combo.addItem(_t("promotion.type_percentage"), "PERCENTAGE")
         self.type_combo.addItem(_t("promotion.type_fixed_amount"), "FIXED_AMOUNT")
-        self.type_combo.addItem(_t("promotion.type_bogo"), "BOGO")
         self.type_combo.setMaximumWidth(200)
 
         self.value_input = QDoubleSpinBox()
@@ -339,6 +344,15 @@ class PromotionDialog(QDialog):
 
         if self.start_dt.dateTime() >= self.end_dt.dateTime():
             QMessageBox.warning(self, _t("common.validation_error"), _t("promotion.start_before_end"))
+            return
+
+        data = self.get_data()
+        try:
+            PromotionService().validate_promotion(
+                data["type"], data["value"], data["days_of_week"], data["category_id"]
+            )
+        except ValueError as e:
+            QMessageBox.warning(self, _t("common.validation_error"), str(e))
             return
 
         self.accept()

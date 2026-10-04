@@ -221,10 +221,82 @@ class TestPromotionDialogEditMode:
         dialog = PromotionDialog()
         assert dialog.category_combo.currentData() is None
 
-    def test_type_combo_includes_bogo(self, db_session):
+    def test_new_dialog_does_not_offer_bogo(self, db_session):
+        """#635: BOGO is never applied at checkout, so it can't be picked."""
         dialog = PromotionDialog()
         items = [dialog.type_combo.itemData(i) for i in range(dialog.type_combo.count())]
-        assert "BOGO" in items
+        assert "BOGO" not in items
+
+    def test_existing_bogo_promotion_still_loads_with_its_type(self, db_session):
+        from cbpos.core.models import Promotion
+
+        now = datetime.now()
+        legacy = Promotion(
+            name="Legacy BOGO", type="BOGO", value=Decimal("0"), start_time=now, end_time=now + timedelta(days=1)
+        )
+        db_session.add(legacy)
+        db_session.flush()
+
+        dialog = PromotionDialog(promotion=legacy)
+        assert dialog.type_combo.currentData() == "BOGO"
+
+    def test_existing_bogo_promotion_is_marked_not_applied(self, db_session):
+        from cbpos.core.models import Promotion
+
+        now = datetime.now()
+        legacy = Promotion(
+            name="Legacy BOGO",
+            type="BOGO",
+            value=Decimal("0"),
+            start_time=now - timedelta(days=1),
+            end_time=now + timedelta(days=1),
+            is_active=True,
+        )
+        db_session.add(legacy)
+        db_session.flush()
+
+        view = PromotionView()
+        row = _row_for(view, legacy.id)
+        assert view.table.item(row, 6).text() == _t("promotion.status_not_applied")
+
+    @pytest.mark.parametrize(("type_", "value"), [("PERCENTAGE", 500), ("PERCENTAGE", 0), ("FIXED_AMOUNT", 0)])
+    def test_rejects_bad_value_and_stays_open(self, db_session, type_, value):
+        """#634: a typo'd value is caught before the dialog closes."""
+        dialog = PromotionDialog()
+        dialog.name_input.setText("Typo")
+        dialog.type_combo.setCurrentIndex(dialog.type_combo.findData(type_))
+        dialog.value_input.setValue(value)
+        dialog.accept = MagicMock()
+
+        with patch.object(promotion_view_module, "QMessageBox") as mock_box:
+            dialog.validate_and_accept()
+
+        mock_box.warning.assert_called_once()
+        dialog.accept.assert_not_called()
+
+    def test_rejects_no_days_ticked(self, db_session):
+        dialog = PromotionDialog()
+        dialog.name_input.setText("No Days")
+        dialog.value_input.setValue(10)
+        for cb in dialog.day_checkboxes:
+            cb.setChecked(False)
+        dialog.accept = MagicMock()
+
+        with patch.object(promotion_view_module, "QMessageBox") as mock_box:
+            dialog.validate_and_accept()
+
+        assert mock_box.warning.call_args[0][2] == _t("promotion.days_required")
+        dialog.accept.assert_not_called()
+
+    def test_accepts_a_valid_promotion(self, db_session):
+        dialog = PromotionDialog()
+        dialog.name_input.setText("Fine")
+        dialog.value_input.setValue(10)
+        dialog.accept = MagicMock()
+
+        dialog.validate_and_accept()
+
+        dialog.accept.assert_called_once()
 
     def test_rejects_end_before_start_without_crashing(self, db_session):
         dialog = PromotionDialog()

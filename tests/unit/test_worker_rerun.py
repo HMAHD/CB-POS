@@ -9,9 +9,11 @@ been deleted``, which is what a second "Test Printer" click hit.
 """
 
 import inspect
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pytest
+from PyQt6 import sip
 from PyQt6.QtCore import QCoreApplication, QEvent, QThread
 
 from cbpos.ui import workers
@@ -30,28 +32,35 @@ def test_worker_does_not_shadow_qthread_finished(cls):
     assert "finished" not in cls.__dict__
 
 
-def _run_to_completion(view: AdminToolsView) -> None:
-    worker = view._printer_worker
+def _finished_and_deleted_worker():
+    """A real PrinterTestWorker that ran, emitted its result, and deleted itself."""
+    worker = workers.PrinterTestWorker()
+    results = []
+    worker.result.connect(lambda ok, msg: results.append((ok, msg)))
+    worker.start()
     assert worker.wait(5000)
     # Deliver the queued result/finished signals, then this worker's deferred delete
-    # only -- flushing every pending DeferredDelete deletes other tests' objects (segfault).
+    # only -- flushing every pending DeferredDelete deletes other tests' objects.
     QCoreApplication.processEvents()
     QCoreApplication.sendPostedEvents(worker, QEvent.Type.DeferredDelete.value)
+    return worker, results
 
 
-def test_printer_test_runs_twice_without_runtime_error(db_session):
-    view = AdminToolsView()
-    with (
-        patch(
-            "cbpos.core.services.hardware_test_service.HardwareTestService.test_receipt_printer",
-            return_value=(True, "ok"),
-        ),
-        patch("cbpos.ui.views.admin_tools_view.QTimer.singleShot"),
+def test_printer_test_timeout_after_worker_deleted_itself_does_not_raise():
+    """Second "Test Printer" click hit the 15s timeout on a deleted worker (#632).
+
+    Uses a stand-in for the view: building a whole AdminToolsView per test leaked
+    widgets/threads past teardown and segfaulted the full suite.
+    """
+    with patch(
+        "cbpos.core.services.hardware_test_service.HardwareTestService.test_receipt_printer",
+        return_value=(True, "ok"),
     ):
         for _ in range(2):
-            view._test_printer()
-            _run_to_completion(view)
-            # The 15s timeout firing after the worker is gone must not touch a deleted object.
-            view._on_printer_test_timeout()
-            assert view.btn_test_printer.isEnabled()
-            assert view.lbl_printer_status.text() == "ok"
+            worker, results = _finished_and_deleted_worker()
+            assert results == [(True, "ok")]
+            assert sip.isdeleted(worker)
+
+            view = SimpleNamespace(_printer_worker=worker, btn_test_printer=MagicMock(), lbl_printer_status=MagicMock())
+            AdminToolsView._on_printer_test_timeout(view)  # must not raise RuntimeError
+            view.btn_test_printer.setEnabled.assert_not_called()

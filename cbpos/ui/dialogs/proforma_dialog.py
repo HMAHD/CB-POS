@@ -96,6 +96,7 @@ class ProformaDialog(QDialog):
         search_layout.addWidget(self.product_search, 1)
 
         add_btn = QPushButton(_t("common.add"))
+        add_btn.setAutoDefault(False)  # Enter in the search already adds; don't fire twice (#546)
         add_btn.clicked.connect(self.add_product)
         search_layout.addWidget(add_btn)
 
@@ -136,6 +137,7 @@ class ProformaDialog(QDialog):
 
         create_btn = QPushButton(_t("proforma.btn_create"))
         create_btn.setStyleSheet("background-color: #00BCEB; color: white; font-weight: bold; padding: 8px 20px;")
+        create_btn.setAutoDefault(False)
         create_btn.clicked.connect(self.create_proforma)
         footer.addWidget(create_btn)
 

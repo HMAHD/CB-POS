@@ -1,7 +1,5 @@
 ADMIN_ROLE_NAME = "Admin"
 
-CRITICAL_ADMIN_PERMISSIONS = ["manage_users", "manage_permissions"]
-
 
 class Permissions:
     """Permission code constants, checked via `check_permission_with_override()`.
@@ -127,3 +125,7 @@ class Permissions:
                 cls.ADMIN_TOOLS,
             ],
         }
+
+
+# Never revocable from the Admin role -- PermissionService re-adds them on save (lockout guard).
+CRITICAL_ADMIN_PERMISSIONS = [Permissions.ADMIN_MANAGE_USERS, Permissions.ADMIN_MANAGE_ROLES]

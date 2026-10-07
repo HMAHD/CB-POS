@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
@@ -178,13 +179,19 @@ class SalesView(QWidget):
         self.printer_notice_close.clicked.connect(self.printer_notice.hide)
         notice_layout.addWidget(self.printer_notice_close)
         self.printer_notice.setVisible(False)
+        # Only ever as tall as its text: QFrame and QSplitter are both
+        # "Preferred" vertically, so without this (and the splitter's
+        # stretch below) the main layout split the spare height between
+        # them and the one-line notice ballooned to ~190px, squeezing the
+        # cart and totals (#602).
+        self.printer_notice.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         main_layout.addWidget(self.printer_notice)
 
-        # 3. Content Area (Splitter)
+        # 3. Content Area (Splitter) -- takes all remaining height
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
         self.splitter.setHandleWidth(10)
         self.splitter.setChildrenCollapsible(False)
-        main_layout.addWidget(self.splitter)
+        main_layout.addWidget(self.splitter, 1)
 
         # ==========================
         # LEFT PANEL (Cart & Totals) - 75%
@@ -579,16 +586,16 @@ class SalesView(QWidget):
         if self.empty_cart_label.isVisible():
             self._position_empty_cart_label()
 
-        # If the side menu isn't open, the action panel must always be
-        # visible — closing #206, where a maximize/unmaximize while the
-        # menu was open could otherwise leave it permanently hidden (only
-        # showEvent restored it, which doesn't fire on a resize or on a
-        # payment dialog closing).
-        if not self.side_menu.isVisible():
-            self.action_panel.setVisible(True)
-
     def toggle_side_menu(self):
-        """Slide the side menu open or closed, hiding the action panel while it's open."""
+        """Slide the side menu open or closed over the action panel.
+
+        The action panel stays where it is underneath the (opaque) menu.
+        It used to be hidden while the menu was open, which let the
+        splitter re-flow the cart to the full window width -- straight
+        under the menu, hiding the Price/Qty/Disc/Total columns and the
+        grand total (#602), and leaving the panel hidden for good if a
+        resize raced the close animation (#206).
+        """
         menu_width = self.side_menu.width()
         start_pos = self.side_menu.pos()
 
@@ -600,14 +607,11 @@ class SalesView(QWidget):
 
             def _on_hidden():
                 self.side_menu.setVisible(False)
-                self.action_panel.setVisible(True)
                 self.menu_animation.finished.disconnect(_on_hidden)
 
             self.menu_animation.finished.connect(_on_hidden)
             self.menu_animation.start()
         else:
-            # Hide action panel so PAY button doesn't show behind menu
-            self.action_panel.setVisible(False)
             self.side_menu.setVisible(True)
             self.side_menu.raise_()
             start_pos = QPoint(self.width(), 0)
@@ -628,13 +632,11 @@ class SalesView(QWidget):
         return super().eventFilter(source, event)
 
     def showEvent(self, event):
-        """Restore the action panel and refresh order tabs when returning to this view."""
+        """Close a left-open side menu and refresh order tabs when returning to this view."""
         super().showEvent(event)
-        # Restore action panel when returning to POS from other views
         if self.side_menu.isVisible():
             self.side_menu.setVisible(False)
             self.side_menu.clear_active()
-        self.action_panel.setVisible(True)
         self.barcode_input.setFocus()
         self.order_bar.refresh_tabs()
 

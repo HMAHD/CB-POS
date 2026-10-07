@@ -1,0 +1,234 @@
+"""Regression tests for the shared QSS component-state rules in both themes.
+
+These are text-level checks on dark.qss / light.qss: they pin the
+specific rule bodies that the shared-component issues (#568 and friends)
+fixed, so a later edit can't quietly reintroduce them.
+"""
+
+import re
+from pathlib import Path
+
+import pytest
+
+STYLES_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
+THEMES = ("dark.qss", "light.qss")
+COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
+RULE_RE = re.compile(r"([^{}]+)\{([^{}]*)\}")
+
+
+def _css(theme_file: str) -> str:
+    return COMMENT_RE.sub("", (STYLES_DIR / theme_file).read_text(encoding="utf-8"))
+
+
+def _rules_for(theme_file: str, selector: str) -> list[str]:
+    """Return the body of every rule whose selector list contains `selector` exactly."""
+    bodies = []
+    for sel_list, body in RULE_RE.findall(_css(theme_file)):
+        selectors = [" ".join(s.split()) for s in sel_list.split(",")]
+        if selector in selectors:
+            bodies.append(body)
+    return bodies
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+def test_generic_selected_item_rule_has_no_border(theme_file):
+    """#568: a border on ::item:selected is drawn on every cell of the row
+    and elides text in ResizeToContents columns."""
+    bodies = _rules_for(theme_file, "QTableWidget::item:selected")
+    assert bodies, "generic selected-item rule missing"
+    for body in bodies:
+        assert "border" not in body
+
+
+def _load_for_app(theme_file: str) -> str:
+    content = (STYLES_DIR / theme_file).read_text(encoding="utf-8")
+    return content.replace("{{FONT_FAMILY}}", "Sans Serif").replace("{{FONT_SIZE}}", "12px")
+
+
+@pytest.fixture
+def themed(qapp):
+    """Apply a theme's stylesheet to the app for one test, then clear it."""
+
+    def _apply(theme_file: str) -> None:
+        qapp.setStyleSheet(_load_for_app(theme_file))
+
+    yield _apply
+    qapp.setStyleSheet("")
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+def test_in_cell_line_edit_fills_the_row(qtbot, themed, theme_file):
+    """#569: the in-cell editor must not inherit the form QLineEdit style
+    (8px padding, 16px font) nor be squeezed by the ::item padding."""
+    from PyQt6.QtWidgets import QLineEdit, QTableWidget, QTableWidgetItem
+
+    themed(theme_file)
+    table = QTableWidget(2, 2)
+    qtbot.addWidget(table)
+    for r in range(2):
+        for c in range(2):
+            table.setItem(r, c, QTableWidgetItem("12.500"))
+    table.resize(400, 200)
+    table.show()
+    table.setCurrentCell(0, 1)
+    table.editItem(table.item(0, 1))
+    editor = table.findChild(QLineEdit)
+    assert editor is not None
+    editor.ensurePolished()
+    assert editor.font().pixelSize() == 13
+    assert editor.geometry().height() >= table.rowHeight(0) - 4
+    table.closePersistentEditor(table.item(0, 1))
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+@pytest.mark.parametrize("selector", ["QTreeWidget", "QTreeView"])
+def test_trees_share_the_list_table_base_rule(theme_file, selector):
+    """#567: a tree with alternating rows fell back to the native white
+    alternate base under white text in Dark."""
+    bodies = _rules_for(theme_file, selector)
+    assert any("alternate-background-color" in b for b in bodies)
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+@pytest.mark.parametrize("selector", ["QToolTip", "QScrollBar:vertical", "QScrollBar:horizontal"])
+def test_tooltip_and_scrollbars_have_theme_rules(theme_file, selector):
+    """#567: no QToolTip rule meant native pale-yellow tooltips in Dark."""
+    bodies = _rules_for(theme_file, selector)
+    assert any("background" in b for b in bodies)
+
+
+@pytest.mark.parametrize(("theme_file", "alt_base"), [("dark.qss", "#2d2d30"), ("light.qss", "#f8f9fa")])
+def test_tree_alternate_rows_use_the_theme_color(qtbot, themed, theme_file, alt_base):
+    from PyQt6.QtWidgets import QTreeWidget
+
+    themed(theme_file)
+    tree = QTreeWidget()
+    qtbot.addWidget(tree)
+    tree.setAlternatingRowColors(True)
+    tree.show()
+    tree.ensurePolished()
+    assert tree.palette().alternateBase().color().name() == alt_base
+    assert tree.indentation() == 24
+
+
+@pytest.mark.parametrize(("theme_file", "accent"), [("dark.qss", "#00BCEB"), ("light.qss", "#0D6EFD")])
+def test_focus_rect_replaced_by_theme_ring(theme_file, accent):
+    """#553: no native dotted focus rect on item views; buttons keep a
+    visible, theme-colored focus ring instead of losing focus entirely."""
+    assert any("outline: 0" in b for b in _rules_for(theme_file, "QAbstractItemView"))
+    assert any(f"outline: 2px solid {accent}" in b for b in _rules_for(theme_file, "QPushButton:focus"))
+    for body in _rules_for(theme_file, "QPushButton"):
+        assert "outline: none" not in body and "outline: 0" not in body
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+def test_secondary_button_is_visibly_filled_with_all_states(theme_file):
+    """#561: the transparent secondary style read as plain text/disabled."""
+    (body,) = _rules_for(theme_file, 'QPushButton[class="secondary"]')
+    assert "transparent" not in body and "background-color: #" in body
+    for state in (":hover", ":pressed", ":disabled"):
+        assert _rules_for(theme_file, f'QPushButton[class="secondary"]{state}')
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+@pytest.mark.parametrize(
+    "selector", ["QPushButton#DocClearBtn", "QPushButton#DocDetailCloseBtn", "QPushButton#PMCardBtn"]
+)
+def test_one_off_buttons_defer_colors_to_the_shared_class(theme_file, selector):
+    """#561: these #ID rules out-rank [class=...] rules, so they must only
+    size the button and leave colors to the shared class."""
+    for body in _rules_for(theme_file, selector):
+        assert "color" not in body and "border:" not in body
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+@pytest.mark.parametrize(
+    "selector",
+    [
+        "QSpinBox:disabled",
+        "QDoubleSpinBox:disabled",
+        "QComboBox:disabled",
+        "QDateEdit:disabled",
+        "QTextEdit:disabled",
+        "QCheckBox:disabled",
+        "QWidget#SettingsContent QSpinBox:disabled",
+        "QWidget#SettingsContent QLabel:disabled",
+    ],
+)
+def test_inputs_have_a_disabled_rule(theme_file, selector):
+    """#564: a styled input loses Qt's native greyed-out look."""
+    assert any("color" in b for b in _rules_for(theme_file, selector))
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+def test_no_italic_text(theme_file):
+    """#566: italic distorts Sinhala and Tamil glyphs."""
+    assert "italic" not in _css(theme_file)
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+def test_single_muted_rule_at_readable_size(theme_file):
+    """#566: a later one-line duplicate used to silently override it."""
+    bodies = _rules_for(theme_file, 'QLabel[class="muted"]')
+    assert len(bodies) == 1
+    assert "font-size: 13px" in bodies[0]
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+def test_inactive_tabs_have_border_and_hover(theme_file):
+    """#571: inactive tabs didn't read as clickable in Dark."""
+    (body,) = _rules_for(theme_file, "QTabBar::tab")
+    assert "border: 1px solid" in body
+    assert _rules_for(theme_file, "QTabBar::tab:hover:!selected")
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+def test_in_cell_spin_editor_has_no_steppers_but_arrow_keys_work(qtbot, themed, theme_file):
+    """#569: a ~32px row has no room for both steppers (only "-" showed);
+    in-cell spin editors are typed into, so steppers are hidden. Standalone
+    touch-size spin boxes keep theirs."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtWidgets import (
+        QAbstractSpinBox,
+        QSpinBox,
+        QStyle,
+        QStyleOptionSpinBox,
+        QTableWidget,
+        QTableWidgetItem,
+    )
+
+    def up_button_width(spin: QSpinBox) -> int:
+        # initStyleOption() is protected on C++-created editors; build it by hand.
+        opt = QStyleOptionSpinBox()
+        opt.initFrom(spin)
+        opt.frame = True
+        opt.subControls = QStyle.SubControl.SC_All
+        opt.buttonSymbols = spin.buttonSymbols()
+        opt.stepEnabled = (
+            QAbstractSpinBox.StepEnabledFlag.StepUpEnabled | QAbstractSpinBox.StepEnabledFlag.StepDownEnabled
+        )
+        rect = spin.style().subControlRect(QStyle.ComplexControl.CC_SpinBox, opt, QStyle.SubControl.SC_SpinBoxUp, spin)
+        return rect.width()
+
+    themed(theme_file)
+    table = QTableWidget(1, 1)
+    qtbot.addWidget(table)
+    item = QTableWidgetItem()
+    item.setData(Qt.ItemDataRole.EditRole, 7)
+    table.setItem(0, 0, item)
+    table.show()
+    table.setCurrentCell(0, 0)
+    table.editItem(item)
+    editor = table.findChild(QSpinBox)
+    assert editor is not None
+    editor.ensurePolished()
+    assert up_button_width(editor) == 0
+    qtbot.keyClick(editor, Qt.Key.Key_Up)
+    assert editor.value() == 8
+    table.closePersistentEditor(item)
+
+    standalone = QSpinBox()
+    qtbot.addWidget(standalone)
+    standalone.show()
+    standalone.ensurePolished()
+    assert up_button_width(standalone) > 0

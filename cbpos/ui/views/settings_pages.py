@@ -69,6 +69,15 @@ class SettingsPage(QWidget):
     def validate(self) -> None:
         """Raise ValueError with a translated message if the page holds invalid input."""
 
+    def save_warnings(self) -> list[str]:
+        """Return non-blocking warnings to confirm before saving. Override in subclasses.
+
+        Unlike a ValueError from validate(), these let the user choose to save anyway.
+        save() itself must stay side-effect free -- it also backs the
+        unsaved-changes snapshot and the per-page reset.
+        """
+        return []
+
     def _create_page_layout(self, title_text: str, subtitle_text: str) -> tuple[QVBoxLayout, QTabWidget]:
         """Creates the standard page layout: title + subtitle + tab widget.
 
@@ -96,6 +105,10 @@ class SettingsPage(QWidget):
         # scroll buttons QTabBar already enables by default keeps every
         # label fully readable instead of silently truncating it (#321).
         tabs.tabBar().setElideMode(Qt.TextElideMode.ElideNone)
+        # A single tab (e.g. Documents -> "Numbering") implies hidden
+        # content; auto-hide shows the bar only once a page has 2+ tabs,
+        # and keeps tracking it as pages add their tabs after this (#571).
+        tabs.setTabBarAutoHide(True)
         layout.addWidget(tabs, 1)
 
         return layout, tabs
@@ -486,7 +499,8 @@ class ShopInfoPage(SettingsPage):
 
         note = QLabel("<b>" + _t("common.important") + ":</b> " + _t("settings.shop_info.guide_important_note"))
         note.setWordWrap(True)
-        note.setProperty("class", "muted")
+        # The most important line in the guide -- warning style, not muted (#566).
+        note.setProperty("class", "warning-hint")
         layout.addWidget(note)
 
         btn_close = QPushButton(_t("settings.shop_info.guide_btn_close"))
@@ -700,10 +714,19 @@ class SalesTaxPage(SettingsPage):
     def _toggle_tax_fields(self) -> None:
         """Enable/disable tax rate fields and sub-options based on VAT registration status."""
         enabled = self.chk_vat_registered.isChecked()
-        self.spin_vat.setEnabled(enabled)
-        self.spin_sscl.setEnabled(enabled)
-        self.spin_sscl_turnover.setEnabled(enabled)
-        self.chk_item_tax_exemptions.setEnabled(enabled)
+        # Labels are toggled with their fields so the whole row reads as
+        # inactive, not just the input (#564).
+        for widget in (
+            self.spin_vat,
+            self._lbl_vat_rate,
+            self.spin_sscl,
+            self._lbl_sscl_rate,
+            self.spin_sscl_turnover,
+            self._lbl_sscl_turnover,
+            self.btn_sscl_turnover_help,
+            self.chk_item_tax_exemptions,
+        ):
+            widget.setEnabled(enabled)
 
     def load(self, settings: dict):
         """Populate sales and tax fields from the settings dict."""
@@ -1483,6 +1506,8 @@ class ReceiptPage(SettingsPage):
         self.txt_qr_content = QLineEdit()
         self._lbl_qr_content = QLabel()
         qr_form.addRow(self._lbl_qr_content, self.txt_qr_content)
+        # QR content only matters while the QR is shown (#564).
+        self.chk_show_qr.toggled.connect(self._toggle_qr_content)
         vbox_display.addLayout(qr_form)
 
         # Section: Staff & Terminal
@@ -1684,6 +1709,8 @@ class ReceiptPage(SettingsPage):
         self.chk_show_tax.setChecked(settings.get("show_tax_breakdown", _d["show_tax_breakdown"]))
         self.chk_show_qr.setChecked(settings.get("show_qr_on_receipt", _d["show_qr_on_receipt"]))
         self.txt_qr_content.setText(settings.get("receipt_qr_content", _d["receipt_qr_content"]))
+        # setChecked() only emits toggled on a change, so sync explicitly.
+        self._toggle_qr_content()
         self.chk_show_cashier.setChecked(settings.get("show_cashier_on_receipt", _d["show_cashier_on_receipt"]))
         self.chk_show_terminal.setChecked(settings.get("show_terminal_on_receipt", _d["show_terminal_on_receipt"]))
 
@@ -1719,6 +1746,18 @@ class ReceiptPage(SettingsPage):
             "show_terminal_on_receipt": self.chk_show_terminal.isChecked(),
             "receipt_language": self.combo_receipt_lang.currentData() or "",
         }
+
+    def _toggle_qr_content(self) -> None:
+        """Enable the QR content field (and its label) only while Show QR is on."""
+        enabled = self.chk_show_qr.isChecked()
+        self.txt_qr_content.setEnabled(enabled)
+        self._lbl_qr_content.setEnabled(enabled)
+
+    def save_warnings(self) -> list[str]:
+        """Warn when the QR is switched on with nothing to encode -- it would silently print no QR."""
+        if self.chk_show_qr.isChecked() and not self.txt_qr_content.text().strip():
+            return [_t("settings.receipt.qr_content_empty_warning")]
+        return []
 
     @staticmethod
     def _make_dummy_sale() -> Sale:
@@ -1863,6 +1902,7 @@ class SystemPage(SettingsPage):
         backup_dir_layout.addWidget(self.input_backup_dir, 1)
 
         self.btn_browse_backup = QPushButton()
+        self.btn_browse_backup.setProperty("class", "secondary")
         self.btn_browse_backup.clicked.connect(self._browse_backup_dir)
         backup_dir_layout.addWidget(self.btn_browse_backup)
 

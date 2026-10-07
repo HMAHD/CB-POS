@@ -305,6 +305,18 @@ class SettingsView(QWidget):
             QMessageBox.warning(self, _t("common.validation_error"), str(e))
             return
 
+        warnings = [w for page in self.pages for w in getattr(page, "save_warnings", list)()]
+        if warnings:
+            reply = QMessageBox.warning(
+                self,
+                _t("common.warning"),
+                "\n\n".join(warnings),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+
         # Audit log tax rate changes before saving
         tax_keys = [
             "tax_vat_rate",

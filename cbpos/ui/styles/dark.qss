@@ -52,7 +52,7 @@ QLineEdit:focus {
    at all before this; only #ReportDateEdit/#PeriodDateEdit had one-off
    rules). A generic type selector styles every QDateEdit automatically,
    including any without an objectName. */
-QDateEdit {
+QDateEdit, QTimeEdit, QDateTimeEdit {
     background-color: #252526;
     border: 1px solid #3E3E42;
     border-radius: 4px;
@@ -61,7 +61,7 @@ QDateEdit {
     color: #FFFFFF;
 }
 
-QDateEdit:focus {
+QDateEdit:focus, QTimeEdit:focus, QDateTimeEdit:focus {
     border: 1px solid #00BCEB;
     background-color: #2D2D30;
 }
@@ -426,6 +426,42 @@ QPushButton:pressed {
     background-color: #007ACC;
 }
 
+/* Keyboard focus (#553). Qt otherwise draws the platform's dotted focus
+   rectangle (Windows) inside buttons and around the current cell of
+   every item view. Item views show the current row through the
+   selection instead; focusable buttons/checkboxes swap the dotted rect
+   for a solid theme-accent ring. `outline` (not `border`) is used on
+   purpose: it is drawn by the focus-rect primitive, so it still shows on
+   buttons whose own #ID rule sets `border` and would out-rank a plain
+   QPushButton:focus border. NoFocus buttons (numpads, cards) never get
+   focus, so they never show it. */
+QAbstractItemView {
+    outline: 0;
+}
+
+QPushButton:focus, QToolButton:focus {
+    outline: 2px solid #00BCEB;
+}
+
+QCheckBox:focus, QRadioButton:focus {
+    outline: 1px solid #00BCEB;
+}
+
+/* Accent-filled buttons: an accent ring would vanish into the fill. */
+QPushButton[class="accent"]:focus,
+QPushButton#BtnSearchSelect:focus,
+#RunReportBtn:focus,
+QPushButton#CreditAddBtn:focus,
+QPushButton#CreditPayBtn:focus,
+QPushButton#PayablePayBtn:focus,
+QPushButton#DocNewQuotationBtn:focus,
+QPushButton#DocConvertBtn:focus,
+QPushButton#PriceListAddBtn:focus,
+QPushButton#PMCardBtn[class="accent"]:focus,
+QPushButton#SaleHistoryReprint:focus {
+    outline-color: #001F3F;
+}
+
 /* Primary Action Button (Green) */
 QPushButton#BtnSave, QPushButton#PayBtn, QPushButton[class="primary"] {
     background-color: #2ECC40;
@@ -460,16 +496,29 @@ QPushButton[class="accent"]:hover {
     background-color: #00A5D0;
 }
 
-/* Secondary Button (neutral, outlined -- dismiss/close actions that
-   aren't destructive enough for the red Danger style) */
+/* Secondary Button (neutral -- dismiss/close/utility actions). Was
+   transparent with a border close to the surface colour, so it read as
+   plain text or as disabled (#561). A visible fill + border keeps it
+   recognisable as a button without hovering. */
 QPushButton[class="secondary"] {
-    background-color: transparent;
-    color: #E5E5E5;
-    border: 1px solid #3E3E42;
+    background-color: #3E3E42;
+    color: #E0E0E0;
+    border: 1px solid #555555;
 }
 
 QPushButton[class="secondary"]:hover {
-    background-color: #3E3E42;
+    background-color: #4A4A4F;
+    border: 1px solid #6A6A6A;
+}
+
+QPushButton[class="secondary"]:pressed {
+    background-color: #2D2D30;
+}
+
+QPushButton[class="secondary"]:disabled {
+    background-color: #2A2A2A;
+    color: #666666;
+    border: 1px solid #3E3E42;
 }
 
 /* Warning Button (Yellow) */
@@ -486,8 +535,12 @@ QLabel[class="dialog-title"] {
     background: transparent;
 }
 
+/* The one muted/secondary-text rule (a later one-line duplicate used to
+   override this). 13px + >=4.5:1 contrast so Sinhala/Tamil hints stay
+   readable (#566). */
 QLabel[class="muted"] {
-    color: #AAAAAA;
+    color: #B0B0B0;
+    font-size: 13px;
     background: transparent;
 }
 
@@ -512,8 +565,10 @@ QLabel[class="transparent"] {
     background: transparent;
 }
 
-/* Lists & Tables */
-QListWidget, QTableWidget {
+/* Lists, Tables & Trees -- QTreeWidget/QTreeView used to be missing
+   here, so a tree with alternating rows fell back to the native
+   (white) alternate base under the theme's text color (#567). */
+QListWidget, QTableWidget, QTreeWidget, QTreeView {
     background-color: #252526;
     border: 1px solid #3E3E42;
 
@@ -527,6 +582,28 @@ QListWidget::item, QTableWidget::item {
 }
 
 QListWidget::item:selected, QTableWidget::item:selected {
+    background-color: #007ACC;
+    color: #FFFFFF;
+}
+
+/* Trees: compact items (the 12px list/table padding is too tall for a
+   hierarchy), a visible selection, and a deeper indent so children read
+   as children. ::branch is deliberately not styled -- any ::branch rule
+   makes Qt stop drawing the native expand arrows. */
+QTreeView {
+    qproperty-indentation: 24;
+}
+
+QTreeView::item {
+    padding: 6px;
+    border: none;
+}
+
+QTreeView::item:hover {
+    background-color: #333337;
+}
+
+QTreeView::item:selected {
     background-color: #007ACC;
     color: #FFFFFF;
 }
@@ -563,6 +640,71 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0px;
 }
 
+QScrollBar:horizontal {
+    border: none;
+    background: #1E1E1E;
+    height: 10px;
+    margin: 0px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #444444;
+    min-width: 20px;
+    border-radius: 5px;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+}
+
+QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {
+    background: #5A5A5E;
+}
+
+/* Without this the page areas either side of the handle can fall back
+   to the native (patterned) track on Windows. */
+QScrollBar::add-page, QScrollBar::sub-page {
+    background: none;
+}
+
+/* Tooltips -- no rule existed, so every tooltip used the OS's native
+   pale-yellow look regardless of theme (#567). */
+QToolTip {
+    background-color: #2D2D30;
+    color: #FFFFFF;
+    border: 1px solid #3E3E42;
+    padding: 6px 8px;
+}
+
+/* Multi-line text inputs and progress bars had no base rule (#567). */
+QTextEdit, QPlainTextEdit {
+    background-color: #252526;
+    color: #FFFFFF;
+    border: 1px solid #3E3E42;
+    border-radius: 4px;
+    padding: 6px;
+    selection-background-color: #00BCEB;
+}
+
+QTextEdit:focus, QPlainTextEdit:focus {
+    border: 1px solid #00BCEB;
+    background-color: #2D2D30;
+}
+
+QProgressBar {
+    background-color: #2D2D30;
+    color: #FFFFFF;
+    border: 1px solid #3E3E42;
+    border-radius: 4px;
+    text-align: center;
+    min-height: 18px;
+}
+
+QProgressBar::chunk {
+    background-color: #00BCEB;
+    border-radius: 3px;
+}
+
 /* ScrollArea Transparency Fix */
 QScrollArea > QWidget > QWidget {
     background-color: transparent;
@@ -574,17 +716,27 @@ QTabWidget::pane {
     background-color: #252526;
 }
 
+/* Inactive tabs used to be #2D2D30 with no border or hover on a #1E1E1E
+   page -- they didn't read as clickable (#571). */
 QTabBar::tab {
-    background: #2D2D30;
-    color: #AAAAAA;
+    background: #333337;
+    color: #BBBBBB;
+    border: 1px solid #3E3E42;
+    border-bottom: none;
     padding: 10px 20px;
     margin-right: 2px;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
 }
 
+QTabBar::tab:hover:!selected {
+    background: #3E3E42;
+    color: #FFFFFF;
+}
+
 QTabBar::tab:selected {
     background: #007ACC;
+    border-color: #007ACC;
     color: #FFFFFF;
     font-weight: bold;
 }
@@ -1229,6 +1381,63 @@ QWidget#SettingsContent QLabel {
     font-size: 14px;
 }
 
+/* The rule above (#ID-scoped) out-ranks the shared muted/warning-hint
+   classes, which turned every Settings hint -- including the tax
+   warning -- into plain body text (#566). */
+QWidget#SettingsContent QLabel[class="muted"] {
+    color: #B0B0B0;
+    font-size: 13px;
+}
+
+QWidget#SettingsContent QLabel[class="warning-hint"] {
+    color: #FF8C85;
+    font-size: 12px;
+}
+
+/* Disabled state (#564). Once a stylesheet styles an input, Qt stops
+   drawing its native greyed-out look, so a disabled spinbox/combo/check
+   looked fully editable. The SettingsContent copies are needed because
+   that #ID-scoped input rule above out-ranks the generic ones. */
+QSpinBox:disabled,
+QDoubleSpinBox:disabled,
+QComboBox:disabled,
+QDateEdit:disabled,
+QTimeEdit:disabled,
+QDateTimeEdit:disabled,
+QTextEdit:disabled,
+QPlainTextEdit:disabled,
+QWidget#SettingsContent QLineEdit:disabled,
+QWidget#SettingsContent QComboBox:disabled,
+QWidget#SettingsContent QSpinBox:disabled,
+QWidget#SettingsContent QDoubleSpinBox:disabled,
+QWidget#SettingsContent QTextEdit:disabled {
+    background-color: #2A2A2A;
+    color: #666666;
+    border: 1px solid #3E3E42;
+}
+
+QSpinBox::up-button:disabled, QSpinBox::down-button:disabled,
+QDoubleSpinBox::up-button:disabled, QDoubleSpinBox::down-button:disabled,
+QComboBox::drop-down:disabled {
+    background-color: #2A2A2A;
+}
+
+QCheckBox:disabled, QRadioButton:disabled,
+QLabel:disabled,
+QWidget#SettingsContent QLabel:disabled {
+    color: #666666;
+}
+
+QCheckBox::indicator:disabled {
+    border-color: #4A4A4A;
+    background-color: #2A2A2A;
+}
+
+QCheckBox::indicator:checked:disabled {
+    background-color: #3E3E42;
+    border-color: #3E3E42;
+}
+
 QLabel[class="SectionHeader"] {
     font-size: 18px;
     font-weight: bold;
@@ -1837,8 +2046,8 @@ QLabel#LoginErrorLabel {
 }
 
 QLabel#LoginHelpHint {
-    color: #666666;
-    font-size: 11px;
+    color: #A0A0A0;
+    font-size: 12px;
     background: transparent;
     margin-top: 15px;
 }
@@ -2193,6 +2402,74 @@ QLineEdit:focus {
 QLineEdit:disabled {
     background-color: #1A1A1A;
     color: #666666;
+}
+
+/* In-cell editors (#569). Item-view editors are plain QLineEdit /
+   QSpinBox children of the view's viewport, so without this they inherit
+   the full-size form style above (8px padding, 2px focus border, 36px
+   spinbox min-height) and the typed value and caret are clipped out of
+   a ~30px row. Descendant selectors outrank the bare type rules; the
+   :focus variants are needed because QLineEdit:focus would otherwise win
+   on specificity. The spinbox's own internal QLineEdit is reset so it
+   doesn't draw a second border inside the spinbox.
+   The editor's geometry is the item's text rect, so the generic
+   ::item vertical padding (8-12px) would leave it ~13px tall: drop the
+   vertical padding on the current (focused) item only. Rows have a
+   fixed height and text is vertically centred, so nothing moves. */
+QAbstractItemView::item:focus {
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+
+QAbstractItemView QLineEdit,
+QAbstractItemView QLineEdit:focus,
+QAbstractItemView QSpinBox,
+QAbstractItemView QSpinBox:focus,
+QAbstractItemView QSpinBox:hover,
+QAbstractItemView QDoubleSpinBox,
+QAbstractItemView QDoubleSpinBox:focus,
+QAbstractItemView QDoubleSpinBox:hover,
+QAbstractItemView QDateEdit,
+QAbstractItemView QDateEdit:focus {
+    background-color: #2D2D30;
+    color: #FFFFFF;
+    border: 1px solid #00BCEB;
+    border-radius: 0px;
+    padding: 0px 4px;
+    margin: 0px;
+    font-size: 13px;
+    min-height: 0px;
+}
+
+QAbstractItemView QSpinBox,
+QAbstractItemView QSpinBox:focus,
+QAbstractItemView QSpinBox:hover,
+QAbstractItemView QDoubleSpinBox,
+QAbstractItemView QDoubleSpinBox:focus,
+QAbstractItemView QDoubleSpinBox:hover {
+    padding-right: 4px;
+}
+
+QAbstractItemView QAbstractSpinBox QLineEdit,
+QAbstractItemView QAbstractSpinBox QLineEdit:focus {
+    border: none;
+    padding: 0px;
+    background: transparent;
+}
+
+QAbstractItemView QSpinBox::up-button, QAbstractItemView QDoubleSpinBox::up-button,
+QAbstractItemView QSpinBox::down-button, QAbstractItemView QDoubleSpinBox::down-button {
+    /* No steppers in a ~32px row: there's no room for both, and these
+       cells are typed into. Arrow keys still step the value. */
+    width: 0px;
+    border: none;
+}
+
+QAbstractItemView QSpinBox::up-arrow, QAbstractItemView QDoubleSpinBox::up-arrow,
+QAbstractItemView QSpinBox::down-arrow, QAbstractItemView QDoubleSpinBox::down-arrow {
+    image: none;
+    width: 0px;
+    height: 0px;
 }
 
 /* === NETWORK SETTINGS === */
@@ -2581,8 +2858,7 @@ QLabel#RestoreWarning {
 /* Warning hint text (restart required, tax warning) */
 QLabel[class="warning-hint"] {
     color: #FF8C85;
-    font-size: 11px;
-    font-style: italic;
+    font-size: 12px;
     background: transparent;
 }
 
@@ -2661,7 +2937,7 @@ QDialog#BackupRestoreDialog QTabWidget::pane { border: none; background: #001F3F
 QDialog#BackupRestoreDialog QTabBar::tab {
     background: #003366; color: #B0B0B0; padding: 10px 22px;
     border-top-left-radius: 6px; border-top-right-radius: 6px;
-    margin-right: 2px; font-size: 13px;
+    margin-right: 2px; font-size: 13px; border: none;
 }
 QDialog#BackupRestoreDialog QTabBar::tab:selected { background: #004080; color: #00BCEB; font-weight: bold; }
 QDialog#BackupRestoreDialog QTabBar::tab:hover { background: #004080; color: #FFFFFF; }
@@ -2670,7 +2946,6 @@ QLabel#DialogTitle { color: #00BCEB; font-size: 20px; font-weight: bold; margin-
 QLabel#DialogSubtitle { color: #8899AA; font-size: 12px; margin-bottom: 16px; }
 QLabel#SectionTitle { font-size: 16px; font-weight: bold; color: white; margin-top: 20px; }
 
-QLabel[class="muted"] { color: #B0B0B0; font-size: 12px; }
 QLabel[class="value"] { color: #E0E0E0; font-size: 13px; font-weight: bold; }
 QLabel[class="status-ok"] { color: #39FF14; font-weight: bold; font-size: 13px; }
 QLabel[class="status-err"] { color: #FF4136; font-weight: bold; font-size: 13px; }
@@ -2715,6 +2990,13 @@ QTableWidget#LabelQueueTable::item {
     padding: 8px;
 }
 
+/* Same in-cell editor fix as QAbstractItemView::item:focus (#569) --
+   this ID rule would otherwise out-rank it and keep the Qty editor short. */
+QTableWidget#LabelQueueTable::item:focus {
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+
 /* ── Label Preview Dialog ── */
 QDialog#LabelPreviewDialog {
     background-color: #1E1E1E;
@@ -2733,7 +3015,6 @@ QLabel#LabelPreviewHeader {
 QLabel#LabelPreviewHint {
     font-size: 11px;
     color: #888888;
-    font-style: italic;
 }
 
 /* ── CSV Import Dialog ── */
@@ -3385,17 +3666,9 @@ QPushButton#DocFilterBtn:hover {
 }
 
 QPushButton#DocClearBtn {
-    background-color: transparent;
-    color: #AAAAAA;
     padding: 6px 14px;
     border-radius: 4px;
-    border: 1px solid #2D2D30;
     font-size: 13px;
-}
-
-QPushButton#DocClearBtn:hover {
-    color: #E0E0E0;
-    border-color: #AAAAAA;
 }
 
 QTableWidget#DocTable {
@@ -3438,17 +3711,9 @@ QLabel#DocDetailTitle {
 }
 
 QPushButton#DocDetailCloseBtn {
-    background-color: transparent;
-    color: #AAAAAA;
-    border: 1px solid #2D2D30;
     border-radius: 4px;
     padding: 4px 12px;
     font-size: 12px;
-}
-
-QPushButton#DocDetailCloseBtn:hover {
-    color: #E0E0E0;
-    border-color: #AAAAAA;
 }
 
 QLabel#DocInfoLabel, QLabel#DocPaymentLabel, QLabel#DocItemsTitle {
@@ -3696,9 +3961,8 @@ QLabel#PriceListFooterLabel {
 
 QLabel#PriceListFooterHint {
     background-color: transparent;
-    color: #888888;
-    font-size: 11px;
-    font-style: italic;
+    color: #B0B0B0;
+    font-size: 13px;
 }
 
 /* Splitter handle */
@@ -3759,14 +4023,6 @@ QPushButton#PMCardBtn {
     font-size: 12px;
     font-weight: bold;
     border-radius: 4px;
-    color: #FFFFFF;
-    background-color: #1E3A5F;
-    border: 1px solid #2A4A6F;
-}
-
-QPushButton#PMCardBtn:hover {
-    background-color: #2A4A6F;
-    border-color: #3A5A7F;
 }
 
 QPushButton#PMCardBtn[class="danger"] {

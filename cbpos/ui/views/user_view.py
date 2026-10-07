@@ -268,6 +268,7 @@ class UserView(QWidget):
 
         self.log_clear_btn = QPushButton()
         self.log_clear_btn.setObjectName("DocClearBtn")
+        self.log_clear_btn.setProperty("class", "secondary")
         self.log_clear_btn.clicked.connect(self.clear_log_filter)
         filter_layout.addWidget(self.log_clear_btn)
 

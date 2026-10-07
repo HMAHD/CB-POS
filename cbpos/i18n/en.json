@@ -1509,6 +1509,7 @@
       "tooltip_show_qr": "Print a scannable QR code linking to your shop's WhatsApp, website, or a digital copy of the receipt",
       "qr_content": "QR Content (URL):",
       "qr_content_placeholder": "e.g. https://wa.me/94771234567",
+      "qr_content_empty_warning": "\"Show QR code on receipt\" is on, but the QR content is empty, so no QR code will be printed.\n\nSave anyway?",
       "section_staff_terminal": "Staff & Terminal",
       "cashier_name": "Cashier Name:",
       "chk_show_cashier": "Print cashier username on receipt",

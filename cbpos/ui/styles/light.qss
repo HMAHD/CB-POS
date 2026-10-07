@@ -1444,6 +1444,12 @@ QWidget#SettingsContent QLabel[class="warning-hint"] {
     font-size: 12px;
 }
 
+/* Hardware test passed (Settings -> Hardware Test Print / Open Drawer, #624) */
+QWidget#SettingsContent QLabel[class="success-hint"] {
+    color: #146C43;  /* #198754 is only ~4.5:1 on #F8F9FA at 12px */
+    font-size: 12px;
+}
+
 /* Disabled state (#564). Once a stylesheet styles an input, Qt stops
    drawing its native greyed-out look, so a disabled spinbox/combo/check
    looked fully editable. The SettingsContent copies are needed because
@@ -2746,6 +2752,13 @@ QLabel#RestoreWarning {
 /* Warning hint text (restart required, tax warning) */
 QLabel[class="warning-hint"] {
     color: #B02A37;  /* #DC3545 is 4.3:1 on #F8F9FA at 12px (#566) */
+    font-size: 12px;
+    background: transparent;
+}
+
+/* Positive counterpart of warning-hint (hardware test passed, #624) */
+QLabel[class="success-hint"] {
+    color: #146C43;  /* #198754 is only ~4.5:1 on #F8F9FA at 12px */
     font-size: 12px;
     background: transparent;
 }

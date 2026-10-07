@@ -421,6 +421,42 @@ QPushButton:pressed {
     background-color: #DEE2E6;
 }
 
+/* Keyboard focus (#553). Qt otherwise draws the platform's dotted focus
+   rectangle (Windows) inside buttons and around the current cell of
+   every item view. Item views show the current row through the
+   selection instead; focusable buttons/checkboxes swap the dotted rect
+   for a solid theme-accent ring. `outline` (not `border`) is used on
+   purpose: it is drawn by the focus-rect primitive, so it still shows on
+   buttons whose own #ID rule sets `border` and would out-rank a plain
+   QPushButton:focus border. NoFocus buttons (numpads, cards) never get
+   focus, so they never show it. */
+QAbstractItemView {
+    outline: 0;
+}
+
+QPushButton:focus, QToolButton:focus {
+    outline: 2px solid #0D6EFD;
+}
+
+QCheckBox:focus, QRadioButton:focus {
+    outline: 1px solid #0D6EFD;
+}
+
+/* Accent-filled buttons: an accent ring would vanish into the fill. */
+QPushButton[class="accent"]:focus,
+QPushButton#BtnSearchSelect:focus,
+#RunReportBtn:focus,
+QPushButton#CreditAddBtn:focus,
+QPushButton#CreditPayBtn:focus,
+QPushButton#PayablePayBtn:focus,
+QPushButton#DocNewQuotationBtn:focus,
+QPushButton#DocConvertBtn:focus,
+QPushButton#PriceListAddBtn:focus,
+QPushButton#PMCardBtn[class="accent"]:focus,
+QPushButton#SaleHistoryReprint:focus {
+    outline-color: #FFFFFF;
+}
+
 /* Primary Action Button (Green) */
 QPushButton#BtnSave, QPushButton#PayBtn, QPushButton[class="primary"] {
     background-color: #198754;

@@ -109,3 +109,13 @@ def test_tree_alternate_rows_use_the_theme_color(qtbot, themed, theme_file, alt_
     tree.ensurePolished()
     assert tree.palette().alternateBase().color().name() == alt_base
     assert tree.indentation() == 24
+
+
+@pytest.mark.parametrize(("theme_file", "accent"), [("dark.qss", "#00BCEB"), ("light.qss", "#0D6EFD")])
+def test_focus_rect_replaced_by_theme_ring(theme_file, accent):
+    """#553: no native dotted focus rect on item views; buttons keep a
+    visible, theme-colored focus ring instead of losing focus entirely."""
+    assert any("outline: 0" in b for b in _rules_for(theme_file, "QAbstractItemView"))
+    assert any(f"outline: 2px solid {accent}" in b for b in _rules_for(theme_file, "QPushButton:focus"))
+    for body in _rules_for(theme_file, "QPushButton"):
+        assert "outline: none" not in body and "outline: 0" not in body

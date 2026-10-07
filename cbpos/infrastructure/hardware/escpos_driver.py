@@ -3,10 +3,12 @@ import queue
 import time
 from typing import Any
 
-from escpos.printer import Network, Usb
+from escpos import printer as escpos_printer
+from escpos.exceptions import DeviceNotFoundError
 from PIL import Image
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from cbpos.core.constants.hardware import DEFAULT_DRAWER_PIN, DRAWER_PINS, PrinterError, PrinterType
 from cbpos.core.interfaces.iprinter import IPrinter
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.utils.thermal_image import dither_for_thermal_print
@@ -14,12 +16,13 @@ from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
 
-_REAL_PRINTER_TYPES = ("USB", "NETWORK")
+_NETWORK_TIMEOUT_SECONDS = 5
+_NETWORK_DEFAULT_PORT = 9100
 
 
 def receipt_printer_configured() -> bool:
-    """Return True if settings name a real receipt printer (USB or Network)."""
-    return ConfigService.get_all().get("printer_type", "NONE") in _REAL_PRINTER_TYPES
+    """Return True if settings name a real receipt printer (Windows, Network or USB)."""
+    return ConfigService.get_all().get("printer_type", PrinterType.NONE) in PrinterType.REAL
 
 
 def printer_not_configured_message() -> str:
@@ -29,6 +32,87 @@ def printer_not_configured_message() -> str:
     real hardware failure.
     """
     return _t("printer.not_configured")
+
+
+def parse_usb_id(value: str) -> tuple[int, int] | None:
+    """Parse a ``VID:PID`` string such as ``0x04b8:0x0202`` or ``04b8:0202``.
+
+    Returns:
+        (vendor_id, product_id), or None if the text is not two hex numbers.
+    """
+    parts = (value or "").strip().split(":")
+    if len(parts) != 2:
+        return None
+    try:
+        vid, pid = int(parts[0], 16), int(parts[1], 16)
+    except ValueError:
+        return None
+    if not (0 < vid <= 0xFFFF and 0 < pid <= 0xFFFF):
+        return None
+    return vid, pid
+
+
+def drawer_pin_setting() -> int:
+    """Return the saved cash drawer kick pin (2 or 5), defaulting to 2."""
+    try:
+        pin = int(ConfigService.get("drawer_pin") or DEFAULT_DRAWER_PIN)
+    except (TypeError, ValueError):
+        return DEFAULT_DRAWER_PIN
+    return pin if pin in DRAWER_PINS else DEFAULT_DRAWER_PIN
+
+
+def is_connection_error(exc: BaseException) -> bool:
+    """True if *exc* means the printer itself is unreachable, not a bad command.
+
+    Covers socket/USB I/O errors (``usb.core.USBError`` is an OSError),
+    escpos' DeviceNotFoundError, libusb's "not supported" (raised by pyusb
+    as NotImplementedError) and pywin32's spooler errors.
+    """
+    if isinstance(exc, OSError | DeviceNotFoundError | NotImplementedError):
+        return True
+    return type(exc).__module__ == "pywintypes"
+
+
+def classify_printer_error(printer_type: str, exc: BaseException) -> str:
+    """Map a connection/print exception to a `PrinterError` code for the UI.
+
+    Args:
+        printer_type: The `PrinterType` that was being used.
+        exc: The exception raised while opening or writing to the printer.
+
+    Returns:
+        A `PrinterError` code; FAILED when nothing more specific fits.
+    """
+    if printer_type == PrinterType.WIN32:
+        if isinstance(exc, RuntimeError):
+            return PrinterError.WIN32_UNAVAILABLE
+        if isinstance(exc, DeviceNotFoundError) or type(exc).__module__ == "pywintypes":
+            return PrinterError.WIN32_NOT_FOUND
+        return PrinterError.FAILED
+    if printer_type == PrinterType.NETWORK:
+        if isinstance(exc, OSError | DeviceNotFoundError):
+            return PrinterError.NETWORK_NO_ANSWER
+        return PrinterError.FAILED
+    if printer_type == PrinterType.USB:
+        text = str(exc).lower()
+        if isinstance(exc, NotImplementedError) or any(
+            marker in text for marker in ("access denied", "errno 13", "busy", "not supported", "insufficient")
+        ):
+            return PrinterError.USB_ACCESS_DENIED
+        if "not found" in text or "no such device" in text:
+            return PrinterError.USB_NOT_FOUND
+        return PrinterError.FAILED
+    return PrinterError.NOT_CONFIGURED
+
+
+class PrinterConnectionError(Exception):
+    """Raised by `ESCPOSDriver.open` with a `PrinterError` code attached."""
+
+    def __init__(self, code: str, detail: str = "") -> None:
+        """Store the error code and the underlying error text."""
+        super().__init__(detail or code)
+        self.code = code
+        self.detail = detail
 
 
 class NullPrinter(IPrinter):
@@ -60,53 +144,114 @@ class NullPrinter(IPrinter):
     def print_commands(self, commands: list[dict[str, Any]]) -> None:
         """Discard the command batch instead of printing it."""
 
-    def kick_drawer(self) -> None:
+    def kick_drawer(self, pin: int | None = None) -> None:
         """No-op drawer kick."""
 
 
 class ESCPOSDriver(IPrinter):
-    """Real ESC/POS implementation using python-escpos for USB and Network printers."""
+    """Real ESC/POS implementation using python-escpos.
 
-    def __init__(self) -> None:
-        """Create the driver with no printer connection established yet."""
+    Reaches the printer one of three ways (``printer_type`` setting):
+    WIN32 sends raw ESC/POS through the Windows spooler by printer name
+    (``escpos.printer.Win32Raw``, needs pywin32), NETWORK opens a TCP
+    socket to the IP, USB talks to the device directly by VID:PID.
+    """
+
+    def __init__(
+        self,
+        printer_type: str | None = None,
+        printer_path: str | None = None,
+        drawer_pin: int | None = None,
+    ) -> None:
+        """Create the driver with no printer connection established yet.
+
+        Args:
+            printer_type: `PrinterType` to use instead of the saved setting
+                (Settings' Test buttons pass the unsaved on-screen value).
+            printer_path: Printer name / IP / VID:PID to use instead of the
+                saved ``printer_path``.
+            drawer_pin: Drawer kick pin (2 or 5); defaults to the saved one.
+        """
         self.printer = None
+        self._printer_type = printer_type
+        self._printer_path = printer_path
+        self._drawer_pin = drawer_pin
+        self.last_error: str | None = None
+        self.last_error_detail = ""
+
+    @property
+    def printer_type(self) -> str:
+        """The connection type this driver uses (override or saved setting)."""
+        if self._printer_type is not None:
+            return self._printer_type
+        return ConfigService.get_all().get("printer_type", PrinterType.NONE)
+
+    @property
+    def printer_path(self) -> str:
+        """The printer name / IP / VID:PID this driver uses (override or saved setting)."""
+        if self._printer_path is not None:
+            return self._printer_path.strip()
+        return (ConfigService.get_all().get("printer_path", "") or "").strip()
+
+    def open(self) -> None:
+        """Build the python-escpos printer and open the connection.
+
+        Opening up front (python-escpos would otherwise open lazily on the
+        first write) is what lets a missing printer surface here.
+
+        Raises:
+            PrinterConnectionError: With a `PrinterError` code when the
+                settings are incomplete or the printer can't be reached.
+        """
+        p_type, p_path = self.printer_type, self.printer_path
+        self.printer = None
+        try:
+            if p_type == PrinterType.WIN32:
+                if not p_path:
+                    raise PrinterConnectionError(PrinterError.NOT_CONFIGURED)
+                if not escpos_printer.Win32Raw.is_usable():
+                    raise PrinterConnectionError(PrinterError.WIN32_UNAVAILABLE)
+                printer = escpos_printer.Win32Raw(p_path)
+            elif p_type == PrinterType.NETWORK:
+                if not p_path:
+                    raise PrinterConnectionError(PrinterError.NETWORK_NO_ADDRESS)
+                host, _, port = p_path.partition(":")
+                printer = escpos_printer.Network(
+                    host,
+                    port=int(port) if port.isdigit() else _NETWORK_DEFAULT_PORT,
+                    timeout=_NETWORK_TIMEOUT_SECONDS,
+                )
+            elif p_type == PrinterType.USB:
+                ids = parse_usb_id(p_path)
+                if ids is None:
+                    raise PrinterConnectionError(PrinterError.USB_INVALID_ID)
+                printer = escpos_printer.Usb(*ids)
+            else:
+                raise PrinterConnectionError(PrinterError.NOT_CONFIGURED)
+            printer.open()
+        except PrinterConnectionError:
+            raise
+        except Exception as e:
+            raise PrinterConnectionError(classify_printer_error(p_type, e), str(e)) from e
+        self.printer = printer
 
     def connect(self) -> bool:
-        """Connect to the USB or Network printer configured in settings.
+        """Connect to the configured printer.
 
         Returns:
-            True if connected. False (without raising) if the configured
-            printer type is unrecognized, required settings are missing
-            (VID:PID for USB, IP address for Network), or the underlying
-            connection attempt raises an exception.
+            True if connected. False (without raising) otherwise; the
+            reason is left in ``last_error`` (a `PrinterError` code) and
+            ``last_error_detail``.
         """
-        settings = ConfigService.get_all()
-        p_type = settings.get("printer_type", "NONE")
-        p_path = settings.get("printer_path", "")
-
+        self.last_error = None
+        self.last_error_detail = ""
         try:
-            if p_type == "USB":
-                if p_path and ":" in p_path:
-                    vid, pid = p_path.split(":")
-                    self.printer = Usb(int(vid, 16), int(pid, 16))
-                else:
-                    logger.warning(
-                        "USB printer requires VID:PID in settings (e.g. 0x04b8:0x0202). "
-                        "Configure in Settings > Hardware."
-                    )
-                    return False
-            elif p_type == "NETWORK":
-                if p_path:
-                    self.printer = Network(p_path)
-                else:
-                    logger.warning("Network printer requires an IP address. Configure in Settings > Hardware.")
-                    return False
-            else:
-                return False
-
+            self.open()
             return True
-        except Exception as e:
-            logger.error("Printer connection failed: %s", e)
+        except PrinterConnectionError as e:
+            self.last_error = e.code
+            self.last_error_detail = e.detail
+            logger.error("Printer connection failed (%s): %s", e.code, e.detail or "-")
             return False
 
     def disconnect(self) -> None:
@@ -138,6 +283,10 @@ class ESCPOSDriver(IPrinter):
         No-op if the printer is not connected. Each command is a dict with
         a "type" key; a failing command (e.g. a missing image file) is
         logged and skipped so it doesn't abort the rest of the receipt.
+
+        Raises:
+            Exception: Connection errors (see `is_connection_error`) are
+                re-raised -- the printer is gone, so the job failed.
         """
         if not self.printer:
             return
@@ -159,9 +308,10 @@ class ESCPOSDriver(IPrinter):
                             img = Image.open(path)
                             paper_width = ConfigService.get("paper_width") or "80mm"
                             img = dither_for_thermal_print(img, paper_width)
-                            self.printer.image(img)
                         except Exception as e:
                             logger.error("Failed to print image: %s", e)
+                            continue
+                        self.printer.image(img)
 
                 elif c_type == "barcode":
                     code = cmd.get("val")
@@ -175,6 +325,8 @@ class ESCPOSDriver(IPrinter):
                         else:
                             self.printer.barcode(code, bc_type, function_type="B")
                     except Exception as e:
+                        if is_connection_error(e):
+                            raise
                         logger.error("Failed to print barcode: %s", e)
 
                 elif c_type == "feed":
@@ -189,19 +341,28 @@ class ESCPOSDriver(IPrinter):
                         self.printer.cut(mode="FULL")
 
             except Exception as e:
+                # A lost printer must fail the job, not print "nothing" as success.
+                if is_connection_error(e):
+                    raise
                 logger.error("Error processing print command %s: %s", cmd.get("type"), e)
 
-    def kick_drawer(self) -> None:
-        """Pulse the cash drawer kick pin, if connected."""
+    def kick_drawer(self, pin: int | None = None) -> None:
+        """Pulse the cash drawer kick pin (2 or 5), if connected.
+
+        Args:
+            pin: Kick pin; falls back to the driver's pin, then the saved
+                ``drawer_pin`` setting.
+        """
         if self.printer:
-            self.printer.cashdraw(2)
+            pin = pin or self._drawer_pin or drawer_pin_setting()
+            self.printer.cashdraw(pin if pin in DRAWER_PINS else DEFAULT_DRAWER_PIN)
 
 
 class PrintWorker(QThread):
     """Background thread for asynchronous print job processing.
 
     Resolves the printer once per run cycle from application settings:
-    - printer_type == "USB" / "NETWORK" → ESCPOSDriver (real hardware)
+    - printer_type == "WIN32" / "NETWORK" / "USB" → ESCPOSDriver (real hardware)
     - anything else → no printer: the job is skipped and error_occurred
       carries ``printer_not_configured_message()``. Never job_completed --
       screens show "sent to printer" on that signal (#623).
@@ -331,6 +492,7 @@ class PrintWorker(QThread):
 
             except Exception as e:
                 logger.error("Print job '%s' failed: %s", job_type, e)
+                current_printer.disconnect()
                 self.error_occurred.emit(str(e))
 
             time.sleep(0.1)

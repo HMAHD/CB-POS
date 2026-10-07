@@ -1411,7 +1411,16 @@
       "purchase_format": "Purchase Format:",
       "purchase_format_placeholder": "GRN-{Y}-{seq:05d}",
       "return_format": "Return Format:",
-      "return_format_placeholder": "CN-{Y}-{seq:05d}"
+      "return_format_placeholder": "CN-{Y}-{seq:05d}",
+      "fmt_error_empty": "Format can't be empty.",
+      "fmt_error_bad_char": "Can't use % or _ in a format.",
+      "fmt_error_unknown_placeholder": "Unknown code in braces. Use only {Y}, {M}, {D}, {T}, {terminal} and {seq}.",
+      "fmt_error_bad_seq": "The number code must be {seq} or like {seq:05d} (1-9 digits).",
+      "fmt_error_seq_once": "Put {seq} in the format exactly once.",
+      "fmt_error_seq_not_last": "{seq} must be at the very end.",
+      "fmt_error_too_long": "Too long. A number can have at most {max} characters.",
+      "fmt_preview_next": "Next: {number}",
+      "fmt_legend": "{Y} year · {M} month · {D} day · {T} terminal · {seq:05d} running number (always last)"
     },
     "hardware": {
       "title": "Hardware",

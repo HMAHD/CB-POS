@@ -1381,7 +1381,16 @@
       "purchase_format": "මිලදී ගැනීම් ආකෘතිය:",
       "purchase_format_placeholder": "GRN-{Y}-{seq:05d}",
       "return_format": "ආපසු එවීම් ආකෘතිය:",
-      "return_format_placeholder": "CN-{Y}-{seq:05d}"
+      "return_format_placeholder": "CN-{Y}-{seq:05d}",
+      "fmt_error_empty": "ආකෘතිය හිස්ව තියන්න බෑ.",
+      "fmt_error_bad_char": "ආකෘතියේ % හෝ _ පාවිච්චි කරන්න බෑ.",
+      "fmt_error_unknown_placeholder": "වරහන් ඇතුළේ තියෙන කේතය හඳුනන්නේ නෑ. {Y}, {M}, {D}, {T}, {terminal}, {seq} විතරක් පාවිච්චි කරන්න.",
+      "fmt_error_bad_seq": "අංක කේතය {seq} හෝ {seq:05d} වගේ වෙන්න ඕනේ (ඉලක්කම් 1-9).",
+      "fmt_error_seq_once": "ආකෘතියට {seq} එක පාරක් විතරක් දාන්න.",
+      "fmt_error_seq_not_last": "{seq} අනිවාර්යයෙන්ම අන්තිමටම තියෙන්න ඕනේ.",
+      "fmt_error_too_long": "දිග වැඩියි. අංකයකට උපරිම අකුරු {max}ක් විතරයි.",
+      "fmt_preview_next": "ඊළඟ අංකය: {number}",
+      "fmt_legend": "{Y} අවුරුද්ද · {M} මාසය · {D} දවස · {T} ටර්මිනලය · {seq:05d} පිළිවෙළ අංකය (හැමවෙලේම අන්තිමට)"
     },
     "hardware": {
       "title": "හාඩ්වෙයාර්",

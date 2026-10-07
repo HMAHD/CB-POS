@@ -18,7 +18,7 @@ _TOKEN_RE = re.compile(r"\{[^{}]*\}|[{}]")
 # The only accepted sequence forms: {seq} or {seq:0Nd} with N 1-9
 _VALID_SEQ_RE = re.compile(r"\{seq(?::0[1-9]d)?\}")
 _STATIC_PLACEHOLDERS = ("{Y}", "{M}", "{D}", "{T}", "{terminal}")
-_MAX_NUMBER_LENGTH: int = Document.__table__.c.document_number.type.length
+DOC_NUMBER_MAX_LENGTH: int = Document.__table__.c.document_number.type.length
 
 DEFAULT_PATTERNS: dict[str, str] = {
     "SALE": "INV-{Y}-{seq:05d}",
@@ -106,7 +106,7 @@ def validate_doc_pattern(pattern: str, terminal_id: str = "TERM-01") -> str | No
     if not pattern.endswith(seq_tokens[0]):
         return "settings.documents.fmt_error_seq_not_last"
     # Leave room for at least five sequence digits
-    if len(render_pattern(pattern, 99999, datetime.now(), terminal_id)) > _MAX_NUMBER_LENGTH:
+    if len(render_pattern(pattern, 99999, datetime.now(), terminal_id)) > DOC_NUMBER_MAX_LENGTH:
         return "settings.documents.fmt_error_too_long"
     return None
 

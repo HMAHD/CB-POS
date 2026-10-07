@@ -31,6 +31,7 @@ from cbpos.ui.dialogs.permission_dialog import PermissionDialog
 from cbpos.ui.dialogs.role_manager import RoleManagerDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.table_helpers import configure_table_columns
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
 class UserDialog(QDialog):
@@ -43,6 +44,7 @@ class UserDialog(QDialog):
         self.setWindowTitle(_t("user.add_user") if not user else _t("user.edit_user"))
         self.setFixedWidth(400)
         self.init_ui()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def init_ui(self):
         """Build the username, PIN, role, and active-status form fields plus Save/Cancel buttons."""

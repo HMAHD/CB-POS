@@ -27,6 +27,7 @@ from cbpos.core.services.payment_service import RESERVED_SHORTCUTS, PaymentServi
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,7 @@ class PaymentDialog(QDialog):
                 if shortcut and shortcut.isEnabled():
                     shortcut.setEnabled(False)
                     self._disabled_shortcuts.append(shortcut)
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def done(self, result: int) -> None:
         """Re-enable parent shortcuts before closing."""

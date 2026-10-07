@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.i18n import _t
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
 class DiscountDialog(QDialog):
@@ -43,6 +44,7 @@ class DiscountDialog(QDialog):
         self.original_amount = original_amount
 
         self.init_ui()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def init_ui(self):
         """Build the discount type toggle, value input, presets, and preview label."""

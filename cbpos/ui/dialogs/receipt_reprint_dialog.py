@@ -22,6 +22,7 @@ from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ class ReceiptReprintDialog(QDialog):
         self.setObjectName("ReceiptReprintDialog")
         self.results = []
         self._init_ui()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)

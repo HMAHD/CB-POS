@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.i18n import _t
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
 class VoidReasonDialog(QDialog):
@@ -71,6 +72,7 @@ class VoidReasonDialog(QDialog):
         self._update_void_enabled()
         self.btn_cancel.setDefault(True)
         self.retranslate_ui()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def retranslate_ui(self) -> None:
         """Apply translated text."""

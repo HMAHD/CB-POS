@@ -48,6 +48,7 @@ from cbpos.core.services.theme_service import ThemeService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.help_icon_button import HelpIconButton
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
 class SettingsPage(QWidget):
@@ -141,6 +142,8 @@ class SettingsPage(QWidget):
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
         scroll.setWidget(inner)
+        # Hover + wheel must scroll this form, not change a spin box/combo under the cursor (#598)
+        install_wheel_guard(inner)
 
         return tab, form
 
@@ -167,6 +170,7 @@ class SettingsPage(QWidget):
         vbox.setSpacing(16)
         vbox.setAlignment(Qt.AlignmentFlag.AlignTop)
         scroll.setWidget(inner)
+        install_wheel_guard(inner)  # see _build_form_tab (#598)
 
         return tab, vbox
 

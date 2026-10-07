@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.constants.hardware import PrinterType
 from cbpos.i18n import _t
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
 class SetupWizard(QDialog):
@@ -28,6 +29,7 @@ class SetupWizard(QDialog):
         self.setFixedSize(600, 500)
         self.setObjectName("SetupWizard")
         self.init_ui()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def init_ui(self):
         """Build the three stacked pages (shop info, hardware, admin PIN) and navigation buttons."""

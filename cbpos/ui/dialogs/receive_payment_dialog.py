@@ -19,6 +19,7 @@ from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
 class ReceivePaymentDialog(QDialog):
@@ -39,6 +40,7 @@ class ReceivePaymentDialog(QDialog):
 
         if customer_id:
             self.load_customer(customer_id)
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def init_ui(self) -> None:
         """Build the customer selector, balance display, payment form, and action buttons."""

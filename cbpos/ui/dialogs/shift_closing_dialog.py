@@ -20,6 +20,7 @@ from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.core.services.shift_service import ShiftService
 from cbpos.i18n import _t
 from cbpos.ui.widgets.denomination_widget import DenominationWidget
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 from cbpos.ui.workers import BackupWorker
 
 
@@ -40,6 +41,7 @@ class ShiftClosingDialog(QDialog):
         self.setFixedSize(800, 600)
         self._init_ui()
         self._load_data()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def _init_ui(self):
         layout = QVBoxLayout(self)

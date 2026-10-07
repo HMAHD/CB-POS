@@ -30,6 +30,7 @@ from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import get_currency_symbol
 from cbpos.i18n import _t
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
 def _color_icon(hex_color: str, size: int = 12) -> QIcon:
@@ -60,6 +61,7 @@ class ProductEditor(QDialog):
         self.setup_ui()
         if product:
             self.load_data()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def load_categories(self):
         """Load top-level categories (with subcategories) for the category combo."""

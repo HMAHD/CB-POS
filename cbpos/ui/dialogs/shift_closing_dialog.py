@@ -194,6 +194,11 @@ class ShiftClosingDialog(QDialog):
         from PyQt6.QtWidgets import QFileDialog
 
         from cbpos.core.services.backup_service import BackupService
+        from cbpos.ui.dialogs.backup_password_dialog import ensure_backup_password
+
+        password = ensure_backup_password(self)
+        if not password:
+            return False
 
         default_dir = BackupService.get_default_backup_dir()
         chosen_dir = QFileDialog.getExistingDirectory(self, _t("shift_closing.choose_backup_location"), default_dir)
@@ -205,18 +210,18 @@ class ShiftClosingDialog(QDialog):
         self.btn_next.setText(_t("shift_closing.creating_backup"))
         QApplication.setOverrideCursor(QCursor(Qt.CursorShape.WaitCursor))
 
-        self._backup_worker = BackupWorker(chosen_dir)
+        self._backup_worker = BackupWorker(chosen_dir, password)
         self._backup_worker.result.connect(self._on_backup_finished)
         self._backup_worker.error.connect(self._on_backup_error)
         self._backup_worker.start()
         return True
 
-    def _on_backup_finished(self, backup_path: str, password: str) -> None:
+    def _on_backup_finished(self, backup_path: str) -> None:
         QApplication.restoreOverrideCursor()
         QMessageBox.information(
             self,
             _t("shift_closing.backup_complete"),
-            _t("shift_closing.backup_saved", path=backup_path, password=password),
+            _t("shift_closing.backup_saved", path=backup_path),
         )
         self.accept()
 

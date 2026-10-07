@@ -57,6 +57,49 @@ class TestBackupListWorkerRun:
         assert received == ["disk unplugged"]
 
 
+class TestBackupListWorkerStatus:
+    """#619: the worker also reports whether the newest backup opens with
+    the shop password, for the "Last backup: <date>, restorable" line."""
+
+    def test_run_emits_last_backup_status_using_the_shop_password(self, tmp_path):
+        worker = BackupListWorker(str(tmp_path))
+        received = []
+        worker.status.connect(lambda status: received.append(status))
+        backups = [{"path": "x", "date": "2026-01-01 10:00:00", "type": "auto"}]
+
+        with (
+            patch("cbpos.core.services.backup_service.BackupService.list_backups", return_value=backups),
+            patch("cbpos.core.services.config_service.ConfigService.get_backup_password", return_value="shop-pass-1"),
+            patch(
+                "cbpos.core.services.backup_service.BackupService.last_backup_status",
+                return_value={"date": "2026-01-01 10:00:00", "restorable": True},
+            ) as status_mock,
+        ):
+            worker.run()
+
+        status_mock.assert_called_once_with(backups, "shop-pass-1")
+        assert received == [{"date": "2026-01-01 10:00:00", "restorable": True}]
+
+
+class TestLastBackupStatusLabel:
+    def test_restorable_backup_shows_its_date(self, view):
+        view._on_backup_status({"date": "2026-01-01 10:00:00", "restorable": True})
+
+        assert "2026-01-01 10:00:00" in view.lbl_last_backup.text()
+        assert view.lbl_last_backup.property("class") == "credit"
+
+    def test_unrestorable_backup_is_flagged(self, view):
+        view._on_backup_status({"date": "2026-01-01 10:00:00", "restorable": False})
+
+        assert view.lbl_last_backup.property("class") == "debit"
+
+    def test_no_backups(self, view):
+        view._on_backup_status({"date": None, "restorable": False})
+
+        assert view.lbl_last_backup.text()
+        assert view.lbl_last_backup.property("class") == "muted"
+
+
 class TestRefreshBackupListShowsLoadingOverlay:
     def test_refresh_shows_the_loading_overlay_immediately(self, view):
         view._overlay.hide_loading()

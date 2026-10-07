@@ -14,12 +14,10 @@ No hardcoded colors — works with both dark and light themes.
 import logging
 import weakref
 
-from PyQt6.QtCore import QDate, Qt, QTimer
+from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtWidgets import (
-    QApplication,
     QComboBox,
     QDateEdit,
-    QDialog,
     QFileDialog,
     QFormLayout,
     QFrame,
@@ -41,14 +39,23 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.backup_service import BackupService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.dialogs.backup_password_dialog import BackupPasswordDialog, ensure_backup_password
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
-from cbpos.ui.workers import BackupListWorker, BackupWorker, RestoreWorker
+from cbpos.ui.workers import BackupListWorker, BackupWorker, RestoreWorker, VerifyBackupWorker
 
 logger = logging.getLogger(__name__)
 
 
 class DataSafetyView(QWidget):
     """Tabbed view for backup, restore, maintenance, and export operations."""
+
+    # Backup table columns
+    COL_FILENAME, COL_DATE, COL_SIZE, COL_TYPE, COL_ACTIONS = range(5)
+    _TYPE_KEYS = {
+        "manual": "data_safety.backup_type_manual",
+        "auto": "data_safety.backup_type_auto",
+        "snapshot": "data_safety.backup_type_snapshot",
+    }
 
     def __init__(self) -> None:
         """Build the Backup, Restore, Maintenance, and Export tabs."""
@@ -72,6 +79,7 @@ class DataSafetyView(QWidget):
     def showEvent(self, event) -> None:
         """Refresh data when the view becomes visible."""
         super().showEvent(event)
+        self._update_password_status()
         self._refresh_backup_list()
         self._load_db_info()
 
@@ -123,20 +131,43 @@ class DataSafetyView(QWidget):
         dir_layout.addWidget(self.btn_change_dir)
         layout.addLayout(dir_layout)
 
+        # Shop backup password -- one password for every backup (#619)
+        pwd_layout = QHBoxLayout()
+        pwd_layout.setSpacing(8)
+        self.lbl_pwd_label = QLabel()
+        self.lbl_pwd_label.setProperty("class", "muted")
+        pwd_layout.addWidget(self.lbl_pwd_label)
+        self.lbl_pwd_status = QLabel()
+        self.lbl_pwd_status.setWordWrap(True)
+        pwd_layout.addWidget(self.lbl_pwd_status, 1)
+        self.btn_backup_password = QPushButton()
+        self.btn_backup_password.clicked.connect(self._change_backup_password)
+        pwd_layout.addWidget(self.btn_backup_password)
+        layout.addLayout(pwd_layout)
+
+        # Newest backup and whether the shop password opens it (#619)
+        self.lbl_last_backup = QLabel()
+        self.lbl_last_backup.setObjectName("LastBackupStatus")
+        self.lbl_last_backup.setWordWrap(True)
+        self._last_status: dict | None = None
+        layout.addWidget(self.lbl_last_backup)
+
         # Backup list table — QSS handles all table styling
         self.backup_table = QTableWidget()
-        self.backup_table.setColumnCount(4)
+        self._backup_data: list[dict] = []
+        self.backup_table.setColumnCount(5)
         self.backup_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.backup_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.backup_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.backup_table.verticalHeader().setVisible(False)
+        # Tall enough for the per-row Restore/Delete buttons (#620)
+        self.backup_table.verticalHeader().setDefaultSectionSize(48)
         self.backup_table.setAlternatingRowColors(True)
 
         header = self.backup_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(self.COL_FILENAME, QHeaderView.ResizeMode.Stretch)
+        for col in (self.COL_DATE, self.COL_SIZE, self.COL_TYPE):
+            header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
         self.backup_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.backup_table.customContextMenuRequested.connect(self._show_backup_context_menu)
         layout.addWidget(self.backup_table, 1)
@@ -174,25 +205,82 @@ class DataSafetyView(QWidget):
         backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
         self._overlay.show_loading(_t("data_safety.backup_list_loading"))
         self._backup_list_worker = BackupListWorker(backup_dir)
+        self._backup_list_worker.status.connect(self._on_backup_status)
         self._backup_list_worker.result.connect(self._on_backup_list_loaded)
         self._backup_list_worker.error.connect(self._on_backup_list_error)
         self._backup_list_worker.start()
 
+    def _on_backup_status(self, status: dict) -> None:
+        """Show the newest backup's date and whether it can be restored."""
+        self._last_status = status
+        if not status.get("date"):
+            text, css = _t("data_safety.last_backup_none"), "muted"
+        elif status.get("restorable"):
+            text, css = _t("data_safety.last_backup_ok", date=status["date"]), "credit"
+        else:
+            text, css = _t("data_safety.last_backup_unverified", date=status["date"]), "debit"
+        self.lbl_last_backup.setText(text)
+        self.lbl_last_backup.setProperty("class", css)
+        self.lbl_last_backup.style().unpolish(self.lbl_last_backup)
+        self.lbl_last_backup.style().polish(self.lbl_last_backup)
+
     def _on_backup_list_loaded(self, backups: list) -> None:
         self._overlay.hide_loading()
-        self.backup_table.setRowCount(len(backups))
         self._backup_data = backups
 
-        for row, b in enumerate(backups):
-            self.backup_table.setItem(row, 0, QTableWidgetItem(b["filename"]))
-            self.backup_table.setItem(row, 1, QTableWidgetItem(b["date"]))
-            self.backup_table.setItem(row, 2, QTableWidgetItem(b["size"]))
-            type_text = (
-                _t("data_safety.backup_type_pre_restore")
-                if b.get("is_pre_restore")
-                else _t("data_safety.backup_type_regular")
-            )
-            self.backup_table.setItem(row, 3, QTableWidgetItem(type_text))
+        self._fill_backup_table()
+
+    def _fill_backup_table(self) -> None:
+        """(Re)build the backup rows from ``self._backup_data``."""
+        self.backup_table.setRowCount(len(self._backup_data))
+        actions_width = self.backup_table.horizontalHeader().sectionSizeHint(self.COL_ACTIONS)
+        for row, b in enumerate(self._backup_data):
+            self.backup_table.setItem(row, self.COL_FILENAME, QTableWidgetItem(b["filename"]))
+            self.backup_table.setItem(row, self.COL_DATE, QTableWidgetItem(b["date"]))
+            size_text = b["size"]
+            if b.get("original_size"):
+                size_text = _t("data_safety.size_compressed_from", size=b["size"], original=b["original_size"])
+            self.backup_table.setItem(row, self.COL_SIZE, QTableWidgetItem(size_text))
+            kind = b.get("type") or ("snapshot" if b.get("is_pre_restore") else "manual")
+            self.backup_table.setItem(row, self.COL_TYPE, QTableWidgetItem(_t(self._TYPE_KEYS[kind])))
+            actions = self._make_row_actions(row)
+            self.backup_table.setCellWidget(row, self.COL_ACTIONS, actions)
+            actions_width = max(actions_width, actions.minimumWidth())
+        # ResizeToContents ignores cell widgets, so size the column to the buttons
+        self.backup_table.setColumnWidth(self.COL_ACTIONS, actions_width + 8)
+
+    def _make_row_actions(self, row: int) -> QWidget:
+        """Restore and Delete buttons for one backup row (#620)."""
+        cell = QWidget()
+        cell_layout = QHBoxLayout(cell)
+        cell_layout.setContentsMargins(4, 2, 4, 2)
+        cell_layout.setSpacing(6)
+        btn_restore = QPushButton(_t("data_safety.btn_restore_row"))
+        btn_restore.setObjectName("BackupRowRestore")
+        btn_restore.setProperty("class", "secondary")
+        btn_restore.clicked.connect(lambda _=False, r=row: self._restore_from_row(r))
+        cell_layout.addWidget(btn_restore)
+        btn_delete = QPushButton(_t("data_safety.btn_delete_backup"))
+        btn_delete.setObjectName("BackupRowDelete")
+        btn_delete.setProperty("class", "danger")
+        btn_delete.clicked.connect(lambda _=False, r=row: self._delete_backup_row(r))
+        cell_layout.addWidget(btn_delete)
+        # Apply the QSS padding now so the column sizes to the real buttons
+        for btn in (btn_restore, btn_delete):
+            btn.ensurePolished()
+            btn.setMinimumWidth(btn.sizeHint().width())
+        cell.setMinimumWidth(cell.sizeHint().width())
+        return cell
+
+    def _restore_from_row(self, row: int) -> None:
+        """Open the Restore tab with this backup's file filled in."""
+        if row < 0 or row >= len(self._backup_data):
+            return
+        self.input_restore_path.setText(self._backup_data[row]["path"])
+        self.input_restore_password.clear()
+        self.lbl_verify_result.setText("")
+        self.tabs.setCurrentIndex(1)
+        self.input_restore_password.setFocus()
 
     def _on_backup_list_error(self, message: str) -> None:
         self._overlay.hide_loading()
@@ -213,81 +301,53 @@ class DataSafetyView(QWidget):
         if not check_permission_with_override(Permissions.DATA_SAFETY_BACKUP, self):
             return
 
+        password = ensure_backup_password(self)
+        self._update_password_status()
+        if not password:
+            return
+
         self.btn_create_backup.setEnabled(False)
         self._overlay.show_loading(_t("data_safety.backup_creating"))
 
         backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
-        self._backup_worker = BackupWorker(backup_dir)
+        self._backup_worker = BackupWorker(backup_dir, password)
         self._backup_worker.result.connect(self._on_backup_finished)
         self._backup_worker.error.connect(self._on_backup_error)
         self._backup_worker.start()
 
-    def _on_backup_finished(self, path: str, password: str) -> None:
+    def _on_backup_finished(self, path: str) -> None:
         self._overlay.hide_loading()
         self.btn_create_backup.setEnabled(True)
         self.btn_create_backup.setText(_t("data_safety.btn_create_backup"))
         self._refresh_backup_list()
+        QMessageBox.information(
+            self,
+            _t("data_safety.backup_complete_title"),
+            _t("data_safety.backup_saved_to", path=path) + "\n\n" + _t("data_safety.backup_locked_with_shop_pwd"),
+        )
 
-        # Custom dialog to show password securely
-        dlg = QDialog(self)
-        dlg.setWindowTitle(_t("data_safety.backup_complete_title"))
-        dlg.setMinimumWidth(450)
-        dlg_layout = QVBoxLayout(dlg)
-        dlg_layout.setContentsMargins(20, 20, 20, 20)
-        dlg_layout.setSpacing(12)
+    def _change_backup_password(self) -> None:
+        """Set or change the shop backup password (affects new backups only)."""
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
-        lbl_success = QLabel(_t("data_safety.backup_saved_to", path=path))
-        lbl_success.setWordWrap(True)
-        dlg_layout.addWidget(lbl_success)
+        if not check_permission_with_override(Permissions.DATA_SAFETY_BACKUP, self):
+            return
+        dialog = BackupPasswordDialog(self, changing=ConfigService.has_backup_password())
+        dialog.exec()
+        dialog.deleteLater()
+        self._update_password_status()
 
-        lbl_pwd_info = QLabel(_t("data_safety.backup_pwd_info"))
-        lbl_pwd_info.setProperty("class", "muted")
-        lbl_pwd_info.setWordWrap(True)
-        dlg_layout.addWidget(lbl_pwd_info)
-
-        pwd_row = QHBoxLayout()
-        pwd_input = QLineEdit(password)
-        pwd_input.setEchoMode(QLineEdit.EchoMode.Password)
-        pwd_input.setReadOnly(True)
-        pwd_row.addWidget(pwd_input, 1)
-
-        btn_toggle = QPushButton(_t("data_safety.btn_show"))
-        btn_toggle.setFixedWidth(60)
-
-        def toggle_visibility():
-            """Toggle the backup password field between hidden and plain text."""
-            if pwd_input.echoMode() == QLineEdit.EchoMode.Password:
-                pwd_input.setEchoMode(QLineEdit.EchoMode.Normal)
-                btn_toggle.setText(_t("data_safety.btn_hide"))
-            else:
-                pwd_input.setEchoMode(QLineEdit.EchoMode.Password)
-                btn_toggle.setText(_t("data_safety.btn_show"))
-
-        btn_toggle.clicked.connect(toggle_visibility)
-        pwd_row.addWidget(btn_toggle)
-        dlg_layout.addLayout(pwd_row)
-
-        btn_row = QHBoxLayout()
-        btn_copy = QPushButton(_t("data_safety.btn_copy_password"))
-
-        def _copy_password():
-            QApplication.clipboard().setText(password)
-            btn_copy.setText(_t("data_safety.btn_copied"))
-            QTimer.singleShot(1500, lambda: btn_copy.setText(_t("data_safety.btn_copy_password")))
-
-        btn_copy.clicked.connect(_copy_password)
-        btn_row.addWidget(btn_copy)
-
-        btn_row.addStretch()
-
-        btn_ok = QPushButton(_t("common.ok"))
-        btn_ok.setProperty("class", "accent")
-        btn_ok.setFixedWidth(80)
-        btn_ok.clicked.connect(dlg.accept)
-        btn_row.addWidget(btn_ok)
-        dlg_layout.addLayout(btn_row)
-
-        dlg.exec()
+    def _update_password_status(self) -> None:
+        """Show whether a shop backup password is set, and what that means."""
+        if ConfigService.has_backup_password():
+            self.lbl_pwd_status.setText(_t("data_safety.pwd_status_set"))
+            self.btn_backup_password.setText(_t("data_safety.btn_change_password"))
+            self.input_restore_password.setPlaceholderText(_t("data_safety.restore_pwd_placeholder_shop"))
+        else:
+            self.lbl_pwd_status.setText(_t("data_safety.pwd_status_not_set"))
+            self.btn_backup_password.setText(_t("data_safety.btn_set_password"))
+            self.input_restore_password.setPlaceholderText(_t("data_safety.restore_pwd_placeholder"))
 
     def _on_backup_error(self, error: str) -> None:
         self._overlay.hide_loading()
@@ -321,16 +381,19 @@ class DataSafetyView(QWidget):
         )
 
     def _show_backup_context_menu(self, position) -> None:
-        """Offer a per-row Delete action (#341) -- previously the only way
+        """Right-click Restore/Delete for a row -- same as the row buttons (#620).
+
+        Delete was the first per-row action (#341): before it, the only way
         to remove a backup was the bulk "Clean Old Backups" action, which
-        explicitly excludes pre-restore snapshots, leaving no way in the
-        app to ever remove one."""
+        excluded pre-restore snapshots, leaving no way to ever remove one."""
         row = self.backup_table.indexAt(position).row()
         if row < 0 or row >= len(self._backup_data):
             return
         self.backup_table.selectRow(row)
 
         menu = QMenu(self)
+        restore_action = menu.addAction(_t("data_safety.btn_restore_row"))
+        restore_action.triggered.connect(lambda: self._restore_from_row(row))
         delete_action = menu.addAction(_t("data_safety.btn_delete_backup"))
         delete_action.triggered.connect(lambda: self._delete_backup_row(row))
         menu.exec(self.backup_table.viewport().mapToGlobal(position))
@@ -437,9 +500,17 @@ class DataSafetyView(QWidget):
             self.input_restore_path.setText(path)
             self.lbl_verify_result.setText("")
 
+    def _restore_password(self) -> str:
+        """The typed password, or the shop backup password when left empty.
+
+        Older backups made with a per-backup password still restore with
+        the password typed here.
+        """
+        return self.input_restore_password.text() or ConfigService.get_backup_password() or ""
+
     def _verify_backup(self) -> None:
         path = self.input_restore_path.text().strip()
-        password = self.input_restore_password.text()
+        password = self._restore_password()
         if not path:
             QMessageBox.warning(
                 self,
@@ -455,14 +526,29 @@ class DataSafetyView(QWidget):
             )
             return
 
-        result = BackupService.verify_backup(path, password)
+        # Verify decrypts and checks the whole database -- keep it off the
+        # UI thread so large backups don't freeze the window (#629).
+        self.btn_verify.setEnabled(False)
+        self.btn_restore.setEnabled(False)
+        self.lbl_verify_result.setText("")
+        self._overlay.show_loading(_t("data_safety.verify_running"))
+        self._verify_worker = VerifyBackupWorker(path, password)
+        self._verify_worker.result.connect(self._on_verify_finished)
+        self._verify_worker.start()
+
+    def _on_verify_finished(self, result: dict) -> None:
+        self._overlay.hide_loading()
+        self.btn_verify.setEnabled(True)
+        self.btn_restore.setEnabled(True)
         if result["valid"]:
             file_count = len(result["files"])
             self.lbl_verify_result.setProperty("class", "credit")
             self.lbl_verify_result.setText(_t("data_safety.restore_valid", size=result["size"], count=file_count))
         else:
             self.lbl_verify_result.setProperty("class", "debit")
-            self.lbl_verify_result.setText(_t("data_safety.restore_invalid", error=result["error"]))
+            code = result.get("error_code")
+            error = _t(f"data_safety.error_{code}") if code else result["error"]
+            self.lbl_verify_result.setText(_t("data_safety.restore_invalid", error=error))
         # Force style refresh after property change
         self.lbl_verify_result.style().unpolish(self.lbl_verify_result)
         self.lbl_verify_result.style().polish(self.lbl_verify_result)
@@ -475,7 +561,7 @@ class DataSafetyView(QWidget):
             return
 
         path = self.input_restore_path.text().strip()
-        password = self.input_restore_password.text()
+        password = self._restore_password()
         if not path:
             QMessageBox.warning(
                 self,
@@ -489,6 +575,13 @@ class DataSafetyView(QWidget):
                 _t("data_safety.restore_no_pwd_title"),
                 _t("data_safety.restore_no_pwd_msg"),
             )
+            return
+
+        # The safety snapshot is locked with the shop password -- no
+        # password, no snapshot, no restore (#628).
+        snapshot_password = ensure_backup_password(self)
+        self._update_password_status()
+        if not snapshot_password:
             return
 
         reply = QMessageBox.warning(
@@ -507,8 +600,13 @@ class DataSafetyView(QWidget):
 
         self._restore_worker = RestoreWorker(path, password)
         self._restore_worker.result.connect(self._on_restore_finished)
+        self._restore_worker.refused.connect(self._on_restore_refused)
         self._restore_worker.error.connect(self._on_restore_error)
         self._restore_worker.start()
+
+    def _on_restore_refused(self, code: str) -> None:
+        """The backup was rejected before anything changed -- say why in plain words."""
+        self._on_restore_error(_t(f"data_safety.error_{code}"))
 
     def _on_restore_finished(self, success: bool) -> None:
         self._overlay.hide_loading()
@@ -726,55 +824,45 @@ class DataSafetyView(QWidget):
         self.lbl_export_desc.setWordWrap(True)
         layout.addWidget(self.lbl_export_desc)
 
-        # Data type selection
-        self.grp_data = QGroupBox()
-        data_layout = QHBoxLayout(self.grp_data)
-        data_layout.setSpacing(12)
+        # One compact form instead of a full-width group box per dropdown (#618)
+        self.lbl_export_section = QLabel()
+        self.lbl_export_section.setObjectName("SettingsSectionTitle")
+        layout.addWidget(self.lbl_export_section)
+
+        self.export_form = QFormLayout()
+        self.export_form.setVerticalSpacing(10)
+        self.export_form.setHorizontalSpacing(16)
+        self.export_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.FieldsStayAtSizeHint)
+        self.export_form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+
         self.lbl_export_label = QLabel()
-        data_layout.addWidget(self.lbl_export_label)
         self.cmb_export_data = QComboBox()
         self.cmb_export_data.setFixedWidth(200)
         self.cmb_export_data.currentTextChanged.connect(self._on_export_data_changed)
-        data_layout.addWidget(self.cmb_export_data)
-        data_layout.addStretch()
-        layout.addWidget(self.grp_data)
+        self.export_form.addRow(self.lbl_export_label, self.cmb_export_data)
 
-        # Format selection
-        self.grp_format = QGroupBox()
-        fmt_layout = QHBoxLayout(self.grp_format)
-        fmt_layout.setSpacing(12)
         self.lbl_fmt_label = QLabel()
-        fmt_layout.addWidget(self.lbl_fmt_label)
         self.cmb_export_format = QComboBox()
         self.cmb_export_format.setFixedWidth(200)
-        fmt_layout.addWidget(self.cmb_export_format)
-        fmt_layout.addStretch()
-        layout.addWidget(self.grp_format)
+        self.export_form.addRow(self.lbl_fmt_label, self.cmb_export_format)
 
         # Date range (visible only for Sales)
-        self.grp_export_dates = QGroupBox()
-        dates_layout = QHBoxLayout(self.grp_export_dates)
-        dates_layout.setSpacing(12)
         self.lbl_export_from = QLabel()
-        dates_layout.addWidget(self.lbl_export_from)
         self.date_export_from = QDateEdit()
         self.date_export_from.setCalendarPopup(True)
         self.date_export_from.setDate(QDate.currentDate().addMonths(-1))
         self.date_export_from.setDisplayFormat("yyyy-MM-dd")
         self.date_export_from.setFixedWidth(150)
-        dates_layout.addWidget(self.date_export_from)
+        self.export_form.addRow(self.lbl_export_from, self.date_export_from)
         self.lbl_export_to = QLabel()
-        dates_layout.addWidget(self.lbl_export_to)
         self.date_export_to = QDateEdit()
         self.date_export_to.setCalendarPopup(True)
         self.date_export_to.setDate(QDate.currentDate())
         self.date_export_to.setDisplayFormat("yyyy-MM-dd")
         self.date_export_to.setFixedWidth(150)
-        dates_layout.addWidget(self.date_export_to)
-        dates_layout.addStretch()
-        layout.addWidget(self.grp_export_dates)
-        # Show date range only for Sales
-        self.grp_export_dates.setVisible(False)
+        self.export_form.addRow(self.lbl_export_to, self.date_export_to)
+        layout.addLayout(self.export_form)
+        self._set_export_dates_visible(False)
 
         layout.addStretch()
 
@@ -798,7 +886,12 @@ class DataSafetyView(QWidget):
 
     def _on_export_data_changed(self, text: str) -> None:
         """Show/hide date range based on selected data type."""
-        self.grp_export_dates.setVisible(text == _t("data_safety.export_type_sales"))
+        self._set_export_dates_visible(text == _t("data_safety.export_type_sales"))
+
+    def _set_export_dates_visible(self, visible: bool) -> None:
+        """Show the From/To rows only when exporting Sales."""
+        self.export_form.setRowVisible(self.date_export_from, visible)
+        self.export_form.setRowVisible(self.date_export_to, visible)
 
     def _do_inline_export(self) -> None:
         """Export selected data type in the chosen format using a background thread."""
@@ -927,18 +1020,23 @@ class DataSafetyView(QWidget):
                 _t("data_safety.backup_header_date"),
                 _t("data_safety.backup_header_size"),
                 _t("data_safety.backup_header_type"),
+                _t("data_safety.backup_header_actions"),
             ]
         )
         self.btn_create_backup.setText(_t("data_safety.btn_create_backup"))
         self.btn_clean_old.setText(_t("data_safety.btn_clean_old"))
         self.btn_backup_refresh.setText(_t("data_safety.btn_refresh"))
+        self.lbl_pwd_label.setText(_t("data_safety.pwd_label"))
+        self._fill_backup_table()
+        if self._last_status is not None:
+            self._on_backup_status(self._last_status)
 
         # Restore tab
         self.lbl_restore_warning.setText(_t("data_safety.restore_warning_full"))
         self.grp_restore_file.setTitle(_t("data_safety.restore_file_group"))
         self.input_restore_path.setPlaceholderText(_t("data_safety.restore_file_placeholder"))
         self.btn_browse.setText(_t("data_safety.btn_browse"))
-        self.input_restore_password.setPlaceholderText(_t("data_safety.restore_pwd_placeholder"))
+        self._update_password_status()
         self.btn_toggle_restore_pwd.setText(_t("data_safety.btn_show"))
         self.btn_verify.setText(_t("data_safety.btn_verify"))
         self.btn_restore.setText(_t("data_safety.btn_restore"))
@@ -959,7 +1057,7 @@ class DataSafetyView(QWidget):
 
         # Export tab
         self.lbl_export_desc.setText(_t("data_safety.export_desc"))
-        self.grp_data.setTitle(_t("data_safety.export_data_type"))
+        self.lbl_export_section.setText(_t("data_safety.export_section"))
         self.lbl_export_label.setText(_t("data_safety.export_label"))
         self.cmb_export_data.clear()
         self.cmb_export_data.addItems(
@@ -969,7 +1067,6 @@ class DataSafetyView(QWidget):
                 _t("data_safety.export_type_sales"),
             ]
         )
-        self.grp_format.setTitle(_t("data_safety.export_format"))
         self.lbl_fmt_label.setText(_t("data_safety.export_format_label"))
         self.cmb_export_format.clear()
         self.cmb_export_format.addItems(
@@ -978,7 +1075,6 @@ class DataSafetyView(QWidget):
                 _t("data_safety.export_format_csv"),
             ]
         )
-        self.grp_export_dates.setTitle(_t("data_safety.export_date_range_hint"))
         self.lbl_export_from.setText(_t("data_safety.export_from"))
         self.lbl_export_to.setText(_t("data_safety.export_to"))
         self.btn_do_export.setText(_t("data_safety.export_btn"))

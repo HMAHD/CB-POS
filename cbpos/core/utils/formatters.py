@@ -22,6 +22,25 @@ def format_short_name(full_name: str) -> str:
     return f"{parts[0]} {initials}"
 
 
+def format_bytes(size: int) -> str:
+    """
+    Human-readable file size: whole KB under 1 MB, one decimal above.
+    Examples: 45_000 -> "44 KB", 1_363_149 -> "1.3 MB".
+
+    Never shows a small, non-empty file as "0.0 MB" (#618).
+    """
+    sign = "-" if size < 0 else ""
+    size = abs(size)
+    kb = round(size / 1024)
+    if size and kb == 0:
+        kb = 1
+    if kb < 1024:
+        return f"{sign}{kb} KB"
+    if size < 1024**3:
+        return f"{sign}{size / 1024**2:.1f} MB"
+    return f"{sign}{size / 1024**3:.1f} GB"
+
+
 def format_currency(value: Union[Decimal, float, int, str]) -> str:
     """
     Format a monetary value using the configured currency symbol.

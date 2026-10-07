@@ -314,16 +314,30 @@ class MainWindow(QMainWindow):
         PrintWorker.shutdown()
 
         if ConfigService.get("auto_backup_on_close"):
-            try:
-                from cbpos.core.services.backup_service import BackupService
-
-                backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
-                BackupService.create_backup(backup_dir)
-                keep = int(ConfigService.get("backup_retention_count") or 5)
-                BackupService.cleanup_old_backups(backup_dir, keep)
-            except Exception:
-                logging.getLogger(__name__).exception("Auto-backup on close failed")
+            self._auto_backup_on_close()
         super().closeEvent(event)
+
+    def _auto_backup_on_close(self) -> None:
+        """Make the automatic backup with the shop backup password (#619).
+
+        With no backup password set nothing is written -- an archive nobody
+        can open is worse than none -- and the user is told why.
+        """
+        try:
+            from cbpos.core.services.backup_service import BackupService
+
+            backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
+            keep = int(ConfigService.get("backup_retention_count") or 5)
+            if BackupService.run_auto_backup(backup_dir, keep) is None:
+                from PyQt6.QtWidgets import QMessageBox
+
+                QMessageBox.warning(
+                    self,
+                    _t("main_window.auto_backup_skipped_title"),
+                    _t("main_window.auto_backup_skipped_msg"),
+                )
+        except Exception:
+            logging.getLogger(__name__).exception("Auto-backup on close failed")
 
     def exit_fullscreen(self):
         """Leave fullscreen mode if currently fullscreen (bound to the Escape shortcut)."""

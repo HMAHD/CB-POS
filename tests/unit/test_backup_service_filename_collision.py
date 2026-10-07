@@ -13,12 +13,20 @@ from unittest.mock import patch
 import pyzipper
 
 from cbpos.core.services.backup_service import BackupService
+from tests.unit.backup_helpers import make_pos_db, read_marker
+
+
+def _marker_in(zip_path: str, password: bytes, out_dir) -> str:
+    with pyzipper.AESZipFile(zip_path, "r") as zf:
+        zf.setpassword(password)
+        zf.extract("cbpos.db", out_dir)
+    return read_marker(out_dir / "cbpos.db")
 
 
 class TestBackupFilenameCollision:
     def test_two_backups_in_the_same_second_produce_distinct_files(self, tmp_path):
         db_file = tmp_path / "cbpos.db"
-        db_file.write_text("first database content")
+        make_pos_db(db_file, marker="first database content")
 
         backup_dir = tmp_path / "backups"
         frozen_now = datetime(2026, 1, 1, 12, 0, 0)
@@ -28,19 +36,18 @@ class TestBackupFilenameCollision:
             mock_config.DATA_DIR = tmp_path
             with patch("cbpos.core.services.backup_service.datetime") as mock_datetime:
                 mock_datetime.now.return_value = frozen_now
-                first_path, _first_password = BackupService.create_backup(str(backup_dir), password="Pass1")
+                first_path = BackupService.create_backup(str(backup_dir), password="Pass1")
 
-                db_file.write_text("second database content -- must not overwrite the first backup")
-                second_path, _second_password = BackupService.create_backup(str(backup_dir), password="Pass2")
+                db_file.unlink()
+                make_pos_db(db_file, marker="second database content -- must not overwrite the first backup")
+                second_path = BackupService.create_backup(str(backup_dir), password="Pass2")
 
         assert first_path != second_path
 
-        with pyzipper.AESZipFile(first_path, "r") as zf:
-            zf.setpassword(b"Pass1")
-            with zf.open("cbpos.db") as f:
-                assert f.read() == b"first database content"
-
-        with pyzipper.AESZipFile(second_path, "r") as zf:
-            zf.setpassword(b"Pass2")
-            with zf.open("cbpos.db") as f:
-                assert f.read() == b"second database content -- must not overwrite the first backup"
+        (tmp_path / "first").mkdir()
+        (tmp_path / "second").mkdir()
+        assert _marker_in(first_path, b"Pass1", tmp_path / "first") == "first database content"
+        assert (
+            _marker_in(second_path, b"Pass2", tmp_path / "second")
+            == "second database content -- must not overwrite the first backup"
+        )

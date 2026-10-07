@@ -1737,7 +1737,7 @@ QPushButton#BtnSearchSelect:hover {
 }
 
 /* Quantity Dialog */
-QDialog#QuantityDialog, QDialog#VoidReasonDialog {
+QDialog#QuantityDialog, QDialog#VoidReasonDialog, QDialog#BackupPasswordDialog {
     background-color: #1E1E1E;
 }
 
@@ -2831,11 +2831,16 @@ QLabel#SmtpGuideStepNum {
 }
 
 /* === DATA SAFETY VIEW === */
+/* Data Safety backup list: compact per-row Restore/Delete buttons (#620) */
+QPushButton#BackupRowRestore, QPushButton#BackupRowDelete {
+    padding: 4px 12px;
+}
+
 QLabel#RestoreWarning {
     background-color: rgba(255, 65, 54, 0.12);
     border: 1px solid #FF4136;
     border-radius: 6px;
-    padding: 12px;
+    padding: 12px 16px;
     color: #FF8C85;
     font-size: 12px;
 }
@@ -2963,7 +2968,7 @@ QTableWidget#BackupTable, QTableWidget#ValuationTable {
 QTableWidget#BackupTable::item, QTableWidget#ValuationTable::item { padding: 6px; }
 QLabel#RestoreWarning {
     background-color: rgba(255, 65, 54, 0.12); border: 1px solid #FF4136;
-    border-radius: 6px; padding: 12px; color: #FF8C85; font-size: 12px;
+    border-radius: 6px; padding: 12px 16px; color: #FF8C85; font-size: 12px;
 }
 
 /* ── Label Print Dialog ── */

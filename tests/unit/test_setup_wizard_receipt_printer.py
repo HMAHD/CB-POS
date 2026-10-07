@@ -21,7 +21,6 @@ def wizard():
     w.input_shop_name.setText("Test Shop")
     w.input_pin.setText("4321")
     yield w
-    w.deleteLater()
 
 
 def _finish(wizard: SetupWizard) -> dict:

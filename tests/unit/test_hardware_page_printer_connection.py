@@ -23,7 +23,6 @@ def page():
         p = HardwarePage()
     p.load({})  # fill the other fields with their defaults so save() is valid
     yield p
-    p.deleteLater()
 
 
 def _choose(page: HardwarePage, printer_type: str) -> None:

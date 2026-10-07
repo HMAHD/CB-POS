@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import QAbstractItemDelegate, QAbstractItemView, QMessageBo
 
 from cbpos.core.models import Product, StockCountItem, Unit, User
 from cbpos.core.services.stock_count_service import StockCountService
+from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 from cbpos.ui.views.stock_take_view import StockCountItemModel, StockTakeView
 
@@ -157,3 +158,13 @@ class TestEnterCommitsAndMovesDown:
 
         assert _counted(db_session, view, 2) == Decimal("1.250")
         assert view.item_table.state() != QAbstractItemView.State.EditingState
+
+    def test_saving_a_count_updates_the_progress_and_finalize_button(self, view):
+        editor = _open_editor(view, 0)
+        for _ in range(3):  # Enter opens the next row's editor itself
+            editor.setText("1")
+            QTest.keyClick(editor, Qt.Key.Key_Return)
+            editor = view.item_table.indexWidget(view.item_table.currentIndex())
+
+        assert view.lbl_counted.text() == _t("stock_take.counted_progress", counted=3, total=3)
+        assert view.btn_finalize.isEnabled()

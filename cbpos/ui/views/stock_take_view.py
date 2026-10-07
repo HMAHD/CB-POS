@@ -687,6 +687,9 @@ class StockTakeView(QWidget):
         self.item_table.setModel(model)
         # setModel() makes a new selection model, so reconnect every time.
         self.item_table.selectionModel().currentChanged.connect(self._snap_to_counted)
+        # A saved count must update progress and enable Finalize right away,
+        # not only after the next reload.
+        model.dataChanged.connect(self._update_stats)
 
     def _snap_to_counted(self, current: QModelIndex, _previous: QModelIndex) -> None:
         """Keep the current cell on Counted so typing a number edits it (#615)."""

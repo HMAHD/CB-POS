@@ -646,30 +646,57 @@ class StockTakeView(QWidget):
             QMessageBox.warning(self, _t("common.error"), str(e))
 
     def add_single_product(self) -> None:
-        """Add a single product via barcode/search."""
+        """Add or count a product typed/scanned into the search field."""
         query = self.search_input.text().strip()
-        if not query:
-            return
+        if query and self._count_product(query):
+            self.search_input.clear()
 
+    def _count_product(self, query: str) -> bool:
+        """Count one unit of the product matching ``query`` and jump to its row.
+
+        Adds the product to the count first if needed (starting a count if
+        none is open). A product already in the count is counted up rather
+        than rejected (#615). Weighed items get their Counted editor opened
+        instead, since one scan isn't one unit of weight.
+
+        Returns:
+            True if the product was found and added/counted.
+        """
         if not self.current_stock_count:
             if not hasattr(self, "user") or not self.user:
                 QMessageBox.warning(self, _t("common.error"), _t("stock_take.user_not_logged_in"))
-                return
+                return False
             note = self.note_input.text().strip() or None
             self.current_stock_count = StockCountService.create_stock_count(user_id=self.user.id, note=note)
 
-        products = ProductService.search(query)
-        if not products:
+        # Exact barcode first: a LIKE search can match a longer barcode first.
+        product = ProductService.get_by_barcode(query)
+        if product is None:
+            products = ProductService.search(query)
+            product = products[0] if products else None
+        if product is None:
             QMessageBox.warning(self, _t("stock_take.not_found_title"), _t("stock_take.product_not_found"))
-            return
+            return False
 
-        product = products[0]
+        item_id = next((i.id for i in self.item_model.items if i.product_id == product.id), None)
         try:
-            StockCountService.add_single_item(self.current_stock_count.id, product.id)
-            self.search_input.clear()
-            self._reload_items()
+            if item_id is None:
+                item_id = StockCountService.add_single_item(self.current_stock_count.id, product.id).id
+            if not product.is_weighted:
+                StockCountService.increment_count(item_id, Decimal("1"))
         except ValueError as e:
             QMessageBox.warning(self, _t("common.error"), str(e))
+            return False
+
+        self._reload_items()
+        row = next((r for r, i in enumerate(self.item_model.items) if i.id == item_id), None)
+        if row is not None:
+            index = self.item_model.index(row, StockCountItemModel.COL_COUNTED)
+            self.item_table.setCurrentIndex(index)
+            self.item_table.scrollTo(index)
+            if product.is_weighted:
+                self.item_table.edit(index)
+        return True
 
     def _reload_items(self) -> None:
         """Reload items from the database for the current stock count."""

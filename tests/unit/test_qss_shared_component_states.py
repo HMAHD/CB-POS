@@ -78,3 +78,34 @@ def test_in_cell_line_edit_fills_the_row(qtbot, themed, theme_file):
     assert editor.font().pixelSize() == 13
     assert editor.geometry().height() >= table.rowHeight(0) - 4
     table.closePersistentEditor(table.item(0, 1))
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+@pytest.mark.parametrize("selector", ["QTreeWidget", "QTreeView"])
+def test_trees_share_the_list_table_base_rule(theme_file, selector):
+    """#567: a tree with alternating rows fell back to the native white
+    alternate base under white text in Dark."""
+    bodies = _rules_for(theme_file, selector)
+    assert any("alternate-background-color" in b for b in bodies)
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+@pytest.mark.parametrize("selector", ["QToolTip", "QScrollBar:vertical", "QScrollBar:horizontal"])
+def test_tooltip_and_scrollbars_have_theme_rules(theme_file, selector):
+    """#567: no QToolTip rule meant native pale-yellow tooltips in Dark."""
+    bodies = _rules_for(theme_file, selector)
+    assert any("background" in b for b in bodies)
+
+
+@pytest.mark.parametrize(("theme_file", "alt_base"), [("dark.qss", "#2d2d30"), ("light.qss", "#f8f9fa")])
+def test_tree_alternate_rows_use_the_theme_color(qtbot, themed, theme_file, alt_base):
+    from PyQt6.QtWidgets import QTreeWidget
+
+    themed(theme_file)
+    tree = QTreeWidget()
+    qtbot.addWidget(tree)
+    tree.setAlternatingRowColors(True)
+    tree.show()
+    tree.ensurePolished()
+    assert tree.palette().alternateBase().color().name() == alt_base
+    assert tree.indentation() == 24

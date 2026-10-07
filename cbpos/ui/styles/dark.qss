@@ -52,7 +52,7 @@ QLineEdit:focus {
    at all before this; only #ReportDateEdit/#PeriodDateEdit had one-off
    rules). A generic type selector styles every QDateEdit automatically,
    including any without an objectName. */
-QDateEdit {
+QDateEdit, QTimeEdit, QDateTimeEdit {
     background-color: #252526;
     border: 1px solid #3E3E42;
     border-radius: 4px;
@@ -61,7 +61,7 @@ QDateEdit {
     color: #FFFFFF;
 }
 
-QDateEdit:focus {
+QDateEdit:focus, QTimeEdit:focus, QDateTimeEdit:focus {
     border: 1px solid #00BCEB;
     background-color: #2D2D30;
 }
@@ -506,8 +506,10 @@ QLabel[class="transparent"] {
     background: transparent;
 }
 
-/* Lists & Tables */
-QListWidget, QTableWidget {
+/* Lists, Tables & Trees -- QTreeWidget/QTreeView used to be missing
+   here, so a tree with alternating rows fell back to the native
+   (white) alternate base under the theme's text color (#567). */
+QListWidget, QTableWidget, QTreeWidget, QTreeView {
     background-color: #252526;
     border: 1px solid #3E3E42;
 
@@ -521,6 +523,28 @@ QListWidget::item, QTableWidget::item {
 }
 
 QListWidget::item:selected, QTableWidget::item:selected {
+    background-color: #007ACC;
+    color: #FFFFFF;
+}
+
+/* Trees: compact items (the 12px list/table padding is too tall for a
+   hierarchy), a visible selection, and a deeper indent so children read
+   as children. ::branch is deliberately not styled -- any ::branch rule
+   makes Qt stop drawing the native expand arrows. */
+QTreeView {
+    qproperty-indentation: 24;
+}
+
+QTreeView::item {
+    padding: 6px;
+    border: none;
+}
+
+QTreeView::item:hover {
+    background-color: #333337;
+}
+
+QTreeView::item:selected {
     background-color: #007ACC;
     color: #FFFFFF;
 }
@@ -555,6 +579,71 @@ QScrollBar::handle:vertical {
 
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0px;
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background: #1E1E1E;
+    height: 10px;
+    margin: 0px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #444444;
+    min-width: 20px;
+    border-radius: 5px;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+}
+
+QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {
+    background: #5A5A5E;
+}
+
+/* Without this the page areas either side of the handle can fall back
+   to the native (patterned) track on Windows. */
+QScrollBar::add-page, QScrollBar::sub-page {
+    background: none;
+}
+
+/* Tooltips -- no rule existed, so every tooltip used the OS's native
+   pale-yellow look regardless of theme (#567). */
+QToolTip {
+    background-color: #2D2D30;
+    color: #FFFFFF;
+    border: 1px solid #3E3E42;
+    padding: 6px 8px;
+}
+
+/* Multi-line text inputs and progress bars had no base rule (#567). */
+QTextEdit, QPlainTextEdit {
+    background-color: #252526;
+    color: #FFFFFF;
+    border: 1px solid #3E3E42;
+    border-radius: 4px;
+    padding: 6px;
+    selection-background-color: #00BCEB;
+}
+
+QTextEdit:focus, QPlainTextEdit:focus {
+    border: 1px solid #00BCEB;
+    background-color: #2D2D30;
+}
+
+QProgressBar {
+    background-color: #2D2D30;
+    color: #FFFFFF;
+    border: 1px solid #3E3E42;
+    border-radius: 4px;
+    text-align: center;
+    min-height: 18px;
+}
+
+QProgressBar::chunk {
+    background-color: #00BCEB;
+    border-radius: 3px;
 }
 
 /* ScrollArea Transparency Fix */

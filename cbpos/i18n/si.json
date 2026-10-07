@@ -1732,7 +1732,8 @@
     "cannot_delete_admin_msg": "පෙරනිමි Admin භූමිකාව මකන්න බැහැ.",
     "cannot_delete_in_use_msg": "'{name}' භූමිකාව තාම පරිශීලකයෝ {count}කට දීලා තියෙනවා. මුලින්ම ඒගොල්ලන්ට වෙන භූමිකාවක් දෙන්න.",
     "cannot_rename_title": "භූමිකාවේ නම මාරු කරන්න බැහැ",
-    "cannot_rename_admin_msg": "පෙරනිමි Admin භූමිකාවේ නම මාරු කරන්න බැහැ."
+    "cannot_rename_admin_msg": "පෙරනිමි Admin භූමිකාවේ නම මාරු කරන්න බැහැ.",
+    "builtin_locked_tooltip": "Admin කියන්නේ පෙරනිමි භූමිකාවක්. ඒකේ නම මාරු කරන්නවත් මකන්නවත් බැහැ."
   },
   "category_tree": {
     "title": "කාණ්ඩ ගස",
@@ -1858,7 +1859,8 @@
     "col_permission": "අවසරය",
     "save_changes": "වෙනස්කම් සුරකින්න",
     "save_success": "අවසර සුරැකුනා.",
-    "save_failed": "අවසර සුරකින්න බැරි උනා."
+    "save_failed": "අවසර සුරකින්න බැරි උනා.",
+    "admin_locked_tooltip": "Admin ට මේ අවසරය හැමවෙලේම තියෙනවා. එතකොට පරිශීලකයෝ සහ භූමිකා කළමනාකරණය කරන්න කෙනෙක් හැමවෙලේම ඉන්නවා."
   },
   "profile": {
     "title": "පරිශීලක පැතිකඩ",

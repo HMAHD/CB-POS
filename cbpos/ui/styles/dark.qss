@@ -401,6 +401,12 @@ QTreeWidget::indicator:checked, QTableWidget::indicator:checked {
     image: url(cbpos/assets/icons/check-white.svg);
 }
 
+/* Locked cells (e.g. Admin's critical permissions, #614) */
+QTreeWidget::indicator:checked:disabled, QTableWidget::indicator:checked:disabled {
+    background-color: #3E3E42;
+    border-color: #3E3E42;
+}
+
 /* Buttons */
 QPushButton {
     background-color: #2D2D30;

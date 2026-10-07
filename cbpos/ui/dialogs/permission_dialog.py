@@ -1,18 +1,104 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QAbstractItemModel, QEvent, QModelIndex, QRect, QSize, Qt
+from PyQt6.QtGui import QPainter
 from PyQt6.QtWidgets import (
+    QApplication,
     QDialog,
     QHBoxLayout,
     QHeaderView,
     QMessageBox,
     QPushButton,
+    QStyle,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
 )
 
+from cbpos.core.constants.permissions import ADMIN_ROLE_NAME, CRITICAL_ADMIN_PERMISSIONS
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.user_service import UserService
 from cbpos.i18n import _t
+
+# Per-cell flag for a role-column cell that must stay ticked. Item flags are per-row in a
+# QTreeWidget, so the lock lives in the cell's data and _RoleCheckDelegate enforces it (#614).
+LOCKED_CELL_ROLE = Qt.ItemDataRole.UserRole + 1
+
+
+class _RoleCheckDelegate(QStyledItemDelegate):
+    """Role-column delegate: draws the check indicator centered in the cell, and refuses to toggle
+    (and greys out) cells flagged with LOCKED_CELL_ROLE."""
+
+    @staticmethod
+    def _style(option: QStyleOptionViewItem) -> QStyle:
+        return option.widget.style() if option.widget else QApplication.style()
+
+    def _indicator_rect(self, option: QStyleOptionViewItem, index: QModelIndex) -> QRect:
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        rect = self._style(opt).subElementRect(QStyle.SubElement.SE_ItemViewItemCheckIndicator, opt, opt.widget)
+        rect.moveCenter(option.rect.center())
+        return rect
+
+    def sizeHint(self, option: QStyleOptionViewItem, index: QModelIndex) -> QSize:
+        """Keep rows tall enough for the themed indicator, so neighbouring checkboxes don't overlap."""
+        size = super().sizeHint(option, index)
+        size.setHeight(max(size.height(), self._indicator_rect(option, index).height() + 6))
+        return size
+
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex) -> None:
+        """Paint the cell background, then the check indicator centered in the cell."""
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        style = self._style(opt)
+        has_check = bool(opt.features & QStyleOptionViewItem.ViewItemFeature.HasCheckIndicator)
+        check_rect = self._indicator_rect(option, index)
+
+        opt.features &= ~QStyleOptionViewItem.ViewItemFeature.HasCheckIndicator
+        style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
+        if not has_check:
+            return
+
+        opt.rect = check_rect
+        opt.state &= ~(QStyle.StateFlag.State_On | QStyle.StateFlag.State_Off | QStyle.StateFlag.State_HasFocus)
+        if opt.checkState == Qt.CheckState.Checked:
+            opt.state |= QStyle.StateFlag.State_On
+        else:
+            opt.state |= QStyle.StateFlag.State_Off
+        if index.data(LOCKED_CELL_ROLE):
+            opt.state &= ~QStyle.StateFlag.State_Enabled
+        style.drawPrimitive(QStyle.PrimitiveElement.PE_IndicatorItemViewItemCheck, opt, painter, opt.widget)
+
+    def editorEvent(
+        self, event: QEvent, model: QAbstractItemModel, option: QStyleOptionViewItem, index: QModelIndex
+    ) -> bool:
+        """Toggle on a click inside the centered indicator or on Space/Select; locked cells never toggle."""
+        if index.data(LOCKED_CELL_ROLE) or index.data(Qt.ItemDataRole.CheckStateRole) is None:
+            return False
+        if not index.flags() & Qt.ItemFlag.ItemIsUserCheckable:
+            return False
+
+        event_type = event.type()
+        if event_type in (
+            QEvent.Type.MouseButtonPress,
+            QEvent.Type.MouseButtonRelease,
+            QEvent.Type.MouseButtonDblClick,
+        ):
+            if event.button() != Qt.MouseButton.LeftButton:
+                return False
+            if not self._indicator_rect(option, index).contains(event.position().toPoint()):
+                return False
+            if event_type != QEvent.Type.MouseButtonRelease:
+                return True  # swallow press/double-click on the box; toggle on release, as Qt does
+        elif event_type == QEvent.Type.KeyPress:
+            if event.key() not in (Qt.Key.Key_Space, Qt.Key.Key_Select):
+                return False
+        else:
+            return False
+
+        checked = Qt.CheckState(index.data(Qt.ItemDataRole.CheckStateRole)) == Qt.CheckState.Checked
+        new_state = Qt.CheckState.Unchecked if checked else Qt.CheckState.Checked
+        return model.setData(index, new_state, Qt.ItemDataRole.CheckStateRole)
 
 
 class PermissionDialog(QDialog):
@@ -64,6 +150,10 @@ class PermissionDialog(QDialog):
         headers = [_t("permission.col_permission")] + [role.name for role in self.roles]
         self.tree.setHeaderLabels(headers)
 
+        self._check_delegate = _RoleCheckDelegate(self.tree)
+        for col_index in range(1, len(headers)):
+            self.tree.setItemDelegateForColumn(col_index, self._check_delegate)
+
         # Group permissions
         grouped_perms = {}
         for perm in self.permissions:
@@ -93,15 +183,15 @@ class PermissionDialog(QDialog):
 
                     perm_item.setCheckState(col_index, checkbox)
 
-                    # Prevent disabling critical admin permissions
-                    if role.name == "Admin" and perm.code in [
-                        "admin.manage_users",
-                        "admin.manage_roles",
-                    ]:
-                        perm_item.setFlags(perm_item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+                    # Lock only Admin's own critical cells, so other roles can still be granted
+                    # them (#614). PermissionService re-adds them on save regardless (#551).
+                    if role.name == ADMIN_ROLE_NAME and perm.code in CRITICAL_ADMIN_PERMISSIONS:
                         perm_item.setCheckState(col_index, Qt.CheckState.Checked)  # Force Checked
+                        perm_item.setData(col_index, LOCKED_CELL_ROLE, True)
+                        perm_item.setToolTip(col_index, _t("permission.admin_locked_tooltip"))
 
-        # Resize columns
+        # Resize columns. No stretched last column: it would push that role's centered checkbox far right.
+        self.tree.header().setStretchLastSection(False)
         for i in range(len(headers)):
             self.tree.header().setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
 

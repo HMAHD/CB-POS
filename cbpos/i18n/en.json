@@ -1161,7 +1161,10 @@
     "btn_set_password": "Set Password",
     "btn_change_password": "Change Password",
     "backup_locked_with_shop_pwd": "It's locked with your backup password.",
-    "restore_pwd_placeholder_shop": "Leave empty to use your backup password, or type an older backup's password..."
+    "restore_pwd_placeholder_shop": "Leave empty to use your backup password, or type an older backup's password...",
+    "last_backup_none": "No backups yet.",
+    "last_backup_ok": "Last backup: {date} — restorable ✓",
+    "last_backup_unverified": "Last backup: {date} — couldn't be opened with your backup password. It may use an older password."
   },
   "payment_methods": {
     "title": "Payment Methods",

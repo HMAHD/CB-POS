@@ -86,6 +86,9 @@ class BackupListWorker(QThread):
     """
 
     result = pyqtSignal(list)
+    # {"date": str | None, "restorable": bool} for the newest manual/auto
+    # backup -- emitted before ``result`` (#619).
+    status = pyqtSignal(dict)
     error = pyqtSignal(str)
 
     def __init__(self, backup_dir: str) -> None:
@@ -95,11 +98,13 @@ class BackupListWorker(QThread):
         self.backup_dir = backup_dir
 
     def run(self) -> None:
-        """List available backups in the directory, emitting the result or an error."""
+        """List backups and check the newest opens with the shop password, emitting the results or an error."""
         try:
             from cbpos.core.services.backup_service import BackupService
+            from cbpos.core.services.config_service import ConfigService
 
             backups = BackupService.list_backups(self.backup_dir)
+            self.status.emit(BackupService.last_backup_status(backups, ConfigService.get_backup_password()))
             self.result.emit(backups)
         except Exception as e:
             logger.error("Listing backups failed: %s", e)

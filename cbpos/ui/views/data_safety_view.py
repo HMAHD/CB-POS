@@ -137,6 +137,13 @@ class DataSafetyView(QWidget):
         pwd_layout.addWidget(self.btn_backup_password)
         layout.addLayout(pwd_layout)
 
+        # Newest backup and whether the shop password opens it (#619)
+        self.lbl_last_backup = QLabel()
+        self.lbl_last_backup.setObjectName("LastBackupStatus")
+        self.lbl_last_backup.setWordWrap(True)
+        self._last_status: dict | None = None
+        layout.addWidget(self.lbl_last_backup)
+
         # Backup list table — QSS handles all table styling
         self.backup_table = QTableWidget()
         self.backup_table.setColumnCount(4)
@@ -188,9 +195,24 @@ class DataSafetyView(QWidget):
         backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
         self._overlay.show_loading(_t("data_safety.backup_list_loading"))
         self._backup_list_worker = BackupListWorker(backup_dir)
+        self._backup_list_worker.status.connect(self._on_backup_status)
         self._backup_list_worker.result.connect(self._on_backup_list_loaded)
         self._backup_list_worker.error.connect(self._on_backup_list_error)
         self._backup_list_worker.start()
+
+    def _on_backup_status(self, status: dict) -> None:
+        """Show the newest backup's date and whether it can be restored."""
+        self._last_status = status
+        if not status.get("date"):
+            text, css = _t("data_safety.last_backup_none"), "muted"
+        elif status.get("restorable"):
+            text, css = _t("data_safety.last_backup_ok", date=status["date"]), "credit"
+        else:
+            text, css = _t("data_safety.last_backup_unverified", date=status["date"]), "debit"
+        self.lbl_last_backup.setText(text)
+        self.lbl_last_backup.setProperty("class", css)
+        self.lbl_last_backup.style().unpolish(self.lbl_last_backup)
+        self.lbl_last_backup.style().polish(self.lbl_last_backup)
 
     def _on_backup_list_loaded(self, backups: list) -> None:
         self._overlay.hide_loading()
@@ -927,6 +949,8 @@ class DataSafetyView(QWidget):
         self.btn_clean_old.setText(_t("data_safety.btn_clean_old"))
         self.btn_backup_refresh.setText(_t("data_safety.btn_refresh"))
         self.lbl_pwd_label.setText(_t("data_safety.pwd_label"))
+        if self._last_status is not None:
+            self._on_backup_status(self._last_status)
 
         # Restore tab
         self.lbl_restore_warning.setText(_t("data_safety.restore_warning_full"))

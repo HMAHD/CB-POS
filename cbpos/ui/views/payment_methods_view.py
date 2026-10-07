@@ -6,13 +6,15 @@ Card-based list with inline toggle, edit, and delete actions.
 import logging
 import weakref
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QKeyCombination, Qt
+from PyQt6.QtGui import QKeySequence
 from PyQt6.QtWidgets import (
     QCheckBox,
     QDialog,
     QFormLayout,
     QFrame,
     QHBoxLayout,
+    QKeySequenceEdit,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -22,10 +24,19 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from cbpos.core.services.payment_service import PaymentService
+from cbpos.core.services.payment_service import PaymentService, ShortcutConflictError
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 logger = logging.getLogger(__name__)
+
+_PORTABLE = QKeySequence.SequenceFormat.PortableText
+
+
+def _shortcut_error_text(err: ShortcutConflictError) -> str:
+    """Translated message for a rejected payment method shortcut (#640)."""
+    if err.conflict_with is None:
+        return _t("payment_methods.shortcut_reserved", shortcut=err.shortcut)
+    return _t("payment_methods.shortcut_taken", shortcut=err.shortcut, name=err.conflict_with)
 
 
 class PaymentMethodDialog(QDialog):
@@ -66,8 +77,11 @@ class PaymentMethodDialog(QDialog):
         self._lbl_name = QLabel()
         self._form.addRow(self._lbl_name, self.txt_name)
 
-        self.txt_shortcut = QLineEdit()
-        self.txt_shortcut.setMaxLength(10)
+        # Captures a real key press instead of free text, so typos can't be
+        # stored and the value is always in the format QShortcut parses (#640).
+        self.txt_shortcut = QKeySequenceEdit()
+        self.txt_shortcut.setMaximumSequenceLength(1)
+        self.txt_shortcut.setClearButtonEnabled(True)
         self._lbl_shortcut = QLabel()
         self._form.addRow(self._lbl_shortcut, self.txt_shortcut)
 
@@ -110,7 +124,7 @@ class PaymentMethodDialog(QDialog):
         # Load existing values
         if self.method:
             self.txt_name.setText(self.method.name)
-            self.txt_shortcut.setText(self.method.shortcut or "")
+            self.txt_shortcut.setKeySequence(QKeySequence.fromString(self.method.shortcut or "", _PORTABLE))
             self.chk_cash.setChecked(self.method.is_cash)
             self.chk_drawer.setChecked(self.method.open_drawer)
 
@@ -123,7 +137,9 @@ class PaymentMethodDialog(QDialog):
         self._lbl_name.setText(_t("payment_methods.form_name"))
         self.txt_name.setPlaceholderText(_t("payment_methods.name_placeholder"))
         self._lbl_shortcut.setText(_t("payment_methods.form_shortcut"))
-        self.txt_shortcut.setPlaceholderText(_t("payment_methods.shortcut_placeholder"))
+        line_edit = self.txt_shortcut.findChild(QLineEdit)
+        if line_edit is not None:
+            line_edit.setPlaceholderText(_t("payment_methods.shortcut_placeholder"))
         self._lbl_is_cash.setText(_t("payment_methods.form_is_cash"))
         self.chk_cash.setText(_t("payment_methods.chk_is_cash"))
         self._lbl_drawer.setText(_t("payment_methods.form_open_drawer"))
@@ -143,13 +159,39 @@ class PaymentMethodDialog(QDialog):
             self.txt_name.setFocus()
             return
 
+        shortcut = self._shortcut_text()
+        try:
+            PaymentService.validate_shortcut(
+                shortcut,
+                exclude_id=self.method.id if self.method else None,
+                active=self.method.is_active if self.method else True,
+            )
+        except ShortcutConflictError as e:
+            QMessageBox.warning(self, _t("payment_methods.validation_title"), _shortcut_error_text(e))
+            self.txt_shortcut.setFocus()
+            return
+
         self.result_data = {
             "name": name,
-            "shortcut": self.txt_shortcut.text().strip() or None,
+            # "" (not None) so clearing the field actually clears the stored key.
+            "shortcut": shortcut,
             "is_cash": self.chk_cash.isChecked(),
             "open_drawer": self.chk_drawer.isChecked(),
         }
         self.accept()
+
+    def _shortcut_text(self) -> str:
+        """Captured key as Qt portable text ("F5", "Ctrl+F5"), or "" for none.
+
+        The keypad flag is dropped so keypad Enter is stored (and validated)
+        as plain "Enter", which is how QShortcut matches it anyway.
+        """
+        seq = self.txt_shortcut.keySequence()
+        if seq.isEmpty():
+            return ""
+        combo = seq[0]
+        mods = combo.keyboardModifiers() & ~Qt.KeyboardModifier.KeypadModifier
+        return QKeySequence(QKeyCombination(mods, combo.key())).toString(_PORTABLE)
 
 
 class _MethodCard(QFrame):
@@ -393,6 +435,8 @@ class PaymentMethodsView(QWidget):
             PaymentService.update_method(method_id=method.id, is_active=new_state)
             self._load_methods()
             logger.info("Payment method '%s' %sd", method.name, action)
+        except ShortcutConflictError as e:
+            QMessageBox.warning(self, _t("payment_methods.validation_title"), _shortcut_error_text(e))
         except Exception as e:
             QMessageBox.critical(
                 self,

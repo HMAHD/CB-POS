@@ -145,9 +145,10 @@ class DatabaseSetupService:
             ]
             session.add_all(void_reasons)
 
-            # 5. Payment methods
+            # 5. Payment methods (no Cash key: the payment dialog's F12
+            # already quick-pays cash, and a method on F12 disables it, #640)
             payment_methods = [
-                PaymentMethod(name="Cash", is_cash=True, open_drawer=True, is_active=True, shortcut="F12"),
+                PaymentMethod(name="Cash", is_cash=True, open_drawer=True, is_active=True),
                 PaymentMethod(name="Card", is_active=True, shortcut="F11"),
                 PaymentMethod(name="Credit", is_active=True),
                 PaymentMethod(name="QR/Mobile", is_active=True),

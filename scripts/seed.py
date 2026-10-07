@@ -1637,7 +1637,7 @@ def seed_data():
         # =============================================================
         print("Seeding Payment Methods...")
         payment_methods = [
-            PaymentMethod(name="Cash", is_cash=True, open_drawer=True, shortcut="F12"),
+            PaymentMethod(name="Cash", is_cash=True, open_drawer=True),
             PaymentMethod(name="Card", is_cash=False, open_drawer=False, shortcut="F11"),
             PaymentMethod(name="Credit", is_cash=False, open_drawer=False),
             PaymentMethod(name="QR/Mobile", is_cash=False, open_drawer=False),

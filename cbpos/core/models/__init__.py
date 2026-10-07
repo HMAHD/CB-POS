@@ -8,6 +8,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -790,3 +791,31 @@ class SyncQueue(Base):
     status: Mapped[str] = mapped_column(String(20), default="PENDING", index=True)  # PENDING, SENT, FAILED
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
     error_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class SyncIdMap(Base):
+    """Main PC side: which server row a till's own row id became (#671).
+
+    Every till numbers its rows from 1, so a pushed row's ``id`` only means
+    something together with the till that sent it. The Main PC inserts each
+    pushed row under an id of its own and records the pair here; a re-sent
+    row is found again through this table instead of by its raw id.
+
+    ``table_name`` is the id space, not always the literal table: sales and
+    purchases share ``documents`` ids (joined-table inheritance), so all
+    three use ``"documents"``.
+    """
+
+    __tablename__ = "sync_id_map"
+    __table_args__ = (
+        UniqueConstraint("origin_terminal_id", "table_name", "local_id", name="uq_sync_id_map_origin_local"),
+        # "is this server row already some till's mapped row?" (legacy adoption check)
+        Index("ix_sync_id_map_table_server", "table_name", "server_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    origin_terminal_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    table_name: Mapped[str] = mapped_column(String(50), nullable=False)
+    local_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    server_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)

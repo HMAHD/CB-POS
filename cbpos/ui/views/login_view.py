@@ -3,7 +3,6 @@ import weakref
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QIntValidator, QKeySequence, QPixmap, QShortcut
 from PyQt6.QtWidgets import (
-    QApplication,
     QGridLayout,
     QHBoxLayout,
     QLabel,
@@ -19,14 +18,33 @@ from cbpos.core.services.auth_service import AuthService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 
 # Numpad geometry constants
-_BTN_SIZE = 90  # Default/initial button width/height — resizeEvent adjusts this
-_BTN_SIZE_MIN = 72
+_BTN_SIZE = 90  # Default/initial button width/height — _fit_keypad() adjusts this
+_BTN_SIZE_MIN = 56  # Still a comfortable touch target; only reached on very short windows
 _BTN_SIZE_MAX = 110
 _BTN_GAP = 12  # Spacing between buttons
 _NUM_COLS = 3
 _NUM_ROWS = 4
 # Total numpad width: 3 buttons + 2 gaps
 _NUMPAD_W = _NUM_COLS * _BTN_SIZE + (_NUM_COLS - 1) * _BTN_GAP
+_LOGO_MAX = 300
+_LOGO_MIN = 120  # Below this the logo is hidden instead of shrunk further
+_FOOTER_MAX_W = 420
+
+
+class _PinPanel(QWidget):
+    """Right-hand login panel that reports its own resizes.
+
+    The keypad is sized from *this* panel's height (#601), so the panel
+    has to say when that height changes -- the screen size says nothing
+    about how much room the window actually gives it.
+    """
+
+    resized = pyqtSignal()
+
+    def resizeEvent(self, event) -> None:
+        """Notify listeners after the panel has its new size."""
+        super().resizeEvent(event)
+        self.resized.emit()
 
 
 class LoginView(QWidget):
@@ -99,28 +117,43 @@ class LoginView(QWidget):
         left_layout.addWidget(self.tagline)
         left_layout.addSpacing(10)
 
-        # Footer
+        # Footer -- wraps instead of running across the whole (narrow)
+        # branding panel on one line (#601).
         self.footer_label = QLabel()
         self.footer_label.setObjectName("FooterLabel")
         self.footer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.footer_label.setWordWrap(True)
+        self.footer_label.setMaximumWidth(_FOOTER_MAX_W)
         left_layout.addWidget(self.footer_label)
         left_layout.addSpacing(20)
 
         # ── RIGHT PANEL (Interaction) ──────────────────────────────
-        self.right_panel = QWidget()
+        self.right_panel = _PinPanel()
         right_panel = self.right_panel
         right_panel.setObjectName("LoginRightPanel")
+        right_panel.resized.connect(self._fit_keypad)
         self._right_layout = QVBoxLayout(right_panel)
         right_layout = self._right_layout
-        right_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         right_layout.setContentsMargins(40, 40, 40, 40)
+        right_layout.setSpacing(0)
+
+        # Heading, PIN field, keypad and hint form one group, centred
+        # vertically by equal stretches above and below it -- not by an
+        # AlignCenter on the whole panel layout mixed with fixed spacings,
+        # which left a large empty band above the PIN field (#601).
+        pin_group = QVBoxLayout()
+        pin_group.setSpacing(0)
+        self._pin_group = pin_group
+        right_layout.addStretch(1)
+        right_layout.addLayout(pin_group)
+        right_layout.addStretch(1)
 
         # PIN Heading
         self.pin_heading = QLabel()
         self.pin_heading.setObjectName("PinHeading")
         self.pin_heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        right_layout.addWidget(self.pin_heading)
-        right_layout.addSpacing(10)
+        pin_group.addWidget(self.pin_heading)
+        pin_group.addSpacing(10)
 
         # PIN Display — width matches numpad
         self.pin_input = QLineEdit()
@@ -131,24 +164,31 @@ class LoginView(QWidget):
         self.pin_input.setValidator(QIntValidator(0, 999999))
         self.pin_input.setMaxLength(6)
         self.pin_input.returnPressed.connect(self.attempt_login)
-        right_layout.addWidget(self.pin_input, alignment=Qt.AlignmentFlag.AlignCenter)
+        pin_group.addWidget(self.pin_input, alignment=Qt.AlignmentFlag.AlignCenter)
 
         # Inline Error Label
         self.lbl_error = QLabel("")
         self.lbl_error.setObjectName("LoginErrorLabel")
         self.lbl_error.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_error.setVisible(False)
-        right_layout.addWidget(self.lbl_error)
+        pin_group.addWidget(self.lbl_error)
 
-        right_layout.addSpacing(15)
+        pin_group.addSpacing(15)
 
         # ── Numpad ─────────────────────────────────────────────────
-        # Container constrains the grid to exact numpad width.
+        # Container constrains the grid to exact numpad width. Its minimum
+        # is pinned explicitly to the *smallest* keypad (#601): left to
+        # the grid layout, the minimum would follow the buttons' current
+        # fixed size, the window could never get shorter than today's
+        # keypad, and the bottom row (C / 0 / Enter) was pushed off-screen
+        # instead of the keypad shrinking. A shrinkable policy lets the
+        # panel hand it less room; _fit_keypad() then resizes the buttons.
         self.numpad_container = QWidget()
         numpad_container = self.numpad_container
         numpad_container.setObjectName("NumpadContainer")
         numpad_container.setFixedWidth(_NUMPAD_W)
-        numpad_container.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        numpad_container.setMinimumHeight(_NUM_ROWS * _BTN_SIZE_MIN + (_NUM_ROWS - 1) * _BTN_GAP)
+        numpad_container.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Maximum)
 
         self._numpad_grid = QGridLayout(numpad_container)
         grid = self._numpad_grid
@@ -190,14 +230,14 @@ class LoginView(QWidget):
             grid.addWidget(btn, row, col)
             self._numpad_buttons.append(btn)
 
-        right_layout.addWidget(numpad_container, alignment=Qt.AlignmentFlag.AlignCenter)
+        pin_group.addWidget(numpad_container, alignment=Qt.AlignmentFlag.AlignCenter)
 
         # Help Hint
-        right_layout.addSpacing(15)
+        pin_group.addSpacing(15)
         self.help_hint = QLabel()
         self.help_hint.setObjectName("LoginHelpHint")
         self.help_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        right_layout.addWidget(self.help_hint)
+        pin_group.addWidget(self.help_hint)
 
         # ── Assemble panels ────────────────────────────────────────
         main_layout.addWidget(left_panel, 40)
@@ -215,31 +255,75 @@ class LoginView(QWidget):
         self._btn_size = _BTN_SIZE
 
     def resizeEvent(self, event) -> None:
-        """Scale the numpad to the screen size instead of a fixed pixel size,
-        so it stays usable from small screens to high-DPI displays (#199).
+        """Pick the panel layout for the window size and fit the logo.
 
-        Deliberately keyed off screen geometry, not self.right_panel.height():
-        the numpad's own buttons are setFixedSize, so the panel's reported
-        height can never shrink below what the *current* button size already
-        demands — sizing off it would be circular and never actually shrink
-        anything. Screen geometry has no such feedback loop.
+        The keypad itself is sized by ``_fit_keypad()``, from the right
+        panel's own resize -- see there.
         """
         super().resizeEvent(event)
 
         # Below ~1200px wide, the branding panel leaves too little room for
         # the numpad; hide it and let the right panel take the full width
         # (#220). Also tighten the right panel's margins on short windows so
-        # the numpad doesn't get pushed into the help-hint text below it.
+        # the keypad gets as much of the height as possible.
         self.left_panel.setVisible(self.width() >= 1200)
         v_margin = 20 if self.height() < 900 else 40
         self._right_layout.setContentsMargins(40, v_margin, 40, v_margin)
+        self._fit_logo()
 
-        screen = QApplication.primaryScreen().availableGeometry()
-        # Reserve roughly the space taken by everything above/below the
-        # numpad (heading, PIN field, error label, spacing, help hint) so
-        # the button grid itself gets what's actually left.
-        available_h = screen.height() - 260
-        btn_size = max(_BTN_SIZE_MIN, min(_BTN_SIZE_MAX, available_h // _NUM_ROWS))
+    def _fit_logo(self) -> None:
+        """Shrink the branding logo on short windows, hiding it when tiny (#601)."""
+        source = getattr(self, "_logo_source", None)
+        if source is None or source.isNull():
+            return
+        # ~320px covers the welcome text, tagline, footer and spacing
+        # around the logo in the branding column.
+        side = min(_LOGO_MAX, self.height() - 320)
+        if side < _LOGO_MIN:
+            self.logo_label.setVisible(False)
+            return
+        self.logo_label.setVisible(True)
+        if side != getattr(self, "_logo_side", None):
+            self._logo_side = side
+            self.logo_label.setPixmap(
+                source.scaled(
+                    side,
+                    side,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+            )
+
+    def _fit_keypad(self) -> None:
+        """Size the keypad from the room the right panel actually has (#601).
+
+        It used to be keyed off the *screen* height, which says nothing
+        about the window: with a title bar and taskbar on a 1366x768
+        display, the C / 0 / Enter row ended up below the window's bottom
+        edge. Sizing off the panel is not circular any more because the
+        keypad container's minimum is pinned to the smallest keypad (see
+        init_ui), so the panel's height comes from the window, not from
+        the buttons' current size.
+        """
+        margins = self._right_layout.contentsMargins()
+        # Everything in the PIN group except the keypad. The error label
+        # is counted even while hidden, so showing "Invalid PIN" never
+        # pushes the bottom row out.
+        error_h = max(self.lbl_error.sizeHint().height(), self.lbl_error.fontMetrics().lineSpacing())
+        other_h = (
+            self.pin_heading.sizeHint().height()
+            + 10
+            + self.pin_input.sizeHint().height()
+            + error_h
+            + 15
+            + 15
+            + self.help_hint.sizeHint().height()
+        )
+        avail_h = self.right_panel.height() - margins.top() - margins.bottom() - other_h
+        avail_w = self.right_panel.width() - margins.left() - margins.right()
+        by_h = (avail_h - (_NUM_ROWS - 1) * _BTN_GAP) // _NUM_ROWS
+        by_w = (avail_w - (_NUM_COLS - 1) * _BTN_GAP) // _NUM_COLS
+        btn_size = max(_BTN_SIZE_MIN, min(_BTN_SIZE_MAX, by_h, by_w))
 
         if btn_size == getattr(self, "_btn_size", None):
             return
@@ -315,14 +399,9 @@ class LoginView(QWidget):
         logo_path = Config.BASE_DIR / "cbpos" / "assets" / "logo" / "02.png"
 
         if logo_path.exists():
-            pixmap = QPixmap(str(logo_path))
-            scaled_pixmap = pixmap.scaled(
-                300,
-                300,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-            self.logo_label.setPixmap(scaled_pixmap)
+            self._logo_source = QPixmap(str(logo_path))
+            self._logo_side = None
+            self._fit_logo()
         else:
             self.logo_label.setText(_t("login.logo_fallback"))
             self.logo_label.setObjectName("LogoText")

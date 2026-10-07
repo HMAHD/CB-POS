@@ -2848,7 +2848,7 @@ QLabel#RestoreWarning {
     background-color: rgba(255, 65, 54, 0.12);
     border: 1px solid #FF4136;
     border-radius: 6px;
-    padding: 12px;
+    padding: 12px 16px;
     color: #FF8C85;
     font-size: 12px;
 }
@@ -2974,7 +2974,7 @@ QTableWidget#BackupTable QHeaderView::section, QTableWidget#ValuationTable QHead
 
 QLabel#RestoreWarning {
     background-color: rgba(255, 65, 54, 0.12); border: 1px solid #FF4136;
-    border-radius: 6px; padding: 12px; color: #FF8C85; font-size: 12px;
+    border-radius: 6px; padding: 12px 16px; color: #FF8C85; font-size: 12px;
 }
 
 /* ── Label Print Dialog ── */

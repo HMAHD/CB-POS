@@ -13,6 +13,7 @@ from sqlalchemy import func, select, table, text
 
 from cbpos.config import Config
 from cbpos.core.database import Database
+from cbpos.core.utils.formatters import format_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -44,15 +45,10 @@ class MaintenanceService:
         size_after = db_path.stat().st_size if db_path.exists() else 0
         saved = size_before - size_after
 
-        def _fmt(size: int) -> str:
-            if size >= 1024 * 1024:
-                return f"{size / (1024 * 1024):.1f} MB"
-            return f"{size / 1024:.1f} KB"
-
         return {
-            "size_before": _fmt(size_before),
-            "size_after": _fmt(size_after),
-            "saved": _fmt(max(saved, 0)),
+            "size_before": format_bytes(size_before),
+            "size_after": format_bytes(size_after),
+            "saved": format_bytes(max(saved, 0)),
         }
 
     @staticmethod
@@ -66,10 +62,7 @@ class MaintenanceService:
         db_path = Config.DATA_DIR / "cbpos.db"
         size = db_path.stat().st_size if db_path.exists() else 0
 
-        if size >= 1024 * 1024:
-            size_str = f"{size / (1024 * 1024):.1f} MB"
-        else:
-            size_str = f"{size / 1024:.1f} KB"
+        size_str = format_bytes(size)
 
         info: dict[str, object] = {"size": size_str, "products": 0, "customers": 0, "sales": 0}
 
@@ -100,10 +93,7 @@ class MaintenanceService:
         db_path = Config.DATA_DIR / "cbpos.db"
         size = db_path.stat().st_size if db_path.exists() else 0
 
-        if size >= 1024 * 1024:
-            size_str = f"{size / (1024 * 1024):.1f} MB"
-        else:
-            size_str = f"{size / 1024:.1f} KB"
+        size_str = format_bytes(size)
 
         last_modified = ""
         if db_path.exists():

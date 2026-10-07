@@ -19,6 +19,7 @@ from pathlib import Path
 import pyzipper
 
 from cbpos.config import Config
+from cbpos.core.utils.formatters import format_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -443,13 +444,13 @@ class BackupService:
                 date_obj = datetime.fromtimestamp(stat.st_mtime)
             date_str = date_obj.strftime("%Y-%m-%d %H:%M:%S")
 
-            size_mb = stat.st_size / (1024 * 1024)
             backups.append(
                 {
                     "path": str(f),
                     "filename": f.name,
                     "date": date_str,
-                    "size": f"{size_mb:.1f} MB",
+                    "size": format_bytes(stat.st_size),
+                    "original_size": BackupService._original_size(f),
                     "type": kind,
                     "is_pre_restore": kind == KIND_SNAPSHOT,
                 }
@@ -458,6 +459,18 @@ class BackupService:
         # Sort newest first
         backups.sort(key=lambda x: (x["date"], x["filename"]), reverse=True)
         return backups
+
+    @staticmethod
+    def _original_size(backup_file: Path) -> str | None:
+        """Uncompressed size of an archive's contents ("compressed from ..."), or None if unreadable.
+
+        Read from the zip directory, which isn't encrypted, so no password is needed.
+        """
+        try:
+            with pyzipper.AESZipFile(backup_file, "r") as zf:
+                return format_bytes(sum(info.file_size for info in zf.infolist()))
+        except Exception:
+            return None
 
     @staticmethod
     def last_backup_status(backups: list[dict[str, object]], password: str | None) -> dict[str, object]:
@@ -570,7 +583,7 @@ class BackupService:
         result: dict[str, object] = {
             "valid": False,
             "files": [],
-            "size": "0 MB",
+            "size": "0 KB",
             "error": None,
             "error_code": None,
         }
@@ -581,8 +594,7 @@ class BackupService:
             result["error_code"] = "not_found"
             return result
 
-        size_mb = backup_file.stat().st_size / (1024 * 1024)
-        result["size"] = f"{size_mb:.1f} MB"
+        result["size"] = format_bytes(backup_file.stat().st_size)
 
         try:
             result["files"] = BackupService._open_archive(backup_file, password)

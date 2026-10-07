@@ -222,7 +222,10 @@ class DataSafetyView(QWidget):
         for row, b in enumerate(backups):
             self.backup_table.setItem(row, 0, QTableWidgetItem(b["filename"]))
             self.backup_table.setItem(row, 1, QTableWidgetItem(b["date"]))
-            self.backup_table.setItem(row, 2, QTableWidgetItem(b["size"]))
+            size_text = b["size"]
+            if b.get("original_size"):
+                size_text = _t("data_safety.size_compressed_from", size=b["size"], original=b["original_size"])
+            self.backup_table.setItem(row, 2, QTableWidgetItem(size_text))
             type_text = (
                 _t("data_safety.backup_type_pre_restore")
                 if b.get("is_pre_restore")
@@ -769,55 +772,44 @@ class DataSafetyView(QWidget):
         self.lbl_export_desc.setWordWrap(True)
         layout.addWidget(self.lbl_export_desc)
 
-        # Data type selection
-        self.grp_data = QGroupBox()
-        data_layout = QHBoxLayout(self.grp_data)
-        data_layout.setSpacing(12)
+        # One compact form instead of a full-width group box per dropdown (#618)
+        self.lbl_export_section = QLabel()
+        self.lbl_export_section.setObjectName("SettingsSectionTitle")
+        layout.addWidget(self.lbl_export_section)
+
+        self.export_form = QFormLayout()
+        self.export_form.setVerticalSpacing(10)
+        self.export_form.setHorizontalSpacing(16)
+        self.export_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.FieldsStayAtSizeHint)
+
         self.lbl_export_label = QLabel()
-        data_layout.addWidget(self.lbl_export_label)
         self.cmb_export_data = QComboBox()
         self.cmb_export_data.setFixedWidth(200)
         self.cmb_export_data.currentTextChanged.connect(self._on_export_data_changed)
-        data_layout.addWidget(self.cmb_export_data)
-        data_layout.addStretch()
-        layout.addWidget(self.grp_data)
+        self.export_form.addRow(self.lbl_export_label, self.cmb_export_data)
 
-        # Format selection
-        self.grp_format = QGroupBox()
-        fmt_layout = QHBoxLayout(self.grp_format)
-        fmt_layout.setSpacing(12)
         self.lbl_fmt_label = QLabel()
-        fmt_layout.addWidget(self.lbl_fmt_label)
         self.cmb_export_format = QComboBox()
         self.cmb_export_format.setFixedWidth(200)
-        fmt_layout.addWidget(self.cmb_export_format)
-        fmt_layout.addStretch()
-        layout.addWidget(self.grp_format)
+        self.export_form.addRow(self.lbl_fmt_label, self.cmb_export_format)
 
         # Date range (visible only for Sales)
-        self.grp_export_dates = QGroupBox()
-        dates_layout = QHBoxLayout(self.grp_export_dates)
-        dates_layout.setSpacing(12)
         self.lbl_export_from = QLabel()
-        dates_layout.addWidget(self.lbl_export_from)
         self.date_export_from = QDateEdit()
         self.date_export_from.setCalendarPopup(True)
         self.date_export_from.setDate(QDate.currentDate().addMonths(-1))
         self.date_export_from.setDisplayFormat("yyyy-MM-dd")
         self.date_export_from.setFixedWidth(150)
-        dates_layout.addWidget(self.date_export_from)
+        self.export_form.addRow(self.lbl_export_from, self.date_export_from)
         self.lbl_export_to = QLabel()
-        dates_layout.addWidget(self.lbl_export_to)
         self.date_export_to = QDateEdit()
         self.date_export_to.setCalendarPopup(True)
         self.date_export_to.setDate(QDate.currentDate())
         self.date_export_to.setDisplayFormat("yyyy-MM-dd")
         self.date_export_to.setFixedWidth(150)
-        dates_layout.addWidget(self.date_export_to)
-        dates_layout.addStretch()
-        layout.addWidget(self.grp_export_dates)
-        # Show date range only for Sales
-        self.grp_export_dates.setVisible(False)
+        self.export_form.addRow(self.lbl_export_to, self.date_export_to)
+        layout.addLayout(self.export_form)
+        self._set_export_dates_visible(False)
 
         layout.addStretch()
 
@@ -841,7 +833,12 @@ class DataSafetyView(QWidget):
 
     def _on_export_data_changed(self, text: str) -> None:
         """Show/hide date range based on selected data type."""
-        self.grp_export_dates.setVisible(text == _t("data_safety.export_type_sales"))
+        self._set_export_dates_visible(text == _t("data_safety.export_type_sales"))
+
+    def _set_export_dates_visible(self, visible: bool) -> None:
+        """Show the From/To rows only when exporting Sales."""
+        self.export_form.setRowVisible(self.date_export_from, visible)
+        self.export_form.setRowVisible(self.date_export_to, visible)
 
     def _do_inline_export(self) -> None:
         """Export selected data type in the chosen format using a background thread."""
@@ -1005,7 +1002,7 @@ class DataSafetyView(QWidget):
 
         # Export tab
         self.lbl_export_desc.setText(_t("data_safety.export_desc"))
-        self.grp_data.setTitle(_t("data_safety.export_data_type"))
+        self.lbl_export_section.setText(_t("data_safety.export_section"))
         self.lbl_export_label.setText(_t("data_safety.export_label"))
         self.cmb_export_data.clear()
         self.cmb_export_data.addItems(
@@ -1015,7 +1012,6 @@ class DataSafetyView(QWidget):
                 _t("data_safety.export_type_sales"),
             ]
         )
-        self.grp_format.setTitle(_t("data_safety.export_format"))
         self.lbl_fmt_label.setText(_t("data_safety.export_format_label"))
         self.cmb_export_format.clear()
         self.cmb_export_format.addItems(
@@ -1024,7 +1020,6 @@ class DataSafetyView(QWidget):
                 _t("data_safety.export_format_csv"),
             ]
         )
-        self.grp_export_dates.setTitle(_t("data_safety.export_date_range_hint"))
         self.lbl_export_from.setText(_t("data_safety.export_from"))
         self.lbl_export_to.setText(_t("data_safety.export_to"))
         self.btn_do_export.setText(_t("data_safety.export_btn"))

@@ -1081,9 +1081,6 @@
     "maintenance_group_tools": "Maintenance Tools",
     "btn_optimize": "Optimize Database",
     "btn_integrity": "Check Integrity",
-    "export_data_type": "Data Type",
-    "export_format": "Output Format",
-    "export_date_range_hint": "Date Range (Sales only)",
     "export_type_products": "Products",
     "export_type_customers": "Customers",
     "export_type_sales": "Sales",
@@ -1173,7 +1170,9 @@
     "error_snapshot_failed": "Couldn't save a safety snapshot of your current data, so nothing was restored. Check the backup folder has free space and can be written to.",
     "error_db_in_use": "The database is still in use, so nothing was restored. Close other CB POS windows or terminals and try again.",
     "error_not_found": "The backup file can't be found.",
-    "verify_running": "Checking backup..."
+    "verify_running": "Checking backup...",
+    "size_compressed_from": "{size} (compressed from {original})",
+    "export_section": "What to export"
   },
   "payment_methods": {
     "title": "Payment Methods",

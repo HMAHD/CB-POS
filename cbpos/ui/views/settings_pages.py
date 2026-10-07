@@ -34,6 +34,7 @@ from PyQt6.QtWidgets import (
 from sqlalchemy.engine import URL
 
 from cbpos.config import Config
+from cbpos.core.constants.hardware import PrinterType
 from cbpos.core.models import Product, Sale, SaleItem, SalePayment
 from cbpos.core.services.document_service import (
     DOC_NUMBER_MAX_LENGTH,
@@ -941,7 +942,8 @@ class HardwarePage(SettingsPage):
         # --- Tab 1: Printers ---
         tab_printer, vbox_printer = self._build_vbox_tab()
 
-        available_printers = QPrinterInfo.availablePrinterNames() or [_t("settings.hardware.no_printers")]
+        system_printers = QPrinterInfo.availablePrinterNames()
+        available_printers = system_printers or [_t("settings.hardware.no_printers")]
 
         # Section: Printer Selection
         self._header_printer_sel = self._make_section_header(_t("settings.hardware.section_printer_selection"))
@@ -951,11 +953,36 @@ class HardwarePage(SettingsPage):
         self.configure_form_layout(sel_form)
         sel_form.setContentsMargins(0, 0, 0, 0)
         sel_form.setVerticalSpacing(10)
+        self._sel_form = sel_form
+
+        # How the receipt printer is reached (#622). Only the field for the
+        # chosen connection is shown; Windows printer is the default because
+        # it works with the vendor driver most shops already installed.
+        self.combo_printer_type = QComboBox()
+        for p_type in PrinterType.REAL:
+            self.combo_printer_type.addItem("", p_type)
+        self._lbl_printer_type = QLabel()
+        sel_form.addRow(self._lbl_printer_type, self.combo_printer_type)
 
         self.combo_receipt_printer = QComboBox()
-        self.combo_receipt_printer.addItems(available_printers)
+        self._fill_receipt_printer_combo(system_printers)
         self._lbl_receipt_printer = QLabel()
         sel_form.addRow(self._lbl_receipt_printer, self.combo_receipt_printer)
+
+        self.input_printer_ip = QLineEdit()
+        self._lbl_printer_ip = QLabel()
+        sel_form.addRow(self._lbl_printer_ip, self.input_printer_ip)
+
+        self.input_usb_id = QLineEdit()
+        self._lbl_usb_id = QLabel()
+        sel_form.addRow(self._lbl_usb_id, self.input_usb_id)
+        self.lbl_usb_hint = QLabel()
+        self.lbl_usb_hint.setProperty("class", "muted")
+        self.lbl_usb_hint.setWordWrap(True)
+        sel_form.addRow("", self.lbl_usb_hint)
+
+        self.combo_printer_type.currentIndexChanged.connect(self._update_connection_fields)
+        self._update_connection_fields()
 
         self.combo_a4_printer = QComboBox()
         self.combo_a4_printer.addItems(available_printers)
@@ -1105,7 +1132,16 @@ class HardwarePage(SettingsPage):
         self.tabs.setTabText(2, _t("settings.hardware.tab_weighing_scale"))
 
         # Printers tab
+        self._lbl_printer_type.setText(_t("settings.hardware.connection_type"))
+        for i, key in enumerate(("conn_win32", "conn_network", "conn_usb")):
+            self.combo_printer_type.setItemText(i, _t(f"settings.hardware.{key}"))
         self._lbl_receipt_printer.setText(_t("settings.hardware.receipt_printer"))
+        self.combo_receipt_printer.setItemText(0, self._receipt_printer_placeholder())
+        self._lbl_printer_ip.setText(_t("settings.hardware.printer_ip"))
+        self.input_printer_ip.setPlaceholderText(_t("settings.hardware.printer_ip_placeholder"))
+        self._lbl_usb_id.setText(_t("settings.hardware.usb_id"))
+        self.input_usb_id.setPlaceholderText(_t("settings.hardware.usb_id_placeholder"))
+        self.lbl_usb_hint.setText(_t("settings.hardware.usb_hint"))
         self._lbl_a4_printer.setText(_t("settings.hardware.a4_printer"))
         self.btn_refresh_printers.setText(_t("settings.hardware.btn_refresh_printers"))
         self._lbl_paper_width.setText(_t("settings.hardware.paper_width"))
@@ -1143,20 +1179,74 @@ class HardwarePage(SettingsPage):
         self._lbl_barcode_prefix.setText(_t("settings.hardware.barcode_prefix"))
         self._lbl_decimal_places.setText(_t("settings.hardware.decimal_places"))
 
+    def _receipt_printer_placeholder(self) -> str:
+        """Text of the receipt printer combo's empty first item."""
+        if self.combo_receipt_printer.count() > 1:
+            return _t("settings.hardware.choose_printer")
+        return _t("settings.hardware.no_printers")
+
+    def _fill_receipt_printer_combo(self, printers: list[str]) -> None:
+        """Fill the Windows receipt printer combo: an empty "choose" item, then each printer by name."""
+        self.combo_receipt_printer.clear()
+        self.combo_receipt_printer.addItem("", "")
+        for name in printers:
+            self.combo_receipt_printer.addItem(name, name)
+        self.combo_receipt_printer.setItemText(0, self._receipt_printer_placeholder())
+
+    def _select_receipt_printer(self, name: str) -> None:
+        """Select *name* in the receipt printer combo, adding it if Windows doesn't list it right now.
+
+        A saved printer that is switched off or unplugged must not be
+        silently replaced by another one on the next save.
+        """
+        if not name:
+            self.combo_receipt_printer.setCurrentIndex(0)
+            return
+        idx = self.combo_receipt_printer.findData(name)
+        if idx < 0:
+            self.combo_receipt_printer.addItem(name, name)
+            idx = self.combo_receipt_printer.count() - 1
+        self.combo_receipt_printer.setCurrentIndex(idx)
+
+    def _update_connection_fields(self) -> None:
+        """Show only the field that belongs to the chosen connection type."""
+        p_type = self.combo_printer_type.currentData()
+        form = self._sel_form
+        form.setRowVisible(self.combo_receipt_printer, p_type == PrinterType.WIN32)
+        form.setRowVisible(self.input_printer_ip, p_type == PrinterType.NETWORK)
+        form.setRowVisible(self.input_usb_id, p_type == PrinterType.USB)
+        form.setRowVisible(self.lbl_usb_hint, p_type == PrinterType.USB)
+
+    def current_printer_target(self) -> tuple[str, str]:
+        """The receipt printer as currently shown on screen (saved or not).
+
+        Returns:
+            (printer_type, printer_path): a `PrinterType` and the matching
+            Windows printer name / IP address / VID:PID. A Windows printer
+            with nothing chosen is ("NONE", "").
+        """
+        p_type = self.combo_printer_type.currentData() or PrinterType.WIN32
+        if p_type == PrinterType.NETWORK:
+            return p_type, self.input_printer_ip.text().strip()
+        if p_type == PrinterType.USB:
+            return p_type, self.input_usb_id.text().strip()
+        name = self.combo_receipt_printer.currentData() or ""
+        return (PrinterType.WIN32, name) if name else (PrinterType.NONE, "")
+
     def _refresh_printer_list(self) -> None:
         """Re-scan for connected printers without needing an app restart.
 
         Preserves each combo's current selection when it's still present
         in the rescanned list.
         """
-        current_receipt = self.combo_receipt_printer.currentText()
+        current_receipt = self.combo_receipt_printer.currentData() or ""
         current_a4 = self.combo_a4_printer.currentText()
 
-        available_printers = QPrinterInfo.availablePrinterNames() or [_t("settings.hardware.no_printers")]
+        system_printers = QPrinterInfo.availablePrinterNames()
+        available_printers = system_printers or [_t("settings.hardware.no_printers")]
 
-        self.combo_receipt_printer.clear()
-        self.combo_receipt_printer.addItems(available_printers)
-        idx = self.combo_receipt_printer.findText(current_receipt)
+        self._fill_receipt_printer_combo(system_printers)
+        idx = self.combo_receipt_printer.findData(current_receipt) if current_receipt else -1
         if idx >= 0:
             self.combo_receipt_printer.setCurrentIndex(idx)
 
@@ -1168,11 +1258,14 @@ class HardwarePage(SettingsPage):
 
     def load(self, settings: dict):
         """Populate printer selection, print behavior, paper cut, drawer and scale fields from the settings dict."""
-        receipt_printer = settings.get("receipt_printer_name", "")
-        if receipt_printer:
-            idx = self.combo_receipt_printer.findText(receipt_printer)
-            if idx >= 0:
-                self.combo_receipt_printer.setCurrentIndex(idx)
+        p_type = settings.get("printer_type", PrinterType.NONE)
+        p_path = settings.get("printer_path", "") or ""
+        if p_type not in PrinterType.REAL:
+            p_type, p_path = PrinterType.WIN32, ""
+        self.combo_printer_type.setCurrentIndex(max(0, self.combo_printer_type.findData(p_type)))
+        self._select_receipt_printer(p_path if p_type == PrinterType.WIN32 else "")
+        self.input_printer_ip.setText(p_path if p_type == PrinterType.NETWORK else "")
+        self.input_usb_id.setText(p_path if p_type == PrinterType.USB else "")
 
         a4_printer = settings.get("a4_printer_name", "")
         if a4_printer:
@@ -1209,8 +1302,13 @@ class HardwarePage(SettingsPage):
         if len(prefix) != 2 or not prefix.isdigit():
             raise ValueError(_t("settings.hardware.scale_prefix_error"))
 
+        p_type, p_path = self.current_printer_target()
         return {
-            "receipt_printer_name": self.combo_receipt_printer.currentText(),
+            "printer_type": p_type,
+            "printer_path": p_path,
+            # Kept in step with the Windows printer so the legacy-name
+            # migration in ConfigService never re-fires on it.
+            "receipt_printer_name": p_path if p_type == PrinterType.WIN32 else "",
             "a4_printer_name": self.combo_a4_printer.currentText(),
             "paper_width": self.combo_paper_width.currentText(),
             "auto_print_receipt": self.chk_auto_print.isChecked(),
@@ -1222,6 +1320,20 @@ class HardwarePage(SettingsPage):
             "feed_lines_before_cut": self.spin_feed_lines.value(),
             "drawer_on_cash_only": self.chk_drawer_cash_only.isChecked(),
         }
+
+    def validate(self) -> None:
+        """Reject a Network printer with no IP address or a malformed USB VID:PID.
+
+        Raises:
+            ValueError: With a translated message for the bad field.
+        """
+        from cbpos.infrastructure.hardware.escpos_driver import parse_usb_id
+
+        p_type, p_path = self.current_printer_target()
+        if p_type == PrinterType.NETWORK and not p_path:
+            raise ValueError(_t("settings.hardware.ip_required"))
+        if p_type == PrinterType.USB and parse_usb_id(p_path) is None:
+            raise ValueError(_t("settings.hardware.usb_id_invalid"))
 
     def _test_print(self) -> None:
         """Send a test print to the configured printer."""

@@ -1470,7 +1470,19 @@
       "section_weighing_scale": "Weighing Scale Barcodes",
       "barcode_prefix": "Barcode Prefix (2 digits):",
       "decimal_places": "Decimal Places:",
-      "scale_prefix_error": "Scale Barcode Prefix must be exactly 2 digits."
+      "scale_prefix_error": "Scale Barcode Prefix must be exactly 2 digits.",
+      "connection_type": "Connection:",
+      "conn_win32": "Windows printer (recommended)",
+      "conn_network": "Network printer (IP address)",
+      "conn_usb": "USB direct (advanced)",
+      "choose_printer": "Choose a printer",
+      "printer_ip": "Printer IP Address:",
+      "printer_ip_placeholder": "e.g. 192.168.1.100",
+      "usb_id": "USB ID (VID:PID):",
+      "usb_id_placeholder": "e.g. 0x04b8:0x0202",
+      "usb_hint": "Only for printers set up with a WinUSB driver. If your printer shows up in Windows, choose \"Windows printer\" instead.",
+      "ip_required": "Enter the receipt printer's IP address, or choose another connection.",
+      "usb_id_invalid": "The USB ID should look like 0x04b8:0x0202 (VID:PID)."
     },
     "receipt": {
       "title": "Receipt",

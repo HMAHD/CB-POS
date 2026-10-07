@@ -32,6 +32,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.price_list_service import PriceListService
 from cbpos.core.services.product_service import ProductService
+from cbpos.core.utils.formatters import NO_VALUE, format_number, money_header
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
 from cbpos.ui.resources.icons import Icons
@@ -268,8 +269,8 @@ class PriceListView(QWidget):
             [
                 _t("pricelist.header_id"),
                 _t("pricelist.header_product"),
-                _t("pricelist.header_base_price"),
-                _t("pricelist.header_list_price"),
+                money_header(_t("pricelist.header_base_price")),
+                money_header(_t("pricelist.header_list_price")),
             ]
         )
         align_numeric_headers(self.table, (2, 3))  # Base Price, List Price
@@ -364,14 +365,14 @@ class PriceListView(QWidget):
 
             self.table.setItem(row, 0, QTableWidgetItem(str(p.id)))
             self.table.setItem(row, 1, QTableWidgetItem(p.name_en))
-            base_item = QTableWidgetItem(f"{p.price:.2f}")
+            base_item = QTableWidgetItem(format_number(p.price, 2))
             base_item.setTextAlignment(NUMERIC_ALIGNMENT)
             # Edit/context-menu read the raw Decimal, never the display text (#557)
             base_item.setData(PRICE_ROLE, p.price)
             self.table.setItem(row, 2, base_item)
 
             list_price = price_map.get(p.id)
-            price_display = f"{list_price:.2f}" if list_price is not None else "-"
+            price_display = format_number(list_price, 2) if list_price is not None else NO_VALUE
 
             price_item = QTableWidgetItem(price_display)
             price_item.setTextAlignment(NUMERIC_ALIGNMENT)

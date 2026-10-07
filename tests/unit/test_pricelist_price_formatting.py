@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from cbpos.core.models import Product
+from cbpos.core.utils.formatters import get_currency_symbol
 from cbpos.ui.views import pricelist_view as pricelist_view_module
 from cbpos.ui.views.pricelist_view import PRICE_ROLE, PriceListView
 
@@ -66,3 +67,34 @@ def test_editing_ignores_display_text(setup):
 
     assert _edit(view, plain) == Decimal("1650.00")  # base price row
     assert _edit(view, over) == Decimal("1234.50")  # overridden row
+
+
+def test_prices_display_with_separators_and_symbol_in_header(setup):
+    view, plain, over = setup
+    assert view.table.item(plain, 2).text() == "1,650.00"
+    assert view.table.item(over, 3).text() == "1,234.50"
+    symbol = get_currency_symbol()
+    assert view.table.horizontalHeaderItem(2).text().endswith(f"({symbol})")
+    assert view.table.horizontalHeaderItem(3).text().endswith(f"({symbol})")
+
+
+def test_no_override_shows_a_right_aligned_dash_and_no_context_menu(setup):
+    view, plain, _over = setup
+    cell = view.table.item(plain, 3)
+    assert cell.text() == "—"
+    assert cell.textAlignment() == pricelist_view_module.NUMERIC_ALIGNMENT
+    position = view.table.visualItemRect(view.table.item(plain, 1)).center()
+    with patch.object(pricelist_view_module, "QMenu") as menu_cls:
+        view._show_item_context_menu(position)
+    menu_cls.assert_not_called()
+
+
+def test_editing_after_formatting_round_trips_to_the_service(setup):
+    view, plain, _over = setup
+    dialog = MagicMock()
+    dialog.exec.return_value = 1
+    dialog.get_price.return_value = Decimal("1999.99")
+    with patch.object(pricelist_view_module, "SetItemPriceDialog", return_value=dialog):
+        view._edit_item_price_row(plain)
+    assert view.table.item(plain, 3).data(PRICE_ROLE) == Decimal("1999.99")
+    assert view.table.item(plain, 3).text() == "1,999.99"

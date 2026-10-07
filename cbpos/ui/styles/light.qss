@@ -492,16 +492,29 @@ QPushButton[class="accent"]:hover {
     background-color: #0B5ED7;
 }
 
-/* Secondary Button (neutral, outlined -- dismiss/close actions that
-   aren't destructive enough for the red Danger style) */
+/* Secondary Button (neutral -- dismiss/close/utility actions). Was
+   transparent with a border close to the surface colour, so it read as
+   plain text or as disabled (#561). A visible fill + border keeps it
+   recognisable as a button without hovering. */
 QPushButton[class="secondary"] {
-    background-color: transparent;
-    color: #374151;
-    border: 1px solid #D1D5DB;
+    background-color: #E9ECEF;
+    color: #212529;
+    border: 1px solid #CED4DA;
 }
 
 QPushButton[class="secondary"]:hover {
-    background-color: #E5E7EB;
+    background-color: #DEE2E6;
+    border: 1px solid #ADB5BD;
+}
+
+QPushButton[class="secondary"]:pressed {
+    background-color: #CED4DA;
+}
+
+QPushButton[class="secondary"]:disabled {
+    background-color: #F1F3F5;
+    color: #ADB5BD;
+    border: 1px solid #DEE2E6;
 }
 
 /* Warning Button (Yellow) */
@@ -3407,17 +3420,9 @@ QPushButton#DocFilterBtn:hover {
 }
 
 QPushButton#DocClearBtn {
-    background-color: transparent;
-    color: #6C757D;
     padding: 6px 14px;
     border-radius: 4px;
-    border: 1px solid #CED4DA;
     font-size: 13px;
-}
-
-QPushButton#DocClearBtn:hover {
-    color: #212529;
-    border-color: #6C757D;
 }
 
 QTableWidget#DocTable {
@@ -3459,17 +3464,9 @@ QLabel#DocDetailTitle {
 }
 
 QPushButton#DocDetailCloseBtn {
-    background-color: transparent;
-    color: #6C757D;
-    border: 1px solid #CED4DA;
     border-radius: 4px;
     padding: 4px 12px;
     font-size: 12px;
-}
-
-QPushButton#DocDetailCloseBtn:hover {
-    color: #212529;
-    border-color: #6C757D;
 }
 
 QLabel#DocInfoLabel, QLabel#DocPaymentLabel, QLabel#DocItemsTitle {
@@ -3773,14 +3770,6 @@ QPushButton#PMCardBtn {
     font-size: 12px;
     font-weight: bold;
     border-radius: 4px;
-    color: #495057;
-    background-color: #F8F9FA;
-    border: 1px solid #CED4DA;
-}
-
-QPushButton#PMCardBtn:hover {
-    background-color: #E9ECEF;
-    border-color: #ADB5BD;
 }
 
 QPushButton#PMCardBtn[class="danger"] {

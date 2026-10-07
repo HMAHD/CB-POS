@@ -213,6 +213,7 @@ class _MethodCard(QFrame):
 
         btn_edit = QPushButton(_t("payment_methods.btn_edit"))
         btn_edit.setObjectName("PMCardBtn")
+        btn_edit.setProperty("class", "secondary")
         btn_edit.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         btn_edit.clicked.connect(lambda: self._parent_view._edit_method(self.method))
         btn_layout.addWidget(btn_edit)

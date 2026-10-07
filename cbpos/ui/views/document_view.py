@@ -167,6 +167,7 @@ class DocumentBrowserView(QWidget):
 
         self.clear_btn = QPushButton()
         self.clear_btn.setObjectName("DocClearBtn")
+        self.clear_btn.setProperty("class", "secondary")
         self.clear_btn.clicked.connect(self.clear_filter)
         filter_layout.addWidget(self.clear_btn)
 
@@ -214,6 +215,7 @@ class DocumentBrowserView(QWidget):
 
         self.btn_close_detail = QPushButton()
         self.btn_close_detail.setObjectName("DocDetailCloseBtn")
+        self.btn_close_detail.setProperty("class", "secondary")
         self.btn_close_detail.clicked.connect(self._close_detail)
         detail_header.addWidget(self.btn_close_detail)
         detail_layout.addLayout(detail_header)

@@ -603,7 +603,9 @@ class DataSafetyView(QWidget):
         optimize_row.addLayout(optimize_info, 1)
 
         self.btn_vacuum = QPushButton()
-        self.btn_vacuum.setProperty("class", "accent")
+        # Optimize and Check are equivalent maintenance actions -> same
+        # (secondary) emphasis, neither is the screen's primary action.
+        self.btn_vacuum.setProperty("class", "secondary")
         self.btn_vacuum.setFixedWidth(140)
         self.btn_vacuum.clicked.connect(self._run_vacuum)
         optimize_row.addWidget(self.btn_vacuum)
@@ -628,6 +630,7 @@ class DataSafetyView(QWidget):
         integrity_row.addLayout(integrity_info, 1)
 
         self.btn_integrity = QPushButton()
+        self.btn_integrity.setProperty("class", "secondary")
         self.btn_integrity.setFixedWidth(140)
         self.btn_integrity.clicked.connect(self._run_integrity_check)
         integrity_row.addWidget(self.btn_integrity)

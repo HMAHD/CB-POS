@@ -119,3 +119,23 @@ def test_focus_rect_replaced_by_theme_ring(theme_file, accent):
     assert any(f"outline: 2px solid {accent}" in b for b in _rules_for(theme_file, "QPushButton:focus"))
     for body in _rules_for(theme_file, "QPushButton"):
         assert "outline: none" not in body and "outline: 0" not in body
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+def test_secondary_button_is_visibly_filled_with_all_states(theme_file):
+    """#561: the transparent secondary style read as plain text/disabled."""
+    (body,) = _rules_for(theme_file, 'QPushButton[class="secondary"]')
+    assert "transparent" not in body and "background-color: #" in body
+    for state in (":hover", ":pressed", ":disabled"):
+        assert _rules_for(theme_file, f'QPushButton[class="secondary"]{state}')
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+@pytest.mark.parametrize(
+    "selector", ["QPushButton#DocClearBtn", "QPushButton#DocDetailCloseBtn", "QPushButton#PMCardBtn"]
+)
+def test_one_off_buttons_defer_colors_to_the_shared_class(theme_file, selector):
+    """#561: these #ID rules out-rank [class=...] rules, so they must only
+    size the button and leave colors to the shared class."""
+    for body in _rules_for(theme_file, selector):
+        assert "color" not in body and "border:" not in body

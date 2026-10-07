@@ -1781,6 +1781,7 @@ class SystemPage(SettingsPage):
         backup_dir_layout.addWidget(self.input_backup_dir, 1)
 
         self.btn_browse_backup = QPushButton()
+        self.btn_browse_backup.setProperty("class", "secondary")
         self.btn_browse_backup.clicked.connect(self._browse_backup_dir)
         backup_dir_layout.addWidget(self.btn_browse_backup)
 

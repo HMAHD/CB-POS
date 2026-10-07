@@ -536,19 +536,19 @@
     "user_guest": "අමුත්තා",
     "user_no_role": "භූමිකාවක් නැත",
     "user_not_logged_in": "පිවිසී නැත",
-    "btn_sign_out": "පිටවීම",
+    "btn_sign_out": "ලොග් අවුට්",
     "tooltip_settings": "සැකසුම්",
     "tooltip_fullscreen": "සම්පූර්ණ තිරය",
-    "tooltip_exit": "පිටවීම",
+    "tooltip_exit": "POS එක වහන්න",
     "menu_header": "මෙනුව",
     "guest": "අමුත්තා",
     "no_role": "භූමිකාවක් නැත",
     "not_logged_in": "පිවිසී නැත",
     "unknown_role": "නොදන්නා භූමිකාව",
-    "sign_out": "පිටවීම",
+    "sign_out": "ලොග් අවුට්",
     "settings_tooltip": "සැකසුම්",
     "fullscreen_tooltip": "සම්පූර්ණ තිරය",
-    "exit_tooltip": "පිටවීම"
+    "exit_tooltip": "POS එක වහන්න"
   },
   "action_panel": {
     "customer_label": "පාරිභෝගිකයා",
@@ -585,7 +585,7 @@
     "sidebar_stock_take": "තොග ගණන් කිරීම",
     "sidebar_reorder": "නැවත ඇණවුම්",
     "sidebar_pos": "POS / විකුණුම්",
-    "sidebar_logout": "පිටවීම",
+    "sidebar_logout": "ලොග් අවුට්",
     "logo_fallback": "CB POS"
   },
   "dashboard": {

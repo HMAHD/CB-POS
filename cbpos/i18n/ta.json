@@ -536,19 +536,19 @@
     "user_guest": "விருந்தினர்",
     "user_no_role": "பதவி இல்லை",
     "user_not_logged_in": "உள்நுழையவில்லை",
-    "btn_sign_out": "வெளியேறு",
+    "btn_sign_out": "லாக் அவுட்",
     "tooltip_settings": "அமைப்புகள்",
     "tooltip_fullscreen": "முழுத்திரை",
-    "tooltip_exit": "வெளியேறு",
+    "tooltip_exit": "POS-ஐ மூடு",
     "menu_header": "மெனு",
     "guest": "விருந்தினர்",
     "no_role": "பதவி இல்லை",
     "not_logged_in": "உள்நுழையவில்லை",
     "unknown_role": "தெரியாத பதவி",
-    "sign_out": "வெளியேறு",
+    "sign_out": "லாக் அவுட்",
     "settings_tooltip": "அமைப்புகள்",
     "fullscreen_tooltip": "முழுத்திரை",
-    "exit_tooltip": "வெளியேறு"
+    "exit_tooltip": "POS-ஐ மூடு"
   },
   "action_panel": {
     "customer_label": "வாடிக்கையாளர்",
@@ -585,7 +585,7 @@
     "sidebar_stock_take": "சரக்கு எண்ணிக்கை",
     "sidebar_reorder": "மறு ஆர்டர்",
     "sidebar_pos": "POS / விற்பனை",
-    "sidebar_logout": "வெளியேறு",
+    "sidebar_logout": "லாக் அவுட்",
     "logo_fallback": "CB POS"
   },
   "dashboard": {

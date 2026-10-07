@@ -42,6 +42,8 @@ class SettingsView(QWidget):
     logout_requested = pyqtSignal()
     request_pos_view = pyqtSignal()
 
+    HARDWARE_PAGE = 3  # stack index of HardwarePage
+
     def __init__(self):
         """Build the UI, load current settings, and register the translation callback."""
         super().__init__()
@@ -84,7 +86,7 @@ class SettingsView(QWidget):
         self.btn_shop_info = self.sidebar.add_nav_button("", "fa5s.store", 0)
         self.btn_sales_tax = self.sidebar.add_nav_button("", "fa5s.shopping-cart", 1)
         self.btn_documents = self.sidebar.add_nav_button("", "fa5s.file-invoice", 2)
-        self.btn_hardware = self.sidebar.add_nav_button("", "fa5s.print", 3)
+        self.btn_hardware = self.sidebar.add_nav_button("", "fa5s.print", self.HARDWARE_PAGE)
         self.btn_receipt = self.sidebar.add_nav_button("", "fa5s.receipt", 4)
         self.btn_system = self.sidebar.add_nav_button("", "fa5s.cogs", 5)
         self.btn_network = self.sidebar.add_nav_button("", "fa5s.network-wired", 6)

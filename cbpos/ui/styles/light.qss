@@ -1003,6 +1003,37 @@ QLabel#UndoToast {
     font-weight: bold;
 }
 
+/* No-receipt-printer notice on the Sales screen (#623) */
+QFrame#PrinterNotice {
+    background-color: #FFF3CD;
+    border-bottom: 1px solid #FFC107;
+}
+QLabel#PrinterNoticeText {
+    color: #664D03;
+    font-size: 13px;
+    background: transparent;
+}
+QPushButton#PrinterNoticeSetupBtn {
+    background-color: transparent;
+    color: #664D03;
+    border: 1px solid #997404;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-weight: bold;
+}
+QPushButton#PrinterNoticeSetupBtn:hover {
+    background-color: rgba(255, 193, 7, 0.25);
+}
+QToolButton#PrinterNoticeCloseBtn {
+    background: transparent;
+    color: #664D03;
+    border: none;
+    padding: 4px 8px;
+}
+QToolButton#PrinterNoticeCloseBtn:hover {
+    color: #212529;
+}
+
 /* Total Widget */
 QWidget#TotalWidget {
     background-color: #F1F3F5;

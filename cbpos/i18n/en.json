@@ -143,6 +143,9 @@
     "quick_pay_disabled": "Quick Pay is disabled in settings.",
     "printer_error_title": "Printer Error",
     "printer_error_message": "Receipt print failed: {message}\n\nCheck printer connection and verify settings under Settings > Hardware.",
+    "printer_notice": "No receipt printer is set up, so receipts won't print. Set one up in Settings > Hardware.",
+    "printer_notice_setup": "Set Up Printer",
+    "printer_notice_dismiss": "Dismiss",
     "validation_error": "Validation Error",
     "transaction_failed": "Transaction failed: {error}"
   },

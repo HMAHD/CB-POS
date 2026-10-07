@@ -2442,6 +2442,13 @@ QLabel[class="warning-hint"] {
     background: transparent;
 }
 
+/* Inline field validation error (e.g. Settings > Documents number format) */
+QLabel[class="error"] {
+    color: #DC3545;
+    font-size: 12px;
+    background: transparent;
+}
+
 /* Link-style text button */
 QPushButton[class="link"] {
     background: transparent;

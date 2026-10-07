@@ -295,8 +295,11 @@ class SettingsView(QWidget):
         all_settings = {}
         try:
             for page in self.pages:
+                page.validate()
                 all_settings.update(page.save())
         except ValueError as e:
+            # Show the page holding the bad field so its inline error is visible
+            self.stack.setCurrentWidget(page)
             QMessageBox.warning(self, _t("common.validation_error"), str(e))
             return
 

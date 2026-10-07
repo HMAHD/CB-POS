@@ -1383,7 +1383,16 @@
       "purchase_format": "கொள்முதல் வடிவம்:",
       "purchase_format_placeholder": "GRN-{Y}-{seq:05d}",
       "return_format": "திருப்பி அனுப்பும் வடிவம்:",
-      "return_format_placeholder": "CN-{Y}-{seq:05d}"
+      "return_format_placeholder": "CN-{Y}-{seq:05d}",
+      "fmt_error_empty": "வடிவம் காலியா இருக்கக்கூடாது.",
+      "fmt_error_bad_char": "வடிவத்தில் % அல்லது _ பயன்படுத்த முடியாது.",
+      "fmt_error_unknown_placeholder": "அடைப்புக்குள் இருக்கும் குறியீடு தெரியல. {Y}, {M}, {D}, {T}, {terminal}, {seq} மட்டும் பயன்படுத்துங்க.",
+      "fmt_error_bad_seq": "எண் குறியீடு {seq} அல்லது {seq:05d} மாதிரி இருக்கணும் (1-9 இலக்கங்கள்).",
+      "fmt_error_seq_once": "வடிவத்தில் {seq} ஒரே ஒரு தடவை மட்டும் போடுங்க.",
+      "fmt_error_seq_not_last": "{seq} கடைசியில தான் இருக்கணும்.",
+      "fmt_error_too_long": "ரொம்ப நீளம். ஒரு எண்ணில் அதிகபட்சம் {max} எழுத்துகள் தான்.",
+      "fmt_preview_next": "அடுத்த எண்: {number}",
+      "fmt_legend": "{Y} வருடம் · {M} மாதம் · {D} நாள் · {T} டெர்மினல் · {seq:05d} வரிசை எண் (எப்போதும் கடைசியில்)"
     },
     "hardware": {
       "title": "ஹார்ட்வேர்",

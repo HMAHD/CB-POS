@@ -23,6 +23,7 @@ dependencies = [
     "openpyxl>=3.1.0",
     "xhtml2pdf>=0.2.20",
     "pyzipper>=0.3.6",
+    "pywin32>=312 ; sys_platform == 'win32'",
 ]
 
 [dependency-groups]

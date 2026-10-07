@@ -97,6 +97,10 @@ class SettingsPage(QWidget):
         # scroll buttons QTabBar already enables by default keeps every
         # label fully readable instead of silently truncating it (#321).
         tabs.tabBar().setElideMode(Qt.TextElideMode.ElideNone)
+        # A single tab (e.g. Documents -> "Numbering") implies hidden
+        # content; auto-hide shows the bar only once a page has 2+ tabs,
+        # and keeps tracking it as pages add their tabs after this (#571).
+        tabs.setTabBarAutoHide(True)
         layout.addWidget(tabs, 1)
 
         return layout, tabs

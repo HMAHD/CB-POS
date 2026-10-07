@@ -172,3 +172,11 @@ def test_single_muted_rule_at_readable_size(theme_file):
     bodies = _rules_for(theme_file, 'QLabel[class="muted"]')
     assert len(bodies) == 1
     assert "font-size: 13px" in bodies[0]
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+def test_inactive_tabs_have_border_and_hover(theme_file):
+    """#571: inactive tabs didn't read as clickable in Dark."""
+    (body,) = _rules_for(theme_file, "QTabBar::tab")
+    assert "border: 1px solid" in body
+    assert _rules_for(theme_file, "QTabBar::tab:hover:!selected")

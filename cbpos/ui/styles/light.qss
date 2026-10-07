@@ -716,13 +716,21 @@ QTabWidget::pane {
     background-color: #FFFFFF;
 }
 
+/* Same shape as Dark: bordered inactive tabs with hover feedback (#571). */
 QTabBar::tab {
     background: #E9ECEF;
     color: #495057;
+    border: 1px solid #DEE2E6;
+    border-bottom: none;
     padding: 10px 20px;
     margin-right: 2px;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
+}
+
+QTabBar::tab:hover:!selected {
+    background: #DEE2E6;
+    color: #212529;
 }
 
 QTabBar::tab:selected {
@@ -2771,7 +2779,7 @@ QDialog#BackupRestoreDialog QTabWidget::pane { border: none; background: #F8F9FA
 QDialog#BackupRestoreDialog QTabBar::tab {
     background: #E9ECEF; color: #6C757D; padding: 10px 22px;
     border-top-left-radius: 6px; border-top-right-radius: 6px;
-    margin-right: 2px; font-size: 13px;
+    margin-right: 2px; font-size: 13px; border: none;
 }
 QDialog#BackupRestoreDialog QTabBar::tab:selected { background: #FFFFFF; color: #0D6EFD; font-weight: bold; }
 QDialog#BackupRestoreDialog QTabBar::tab:hover { background: #DEE2E6; color: #212529; }

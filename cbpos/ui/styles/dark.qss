@@ -710,17 +710,27 @@ QTabWidget::pane {
     background-color: #252526;
 }
 
+/* Inactive tabs used to be #2D2D30 with no border or hover on a #1E1E1E
+   page -- they didn't read as clickable (#571). */
 QTabBar::tab {
-    background: #2D2D30;
-    color: #AAAAAA;
+    background: #333337;
+    color: #BBBBBB;
+    border: 1px solid #3E3E42;
+    border-bottom: none;
     padding: 10px 20px;
     margin-right: 2px;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
 }
 
+QTabBar::tab:hover:!selected {
+    background: #3E3E42;
+    color: #FFFFFF;
+}
+
 QTabBar::tab:selected {
     background: #007ACC;
+    border-color: #007ACC;
     color: #FFFFFF;
     font-weight: bold;
 }
@@ -2881,7 +2891,7 @@ QDialog#BackupRestoreDialog QTabWidget::pane { border: none; background: #001F3F
 QDialog#BackupRestoreDialog QTabBar::tab {
     background: #003366; color: #B0B0B0; padding: 10px 22px;
     border-top-left-radius: 6px; border-top-right-radius: 6px;
-    margin-right: 2px; font-size: 13px;
+    margin-right: 2px; font-size: 13px; border: none;
 }
 QDialog#BackupRestoreDialog QTabBar::tab:selected { background: #004080; color: #00BCEB; font-weight: bold; }
 QDialog#BackupRestoreDialog QTabBar::tab:hover { background: #004080; color: #FFFFFF; }

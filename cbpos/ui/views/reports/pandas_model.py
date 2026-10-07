@@ -9,6 +9,14 @@ from PyQt6.QtGui import QColor, QFont
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.utils.formatters import format_currency
 
+RIGHT_ALIGNED = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+LEFT_ALIGNED = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+
+
+def _is_numeric(value: Any) -> bool:
+    """True for a value whose cell renders right-aligned."""
+    return isinstance(value, (int, float))
+
 
 class PandasModel(QAbstractTableModel):
     """
@@ -35,6 +43,7 @@ class PandasModel(QAbstractTableModel):
         super().__init__()
         self._data = data if data is not None else pd.DataFrame()
         self._hints = render_hints or {}
+        self._numeric_columns = self._find_numeric_columns()
 
     def rowCount(self, parent=QModelIndex()):
         """Return the number of rows in the underlying DataFrame."""
@@ -43,6 +52,18 @@ class PandasModel(QAbstractTableModel):
     def columnCount(self, parent=QModelIndex()):
         """Return the number of columns in the underlying DataFrame."""
         return self._data.shape[1]
+
+    def _find_numeric_columns(self) -> set[int]:
+        """Columns whose every cell is right-aligned, so the header can match (#554)."""
+        if self._data.empty:
+            return set()
+        return {
+            col
+            for col in range(self._data.shape[1])
+            # to_numpy() yields the same scalars as iloc[row, col] in data();
+            # tolist() would turn np.int64 into int and disagree with the cells.
+            if all(_is_numeric(value) for value in self._data.iloc[:, col].to_numpy())
+        }
 
     def _is_total_row(self, row: int) -> bool:
         total_col = self._hints.get("total_row_column")
@@ -73,9 +94,7 @@ class PandasModel(QAbstractTableModel):
             return str(value)
 
         elif role == Qt.ItemDataRole.TextAlignmentRole:
-            if isinstance(value, (int, float)):
-                return Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-            return Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+            return RIGHT_ALIGNED if _is_numeric(value) else LEFT_ALIGNED
 
         elif role == Qt.ItemDataRole.FontRole:
             if self._is_total_row(row):
@@ -104,9 +123,13 @@ class PandasModel(QAbstractTableModel):
         return None
 
     def headerData(self, col, orientation, role):
-        """Return the column name for horizontal header labels, or None otherwise."""
-        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
+        """Return the column name, right-aligned over all-numeric columns; None for vertical headers."""
+        if orientation != Qt.Orientation.Horizontal:
+            return None
+        if role == Qt.ItemDataRole.DisplayRole:
             return str(self._data.columns[col])
+        if role == Qt.ItemDataRole.TextAlignmentRole and col in self._numeric_columns:
+            return RIGHT_ALIGNED
         return None
 
     def set_data(self, data: pd.DataFrame, render_hints: dict[str, Any] | None = None):
@@ -114,6 +137,7 @@ class PandasModel(QAbstractTableModel):
         self.beginResetModel()
         self._data = data
         self._hints = render_hints or {}
+        self._numeric_columns = self._find_numeric_columns()
         self.endResetModel()
 
     def get_dataframe(self) -> pd.DataFrame:

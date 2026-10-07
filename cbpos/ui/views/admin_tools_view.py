@@ -40,6 +40,7 @@ from cbpos.core.services.hardware_test_service import HardwareTestService
 from cbpos.core.services.maintenance_service import MaintenanceService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
+from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers
 
 logger = logging.getLogger(__name__)
 
@@ -222,7 +223,7 @@ class AdminToolsView(QWidget):
             for row, t in enumerate(tables):
                 self.table_counts.setItem(row, 0, QTableWidgetItem(t["name"]))
                 rows_item = QTableWidgetItem(str(t["rows"]))
-                rows_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                rows_item.setTextAlignment(NUMERIC_ALIGNMENT)
                 self.table_counts.setItem(row, 1, rows_item)
         except Exception as e:
             logger.warning("Could not load full DB info: %s", e)
@@ -781,6 +782,7 @@ class AdminToolsView(QWidget):
         self.table_counts.setHorizontalHeaderLabels(
             [_t("admin_tools.db_header_table"), _t("admin_tools.db_header_rows")]
         )
+        align_numeric_headers(self.table_counts, (1,))  # Rows
         self.btn_db_refresh.setText(_t("admin_tools.db_btn_refresh"))
 
         # Logs tab

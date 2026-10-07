@@ -35,6 +35,7 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers
 
 
 class PriceListView(QWidget):
@@ -268,6 +269,7 @@ class PriceListView(QWidget):
                 _t("pricelist.header_list_price"),
             ]
         )
+        align_numeric_headers(self.table, (2, 3))  # Base Price, List Price
         self.hint_label.setText(_t("pricelist.footer_hint"))
         self.btn_set_item_price.setText(_t("pricelist.btn_set_item_price"))
 
@@ -359,12 +361,15 @@ class PriceListView(QWidget):
 
             self.table.setItem(row, 0, QTableWidgetItem(str(p.id)))
             self.table.setItem(row, 1, QTableWidgetItem(p.name_en))
-            self.table.setItem(row, 2, QTableWidgetItem(f"{p.price:.2f}"))
+            base_item = QTableWidgetItem(f"{p.price:.2f}")
+            base_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.table.setItem(row, 2, base_item)
 
             list_price = price_map.get(p.id)
             price_display = f"{list_price:.2f}" if list_price is not None else "-"
 
             price_item = QTableWidgetItem(price_display)
+            price_item.setTextAlignment(NUMERIC_ALIGNMENT)
             if list_price is not None:
                 price_item.setForeground(Qt.GlobalColor.green)
 

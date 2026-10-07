@@ -408,23 +408,12 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         sequence = data.get("sequence", 0)
         payload = data.get("payload", {})
 
-        # Check for duplicate sequence
-        info = _registry.get(terminal_id)
-        if info and sequence and sequence <= info.last_push_sequence:
-            logger.info(
-                "Duplicate push from %s (seq %d <= %d), acknowledging",
-                terminal_id,
-                sequence,
-                info.last_push_sequence,
-            )
-            self._send_json(
-                {
-                    "status": "duplicate",
-                    "sequence": sequence,
-                    "message": "Already processed",
-                }
-            )
-            return
+        # No "sequence already seen -> acknowledge without applying" shortcut:
+        # a till's sequence restarts at 1 whenever the till app restarts, while
+        # this registry keeps the old high-water mark, so that shortcut acked
+        # a restarted till's new sales as "duplicate" and the till then marked
+        # them synced -- lost. Re-sends are safe to apply: each row is found
+        # again through sync_id_map and stock moves only on first arrival.
 
         # Rows are re-keyed to Main PC ids through sync_id_map (see
         # SyncApplyService, #671), all or nothing: the till marks every row

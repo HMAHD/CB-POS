@@ -10,16 +10,35 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from cbpos.core.interfaces.iprinter import IPrinter
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.utils.thermal_image import dither_for_thermal_print
+from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
+
+_REAL_PRINTER_TYPES = ("USB", "NETWORK")
+
+
+def receipt_printer_configured() -> bool:
+    """Return True if settings name a real receipt printer (USB or Network)."""
+    return ConfigService.get_all().get("printer_type", "NONE") in _REAL_PRINTER_TYPES
+
+
+def printer_not_configured_message() -> str:
+    """Translated message PrintWorker emits when no receipt printer is set up.
+
+    Listeners compare against this to tell "never set up" apart from a
+    real hardware failure.
+    """
+    return _t("printer.not_configured")
 
 
 class NullPrinter(IPrinter):
     """
-    No-op printer used when no hardware is configured.
+    No-op printer for tests and development.
 
     Silently discards all commands — no console output, no side effects.
-    Used during development or when the shop has not yet set up a printer.
+    Only used when passed to ``PrintWorker(printer=...)`` explicitly:
+    with no printer configured the worker reports an error instead of
+    pretending a job printed (#623).
     """
 
     def connect(self) -> bool:
@@ -182,11 +201,13 @@ class PrintWorker(QThread):
     """Background thread for asynchronous print job processing.
 
     Resolves the printer once per run cycle from application settings:
-    - printer_type == "NONE" → NullPrinter (silent no-op)
     - printer_type == "USB" / "NETWORK" → ESCPOSDriver (real hardware)
+    - anything else → no printer: the job is skipped and error_occurred
+      carries ``printer_not_configured_message()``. Never job_completed --
+      screens show "sent to printer" on that signal (#623).
 
     If the real printer fails to connect, the job is skipped and the failure
-    is logged — no silent fallback to a mock that pollutes stdout.
+    is logged and reported via error_occurred.
     """
 
     error_occurred = pyqtSignal(str)  # Emitted when a print job fails
@@ -269,12 +290,16 @@ class PrintWorker(QThread):
                 continue
 
             current_printer = self._resolve_printer()
+            if current_printer is None:
+                logger.warning("No receipt printer configured — skipping %s job.", job_type)
+                self.error_occurred.emit(printer_not_configured_message())
+                continue
 
             try:
                 if not current_printer.connect():
                     msg = "Printer not available — skipping %s job. Check printer settings in Settings > Hardware."
                     logger.warning(msg, job_type)
-                    self.error_occurred.emit("Printer not available. Check Settings > Hardware.")
+                    self.error_occurred.emit(_t("printer.not_available"))
                     continue
 
                 if job_type == "kick_drawer":
@@ -302,15 +327,13 @@ class PrintWorker(QThread):
 
             time.sleep(0.1)
 
-    def _resolve_printer(self) -> IPrinter:
-        """Determine which printer implementation to use from settings."""
+    def _resolve_printer(self) -> IPrinter | None:
+        """Pick the printer for the next job: the injected one, the real
+        driver if settings name one, else None (no printer configured)."""
         if self.printer:
             return self.printer
 
-        settings = ConfigService.get_all()
-        p_type = settings.get("printer_type", "NONE")
-
-        if p_type in ("USB", "NETWORK"):
+        if receipt_printer_configured():
             return ESCPOSDriver()
 
-        return NullPrinter()
+        return None

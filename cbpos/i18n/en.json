@@ -119,6 +119,10 @@
     "status_error": "Error",
     "status_disconnected": "Disconnected"
   },
+  "printer": {
+    "not_configured": "No receipt printer is set up, so nothing was printed. Set one up in Settings > Hardware.",
+    "not_available": "Can't reach the receipt printer. Check that it's switched on and connected."
+  },
   "sales": {
     "search_placeholder_all": "Scan or type product... (Enter)",
     "search_placeholder_barcode": "Scan barcode...",

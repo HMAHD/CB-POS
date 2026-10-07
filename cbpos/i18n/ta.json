@@ -1058,8 +1058,6 @@
     "export_format_csv": "CSV (.csv)",
     "subtitle": "பேக்அப், ரீஸ்டோர், மற்றும் பராமரிப்பு கருவிகளால உங்க வியாபார டேட்டாவை பாதுகாங்க.",
     "btn_change": "மாத்துங்க",
-    "backup_type_pre_restore": "ரீஸ்டோருக்கு முன்ன",
-    "backup_type_regular": "சாதாரண",
     "backup_creating": "பேக்அப் எடுக்குது...",
     "backup_list_loading": "பேக்அப் லிஸ்ட் வருது...",
     "backup_complete_title": "பேக்அப் முடிந்தது",
@@ -1067,7 +1065,7 @@
     "backup_failed_title": "பேக்அப் தோல்வி",
     "backup_failed_msg": "பேக்அப் எடுக்க முடியல:\n{error}",
     "clean_title": "பழைய பேக்அப்களை க்ளீன் பண்ணுங்க",
-    "clean_msg": "இது சமீபத்திய {keep} தவிர மத்த எல்லா பேக்அப்களையும் நீக்கும்.\n\nதொடரணுமா?",
+    "clean_msg": "இது ஒவ்வொரு வகையிலும் (நீங்க எடுத்தது, ஆட்டோ, பாதுகாப்பு ஸ்நேப்ஷாட்) சமீபத்திய {keep} பேக்அப்களை வச்சிட்டு, பழையதை நீக்கும்.\n\nதொடரணுமா?",
     "clean_done_title": "க்ளீன் முடிஞ்சது",
     "clean_done_msg": "பழைய பேக்அப் {count} நீக்கியாச்சு.",
     "btn_delete_backup": "நீக்கு",
@@ -1142,7 +1140,12 @@
     "error_not_found": "பேக்அப் ஃபைலைக் கண்டுபிடிக்க முடியல.",
     "verify_running": "பேக்அப்பை செக் பண்ணுது...",
     "size_compressed_from": "{size} (அசல் அளவு {original})",
-    "export_section": "எதை ஏற்றுமதி பண்ணணும்"
+    "export_section": "எதை ஏற்றுமதி பண்ணணும்",
+    "backup_type_manual": "நீங்க எடுத்தது",
+    "backup_type_auto": "ஆட்டோ",
+    "backup_type_snapshot": "பாதுகாப்பு ஸ்நேப்ஷாட்",
+    "backup_header_actions": "செயல்கள்",
+    "btn_restore_row": "ரீஸ்டோர்"
   },
   "payment_methods": {
     "title": "பணம் செலுத்தும் முறைகள்",

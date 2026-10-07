@@ -1088,8 +1088,6 @@
     "export_format_csv": "CSV (.csv)",
     "subtitle": "Protect your business data with backups, restore, and maintenance tools.",
     "btn_change": "Change",
-    "backup_type_pre_restore": "Pre-Restore",
-    "backup_type_regular": "Regular",
     "backup_creating": "Creating backup...",
     "backup_list_loading": "Loading backups...",
     "backup_complete_title": "Backup Complete",
@@ -1097,7 +1095,7 @@
     "backup_failed_title": "Backup Failed",
     "backup_failed_msg": "Could not create backup:\n{error}",
     "clean_title": "Clean Old Backups",
-    "clean_msg": "This will delete all backups except the {keep} most recent.\n\nContinue?",
+    "clean_msg": "This keeps the {keep} newest backups of each type (manual, auto and safety snapshot) and deletes the older ones.\n\nContinue?",
     "clean_done_title": "Cleanup Done",
     "clean_done_msg": "Deleted {count} old backup(s).",
     "btn_delete_backup": "Delete",
@@ -1172,7 +1170,12 @@
     "error_not_found": "The backup file can't be found.",
     "verify_running": "Checking backup...",
     "size_compressed_from": "{size} (compressed from {original})",
-    "export_section": "What to export"
+    "export_section": "What to export",
+    "backup_type_manual": "Manual",
+    "backup_type_auto": "Auto",
+    "backup_type_snapshot": "Safety snapshot",
+    "backup_header_actions": "Actions",
+    "btn_restore_row": "Restore"
   },
   "payment_methods": {
     "title": "Payment Methods",

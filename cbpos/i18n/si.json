@@ -1058,8 +1058,6 @@
     "export_format_csv": "CSV (.csv)",
     "subtitle": "බැකප්, රිස්ටෝර්, සහ නඩත්තු මෙවලම් වලින් ඔයාගේ ව්‍යාපාරයේ දත්ත ආරක්ෂා කරගන්න.",
     "btn_change": "මාරු කරන්න",
-    "backup_type_pre_restore": "රිස්ටෝර් කරන්න කලින්",
-    "backup_type_regular": "සාමාන්‍ය",
     "backup_creating": "බැකප් එකක් හදනවා...",
     "backup_list_loading": "බැකප් ලිස්ට් එක එනවා...",
     "backup_complete_title": "බැකප් එක සම්පූර්ණයි",
@@ -1067,7 +1065,7 @@
     "backup_failed_title": "බැකප් එක අසාර්ථකයි",
     "backup_failed_msg": "බැකප් එකක් හදන්න බැරි උනා:\n{error}",
     "clean_title": "පරණ බැකප් ක්ලීන් කරන්න",
-    "clean_msg": "මේකෙන් අලුත්ම {keep}ට අමතරව අනිත් සියලුම බැකප් මකනවා.\n\nඉදිරියට යන්නද?",
+    "clean_msg": "මේකෙන් හැම වර්ගයකම (අතින් හදපු, ස්වයංක්‍රීය, ආරක්ෂිත ස්නැප්ෂොට්) අලුත්ම බැකප් {keep} තියාගෙන, පරණ ඒවා මකනවා.\n\nඉදිරියට යන්නද?",
     "clean_done_title": "ක්ලීන් කිරීම හරි",
     "clean_done_msg": "පරණ බැකප් {count}ක් මකලා දැම්මා.",
     "btn_delete_backup": "මකන්න",
@@ -1142,7 +1140,12 @@
     "error_not_found": "බැකප් ෆයිල් එක හොයාගන්න බැහැ.",
     "verify_running": "බැකප් එක චෙක් කරනවා...",
     "size_compressed_from": "{size} (මුල් ප්‍රමාණය {original})",
-    "export_section": "අපනයනය කරන්න ඕන දේ"
+    "export_section": "අපනයනය කරන්න ඕන දේ",
+    "backup_type_manual": "අතින් හදපු",
+    "backup_type_auto": "ස්වයංක්‍රීය",
+    "backup_type_snapshot": "ආරක්ෂිත ස්නැප්ෂොට්",
+    "backup_header_actions": "ක්‍රියා",
+    "btn_restore_row": "රිස්ටෝර්"
   },
   "payment_methods": {
     "title": "ගෙවීම් ක්‍රම",

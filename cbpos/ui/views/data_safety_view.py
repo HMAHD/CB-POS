@@ -49,6 +49,14 @@ logger = logging.getLogger(__name__)
 class DataSafetyView(QWidget):
     """Tabbed view for backup, restore, maintenance, and export operations."""
 
+    # Backup table columns
+    COL_FILENAME, COL_DATE, COL_SIZE, COL_TYPE, COL_ACTIONS = range(5)
+    _TYPE_KEYS = {
+        "manual": "data_safety.backup_type_manual",
+        "auto": "data_safety.backup_type_auto",
+        "snapshot": "data_safety.backup_type_snapshot",
+    }
+
     def __init__(self) -> None:
         """Build the Backup, Restore, Maintenance, and Export tabs."""
         super().__init__()
@@ -146,7 +154,8 @@ class DataSafetyView(QWidget):
 
         # Backup list table — QSS handles all table styling
         self.backup_table = QTableWidget()
-        self.backup_table.setColumnCount(4)
+        self._backup_data: list[dict] = []
+        self.backup_table.setColumnCount(5)
         self.backup_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.backup_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.backup_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -154,10 +163,9 @@ class DataSafetyView(QWidget):
         self.backup_table.setAlternatingRowColors(True)
 
         header = self.backup_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(self.COL_FILENAME, QHeaderView.ResizeMode.Stretch)
+        for col in (self.COL_DATE, self.COL_SIZE, self.COL_TYPE, self.COL_ACTIONS):
+            header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
         self.backup_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.backup_table.customContextMenuRequested.connect(self._show_backup_context_menu)
         layout.addWidget(self.backup_table, 1)
@@ -216,22 +224,51 @@ class DataSafetyView(QWidget):
 
     def _on_backup_list_loaded(self, backups: list) -> None:
         self._overlay.hide_loading()
-        self.backup_table.setRowCount(len(backups))
         self._backup_data = backups
 
-        for row, b in enumerate(backups):
-            self.backup_table.setItem(row, 0, QTableWidgetItem(b["filename"]))
-            self.backup_table.setItem(row, 1, QTableWidgetItem(b["date"]))
+        self._fill_backup_table()
+
+    def _fill_backup_table(self) -> None:
+        """(Re)build the backup rows from ``self._backup_data``."""
+        self.backup_table.setRowCount(len(self._backup_data))
+        for row, b in enumerate(self._backup_data):
+            self.backup_table.setItem(row, self.COL_FILENAME, QTableWidgetItem(b["filename"]))
+            self.backup_table.setItem(row, self.COL_DATE, QTableWidgetItem(b["date"]))
             size_text = b["size"]
             if b.get("original_size"):
                 size_text = _t("data_safety.size_compressed_from", size=b["size"], original=b["original_size"])
-            self.backup_table.setItem(row, 2, QTableWidgetItem(size_text))
-            type_text = (
-                _t("data_safety.backup_type_pre_restore")
-                if b.get("is_pre_restore")
-                else _t("data_safety.backup_type_regular")
-            )
-            self.backup_table.setItem(row, 3, QTableWidgetItem(type_text))
+            self.backup_table.setItem(row, self.COL_SIZE, QTableWidgetItem(size_text))
+            kind = b.get("type") or ("snapshot" if b.get("is_pre_restore") else "manual")
+            self.backup_table.setItem(row, self.COL_TYPE, QTableWidgetItem(_t(self._TYPE_KEYS[kind])))
+            self.backup_table.setCellWidget(row, self.COL_ACTIONS, self._make_row_actions(row))
+
+    def _make_row_actions(self, row: int) -> QWidget:
+        """Restore and Delete buttons for one backup row (#620)."""
+        cell = QWidget()
+        cell_layout = QHBoxLayout(cell)
+        cell_layout.setContentsMargins(4, 2, 4, 2)
+        cell_layout.setSpacing(6)
+        btn_restore = QPushButton(_t("data_safety.btn_restore_row"))
+        btn_restore.setObjectName("BackupRowRestore")
+        btn_restore.setProperty("class", "secondary")
+        btn_restore.clicked.connect(lambda _=False, r=row: self._restore_from_row(r))
+        cell_layout.addWidget(btn_restore)
+        btn_delete = QPushButton(_t("data_safety.btn_delete_backup"))
+        btn_delete.setObjectName("BackupRowDelete")
+        btn_delete.setProperty("class", "danger")
+        btn_delete.clicked.connect(lambda _=False, r=row: self._delete_backup_row(r))
+        cell_layout.addWidget(btn_delete)
+        return cell
+
+    def _restore_from_row(self, row: int) -> None:
+        """Open the Restore tab with this backup's file filled in."""
+        if row < 0 or row >= len(self._backup_data):
+            return
+        self.input_restore_path.setText(self._backup_data[row]["path"])
+        self.input_restore_password.clear()
+        self.lbl_verify_result.setText("")
+        self.tabs.setCurrentIndex(1)
+        self.input_restore_password.setFocus()
 
     def _on_backup_list_error(self, message: str) -> None:
         self._overlay.hide_loading()
@@ -332,16 +369,19 @@ class DataSafetyView(QWidget):
         )
 
     def _show_backup_context_menu(self, position) -> None:
-        """Offer a per-row Delete action (#341) -- previously the only way
+        """Right-click Restore/Delete for a row -- same as the row buttons (#620).
+
+        Delete was the first per-row action (#341): before it, the only way
         to remove a backup was the bulk "Clean Old Backups" action, which
-        explicitly excludes pre-restore snapshots, leaving no way in the
-        app to ever remove one."""
+        excluded pre-restore snapshots, leaving no way to ever remove one."""
         row = self.backup_table.indexAt(position).row()
         if row < 0 or row >= len(self._backup_data):
             return
         self.backup_table.selectRow(row)
 
         menu = QMenu(self)
+        restore_action = menu.addAction(_t("data_safety.btn_restore_row"))
+        restore_action.triggered.connect(lambda: self._restore_from_row(row))
         delete_action = menu.addAction(_t("data_safety.btn_delete_backup"))
         delete_action.triggered.connect(lambda: self._delete_backup_row(row))
         menu.exec(self.backup_table.viewport().mapToGlobal(position))
@@ -967,12 +1007,14 @@ class DataSafetyView(QWidget):
                 _t("data_safety.backup_header_date"),
                 _t("data_safety.backup_header_size"),
                 _t("data_safety.backup_header_type"),
+                _t("data_safety.backup_header_actions"),
             ]
         )
         self.btn_create_backup.setText(_t("data_safety.btn_create_backup"))
         self.btn_clean_old.setText(_t("data_safety.btn_clean_old"))
         self.btn_backup_refresh.setText(_t("data_safety.btn_refresh"))
         self.lbl_pwd_label.setText(_t("data_safety.pwd_label"))
+        self._fill_backup_table()
         if self._last_status is not None:
             self._on_backup_status(self._last_status)
 

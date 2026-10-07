@@ -1045,6 +1045,32 @@ QToolButton#BtnLogout[collapsed="true"] {
     margin: 4px 10px 8px 10px;
 }
 
+/* Sidebar nav list scrolls on short screens; POS/Logout stay pinned
+   below it. Compact mode (window under ~800px) trims button padding so
+   the 40px buttons don't clip their text (#591). */
+QScrollArea#SidebarNavScroll {
+    background: transparent;
+    border: none;
+}
+
+QWidget#SidebarNavInner,
+QWidget#SidebarSectionWrapper {
+    background: transparent;
+}
+
+QToolButton#SidebarButton[compact="true"] {
+    min-height: 0px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+QToolButton#BtnPos[compact="true"],
+QToolButton#BtnLogout[compact="true"] {
+    min-height: 0px;
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
+
 /* --- Sales View Specifics --- */
 
 /* ===== 1. TOP HEADER BAR (Brand Anchor - Dark Navy in Light Mode) ===== */

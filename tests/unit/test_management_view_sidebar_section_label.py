@@ -19,7 +19,7 @@ class TestManagementViewSidebarSectionLabel:
 
     def test_section_label_sits_between_credit_book_and_reports(self, db_session):
         view = ManagementView()
-        layout = view.sidebar._layout
+        layout = view.sidebar.nav_layout
 
         index_of = {}
         for i in range(layout.count()):

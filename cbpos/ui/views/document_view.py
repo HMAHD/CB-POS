@@ -28,8 +28,8 @@ from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.document_browser_service import DocumentBrowserService
+from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.proforma_service import ProformaService
-from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.services.transaction_service import TransactionService
@@ -690,18 +690,8 @@ class DocumentBrowserView(QWidget):
             if doc_type == "sale":
                 sale = SaleQueryService.get_sale_details(self.current_doc["id"])
                 if sale:
-                    from cbpos.core.services.config_service import ConfigService
-
-                    settings = ConfigService.get_all()
-                    language = settings.get("language", "en")
-                    worker = self._connect_print_signals()
-
-                    if language == "en":
-                        receipt_text = ReceiptService.build_receipt_text(sale)
-                        worker.add_job("print_receipt", receipt_text)
-                    else:
-                        receipt_image = ReceiptService.build_receipt_image(sale)
-                        worker.add_job("print_image", receipt_image)
+                    self._connect_print_signals()
+                    PrinterService.print_receipt(sale, is_reprint=True)
             elif doc_type == "proforma":
                 from cbpos.core.services.receipt_builder import ReceiptBuilder
 

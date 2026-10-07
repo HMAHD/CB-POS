@@ -310,3 +310,74 @@ class TestTransactionAutoPrint:
         assert TransactionService.process_refund(sale.id, "Damaged", db_user.id) is True
 
         worker.add_job.assert_not_called()
+
+
+# ── Print / Reprint buttons ──────────────────────────────────────────────
+
+
+@pytest.fixture
+def build_spy():
+    """Record every ReceiptBuilder.build_receipt call: (sale, is_reprint, commands)."""
+    calls: list[tuple] = []
+    real_build = ReceiptBuilder.build_receipt
+
+    def spy(sale, *args, **kwargs):
+        commands = real_build(sale, *args, **kwargs)
+        calls.append((sale, kwargs.get("is_reprint", False), commands))
+        return commands
+
+    with patch.object(ReceiptBuilder, "build_receipt", side_effect=spy):
+        yield calls
+
+
+class TestPrintButtonsUseNewBuilder:
+    def test_receipt_options_print(self, qapp, config_store, cashier, worker, build_spy):
+        from cbpos.ui.dialogs.receipt_options_dialog import ReceiptOptionsDialog
+
+        config_store.set("receipt_copies", 2)
+        sale = make_sale()
+        dlg = ReceiptOptionsDialog(sale)
+
+        dlg.print_thermal()
+
+        ((built_for, is_reprint, commands),) = build_spy
+        assert built_for is sale and is_reprint is False
+        assert queued_jobs(worker) == [("print_receipt", commands + commands)]
+        dlg.deleteLater()
+
+    def test_history_reprint(self, qapp, db_session, config_store, cashier, worker, build_spy):
+        from cbpos.ui.views.history_view import HistoryView
+
+        sale = make_sale()
+        view = HistoryView()
+        view.current_sale = sale
+
+        with patch("cbpos.ui.views.history_view.QMessageBox") as mock_box:
+            view.reprint_receipt()
+        mock_box.critical.assert_not_called()
+
+        ((built_for, is_reprint, commands),) = build_spy
+        assert built_for is sale and is_reprint is True
+        assert queued_jobs(worker) == [("print_receipt", commands)]
+        view.deleteLater()
+
+    def test_document_browser_reprint(self, qapp, db_session, config_store, db_user, db_product, worker, build_spy):
+        from cbpos.ui.views.document_view import DocumentBrowserView
+
+        sale = _sell(db_product)
+        sale_id, doc_number = sale.id, sale.document_number
+        # Fresh identity map, so the reprint's own query really eager-loads, as in the app.
+        db_session.expunge_all()
+        worker.add_job.reset_mock()
+        build_spy.clear()
+        view = DocumentBrowserView()
+        view.current_doc = {"type": "sale", "id": sale_id, "document_number": doc_number}
+
+        with patch("cbpos.ui.views.document_view.QMessageBox") as mock_box:
+            view.reprint_document()
+        mock_box.critical.assert_not_called()
+
+        ((built_for, is_reprint, commands),) = build_spy
+        assert built_for.id == sale_id and is_reprint is True
+        assert queued_jobs(worker) == [("print_receipt", commands)]
+        view.deleteLater()

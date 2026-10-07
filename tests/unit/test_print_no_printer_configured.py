@@ -138,6 +138,6 @@ class TestHardwareTestDrawerStillReportsNotConfigured:
     def test_test_cash_drawer_with_no_printer_fails(self, no_printer):
         from cbpos.core.services.hardware_test_service import HardwareTestService
 
-        ok, message = HardwareTestService.test_cash_drawer()
-        assert ok is False
-        assert "No printer configured" in message
+        result = HardwareTestService.test_cash_drawer()
+        assert result.success is False
+        assert result.code == "NOT_CONFIGURED"

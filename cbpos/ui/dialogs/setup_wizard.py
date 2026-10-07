@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from cbpos.core.constants.hardware import PrinterType
 from cbpos.i18n import _t
 
 
@@ -89,24 +90,44 @@ class SetupWizard(QDialog):
         self.hw_form.setVerticalSpacing(15)
         self.hw_form.setHorizontalSpacing(20)
 
-        available_printers = QPrinterInfo.availablePrinterNames() or [_t("setup_wizard.none_detected")]
+        # Only real printer names carry data -- the "none detected" filler
+        # used to be saved as if it were a printer.
+        system_printers = QPrinterInfo.availablePrinterNames()
+
+        # Same connection choice as Settings -> Hardware, saved to the same
+        # printer_type / printer_path keys the print driver reads (#622).
+        self.combo_printer_type = QComboBox()
+        for p_type, key in zip(PrinterType.REAL, ("conn_win32", "conn_network", "conn_usb"), strict=True):
+            self.combo_printer_type.addItem(_t(f"settings.hardware.{key}"), p_type)
 
         self.combo_receipt_printer = QComboBox()
         self.combo_receipt_printer.addItem(_t("setup_wizard.printer_none"), None)
-        for p in available_printers:
+        for p in system_printers:
             self.combo_receipt_printer.addItem(p, p)
+        if not system_printers:
+            self.combo_receipt_printer.addItem(_t("setup_wizard.none_detected"), None)
+
+        self.input_printer_ip = QLineEdit()
+        self.input_printer_ip.setPlaceholderText(_t("settings.hardware.printer_ip_placeholder"))
+        self.input_usb_id = QLineEdit()
+        self.input_usb_id.setPlaceholderText(_t("settings.hardware.usb_id_placeholder"))
 
         self.combo_a4_printer = QComboBox()
         self.combo_a4_printer.addItem(_t("setup_wizard.printer_none"), None)
-        for p in available_printers:
-            self.combo_a4_printer.addItem(p, p)
+        for p in system_printers or [_t("setup_wizard.none_detected")]:
+            self.combo_a4_printer.addItem(p, p if system_printers else None)
 
         self.combo_paper_width = QComboBox()
         self.combo_paper_width.addItem(_t("setup_wizard.paper_80mm"), "80mm")
         self.combo_paper_width.addItem(_t("setup_wizard.paper_58mm"), "58mm")
 
+        self.hw_form.addRow(_t("settings.hardware.connection_type"), self.combo_printer_type)
         self.hw_form.addRow(_t("setup_wizard.receipt_printer"), self.combo_receipt_printer)
+        self.hw_form.addRow(_t("settings.hardware.printer_ip"), self.input_printer_ip)
+        self.hw_form.addRow(_t("settings.hardware.usb_id"), self.input_usb_id)
         self.hw_form.addRow(_t("setup_wizard.a4_printer"), self.combo_a4_printer)
+        self.combo_printer_type.currentIndexChanged.connect(self._update_connection_fields)
+        self._update_connection_fields()
         self.hw_form.addRow(_t("setup_wizard.paper_width"), self.combo_paper_width)
 
         hw_layout.addLayout(self.hw_form)
@@ -200,6 +221,10 @@ class SetupWizard(QDialog):
             self.btn_back.setVisible(True)
 
         elif current == 1:
+            error = self._printer_error()
+            if error:
+                QMessageBox.warning(self, _t("setup_wizard.invalid_title"), error)
+                return
             self.stack.setCurrentIndex(2)
             self.lbl_step.setText(_t("setup_wizard.step3"))
             self.btn_next.setText(_t("setup_wizard.btn_finish"))
@@ -226,6 +251,39 @@ class SetupWizard(QDialog):
 
             self.finish_wizard()
 
+    def _update_connection_fields(self) -> None:
+        """Show only the field that belongs to the chosen connection type."""
+        p_type = self.combo_printer_type.currentData()
+        self.hw_form.setRowVisible(self.combo_receipt_printer, p_type == PrinterType.WIN32)
+        self.hw_form.setRowVisible(self.input_printer_ip, p_type == PrinterType.NETWORK)
+        self.hw_form.setRowVisible(self.input_usb_id, p_type == PrinterType.USB)
+
+    def printer_target(self) -> tuple[str, str]:
+        """The receipt printer chosen on the hardware step.
+
+        Returns:
+            (printer_type, printer_path), as Settings -> Hardware saves them;
+            a Windows printer with nothing chosen is ("NONE", "").
+        """
+        p_type = self.combo_printer_type.currentData() or PrinterType.WIN32
+        if p_type == PrinterType.NETWORK:
+            return p_type, self.input_printer_ip.text().strip()
+        if p_type == PrinterType.USB:
+            return p_type, self.input_usb_id.text().strip()
+        name = self.combo_receipt_printer.currentData() or ""
+        return (PrinterType.WIN32, name) if name else (PrinterType.NONE, "")
+
+    def _printer_error(self) -> str:
+        """Translated problem with the hardware step's printer fields, or "" if they are fine."""
+        from cbpos.infrastructure.hardware.escpos_driver import parse_usb_id
+
+        p_type, p_path = self.printer_target()
+        if p_type == PrinterType.NETWORK and not p_path:
+            return _t("settings.hardware.ip_required")
+        if p_type == PrinterType.USB and parse_usb_id(p_path) is None:
+            return _t("settings.hardware.usb_id_invalid")
+        return ""
+
     def go_back(self):
         """Return to the previous step, updating the step label and button text."""
         current = self.stack.currentIndex()
@@ -251,10 +309,11 @@ class SetupWizard(QDialog):
             "paper_width": self.combo_paper_width.currentData(),
         }
 
-        # Printer settings (skip if None sentinel selected)
-        receipt_printer = self.combo_receipt_printer.currentData()
-        if receipt_printer is not None:
-            settings["receipt_printer_name"] = receipt_printer
+        # Receipt printer: the same keys Settings -> Hardware writes
+        p_type, p_path = self.printer_target()
+        settings["printer_type"] = p_type
+        settings["printer_path"] = p_path
+        settings["receipt_printer_name"] = p_path if p_type == PrinterType.WIN32 else ""
 
         a4_printer = self.combo_a4_printer.currentData()
         if a4_printer is not None:

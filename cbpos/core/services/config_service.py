@@ -38,8 +38,8 @@ class ConfigService:
         "tax_vat_rate": 18.0,
         "tax_sscl_rate": 2.5,
         "tax_sscl_turnover_pct": 50.0,
-        "printer_type": "NONE",  # USB, NETWORK, or NONE
-        "printer_path": "",  # e.g., COM3, 192.168.1.100, or empty for auto-USB
+        "printer_type": "NONE",  # WIN32, NETWORK, USB, or NONE (see constants.hardware.PrinterType)
+        "printer_path": "",  # WIN32: Windows printer name, NETWORK: IP[:port], USB: VID:PID
         "language": "en",  # en, si, ta
         "receipt_header": "Welcome to Ceylon Byte",
         "receipt_footer": "Thank You! Come Again.",
@@ -62,6 +62,7 @@ class ConfigService:
         "cut_type": "partial",  # "full" or "partial"
         "feed_lines_before_cut": 3,  # 1-8 lines feed before cut
         "drawer_on_cash_only": True,  # Only kick drawer for cash payments
+        "drawer_pin": 2,  # Drawer kick pin: 2 or 5 (depends on the drawer cable)
         # Scale Barcode Configuration
         "scale_barcode_prefix": "20",  # Prefix for scale barcodes
         "scale_decimal_places": 3,  # Decimal places for weight
@@ -144,6 +145,7 @@ class ConfigService:
             "printer_path",
             "receipt_printer_name",
             "a4_printer_name",
+            "drawer_pin",
             "language",
             "theme",
             "enable_sounds",
@@ -250,12 +252,62 @@ class ConfigService:
                 for key in cls._SENSITIVE_KEYS:
                     if cls._settings.get(key):
                         cls._settings[key] = cls._decode_sensitive(cls._settings[key])
+                if cls._migrate_receipt_printer(cls._settings):
+                    cls.save()
             except Exception as e:
                 logger.error("Error loading settings: %s. Using defaults.", e)
                 cls._settings = cls.DEFAULTS.copy()
         else:
             cls._settings = cls.DEFAULTS.copy()
             cls.save()
+
+    # Virtual printers Windows installs by default. The old Hardware page
+    # saved whatever its printer combo showed first -- often one of these --
+    # so they are no evidence the shop chose a receipt printer.
+    _VIRTUAL_PRINTER_MARKERS = ("pdf", "xps", "onenote", "fax")
+
+    @classmethod
+    def _migrate_receipt_printer(cls, settings: dict[str, Any]) -> bool:
+        """Turn a legacy ``receipt_printer_name`` into a Windows printer setting (#622).
+
+        Before #622 the Hardware page and Setup Wizard saved only
+        ``receipt_printer_name``, which nothing read, so ``printer_type``
+        stayed NONE. An install with a real printer name there but no
+        printer type now becomes ``printer_type`` WIN32 with that name.
+        Placeholder texts ("No printers found") and virtual printers
+        (PDF/XPS/OneNote/Fax) are skipped. Terminal-prefixed keys
+        (network mode) are migrated the same way.
+
+        Args:
+            settings: The loaded settings dict; updated in place.
+
+        Returns:
+            True if anything changed (the caller saves the file).
+        """
+        from cbpos.i18n import translate_in
+
+        placeholders = {
+            translate_in(lang, key)
+            for lang in ("en", "si", "ta")
+            for key in ("settings.hardware.no_printers", "setup_wizard.none_detected", "setup_wizard.printer_none")
+        }
+        changed = False
+        for key in [k for k in settings if k == "receipt_printer_name" or k.endswith(".receipt_printer_name")]:
+            prefix = key[: -len("receipt_printer_name")]
+            name = (settings.get(key) or "").strip()
+            if not name or name in placeholders:
+                continue
+            if any(marker in name.lower() for marker in cls._VIRTUAL_PRINTER_MARKERS):
+                continue
+            type_key = f"{prefix}printer_type"
+            current_type = settings.get(type_key, settings.get("printer_type", "NONE") if prefix else "NONE")
+            if current_type not in (None, "", "NONE"):
+                continue
+            settings[type_key] = "WIN32"
+            settings[f"{prefix}printer_path"] = name
+            changed = True
+            logger.info("Migrated receipt printer '%s' to a Windows printer setting (%s).", name, type_key)
+        return changed
 
     @classmethod
     def save(cls):

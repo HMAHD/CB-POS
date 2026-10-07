@@ -154,47 +154,70 @@ class VacuumWorker(QThread):
 
 
 class PrinterTestWorker(QThread):
-    """Tests receipt printer connectivity in a background thread."""
+    """Sends a test slip to the receipt printer in a background thread."""
 
-    result = pyqtSignal(bool, str)  # (success, message)
+    result = pyqtSignal(object)  # HardwareTestResult
 
-    def __init__(self) -> None:
-        """Set up the printer connectivity test job."""
+    def __init__(self, printer_type: str | None = None, printer_path: str | None = None) -> None:
+        """Set up the test print job.
+
+        Args:
+            printer_type: Unsaved on-screen `PrinterType` to test, or None for the saved one.
+            printer_path: Unsaved printer name / IP / VID:PID, or None for the saved one.
+        """
         super().__init__()
         self.finished.connect(self.deleteLater)
+        self.printer_type = printer_type
+        self.printer_path = printer_path
 
     def run(self) -> None:
-        """Test the configured receipt printer and emit (success, message)."""
-        try:
-            from cbpos.core.services.hardware_test_service import HardwareTestService
+        """Run the test print and emit its HardwareTestResult."""
+        from cbpos.core.constants.hardware import PrinterError
+        from cbpos.core.services.hardware_test_service import HardwareTestResult, HardwareTestService
 
-            success, message = HardwareTestService.test_receipt_printer()
-            self.result.emit(success, message)
+        try:
+            outcome = HardwareTestService.test_receipt_printer(self.printer_type, self.printer_path)
         except Exception as e:
             logger.error("Printer test worker failed: %s", e)
-            self.result.emit(False, str(e))
+            outcome = HardwareTestResult(False, PrinterError.FAILED, detail=str(e))
+        self.result.emit(outcome)
 
 
 class DrawerTestWorker(QThread):
-    """Tests cash drawer kick in a background thread."""
+    """Kicks the cash drawer through the receipt printer in a background thread."""
 
-    result = pyqtSignal(bool, str)  # (success, message)
+    result = pyqtSignal(object)  # HardwareTestResult
 
-    def __init__(self) -> None:
-        """Set up the cash drawer kick test job."""
+    def __init__(
+        self,
+        printer_type: str | None = None,
+        printer_path: str | None = None,
+        pin: int | None = None,
+    ) -> None:
+        """Set up the drawer kick test job.
+
+        Args:
+            printer_type: Unsaved on-screen `PrinterType` to test, or None for the saved one.
+            printer_path: Unsaved printer name / IP / VID:PID, or None for the saved one.
+            pin: Drawer kick pin (2 or 5), or None for the saved one.
+        """
         super().__init__()
         self.finished.connect(self.deleteLater)
+        self.printer_type = printer_type
+        self.printer_path = printer_path
+        self.pin = pin
 
     def run(self) -> None:
-        """Test the configured cash drawer kick and emit (success, message)."""
-        try:
-            from cbpos.core.services.hardware_test_service import HardwareTestService
+        """Run the drawer kick test and emit its HardwareTestResult."""
+        from cbpos.core.constants.hardware import PrinterError
+        from cbpos.core.services.hardware_test_service import HardwareTestResult, HardwareTestService
 
-            success, message = HardwareTestService.test_cash_drawer()
-            self.result.emit(success, message)
+        try:
+            outcome = HardwareTestService.test_cash_drawer(self.printer_type, self.printer_path, self.pin)
         except Exception as e:
             logger.error("Drawer test worker failed: %s", e)
-            self.result.emit(False, str(e))
+            outcome = HardwareTestResult(False, PrinterError.FAILED, detail=str(e))
+        self.result.emit(outcome)
 
 
 class IntegrityCheckWorker(QThread):

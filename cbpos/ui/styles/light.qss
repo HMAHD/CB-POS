@@ -875,20 +875,27 @@ QLabel#MenuRole {
     background: transparent;
 }
 
-/* Sign Out button */
+/* Sign Out button -- one bordered, touch-sized button carrying its own
+   icon (#607); hover tints it so the target is obvious. */
 QPushButton#SignOutBtn {
-    background: transparent;
-    border: none;
-    color: #777777;
+    background-color: transparent;
+    border: 1px solid rgba(220, 53, 69, 0.35);
+    border-radius: 8px;
+    color: #555555;
     font-size: 13px;
-    font-weight: normal;
-    text-align: left;
-    padding: 0;
-
+    font-weight: bold;
+    padding: 0 12px;
+    min-height: 40px;
 }
 
 QPushButton#SignOutBtn:hover {
+    background-color: rgba(220, 53, 69, 0.12);
+    border-color: #DC3545;
     color: #DC3545;
+}
+
+QPushButton#SignOutBtn:pressed {
+    background-color: rgba(220, 53, 69, 0.22);
 }
 
 /* Icon Buttons (bottom toolbar) */

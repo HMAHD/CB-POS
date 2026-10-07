@@ -150,6 +150,9 @@ class SideMenu(QWidget):
     fullscreen_clicked = pyqtSignal()
     power_clicked = pyqtSignal()
 
+    # A door reads as "leave"; power-off stays reserved for exiting the app.
+    SIGN_OUT_ICON = "fa5s.door-open"
+
     def __init__(self, parent=None):
         """Build the menu (hidden until shown) and register for live language updates."""
         super().__init__(parent)
@@ -275,7 +278,7 @@ class SideMenu(QWidget):
 
         info_layout = QVBoxLayout()
         info_layout.setContentsMargins(0, 0, 0, 0)
-        info_layout.setSpacing(1)
+        info_layout.setSpacing(4)
 
         self.lbl_username = QLabel()
         self.lbl_username.setObjectName("MenuUsername")
@@ -290,26 +293,20 @@ class SideMenu(QWidget):
 
         block_layout.addLayout(profile_row)
 
-        # Sign Out — centered horizontally
+        # Sign Out — one button carrying its own icon, so tapping the icon
+        # or the text both sign out, with a touch-sized hit area (#607).
         signout_row = QHBoxLayout()
-        signout_row.setSpacing(6)
-        signout_row.addStretch()
-
-        self.btn_logout_icon = QLabel()
-        self.btn_logout_icon.setFixedSize(18, 18)
-        self.btn_logout_icon.setPixmap(Icons.get("fa5s.sign-out-alt", "#FF4136").pixmap(16, 16))
-        self.btn_logout_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.btn_logout_icon.setCursor(Qt.CursorShape.PointingHandCursor)
-        signout_row.addWidget(self.btn_logout_icon)
+        signout_row.setContentsMargins(16, 0, 16, 0)
 
         self.btn_logout = QPushButton()
         self.btn_logout.setObjectName("SignOutBtn")
         self.btn_logout.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_logout.setFixedHeight(28)
+        self.btn_logout.setIcon(Icons.get(self.SIGN_OUT_ICON, "#FF4136"))
+        self.btn_logout.setIconSize(QSize(18, 18))
+        self.btn_logout.setMinimumHeight(40)
+        self.btn_logout.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.btn_logout.clicked.connect(self.logout_clicked.emit)
         signout_row.addWidget(self.btn_logout)
-
-        signout_row.addStretch()
 
         block_layout.addLayout(signout_row)
 
@@ -446,8 +443,7 @@ class SideMenu(QWidget):
         for btn in self._nav_buttons:
             btn.update_icon()
 
-        # Sign out icon
-        self.btn_logout_icon.setPixmap(Icons.get("fa5s.sign-out-alt", "#FF4136").pixmap(16, 16))
+        self.btn_logout.setIcon(Icons.get(self.SIGN_OUT_ICON, "#FF4136"))
 
         for btn in [self.btn_settings, self.btn_fullscreen, self.btn_power]:
             btn.update_icon()

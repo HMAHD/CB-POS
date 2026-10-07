@@ -36,7 +36,6 @@ from cbpos.core.services.sync_protocol import (
     EP_PUSH_TRANSACTIONS,
     EP_REGISTER,
     SYNC_PROTOCOL_VERSION,
-    dict_to_model,
     get_model_for_table,
     model_to_dict,
     sync_json_dumps,
@@ -506,18 +505,11 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         db = Database()
 
         try:
-            from cbpos.core.models import AuditLog
-
-            with db.get_session() as session:
-                for record_data in audit_records:
-                    try:
-                        entry = dict_to_model(AuditLog, record_data)
-                        entry.synced = True
-                        session.merge(entry)
-                        records_applied += 1
-                    except Exception as e:
-                        logger.error("Error applying audit log: %s", e)
-
+            # Same id re-keying as transactions (#671): audit ids are per
+            # till too, and merging by them overwrote the Main PC's own
+            # audit entries and other tills'.
+            with _push_apply_lock, db.get_session() as session:
+                records_applied, _ = SyncApplyService(session, terminal_id).apply_batch({"audit_logs": audit_records})
                 session.commit()
 
         except Exception as e:

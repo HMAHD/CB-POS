@@ -71,3 +71,24 @@ class TestBarcodeScannerEnter:
         QTest.keyClick(field, Qt.Key.Key_Return)
 
         assert scans == ["4791234567890"]
+
+    def test_burst_into_a_scan_passthrough_editor_is_routed_as_a_scan(self, scanner_and_field):
+        """A quantity cell editor (Stock Take Counted) opts out of keeping Enter, so a
+        scan landing there is routed to the view instead of committed as a quantity (#547)."""
+        _scanner, field, scans, returns = scanner_and_field
+        field.setProperty(BarcodeScanner.SCAN_PASSTHROUGH_PROPERTY, True)
+        QTest.keyClicks(field, "4791234567890")
+        QTest.keyClick(field, Qt.Key.Key_Return)
+
+        assert scans == ["4791234567890"]
+        assert returns == []
+
+    def test_human_enter_in_a_scan_passthrough_editor_still_reaches_it(self, scanner_and_field):
+        _scanner, field, scans, returns = scanner_and_field
+        field.setProperty(BarcodeScanner.SCAN_PASSTHROUGH_PROPERTY, True)
+        QTest.keyClick(field, Qt.Key.Key_7)
+        QTest.qWait(120)
+        QTest.keyClick(field, Qt.Key.Key_Return)
+
+        assert returns == ["7"]
+        assert scans == []

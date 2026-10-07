@@ -1172,7 +1172,8 @@
     "error_corrupt": "This backup file is damaged and can't be read.",
     "error_snapshot_failed": "Couldn't save a safety snapshot of your current data, so nothing was restored. Check the backup folder has free space and can be written to.",
     "error_db_in_use": "The database is still in use, so nothing was restored. Close other CB POS windows or terminals and try again.",
-    "error_not_found": "The backup file can't be found."
+    "error_not_found": "The backup file can't be found.",
+    "verify_running": "Checking backup..."
   },
   "payment_methods": {
     "title": "Payment Methods",

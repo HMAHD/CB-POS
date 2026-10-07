@@ -141,6 +141,34 @@ class RestoreWorker(QThread):
             self.error.emit(str(e))
 
 
+class VerifyBackupWorker(QThread):
+    """Verifies a backup (decrypt, CRC, database checks) in a background thread.
+
+    Verifying extracts and checks the whole database, which froze the
+    window on large backups when it ran on the UI thread (#629).
+    """
+
+    result = pyqtSignal(dict)  # BackupService.verify_backup() result
+
+    def __init__(self, backup_path: str, password: str) -> None:
+        """Set up the verify job with the backup file and its password."""
+        super().__init__()
+        self.finished.connect(self.deleteLater)
+        self.backup_path = backup_path
+        self.password = password
+
+    def run(self) -> None:
+        """Verify the backup and emit the result dict (never raises)."""
+        from cbpos.core.services.backup_service import BackupService
+
+        try:
+            outcome = BackupService.verify_backup(self.backup_path, self.password)
+        except Exception as e:
+            logger.error("Verify failed: %s", e)
+            outcome = {"valid": False, "files": [], "size": "", "error": str(e), "error_code": None}
+        self.result.emit(outcome)
+
+
 class VacuumWorker(QThread):
     """Runs database VACUUM in a background thread."""
 

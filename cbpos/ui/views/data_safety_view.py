@@ -41,7 +41,7 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.dialogs.backup_password_dialog import BackupPasswordDialog, ensure_backup_password
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
-from cbpos.ui.workers import BackupListWorker, BackupWorker, RestoreWorker
+from cbpos.ui.workers import BackupListWorker, BackupWorker, RestoreWorker, VerifyBackupWorker
 
 logger = logging.getLogger(__name__)
 
@@ -471,7 +471,20 @@ class DataSafetyView(QWidget):
             )
             return
 
-        result = BackupService.verify_backup(path, password)
+        # Verify decrypts and checks the whole database -- keep it off the
+        # UI thread so large backups don't freeze the window (#629).
+        self.btn_verify.setEnabled(False)
+        self.btn_restore.setEnabled(False)
+        self.lbl_verify_result.setText("")
+        self._overlay.show_loading(_t("data_safety.verify_running"))
+        self._verify_worker = VerifyBackupWorker(path, password)
+        self._verify_worker.result.connect(self._on_verify_finished)
+        self._verify_worker.start()
+
+    def _on_verify_finished(self, result: dict) -> None:
+        self._overlay.hide_loading()
+        self.btn_verify.setEnabled(True)
+        self.btn_restore.setEnabled(True)
         if result["valid"]:
             file_count = len(result["files"])
             self.lbl_verify_result.setProperty("class", "credit")

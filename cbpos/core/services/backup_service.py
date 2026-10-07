@@ -111,27 +111,60 @@ class BackupService:
 
         password_bytes = password.encode("utf-8")
 
-        with pyzipper.AESZipFile(backup_path, "w", compression=pyzipper.ZIP_DEFLATED, encryption=_ZIP_ENCRYPTION) as zf:
-            zf.setpassword(password_bytes)
+        try:
+            with (
+                tempfile.TemporaryDirectory() as tmp_dir,
+                pyzipper.AESZipFile(
+                    backup_path, "w", compression=pyzipper.ZIP_DEFLATED, encryption=_ZIP_ENCRYPTION
+                ) as zf,
+            ):
+                zf.setpassword(password_bytes)
 
-            # Add database
-            zf.write(db_file, "cbpos.db")
-            logger.info("Added database to backup: %s", db_file)
+                # Add database -- a consistent copy, never the live file (#629)
+                db_copy = Path(tmp_dir) / "cbpos.db"
+                BackupService._copy_database(db_file, db_copy)
+                zf.write(db_copy, "cbpos.db")
+                logger.info("Added database to backup: %s", db_file)
 
-            # Add product images (if directory exists)
-            if images_dir.exists():
-                for img_file in images_dir.rglob("*"):
-                    if img_file.is_file():
-                        arcname = f"products/{img_file.relative_to(images_dir)}"
-                        zf.write(img_file, arcname)
+                # Add product images (if directory exists)
+                if images_dir.exists():
+                    for img_file in images_dir.rglob("*"):
+                        if img_file.is_file():
+                            arcname = f"products/{img_file.relative_to(images_dir)}"
+                            zf.write(img_file, arcname)
 
-            # Add settings.json
-            settings_file = Config.DATA_DIR / "settings.json"
-            if settings_file.exists():
-                zf.write(settings_file, "settings.json")
+                # Add settings.json
+                settings_file = Config.DATA_DIR / "settings.json"
+                if settings_file.exists():
+                    zf.write(settings_file, "settings.json")
+        except BaseException:
+            # Never leave a half-written archive that looks like a backup
+            backup_path.unlink(missing_ok=True)
+            raise
 
         logger.info("Encrypted backup created: %s", backup_path)
         return str(backup_path)
+
+    @staticmethod
+    def _copy_database(db_file: Path, dest: Path) -> None:
+        """Copy the live database with SQLite's online backup API.
+
+        Zipping the live file could catch it mid-write, and misses
+        committed data still in the WAL. The backup API gives a
+        consistent snapshot while the app keeps selling. The copy is
+        switched to a plain rollback journal so it is one self-contained
+        file.
+        """
+        src = sqlite3.connect(str(db_file), timeout=30)
+        try:
+            dst = sqlite3.connect(str(dest))
+            try:
+                src.backup(dst)
+                dst.execute("PRAGMA journal_mode=DELETE")
+            finally:
+                dst.close()
+        finally:
+            src.close()
 
     @staticmethod
     def run_auto_backup(backup_dir: str, keep_count: int) -> str | None:

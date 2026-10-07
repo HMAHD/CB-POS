@@ -82,18 +82,33 @@ def sale_doc(db_session) -> dict:
 
 
 class TestWorkerReportsMissingPrinter:
-    @pytest.mark.parametrize("job_type", ["print_receipt", "kick_drawer"])
-    def test_job_with_no_printer_errors_instead_of_completing(self, qtbot, no_printer, job_type):
+    def test_receipt_job_with_no_printer_errors_instead_of_completing(self, qtbot, no_printer):
         worker = PrintWorker.instance()
         completed: list[bool] = []
         worker.job_completed.connect(lambda: completed.append(True))
 
         with qtbot.waitSignal(worker.error_occurred, timeout=5000) as blocker:
-            worker.add_job(job_type, [{"type": "text", "val": "x"}])
+            worker.add_job("print_receipt", [{"type": "text", "val": "x"}])
 
         assert blocker.args == [_t("printer.not_configured")]
         qtbot.wait(200)  # give a wrongly-emitted job_completed time to arrive
         assert completed == []
+
+    def test_drawer_job_with_no_printer_is_silent(self, qtbot, no_printer):
+        """No printer means no drawer: every cash sale queues a kick, and
+        it must neither claim success nor raise a "not set up" error."""
+        worker = PrintWorker.instance()
+        signals: list[str] = []
+        worker.job_completed.connect(lambda: signals.append("completed"))
+        worker.error_occurred.connect(lambda msg: signals.append(msg))
+
+        worker.add_job("kick_drawer", ["CASH"])
+        # A receipt job queued after it proves the drawer job was processed.
+        with qtbot.waitSignal(worker.error_occurred, timeout=5000):
+            worker.add_job("print_receipt", [])
+        qtbot.wait(200)
+
+        assert signals == [_t("printer.not_configured")]
 
     def test_injected_null_printer_still_completes(self, qtbot, no_printer):
         """NullPrinter stays usable when passed in explicitly (tests/dev)."""
@@ -117,3 +132,12 @@ class TestReprintWithNoPrinter:
             mock_box.information.assert_not_called()
             mock_box.critical.assert_called_once()
         view.deleteLater()
+
+
+class TestHardwareTestDrawerStillReportsNotConfigured:
+    def test_test_cash_drawer_with_no_printer_fails(self, no_printer):
+        from cbpos.core.services.hardware_test_service import HardwareTestService
+
+        ok, message = HardwareTestService.test_cash_drawer()
+        assert ok is False
+        assert "No printer configured" in message

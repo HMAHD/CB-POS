@@ -205,6 +205,8 @@ class PrintWorker(QThread):
     - anything else → no printer: the job is skipped and error_occurred
       carries ``printer_not_configured_message()``. Never job_completed --
       screens show "sent to printer" on that signal (#623).
+      Exception: kick_drawer jobs are dropped silently (no printer, no
+      drawer), so every cash sale doesn't raise a "not set up" error.
 
     If the real printer fails to connect, the job is skipped and the failure
     is logged and reported via error_occurred.
@@ -291,6 +293,12 @@ class PrintWorker(QThread):
 
             current_printer = self._resolve_printer()
             if current_printer is None:
+                if job_type == "kick_drawer":
+                    # The drawer is wired through the receipt printer: no
+                    # printer, no drawer. Stay silent -- every cash sale
+                    # queues one, and nothing waits on it.
+                    logger.debug("No receipt printer configured — skipping drawer kick.")
+                    continue
                 logger.warning("No receipt printer configured — skipping %s job.", job_type)
                 self.error_occurred.emit(printer_not_configured_message())
                 continue

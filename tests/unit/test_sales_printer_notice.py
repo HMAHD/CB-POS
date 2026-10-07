@@ -105,3 +105,18 @@ class TestSetupButtonOpensHardwareSettings:
 
         assert window.stack.currentWidget() is window.settings_view
         assert isinstance(window.settings_view.stack.currentWidget(), HardwarePage)
+
+
+class TestCashSaleWithNoPrinter:
+    def test_drawer_kick_does_not_bring_back_dismissed_notice(self, no_printer, view, qtbot):
+        """A cash sale queues a drawer kick; with no printer it must stay
+        silent so the dismissed notice really appears only once."""
+        view.show()
+        view.printer_notice_close.click()
+        worker = PrintWorker.instance()
+        with patch("cbpos.ui.views.sales_view.QMessageBox") as mock_box:
+            worker.add_job("kick_drawer", ["CASH"])  # what _execute_sale() queues
+            qtbot.waitUntil(worker._queue.empty, timeout=5000)
+            qtbot.wait(300)  # let any (wrong) signal reach the UI thread
+            mock_box.warning.assert_not_called()
+        assert not view.printer_notice.isVisibleTo(view)

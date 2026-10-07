@@ -203,3 +203,110 @@ class TestExplicitPrint:
         PrinterService.print_receipt(sale, is_reprint=True)
 
         assert queued_jobs(worker) == [("print_receipt", ReceiptBuilder.build_receipt(sale, is_reprint=True))]
+
+
+# ── Sale / refund auto-print (TransactionService) ────────────────────────
+
+_counter = 0
+
+
+@pytest.fixture
+def db_user(db_session):
+    from cbpos.core.models import Permission, Role, User
+
+    global _counter
+    _counter += 1
+    permission = Permission(code=f"rpp_perm_{_counter}")
+    role = Role(name=f"RppRole_{_counter}", permissions=[permission])
+    user = User(username=f"rpp_user_{_counter}", pin_hash="hash", role=role)
+    db_session.add_all([permission, role, user])
+    db_session.flush()
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user):
+        yield user
+
+
+@pytest.fixture
+def db_product(db_session):
+    global _counter
+    _counter += 1
+    product = Product(
+        name_en=f"RppProduct_{_counter}", price=Decimal("100"), stock_qty=Decimal("10"), barcode=f"RPP{_counter:04d}"
+    )
+    db_session.add(product)
+    db_session.flush()
+    return product
+
+
+def _sell(product: Product) -> Sale:
+    from cbpos.core.services.cart_service import CartService
+    from cbpos.core.services.transaction_service import TransactionService
+
+    cart = CartService()
+    cart.add_item(product, qty=Decimal("2"))
+    with patch("cbpos.core.services.transaction_service.PrintWorker"):
+        return TransactionService.process_sale(cart, [{"method": "CASH", "amount": Decimal("200")}])
+
+
+class TestTransactionAutoPrint:
+    def test_sale_auto_print_job_equals_receipt_builder(self, config_store, db_user, db_product, worker):
+        config_store.set("show_cashier_on_receipt", True)
+
+        built: list[tuple[Sale, list]] = []
+        real_build = ReceiptBuilder.build_receipt
+
+        def spy(sale, *args, **kwargs):
+            commands = real_build(sale, *args, **kwargs)
+            built.append((sale, commands))
+            return commands
+
+        with patch.object(ReceiptBuilder, "build_receipt", side_effect=spy):
+            sale = _sell(db_product)
+
+        ((built_for, commands),) = built
+        assert built_for is sale
+        assert queued_jobs(worker) == [("print_receipt", commands)]
+        assert any(db_user.username in line for line in texts(queued_jobs(worker)[0][1]))
+
+    def test_receipt_dialog_on_leaves_printing_to_the_dialog(self, config_store, db_user, db_product, worker):
+        config_store.set("show_receipt_dialog", True)
+
+        _sell(db_product)
+
+        worker.add_job.assert_not_called()
+
+    def test_sale_with_auto_print_off_prints_nothing(self, config_store, db_user, db_product, worker):
+        config_store.set("auto_print_receipt", False)
+
+        _sell(db_product)
+
+        worker.add_job.assert_not_called()
+
+    def test_refund_auto_prints_the_refund_receipt(self, config_store, db_user, db_product, worker):
+        from cbpos.core.services.transaction_service import TransactionService
+        from cbpos.i18n import translate_in
+
+        config_store.set("receipt_copies", 2)
+        sale = _sell(db_product)
+        worker.add_job.reset_mock()
+
+        assert TransactionService.process_refund(sale.id, "Damaged", db_user.id) is True
+
+        ((job_type, commands),) = queued_jobs(worker)
+        assert job_type == "print_receipt"
+        lines = texts(commands)
+        refund_label = translate_in("en", "receipt_strings.refund_label")
+        assert lines.count(refund_label) == 4  # top + bottom banner, two copies
+        assert any(sale.document_number in line for line in lines)
+        assert any(db_user.username in line for line in lines)
+        assert len([c for c in commands if c["type"] == "cut"]) == 2
+
+    def test_refund_with_auto_print_off_prints_nothing(self, config_store, db_user, db_product, worker):
+        from cbpos.core.services.transaction_service import TransactionService
+
+        sale = _sell(db_product)
+        worker.add_job.reset_mock()
+        config_store.set("auto_print_receipt", False)
+
+        assert TransactionService.process_refund(sale.id, "Damaged", db_user.id) is True
+
+        worker.add_job.assert_not_called()

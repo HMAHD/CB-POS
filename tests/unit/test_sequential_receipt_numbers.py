@@ -54,7 +54,6 @@ def settings(monkeypatch):
 def no_print():
     with (
         patch("cbpos.core.services.transaction_service.PrintWorker"),
-        patch("cbpos.core.services.transaction_service.ReceiptService"),
         patch("cbpos.core.services.transaction_service.PrinterService"),
     ):
         yield

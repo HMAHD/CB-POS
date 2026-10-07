@@ -522,10 +522,13 @@ QListWidget::item, QTableWidget::item {
     border-bottom: 1px solid #F1F3F5;
 }
 
+/* Selection = background + text color only. A border here (it used to
+   be border-left: 4px) is drawn on *every* cell of the row and eats
+   width that ResizeToContents columns don't have, eliding the very row
+   the user is acting on (#568). */
 QListWidget::item:selected, QTableWidget::item:selected {
     background-color: #E3F2FD; /* Pale Blue */
     color: #0D6EFD;
-    border-left: 4px solid #0D6EFD;
 }
 
 QHeaderView::section {

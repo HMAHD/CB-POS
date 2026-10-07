@@ -119,6 +119,10 @@
     "status_error": "Error",
     "status_disconnected": "Disconnected"
   },
+  "printer": {
+    "not_configured": "No receipt printer is set up, so nothing was printed. Set one up in Settings > Hardware.",
+    "not_available": "Can't reach the receipt printer. Check that it's switched on and connected."
+  },
   "sales": {
     "search_placeholder_all": "Scan or type product... (Enter)",
     "search_placeholder_barcode": "Scan barcode...",
@@ -139,6 +143,9 @@
     "quick_pay_disabled": "Quick Pay is disabled in settings.",
     "printer_error_title": "Printer Error",
     "printer_error_message": "Receipt print failed: {message}\n\nCheck printer connection and verify settings under Settings > Hardware.",
+    "printer_notice": "No receipt printer is set up, so receipts won't print. Set one up in Settings > Hardware.",
+    "printer_notice_setup": "Set Up Printer",
+    "printer_notice_dismiss": "Dismiss",
     "validation_error": "Validation Error",
     "transaction_failed": "Transaction failed: {error}"
   },
@@ -1173,7 +1180,9 @@
     "btn_delete": "Delete",
     "hint": "Deactivate methods to hide from checkout. Cash method cannot be deleted.",
     "name_placeholder": "e.g. Cash, Card, PayHere",
-    "shortcut_placeholder": "e.g. F12 (optional)",
+    "shortcut_placeholder": "Press a key, e.g. F5 (optional)",
+    "shortcut_reserved": "{shortcut} is already used on the payment screen (Enter, F12 and Esc are taken). Please choose a different key.",
+    "shortcut_taken": "{shortcut} is already the shortcut for \"{name}\". Please choose a different key.",
     "validation_title": "Validation",
     "name_required": "Payment method name is required.",
     "error_create": "Failed to create payment method: {error}",
@@ -1411,7 +1420,16 @@
       "purchase_format": "Purchase Format:",
       "purchase_format_placeholder": "GRN-{Y}-{seq:05d}",
       "return_format": "Return Format:",
-      "return_format_placeholder": "CN-{Y}-{seq:05d}"
+      "return_format_placeholder": "CN-{Y}-{seq:05d}",
+      "fmt_error_empty": "Format can't be empty.",
+      "fmt_error_bad_char": "Can't use % or _ in a format.",
+      "fmt_error_unknown_placeholder": "Unknown code in braces. Use only {Y}, {M}, {D}, {T}, {terminal} and {seq}.",
+      "fmt_error_bad_seq": "The number code must be {seq} or like {seq:05d} (1-9 digits).",
+      "fmt_error_seq_once": "Put {seq} in the format exactly once.",
+      "fmt_error_seq_not_last": "{seq} must be at the very end.",
+      "fmt_error_too_long": "Too long. A number can have at most {max} characters.",
+      "fmt_preview_next": "Next: {number}",
+      "fmt_legend": "{Y} year · {M} month · {D} day · {T} terminal · {seq:05d} running number (always last)"
     },
     "hardware": {
       "title": "Hardware",
@@ -1763,7 +1781,8 @@
     "cannot_delete_admin_msg": "The built-in Admin role cannot be deleted.",
     "cannot_delete_in_use_msg": "'{name}' is still assigned to {count} user(s). Reassign them to a different role first.",
     "cannot_rename_title": "Cannot Rename Role",
-    "cannot_rename_admin_msg": "The built-in Admin role cannot be renamed."
+    "cannot_rename_admin_msg": "The built-in Admin role cannot be renamed.",
+    "builtin_locked_tooltip": "Admin is a built-in role, so it can't be renamed or deleted."
   },
   "category_tree": {
     "title": "Category Tree",
@@ -1889,7 +1908,8 @@
     "col_permission": "Permission",
     "save_changes": "Save Changes",
     "save_success": "Permissions saved successfully.",
-    "save_failed": "Failed to save permissions."
+    "save_failed": "Failed to save permissions.",
+    "admin_locked_tooltip": "Admin always keeps this permission, so there's always someone who can manage users and roles."
   },
   "profile": {
     "title": "My Profile",

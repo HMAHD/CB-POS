@@ -14,6 +14,12 @@ class BarcodeScanner(QObject):
     # 50ms window stay plain Enter. Make configurable if shops use <3-char codes.
     MIN_SCAN_LENGTH = 3
 
+    # Set True on a text field that must never receive a scan as input (a
+    # quantity cell editor): a burst + Enter there is routed as a scan and
+    # the view discards the typed digits, instead of committing a barcode
+    # as a quantity (#547). Human Enter still reaches the field.
+    SCAN_PASSTHROUGH_PROPERTY = "scanPassthrough"
+
     def __init__(self, app: QApplication):
         """Install a global key-event filter on the application to catch scanner input."""
         super().__init__()
@@ -58,8 +64,11 @@ class BarcodeScanner(QObject):
 
         A scan typed into such a field is submitted by the field's own
         ``returnPressed`` (Sales search, Stock Take add, scanner test, ...),
-        so it must not also be routed to the active view.
+        so it must not also be routed to the active view. Fields marked
+        with ``SCAN_PASSTHROUGH_PROPERTY`` don't count as text input.
         """
+        if widget.property(BarcodeScanner.SCAN_PASSTHROUGH_PROPERTY):
+            return False
         if isinstance(widget, QLineEdit):
             return not widget.isReadOnly()
         if isinstance(widget, (QTextEdit, QPlainTextEdit)):

@@ -401,6 +401,12 @@ QTreeWidget::indicator:checked, QTableWidget::indicator:checked {
     image: url(cbpos/assets/icons/check-white.svg);
 }
 
+/* Locked cells (e.g. Admin's critical permissions, #614) */
+QTreeWidget::indicator:checked:disabled, QTableWidget::indicator:checked:disabled {
+    background-color: #ADB5BD;
+    border-color: #ADB5BD;
+}
+
 /* Buttons */
 QPushButton {
     background-color: #FFFFFF;
@@ -1154,6 +1160,37 @@ QLabel#UndoToast {
     padding: 8px 16px;
     font-size: 13px;
     font-weight: bold;
+}
+
+/* No-receipt-printer notice on the Sales screen (#623) */
+QFrame#PrinterNotice {
+    background-color: #FFF3CD;
+    border-bottom: 1px solid #FFC107;
+}
+QLabel#PrinterNoticeText {
+    color: #664D03;
+    font-size: 13px;
+    background: transparent;
+}
+QPushButton#PrinterNoticeSetupBtn {
+    background-color: transparent;
+    color: #664D03;
+    border: 1px solid #997404;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-weight: bold;
+}
+QPushButton#PrinterNoticeSetupBtn:hover {
+    background-color: rgba(255, 193, 7, 0.25);
+}
+QToolButton#PrinterNoticeCloseBtn {
+    background: transparent;
+    color: #664D03;
+    border: none;
+    padding: 4px 8px;
+}
+QToolButton#PrinterNoticeCloseBtn:hover {
+    color: #212529;
 }
 
 /* Total Widget */
@@ -2709,6 +2746,13 @@ QLabel#RestoreWarning {
 /* Warning hint text (restart required, tax warning) */
 QLabel[class="warning-hint"] {
     color: #B02A37;  /* #DC3545 is 4.3:1 on #F8F9FA at 12px (#566) */
+    font-size: 12px;
+    background: transparent;
+}
+
+/* Inline field validation error (e.g. Settings > Documents number format) */
+QLabel[class="error"] {
+    color: #DC3545;
     font-size: 12px;
     background: transparent;
 }

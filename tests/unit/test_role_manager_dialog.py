@@ -175,3 +175,37 @@ class TestDelete:
         mock_box.warning.assert_called_once()
         mock_box.question.assert_not_called()
         assert any(r.id == admin_role.id for r in dialog.roles)
+
+
+class TestAdminGuardsShownUpfront:
+    """#614: Admin's rules should be visible before acting, not only as an error popup."""
+
+    def test_selecting_admin_disables_delete(self, db_session, admin_role):
+        dialog = RoleManagerDialog()
+        _select_role(dialog, admin_role.id)
+
+        assert not dialog.btn_delete.isEnabled()
+        assert dialog.btn_delete.toolTip()
+
+    def test_selecting_admin_makes_the_name_read_only(self, db_session, admin_role):
+        dialog = RoleManagerDialog()
+        _select_role(dialog, admin_role.id)
+
+        assert dialog.txt_name.isReadOnly()
+        assert dialog.txt_name.toolTip()
+
+    def test_selecting_another_role_after_admin_re_enables_editing(self, db_session, admin_role, test_role):
+        dialog = RoleManagerDialog()
+        _select_role(dialog, admin_role.id)
+        _select_role(dialog, test_role.id)
+
+        assert dialog.btn_delete.isEnabled()
+        assert not dialog.txt_name.isReadOnly()
+        assert not dialog.btn_delete.toolTip()
+
+    def test_clearing_the_form_after_admin_re_enables_the_name(self, db_session, admin_role):
+        dialog = RoleManagerDialog()
+        _select_role(dialog, admin_role.id)
+        dialog._clear_form()
+
+        assert not dialog.txt_name.isReadOnly()

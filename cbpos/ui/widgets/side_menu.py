@@ -156,6 +156,7 @@ class SideMenu(QWidget):
         self.setFixedWidth(SIDEBAR_WIDTH)
         self.setVisible(False)
         self.setObjectName("POSSideMenu")
+        self._user = None
 
         # Critical: QWidget doesn't paint QSS background without this
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -398,8 +399,11 @@ class SideMenu(QWidget):
     def retranslate_ui(self) -> None:
         """Update all translatable widget text (called on language change)."""
         self.lbl_section.setText(_t("side_menu.menu_header"))
-        self.lbl_username.setText(_t("side_menu.guest"))
-        self.lbl_role.setText(_t("side_menu.no_role"))
+        if self._user:
+            self.set_user(self._user)
+        else:
+            self.lbl_username.setText(_t("side_menu.guest"))
+            self.lbl_role.setText(_t("side_menu.no_role"))
         self.btn_logout.setText(_t("side_menu.sign_out"))
 
         for btn in self._nav_buttons:
@@ -412,7 +416,8 @@ class SideMenu(QWidget):
     # ── Public API ────────────────────────────────────────────────
 
     def set_user(self, user) -> None:
-        """Update user info and permissions."""
+        """Update user info and permissions; None shows Guest."""
+        self._user = user
         if user:
             self.lbl_username.setText(user.username)
             self.lbl_role.setText(user.role.name if user.role else _t("side_menu.unknown_role"))

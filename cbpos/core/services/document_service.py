@@ -13,6 +13,133 @@ logger = logging.getLogger(__name__)
 
 # Pre-compiled regex for {seq:05d} or {seq} placeholders
 _SEQ_RE = re.compile(r"\{seq(:.*?)?\}")
+# Every {...} token, plus any stray brace that isn't part of one
+_TOKEN_RE = re.compile(r"\{[^{}]*\}|[{}]")
+# The only accepted sequence forms: {seq} or {seq:0Nd} with N 1-9
+_VALID_SEQ_RE = re.compile(r"\{seq(?::0[1-9]d)?\}")
+_STATIC_PLACEHOLDERS = ("{Y}", "{M}", "{D}", "{T}", "{terminal}")
+DOC_NUMBER_MAX_LENGTH: int = Document.__table__.c.document_number.type.length
+
+DEFAULT_PATTERNS: dict[str, str] = {
+    "SALE": "INV-{Y}-{seq:05d}",
+    "PURCHASE": "GRN-{Y}-{seq:05d}",
+    "PURCHASE_ORDER": "PO-{Y}-{seq:05d}",
+    "RETURN": "CN-{Y}-{seq:05d}",
+    "STOCK_COUNT": "STK-{Y}-{seq:05d}",
+    "ADJUSTMENT": "ADJ-{Y}-{seq:05d}",
+    "PROFORMA": "QUO-{Y}-{seq:05d}",
+}
+_FALLBACK_PATTERN = "DOC-{Y}-{seq:05d}"
+
+
+def _terminal_short(terminal_id: str) -> str:
+    """Return the short terminal suffix: "TERM-01" -> "01", "T3" -> "T3"."""
+    return terminal_id.split("-")[-1] if "-" in terminal_id else terminal_id
+
+
+def _render_static(pattern: str, now: datetime, terminal_id: str) -> str:
+    """Replace the date and terminal placeholders, leaving {seq} untouched."""
+    terminal = _terminal_short(terminal_id)
+    return (
+        pattern.replace("{Y}", now.strftime("%Y"))
+        .replace("{M}", now.strftime("%m"))
+        .replace("{D}", now.strftime("%d"))
+        .replace("{T}", terminal)
+        .replace("{terminal}", terminal)
+    )
+
+
+def render_pattern(pattern: str, seq: int, now: datetime, terminal_id: str) -> str:
+    """Render a document number pattern into a concrete number.
+
+    Shared by generate_number() and the Settings preview so the two can
+    never disagree.
+
+    Args:
+        pattern: Format such as ``"GRN-{Y}-{seq:05d}"``.
+        seq: Sequence number to fill into ``{seq}``.
+        now: Date used for ``{Y}``, ``{M}`` and ``{D}``.
+        terminal_id: Terminal ID; its short suffix fills ``{T}``/``{terminal}``.
+
+    Returns:
+        The rendered document number.
+    """
+    rendered = _render_static(pattern, now, terminal_id)
+    match = _SEQ_RE.search(rendered)
+    if not match:
+        return f"{rendered}{seq}"
+    seq_str = ("{" + (match.group(1) or "") + "}").format(seq)
+    return rendered.replace(match.group(0), seq_str)
+
+
+def validate_doc_pattern(pattern: str, terminal_id: str = "TERM-01") -> str | None:
+    """Check a document number pattern before it is saved or used.
+
+    Rules: not empty; exactly one ``{seq}``/``{seq:0Nd}`` (N 1-9) and it is
+    the last thing in the pattern; only known placeholders; no ``%`` or
+    ``_`` (they break the LIKE prefix search); rendered length fits the
+    ``document_number`` column.
+
+    Args:
+        pattern: Format to check.
+        terminal_id: Terminal ID used to measure the rendered length.
+
+    Returns:
+        An i18n error key under ``settings.documents``, or None if valid.
+    """
+    if not pattern or not pattern.strip():
+        return "settings.documents.fmt_error_empty"
+    if "%" in pattern or "_" in pattern:
+        return "settings.documents.fmt_error_bad_char"
+
+    seq_tokens = []
+    for token in _TOKEN_RE.findall(pattern):
+        if token.startswith("{seq"):
+            if not _VALID_SEQ_RE.fullmatch(token):
+                return "settings.documents.fmt_error_bad_seq"
+            seq_tokens.append(token)
+        elif token not in _STATIC_PLACEHOLDERS:
+            return "settings.documents.fmt_error_unknown_placeholder"
+
+    if len(seq_tokens) != 1:
+        return "settings.documents.fmt_error_seq_once"
+    if not pattern.endswith(seq_tokens[0]):
+        return "settings.documents.fmt_error_seq_not_last"
+    # Leave room for at least five sequence digits
+    if len(render_pattern(pattern, 99999, datetime.now(), terminal_id)) > DOC_NUMBER_MAX_LENGTH:
+        return "settings.documents.fmt_error_too_long"
+    return None
+
+
+def _search_prefix(pattern: str, reset_period: str, now: datetime, terminal_id: str) -> str:
+    """Build the LIKE prefix that scopes the sequence to the reset period.
+
+    YEARLY wildcards the month/day, MONTHLY wildcards the day, NEVER uses
+    the rendered text before ``{seq}`` as-is.
+    """
+    pre_seq = pattern.split("{seq", 1)[0]
+    if reset_period == "YEARLY":
+        pre_seq = pre_seq.replace("{M}", "%").replace("{D}", "%")
+    elif reset_period == "MONTHLY":
+        pre_seq = pre_seq.replace("{D}", "%")
+    return _render_static(pre_seq, now, terminal_id)
+
+
+def _next_seq(session, search_prefix: str) -> int:
+    """Return the sequence that follows the highest number under ``search_prefix``."""
+    last_doc = (
+        session.query(Document)
+        .filter(Document.document_number.like(f"{search_prefix}%"))
+        .order_by(desc(Document.document_number))
+        .first()
+    )
+    if last_doc:
+        # {seq} is always last (validate_doc_pattern), so the trailing
+        # digits are the sequence.
+        match = re.search(r"(\d+)$", last_doc.document_number)
+        if match:
+            return int(match.group(1)) + 1
+    return 1
 
 
 class DocumentService:
@@ -30,124 +157,67 @@ class DocumentService:
     }
 
     @staticmethod
-    def generate_number(doc_type: str) -> str:
+    def preview_number(pattern: str, reset_period: str, terminal_id: str) -> str:
+        """Return the number the next document would get with this pattern.
+
+        Read-only: nothing is reserved. Used by the Settings live preview.
+
+        Args:
+            pattern: A valid format (see validate_doc_pattern()).
+            reset_period: YEARLY, MONTHLY or NEVER.
+            terminal_id: Terminal ID for ``{T}``/``{terminal}``.
+
+        Returns:
+            The rendered next number (sequence 1 if the lookup fails).
         """
-        Generate the next sequential document number for the given type.
-        Supports configurable patterns and concurrency retries.
+        now = datetime.now()
+        seq = 1
+        try:
+            with Database().get_session() as session:
+                seq = _next_seq(session, _search_prefix(pattern, reset_period, now, terminal_id))
+        except Exception as e:
+            logger.warning("Document number preview lookup failed: %s", e)
+        return render_pattern(pattern, seq, now, terminal_id)
+
+    @staticmethod
+    def generate_number(doc_type: str) -> str:
+        """Generate the next sequential document number for the given type.
+
+        Supports configurable patterns and concurrency retries. A stored
+        pattern that fails validate_doc_pattern() (settings.json can be
+        hand-edited) is logged and replaced by the default pattern.
+
+        Args:
+            doc_type: e.g. "PURCHASE", "PURCHASE_ORDER", "PROFORMA".
+
+        Returns:
+            The new document number.
         """
         from cbpos.core.services.config_service import ConfigService
 
-        # 1. Get Configuration
         settings = ConfigService.get_all()
-
-        # Default Patterns
-        defaults = {
-            "SALE": "INV-{Y}-{seq:05d}",
-            "PURCHASE": "GRN-{Y}-{seq:05d}",
-            "PURCHASE_ORDER": "PO-{Y}-{seq:05d}",
-            "RETURN": "CN-{Y}-{seq:05d}",
-            "STOCK_COUNT": "STK-{Y}-{seq:05d}",
-            "ADJUSTMENT": "ADJ-{Y}-{seq:05d}",
-            "PROFORMA": "QUO-{Y}-{seq:05d}",
-        }
-
-        pattern = settings.get(
-            f"doc_format_{doc_type.lower()}",
-            defaults.get(doc_type, "DOC-{Y}-{seq:05d}"),
-        )
+        default_pattern = DEFAULT_PATTERNS.get(doc_type, _FALLBACK_PATTERN)
+        key = f"doc_format_{doc_type.lower()}"
+        pattern = settings.get(key, default_pattern)
         reset_period = settings.get("doc_reset_period", "YEARLY")  # YEARLY, MONTHLY, NEVER
-
-        # 2. Parse placeholders
-        now = datetime.now()
-        year_str = now.strftime("%Y")
-        month_str = now.strftime("%m")
-        day_str = now.strftime("%d")
         terminal_id = settings.get("terminal_id", "TERM-01") or "TERM-01"
-        # Short terminal suffix: "TERM-01" → "01", "T3" → "T3"
-        terminal_short = terminal_id.split("-")[-1] if "-" in terminal_id else terminal_id
 
-        # Render static placeholders (date + terminal)
-        prefix_pattern = (
-            pattern.replace("{Y}", year_str)
-            .replace("{M}", month_str)
-            .replace("{D}", day_str)
-            .replace("{T}", terminal_short)
-            .replace("{terminal}", terminal_short)
-        )
+        error = validate_doc_pattern(pattern, terminal_id)
+        if error:
+            logger.warning("Invalid %s %r (%s); using default %r", key, pattern, error, default_pattern)
+            pattern = default_pattern
 
-        # Determine reset scope filter
-        if reset_period == "MONTHLY":
-            # Filter documents whose number matches the current year+month prefix
-            scope_prefix = (
-                pattern.split("{seq")[0]
-                .replace("{Y}", year_str)
-                .replace("{M}", month_str)
-                .replace("{D}", "%")
-                .replace("{T}", terminal_short)
-                .replace("{terminal}", terminal_short)
-            )
-        elif reset_period == "YEARLY":
-            scope_prefix = (
-                pattern.split("{seq")[0]
-                .replace("{Y}", year_str)
-                .replace("{M}", "%")
-                .replace("{D}", "%")
-                .replace("{T}", terminal_short)
-                .replace("{terminal}", terminal_short)
-            )
-        else:
-            # NEVER — no date scoping, just prefix
-            scope_prefix = None  # handled below
+        now = datetime.now()
+        search_prefix = _search_prefix(pattern, reset_period, now, terminal_id)
 
-        # Extract the part before {seq} to use as DB filter
-        # This assumes {seq} is at the end or we can filter by the static part.
-        # If {seq} is not at end, 'like' query is harder.
-        # Let's assume standard format where we can split by {seq}.
-
-        if "{seq" in prefix_pattern:
-            pre_seq, _ = prefix_pattern.split("{seq", 1)
-            search_prefix = scope_prefix if scope_prefix else pre_seq
-        else:
-            search_prefix = prefix_pattern + "-"
-
-        # 3. Retry Loop for Concurrency
-        # Use serializable isolation in network mode to prevent two
-        # terminals from reading the same max sequence simultaneously.
+        # Retry loop for concurrency. Use serializable isolation in network
+        # mode to prevent two terminals from reading the same max sequence.
         max_retries = 5
         for attempt in range(max_retries):
             try:
                 db = Database()
                 with db.get_session(serializable=True) as session:
-                    # Get the last document matching the prefix
-                    like_filter = f"{search_prefix}%" if search_prefix else f"{pre_seq}%"
-                    last_doc = (
-                        session.query(Document)
-                        .filter(Document.document_number.like(like_filter))
-                        .order_by(desc(Document.document_number))
-                        .first()
-                    )
-
-                    new_seq = 1
-                    if last_doc:
-                        current_no = last_doc.document_number
-                        # Extract the numeric sequence from the document number
-                        compare_prefix = search_prefix if search_prefix else pre_seq
-                        if current_no.startswith(compare_prefix):
-                            remainder = current_no[len(compare_prefix) :]
-                            digits = "".join(filter(str.isdigit, remainder))
-                            if digits:
-                                new_seq = int(digits) + 1
-
-                    # Render the final document number
-                    final_number = prefix_pattern
-                    match = _SEQ_RE.search(final_number)
-                    if match:
-                        fmt = match.group(1) or ""
-                        fmt_str = "{" + fmt + "}"
-                        seq_str = fmt_str.format(new_seq)
-                        final_number = final_number.replace(match.group(0), seq_str)
-                    else:
-                        final_number = f"{final_number}{new_seq}"
+                    final_number = render_pattern(pattern, _next_seq(session, search_prefix), now, terminal_id)
 
                     # Verify uniqueness within the same serializable
                     # transaction — concurrent terminals will block here.

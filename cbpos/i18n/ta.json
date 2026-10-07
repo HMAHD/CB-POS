@@ -119,6 +119,10 @@
     "status_error": "எரர்",
     "status_disconnected": "கனெக்ட் இல்ல"
   },
+  "printer": {
+    "not_configured": "ரசீது பிரிண்டர் செட் பண்ணல, அதனால எதுவும் பிரிண்ட் ஆகல. அமைப்புகள் > ஹார்ட்வேர்ல பிரிண்டரை செட் பண்ணுங்க.",
+    "not_available": "ரசீது பிரிண்டரோட இணைக்க முடியல. பிரிண்டர் ஆன்ல இருக்கா, சரியா கனெக்ட் ஆகி இருக்கான்னு பாருங்க."
+  },
   "sales": {
     "search_placeholder_all": "பார்கோடை ஸ்கேன் பண்ணுங்க, இல்ல பேரை டைப் பண்ணுங்க... (Enter)",
     "search_placeholder_barcode": "பார்கோடை ஸ்கேன் பண்ணுங்க...",
@@ -139,6 +143,9 @@
     "quick_pay_disabled": "Quick Pay செட்டிங்ஸ்ல ஆஃப் பண்ணி இருக்கு.",
     "printer_error_title": "பிரிண்டர் எரர்",
     "printer_error_message": "ரசீது பிரிண்ட் ஆகல: {message}\n\nபிரிண்டர் கனெக்‌ஷனை பாத்து, அமைப்புகள் > ஹார்ட்வேர் கீழ செட்டிங்ஸ் சரியா இருக்கான்னு பாருங்க.",
+    "printer_notice": "ரசீது பிரிண்டர் செட் பண்ணல, அதனால ரசீது பிரிண்ட் ஆகாது. அமைப்புகள் > ஹார்ட்வேர்ல செட் பண்ணுங்க.",
+    "printer_notice_setup": "பிரிண்டரை செட் பண்ணுங்க",
+    "printer_notice_dismiss": "மூடு",
     "validation_error": "தப்பான உள்ளீடு",
     "transaction_failed": "பரிவர்த்தனை தோல்வி: {error}"
   },
@@ -536,19 +543,19 @@
     "user_guest": "விருந்தினர்",
     "user_no_role": "பதவி இல்லை",
     "user_not_logged_in": "உள்நுழையவில்லை",
-    "btn_sign_out": "வெளியேறு",
+    "btn_sign_out": "லாக் அவுட்",
     "tooltip_settings": "அமைப்புகள்",
     "tooltip_fullscreen": "முழுத்திரை",
-    "tooltip_exit": "வெளியேறு",
+    "tooltip_exit": "POS-ஐ மூடு",
     "menu_header": "மெனு",
     "guest": "விருந்தினர்",
     "no_role": "பதவி இல்லை",
     "not_logged_in": "உள்நுழையவில்லை",
     "unknown_role": "தெரியாத பதவி",
-    "sign_out": "வெளியேறு",
+    "sign_out": "லாக் அவுட்",
     "settings_tooltip": "அமைப்புகள்",
     "fullscreen_tooltip": "முழுத்திரை",
-    "exit_tooltip": "வெளியேறு"
+    "exit_tooltip": "POS-ஐ மூடு"
   },
   "action_panel": {
     "customer_label": "வாடிக்கையாளர்",
@@ -585,7 +592,7 @@
     "sidebar_stock_take": "சரக்கு எண்ணிக்கை",
     "sidebar_reorder": "மறு ஆர்டர்",
     "sidebar_pos": "POS / விற்பனை",
-    "sidebar_logout": "வெளியேறு",
+    "sidebar_logout": "லாக் அவுட்",
     "logo_fallback": "CB POS"
   },
   "dashboard": {
@@ -1143,7 +1150,9 @@
     "btn_delete": "நீக்கு",
     "hint": "செக்அவுட்டில் இருந்து மறைக்க முறைகளை செயலிழக்க வையுங்க. பண முறையை நீக்க முடியாது.",
     "name_placeholder": "உதா: பணம், அட்டை, PayHere",
-    "shortcut_placeholder": "உதா: F12 (விரும்பினா மட்டும்)",
+    "shortcut_placeholder": "ஒரு விசையை அழுத்துங்க, உதா: F5 (விரும்பினா மட்டும்)",
+    "shortcut_reserved": "{shortcut} விசை பணம் செலுத்தும் திரையில ஏற்கனவே பயன்படுது (Enter, F12, Esc). வேற விசையைத் தேர்ந்தெடுங்க.",
+    "shortcut_taken": "{shortcut} விசை ஏற்கனவே \"{name}\" முறைக்குக் கொடுத்திருக்கு. வேற விசையைத் தேர்ந்தெடுங்க.",
     "validation_title": "சரிபார்ப்பு",
     "name_required": "பணம் செலுத்தும் முறை பேர் போடணும்.",
     "error_create": "முறையை உருவாக்க முடியல: {error}",
@@ -1381,7 +1390,16 @@
       "purchase_format": "கொள்முதல் வடிவம்:",
       "purchase_format_placeholder": "GRN-{Y}-{seq:05d}",
       "return_format": "திருப்பி அனுப்பும் வடிவம்:",
-      "return_format_placeholder": "CN-{Y}-{seq:05d}"
+      "return_format_placeholder": "CN-{Y}-{seq:05d}",
+      "fmt_error_empty": "வடிவம் காலியா இருக்கக்கூடாது.",
+      "fmt_error_bad_char": "வடிவத்தில் % அல்லது _ பயன்படுத்த முடியாது.",
+      "fmt_error_unknown_placeholder": "அடைப்புக்குள் இருக்கும் குறியீடு தெரியல. {Y}, {M}, {D}, {T}, {terminal}, {seq} மட்டும் பயன்படுத்துங்க.",
+      "fmt_error_bad_seq": "எண் குறியீடு {seq} அல்லது {seq:05d} மாதிரி இருக்கணும் (1-9 இலக்கங்கள்).",
+      "fmt_error_seq_once": "வடிவத்தில் {seq} ஒரே ஒரு தடவை மட்டும் போடுங்க.",
+      "fmt_error_seq_not_last": "{seq} கடைசியில தான் இருக்கணும்.",
+      "fmt_error_too_long": "ரொம்ப நீளம். ஒரு எண்ணில் அதிகபட்சம் {max} எழுத்துகள் தான்.",
+      "fmt_preview_next": "அடுத்த எண்: {number}",
+      "fmt_legend": "{Y} வருடம் · {M} மாதம் · {D} நாள் · {T} டெர்மினல் · {seq:05d} வரிசை எண் (எப்போதும் கடைசியில்)"
     },
     "hardware": {
       "title": "ஹார்ட்வேர்",
@@ -1733,7 +1751,8 @@
     "cannot_delete_admin_msg": "இயல்பான Admin ரோலை நீக்க முடியாது.",
     "cannot_delete_in_use_msg": "'{name}' ரோல் இன்னும் {count} பயனர்களுக்கு கொடுக்கப்பட்டிருக்கு. முதல்ல அவங்களுக்கு வேற ரோல் கொடுங்க.",
     "cannot_rename_title": "ரோல் பேரை மாத்த முடியாது",
-    "cannot_rename_admin_msg": "இயல்பான Admin ரோல் பேரை மாத்த முடியாது."
+    "cannot_rename_admin_msg": "இயல்பான Admin ரோல் பேரை மாத்த முடியாது.",
+    "builtin_locked_tooltip": "Admin ஒரு இயல்பான ரோல். அதோட பேரை மாத்தவோ அதை நீக்கவோ முடியாது."
   },
   "category_tree": {
     "title": "வகை மரம்",
@@ -1859,7 +1878,8 @@
     "col_permission": "அனுமதி",
     "save_changes": "மாற்றங்களை சேமியுங்க",
     "save_success": "அனுமதிகள் சேமிச்சாச்சு.",
-    "save_failed": "அனுமதிகளை சேமிக்க முடியல."
+    "save_failed": "அனுமதிகளை சேமிக்க முடியல.",
+    "admin_locked_tooltip": "Admin-க்கு இந்த அனுமதி எப்பவும் இருக்கும். அதனால பயனர்களையும் ரோல்களையும் நிர்வகிக்க எப்பவும் ஒருத்தர் இருப்பாங்க."
   },
   "profile": {
     "title": "பயனர் சுயவிவரம்",

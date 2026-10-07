@@ -156,6 +156,12 @@ class ManagementView(QWidget):
         self.stack.setCurrentWidget(widget)
         self.sidebar.highlight(index)
 
+    def process_barcode_external(self, barcode: str) -> None:
+        """Forward a global scan to the current tab if it handles scans (#547)."""
+        current = self.stack.currentWidget()
+        if hasattr(current, "process_barcode_external"):
+            current.process_barcode_external(barcode)
+
     def _create_view(self, index: int):
         """Factory for the view at a given nav index. StockTakeView keeps
         its existing deferred import here rather than moving it to module

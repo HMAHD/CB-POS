@@ -149,6 +149,7 @@ class RoleManagerDialog(QDialog):
 
         if not has_selection:
             self._editing_id = None
+            self._set_builtin_locked(False)
             return
 
         role_id = current.data(0, ROLE_ID_ROLE)
@@ -160,6 +161,17 @@ class RoleManagerDialog(QDialog):
 
         self.txt_name.setText(role.name)
         self.btn_save.setText(_t("role_manager.update"))
+        self._set_builtin_locked(role.name == ADMIN_ROLE_NAME)
+
+    def _set_builtin_locked(self, locked: bool) -> None:
+        """Show the built-in Admin role's rules up front: no rename, no delete (#614).
+        RoleService still enforces both; this only stops the user hitting an error first."""
+        tooltip = _t("role_manager.builtin_locked_tooltip") if locked else ""
+        self.txt_name.setReadOnly(locked)
+        self.txt_name.setToolTip(tooltip)
+        if locked:
+            self.btn_delete.setEnabled(False)
+        self.btn_delete.setToolTip(tooltip)
 
     # ── Actions ──
 
@@ -242,5 +254,6 @@ class RoleManagerDialog(QDialog):
         self.txt_name.clear()
         self.btn_save.setText(_t("role_manager.save_new"))
         self.btn_delete.setEnabled(False)
+        self._set_builtin_locked(False)
         self.tree.clearSelection()
         self.txt_name.setFocus()

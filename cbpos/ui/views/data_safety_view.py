@@ -14,12 +14,10 @@ No hardcoded colors — works with both dark and light themes.
 import logging
 import weakref
 
-from PyQt6.QtCore import QDate, Qt, QTimer
+from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtWidgets import (
-    QApplication,
     QComboBox,
     QDateEdit,
-    QDialog,
     QFileDialog,
     QFormLayout,
     QFrame,
@@ -41,6 +39,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.backup_service import BackupService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.dialogs.backup_password_dialog import BackupPasswordDialog, ensure_backup_password
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.workers import BackupListWorker, BackupWorker, RestoreWorker
 
@@ -72,6 +71,7 @@ class DataSafetyView(QWidget):
     def showEvent(self, event) -> None:
         """Refresh data when the view becomes visible."""
         super().showEvent(event)
+        self._update_password_status()
         self._refresh_backup_list()
         self._load_db_info()
 
@@ -122,6 +122,20 @@ class DataSafetyView(QWidget):
         self.btn_change_dir.clicked.connect(self._change_backup_dir)
         dir_layout.addWidget(self.btn_change_dir)
         layout.addLayout(dir_layout)
+
+        # Shop backup password -- one password for every backup (#619)
+        pwd_layout = QHBoxLayout()
+        pwd_layout.setSpacing(8)
+        self.lbl_pwd_label = QLabel()
+        self.lbl_pwd_label.setProperty("class", "muted")
+        pwd_layout.addWidget(self.lbl_pwd_label)
+        self.lbl_pwd_status = QLabel()
+        self.lbl_pwd_status.setWordWrap(True)
+        pwd_layout.addWidget(self.lbl_pwd_status, 1)
+        self.btn_backup_password = QPushButton()
+        self.btn_backup_password.clicked.connect(self._change_backup_password)
+        pwd_layout.addWidget(self.btn_backup_password)
+        layout.addLayout(pwd_layout)
 
         # Backup list table — QSS handles all table styling
         self.backup_table = QTableWidget()
@@ -213,81 +227,53 @@ class DataSafetyView(QWidget):
         if not check_permission_with_override(Permissions.DATA_SAFETY_BACKUP, self):
             return
 
+        password = ensure_backup_password(self)
+        self._update_password_status()
+        if not password:
+            return
+
         self.btn_create_backup.setEnabled(False)
         self._overlay.show_loading(_t("data_safety.backup_creating"))
 
         backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
-        self._backup_worker = BackupWorker(backup_dir)
+        self._backup_worker = BackupWorker(backup_dir, password)
         self._backup_worker.result.connect(self._on_backup_finished)
         self._backup_worker.error.connect(self._on_backup_error)
         self._backup_worker.start()
 
-    def _on_backup_finished(self, path: str, password: str) -> None:
+    def _on_backup_finished(self, path: str) -> None:
         self._overlay.hide_loading()
         self.btn_create_backup.setEnabled(True)
         self.btn_create_backup.setText(_t("data_safety.btn_create_backup"))
         self._refresh_backup_list()
+        QMessageBox.information(
+            self,
+            _t("data_safety.backup_complete_title"),
+            _t("data_safety.backup_saved_to", path=path) + "\n\n" + _t("data_safety.backup_locked_with_shop_pwd"),
+        )
 
-        # Custom dialog to show password securely
-        dlg = QDialog(self)
-        dlg.setWindowTitle(_t("data_safety.backup_complete_title"))
-        dlg.setMinimumWidth(450)
-        dlg_layout = QVBoxLayout(dlg)
-        dlg_layout.setContentsMargins(20, 20, 20, 20)
-        dlg_layout.setSpacing(12)
+    def _change_backup_password(self) -> None:
+        """Set or change the shop backup password (affects new backups only)."""
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.utils.permission_helper import check_permission_with_override
 
-        lbl_success = QLabel(_t("data_safety.backup_saved_to", path=path))
-        lbl_success.setWordWrap(True)
-        dlg_layout.addWidget(lbl_success)
+        if not check_permission_with_override(Permissions.DATA_SAFETY_BACKUP, self):
+            return
+        dialog = BackupPasswordDialog(self, changing=ConfigService.has_backup_password())
+        dialog.exec()
+        dialog.deleteLater()
+        self._update_password_status()
 
-        lbl_pwd_info = QLabel(_t("data_safety.backup_pwd_info"))
-        lbl_pwd_info.setProperty("class", "muted")
-        lbl_pwd_info.setWordWrap(True)
-        dlg_layout.addWidget(lbl_pwd_info)
-
-        pwd_row = QHBoxLayout()
-        pwd_input = QLineEdit(password)
-        pwd_input.setEchoMode(QLineEdit.EchoMode.Password)
-        pwd_input.setReadOnly(True)
-        pwd_row.addWidget(pwd_input, 1)
-
-        btn_toggle = QPushButton(_t("data_safety.btn_show"))
-        btn_toggle.setFixedWidth(60)
-
-        def toggle_visibility():
-            """Toggle the backup password field between hidden and plain text."""
-            if pwd_input.echoMode() == QLineEdit.EchoMode.Password:
-                pwd_input.setEchoMode(QLineEdit.EchoMode.Normal)
-                btn_toggle.setText(_t("data_safety.btn_hide"))
-            else:
-                pwd_input.setEchoMode(QLineEdit.EchoMode.Password)
-                btn_toggle.setText(_t("data_safety.btn_show"))
-
-        btn_toggle.clicked.connect(toggle_visibility)
-        pwd_row.addWidget(btn_toggle)
-        dlg_layout.addLayout(pwd_row)
-
-        btn_row = QHBoxLayout()
-        btn_copy = QPushButton(_t("data_safety.btn_copy_password"))
-
-        def _copy_password():
-            QApplication.clipboard().setText(password)
-            btn_copy.setText(_t("data_safety.btn_copied"))
-            QTimer.singleShot(1500, lambda: btn_copy.setText(_t("data_safety.btn_copy_password")))
-
-        btn_copy.clicked.connect(_copy_password)
-        btn_row.addWidget(btn_copy)
-
-        btn_row.addStretch()
-
-        btn_ok = QPushButton(_t("common.ok"))
-        btn_ok.setProperty("class", "accent")
-        btn_ok.setFixedWidth(80)
-        btn_ok.clicked.connect(dlg.accept)
-        btn_row.addWidget(btn_ok)
-        dlg_layout.addLayout(btn_row)
-
-        dlg.exec()
+    def _update_password_status(self) -> None:
+        """Show whether a shop backup password is set, and what that means."""
+        if ConfigService.has_backup_password():
+            self.lbl_pwd_status.setText(_t("data_safety.pwd_status_set"))
+            self.btn_backup_password.setText(_t("data_safety.btn_change_password"))
+            self.input_restore_password.setPlaceholderText(_t("data_safety.restore_pwd_placeholder_shop"))
+        else:
+            self.lbl_pwd_status.setText(_t("data_safety.pwd_status_not_set"))
+            self.btn_backup_password.setText(_t("data_safety.btn_set_password"))
+            self.input_restore_password.setPlaceholderText(_t("data_safety.restore_pwd_placeholder"))
 
     def _on_backup_error(self, error: str) -> None:
         self._overlay.hide_loading()
@@ -437,9 +423,17 @@ class DataSafetyView(QWidget):
             self.input_restore_path.setText(path)
             self.lbl_verify_result.setText("")
 
+    def _restore_password(self) -> str:
+        """The typed password, or the shop backup password when left empty.
+
+        Older backups made with a per-backup password still restore with
+        the password typed here.
+        """
+        return self.input_restore_password.text() or ConfigService.get_backup_password() or ""
+
     def _verify_backup(self) -> None:
         path = self.input_restore_path.text().strip()
-        password = self.input_restore_password.text()
+        password = self._restore_password()
         if not path:
             QMessageBox.warning(
                 self,
@@ -475,7 +469,7 @@ class DataSafetyView(QWidget):
             return
 
         path = self.input_restore_path.text().strip()
-        password = self.input_restore_password.text()
+        password = self._restore_password()
         if not path:
             QMessageBox.warning(
                 self,
@@ -932,13 +926,14 @@ class DataSafetyView(QWidget):
         self.btn_create_backup.setText(_t("data_safety.btn_create_backup"))
         self.btn_clean_old.setText(_t("data_safety.btn_clean_old"))
         self.btn_backup_refresh.setText(_t("data_safety.btn_refresh"))
+        self.lbl_pwd_label.setText(_t("data_safety.pwd_label"))
 
         # Restore tab
         self.lbl_restore_warning.setText(_t("data_safety.restore_warning_full"))
         self.grp_restore_file.setTitle(_t("data_safety.restore_file_group"))
         self.input_restore_path.setPlaceholderText(_t("data_safety.restore_file_placeholder"))
         self.btn_browse.setText(_t("data_safety.btn_browse"))
-        self.input_restore_password.setPlaceholderText(_t("data_safety.restore_pwd_placeholder"))
+        self._update_password_status()
         self.btn_toggle_restore_pwd.setText(_t("data_safety.btn_show"))
         self.btn_verify.setText(_t("data_safety.btn_verify"))
         self.btn_restore.setText(_t("data_safety.btn_restore"))

@@ -52,22 +52,23 @@ class CsvImportWorker(QThread):
 class BackupWorker(QThread):
     """Creates an encrypted database backup in a background thread."""
 
-    result = pyqtSignal(str, str)  # (backup_path, password)
+    result = pyqtSignal(str)  # backup_path
     error = pyqtSignal(str)
 
-    def __init__(self, destination_dir: str) -> None:
-        """Set up the backup job for the given destination directory."""
+    def __init__(self, destination_dir: str, password: str) -> None:
+        """Set up the backup job for the given destination directory and shop backup password."""
         super().__init__()
         self.finished.connect(self.deleteLater)
         self.destination_dir = destination_dir
+        self.password = password
 
     def run(self) -> None:
-        """Create an encrypted backup and emit its path and password, or emit error on failure."""
+        """Create an encrypted backup and emit its path, or emit error on failure."""
         try:
             from cbpos.core.services.backup_service import BackupService
 
-            backup_path, password = BackupService.create_backup(self.destination_dir)
-            self.result.emit(backup_path, password)
+            backup_path = BackupService.create_backup(self.destination_dir, self.password)
+            self.result.emit(backup_path)
         except Exception as e:
             logger.error("Backup failed: %s", e)
             self.error.emit(str(e))

@@ -1716,7 +1716,7 @@ QPushButton#BtnSearchSelect:hover {
 }
 
 /* Quantity Dialog */
-QDialog#QuantityDialog, QDialog#VoidReasonDialog {
+QDialog#QuantityDialog, QDialog#VoidReasonDialog, QDialog#BackupPasswordDialog {
     background-color: #1E1E1E;
 }
 

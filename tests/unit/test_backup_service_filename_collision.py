@@ -28,10 +28,10 @@ class TestBackupFilenameCollision:
             mock_config.DATA_DIR = tmp_path
             with patch("cbpos.core.services.backup_service.datetime") as mock_datetime:
                 mock_datetime.now.return_value = frozen_now
-                first_path, _first_password = BackupService.create_backup(str(backup_dir), password="Pass1")
+                first_path = BackupService.create_backup(str(backup_dir), password="Pass1")
 
                 db_file.write_text("second database content -- must not overwrite the first backup")
-                second_path, _second_password = BackupService.create_backup(str(backup_dir), password="Pass2")
+                second_path = BackupService.create_backup(str(backup_dir), password="Pass2")
 
         assert first_path != second_path
 

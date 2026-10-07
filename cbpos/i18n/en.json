@@ -89,7 +89,9 @@
     "exit_confirm_message": "You have {count} item(s) in your cart. Do you want to hold the bill before closing?",
     "exit_hold_and_exit": "Hold && Exit",
     "exit_without_saving": "Exit Without Saving",
-    "exit_cancel": "Cancel"
+    "exit_cancel": "Cancel",
+    "auto_backup_skipped_title": "Automatic Backup Skipped",
+    "auto_backup_skipped_msg": "No backup was made because you haven't set a backup password yet.\n\nSet one on the Data Safety page so your automatic backups can be restored."
   },
   "sync_status": {
     "tooltip": "Click for sync details",
@@ -1095,9 +1097,6 @@
     "backup_list_loading": "Loading backups...",
     "backup_complete_title": "Backup Complete",
     "backup_saved_to": "Backup saved to:\n{path}",
-    "backup_pwd_info": "Keep this password safe — you need it to restore.",
-    "btn_copy_password": "Copy Password",
-    "btn_copied": "Copied!",
     "backup_failed_title": "Backup Failed",
     "backup_failed_msg": "Could not create backup:\n{error}",
     "clean_title": "Clean Old Backups",
@@ -1155,7 +1154,14 @@
     "btn_open_export": "Open Export Dialog",
     "export_group_title": "Export Data",
     "export_open_failed": "Failed to open export dialog: {error}",
-    "restore_pwd_label": "Encryption Password:"
+    "restore_pwd_label": "Encryption Password:",
+    "pwd_label": "Backup Password:",
+    "pwd_status_set": "Set ✓ — used for all new backups",
+    "pwd_status_not_set": "Not set — automatic backups are paused until you set one",
+    "btn_set_password": "Set Password",
+    "btn_change_password": "Change Password",
+    "backup_locked_with_shop_pwd": "It's locked with your backup password.",
+    "restore_pwd_placeholder_shop": "Leave empty to use your backup password, or type an older backup's password..."
   },
   "payment_methods": {
     "title": "Payment Methods",
@@ -1993,7 +1999,7 @@
     "choose_backup_location": "Choose Backup Location",
     "creating_backup": "Creating backup...",
     "backup_complete": "Backup Complete",
-    "backup_saved": "Encrypted backup saved to:\n{path}\n\nPassword: {password}\n\nKeep this password safe — you need it to restore.",
+    "backup_saved": "Backup saved to:\n{path}\n\nIt's locked with your backup password.",
     "backup_failed": "Backup Failed",
     "backup_error": "Backup failed: {error}"
   },
@@ -2356,5 +2362,19 @@
     "payment_amount_zero": "Payment amount must be greater than zero.",
     "customer_not_found": "Customer not found.",
     "insufficient_stock": "Insufficient stock"
+  },
+  "backup_password": {
+    "title_set": "Set Backup Password",
+    "title_change": "Change Backup Password",
+    "intro": "One password protects all your backups — the ones you make, the automatic ones when you close the app, and the safety snapshot made before a restore. You'll need it to restore, even on a new computer.",
+    "note_set": "Write it down and keep it somewhere safe. If you lose it, nobody can open your backups — not even us.",
+    "note_change": "Only new backups will use the new password. Backups you already have still open with the password they were made with.",
+    "new_password": "Password:",
+    "confirm_password": "Type it again:",
+    "min_length": "At least {count} characters",
+    "too_short": "The password needs at least {count} characters.",
+    "mismatch": "The two passwords don't match.",
+    "save_failed": "Couldn't save the password. Please try again.",
+    "btn_save": "Save Password"
   }
 }

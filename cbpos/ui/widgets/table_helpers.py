@@ -17,7 +17,14 @@ deliberate mode per column, with `stretchLastSection` off unless asked
 for -- the easy, obvious thing to reach for instead.
 """
 
-from PyQt6.QtWidgets import QHeaderView
+from collections.abc import Iterable
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem
+
+# Cells and headers of number columns share this, so a header sits over
+# the right edge of its digits instead of centered above them (#554).
+NUMERIC_ALIGNMENT = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
 
 
 def configure_table_columns(
@@ -46,3 +53,22 @@ def configure_table_columns(
         header.setMinimumSectionSize(minimum_section_size)
     for column, mode in column_modes.items():
         header.setSectionResizeMode(column, mode)
+
+
+def align_numeric_headers(table: QTableWidget, columns: Iterable[int]) -> None:
+    """Right-align the horizontal header of each numeric column.
+
+    QSS cannot target one header section, so alignment goes on the header
+    item. Call after `setHorizontalHeaderLabels()`; Qt reuses the items on
+    later relabels, so retranslation keeps the alignment.
+
+    Args:
+        table: the table whose header to align.
+        columns: indexes of columns whose cells are right-aligned numbers.
+    """
+    for column in columns:
+        item = table.horizontalHeaderItem(column)
+        if item is None:
+            item = QTableWidgetItem()
+            table.setHorizontalHeaderItem(column, item)
+        item.setTextAlignment(NUMERIC_ALIGNMENT)

@@ -37,7 +37,7 @@ from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.dialogs.void_reason_dialog import VoidReasonDialog
-from cbpos.ui.widgets.table_helpers import configure_table_columns
+from cbpos.ui.widgets.table_helpers import align_numeric_headers, configure_table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -385,6 +385,7 @@ class DocumentBrowserView(QWidget):
                 _t("document_browser.header_user"),
             ]
         )
+        align_numeric_headers(self.doc_table, (4,))  # Total
 
         # Detail panel
         self.detail_title.setText(_t("document_browser.detail_title"))
@@ -400,6 +401,7 @@ class DocumentBrowserView(QWidget):
                 _t("document_browser.item_header_total"),
             ]
         )
+        align_numeric_headers(self.items_table, (1, 2, 4))  # Qty, Unit Price, Total
 
         # Action buttons
         self.reprint_btn.setText(_t("document_browser.btn_reprint"))

@@ -35,7 +35,7 @@ from cbpos.core.services.stock_count_service import StockCountService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
-from cbpos.ui.widgets.table_helpers import configure_table_columns
+from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,8 @@ class StockCountItemModel(QAbstractTableModel):
     """Table model for stock count items with editable Counted column."""
 
     COL_COUNTED = 3
+    # Expected, Counted, Variance, Value -- cells and headers right-align.
+    FIRST_NUMERIC_COL = 2
     # Six integer digits: far above any real shelf count, far below a
     # barcode, so a scan typed into the cell can't pass as a quantity (#547).
     MAX_COUNTED = Decimal("999999.999")
@@ -105,8 +107,8 @@ class StockCountItemModel(QAbstractTableModel):
                     return QColor("#888888")  # Gray for zero
 
         elif role == Qt.ItemDataRole.TextAlignmentRole:
-            if col >= 2:
-                return Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            if col >= self.FIRST_NUMERIC_COL:
+                return NUMERIC_ALIGNMENT
 
         elif role == Qt.ItemDataRole.EditRole:
             if col == self.COL_COUNTED:
@@ -150,9 +152,13 @@ class StockCountItemModel(QAbstractTableModel):
         return flags
 
     def headerData(self, section, orientation, role):
-        """Return the translated header label for a column."""
-        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
+        """Return the translated header label, right-aligned over numeric columns."""
+        if orientation != Qt.Orientation.Horizontal:
+            return None
+        if role == Qt.ItemDataRole.DisplayRole:
             return self._headers[section]
+        if role == Qt.ItemDataRole.TextAlignmentRole and section >= self.FIRST_NUMERIC_COL:
+            return NUMERIC_ALIGNMENT
         return None
 
     def get_item(self, row: int):
@@ -262,6 +268,7 @@ class StockCountReportDialog(QDialog):
                 _t("stock_take.col_value"),
             ]
         )
+        align_numeric_headers(table, range(StockCountItemModel.FIRST_NUMERIC_COL, 6))
         configure_table_columns(
             table.horizontalHeader(),
             {
@@ -535,6 +542,7 @@ class StockTakeView(QWidget):
                 _t("common.status"),
             ]
         )
+        align_numeric_headers(self.history_table, (3, 4))  # Items, Variance Total
         configure_table_columns(
             self.history_table.horizontalHeader(),
             {
@@ -616,6 +624,7 @@ class StockTakeView(QWidget):
                 _t("common.status"),
             ]
         )
+        align_numeric_headers(self.history_table, (3, 4))  # Items, Variance Total
 
     # ========== New Count Methods ==========
 

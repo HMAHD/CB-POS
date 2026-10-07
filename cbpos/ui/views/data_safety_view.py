@@ -160,11 +160,13 @@ class DataSafetyView(QWidget):
         self.backup_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.backup_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.backup_table.verticalHeader().setVisible(False)
+        # Tall enough for the per-row Restore/Delete buttons (#620)
+        self.backup_table.verticalHeader().setDefaultSectionSize(48)
         self.backup_table.setAlternatingRowColors(True)
 
         header = self.backup_table.horizontalHeader()
         header.setSectionResizeMode(self.COL_FILENAME, QHeaderView.ResizeMode.Stretch)
-        for col in (self.COL_DATE, self.COL_SIZE, self.COL_TYPE, self.COL_ACTIONS):
+        for col in (self.COL_DATE, self.COL_SIZE, self.COL_TYPE):
             header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
         self.backup_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.backup_table.customContextMenuRequested.connect(self._show_backup_context_menu)
@@ -231,6 +233,7 @@ class DataSafetyView(QWidget):
     def _fill_backup_table(self) -> None:
         """(Re)build the backup rows from ``self._backup_data``."""
         self.backup_table.setRowCount(len(self._backup_data))
+        actions_width = self.backup_table.horizontalHeader().sectionSizeHint(self.COL_ACTIONS)
         for row, b in enumerate(self._backup_data):
             self.backup_table.setItem(row, self.COL_FILENAME, QTableWidgetItem(b["filename"]))
             self.backup_table.setItem(row, self.COL_DATE, QTableWidgetItem(b["date"]))
@@ -240,7 +243,11 @@ class DataSafetyView(QWidget):
             self.backup_table.setItem(row, self.COL_SIZE, QTableWidgetItem(size_text))
             kind = b.get("type") or ("snapshot" if b.get("is_pre_restore") else "manual")
             self.backup_table.setItem(row, self.COL_TYPE, QTableWidgetItem(_t(self._TYPE_KEYS[kind])))
-            self.backup_table.setCellWidget(row, self.COL_ACTIONS, self._make_row_actions(row))
+            actions = self._make_row_actions(row)
+            self.backup_table.setCellWidget(row, self.COL_ACTIONS, actions)
+            actions_width = max(actions_width, actions.minimumWidth())
+        # ResizeToContents ignores cell widgets, so size the column to the buttons
+        self.backup_table.setColumnWidth(self.COL_ACTIONS, actions_width + 8)
 
     def _make_row_actions(self, row: int) -> QWidget:
         """Restore and Delete buttons for one backup row (#620)."""
@@ -258,6 +265,11 @@ class DataSafetyView(QWidget):
         btn_delete.setProperty("class", "danger")
         btn_delete.clicked.connect(lambda _=False, r=row: self._delete_backup_row(r))
         cell_layout.addWidget(btn_delete)
+        # Apply the QSS padding now so the column sizes to the real buttons
+        for btn in (btn_restore, btn_delete):
+            btn.ensurePolished()
+            btn.setMinimumWidth(btn.sizeHint().width())
+        cell.setMinimumWidth(cell.sizeHint().width())
         return cell
 
     def _restore_from_row(self, row: int) -> None:
@@ -821,6 +833,7 @@ class DataSafetyView(QWidget):
         self.export_form.setVerticalSpacing(10)
         self.export_form.setHorizontalSpacing(16)
         self.export_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.FieldsStayAtSizeHint)
+        self.export_form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
         self.lbl_export_label = QLabel()
         self.cmb_export_data = QComboBox()

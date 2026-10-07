@@ -2844,6 +2844,11 @@ QLabel#SmtpGuideStepNum {
 }
 
 /* === DATA SAFETY VIEW === */
+/* Data Safety backup list: compact per-row Restore/Delete buttons (#620) */
+QPushButton#BackupRowRestore, QPushButton#BackupRowDelete {
+    padding: 4px 12px;
+}
+
 QLabel#RestoreWarning {
     background-color: rgba(255, 65, 54, 0.12);
     border: 1px solid #FF4136;

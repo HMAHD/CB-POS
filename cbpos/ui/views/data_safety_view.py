@@ -478,7 +478,9 @@ class DataSafetyView(QWidget):
             self.lbl_verify_result.setText(_t("data_safety.restore_valid", size=result["size"], count=file_count))
         else:
             self.lbl_verify_result.setProperty("class", "debit")
-            self.lbl_verify_result.setText(_t("data_safety.restore_invalid", error=result["error"]))
+            code = result.get("error_code")
+            error = _t(f"data_safety.error_{code}") if code else result["error"]
+            self.lbl_verify_result.setText(_t("data_safety.restore_invalid", error=error))
         # Force style refresh after property change
         self.lbl_verify_result.style().unpolish(self.lbl_verify_result)
         self.lbl_verify_result.style().polish(self.lbl_verify_result)
@@ -507,6 +509,13 @@ class DataSafetyView(QWidget):
             )
             return
 
+        # The safety snapshot is locked with the shop password -- no
+        # password, no snapshot, no restore (#628).
+        snapshot_password = ensure_backup_password(self)
+        self._update_password_status()
+        if not snapshot_password:
+            return
+
         reply = QMessageBox.warning(
             self,
             _t("data_safety.restore_confirm_title"),
@@ -523,8 +532,13 @@ class DataSafetyView(QWidget):
 
         self._restore_worker = RestoreWorker(path, password)
         self._restore_worker.result.connect(self._on_restore_finished)
+        self._restore_worker.refused.connect(self._on_restore_refused)
         self._restore_worker.error.connect(self._on_restore_error)
         self._restore_worker.start()
+
+    def _on_restore_refused(self, code: str) -> None:
+        """The backup was rejected before anything changed -- say why in plain words."""
+        self._on_restore_error(_t(f"data_safety.error_{code}"))
 
     def _on_restore_finished(self, success: bool) -> None:
         self._overlay.hide_loading()

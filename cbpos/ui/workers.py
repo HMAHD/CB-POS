@@ -115,6 +115,8 @@ class RestoreWorker(QThread):
     """Restores a backup in a background thread."""
 
     result = pyqtSignal(bool)  # success
+    # BackupError code -- the restore was refused before anything changed (#628)
+    refused = pyqtSignal(str)
     error = pyqtSignal(str)
 
     def __init__(self, backup_path: str, password: str) -> None:
@@ -126,11 +128,14 @@ class RestoreWorker(QThread):
 
     def run(self) -> None:
         """Restore the given encrypted backup, emitting success/failure."""
-        try:
-            from cbpos.core.services.backup_service import BackupService
+        from cbpos.core.services.backup_service import BackupError, BackupService
 
+        try:
             result = BackupService.restore_backup(self.backup_path, self.password)
             self.result.emit(result)
+        except BackupError as e:
+            logger.warning("Restore refused: %s", e)
+            self.refused.emit(e.code)
         except Exception as e:
             logger.error("Restore failed: %s", e)
             self.error.emit(str(e))

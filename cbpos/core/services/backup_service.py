@@ -7,9 +7,12 @@ backup listing, retention cleanup, and verification.
 """
 
 import logging
+import os
 import re
 import shutil
+import sqlite3
 import tempfile
+import zipfile
 from datetime import datetime
 from pathlib import Path
 
@@ -37,6 +40,23 @@ _NAME_PATTERNS = {
     KIND_SNAPSHOT: ("cbpos_backup_", ".pre_restore.zip"),
 }
 _TIMESTAMP_RE = re.compile(r"(\d{8}_\d{6})")
+
+# Tables every CB POS database has; a cbpos.db without them came from
+# something else and must never replace the shop's data.
+_EXPECTED_TABLES = {"users", "products", "documents", "sales"}
+
+
+class BackupError(ValueError):
+    """A backup can't be used, with a stable ``code`` the UI can translate.
+
+    Codes: ``no_password``, ``not_a_backup``, ``wrong_password``,
+    ``db_invalid``, ``snapshot_failed``, ``db_in_use``.
+    """
+
+    def __init__(self, code: str, detail: str = "") -> None:
+        """Store the code; ``detail`` is for logs only."""
+        self.code = code
+        super().__init__(f"{code}: {detail}" if detail else code)
 
 
 class BackupService:
@@ -145,7 +165,11 @@ class BackupService:
         """
         Restore a backup by extracting and replacing the current database and assets.
 
-        Creates a pre-restore safety snapshot before replacing files.
+        Nothing is replaced until the archive has been extracted and its
+        database passed ``PRAGMA integrity_check`` and has the CB POS
+        tables, and a safety snapshot of the current data -- locked with
+        the shop backup password, so it can itself be restored -- has been
+        written. If any of that fails the restore is aborted (#628).
 
         Args:
             backup_path: Path to the encrypted backup zip file.
@@ -163,64 +187,53 @@ class BackupService:
 
         Raises:
             FileNotFoundError: If backup file doesn't exist.
-            ValueError: If backup is invalid or password is wrong.
+            BackupError: If the archive isn't a usable CB POS backup, the
+                password is wrong, no shop backup password is set, the
+                safety snapshot can't be written, or the database is in use.
+                Nothing has been changed when this is raised.
         """
+        from cbpos.core.services.config_service import ConfigService
+
         backup_file = Path(backup_path)
         if not backup_file.exists():
             raise FileNotFoundError(f"Backup file not found: {backup_path}")
 
-        password_bytes = password.encode("utf-8")
-
-        # Verify backup contents before extracting
-        try:
-            with pyzipper.AESZipFile(backup_file, "r") as zf:
-                zf.setpassword(password_bytes)
-                names = set(zf.namelist())
-                if not _REQUIRED_BACKUP_CONTENTS.issubset(names):
-                    raise ValueError("Invalid backup: missing required files (cbpos.db)")
-                # Test extraction to verify password
-                zf.testzip()
-        except RuntimeError as e:
-            raise ValueError(f"Cannot open backup — wrong password or corrupt file: {e}")
-
-        # Create safety snapshot before restoring
         db_file = Config.DATA_DIR / "cbpos.db"
-        if db_file.exists():
-            from cbpos.core.services.config_service import ConfigService
 
-            if snapshot_dir is None:
-                snapshot_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
-            snapshot_dir = Path(snapshot_dir)
-            snapshot_dir.mkdir(parents=True, exist_ok=True)
-            try:
-                snapshot_path = BackupService.create_backup(
-                    str(snapshot_dir), ConfigService.get_backup_password(), kind=KIND_SNAPSHOT
-                )
-                logger.info("Pre-restore snapshot saved: %s", snapshot_path)
-            except Exception as e:
-                logger.warning("Could not create pre-restore snapshot: %s", e)
-
-        # Dispose database engine to release file locks
-        from cbpos.core.database import Database
-
-        try:
-            db = Database()
-            db.engine.dispose()
-        except Exception as e:
-            logger.error("Could not dispose database engine — restore may fail on Windows: %s", e)
-
-        # Extract to temp directory first, then copy
+        # Extract to temp directory first and validate before touching anything
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
-            with pyzipper.AESZipFile(backup_file, "r") as zf:
-                zf.setpassword(password_bytes)
-                zf.extractall(tmp_path)
-
-            # Restore database
+            BackupService._open_archive(backup_file, password, extract_to=tmp_path)
             extracted_db = tmp_path / "cbpos.db"
-            if extracted_db.exists():
-                shutil.copy2(str(extracted_db), str(db_file))
-                logger.info("Database restored from backup")
+            BackupService._validate_database(extracted_db)
+
+            # Safety snapshot of the current data -- no snapshot, no restore
+            if db_file.exists():
+                snapshot_password = ConfigService.get_backup_password()
+                if not snapshot_password:
+                    raise BackupError("no_password", "a shop backup password is needed for the safety snapshot")
+                if snapshot_dir is None:
+                    snapshot_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
+                try:
+                    Path(snapshot_dir).mkdir(parents=True, exist_ok=True)
+                    snapshot_path = BackupService.create_backup(
+                        str(snapshot_dir), snapshot_password, kind=KIND_SNAPSHOT
+                    )
+                except Exception as e:
+                    raise BackupError("snapshot_failed", str(e)) from e
+                logger.info("Pre-restore snapshot saved: %s", snapshot_path)
+
+            # Dispose database engine to release file locks
+            from cbpos.core.database import Database
+
+            try:
+                db = Database()
+                db.engine.dispose()
+            except Exception as e:
+                logger.error("Could not dispose database engine — restore may fail on Windows: %s", e)
+
+            BackupService._replace_database(extracted_db, db_file)
+            logger.info("Database restored from backup")
 
             # Restore settings.json
             extracted_settings = tmp_path / "settings.json"
@@ -242,6 +255,113 @@ class BackupService:
 
         logger.info("Backup restored successfully from: %s", backup_path)
         return True
+
+    @staticmethod
+    def _open_archive(
+        backup_file: Path, password: str, extract_to: Path | None = None, members: list[str] | None = None
+    ) -> list[str]:
+        """Open a backup archive, check it has cbpos.db and its members read back.
+
+        Args:
+            backup_file: The archive.
+            password: Its password.
+            extract_to: If given, extract there (which also checks what is
+                extracted); otherwise only test every member.
+            members: With ``extract_to``, extract only these (default all).
+
+        Returns:
+            The archive's member names.
+
+        Raises:
+            BackupError: ``not_a_backup``, ``wrong_password`` or ``corrupt``.
+        """
+        opened = False
+        try:
+            with pyzipper.AESZipFile(backup_file, "r") as zf:
+                opened = True
+                zf.setpassword(password.encode("utf-8"))
+                names = zf.namelist()
+                if not _REQUIRED_BACKUP_CONTENTS.issubset(names):
+                    raise BackupError("not_a_backup", "no cbpos.db in archive")
+                if extract_to is not None:
+                    zf.extractall(extract_to, members=members)
+                else:
+                    bad_file = zf.testzip()
+                    if bad_file is not None:
+                        raise BackupError("corrupt", f"bad member {bad_file}")
+                return names
+        except BackupError:
+            raise
+        except RuntimeError as e:
+            # pyzipper reports a wrong password as RuntimeError
+            raise BackupError("wrong_password", str(e)) from e
+        except (pyzipper.BadZipFile, zipfile.BadZipFile, OSError, EOFError, ValueError) as e:
+            # Failing to even open it: not a zip at all. Failing while
+            # reading members: a damaged archive.
+            raise BackupError("corrupt" if opened else "not_a_backup", str(e)) from e
+
+    @staticmethod
+    def _validate_database(db_path: Path) -> None:
+        """Check an extracted database is healthy and really a CB POS database.
+
+        Raises:
+            BackupError: ``db_invalid`` (not SQLite, or integrity_check
+                fails) or ``not_a_backup`` (missing CB POS tables).
+        """
+        try:
+            conn = sqlite3.connect(str(db_path))
+            try:
+                rows = conn.execute("PRAGMA integrity_check").fetchall()
+                tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            finally:
+                conn.close()
+        except sqlite3.DatabaseError as e:
+            raise BackupError("db_invalid", str(e)) from e
+        if rows != [("ok",)]:
+            raise BackupError("db_invalid", "; ".join(str(r[0]) for r in rows[:5]))
+        missing = _EXPECTED_TABLES - tables
+        if missing:
+            raise BackupError("not_a_backup", f"missing tables: {sorted(missing)}")
+
+    @staticmethod
+    def _replace_database(new_db: Path, db_file: Path) -> None:
+        """Swap ``new_db`` in as ``db_file`` without leaving a stale WAL behind.
+
+        The live database runs in WAL mode. A leftover ``-wal`` file next to
+        the new database would be replayed onto it and corrupt it, but it
+        may also hold committed data, so it is checkpointed (never just
+        deleted). If it can't be cleared, something still has the database
+        open and the restore is aborted with nothing changed.
+
+        Raises:
+            BackupError: ``db_in_use``.
+        """
+        wal = db_file.with_name(db_file.name + "-wal")
+        shm = db_file.with_name(db_file.name + "-shm")
+        if wal.exists():
+            try:
+                conn = sqlite3.connect(str(db_file))
+                try:
+                    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                finally:
+                    conn.close()
+            except sqlite3.Error as e:
+                raise BackupError("db_in_use", str(e)) from e
+            if wal.exists():
+                raise BackupError("db_in_use", "write-ahead log still in use")
+        for side in (wal, shm):
+            try:
+                side.unlink(missing_ok=True)
+            except OSError as e:
+                raise BackupError("db_in_use", str(e)) from e
+
+        staged = db_file.with_name(db_file.name + ".restoring")
+        try:
+            shutil.copy2(str(new_db), str(staged))
+            os.replace(staged, db_file)
+        except OSError as e:
+            staged.unlink(missing_ok=True)
+            raise BackupError("db_in_use", str(e)) from e
 
     @staticmethod
     def backup_kind(filename: str) -> str | None:
@@ -321,7 +441,9 @@ class BackupService:
         newest = next((b for b in backups if b.get("type") in (KIND_MANUAL, KIND_AUTO)), None)
         if newest is None:
             return {"date": None, "restorable": False}
-        restorable = bool(password) and BackupService.verify_backup(str(newest["path"]), password)["valid"] is True
+        restorable = (
+            bool(password) and BackupService.verify_backup(str(newest["path"]), password, deep=False)["valid"] is True
+        )
         return {"date": newest["date"], "restorable": restorable}
 
     @staticmethod
@@ -397,54 +519,48 @@ class BackupService:
             return False
 
     @staticmethod
-    def verify_backup(backup_path: str, password: str) -> dict[str, object]:
+    def verify_backup(backup_path: str, password: str, deep: bool = True) -> dict[str, object]:
         """
-        Verify a backup file without extracting it.
+        Verify a backup file without restoring it.
 
         Args:
             backup_path: Path to the backup zip file.
             password: Decryption password.
+            deep: Also extract cbpos.db to a temp folder and run the same
+                database checks a restore does (integrity_check, CB POS
+                tables). False only checks the archive opens and reads back.
 
         Returns:
-            Dict with keys: valid (bool), files (list), size (str), error (str or None).
+            Dict with keys: valid (bool), files (list), size (str),
+            error (str or None) and error_code (BackupError code or None).
         """
         result: dict[str, object] = {
             "valid": False,
             "files": [],
             "size": "0 MB",
             "error": None,
+            "error_code": None,
         }
 
         backup_file = Path(backup_path)
         if not backup_file.exists():
             result["error"] = "File not found"
+            result["error_code"] = "not_found"
             return result
 
         size_mb = backup_file.stat().st_size / (1024 * 1024)
         result["size"] = f"{size_mb:.1f} MB"
 
         try:
-            with pyzipper.AESZipFile(backup_file, "r") as zf:
-                zf.setpassword(password.encode("utf-8"))
-                names = zf.namelist()
-                result["files"] = names
-
-                # Check for required files
-                if not _REQUIRED_BACKUP_CONTENTS.issubset(set(names)):
-                    result["error"] = "Missing required files (cbpos.db)"
-                    return result
-
-                # Test integrity
-                bad_file = zf.testzip()
-                if bad_file is not None:
-                    result["error"] = f"Corrupt file in archive: {bad_file}"
-                    return result
-
-                result["valid"] = True
-        except RuntimeError as e:
-            result["error"] = f"Wrong password or corrupt archive: {e}"
-        except Exception as e:
-            result["error"] = f"Cannot read backup: {e}"
+            result["files"] = BackupService._open_archive(backup_file, password)
+            if deep:
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    BackupService._open_archive(backup_file, password, Path(tmp_dir), members=["cbpos.db"])
+                    BackupService._validate_database(Path(tmp_dir) / "cbpos.db")
+            result["valid"] = True
+        except BackupError as e:
+            result["error"] = str(e)
+            result["error_code"] = e.code
 
         return result
 

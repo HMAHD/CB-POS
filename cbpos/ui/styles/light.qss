@@ -2193,6 +2193,72 @@ QLineEdit:disabled {
     color: #9CA3AF;
 }
 
+/* In-cell editors (#569). Item-view editors are plain QLineEdit /
+   QSpinBox children of the view's viewport, so without this they inherit
+   the full-size form style above (8px padding, 2px focus border, 36px
+   spinbox min-height) and the typed value and caret are clipped out of
+   a ~30px row. Descendant selectors outrank the bare type rules; the
+   :focus variants are needed because QLineEdit:focus would otherwise win
+   on specificity. The spinbox's own internal QLineEdit is reset so it
+   doesn't draw a second border inside the spinbox.
+   The editor's geometry is the item's text rect, so the generic
+   ::item vertical padding (8-12px) would leave it ~13px tall: drop the
+   vertical padding on the current (focused) item only. Rows have a
+   fixed height and text is vertically centred, so nothing moves. */
+QAbstractItemView::item:focus {
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+
+QAbstractItemView QLineEdit,
+QAbstractItemView QLineEdit:focus,
+QAbstractItemView QSpinBox,
+QAbstractItemView QSpinBox:focus,
+QAbstractItemView QSpinBox:hover,
+QAbstractItemView QDoubleSpinBox,
+QAbstractItemView QDoubleSpinBox:focus,
+QAbstractItemView QDoubleSpinBox:hover,
+QAbstractItemView QDateEdit,
+QAbstractItemView QDateEdit:focus {
+    background-color: #FFFFFF;
+    color: #212529;
+    border: 1px solid #0D6EFD;
+    border-radius: 0px;
+    padding: 0px 4px;
+    margin: 0px;
+    font-size: 13px;
+    min-height: 0px;
+}
+
+QAbstractItemView QSpinBox,
+QAbstractItemView QSpinBox:focus,
+QAbstractItemView QSpinBox:hover,
+QAbstractItemView QDoubleSpinBox,
+QAbstractItemView QDoubleSpinBox:focus,
+QAbstractItemView QDoubleSpinBox:hover {
+    padding-right: 18px;
+}
+
+QAbstractItemView QAbstractSpinBox QLineEdit,
+QAbstractItemView QAbstractSpinBox QLineEdit:focus {
+    border: none;
+    padding: 0px;
+    background: transparent;
+}
+
+QAbstractItemView QSpinBox::up-button, QAbstractItemView QDoubleSpinBox::up-button,
+QAbstractItemView QSpinBox::down-button, QAbstractItemView QDoubleSpinBox::down-button {
+    width: 16px;
+    height: 12px;
+    border-radius: 0px;
+}
+
+QAbstractItemView QSpinBox::up-arrow, QAbstractItemView QDoubleSpinBox::up-arrow,
+QAbstractItemView QSpinBox::down-arrow, QAbstractItemView QDoubleSpinBox::down-arrow {
+    width: 8px;
+    height: 8px;
+}
+
 /* ========================================
    NETWORK SETTINGS PAGE - CARD BASED DESIGN
    ======================================== */
@@ -2559,6 +2625,13 @@ QTableWidget#LabelQueueTable {
 
 QTableWidget#LabelQueueTable::item {
     padding: 8px;
+}
+
+/* Same in-cell editor fix as QAbstractItemView::item:focus (#569) --
+   this ID rule would otherwise out-rank it and keep the Qty editor short. */
+QTableWidget#LabelQueueTable::item:focus {
+    padding-top: 0px;
+    padding-bottom: 0px;
 }
 
 /* ── Label Preview Dialog ── */

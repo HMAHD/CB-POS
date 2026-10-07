@@ -38,3 +38,43 @@ def test_generic_selected_item_rule_has_no_border(theme_file):
     assert bodies, "generic selected-item rule missing"
     for body in bodies:
         assert "border" not in body
+
+
+def _load_for_app(theme_file: str) -> str:
+    content = (STYLES_DIR / theme_file).read_text(encoding="utf-8")
+    return content.replace("{{FONT_FAMILY}}", "Sans Serif").replace("{{FONT_SIZE}}", "12px")
+
+
+@pytest.fixture
+def themed(qapp):
+    """Apply a theme's stylesheet to the app for one test, then clear it."""
+
+    def _apply(theme_file: str) -> None:
+        qapp.setStyleSheet(_load_for_app(theme_file))
+
+    yield _apply
+    qapp.setStyleSheet("")
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+def test_in_cell_line_edit_fills_the_row(qtbot, themed, theme_file):
+    """#569: the in-cell editor must not inherit the form QLineEdit style
+    (8px padding, 16px font) nor be squeezed by the ::item padding."""
+    from PyQt6.QtWidgets import QLineEdit, QTableWidget, QTableWidgetItem
+
+    themed(theme_file)
+    table = QTableWidget(2, 2)
+    qtbot.addWidget(table)
+    for r in range(2):
+        for c in range(2):
+            table.setItem(r, c, QTableWidgetItem("12.500"))
+    table.resize(400, 200)
+    table.show()
+    table.setCurrentCell(0, 1)
+    table.editItem(table.item(0, 1))
+    editor = table.findChild(QLineEdit)
+    assert editor is not None
+    editor.ensurePolished()
+    assert editor.font().pixelSize() == 13
+    assert editor.geometry().height() >= table.rowHeight(0) - 4
+    table.closePersistentEditor(table.item(0, 1))

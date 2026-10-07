@@ -48,6 +48,37 @@ def test_engine():
 
 
 @pytest.fixture(autouse=True)
+def _autocomplete_preload_runs_inline():
+    """Run SalesView's AutocompleteLoadWorker synchronously instead of on a QThread.
+
+    ``SalesView.setup_autocomplete()`` starts the worker mid-``__init__``;
+    its ``run()`` queries products via ``Database().get_session()`` on a
+    background thread while the main thread keeps building the view --
+    ``OrderBar``'s ``refresh_tabs()`` -> ``get_held_bills()`` right after.
+    In production each call gets its own Session, but under ``db_session``
+    both threads get the *same* Session, so every SalesView build raced
+    two threads on one Session: #501's random "session is provisioning a
+    new connection; concurrent operations are not permitted" /
+    "commit() already in progress" errors in whichever cart/sales test
+    lost the race. Running ``run()`` inline keeps the completer populated
+    (``result`` fires as a direct call) with no second thread.
+
+    Patched by hand rather than via ``monkeypatch``: requesting
+    ``monkeypatch`` from an autouse fixture sets it up ahead of
+    ``_collect_garbage_after_each_test``, so every test's own monkeypatches
+    would be undone only *after* that fixture's gc/thread-drain pass instead
+    of before it -- which reorders teardown enough to segfault later tests.
+    """
+    from cbpos.ui.workers import AutocompleteLoadWorker
+
+    AutocompleteLoadWorker.start = AutocompleteLoadWorker.run
+    try:
+        yield
+    finally:
+        del AutocompleteLoadWorker.start
+
+
+@pytest.fixture(autouse=True)
 def _collect_garbage_after_each_test():
     """Force a GC pass after every test, then wait out any background thread left running.
 

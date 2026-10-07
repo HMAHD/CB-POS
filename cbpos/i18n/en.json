@@ -124,6 +124,7 @@
   "printer": {
     "not_configured": "No receipt printer is set up, so nothing was printed. Set one up in Settings > Hardware.",
     "not_available": "Can't reach the receipt printer. Check that it's switched on and connected.",
+    "job_unsupported": "Couldn't print this, so nothing was sent to the printer. Please try again.",
     "type_none": "Not set up",
     "type_win32": "Windows printer",
     "type_network": "Network printer",

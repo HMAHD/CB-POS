@@ -19,6 +19,10 @@ logger = logging.getLogger(__name__)
 _NETWORK_TIMEOUT_SECONDS = 5
 _NETWORK_DEFAULT_PORT = 9100
 
+# Job types whose data is a ReceiptBuilder-style command list. "print_commands"
+# is the same job under the name the statement, label and quotation screens use.
+PRINT_JOB_TYPES = frozenset({"print_receipt", "print_commands"})
+
 
 def receipt_printer_configured() -> bool:
     """Return True if settings name a real receipt printer (Windows, Network or USB)."""
@@ -421,8 +425,11 @@ class PrintWorker(QThread):
         """Queue a print job. Starts the thread if not already running.
 
         Args:
-            job_type: 'print_receipt' or 'kick_drawer'
-            data: Command list for print_receipt; for kick_drawer, optionally
+            job_type: One of `PRINT_JOB_TYPES` ('print_receipt' /
+                'print_commands', both a builder command list) or
+                'kick_drawer'. Any other type is reported via
+                error_occurred when it is processed -- never as completed.
+            data: Command list for print jobs; for kick_drawer, optionally
                   a list of payment method strings (e.g. ['CASH']) to allow
                   drawer_on_cash_only filtering.
         """
@@ -434,15 +441,33 @@ class PrintWorker(QThread):
         """Signal the worker to stop after current job completes."""
         self.running = False
 
+    @staticmethod
+    def _drawer_wanted(data: Any) -> bool:
+        """Honour ``drawer_on_cash_only``: kick only if a CASH payment is in *data*."""
+        if not ConfigService.get("drawer_on_cash_only"):
+            return True
+        if not data:
+            logger.info("Drawer skipped — no payment methods provided (drawer_on_cash_only=True)")
+            return False
+        if not any(isinstance(m, str) and m.strip().upper() == "CASH" for m in data):
+            logger.info("Drawer skipped — no cash payment (drawer_on_cash_only=True)")
+            return False
+        return True
+
     def run(self) -> None:
         """Process queued jobs until stopped.
 
+        Every job ends in exactly one of: job_completed (it really went to
+        the printer), error_occurred, or -- only for a drawer kick that
+        isn't wanted or has no printer -- silence. An unknown job type or
+        a print job whose data isn't a command list is an error, so no
+        screen ever reports "sent to printer" for something that printed
+        nothing (#625).
+
         Resolves the printer fresh per job (so a mid-session settings
-        change takes effect), connects, runs the job, then disconnects.
-        A job whose printer fails to connect is skipped and logged rather
-        than retried. For "kick_drawer" jobs, honors the
-        ``drawer_on_cash_only`` setting by skipping the drawer pulse
-        unless a cash payment method was included in the job data.
+        change takes effect), connects, runs the job, then always
+        disconnects. A job whose printer fails to connect is skipped and
+        logged rather than retried.
         """
         while self.running:
             try:
@@ -450,6 +475,16 @@ class PrintWorker(QThread):
             except queue.Empty:
                 if not self.running:
                     break
+                continue
+
+            is_print = job_type in PRINT_JOB_TYPES
+            if not is_print and job_type != "kick_drawer":
+                logger.error("Unknown print job type %r — nothing printed.", job_type)
+                self.error_occurred.emit(_t("printer.job_unsupported"))
+                continue
+            if is_print and not isinstance(data, list):
+                logger.error("Print job %r has no command list (%s) — nothing printed.", job_type, type(data).__name__)
+                self.error_occurred.emit(_t("printer.job_unsupported"))
                 continue
 
             current_printer = self._resolve_printer()
@@ -464,6 +499,9 @@ class PrintWorker(QThread):
                 self.error_occurred.emit(printer_not_configured_message())
                 continue
 
+            if job_type == "kick_drawer" and not self._drawer_wanted(data):
+                continue
+
             try:
                 if not current_printer.connect():
                     msg = "Printer not available — skipping %s job. Check printer settings in Settings > Hardware."
@@ -472,19 +510,8 @@ class PrintWorker(QThread):
                     continue
 
                 if job_type == "kick_drawer":
-                    # Check drawer_on_cash_only config
-                    drawer_cash_only = bool(ConfigService.get("drawer_on_cash_only"))
-                    if drawer_cash_only:
-                        # data = list of payment method strings
-                        if not data:
-                            logger.info("Drawer skipped — no payment methods provided (drawer_on_cash_only=True)")
-                            continue
-                        has_cash = any(isinstance(m, str) and m.strip().upper() == "CASH" for m in data)
-                        if not has_cash:
-                            logger.info("Drawer skipped — no cash payment (drawer_on_cash_only=True)")
-                            continue
                     current_printer.kick_drawer()
-                elif job_type == "print_receipt":
+                else:
                     current_printer.print_commands(data)
 
                 current_printer.disconnect()

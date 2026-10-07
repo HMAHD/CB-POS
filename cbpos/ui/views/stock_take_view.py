@@ -630,6 +630,12 @@ class StockTakeView(QWidget):
             self.lbl_counted.setText(_t("stock_take.counted_progress", counted=0, total=0))
             self.lbl_variance.setText(_t("stock_take.variance_amount", amount="Rs. 0.00"))
             self.lbl_status.setText(_t("stock_take.status_display", status="---"))
+            # No count yet: only starting one makes sense. Without this the
+            # buttons kept the last count's state, so Load Products stayed
+            # disabled after a Void/Approve even past "New Count" (#615).
+            self.btn_load.setEnabled(True)
+            for btn in (self.btn_save_draft, self.btn_finalize, self.btn_approve, self.btn_void):
+                btn.setEnabled(False)
             return
 
         items = self.item_model.items
@@ -702,7 +708,9 @@ class StockTakeView(QWidget):
                 _t("stock_take.applied_title"),
                 _t("stock_take.applied_message", number=self.current_stock_count.document_number),
             )
-            self._reload_items()
+            # The count is finished (it stays in History); clear the form so
+            # the next count can start straight away (#615).
+            self.reset_form()
         except ValueError as e:
             QMessageBox.warning(self, _t("common.error"), str(e))
 
@@ -729,7 +737,7 @@ class StockTakeView(QWidget):
         try:
             self.current_stock_count = StockCountService.void_stock_count(self.current_stock_count.id)
             QMessageBox.information(self, _t("stock_take.voided_title"), _t("stock_take.voided_message"))
-            self._reload_items()
+            self.reset_form()  # Same as after Approve: ready for a new count (#615)
         except ValueError as e:
             QMessageBox.warning(self, _t("common.error"), str(e))
 

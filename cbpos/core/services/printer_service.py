@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import tempfile
+from typing import Any
 
 from cbpos.core.models import Sale
 from cbpos.core.services.config_service import ConfigService
@@ -11,32 +12,101 @@ from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
 logger = logging.getLogger(__name__)
 
+_MAX_COPIES = 5  # Settings > Hardware caps receipt copies at 5
+
 
 class PrinterService:
     """
-    Service for intelligent print routing based on customer type.
-    Routes to thermal receipt printer (B2C) or A4 invoice printer (B2B).
+    Single entry point for printing sale receipts.
+
+    Every receipt print (auto after sale/refund, Receipt Options -> Print,
+    reprints) builds its commands with `ReceiptBuilder` -- the same
+    commands the Settings preview renders -- and queues them on the shared
+    `PrintWorker` thread. VAT-registered customers additionally get an
+    A4 Tax Invoice.
+
+    Sinhala/Tamil: the builder emits receipt labels in the receipt
+    language as plain text commands; the driver sends them as text, so
+    the printed glyphs depend on the printer's code pages (see
+    ``ESCPOSDriver.print_commands``).
     """
 
     @staticmethod
-    def print_transaction(sale: Sale, is_reprint: bool = False) -> None:
-        """
-        Route transaction to appropriate printer based on customer type.
+    def receipt_copies() -> int:
+        """Return the configured number of receipt copies (1-5)."""
+        try:
+            copies = int(ConfigService.get("receipt_copies") or 1)
+        except (TypeError, ValueError):
+            return 1
+        return min(max(copies, 1), _MAX_COPIES)
 
-        Logic:
-        - B2B (VAT Registered): Generate PDF -> Print to A4 printer
-        - B2C (Walk-in): Build receipt commands -> Print via PrintWorker
+    @staticmethod
+    def queue_commands(commands: list[dict[str, Any]], copies: int = 1) -> None:
+        """Queue *copies* receipts as ONE print job on the shared PrintWorker.
+
+        One job (not one per copy) so screens waiting on the worker's
+        job_completed/error_occurred hear about the print exactly once.
+        Each copy ends with the builder's own feed + cut.
+        """
+        copies = max(int(copies), 1)
+        job = [cmd for _ in range(copies) for cmd in commands]
+        PrintWorker.instance().add_job("print_receipt", job)
+        logger.info("[PrinterService] Queued receipt job (%d cop%s)", copies, "y" if copies == 1 else "ies")
+
+    @staticmethod
+    def auto_print(commands: list[dict[str, Any]]) -> bool:
+        """Automatic print after a sale/refund: honors auto_print_receipt and receipt_copies.
+
+        Returns:
+            True if a job was queued, False if auto-print is switched off.
+        """
+        if not ConfigService.get("auto_print_receipt"):
+            logger.info("[PrinterService] Auto-print off -- receipt not printed")
+            return False
+        PrinterService.queue_commands(commands, PrinterService.receipt_copies())
+        return True
+
+    @staticmethod
+    def print_transaction(sale: Sale, is_reprint: bool = False) -> bool:
+        """Automatic receipt print for a completed sale.
+
+        Builds the receipt with `ReceiptBuilder` (the same commands the
+        Settings preview shows) and queues it if auto-print is on, with
+        the configured number of copies. VAT-registered (B2B) customers
+        additionally get an A4 Tax Invoice -- never instead of the receipt.
 
         Args:
-            sale: The completed sale transaction.
-            is_reprint: Whether this is a reprint (adds DUPLICATE marking).
-        """
-        is_b2b = sale.customer and sale.customer.vat_number
+            sale: The completed sale (items, products and payments loaded).
+            is_reprint: Whether to add the DUPLICATE marking.
 
-        if is_b2b:
-            PrinterService._print_a4_invoice(sale)
-        else:
-            PrinterService._print_thermal_receipt(sale, is_reprint=is_reprint)
+        Returns:
+            True if the receipt was queued, False if auto-print is off.
+        """
+        commands = ReceiptBuilder.build_receipt(sale, is_reprint=is_reprint)
+        if not PrinterService.auto_print(commands):
+            return False
+        PrinterService.maybe_print_b2b_invoice(sale)
+        return True
+
+    @staticmethod
+    def print_receipt(sale: Sale, is_reprint: bool = False, copies: int | None = None) -> None:
+        """Print a receipt the user asked for (Print / Reprint buttons).
+
+        Ignores auto_print_receipt -- the user explicitly clicked Print.
+
+        Args:
+            sale: The sale (items, products and payments loaded).
+            is_reprint: Add the DUPLICATE marking.
+            copies: Number of copies; None means the configured count
+                for a first print and one for a reprint.
+
+        Raises:
+            Exception: If the receipt can't be built; the caller reports it.
+        """
+        if copies is None:
+            copies = 1 if is_reprint else PrinterService.receipt_copies()
+        commands = ReceiptBuilder.build_receipt(sale, is_reprint=is_reprint)
+        PrinterService.queue_commands(commands, copies)
 
     @staticmethod
     def maybe_print_b2b_invoice(sale: Sale) -> None:
@@ -76,30 +146,6 @@ class PrinterService:
 
         except Exception as e:
             logger.error("[PrinterService] Error printing A4 invoice: %s", e)
-
-    @staticmethod
-    def _print_thermal_receipt(sale: Sale, is_reprint: bool = False) -> None:
-        """
-        Build receipt commands via ReceiptBuilder and print via PrintWorker.
-
-        Args:
-            sale: The sale transaction.
-            is_reprint: Whether this is a reprint.
-        """
-        try:
-            if not ConfigService.get("auto_print_receipt"):
-                return
-
-            copies = ConfigService.get("receipt_copies") or 1
-            commands = ReceiptBuilder.build_receipt(sale, is_reprint=is_reprint)
-
-            worker = PrintWorker.instance()
-            for i in range(copies):
-                worker.add_job("print_receipt", commands)
-                logger.info("[PrinterService] Queued receipt copy %d/%d", i + 1, copies)
-
-        except Exception as e:
-            logger.error("[PrinterService] Error printing thermal receipt: %s", e)
 
     # Only allow safe characters in printer names and file paths
     _SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-\.\s\\/:]+$")

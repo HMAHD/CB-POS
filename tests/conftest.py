@@ -2,6 +2,7 @@ import gc
 import os
 import sys
 import threading
+import traceback
 
 import pytest
 
@@ -197,7 +198,26 @@ def db_session(test_engine):
     original_close = session.close
     session.close = lambda: None
 
-    db.SessionLocal = lambda: session
+    # A Session is not thread-safe, and this one is shared by every
+    # get_session() call in the test. A background thread reaching it
+    # races the test thread and surfaces as a random SQLAlchemy state
+    # error in some unrelated test (#501), so refuse it outright and fail
+    # the test at teardown, naming the offending thread and call site.
+    owner_thread = threading.get_ident()
+    cross_thread_uses: list[str] = []
+
+    def _session_for_owner_thread_only():
+        if threading.get_ident() != owner_thread:
+            name = threading.current_thread().name
+            cross_thread_uses.append(f"thread {name!r}:\n" + "".join(traceback.format_stack(limit=10)))
+            raise RuntimeError(
+                f"db_session's shared Session requested from background thread {name!r}. "
+                "Sessions are not thread-safe; run that work inline in tests (see "
+                "_autocomplete_preload_runs_inline in tests/conftest.py)."
+            )
+        return session
+
+    db.SessionLocal = _session_for_owner_thread_only
 
     # Core-level SAVEPOINT, restarted whenever it ends (e.g. a service's
     # own session.commit()/rollback() releases it) so writes always stay
@@ -223,3 +243,10 @@ def db_session(test_engine):
 
     # Restore original factory
     db.SessionLocal = original_factory
+
+    if cross_thread_uses:
+        pytest.fail(
+            "db_session's shared Session was requested from a background thread (#501):\n\n"
+            + "\n".join(cross_thread_uses),
+            pytrace=False,
+        )

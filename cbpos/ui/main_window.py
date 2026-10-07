@@ -114,6 +114,7 @@ class MainWindow(QMainWindow):
         self.sales_view.side_menu.shift_status_clicked.connect(self.sales_view.open_shift_status)
         self.sales_view.side_menu.close_shift_clicked.connect(self.sales_view.open_shift_closing)
         self.sales_view.shift_closed.connect(self.logout)
+        self.sales_view.printer_setup_requested.connect(self.open_hardware_settings)
         self.sales_view.side_menu.logout_clicked.connect(self.logout)
         self.sales_view.side_menu.settings_clicked.connect(self.switch_to_settings)
         self.sales_view.side_menu.fullscreen_clicked.connect(self.toggle_fullscreen)
@@ -223,6 +224,11 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentWidget(self.settings_view)
         # Hide side menu in sales view if open
         self.sales_view.side_menu.setVisible(False)
+
+    def open_hardware_settings(self) -> None:
+        """Show Settings on its Hardware page (from the Sales no-printer notice)."""
+        self.switch_to_settings()
+        self.settings_view.switch_page(SettingsView.HARDWARE_PAGE)
 
     def toggle_fullscreen(self):
         """Toggle between fullscreen and normal window state."""

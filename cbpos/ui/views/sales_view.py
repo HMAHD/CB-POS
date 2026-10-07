@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMenu,
     QMessageBox,
+    QPushButton,
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
@@ -34,6 +35,7 @@ from cbpos.core.services.suspended_transaction_service import SuspendedTransacti
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.infrastructure.hardware.escpos_driver import printer_not_configured_message, receipt_printer_configured
 from cbpos.ui.constants import CART_TABLE_ROW_HEIGHT, SEARCH_BAR_HEIGHT
 from cbpos.ui.dialogs.advanced_search_dialog import AdvancedSearchDialog
 from cbpos.ui.dialogs.customer_quick_add import CustomerQuickAddDialog
@@ -56,6 +58,10 @@ class SalesView(QWidget):
     """Main checkout screen: cart, barcode scanning, product search, and payment flow."""
 
     shift_closed = pyqtSignal()
+    printer_setup_requested = pyqtSignal()  # "Set up printer" on the no-printer notice
+
+    # The no-printer notice shows by itself once per app session (#623).
+    _printer_notice_shown: bool = False
 
     def __init__(self):
         """Initialize services, build the UI, and wire up the side menu and print-error listener."""
@@ -147,6 +153,32 @@ class SalesView(QWidget):
         header_layout.addWidget(self.menu_button)
 
         main_layout.addWidget(self.header_widget)
+
+        # "No receipt printer" notice (#623) -- shown once per app session
+        # by showEvent; non-blocking, so the cashier can keep selling.
+        self.printer_notice = QFrame()
+        self.printer_notice.setObjectName("PrinterNotice")
+        notice_layout = QHBoxLayout(self.printer_notice)
+        notice_layout.setContentsMargins(20, 6, 12, 6)
+        self.printer_notice_label = QLabel()
+        self.printer_notice_label.setObjectName("PrinterNoticeText")
+        self.printer_notice_label.setWordWrap(True)
+        notice_layout.addWidget(self.printer_notice_label, 1)
+        self.printer_notice_setup = QPushButton()
+        self.printer_notice_setup.setObjectName("PrinterNoticeSetupBtn")
+        self.printer_notice_setup.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.printer_notice_setup.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.printer_notice_setup.clicked.connect(self._on_printer_setup_clicked)
+        notice_layout.addWidget(self.printer_notice_setup)
+        self.printer_notice_close = QToolButton()
+        self.printer_notice_close.setObjectName("PrinterNoticeCloseBtn")
+        self.printer_notice_close.setText("✕")
+        self.printer_notice_close.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.printer_notice_close.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.printer_notice_close.clicked.connect(self.printer_notice.hide)
+        notice_layout.addWidget(self.printer_notice_close)
+        self.printer_notice.setVisible(False)
+        main_layout.addWidget(self.printer_notice)
 
         # 3. Content Area (Splitter)
         self.splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -378,6 +410,10 @@ class SalesView(QWidget):
 
     def retranslate_ui(self) -> None:
         """Update all widget text for current language."""
+        self.printer_notice_label.setText(_t("sales.printer_notice"))
+        self.printer_notice_setup.setText(_t("sales.printer_notice_setup"))
+        self.printer_notice_close.setToolTip(_t("sales.printer_notice_dismiss"))
+
         # Search mode tooltips
         mode_tooltip_keys = {
             "ALL": "sales.search_mode_all",
@@ -601,6 +637,20 @@ class SalesView(QWidget):
         self.action_panel.setVisible(True)
         self.barcode_input.setFocus()
         self.order_bar.refresh_tabs()
+
+        if not SalesView._printer_notice_shown and not receipt_printer_configured():
+            SalesView._printer_notice_shown = True
+            self._show_printer_notice()
+
+    def _show_printer_notice(self) -> None:
+        """Show the no-printer notice; the setup button only for users who can open Settings."""
+        self.printer_notice_setup.setVisible(not self.side_menu.btn_settings.isHidden())
+        self.printer_notice.setVisible(True)
+
+    def _on_printer_setup_clicked(self) -> None:
+        """Hide the notice and ask MainWindow to open Settings -> Hardware."""
+        self.printer_notice.setVisible(False)
+        self.printer_setup_requested.emit()
 
     def process_barcode_external(self, barcode):
         """Handle barcode from global scanner hook."""
@@ -1422,7 +1472,14 @@ class SalesView(QWidget):
         PrintWorker.instance().add_job("kick_drawer")
 
     def _on_print_error(self, message: str) -> None:
-        """Show printer error to user with context."""
+        """Show printer error to user with context.
+
+        "No printer set up" brings back the non-blocking notice instead --
+        a modal after every sale would stall a shop that has no printer.
+        """
+        if message == printer_not_configured_message():
+            self._show_printer_notice()
+            return
         QMessageBox.warning(
             self,
             _t("sales.printer_error_title"),

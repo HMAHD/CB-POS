@@ -19,8 +19,8 @@ from PyQt6.QtWidgets import (
 from cbpos.core.constants.permissions import Permissions
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.permission_service import PermissionService
-from cbpos.core.services.theme_service import ThemeService
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, get_language, register_language_callback, translate_in, unregister_language_callback
+from cbpos.ui.app_restart import restart_application
 from cbpos.ui.views.settings_pages import (
     DocumentPage,
     HardwarePage,
@@ -280,9 +280,9 @@ class SettingsView(QWidget):
 
         Checks the ADMIN_SETTINGS permission, audits tax-rate changes to
         AuditLog, persists settings, restarts the scheduler timer if the
-        auto-report toggle changed, applies the new theme/language
-        immediately, and prompts for a restart if font size or
-        terminal/db mode changed.
+        auto-report toggle changed, and if theme, language, font size or
+        terminal/db mode changed, asks to restart now or apply them at the
+        next launch (they are never applied live, #581).
         """
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
@@ -370,26 +370,22 @@ class SettingsView(QWidget):
         new_lang = all_settings.get("language", current_lang)
         new_font_size = all_settings.get("font_size", current_font_size)
 
-        ThemeService.apply_theme(new_theme)
-
-        # Apply language change immediately (live retranslation)
-        if new_lang != current_lang:
-            from cbpos.i18n import set_language
-
-            set_language(new_lang)
-
+        # Theme/language/font size are only saved here, never applied live:
+        # a live switch left screens whose retranslate_ui()/theme colors are
+        # incomplete half-switched (#581). They apply at the next launch.
         restart_required = (
-            new_font_size != current_font_size
-            or all_settings.get("db_mode") != current_config.get("db_mode")
-            or all_settings.get("terminal_mode") != current_config.get("terminal_mode")
+            new_theme != current_theme
+            or new_lang != current_lang
+            or new_font_size != current_font_size
+            or all_settings.get("db_mode", "standalone") != current_config.get("db_mode", "standalone")
+            or all_settings.get("terminal_mode", "standalone") != current_config.get("terminal_mode", "standalone")
         )
 
+        self._saved_snapshot = self._take_snapshot()
+
         if restart_required:
-            QMessageBox.information(
-                self,
-                _t("settings.restart_title"),
-                _t("settings.restart_message"),
-            )
+            if self._prompt_restart(get_language(), new_lang):
+                return
         else:
             QMessageBox.information(
                 self,
@@ -397,8 +393,64 @@ class SettingsView(QWidget):
                 _t("settings.saved_message"),
             )
 
-        self._saved_snapshot = self._take_snapshot()
         self.close_requested.emit()
+
+    def _sale_in_progress(self) -> bool:
+        """Return True if the sales screen has items in its cart.
+
+        A payment can only be in progress with items in the cart (the
+        payment dialog is modal over Sales), so this covers both.
+        """
+        sales_view = getattr(self.window(), "sales_view", None)
+        cart = getattr(sales_view, "cart_service", None)
+        return bool(cart is not None and cart.items)
+
+    def _prompt_restart(self, old_lang: str, new_lang: str) -> bool:
+        """Ask to restart now or apply the saved settings at the next launch.
+
+        Text is shown in the old language and, if it changed, the new one too.
+        Restart now is never offered while a sale is in progress.
+
+        Args:
+            old_lang: The language the app is displayed in right now.
+            new_lang: The language just saved.
+
+        Returns:
+            bool: True if the app is restarting.
+        """
+
+        def both(key: str, sep: str = "\n\n") -> str:
+            text = translate_in(old_lang, key)
+            other = translate_in(new_lang, key)
+            return text if other == text else f"{text}{sep}{other}"
+
+        if self._sale_in_progress():
+            QMessageBox.information(
+                self, translate_in(old_lang, "settings.saved_title"), both("settings.restart_prompt.busy_message")
+            )
+            return False
+
+        if not self._ask_restart_now(
+            translate_in(old_lang, "settings.restart_prompt.title"),
+            both("settings.restart_prompt.message"),
+            both("settings.restart_prompt.restart_now", " / "),
+            both("settings.restart_prompt.later", " / "),
+        ):
+            return False
+        return restart_application(self.window())
+
+    def _ask_restart_now(self, title: str, text: str, restart_label: str, later_label: str) -> bool:
+        """Show the Restart now / Apply next launch box; True if Restart now was chosen."""
+        box = QMessageBox(self)
+        box.setWindowTitle(title)
+        box.setText(text)
+        box.setIcon(QMessageBox.Icon.Question)
+        restart_btn = box.addButton(restart_label, QMessageBox.ButtonRole.AcceptRole)
+        later_btn = box.addButton(later_label, QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(restart_btn)
+        box.setEscapeButton(later_btn)
+        box.exec()
+        return box.clickedButton() is restart_btn
 
     # ------------------------------------------------------------------
     # Responsive

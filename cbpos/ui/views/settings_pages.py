@@ -365,6 +365,7 @@ class ShopInfoPage(SettingsPage):
 
         self.lbl_restart = QLabel()
         self.lbl_restart.setProperty("class", "warning-hint")
+        self.lbl_restart.setWordWrap(True)
         self._form_appear.addRow("", self.lbl_restart)
 
         self.tabs.addTab(self._tab_appear, "")

@@ -1327,8 +1327,13 @@
     "unsaved_message": "You have unsaved changes. Continue without saving?",
     "saved_title": "Saved",
     "saved_message": "Settings saved successfully.",
-    "restart_title": "Restart Required",
-    "restart_message": "Please restart the application to apply changes completely.",
+    "restart_prompt": {
+      "title": "Restart CB POS?",
+      "message": "Your changes are saved. Restart CB POS now to apply them, or they'll apply the next time you open it.",
+      "restart_now": "Restart Now",
+      "later": "Apply Next Launch",
+      "busy_message": "Your changes are saved. A sale is in progress, so they'll apply the next time you open CB POS. To restart now, finish or hold the sale first."
+    },
     "shop_info": {
       "title": "Shop Info",
       "subtitle": "Business details, banking, email, and appearance settings.",
@@ -1366,7 +1371,7 @@
       "theme_dark": "Ceylon Night (Dark)",
       "theme_light": "Ceylon Day (Light)",
       "language": "Language:",
-      "restart_hint": "(Font Size and Language changes require restart)",
+      "restart_hint": "(Font size, theme and language changes apply after CB POS restarts. You'll be asked when you save.)",
       "email_guide_title": "Email Setup Guide",
       "email_guide_heading": "How to set up email with Gmail",
       "guide_step1_title": "Enable 2-Step Verification",

@@ -8,6 +8,10 @@ from cbpos.infrastructure.resource_loader import ResourceLoader
 
 logger = logging.getLogger(__name__)
 
+BASE_FONT_SIZE = 12  # the size every fixed px font-size in the QSS was designed at
+MIN_FONT_SIZE = 8
+_PX_FONT_SIZE_RE = re.compile(r"(font-size\s*:\s*)(\d+(?:\.\d+)?)px")
+
 
 class ThemeService:
     """
@@ -54,7 +58,12 @@ class ThemeService:
                     raise ValueError("Font size out of bounds")
                 font_size = f"{font_size_int}px"
             except (ValueError, TypeError):
+                font_size_int = BASE_FONT_SIZE
                 font_size = "12px"  # Safe fallback
+
+            # Scale every fixed px font-size by the setting (#572) *before*
+            # {{FONT_SIZE}} is substituted, so the base size isn't scaled twice.
+            style_content = ThemeService.scale_font_sizes(style_content, font_size_int)
 
             # Resolve asset paths for icons (works in dev and packaged exe)
             assets_path = os.path.join(str(Config.BASE_DIR), "cbpos", "assets").replace("\\", "/")
@@ -95,6 +104,30 @@ class ThemeService:
             logger.error("Theme file not found at %s", style_path)
         except Exception as e:
             logger.error("Error applying theme: %s", e)
+
+    @staticmethod
+    def scale_font_sizes(style_content: str, font_size: int) -> str:
+        """Scale every ``font-size: Npx`` in a stylesheet by ``font_size / 12``.
+
+        The QSS hardcodes its px sizes for the default 12px base, so without
+        this the Font Size setting only reached unstyled widgets (#572).
+        Results are rounded to the nearest px and never go below 8px.
+
+        Args:
+            style_content: Raw QSS text.
+            font_size: The configured base font size in px.
+
+        Returns:
+            str: The QSS with every px font-size scaled (unchanged at 12).
+        """
+        if font_size == BASE_FONT_SIZE:
+            return style_content
+
+        def _scale(match: re.Match) -> str:
+            scaled = int(float(match.group(2)) * font_size / BASE_FONT_SIZE + 0.5)
+            return f"{match.group(1)}{max(scaled, MIN_FONT_SIZE)}px"
+
+        return _PX_FONT_SIZE_RE.sub(_scale, style_content)
 
     @staticmethod
     def register_theme_callback(callback):

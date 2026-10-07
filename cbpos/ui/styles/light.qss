@@ -2177,7 +2177,6 @@ QLabel#CardTitle {
     color: #6B7280;  /* Muted gray for labels */
     font-size: 11px;
     font-weight: normal;
-    text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
@@ -2240,7 +2239,6 @@ QLabel#PanelSubtitle {
 QLabel#SummaryLabel {
     color: #6B7280;
     font-size: 11px;
-    text-transform: uppercase;
     background-color: transparent;
 }
 
@@ -2268,7 +2266,6 @@ QLabel#SummarySubValue {
 QLabel#StatLabel {
     color: #6B7280;
     font-size: 10px;
-    text-transform: uppercase;
     background-color: transparent;
 }
 

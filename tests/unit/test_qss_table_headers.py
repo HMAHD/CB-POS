@@ -62,3 +62,10 @@ def test_generic_header_is_readable(theme_file):
     assert int(props["font-size"].removesuffix("px")) >= 12
     assert _contrast(props["color"], props["background-color"]) >= 4.5
     assert "text-transform" not in props
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+def test_no_dead_text_transform(theme_file):
+    """Qt stylesheets ignore text-transform; it only misleads readers."""
+    css = COMMENT_RE.sub("", (STYLES_DIR / theme_file).read_text(encoding="utf-8"))
+    assert "text-transform" not in css

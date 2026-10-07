@@ -1888,7 +1888,8 @@
     "col_permission": "Permission",
     "save_changes": "Save Changes",
     "save_success": "Permissions saved successfully.",
-    "save_failed": "Failed to save permissions."
+    "save_failed": "Failed to save permissions.",
+    "admin_locked_tooltip": "Admin always keeps this permission, so there's always someone who can manage users and roles."
   },
   "profile": {
     "title": "My Profile",

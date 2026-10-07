@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from cbpos.config import Config
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_service import CustomerService
@@ -472,12 +473,12 @@ class SalesView(QWidget):
         self.barcode_input.setPlaceholderText(_t(key))
 
     def update_logo(self):
-        """Update logo based on current theme (called on theme change)."""
-        from pathlib import Path
-
-        from cbpos.core.services.theme_service import ThemeService
-
-        logo_path = Path(ThemeService.get_logo_path())
+        """Set the header logo and icons (also called on theme change)."""
+        # The header is navy in *both* themes (#HeaderWidget in dark.qss and
+        # light.qss), so it always needs the white-text logo -- the
+        # theme-dependent ThemeService.get_logo_path() handed Light mode the
+        # black-text one, nearly invisible on navy (#603).
+        logo_path = Config.BASE_DIR / "cbpos" / "assets" / "logo" / "cover_white.png"
 
         if logo_path.exists():
             logo_pixmap = QPixmap(str(logo_path))

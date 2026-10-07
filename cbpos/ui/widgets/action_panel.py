@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.utils.formatters import format_short_name
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.resources.icons import Icons
@@ -71,30 +72,19 @@ class ActionBtn(QPushButton):
             self.setProperty("btnColor", color)
 
     def _apply_theme_styles(self, icon_name: str | None = None) -> None:
-        """Apply theme-aware colors directly."""
-        from cbpos.core.services.theme_service import ThemeService
+        """Apply the theme-dependent icon color.
 
+        Label colors come from the theme QSS (#lblText/#lblShortcut in
+        dark.qss and light.qss), so they follow whichever stylesheet is
+        active; only the icon -- a pre-rendered pixmap -- has to be
+        re-tinted here (#603).
+        """
         self.lbl_icon.setObjectName("lblIcon")
-        is_dark = ThemeService.current_theme.lower() == "dark"
-
-        text_color = "#FFFFFF" if is_dark else "#1A1A1A"
-        shortcut_color = "#666666" if is_dark else "#AAAAAA"
-        # Font size/weight live in QSS (#lblText/#lblShortcut in dark.qss and
-        # light.qss) using pt units so they scale with Windows DPI settings —
-        # only the theme-dependent color is set here.
-        self.lbl_text.setStyleSheet(f"color: {text_color}; background: transparent;")
-        self.lbl_shortcut.setStyleSheet(f"color: {shortcut_color}; background: transparent;")
         self.lbl_icon.setStyleSheet("background: transparent;")
+        self.set_icon(icon_name)
 
-        if icon_name:
-            icon_color = "white" if is_dark else "#1A1A1A"
-            icon = Icons.get(icon_name, color=icon_color)
-            self.lbl_icon.setPixmap(icon.pixmap(28, 28))
-
-    def set_icon(self, icon_name: str) -> None:
+    def set_icon(self, icon_name: str | None) -> None:
         """Set icon with theme-aware color."""
-        from cbpos.core.services.theme_service import ThemeService
-
         if icon_name:
             is_dark = ThemeService.current_theme.lower() == "dark"
             icon_color = "white" if is_dark else "#1A1A1A"
@@ -160,12 +150,28 @@ class ActionPanel(QWidget):
         # can segfault mid-teardown (#392).
         self_ref = weakref.ref(self)
 
+        # Re-tint the tile icons if the theme changes under a live panel
+        # (#603). Held through the weakref too: ThemeService's callback
+        # list is class-level and would otherwise keep the panel alive.
+        def _on_theme_changed():
+            widget = self_ref()
+            if widget is not None:
+                widget.refresh_theme()
+
+        ThemeService.register_theme_callback(_on_theme_changed)
+
         def _unregister():
+            ThemeService.unregister_theme_callback(_on_theme_changed)
             widget = self_ref()
             if widget is not None:
                 unregister_language_callback(widget.retranslate_ui)
 
         self.destroyed.connect(_unregister)
+
+    def refresh_theme(self) -> None:
+        """Re-tint every action tile's icon for the current theme."""
+        for btn in self._action_btns:
+            btn.refresh_theme()
 
     def init_ui(self):
         """Lay out the customer card, action button grids, and pay button."""

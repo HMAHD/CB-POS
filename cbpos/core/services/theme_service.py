@@ -141,6 +141,17 @@ class ThemeService:
             ThemeService.theme_change_callbacks.append(callback)
 
     @staticmethod
+    def unregister_theme_callback(callback):
+        """
+        Remove a callback registered with ``register_theme_callback``.
+
+        Args:
+            callback: The callable to remove; ignored if not registered.
+        """
+        if callback in ThemeService.theme_change_callbacks:
+            ThemeService.theme_change_callbacks.remove(callback)
+
+    @staticmethod
     def get_available_themes() -> list:
         """
         Returns a list of available themes.

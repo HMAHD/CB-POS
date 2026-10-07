@@ -66,6 +66,43 @@ APPLY_ORDER: tuple[str, ...] = (
 assert set(APPLY_ORDER) == set(TRANSACTION_TABLES), "APPLY_ORDER must cover exactly TRANSACTION_TABLES"
 
 
+# Columns that point at another till-originated row: column -> id space of
+# the row it points at. Translated to the Main PC id before the row is
+# written. Main-owned references (user_id, product_id, customer_id, ...)
+# are not listed and are kept as sent.
+TERMINAL_REFS: dict[str, dict[str, str]] = {
+    "sales": {"refund_of_sale_id": DOCUMENT_ID_SPACE},
+    "sale_items": {"sale_id": DOCUMENT_ID_SPACE},
+    "sale_payments": {"sale_id": DOCUMENT_ID_SPACE},
+    "purchase_items": {"purchase_id": DOCUMENT_ID_SPACE},
+    "stock_movements": {"document_id": DOCUMENT_ID_SPACE},
+    "cash_movements": {"shift_id": "shifts"},
+}
+
+# Ledger reference_id is a plain integer whose target depends on the entry.
+LEDGER_REFS: dict[str, dict[str, str]] = {
+    "customer_ledger": {"SALE": DOCUMENT_ID_SPACE, "PAYMENT": "customer_payments"},
+    "supplier_ledger": {"PURCHASE": DOCUMENT_ID_SPACE, "PAYMENT": "supplier_payments"},
+}
+
+# Columns that point at till rows that are never pushed (purchase orders
+# stay on the till that raised them). No Main PC row is that till's row,
+# so the reference is dropped rather than left pointing at whatever the
+# Main PC happens to have under that id.
+UNSYNCED_REFS: dict[str, tuple[str, ...]] = {
+    "purchases": ("purchase_order_id",),
+    "purchase_items": ("purchase_order_item_id",),
+}
+
+# For a reference to a row pushed before sync_id_map existed (stored under
+# the till's own id, e.g. a sale voided after the upgrade): the column that
+# says which till a Main PC row came from, per id space.
+_ORIGIN_COLUMNS: dict[str, tuple[str, tuple[str, ...]]] = {
+    DOCUMENT_ID_SPACE: ("documents", ("origin_terminal_id", "terminal_id")),
+    "shifts": ("shifts", ("terminal_id",)),
+}
+
+
 class PushApplyError(Exception):
     """A pushed row can't be applied safely; the whole batch must be rejected."""
 
@@ -155,6 +192,7 @@ class SyncApplyService:
 
         values = coerce_columns(model_class, record)
         values.pop("id", None)
+        self._remap_references(table_name, model_class, local_id, values)
         if hasattr(model_class, "synced"):
             values["synced"] = True
         if table_name in _DOCUMENT_TABLES and not values.get("origin_terminal_id"):
@@ -193,6 +231,76 @@ class SyncApplyService:
         self._session.flush()  # assigns the server id
         self._remember(space, local_id, instance.id)
         self._on_insert(table_name, instance)
+
+    # --- References to other till rows ---
+
+    def _remap_references(self, table_name: str, model_class: type, local_id: int, values: dict[str, Any]) -> None:
+        """Translate every till-row reference in ``values`` to its Main PC id, in place."""
+        refs = dict(TERMINAL_REFS.get(table_name, {}))
+        ledger_targets = LEDGER_REFS.get(table_name)
+        if ledger_targets is not None and values.get("reference_id") is not None:
+            target = ledger_targets.get(values.get("entry_type") or "")
+            if target is None:
+                # e.g. ADJUSTMENT: nothing on the Main PC to point at.
+                values["reference_id"] = None
+            else:
+                refs["reference_id"] = target
+
+        columns = model_class.__table__.c
+        for column, space in refs.items():
+            ref = values.get(column)
+            if ref is None:
+                continue
+            server_id = self._resolve_reference(space, int(ref))
+            if server_id is None:
+                if not columns[column].nullable:
+                    raise PushApplyError(f"{table_name}[{local_id}]: {column}={ref} is not a row this till has pushed")
+                logger.warning(
+                    "Sync: %s[%s] from %s: %s=%s is not a row this till has pushed; cleared",
+                    table_name,
+                    local_id,
+                    self._terminal_id,
+                    column,
+                    ref,
+                )
+            values[column] = server_id
+
+        for column in UNSYNCED_REFS.get(table_name, ()):
+            if values.get(column) is not None:
+                logger.info(
+                    "Sync: %s[%s] from %s: %s refers to a till-only row; cleared on Main PC",
+                    table_name,
+                    local_id,
+                    self._terminal_id,
+                    column,
+                )
+                values[column] = None
+
+    def _resolve_reference(self, space: str, local_id: int) -> int | None:
+        """Return the Main PC id of this till's row ``local_id`` in ``space``, or None.
+
+        Normally the row was pushed earlier (this batch or a previous one)
+        and is in the map. A row pushed before the map existed sits on the
+        Main PC under the till's own id; it is adopted only if the row there
+        says it came from this till and isn't already another row's mapped
+        target (which would make it a server-assigned id, not a legacy one).
+        """
+        server_id = self._lookup(space, local_id)
+        if server_id is not None:
+            return server_id
+
+        origin = _ORIGIN_COLUMNS.get(space)
+        if origin is None:
+            return None
+        table_name, origin_columns = origin
+        row = self._session.get(get_model_for_table(table_name), local_id)
+        if row is None:
+            return None
+        owner = next((getattr(row, c) for c in origin_columns if getattr(row, c)), None)
+        if owner != self._terminal_id or self._is_claimed(space, local_id):
+            return None
+        self._remember(space, local_id, local_id)
+        return local_id
 
     # --- Id map ---
 

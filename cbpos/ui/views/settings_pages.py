@@ -1069,6 +1069,12 @@ class HardwarePage(SettingsPage):
         self.chk_auto_cut = QCheckBox()
         self._lbl_auto_cut = QLabel()
         cut_form.addRow(self._lbl_auto_cut, self.chk_auto_cut)
+        # Tear-bar advice lives in a hint, not the checkbox text: "Disable for..." next to a box that
+        # enables auto-cut read as "tick to disable" (#575).
+        self.lbl_auto_cut_hint = QLabel()
+        self.lbl_auto_cut_hint.setProperty("class", "muted")
+        self.lbl_auto_cut_hint.setWordWrap(True)
+        cut_form.addRow("", self.lbl_auto_cut_hint)
 
         self.combo_cut_type = QComboBox()
         self._lbl_cut_type = QLabel()
@@ -1171,6 +1177,7 @@ class HardwarePage(SettingsPage):
         self._lbl_auto_cut.setText(_t("settings.hardware.auto_cut"))
         self.chk_auto_cut.setText(_t("settings.hardware.chk_auto_cut"))
         self.chk_auto_cut.setToolTip(_t("settings.hardware.tooltip_auto_cut"))
+        self.lbl_auto_cut_hint.setText(_t("settings.hardware.hint_auto_cut"))
 
         self._lbl_cut_type.setText(_t("settings.hardware.cut_type"))
         # Re-populate cut type combo preserving selection

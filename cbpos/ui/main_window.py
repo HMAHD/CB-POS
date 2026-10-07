@@ -190,6 +190,7 @@ class MainWindow(QMainWindow):
     def logout(self):
         """Clear the current user, stop the watchdog, and return to the login screen."""
         self.user = None
+        self.sales_view.side_menu.set_user(None)
 
         # Stop Watchdog
         self.watchdog.stop_monitoring()

@@ -1,5 +1,6 @@
 # Secrets
 .encryption_key
+.backup_password
 
 # Python
 __pycache__/

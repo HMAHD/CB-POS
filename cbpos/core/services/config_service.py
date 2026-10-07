@@ -159,6 +159,13 @@ class ConfigService:
 
     _KEY_FILE = os.path.join(Config.DATA_DIR, ".encryption_key")
 
+    # The shop backup password lives in its own file, not settings.json:
+    # settings.json is copied into every backup and overwritten by every
+    # restore, which would roll the password back or (on another PC, with
+    # another .encryption_key) leave an undecryptable value behind.
+    _BACKUP_PASSWORD_FILE = os.path.join(Config.DATA_DIR, ".backup_password")
+    MIN_BACKUP_PASSWORD_LENGTH = 6
+
     @staticmethod
     def _write_restricted(path: str, content: str, encoding: str = "utf-8") -> None:
         """Write *content* to *path* with owner-only permissions (0600), atomically.
@@ -238,6 +245,53 @@ class ConfigService:
         except Exception as e:
             logger.error("Failed to decrypt sensitive value: %s. Returning empty string for security.", e)
             return ""
+
+    @classmethod
+    def get_backup_password(cls) -> str | None:
+        """Return the shop backup password, or None if none is set.
+
+        The password is stored Fernet-encrypted with the app encryption key.
+        A value that can't be decrypted (e.g. the key file changed) counts
+        as "not set" so callers ask for a new one instead of silently
+        encrypting backups with a password nobody knows.
+        """
+        try:
+            with open(cls._BACKUP_PASSWORD_FILE, encoding="ascii") as f:
+                token = f.read().strip()
+        except FileNotFoundError:
+            return None
+        except (OSError, UnicodeError) as e:
+            logger.error("Could not read the backup password file: %s", e)
+            return None
+        if not token:
+            return None
+        try:
+            return cls._get_fernet().decrypt(token.encode("ascii")).decode("utf-8")
+        except (InvalidToken, ValueError):
+            logger.error("Stored backup password could not be decrypted; treating it as not set")
+            return None
+
+    @classmethod
+    def has_backup_password(cls) -> bool:
+        """Return True if a usable shop backup password is set."""
+        return cls.get_backup_password() is not None
+
+    @classmethod
+    def set_backup_password(cls, password: str) -> None:
+        """Store the shop backup password, encrypted with the app encryption key.
+
+        Args:
+            password: The new password. Affects backups made from now on only.
+
+        Raises:
+            ValueError: If the password is shorter than MIN_BACKUP_PASSWORD_LENGTH.
+            OSError: If the password file can't be written.
+        """
+        if not password or len(password) < cls.MIN_BACKUP_PASSWORD_LENGTH:
+            raise ValueError(f"Backup password must be at least {cls.MIN_BACKUP_PASSWORD_LENGTH} characters")
+        token = cls._get_fernet().encrypt(password.encode("utf-8")).decode("ascii")
+        cls._write_restricted(cls._BACKUP_PASSWORD_FILE, token, encoding="ascii")
+        logger.info("Shop backup password updated")
 
     @classmethod
     def load(cls):

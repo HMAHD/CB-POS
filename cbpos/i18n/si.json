@@ -1341,7 +1341,7 @@
       "theme_dark": "Ceylon Night (අඳුරු)",
       "theme_light": "Ceylon Day (එළිය)",
       "language": "භාෂාව:",
-      "restart_hint": "(අකුරු ප්‍රමාණය සහ භාෂාව වෙනස් කළොත් ආයෙත් පටන් ගන්න ඕන)",
+      "restart_hint": "(අකුරු ප්‍රමාණය, තේමාව, භාෂාව වෙනස් කළොත් වැඩ කරන්නේ CB POS ආයෙත් පටන් ගත්තමයි. සුරකිද්දී අපි අහනවා.)",
       "email_guide_title": "ඊමේල් සකසන මාර්ගෝපදේශය",
       "email_guide_heading": "Gmail එකෙන් ඊමේල් සකසන විදිය",
       "guide_step1_title": "2-පියවර සත්‍යාපනය ඔන් කරන්න",

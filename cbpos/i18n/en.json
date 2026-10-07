@@ -1371,7 +1371,7 @@
       "theme_dark": "Ceylon Night (Dark)",
       "theme_light": "Ceylon Day (Light)",
       "language": "Language:",
-      "restart_hint": "(Font Size and Language changes require restart)",
+      "restart_hint": "(Font size, theme and language changes apply after CB POS restarts. You'll be asked when you save.)",
       "email_guide_title": "Email Setup Guide",
       "email_guide_heading": "How to set up email with Gmail",
       "guide_step1_title": "Enable 2-Step Verification",

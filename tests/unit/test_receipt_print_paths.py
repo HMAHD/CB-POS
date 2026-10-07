@@ -381,3 +381,11 @@ class TestPrintButtonsUseNewBuilder:
         assert built_for.id == sale_id and is_reprint is True
         assert queued_jobs(worker) == [("print_receipt", commands)]
         view.deleteLater()
+
+
+def test_old_receipt_builder_is_gone():
+    """One source of truth: the old text/image receipt builder was deleted."""
+    from cbpos.core.services.receipt_service import ReceiptService
+
+    assert not hasattr(ReceiptService, "build_receipt_text")
+    assert not hasattr(ReceiptService, "build_receipt_image")

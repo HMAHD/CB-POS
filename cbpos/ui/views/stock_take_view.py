@@ -651,6 +651,20 @@ class StockTakeView(QWidget):
         if query and self._count_product(query):
             self.search_input.clear()
 
+    def process_barcode_external(self, barcode: str) -> None:
+        """Count a scanned product (routed here by MainWindow via ManagementView, #547).
+
+        A scan that landed in an open Counted editor arrives here too (the
+        editor is scan-passthrough); its digits are discarded, never saved
+        as a quantity.
+        """
+        current = self.item_table.currentIndex()
+        editor = self.item_table.indexWidget(current) if current.isValid() else None
+        if editor is not None:
+            self.counted_delegate.closeEditor.emit(editor, QAbstractItemDelegate.EndEditHint.NoHint)
+        self.tabs.setCurrentIndex(0)
+        self._count_product(barcode)
+
     def _count_product(self, query: str) -> bool:
         """Count one unit of the product matching ``query`` and jump to its row.
 

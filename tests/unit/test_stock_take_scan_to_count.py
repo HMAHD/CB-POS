@@ -13,10 +13,13 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
-from PyQt6.QtWidgets import QAbstractItemDelegate, QAbstractItemView, QMessageBox
+from PyQt6.QtCore import Qt
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QAbstractItemDelegate, QAbstractItemView, QApplication, QMessageBox
 
 from cbpos.core.models import Product, StockCountItem, Unit, User
 from cbpos.core.services.stock_count_service import StockCountService
+from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 from cbpos.ui.views.stock_take_view import StockCountItemModel, StockTakeView
 
 pytestmark = pytest.mark.usefixtures("qapp")
@@ -87,6 +90,38 @@ def _counted(db_session, view, barcode):
     return db_session.get(StockCountItem, view.item_model.items[_row_of(view, barcode)].id).counted_qty
 
 
+class TestScanCounts:
+    def test_first_scan_starts_a_count_adds_the_item_and_counts_one(self, view, db_session):
+        view.process_barcode_external(SOAP)
+
+        assert view.current_stock_count is not None
+        assert _counted(db_session, view, SOAP) == Decimal("1.000")
+        current = view.item_table.currentIndex()
+        assert (current.row(), current.column()) == (_row_of(view, SOAP), COUNTED)
+
+    def test_repeat_scan_counts_up(self, view, db_session):
+        view.process_barcode_external(SOAP)
+        view.process_barcode_external(TEA)
+        view.process_barcode_external(SOAP)
+
+        assert _counted(db_session, view, SOAP) == Decimal("2.000")
+        assert _counted(db_session, view, TEA) == Decimal("1.000")
+        assert view.item_table.currentIndex().row() == _row_of(view, SOAP)
+
+    def test_scan_from_history_tab_switches_to_new_count(self, view):
+        view.tabs.setCurrentIndex(1)
+
+        view.process_barcode_external(SOAP)
+
+        assert view.tabs.currentIndex() == 0
+
+    def test_unknown_barcode_warns_and_adds_nothing(self, view, warnings):
+        view.process_barcode_external("0000000000000")
+
+        assert len(warnings) == 1
+        assert view.item_model.rowCount() == 0
+
+
 class TestReAddCountsUp:
     def test_adding_a_product_already_in_the_count_increments_without_a_popup(self, view, db_session, warnings):
         view.search_input.setText(SOAP)
@@ -98,3 +133,34 @@ class TestReAddCountsUp:
         assert view.item_model.rowCount() == 1
         assert _counted(db_session, view, SOAP) == Decimal("2.000")
         assert view.search_input.text() == ""
+
+
+class TestWeighedItems:
+    def test_scan_opens_the_counted_editor_instead_of_adding_one(self, view, db_session):
+        view.process_barcode_external(DHAL)
+
+        assert _counted(db_session, view, DHAL) is None
+        assert view.item_table.currentIndex().row() == _row_of(view, DHAL)
+        assert view.item_table.state() == QAbstractItemView.State.EditingState
+
+
+class TestScanWhileEditing:
+    def test_scan_into_an_open_counted_editor_is_not_saved_as_a_quantity(self, view, db_session):
+        view.process_barcode_external(SOAP)
+        view.process_barcode_external(TEA)
+        index = view.item_model.index(_row_of(view, SOAP), COUNTED)
+        view.item_table.setCurrentIndex(index)
+        view.item_table.edit(index)
+        editor = view.item_table.indexWidget(index)
+
+        app = QApplication.instance()
+        scanner = BarcodeScanner(app)
+        scanner.barcode_scanned.connect(view.process_barcode_external)
+        try:
+            QTest.keyClicks(editor, TEA)
+            QTest.keyClick(editor, Qt.Key.Key_Return)
+        finally:
+            app.removeEventFilter(scanner)
+
+        assert _counted(db_session, view, SOAP) == Decimal("1.000")
+        assert _counted(db_session, view, TEA) == Decimal("2.000")

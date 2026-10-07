@@ -21,8 +21,10 @@ class CashMovementDialog(QDialog):
         """Initialize the dialog for the given movement type ("IN" or "OUT")."""
         super().__init__(parent)
         self.movement_type = movement_type
-        self.setWindowTitle(_t("cash_movement.title", type=movement_type))
-        self.setFixedSize(400, 250)
+        self.setObjectName("CashMovementDialog")
+        kind = "in" if movement_type == "IN" else "out"
+        self.setWindowTitle(_t(f"cash_movement.title_{kind}"))
+        self.setMinimumSize(400, 250)
         self.init_ui()
 
         self.amount = Decimal("0.00")
@@ -33,7 +35,8 @@ class CashMovementDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # Title
-        title = QLabel(_t("cash_movement.record_title", type=self.movement_type))
+        kind = "in" if self.movement_type == "IN" else "out"
+        title = QLabel(_t(f"cash_movement.record_title_{kind}"))
         title.setProperty("class", "credit" if self.movement_type == "IN" else "debit")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)

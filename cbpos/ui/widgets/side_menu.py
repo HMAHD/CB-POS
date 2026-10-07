@@ -163,8 +163,7 @@ class SideMenu(QWidget):
     receive_payment_clicked = pyqtSignal()
     reprint_receipt_clicked = pyqtSignal()
     refund_clicked = pyqtSignal()
-    shift_status_clicked = pyqtSignal()
-    close_shift_clicked = pyqtSignal()
+    shift_clicked = pyqtSignal()
     logout_clicked = pyqtSignal()
     settings_clicked = pyqtSignal()
     fullscreen_clicked = pyqtSignal()
@@ -276,15 +275,11 @@ class SideMenu(QWidget):
         nav_layout.addWidget(self.btn_refund)
         self._nav_buttons.append(self.btn_refund)
 
-        self.btn_shift_status = NavTile("side_menu.shift_status", "fa5s.eye")
-        self.btn_shift_status.clicked.connect(self._on_shift_status)
-        nav_layout.addWidget(self.btn_shift_status)
-        self._nav_buttons.append(self.btn_shift_status)
-
-        self.btn_close_shift = NavTile("side_menu.close_shift", "fa5s.calculator")
-        self.btn_close_shift.clicked.connect(self._on_close_shift)
-        nav_layout.addWidget(self.btn_close_shift)
-        self._nav_buttons.append(self.btn_close_shift)
+        # One Shift tile: X-read, Cash In/Out and End Shift live in one dialog (#605)
+        self.btn_shift = NavTile("side_menu.shift", "fa5s.user-clock")
+        self.btn_shift.clicked.connect(self._on_shift)
+        nav_layout.addWidget(self.btn_shift)
+        self._nav_buttons.append(self.btn_shift)
 
         nav_layout.addStretch(1)
         self.nav_scroll.setWidget(nav_container)
@@ -440,13 +435,9 @@ class SideMenu(QWidget):
         self._set_active(self.btn_refund)
         self.refund_clicked.emit()
 
-    def _on_shift_status(self) -> None:
-        self._set_active(self.btn_shift_status)
-        self.shift_status_clicked.emit()
-
-    def _on_close_shift(self) -> None:
-        self._set_active(self.btn_close_shift)
-        self.close_shift_clicked.emit()
+    def _on_shift(self) -> None:
+        self._set_active(self.btn_shift)
+        self.shift_clicked.emit()
 
     # ── Translation ──────────────────────────────────────────────
 

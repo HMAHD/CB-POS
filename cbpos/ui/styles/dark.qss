@@ -4147,3 +4147,21 @@ QFrame#SetupCard {
 QFrame#SetupCard:hover {
     border-color: #00BCEB;
 }
+
+/* ── Shift dialog (#605) ── */
+QDialog#ShiftManagementDialog QLabel#ShiftSectionTitle {
+    color: #00BCEB;
+    font-weight: bold;
+}
+
+QDialog#ShiftManagementDialog QLabel#ShiftExpectedCashLabel,
+QDialog#ShiftManagementDialog QLabel#ShiftExpectedCash {
+    color: #FFFFFF;
+    font-weight: bold;
+}
+
+QDialog#ShiftManagementDialog QFrame#ShiftDivider {
+    background-color: #3E3E42;
+    border: none;
+    max-height: 1px;
+}

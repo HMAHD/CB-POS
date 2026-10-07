@@ -7,7 +7,6 @@ from PyQt6.QtGui import QAction, QBrush, QColor, QKeySequence, QPixmap, QShortcu
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QCompleter,
-    QDialog,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -1420,34 +1419,16 @@ class SalesView(QWidget):
         dialog.exec()
         self.barcode_input.setFocus()
 
-    def open_shift_status(self) -> None:
-        """Open the read-only mid-shift status snapshot (X-Read) for the current user's open shift."""
-        from cbpos.core.services.auth_service import AuthService
-        from cbpos.core.services.shift_service import ShiftService
-        from cbpos.ui.dialogs.shift_status_dialog import ShiftStatusDialog
+    def open_shift_management(self) -> None:
+        """Open the Shift dialog (X-read, Cash In/Out, End Shift) for the current user's open shift.
 
-        user = AuthService.get_current_user()
-        shift = ShiftService().get_current_shift(user.id) if user else None
-        if shift is None:
-            QMessageBox.warning(self, _t("common.warning"), _t("shift_closing.no_open_shift"))
-            return
-
-        if self.side_menu.isVisible():
-            self.toggle_side_menu()
-        dialog = ShiftStatusDialog(shift.id, parent=self)
-        dialog.exec()
-        self.barcode_input.setFocus()
-
-    def open_shift_closing(self) -> None:
-        """Open the shift-closing wizard for the current user's open shift.
-
-        Closing a shift ends the cashier's session -- emits `shift_closed`
-        so MainWindow can log out, forcing the next user to start a fresh
-        shift on login.
+        Ending the shift there ends the cashier's session -- emits
+        `shift_closed` so MainWindow can log out, forcing the next user to
+        start a fresh shift on login.
         """
         from cbpos.core.services.auth_service import AuthService
         from cbpos.core.services.shift_service import ShiftService
-        from cbpos.ui.dialogs.shift_closing_dialog import ShiftClosingDialog
+        from cbpos.ui.dialogs.shift_management_dialog import ShiftManagementDialog
 
         user = AuthService.get_current_user()
         shift = ShiftService().get_current_shift(user.id) if user else None
@@ -1457,8 +1438,9 @@ class SalesView(QWidget):
 
         if self.side_menu.isVisible():
             self.toggle_side_menu()
-        dialog = ShiftClosingDialog(shift.id, parent=self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
+        dialog = ShiftManagementDialog(shift.id, user.id, parent=self)
+        dialog.exec()
+        if dialog.shift_ended:
             self.shift_closed.emit()
         else:
             self.barcode_input.setFocus()

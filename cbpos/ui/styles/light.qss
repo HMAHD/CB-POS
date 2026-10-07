@@ -4121,3 +4121,21 @@ QLabel#NetworkWarningLabel {
     padding: 12px;
     font-size: 12px;
 }
+
+/* ── Shift dialog (#605) ── */
+QDialog#ShiftManagementDialog QLabel#ShiftSectionTitle {
+    color: #0D6EFD;
+    font-weight: bold;
+}
+
+QDialog#ShiftManagementDialog QLabel#ShiftExpectedCashLabel,
+QDialog#ShiftManagementDialog QLabel#ShiftExpectedCash {
+    color: #212529;
+    font-weight: bold;
+}
+
+QDialog#ShiftManagementDialog QFrame#ShiftDivider {
+    background-color: #DEE2E6;
+    border: none;
+    max-height: 1px;
+}

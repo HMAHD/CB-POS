@@ -553,6 +553,7 @@
     "vat_placeholder": "VAT registration number (optional)"
   },
   "side_menu": {
+    "shift": "Shift",
     "section_title": "MENU",
     "management": "Management",
     "sales_history": "Sales History",
@@ -560,8 +561,6 @@
     "receive_payment": "Receive Payment",
     "reprint_receipt": "Reprint Receipt",
     "refund": "Refund",
-    "shift_status": "Shift Status",
-    "close_shift": "Close Shift",
     "user_guest": "Guest",
     "user_no_role": "No Role",
     "user_not_logged_in": "Not Logged In",
@@ -1778,15 +1777,17 @@
     "refund_total": "Refund {total_label}: {amount}"
   },
   "cash_movement": {
-    "title": "Cash Movement",
+    "record_title_out": "Take money out of the drawer",
+    "record_title_in": "Put money into the drawer",
+    "title_out": "Cash Out",
+    "title_in": "Cash In",
     "amount": "Amount:",
     "reason": "Reason:",
     "reason_placeholder": "Enter reason for cash movement",
     "enter_amount": "Please enter an amount.",
     "enter_reason": "Please enter a reason.",
     "input_error": "Input Error",
-    "invalid_amount": "Please enter a valid numeric amount.",
-    "record_title": "Cash Movement Record"
+    "invalid_amount": "Please enter a valid numeric amount."
   },
   "category_dialog": {
     "new_title": "New Category",
@@ -2429,5 +2430,14 @@
     "mismatch": "The two passwords don't match.",
     "save_failed": "Couldn't save the password. Please try again.",
     "btn_save": "Save Password"
+  },
+  "shift_management": {
+    "title": "Shift",
+    "started": "Started {time} by {user}",
+    "figures_heading": "So far this shift",
+    "cash_in": "Cash In",
+    "cash_out": "Cash Out",
+    "end_shift": "End Shift",
+    "movement_failed": "Couldn't record that: {error}"
   }
 }

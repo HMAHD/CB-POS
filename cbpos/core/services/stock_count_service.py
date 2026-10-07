@@ -178,6 +178,47 @@ class StockCountService:
             return item
 
     @staticmethod
+    def increment_count(item_id: int, by: Decimal) -> StockCountItem:
+        """
+        Add ``by`` to an item's counted quantity (uncounted counts as 0).
+
+        Used when a product already in the count is scanned or added again,
+        so it is counted up instead of rejected (#615).
+
+        Args:
+            item_id: StockCountItem ID.
+            by: Quantity to add to the current count.
+
+        Returns:
+            Updated StockCountItem with variance recalculated.
+
+        Raises:
+            ValueError: If the item is missing or its count is not in DRAFT.
+        """
+        db = Database()
+        with db.get_session() as session:
+            item = session.get(StockCountItem, item_id)
+            if not item:
+                raise ValueError("Stock count item not found.")
+
+            stock_count = session.get(StockCount, item.stock_count_id)
+            if not stock_count or stock_count.status != DocumentStatus.DRAFT:
+                raise ValueError("Stock count not found or not in DRAFT status.")
+
+            item.counted_qty = ((item.counted_qty or Decimal("0")) + by).quantize(Precision.QUANTITY)
+            item.variance_qty = (item.counted_qty - item.expected_qty).quantize(Precision.QUANTITY)
+
+            product = session.get(Product, item.product_id)
+            if product:
+                item.variance_value = (item.variance_qty * product.cost).quantize(Precision.MONEY)
+            else:
+                item.variance_value = Decimal("0.00")
+
+            session.commit()
+            session.refresh(item)
+            return item
+
+    @staticmethod
     def remove_item(item_id: int) -> bool:
         """
         Remove an uncounted item from the stock count.

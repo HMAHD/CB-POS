@@ -4,7 +4,7 @@ import decimal
 import socket
 import weakref
 
-from PyQt6.QtCore import Qt, QTime
+from PyQt6.QtCore import Qt, QThread, QTime
 from PyQt6.QtGui import QIntValidator
 from PyQt6.QtPrintSupport import QPrinterInfo
 from PyQt6.QtWidgets import (
@@ -34,13 +34,14 @@ from PyQt6.QtWidgets import (
 from sqlalchemy.engine import URL
 
 from cbpos.config import Config
-from cbpos.core.constants.hardware import PrinterType
+from cbpos.core.constants.hardware import DEFAULT_DRAWER_PIN, DRAWER_PINS, PrinterType
 from cbpos.core.models import Product, Sale, SaleItem, SalePayment
 from cbpos.core.services.document_service import (
     DOC_NUMBER_MAX_LENGTH,
     DocumentService,
     validate_doc_pattern,
 )
+from cbpos.core.services.hardware_test_service import HardwareTestResult
 from cbpos.core.services.language_service import LanguageService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.theme_service import ThemeService
@@ -1036,7 +1037,20 @@ class HardwarePage(SettingsPage):
         self.btn_open_drawer = QPushButton()
         self.btn_open_drawer.clicked.connect(self._test_drawer)
         test_row.addWidget(self.btn_open_drawer)
-        test_row.addStretch()
+
+        # Drawers are wired to kick pin 2 or 5 depending on the cable (#624).
+        self._lbl_drawer_pin = QLabel()
+        test_row.addWidget(self._lbl_drawer_pin)
+        self.combo_drawer_pin = QComboBox()
+        for pin in DRAWER_PINS:
+            self.combo_drawer_pin.addItem(str(pin), pin)
+        test_row.addWidget(self.combo_drawer_pin)
+
+        # Test outcome, styled success/warning next to the buttons (#624).
+        self.lbl_test_result = QLabel()
+        self.lbl_test_result.setWordWrap(True)
+        self.lbl_test_result.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        test_row.addWidget(self.lbl_test_result, 1)
         vbox_printer.addLayout(test_row)
 
         self.tabs.addTab(tab_printer, "")
@@ -1151,6 +1165,8 @@ class HardwarePage(SettingsPage):
         self._lbl_copies.setText(_t("settings.hardware.copies"))
         self.btn_test_print.setText(_t("settings.hardware.btn_test_print"))
         self.btn_open_drawer.setText(_t("settings.hardware.btn_open_drawer"))
+        self._lbl_drawer_pin.setText(_t("settings.hardware.drawer_pin"))
+        self.combo_drawer_pin.setToolTip(_t("settings.hardware.tooltip_drawer_pin"))
 
         # Cut & Drawer tab
         self._lbl_auto_cut.setText(_t("settings.hardware.auto_cut"))
@@ -1291,6 +1307,8 @@ class HardwarePage(SettingsPage):
             self.combo_cut_type.setCurrentIndex(idx)
         self.spin_feed_lines.setValue(settings.get("feed_lines_before_cut", 3))
         self.chk_drawer_cash_only.setChecked(settings.get("drawer_on_cash_only", True))
+        pin_idx = self.combo_drawer_pin.findData(settings.get("drawer_pin", DEFAULT_DRAWER_PIN))
+        self.combo_drawer_pin.setCurrentIndex(max(0, pin_idx))
 
     def save(self) -> dict:
         """Return printer, print behavior, paper cut, drawer and scale fields as a settings dict.
@@ -1319,6 +1337,7 @@ class HardwarePage(SettingsPage):
             "cut_type": self.combo_cut_type.currentData() or "partial",
             "feed_lines_before_cut": self.spin_feed_lines.value(),
             "drawer_on_cash_only": self.chk_drawer_cash_only.isChecked(),
+            "drawer_pin": self.combo_drawer_pin.currentData() or DEFAULT_DRAWER_PIN,
         }
 
     def validate(self) -> None:
@@ -1336,40 +1355,43 @@ class HardwarePage(SettingsPage):
             raise ValueError(_t("settings.hardware.usb_id_invalid"))
 
     def _test_print(self) -> None:
-        """Send a test print to the configured printer."""
-        from cbpos.core.services.hardware_test_service import HardwareTestService
+        """Send a test slip to the printer shown on screen (saved or not), off the UI thread."""
+        from cbpos.ui.workers import PrinterTestWorker
 
-        success, message = HardwareTestService.test_receipt_printer()
-        if success:
-            QMessageBox.information(
-                self,
-                _t("settings.hardware.test_print_title"),
-                message,
-            )
-        else:
-            QMessageBox.warning(
-                self,
-                _t("settings.hardware.test_print_title"),
-                message,
-            )
+        p_type, p_path = self.current_printer_target()
+        self._start_hardware_test(PrinterTestWorker(p_type, p_path), self.btn_test_print)
 
     def _test_drawer(self) -> None:
-        """Send a kick signal to the cash drawer."""
-        from cbpos.core.services.hardware_test_service import HardwareTestService
+        """Kick the drawer through the printer shown on screen, on the chosen pin, off the UI thread."""
+        from cbpos.ui.workers import DrawerTestWorker
 
-        success, message = HardwareTestService.test_cash_drawer()
-        if success:
-            QMessageBox.information(
-                self,
-                _t("settings.hardware.cash_drawer_title"),
-                message,
-            )
-        else:
-            QMessageBox.warning(
-                self,
-                _t("settings.hardware.cash_drawer_title"),
-                message,
-            )
+        p_type, p_path = self.current_printer_target()
+        pin = self.combo_drawer_pin.currentData() or DEFAULT_DRAWER_PIN
+        self._start_hardware_test(DrawerTestWorker(p_type, p_path, pin), self.btn_open_drawer)
+
+    def _start_hardware_test(self, worker: QThread, button: QPushButton) -> None:
+        """Run a printer/drawer test worker, showing progress until its result arrives.
+
+        Args:
+            worker: A PrinterTestWorker or DrawerTestWorker (deletes itself when done).
+            button: The button that started it; disabled while the test runs.
+        """
+        from cbpos.ui.hardware_test_feedback import set_hardware_test_status
+
+        self.btn_test_print.setEnabled(False)
+        self.btn_open_drawer.setEnabled(False)
+        set_hardware_test_status(self.lbl_test_result, _t("settings.hardware.testing"), "muted")
+        self._hardware_test_worker = worker
+        worker.result.connect(self._on_hardware_test_done)
+        worker.start()
+
+    def _on_hardware_test_done(self, result: HardwareTestResult) -> None:
+        """Show the translated, styled outcome and re-enable the test buttons."""
+        from cbpos.ui.hardware_test_feedback import show_hardware_test_result
+
+        self.btn_test_print.setEnabled(True)
+        self.btn_open_drawer.setEnabled(True)
+        show_hardware_test_result(self.lbl_test_result, result)
 
 
 class ReceiptPage(SettingsPage):

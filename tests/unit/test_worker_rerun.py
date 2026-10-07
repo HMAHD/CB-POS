@@ -16,11 +16,15 @@ import pytest
 from PyQt6 import sip
 from PyQt6.QtCore import QCoreApplication, QEvent, QThread
 
+from cbpos.core.constants.hardware import HardwareTestOutcome
+from cbpos.core.services.hardware_test_service import HardwareTestResult
 from cbpos.ui import workers
 from cbpos.ui.views.admin_tools_view import AdminToolsView
 from cbpos.ui.views.reports.report_viewer import ReportWorker
 
 pytestmark = pytest.mark.usefixtures("qapp")
+
+_OK = HardwareTestResult(True, HardwareTestOutcome.PRINT_SENT)
 
 WORKER_CLASSES = [
     cls for _, cls in inspect.getmembers(workers, inspect.isclass) if issubclass(cls, QThread) and cls is not QThread
@@ -36,7 +40,7 @@ def _finished_and_deleted_worker():
     """A real PrinterTestWorker that ran, emitted its result, and deleted itself."""
     worker = workers.PrinterTestWorker()
     results = []
-    worker.result.connect(lambda ok, msg: results.append((ok, msg)))
+    worker.result.connect(results.append)
     worker.start()
     assert worker.wait(5000)
     # Deliver the queued result/finished signals, then this worker's deferred delete
@@ -54,11 +58,11 @@ def test_printer_test_timeout_after_worker_deleted_itself_does_not_raise():
     """
     with patch(
         "cbpos.core.services.hardware_test_service.HardwareTestService.test_receipt_printer",
-        return_value=(True, "ok"),
+        return_value=_OK,
     ):
         for _ in range(2):
             worker, results = _finished_and_deleted_worker()
-            assert results == [(True, "ok")]
+            assert results == [_OK]
             assert sip.isdeleted(worker)
 
             view = SimpleNamespace(_printer_worker=worker, btn_test_printer=MagicMock(), lbl_printer_status=MagicMock())

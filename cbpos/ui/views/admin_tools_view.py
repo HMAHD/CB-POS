@@ -35,13 +35,22 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.config import Config
+from cbpos.core.constants.hardware import DRAWER_PINS, PrinterType
 from cbpos.core.services.error_log_service import ErrorLogService
-from cbpos.core.services.hardware_test_service import HardwareTestService
+from cbpos.core.services.hardware_test_service import HardwareTestResult, HardwareTestService
 from cbpos.core.services.maintenance_service import MaintenanceService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.infrastructure.hardware.escpos_driver import drawer_pin_setting
+from cbpos.ui.hardware_test_feedback import set_hardware_test_status, show_hardware_test_result
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
 
 logger = logging.getLogger(__name__)
+
+_PRINTER_TYPE_KEYS = {
+    PrinterType.WIN32: "printer.type_win32",
+    PrinterType.NETWORK: "printer.type_network",
+    PrinterType.USB: "printer.type_usb",
+}
 
 # Color coding for log levels
 _LEVEL_COLORS = {
@@ -563,6 +572,7 @@ class AdminToolsView(QWidget):
 
         self.lbl_printer_status = QLabel("")
         self.lbl_printer_status.setWordWrap(True)
+        self.lbl_printer_status.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         printer_btn_row.addWidget(self.lbl_printer_status, 1)
 
         printer_layout.addLayout(printer_btn_row)
@@ -585,8 +595,17 @@ class AdminToolsView(QWidget):
         self.btn_test_drawer.clicked.connect(self._test_drawer)
         drawer_btn_row.addWidget(self.btn_test_drawer)
 
+        # Drawer kick pin for this test (2 or 5, #624); starts on the saved one.
+        self.lbl_drawer_pin = QLabel()
+        drawer_btn_row.addWidget(self.lbl_drawer_pin)
+        self.combo_drawer_pin = QComboBox()
+        for pin in DRAWER_PINS:
+            self.combo_drawer_pin.addItem(str(pin), pin)
+        drawer_btn_row.addWidget(self.combo_drawer_pin)
+
         self.lbl_drawer_status = QLabel("")
         self.lbl_drawer_status.setWordWrap(True)
+        self.lbl_drawer_status.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         drawer_btn_row.addWidget(self.lbl_drawer_status, 1)
 
         drawer_layout.addLayout(drawer_btn_row)
@@ -637,11 +656,15 @@ class AdminToolsView(QWidget):
         """Load printer configuration into the Hardware tab."""
         try:
             info = HardwareTestService.get_printer_info()
-            self.lbl_hw_type.setText(info.get("type", "--"))
-            self.lbl_hw_path.setText(info.get("path", "--"))
-            self.lbl_hw_receipt.setText(info.get("receipt_printer", "--"))
-            self.lbl_hw_a4.setText(info.get("a4_printer", "--"))
+            type_key = _PRINTER_TYPE_KEYS.get(info.get("type", ""), "printer.type_none")
+            self.lbl_hw_type.setText(_t(type_key))
+            not_set = _t("printer.not_set")
+            self.lbl_hw_path.setText(info.get("path") or not_set)
+            self.lbl_hw_receipt.setText(info.get("receipt_printer") or not_set)
+            self.lbl_hw_a4.setText(info.get("a4_printer") or not_set)
             self.lbl_hw_paper.setText(info.get("paper_width", "--"))
+            pin_idx = self.combo_drawer_pin.findData(drawer_pin_setting())
+            self.combo_drawer_pin.setCurrentIndex(max(0, pin_idx))
         except Exception as e:
             logger.warning("Could not load printer info: %s", e)
 
@@ -665,18 +688,13 @@ class AdminToolsView(QWidget):
         if worker is not None and not sip.isdeleted(worker) and worker.isRunning():
             self.btn_test_printer.setEnabled(True)
             self.btn_test_printer.setText(_t("admin_tools.hw_btn_test_printer"))
-            self.lbl_printer_status.setText(_t("admin_tools.hw_printer_timeout"))
-            self.lbl_printer_status.setProperty("class", "debit")
-            self.lbl_printer_status.style().unpolish(self.lbl_printer_status)
-            self.lbl_printer_status.style().polish(self.lbl_printer_status)
+            set_hardware_test_status(self.lbl_printer_status, _t("admin_tools.hw_printer_timeout"), "warning-hint")
 
-    def _on_printer_test_done(self, success: bool, message: str) -> None:
+    def _on_printer_test_done(self, result: HardwareTestResult) -> None:
+        """Show the translated, styled test print outcome and re-enable the button."""
         self.btn_test_printer.setEnabled(True)
         self.btn_test_printer.setText(_t("admin_tools.hw_btn_test_printer"))
-        self.lbl_printer_status.setText(message)
-        self.lbl_printer_status.setProperty("class", "credit" if success else "debit")
-        self.lbl_printer_status.style().unpolish(self.lbl_printer_status)
-        self.lbl_printer_status.style().polish(self.lbl_printer_status)
+        show_hardware_test_result(self.lbl_printer_status, result)
 
     def _test_drawer(self) -> None:
         """Test the cash drawer in a background thread."""
@@ -686,7 +704,7 @@ class AdminToolsView(QWidget):
 
         from cbpos.ui.workers import DrawerTestWorker
 
-        self._drawer_worker = DrawerTestWorker()
+        self._drawer_worker = DrawerTestWorker(pin=self.combo_drawer_pin.currentData())
         self._drawer_worker.result.connect(self._on_drawer_test_done)
         self._drawer_worker.start()
         QTimer.singleShot(15000, self._on_drawer_test_timeout)
@@ -698,18 +716,13 @@ class AdminToolsView(QWidget):
         if worker is not None and not sip.isdeleted(worker) and worker.isRunning():
             self.btn_test_drawer.setEnabled(True)
             self.btn_test_drawer.setText(_t("admin_tools.hw_btn_open_drawer"))
-            self.lbl_drawer_status.setText(_t("admin_tools.hw_drawer_timeout"))
-            self.lbl_drawer_status.setProperty("class", "debit")
-            self.lbl_drawer_status.style().unpolish(self.lbl_drawer_status)
-            self.lbl_drawer_status.style().polish(self.lbl_drawer_status)
+            set_hardware_test_status(self.lbl_drawer_status, _t("admin_tools.hw_drawer_timeout"), "warning-hint")
 
-    def _on_drawer_test_done(self, success: bool, message: str) -> None:
+    def _on_drawer_test_done(self, result: HardwareTestResult) -> None:
+        """Show the translated, styled drawer test outcome and re-enable the button."""
         self.btn_test_drawer.setEnabled(True)
         self.btn_test_drawer.setText(_t("admin_tools.hw_btn_open_drawer"))
-        self.lbl_drawer_status.setText(message)
-        self.lbl_drawer_status.setProperty("class", "credit" if success else "debit")
-        self.lbl_drawer_status.style().unpolish(self.lbl_drawer_status)
-        self.lbl_drawer_status.style().polish(self.lbl_drawer_status)
+        show_hardware_test_result(self.lbl_drawer_status, result)
 
     def _on_scanner_input(self, text: str) -> None:
         """Handle barcode scanner input and record keystroke timing."""
@@ -816,6 +829,8 @@ class AdminToolsView(QWidget):
         self.grp_drawer.setTitle(_t("admin_tools.hw_group_drawer_test"))
         self.lbl_drawer_desc.setText(_t("admin_tools.hw_drawer_desc"))
         self.btn_test_drawer.setText(_t("admin_tools.hw_btn_open_drawer"))
+        self.lbl_drawer_pin.setText(_t("settings.hardware.drawer_pin"))
+        self.combo_drawer_pin.setToolTip(_t("settings.hardware.tooltip_drawer_pin"))
         self.grp_scanner.setTitle(_t("admin_tools.hw_group_scanner_test"))
         self.lbl_scanner_desc.setText(_t("admin_tools.hw_scanner_desc"))
         self.input_scanner_test.setPlaceholderText(_t("admin_tools.hw_scanner_placeholder"))

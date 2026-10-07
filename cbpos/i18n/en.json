@@ -121,7 +121,27 @@
   },
   "printer": {
     "not_configured": "No receipt printer is set up, so nothing was printed. Set one up in Settings > Hardware.",
-    "not_available": "Can't reach the receipt printer. Check that it's switched on and connected."
+    "not_available": "Can't reach the receipt printer. Check that it's switched on and connected.",
+    "type_none": "Not set up",
+    "type_win32": "Windows printer",
+    "type_network": "Network printer",
+    "type_usb": "USB direct",
+    "not_set": "(not set)",
+    "test": {
+      "print_sent": "Test slip sent to the printer. Check that it printed.",
+      "print_sent_win32": "Sent to Windows — check that the test slip printed.",
+      "drawer_sent": "Drawer signal sent. Check that the drawer opened.",
+      "drawer_sent_win32": "Sent to Windows — check that the drawer opened.",
+      "not_configured": "No receipt printer chosen yet.",
+      "win32_not_found": "Windows can't find printer '{name}'. Check that it's installed and switched on.",
+      "win32_unavailable": "Windows printers only work on Windows. Choose Network or USB instead.",
+      "network_no_address": "Enter the printer's IP address first.",
+      "network_no_answer": "No answer from {ip}. Check the IP address and that the printer is on the network.",
+      "usb_invalid_id": "The USB ID should look like 0x04b8:0x0202 (VID:PID).",
+      "usb_not_found": "No USB printer found with ID {usb_id}. Check the cable and power.",
+      "usb_access_denied": "Another program or the Windows driver is using the printer. Try \"Windows printer\" instead.",
+      "failed": "The printer didn't respond. Check the cable, power and settings."
+    }
   },
   "sales": {
     "search_placeholder_all": "Scan or type product... (Enter)",
@@ -1451,8 +1471,6 @@
       "section_test_hardware": "Test Hardware",
       "btn_test_print": "Test Print",
       "btn_open_drawer": "Open Drawer",
-      "test_print_title": "Test Print",
-      "cash_drawer_title": "Cash Drawer",
       "section_paper_cut": "Paper Cut",
       "auto_cut": "Auto-Cut Paper:",
       "chk_auto_cut": "Disable for tear-bar printers",
@@ -1482,7 +1500,10 @@
       "usb_id_placeholder": "e.g. 0x04b8:0x0202",
       "usb_hint": "Only for printers set up with a WinUSB driver. If your printer shows up in Windows, choose \"Windows printer\" instead.",
       "ip_required": "Enter the receipt printer's IP address, or choose another connection.",
-      "usb_id_invalid": "The USB ID should look like 0x04b8:0x0202 (VID:PID)."
+      "usb_id_invalid": "The USB ID should look like 0x04b8:0x0202 (VID:PID).",
+      "drawer_pin": "Drawer pin:",
+      "tooltip_drawer_pin": "Most cash drawers use pin 2. If yours doesn't open, try pin 5.",
+      "testing": "Testing..."
     },
     "receipt": {
       "title": "Receipt",

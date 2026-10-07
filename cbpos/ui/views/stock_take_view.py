@@ -5,9 +5,10 @@ import weakref
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
-from PyQt6.QtCore import QAbstractTableModel, QDate, QModelIndex, Qt
-from PyQt6.QtGui import QColor
+from PyQt6.QtCore import QAbstractTableModel, QDate, QEvent, QModelIndex, QRegularExpression, Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QRegularExpressionValidator
 from PyQt6.QtWidgets import (
+    QAbstractItemDelegate,
     QAbstractItemView,
     QComboBox,
     QDateEdit,
@@ -19,6 +20,7 @@ from PyQt6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
+    QStyledItemDelegate,
     QTableView,
     QTableWidget,
     QTableWidgetItem,
@@ -32,6 +34,7 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.stock_count_service import StockCountService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 logger = logging.getLogger(__name__)
@@ -41,6 +44,9 @@ class StockCountItemModel(QAbstractTableModel):
     """Table model for stock count items with editable Counted column."""
 
     COL_COUNTED = 3
+    # Six integer digits: far above any real shelf count, far below a
+    # barcode, so a scan typed into the cell can't pass as a quantity (#547).
+    MAX_COUNTED = Decimal("999999.999")
 
     def __init__(self, items=None):
         """Initialize the model with the given stock count items."""
@@ -116,7 +122,7 @@ class StockCountItemModel(QAbstractTableModel):
         item = self.items[index.row()]
         try:
             counted = Decimal(str(value)).quantize(Precision.QUANTITY)
-            if counted < 0:
+            if counted < 0 or counted > self.MAX_COUNTED:
                 return False
         except (InvalidOperation, ValueError):
             return False
@@ -154,6 +160,49 @@ class StockCountItemModel(QAbstractTableModel):
         if 0 <= row < len(self.items):
             return self.items[row]
         return None
+
+
+def _count_decimals(product) -> int:
+    """Decimal places a product is counted in: its unit's, else 3 if weighed, else 0."""
+    if product is None:
+        return 0
+    if product.unit is not None:
+        return min(product.unit.decimal_places or 0, 3)
+    return 3 if product.is_weighted else 0
+
+
+class CountedDelegate(QStyledItemDelegate):
+    """Editor for the Counted column built for fast keyboard counting (#615).
+
+    Numbers only, with the product unit's decimals and at most six integer
+    digits. Enter commits and asks the view to open the next row's Counted
+    cell (``next_row_requested``); Enter on an empty cell just moves on.
+    """
+
+    next_row_requested = pyqtSignal()
+
+    def createEditor(self, parent, option, index):
+        """Return a QLineEdit limited to a valid count for this row's product."""
+        editor = QLineEdit(parent)
+        item = index.model().get_item(index.row())
+        decimals = _count_decimals(item.product if item else None)
+        pattern = rf"\d{{0,6}}(\.\d{{0,{decimals}}})?" if decimals else r"\d{0,6}"
+        editor.setValidator(QRegularExpressionValidator(QRegularExpression(pattern), editor))
+        # A scan landing here is routed to the view, not typed in as a count (#547)
+        editor.setProperty(BarcodeScanner.SCAN_PASSTHROUGH_PROPERTY, True)
+        return editor
+
+    def eventFilter(self, editor, event):
+        """Commit on Enter and move down instead of only closing the editor."""
+        if event.type() == QEvent.Type.KeyPress and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if editor.text() and not editor.hasAcceptableInput():
+                return True  # e.g. "." alone -- keep editing
+            if editor.text():
+                self.commitData.emit(editor)
+            self.closeEditor.emit(editor, QAbstractItemDelegate.EndEditHint.NoHint)
+            self.next_row_requested.emit()
+            return True
+        return super().eventFilter(editor, event)
 
 
 class StockCountReportDialog(QDialog):
@@ -357,10 +406,20 @@ class StockTakeView(QWidget):
         layout.addLayout(search_layout)
 
         # Items table
-        self.item_model = StockCountItemModel()
         self.item_table = QTableView()
-        self.item_table.setModel(self.item_model)
+        self._set_item_model(StockCountItemModel())
         self.item_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        # Keyboard counting (#615): a click on the selected Counted cell or
+        # any typed digit edits; Enter saves and opens the next row.
+        self.item_table.setEditTriggers(
+            QAbstractItemView.EditTrigger.DoubleClicked
+            | QAbstractItemView.EditTrigger.SelectedClicked
+            | QAbstractItemView.EditTrigger.EditKeyPressed
+            | QAbstractItemView.EditTrigger.AnyKeyPressed
+        )
+        self.counted_delegate = CountedDelegate(self.item_table)
+        self.counted_delegate.next_row_requested.connect(self._edit_next_counted)
+        self.item_table.setItemDelegateForColumn(StockCountItemModel.COL_COUNTED, self.counted_delegate)
         self.item_table.setAlternatingRowColors(True)
         # minimum_section_size floors COUNTED (col 3) so ResizeToContents --
         # computed while every cell is still empty at load time -- can't
@@ -619,9 +678,29 @@ class StockTakeView(QWidget):
         sc = StockCountService.get_stock_count(self.current_stock_count.id)
         if sc:
             self.current_stock_count = sc
-            self.item_model = StockCountItemModel(list(sc.items))
-            self.item_table.setModel(self.item_model)
+            self._set_item_model(StockCountItemModel(list(sc.items)))
             self._update_stats()
+
+    def _set_item_model(self, model: StockCountItemModel) -> None:
+        """Show ``model`` in the items table, keeping the current cell on Counted."""
+        self.item_model = model
+        self.item_table.setModel(model)
+        # setModel() makes a new selection model, so reconnect every time.
+        self.item_table.selectionModel().currentChanged.connect(self._snap_to_counted)
+
+    def _snap_to_counted(self, current: QModelIndex, _previous: QModelIndex) -> None:
+        """Keep the current cell on Counted so typing a number edits it (#615)."""
+        if current.isValid() and current.column() != StockCountItemModel.COL_COUNTED:
+            self.item_table.setCurrentIndex(current.siblingAtColumn(StockCountItemModel.COL_COUNTED))
+
+    def _edit_next_counted(self) -> None:
+        """Open the Counted editor on the row below the current one, if any."""
+        row = self.item_table.currentIndex().row() + 1
+        if 0 < row < self.item_model.rowCount():
+            index = self.item_model.index(row, StockCountItemModel.COL_COUNTED)
+            self.item_table.setCurrentIndex(index)
+            self.item_table.scrollTo(index)
+            self.item_table.edit(index)
 
     def _update_stats(self) -> None:
         """Update the stats bar labels."""
@@ -744,8 +823,7 @@ class StockTakeView(QWidget):
     def reset_form(self) -> None:
         """Reset the form for a new stock count."""
         self.current_stock_count = None
-        self.item_model = StockCountItemModel()
-        self.item_table.setModel(self.item_model)
+        self._set_item_model(StockCountItemModel())
         self.note_input.clear()
         self.search_input.clear()
         self.category_combo.setCurrentIndex(0)
@@ -828,8 +906,7 @@ class StockTakeView(QWidget):
             return
 
         self.current_stock_count = sc
-        self.item_model = StockCountItemModel(list(sc.items))
-        self.item_table.setModel(self.item_model)
+        self._set_item_model(StockCountItemModel(list(sc.items)))
         self._update_stats()
         self.tabs.setCurrentIndex(0)
 

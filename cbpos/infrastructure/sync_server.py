@@ -23,10 +23,10 @@ from sqlalchemy.orm.exc import StaleDataError
 from cbpos.core.database import Database
 from cbpos.core.models import (
     Product,
-    StockMovement,
     SyncLog,
 )
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.sync_apply_service import SyncApplyService
 from cbpos.core.services.sync_protocol import (
     CATALOG_TABLES,
     EP_HEARTBEAT,
@@ -36,7 +36,6 @@ from cbpos.core.services.sync_protocol import (
     EP_PUSH_TRANSACTIONS,
     EP_REGISTER,
     SYNC_PROTOCOL_VERSION,
-    TRANSACTION_TABLES,
     dict_to_model,
     get_model_for_table,
     model_to_dict,
@@ -172,6 +171,14 @@ _registry = TerminalRegistry()
 
 # Module-level reference to the server's signal emitter
 _signal_emitter: Optional["SyncServer"] = None
+
+# Pushes are applied one at a time. Each request runs on its own thread,
+# and applying a batch is "look up the till's id in sync_id_map, insert if
+# absent": two overlapping pushes of the same batch (a till retrying while
+# its first attempt is still being applied) would otherwise both miss the
+# map and both insert. The map's unique constraint would reject the second
+# commit anyway; the lock just keeps that from surfacing as a 500.
+_push_apply_lock = threading.Lock()
 
 
 # ---------------------------------------------------------------------------
@@ -420,50 +427,23 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             )
             return
 
-        # Process each table in the payload. Wrapped in a bounded retry: two
-        # terminals pushing StockMovements for the same Product at nearly
-        # the same time can lose the optimistic-lock race on Product's
-        # version_id column (see _apply_record) — that's expected under
-        # concurrency, so retry with a fresh read rather than failing the
-        # whole batch on the first collision.
+        # Rows are re-keyed to Main PC ids through sync_id_map (see
+        # SyncApplyService, #671), all or nothing: the till marks every row
+        # it sent as synced once the push is acknowledged, so a half-applied
+        # batch would silently lose the rows that failed. Wrapped in a
+        # bounded retry: two terminals pushing StockMovements for the same
+        # Product at nearly the same time can lose the optimistic-lock race
+        # on Product's version_id column — expected under concurrency, so
+        # retry with a fresh read rather than failing the whole batch.
         db = Database()
         max_attempts = 3
         records_applied = 0
         errors: list[str] = []
 
         for attempt in range(1, max_attempts + 1):
-            records_applied = 0
-            errors = []
             try:
-                with db.get_session() as session:
-                    for table_name, records in payload.items():
-                        if not isinstance(records, list):
-                            continue
-
-                        if table_name not in TRANSACTION_TABLES:
-                            errors.append(f"Table not allowed for push: {table_name}")
-                            logger.warning(
-                                "Terminal %s attempted to push disallowed table %r",
-                                terminal_id,
-                                table_name,
-                            )
-                            continue
-
-                        model_class = get_model_for_table(table_name)
-                        if model_class is None:
-                            errors.append(f"Unknown table: {table_name}")
-                            continue
-
-                        for record_data in records:
-                            try:
-                                self._apply_record(session, model_class, table_name, record_data)
-                                records_applied += 1
-                            except Exception as e:
-                                error_msg = f"{table_name}[{record_data.get('id', '?')}]: {e}"
-                                errors.append(error_msg)
-                                logger.error("Error applying record: %s", error_msg)
-
-                    # Mark synced
+                with _push_apply_lock, db.get_session() as session:
+                    records_applied, errors = SyncApplyService(session, terminal_id).apply_batch(payload)
                     session.commit()
                 break  # success — exit retry loop
 
@@ -505,62 +485,6 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
                 "errors": errors,
             }
         )
-
-    def _apply_record(
-        self,
-        session,
-        model_class,
-        table_name: str,
-        record_data: dict[str, Any],
-    ) -> None:
-        """Apply a single synced record to the database.
-
-        Uses merge() to handle both INSERT (new record from terminal)
-        and UPDATE (e.g., terminal re-sends a corrected record).
-        """
-        # Handle child records that are nested inside parent records
-        # (e.g., Sale.items, Sale.payments come as nested lists)
-        child_data = {}
-        for key, value in list(record_data.items()):
-            if isinstance(value, list):
-                child_data[key] = record_data.pop(key)
-
-        # A StockMovement carries an already-computed qty_change from
-        # whichever terminal processed the sale/purchase locally. The Main
-        # PC's own Product.stock_qty is the one figure every other terminal
-        # later reads via /sync/pull-stock, so it must be updated here too
-        # — but only the first time this movement is seen, so a retried or
-        # duplicate push (see _handle_push_transactions' sequence check)
-        # can't double-apply the same delta.
-        is_new_stock_movement = False
-        if table_name == "stock_movements":
-            movement_id = record_data.get("id")
-            is_new_stock_movement = movement_id is not None and session.get(StockMovement, movement_id) is None
-
-        instance = dict_to_model(model_class, record_data)
-        instance.synced = True  # Mark as synced on the server side
-        session.merge(instance)
-
-        if is_new_stock_movement:
-            product = session.get(Product, instance.product_id)
-            if product is not None:
-                # Product.version_id is an optimistic-lock column, so a
-                # concurrent update from another terminal's push raises
-                # StaleDataError at commit — handled by the retry loop in
-                # _handle_push_transactions.
-                product.stock_qty += instance.qty_change
-
-        # Process children
-        for rel_key, children in child_data.items():
-            # Determine child model from the relationship
-            mapper = model_class.__mapper__
-            rel = mapper.relationships.get(rel_key)
-            if rel is None:
-                continue
-            child_class = rel.mapper.class_
-            for child_record in children:
-                child_instance = dict_to_model(child_class, child_record)
-                session.merge(child_instance)
 
     def _handle_push_audit(self):
         """POST /sync/push-audit — terminal pushes audit log entries."""

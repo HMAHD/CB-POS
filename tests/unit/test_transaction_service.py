@@ -266,7 +266,7 @@ def test_process_refund(db_session, test_user, test_product, completed_sale):
     assert refund_sale is not None
     assert refund_sale.total_amount == Decimal("-200")
     assert refund_sale.payment_method == "REFUND"
-    assert refund_sale.document_number.startswith("REF-")
+    assert refund_sale.document_number.startswith("CN-")  # #637: sequential, was REF-<uuid>
 
     refund_items = db_session.query(SaleItem).filter(SaleItem.sale_id == refund_sale.id).all()
     assert len(refund_items) == 1

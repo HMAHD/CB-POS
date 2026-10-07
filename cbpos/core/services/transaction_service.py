@@ -1,8 +1,8 @@
 import logging
-import uuid
 from datetime import datetime
 from decimal import Decimal
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from cbpos.core.database import Database
@@ -20,6 +20,7 @@ from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
+from cbpos.core.services.document_service import DocumentService
 from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.core.services.stock_service import StockService
@@ -72,6 +73,53 @@ class TransactionService:
         for comp in composites:
             composite_map.setdefault(comp.parent_product_id, []).append(comp)
         return composite_map
+
+    @staticmethod
+    def _insert_numbered(session: Session, sale: Sale, doc_type: str) -> None:
+        """Give ``sale`` the next ``doc_type`` number and flush it, in ``session``'s transaction.
+
+        The number is read and inserted in the same transaction as the rest
+        of the sale, so a failed sale leaves no gap and reserves nothing.
+
+        Standalone (SQLite) has a single writer -- one app instance, and the
+        sync server only writes terminal-prefixed numbers -- so a plain flush
+        is enough. A SAVEPOINT must not be used there: pysqlite only opens
+        its transaction at the first INSERT, so the SAVEPOINT becomes the
+        outermost transaction and releasing it commits the sale header even
+        if the rest of the sale later rolls back.
+
+        Network mode (PostgreSQL) shares one database between tills: another
+        till can commit the same number between our read and our insert.
+        The unique ``document_number`` index rejects ours; only the SAVEPOINT
+        around the insert is rolled back and a fresh number is tried, keeping
+        the stock/credit work already done in this transaction.
+
+        Args:
+            session: The open session the sale is being written in.
+            sale: The new, not yet added Sale.
+            doc_type: "SALE" or "RETURN".
+
+        Raises:
+            IntegrityError: If no free number is found after a few tries.
+        """
+        if Database()._db_mode != "network":
+            sale.document_number = DocumentService.generate_number(doc_type, session=session)
+            session.add(sale)
+            session.flush()
+            return
+
+        session.flush()  # keep earlier pending changes out of the savepoint
+        max_attempts = 5
+        for attempt in range(1, max_attempts + 1):
+            sale.document_number = DocumentService.generate_number(doc_type, session=session)
+            try:
+                with session.begin_nested():
+                    session.add(sale)  # flushed when the savepoint closes
+                return
+            except IntegrityError:
+                if attempt == max_attempts:
+                    raise
+                logger.warning("%s number %s already taken, retrying", doc_type, sale.document_number)
 
     @staticmethod
     def _print_receipt_async(sale: Sale) -> None:
@@ -163,9 +211,6 @@ class TransactionService:
                                 f"Available: {product.stock_qty}, Required: {qty_needed}"
                             )
 
-            # Generate Receipt No
-            receipt_no = f"REC-{uuid.uuid4().hex[:8].upper()}"
-
             # Get Current User
             current_user = AuthService.get_current_user()
             if not current_user:
@@ -206,7 +251,6 @@ class TransactionService:
             primary_method = payments[0]["method"] if len(payments) == 1 else "SPLIT"
 
             sale = Sale(
-                document_number=receipt_no,
                 date=datetime.now(),
                 total_amount=total_amount,
                 tax_vat=tax_info["vat"],
@@ -220,8 +264,8 @@ class TransactionService:
             )
             # Attach exempt amount for receipt builder (transient, not persisted)
             sale._exempt_amount = exempt_amount
-            session.add(sale)
-            session.flush()
+            TransactionService._insert_numbered(session, sale, "SALE")
+            receipt_no = sale.document_number
 
             # Record credit sale in ledger (if applicable)
             if customer_id and credit_amount_for_ledger is not None:
@@ -428,8 +472,6 @@ class TransactionService:
                 composite_map = TransactionService._fetch_composite_map(session, product_ids)
 
                 # 2. Create refund transaction (negative values)
-                refund_receipt_no = f"REF-{uuid.uuid4().hex[:8].upper()}"
-
                 # Mirror original sale's tax values (negated) to preserve
                 # correct tax breakdown, especially for sales with exempt items.
                 # Recalculating from the total would lose exempt-item granularity.
@@ -439,7 +481,6 @@ class TransactionService:
                 refund_net = -(original_sale.net_revenue or Decimal("0"))
 
                 refund_sale = Sale(
-                    document_number=refund_receipt_no,
                     date=datetime.now(),
                     total_amount=refund_amount,
                     tax_vat=refund_vat,
@@ -453,8 +494,8 @@ class TransactionService:
                     terminal_id=ConfigService.get("terminal_id") or "TERM-01",
                     origin_terminal_id=ConfigService.get("terminal_id") or "TERM-01",
                 )
-                session.add(refund_sale)
-                session.flush()
+                TransactionService._insert_numbered(session, refund_sale, "RETURN")
+                refund_receipt_no = refund_sale.document_number
 
                 # 3. Create refund line items (negative quantities)
                 for original_item in original_sale.items:

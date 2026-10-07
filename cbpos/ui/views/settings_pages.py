@@ -797,13 +797,11 @@ class DocumentPage(SettingsPage):
         self._lbl_fmt_legend.setWordWrap(True)
         self._form_docs.addRow("", self._lbl_fmt_legend)
 
-        # (input, label, preview, show "Next:" preview). Sale and Return
-        # formats don't drive receipt numbers yet (#637), so they only show
-        # errors, never a "Next:" number that would imply they do.
+        # (input, label, preview, document type the format numbers)
         self._fmt_fields = [
-            (self.input_fmt_sale, self._lbl_sale_fmt, self._preview_sale, False),
-            (self.input_fmt_purchase, self._lbl_purchase_fmt, self._preview_purchase, True),
-            (self.input_fmt_return, self._lbl_return_fmt, self._preview_return, False),
+            (self.input_fmt_sale, self._lbl_sale_fmt, self._preview_sale, "SALE"),
+            (self.input_fmt_purchase, self._lbl_purchase_fmt, self._preview_purchase, "PURCHASE"),
+            (self.input_fmt_return, self._lbl_return_fmt, self._preview_return, "RETURN"),
         ]
         for field, *_ in self._fmt_fields:
             field.textChanged.connect(self._update_previews)
@@ -876,18 +874,18 @@ class DocumentPage(SettingsPage):
         terminal_id = self.input_terminal_id.text().strip() or "TERM-01"
         reset_period = self.combo_reset_period.currentData() or "YEARLY"
         invalid = 0
-        for field, _label, preview, show_next in self._fmt_fields:
+        for field, _label, preview, doc_type in self._fmt_fields:
             error = validate_doc_pattern(field.text().strip(), terminal_id)
             if error:
                 invalid += 1
                 # Only the length message takes a parameter; the others show
                 # literal {seq}-style codes that str.format would choke on.
                 text = _t(error, max=DOC_NUMBER_MAX_LENGTH) if error.endswith("too_long") else _t(error)
-            elif show_next:
-                number = DocumentService.preview_number(field.text().strip(), reset_period, terminal_id)
-                text = _t("settings.documents.fmt_preview_next", number=number)
             else:
-                text = ""
+                number = DocumentService.preview_number(field.text().strip(), reset_period, terminal_id, doc_type)
+                text = _t("settings.documents.fmt_preview_next", number=number)
+                if DocumentService.adds_terminal_prefix(field.text().strip(), doc_type):
+                    text += "\n" + _t("settings.documents.fmt_terminal_added")
             preview.setText(text)
             preview.setVisible(bool(text))
             css_class = "error" if error else "muted"
@@ -905,7 +903,7 @@ class DocumentPage(SettingsPage):
         """
         if not self._update_previews():
             return
-        for field, label, preview, _show_next in self._fmt_fields:
+        for field, label, preview, _doc_type in self._fmt_fields:
             if preview.property("class") == "error":
                 field.setFocus()
                 raise ValueError(f"{label.text()} {preview.text()}")

@@ -103,7 +103,7 @@ class TestFullSaleWorkflow:
         assert sale.total_amount == Decimal("2360.00")
         assert sale.payment_method == "CASH"
         assert sale.user_id == user.id
-        assert sale.document_number.startswith("REC-")
+        assert sale.document_number.startswith("INV-")  # #637: sequential, was REC-<uuid>
 
         # 4. Verify Sale Items
         items = db_session.query(SaleItem).filter(SaleItem.sale_id == sale.id).all()

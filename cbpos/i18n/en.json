@@ -1429,6 +1429,7 @@
       "fmt_error_seq_not_last": "{seq} must be at the very end.",
       "fmt_error_too_long": "Too long. A number can have at most {max} characters.",
       "fmt_preview_next": "Next: {number}",
+      "fmt_terminal_added": "LAN Sync is on, so the terminal ID goes in front. Two registers never share a number.",
       "fmt_legend": "{Y} year · {M} month · {D} day · {T} terminal · {seq:05d} running number (always last)"
     },
     "hardware": {

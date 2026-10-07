@@ -449,7 +449,7 @@ class StockTakeView(QWidget):
         stats_layout = QHBoxLayout()
         self.lbl_items = QLabel(_t("stock_take.items_count", count=0))
         self.lbl_counted = QLabel(_t("stock_take.counted_progress", counted=0, total=0))
-        self.lbl_variance = QLabel(_t("stock_take.variance_amount", amount="Rs. 0.00"))
+        self.lbl_variance = QLabel(_t("stock_take.variance_amount", amount=format_currency(Decimal("0"))))
         self.lbl_status = QLabel(_t("stock_take.status_display", status="---"))
         stats_layout.addWidget(self.lbl_items)
         stats_layout.addWidget(self.lbl_counted)
@@ -760,7 +760,7 @@ class StockTakeView(QWidget):
         if not self.current_stock_count:
             self.lbl_items.setText(_t("stock_take.items_count", count=0))
             self.lbl_counted.setText(_t("stock_take.counted_progress", counted=0, total=0))
-            self.lbl_variance.setText(_t("stock_take.variance_amount", amount="Rs. 0.00"))
+            self.lbl_variance.setText(_t("stock_take.variance_amount", amount=format_currency(Decimal("0"))))
             self.lbl_status.setText(_t("stock_take.status_display", status="---"))
             # No count yet: only starting one makes sense. Without this the
             # buttons kept the last count's state, so Load Products stayed

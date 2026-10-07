@@ -180,3 +180,55 @@ def test_inactive_tabs_have_border_and_hover(theme_file):
     (body,) = _rules_for(theme_file, "QTabBar::tab")
     assert "border: 1px solid" in body
     assert _rules_for(theme_file, "QTabBar::tab:hover:!selected")
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+def test_in_cell_spin_editor_has_no_steppers_but_arrow_keys_work(qtbot, themed, theme_file):
+    """#569: a ~32px row has no room for both steppers (only "-" showed);
+    in-cell spin editors are typed into, so steppers are hidden. Standalone
+    touch-size spin boxes keep theirs."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtWidgets import (
+        QAbstractSpinBox,
+        QSpinBox,
+        QStyle,
+        QStyleOptionSpinBox,
+        QTableWidget,
+        QTableWidgetItem,
+    )
+
+    def up_button_width(spin: QSpinBox) -> int:
+        # initStyleOption() is protected on C++-created editors; build it by hand.
+        opt = QStyleOptionSpinBox()
+        opt.initFrom(spin)
+        opt.frame = True
+        opt.subControls = QStyle.SubControl.SC_All
+        opt.buttonSymbols = spin.buttonSymbols()
+        opt.stepEnabled = (
+            QAbstractSpinBox.StepEnabledFlag.StepUpEnabled | QAbstractSpinBox.StepEnabledFlag.StepDownEnabled
+        )
+        rect = spin.style().subControlRect(QStyle.ComplexControl.CC_SpinBox, opt, QStyle.SubControl.SC_SpinBoxUp, spin)
+        return rect.width()
+
+    themed(theme_file)
+    table = QTableWidget(1, 1)
+    qtbot.addWidget(table)
+    item = QTableWidgetItem()
+    item.setData(Qt.ItemDataRole.EditRole, 7)
+    table.setItem(0, 0, item)
+    table.show()
+    table.setCurrentCell(0, 0)
+    table.editItem(item)
+    editor = table.findChild(QSpinBox)
+    assert editor is not None
+    editor.ensurePolished()
+    assert up_button_width(editor) == 0
+    qtbot.keyClick(editor, Qt.Key.Key_Up)
+    assert editor.value() == 8
+    table.closePersistentEditor(item)
+
+    standalone = QSpinBox()
+    qtbot.addWidget(standalone)
+    standalone.show()
+    standalone.ensurePolished()
+    assert up_button_width(standalone) > 0

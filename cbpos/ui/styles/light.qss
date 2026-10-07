@@ -2443,7 +2443,7 @@ QAbstractItemView QSpinBox:hover,
 QAbstractItemView QDoubleSpinBox,
 QAbstractItemView QDoubleSpinBox:focus,
 QAbstractItemView QDoubleSpinBox:hover {
-    padding-right: 18px;
+    padding-right: 4px;
 }
 
 QAbstractItemView QAbstractSpinBox QLineEdit,
@@ -2455,15 +2455,17 @@ QAbstractItemView QAbstractSpinBox QLineEdit:focus {
 
 QAbstractItemView QSpinBox::up-button, QAbstractItemView QDoubleSpinBox::up-button,
 QAbstractItemView QSpinBox::down-button, QAbstractItemView QDoubleSpinBox::down-button {
-    width: 16px;
-    height: 12px;
-    border-radius: 0px;
+    /* No steppers in a ~32px row: there's no room for both, and these
+       cells are typed into. Arrow keys still step the value. */
+    width: 0px;
+    border: none;
 }
 
 QAbstractItemView QSpinBox::up-arrow, QAbstractItemView QDoubleSpinBox::up-arrow,
 QAbstractItemView QSpinBox::down-arrow, QAbstractItemView QDoubleSpinBox::down-arrow {
-    width: 8px;
-    height: 8px;
+    image: none;
+    width: 0px;
+    height: 0px;
 }
 
 /* ========================================

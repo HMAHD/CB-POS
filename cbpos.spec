@@ -1,4 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
+import sys
+
 from PyInstaller.utils.hooks import collect_all
 
 datas = [
@@ -49,6 +51,12 @@ hiddenimports = [
     'logging.config',
     'logging.handlers',
 ]
+
+# escpos.printer.Win32Raw imports these inside try/except ImportError, and the
+# driver only reaches them through escpos -- list them so the Windows build
+# always bundles them (#622). pywin32 is Windows-only, so skip elsewhere.
+if sys.platform == 'win32':
+    hiddenimports += ['win32print', 'pywintypes']
 
 # Collect all submodules/data for packages with dynamic imports
 for pkg in [

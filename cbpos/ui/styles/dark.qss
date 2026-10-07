@@ -529,8 +529,12 @@ QLabel[class="dialog-title"] {
     background: transparent;
 }
 
+/* The one muted/secondary-text rule (a later one-line duplicate used to
+   override this). 13px + >=4.5:1 contrast so Sinhala/Tamil hints stay
+   readable (#566). */
 QLabel[class="muted"] {
-    color: #AAAAAA;
+    color: #B0B0B0;
+    font-size: 13px;
     background: transparent;
 }
 
@@ -1330,6 +1334,19 @@ QWidget#SettingsContent QLabel {
     font-size: 14px;
 }
 
+/* The rule above (#ID-scoped) out-ranks the shared muted/warning-hint
+   classes, which turned every Settings hint -- including the tax
+   warning -- into plain body text (#566). */
+QWidget#SettingsContent QLabel[class="muted"] {
+    color: #B0B0B0;
+    font-size: 13px;
+}
+
+QWidget#SettingsContent QLabel[class="warning-hint"] {
+    color: #FF8C85;
+    font-size: 12px;
+}
+
 /* Disabled state (#564). Once a stylesheet styles an input, Qt stops
    drawing its native greyed-out look, so a disabled spinbox/combo/check
    looked fully editable. The SettingsContent copies are needed because
@@ -1982,8 +1999,8 @@ QLabel#LoginErrorLabel {
 }
 
 QLabel#LoginHelpHint {
-    color: #666666;
-    font-size: 11px;
+    color: #A0A0A0;
+    font-size: 12px;
     background: transparent;
     margin-top: 15px;
 }
@@ -2792,8 +2809,7 @@ QLabel#RestoreWarning {
 /* Warning hint text (restart required, tax warning) */
 QLabel[class="warning-hint"] {
     color: #FF8C85;
-    font-size: 11px;
-    font-style: italic;
+    font-size: 12px;
     background: transparent;
 }
 
@@ -2874,7 +2890,6 @@ QLabel#DialogTitle { color: #00BCEB; font-size: 20px; font-weight: bold; margin-
 QLabel#DialogSubtitle { color: #8899AA; font-size: 12px; margin-bottom: 16px; }
 QLabel#SectionTitle { font-size: 16px; font-weight: bold; color: white; margin-top: 20px; }
 
-QLabel[class="muted"] { color: #B0B0B0; font-size: 12px; }
 QLabel[class="value"] { color: #E0E0E0; font-size: 13px; font-weight: bold; }
 QLabel[class="status-ok"] { color: #39FF14; font-weight: bold; font-size: 13px; }
 QLabel[class="status-err"] { color: #FF4136; font-weight: bold; font-size: 13px; }
@@ -2944,7 +2959,6 @@ QLabel#LabelPreviewHeader {
 QLabel#LabelPreviewHint {
     font-size: 11px;
     color: #888888;
-    font-style: italic;
 }
 
 /* ── CSV Import Dialog ── */
@@ -3891,9 +3905,8 @@ QLabel#PriceListFooterLabel {
 
 QLabel#PriceListFooterHint {
     background-color: transparent;
-    color: #888888;
-    font-size: 11px;
-    font-style: italic;
+    color: #B0B0B0;
+    font-size: 13px;
 }
 
 /* Splitter handle */

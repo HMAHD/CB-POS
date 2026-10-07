@@ -158,3 +158,17 @@ def test_one_off_buttons_defer_colors_to_the_shared_class(theme_file, selector):
 def test_inputs_have_a_disabled_rule(theme_file, selector):
     """#564: a styled input loses Qt's native greyed-out look."""
     assert any("color" in b for b in _rules_for(theme_file, selector))
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+def test_no_italic_text(theme_file):
+    """#566: italic distorts Sinhala and Tamil glyphs."""
+    assert "italic" not in _css(theme_file)
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+def test_single_muted_rule_at_readable_size(theme_file):
+    """#566: a later one-line duplicate used to silently override it."""
+    bodies = _rules_for(theme_file, 'QLabel[class="muted"]')
+    assert len(bodies) == 1
+    assert "font-size: 13px" in bodies[0]

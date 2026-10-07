@@ -487,7 +487,8 @@ class ShopInfoPage(SettingsPage):
 
         note = QLabel("<b>" + _t("common.important") + ":</b> " + _t("settings.shop_info.guide_important_note"))
         note.setWordWrap(True)
-        note.setProperty("class", "muted")
+        # The most important line in the guide -- warning style, not muted (#566).
+        note.setProperty("class", "warning-hint")
         layout.addWidget(note)
 
         btn_close = QPushButton(_t("settings.shop_info.guide_btn_close"))

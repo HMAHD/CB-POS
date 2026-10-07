@@ -168,10 +168,10 @@ QCalendarWidget QAbstractItemView:disabled {
     color: #ADB5BD;
 }
 
-/* The app-wide QHeaderView::section rule (bold, 10px padding, meant for
-   real tables) also matches QCalendarWidget's internal day-name header
-   row -- this scoped override keeps the popup's header compact instead of
-   an oversized bar. */
+/* The app-wide QHeaderView::section rule (accent underline, bold, meant
+   for real tables) also matches QCalendarWidget's internal day-name header
+   row -- this scoped override is a deliberate exception (#554) that keeps
+   the popup's header compact and neutral instead of a table-style bar. */
 QCalendarWidget QHeaderView::section {
     background-color: #F1F3F5;
     color: #495057;
@@ -614,17 +614,33 @@ QTreeView::item:selected {
     color: #0D6EFD;
 }
 
+/* Table headers (#554): ONE app-wide look -- accent text over an accent
+   underline. Do not add per-table QHeaderView::section rules; a scoped
+   rule outranks this one and silently forks the look again. The only
+   deliberate exceptions are QCalendarWidget's day-name row (above) and
+   vertical row-number headers (below). Text is #0B5ED7, not the #0D6EFD
+   accent: #0D6EFD on #F8F9FA is 4.3:1, under WCAG AA; #0B5ED7 is 5.5:1.
+   Numeric columns right-align their header in code (TextAlignmentRole),
+   not here -- QSS has no per-column selector. */
 QHeaderView::section {
-    background-color: #E9ECEF; /* Light Gray Header */
-    color: #495057;
-    padding: 10px;
+    background-color: #F8F9FA;
+    color: #0B5ED7;
     font-weight: bold;
+    font-size: 12px;
+    padding: 6px 8px;
     border: none;
-    border-bottom: 2px solid #DEE2E6;
+    border-bottom: 2px solid #0D6EFD;
+}
+
+/* Row-number headers: a blue underline under every row would be noise. */
+QHeaderView::section:vertical {
+    color: #495057;
+    font-weight: normal;
+    border-bottom: 1px solid #E9ECEF;
 }
 
 QTableCornerButton::section {
-    background-color: #E9ECEF;
+    background-color: #F8F9FA;
     border: none;
 }
 
@@ -1127,15 +1143,6 @@ QToolButton#SearchModeBtn:checked {
 QTableWidget#CartTable {
     background-color: #FFFFFF;
     gridline-color: #F1F3F5;
-}
-
-QTableWidget#CartTable QHeaderView::section {
-    background-color: #E9ECEF;  /* Darker Gray Header */
-    color: #212529;  /* Almost Black Text */
-    font-weight: bold;
-    border: none;
-    border-bottom: 2px solid #DEE2E6;
-    padding: 8px;
 }
 
 QTableWidget#CartTable::item {
@@ -2355,17 +2362,6 @@ QTableWidget#DashboardTable::item:hover {
     background-color: #F9FAFB;
 }
 
-QTableWidget#DashboardTable QHeaderView::section {
-    background-color: #F9FAFB;
-    color: #4B5563;
-    font-weight: bold;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border: none;
-    padding: 10px;
-}
-
 /* ===================================================================
    UNIFIED COMPONENTS - Light Theme
    ================================================================ */
@@ -2388,16 +2384,6 @@ QTableView::item {
 
 QTableView::item:hover {
     background-color: #F3F4F6;
-}
-
-QTableView QHeaderView::section {
-    background-color: #F9FAFB;
-    color: #4B5563;
-    font-weight: bold;
-    font-size: 10px;
-    text-transform: uppercase;
-    border: none;
-    padding: 10px;
 }
 
 /* === BUTTONS ===
@@ -2855,11 +2841,6 @@ QTableWidget#BackupTable, QTableWidget#ValuationTable {
     gridline-color: #E9ECEF; color: #212529; selection-background-color: #E7F1FF; font-size: 12px;
 }
 QTableWidget#BackupTable::item, QTableWidget#ValuationTable::item { padding: 6px; }
-QTableWidget#BackupTable QHeaderView::section, QTableWidget#ValuationTable QHeaderView::section {
-    background-color: #F8F9FA; color: #0D6EFD; padding: 8px;
-    border: none; border-bottom: 2px solid #0D6EFD; font-weight: bold; font-size: 12px;
-}
-
 QLabel#RestoreWarning {
     background-color: rgba(220, 53, 69, 0.08); border: 1px solid #DC3545;
     border-radius: 6px; padding: 12px; color: #842029; font-size: 12px;
@@ -3150,21 +3131,6 @@ QPushButton#ReportNavItem:checked {
     min-height: 18px;
 }
 
-#ReportDataView QHeaderView::section {
-    background-color: #F8F9FA;
-    color: #0D6EFD;
-    font-weight: bold;
-    font-size: 12px;
-    padding: 10px 12px;
-    border: none;
-    border-right: 1px solid #E9ECEF;
-    border-bottom: 2px solid #0D6EFD;
-}
-
-#ReportDataView QHeaderView::section:hover {
-    background-color: #E9ECEF;
-}
-
 /* ── Action Bar ── */
 #ReportActionBar {
     background-color: #FFFFFF;
@@ -3261,17 +3227,6 @@ QTableWidget#CreditCustomerTable::item:selected, QTableWidget#CreditLedgerTable:
 QTableWidget#PayableSupplierTable::item:selected, QTableWidget#PayableLedgerTable::item:selected {
     background-color: #E9ECEF;
     color: #0D6EFD;
-}
-
-QTableWidget#CreditCustomerTable QHeaderView::section, QTableWidget#CreditLedgerTable QHeaderView::section,
-QTableWidget#PayableSupplierTable QHeaderView::section, QTableWidget#PayableLedgerTable QHeaderView::section {
-    background-color: #F8F9FA;
-    color: #0D6EFD;
-    font-weight: bold;
-    font-size: 12px;
-    padding: 6px 8px;
-    border: none;
-    border-bottom: 2px solid #0D6EFD;
 }
 
 QFrame#CreditListFooter, QFrame#CreditLedgerFooter,
@@ -3552,16 +3507,6 @@ QTableWidget#DocTable::item:selected {
     color: #0D6EFD;
 }
 
-QTableWidget#DocTable QHeaderView::section {
-    background-color: #F8F9FA;
-    color: #0D6EFD;
-    font-weight: bold;
-    font-size: 12px;
-    padding: 6px 8px;
-    border: none;
-    border-bottom: 2px solid #0D6EFD;
-}
-
 QFrame#DocDetailPanel {
     background-color: #F8F9FA;
     border: 1px solid #DEE2E6;
@@ -3600,16 +3545,6 @@ QTableWidget#DocItemsTable {
     border: 1px solid #DEE2E6;
     border-radius: 4px;
     font-size: 12px;
-}
-
-QTableWidget#DocItemsTable QHeaderView::section {
-    background-color: #F8F9FA;
-    color: #0D6EFD;
-    font-weight: bold;
-    font-size: 11px;
-    padding: 4px 6px;
-    border: none;
-    border-bottom: 1px solid #0D6EFD;
 }
 
 QPushButton#DocReprintBtn, QPushButton#DocConvertBtn {
@@ -3796,16 +3731,6 @@ QTableWidget#PriceListDataTable::item:selected {
     color: #0D6EFD;
 }
 
-QTableWidget#PriceListDataTable QHeaderView::section {
-    background-color: #F8F9FA;
-    color: #0D6EFD;
-    font-weight: bold;
-    font-size: 12px;
-    padding: 6px 8px;
-    border: none;
-    border-bottom: 2px solid #0D6EFD;
-}
-
 QFrame#PriceListFooter {
     background-color: #FFFFFF;
     border: 1px solid #DEE2E6;
@@ -3969,16 +3894,6 @@ QTableWidget#SaleHistoryTable {
     selection-color: #333333;
 }
 
-QTableWidget#SaleHistoryTable QHeaderView::section {
-    background-color: #F0F0F0;
-    color: #555555;
-    border: none;
-    border-bottom: 1px solid #CCCCCC;
-    padding: 6px;
-    font-weight: 600;
-    font-size: 12px;
-}
-
 /* Details Panel */
 QWidget#SaleHistoryDetails {
     background-color: #F5F5F5;
@@ -3997,16 +3912,6 @@ QTableWidget#SaleHistoryItems {
     border: 1px solid #CCCCCC;
     border-radius: 4px;
     gridline-color: #E0E0E0;
-}
-
-QTableWidget#SaleHistoryItems QHeaderView::section {
-    background-color: #F0F0F0;
-    color: #555555;
-    border: none;
-    border-bottom: 1px solid #CCCCCC;
-    padding: 4px;
-    font-weight: 600;
-    font-size: 12px;
 }
 
 /* Action Buttons */
@@ -4122,16 +4027,6 @@ QDialog#CategoryManagerDialog QTreeWidget::item:selected {
 
 QDialog#CategoryManagerDialog QTreeWidget::item:hover {
     background-color: #F0F4F8;
-}
-
-QDialog#CategoryManagerDialog QTreeWidget QHeaderView::section {
-    background-color: #F0F4F8;
-    color: #0D6EFD;
-    font-weight: bold;
-    font-size: 11px;
-    text-transform: uppercase;
-    border: none;
-    padding: 8px;
 }
 
 /* ===================================================================

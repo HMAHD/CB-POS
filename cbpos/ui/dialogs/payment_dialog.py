@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 
 from PyQt6.QtCore import QSize, Qt
@@ -22,10 +23,12 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.customer_service import CustomerService
-from cbpos.core.services.payment_service import PaymentService
+from cbpos.core.services.payment_service import RESERVED_SHORTCUTS, PaymentService, normalize_shortcut
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
+
+logger = logging.getLogger(__name__)
 
 
 class PaymentDialog(QDialog):
@@ -328,16 +331,29 @@ class PaymentDialog(QDialog):
         self.shortcut_f12 = QShortcut(QKeySequence("F12"), self)
         self.shortcut_f12.activated.connect(self.quick_pay_cash)
 
-        # Dynamic shortcuts from DB
+        # Dynamic shortcuts from DB. Two QShortcuts on one key are ambiguous
+        # and neither fires, so a stored key that collides with ours or an
+        # earlier method's (old DBs, e.g. Cash seeded on F12) is skipped
+        # rather than breaking F12/Enter (#640).
+        used = set(RESERVED_SHORTCUTS)
         for btn, method in self._method_buttons:
-            if method.shortcut:
-                try:
-                    sc = QShortcut(QKeySequence(method.shortcut), self)
-                    sc.activated.connect(lambda m=method, b=btn: self.select_method(m, b))
-                except Exception as e:
-                    import logging
-
-                    logging.getLogger(__name__).warning("Invalid shortcut '%s': %s", method.shortcut, e)
+            if not method.shortcut:
+                continue
+            key = normalize_shortcut(method.shortcut)
+            if key in used:
+                logger.warning(
+                    "Skipping shortcut '%s' for payment method '%s': key already in use",
+                    method.shortcut,
+                    method.name,
+                )
+                continue
+            seq = QKeySequence(method.shortcut)
+            if seq.isEmpty():
+                logger.warning("Invalid shortcut '%s' for payment method '%s'", method.shortcut, method.name)
+                continue
+            used.add(key)
+            sc = QShortcut(seq, self)
+            sc.activated.connect(lambda m=method, b=btn: self.select_method(m, b))
 
     def load_customers(self):
         """Populate the searchable customer combo used for CREDIT payments."""

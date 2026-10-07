@@ -1762,7 +1762,8 @@
     "cannot_delete_admin_msg": "The built-in Admin role cannot be deleted.",
     "cannot_delete_in_use_msg": "'{name}' is still assigned to {count} user(s). Reassign them to a different role first.",
     "cannot_rename_title": "Cannot Rename Role",
-    "cannot_rename_admin_msg": "The built-in Admin role cannot be renamed."
+    "cannot_rename_admin_msg": "The built-in Admin role cannot be renamed.",
+    "builtin_locked_tooltip": "Admin is a built-in role, so it can't be renamed or deleted."
   },
   "category_tree": {
     "title": "Category Tree",

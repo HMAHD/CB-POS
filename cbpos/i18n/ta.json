@@ -1732,7 +1732,8 @@
     "cannot_delete_admin_msg": "இயல்பான Admin ரோலை நீக்க முடியாது.",
     "cannot_delete_in_use_msg": "'{name}' ரோல் இன்னும் {count} பயனர்களுக்கு கொடுக்கப்பட்டிருக்கு. முதல்ல அவங்களுக்கு வேற ரோல் கொடுங்க.",
     "cannot_rename_title": "ரோல் பேரை மாத்த முடியாது",
-    "cannot_rename_admin_msg": "இயல்பான Admin ரோல் பேரை மாத்த முடியாது."
+    "cannot_rename_admin_msg": "இயல்பான Admin ரோல் பேரை மாத்த முடியாது.",
+    "builtin_locked_tooltip": "Admin ஒரு இயல்பான ரோல். அதோட பேரை மாத்தவோ அதை நீக்கவோ முடியாது."
   },
   "category_tree": {
     "title": "வகை மரம்",

@@ -139,3 +139,22 @@ def test_one_off_buttons_defer_colors_to_the_shared_class(theme_file, selector):
     size the button and leave colors to the shared class."""
     for body in _rules_for(theme_file, selector):
         assert "color" not in body and "border:" not in body
+
+
+@pytest.mark.parametrize("theme_file", THEMES)
+@pytest.mark.parametrize(
+    "selector",
+    [
+        "QSpinBox:disabled",
+        "QDoubleSpinBox:disabled",
+        "QComboBox:disabled",
+        "QDateEdit:disabled",
+        "QTextEdit:disabled",
+        "QCheckBox:disabled",
+        "QWidget#SettingsContent QSpinBox:disabled",
+        "QWidget#SettingsContent QLabel:disabled",
+    ],
+)
+def test_inputs_have_a_disabled_rule(theme_file, selector):
+    """#564: a styled input loses Qt's native greyed-out look."""
+    assert any("color" in b for b in _rules_for(theme_file, selector))

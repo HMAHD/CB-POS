@@ -1330,6 +1330,50 @@ QWidget#SettingsContent QLabel {
     font-size: 14px;
 }
 
+/* Disabled state (#564). Once a stylesheet styles an input, Qt stops
+   drawing its native greyed-out look, so a disabled spinbox/combo/check
+   looked fully editable. The SettingsContent copies are needed because
+   that #ID-scoped input rule above out-ranks the generic ones. */
+QSpinBox:disabled,
+QDoubleSpinBox:disabled,
+QComboBox:disabled,
+QDateEdit:disabled,
+QTimeEdit:disabled,
+QDateTimeEdit:disabled,
+QTextEdit:disabled,
+QPlainTextEdit:disabled,
+QWidget#SettingsContent QLineEdit:disabled,
+QWidget#SettingsContent QComboBox:disabled,
+QWidget#SettingsContent QSpinBox:disabled,
+QWidget#SettingsContent QDoubleSpinBox:disabled,
+QWidget#SettingsContent QTextEdit:disabled {
+    background-color: #2A2A2A;
+    color: #666666;
+    border: 1px solid #3E3E42;
+}
+
+QSpinBox::up-button:disabled, QSpinBox::down-button:disabled,
+QDoubleSpinBox::up-button:disabled, QDoubleSpinBox::down-button:disabled,
+QComboBox::drop-down:disabled {
+    background-color: #2A2A2A;
+}
+
+QCheckBox:disabled, QRadioButton:disabled,
+QLabel:disabled,
+QWidget#SettingsContent QLabel:disabled {
+    color: #666666;
+}
+
+QCheckBox::indicator:disabled {
+    border-color: #4A4A4A;
+    background-color: #2A2A2A;
+}
+
+QCheckBox::indicator:checked:disabled {
+    background-color: #3E3E42;
+    border-color: #3E3E42;
+}
+
 QLabel[class="SectionHeader"] {
     font-size: 18px;
     font-weight: bold;

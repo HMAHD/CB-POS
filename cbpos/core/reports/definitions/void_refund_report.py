@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.database import Database
 from cbpos.core.models import Sale, User
-from cbpos.core.reports.base_report import BaseReport
+from cbpos.core.reports.base_report import DATE, INT, MONEY, TEXT, BaseReport, report_columns
 from cbpos.i18n import _t
 
 
@@ -40,6 +40,21 @@ class VoidRefundReport(BaseReport):
                 "default_end": date.today(),
             }
         ]
+
+    def get_render_hints(self) -> dict[str, Any]:
+        """Declare column types so amounts right-align with separators."""
+        return {
+            "columns": report_columns(
+                {
+                    "Date": DATE,
+                    "Document #": TEXT,
+                    "Status": TEXT,
+                    "Amount": MONEY,
+                    "User": TEXT,
+                    "Payment": TEXT,
+                }
+            )
+        }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """List voided/refunded sales within the date range, newest first.
@@ -114,6 +129,18 @@ class PaymentMethodSummaryReport(BaseReport):
                 "default_end": date.today(),
             }
         ]
+
+    def get_render_hints(self) -> dict[str, Any]:
+        """Declare column types so counts and money right-align with separators."""
+        return {
+            "columns": report_columns(
+                {
+                    "Payment Method": TEXT,
+                    "Transactions": INT,
+                    "Total Amount": MONEY,
+                }
+            )
+        }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """Sum transaction count and total amount per payment method for completed sales."""

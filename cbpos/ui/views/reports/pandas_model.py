@@ -1,21 +1,39 @@
 """Qt table model that adapts a pandas DataFrame for display in a QTableView."""
 
+import numbers
 from typing import Any
 
 import pandas as pd
 from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt
 from PyQt6.QtGui import QColor, QFont
 
+from cbpos.core.reports.base_report import INT, MONEY, NUMERIC_COLUMN_TYPES, QTY
 from cbpos.core.services.theme_service import ThemeService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.formatters import format_number, format_quantity, money_header
+from cbpos.i18n import _t
 
 RIGHT_ALIGNED = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
 LEFT_ALIGNED = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
 
 
 def _is_numeric(value: Any) -> bool:
-    """True for a value whose cell renders right-aligned."""
-    return isinstance(value, (int, float))
+    """True for a number of any kind -- int, float, Decimal, numpy scalars -- but not a bool (#556)."""
+    return isinstance(value, numbers.Number) and not isinstance(value, bool)
+
+
+def _format_value(value: Any, col_type: str | None) -> str:
+    """Display text for one cell, by the column's declared type, else by the value's own type."""
+    if col_type == MONEY:
+        return format_number(value, 2)
+    if col_type == INT:
+        return format_number(value, 0)
+    if col_type == QTY:
+        return format_quantity(value)
+    if value is None:
+        return ""
+    if _is_numeric(value):
+        return format_number(value, 0 if isinstance(value, numbers.Integral) else 2)
+    return str(value)
 
 
 class PandasModel(QAbstractTableModel):
@@ -31,7 +49,13 @@ class PandasModel(QAbstractTableModel):
     omitting a key (or the whole dict) renders exactly as before.
 
     Supported keys:
-        currency_columns (list[str]): column names formatted as currency.
+        columns (dict[str, dict]): per-column ``type`` (money/int/qty/
+            percent/date/text) and ``label_key``, see
+            ``cbpos.core.reports.base_report.report_columns`` (#556). Typed
+            numeric columns right-align with separators; money headers
+            carry the currency symbol. Untyped columns fall back to the
+            value's own type (any number right-aligns).
+        currency_columns (list[str]): legacy shorthand for money columns.
         total_row_column (str): column name whose value identifies a total row.
         total_row_values (list[str]): values in that column marking a total row.
         color_column (str): column name carrying a directional tag.
@@ -53,6 +77,15 @@ class PandasModel(QAbstractTableModel):
         """Return the number of columns in the underlying DataFrame."""
         return self._data.shape[1]
 
+    def _column_type(self, column_name: Any) -> str | None:
+        """The declared type of a column, if the report declared one."""
+        definition = (self._hints.get("columns") or {}).get(column_name)
+        if definition:
+            return definition.get("type")
+        if column_name in (self._hints.get("currency_columns") or []):
+            return MONEY
+        return None
+
     def _find_numeric_columns(self) -> set[int]:
         """Columns whose every cell is right-aligned, so the header can match (#554)."""
         if self._data.empty:
@@ -62,8 +95,24 @@ class PandasModel(QAbstractTableModel):
             for col in range(self._data.shape[1])
             # to_numpy() yields the same scalars as iloc[row, col] in data();
             # tolist() would turn np.int64 into int and disagree with the cells.
-            if all(_is_numeric(value) for value in self._data.iloc[:, col].to_numpy())
+            if all(self._is_right_aligned(col, value) for value in self._data.iloc[:, col].to_numpy())
         }
+
+    def _is_right_aligned(self, col: int, value: Any) -> bool:
+        col_type = self._column_type(self._data.columns[col])
+        if col_type is not None:
+            return col_type in NUMERIC_COLUMN_TYPES
+        return _is_numeric(value)
+
+    def _header_label(self, col: int) -> str:
+        """The column's translated label (once its key exists), with the currency symbol on money."""
+        column_name = self._data.columns[col]
+        definition = (self._hints.get("columns") or {}).get(column_name) or {}
+        label = str(column_name)
+        label_key = definition.get("label_key")
+        if label_key and _t(label_key) != label_key:
+            label = _t(label_key)
+        return money_header(label) if self._column_type(column_name) == MONEY else label
 
     def _is_total_row(self, row: int) -> bool:
         total_col = self._hints.get("total_row_column")
@@ -82,19 +131,10 @@ class PandasModel(QAbstractTableModel):
         column_name = self._data.columns[col]
 
         if role == Qt.ItemDataRole.DisplayRole:
-            currency_columns = self._hints.get("currency_columns") or []
-            if column_name in currency_columns:
-                return format_currency(value)
-
-            if isinstance(value, (float, int)) and not isinstance(value, bool):
-                if isinstance(value, float):
-                    return f"{value:.2f}"
-                return str(value)
-
-            return str(value)
+            return _format_value(value, self._column_type(column_name))
 
         elif role == Qt.ItemDataRole.TextAlignmentRole:
-            return RIGHT_ALIGNED if _is_numeric(value) else LEFT_ALIGNED
+            return RIGHT_ALIGNED if self._is_right_aligned(col, value) else LEFT_ALIGNED
 
         elif role == Qt.ItemDataRole.FontRole:
             if self._is_total_row(row):
@@ -127,7 +167,7 @@ class PandasModel(QAbstractTableModel):
         if orientation != Qt.Orientation.Horizontal:
             return None
         if role == Qt.ItemDataRole.DisplayRole:
-            return str(self._data.columns[col])
+            return self._header_label(col)
         if role == Qt.ItemDataRole.TextAlignmentRole and col in self._numeric_columns:
             return RIGHT_ALIGNED
         return None

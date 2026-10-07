@@ -4,7 +4,7 @@ import pandas as pd
 
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Category, Product
-from cbpos.core.reports.base_report import BaseReport
+from cbpos.core.reports.base_report import MONEY, QTY, TEXT, BaseReport, report_columns
 from cbpos.i18n import _t
 
 
@@ -40,6 +40,23 @@ class InventoryValuationReport(BaseReport):
                 "options": [{"id": None, "label": "All Categories"}, *cat_options],
             }
         ]
+
+    def get_render_hints(self) -> dict[str, Any]:
+        """Declare column types so quantities and money right-align with separators."""
+        return {
+            "columns": report_columns(
+                {
+                    "Barcode": TEXT,
+                    "Name": TEXT,
+                    "Category": TEXT,
+                    "Qty": QTY,
+                    "Cost": MONEY,
+                    "Retail Price": MONEY,
+                    "Total Cost Value": MONEY,
+                    "Total Retail Value": MONEY,
+                }
+            )
+        }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """List active products with on-hand qty, cost, retail price, and their totals.
@@ -99,6 +116,20 @@ class LowStockReport(BaseReport):
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """No filters; always shows all products at or below their reorder point."""
         return []
+
+    def get_render_hints(self) -> dict[str, Any]:
+        """Declare column types so quantities right-align with separators."""
+        return {
+            "columns": report_columns(
+                {
+                    "Name": TEXT,
+                    "Supplier": TEXT,
+                    "Current Stock": QTY,
+                    "Reorder Point": QTY,
+                    "Preferred Qty": QTY,
+                }
+            )
+        }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """List products where stock <= reorder point, with their default supplier."""

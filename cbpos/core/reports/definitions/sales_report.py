@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 
 from cbpos.core.database import Database
 from cbpos.core.models import Sale
-from cbpos.core.reports.base_report import BaseReport
+from cbpos.core.reports.base_report import DATE, INT, MONEY, BaseReport, report_columns
 from cbpos.i18n import _t
 
 
@@ -39,6 +39,18 @@ class DailySalesSummaryReport(BaseReport):
                 "default_end": date.today(),
             }
         ]
+
+    def get_render_hints(self) -> dict[str, Any]:
+        """Declare column types so counts and money right-align with separators."""
+        return {
+            "columns": report_columns(
+                {
+                    "Date": DATE,
+                    "Transactions": INT,
+                    "Total Sales": MONEY,
+                }
+            )
+        }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """Group sales by calendar date within the range, summing count and total.

@@ -124,4 +124,4 @@ class TestSetDataAcceptsRenderHints:
         model.set_data(pd.DataFrame([{"Amount": 1000.0}]), render_hints={"currency_columns": ["Amount"]})
         model.set_data(pd.DataFrame([{"Amount": 1000.0}]))
         value = model.data(model.index(0, 0), Qt.ItemDataRole.DisplayRole)
-        assert value == "1000.00"
+        assert value == "1,000.00"

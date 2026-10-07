@@ -7,14 +7,19 @@ shared PandasModel (see test_pandas_model_render_hints.py) can apply
 that treatment without the view hardcoding anything per report.
 """
 
+from cbpos.core.reports.base_report import MONEY
 from cbpos.core.reports.definitions.cash_flow_report import CashFlowReport
 from cbpos.core.reports.definitions.financial_reports import ProfitLossReport, TaxLiabilityReport
+
+
+def _money_columns(hints) -> set[str]:
+    return {name for name, col in hints["columns"].items() if col["type"] == MONEY}
 
 
 class TestCashFlowReportRenderHints:
     def test_amount_is_a_currency_column(self):
         hints = CashFlowReport().get_render_hints()
-        assert "Amount" in hints["currency_columns"]
+        assert "Amount" in _money_columns(hints)
 
     def test_net_row_is_the_total_row(self):
         hints = CashFlowReport().get_render_hints()
@@ -33,18 +38,11 @@ class TestProfitLossReportRenderHints:
     def test_money_columns_are_currency_formatted(self):
         hints = ProfitLossReport().get_render_hints()
         for column in ("Revenue", "Cost (COGS)", "Gross Profit"):
-            assert column in hints["currency_columns"]
+            assert column in _money_columns(hints)
 
 
 class TestTaxLiabilityReportRenderHints:
     def test_money_columns_are_currency_formatted(self):
         hints = TaxLiabilityReport().get_render_hints()
         for column in ("Total Sale", "Net Revenue", "VAT (18%)", "SSCL (2.5%)", "Total Tax"):
-            assert column in hints["currency_columns"]
-
-
-class TestOtherReportsDefaultToNoHints:
-    def test_base_report_default_is_empty_dict(self):
-        from cbpos.core.reports.definitions.overdue_report import OverdueCustomersReport
-
-        assert OverdueCustomersReport().get_render_hints() == {}
+            assert column in _money_columns(hints)

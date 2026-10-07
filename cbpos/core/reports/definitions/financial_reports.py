@@ -6,7 +6,7 @@ from sqlalchemy import func
 
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Product, Purchase, Sale, SaleItem
-from cbpos.core.reports.base_report import BaseReport
+from cbpos.core.reports.base_report import DATE, MONEY, PERCENT, TEXT, BaseReport, report_columns
 from cbpos.i18n import _t
 
 
@@ -33,8 +33,19 @@ class ProfitLossReport(BaseReport):
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
     def get_render_hints(self) -> dict[str, Any]:
-        """Format Revenue, Cost (COGS), and Gross Profit as currency."""
-        return {"currency_columns": ["Revenue", "Cost (COGS)", "Gross Profit"]}
+        """Declare column types: Revenue, Cost (COGS) and Gross Profit are money."""
+        return {
+            "columns": report_columns(
+                {
+                    "Date": DATE,
+                    "Invoice #": TEXT,
+                    "Revenue": MONEY,
+                    "Cost (COGS)": MONEY,
+                    "Gross Profit": MONEY,
+                    "Margin %": PERCENT,
+                }
+            )
+        }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """List revenue/cost/profit per sale item, one row per (sale, line item).
@@ -116,17 +127,21 @@ class TaxLiabilityReport(BaseReport):
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
 
     def get_render_hints(self) -> dict[str, Any]:
-        """Format money columns as currency and bold the net-liability summary row."""
+        """Declare money columns and bold the net-liability summary row."""
         return {
-            "currency_columns": [
-                "Total Sale",
-                "Net Revenue",
-                "VAT (18%)",
-                "SSCL (2.5%)",
-                "Total Tax",
-                "Input VAT",
-                "Net VAT Liability",
-            ],
+            "columns": report_columns(
+                {
+                    "Date": DATE,
+                    "Invoice #": TEXT,
+                    "Total Sale": MONEY,
+                    "Net Revenue": MONEY,
+                    "VAT (18%)": MONEY,
+                    "SSCL (2.5%)": MONEY,
+                    "Total Tax": MONEY,
+                    "Input VAT": MONEY,
+                    "Net VAT Liability": MONEY,
+                }
+            ),
             "total_row_column": "Invoice #",
             "total_row_values": ["NET VAT LIABILITY"],
         }
@@ -232,6 +247,18 @@ class TaxFilingSummaryReport(BaseReport):
             },
             {"name": "date_range", "label": "Date Range", "type": "date_range"},
         ]
+
+    def get_render_hints(self) -> dict[str, Any]:
+        """Declare column types so amounts right-align with separators."""
+        return {
+            "columns": report_columns(
+                {
+                    "Section": TEXT,
+                    "Description": TEXT,
+                    "Amount": MONEY,
+                }
+            )
+        }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """Generate tax filing summary for the selected period.

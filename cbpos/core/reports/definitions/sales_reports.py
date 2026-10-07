@@ -5,7 +5,7 @@ from sqlalchemy import func
 
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Category, Product, Sale, SaleItem, User
-from cbpos.core.reports.base_report import BaseReport
+from cbpos.core.reports.base_report import INT, MONEY, QTY, TEXT, BaseReport, report_columns
 from cbpos.i18n import _t
 
 
@@ -30,6 +30,18 @@ class SalesByCategoryReport(BaseReport):
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Date range filter only."""
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
+
+    def get_render_hints(self) -> dict[str, Any]:
+        """Declare column types so quantities and money right-align with separators."""
+        return {
+            "columns": report_columns(
+                {
+                    "Category": TEXT,
+                    "Qty Sold": QTY,
+                    "Gross Revenue": MONEY,
+                }
+            )
+        }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """Sum quantity sold and gross revenue (sale item subtotal) per category."""
@@ -92,6 +104,18 @@ class CashierPerformanceReport(BaseReport):
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Date range filter only."""
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
+
+    def get_render_hints(self) -> dict[str, Any]:
+        """Declare column types so counts and money right-align with separators."""
+        return {
+            "columns": report_columns(
+                {
+                    "Cashier Name": TEXT,
+                    "Transaction Count": INT,
+                    "Total Sales": MONEY,
+                }
+            )
+        }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """Sum transaction count and total sales per cashier (user)."""

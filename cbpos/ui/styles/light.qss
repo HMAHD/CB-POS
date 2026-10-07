@@ -825,6 +825,16 @@ QWidget#POSSideMenu QFrame[frameShape="4"] {
     background-color: #E8E8E8;
 }
 
+/* Nav tiles scroll on short screens; profile and toolbar stay pinned (#590) */
+QScrollArea#SideMenuScroll {
+    background: transparent;
+    border: none;
+}
+
+QWidget#SideMenuScrollInner {
+    background: transparent;
+}
+
 /* Section Header */
 QLabel#MenuSectionHeader {
     color: #AAAAAA;

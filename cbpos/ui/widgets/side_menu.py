@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -18,6 +19,11 @@ from cbpos.ui.resources.icons import Icons
 
 class NavTile(QPushButton):
     """Large navigation tile — icon above text, 2-column grid layout."""
+
+    HEIGHT = 80
+    COMPACT_HEIGHT = 60
+    ICON_SIZE = 28
+    COMPACT_ICON_SIZE = 22
 
     def __init__(self, text_key: str, icon_name: str, parent=None):
         """Build the icon-above-text tile layout.
@@ -33,13 +39,15 @@ class NavTile(QPushButton):
         self._text_key = text_key
         self._active = False
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setMinimumHeight(80)
+        self.setMinimumHeight(self.HEIGHT)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self._icon_size = self.ICON_SIZE
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(6, 12, 6, 8)
         layout.setSpacing(6)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._layout = layout
 
         # Icon
         self.lbl_icon = QLabel()
@@ -76,7 +84,7 @@ class NavTile(QPushButton):
             icon_color = ThemeService.get_icon_color()
             text_color = "#CCCCCC" if is_dark else "#333333"
 
-        pixmap = Icons.get(self.icon_name, icon_color).pixmap(28, 28)
+        pixmap = Icons.get(self.icon_name, icon_color).pixmap(self._icon_size, self._icon_size)
         self.lbl_icon.setPixmap(pixmap)
         self.lbl_icon.setStyleSheet("background: transparent;")
         # Font size lives in QSS (#NavTileText, pt units so it scales with
@@ -86,6 +94,18 @@ class NavTile(QPushButton):
 
     def update_icon(self) -> None:
         """Public API for theme change callbacks."""
+        self._apply_theme()
+
+    def set_compact(self, compact: bool) -> None:
+        """Use a shorter tile with a smaller icon and tighter padding (#590)."""
+        self.setMinimumHeight(self.COMPACT_HEIGHT if compact else self.HEIGHT)
+        if compact:
+            self._layout.setContentsMargins(6, 6, 6, 6)
+            self._layout.setSpacing(3)
+        else:
+            self._layout.setContentsMargins(6, 12, 6, 8)
+            self._layout.setSpacing(6)
+        self._icon_size = self.COMPACT_ICON_SIZE if compact else self.ICON_SIZE
         self._apply_theme()
 
     def retranslate(self) -> None:
@@ -153,6 +173,12 @@ class SideMenu(QWidget):
     # A door reads as "leave"; power-off stays reserved for exiting the app.
     SIGN_OUT_ICON = "fa5s.door-open"
 
+    # Below this height (1366x768 and 1024x768 screens) the tiles shrink so
+    # more of them fit before the list has to scroll (#590).
+    COMPACT_HEIGHT = 800
+    TILE_SPACING = 20
+    COMPACT_TILE_SPACING = 8
+
     def __init__(self, parent=None):
         """Build the menu (hidden until shown) and register for live language updates."""
         super().__init__(parent)
@@ -174,6 +200,7 @@ class SideMenu(QWidget):
 
         self.raise_()
         self._nav_buttons: list[NavTile] = []
+        self.is_compact = False
         self.init_ui()
 
         self.retranslate_ui()
@@ -202,12 +229,22 @@ class SideMenu(QWidget):
         self.lbl_section.setContentsMargins(16, 14, 0, 8)
         main_layout.addWidget(self.lbl_section)
 
-        # ── Navigation Tiles (single column) ─────────────────────
+        # ── Navigation Tiles (single column, scrollable) ─────────
+        # The tiles scroll; the profile/Sign Out block and the toolbar
+        # below sit outside the scroll area so they can never be clipped
+        # on a short screen such as 1366x768 (#590).
+        self.nav_scroll = QScrollArea()
+        self.nav_scroll.setObjectName("SideMenuScroll")
+        self.nav_scroll.setWidgetResizable(True)
+        self.nav_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.nav_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
         nav_container = QWidget()
-        nav_container.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        nav_container.setObjectName("SideMenuScrollInner")
         nav_layout = QVBoxLayout(nav_container)
         nav_layout.setContentsMargins(10, 4, 10, 4)
-        nav_layout.setSpacing(20)
+        nav_layout.setSpacing(self.TILE_SPACING)
+        self.nav_layout = nav_layout
 
         self.btn_management = NavTile("side_menu.management", "fa5s.chart-line")
         self.btn_management.clicked.connect(self._on_management)
@@ -249,10 +286,9 @@ class SideMenu(QWidget):
         nav_layout.addWidget(self.btn_close_shift)
         self._nav_buttons.append(self.btn_close_shift)
 
-        main_layout.addWidget(nav_container)
-
-        # ── Spacer ────────────────────────────────────────────────
-        main_layout.addStretch(1)
+        nav_layout.addStretch(1)
+        self.nav_scroll.setWidget(nav_container)
+        main_layout.addWidget(self.nav_scroll, 1)
 
         # ── Separator ─────────────────────────────────────────────
         main_layout.addWidget(self._make_separator())
@@ -341,6 +377,27 @@ class SideMenu(QWidget):
         toolbar_layout.addWidget(self.btn_power)
 
         main_layout.addWidget(toolbar)
+
+    # ── Compact mode ──────────────────────────────────────────────
+
+    def resizeEvent(self, event) -> None:
+        """Switch to compact tiles on short screens, roomy tiles on tall ones."""
+        super().resizeEvent(event)
+        self.set_compact(event.size().height() < self.COMPACT_HEIGHT)
+
+    def set_compact(self, compact: bool) -> None:
+        """Shrink tiles and spacing so more tiles fit on a short screen.
+
+        Args:
+            compact: True for small tiles (60px, 8px apart), False for the
+                normal ones (80px, 20px apart).
+        """
+        if compact == self.is_compact:
+            return
+        self.is_compact = compact
+        self.nav_layout.setSpacing(self.COMPACT_TILE_SPACING if compact else self.TILE_SPACING)
+        for tile in self._nav_buttons:
+            tile.set_compact(compact)
 
     # ── Helpers ───────────────────────────────────────────────────
 

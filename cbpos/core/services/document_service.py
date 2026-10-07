@@ -30,6 +30,10 @@ DEFAULT_PATTERNS: dict[str, str] = {
     "PROFORMA": "QUO-{Y}-{seq:05d}",
 }
 _FALLBACK_PATTERN = "DOC-{Y}-{seq:05d}"
+# Receipts that synced tills (terminal_mode "main"/"terminal") number in
+# their own local database and later push to the Main PC.
+_TERMINAL_SCOPED_TYPES = ("SALE", "RETURN")
+_SYNC_TERMINAL_MODES = ("main", "terminal")
 
 
 def _terminal_short(terminal_id: str) -> str:
@@ -111,6 +115,34 @@ def validate_doc_pattern(pattern: str, terminal_id: str = "TERM-01") -> str | No
     return None
 
 
+def terminal_scoped_pattern(pattern: str, doc_type: str, terminal_mode: str) -> str:
+    """Put the terminal in front of a sale/return format on synced tills.
+
+    In sync mode each till numbers receipts offline in its own database and
+    pushes them to the Main PC, where ``document_number`` is unique. A shared
+    ``INV-{Y}-{seq}`` series would hand two tills the same number, so unless
+    the format already names the terminal, ``{T}-`` is prefixed. The result
+    starts with the terminal, so each till's LIKE prefix (and sequence) is
+    its own.
+
+    Args:
+        pattern: The (valid) stored format.
+        doc_type: e.g. "SALE", "RETURN", "PURCHASE".
+        terminal_mode: "standalone", "main" or "terminal".
+
+    Returns:
+        The format generate_number() actually uses.
+    """
+    if (
+        doc_type in _TERMINAL_SCOPED_TYPES
+        and terminal_mode in _SYNC_TERMINAL_MODES
+        and "{T}" not in pattern
+        and "{terminal}" not in pattern
+    ):
+        return "{T}-" + pattern
+    return pattern
+
+
 def _search_prefix(pattern: str, reset_period: str, now: datetime, terminal_id: str) -> str:
     """Build the LIKE prefix that scopes the sequence to the reset period.
 
@@ -157,7 +189,15 @@ class DocumentService:
     }
 
     @staticmethod
-    def preview_number(pattern: str, reset_period: str, terminal_id: str) -> str:
+    def adds_terminal_prefix(pattern: str, doc_type: str) -> bool:
+        """Return True if this till puts its terminal in front of ``pattern`` (see terminal_scoped_pattern())."""
+        from cbpos.core.services.config_service import ConfigService
+
+        terminal_mode = ConfigService.get("terminal_mode") or "standalone"
+        return terminal_scoped_pattern(pattern, doc_type, terminal_mode) != pattern
+
+    @staticmethod
+    def preview_number(pattern: str, reset_period: str, terminal_id: str, doc_type: str = "") -> str:
         """Return the number the next document would get with this pattern.
 
         Read-only: nothing is reserved. Used by the Settings live preview.
@@ -166,10 +206,15 @@ class DocumentService:
             pattern: A valid format (see validate_doc_pattern()).
             reset_period: YEARLY, MONTHLY or NEVER.
             terminal_id: Terminal ID for ``{T}``/``{terminal}``.
+            doc_type: Document type, so the preview matches
+                terminal_scoped_pattern() for sales/returns on synced tills.
 
         Returns:
             The rendered next number (sequence 1 if the lookup fails).
         """
+        from cbpos.core.services.config_service import ConfigService
+
+        pattern = terminal_scoped_pattern(pattern, doc_type, ConfigService.get("terminal_mode") or "standalone")
         now = datetime.now()
         seq = 1
         try:
@@ -180,7 +225,7 @@ class DocumentService:
         return render_pattern(pattern, seq, now, terminal_id)
 
     @staticmethod
-    def generate_number(doc_type: str) -> str:
+    def generate_number(doc_type: str, session=None) -> str:
         """Generate the next sequential document number for the given type.
 
         Supports configurable patterns and concurrency retries. A stored
@@ -188,7 +233,14 @@ class DocumentService:
         hand-edited) is logged and replaced by the default pattern.
 
         Args:
-            doc_type: e.g. "PURCHASE", "PURCHASE_ORDER", "PROFORMA".
+            doc_type: e.g. "SALE", "RETURN", "PURCHASE", "PROFORMA".
+            session: The caller's open session. When given, the number is
+                read inside the caller's transaction (it sees the caller's
+                own flushed documents, and nothing is committed here); the
+                caller inserts the document in that same transaction and
+                relies on the unique ``document_number`` index to catch a
+                number another till took meanwhile. Errors propagate
+                instead of yielding an ``ERR-`` number.
 
         Returns:
             The new document number.
@@ -206,9 +258,13 @@ class DocumentService:
         if error:
             logger.warning("Invalid %s %r (%s); using default %r", key, pattern, error, default_pattern)
             pattern = default_pattern
+        pattern = terminal_scoped_pattern(pattern, doc_type, settings.get("terminal_mode") or "standalone")
 
         now = datetime.now()
         search_prefix = _search_prefix(pattern, reset_period, now, terminal_id)
+
+        if session is not None:
+            return render_pattern(pattern, _next_seq(session, search_prefix), now, terminal_id)
 
         # Retry loop for concurrency. Use serializable isolation in network
         # mode to prevent two terminals from reading the same max sequence.

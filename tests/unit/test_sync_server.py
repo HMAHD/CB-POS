@@ -55,7 +55,7 @@ def test_product(db_session):
 
 class _FakePushHandler:
     """Stand-in for SyncRequestHandler exposing only what
-    _handle_push_transactions/_apply_record actually touch."""
+    _handle_push_transactions actually touches."""
 
     def __init__(self, envelope):
         self._envelope = envelope
@@ -70,7 +70,6 @@ class _FakePushHandler:
         self.response_status = status
 
     _handle_push_transactions = SyncRequestHandler._handle_push_transactions
-    _apply_record = SyncRequestHandler._apply_record
     _log_sync = staticmethod(SyncRequestHandler._log_sync)
 
 
@@ -176,8 +175,8 @@ class TestStockPropagation:
         # terminal that retried after losing the response and incremented
         # its own sequence counter. The registry's sequence-based dedup
         # would not catch this (sequence is higher), so this only stays
-        # correct because _apply_record checks whether the movement row
-        # already existed before applying its delta.
+        # correct because the movement is found again through sync_id_map
+        # and its delta is only applied when that map entry is created.
         retry_envelope = make_envelope(
             terminal_id,
             "PUSH_TRANSACTIONS",

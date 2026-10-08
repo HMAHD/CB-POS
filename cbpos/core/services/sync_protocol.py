@@ -162,6 +162,24 @@ def model_to_dict(instance: Base, include_relationships: bool = False) -> dict[s
 def dict_to_model(model_class: type[Base], data: dict[str, Any]) -> Base:
     """Create a SQLAlchemy model instance from a dict.
 
+    Values are coerced as described in :func:`coerce_columns`.
+
+    Args:
+        model_class: The SQLAlchemy model class.
+        data: Dict with column names as keys.
+
+    Returns:
+        An unsaved model instance (not added to any session).
+    """
+    return model_class(**coerce_columns(model_class, data))
+
+
+def coerce_columns(model_class: type[Base], data: dict[str, Any]) -> dict[str, Any]:
+    """Return ``data``'s column values converted to the model's Python types.
+
+    Keys that are not columns of ``model_class`` (and list values, i.e.
+    nested relationships) are dropped.
+
     Handles type coercion:
     - ``Decimal`` columns: str → Decimal
     - ``DateTime`` columns: ISO string → datetime
@@ -174,7 +192,7 @@ def dict_to_model(model_class: type[Base], data: dict[str, Any]) -> Base:
         data: Dict with column names as keys.
 
     Returns:
-        An unsaved model instance (not added to any session).
+        Dict of column key → coerced value.
     """
     mapper = sa_inspect(model_class)
     column_types = {}
@@ -220,7 +238,7 @@ def dict_to_model(model_class: type[Base], data: dict[str, Any]) -> Base:
         else:
             kwargs[key] = value
 
-    return model_class(**kwargs)
+    return kwargs
 
 
 # ---------------------------------------------------------------------------

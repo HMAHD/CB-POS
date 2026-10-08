@@ -32,7 +32,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.constants.status import DocumentStatus, Precision
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.stock_count_service import StockCountService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.formatters import format_currency, format_number, format_quantity
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
@@ -89,11 +89,11 @@ class StockCountItemModel(QAbstractTableModel):
             if col == 1:
                 return item.product.name_en if item.product else _t("stock_take.unknown_product")
             if col == 2:
-                return f"{item.expected_qty:.3f}"
+                return _format_count(item.expected_qty, item.product)
             if col == 3:
-                return f"{item.counted_qty:.3f}" if item.counted_qty is not None else ""
+                return _format_count(item.counted_qty, item.product)
             if col == 4:
-                return f"{item.variance_qty:.3f}" if item.variance_qty is not None else ""
+                return _format_count(item.variance_qty, item.product)
             if col == 5:
                 return format_currency(item.variance_value) if item.variance_value is not None else ""
 
@@ -175,6 +175,13 @@ def _count_decimals(product) -> int:
     if product.unit is not None:
         return min(product.unit.decimal_places or 0, 3)
     return 3 if product.is_weighted else 0
+
+
+def _format_count(qty, product) -> str:
+    """A count in its product's unit: ``12`` for pieces, ``1.250`` for kg; "" if not counted yet."""
+    if qty is None:
+        return ""
+    return format_quantity(qty, _count_decimals(product))
 
 
 class CountedDelegate(QStyledItemDelegate):
@@ -298,7 +305,7 @@ class StockCountReportDialog(QDialog):
                 (3, item.counted_qty),
                 (4, item.variance_qty),
             ]:
-                text = f"{val:.3f}" if val is not None else ""
+                text = _format_count(val, item.product)
                 cell = QTableWidgetItem(text)
                 cell.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 if col == 4 and val is not None:
@@ -908,7 +915,7 @@ class StockTakeView(QWidget):
             self.history_table.setItem(row, 1, QTableWidgetItem(sc.date.strftime("%Y-%m-%d %H:%M") if sc.date else ""))
             self.history_table.setItem(row, 2, QTableWidgetItem(sc.user.username if sc.user else ""))
 
-            items_item = QTableWidgetItem(str(len(sc.items)) if sc.items else "0")
+            items_item = QTableWidgetItem(format_number(len(sc.items or []), 0))
             items_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.history_table.setItem(row, 3, items_item)
 

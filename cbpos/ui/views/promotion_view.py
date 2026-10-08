@@ -28,8 +28,9 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.category_service import CategoryService
 from cbpos.core.services.promotion_service import SUPPORTED_TYPES, PromotionService
+from cbpos.core.utils.formatters import format_discount
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
-from cbpos.ui.widgets.table_helpers import configure_table_columns
+from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
 
 _DAY_KEYS = [
     "promotion.day_mon",
@@ -122,6 +123,7 @@ class PromotionView(QWidget):
                 _t("common.status"),
             ]
         )
+        align_numeric_headers(self.table, (2,))  # Value
 
     @staticmethod
     def _get_promotion_status(promotion) -> tuple[str, QColor]:
@@ -154,7 +156,9 @@ class PromotionView(QWidget):
 
             self.table.setItem(row, 0, QTableWidgetItem(p.name))
             self.table.setItem(row, 1, QTableWidgetItem(p.type))
-            self.table.setItem(row, 2, QTableWidgetItem(f"{p.value:.2f}"))
+            value_item = QTableWidgetItem(format_discount(p.type, p.value))
+            value_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.table.setItem(row, 2, value_item)
             self.table.setItem(row, 3, QTableWidgetItem(p.start_time.strftime("%Y-%m-%d %H:%M")))
             self.table.setItem(row, 4, QTableWidgetItem(p.end_time.strftime("%Y-%m-%d %H:%M")))
 

@@ -33,7 +33,7 @@ from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.services.transaction_service import TransactionService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.formatters import format_currency, format_discount, format_quantity
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.dialogs.void_reason_dialog import VoidReasonDialog
@@ -401,7 +401,7 @@ class DocumentBrowserView(QWidget):
                 _t("document_browser.item_header_total"),
             ]
         )
-        align_numeric_headers(self.items_table, (1, 2, 4))  # Qty, Unit Price, Total
+        align_numeric_headers(self.items_table, (1, 2, 3, 4))  # Qty, Unit Price, Discount, Total
 
         # Action buttons
         self.reprint_btn.setText(_t("document_browser.btn_reprint"))
@@ -617,7 +617,7 @@ class DocumentBrowserView(QWidget):
                 name_item.setToolTip(note)
             self.items_table.setItem(idx, 0, name_item)
 
-            qty_item = QTableWidgetItem(f"{item['quantity']:.3f}")
+            qty_item = QTableWidgetItem(format_quantity(item["quantity"]))
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(idx, 1, qty_item)
 
@@ -625,10 +625,10 @@ class DocumentBrowserView(QWidget):
             price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(idx, 2, price_item)
 
-            disc = item.get("discount_type", "NONE")
-            disc_val = item.get("discount_value", 0)
-            disc_text = "" if disc == "NONE" else f"{disc} {disc_val}"
-            self.items_table.setItem(idx, 3, QTableWidgetItem(disc_text))
+            disc_text = format_discount(item.get("discount_type"), item.get("discount_value"))
+            disc_item = QTableWidgetItem(disc_text)
+            disc_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self.items_table.setItem(idx, 3, disc_item)
 
             total_item = QTableWidgetItem(format_currency(item["line_total"]))
             total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)

@@ -39,6 +39,7 @@ from cbpos.core.constants.hardware import DRAWER_PINS, PrinterType
 from cbpos.core.services.error_log_service import ErrorLogService
 from cbpos.core.services.hardware_test_service import HardwareTestResult, HardwareTestService
 from cbpos.core.services.maintenance_service import MaintenanceService
+from cbpos.core.utils.formatters import format_number
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import drawer_pin_setting
 from cbpos.ui.hardware_test_feedback import set_hardware_test_status, show_hardware_test_result
@@ -231,7 +232,7 @@ class AdminToolsView(QWidget):
             self.table_counts.setRowCount(len(tables))
             for row, t in enumerate(tables):
                 self.table_counts.setItem(row, 0, QTableWidgetItem(t["name"]))
-                rows_item = QTableWidgetItem(str(t["rows"]))
+                rows_item = QTableWidgetItem(format_number(t["rows"], 0))
                 rows_item.setTextAlignment(NUMERIC_ALIGNMENT)
                 self.table_counts.setItem(row, 1, rows_item)
         except Exception as e:

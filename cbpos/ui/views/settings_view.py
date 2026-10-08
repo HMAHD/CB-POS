@@ -7,11 +7,21 @@ import weakref
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
+    QAbstractButton,
+    QComboBox,
+    QDateTimeEdit,
+    QDoubleSpinBox,
     QFrame,
     QHBoxLayout,
+    QLabel,
+    QLineEdit,
     QMessageBox,
+    QPlainTextEdit,
     QPushButton,
+    QSlider,
+    QSpinBox,
     QStackedWidget,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -49,8 +59,11 @@ class SettingsView(QWidget):
         super().__init__()
         self._settings_dirty = False
         self._saved_snapshot: dict = {}
+        self._page_snapshots: list[dict | None] = []
+        self._dirty_pages: list[int] = []
         self.init_ui()
         self.load_settings()
+        self._watch_page_edits()
 
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui)
@@ -67,14 +80,10 @@ class SettingsView(QWidget):
         self.destroyed.connect(_unregister)
 
     def init_ui(self):
-        """Build the sidebar, stacked config/operational pages, and Save/Cancel footer."""
-        main_layout = QVBoxLayout(self)
+        """Build the sidebar and, beside it, the stacked pages over one action bar."""
+        main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
-
-        body_layout = QHBoxLayout()
-        body_layout.setContentsMargins(0, 0, 0, 0)
-        body_layout.setSpacing(0)
 
         # --- Sidebar ---
         self.sidebar = CollapsibleSidebar()
@@ -98,7 +107,7 @@ class SettingsView(QWidget):
 
         self.sidebar.finalize()
         self.sidebar.highlight(0)
-        body_layout.addWidget(self.sidebar)
+        main_layout.addWidget(self.sidebar)
 
         # --- Content Area ---
         self.stack = QStackedWidget()
@@ -133,37 +142,41 @@ class SettingsView(QWidget):
         self.admin_tools_view = AdminToolsView()
         self.stack.addWidget(self.admin_tools_view)
 
-        body_layout.addWidget(self.stack, 1)
-        main_layout.addLayout(body_layout, 1)
+        # --- Content column: pages over one Settings-wide action bar ---
+        # The bar sits under the content only, never under the sidebar, so
+        # the sidebar keeps its full height (#616, #591). It stays visible on
+        # every page so no page's content area jumps in height (#317).
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+        content_layout.addWidget(self.stack, 1)
 
-        # --- Footer Bar (Save/Cancel shown only on config pages 0-6;
-        #     the frame itself always stays visible to reserve its height) ---
-        self.footer_frame = QFrame()
-        self.footer_frame.setFixedHeight(70)
-        self.footer_frame.setObjectName("SettingsFooter")
-        footer_layout = QHBoxLayout(self.footer_frame)
-        footer_layout.setContentsMargins(30, 15, 30, 15)
-        footer_layout.setSpacing(15)
+        self.action_bar = QFrame()
+        self.action_bar.setObjectName("SettingsActionBar")
+        self.action_bar.setFixedHeight(52)
+        bar_layout = QHBoxLayout(self.action_bar)
+        bar_layout.setContentsMargins(20, 6, 20, 6)
+        bar_layout.setSpacing(12)
 
-        footer_layout.addStretch()
+        # Unsaved pages on config pages; "changes save automatically" on tool pages
+        self.lbl_status = QLabel()
+        self.lbl_status.setObjectName("SettingsSaveStatus")
+        bar_layout.addWidget(self.lbl_status, 1)
 
+        # Saves every config page at once -- kept apart from each page's own
+        # Reset to Defaults (top of the page), which only resets that page.
         self.btn_save = QPushButton("")
-        self.btn_save.setFixedSize(140, 40)
         self.btn_save.setObjectName("BtnSave")
+        self.btn_save.setMinimumWidth(170)
+        self.btn_save.setFixedHeight(40)
         self.btn_save.clicked.connect(self.save_all)
+        bar_layout.addWidget(self.btn_save)
 
-        self.btn_cancel = QPushButton("")
-        self.btn_cancel.setFixedSize(120, 40)
-        self.btn_cancel.setObjectName("BtnCancel")
-        self.btn_cancel.clicked.connect(self.close_requested.emit)
+        content_layout.addWidget(self.action_bar)
+        main_layout.addWidget(content, 1)
 
-        footer_layout.addWidget(self.btn_save)
-        footer_layout.addWidget(self.btn_cancel)
-
-        main_layout.addWidget(self.footer_frame)
-
-        # Hide Save/Cancel (not the frame) on operational pages (they auto-save)
-        self.stack.currentChanged.connect(self._update_footer_visibility)
+        self.stack.currentChanged.connect(self._update_status_text)
 
     def retranslate_ui(self) -> None:
         """Update all translatable text in the view."""
@@ -184,12 +197,12 @@ class SettingsView(QWidget):
         # Bottom sidebar buttons
         self.sidebar.retranslate_pos_logout()
 
-        # Footer buttons
-        self.btn_save.setText(_t("settings.btn_save"))
-        self.btn_cancel.setText(_t("settings.btn_cancel"))
+        # Action bar
+        self.btn_save.setText(_t("settings.btn_save_all"))
+        self._refresh_unsaved_markers()
 
     # ------------------------------------------------------------------
-    # Page switching with unsaved-changes guard
+    # Page switching
     # ------------------------------------------------------------------
 
     def _take_snapshot(self) -> dict:
@@ -203,31 +216,79 @@ class SettingsView(QWidget):
     def switch_page(self, index: int) -> None:
         """Switch the stacked widget to the given page index.
 
-        If settings have been modified, prompt the user before switching.
+        Edits on other pages are kept (their sidebar items show the unsaved
+        marker), so several pages can be edited and saved together.
         """
-        if self._saved_snapshot and self._take_snapshot() != self._saved_snapshot:
-            reply = QMessageBox.question(
-                self,
-                _t("settings.unsaved_title"),
-                _t("settings.unsaved_message"),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-            if reply == QMessageBox.StandardButton.No:
-                return
-            # User chose to discard — reload to reset dirty state
-            self.load_settings()
         self.stack.setCurrentIndex(index)
 
-    def _update_footer_visibility(self, index: int) -> None:
-        """Hide only the Save/Cancel buttons on operational pages (they
-        auto-save) -- never the whole footer_frame. Hiding the frame
-        itself let Qt reclaim its 70px, making those 3 pages' content
-        area render taller than every config page's, a jump a user would
-        read as "this page feels different" for no visible reason."""
-        has_save = index < len(self.pages)
-        self.btn_save.setVisible(has_save)
-        self.btn_cancel.setVisible(has_save)
+    # ------------------------------------------------------------------
+    # Unsaved-changes markers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _page_values(page) -> dict | None:
+        """Return a config page's current values, or None if they can't be read yet."""
+        try:
+            return page.save()
+        except Exception:
+            return None
+
+    def _watch_page_edits(self) -> None:
+        """Re-check the unsaved markers whenever any input on a config page changes."""
+        for page in self.pages:
+            page.defaults_restored.connect(self._on_defaults_restored)
+            for w in page.findChildren(QLineEdit):
+                w.textChanged.connect(self._refresh_unsaved_markers)
+            for w in page.findChildren(QTextEdit) + page.findChildren(QPlainTextEdit):
+                w.textChanged.connect(self._refresh_unsaved_markers)
+            for w in page.findChildren(QComboBox):
+                w.currentIndexChanged.connect(self._refresh_unsaved_markers)
+                w.editTextChanged.connect(self._refresh_unsaved_markers)
+            for w in page.findChildren(QAbstractButton):
+                if w.isCheckable():
+                    w.toggled.connect(self._refresh_unsaved_markers)
+            for w in page.findChildren(QSpinBox) + page.findChildren(QDoubleSpinBox) + page.findChildren(QSlider):
+                w.valueChanged.connect(self._refresh_unsaved_markers)
+            for w in page.findChildren(QDateTimeEdit):
+                w.dateTimeChanged.connect(self._refresh_unsaved_markers)
+
+    def _refresh_unsaved_markers(self, *_args) -> None:
+        """Mark each sidebar item whose page differs from what's saved, and update the status text."""
+        if len(self._page_snapshots) != len(self.pages):
+            return
+        tooltip = _t("settings.unsaved_marker_tooltip")
+        self._dirty_pages = []
+        for i, page in enumerate(self.pages):
+            dirty = self._page_values(page) != self._page_snapshots[i]
+            self.sidebar.nav_buttons[i].set_unsaved(dirty, tooltip)
+            if dirty:
+                self._dirty_pages.append(i)
+        self._update_status_text()
+
+    def _on_defaults_restored(self) -> None:
+        """A page's Reset to Defaults saved its defaults: treat them as saved."""
+        page = self.sender()
+        if page in self.pages:
+            values = self._page_values(page)
+            self._page_snapshots[self.pages.index(page)] = values
+            self._saved_snapshot.update(values or {})
+        self._refresh_unsaved_markers()
+
+    def _update_status_text(self, *_args) -> None:
+        """Say what Save will do: which pages are unsaved, or that a tool page saves itself."""
+        if self.stack.currentIndex() >= len(self.pages):
+            text, state = _t("settings.auto_save_hint"), "auto"
+        elif self._dirty_pages:
+            # Button text escapes "&" as "&&" (mnemonics); show it plainly here
+            names = ", ".join(self.sidebar.nav_buttons[i].text().replace("&&", "&") for i in self._dirty_pages)
+            text, state = _t("settings.unsaved_pages", pages=names), "unsaved"
+        else:
+            text, state = _t("settings.all_saved"), "saved"
+        self.lbl_status.setText(text)
+        if self.lbl_status.property("state") != state:
+            self.lbl_status.setProperty("state", state)
+            self.lbl_status.style().unpolish(self.lbl_status)
+            self.lbl_status.style().polish(self.lbl_status)
 
     def _check_discard_unsaved(self) -> bool:
         """Check for unsaved changes and prompt user. Returns True if safe to proceed."""
@@ -273,7 +334,9 @@ class SettingsView(QWidget):
         settings = ConfigService.get_all()
         for page in self.pages:
             page.load(settings)
+        self._page_snapshots = [self._page_values(page) for page in self.pages]
         self._saved_snapshot = self._take_snapshot()
+        self._refresh_unsaved_markers()
 
     def save_all(self):
         """Validate and save all config pages, then apply the changes live.
@@ -381,7 +444,9 @@ class SettingsView(QWidget):
             or all_settings.get("terminal_mode", "standalone") != current_config.get("terminal_mode", "standalone")
         )
 
+        self._page_snapshots = [self._page_values(page) for page in self.pages]
         self._saved_snapshot = self._take_snapshot()
+        self._refresh_unsaved_markers()
 
         if restart_required:
             if self._prompt_restart(get_language(), new_lang):

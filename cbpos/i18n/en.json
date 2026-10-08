@@ -1345,6 +1345,12 @@
     "cashflow_net_type": "Net"
   },
   "settings": {
+    "unsaved_title": "Unsaved Changes",
+    "unsaved_marker_tooltip": "This page has changes that aren't saved yet",
+    "all_saved": "All changes saved.",
+    "unsaved_pages": "Not saved yet: {pages}",
+    "auto_save_hint": "Changes on this page save automatically.",
+    "btn_save_all": "Save all changes",
     "title": "Settings - CB POS",
     "btn_reset_defaults": "Reset to Defaults",
     "reset_defaults_title": "Reset to Defaults",
@@ -1360,9 +1366,6 @@
     "sidebar_payments": "Payments",
     "sidebar_data_safety": "Data Safety",
     "sidebar_admin_tools": "Admin Tools",
-    "btn_save": "Save Changes",
-    "btn_cancel": "Cancel",
-    "unsaved_title": "Unsaved Changes",
     "unsaved_message": "You have unsaved changes. Continue without saving?",
     "saved_title": "Saved",
     "saved_message": "Settings saved successfully.",

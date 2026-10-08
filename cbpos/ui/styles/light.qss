@@ -1551,9 +1551,26 @@ QLabel[class="SectionHeader"] {
     margin-bottom: 20px;
 }
 
-QFrame#SettingsFooter {
-    background-color: #F8F9FA;
+/* Settings action bar -- under the content area only, never under the
+   sidebar (#616). Status text: muted on tool pages ("save automatically"),
+   warning while pages are unsaved, success once everything is saved. */
+QFrame#SettingsActionBar {
+    background-color: #FFFFFF;
     border-top: 1px solid #DEE2E6;
+}
+
+QLabel#SettingsSaveStatus {
+    color: #6C757D;
+    background: transparent;
+}
+
+QLabel#SettingsSaveStatus[state="unsaved"] {
+    color: #B35C00;
+    font-weight: bold;
+}
+
+QLabel#SettingsSaveStatus[state="saved"] {
+    color: #198754;
 }
 
 /* --- Dialogs --- */

@@ -15,11 +15,10 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.models import Sale
-from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.email_service import EmailService
 from cbpos.core.services.invoice_service import InvoiceService
+from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
-from cbpos.core.services.receipt_service import ReceiptService
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
@@ -172,7 +171,6 @@ class ReceiptOptionsDialog(QDialog):
         """Print receipt via thermal printer. Auto-closes on success, shows retry on failure."""
         try:
             worker = PrintWorker.instance()
-            language = ConfigService.get("language") or "en"
 
             # PrintWorker.instance() is one shared, persistent object for
             # the app's lifetime, and the Retry button on _on_print_error
@@ -191,12 +189,9 @@ class ReceiptOptionsDialog(QDialog):
             worker.error_occurred.connect(self._on_print_error)
             worker.job_completed.connect(self._on_print_finished)
 
-            if language == "en":
-                receipt_text = ReceiptService.build_receipt_text(self.sale)
-                worker.add_job("print_receipt", receipt_text)
-            else:
-                receipt_image = ReceiptService.build_receipt_image(self.sale)
-                worker.add_job("print_image", receipt_image)
+            # Same ReceiptBuilder commands the Preview shows, with the
+            # configured number of copies, as one job.
+            PrinterService.print_receipt(self.sale)
         except Exception as e:
             logger.error("Receipt print failed: %s", e)
             QMessageBox.warning(

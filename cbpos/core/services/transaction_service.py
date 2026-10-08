@@ -14,6 +14,7 @@ from cbpos.core.models import (
     Sale,
     SaleItem,
     SalePayment,
+    User,
     VoidReason,
 )
 from cbpos.core.services.auth_service import AuthService
@@ -22,7 +23,7 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.document_service import DocumentService
 from cbpos.core.services.printer_service import PrinterService
-from cbpos.core.services.receipt_service import ReceiptService
+from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.stock_service import StockService
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
@@ -123,24 +124,17 @@ class TransactionService:
 
     @staticmethod
     def _print_receipt_async(sale: Sale) -> None:
-        """Print a receipt asynchronously via the print worker.
+        """Auto-print the sale receipt on the print worker thread.
 
-        Checks language setting to decide between text and image receipt.
+        Goes through `PrinterService.print_transaction`, so the receipt is
+        built by `ReceiptBuilder` (honours every receipt setting, the
+        receipt language, auto-print and copies). A failure is logged,
+        never raised -- the sale is already committed.
         """
-        worker = PrintWorker.instance()
-        settings = ConfigService.get_all()
-        language = settings.get("language", "en")
-
-        if language == "en":
-            receipt_text = ReceiptService.build_receipt_text(sale)
-            worker.add_job("print_receipt", receipt_text)
-        else:
-            receipt_image = ReceiptService.build_receipt_image(sale)
-            worker.add_job("print_image", receipt_image)
-
-        # Additionally print a formal A4 Tax Invoice for VAT-registered (B2B)
-        # customers. Additive only -- never replaces the thermal receipt above.
-        PrinterService.maybe_print_b2b_invoice(sale)
+        try:
+            PrinterService.print_transaction(sale)
+        except Exception as e:
+            logger.error("Auto-print of %s failed: %s", sale.document_number, e)
 
     @staticmethod
     def _execute_sale(cart_service: CartService, payments: list, customer_id: int = None) -> Sale:
@@ -434,6 +428,24 @@ class TransactionService:
             return False
 
     @staticmethod
+    def _build_refund_receipt(session: Session, original_sale: Sale, refund_sale: Sale) -> list[dict] | None:
+        """Build the refund voucher with `ReceiptBuilder` (None if it can't be built).
+
+        A receipt problem must never undo a refund, so errors are logged.
+        """
+        try:
+            authorizer = session.get(User, refund_sale.user_id)
+            return ReceiptBuilder.build_refund_receipt(
+                original_sale,
+                refund_amount=original_sale.total_amount,
+                authorized_by=authorizer.username if authorizer else "",
+                refund_timestamp=refund_sale.date,
+            )
+        except Exception as e:
+            logger.error("Could not build refund receipt for %s: %s", refund_sale.document_number, e)
+            return None
+
+    @staticmethod
     def process_refund(original_sale_id: int, refund_reason: str, user_id: int) -> bool:
         """
         Process a full refund for a previous sale.
@@ -449,6 +461,7 @@ class TransactionService:
             bool: True if successful
         """
         db = Database()
+        refund_commands: list[dict] | None = None
         try:
             with db.get_session() as session:
                 # 1. Validate original sale
@@ -561,9 +574,15 @@ class TransactionService:
                 )
                 session.add(log)
 
-                # 6. Print refund voucher (after commit via context manager)
-                TransactionService._print_receipt_async(refund_sale)
+                # 6. Build the refund voucher while items/products are loaded;
+                # it is queued only after the commit below succeeds.
+                refund_commands = TransactionService._build_refund_receipt(session, original_sale, refund_sale)
 
+            if refund_commands:
+                try:
+                    PrinterService.auto_print(refund_commands)
+                except Exception as e:
+                    logger.error("Auto-print of refund %s failed: %s", refund_receipt_no, e)
             return True
 
         except Exception as e:

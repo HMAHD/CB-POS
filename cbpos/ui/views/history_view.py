@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.auth_service import AuthService
-from cbpos.core.services.receipt_service import ReceiptService
+from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency
@@ -330,12 +330,6 @@ class HistoryView(QWidget):
             return
 
         try:
-            # Build receipt
-            from cbpos.core.services.config_service import ConfigService
-
-            settings = ConfigService.get_all()
-            language = settings.get("language", "en")
-
             worker = PrintWorker.instance()
             # PrintWorker.add_job() only queues the job -- the print itself
             # happens later, asynchronously, on the worker thread. Showing
@@ -353,12 +347,7 @@ class HistoryView(QWidget):
             worker.error_occurred.connect(self._on_reprint_error)
             worker.job_completed.connect(self._on_reprint_finished)
 
-            if language == "en":
-                receipt_text = ReceiptService.build_receipt_text(self.current_sale)
-                worker.add_job("print_receipt", receipt_text)
-            else:
-                receipt_image = ReceiptService.build_receipt_image(self.current_sale)
-                worker.add_job("print_image", receipt_image)
+            PrinterService.print_receipt(self.current_sale, is_reprint=True)
         except Exception as e:
             logger.error("Reprint failed: %s", e)
             QMessageBox.critical(self, _t("common.error"), _t("history.reprint_failed"))

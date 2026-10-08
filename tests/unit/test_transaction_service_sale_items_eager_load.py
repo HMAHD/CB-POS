@@ -4,8 +4,8 @@ session closes ("Eager-load relationships before session closes") but
 never touched sale.items or item.product the same way, even though
 ReceiptOptionsDialog.print_thermal() (opened right after a sale completes
 whenever show_receipt_dialog is on -- the default) reads exactly that via
-ReceiptService.build_receipt_text()/build_receipt_image(): `for item in
-sale.items: name = item.product.name_en[:20]`. Without the force-load,
+ReceiptBuilder.build_receipt(): `for item in sale.items: name =
+item.product.name_en`. Without the force-load,
 that crashes with DetachedInstanceError once the real session closes.
 
 Note: the shared db_session test fixture patches session.close() to a

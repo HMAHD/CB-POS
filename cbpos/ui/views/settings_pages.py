@@ -1,6 +1,7 @@
 """Individual tabbed pages shown inside the Settings screen (shop info, tax, hardware, receipt, system, network)."""
 
 import decimal
+import logging
 import socket
 import weakref
 
@@ -44,10 +45,13 @@ from cbpos.core.services.document_service import (
 from cbpos.core.services.hardware_test_service import HardwareTestResult
 from cbpos.core.services.language_service import LanguageService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
+from cbpos.core.services.receipt_logo_service import store_receipt_logo
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.help_icon_button import HelpIconButton
+
+logger = logging.getLogger(__name__)
 
 
 class SettingsPage(QWidget):
@@ -1814,15 +1818,27 @@ class ReceiptPage(SettingsPage):
     # ------------------------------------------------------------------
 
     def browse_logo(self) -> None:
-        """Prompt for an image file and set it as the receipt logo path."""
+        """Prompt for an image and copy it into the data folder as the receipt logo.
+
+        The copy (not the picked file) is what prints, so moving or
+        deleting the original -- or restoring a backup on another PC --
+        keeps the logo (#626).
+        """
         path, _ = QFileDialog.getOpenFileName(
             self,
             _t("settings.receipt.select_logo_title"),
             "",
             _t("settings.receipt.select_logo_filter"),
         )
-        if path:
-            self.input_logo_path.setText(path)
+        if not path:
+            return
+        try:
+            stored = store_receipt_logo(path)
+        except (OSError, ValueError) as e:
+            logger.error("Could not copy receipt logo %s: %s", path, e)
+            QMessageBox.warning(self, _t("common.error"), _t("settings.receipt.logo_copy_failed"))
+            return
+        self.input_logo_path.setText(stored)
 
     def _clear_logo(self) -> None:
         self.input_logo_path.clear()

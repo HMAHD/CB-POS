@@ -255,7 +255,7 @@ def test_process_refund(db_session, test_user, test_product, completed_sale):
     """Full refund creates a negative sale, restores stock, links to original."""
     with (
         patch("cbpos.core.services.transaction_service.PrintWorker"),
-        patch("cbpos.core.services.transaction_service.ReceiptService"),
+        patch("cbpos.core.services.transaction_service.PrinterService"),
         patch("cbpos.core.services.transaction_service.ConfigService.get_all", return_value={"language": "en"}),
     ):
         result = TransactionService.process_refund(completed_sale.id, "Defective item", test_user.id)
@@ -365,7 +365,7 @@ def test_refund_nonexistent_sale(db_session):
 
 
 def test_b2b_sale_triggers_invoice_print(db_session, test_user, test_product):
-    """A sale for a VAT-registered customer additionally calls the A4 invoice path."""
+    """A VAT-registered customer's sale auto-prints via print_transaction (receipt + A4 invoice)."""
     customer = Customer(name="Registered Co", vat_number="VAT-12345")
     db_session.add(customer)
     db_session.commit()
@@ -382,11 +382,11 @@ def test_b2b_sale_triggers_invoice_print(db_session, test_user, test_product):
         result = TransactionService.process_sale(cart_service, payments, customer_id=customer.id)
 
     assert result is not None
-    mock_printer.maybe_print_b2b_invoice.assert_called_once()
+    mock_printer.print_transaction.assert_called_once()
 
 
 def test_walkin_sale_does_not_error_on_invoice_check(db_session, test_user, test_product):
-    """A walk-in (no customer) sale still calls the B2B check, which is a safe no-op."""
+    """A walk-in (no customer) sale auto-prints via the same print_transaction path."""
     db_session.commit()
 
     with (
@@ -401,4 +401,4 @@ def test_walkin_sale_does_not_error_on_invoice_check(db_session, test_user, test
         result = TransactionService.process_sale(cart_service, payments)
 
     assert result is not None
-    mock_printer.maybe_print_b2b_invoice.assert_called_once()
+    mock_printer.print_transaction.assert_called_once()

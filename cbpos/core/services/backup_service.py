@@ -2,8 +2,9 @@
 Backup and restore service for CB-POS data safety.
 
 Provides AES-256 encrypted zip backups of the SQLite database,
-product images, and settings. Supports restore with safety snapshot,
-backup listing, retention cleanup, and verification.
+product images, settings and data-folder assets (receipt logo).
+Supports restore with safety snapshot, backup listing, retention
+cleanup, and verification.
 """
 
 import logging
@@ -25,6 +26,10 @@ logger = logging.getLogger(__name__)
 
 # AES-256 encryption for backup archives
 _ZIP_ENCRYPTION = pyzipper.WZ_AES
+
+# Data-folder assets (receipt logo, see receipt_logo_service) backed up under this name
+_ASSETS_DIR = "assets"
+_RECEIPT_LOGO_STEM = "receipt_logo"
 
 # Expected files inside a valid backup
 _REQUIRED_BACKUP_CONTENTS = {"cbpos.db"}
@@ -138,6 +143,13 @@ class BackupService:
                 settings_file = Config.DATA_DIR / "settings.json"
                 if settings_file.exists():
                     zf.write(settings_file, "settings.json")
+
+                # Add data-folder assets such as the receipt logo (#626)
+                assets_dir = Config.DATA_DIR / _ASSETS_DIR
+                if assets_dir.exists():
+                    for asset in assets_dir.rglob("*"):
+                        if asset.is_file():
+                            zf.write(asset, f"{_ASSETS_DIR}/{asset.relative_to(assets_dir).as_posix()}")
         except BaseException:
             # Never leave a half-written archive that looks like a backup
             backup_path.unlink(missing_ok=True)
@@ -287,8 +299,31 @@ class BackupService:
                         dest_file.parent.mkdir(parents=True, exist_ok=True)
                         shutil.copy2(str(img_file), str(dest_file))
 
+            BackupService._restore_assets(tmp_path / _ASSETS_DIR, Config.DATA_DIR / _ASSETS_DIR)
+
         logger.info("Backup restored successfully from: %s", backup_path)
         return True
+
+    @staticmethod
+    def _restore_assets(extracted: Path, assets_dir: Path) -> None:
+        """Put the backup's data-folder assets (receipt logo) back.
+
+        A logo in the backup replaces the current one -- including one
+        with another extension -- so the restored settings and the file
+        on disk agree. A backup without assets leaves them alone.
+        """
+        if not extracted.exists():
+            return
+        files = [f for f in extracted.rglob("*") if f.is_file()]
+        assets_dir.mkdir(parents=True, exist_ok=True)
+        if any(f.parent == extracted and f.stem == _RECEIPT_LOGO_STEM for f in files):
+            for old in assets_dir.glob(f"{_RECEIPT_LOGO_STEM}.*"):
+                old.unlink(missing_ok=True)
+        for asset in files:
+            dest = assets_dir / asset.relative_to(extracted)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(asset), str(dest))
+        logger.info("Restored %d asset file(s)", len(files))
 
     @staticmethod
     def _open_archive(

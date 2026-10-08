@@ -91,7 +91,7 @@ class TestFullSaleWorkflow:
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
             patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.ReceiptService"),
+            patch("cbpos.core.services.transaction_service.PrinterService"),
         ):
             result = TransactionService.process_sale(cart, payments)
 
@@ -166,7 +166,7 @@ class TestFullSaleWorkflow:
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
             patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.ReceiptService"),
+            patch("cbpos.core.services.transaction_service.PrinterService"),
         ):
             result = TransactionService.process_sale(cart, payments, customer_id=customer.id)
 
@@ -212,7 +212,7 @@ class TestFullSaleWorkflow:
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
             patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.ReceiptService"),
+            patch("cbpos.core.services.transaction_service.PrinterService"),
         ):
             result = TransactionService.process_sale(cart, payments)
 
@@ -249,7 +249,7 @@ class TestFullSaleWorkflow:
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
             patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.ReceiptService"),
+            patch("cbpos.core.services.transaction_service.PrinterService"),
         ):
             TransactionService.process_sale(cart, payments)
 
@@ -289,7 +289,7 @@ class TestFullSaleWorkflow:
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
             patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.ReceiptService"),
+            patch("cbpos.core.services.transaction_service.PrinterService"),
         ):
             TransactionService.process_sale(cart, payments)
 
@@ -300,7 +300,7 @@ class TestFullSaleWorkflow:
         # Refund
         with (
             patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.ReceiptService"),
+            patch("cbpos.core.services.transaction_service.PrinterService"),
             patch("cbpos.core.services.transaction_service.ConfigService.get_all", return_value={"language": "en"}),
         ):
             result = TransactionService.process_refund(sale.id, "Defective goods", user.id)
@@ -336,7 +336,7 @@ class TestFullSaleWorkflow:
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
             patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.ReceiptService"),
+            patch("cbpos.core.services.transaction_service.PrinterService"),
             pytest.raises(ValueError, match="Insufficient payment"),
         ):
             TransactionService.process_sale(cart, payments)
@@ -369,7 +369,7 @@ class TestFullSaleWorkflow:
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
             patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.ReceiptService"),
+            patch("cbpos.core.services.transaction_service.PrinterService"),
             pytest.raises(ValueError, match="Credit limit exceeded"),
         ):
             TransactionService.process_sale(cart, payments, customer_id=customer.id)
@@ -394,7 +394,7 @@ class TestFullSaleWorkflow:
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
             patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.ReceiptService"),
+            patch("cbpos.core.services.transaction_service.PrinterService"),
         ):
             TransactionService.process_sale(cart, payments)
 

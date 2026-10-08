@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.utils.formatters import format_short_name
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.resources.icons import Icons
@@ -27,7 +28,7 @@ class ActionBtn(QPushButton):
         """Build the tile layout: shortcut label, icon, and text.
 
         Args:
-            shortcut_text: Keyboard shortcut shown top-left (e.g. "F2").
+            shortcut_text: Keyboard shortcut shown top-left (e.g. "F2"); empty for none.
             label_key: i18n key for the bottom label, applied by ``retranslate()``.
             icon_name: qtawesome icon name shown in the center.
             color: Optional ``btnColor`` QSS property value for tinting.
@@ -48,11 +49,14 @@ class ActionBtn(QPushButton):
         layout.setRowStretch(1, 1)
         layout.setRowStretch(2, 0)
 
-        # Shortcut (Top-Left, subtle)
+        # Shortcut badge (top-left). Kept apart from the translated label so
+        # no translation can drop the key (#604); sized to its text so the
+        # QSS chip background hugs the key instead of filling the row.
         self.lbl_shortcut = QLabel(shortcut_text)
         self.lbl_shortcut.setObjectName("lblShortcut")
-        self.lbl_shortcut.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-        layout.addWidget(self.lbl_shortcut, 0, 0)
+        self.lbl_shortcut.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_shortcut.setVisible(bool(shortcut_text))
+        layout.addWidget(self.lbl_shortcut, 0, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
 
         # Icon (Center)
         self.lbl_icon = QLabel()
@@ -71,30 +75,19 @@ class ActionBtn(QPushButton):
             self.setProperty("btnColor", color)
 
     def _apply_theme_styles(self, icon_name: str | None = None) -> None:
-        """Apply theme-aware colors directly."""
-        from cbpos.core.services.theme_service import ThemeService
+        """Apply the theme-dependent icon color.
 
+        Label colors come from the theme QSS (#lblText/#lblShortcut in
+        dark.qss and light.qss), so they follow whichever stylesheet is
+        active; only the icon -- a pre-rendered pixmap -- has to be
+        re-tinted here (#603).
+        """
         self.lbl_icon.setObjectName("lblIcon")
-        is_dark = ThemeService.current_theme.lower() == "dark"
-
-        text_color = "#FFFFFF" if is_dark else "#1A1A1A"
-        shortcut_color = "#666666" if is_dark else "#AAAAAA"
-        # Font size/weight live in QSS (#lblText/#lblShortcut in dark.qss and
-        # light.qss) using pt units so they scale with Windows DPI settings —
-        # only the theme-dependent color is set here.
-        self.lbl_text.setStyleSheet(f"color: {text_color}; background: transparent;")
-        self.lbl_shortcut.setStyleSheet(f"color: {shortcut_color}; background: transparent;")
         self.lbl_icon.setStyleSheet("background: transparent;")
+        self.set_icon(icon_name)
 
-        if icon_name:
-            icon_color = "white" if is_dark else "#1A1A1A"
-            icon = Icons.get(icon_name, color=icon_color)
-            self.lbl_icon.setPixmap(icon.pixmap(28, 28))
-
-    def set_icon(self, icon_name: str) -> None:
+    def set_icon(self, icon_name: str | None) -> None:
         """Set icon with theme-aware color."""
-        from cbpos.core.services.theme_service import ThemeService
-
         if icon_name:
             is_dark = ThemeService.current_theme.lower() == "dark"
             icon_color = "white" if is_dark else "#1A1A1A"
@@ -160,12 +153,28 @@ class ActionPanel(QWidget):
         # can segfault mid-teardown (#392).
         self_ref = weakref.ref(self)
 
+        # Re-tint the tile icons if the theme changes under a live panel
+        # (#603). Held through the weakref too: ThemeService's callback
+        # list is class-level and would otherwise keep the panel alive.
+        def _on_theme_changed():
+            widget = self_ref()
+            if widget is not None:
+                widget.refresh_theme()
+
+        ThemeService.register_theme_callback(_on_theme_changed)
+
         def _unregister():
+            ThemeService.unregister_theme_callback(_on_theme_changed)
             widget = self_ref()
             if widget is not None:
                 unregister_language_callback(widget.retranslate_ui)
 
         self.destroyed.connect(_unregister)
+
+    def refresh_theme(self) -> None:
+        """Re-tint every action tile's icon for the current theme."""
+        for btn in self._action_btns:
+            btn.refresh_theme()
 
     def init_ui(self):
         """Lay out the customer card, action button grids, and pay button."""
@@ -343,7 +352,9 @@ class ActionPanel(QWidget):
         txn_grid.addWidget(self.btn_del, 1, 0)
         self._action_btns.append(self.btn_del)
 
-        self.btn_ref = ActionBtn("Ref", "action_panel.btn_refund", Icons.HISTORY, "#FF4136")
+        # No keyboard shortcut for Refund -- the old "Ref" badge looked like
+        # a key that doesn't exist.
+        self.btn_ref = ActionBtn("", "action_panel.btn_refund", Icons.HISTORY, "#FF4136")
         self.btn_ref.clicked.connect(self.action_ref.emit)
         txn_grid.addWidget(self.btn_ref, 1, 1)
         self._action_btns.append(self.btn_ref)
@@ -359,6 +370,15 @@ class ActionPanel(QWidget):
         self.btn_pay.setObjectName("BtnPay")
         self.btn_pay.clicked.connect(self.pay_clicked.emit)
         self._apply_pay_icon()
+        # F5 as its own badge, not inside the translated "Pay" text, which
+        # Sinhala/Tamil had dropped (#604).
+        pay_layout = QHBoxLayout(self.btn_pay)
+        pay_layout.setContentsMargins(0, 0, 12, 0)
+        pay_layout.addStretch()
+        self.lbl_pay_shortcut = QLabel("F5")
+        self.lbl_pay_shortcut.setObjectName("lblShortcut")
+        self.lbl_pay_shortcut.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        pay_layout.addWidget(self.lbl_pay_shortcut, 0, Qt.AlignmentFlag.AlignVCenter)
         layout.addWidget(self.btn_pay)
 
     def _apply_pay_icon(self) -> None:

@@ -1350,21 +1350,29 @@ QPushButton#ActionGridBtn:pressed {
 QPushButton#ActionGridBtn QLabel#lblText {
     font-size: 9pt;
     font-weight: 500;
+    color: #1A1A1A;
+    background: transparent;
 }
 
+/* Shortcut key badge (#604): a small keycap chip, distinct from the
+   label and readable (the old plain gray text was ~2:1). */
 QPushButton#ActionGridBtn QLabel#lblShortcut {
     font-size: 7pt;
+    font-weight: bold;
+    color: #343A40;
+    background-color: #D0D5DB;
+    border-radius: 3px;
+    padding: 0px 4px;
 }
 
 /* Color accents — bottom border */
 QPushButton#ActionGridBtn[btnColor="#FFDC00"] { border-bottom: 2px solid #FFC107; }
 QPushButton#ActionGridBtn[btnColor="#FF4136"] { border-bottom: 2px solid #DC3545; }
 
-QPushButton#ActionGridBtn:pressed QLabel,
-QPushButton#ActionGridBtn:pressed QLabel#lblText,
-QPushButton#ActionGridBtn:pressed QLabel#lblShortcut {
-    color: #FFFFFF;
-}
+/* No ":pressed QLabel" color rule here: Qt QSS doesn't evaluate a
+   pseudo-state on an *ancestor*, so such a rule matched the tile labels
+   at all times and turned them unreadable once the old inline label
+   colors were gone (#603). */
 
 /* Pay Button */
 QPushButton#BtnPay {
@@ -1374,6 +1382,8 @@ QPushButton#BtnPay {
     font-weight: bold;
     border: none;
     border-radius: 8px;
+    /* Room on the right for the F5 badge, so a long label (Tamil) can't run into it (#604) */
+    padding: 0px 44px 0px 12px;
 }
 
 QPushButton#BtnPay:hover {
@@ -1382,6 +1392,15 @@ QPushButton#BtnPay:hover {
 
 QPushButton#BtnPay:pressed {
     background-color: #0F5132;
+}
+
+QPushButton#BtnPay QLabel#lblShortcut {
+    font-size: 10pt;
+    font-weight: bold;
+    color: #FFFFFF;
+    background-color: rgba(0, 0, 0, 0.35);
+    border-radius: 4px;
+    padding: 1px 6px;
 }
 
 /* Brief flash when PAY is clicked on an empty cart (#209) */

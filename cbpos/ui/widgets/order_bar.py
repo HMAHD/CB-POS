@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QWidget,
 )
 
@@ -53,9 +54,12 @@ class OrderBar(QWidget):
         layout.setContentsMargins(5, 5, 5, 5)
         layout.setSpacing(10)
 
-        # 1. Label
+        # 1. Label -- always exactly as wide as its (translated) text, so
+        # a long label like Sinhala "ඇණවුම් කළමනාකරණය" can never be
+        # squeezed into, or run under, the order tabs beside it (#588).
         self.lbl_title = QLabel()
         self.lbl_title.setProperty("class", "muted")
+        self.lbl_title.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         layout.addWidget(self.lbl_title)
 
         # 2. Scroll Area for Tabs
@@ -72,7 +76,9 @@ class OrderBar(QWidget):
         self.tabs_layout.setSpacing(5)
 
         self.scroll_area.setWidget(self.tabs_container)
-        layout.addWidget(self.scroll_area)
+        # The tab strip takes (and gives up) all the spare width; the label
+        # and the "+" button keep their own size.
+        layout.addWidget(self.scroll_area, 1)
 
         # 3. New Order Button (+)
         self.btn_new = QPushButton()

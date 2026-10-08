@@ -594,7 +594,7 @@
     "btn_drawer": "Drawer",
     "btn_void": "Void",
     "btn_refund": "Refund",
-    "btn_pay": "  Pay (F5)",
+    "btn_pay": "Pay",
     "loyalty_points": "Points: {points}",
     "customer_title": "Customer",
     "walk_in_customer": "Walk-in Customer",

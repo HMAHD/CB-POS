@@ -207,6 +207,9 @@ class PriceListView(QWidget):
         self.table.setObjectName("PriceListDataTable")
         self.table.setColumnCount(4)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        # Prices fit their header, which now carries the currency symbol (#557)
+        for col in (2, 3):
+            self.table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
         self.table.setColumnHidden(0, True)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)

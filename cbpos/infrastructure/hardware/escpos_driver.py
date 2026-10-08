@@ -13,6 +13,7 @@ from cbpos.core.interfaces.iprinter import IPrinter
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.utils.thermal_image import dither_for_thermal_print
 from cbpos.i18n import _t
+from cbpos.infrastructure.hardware.text_raster import needs_raster, render_text_line
 
 logger = logging.getLogger(__name__)
 
@@ -284,6 +285,11 @@ class ESCPOSDriver(IPrinter):
     def print_commands(self, commands: list[dict[str, Any]]) -> None:
         """Execute a batch of print commands (text, image, barcode, feed, cut).
 
+        Text is sent as text, except lines with Sinhala/Tamil characters,
+        which no printer code page has: those are drawn as an image
+        (see `text_raster`). Glyph output still needs checking on the
+        shop's real printer.
+
         No-op if the printer is not connected. Each command is a dict with
         a "type" key; a failing command (e.g. a missing image file) is
         logged and skipped so it doesn't abort the rest of the receipt.
@@ -300,10 +306,18 @@ class ESCPOSDriver(IPrinter):
                 c_type = cmd.get("type")
 
                 if c_type == "text":
+                    val = cmd.get("val") or ""
+                    if needs_raster(val):
+                        # Sinhala/Tamil has no printer code page -- as text it
+                        # prints "????", so draw the line as an image instead.
+                        paper_width = ConfigService.get("paper_width") or "80mm"
+                        self.printer.set(align="LEFT", bold=False)
+                        self.printer.image(render_text_line(cmd, paper_width))
+                        continue
                     align = cmd.get("align", "left").upper()
                     bold = cmd.get("bold", False)
                     self.printer.set(align=align, bold=bold)
-                    self.printer.text(cmd.get("val") + "\n")
+                    self.printer.text(val + "\n")
 
                 elif c_type == "image":
                     path = cmd.get("path")

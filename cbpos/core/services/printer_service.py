@@ -25,10 +25,10 @@ class PrinterService:
     `PrintWorker` thread. VAT-registered customers additionally get an
     A4 Tax Invoice.
 
-    Sinhala/Tamil: the builder emits receipt labels in the receipt
-    language as plain text commands; the driver sends them as text, so
-    the printed glyphs depend on the printer's code pages (see
-    ``ESCPOSDriver.print_commands``).
+    Sinhala/Tamil: the builder emits labels in the receipt language as
+    text commands. Printers have no Sinhala/Tamil code page, so the
+    driver prints those lines as images drawn with the bundled Noto
+    fonts and keeps English lines as text (see ``text_raster``).
     """
 
     @staticmethod

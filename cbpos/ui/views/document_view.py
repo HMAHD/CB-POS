@@ -36,7 +36,8 @@ from cbpos.core.utils.formatters import format_currency, format_discount, format
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.dialogs.void_reason_dialog import VoidReasonDialog
-from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING, status_color
+from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING, pill_colors
+from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import align_numeric_headers, configure_table_columns
 
 logger = logging.getLogger(__name__)
@@ -199,6 +200,7 @@ class DocumentBrowserView(QWidget):
         self.doc_table.setAlternatingRowColors(True)
         self.doc_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.doc_table.itemSelectionChanged.connect(self.on_selection_changed)
+        self.doc_table.setItemDelegateForColumn(5, StatusPillDelegate(self.doc_table))  # Status (#560)
         layout.addWidget(self.doc_table, 3)
 
         # Detail Panel (below table, initially hidden)
@@ -521,10 +523,7 @@ class DocumentBrowserView(QWidget):
             total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.doc_table.setItem(row, 4, total_item)
 
-            status_item = QTableWidgetItem(doc["status"])
-            meaning = self.STATUS_MEANINGS.get(doc["status"])
-            if meaning:
-                status_item.setForeground(status_color(meaning))
+            status_item = set_status_pill(QTableWidgetItem(), doc["status"], self.STATUS_MEANINGS.get(doc["status"]))
             self.doc_table.setItem(row, 5, status_item)
 
             self.doc_table.setItem(row, 6, QTableWidgetItem(doc.get("username", "")))
@@ -549,6 +548,17 @@ class DocumentBrowserView(QWidget):
             self.update_action_buttons(details)
             self._show_detail()
 
+    def _status_badge_html(self, status: str) -> str:
+        """The status as a tinted, bold badge for the rich-text detail panel (#560)."""
+        meaning = self.STATUS_MEANINGS.get(status)
+        if not meaning:
+            return status
+        fg, fill = pill_colors(meaning)
+        return (
+            f'<span style="background-color:{fill.name()}; color:{fg.name()}; font-weight:bold;">'
+            f"&nbsp;{status}&nbsp;</span>"
+        )
+
     def display_details(self, doc: dict) -> None:
         """Display document details in the detail panel."""
         type_labels = {
@@ -562,7 +572,7 @@ class DocumentBrowserView(QWidget):
         html = (
             f"<b>{_t('document_browser.detail_date')}:</b> "
             f"{doc['date'].strftime('%Y-%m-%d %H:%M:%S') if doc['date'] else 'N/A'}<br>"
-            f"<b>{_t('document_browser.detail_status')}:</b> {doc['status']}<br>"
+            f"<b>{_t('document_browser.detail_status')}:</b> {self._status_badge_html(doc['status'])}<br>"
             f"<b>{_t('document_browser.detail_user')}:</b> {doc.get('username', '')}<br>"
         )
 

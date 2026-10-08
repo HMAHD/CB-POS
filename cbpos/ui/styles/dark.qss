@@ -3947,13 +3947,11 @@ QLabel#PMCardStatus {
 QLabel#PMCardStatus[class="pm-active"] {
     background-color: #0D3B1E;
     color: #39FF14;
-    border: 1px solid #39FF14;
 }
 
 QLabel#PMCardStatus[class="pm-inactive"] {
     background-color: #3B1A1A;
     color: #FF6B6B;
-    border: 1px solid #FF6B6B;
 }
 
 QPushButton#PMCardBtn {

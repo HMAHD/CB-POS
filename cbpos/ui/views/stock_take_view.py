@@ -35,10 +35,20 @@ from cbpos.core.services.stock_count_service import StockCountService
 from cbpos.core.utils.formatters import format_currency, format_number, format_quantity, format_signed
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
-from cbpos.ui.resources.status_colors import DANGER, NEUTRAL, SUCCESS, status_color
+from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, status_color
+from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
 
 logger = logging.getLogger(__name__)
+
+
+# History status -> palette meaning for its pill (#560).
+_HISTORY_STATUS_MEANINGS = {
+    DocumentStatus.DRAFT: NEUTRAL,
+    DocumentStatus.COUNTED: INFO,
+    DocumentStatus.COMPLETED: SUCCESS,
+    DocumentStatus.VOID: DANGER,
+}
 
 
 class StockCountItemModel(QAbstractTableModel):
@@ -570,6 +580,7 @@ class StockTakeView(QWidget):
         self.history_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.history_table.setAlternatingRowColors(True)
         self.history_table.doubleClicked.connect(self.on_history_double_click)
+        self.history_table.setItemDelegateForColumn(5, StatusPillDelegate(self.history_table))  # (#560)
         self.history_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.history_table.customContextMenuRequested.connect(self.show_history_context_menu)
         layout.addWidget(self.history_table, 1)
@@ -927,7 +938,8 @@ class StockTakeView(QWidget):
             var_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.history_table.setItem(row, 4, var_item)
 
-            self.history_table.setItem(row, 5, QTableWidgetItem(sc.status))
+            meaning = _HISTORY_STATUS_MEANINGS.get(sc.status)
+            self.history_table.setItem(row, 5, set_status_pill(QTableWidgetItem(), sc.status, meaning))
 
     def on_history_double_click(self, index: QModelIndex) -> None:
         """Open stock count report dialog on double-click."""

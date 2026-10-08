@@ -1544,6 +1544,7 @@
       "btn_browse_logo": "Browse...",
       "btn_clear_logo": "Clear",
       "logo_hint": "Recommended: a small, high-contrast black & white image works best -- it will be converted to black & white dots for thermal printing.",
+      "logo_copy_failed": "Couldn't use that picture as the logo. Choose a PNG, JPG or BMP image and try again.",
       "select_logo_title": "Select Logo",
       "select_logo_filter": "Images (*.png *.jpg *.bmp)",
       "section_header_footer": "Header & Footer",

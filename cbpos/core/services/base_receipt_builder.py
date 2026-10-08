@@ -5,6 +5,7 @@ import textwrap
 from typing import Any
 
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.receipt_logo_service import resolve_receipt_logo
 from cbpos.i18n import _t, translate_in
 
 logger = logging.getLogger(__name__)
@@ -130,7 +131,8 @@ class BaseReceiptBuilder:
                 commands.append({"type": "text", "val": line, "align": "center"})
 
         # Logo
-        logo_path = gc("receipt_logo_path", "", config_override)
+        # Stored relative to the data folder since #626; resolve to a real path.
+        logo_path = resolve_receipt_logo(gc("receipt_logo_path", "", config_override))
         if logo_path:
             commands.append({"type": "image", "path": logo_path})
 

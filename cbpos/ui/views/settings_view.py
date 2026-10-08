@@ -1,7 +1,6 @@
 """Top-level Settings screen with sidebar navigation to configuration pages."""
 
 import contextlib
-import json
 import logging
 import weakref
 
@@ -278,8 +277,8 @@ class SettingsView(QWidget):
     def save_all(self):
         """Validate and save all config pages, then apply the changes live.
 
-        Checks the ADMIN_SETTINGS permission, audits tax-rate changes to
-        AuditLog, persists settings, restarts the scheduler timer if the
+        Checks the ADMIN_SETTINGS permission, audits real tax-rate changes
+        via SettingsAuditService, persists settings, restarts the scheduler timer if the
         auto-report toggle changed, and if theme, language, font size or
         terminal/db mode changed, asks to restart now or apply them at the
         next launch (they are never applied live, #581).
@@ -317,41 +316,17 @@ class SettingsView(QWidget):
             if reply != QMessageBox.StandardButton.Yes:
                 return
 
-        # Audit log tax rate changes before saving
-        tax_keys = [
-            "tax_vat_rate",
-            "tax_sscl_rate",
-            "tax_sscl_turnover_pct",
-            "vat_registered",
-        ]
-        tax_changes = {}
-        for key in tax_keys:
-            old_val = current_config.get(key)
-            new_val = all_settings.get(key)
-            if new_val is not None and str(old_val) != str(new_val):
-                tax_changes[key] = {"old": old_val, "new": new_val}
+        # Only real tax changes are audited (Decimal compare, #613)
+        from cbpos.core.services.auth_service import AuthService
+        from cbpos.core.services.settings_audit_service import SettingsAuditService
 
-        if tax_changes:
-            from cbpos.core.database import Database
-            from cbpos.core.models import AuditLog
-            from cbpos.core.services.auth_service import AuthService
-
-            user = AuthService.get_current_user()
-            if user:
-                db = Database()
-                try:
-                    terminal_id = ConfigService.get("terminal_id") or "TERM-01"
-                    with db.get_session() as session:
-                        log = AuditLog(
-                            user_id=user.id,
-                            action="TAX_RATE_CHANGE",
-                            event_type="SECURITY",
-                            terminal_id=terminal_id,
-                            details=json.dumps(tax_changes),
-                        )
-                        session.add(log)
-                except Exception as e:
-                    logger.warning("Tax audit log failed: %s", e)
+        user = AuthService.get_current_user()
+        SettingsAuditService.log_tax_changes(
+            current_config,
+            all_settings,
+            user.id if user else None,
+            ConfigService.get("terminal_id") or "TERM-01",
+        )
 
         ConfigService.update_all(all_settings)
 

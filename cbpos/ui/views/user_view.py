@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.services.user_service import UserService
+from cbpos.core.utils.audit_format import format_audit_action, format_audit_details, format_log_time
 from cbpos.core.utils.display_labels import display_role_name, event_type_label
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.dialogs.permission_dialog import PermissionDialog
@@ -278,15 +279,16 @@ class UserView(QWidget):
         layout.addWidget(filter_frame)
 
         self.log_table = QTableWidget()
-        self.log_table.setColumnCount(5)
+        self.log_table.setColumnCount(6)
         configure_table_columns(
             self.log_table.horizontalHeader(),
             {
                 0: QHeaderView.ResizeMode.ResizeToContents,  # Time
                 1: QHeaderView.ResizeMode.ResizeToContents,  # User
                 2: QHeaderView.ResizeMode.ResizeToContents,  # Event
-                3: QHeaderView.ResizeMode.ResizeToContents,  # Terminal
-                4: QHeaderView.ResizeMode.Stretch,  # Details - needs the room
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Action
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Terminal
+                5: QHeaderView.ResizeMode.Stretch,  # Details - needs the room
             },
         )
         self.log_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -315,6 +317,7 @@ class UserView(QWidget):
                 _t("user.col_time"),
                 _t("user.col_user"),
                 _t("user.col_event"),
+                _t("user.col_action"),
                 _t("user.col_terminal"),
                 _t("user.col_details"),
             ]
@@ -411,7 +414,7 @@ class UserView(QWidget):
         self.log_table.setRowCount(len(logs))
 
         for row, log in enumerate(logs):
-            self.log_table.setItem(row, 0, QTableWidgetItem(str(log.timestamp)))
+            self.log_table.setItem(row, 0, QTableWidgetItem(format_log_time(log.timestamp)))
             self.log_table.setItem(
                 row,
                 1,
@@ -422,8 +425,10 @@ class UserView(QWidget):
             if color is not None:
                 event_item.setForeground(color)
             self.log_table.setItem(row, 2, event_item)
-            self.log_table.setItem(row, 3, QTableWidgetItem(log.terminal_id or "-"))
-            self.log_table.setItem(row, 4, QTableWidgetItem(log.details or ""))
+            self.log_table.setItem(row, 3, QTableWidgetItem(format_audit_action(log.action)))
+            self.log_table.setItem(row, 4, QTableWidgetItem(log.terminal_id or "-"))
+            # Raw JSON stays in the DB; it is made readable only for display (#613)
+            self.log_table.setItem(row, 5, QTableWidgetItem(format_audit_details(log.action, log.details)))
 
     def on_tab_changed(self, index):
         """Refresh the users table or the activity log when the active tab changes."""

@@ -2026,6 +2026,36 @@
     "manager": "Manager",
     "cashier": "Cashier"
   },
+  "audit": {
+    "action": {
+      "user_login": "Signed in",
+      "user_logout": "Signed out",
+      "session_timeout": "Signed out (inactive)",
+      "stock_adjustment": "Stock adjusted",
+      "void_sale": "Sale voided",
+      "void_bill": "Bill voided",
+      "refund": "Refund given",
+      "transfer_order": "Sale moved to another user",
+      "commit_purchase": "Stock received (GRN)",
+      "update_permissions": "Permissions changed",
+      "credit_payment": "Credit payment received",
+      "credit_adjustment": "Credit balance adjusted",
+      "profile_update": "Profile updated",
+      "create_user": "User added",
+      "update_user": "User details changed",
+      "tax_rate_change": "Tax settings changed",
+      "price_override": "Price changed at checkout",
+      "line_discount": "Item discount given"
+    },
+    "detail": {
+      "tax_vat_rate": "VAT rate changed from {old}% to {new}%",
+      "tax_sscl_rate": "SSCL rate changed from {old}% to {new}%",
+      "tax_sscl_turnover_pct": "SSCL turnover base changed from {old}% to {new}%",
+      "vat_registered_on": "VAT registration turned on",
+      "vat_registered_off": "VAT registration turned off",
+      "generic": "{setting} changed from {old} to {new}"
+    }
+  },
   "profile": {
     "title": "My Profile",
     "display_name": "Display Name",
@@ -2261,6 +2291,7 @@
     "col_time": "Time",
     "col_user": "User",
     "col_event": "Event",
+    "col_action": "Action",
     "col_terminal": "Terminal",
     "col_details": "Details",
     "no_role": "None",

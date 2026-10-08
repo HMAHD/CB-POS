@@ -1996,6 +1996,36 @@
     "manager": "කළමනාකරු",
     "cashier": "කැෂියර්"
   },
+  "audit": {
+    "action": {
+      "user_login": "ලොග් උනා",
+      "user_logout": "ලොග් අවුට් උනා",
+      "session_timeout": "වැඩ නොකළ නිසා ලොග් අවුට් උනා",
+      "stock_adjustment": "තොග සකස් කළා",
+      "void_sale": "විකුණුම අවලංගු කළා",
+      "void_bill": "බිල අවලංගු කළා",
+      "refund": "මුදල් ආපසු ගෙව්වා",
+      "transfer_order": "විකුණුම වෙන පරිශීලකයෙකුට මාරු කළා",
+      "commit_purchase": "ලැබුණු තොග සටහන් කළා (GRN)",
+      "update_permissions": "අවසර වෙනස් කළා",
+      "credit_payment": "ණය ගෙවීමක් ලැබුණා",
+      "credit_adjustment": "ණය ශේෂය සකස් කළා",
+      "profile_update": "පරිශීලක පැතිකඩ වෙනස් කළා",
+      "create_user": "පරිශීලකයෙක් එකතු කළා",
+      "update_user": "පරිශීලකයාගේ විස්තර වෙනස් කළා",
+      "tax_rate_change": "බදු සැකසුම් වෙනස් කළා",
+      "price_override": "බිල් කරනකොට මිල වෙනස් කළා",
+      "line_discount": "අයිතමයකට වට්ටමක් දුන්නා"
+    },
+    "detail": {
+      "tax_vat_rate": "VAT අනුපාතය {old}% සිට {new}% දක්වා වෙනස් කළා",
+      "tax_sscl_rate": "SSCL අනුපාතය {old}% සිට {new}% දක්වා වෙනස් කළා",
+      "tax_sscl_turnover_pct": "SSCL පදනම් පිරිවැටුම {old}% සිට {new}% දක්වා වෙනස් කළා",
+      "vat_registered_on": "VAT ලියාපදිංචිය ඔන් කළා",
+      "vat_registered_off": "VAT ලියාපදිංචිය ඕෆ් කළා",
+      "generic": "{setting} {old} සිට {new} දක්වා වෙනස් කළා"
+    }
+  },
   "profile": {
     "title": "පරිශීලක පැතිකඩ",
     "display_name": "පෙන්වන නම",
@@ -2261,6 +2291,7 @@
     "col_time": "වේලාව",
     "col_user": "පරිශීලකයා",
     "col_event": "සිදුවීම",
+    "col_action": "ක්‍රියාව",
     "col_terminal": "ටර්මිනල්",
     "col_details": "විස්තර",
     "no_role": "නැත",

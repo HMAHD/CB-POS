@@ -813,6 +813,16 @@ QWidget#POSSideMenu QFrame[frameShape="4"] {
     background-color: #2A2A2A;
 }
 
+/* Nav tiles scroll on short screens; profile and toolbar stay pinned (#590) */
+QScrollArea#SideMenuScroll {
+    background: transparent;
+    border: none;
+}
+
+QWidget#SideMenuScrollInner {
+    background: transparent;
+}
+
 /* Section Header */
 QLabel#MenuSectionHeader {
     color: #555555;
@@ -863,20 +873,27 @@ QLabel#MenuRole {
     background: transparent;
 }
 
-/* Sign Out button */
+/* Sign Out button -- one bordered, touch-sized button carrying its own
+   icon (#607); hover tints it so the target is obvious. */
 QPushButton#SignOutBtn {
-    background: transparent;
-    border: none;
-    color: #999999;
+    background-color: transparent;
+    border: 1px solid rgba(255, 65, 54, 0.35);
+    border-radius: 8px;
+    color: #BBBBBB;
     font-size: 13px;
-    font-weight: normal;
-    text-align: left;
-    padding: 0;
-
+    font-weight: bold;
+    padding: 0 12px;
+    min-height: 40px;
 }
 
 QPushButton#SignOutBtn:hover {
+    background-color: rgba(255, 65, 54, 0.12);
+    border-color: #FF4136;
     color: #FF4136;
+}
+
+QPushButton#SignOutBtn:pressed {
+    background-color: rgba(255, 65, 54, 0.22);
 }
 
 /* Icon Buttons (bottom toolbar) */
@@ -1014,6 +1031,32 @@ QToolButton#BtnLogout[collapsed="true"] {
     text-align: center;
     padding-left: 0px;
     margin: 4px 10px 8px 10px;
+}
+
+/* Sidebar nav list scrolls on short screens; POS/Logout stay pinned
+   below it. Compact mode (window under ~800px) trims button padding so
+   the 40px buttons don't clip their text (#591). */
+QScrollArea#SidebarNavScroll {
+    background: transparent;
+    border: none;
+}
+
+QWidget#SidebarNavInner,
+QWidget#SidebarSectionWrapper {
+    background: transparent;
+}
+
+QToolButton#SidebarButton[compact="true"] {
+    min-height: 0px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+QToolButton#BtnPos[compact="true"],
+QToolButton#BtnLogout[compact="true"] {
+    min-height: 0px;
+    margin-top: 2px;
+    margin-bottom: 2px;
 }
 
 /* --- Sales View Specifics --- */
@@ -1485,9 +1528,26 @@ QLabel[class="SectionHeader"] {
     margin-bottom: 20px;
 }
 
-QFrame#SettingsFooter {
+/* Settings action bar -- under the content area only, never under the
+   sidebar (#616). Status text: muted on tool pages ("save automatically"),
+   warning while pages are unsaved, success once everything is saved. */
+QFrame#SettingsActionBar {
     background-color: #2D2D30;
     border-top: 1px solid #3E3E42;
+}
+
+QLabel#SettingsSaveStatus {
+    color: #AAAAAA;
+    background: transparent;
+}
+
+QLabel#SettingsSaveStatus[state="unsaved"] {
+    color: #FFDC00;
+    font-weight: bold;
+}
+
+QLabel#SettingsSaveStatus[state="saved"] {
+    color: #39FF14;
 }
 
 /* --- Dialogs --- */
@@ -4148,4 +4208,22 @@ QFrame#SetupCard {
 
 QFrame#SetupCard:hover {
     border-color: #00BCEB;
+}
+
+/* ── Shift dialog (#605) ── */
+QDialog#ShiftManagementDialog QLabel#ShiftSectionTitle {
+    color: #00BCEB;
+    font-weight: bold;
+}
+
+QDialog#ShiftManagementDialog QLabel#ShiftExpectedCashLabel,
+QDialog#ShiftManagementDialog QLabel#ShiftExpectedCash {
+    color: #FFFFFF;
+    font-weight: bold;
+}
+
+QDialog#ShiftManagementDialog QFrame#ShiftDivider {
+    background-color: #3E3E42;
+    border: none;
+    max-height: 1px;
 }

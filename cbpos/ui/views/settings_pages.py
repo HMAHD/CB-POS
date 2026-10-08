@@ -5,7 +5,7 @@ import logging
 import socket
 import weakref
 
-from PyQt6.QtCore import Qt, QThread, QTime
+from PyQt6.QtCore import Qt, QThread, QTime, pyqtSignal
 from PyQt6.QtGui import QIntValidator
 from PyQt6.QtPrintSupport import QPrinterInfo
 from PyQt6.QtWidgets import (
@@ -56,6 +56,10 @@ logger = logging.getLogger(__name__)
 
 class SettingsPage(QWidget):
     """Base class for settings pages with standardized tab-based layout."""
+
+    # Emitted after "Reset to Defaults" has written this page's defaults, so
+    # the Settings view can treat them as saved (no stale unsaved marker).
+    defaults_restored = pyqtSignal()
 
     def __init__(self):
         """Build the page UI by calling init_ui()."""
@@ -212,6 +216,7 @@ class SettingsPage(QWidget):
         defaults = {k: ConfigService.DEFAULTS[k] for k in page_keys if k in ConfigService.DEFAULTS}
         self.load(defaults)
         ConfigService.update_all(defaults)
+        self.defaults_restored.emit()
 
         QMessageBox.information(self, _t("common.success"), _t("settings.reset_defaults_done"))
 

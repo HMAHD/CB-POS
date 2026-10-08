@@ -1,5 +1,5 @@
 from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtGui import QIcon, QPainter, QPixmap
+from PyQt6.QtGui import QColor, QIcon, QPainter, QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QToolButton, QVBoxLayout, QWidget
 
 from cbpos.ui.resources.icons import Icons
@@ -85,6 +85,7 @@ class SidebarButton(QToolButton):
         self.setText(text)
         self.icon_name = icon_name  # Store for theme updates
         self._is_active = False
+        self._unsaved = False
 
         self.setCheckable(True)
         self.setAutoExclusive(True)
@@ -133,3 +134,44 @@ class SidebarButton(QToolButton):
         self._is_active = active
         self.setChecked(active)
         self.update_icon()
+
+    def set_unsaved(self, unsaved: bool, tooltip: str = "") -> None:
+        """Show or hide the unsaved-changes dot on this button (#616).
+
+        Args:
+            unsaved: True to show the dot.
+            tooltip: Tooltip explaining the dot; cleared when hidden.
+        """
+        if unsaved == self._unsaved:
+            return
+        self._unsaved = unsaved
+        self.setToolTip(tooltip if unsaved else "")
+        self.update()
+
+    def is_unsaved(self) -> bool:
+        """Return True while the unsaved-changes dot is shown."""
+        return self._unsaved
+
+    def paintEvent(self, event) -> None:
+        """Paint the button, then the unsaved dot when needed.
+
+        Painted rather than a child label so it stays visible on the
+        collapsed, icon-only rail too.
+        """
+        super().paintEvent(event)
+        if not self._unsaved:
+            return
+        from cbpos.core.services.theme_service import ThemeService
+
+        is_dark = ThemeService.current_theme.lower() == "dark"
+        size = 8
+        if self.toolButtonStyle() == Qt.ToolButtonStyle.ToolButtonIconOnly:
+            x, y = self.width() - 18, 8
+        else:
+            x, y = self.width() - 30, (self.height() - size) // 2
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor("#FFDC00" if is_dark else "#FD7E14"))
+        painter.drawEllipse(x, y, size, size)
+        painter.end()

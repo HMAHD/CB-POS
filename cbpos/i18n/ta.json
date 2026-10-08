@@ -554,6 +554,7 @@
     "vat_placeholder": "VAT பதிவு எண்"
   },
   "side_menu": {
+    "shift": "ஷிப்ட்",
     "section_title": "மெனு",
     "management": "மேலாண்மை",
     "sales_history": "விற்பனை வரலாறு",
@@ -561,8 +562,6 @@
     "receive_payment": "பணம் பெறு",
     "reprint_receipt": "ரசீது மறுஅச்சு",
     "refund": "திரும்பப் பெறு",
-    "shift_status": "ஷிப்ட் நிலை",
-    "close_shift": "ஷிப்ட்டை மூடு",
     "user_guest": "விருந்தினர்",
     "user_no_role": "பதவி இல்லை",
     "user_not_logged_in": "உள்நுழையவில்லை",
@@ -1317,6 +1316,12 @@
     "cashflow_net_type": "நிகர"
   },
   "settings": {
+    "unsaved_title": "சேமிக்காத மாற்றங்கள்",
+    "unsaved_marker_tooltip": "இந்தப் பக்கத்தில் இன்னும் சேமிக்காத மாற்றங்கள் இருக்கு",
+    "all_saved": "எல்லா மாற்றங்களும் சேமிச்சாச்சு.",
+    "unsaved_pages": "இன்னும் சேமிக்கலை: {pages}",
+    "auto_save_hint": "இந்தப் பக்கத்து மாற்றங்கள் தானா சேமிக்கப்படும்.",
+    "btn_save_all": "எல்லா மாற்றங்களையும் சேமியுங்க",
     "title": "அமைப்புகள்",
     "btn_reset_defaults": "இயல்புநிலைக்கு மீட்டமை",
     "reset_defaults_title": "இயல்புநிலைக்கு மீட்டமை",
@@ -1332,9 +1337,6 @@
     "sidebar_payments": "பணம் செலுத்தும் முறைகள்",
     "sidebar_data_safety": "தரவு பாதுகாப்பு",
     "sidebar_admin_tools": "நிர்வாக கருவிகள்",
-    "btn_save": "மாற்றங்களை சேமியுங்க",
-    "btn_cancel": "ரத்து",
-    "unsaved_title": "சேமிக்காத மாற்றங்கள்",
     "unsaved_message": "சேமிக்காத மாற்றங்கள் இருக்கு. சேமிக்காம தொடரலாமா?",
     "saved_title": "சேமிச்சாச்சு",
     "saved_message": "அமைப்புகள் சேமிச்சாச்சு.",
@@ -1750,15 +1752,17 @@
     "refund_total": "திருப்பிச்செலுத்தல் {total_label}: {amount}"
   },
   "cash_movement": {
-    "title": "பண நகர்வு",
+    "record_title_out": "பணப்பெட்டியிலிருந்து காசு எடுங்க",
+    "record_title_in": "பணப்பெட்டியில் காசு போடுங்க",
+    "title_out": "காசு எடுங்க",
+    "title_in": "காசு போடுங்க",
     "amount": "தொகை:",
     "reason": "காரணம்:",
     "reason_placeholder": "பண நகர்வு காரணம் உள்ளிடவும்",
     "enter_amount": "தொகையைப் போடுங்க.",
     "enter_reason": "காரணத்தைப் போடுங்க.",
     "input_error": "தப்பான மதிப்பு",
-    "invalid_amount": "சரியான எண்ணில் தொகையைப் போடுங்க.",
-    "record_title": "பண நகர்வு பதிவு"
+    "invalid_amount": "சரியான எண்ணில் தொகையைப் போடுங்க."
   },
   "category_dialog": {
     "new_title": "புது வகை",
@@ -2431,5 +2435,14 @@
     "mismatch": "ரெண்டு பாஸ்வேர்டும் ஒத்துப்போகல.",
     "save_failed": "பாஸ்வேர்டை சேமிக்க முடியல. மறுபடியும் முயற்சி பண்ணுங்க.",
     "btn_save": "பாஸ்வேர்டை சேமி"
+  },
+  "shift_management": {
+    "title": "ஷிப்ட்",
+    "started": "{user} {time}க்கு ஆரம்பிச்சாங்க",
+    "figures_heading": "இந்த ஷிப்ட்டில் இதுவரை",
+    "cash_in": "காசு போடுங்க",
+    "cash_out": "காசு எடுங்க",
+    "end_shift": "ஷிப்ட்டை முடிங்க",
+    "movement_failed": "அதைப் பதிவு செய்ய முடியலை: {error}"
   }
 }

@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QScrollArea,
     QSizePolicy,
     QToolButton,
     QVBoxLayout,
@@ -20,6 +21,14 @@ EXPANDED_WIDTH = 250
 COLLAPSED_WIDTH = 70
 ANIMATION_DURATION = 300
 RESPONSIVE_BREAKPOINT = 1024
+
+# Below this height (1366x768 and 1024x768 screens) nav buttons shrink so
+# more fit before the list has to scroll (#591).
+COMPACT_HEIGHT = 800
+BUTTON_HEIGHT = 50
+COMPACT_BUTTON_HEIGHT = 40
+NAV_SPACING = 10
+COMPACT_NAV_SPACING = 4
 
 
 class CollapsibleSidebar(QFrame):
@@ -49,6 +58,7 @@ class CollapsibleSidebar(QFrame):
         self.is_collapsed = bool(ConfigService.get("sidebar_collapsed"))
         self.nav_buttons: list[SidebarButton] = []
         self._section_labels: list[QLabel] = []
+        self.is_compact = False
 
         self.setFixedWidth(EXPANDED_WIDTH)
         self.setObjectName("SidebarContainer")
@@ -80,8 +90,22 @@ class CollapsibleSidebar(QFrame):
         self._layout.addWidget(header)
         self._layout.addSpacing(10)
 
-        # Placeholder: nav buttons are added here by add_nav_button()
-        # A stretch separates nav buttons from the bottom section.
+        # --- Nav list (scrollable) ---
+        # add_nav_button()/add_section_label() fill this. It scrolls, while
+        # POS/Logout below stay pinned outside it, so they can never be
+        # clipped on a short screen such as 1366x768 (#591).
+        self.nav_scroll = QScrollArea()
+        self.nav_scroll.setObjectName("SidebarNavScroll")
+        self.nav_scroll.setWidgetResizable(True)
+        self.nav_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.nav_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        nav_inner = QWidget()
+        nav_inner.setObjectName("SidebarNavInner")
+        self.nav_layout = QVBoxLayout(nav_inner)
+        self.nav_layout.setContentsMargins(0, 0, 0, 0)
+        self.nav_layout.setSpacing(NAV_SPACING)
+        self.nav_scroll.setWidget(nav_inner)
+        self._layout.addWidget(self.nav_scroll, 1)
 
         # --- Bottom Section (POS + Logout) ---
         self._bottom_widget = QWidget()
@@ -149,7 +173,9 @@ class CollapsibleSidebar(QFrame):
         btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         btn.clicked.connect(lambda checked=False, idx=index: self.nav_clicked.emit(idx))
-        self._layout.addWidget(btn)
+        if self.is_compact:
+            btn.setFixedHeight(COMPACT_BUTTON_HEIGHT)
+        self.nav_layout.addWidget(btn)
         self.nav_buttons.append(btn)
         return btn
 
@@ -172,6 +198,7 @@ class CollapsibleSidebar(QFrame):
             other label; this widget doesn't cache the original text.
         """
         wrapper = QWidget()
+        wrapper.setObjectName("SidebarSectionWrapper")
         wrapper_layout = QVBoxLayout(wrapper)
         wrapper_layout.setContentsMargins(0, 0, 0, 0)
         wrapper_layout.setSpacing(0)
@@ -185,7 +212,7 @@ class CollapsibleSidebar(QFrame):
         label.setObjectName("SidebarSectionLabel")
         wrapper_layout.addWidget(label)
 
-        self._layout.addWidget(wrapper)
+        self.nav_layout.addWidget(wrapper)
         self._section_labels.append(label)
         return label
 
@@ -196,7 +223,7 @@ class CollapsibleSidebar(QFrame):
         state if needed, and refreshes styles.
         """
         if not self._stretch_added:
-            self._layout.addStretch()
+            self.nav_layout.addStretch()
             self._layout.addWidget(self._bottom_widget)
             self._stretch_added = True
 
@@ -271,6 +298,28 @@ class CollapsibleSidebar(QFrame):
 
         self._apply_button_style(style)
         self._update_all_styles()
+
+    def resizeEvent(self, event) -> None:
+        """Switch to compact buttons on short screens, normal ones on tall screens."""
+        super().resizeEvent(event)
+        self.set_compact(event.size().height() < COMPACT_HEIGHT)
+
+    def set_compact(self, compact: bool) -> None:
+        """Shrink nav and POS/Logout buttons and their spacing on a short screen.
+
+        Args:
+            compact: True for 40px buttons 4px apart, False for 50px buttons 10px apart.
+        """
+        if compact == self.is_compact:
+            return
+        self.is_compact = compact
+        self.nav_layout.setSpacing(COMPACT_NAV_SPACING if compact else NAV_SPACING)
+        height = COMPACT_BUTTON_HEIGHT if compact else BUTTON_HEIGHT
+        for btn in [*self.nav_buttons, self.btn_pos, self.btn_logout]:
+            btn.setFixedHeight(height)
+            btn.setProperty("compact", compact)
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
 
     def handle_resize(self, width: int) -> None:
         """Auto-collapse/expand based on parent width.

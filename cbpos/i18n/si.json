@@ -554,6 +554,7 @@
     "vat_placeholder": "VAT ලියාපදිංචි අංකය"
   },
   "side_menu": {
+    "shift": "මුරය",
     "section_title": "මෙනු",
     "management": "කළමනාකරණය",
     "sales_history": "විකුණුම් ඉතිහාසය",
@@ -561,8 +562,6 @@
     "receive_payment": "ගෙවීම් ලබාගැනීම",
     "reprint_receipt": "රිසිට්පත නැවත මුද්‍රණය",
     "refund": "ආපසු ගෙවීම",
-    "shift_status": "මුරයේ තත්ත්වය",
-    "close_shift": "මුරය වහන්න",
     "user_guest": "අමුත්තා",
     "user_no_role": "භූමිකාවක් නැත",
     "user_not_logged_in": "පිවිසී නැත",
@@ -1317,6 +1316,12 @@
     "cashflow_net_type": "ශුද්ධ"
   },
   "settings": {
+    "unsaved_title": "සුරකින්නෙ නැති වෙනස්කම්",
+    "unsaved_marker_tooltip": "මේ පිටුවේ තවම සුරැකුනේ නැති වෙනස්කම් තියෙනවා",
+    "all_saved": "හැම වෙනස්කමක්ම සුරැකුනා.",
+    "unsaved_pages": "තවම සුරැකුනේ නැහැ: {pages}",
+    "auto_save_hint": "මේ පිටුවේ වෙනස්කම් ඉබේම සුරැකෙනවා.",
+    "btn_save_all": "හැම වෙනස්කමක්ම සුරකින්න",
     "title": "සැකසුම්",
     "btn_reset_defaults": "පෙරනිමියට යළි සකසන්න",
     "reset_defaults_title": "පෙරනිමියට යළි සකසන්න",
@@ -1332,9 +1337,6 @@
     "sidebar_payments": "ගෙවීම් ක්‍රම",
     "sidebar_data_safety": "දත්ත ආරක්ෂාව",
     "sidebar_admin_tools": "පරිපාලන මෙවලම්",
-    "btn_save": "වෙනස්කම් සුරකින්න",
-    "btn_cancel": "අවලංගු",
-    "unsaved_title": "සුරකින්නෙ නැති වෙනස්කම්",
     "unsaved_message": "සුරකින්නෙ නැති වෙනස්කම් තියෙනවා. සුරකින්නෙ නැතුව ඉදිරියට යන්නද?",
     "saved_title": "සුරැකුනා",
     "saved_message": "සැකසුම් සුරැකුනා.",
@@ -1750,15 +1752,17 @@
     "refund_total": "ආපසු ගෙවීම {total_label}: {amount}"
   },
   "cash_movement": {
-    "title": "මුදල් ප්‍රවාහනය",
+    "record_title_out": "ලාච්චුවෙන් මුදල් ගන්න",
+    "record_title_in": "ලාච්චුවට මුදල් දාන්න",
+    "title_out": "මුදල් ගන්න",
+    "title_in": "මුදල් දාන්න",
     "amount": "මුදල:",
     "reason": "හේතුව:",
     "reason_placeholder": "මුදල් ප්‍රවාහනයේ හේතුව ඇතුළත් කරන්න",
     "enter_amount": "මුදලක් දාන්න.",
     "enter_reason": "හේතුවක් දාන්න.",
     "input_error": "වැරදි අගයක්",
-    "invalid_amount": "හරි ඉලක්කම් වලින් මුදලක් දාන්න.",
-    "record_title": "මුදල් ප්‍රවාහන වාර්තාව"
+    "invalid_amount": "හරි ඉලක්කම් වලින් මුදලක් දාන්න."
   },
   "category_dialog": {
     "new_title": "අලුත් කාණ්ඩයක්",
@@ -2431,5 +2435,14 @@
     "mismatch": "මුරපද දෙක ගැළපෙන්නේ නැහැ.",
     "save_failed": "මුරපදය සුරකින්න බැරි උනා. ආයෙත් උත්සාහ කරන්න.",
     "btn_save": "මුරපදය සුරකින්න"
+  },
+  "shift_management": {
+    "title": "මුරය",
+    "started": "{user} {time} ට පටන් ගත්තා",
+    "figures_heading": "මේ මුරයේ මෙතෙක්",
+    "cash_in": "මුදල් දාන්න",
+    "cash_out": "මුදල් ගන්න",
+    "end_shift": "මුරය ඉවර කරන්න",
+    "movement_failed": "ඒක සටහන් කරන්න බැරි වුණා: {error}"
   }
 }

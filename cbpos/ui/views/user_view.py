@@ -25,12 +25,15 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.user_service import UserService
+from cbpos.core.utils.audit_format import format_audit_action, format_audit_details, format_log_time
+from cbpos.core.utils.display_labels import display_role_name, event_type_label
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.dialogs.permission_dialog import PermissionDialog
 from cbpos.ui.dialogs.role_manager import RoleManagerDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, INFO, SUCCESS, WARNING, is_light_theme, status_color
 from cbpos.ui.widgets.table_helpers import configure_table_columns
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
 class UserDialog(QDialog):
@@ -43,6 +46,7 @@ class UserDialog(QDialog):
         self.setWindowTitle(_t("user.add_user") if not user else _t("user.edit_user"))
         self.setFixedWidth(400)
         self.init_ui()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def init_ui(self):
         """Build the username, PIN, role, and active-status form fields plus Save/Cancel buttons."""
@@ -66,7 +70,7 @@ class UserDialog(QDialog):
         self.cmb_role = QComboBox()
         self.roles = UserService.get_all_roles()
         for role in self.roles:
-            self.cmb_role.addItem(role.name, role.id)
+            self.cmb_role.addItem(display_role_name(role), role.id)
 
         if self.user and self.user.role:
             index = self.cmb_role.findData(self.user.role_id)
@@ -275,15 +279,16 @@ class UserView(QWidget):
         layout.addWidget(filter_frame)
 
         self.log_table = QTableWidget()
-        self.log_table.setColumnCount(5)
+        self.log_table.setColumnCount(6)
         configure_table_columns(
             self.log_table.horizontalHeader(),
             {
                 0: QHeaderView.ResizeMode.ResizeToContents,  # Time
                 1: QHeaderView.ResizeMode.ResizeToContents,  # User
                 2: QHeaderView.ResizeMode.ResizeToContents,  # Event
-                3: QHeaderView.ResizeMode.ResizeToContents,  # Terminal
-                4: QHeaderView.ResizeMode.Stretch,  # Details - needs the room
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Action
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Terminal
+                5: QHeaderView.ResizeMode.Stretch,  # Details - needs the room
             },
         )
         self.log_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -312,6 +317,7 @@ class UserView(QWidget):
                 _t("user.col_time"),
                 _t("user.col_user"),
                 _t("user.col_event"),
+                _t("user.col_action"),
                 _t("user.col_terminal"),
                 _t("user.col_details"),
             ]
@@ -348,7 +354,7 @@ class UserView(QWidget):
             self.table.setItem(
                 row,
                 2,
-                QTableWidgetItem(user.role.name if user.role else _t("user.no_role")),
+                QTableWidgetItem(display_role_name(user.role) if user.role else _t("user.no_role")),
             )
 
             status = _t("common.active") if user.is_active else _t("common.inactive")
@@ -408,19 +414,21 @@ class UserView(QWidget):
         self.log_table.setRowCount(len(logs))
 
         for row, log in enumerate(logs):
-            self.log_table.setItem(row, 0, QTableWidgetItem(str(log.timestamp)))
+            self.log_table.setItem(row, 0, QTableWidgetItem(format_log_time(log.timestamp)))
             self.log_table.setItem(
                 row,
                 1,
                 QTableWidgetItem(log.user.username if log.user else _t("user.unknown_user")),
             )
-            event_item = QTableWidgetItem(log.event_type)
+            event_item = QTableWidgetItem(event_type_label(log.event_type))
             color = self._log_event_color(log)
             if color is not None:
                 event_item.setForeground(color)
             self.log_table.setItem(row, 2, event_item)
-            self.log_table.setItem(row, 3, QTableWidgetItem(log.terminal_id or "-"))
-            self.log_table.setItem(row, 4, QTableWidgetItem(log.details or ""))
+            self.log_table.setItem(row, 3, QTableWidgetItem(format_audit_action(log.action)))
+            self.log_table.setItem(row, 4, QTableWidgetItem(log.terminal_id or "-"))
+            # Raw JSON stays in the DB; it is made readable only for display (#613)
+            self.log_table.setItem(row, 5, QTableWidgetItem(format_audit_details(log.action, log.details)))
 
     def on_tab_changed(self, index):
         """Refresh the users table or the activity log when the active tab changes."""

@@ -28,6 +28,7 @@ from cbpos.core.services.price_list_service import (
 )  # Assuming this exists or will be needed
 from cbpos.core.services.tax_service import TaxService
 from cbpos.i18n import _t
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 COMMERCIAL_FIELD_MIN_WIDTH = 220
 
@@ -55,6 +56,7 @@ class CustomerEditor(QDialog):
         self.setup_ui()
         if customer:
             self.load_data()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def setup_ui(self):
         """Build the tab widget (General, Commercial, Contacts, optional Loyalty/History) and save/cancel buttons."""

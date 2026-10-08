@@ -51,6 +51,7 @@ from cbpos.core.utils.formatters import DEFAULT_CURRENCY_SYMBOL, get_currency_sy
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.help_icon_button import HelpIconButton
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
 
@@ -150,6 +151,8 @@ class SettingsPage(QWidget):
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
         scroll.setWidget(inner)
+        # Hover + wheel must scroll this form, not change a spin box/combo under the cursor (#598)
+        install_wheel_guard(inner)
 
         return tab, form
 
@@ -176,6 +179,7 @@ class SettingsPage(QWidget):
         vbox.setSpacing(16)
         vbox.setAlignment(Qt.AlignmentFlag.AlignTop)
         scroll.setWidget(inner)
+        install_wheel_guard(inner)  # see _build_form_tab (#598)
 
         return tab, vbox
 
@@ -1086,6 +1090,12 @@ class HardwarePage(SettingsPage):
         self.chk_auto_cut = QCheckBox()
         self._lbl_auto_cut = QLabel()
         cut_form.addRow(self._lbl_auto_cut, self.chk_auto_cut)
+        # Tear-bar advice lives in a hint, not the checkbox text: "Disable for..." next to a box that
+        # enables auto-cut read as "tick to disable" (#575).
+        self.lbl_auto_cut_hint = QLabel()
+        self.lbl_auto_cut_hint.setProperty("class", "muted")
+        self.lbl_auto_cut_hint.setWordWrap(True)
+        cut_form.addRow("", self.lbl_auto_cut_hint)
 
         self.combo_cut_type = QComboBox()
         self._lbl_cut_type = QLabel()
@@ -1188,6 +1198,7 @@ class HardwarePage(SettingsPage):
         self._lbl_auto_cut.setText(_t("settings.hardware.auto_cut"))
         self.chk_auto_cut.setText(_t("settings.hardware.chk_auto_cut"))
         self.chk_auto_cut.setToolTip(_t("settings.hardware.tooltip_auto_cut"))
+        self.lbl_auto_cut_hint.setText(_t("settings.hardware.hint_auto_cut"))
 
         self._lbl_cut_type.setText(_t("settings.hardware.cut_type"))
         # Re-populate cut type combo preserving selection

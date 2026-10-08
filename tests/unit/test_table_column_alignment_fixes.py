@@ -54,8 +54,8 @@ class TestUserViewActivityLogColumns:
         view = UserView()
         header = view.log_table.horizontalHeader()
 
-        assert header.sectionResizeMode(4) == QHeaderView.ResizeMode.Stretch
-        for col in (0, 1, 2, 3):
+        assert header.sectionResizeMode(5) == QHeaderView.ResizeMode.Stretch  # Details (Action added, #613)
+        for col in (0, 1, 2, 3, 4):
             assert header.sectionResizeMode(col) == QHeaderView.ResizeMode.ResizeToContents
 
 

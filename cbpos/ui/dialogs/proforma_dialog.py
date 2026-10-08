@@ -25,6 +25,7 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.proforma_service import ProformaService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ class ProformaDialog(QDialog):
         self.refresh_table()
         self.load_products()
         self.load_customers()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def init_ui(self) -> None:
         """Build the header form, product search, items grid, and footer controls."""

@@ -29,6 +29,7 @@ from cbpos.core.services.category_service import CategoryService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 from cbpos.ui.widgets.table_helpers import configure_table_columns
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ class CategoryManagerDialog(QDialog):
         self._editing_id = None
         self._setup_ui()
         self._load_tree()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def _setup_ui(self) -> None:
         layout = QHBoxLayout(self)

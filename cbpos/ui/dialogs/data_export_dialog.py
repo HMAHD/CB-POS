@@ -33,6 +33,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.data_export_service import DataExportService
 from cbpos.core.services.export_service import ExportService
 from cbpos.i18n import _t
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,7 @@ class DataExportDialog(QDialog):
         self.setMinimumSize(520, 480)
         self.resize(560, 500)
         self._init_ui()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)

@@ -26,6 +26,7 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.formatters import format_currency, get_currency_symbol
 from cbpos.i18n import _t
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
 class AdvancedSearchDialog(QDialog):
@@ -45,6 +46,7 @@ class AdvancedSearchDialog(QDialog):
         self.product_service = ProductService()
         self.init_ui()
         self.load_filters()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def init_ui(self):
         """Build the search filters, results table, and keyboard shortcuts."""

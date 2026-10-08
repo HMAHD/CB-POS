@@ -27,6 +27,7 @@ from cbpos.core.services.statement_service import StatementService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ class CustomerStatementDialog(QDialog):
         self.setObjectName("CustomerStatementDialog")
         self._init_ui()
         self._load_statement()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)

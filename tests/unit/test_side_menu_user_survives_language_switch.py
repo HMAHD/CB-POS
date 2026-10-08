@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from cbpos.core.utils.display_labels import display_role_name
 from cbpos.i18n import _t, get_language, set_language
 from cbpos.ui.main_window import MainWindow
 from cbpos.ui.widgets.side_menu import SideMenu
@@ -36,7 +37,7 @@ def test_user_survives_language_switches(menu: SideMenu) -> None:
     for lang in ("si", "ta", "en"):
         set_language(lang)
         assert menu.lbl_username.text() == "nimal"
-        assert menu.lbl_role.text() == "Cashier"
+        assert menu.lbl_role.text() == display_role_name("Cashier")  # translated built-in role (#583)
 
 
 def test_logout_resets_side_menu_to_guest(menu: SideMenu) -> None:

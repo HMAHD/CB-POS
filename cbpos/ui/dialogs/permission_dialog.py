@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.constants.permissions import ADMIN_ROLE_NAME, CRITICAL_ADMIN_PERMISSIONS
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.user_service import UserService
+from cbpos.core.utils.display_labels import display_role_name, permission_group_label, permission_label
 from cbpos.i18n import _t
 
 # Per-cell flag for a role-column cell that must stay ticked. Item flags are per-row in a
@@ -147,32 +148,30 @@ class PermissionDialog(QDialog):
         self.permissions = PermissionService.get_all_permissions()
 
         # Setup Columns: Permission | Role 1 | Role 2 | ...
-        headers = [_t("permission.col_permission")] + [role.name for role in self.roles]
+        headers = [_t("permission.col_permission")] + [display_role_name(role) for role in self.roles]
         self.tree.setHeaderLabels(headers)
 
         self._check_delegate = _RoleCheckDelegate(self.tree)
         for col_index in range(1, len(headers)):
             self.tree.setItemDelegateForColumn(col_index, self._check_delegate)
 
-        # Group permissions
+        # Group permissions by their stored group; labels are translated by code at display
+        # time, so databases seeded with English descriptions ("Sales Add_Item") read right (#583).
         grouped_perms = {}
         for perm in self.permissions:
-            group = perm.group or "Other"
-            if group not in grouped_perms:
-                grouped_perms[group] = []
-            grouped_perms[group].append(perm)
+            grouped_perms.setdefault(perm.group or None, []).append(perm)
 
         # Populate Tree
         for group_name, perms in grouped_perms.items():
             group_item = QTreeWidgetItem(self.tree)
-            group_item.setText(0, group_name)
+            group_item.setText(0, permission_group_label(group_name))
             group_item.setExpanded(True)
             # Make group item unselectable/gray?
             group_item.setFlags(group_item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
 
             for perm in perms:
                 perm_item = QTreeWidgetItem(group_item)
-                perm_item.setText(0, perm.description or perm.code)
+                perm_item.setText(0, permission_label(perm.code, perm.description))
                 perm_item.setData(0, Qt.ItemDataRole.UserRole, perm.id)
 
                 for i, role in enumerate(self.roles):

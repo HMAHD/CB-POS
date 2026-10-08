@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.models import Product
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.i18n import _t
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
 class StockAdjustmentDialog(QDialog):
@@ -30,6 +31,7 @@ class StockAdjustmentDialog(QDialog):
         self.setWindowTitle(_t("stock_adjustment.title", product_name=product.name_en))
         self.setFixedSize(400, 300)
         self.init_ui()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def init_ui(self):
         """Build the current-stock display, adjustment amount field, reason combo, and buttons."""

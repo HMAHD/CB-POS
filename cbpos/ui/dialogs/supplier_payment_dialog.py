@@ -22,6 +22,7 @@ from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
 class SupplierPaymentDialog(QDialog):
@@ -38,6 +39,7 @@ class SupplierPaymentDialog(QDialog):
         self.setMinimumSize(450, 380)
         self.resize(500, 420)
         self.init_ui()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def init_ui(self) -> None:
         """Build the title, supplier info, payment form, and action buttons."""

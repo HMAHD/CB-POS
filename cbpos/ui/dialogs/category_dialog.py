@@ -18,6 +18,7 @@ from cbpos.core.models import Category
 from cbpos.core.services.category_service import CategoryService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
 class CategoryDialog(QDialog):
@@ -37,6 +38,7 @@ class CategoryDialog(QDialog):
         self.setup_ui()
         if category:
             self.load_data()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def setup_ui(self):
         """Build the name, parent category, and color picker form."""

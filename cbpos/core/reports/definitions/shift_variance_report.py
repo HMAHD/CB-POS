@@ -6,7 +6,7 @@ from sqlalchemy import func
 from cbpos.core.constants.status import ShiftStatus
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Shift, User
-from cbpos.core.reports.base_report import BaseReport
+from cbpos.core.reports.base_report import DATE, MONEY, TEXT, BaseReport, report_columns
 from cbpos.i18n import _t
 
 
@@ -49,9 +49,21 @@ class ShiftVarianceReport(BaseReport):
     def get_render_hints(self) -> dict[str, Any]:
         """Color rows by whether the shift was short, over, or balanced."""
         return {
-            "currency_columns": ["Expected", "Actual", "Variance"],
+            "columns": report_columns(
+                {
+                    "Date": DATE,
+                    "Cashier": TEXT,
+                    "Terminal": TEXT,
+                    "Expected": MONEY,
+                    "Actual": MONEY,
+                    "Variance": MONEY,
+                    "Status": TEXT,
+                    "Reason": TEXT,
+                    "Notes": TEXT,
+                }
+            ),
             "color_column": "Status",
-            "color_map": {"Short": "#FF4136", "Over": "#FFDC00", "Balanced": "#39FF14"},
+            "color_map": {"Short": "danger", "Over": "warning", "Balanced": "success"},
         }
 
     def generate(self, filters: dict[str, Any] = None) -> pd.DataFrame:

@@ -5,7 +5,7 @@ from sqlalchemy import func
 
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Sale
-from cbpos.core.reports.base_report import BaseReport
+from cbpos.core.reports.base_report import MONEY, TEXT, BaseReport, report_columns
 from cbpos.i18n import _t
 
 
@@ -34,11 +34,11 @@ class CashFlowReport(BaseReport):
     def get_render_hints(self) -> dict[str, Any]:
         """Color inflow/outflow rows and bold the Net Cash Flow total row."""
         return {
-            "currency_columns": ["Amount"],
+            "columns": report_columns({"Category": TEXT, "Amount": MONEY, "Type": TEXT}),
             "total_row_column": "Type",
             "total_row_values": ["Net"],
             "color_column": "Type",
-            "color_map": {"Inflow": "#39FF14", "Outflow": "#FF4136"},
+            "color_map": {"Inflow": "success", "Outflow": "danger"},
         }
 
     def generate(self, filters: dict[str, Any] = None) -> pd.DataFrame:

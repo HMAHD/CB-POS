@@ -2,7 +2,7 @@ from typing import Any
 
 import pandas as pd
 
-from cbpos.core.reports.base_report import BaseReport
+from cbpos.core.reports.base_report import DATE, INT, MONEY, TEXT, BaseReport, report_columns
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.i18n import _t
 
@@ -28,6 +28,21 @@ class OverdueCustomersReport(BaseReport):
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """No filters; always shows all customers currently overdue."""
         return []
+
+    def get_render_hints(self) -> dict[str, Any]:
+        """Declare column types so money and day counts right-align with separators."""
+        return {
+            "columns": report_columns(
+                {
+                    "Customer": TEXT,
+                    "Phone": TEXT,
+                    "Outstanding": MONEY,
+                    "Credit Limit": MONEY,
+                    "Days Overdue": INT,
+                    "Last Payment": DATE,
+                }
+            )
+        }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """List overdue customers with outstanding balance, credit limit, and days overdue.

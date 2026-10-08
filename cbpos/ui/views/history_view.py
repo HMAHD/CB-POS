@@ -26,6 +26,7 @@ from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.ui.resources.status_colors import DANGER, WARNING, status_color
 
 logger = logging.getLogger(__name__)
 
@@ -251,9 +252,9 @@ class HistoryView(QWidget):
             # Status
             status_item = QTableWidgetItem(sale.status)
             if sale.status == "VOID":
-                status_item.setForeground(Qt.GlobalColor.red)
+                status_item.setForeground(status_color(DANGER))
             elif sale.payment_method == "REFUND":
-                status_item.setForeground(Qt.GlobalColor.yellow)
+                status_item.setForeground(status_color(WARNING))
                 status_item.setText(_t("history.status_refund"))
             self.transaction_table.setItem(row, 5, status_item)
 

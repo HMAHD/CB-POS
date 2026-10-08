@@ -6,7 +6,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
 from PyQt6.QtCore import QAbstractTableModel, QDate, QEvent, QModelIndex, QRegularExpression, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QRegularExpressionValidator
+from PyQt6.QtGui import QRegularExpressionValidator
 from PyQt6.QtWidgets import (
     QAbstractItemDelegate,
     QAbstractItemView,
@@ -32,12 +32,23 @@ from PyQt6.QtWidgets import (
 from cbpos.core.constants.status import DocumentStatus, Precision
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.stock_count_service import StockCountService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.formatters import format_currency, format_number, format_quantity, format_signed
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
+from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, status_color
+from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
 
 logger = logging.getLogger(__name__)
+
+
+# History status -> palette meaning for its pill (#560).
+_HISTORY_STATUS_MEANINGS = {
+    DocumentStatus.DRAFT: NEUTRAL,
+    DocumentStatus.COUNTED: INFO,
+    DocumentStatus.COMPLETED: SUCCESS,
+    DocumentStatus.VOID: DANGER,
+}
 
 
 class StockCountItemModel(QAbstractTableModel):
@@ -89,22 +100,17 @@ class StockCountItemModel(QAbstractTableModel):
             if col == 1:
                 return item.product.name_en if item.product else _t("stock_take.unknown_product")
             if col == 2:
-                return f"{item.expected_qty:.3f}"
+                return _format_count(item.expected_qty, item.product)
             if col == 3:
-                return f"{item.counted_qty:.3f}" if item.counted_qty is not None else ""
+                return _format_count(item.counted_qty, item.product)
             if col == 4:
-                return f"{item.variance_qty:.3f}" if item.variance_qty is not None else ""
+                return _format_variance(item.variance_qty, item.product)
             if col == 5:
-                return format_currency(item.variance_value) if item.variance_value is not None else ""
+                return format_signed(item.variance_value, format_currency) if item.variance_value is not None else ""
 
         elif role == Qt.ItemDataRole.ForegroundRole:
             if col in (4, 5) and item.variance_qty is not None:
-                if item.variance_qty < 0:
-                    return QColor("#FF4136")  # Red for shortage
-                elif item.variance_qty > 0:
-                    return QColor("#39FF14")  # Green for surplus
-                else:
-                    return QColor("#888888")  # Gray for zero
+                return status_color(_variance_meaning(item.variance_qty))
 
         elif role == Qt.ItemDataRole.TextAlignmentRole:
             if col >= self.FIRST_NUMERIC_COL:
@@ -175,6 +181,27 @@ def _count_decimals(product) -> int:
     if product.unit is not None:
         return min(product.unit.decimal_places or 0, 3)
     return 3 if product.is_weighted else 0
+
+
+def _format_count(qty, product) -> str:
+    """A count in its product's unit: ``12`` for pieces, ``1.250`` for kg; "" if not counted yet."""
+    if qty is None:
+        return ""
+    return format_quantity(qty, _count_decimals(product))
+
+
+def _format_variance(qty, product) -> str:
+    """A variance with an explicit sign (+3 / \u22123), so it doesn't rely on colour alone (#559)."""
+    if qty is None:
+        return ""
+    return format_signed(qty, lambda value: _format_count(value, product))
+
+
+def _variance_meaning(value) -> str:
+    """Shortage is danger, surplus success, none neutral."""
+    if value < 0:
+        return DANGER
+    return SUCCESS if value > 0 else NEUTRAL
 
 
 class CountedDelegate(QStyledItemDelegate):
@@ -298,24 +325,18 @@ class StockCountReportDialog(QDialog):
                 (3, item.counted_qty),
                 (4, item.variance_qty),
             ]:
-                text = f"{val:.3f}" if val is not None else ""
+                text = _format_variance(val, item.product) if col == 4 else _format_count(val, item.product)
                 cell = QTableWidgetItem(text)
                 cell.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 if col == 4 and val is not None:
-                    if val < 0:
-                        cell.setForeground(QColor("#FF4136"))
-                    elif val > 0:
-                        cell.setForeground(QColor("#39FF14"))
+                    cell.setForeground(status_color(_variance_meaning(val)))
                 table.setItem(row, col, cell)
 
-            val_text = format_currency(item.variance_value) if item.variance_value is not None else ""
+            val_text = format_signed(item.variance_value, format_currency) if item.variance_value is not None else ""
             val_cell = QTableWidgetItem(val_text)
             val_cell.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             if item.variance_value is not None:
-                if item.variance_value < 0:
-                    val_cell.setForeground(QColor("#FF4136"))
-                elif item.variance_value > 0:
-                    val_cell.setForeground(QColor("#39FF14"))
+                val_cell.setForeground(status_color(_variance_meaning(item.variance_value)))
             table.setItem(row, 5, val_cell)
 
         layout.addWidget(table, 1)
@@ -449,7 +470,7 @@ class StockTakeView(QWidget):
         stats_layout = QHBoxLayout()
         self.lbl_items = QLabel(_t("stock_take.items_count", count=0))
         self.lbl_counted = QLabel(_t("stock_take.counted_progress", counted=0, total=0))
-        self.lbl_variance = QLabel(_t("stock_take.variance_amount", amount="Rs. 0.00"))
+        self.lbl_variance = QLabel(_t("stock_take.variance_amount", amount=format_currency(Decimal("0"))))
         self.lbl_status = QLabel(_t("stock_take.status_display", status="---"))
         stats_layout.addWidget(self.lbl_items)
         stats_layout.addWidget(self.lbl_counted)
@@ -559,6 +580,7 @@ class StockTakeView(QWidget):
         self.history_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.history_table.setAlternatingRowColors(True)
         self.history_table.doubleClicked.connect(self.on_history_double_click)
+        self.history_table.setItemDelegateForColumn(5, StatusPillDelegate(self.history_table))  # (#560)
         self.history_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.history_table.customContextMenuRequested.connect(self.show_history_context_menu)
         layout.addWidget(self.history_table, 1)
@@ -760,7 +782,7 @@ class StockTakeView(QWidget):
         if not self.current_stock_count:
             self.lbl_items.setText(_t("stock_take.items_count", count=0))
             self.lbl_counted.setText(_t("stock_take.counted_progress", counted=0, total=0))
-            self.lbl_variance.setText(_t("stock_take.variance_amount", amount="Rs. 0.00"))
+            self.lbl_variance.setText(_t("stock_take.variance_amount", amount=format_currency(Decimal("0"))))
             self.lbl_status.setText(_t("stock_take.status_display", status="---"))
             # No count yet: only starting one makes sense. Without this the
             # buttons kept the last count's state, so Load Products stayed
@@ -908,7 +930,7 @@ class StockTakeView(QWidget):
             self.history_table.setItem(row, 1, QTableWidgetItem(sc.date.strftime("%Y-%m-%d %H:%M") if sc.date else ""))
             self.history_table.setItem(row, 2, QTableWidgetItem(sc.user.username if sc.user else ""))
 
-            items_item = QTableWidgetItem(str(len(sc.items)) if sc.items else "0")
+            items_item = QTableWidgetItem(format_number(len(sc.items or []), 0))
             items_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.history_table.setItem(row, 3, items_item)
 
@@ -916,7 +938,8 @@ class StockTakeView(QWidget):
             var_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.history_table.setItem(row, 4, var_item)
 
-            self.history_table.setItem(row, 5, QTableWidgetItem(sc.status))
+            meaning = _HISTORY_STATUS_MEANINGS.get(sc.status)
+            self.history_table.setItem(row, 5, set_status_pill(QTableWidgetItem(), sc.status, meaning))
 
     def on_history_double_click(self, index: QModelIndex) -> None:
         """Open stock count report dialog on double-click."""

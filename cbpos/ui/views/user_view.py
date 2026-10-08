@@ -3,7 +3,7 @@
 import weakref
 from datetime import datetime, time
 
-from PyQt6.QtCore import QDate, Qt
+from PyQt6.QtCore import QDate
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -24,12 +24,12 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.services.user_service import UserService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.dialogs.permission_dialog import PermissionDialog
 from cbpos.ui.dialogs.role_manager import RoleManagerDialog
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.resources.status_colors import DANGER, INFO, SUCCESS, WARNING, is_light_theme, status_color
 from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 
@@ -354,35 +354,35 @@ class UserView(QWidget):
             status = _t("common.active") if user.is_active else _t("common.inactive")
             item_status = QTableWidgetItem(status)
             if not user.is_active:
-                item_status.setForeground(Qt.GlobalColor.red)
+                item_status.setForeground(status_color(DANGER))
             self.table.setItem(row, 3, item_status)
 
     # Destructive actions get flagged red even though their event_type
     # (TRANSACTION) is shared with routine actions like TRANSFER_ORDER.
     _DESTRUCTIVE_ACTIONS = {"VOID_SALE", "REFUND"}
 
-    # (dark theme color, light theme color) per event_type. LOGIN/LOGOUT/
-    # TIMEOUT are deliberately absent -- they're the noisy majority of rows
-    # and coloring them would drown out the events that actually need
-    # attention.
+    # A palette meaning (#559), or a (dark, light) pair for categories that
+    # aren't a status, per event_type. LOGIN/LOGOUT/TIMEOUT are deliberately
+    # absent -- they're the noisy majority of rows and coloring them would
+    # drown out the events that actually need attention.
     _EVENT_TYPE_COLORS = {
-        "SECURITY": ("#FFDC00", "#B8860B"),
-        "INVENTORY": ("#20C997", "#0CA678"),
-        "TRANSACTION": ("#00BCEB", "#0D6EFD"),
-        "CREDIT": ("#39FF14", "#198754"),
+        "SECURITY": WARNING,
+        "INVENTORY": ("#20C997", "#0B7A5E"),
+        "TRANSACTION": INFO,
+        "CREDIT": SUCCESS,
         "PURCHASE": ("#B794F6", "#6F42C1"),
     }
 
     def _log_event_color(self, log) -> QColor:
-        is_light = ThemeService.current_theme.lower() == "light"
-
         if log.action in self._DESTRUCTIVE_ACTIONS:
-            return QColor("#DC3545" if is_light else "#FF4136")
+            return status_color(DANGER)
 
         colors = self._EVENT_TYPE_COLORS.get(log.event_type)
         if colors is None:
             return None
-        return QColor(colors[1] if is_light else colors[0])
+        if isinstance(colors, str):
+            return status_color(colors)
+        return QColor(colors[1] if is_light_theme() else colors[0])
 
     def apply_log_filter(self):
         """Reload the activity log using the current filter settings."""

@@ -209,7 +209,7 @@ class TestRemoveOverrideContextMenu:
         view.load_items()
 
         row = self._load_row_for(view, product)
-        assert view.table.item(row, 3).text() == "-"
+        assert view.table.item(row, 3).text() == "\u2014"
 
         with patch.object(pricelist_view_module, "QMenu") as mock_menu_cls:
             view._show_item_context_menu(view.table.visualItemRect(view.table.item(row, 0)).center())

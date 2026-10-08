@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from cbpos.core.database import Database
 from cbpos.core.models import Customer
-from cbpos.core.reports.base_report import BaseReport
+from cbpos.core.reports.base_report import MONEY, TEXT, BaseReport, report_columns
 from cbpos.i18n import _t
 
 
@@ -30,6 +30,20 @@ class CustomerCreditReport(BaseReport):
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """No filters; always shows all customers with an outstanding balance."""
         return []
+
+    def get_render_hints(self) -> dict[str, Any]:
+        """Declare column types so money right-aligns with separators."""
+        return {
+            "columns": report_columns(
+                {
+                    "Customer": TEXT,
+                    "Phone": TEXT,
+                    "Credit Limit": MONEY,
+                    "Outstanding": MONEY,
+                    "Available": MONEY,
+                }
+            )
+        }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """List customers with debt > 0, ordered highest debt first.

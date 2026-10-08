@@ -47,6 +47,7 @@ from cbpos.core.services.language_service import LanguageService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.receipt_logo_service import store_receipt_logo
 from cbpos.core.services.theme_service import ThemeService
+from cbpos.core.utils.formatters import DEFAULT_CURRENCY_SYMBOL, get_currency_symbol
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.help_icon_button import HelpIconButton
@@ -529,7 +530,7 @@ class ShopInfoPage(SettingsPage):
         self.input_phone.setText(settings.get("shop_phone", ""))
         self.input_vat.setText(settings.get("vat_number", ""))
         self.input_tax_id.setText(settings.get("company_tax_id", ""))
-        self.input_currency.setText(settings.get("currency_symbol", "Rs."))
+        self.input_currency.setText(settings.get("currency_symbol") or DEFAULT_CURRENCY_SYMBOL)
 
         self.input_bank_name.setText(settings.get("company_bank_name", ""))
         self.input_account_no.setText(settings.get("company_account_number", ""))
@@ -603,17 +604,17 @@ class SalesTaxPage(SettingsPage):
 
         self.spin_loyalty_ratio = QSpinBox()
         self.spin_loyalty_ratio.setRange(1, 10000)
-        self.spin_loyalty_ratio.setPrefix("Rs. ")
         self.spin_loyalty_ratio.setFixedWidth(200)
         self._lbl_loyalty_ratio = QLabel()
         self._form_sales.addRow(self._lbl_loyalty_ratio, self.spin_loyalty_ratio)
 
         self.spin_default_credit = QSpinBox()
         self.spin_default_credit.setRange(0, 1000000)
-        self.spin_default_credit.setPrefix("Rs. ")
         self.spin_default_credit.setFixedWidth(200)
         self._lbl_default_credit = QLabel()
         self._form_sales.addRow(self._lbl_default_credit, self.spin_default_credit)
+
+        self.set_currency_symbol(get_currency_symbol())
 
         self.tabs.addTab(self._tab_sales, "")
 
@@ -740,8 +741,15 @@ class SalesTaxPage(SettingsPage):
         ):
             widget.setEnabled(enabled)
 
+    def set_currency_symbol(self, symbol: str) -> None:
+        """Show ``symbol`` (the Shop Info currency, even unsaved) on the money spin boxes."""
+        prefix = f"{(symbol or '').strip() or DEFAULT_CURRENCY_SYMBOL} "
+        self.spin_loyalty_ratio.setPrefix(prefix)
+        self.spin_default_credit.setPrefix(prefix)
+
     def load(self, settings: dict):
         """Populate sales and tax fields from the settings dict."""
+        self.set_currency_symbol(settings.get("currency_symbol") or get_currency_symbol())
         mode = settings.get("default_search_mode", "ALL")
         idx = self.combo_search_mode.findData(mode)
         if idx >= 0:

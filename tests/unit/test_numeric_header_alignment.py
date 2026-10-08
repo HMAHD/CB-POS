@@ -62,7 +62,7 @@ class TestDocumentBrowser:
         qtbot.addWidget(view)
 
         assert _right_header_columns(view.doc_table) == {4}  # Total
-        assert _right_header_columns(view.items_table) == {1, 2, 4}  # Qty, Unit Price, Total
+        assert _right_header_columns(view.items_table) == {1, 2, 3, 4}  # Qty, Unit Price, Discount, Total
 
         view.retranslate_ui()
         assert _right_header_columns(view.doc_table) == {4}

@@ -5,7 +5,6 @@ from datetime import datetime
 from decimal import Decimal
 
 from PyQt6.QtCore import QDateTime, Qt
-from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -28,8 +27,11 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.category_service import CategoryService
 from cbpos.core.services.promotion_service import SUPPORTED_TYPES, PromotionService
+from cbpos.core.utils.formatters import format_discount
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
-from cbpos.ui.widgets.table_helpers import configure_table_columns
+from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS
+from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
+from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
 
 _DAY_KEYS = [
     "promotion.day_mon",
@@ -101,6 +103,7 @@ class PromotionView(QWidget):
             },
         )
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table.setItemDelegateForColumn(6, StatusPillDelegate(self.table))  # Status (#560)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.doubleClicked.connect(self.edit_promotion)
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -122,27 +125,28 @@ class PromotionView(QWidget):
                 _t("common.status"),
             ]
         )
+        align_numeric_headers(self.table, (2,))  # Value
 
     @staticmethod
-    def _get_promotion_status(promotion) -> tuple[str, QColor]:
-        """Return (label, colour) reflecting whether a promotion is really
+    def _get_promotion_status(promotion) -> tuple[str, str]:
+        """Return (label, palette meaning) reflecting whether a promotion is really
         active right now, rather than trusting its stored is_active flag on
         its own -- that flag is only ever set True at creation and otherwise
         only changes when an admin manually toggles it, so a promotion whose
         end_time passed months ago would otherwise show "Active" forever.
         """
         if not promotion.is_active:
-            return _t("common.inactive"), QColor("#888888")
+            return _t("common.inactive"), NEUTRAL
         # Checkout has no BOGO branch, so such a promotion never applies (#635).
         if promotion.type not in SUPPORTED_TYPES:
-            return _t("promotion.status_not_applied"), QColor("#FF4136")
+            return _t("promotion.status_not_applied"), DANGER
 
         now = datetime.now()
         if promotion.end_time < now:
-            return _t("promotion.status_expired"), QColor("#888888")
+            return _t("promotion.status_expired"), NEUTRAL
         if promotion.start_time > now:
-            return _t("promotion.status_upcoming"), QColor("#5599FF")
-        return _t("common.active"), QColor("#39FF14")
+            return _t("promotion.status_upcoming"), INFO
+        return _t("common.active"), SUCCESS
 
     def load_promotions(self):
         """Reload promotions from the service and repopulate the table."""
@@ -154,17 +158,17 @@ class PromotionView(QWidget):
 
             self.table.setItem(row, 0, QTableWidgetItem(p.name))
             self.table.setItem(row, 1, QTableWidgetItem(p.type))
-            self.table.setItem(row, 2, QTableWidgetItem(f"{p.value:.2f}"))
+            value_item = QTableWidgetItem(format_discount(p.type, p.value))
+            value_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.table.setItem(row, 2, value_item)
             self.table.setItem(row, 3, QTableWidgetItem(p.start_time.strftime("%Y-%m-%d %H:%M")))
             self.table.setItem(row, 4, QTableWidgetItem(p.end_time.strftime("%Y-%m-%d %H:%M")))
 
             scope_text = p.category.name if p.category_id and p.category else _t("promotion.scope_all_products")
             self.table.setItem(row, 5, QTableWidgetItem(scope_text))
 
-            status_text, status_colour = self._get_promotion_status(p)
-            status_item = QTableWidgetItem(status_text)
-            status_item.setForeground(status_colour)
-            self.table.setItem(row, 6, status_item)
+            status_text, meaning = self._get_promotion_status(p)
+            self.table.setItem(row, 6, set_status_pill(QTableWidgetItem(), status_text, meaning))
 
     def add_promotion(self):
         """Open the create dialog and persist a new promotion on accept."""

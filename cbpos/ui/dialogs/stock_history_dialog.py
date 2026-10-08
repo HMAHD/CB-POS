@@ -1,4 +1,3 @@
-from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
     QHeaderView,
@@ -12,6 +11,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.models import Product
 from cbpos.core.services.stock_service import StockService
 from cbpos.i18n import _t
+from cbpos.ui.resources.status_colors import DANGER, SUCCESS, status_color
 
 
 class StockHistoryDialog(QDialog):
@@ -85,9 +85,9 @@ class StockHistoryDialog(QDialog):
             # Change Column (Color Coded)
             change_item = QTableWidgetItem(f"{move.qty_change:+.3f}")
             if move.qty_change > 0:
-                change_item.setForeground(Qt.GlobalColor.green)
+                change_item.setForeground(status_color(SUCCESS))
             elif move.qty_change < 0:
-                change_item.setForeground(Qt.GlobalColor.red)
+                change_item.setForeground(status_color(DANGER))
             self.table.setItem(row, 4, change_item)
 
             self.table.setItem(row, 5, QTableWidgetItem(f"{move.balance_after:.3f}"))

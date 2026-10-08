@@ -4,7 +4,7 @@ import weakref
 from decimal import Decimal
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QFont
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.purchase_order_service import PurchaseOrderService
 from cbpos.core.services.stock_service import StockService
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.resources.status_colors import DANGER, status_color
 
 
 class ReorderView(QWidget):
@@ -126,7 +127,7 @@ class ReorderView(QWidget):
                 font = QFont()
                 font.setBold(True)
                 name_item.setFont(font)
-                name_item.setForeground(QColor("#FF4136"))
+                name_item.setForeground(status_color(DANGER))
             self.table.setItem(row, 0, name_item)
 
             # Barcode
@@ -136,7 +137,7 @@ class ReorderView(QWidget):
             stock_item = QTableWidgetItem(f"{product.stock_qty:.3f}")
             stock_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             if product.stock_qty <= 0:
-                stock_item.setForeground(QColor("#FF4136"))
+                stock_item.setForeground(status_color(DANGER))
             self.table.setItem(row, 2, stock_item)
 
             # Reorder Point

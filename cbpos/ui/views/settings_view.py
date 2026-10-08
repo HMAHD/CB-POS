@@ -129,6 +129,9 @@ class SettingsView(QWidget):
         for page in self.pages:
             self.stack.addWidget(page)
 
+        # Money spin boxes follow the currency symbol as it is typed (#555).
+        self.pages[0].input_currency.textChanged.connect(self.pages[1].set_currency_symbol)
+
         # Operational views (self-contained, no load/save)
         from cbpos.ui.views.admin_tools_view import AdminToolsView
         from cbpos.ui.views.data_safety_view import DataSafetyView

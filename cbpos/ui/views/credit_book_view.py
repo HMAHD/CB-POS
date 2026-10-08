@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from PyQt6.QtCore import QDate, Qt
-from PyQt6.QtGui import QColor, QKeySequence, QShortcut
+from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QDateEdit,
     QFrame,
@@ -26,10 +26,11 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.customer_service import CustomerService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.formatters import format_currency, format_number, money_header
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.dialogs.customer_editor import CustomerEditor
-from cbpos.ui.widgets.table_helpers import configure_table_columns
+from cbpos.ui.resources.status_colors import DANGER, NEUTRAL, SUCCESS, WARNING, status_color
+from cbpos.ui.widgets.table_helpers import align_numeric_headers, configure_table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -353,11 +354,12 @@ class CreditBookView(QWidget):
                 _t("credit_book.customer_header_id"),
                 _t("credit_book.customer_header_name"),
                 _t("credit_book.customer_header_phone"),
-                _t("credit_book.customer_header_debt"),
-                _t("credit_book.customer_header_limit"),
+                money_header(_t("credit_book.customer_header_debt")),
+                money_header(_t("credit_book.customer_header_limit")),
                 _t("credit_book.customer_header_points"),
             ]
         )
+        align_numeric_headers(self.customer_table, (3, 4, 5))  # Debt, Limit, Points
         self.btn_back.setText(_t("credit_book.btn_back"))
         self.btn_receive_payment.setText(_t("credit_book.btn_receive_payment"))
         self.btn_print_statement.setText(_t("credit_book.btn_print_statement"))
@@ -372,11 +374,12 @@ class CreditBookView(QWidget):
                 _t("credit_book.ledger_header_date"),
                 _t("credit_book.ledger_header_type"),
                 _t("credit_book.ledger_header_doc"),
-                _t("credit_book.ledger_header_debit"),
-                _t("credit_book.ledger_header_credit"),
-                _t("credit_book.ledger_header_balance"),
+                money_header(_t("credit_book.ledger_header_debit")),
+                money_header(_t("credit_book.ledger_header_credit")),
+                money_header(_t("credit_book.ledger_header_balance")),
             ]
         )
+        align_numeric_headers(self.ledger_table, (3, 4, 5))  # Debit, Credit, Balance
 
     # ------------------------------------------------------------------
     # Navigation
@@ -434,7 +437,7 @@ class CreditBookView(QWidget):
             self.customer_table.insertRow(0)
             empty_item = QTableWidgetItem(_t("credit_book.no_customers_found"))
             empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty_item.setForeground(QColor("gray"))
+            empty_item.setForeground(status_color(NEUTRAL))
             empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
             self.customer_table.setItem(0, 0, empty_item)
             self.customer_table.setSpan(0, 0, 1, self.customer_table.columnCount())
@@ -455,24 +458,24 @@ class CreditBookView(QWidget):
             self.customer_table.setItem(row, 2, QTableWidgetItem(customer.phone or ""))
 
             # Debt with color coding
-            debt_item = QTableWidgetItem(f"{customer.current_debt:.2f}")
+            debt_item = QTableWidgetItem(format_number(customer.current_debt, 2))
             debt_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
-            limit_item = QTableWidgetItem(f"{customer.credit_limit:.2f}")
+            limit_item = QTableWidgetItem(format_number(customer.credit_limit, 2))
             limit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
             if customer.credit_limit > 0:
                 ratio = customer.current_debt / customer.credit_limit
                 if ratio >= Decimal("0.9"):
-                    debt_item.setForeground(QColor("#FF4136"))
+                    debt_item.setForeground(status_color(DANGER))
                 elif ratio >= Decimal("0.5"):
-                    debt_item.setForeground(QColor("#FF851B"))
+                    debt_item.setForeground(status_color(WARNING))
                 elif customer.current_debt == 0:
-                    debt_item.setForeground(QColor("#39FF14"))
+                    debt_item.setForeground(status_color(SUCCESS))
             elif customer.current_debt > 0:
-                debt_item.setForeground(QColor("#FF4136"))
+                debt_item.setForeground(status_color(DANGER))
 
-            points_item = QTableWidgetItem(str(customer.loyalty_points))
+            points_item = QTableWidgetItem(format_number(customer.loyalty_points or 0, 0))
             points_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
             self.customer_table.setItem(row, 3, debt_item)
@@ -569,22 +572,22 @@ class CreditBookView(QWidget):
 
             # Debit / Credit
             if entry.amount > 0:
-                debit_item = QTableWidgetItem(f"{entry.amount:.2f}")
-                debit_item.setForeground(QColor("#FF4136"))
+                debit_item = QTableWidgetItem(format_number(entry.amount, 2))
+                debit_item.setForeground(status_color(DANGER))
                 debit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.ledger_table.setItem(row, 3, debit_item)
                 self.ledger_table.setItem(row, 4, QTableWidgetItem(""))
                 total_debit += entry.amount
             else:
                 self.ledger_table.setItem(row, 3, QTableWidgetItem(""))
-                credit_item = QTableWidgetItem(f"{abs(entry.amount):.2f}")
-                credit_item.setForeground(QColor("#39FF14"))
+                credit_item = QTableWidgetItem(format_number(abs(entry.amount), 2))
+                credit_item.setForeground(status_color(SUCCESS))
                 credit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.ledger_table.setItem(row, 4, credit_item)
                 total_credit += abs(entry.amount)
 
             # Balance
-            balance_item = QTableWidgetItem(f"{entry.balance_after:.2f}")
+            balance_item = QTableWidgetItem(format_number(entry.balance_after, 2))
             balance_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.ledger_table.setItem(row, 5, balance_item)
 

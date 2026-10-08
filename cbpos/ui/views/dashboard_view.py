@@ -29,7 +29,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.tax_service import TaxService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.formatters import format_currency, get_currency_symbol
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.widgets.charts import (
     HOURLY_COLORS,
@@ -231,7 +231,7 @@ class DashboardView(QWidget):
         self.lbl_total_sales_title.setObjectName("SummaryLabel")
         vbox.addWidget(self.lbl_total_sales_title)
 
-        self.lbl_yearly_total = QLabel("Rs. 0")
+        self.lbl_yearly_total = QLabel(f"{get_currency_symbol()} 0")
         self.lbl_yearly_total.setObjectName("SummaryBigValue")
         # 32px bold with zero safety net (no wrap/elide/max-width) clipped on
         # at least one real device for a value that rendered fine in every
@@ -250,7 +250,7 @@ class DashboardView(QWidget):
         self.lbl_top_month.setObjectName("SummaryHighlight")
         vbox.addWidget(self.lbl_top_month)
 
-        self.lbl_top_month_total = QLabel("Rs. 0")
+        self.lbl_top_month_total = QLabel(f"{get_currency_symbol()} 0")
         self.lbl_top_month_total.setObjectName("SummarySubValue")
         vbox.addWidget(self.lbl_top_month_total)
 
@@ -388,7 +388,7 @@ class DashboardView(QWidget):
         self.lbl_avg_order_title.setObjectName("StatLabel")
         vbox.addWidget(self.lbl_avg_order_title)
 
-        self.lbl_avg_order = QLabel("Rs. 0")
+        self.lbl_avg_order = QLabel(f"{get_currency_symbol()} 0")
         self.lbl_avg_order.setObjectName("StatBigValue")
         vbox.addWidget(self.lbl_avg_order)
 
@@ -442,7 +442,7 @@ class DashboardView(QWidget):
         self.lbl_vat_title.setObjectName("StatLabel")
         vbox.addWidget(self.lbl_vat_title)
 
-        self.lbl_tax_vat = QLabel("Rs. 0")
+        self.lbl_tax_vat = QLabel(f"{get_currency_symbol()} 0")
         self.lbl_tax_vat.setObjectName("StatBigValue")
         vbox.addWidget(self.lbl_tax_vat)
 
@@ -453,7 +453,7 @@ class DashboardView(QWidget):
         self.lbl_sscl_title.setObjectName("StatLabel")
         vbox.addWidget(self.lbl_sscl_title)
 
-        self.lbl_tax_sscl = QLabel("Rs. 0")
+        self.lbl_tax_sscl = QLabel(f"{get_currency_symbol()} 0")
         self.lbl_tax_sscl.setObjectName("StatValue")
         vbox.addWidget(self.lbl_tax_sscl)
 
@@ -464,7 +464,7 @@ class DashboardView(QWidget):
         self.lbl_net_revenue_title.setObjectName("StatLabel")
         vbox.addWidget(self.lbl_net_revenue_title)
 
-        self.lbl_net_revenue = QLabel("Rs. 0")
+        self.lbl_net_revenue = QLabel(f"{get_currency_symbol()} 0")
         self.lbl_net_revenue.setObjectName("StatValue")
         vbox.addWidget(self.lbl_net_revenue)
 

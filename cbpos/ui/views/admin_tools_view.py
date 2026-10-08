@@ -14,7 +14,6 @@ from datetime import datetime
 
 from PyQt6 import sip
 from PyQt6.QtCore import QDate, Qt, QTimer
-from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QComboBox,
     QDateEdit,
@@ -39,9 +38,11 @@ from cbpos.core.constants.hardware import DRAWER_PINS, PrinterType
 from cbpos.core.services.error_log_service import ErrorLogService
 from cbpos.core.services.hardware_test_service import HardwareTestResult, HardwareTestService
 from cbpos.core.services.maintenance_service import MaintenanceService
+from cbpos.core.utils.formatters import format_number
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import drawer_pin_setting
 from cbpos.ui.hardware_test_feedback import set_hardware_test_status, show_hardware_test_result
+from cbpos.ui.resources.status_colors import DANGER, WARNING, status_color
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers
 
@@ -53,18 +54,12 @@ _PRINTER_TYPE_KEYS = {
     PrinterType.USB: "printer.type_usb",
 }
 
-# Color coding for log levels
-_LEVEL_COLORS = {
-    "WARNING": QColor("#FFD700"),
-    "ERROR": QColor("#FF4136"),
-    "CRITICAL": QColor("#FF4136"),
-}
-
-# Background tinting for log levels
-_LEVEL_BG_COLORS = {
-    "WARNING": QColor(255, 215, 0, 30),
-    "ERROR": QColor(255, 65, 54, 30),
-    "CRITICAL": QColor(255, 65, 54, 50),
+# Log level -> palette meaning. Only the Level cell is coloured: tinting
+# whole rows made the log hard to read in both themes (#559).
+_LEVEL_MEANINGS = {
+    "WARNING": WARNING,
+    "ERROR": DANGER,
+    "CRITICAL": DANGER,
 }
 
 
@@ -231,7 +226,7 @@ class AdminToolsView(QWidget):
             self.table_counts.setRowCount(len(tables))
             for row, t in enumerate(tables):
                 self.table_counts.setItem(row, 0, QTableWidgetItem(t["name"]))
-                rows_item = QTableWidgetItem(str(t["rows"]))
+                rows_item = QTableWidgetItem(format_number(t["rows"], 0))
                 rows_item.setTextAlignment(NUMERIC_ALIGNMENT)
                 self.table_counts.setItem(row, 1, rows_item)
         except Exception as e:
@@ -433,15 +428,9 @@ class AdminToolsView(QWidget):
             source_item = QTableWidgetItem(entry["source"])
             msg_item = QTableWidgetItem(entry["message"])
 
-            # Color coding
-            color = _LEVEL_COLORS.get(entry["level"])
-            bg_color = _LEVEL_BG_COLORS.get(entry["level"])
-            if color:
-                for item in (time_item, level_item, source_item, msg_item):
-                    item.setForeground(color)
-            if bg_color:
-                for item in (time_item, level_item, source_item, msg_item):
-                    item.setBackground(bg_color)
+            meaning = _LEVEL_MEANINGS.get(entry["level"])
+            if meaning:
+                level_item.setForeground(status_color(meaning))
 
             if entry["level"] == "CRITICAL":
                 font = level_item.font()

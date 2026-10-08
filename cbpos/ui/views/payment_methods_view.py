@@ -206,6 +206,20 @@ class _MethodCard(QFrame):
         self.setFrameShape(QFrame.Shape.NoFrame)
         self._init_ui()
 
+    def _status_pill(self) -> QLabel:
+        """Borderless Active/Inactive pill (styled by #PMCardStatus in the QSS)."""
+        if self.method.is_active:
+            status_text = _t("payment_methods.status_active")
+            status_class = "pm-active"
+        else:
+            status_text = _t("payment_methods.status_inactive")
+            status_class = "pm-inactive"
+        self.status_label = QLabel(status_text)
+        self.status_label.setObjectName("PMCardStatus")
+        self.status_label.setProperty("class", status_class)
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        return self.status_label
+
     def _init_ui(self) -> None:
         layout = QHBoxLayout(self)
         layout.setContentsMargins(16, 12, 16, 12)
@@ -217,7 +231,14 @@ class _MethodCard(QFrame):
 
         name_label = QLabel(self.method.name)
         name_label.setObjectName("PMCardName")
-        info_layout.addWidget(name_label)
+        # Status pill sits beside the name, away from the action buttons,
+        # so it doesn't read as a button (#560).
+        name_row = QHBoxLayout()
+        name_row.setSpacing(8)
+        name_row.addWidget(name_label)
+        name_row.addWidget(self._status_pill())
+        name_row.addStretch()
+        info_layout.addLayout(name_row)
 
         # Tags line: properties as small text
         tags = []
@@ -234,20 +255,6 @@ class _MethodCard(QFrame):
             info_layout.addWidget(tag_label)
 
         layout.addLayout(info_layout, 1)
-
-        # --- Center: Status badge ---
-        if self.method.is_active:
-            status_text = _t("payment_methods.status_active")
-            status_class = "pm-active"
-        else:
-            status_text = _t("payment_methods.status_inactive")
-            status_class = "pm-inactive"
-        status_label = QLabel(status_text)
-        status_label.setObjectName("PMCardStatus")
-        status_label.setProperty("class", status_class)
-        status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        status_label.setFixedWidth(80)
-        layout.addWidget(status_label)
 
         # --- Right: Action buttons ---
         self.btn_layout = btn_layout = QHBoxLayout()

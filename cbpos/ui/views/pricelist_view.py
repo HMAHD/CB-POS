@@ -32,10 +32,15 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.price_list_service import PriceListService
 from cbpos.core.services.product_service import ProductService
+from cbpos.core.utils.formatters import NO_VALUE, format_number, money_header
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.resources.status_colors import INFO, NEUTRAL, SUCCESS, status_color
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers
+
+# Price cells keep their raw Decimal here; the text is display-only (#557).
+PRICE_ROLE = Qt.ItemDataRole.UserRole
 
 
 class PriceListView(QWidget):
@@ -202,6 +207,9 @@ class PriceListView(QWidget):
         self.table.setObjectName("PriceListDataTable")
         self.table.setColumnCount(4)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        # Prices fit their header, which now carries the currency symbol (#557)
+        for col in (2, 3):
+            self.table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
         self.table.setColumnHidden(0, True)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -265,8 +273,8 @@ class PriceListView(QWidget):
             [
                 _t("pricelist.header_id"),
                 _t("pricelist.header_product"),
-                _t("pricelist.header_base_price"),
-                _t("pricelist.header_list_price"),
+                money_header(_t("pricelist.header_base_price")),
+                money_header(_t("pricelist.header_list_price")),
             ]
         )
         align_numeric_headers(self.table, (2, 3))  # Base Price, List Price
@@ -285,8 +293,8 @@ class PriceListView(QWidget):
             A tuple of (status_text, foreground_colour).
         """
         status = PriceListService.get_status(price_list)
-        colour = {"disabled": "#888888", "expired": "#888888", "upcoming": "#5599FF"}.get(status, "#39FF14")
-        return _t(f"pricelist.status_{status}"), QColor(colour)
+        meaning = {"disabled": NEUTRAL, "expired": NEUTRAL, "upcoming": INFO}.get(status, SUCCESS)
+        return _t(f"pricelist.status_{status}"), status_color(meaning)
 
     # ------------------------------------------------------------------
     # Sidebar Navigation
@@ -361,17 +369,20 @@ class PriceListView(QWidget):
 
             self.table.setItem(row, 0, QTableWidgetItem(str(p.id)))
             self.table.setItem(row, 1, QTableWidgetItem(p.name_en))
-            base_item = QTableWidgetItem(f"{p.price:.2f}")
+            base_item = QTableWidgetItem(format_number(p.price, 2))
             base_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            # Edit/context-menu read the raw Decimal, never the display text (#557)
+            base_item.setData(PRICE_ROLE, p.price)
             self.table.setItem(row, 2, base_item)
 
             list_price = price_map.get(p.id)
-            price_display = f"{list_price:.2f}" if list_price is not None else "-"
+            price_display = format_number(list_price, 2) if list_price is not None else NO_VALUE
 
             price_item = QTableWidgetItem(price_display)
             price_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            price_item.setData(PRICE_ROLE, list_price)  # None = no override
             if list_price is not None:
-                price_item.setForeground(Qt.GlobalColor.green)
+                price_item.setForeground(status_color(SUCCESS))
 
             self.table.setItem(row, 3, price_item)
 
@@ -461,8 +472,7 @@ class PriceListView(QWidget):
             return
 
         row = item.row()
-        current_val_str = self.table.item(row, 3).text()
-        if current_val_str == "-":
+        if self._list_price(row) is None:
             return
 
         menu = QMenu(self)
@@ -494,16 +504,19 @@ class PriceListView(QWidget):
         except Exception as e:
             QMessageBox.critical(self, _t("common.error"), str(e))
 
+    def _list_price(self, row: int) -> Decimal | None:
+        """The row's price-list override as a Decimal, or None if it has none."""
+        return self.table.item(row, 3).data(PRICE_ROLE)
+
     def _edit_item_price_row(self, row: int) -> None:
         if not self.current_list or row < 0:
             return
 
         product_id = int(self.table.item(row, 0).text())
         product_name = self.table.item(row, 1).text()
-        base_price = Decimal(self.table.item(row, 2).text())
-
-        current_val_str = self.table.item(row, 3).text()
-        current_price = Decimal(current_val_str) if current_val_str != "-" else base_price
+        base_price = self.table.item(row, 2).data(PRICE_ROLE)
+        list_price = self._list_price(row)
+        current_price = list_price if list_price is not None else base_price
 
         dialog = SetItemPriceDialog(product_name, current_price, parent=self)
         if dialog.exec():

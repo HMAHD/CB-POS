@@ -5,7 +5,7 @@ from sqlalchemy import func
 
 from cbpos.core.database import get_db_session
 from cbpos.core.models import CashMovement, Product, StockMovement, User
-from cbpos.core.reports.base_report import BaseReport
+from cbpos.core.reports.base_report import DATE, MONEY, QTY, TEXT, BaseReport, report_columns
 from cbpos.i18n import _t
 
 
@@ -30,6 +30,22 @@ class StockMovementReport(BaseReport):
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Date range filter only."""
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
+
+    def get_render_hints(self) -> dict[str, Any]:
+        """Declare column types so quantity changes and balances right-align."""
+        return {
+            "columns": report_columns(
+                {
+                    "Date": DATE,
+                    "User": TEXT,
+                    "Product": TEXT,
+                    "Type": TEXT,
+                    "Qty Change": QTY,
+                    "Balance": QTY,
+                    "Reference": TEXT,
+                }
+            )
+        }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """List stock movements within the date range, newest first.
@@ -89,6 +105,20 @@ class CashMovementAuditReport(BaseReport):
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Date range filter only."""
         return [{"name": "date_range", "label": "Date Range", "type": "date_range"}]
+
+    def get_render_hints(self) -> dict[str, Any]:
+        """Declare column types so amounts right-align with separators."""
+        return {
+            "columns": report_columns(
+                {
+                    "Date": DATE,
+                    "User": TEXT,
+                    "Type": TEXT,
+                    "Amount": MONEY,
+                    "Reason": TEXT,
+                }
+            )
+        }
 
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """List cash movements within the date range, newest first, with user and reason."""

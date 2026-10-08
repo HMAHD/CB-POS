@@ -4,7 +4,6 @@ import weakref
 from datetime import datetime
 
 from PyQt6.QtCore import QDate, Qt, pyqtSignal
-from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QComboBox,
     QDateEdit,
@@ -33,10 +32,12 @@ from cbpos.core.services.proforma_service import ProformaService
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.services.transaction_service import TransactionService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.formatters import format_currency, format_discount, format_quantity
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.dialogs.void_reason_dialog import VoidReasonDialog
+from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING, pill_colors
+from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import align_numeric_headers, configure_table_columns
 
 logger = logging.getLogger(__name__)
@@ -50,14 +51,17 @@ class DocumentBrowserView(QWidget):
 
     convert_to_sale_requested = pyqtSignal(dict)
 
-    STATUS_COLORS = {
-        "COMPLETED": QColor("#39FF14"),
-        "VOID": QColor("#FF4136"),
-        "QUOTE": QColor("#00BCEB"),
-        "EXPIRED": QColor("#888888"),
-        "CONVERTED": QColor("#FF851B"),
-        "DRAFT": QColor("#FFDC00"),
-        "SUSPENDED": QColor("#FFDC00"),
+    # Status -> palette meaning (theme-aware colours, #559). DRAFT and
+    # SUSPENDED differ: a draft is unfinished work, a suspended sale is
+    # parked and waiting to be resumed.
+    STATUS_MEANINGS = {
+        "COMPLETED": SUCCESS,
+        "VOID": DANGER,
+        "QUOTE": INFO,
+        "EXPIRED": NEUTRAL,
+        "CONVERTED": SUCCESS,
+        "DRAFT": NEUTRAL,
+        "SUSPENDED": WARNING,
     }
 
     def __init__(self) -> None:
@@ -196,6 +200,7 @@ class DocumentBrowserView(QWidget):
         self.doc_table.setAlternatingRowColors(True)
         self.doc_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.doc_table.itemSelectionChanged.connect(self.on_selection_changed)
+        self.doc_table.setItemDelegateForColumn(5, StatusPillDelegate(self.doc_table))  # Status (#560)
         layout.addWidget(self.doc_table, 3)
 
         # Detail Panel (below table, initially hidden)
@@ -401,7 +406,7 @@ class DocumentBrowserView(QWidget):
                 _t("document_browser.item_header_total"),
             ]
         )
-        align_numeric_headers(self.items_table, (1, 2, 4))  # Qty, Unit Price, Total
+        align_numeric_headers(self.items_table, (1, 2, 3, 4))  # Qty, Unit Price, Discount, Total
 
         # Action buttons
         self.reprint_btn.setText(_t("document_browser.btn_reprint"))
@@ -518,10 +523,7 @@ class DocumentBrowserView(QWidget):
             total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.doc_table.setItem(row, 4, total_item)
 
-            status_item = QTableWidgetItem(doc["status"])
-            color = self.STATUS_COLORS.get(doc["status"])
-            if color:
-                status_item.setForeground(color)
+            status_item = set_status_pill(QTableWidgetItem(), doc["status"], self.STATUS_MEANINGS.get(doc["status"]))
             self.doc_table.setItem(row, 5, status_item)
 
             self.doc_table.setItem(row, 6, QTableWidgetItem(doc.get("username", "")))
@@ -546,6 +548,17 @@ class DocumentBrowserView(QWidget):
             self.update_action_buttons(details)
             self._show_detail()
 
+    def _status_badge_html(self, status: str) -> str:
+        """The status as a tinted, bold badge for the rich-text detail panel (#560)."""
+        meaning = self.STATUS_MEANINGS.get(status)
+        if not meaning:
+            return status
+        fg, fill = pill_colors(meaning)
+        return (
+            f'<span style="background-color:{fill.name()}; color:{fg.name()}; font-weight:bold;">'
+            f"&nbsp;{status}&nbsp;</span>"
+        )
+
     def display_details(self, doc: dict) -> None:
         """Display document details in the detail panel."""
         type_labels = {
@@ -559,7 +572,7 @@ class DocumentBrowserView(QWidget):
         html = (
             f"<b>{_t('document_browser.detail_date')}:</b> "
             f"{doc['date'].strftime('%Y-%m-%d %H:%M:%S') if doc['date'] else 'N/A'}<br>"
-            f"<b>{_t('document_browser.detail_status')}:</b> {doc['status']}<br>"
+            f"<b>{_t('document_browser.detail_status')}:</b> {self._status_badge_html(doc['status'])}<br>"
             f"<b>{_t('document_browser.detail_user')}:</b> {doc.get('username', '')}<br>"
         )
 
@@ -617,7 +630,7 @@ class DocumentBrowserView(QWidget):
                 name_item.setToolTip(note)
             self.items_table.setItem(idx, 0, name_item)
 
-            qty_item = QTableWidgetItem(f"{item['quantity']:.3f}")
+            qty_item = QTableWidgetItem(format_quantity(item["quantity"]))
             qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(idx, 1, qty_item)
 
@@ -625,10 +638,10 @@ class DocumentBrowserView(QWidget):
             price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(idx, 2, price_item)
 
-            disc = item.get("discount_type", "NONE")
-            disc_val = item.get("discount_value", 0)
-            disc_text = "" if disc == "NONE" else f"{disc} {disc_val}"
-            self.items_table.setItem(idx, 3, QTableWidgetItem(disc_text))
+            disc_text = format_discount(item.get("discount_type"), item.get("discount_value"))
+            disc_item = QTableWidgetItem(disc_text)
+            disc_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self.items_table.setItem(idx, 3, disc_item)
 
             total_item = QTableWidgetItem(format_currency(item["line_total"]))
             total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)

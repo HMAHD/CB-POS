@@ -1,7 +1,35 @@
+import re
 from abc import ABC, abstractmethod
 from typing import Any
 
 import pandas as pd
+
+# Column types a report declares in its render hints (#556), so the table
+# formats and aligns each column by what it holds rather than by guessing
+# from runtime value types (np.int64, Decimal and None defeated the guess).
+MONEY = "money"  # 2 decimals, separators, currency symbol in the header
+INT = "int"  # counts: separators, no decimals
+QTY = "qty"  # stock quantities: separators, 3 decimals
+PERCENT = "percent"  # already-formatted "12.50%" text, right-aligned
+DATE = "date"
+TEXT = "text"
+NUMERIC_COLUMN_TYPES = frozenset({MONEY, INT, QTY, PERCENT})
+
+
+def report_columns(types: dict[str, str]) -> dict[str, dict[str, str]]:
+    """Build the ``columns`` render hint from ``{column name: type}``.
+
+    Each column also gets a ``label_key`` (``reports.col_<name>``) so its
+    header can be translated once that key exists in the i18n files;
+    until then the column name is shown.
+
+    Example: ``report_columns({"Total Sales": MONEY})`` ->
+    ``{"Total Sales": {"type": "money", "label_key": "reports.col_total_sales"}}``.
+    """
+    return {
+        name: {"type": col_type, "label_key": "reports.col_" + re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")}
+        for name, col_type in types.items()
+    }
 
 
 class BaseReport(ABC):
@@ -57,12 +85,15 @@ class BaseReport(ABC):
         default to no hints (identical to today's rendering); override to
         opt in. Supported keys (all optional):
 
-            currency_columns (list[str]): columns formatted via the app's
-                currency formatter instead of raw "{:.2f}".
+            columns (dict[str, dict]): per-column definitions built with
+                report_columns(): ``type`` (money/int/qty/percent/date/text)
+                decides formatting and alignment, ``label_key`` the header.
+            currency_columns (list[str]): legacy shorthand for money columns.
             total_row_column (str) / total_row_values (list[str]): a row
                 whose value in total_row_column is in total_row_values is
                 rendered bold with a tinted background.
             color_column (str) / color_map (dict[str, str]): a column
-                whose values map to hex colors (e.g. Inflow/Outflow).
+                whose values map to a palette meaning ("success", "danger",
+                "warning", "info", "neutral" -- theme-aware) or a hex color.
         """
         return {}

@@ -3,7 +3,6 @@ import logging
 from datetime import datetime, timedelta
 
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QBrush, QColor
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QDialog,
@@ -26,6 +25,7 @@ from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
+from cbpos.ui.resources.status_colors import DANGER, SUCCESS, WARNING, status_color
 
 logger = logging.getLogger(__name__)
 
@@ -383,11 +383,11 @@ class SaleHistoryDialog(QDialog):
             status_item = QTableWidgetItem(self._get_status_display(status))
 
             if status == "COMPLETED":
-                status_item.setForeground(QBrush(QColor("#39FF14")))
+                status_item.setForeground(status_color(SUCCESS))
             elif status == "VOID":
-                status_item.setForeground(QBrush(QColor("#FF4136")))
+                status_item.setForeground(status_color(DANGER))
             elif sale.payment_method == "REFUND":
-                status_item.setForeground(QBrush(QColor("#FFDC00")))
+                status_item.setForeground(status_color(WARNING))
 
             status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.sales_table.setItem(row, 4, status_item)

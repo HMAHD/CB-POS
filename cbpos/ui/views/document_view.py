@@ -4,7 +4,6 @@ import weakref
 from datetime import datetime
 
 from PyQt6.QtCore import QDate, Qt, pyqtSignal
-from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QComboBox,
     QDateEdit,
@@ -37,6 +36,7 @@ from cbpos.core.utils.formatters import format_currency, format_discount, format
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.dialogs.void_reason_dialog import VoidReasonDialog
+from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING, status_color
 from cbpos.ui.widgets.table_helpers import align_numeric_headers, configure_table_columns
 
 logger = logging.getLogger(__name__)
@@ -50,14 +50,17 @@ class DocumentBrowserView(QWidget):
 
     convert_to_sale_requested = pyqtSignal(dict)
 
-    STATUS_COLORS = {
-        "COMPLETED": QColor("#39FF14"),
-        "VOID": QColor("#FF4136"),
-        "QUOTE": QColor("#00BCEB"),
-        "EXPIRED": QColor("#888888"),
-        "CONVERTED": QColor("#FF851B"),
-        "DRAFT": QColor("#FFDC00"),
-        "SUSPENDED": QColor("#FFDC00"),
+    # Status -> palette meaning (theme-aware colours, #559). DRAFT and
+    # SUSPENDED differ: a draft is unfinished work, a suspended sale is
+    # parked and waiting to be resumed.
+    STATUS_MEANINGS = {
+        "COMPLETED": SUCCESS,
+        "VOID": DANGER,
+        "QUOTE": INFO,
+        "EXPIRED": NEUTRAL,
+        "CONVERTED": SUCCESS,
+        "DRAFT": NEUTRAL,
+        "SUSPENDED": WARNING,
     }
 
     def __init__(self) -> None:
@@ -519,9 +522,9 @@ class DocumentBrowserView(QWidget):
             self.doc_table.setItem(row, 4, total_item)
 
             status_item = QTableWidgetItem(doc["status"])
-            color = self.STATUS_COLORS.get(doc["status"])
-            if color:
-                status_item.setForeground(color)
+            meaning = self.STATUS_MEANINGS.get(doc["status"])
+            if meaning:
+                status_item.setForeground(status_color(meaning))
             self.doc_table.setItem(row, 5, status_item)
 
             self.doc_table.setItem(row, 6, QTableWidgetItem(doc.get("username", "")))

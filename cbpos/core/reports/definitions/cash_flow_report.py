@@ -38,7 +38,7 @@ class CashFlowReport(BaseReport):
             "total_row_column": "Type",
             "total_row_values": ["Net"],
             "color_column": "Type",
-            "color_map": {"Inflow": "#39FF14", "Outflow": "#FF4136"},
+            "color_map": {"Inflow": "success", "Outflow": "danger"},
         }
 
     def generate(self, filters: dict[str, Any] = None) -> pd.DataFrame:

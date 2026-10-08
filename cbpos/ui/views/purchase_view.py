@@ -40,6 +40,7 @@ from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.resources.status_colors import DANGER, SUCCESS, WARNING, status_color
 
 logger = logging.getLogger(__name__)
 
@@ -1331,11 +1332,11 @@ class PurchaseView(QWidget):
 
             terms = getattr(supplier, "payment_terms", 0) or 0
             if payable == 0:
-                payable_item.setForeground(QColor("#39FF14"))  # Green
+                payable_item.setForeground(status_color(SUCCESS))
             elif terms > 0:
-                payable_item.setForeground(QColor("#FF851B"))  # Orange
+                payable_item.setForeground(status_color(WARNING))
             else:
-                payable_item.setForeground(QColor("#FF4136"))  # Red
+                payable_item.setForeground(status_color(DANGER))
 
             self.payable_supplier_table.setItem(row, 3, payable_item)
 
@@ -1445,7 +1446,7 @@ class PurchaseView(QWidget):
             if entry.amount > 0:
                 # Debit (purchase increases payable)
                 debit_item = QTableWidgetItem(f"{entry.amount:.2f}")
-                debit_item.setForeground(QColor("#FF4136"))
+                debit_item.setForeground(status_color(DANGER))
                 debit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.payable_ledger_table.setItem(row, 3, debit_item)
                 self.payable_ledger_table.setItem(row, 4, QTableWidgetItem(""))
@@ -1454,7 +1455,7 @@ class PurchaseView(QWidget):
                 # Credit (payment reduces payable)
                 self.payable_ledger_table.setItem(row, 3, QTableWidgetItem(""))
                 credit_item = QTableWidgetItem(f"{abs(entry.amount):.2f}")
-                credit_item.setForeground(QColor("#39FF14"))
+                credit_item.setForeground(status_color(SUCCESS))
                 credit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self.payable_ledger_table.setItem(row, 4, credit_item)
                 total_credit += abs(entry.amount)

@@ -6,7 +6,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
 from PyQt6.QtCore import QAbstractTableModel, QDate, QEvent, QModelIndex, QRegularExpression, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QRegularExpressionValidator
+from PyQt6.QtGui import QRegularExpressionValidator
 from PyQt6.QtWidgets import (
     QAbstractItemDelegate,
     QAbstractItemView,
@@ -32,9 +32,10 @@ from PyQt6.QtWidgets import (
 from cbpos.core.constants.status import DocumentStatus, Precision
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.stock_count_service import StockCountService
-from cbpos.core.utils.formatters import format_currency, format_number, format_quantity
+from cbpos.core.utils.formatters import format_currency, format_number, format_quantity, format_signed
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
+from cbpos.ui.resources.status_colors import DANGER, NEUTRAL, SUCCESS, status_color
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
 
 logger = logging.getLogger(__name__)
@@ -93,18 +94,13 @@ class StockCountItemModel(QAbstractTableModel):
             if col == 3:
                 return _format_count(item.counted_qty, item.product)
             if col == 4:
-                return _format_count(item.variance_qty, item.product)
+                return _format_variance(item.variance_qty, item.product)
             if col == 5:
-                return format_currency(item.variance_value) if item.variance_value is not None else ""
+                return format_signed(item.variance_value, format_currency) if item.variance_value is not None else ""
 
         elif role == Qt.ItemDataRole.ForegroundRole:
             if col in (4, 5) and item.variance_qty is not None:
-                if item.variance_qty < 0:
-                    return QColor("#FF4136")  # Red for shortage
-                elif item.variance_qty > 0:
-                    return QColor("#39FF14")  # Green for surplus
-                else:
-                    return QColor("#888888")  # Gray for zero
+                return status_color(_variance_meaning(item.variance_qty))
 
         elif role == Qt.ItemDataRole.TextAlignmentRole:
             if col >= self.FIRST_NUMERIC_COL:
@@ -182,6 +178,20 @@ def _format_count(qty, product) -> str:
     if qty is None:
         return ""
     return format_quantity(qty, _count_decimals(product))
+
+
+def _format_variance(qty, product) -> str:
+    """A variance with an explicit sign (+3 / \u22123), so it doesn't rely on colour alone (#559)."""
+    if qty is None:
+        return ""
+    return format_signed(qty, lambda value: _format_count(value, product))
+
+
+def _variance_meaning(value) -> str:
+    """Shortage is danger, surplus success, none neutral."""
+    if value < 0:
+        return DANGER
+    return SUCCESS if value > 0 else NEUTRAL
 
 
 class CountedDelegate(QStyledItemDelegate):
@@ -305,24 +315,18 @@ class StockCountReportDialog(QDialog):
                 (3, item.counted_qty),
                 (4, item.variance_qty),
             ]:
-                text = _format_count(val, item.product)
+                text = _format_variance(val, item.product) if col == 4 else _format_count(val, item.product)
                 cell = QTableWidgetItem(text)
                 cell.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 if col == 4 and val is not None:
-                    if val < 0:
-                        cell.setForeground(QColor("#FF4136"))
-                    elif val > 0:
-                        cell.setForeground(QColor("#39FF14"))
+                    cell.setForeground(status_color(_variance_meaning(val)))
                 table.setItem(row, col, cell)
 
-            val_text = format_currency(item.variance_value) if item.variance_value is not None else ""
+            val_text = format_signed(item.variance_value, format_currency) if item.variance_value is not None else ""
             val_cell = QTableWidgetItem(val_text)
             val_cell.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             if item.variance_value is not None:
-                if item.variance_value < 0:
-                    val_cell.setForeground(QColor("#FF4136"))
-                elif item.variance_value > 0:
-                    val_cell.setForeground(QColor("#39FF14"))
+                val_cell.setForeground(status_color(_variance_meaning(item.variance_value)))
             table.setItem(row, 5, val_cell)
 
         layout.addWidget(table, 1)

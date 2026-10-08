@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.report_service import ReportService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
+from cbpos.ui.resources.status_colors import DANGER, SUCCESS, status_color
 
 
 class ValuationDialog(QDialog):
@@ -155,8 +156,8 @@ class ValuationDialog(QDialog):
 
             # Color based on profit
             if item["profit"] >= 0:
-                profit_item.setForeground(Qt.GlobalColor.green)
+                profit_item.setForeground(status_color(SUCCESS))
             else:
-                profit_item.setForeground(Qt.GlobalColor.red)
+                profit_item.setForeground(status_color(DANGER))
 
             self.table.setItem(row, 4, profit_item)

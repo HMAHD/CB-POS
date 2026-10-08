@@ -93,6 +93,7 @@ class BaseReport(ABC):
                 whose value in total_row_column is in total_row_values is
                 rendered bold with a tinted background.
             color_column (str) / color_map (dict[str, str]): a column
-                whose values map to hex colors (e.g. Inflow/Outflow).
+                whose values map to a palette meaning ("success", "danger",
+                "warning", "info", "neutral" -- theme-aware) or a hex color.
         """
         return {}

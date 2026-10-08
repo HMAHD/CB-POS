@@ -30,6 +30,7 @@ from cbpos.core.services.category_service import CategoryService
 from cbpos.core.services.promotion_service import SUPPORTED_TYPES, PromotionService
 from cbpos.core.utils.formatters import format_discount
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, status_color
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
 
 _DAY_KEYS = [
@@ -134,17 +135,17 @@ class PromotionView(QWidget):
         end_time passed months ago would otherwise show "Active" forever.
         """
         if not promotion.is_active:
-            return _t("common.inactive"), QColor("#888888")
+            return _t("common.inactive"), status_color(NEUTRAL)
         # Checkout has no BOGO branch, so such a promotion never applies (#635).
         if promotion.type not in SUPPORTED_TYPES:
-            return _t("promotion.status_not_applied"), QColor("#FF4136")
+            return _t("promotion.status_not_applied"), status_color(DANGER)
 
         now = datetime.now()
         if promotion.end_time < now:
-            return _t("promotion.status_expired"), QColor("#888888")
+            return _t("promotion.status_expired"), status_color(NEUTRAL)
         if promotion.start_time > now:
-            return _t("promotion.status_upcoming"), QColor("#5599FF")
-        return _t("common.active"), QColor("#39FF14")
+            return _t("promotion.status_upcoming"), status_color(INFO)
+        return _t("common.active"), status_color(SUCCESS)
 
     def load_promotions(self):
         """Reload promotions from the service and repopulate the table."""

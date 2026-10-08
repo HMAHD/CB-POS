@@ -63,7 +63,7 @@ class ShiftVarianceReport(BaseReport):
                 }
             ),
             "color_column": "Status",
-            "color_map": {"Short": "#FF4136", "Over": "#FFDC00", "Balanced": "#39FF14"},
+            "color_map": {"Short": "danger", "Over": "warning", "Balanced": "success"},
         }
 
     def generate(self, filters: dict[str, Any] = None) -> pd.DataFrame:

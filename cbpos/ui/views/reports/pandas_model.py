@@ -11,6 +11,7 @@ from cbpos.core.reports.base_report import INT, MONEY, NUMERIC_COLUMN_TYPES, QTY
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.utils.formatters import format_number, format_quantity, money_header
 from cbpos.i18n import _t
+from cbpos.ui.resources.status_colors import PALETTE, status_color
 
 RIGHT_ALIGNED = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
 LEFT_ALIGNED = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
@@ -59,7 +60,8 @@ class PandasModel(QAbstractTableModel):
         total_row_column (str): column name whose value identifies a total row.
         total_row_values (list[str]): values in that column marking a total row.
         color_column (str): column name carrying a directional tag.
-        color_map (dict[str, str]): tag value -> hex color string.
+        color_map (dict[str, str]): tag value -> palette meaning
+            (success/danger/warning/info/neutral, theme-aware) or a hex color.
     """
 
     def __init__(self, data: pd.DataFrame = None, render_hints: dict[str, Any] | None = None):
@@ -155,9 +157,11 @@ class PandasModel(QAbstractTableModel):
             color_map = self._hints.get("color_map") or {}
             if color_column and column_name == color_column:
                 row_tag = self._data.iloc[row][color_column]
-                hex_color = color_map.get(row_tag)
-                if hex_color:
-                    return QColor(hex_color)
+                color = color_map.get(row_tag)
+                if color in PALETTE:
+                    return status_color(color)  # theme-aware meaning (#559)
+                if color:
+                    return QColor(color)
             return None
 
         return None

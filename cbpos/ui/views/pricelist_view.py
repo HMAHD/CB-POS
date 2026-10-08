@@ -36,6 +36,7 @@ from cbpos.core.utils.formatters import NO_VALUE, format_number, money_header
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.resources.status_colors import INFO, NEUTRAL, SUCCESS, status_color
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers
 
 # Price cells keep their raw Decimal here; the text is display-only (#557).
@@ -289,8 +290,8 @@ class PriceListView(QWidget):
             A tuple of (status_text, foreground_colour).
         """
         status = PriceListService.get_status(price_list)
-        colour = {"disabled": "#888888", "expired": "#888888", "upcoming": "#5599FF"}.get(status, "#39FF14")
-        return _t(f"pricelist.status_{status}"), QColor(colour)
+        meaning = {"disabled": NEUTRAL, "expired": NEUTRAL, "upcoming": INFO}.get(status, SUCCESS)
+        return _t(f"pricelist.status_{status}"), status_color(meaning)
 
     # ------------------------------------------------------------------
     # Sidebar Navigation
@@ -378,7 +379,7 @@ class PriceListView(QWidget):
             price_item.setTextAlignment(NUMERIC_ALIGNMENT)
             price_item.setData(PRICE_ROLE, list_price)  # None = no override
             if list_price is not None:
-                price_item.setForeground(Qt.GlobalColor.green)
+                price_item.setForeground(status_color(SUCCESS))
 
             self.table.setItem(row, 3, price_item)
 

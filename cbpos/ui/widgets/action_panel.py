@@ -28,7 +28,7 @@ class ActionBtn(QPushButton):
         """Build the tile layout: shortcut label, icon, and text.
 
         Args:
-            shortcut_text: Keyboard shortcut shown top-left (e.g. "F2").
+            shortcut_text: Keyboard shortcut shown top-left (e.g. "F2"); empty for none.
             label_key: i18n key for the bottom label, applied by ``retranslate()``.
             icon_name: qtawesome icon name shown in the center.
             color: Optional ``btnColor`` QSS property value for tinting.
@@ -49,11 +49,14 @@ class ActionBtn(QPushButton):
         layout.setRowStretch(1, 1)
         layout.setRowStretch(2, 0)
 
-        # Shortcut (Top-Left, subtle)
+        # Shortcut badge (top-left). Kept apart from the translated label so
+        # no translation can drop the key (#604); sized to its text so the
+        # QSS chip background hugs the key instead of filling the row.
         self.lbl_shortcut = QLabel(shortcut_text)
         self.lbl_shortcut.setObjectName("lblShortcut")
-        self.lbl_shortcut.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-        layout.addWidget(self.lbl_shortcut, 0, 0)
+        self.lbl_shortcut.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_shortcut.setVisible(bool(shortcut_text))
+        layout.addWidget(self.lbl_shortcut, 0, 0, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
 
         # Icon (Center)
         self.lbl_icon = QLabel()
@@ -349,7 +352,9 @@ class ActionPanel(QWidget):
         txn_grid.addWidget(self.btn_del, 1, 0)
         self._action_btns.append(self.btn_del)
 
-        self.btn_ref = ActionBtn("Ref", "action_panel.btn_refund", Icons.HISTORY, "#FF4136")
+        # No keyboard shortcut for Refund -- the old "Ref" badge looked like
+        # a key that doesn't exist.
+        self.btn_ref = ActionBtn("", "action_panel.btn_refund", Icons.HISTORY, "#FF4136")
         self.btn_ref.clicked.connect(self.action_ref.emit)
         txn_grid.addWidget(self.btn_ref, 1, 1)
         self._action_btns.append(self.btn_ref)
@@ -365,6 +370,15 @@ class ActionPanel(QWidget):
         self.btn_pay.setObjectName("BtnPay")
         self.btn_pay.clicked.connect(self.pay_clicked.emit)
         self._apply_pay_icon()
+        # F5 as its own badge, not inside the translated "Pay" text, which
+        # Sinhala/Tamil had dropped (#604).
+        pay_layout = QHBoxLayout(self.btn_pay)
+        pay_layout.setContentsMargins(0, 0, 12, 0)
+        pay_layout.addStretch()
+        self.lbl_pay_shortcut = QLabel("F5")
+        self.lbl_pay_shortcut.setObjectName("lblShortcut")
+        self.lbl_pay_shortcut.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        pay_layout.addWidget(self.lbl_pay_shortcut, 0, Qt.AlignmentFlag.AlignVCenter)
         layout.addWidget(self.btn_pay)
 
     def _apply_pay_icon(self) -> None:

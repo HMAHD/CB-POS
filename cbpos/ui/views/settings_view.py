@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
+    QScrollArea,
     QSlider,
     QSpinBox,
     QStackedWidget,
@@ -133,14 +134,16 @@ class SettingsView(QWidget):
         from cbpos.ui.views.data_safety_view import DataSafetyView
         from cbpos.ui.views.payment_methods_view import PaymentMethodsView
 
+        # Each sits in a scroll area: Admin Tools alone needs ~770px, which
+        # pushed Settings past a 1366x768 screen and clipped POS/Logout (#591).
         self.payment_methods_view = PaymentMethodsView()
-        self.stack.addWidget(self.payment_methods_view)
+        self.stack.addWidget(self._scrollable(self.payment_methods_view))
 
         self.data_safety_view = DataSafetyView()
-        self.stack.addWidget(self.data_safety_view)
+        self.stack.addWidget(self._scrollable(self.data_safety_view))
 
         self.admin_tools_view = AdminToolsView()
-        self.stack.addWidget(self.admin_tools_view)
+        self.stack.addWidget(self._scrollable(self.admin_tools_view))
 
         # --- Content column: pages over one Settings-wide action bar ---
         # The bar sits under the content only, never under the sidebar, so
@@ -177,6 +180,16 @@ class SettingsView(QWidget):
         main_layout.addWidget(content, 1)
 
         self.stack.currentChanged.connect(self._update_status_text)
+
+    @staticmethod
+    def _scrollable(page: QWidget) -> QScrollArea:
+        """Wrap a tool page so a short screen scrolls it instead of growing Settings."""
+        scroll = QScrollArea()
+        scroll.setObjectName("SettingsScrollArea")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidget(page)
+        return scroll
 
     def retranslate_ui(self) -> None:
         """Update all translatable text in the view."""

@@ -177,3 +177,11 @@ class TestUnsavedMarkersAndSaveAll:
         QApplication.processEvents()
 
         assert not view.btn_sales_tax.is_unsaved()
+
+
+class TestFitsA768Screen:
+    def test_settings_never_needs_more_than_728px(self, view):
+        """Admin Tools alone needed ~770px, forcing Settings past a 1366x768
+        screen and clipping POS/Logout off the bottom (#591)."""
+        assert view.minimumSizeHint().height() <= 728
+        assert view.height() == 728

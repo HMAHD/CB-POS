@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from cbpos.core.utils.display_labels import display_role_name
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.constants import ACTION_BTN_HEIGHT, SIDEBAR_WIDTH
 from cbpos.ui.resources.icons import Icons
@@ -420,7 +421,7 @@ class SideMenu(QWidget):
         self._user = user
         if user:
             self.lbl_username.setText(user.username)
-            self.lbl_role.setText(user.role.name if user.role else _t("side_menu.unknown_role"))
+            self.lbl_role.setText(display_role_name(user.role) if user.role else _t("side_menu.unknown_role"))
 
             is_admin = user.role and user.role.name.lower() in [
                 "admin",

@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.services.user_service import UserService
+from cbpos.core.utils.display_labels import display_role_name, event_type_label
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.dialogs.permission_dialog import PermissionDialog
 from cbpos.ui.dialogs.role_manager import RoleManagerDialog
@@ -68,7 +69,7 @@ class UserDialog(QDialog):
         self.cmb_role = QComboBox()
         self.roles = UserService.get_all_roles()
         for role in self.roles:
-            self.cmb_role.addItem(role.name, role.id)
+            self.cmb_role.addItem(display_role_name(role), role.id)
 
         if self.user and self.user.role:
             index = self.cmb_role.findData(self.user.role_id)
@@ -350,7 +351,7 @@ class UserView(QWidget):
             self.table.setItem(
                 row,
                 2,
-                QTableWidgetItem(user.role.name if user.role else _t("user.no_role")),
+                QTableWidgetItem(display_role_name(user.role) if user.role else _t("user.no_role")),
             )
 
             status = _t("common.active") if user.is_active else _t("common.inactive")
@@ -416,7 +417,7 @@ class UserView(QWidget):
                 1,
                 QTableWidgetItem(log.user.username if log.user else _t("user.unknown_user")),
             )
-            event_item = QTableWidgetItem(log.event_type)
+            event_item = QTableWidgetItem(event_type_label(log.event_type))
             color = self._log_event_color(log)
             if color is not None:
                 event_item.setForeground(color)

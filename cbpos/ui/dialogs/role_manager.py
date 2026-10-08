@@ -29,6 +29,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.constants.permissions import ADMIN_ROLE_NAME
 from cbpos.core.services.role_service import RoleService
 from cbpos.core.services.user_service import UserService
+from cbpos.core.utils.display_labels import display_role_name
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 from cbpos.ui.widgets.table_helpers import configure_table_columns
@@ -134,7 +135,7 @@ class RoleManagerDialog(QDialog):
 
         for role in sorted(self.roles, key=lambda r: r.name):
             user_count = RoleService.get_user_count_for_role(role.id)
-            name = role.name
+            name = display_role_name(role)
             if role.name == ADMIN_ROLE_NAME:
                 name += _t("role_manager.builtin_suffix")
             item = QTreeWidgetItem([name, str(user_count)])

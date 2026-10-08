@@ -2,6 +2,7 @@ import gc
 import os
 import sys
 import threading
+import traceback
 
 import pytest
 
@@ -45,6 +46,37 @@ def test_engine():
     Base.metadata.create_all(bind=db.engine)
 
     return db.engine
+
+
+@pytest.fixture(autouse=True)
+def _autocomplete_preload_runs_inline():
+    """Run SalesView's AutocompleteLoadWorker synchronously instead of on a QThread.
+
+    ``SalesView.setup_autocomplete()`` starts the worker mid-``__init__``;
+    its ``run()`` queries products via ``Database().get_session()`` on a
+    background thread while the main thread keeps building the view --
+    ``OrderBar``'s ``refresh_tabs()`` -> ``get_held_bills()`` right after.
+    In production each call gets its own Session, but under ``db_session``
+    both threads get the *same* Session, so every SalesView build raced
+    two threads on one Session: #501's random "session is provisioning a
+    new connection; concurrent operations are not permitted" /
+    "commit() already in progress" errors in whichever cart/sales test
+    lost the race. Running ``run()`` inline keeps the completer populated
+    (``result`` fires as a direct call) with no second thread.
+
+    Patched by hand rather than via ``monkeypatch``: requesting
+    ``monkeypatch`` from an autouse fixture sets it up ahead of
+    ``_collect_garbage_after_each_test``, so every test's own monkeypatches
+    would be undone only *after* that fixture's gc/thread-drain pass instead
+    of before it -- which reorders teardown enough to segfault later tests.
+    """
+    from cbpos.ui.workers import AutocompleteLoadWorker
+
+    AutocompleteLoadWorker.start = AutocompleteLoadWorker.run
+    try:
+        yield
+    finally:
+        del AutocompleteLoadWorker.start
 
 
 @pytest.fixture(autouse=True)
@@ -166,7 +198,26 @@ def db_session(test_engine):
     original_close = session.close
     session.close = lambda: None
 
-    db.SessionLocal = lambda: session
+    # A Session is not thread-safe, and this one is shared by every
+    # get_session() call in the test. A background thread reaching it
+    # races the test thread and surfaces as a random SQLAlchemy state
+    # error in some unrelated test (#501), so refuse it outright and fail
+    # the test at teardown, naming the offending thread and call site.
+    owner_thread = threading.get_ident()
+    cross_thread_uses: list[str] = []
+
+    def _session_for_owner_thread_only():
+        if threading.get_ident() != owner_thread:
+            name = threading.current_thread().name
+            cross_thread_uses.append(f"thread {name!r}:\n" + "".join(traceback.format_stack(limit=10)))
+            raise RuntimeError(
+                f"db_session's shared Session requested from background thread {name!r}. "
+                "Sessions are not thread-safe; run that work inline in tests (see "
+                "_autocomplete_preload_runs_inline in tests/conftest.py)."
+            )
+        return session
+
+    db.SessionLocal = _session_for_owner_thread_only
 
     # Core-level SAVEPOINT, restarted whenever it ends (e.g. a service's
     # own session.commit()/rollback() releases it) so writes always stay
@@ -192,3 +243,10 @@ def db_session(test_engine):
 
     # Restore original factory
     db.SessionLocal = original_factory
+
+    if cross_thread_uses:
+        pytest.fail(
+            "db_session's shared Session was requested from a background thread (#501):\n\n"
+            + "\n".join(cross_thread_uses),
+            pytrace=False,
+        )

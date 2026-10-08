@@ -74,8 +74,12 @@ class StatusPillDelegate(QStyledItemDelegate):
         painter.drawRoundedRect(pill, height / 2, height / 2)
         painter.setPen(fg)
         painter.setFont(font)
-        elided = metrics.elidedText(text, Qt.TextElideMode.ElideRight, max(pill.width() - 2 * _PAD_X, 0))
-        painter.drawText(pill, Qt.AlignmentFlag.AlignCenter, elided)
+        # Elide only when the text really can't fit: elidedText() at exactly
+        # the text's own advance elides it (rounding), clipping "COMPLETED".
+        room = pill.width() - 2 * _PAD_X
+        if metrics.horizontalAdvance(text) > room:
+            text = metrics.elidedText(text, Qt.TextElideMode.ElideRight, max(room, 0))
+        painter.drawText(pill, Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextDontClip, text)
         painter.restore()
 
     def sizeHint(self, option: QStyleOptionViewItem, index: QModelIndex) -> QSize:
@@ -83,6 +87,8 @@ class StatusPillDelegate(QStyledItemDelegate):
         hint = super().sizeHint(option, index)
         if not index.data(STATUS_MEANING_ROLE):
             return hint
-        metrics = QFontMetrics(self._font(option))
-        width = metrics.horizontalAdvance(str(index.data(Qt.ItemDataRole.DisplayRole) or "")) + 2 * (_PAD_X + _MARGIN)
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)  # the font paint() will use
+        metrics = QFontMetrics(self._font(opt))
+        width = metrics.horizontalAdvance(opt.text) + 2 * (_PAD_X + _MARGIN) + 2
         return QSize(max(hint.width(), width), hint.height())

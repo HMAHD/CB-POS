@@ -1,277 +1,186 @@
-# 🛡️ CB POS - Copilot Custom Instructions
-
-You are acting as a **Senior Python Software Architect** specializing in **Industrial-Grade Desktop Applications**. Your goal is to generate code that is production-ready, crash-proof, and strictly adheres to the project's established patterns.
-
-## Repository Overview
-
-**CB-POS** is a high-performance, industrial-grade Point of Sale (POS) system for Sri Lankan retail markets. Built with **Python 3.12+** and **PyQt6**, it provides zero-latency checkout, keyboard-first design, and offline-first SQLite database operations.
-
-**Tech Stack:** Python 3.12 | PyQt6 | SQLAlchemy 2.0 | SQLite | Alembic | ESC/POS printing
-
----
-
-## 1. Technology Stack & Constraints
-
-- **Language:** Python 3.12+ (Strict Type Hinting required)
-- **GUI Framework:** PyQt6 (Latest Stable). Use `PyQt6.QtCore`, `PyQt6.QtWidgets`, `PyQt6.QtGui`
-- **Database:** SQLite with **SQLAlchemy 2.0** (ORM). Use `DeclarativeBase`
-- **Migration:** Alembic
-- **Reporting:** Pandas (DataFrames), ReportLab (PDF), XlsxWriter (Excel)
-- **Hardware:** `python-escpos` (Printing), `pyusb` (Scanning)
-
----
-
-## 2. Architecture: Modular MVC
-
-Do not mix business logic with UI code.
-
-- **`ui/views/*.py`:** Purely for display, layouts, and signal emission. **NO** database calls here.
-- **`core/services/*.py`:** Purely for business logic, math, and database I/O. **NO** PyQt widgets here.
-- **`core/models/`:** SQLAlchemy definitions.
-- **`infrastructure/`:** Drivers for Hardware (Printers, Scanners) and Logging.
-
----
-
-## 3. Project Structure
-
-```
-cbpos/                  # Main application package
-├── assets/            # Icons, fonts, logos (fonts/, logo/, badge/)
-├── config.py          # App configuration (DB_URI, colors, VERSION)
-├── core/              # Business logic layer
-│   ├── constants/     # Permission constants, enums
-│   ├── database.py    # Singleton DB manager with SQLAlchemy
-│   ├── interfaces/    # Abstract interfaces
-│   ├── models/        # SQLAlchemy ORM models (__init__.py exports all)
-│   └── services/      # Business services (auth, cart, transaction, etc.)
-├── infrastructure/    # External systems integration
-│   ├── hardware/      # ESC/POS printer, scanner, cash drawer drivers
-│   ├── logging/       # Audit logging
-│   └── repositories/  # Data access layer
-└── ui/                # Presentation layer (PyQt6)
-    ├── dialogs/       # Modal dialogs (payment, product editor, etc.)
-    ├── styles/        # QSS themes (dark.qss, light.qss)
-    ├── views/         # Main screens (login, sales, inventory, etc.)
-    ├── widgets/       # Reusable UI components
-    └── main_window.py # Application window controller
-
-tests/                 # Test suite
-├── conftest.py        # Pytest fixtures (in-memory DB, session management)
-└── unit/              # Unit tests
-
-scripts/               # Utility scripts
-├── seed.py            # Database seeding with sample data
-├── update_translations.py  # Qt translation file generation
-├── debug_conftest.py  # Test debugging utilities
-└── debug_db.py        # Database debugging utilities
-
-alembic/               # Database migrations
-├── versions/          # Migration scripts
-└── env.py             # Alembic environment configuration
-```
-
-**Key Configuration Files:**
-- `pyproject.toml` - Ruff linter + formatter config (line-length: 120, target: py312)
-- `.pre-commit-config.yaml` - Pre-commit hooks (Ruff linter + formatter)
-- `alembic.ini` - Database migration configuration
-- `settings.json` - Runtime application settings
-
----
-
-## 4. Coding Standards (Industrial Grade)
-
-### Type Hinting
-Mandatory for all arguments and returns.
-- *Bad:* `def calculate(amount):`
-- *Good:* `def calculate(amount: Decimal) -> Decimal:`
-
-### Money Math
-**NEVER** use `float` for currency. **ALWAYS** use `decimal.Decimal`.
-
-### Error Handling
-Use the **EAFP** pattern (Easier to Ask for Forgiveness than Permission).
-- Wrap hardware/DB calls in `try...except` blocks
-- Log errors using the project's logger, do not just `print()`
-
-### Imports
-Use absolute imports: `from cbpos.core.services import ...`
-
-### Code Style
-- **Linter + Formatter:** Ruff (120 char line length, Black-compatible formatting)
-- **Rules:** pycodestyle (E/W), Pyflakes (F), isort (I), bugbear (B), pyupgrade (UP), and more. See `pyproject.toml`
-
----
-
-## 5. UI/UX Guidelines ("Ceylon Byte" Theme)
-
-### Color Palette
-- **Background:** `#001F3F` (Navy)
-- **Panel/Input:** `#003366`
-- **Accent/Focus:** `#00BCEB` (Cyan)
-- **Success/Pay:** `#39FF14` (Neon Green)
-- **Destructive/Void:** `#FF4136` (Red)
-
-### Qt Best Practices
-- **Focus Trap:** For virtual keyboards/numpads, always set `.setFocusPolicy(Qt.FocusPolicy.NoFocus)` on buttons to prevent stealing focus from input fields
-- **Layouts:** Prefer `QGridLayout` for forms. Use `QStackedLayout` for navigation
-- **Images:** Use `pathlib` to resolve asset paths relative to the app root
-- **Theme files:** `cbpos/ui/styles/dark.qss` and `light.qss`
-- **Services pattern:** UI calls service layer, never directly accesses DB
-
----
-
-## 6. Domain Logic (Sri Lanka Retail)
-
-### Pricing
-Shelf prices are **MRP (Maximum Retail Price)** and include tax.
-
-### Tax Calculation
-Perform **Backward Calculation** from the Total:
-- *VAT (18%):* `Base = Total / 1.18`
-- *SSCL (2.5%):* `Liability = (Total * 0.5) * 0.025`
-
-### Inventory
-- **Costing Method:** Weighted Average Cost (AVCO)
-- **Quantities:** Must support 3 decimal places (e.g., `1.250 kg`) for weighted items
-
----
-
-## 7. Security & RBAC
-
-- **Permissions:** Check permissions before critical actions (Void, Refund, Price Change)
-  - Use the decorator: `@permission_required('permission.name')`
-- **Audit:** All critical changes must be logged to the `AuditLog` table via `AuditService`
-
----
-
-## 8. Threading Rule
-
-**NEVER** run blocking operations (Printing, Emailing, heavy SQL reports) on the Main UI Thread.
-Use `QThread` or `QRunnable` with Signals for these tasks.
-
----
-
-## 9. Documentation
-
-- Add Google-style Docstrings to all Service methods and Classes
-- Comments should explain *Why*, not *What*
-
----
-
-## 10. Build & Development Commands
-
-### Environment Setup (Required First)
-
-```bash
-# Install uv (https://docs.astral.sh/uv/) if you don't have it
-curl -LsSf https://astral.sh/uv/install.sh | sh   # Linux/Mac
-# powershell -c "irm https://astral.sh/uv/install.ps1 | iex"   # Windows
-
-# Install all dependencies (creates .venv, installs exact versions from uv.lock)
-uv sync
-```
-
-### Database Initialization
-
-**IMPORTANT:** Use `seed.py` for development - it drops and recreates all tables with sample data.
-
-```bash
-# Recommended for development (creates tables + sample data)
-uv run python scripts/seed.py
-
-# Alternative: Alembic migrations (for existing databases)
-# NOTE: Only run on fresh database or after tables are dropped
-uv run alembic upgrade head
-```
-
-**Seed Data Includes:** Admin/Cashier users, sample products, categories, suppliers, permissions, and roles.
-
-### Code Quality (Always Run Before Committing)
-
-```bash
-# Run all pre-commit hooks (Ruff linter + formatter)
-uv run pre-commit run --all-files
-
-# Individual checks
-uv run ruff check .              # Lint check
-uv run ruff check --fix .        # Lint + auto-fix
-uv run ruff format --check .     # Format check
-uv run ruff format .             # Auto-format
-```
-
-### Running Tests
-
-**Prerequisite:** Qt libraries must be available. Tests use in-memory SQLite database.
-
-```bash
-# Set platform for headless environments
-export QT_QPA_PLATFORM=offscreen
-
-# Run unit tests
-uv run python -m pytest tests/unit/ -v
-
-# Run specific test file
-uv run python -m pytest tests/unit/test_transaction_service.py -v
-```
-
-**Note:** Tests require `libEGL`, `libxkbcommon`, and other Qt dependencies on Linux.
-
-### Running the Application
-
-```bash
-uv run python main.py
-```
-
-**Default Credentials:** Admin: `admin` / `1234` | Cashier: `cashier` / `0000`
-
-### Building Executable
-
-```bash
-uv run pyinstaller cbpos.spec
-# Output: dist/cbpos executable
-```
-
----
-
-## 11. Database Patterns
-- **Singleton pattern:** Use `Database()` to get the singleton instance
-- **Session management:** Use `db.get_session()` context manager
-- **Eager loading:** Load relationships in queries to avoid DetachedInstanceError
-
-```python
-from cbpos.core.database import Database
-
-db = Database()
-with db.get_session() as session:
-    # Your database operations here
-    session.commit()  # Auto-committed on success, rolled back on error
-```
-
-### Adding New Models
-1. Define model in `cbpos/core/models/__init__.py`
-2. Create Alembic migration: `alembic revision --autogenerate -m "description"`
-3. Apply migration: `alembic upgrade head`
-4. Update `scripts/seed.py` if sample data needed
-
----
-
-## 12. Known Issues & Workarounds
-
-1. **Qt libEGL missing:** Install Qt dependencies: `apt install libegl1 libxkbcommon0 libxcb-cursor0`
-
-2. **Alembic "table exists" error:** Run `python scripts/seed.py` instead - it handles table recreation
-
-3. **DetachedInstanceError:** Always eagerly load relationships needed after session closes
-
-4. **Pre-commit slow first run:** First run installs hook environments; subsequent runs are fast
-
----
-
-## Trust These Instructions
-
-These instructions have been validated by running all commands successfully. Only search the codebase if:
-- A command fails unexpectedly
-- You need to find specific implementation details not covered here
-- The project structure has changed significantly
-
-For model definitions, service implementations, or UI patterns, explore the respective directories listed in the Project Structure section.
+# CB POS Code Quality Review
+
+Use this skill for an unusually strict review focused on implementation quality, maintainability, abstraction quality, and codebase health.
+
+Above all, this skill should push the reviewer to be **ambitious** about code structure. Do not merely identify local cleanup opportunities. Actively search for "code judo" moves: restructurings that preserve behavior while making the implementation dramatically simpler, smaller, more direct, and more elegant.
+
+## Core Prompt
+
+Start from this baseline:
+
+> Perform a deep code quality audit of the current branch's changes.
+> Rethink how to structure / implement the changes to meaningfully improve code quality without impacting behavior.
+> Work to improve abstractions, modularity, reduce Spaghetti code, improve succinctness and legibility.
+> Be ambitious, if there is a clear path to improving the implementation that involves restructuring some of the codebase, go for it.
+> Be extremely thorough and rigorous. Measure twice, cut once.
+
+## Non-Negotiable Additional Standards
+
+Apply the baseline prompt above, plus these explicit review rules:
+
+0. **Be ambitious about structural simplification.**
+   - Do not stop at "this could be a bit cleaner."
+   - Look for opportunities to reframe the change so that whole branches, helpers, modes, conditionals, or layers disappear entirely.
+   - Prefer the solution that makes the code feel inevitable in hindsight.
+   - Assume there is often a "code judo" move available: a re-organization that uses the existing architecture more effectively and makes the change dramatically simpler and more elegant.
+   - If you see a path to delete complexity rather than rearrange it, push hard for that path.
+
+1. **Do not let a PR push a file from under 1k lines to over 1k lines without a very strong reason.**
+   - Treat this as a strong code-quality smell by default.
+   - Prefer extracting helpers, subcomponents, modules, or local abstractions instead of letting a file sprawl past 1000 lines.
+   - If the diff crosses that threshold, explicitly ask whether the code should be decomposed first.
+   - Only waive this if there is a compelling structural reason and the resulting file is still clearly organized.
+
+2. **Do not allow random spaghetti growth in existing code.**
+   - Be highly suspicious of new ad-hoc conditionals, scattered special cases, or one-off branches inserted into unrelated flows.
+   - If a change adds "weird if statements in random places", treat that as a design problem, not a stylistic nit.
+   - Prefer pushing the logic into a dedicated abstraction, helper, state machine, policy object, or separate module instead of tangling an existing path.
+   - Call out changes that make the surrounding code harder to reason about, even if they technically work.
+
+3. **Bias toward cleaning the design, not just accepting working code.**
+   - If behavior can stay the same while the structure becomes meaningfully cleaner, push for the cleaner version.
+   - Do not rubber-stamp "it works" implementations that leave the codebase messier.
+   - Strongly prefer simplifications that remove moving pieces altogether over refactors that merely spread the same complexity around.
+
+4. **Prefer direct, boring, maintainable code over hacky or magical code.**
+   - Treat brittle, ad-hoc, or "magic" behavior as a code-quality problem.
+   - Be skeptical of generic mechanisms that hide simple data-shape assumptions.
+   - Flag thin abstractions, identity wrappers, or pass-through helpers that add indirection without buying clarity.
+
+5. **Push hard on type and boundary cleanliness when they affect maintainability.**
+   - Question unnecessary optionality, `unknown`, `any`, or cast-heavy code when a clearer type boundary could exist.
+   - Prefer explicit typed models or shared contracts over loosely-shaped ad-hoc objects.
+   - If a branch relies on silent fallback to paper over an unclear invariant, ask whether the boundary should be made explicit instead.
+
+6. **Keep logic in the canonical layer and reuse existing helpers.**
+   - Call out feature logic leaking into shared paths or implementation details leaking through APIs.
+   - Prefer existing canonical utilities/helpers over bespoke one-offs.
+   - Push code toward the right package, service, or module instead of normalizing architectural drift.
+
+7. **Treat unnecessary sequential orchestration and non-atomic updates as design smells when the cleaner structure is obvious.**
+   - If independent work is serialized for no good reason, ask whether the flow should run in parallel instead.
+   - If related updates can leave state half-applied, push for a more atomic structure.
+   - Do not over-index on micro-optimizations, but do flag avoidable orchestration complexity that makes the implementation more brittle.
+
+## Primary Review Questions
+
+For every meaningful change, ask:
+
+- Is there a "code judo" move that would make this dramatically simpler?
+- Can this change be reframed so fewer concepts, branches, or helper layers are needed?
+- Does this improve or worsen the local architecture?
+- Did the diff add branching complexity where a better abstraction should exist?
+- Did a previously cohesive module become more coupled, more stateful, or harder to scan?
+- Is this logic living in the right file and layer?
+- Did this change enlarge a file or component past a healthy size boundary?
+- Are there repeated conditionals that signal a missing model or missing helper?
+- Is the implementation direct and legible, or does it rely on special cases and incidental control flow?
+- Is this abstraction actually earning its keep, or is it just a wrapper?
+- Did the diff introduce casts, optionality, or ad-hoc object shapes that obscure the real invariant?
+- Is this logic living in the canonical layer, or did the diff leak details across a boundary?
+- Is this orchestration more sequential or less atomic than it needs to be?
+
+## What to Flag Aggressively
+
+Escalate findings when you see:
+
+- A complicated implementation where a cleaner reframing could delete whole categories of complexity.
+- Refactors that move code around but fail to reduce the number of concepts a reader must hold in their head.
+- A file crossing 1000 lines due to the PR, especially if the new code could be split out.
+- New conditionals bolted onto unrelated code paths.
+- One-off booleans, nullable modes, or flags that complicate existing control flow.
+- Feature-specific logic leaking into general-purpose modules.
+- Generic "magic" handling that hides simple structure and makes the code harder to reason about.
+- Thin wrappers or identity abstractions that add indirection without simplifying anything.
+- Unnecessary casts, `any`, `unknown`, or optional params that muddy the real contract.
+- Copy-pasted logic instead of extracted helpers.
+- Narrow edge-case handling implemented in the middle of an already busy function.
+- Refactors that technically pass tests but make the code less modular or less readable.
+- "Temporary" branching that is likely to become permanent debt.
+- Bespoke helpers where the codebase already has a canonical utility for the job.
+- Logic added in the wrong layer/package when it should live somewhere more central.
+- Sequential async flow where obviously independent work could stay simpler and clearer with parallel execution.
+- Partial-update logic that leaves state less atomic than necessary.
+
+## Preferred Remedies
+
+When you identify a code-quality problem, prefer suggestions like:
+
+- Delete a whole layer of indirection rather than polishing it.
+- Reframe the state model so conditionals disappear instead of getting centralized.
+- Change the ownership boundary so the feature becomes a natural extension of an existing abstraction.
+- Turn special-case logic into a simpler default flow with fewer exceptions.
+- Extract a helper or pure function.
+- Split a large file into smaller focused modules.
+- Move feature-specific logic behind a dedicated abstraction.
+- Replace condition chains with a typed model or explicit dispatcher.
+- Separate orchestration from business logic.
+- Collapse duplicate branches into a single clearer flow.
+- Delete wrappers that do not meaningfully clarify the API.
+- Reuse the existing canonical helper instead of introducing a near-duplicate.
+- Make type boundaries more explicit so the control flow gets simpler.
+- Move the logic to the package/module/layer that already owns the concept.
+- Parallelize independent work when that also simplifies the orchestration.
+- Restructure related updates into a more atomic flow when partial state would be harder to reason about.
+
+Do not be satisfied with "maybe rename this" feedback when the real issue is structural.
+Do not be satisfied with a merely cleaner version of the same messy idea if there is a plausible path to a much simpler idea.
+
+## Review Tone
+
+Be direct, serious, and demanding about quality.
+Do not be rude, but do not soften major maintainability issues into mild suggestions.
+If the code is making the codebase messier, say so clearly.
+If the implementation missed an opportunity for a dramatic simplification, say that clearly too.
+
+Good phrases:
+
+- `this pushes the file past 1k lines. can we decompose this first?`
+- `this adds another special-case branch into an already busy flow. can we move this behind its own abstraction?`
+- `this works, but it makes the surrounding code more spaghetti. let's keep the behavior and restructure the implementation.`
+- `this feels like feature logic leaking into a shared path. can we isolate it?`
+- `this abstraction seems unnecessary. can we just keep the direct flow?`
+- `why does this need a cast / optional here? can we make the boundary more explicit instead?`
+- `this looks like a bespoke helper for something we already have elsewhere. can we reuse the canonical one?`
+- `i think there's a code-judo move here that makes this much simpler. can we reframe this so these branches disappear?`
+- `this refactor moves complexity around, but doesn't really delete it. is there a way to make the model itself simpler?`
+
+## Output Expectations
+
+Prioritize findings in this order:
+
+1. Structural code-quality regressions
+2. Missed opportunities for dramatic simplification / code-judo restructuring
+3. Spaghetti / branching complexity increases
+4. Boundary / abstraction / type-contract problems that make the code harder to reason about
+5. File-size and decomposition concerns
+6. Modularity and abstraction issues
+7. Legibility and maintainability concerns
+
+Do not flood the review with low-value nits if there are larger structural issues.
+Prefer a smaller number of high-conviction comments over a long list of cosmetic notes.
+
+## Approval Bar
+
+Do not approve merely because behavior seems correct.
+The bar for approval is:
+
+- no clear structural regression
+- no obvious missed opportunity to make the implementation dramatically simpler when such a path is visible
+- no unjustified file-size explosion
+- no obvious spaghetti-growth from special-case branching
+- no obviously hacky or magical abstraction that makes the code harder to reason about
+- no unnecessary wrapper/cast/optionality churn obscuring the real design
+- no clear architecture-boundary leak or avoidable canonical-helper duplication
+- no missed opportunity for an obvious decomposition that would materially improve maintainability
+
+Treat these as presumptive blockers unless the author can justify them clearly:
+
+- the PR preserves a lot of incidental complexity when there is a plausible code-judo move that would delete it
+- the PR pushes a file from below 1000 lines to above 1000 lines
+- the PR adds ad-hoc branching that makes an existing flow more tangled
+- the PR solves a local problem by scattering feature checks across shared code
+- the PR adds an unnecessary abstraction, wrapper, or cast-heavy contract that makes the design more indirect
+- the PR duplicates an existing helper or puts logic in the wrong layer when there is a clear canonical home
+
+If those conditions are not met, leave explicit, actionable feedback and push for a cleaner decomposition.

@@ -1597,6 +1597,7 @@
       "terminal_id": "டெர்மினல் ஐடி:",
       "chk_show_terminal": "ரசீதுல டெர்மினல் ஐடியை பிரிண்ட் பண்ணும்",
       "tooltip_show_terminal": "பிரிண்ட் ஆன ரசீதுல டெர்மினல்/ரெஜிஸ்டர் ஐடியைக் காட்டும்",
+      "section_live_preview": "நேரலை முன்னோட்டம்",
       "preview_width_label": "முன்னோட்ட அகலம்:",
       "section_receipt_language": "ரசீது மொழி",
       "receipt_language": "பிரிண்ட் மொழி:",

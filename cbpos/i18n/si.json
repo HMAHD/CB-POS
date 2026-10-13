@@ -1606,6 +1606,7 @@
       "terminal_id": "ටර්මිනල් අංකය:",
       "chk_show_terminal": "රිසිට් එකේ ටර්මිනල් අංකය ප්‍රින්ට් කරනවා",
       "tooltip_show_terminal": "ප්‍රින්ට් කරපු රිසිට් එකේ ටර්මිනල්/රෙජිස්ටර් අංකය පෙන්නනවා",
+      "section_live_preview": "සජීවී පෙරදසුන",
       "preview_width_label": "පෙරදසුන් පළල:",
       "section_receipt_language": "රිසිට් භාෂාව",
       "receipt_language": "ප්‍රින්ට් භාෂාව:",

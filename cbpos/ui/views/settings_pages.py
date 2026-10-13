@@ -1492,21 +1492,23 @@ class ReceiptPage(SettingsPage):
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(8)
 
-        # Independent of the real Hardware-tab paper width -- lets a shop
-        # see how the OTHER paper size would look without touching their
-        # actual printer configuration just to check.
-        preview_width_row = QHBoxLayout()
-        preview_width_row.addStretch()
+        # Preview header row: title on the left, width selector on the right (#573)
+        preview_header_row = QHBoxLayout()
+        preview_header_row.setContentsMargins(0, 0, 0, 0)
+        self._lbl_preview_title = QLabel()
+        self._lbl_preview_title.setObjectName("SettingsSectionTitle")
+        preview_header_row.addWidget(self._lbl_preview_title)
+        preview_header_row.addStretch()
+
         self._lbl_preview_width = QLabel()
         self._lbl_preview_width.setProperty("class", "muted")
-        preview_width_row.addWidget(self._lbl_preview_width)
+        preview_header_row.addWidget(self._lbl_preview_width)
         self.combo_preview_width = QComboBox()
         self.combo_preview_width.addItem("80mm", "80mm")
         self.combo_preview_width.addItem("58mm", "58mm")
         self.combo_preview_width.currentIndexChanged.connect(self._schedule_refresh)
-        preview_width_row.addWidget(self.combo_preview_width)
-        preview_width_row.addStretch()
-        right_layout.addLayout(preview_width_row)
+        preview_header_row.addWidget(self.combo_preview_width)
+        right_layout.addLayout(preview_header_row)
 
         # ReceiptPreviewWidget sizes its browser to the full receipt height
         # rather than scrolling internally -- a receipt with many items
@@ -1546,8 +1548,12 @@ class ReceiptPage(SettingsPage):
         self.input_logo_path = QLineEdit()
         self.input_logo_path.setReadOnly(True)
         self.btn_browse_logo = QPushButton()
+        self.btn_browse_logo.setProperty("class", "secondary")
+        self.btn_browse_logo.setFixedHeight(32)
         self.btn_browse_logo.clicked.connect(self.browse_logo)
         self.btn_clear_logo = QPushButton()
+        self.btn_clear_logo.setProperty("class", "secondary")
+        self.btn_clear_logo.setFixedHeight(32)
         self.btn_clear_logo.clicked.connect(self._clear_logo)
         self.btn_logo_help = HelpIconButton(on_click=self._show_logo_guide)
         logo_row.addWidget(self.input_logo_path, 1)
@@ -1743,6 +1749,7 @@ class ReceiptPage(SettingsPage):
 
         self.tabs.setTabText(0, _t("settings.receipt.tab_content"))
         self.tabs.setTabText(1, _t("settings.receipt.tab_display"))
+        self._lbl_preview_title.setText(_t("settings.receipt.section_live_preview"))
         self._lbl_preview_width.setText(_t("settings.receipt.preview_width_label"))
 
         # Content tab
@@ -2089,6 +2096,7 @@ class SystemPage(SettingsPage):
 
         self.btn_browse_backup = QPushButton()
         self.btn_browse_backup.setProperty("class", "secondary")
+        self.btn_browse_backup.setFixedHeight(32)
         self.btn_browse_backup.clicked.connect(self._browse_backup_dir)
         backup_dir_layout.addWidget(self.btn_browse_backup)
 

@@ -43,6 +43,11 @@ CLAUDE.md
 cbpos.db-shm
 .gitignore
 cbpos.db-wal
+.agents/
+.claude/skills/
+agent/
+skills-lock.json
+Skill-Guide.md
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/

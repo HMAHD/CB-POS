@@ -4,7 +4,6 @@ from PyQt6.QtWidgets import (
     QColorDialog,
     QComboBox,
     QDialog,
-    QDialogButtonBox,
     QFormLayout,
     QHBoxLayout,
     QLabel,
@@ -18,6 +17,7 @@ from cbpos.core.models import Category
 from cbpos.core.services.category_service import CategoryService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
+from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
@@ -76,10 +76,12 @@ class CategoryDialog(QDialog):
 
         layout.addLayout(form)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self.save)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        footer_layout, self.btn_save, self.btn_cancel = make_dialog_footer(
+            primary_key="common.save",
+            on_primary=self.save,
+            on_cancel=self.reject,
+        )
+        layout.addLayout(footer_layout)
 
     def load_categories(self):
         """Populate the parent category combo, excluding the category being edited."""

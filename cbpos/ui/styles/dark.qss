@@ -34,18 +34,33 @@ QWidget {
 /* Inputs - Global Baseline */
 QLineEdit {
     background-color: #252526;
-    border: 1px solid #3E3E42;
+    border: 1px solid #555555;
     border-radius: 4px;
-    padding: 8px;
-    font-size: 16px;
+    padding: 8px 12px;
+    font-size: 14px;
     color: #FFFFFF;
+    min-height: 32px;
     selection-background-color: #00BCEB;
     selection-color: #000000;
+}
+
+QLineEdit:hover {
+    border: 1px solid #00BCEB;
 }
 
 QLineEdit:focus {
     border: 1px solid #00BCEB;
     background-color: #2D2D30;
+}
+
+QLineEdit:disabled {
+    background-color: #1A1A1A;
+    color: #666666;
+    border-color: #333333;
+}
+
+QLineEdit[error="true"] {
+    border: 1px solid #FF4136;
 }
 
 /* Date pickers - Global Baseline (13 of 15 sites in the app had no styling
@@ -54,11 +69,17 @@ QLineEdit:focus {
    including any without an objectName. */
 QDateEdit, QTimeEdit, QDateTimeEdit {
     background-color: #252526;
-    border: 1px solid #3E3E42;
+    border: 1px solid #555555;
     border-radius: 4px;
-    padding: 6px 8px;
+    padding: 8px 12px;
+    padding-right: 28px;
     font-size: 14px;
     color: #FFFFFF;
+    min-height: 32px;
+}
+
+QDateEdit:hover, QTimeEdit:hover, QDateTimeEdit:hover {
+    border: 1px solid #00BCEB;
 }
 
 QDateEdit:focus, QTimeEdit:focus, QDateTimeEdit:focus {
@@ -66,11 +87,21 @@ QDateEdit:focus, QTimeEdit:focus, QDateTimeEdit:focus {
     background-color: #2D2D30;
 }
 
+QDateEdit:disabled, QTimeEdit:disabled, QDateTimeEdit:disabled {
+    background-color: #1A1A1A;
+    color: #666666;
+    border-color: #333333;
+}
+
+QDateEdit[error="true"], QTimeEdit[error="true"], QDateTimeEdit[error="true"] {
+    border: 1px solid #FF4136;
+}
+
 QDateEdit::drop-down {
     subcontrol-origin: padding;
     subcontrol-position: top right;
     width: 24px;
-    border-left: 1px solid #3E3E42;
+    border-left: 1px solid #555555;
     background-color: #2D2D30;
     border-top-right-radius: 4px;
     border-bottom-right-radius: 4px;
@@ -200,8 +231,18 @@ QComboBox:hover {
 }
 
 QComboBox:focus {
-    border: 2px solid #00BCEB;
+    border: 1px solid #00BCEB;
     background-color: #333337;
+}
+
+QComboBox:disabled {
+    background-color: #1A1A1A;
+    color: #666666;
+    border-color: #333333;
+}
+
+QComboBox[error="true"] {
+    border: 1px solid #FF4136;
 }
 
 QComboBox::drop-down {
@@ -220,7 +261,7 @@ QComboBox::drop-down:hover {
 }
 
 QComboBox::down-arrow {
-    image: url(cbpos/assets/icons/chevron-down-cyan.svg);
+    image: url(cbpos/assets/icons/chevron-down-white.svg);
     width: 14px;
     height: 14px;
 }
@@ -259,7 +300,7 @@ QSpinBox, QDoubleSpinBox {
     padding-right: 35px;  /* Space for wider buttons */
     font-size: 14px;
     color: #FFFFFF;
-    min-height: 36px;  /* Touch-friendly height */
+    min-height: 32px;  /* Unified input height */
 }
 
 QSpinBox:hover, QDoubleSpinBox:hover {
@@ -268,8 +309,18 @@ QSpinBox:hover, QDoubleSpinBox:hover {
 }
 
 QSpinBox:focus, QDoubleSpinBox:focus {
-    border: 2px solid #00BCEB;
+    border: 1px solid #00BCEB;
     background-color: #333337;
+}
+
+QSpinBox:disabled, QDoubleSpinBox:disabled {
+    background-color: #1A1A1A;
+    color: #666666;
+    border-color: #333333;
+}
+
+QSpinBox[error="true"], QDoubleSpinBox[error="true"] {
+    border: 1px solid #FF4136;
 }
 
 /* UP Button (+) - Clear plus icon */
@@ -695,15 +746,30 @@ QToolTip {
 QTextEdit, QPlainTextEdit {
     background-color: #252526;
     color: #FFFFFF;
-    border: 1px solid #3E3E42;
+    border: 1px solid #555555;
     border-radius: 4px;
-    padding: 6px;
+    padding: 8px 12px;
+    font-size: 14px;
     selection-background-color: #00BCEB;
+}
+
+QTextEdit:hover, QPlainTextEdit:hover {
+    border: 1px solid #00BCEB;
 }
 
 QTextEdit:focus, QPlainTextEdit:focus {
     border: 1px solid #00BCEB;
     background-color: #2D2D30;
+}
+
+QTextEdit:disabled, QPlainTextEdit:disabled {
+    background-color: #1A1A1A;
+    color: #666666;
+    border-color: #333333;
+}
+
+QTextEdit[error="true"], QPlainTextEdit[error="true"] {
+    border: 1px solid #FF4136;
 }
 
 QProgressBar {
@@ -1962,6 +2028,12 @@ QPushButton#BtnApplyDiscount {
     border-radius: 6px;
 }
 
+QLabel#ProformaTotalLabel {
+    font-size: 16px;
+    font-weight: bold;
+    color: #FFFFFF;
+}
+
 QPushButton#BtnApplyDiscount:hover {
     background-color: #2ECC40;
 }
@@ -2459,26 +2531,6 @@ QTableView::item:hover {
    wins), silently reskinning ~80 buttons across the app that were never
    meant to change. */
 
-/* === SEARCH/INPUT FIELDS === */
-QLineEdit {
-    background-color: #2A2A2A;
-    color: #E5E5E5;
-    border: 1px solid #3A3A3A;
-    border-radius: 6px;
-    padding: 8px 12px;
-    font-size: 13px;
-    selection-background-color: #00BCEB;
-}
-
-QLineEdit:focus {
-    border-color: #00BCEB;
-    background-color: #252525;
-}
-
-QLineEdit:disabled {
-    background-color: #1A1A1A;
-    color: #666666;
-}
 
 /* In-cell editors (#569). Item-view editors are plain QLineEdit /
    QSpinBox children of the view's viewport, so without this they inherit
@@ -3253,45 +3305,11 @@ QPushButton#ReportNavItem:checked {
 }
 
 #ReportDateEdit {
-    background-color: #2D2D30;
-    color: #FFFFFF;
-    border: 1px solid #3E3E42;
-    border-radius: 4px;
-    padding: 6px 10px;
     min-width: 120px;
-    font-size: 13px;
-}
-
-#ReportDateEdit:focus {
-    border: 1px solid #00BCEB;
-}
-
-#ReportDateEdit::drop-down {
-    subcontrol-origin: padding;
-    subcontrol-position: top right;
-    width: 24px;
-    border-left: 1px solid #3E3E42;
-    background-color: #2D2D30;
-    border-top-right-radius: 4px;
-    border-bottom-right-radius: 4px;
-}
-
-#ReportDateEdit::drop-down:hover {
-    background-color: #16324F;
 }
 
 #ReportFilterCombo {
-    background-color: #2D2D30;
-    color: #FFFFFF;
-    border: 1px solid #3E3E42;
-    border-radius: 4px;
-    padding: 6px 10px;
     min-width: 130px;
-    font-size: 13px;
-}
-
-#ReportFilterCombo:focus {
-    border: 1px solid #00BCEB;
 }
 
 #RunReportBtn {
@@ -3837,7 +3855,7 @@ QPushButton#DocPrevBtn:hover, QPushButton#DocNextBtn:hover {
 
 QWidget#PriceListSidebarPanel {
     background-color: #252526;
-    border-right: 1px solid #2D2D30;
+    border-right: 1px solid #3E3E42;
 }
 
 QLabel#PriceListSidebarTitle {

@@ -25,6 +25,7 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.proforma_service import ProformaService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
+from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
@@ -125,24 +126,16 @@ class ProformaDialog(QDialog):
         layout.addWidget(self.items_table)
 
         # Footer: Total + Create
-        footer = QHBoxLayout()
-
         self.total_label = QLabel(f"<b>{_t('common.total')}: {format_currency(0)}</b>")
-        self.total_label.setStyleSheet("font-size: 16px;")
-        footer.addWidget(self.total_label)
+        self.total_label.setObjectName("ProformaTotalLabel")
 
-        footer.addStretch()
-
-        cancel_btn = QPushButton(_t("common.cancel"))
-        cancel_btn.clicked.connect(self.reject)
-        footer.addWidget(cancel_btn)
-
-        create_btn = QPushButton(_t("proforma.btn_create"))
-        create_btn.setStyleSheet("background-color: #00BCEB; color: white; font-weight: bold; padding: 8px 20px;")
-        create_btn.setAutoDefault(False)
-        create_btn.clicked.connect(self.create_proforma)
-        footer.addWidget(create_btn)
-
+        footer, self.create_btn, self.cancel_btn = make_dialog_footer(
+            primary_key="proforma.btn_create",
+            on_primary=self.create_proforma,
+            on_cancel=self.reject,
+            primary_object_name="BtnProformaCreate",
+            left_widget=self.total_label,
+        )
         layout.addLayout(footer)
 
     def load_products(self) -> None:

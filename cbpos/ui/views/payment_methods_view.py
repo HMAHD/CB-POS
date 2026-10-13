@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.payment_service import PaymentService, ShortcutConflictError
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 
 logger = logging.getLogger(__name__)
 
@@ -105,20 +106,11 @@ class PaymentMethodDialog(QDialog):
         layout.addWidget(self.lbl_hint)
 
         # Buttons
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
-
-        self.btn_cancel = QPushButton()
-        self.btn_cancel.setObjectName("BtnCancel")
-        self.btn_cancel.clicked.connect(self.reject)
-        btn_layout.addWidget(self.btn_cancel)
-
-        self.btn_save = QPushButton()
-        self.btn_save.setObjectName("DialogSaveButton")
-        self.btn_save.setProperty("class", "primary")
-        self.btn_save.clicked.connect(self._save)
-        btn_layout.addWidget(self.btn_save)
-
+        btn_layout, self.btn_save, self.btn_cancel = make_dialog_footer(
+            primary_key="common.save",
+            on_primary=self._save,
+            on_cancel=self.reject,
+        )
         layout.addLayout(btn_layout)
 
         # Load existing values

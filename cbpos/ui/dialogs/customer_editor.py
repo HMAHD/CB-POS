@@ -6,7 +6,6 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
-    QDialogButtonBox,
     QFormLayout,
     QHBoxLayout,
     QHeaderView,
@@ -28,6 +27,7 @@ from cbpos.core.services.price_list_service import (
 )  # Assuming this exists or will be needed
 from cbpos.core.services.tax_service import TaxService
 from cbpos.i18n import _t
+from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 COMMERCIAL_FIELD_MIN_WIDTH = 220
@@ -78,10 +78,12 @@ class CustomerEditor(QDialog):
         layout.addWidget(self.tabs)
 
         # Buttons
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self.save)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        footer_layout, self.btn_save, self.btn_cancel = make_dialog_footer(
+            primary_key="common.save",
+            on_primary=self.save,
+            on_cancel=self.reject,
+        )
+        layout.addLayout(footer_layout)
 
     def create_general_tab(self):
         """Build the General tab: name, phone, email, address, and company toggle."""

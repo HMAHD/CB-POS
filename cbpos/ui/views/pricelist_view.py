@@ -10,7 +10,6 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QDateEdit,
     QDialog,
-    QDialogButtonBox,
     QFormLayout,
     QFrame,
     QHBoxLayout,
@@ -37,6 +36,7 @@ from cbpos.i18n import _t, register_language_callback, unregister_language_callb
 from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import INFO, NEUTRAL, SUCCESS, status_color
+from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers
 
 # Price cells keep their raw Decimal here; the text is display-only (#557).
@@ -583,10 +583,12 @@ class PriceListDialog(QDialog):
 
         layout.addLayout(form)
 
-        self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
-        self.buttons.accepted.connect(self.validate_and_accept)
-        self.buttons.rejected.connect(self.reject)
-        layout.addWidget(self.buttons)
+        footer_layout, self.btn_save, self.btn_cancel = make_dialog_footer(
+            primary_key="common.save",
+            on_primary=self.validate_and_accept,
+            on_cancel=self.reject,
+        )
+        layout.addLayout(footer_layout)
 
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
@@ -597,6 +599,8 @@ class PriceListDialog(QDialog):
         self.lbl_end.setText(_t("pricelist.form_end_date"))
         self.lbl_active.setText(_t("pricelist.form_active"))
         self.active_check.setText(_t("pricelist.form_active_hint"))
+        self.btn_save.setText(_t("common.save"))
+        self.btn_cancel.setText(_t("common.cancel"))
 
     def validate_and_accept(self) -> None:
         """Validate form fields before accepting the dialog."""

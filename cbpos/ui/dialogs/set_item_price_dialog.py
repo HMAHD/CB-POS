@@ -4,7 +4,6 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QDoubleValidator, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QDialog,
-    QDialogButtonBox,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -12,6 +11,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.i18n import _t
+from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 
 
 class SetItemPriceDialog(QDialog):
@@ -49,10 +49,13 @@ class SetItemPriceDialog(QDialog):
         self.price_input.selectAll()
         layout.addWidget(self.price_input)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        footer_layout, self.btn_ok, self.btn_cancel = make_dialog_footer(
+            primary_key="common.ok",
+            on_primary=self.accept,
+            on_cancel=self.reject,
+            primary_object_name="BtnOk",
+        )
+        layout.addLayout(footer_layout)
 
         QShortcut(QKeySequence(Qt.Key.Key_Return), self).activated.connect(self.accept)
         QShortcut(QKeySequence(Qt.Key.Key_Enter), self).activated.connect(self.accept)

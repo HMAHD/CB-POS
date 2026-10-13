@@ -10,7 +10,6 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QDateTimeEdit,
     QDialog,
-    QDialogButtonBox,
     QDoubleSpinBox,
     QFormLayout,
     QHBoxLayout,
@@ -30,6 +29,7 @@ from cbpos.core.services.promotion_service import SUPPORTED_TYPES, PromotionServ
 from cbpos.core.utils.formatters import format_discount
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS
+from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
 
@@ -335,10 +335,12 @@ class PromotionDialog(QDialog):
 
         layout.addLayout(form)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self.validate_and_accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        footer_layout, self.btn_save, self.btn_cancel = make_dialog_footer(
+            primary_key="common.save",
+            on_primary=self.validate_and_accept,
+            on_cancel=self.reject,
+        )
+        layout.addLayout(footer_layout)
 
     def validate_and_accept(self) -> None:
         """Validate form fields before accepting the dialog."""

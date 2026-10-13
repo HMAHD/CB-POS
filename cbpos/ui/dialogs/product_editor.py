@@ -6,7 +6,6 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
-    QDialogButtonBox,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -30,6 +29,7 @@ from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import get_currency_symbol
 from cbpos.i18n import _t
+from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
@@ -98,10 +98,12 @@ class ProductEditor(QDialog):
 
         layout.addWidget(self.tabs)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self.save_product)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        footer_layout, self.btn_save, self.btn_cancel = make_dialog_footer(
+            primary_key="common.save",
+            on_primary=self.save_product,
+            on_cancel=self.reject,
+        )
+        layout.addLayout(footer_layout)
 
     def setup_general_tab(self):
         """Build the General tab: names (EN/SI/TA), barcode, category, selling price, and cost price."""

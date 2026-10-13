@@ -2,10 +2,8 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QDialog,
-    QDialogButtonBox,
     QHeaderView,
     QLineEdit,
-    QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -13,6 +11,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.i18n import _t
+from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 
@@ -73,15 +72,13 @@ class CustomerSelectionDialog(QDialog):
         layout.addWidget(self.table)
 
         # Buttons
-        self.btn_select = QPushButton(_t("customer_selection.btn_select"))
-        self.btn_select.setObjectName("BtnCustomerSelect")
-        self.btn_select.setProperty("class", "primary")
-        self.btn_select.clicked.connect(self.select_customer)
-
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
-        buttons.rejected.connect(self.reject)
-        buttons.addButton(self.btn_select, QDialogButtonBox.ButtonRole.AcceptRole)
-        layout.addWidget(buttons)
+        footer_layout, self.btn_select, self.btn_cancel = make_dialog_footer(
+            primary_key="customer_selection.btn_select",
+            on_primary=self.select_customer,
+            on_cancel=self.reject,
+            primary_object_name="BtnCustomerSelect",
+        )
+        layout.addLayout(footer_layout)
 
         QShortcut(QKeySequence(Qt.Key.Key_Return), self).activated.connect(self.select_customer)
         QShortcut(QKeySequence(Qt.Key.Key_Enter), self).activated.connect(self.select_customer)

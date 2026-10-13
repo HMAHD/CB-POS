@@ -1,7 +1,6 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QDialog,
-    QDialogButtonBox,
     QFormLayout,
     QLineEdit,
     QMessageBox,
@@ -10,6 +9,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.i18n import _t
+from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 
 
 class CustomerQuickAddDialog(QDialog):
@@ -44,10 +44,12 @@ class CustomerQuickAddDialog(QDialog):
 
         layout.addLayout(form)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
-        buttons.accepted.connect(self.save)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        footer_layout, self.btn_save, self.btn_cancel = make_dialog_footer(
+            primary_key="common.save",
+            on_primary=self.save,
+            on_cancel=self.reject,
+        )
+        layout.addLayout(footer_layout)
 
         self.name_input.setFocus()
 

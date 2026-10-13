@@ -740,7 +740,9 @@
     "reason_required_msg": "A reason is required for adjustments.",
     "no_user_msg": "No user logged in.",
     "done_title": "Done",
-    "balance_adjusted_msg": "Balance adjusted successfully."
+    "balance_adjusted_msg": "Balance adjusted successfully.",
+    "ledger_empty_range": "No entries in this date range — click 'All' to view complete history",
+    "ledger_no_history": "No transaction history for this customer"
   },
   "purchase": {
     "tab_suppliers": "Suppliers",
@@ -860,7 +862,12 @@
     "required_title": "Required",
     "reason_required_msg": "A reason is required for adjustments.",
     "done_title": "Done",
-    "balance_adjusted_msg": "Balance adjusted successfully."
+    "balance_adjusted_msg": "Balance adjusted successfully.",
+    "empty_suppliers_title": "No suppliers registered",
+    "empty_suppliers_subtitle": "Click '+ Add Supplier' above to create your first supplier",
+    "empty_grn_items_title": "No items in this purchase order",
+    "empty_grn_items_subtitle": "Search or scan products above to add items to this GRN",
+    "empty_history_subtitle": "Click 'New Purchase' above to record incoming inventory"
   },
   "void_reason_dialog": {
     "reason": "Reason",
@@ -2519,7 +2526,10 @@
     "product_already_in_count": "Product already in this stock count.",
     "not_in_draft_status": "Stock count not found or not in DRAFT status.",
     "cannot_approve_empty": "Cannot approve count with no items.",
-    "must_be_counted_to_approve": "Count must be in COUNTED status to approve."
+    "must_be_counted_to_approve": "Count must be in COUNTED status to approve.",
+    "empty_items_title": "No items in stock count",
+    "empty_items_subtitle": "Select a category above or scan barcodes to begin counting",
+    "no_history_found": "No stock count records found"
   },
   "sale_history": {
     "title": "Sale History",
@@ -2568,11 +2578,11 @@
     "title": "Database Setup",
     "heading": "Welcome to CB POS!",
     "description": "Choose how you would like to start. You can always add your own data later.",
-    "empty_icon": "\ud83d\udcca",
+    "empty_icon": "📊",
     "empty_title": "Start Fresh",
     "empty_desc": "Empty database with only the admin account. Add your own products, categories, and customers.",
     "btn_empty": "Start Fresh",
-    "demo_icon": "\ud83c\udfaa",
+    "demo_icon": "🎪",
     "demo_title": "Demo Data",
     "demo_desc": "Pre-loaded with 80+ products, customers, sample sales, and suppliers. Great for exploring the system.",
     "btn_demo": "Load Demo Data",

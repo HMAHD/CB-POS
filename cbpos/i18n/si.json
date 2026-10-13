@@ -710,7 +710,9 @@
     "reason_required_msg": "සකස් කිරීමකට හේතුවක් අවශ්‍යයි.",
     "no_user_msg": "කවුරුවත් ලොග් වෙලා නැහැ.",
     "done_title": "හරි",
-    "balance_adjusted_msg": "ශේෂය සකස් කළා."
+    "balance_adjusted_msg": "ශේෂය සකස් කළා.",
+    "ledger_empty_range": "මෙම දින පරාසයේ කිසිදු සටහනක් නැත — සම්පූර්ණ ඉතිහාසය බැලීමට 'සියල්ල' ඔබන්න",
+    "ledger_no_history": "මෙම පාරිභෝගිකයා සඳහා ගනුදෙනු ඉතිහාසයක් නැත"
   },
   "purchase": {
     "tab_suppliers": "සැපයුම්කරුවෝ",
@@ -830,7 +832,12 @@
     "required_title": "අවශ්‍යයි",
     "reason_required_msg": "සකස් කිරීමකට හේතුවක් අවශ්‍යයි.",
     "done_title": "හරි",
-    "balance_adjusted_msg": "ශේෂය සකස් කළා."
+    "balance_adjusted_msg": "ශේෂය සකස් කළා.",
+    "empty_suppliers_title": "සැපයුම්කරුවන් ලියාපදිංචි කර නැත",
+    "empty_suppliers_subtitle": "පළමු සැපයුම්කරු එක් කිරීමට ඉහත '+ සැපයුම්කරු එක් කරන්න' ක්ලික් කරන්න",
+    "empty_grn_items_title": "මෙම ඇණවුමේ භාණ්ඩ නොමැත",
+    "empty_grn_items_subtitle": "මෙම GRN වෙත භාණ්ඩ එක් කිරීමට ඉහත නිෂ්පාදන සොයන්න හෝ ස්කෑන් කරන්න",
+    "empty_history_subtitle": "ලැබුණු තොග සටහන් කිරීමට ඉහත 'නව මිලදී ගැනීම' ක්ලික් කරන්න"
   },
   "void_reason_dialog": {
     "reason": "හේතුව",
@@ -2519,7 +2526,10 @@
     "product_already_in_count": "දැනටමත් මෙම තොග ගණන් කිරීමට එකතු කර ඇත.",
     "not_in_draft_status": "තොග ගණන් කිරීම හමු නොවීය හෝ කෙටුම්පත් (DRAFT) තත්ත්වයේ නැත.",
     "cannot_approve_empty": "භාණ්ඩ නොමැතිව තොග ගණන් කිරීම අනුමත කළ නොහැක.",
-    "must_be_counted_to_approve": "අනුමත කිරීමට පෙර තොග ගණනය කර අවසන් (COUNTED) විය යුතුය."
+    "must_be_counted_to_approve": "අනුමත කිරීමට පෙර තොග ගණනය කර අවසන් (COUNTED) විය යුතුය.",
+    "empty_items_title": "තොග ගණන් කිරීමේ භාණ්ඩ නොමැත",
+    "empty_items_subtitle": "ගණන් කිරීම ආරම්භ කිරීමට ප්‍රවර්ගයක් තෝරන්න හෝ තීරු කේත ස්කෑන් කරන්න",
+    "no_history_found": "තොග ගණන් කිරීමේ වාර්තා හමු නොවීය"
   },
   "sale_history": {
     "title": "විකුණුම් ඉතිහාසය",
@@ -2565,18 +2575,18 @@
     "detail_status": "තත්ත්වය:"
   },
   "db_setup": {
-    "title": "\u0daf\u0dad\u0dca\u0dad \u0dc3\u0db8\u0dd4\u0daf\u0dcf\u0dba \u0dc3\u0d9a\u0dc3\u0db1\u0dca\u0db1",
-    "heading": "CB POS \u0d91\u0d9a\u0da7 \u0dc3\u0dcf\u0daf\u0dbb\u0dba\u0dd9\u0db1\u0dca \u0db4\u0dd2\u0dc5\u0dd2\u0d9c\u0db1\u0dca\u0db1\u0dc0\u0dcf!",
-    "description": "\u0d94\u0dba\u0dcf\u0da7 \u0db4\u0da7\u0db1\u0dca \u0d9c\u0db1\u0dca\u0db1 \u0d95\u0db1 \u0dc0\u0dd2\u0daf\u0dd2\u0dc4 \u0dad\u0ddd\u0dbb\u0db1\u0dca\u0db1. \u0db4\u0dc3\u0dca\u0dc3\u0dda \u0d95\u0db1\u0db8 \u0dc0\u0dd9\u0dbd\u0dcf\u0dc0\u0d9a \u0d94\u0dba\u0dcf\u0d9c\u0dda\u0db8 \u0daf\u0dad\u0dca\u0dad \u0d91\u0d9a\u0dad\u0dd4 \u0d9a\u0dbb\u0db1\u0dca\u0db1 \u0db4\u0dd4\u0dc5\u0dd4\u0dc0\u0db1\u0dca.",
-    "empty_icon": "\ud83d\udcca",
-    "empty_title": "\u0d85\u0dbd\u0dd4\u0dad\u0dd2\u0db1\u0dca \u0db4\u0da7\u0db1\u0dca \u0d9c\u0db1\u0dca\u0db1",
-    "empty_desc": "\u0d87\u0da9\u0dca\u0db8\u0dd2\u0db1\u0dca \u0d9c\u0dd2\u0dab\u0dd4\u0db8 \u0dc0\u0dd2\u0dad\u0dbb\u0d9a\u0dca \u0dad\u0dd2\u0dba\u0dd9\u0db1 \u0dc4\u0dd2\u0dc3\u0dca \u0daf\u0dad\u0dca\u0dad \u0dc3\u0db8\u0dd4\u0daf\u0dcf\u0dba\u0d9a\u0dca. \u0d94\u0dba\u0dcf\u0d9c\u0dda\u0db8 \u0db7\u0dcf\u0dab\u0dca\u0da9, \u0d9a\u0dcf\u0dab\u0dca\u0da9, \u0dc3\u0dc4 \u0db4\u0dcf\u0dbb\u0dd2\u0db7\u0ddd\u0d9c\u0dd2\u0d9a\u0dba\u0dd2\u0db1\u0dca \u0d91\u0d9a\u0dad\u0dd4 \u0d9a\u0dbb\u0db1\u0dca\u0db1.",
-    "btn_empty": "\u0d85\u0dbd\u0dd4\u0dad\u0dd2\u0db1\u0dca \u0db4\u0da7\u0db1\u0dca \u0d9c\u0db1\u0dca\u0db1",
-    "demo_icon": "\ud83c\udfaa",
-    "demo_title": "\u0db1\u0dd2\u0daf\u0dbb\u0dca\u0dc1\u0db1 \u0daf\u0dad\u0dca\u0dad",
-    "demo_desc": "\u0db7\u0dcf\u0dab\u0dca\u0da9 80\u0d9a\u0da7 \u0dc0\u0da9\u0dcf, \u0db4\u0dcf\u0dbb\u0dd2\u0db7\u0ddd\u0d9c\u0dd2\u0d9a\u0dba\u0dd2\u0db1\u0dca, \u0db1\u0dd2\u0dba\u0dd0\u0daf\u0dd2 \u0dc0\u0dd2\u0d9a\u0dd4\u0dab\u0dd4\u0db8\u0dca, \u0dc3\u0dd0\u0db4\u0dba\u0dd4\u0db8\u0dca\u0d9a\u0dbb\u0dd4\u0dc0\u0db1\u0dca \u0d91\u0d9a\u0dca\u0d9a \u0d9a\u0dbd\u0dd2\u0db1\u0dca \u0db4\u0dd4\u0dbb\u0dc0\u0dbd\u0dcf. \u0dc3\u0dd2\u0dc3\u0dca\u0da7\u0db8\u0dca \u0d91\u0d9a \u0db6\u0dbd\u0db1\u0dca\u0db1 \u0dc4\u0ddc\u0db3\u0db8 \u0dc0\u0dd2\u0daf\u0dd2\u0dc4.",
-    "btn_demo": "\u0db1\u0dd2\u0daf\u0dbb\u0dca\u0dc1\u0db1 \u0daf\u0dad\u0dca\u0dad \u0dbd\u0ddd\u0da9\u0dca \u0d9a\u0dbb\u0db1\u0dca\u0db1",
-    "loading": "\u0daf\u0dad\u0dca\u0dad \u0dc3\u0db8\u0dd4\u0daf\u0dcf\u0dba \u0dc3\u0d9a\u0dc3\u0db8\u0dd2\u0db1\u0dca..."
+    "title": "දත්ත සමුදාය සකසන්න",
+    "heading": "CB POS එකට සාදරයෙන් පිළිගන්නවා!",
+    "description": "ඔයාට පටන් ගන්න ඕන විදිහ තෝරන්න. පස්සේ ඕනම වෙලාවක ඔයාගේම දත්ත එකතු කරන්න පුළුවන්.",
+    "empty_icon": "📊",
+    "empty_title": "අලුතින් පටන් ගන්න",
+    "empty_desc": "ඇඩ්මින් ගිණුම විතරක් තියෙන හිස් දත්ත සමුදායක්. ඔයාගේම භාණ්ඩ, කාණ්ඩ, සහ පාරිභෝගිකයින් එකතු කරන්න.",
+    "btn_empty": "අලුතින් පටන් ගන්න",
+    "demo_icon": "🎪",
+    "demo_title": "නිදර්ශන දත්ත",
+    "demo_desc": "භාණ්ඩ 80කට වඩා, පාරිභෝගිකයින්, නියැදි විකුණුම්, සැපයුම්කරුවන් එක්ක කලින් පුරවලා. සිස්ටම් එක බලන්න හොඳම විදිහ.",
+    "btn_demo": "නිදර්ශන දත්ත ලෝඩ් කරන්න",
+    "loading": "දත්ත සමුදාය සකසමින්..."
   },
   "errors": {
     "already_exists": "එම නමින් අයිතමයක් දැනටමත් තියෙනවා.",

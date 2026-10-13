@@ -27,7 +27,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.category_service import CategoryService
 from cbpos.core.services.promotion_service import SUPPORTED_TYPES, PromotionService
-from cbpos.core.utils.formatters import format_discount
+from cbpos.core.utils.formatters import format_discount, format_promotion_type
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
@@ -158,7 +158,7 @@ class PromotionView(QWidget):
             self.table.insertRow(row)
 
             self.table.setItem(row, 0, QTableWidgetItem(p.name))
-            self.table.setItem(row, 1, QTableWidgetItem(p.type))
+            self.table.setItem(row, 1, QTableWidgetItem(format_promotion_type(p.type)))
             value_item = QTableWidgetItem(format_discount(p.type, p.value))
             value_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.table.setItem(row, 2, value_item)

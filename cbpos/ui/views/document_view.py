@@ -32,7 +32,13 @@ from cbpos.core.services.proforma_service import ProformaService
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.services.transaction_service import TransactionService
-from cbpos.core.utils.formatters import format_currency, format_discount, format_quantity
+from cbpos.core.utils.formatters import (
+    format_currency,
+    format_discount,
+    format_document_status,
+    format_payment_method,
+    format_quantity,
+)
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.dialogs.void_reason_dialog import VoidReasonDialog
@@ -523,7 +529,9 @@ class DocumentBrowserView(QWidget):
             total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.doc_table.setItem(row, 4, total_item)
 
-            status_item = set_status_pill(QTableWidgetItem(), doc["status"], self.STATUS_MEANINGS.get(doc["status"]))
+            status_item = QTableWidgetItem()
+            status_item.setData(Qt.ItemDataRole.UserRole, doc["status"])
+            set_status_pill(status_item, format_document_status(doc["status"]), self.STATUS_MEANINGS.get(doc["status"]))
             self.doc_table.setItem(row, 5, status_item)
 
             self.doc_table.setItem(row, 6, QTableWidgetItem(doc.get("username", "")))
@@ -549,14 +557,15 @@ class DocumentBrowserView(QWidget):
             self._show_detail()
 
     def _status_badge_html(self, status: str) -> str:
-        """The status as a tinted, bold badge for the rich-text detail panel (#560)."""
+        """The status as a tinted, bold badge for the rich-text detail panel (#560, #582)."""
         meaning = self.STATUS_MEANINGS.get(status)
+        display_text = format_document_status(status)
         if not meaning:
-            return status
+            return display_text
         fg, fill = pill_colors(meaning)
         return (
             f'<span style="background-color:{fill.name()}; color:{fg.name()}; font-weight:bold;">'
-            f"&nbsp;{status}&nbsp;</span>"
+            f"&nbsp;{display_text}&nbsp;</span>"
         )
 
     def display_details(self, doc: dict) -> None:
@@ -652,7 +661,7 @@ class DocumentBrowserView(QWidget):
         if payments:
             pay_lines = []
             for p in payments:
-                pay_lines.append(f"{p['method']}: {format_currency(p['amount'])}")
+                pay_lines.append(f"{format_payment_method(p['method'])}: {format_currency(p['amount'])}")
             self.payment_label.setText(f"<b>{_t('document_browser.detail_payments')}:</b> " + " | ".join(pay_lines))
         else:
             self.payment_label.setText("")

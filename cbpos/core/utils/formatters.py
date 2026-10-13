@@ -216,3 +216,82 @@ def escape_like(value: str) -> str:
     Prevents user input from being interpreted as LIKE wildcards.
     """
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def format_document_status(code: str | None) -> str:
+    """Return the translated display label for a document or stock count status code (#582)."""
+    if not code:
+        return ""
+    code_upper = str(code).strip().upper()
+    mapping = {
+        "COMPLETED": "document_browser.status_completed",
+        "VOID": "document_browser.status_void",
+        "DRAFT": "document_browser.status_draft",
+        "QUOTE": "document_browser.status_quote",
+        "EXPIRED": "document_browser.status_expired",
+        "CONVERTED": "document_browser.status_converted",
+        "COUNTED": "stock_take.status_counted",
+        "REFUND": "status_refund",
+        "REFUNDED": "status_refunded",
+    }
+    key = mapping.get(code_upper)
+    if key:
+        try:
+            from cbpos.i18n import _t
+
+            return _t(key)
+        except Exception:
+            pass
+    return str(code)
+
+
+def format_promotion_type(kind: str | None) -> str:
+    """Return the translated display label for a promotion type (#582)."""
+    if not kind:
+        return ""
+    kind_upper = str(kind).strip().upper()
+    mapping = {
+        "PERCENTAGE": "promotion.type_percentage",
+        "FIXED_AMOUNT": "promotion.type_fixed_amount",
+        "FIXED": "promotion.type_fixed_amount",
+        "BOGO": "promotion.type_bogo",
+    }
+    key = mapping.get(kind_upper)
+    if key:
+        try:
+            from cbpos.i18n import _t
+
+            return _t(key)
+        except Exception:
+            pass
+    return str(kind)
+
+
+def format_payment_method(method: str | None) -> str:
+    """Return the translated display label for standard payment methods (#582)."""
+    if not method:
+        return ""
+    clean = str(method).strip()
+    upper = clean.upper()
+    mapping = {
+        "CASH": "payment_methods.method_cash",
+        "CARD": "payment_methods.method_card",
+        "CREDIT": "payment_methods.method_credit",
+        "QR/MOBILE": "payment_methods.method_qr_mobile",
+        "QR": "payment_methods.method_qr_mobile",
+        "MOBILE": "payment_methods.method_qr_mobile",
+        "CHEQUE": "payment_methods.method_cheque",
+        "CHECK": "payment_methods.method_cheque",
+        "TRANSFER": "payment_methods.method_transfer",
+        "BANK_TRANSFER": "payment_methods.method_transfer",
+        "REFUND": "payment_methods.method_refund",
+    }
+    key = mapping.get(upper)
+    if key:
+        try:
+            from cbpos.i18n import _t
+
+            return _t(key)
+        except Exception:
+            pass
+    return clean

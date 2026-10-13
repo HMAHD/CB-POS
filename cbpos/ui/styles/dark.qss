@@ -827,6 +827,7 @@ QGroupBox {
     border: 1px solid #3E3E42;
     border-radius: 4px;
     margin-top: 20px;
+    padding-top: 16px;
     font-weight: bold;
     background-color: #252526;
 }

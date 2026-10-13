@@ -97,7 +97,7 @@ def test_document_browser_status_column_is_a_pill(db_session):
     assert item.text() == "SUSPENDED"
     assert item.data(STATUS_MEANING_ROLE) == DocumentBrowserView.STATUS_MEANINGS["SUSPENDED"]
     html = view._status_badge_html("VOID")
-    assert "VOID" in html and "background-color" in html
+    assert ("Void" in html or "VOID" in html) and "background-color" in html
     view.deleteLater()
 
 

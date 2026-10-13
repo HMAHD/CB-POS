@@ -368,7 +368,7 @@ class PriceListView(QWidget):
             self.table.insertRow(row)
 
             self.table.setItem(row, 0, QTableWidgetItem(str(p.id)))
-            self.table.setItem(row, 1, QTableWidgetItem(p.name_en))
+            self.table.setItem(row, 1, QTableWidgetItem(p.display_name))
             base_item = QTableWidgetItem(format_number(p.price, 2))
             base_item.setTextAlignment(NUMERIC_ALIGNMENT)
             # Edit/context-menu read the raw Decimal, never the display text (#557)

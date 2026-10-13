@@ -372,6 +372,40 @@ class Product(Base):
 
     __mapper_args__ = {"version_id_col": version_id}  # Enable Optimistic Locking
 
+    def get_display_name(self, lang: str | None = None) -> str:
+        """Return the product name in the requested or active language with fallbacks (#586)."""
+        if lang is None:
+            try:
+                from cbpos.i18n import get_language
+
+                lang = get_language()
+            except Exception:
+                lang = "en"
+
+        lang = (lang or "en").lower()
+        if lang == "si":
+            name = (self.name_si or "").strip()
+            if name:
+                return name
+        elif lang == "ta":
+            name = (self.name_ta or "").strip()
+            if name:
+                return name
+
+        # Fallback to English, then whichever name is populated
+        if (self.name_en or "").strip():
+            return self.name_en.strip()
+        if (self.name_si or "").strip():
+            return self.name_si.strip()
+        if (self.name_ta or "").strip():
+            return self.name_ta.strip()
+        return ""
+
+    @property
+    def display_name(self) -> str:
+        """Product name in the current UI language, falling back to English or any populated name."""
+        return self.get_display_name()
+
 
 class Customer(Base):
     """A customer record, optionally a company, with credit-limit/current-debt tracking for the Credit Book and loyalty points."""

@@ -33,7 +33,13 @@ from PyQt6.QtWidgets import (
 from cbpos.core.constants.status import DocumentStatus, Precision
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.stock_count_service import StockCountService
-from cbpos.core.utils.formatters import format_currency, format_number, format_quantity, format_signed
+from cbpos.core.utils.formatters import (
+    format_currency,
+    format_document_status,
+    format_number,
+    format_quantity,
+    format_signed,
+)
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 from cbpos.ui.constants import (
@@ -105,7 +111,7 @@ class StockCountItemModel(QAbstractTableModel):
             if col == 0:
                 return item.product.barcode if item.product else ""
             if col == 1:
-                return item.product.name_en if item.product else _t("stock_take.unknown_product")
+                return item.product.display_name if item.product else _t("stock_take.unknown_product")
             if col == 2:
                 return _format_count(item.expected_qty, item.product)
             if col == 3:
@@ -280,7 +286,7 @@ class StockCountReportDialog(QDialog):
 
         lbl_status_key = QLabel(_t("common.status"))
         lbl_status_key.setProperty("class", "muted")
-        lbl_status_val = QLabel(stock_count.status or _t("common.na"))
+        lbl_status_val = QLabel(format_document_status(stock_count.status) if stock_count.status else _t("common.na"))
         lbl_status_val.setStyleSheet("font-weight: bold;")
 
         lbl_date_key = QLabel(_t("common.date"))
@@ -312,6 +318,7 @@ class StockCountReportDialog(QDialog):
 
         # Items table
         table = QTableWidget()
+        self.table = table
         table.setColumnCount(6)
         table.setHorizontalHeaderLabels(
             [
@@ -345,7 +352,9 @@ class StockCountReportDialog(QDialog):
             table.insertRow(row)
             table.setItem(row, 0, QTableWidgetItem(item.product.barcode if item.product else ""))
             table.setItem(
-                row, 1, QTableWidgetItem(item.product.name_en if item.product else _t("stock_take.unknown_product"))
+                row,
+                1,
+                QTableWidgetItem(item.product.display_name if item.product else _t("stock_take.unknown_product")),
             )
 
             for col, val in [
@@ -834,7 +843,9 @@ class StockTakeView(QWidget):
         self.lbl_items.setText(_t("stock_take.items_count", count=total))
         self.lbl_counted.setText(_t("stock_take.counted_progress", counted=counted, total=total))
         self.lbl_variance.setText(_t("stock_take.variance_amount", amount=format_currency(variance)))
-        self.lbl_status.setText(_t("stock_take.status_display", status=self.current_stock_count.status))
+        self.lbl_status.setText(
+            _t("stock_take.status_display", status=format_document_status(self.current_stock_count.status))
+        )
 
         # Button state
         is_draft = self.current_stock_count.status == DocumentStatus.DRAFT
@@ -973,7 +984,9 @@ class StockTakeView(QWidget):
             self.history_table.setItem(row, 4, var_item)
 
             meaning = _HISTORY_STATUS_MEANINGS.get(sc.status)
-            self.history_table.setItem(row, 5, set_status_pill(QTableWidgetItem(), sc.status, meaning))
+            item = QTableWidgetItem()
+            item.setData(Qt.ItemDataRole.UserRole, sc.status)
+            self.history_table.setItem(row, 5, set_status_pill(item, format_document_status(sc.status), meaning))
 
     def on_history_double_click(self, index: QModelIndex) -> None:
         """Open stock count report dialog on double-click."""
@@ -996,7 +1009,10 @@ class StockTakeView(QWidget):
         self.history_table.selectRow(row)
 
         status_item = self.history_table.item(row, 5)
-        if not status_item or status_item.text() != DocumentStatus.DRAFT:
+        if not status_item:
+            return
+        status_code = status_item.data(Qt.ItemDataRole.UserRole) or status_item.text()
+        if status_code != DocumentStatus.DRAFT:
             return
 
         stock_count_id = self._history_ids[row]

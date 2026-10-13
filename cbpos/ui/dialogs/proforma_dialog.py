@@ -141,6 +141,8 @@ class ProformaDialog(QDialog):
             primary_object_name="BtnProformaCreate",
             left_widget=self.total_label,
         )
+        self.create_btn.setAutoDefault(False)
+        self.create_btn.setDefault(False)
         layout.addLayout(footer)
 
     def load_products(self) -> None:
@@ -148,10 +150,19 @@ class ProformaDialog(QDialog):
         products = ProductService().get_all_products()
         names = []
         for p in products:
-            key = f"{p.name_en} [{p.barcode}]"
+            display_name = p.display_name or p.name_en or ""
+            key = f"{display_name} [{p.barcode}]"
             names.append(key)
             self.products_cache[key] = p
             self.products_cache[p.barcode] = p
+            if display_name:
+                self.products_cache[display_name] = p
+            for alt_name in (p.name_en, p.name_si, p.name_ta):
+                if alt_name and alt_name.strip() and alt_name.strip() != display_name:
+                    alt_key = f"{alt_name.strip()} [{p.barcode}]"
+                    names.append(alt_key)
+                    self.products_cache[alt_key] = p
+                    self.products_cache[alt_name.strip()] = p
 
         model = QStringListModel(names)
         self.product_completer.setModel(model)
@@ -177,9 +188,17 @@ class ProformaDialog(QDialog):
 
         product = self.products_cache.get(text)
         if not product:
-            # Try barcode lookup
+            # Try barcode or name lookup
             for _key, p in self.products_cache.items():
                 if hasattr(p, "barcode") and p.barcode == text:
+                    product = p
+                    break
+                if hasattr(p, "display_name") and (
+                    p.display_name == text
+                    or (p.name_en and p.name_en == text)
+                    or (p.name_si and p.name_si == text)
+                    or (p.name_ta and p.name_ta == text)
+                ):
                     product = p
                     break
 
@@ -199,7 +218,7 @@ class ProformaDialog(QDialog):
         self.items.append(
             {
                 "product_id": product.id,
-                "product_name": product.name_en,
+                "product_name": product.display_name,
                 "quantity": Decimal("1.000"),
                 "unit_price": product.price,
                 "discount_type": "NONE",

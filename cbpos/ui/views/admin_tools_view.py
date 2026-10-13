@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QDateEdit,
     QFileDialog,
     QFormLayout,
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
@@ -26,6 +27,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QTableWidget,
     QTableWidgetItem,
     QTabWidget,
@@ -115,17 +117,26 @@ class AdminToolsView(QWidget):
         version_layout.addWidget(version_lbl)
 
         self.btn_update = QPushButton()
-        self.btn_update.setFixedWidth(160)
+        self.btn_update.setMinimumWidth(160)
         self.btn_update.clicked.connect(self._check_for_updates)
         version_layout.addWidget(self.btn_update)
 
         layout.addLayout(version_layout)
 
         self.tabs = QTabWidget()
-        self.tabs.addTab(self._build_database_tab(), "")
+        self.tabs.addTab(self._make_scrollable(self._build_database_tab()), "")
         self.tabs.addTab(self._build_logs_tab(), "")
-        self.tabs.addTab(self._build_hardware_tab(), "")
+        self.tabs.addTab(self._make_scrollable(self._build_hardware_tab()), "")
         layout.addWidget(self.tabs, 1)
+
+    @staticmethod
+    def _make_scrollable(widget: QWidget) -> QScrollArea:
+        """Wrap tab contents in a borderless scroll area for 1366x768 screens (#587)."""
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidget(widget)
+        return scroll
 
     def _check_for_updates(self) -> None:
         """Manually trigger an update check (non-silent — shows result either way)."""
@@ -160,14 +171,17 @@ class AdminToolsView(QWidget):
 
         self.lbl_db_size = QLabel("--")
         self.lbl_db_size.setProperty("class", "bold")
+        self.lbl_db_size.setMinimumHeight(self.fontMetrics().height() + 8)
         self.lbl_db_size_label = QLabel()
         file_layout.addRow(self.lbl_db_size_label, self.lbl_db_size)
 
         self.lbl_db_modified = QLabel("--")
+        self.lbl_db_modified.setMinimumHeight(self.fontMetrics().height() + 8)
         self.lbl_db_modified_label = QLabel()
         file_layout.addRow(self.lbl_db_modified_label, self.lbl_db_modified)
 
         self.lbl_sqlite_version = QLabel("--")
+        self.lbl_sqlite_version.setMinimumHeight(self.fontMetrics().height() + 8)
         self.lbl_sqlite_version_label = QLabel()
         file_layout.addRow(self.lbl_sqlite_version_label, self.lbl_sqlite_version)
 
@@ -195,13 +209,13 @@ class AdminToolsView(QWidget):
         btn_layout = QHBoxLayout()
         self.btn_db_refresh = QPushButton()
         self.btn_db_refresh.setProperty("class", "accent")
-        self.btn_db_refresh.setFixedWidth(120)
+        self.btn_db_refresh.setMinimumWidth(120)
         self.btn_db_refresh.clicked.connect(self._load_db_info)
         btn_layout.addWidget(self.btn_db_refresh)
 
         self.btn_check_integrity = QPushButton()
         self.btn_check_integrity.setProperty("class", "accent")
-        self.btn_check_integrity.setFixedWidth(180)
+        self.btn_check_integrity.setMinimumWidth(180)
         self.btn_check_integrity.clicked.connect(self._check_integrity)
         btn_layout.addWidget(self.btn_check_integrity)
 
@@ -282,7 +296,7 @@ class AdminToolsView(QWidget):
         self.combo_log_level.addItem(_t("admin_tools.logs_level_all"), "All")
         for level in ("WARNING", "ERROR", "CRITICAL"):
             self.combo_log_level.addItem(level, level)
-        self.combo_log_level.setFixedWidth(120)
+        self.combo_log_level.setMinimumWidth(120)
         filter_layout.addWidget(self.combo_log_level)
 
         self.lbl_from = QLabel()
@@ -292,7 +306,7 @@ class AdminToolsView(QWidget):
         self.date_log_from = QDateEdit()
         self.date_log_from.setCalendarPopup(True)
         self.date_log_from.setDate(QDate.currentDate().addDays(-30))
-        self.date_log_from.setFixedWidth(130)
+        self.date_log_from.setMinimumWidth(130)
         filter_layout.addWidget(self.date_log_from)
 
         self.lbl_to = QLabel()
@@ -302,17 +316,17 @@ class AdminToolsView(QWidget):
         self.date_log_to = QDateEdit()
         self.date_log_to.setCalendarPopup(True)
         self.date_log_to.setDate(QDate.currentDate())
-        self.date_log_to.setFixedWidth(130)
+        self.date_log_to.setMinimumWidth(130)
         filter_layout.addWidget(self.date_log_to)
 
         self.input_log_search = QLineEdit()
-        self.input_log_search.setFixedWidth(200)
+        self.input_log_search.setMinimumWidth(160)
         self.input_log_search.returnPressed.connect(self._load_logs)
         filter_layout.addWidget(self.input_log_search)
 
         self.btn_apply = QPushButton()
         self.btn_apply.setProperty("class", "accent")
-        self.btn_apply.setFixedWidth(80)
+        self.btn_apply.setMinimumWidth(90)
         self.btn_apply.clicked.connect(self._load_logs)
         filter_layout.addWidget(self.btn_apply)
 
@@ -516,22 +530,27 @@ class AdminToolsView(QWidget):
         config_layout.setHorizontalSpacing(20)
 
         self.lbl_hw_type = QLabel("--")
+        self.lbl_hw_type.setMinimumHeight(self.fontMetrics().height() + 8)
         self.lbl_hw_type_label = QLabel()
         config_layout.addRow(self.lbl_hw_type_label, self.lbl_hw_type)
 
         self.lbl_hw_path = QLabel("--")
+        self.lbl_hw_path.setMinimumHeight(self.fontMetrics().height() + 8)
         self.lbl_hw_path_label = QLabel()
         config_layout.addRow(self.lbl_hw_path_label, self.lbl_hw_path)
 
         self.lbl_hw_receipt = QLabel("--")
+        self.lbl_hw_receipt.setMinimumHeight(self.fontMetrics().height() + 8)
         self.lbl_hw_receipt_label = QLabel()
         config_layout.addRow(self.lbl_hw_receipt_label, self.lbl_hw_receipt)
 
         self.lbl_hw_a4 = QLabel("--")
+        self.lbl_hw_a4.setMinimumHeight(self.fontMetrics().height() + 8)
         self.lbl_hw_a4_label = QLabel()
         config_layout.addRow(self.lbl_hw_a4_label, self.lbl_hw_a4)
 
         self.lbl_hw_paper = QLabel("--")
+        self.lbl_hw_paper.setMinimumHeight(self.fontMetrics().height() + 8)
         self.lbl_hw_paper_label = QLabel()
         config_layout.addRow(self.lbl_hw_paper_label, self.lbl_hw_paper)
 
@@ -559,7 +578,7 @@ class AdminToolsView(QWidget):
         printer_btn_row = QHBoxLayout()
         self.btn_test_printer = QPushButton()
         self.btn_test_printer.setProperty("class", "accent")
-        self.btn_test_printer.setFixedWidth(160)
+        self.btn_test_printer.setMinimumWidth(180)
         self.btn_test_printer.clicked.connect(self._test_printer)
         printer_btn_row.addWidget(self.btn_test_printer)
 
@@ -584,7 +603,7 @@ class AdminToolsView(QWidget):
         drawer_btn_row = QHBoxLayout()
         self.btn_test_drawer = QPushButton()
         self.btn_test_drawer.setProperty("class", "accent")
-        self.btn_test_drawer.setFixedWidth(160)
+        self.btn_test_drawer.setMinimumWidth(180)
         self.btn_test_drawer.clicked.connect(self._test_drawer)
         drawer_btn_row.addWidget(self.btn_test_drawer)
 
@@ -621,7 +640,7 @@ class AdminToolsView(QWidget):
         scanner_row.addWidget(self.input_scanner_test, 1)
 
         self.btn_clear_scan = QPushButton()
-        self.btn_clear_scan.setFixedWidth(80)
+        self.btn_clear_scan.setMinimumWidth(90)
         self.btn_clear_scan.clicked.connect(self._clear_scanner)
         scanner_row.addWidget(self.btn_clear_scan)
 

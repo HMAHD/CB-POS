@@ -1,7 +1,7 @@
 import logging
 import weakref
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QEvent, Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
@@ -342,3 +342,16 @@ class MainWindow(QMainWindow):
         """Leave fullscreen mode if currently fullscreen (bound to the Escape shortcut)."""
         if self.isFullScreen():
             self.showNormal()
+
+    def changeEvent(self, event) -> None:
+        """Handle window state changes, e.g. recompute layouts on restore."""
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.WindowStateChange and not self.isMinimized():
+            current = self.stack.currentWidget()
+            if current is not None:
+                if current.layout() is not None:
+                    current.layout().activate()
+                if hasattr(current, "sidebar") and hasattr(current.sidebar, "handle_resize"):
+                    w = current.width()
+                    if w > 0:
+                        current.sidebar.handle_resize(w)

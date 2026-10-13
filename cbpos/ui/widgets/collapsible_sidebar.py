@@ -328,6 +328,8 @@ class CollapsibleSidebar(QFrame):
         ``RESPONSIVE_BREAKPOINT`` and re-expands only if the user hasn't
         manually collapsed.
         """
+        if width <= 0:
+            return
         if width < RESPONSIVE_BREAKPOINT and not self.is_collapsed:
             self.set_collapsed(True)
         elif width >= RESPONSIVE_BREAKPOINT and self.is_collapsed:

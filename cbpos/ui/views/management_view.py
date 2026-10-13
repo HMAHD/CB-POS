@@ -1,9 +1,10 @@
 import logging
 import weakref
 
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import QEvent, pyqtSignal
 from PyQt6.QtWidgets import (
     QHBoxLayout,
+    QSizePolicy,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -100,10 +101,12 @@ class ManagementView(QWidget):
 
         # --- Content Area ---
         content_area = QWidget()
+        content_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         content_layout = QVBoxLayout(content_area)
         content_layout.setContentsMargins(0, 0, 0, 0)
 
         self.stack = QStackedWidget()
+        self.stack.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         content_layout.addWidget(self.stack)
 
         main_layout.addWidget(content_area, 1)
@@ -237,6 +240,35 @@ class ManagementView(QWidget):
             self.reorder_view.set_user(user)
 
     def resizeEvent(self, event) -> None:
-        """Auto-collapse sidebar on narrow screens."""
+        """Auto-collapse sidebar on narrow screens and recompute layout."""
         super().resizeEvent(event)
         self.sidebar.handle_resize(event.size().width())
+        if self.layout() is not None:
+            self.layout().activate()
+
+    def changeEvent(self, event) -> None:
+        """Handle window state changes (e.g. restore from minimized)."""
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.WindowStateChange:
+            win = self.window()
+            if win is not None and not win.isMinimized():
+                w = self.width()
+                if w > 0:
+                    self.sidebar.handle_resize(w)
+                if self.layout() is not None:
+                    self.layout().activate()
+                current = self.stack.currentWidget()
+                if current is not None and current.layout() is not None:
+                    current.layout().activate()
+
+    def showEvent(self, event) -> None:
+        """Recompute layout when switching back to this view."""
+        super().showEvent(event)
+        w = self.width()
+        if w > 0:
+            self.sidebar.handle_resize(w)
+        if self.layout() is not None:
+            self.layout().activate()
+        current = self.stack.currentWidget()
+        if current is not None and current.layout() is not None:
+            current.layout().activate()

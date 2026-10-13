@@ -71,7 +71,8 @@ class ResourceLoader:
                         families = QFontDatabase.applicationFontFamilies(font_id)
                         if families:
                             for family_name in families:
-                                cls._loaded_font_families.append(family_name)
+                                if family_name not in cls._loaded_font_families:
+                                    cls._loaded_font_families.append(family_name)
                             loaded_count += 1
 
         # Summary logging only
@@ -93,19 +94,60 @@ class ResourceLoader:
         return cls._primary_font
 
     @classmethod
-    def get_primary_font(cls) -> str:
-        """
-        Get the primary font family name.
+    def get_primary_font(cls, lang: str | None = None) -> str:
+        """Get the primary font family name for a given language.
+
+        Args:
+            lang: Language code ('en', 'si', 'ta'). If None, resolves from active UI language.
 
         Returns:
-            str: The name of the primary font family, or "Arial" if not yet loaded.
+            str: The name of the primary font family for the language, or 'Arial' as fallback.
         """
+        if lang is None:
+            try:
+                from cbpos.i18n import get_language
+
+                lang = get_language()
+            except Exception:
+                lang = "en"
+
+        if lang == "si" and "Noto Sans Sinhala" in cls._loaded_font_families:
+            return "Noto Sans Sinhala"
+        elif lang == "ta" and "Noto Sans Tamil" in cls._loaded_font_families:
+            return "Noto Sans Tamil"
+
         return cls._primary_font or "Arial"
 
     @classmethod
-    def get_loaded_families(cls) -> list[str]:
+    def get_font_families(cls, lang: str | None = None) -> list[str]:
+        """Return the prioritized list of font families for the specified or active language.
+
+        Ensures that Sinhala and Tamil scripts explicitly resolve to their
+        bundled Noto Sans variants before generic system fallbacks.
         """
-        Get list of all loaded font families.
+        primary = cls.get_primary_font(lang)
+        result = [primary]
+        for fam in ["Noto Sans", "Noto Sans Sinhala", "Noto Sans Tamil"]:
+            if fam in cls._loaded_font_families and fam not in result:
+                result.append(fam)
+        for fam in cls._loaded_font_families:
+            if fam not in result:
+                result.append(fam)
+        if not result:
+            result = ["Arial"]
+        return result
+
+    @classmethod
+    def get_font_family_css(cls, lang: str | None = None) -> str:
+        """Return a CSS font-family string including the localized fallback chain."""
+        families = cls.get_font_families(lang)
+        quoted = [f'"{f}"' for f in families]
+        quoted.append("sans-serif")
+        return ", ".join(quoted)
+
+    @classmethod
+    def get_loaded_families(cls) -> list[str]:
+        """Get list of all loaded font families.
 
         Returns:
             List[str]: List of registered font family names.

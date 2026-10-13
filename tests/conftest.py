@@ -30,6 +30,16 @@ def app_fixture(qapp):
     Fixture to manage QApplication instance.
     pytest-qt provides 'qapp' fixture.
     """
+    from PyQt6.QtGui import QFont
+
+    from cbpos.core.services.theme_service import ThemeService
+    from cbpos.infrastructure.resource_loader import ResourceLoader
+
+    primary = ResourceLoader.load_fonts()
+    font = QFont(primary, 10)
+    font.setFamilies(ResourceLoader.get_font_families())
+    qapp.setFont(font)
+    ThemeService.set_stylesheet_handler(lambda css: qapp.setStyleSheet(css))
     return qapp
 
 

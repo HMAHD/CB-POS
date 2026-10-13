@@ -280,10 +280,11 @@ def main():
     print("[BOOTSTRAP] Loading application resources...")
     primary_font_family = ResourceLoader.load_fonts()
 
-    # Force the application-wide default font
+    # Force the application-wide default font with full script fallback
     default_font = QFont(primary_font_family, 10)
+    default_font.setFamilies(ResourceLoader.get_font_families())
     app.setFont(default_font)
-    print(f"[BOOTSTRAP] Application font set to: {primary_font_family}")
+    print(f"[BOOTSTRAP] Application font set to: {primary_font_family} with fallbacks {default_font.families()}")
 
     # Initialize Theme (Load from settings or default to Dark)
     from cbpos.core.services.config_service import ConfigService
@@ -295,10 +296,13 @@ def main():
     ThemeService.apply_theme(saved_theme)
 
     # Set application language from saved config
-    from cbpos.i18n import set_language
+    from cbpos.i18n import register_language_callback, set_language
 
     saved_language = ConfigService.get("language") or "en"
     set_language(saved_language)
+
+    # Re-apply theme on language changes so font-family prioritizes the active script (#589)
+    register_language_callback(lambda: ThemeService.apply_theme(ThemeService.current_theme))
 
     # Never run on an out-of-date schema -- a failed migration must block startup (#630).
     if migration_error:

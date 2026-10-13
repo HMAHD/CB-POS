@@ -2846,12 +2846,37 @@ QFrame#SmtpGuideStep {
     border-radius: 8px;
 }
 
+QFrame#GuideStep {
+    background-color: #F1F3F5;
+    border: 1px solid #CED4DA;
+    border-left: 3px solid #0D6EFD;
+    border-radius: 8px;
+}
+
 QLabel#SmtpGuideStepNum {
     background-color: #0D6EFD;
     color: #FFFFFF;
     font-size: 16px;
     font-weight: bold;
     border-radius: 16px;
+}
+
+QLabel#GuideStepNum {
+    background-color: #0D6EFD;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 15px;
+}
+
+QLabel#GuideNote {
+    background-color: rgba(255, 193, 7, 0.12);
+    color: #92400E;
+    border: 1px solid rgba(217, 119, 6, 0.35);
+    border-left: 3px solid #D97706;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 12px;
 }
 
 /* === DATA SAFETY VIEW === */

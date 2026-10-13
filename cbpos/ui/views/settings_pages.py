@@ -12,7 +12,6 @@ from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
-    QDialog,
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
@@ -49,6 +48,7 @@ from cbpos.core.services.receipt_logo_service import store_receipt_logo
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.utils.formatters import DEFAULT_CURRENCY_SYMBOL, get_currency_symbol
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.dialogs.guide_dialog import GuideDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.help_icon_button import HelpIconButton
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
@@ -471,60 +471,20 @@ class ShopInfoPage(SettingsPage):
 
     def _show_smtp_guide(self):
         """Show a clean step-by-step SMTP setup guide dialog."""
-        dlg = QDialog(self)
-        dlg.setWindowTitle(_t("settings.shop_info.email_guide_title"))
-        dlg.setMinimumWidth(480)
-        layout = QVBoxLayout(dlg)
-        layout.setSpacing(16)
-        layout.setContentsMargins(24, 24, 24, 24)
-
-        title = QLabel(_t("settings.shop_info.email_guide_heading"))
-        title.setProperty("class", "dialog-title")
-        layout.addWidget(title)
-
         guide_steps = [
-            ("1", _t("settings.shop_info.guide_step1_title"), _t("settings.shop_info.guide_step1_detail")),
-            ("2", _t("settings.shop_info.guide_step2_title"), _t("settings.shop_info.guide_step2_detail")),
-            ("3", _t("settings.shop_info.guide_step3_title"), _t("settings.shop_info.guide_step3_detail")),
-            ("4", _t("settings.shop_info.guide_step4_title"), _t("settings.shop_info.guide_step4_detail")),
+            ("settings.shop_info.guide_step1_title", "settings.shop_info.guide_step1_detail"),
+            ("settings.shop_info.guide_step2_title", "settings.shop_info.guide_step2_detail"),
+            ("settings.shop_info.guide_step3_title", "settings.shop_info.guide_step3_detail"),
+            ("settings.shop_info.guide_step4_title", "settings.shop_info.guide_step4_detail"),
         ]
-
-        for num, heading, detail in guide_steps:
-            step_frame = QFrame()
-            step_frame.setObjectName("SmtpGuideStep")
-            step_layout = QHBoxLayout(step_frame)
-            step_layout.setContentsMargins(12, 10, 12, 10)
-
-            num_label = QLabel(num)
-            num_label.setFixedSize(32, 32)
-            num_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            num_label.setObjectName("SmtpGuideStepNum")
-            step_layout.addWidget(num_label)
-
-            text_layout = QVBoxLayout()
-            text_layout.setSpacing(2)
-            h = QLabel(f"<b>{heading}</b>")
-            h.setProperty("class", "transparent")
-            d = QLabel(detail)
-            d.setWordWrap(True)
-            d.setProperty("class", "muted")
-            text_layout.addWidget(h)
-            text_layout.addWidget(d)
-            step_layout.addLayout(text_layout, 1)
-
-            layout.addWidget(step_frame)
-
-        note = QLabel("<b>" + _t("common.important") + ":</b> " + _t("settings.shop_info.guide_important_note"))
-        note.setWordWrap(True)
-        # The most important line in the guide -- warning style, not muted (#566).
-        note.setProperty("class", "warning-hint")
-        layout.addWidget(note)
-
-        btn_close = QPushButton(_t("settings.shop_info.guide_btn_close"))
-        btn_close.setProperty("class", "primary")
-        btn_close.clicked.connect(dlg.accept)
-        layout.addWidget(btn_close, alignment=Qt.AlignmentFlag.AlignRight)
-
+        dlg = GuideDialog(
+            title_key="settings.shop_info.email_guide_title",
+            heading_key="settings.shop_info.email_guide_heading",
+            steps=guide_steps,
+            note_key="settings.shop_info.guide_important_note",
+            close_key="settings.shop_info.guide_btn_close",
+            parent=self,
+        )
         dlg.exec()
 
     def load(self, settings: dict):

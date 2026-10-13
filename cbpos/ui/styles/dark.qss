@@ -2952,6 +2952,14 @@ QDialog#CategoryManagerDialog QTreeWidget::item:hover {
 QFrame#SmtpGuideStep {
     background-color: #2D2D30;
     border: 1px solid #3E3E42;
+    border-left: 3px solid #00BCEB;
+    border-radius: 8px;
+}
+
+QFrame#GuideStep {
+    background-color: #2D2D30;
+    border: 1px solid #3E3E42;
+    border-left: 3px solid #00BCEB;
     border-radius: 8px;
 }
 
@@ -2961,6 +2969,24 @@ QLabel#SmtpGuideStepNum {
     font-size: 16px;
     font-weight: bold;
     border-radius: 16px;
+}
+
+QLabel#GuideStepNum {
+    background-color: #00BCEB;
+    color: #001F3F;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 15px;
+}
+
+QLabel#GuideNote {
+    background-color: rgba(255, 193, 7, 0.12);
+    color: #FFC107;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-left: 3px solid #FFC107;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 12px;
 }
 
 /* === DATA SAFETY VIEW === */

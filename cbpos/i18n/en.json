@@ -67,7 +67,8 @@
     "update": "Update",
     "na": "N/A",
     "unknown": "Unknown",
-    "important": "Important"
+    "important": "Important",
+    "got_it": "Got it"
   },
   "login": {
     "welcome": "Welcome / ආයුබෝවන් / வணக்கம்",

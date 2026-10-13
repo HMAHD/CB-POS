@@ -198,6 +198,7 @@ class ReportViewer(QWidget):
         # like TYPE or STATUS absorbed all the extra width. ResizeToContents
         # sizes every column to its real, current content instead.
         self.table_view.horizontalHeader().setStretchLastSection(False)
+        self.table_view.horizontalHeader().setMinimumSectionSize(80)
         self.table_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.table_view.setAlternatingRowColors(True)
         self.table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)

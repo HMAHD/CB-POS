@@ -589,6 +589,11 @@ class SalesTaxPage(SettingsPage):
         self.chk_vat_registered.stateChanged.connect(self._toggle_tax_fields)
         self._form_tax.addRow(self.chk_vat_registered)
 
+        self.lbl_vat_hint = QLabel()
+        self.lbl_vat_hint.setProperty("class", "muted")
+        self.lbl_vat_hint.setWordWrap(True)
+        self._form_tax.addRow(self.lbl_vat_hint)
+
         self.lbl_tax_warn = QLabel()
         self.lbl_tax_warn.setProperty("class", "warning-hint")
         self._form_tax.addRow(self.lbl_tax_warn)
@@ -616,7 +621,7 @@ class SalesTaxPage(SettingsPage):
         self.spin_sscl_turnover.setFixedWidth(200)
         sscl_turnover_row.addWidget(self.spin_sscl_turnover)
 
-        self.btn_sscl_turnover_help = HelpIconButton()
+        self.btn_sscl_turnover_help = HelpIconButton(on_click=self._show_sscl_guide)
         sscl_turnover_row.addWidget(self.btn_sscl_turnover_help)
         sscl_turnover_row.addStretch()
 
@@ -628,11 +633,22 @@ class SalesTaxPage(SettingsPage):
         sep.setFrameShape(QFrame.Shape.HLine)
         self._form_tax.addRow(sep)
 
+        item_exempt_row = QHBoxLayout()
         self.chk_item_tax_exemptions = QCheckBox()
-        self._form_tax.addRow(self.chk_item_tax_exemptions)
+        item_exempt_row.addWidget(self.chk_item_tax_exemptions)
+        self.btn_item_exempt_help = HelpIconButton(on_click=self._show_exemptions_guide)
+        item_exempt_row.addWidget(self.btn_item_exempt_help)
+        item_exempt_row.addStretch()
+        self._form_tax.addRow(item_exempt_row)
+
+        self.lbl_item_exemptions_hint = QLabel()
+        self.lbl_item_exemptions_hint.setProperty("class", "muted")
+        self.lbl_item_exemptions_hint.setWordWrap(True)
+        self._form_tax.addRow(self.lbl_item_exemptions_hint)
 
         self.tabs.addTab(self._tab_tax, "")
 
+        self._toggle_tax_fields()
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui)
         # weakref avoids a self -> destroyed-connection -> lambda -> self
@@ -646,6 +662,35 @@ class SalesTaxPage(SettingsPage):
                 unregister_language_callback(view.retranslate_ui)
 
         self.destroyed.connect(_unregister)
+
+    def _show_sscl_guide(self) -> None:
+        """Show guide dialog explaining SSCL turnover liable base percentage."""
+        steps = [
+            ("settings.sales_tax.guide_sscl_step1_title", "settings.sales_tax.guide_sscl_step1_detail"),
+            ("settings.sales_tax.guide_sscl_step2_title", "settings.sales_tax.guide_sscl_step2_detail"),
+        ]
+        dlg = GuideDialog(
+            title_key="settings.sales_tax.guide_sscl_title",
+            steps=steps,
+            note_key="settings.sales_tax.guide_sscl_note",
+            parent=self,
+        )
+        dlg.exec()
+
+    def _show_exemptions_guide(self) -> None:
+        """Show guide dialog explaining category and item-level tax exemptions."""
+        steps = [
+            ("settings.sales_tax.guide_exempt_step1_title", "settings.sales_tax.guide_exempt_step1_detail"),
+            ("settings.sales_tax.guide_exempt_step2_title", "settings.sales_tax.guide_exempt_step2_detail"),
+            ("settings.sales_tax.guide_exempt_step3_title", "settings.sales_tax.guide_exempt_step3_detail"),
+        ]
+        dlg = GuideDialog(
+            title_key="settings.sales_tax.guide_exempt_title",
+            steps=steps,
+            note_key="settings.sales_tax.guide_exempt_note",
+            parent=self,
+        )
+        dlg.exec()
 
     def retranslate_ui(self) -> None:
         """Update all widget text and tab labels from the translation system."""
@@ -680,6 +725,7 @@ class SalesTaxPage(SettingsPage):
         # Tax tab
         self.chk_vat_registered.setText(_t("settings.sales_tax.vat_registered"))
         self.chk_vat_registered.setToolTip(_t("settings.sales_tax.tooltip_vat_registered"))
+        self.lbl_vat_hint.setText(_t("settings.sales_tax.hint_vat_registered"))
         self.lbl_tax_warn.setText(_t("settings.sales_tax.tax_warning"))
         self._lbl_vat_rate.setText(_t("settings.sales_tax.vat_rate"))
         self._lbl_sscl_rate.setText(_t("settings.sales_tax.sscl_rate"))
@@ -687,6 +733,8 @@ class SalesTaxPage(SettingsPage):
         self.btn_sscl_turnover_help.setToolTip(_t("settings.sales_tax.sscl_turnover_help"))
         self.chk_item_tax_exemptions.setText(_t("settings.sales_tax.item_tax_exemptions"))
         self.chk_item_tax_exemptions.setToolTip(_t("settings.sales_tax.tooltip_item_tax_exemptions"))
+        self.btn_item_exempt_help.setToolTip(_t("settings.sales_tax.tooltip_item_tax_exemptions"))
+        self.lbl_item_exemptions_hint.setText(_t("settings.sales_tax.hint_item_tax_exemptions"))
 
     def _toggle_tax_fields(self) -> None:
         """Enable/disable tax rate fields and sub-options based on VAT registration status."""
@@ -702,6 +750,8 @@ class SalesTaxPage(SettingsPage):
             self._lbl_sscl_turnover,
             self.btn_sscl_turnover_help,
             self.chk_item_tax_exemptions,
+            self.btn_item_exempt_help,
+            self.lbl_item_exemptions_hint,
         ):
             widget.setEnabled(enabled)
 
@@ -1498,16 +1548,17 @@ class ReceiptPage(SettingsPage):
         self.btn_browse_logo.clicked.connect(self.browse_logo)
         self.btn_clear_logo = QPushButton()
         self.btn_clear_logo.clicked.connect(self._clear_logo)
-        # A hover tooltip instead of a permanent 3-line paragraph (#330's
-        # original guidance) -- same info, without it dominating the tab
-        # next to the handful of actual controls.
-        self.btn_logo_help = HelpIconButton()
+        self.btn_logo_help = HelpIconButton(on_click=self._show_logo_guide)
         logo_row.addWidget(self.input_logo_path, 1)
         logo_row.addWidget(self.btn_browse_logo)
         logo_row.addWidget(self.btn_clear_logo)
         logo_row.addWidget(self.btn_logo_help)
         self._lbl_logo = QLabel()
         logo_form.addRow(self._lbl_logo, logo_row)
+        self.lbl_logo_hint = QLabel()
+        self.lbl_logo_hint.setProperty("class", "muted")
+        self.lbl_logo_hint.setWordWrap(True)
+        logo_form.addRow("", self.lbl_logo_hint)
         vbox_content.addLayout(logo_form)
 
         # Section: Header & Footer
@@ -1671,6 +1722,21 @@ class ReceiptPage(SettingsPage):
 
         self.destroyed.connect(_unregister)
 
+    def _show_logo_guide(self) -> None:
+        """Show guide dialog explaining monochrome receipt logo optimization."""
+        steps = [
+            ("settings.receipt.guide_logo_step1_title", "settings.receipt.guide_logo_step1_detail"),
+            ("settings.receipt.guide_logo_step2_title", "settings.receipt.guide_logo_step2_detail"),
+            ("settings.receipt.guide_logo_step3_title", "settings.receipt.guide_logo_step3_detail"),
+        ]
+        dlg = GuideDialog(
+            title_key="settings.receipt.guide_logo_title",
+            steps=steps,
+            note_key="settings.receipt.guide_logo_note",
+            parent=self,
+        )
+        dlg.exec()
+
     def retranslate_ui(self) -> None:
         """Update all widget text and tab labels from the translation system."""
         self._page_title.setText(_t("settings.receipt.title"))
@@ -1687,7 +1753,8 @@ class ReceiptPage(SettingsPage):
         self.input_logo_path.setPlaceholderText(_t("settings.receipt.logo_placeholder"))
         self.btn_browse_logo.setText(_t("settings.receipt.btn_browse_logo"))
         self.btn_clear_logo.setText(_t("settings.receipt.btn_clear_logo"))
-        self.btn_logo_help.setToolTip(_t("settings.receipt.logo_hint"))
+        self.btn_logo_help.setToolTip(_t("settings.receipt.tooltip_logo_help"))
+        self.lbl_logo_hint.setText(_t("settings.receipt.logo_hint"))
         self._lbl_header_text.setText(_t("settings.receipt.header_text"))
         self.txt_header.setPlaceholderText(_t("settings.receipt.header_placeholder"))
         self._lbl_footer_text.setText(_t("settings.receipt.footer_text"))
@@ -2200,13 +2267,25 @@ class NetworkPage(SettingsPage):
         status_text_layout.addWidget(self.lbl_status_subtitle)
 
         mode_selector_layout = QVBoxLayout()
+        mode_header_row = QHBoxLayout()
         self.lbl_db_mode = QLabel()
         self.lbl_db_mode.setObjectName("StatusModeLabel")
+        mode_header_row.addWidget(self.lbl_db_mode)
+        self.btn_db_mode_help = HelpIconButton(on_click=self._show_db_mode_guide)
+        mode_header_row.addWidget(self.btn_db_mode_help)
+        mode_header_row.addStretch()
+
         self.cmb_db_mode = QComboBox()
         self.cmb_db_mode.setObjectName("StatusModeSelector")
         self.cmb_db_mode.currentTextChanged.connect(self._on_mode_changed)
-        mode_selector_layout.addWidget(self.lbl_db_mode)
+
+        self.lbl_db_mode_hint = QLabel()
+        self.lbl_db_mode_hint.setProperty("class", "muted")
+        self.lbl_db_mode_hint.setWordWrap(True)
+
+        mode_selector_layout.addLayout(mode_header_row)
         mode_selector_layout.addWidget(self.cmb_db_mode)
+        mode_selector_layout.addWidget(self.lbl_db_mode_hint)
 
         status_layout.addWidget(self.lbl_mode_icon)
         status_layout.addLayout(status_text_layout, 1)
@@ -2390,15 +2469,31 @@ class NetworkPage(SettingsPage):
         sync_grid.setColumnStretch(1, 1)
 
         # Terminal Mode selector
+        tm_label_layout = QHBoxLayout()
+        tm_label_layout.setContentsMargins(0, 0, 0, 0)
         self.lbl_terminal_mode = QLabel()
         self.lbl_terminal_mode.setObjectName("FormLabel")
+        tm_label_layout.addWidget(self.lbl_terminal_mode)
+        self.btn_terminal_mode_help = HelpIconButton(on_click=self._show_terminal_mode_guide)
+        tm_label_layout.addWidget(self.btn_terminal_mode_help)
+        tm_label_layout.addStretch()
+        sync_grid.addLayout(tm_label_layout, 0, 0, Qt.AlignmentFlag.AlignLeft)
+
+        tm_widget_col = QVBoxLayout()
+        tm_widget_col.setContentsMargins(0, 0, 0, 0)
+        tm_widget_col.setSpacing(4)
         self.cmb_terminal_mode = QComboBox()
         self.cmb_terminal_mode.addItem("", "standalone")
         self.cmb_terminal_mode.addItem("", "main")
         self.cmb_terminal_mode.addItem("", "terminal")
         self.cmb_terminal_mode.currentIndexChanged.connect(self._on_terminal_mode_changed)
-        sync_grid.addWidget(self.lbl_terminal_mode, 0, 0, Qt.AlignmentFlag.AlignLeft)
-        sync_grid.addWidget(self.cmb_terminal_mode, 0, 1)
+        tm_widget_col.addWidget(self.cmb_terminal_mode)
+
+        self.lbl_terminal_mode_hint = QLabel()
+        self.lbl_terminal_mode_hint.setProperty("class", "muted")
+        self.lbl_terminal_mode_hint.setWordWrap(True)
+        tm_widget_col.addWidget(self.lbl_terminal_mode_hint)
+        sync_grid.addLayout(tm_widget_col, 0, 1)
 
         # Terminal ID
         self.lbl_sync_terminal_id = QLabel()
@@ -2411,13 +2506,23 @@ class NetworkPage(SettingsPage):
         # Sync server port (Main PC mode)
         self.lbl_sync_port = QLabel()
         self.lbl_sync_port.setObjectName("FormLabel")
+        sync_grid.addWidget(self.lbl_sync_port, 2, 0, Qt.AlignmentFlag.AlignLeft)
+
+        sync_port_col = QVBoxLayout()
+        sync_port_col.setContentsMargins(0, 0, 0, 0)
+        sync_port_col.setSpacing(4)
         self.spin_sync_port = QSpinBox()
         self.spin_sync_port.setObjectName("InputNetwork")
         self.spin_sync_port.setFixedHeight(38)
         self.spin_sync_port.setRange(1024, 65535)
         self.spin_sync_port.setValue(5555)
-        sync_grid.addWidget(self.lbl_sync_port, 2, 0, Qt.AlignmentFlag.AlignLeft)
-        sync_grid.addWidget(self.spin_sync_port, 2, 1)
+        sync_port_col.addWidget(self.spin_sync_port)
+
+        self.lbl_sync_port_hint = QLabel()
+        self.lbl_sync_port_hint.setProperty("class", "muted")
+        self.lbl_sync_port_hint.setWordWrap(True)
+        sync_port_col.addWidget(self.lbl_sync_port_hint)
+        sync_grid.addLayout(sync_port_col, 2, 1)
 
         # Main PC address (Terminal mode)
         self.lbl_main_pc_addr = QLabel()
@@ -2505,6 +2610,45 @@ class NetworkPage(SettingsPage):
 
         QTimer.singleShot(0, _fix_spinbox_heights)
 
+    def _show_db_mode_guide(self) -> None:
+        """Show guide dialog explaining standalone vs network database modes."""
+        steps = [
+            ("settings.network.guide_db_mode_step1_title", "settings.network.guide_db_mode_step1_detail"),
+            ("settings.network.guide_db_mode_step2_title", "settings.network.guide_db_mode_step2_detail"),
+            ("settings.network.guide_db_mode_step3_title", "settings.network.guide_db_mode_step3_detail"),
+        ]
+        dlg = GuideDialog(
+            title_key="settings.network.guide_db_mode_title",
+            steps=steps,
+            note_key="settings.network.guide_db_mode_note",
+            parent=self,
+        )
+        dlg.exec()
+
+    def _show_terminal_mode_guide(self) -> None:
+        """Show guide dialog explaining LAN Sync terminal roles and setup."""
+        steps = [
+            (
+                "settings.network.guide_terminal_mode_step1_title",
+                "settings.network.guide_terminal_mode_step1_detail",
+            ),
+            (
+                "settings.network.guide_terminal_mode_step2_title",
+                "settings.network.guide_terminal_mode_step2_detail",
+            ),
+            (
+                "settings.network.guide_terminal_mode_step3_title",
+                "settings.network.guide_terminal_mode_step3_detail",
+            ),
+        ]
+        dlg = GuideDialog(
+            title_key="settings.network.guide_terminal_mode_title",
+            steps=steps,
+            note_key="settings.network.guide_terminal_mode_note",
+            parent=self,
+        )
+        dlg.exec()
+
     def retranslate_ui(self) -> None:
         """Update all widget text and tab labels from the translation system."""
         self._page_title.setText(_t("settings.network.title"))
@@ -2520,6 +2664,8 @@ class NetworkPage(SettingsPage):
         self.lbl_mode_explainer.setText(_t("settings.network.mode_explainer"))
         self.lbl_db_mode.setText(_t("settings.network.database_mode"))
         self.cmb_db_mode.setToolTip(_t("settings.network.tooltip_db_mode"))
+        self.btn_db_mode_help.setToolTip(_t("settings.network.tooltip_db_mode"))
+        self.lbl_db_mode_hint.setText(_t("settings.network.hint_db_mode"))
 
         # Re-populate db mode combo preserving selection
         current_data = self.cmb_db_mode.currentData()
@@ -2575,6 +2721,8 @@ class NetworkPage(SettingsPage):
         self.lbl_sync_desc.setText(_t("settings.network.sync_desc"))
 
         self.lbl_terminal_mode.setText(_t("settings.network.terminal_mode"))
+        self.btn_terminal_mode_help.setToolTip(_t("settings.network.tooltip_terminal_mode"))
+        self.lbl_terminal_mode_hint.setText(_t("settings.network.hint_terminal_mode"))
         current_terminal_mode = self.cmb_terminal_mode.currentData()
         self.cmb_terminal_mode.blockSignals(True)
         self.cmb_terminal_mode.clear()
@@ -2594,6 +2742,7 @@ class NetworkPage(SettingsPage):
 
         self.lbl_sync_port.setText(_t("settings.network.sync_port"))
         self.spin_sync_port.setToolTip(_t("settings.network.tooltip_sync_port"))
+        self.lbl_sync_port_hint.setText(_t("settings.network.hint_sync_port"))
 
         self.lbl_main_pc_addr.setText(_t("settings.network.main_pc_address"))
         self.input_main_pc_addr.setPlaceholderText(_t("settings.network.main_pc_address_placeholder"))

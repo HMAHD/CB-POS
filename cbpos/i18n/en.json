@@ -1646,7 +1646,10 @@
       "backup_folder": "Backup Folder:",
       "backup_folder_placeholder": "Default: ~/Documents/CB-POS-Backups",
       "btn_browse_backup": "Browse",
-      "choose_backup_folder": "Choose Backup Folder"
+      "choose_backup_folder": "Choose Backup Folder",
+      "suffix_min": " min",
+      "suffix_sec": " sec",
+      "suffix_backups": " backups"
     },
     "network": {
       "title": "Network",
@@ -1980,7 +1983,9 @@
     "email_subject_prefix": "Report",
     "email_failed": "Email Failed",
     "email_sending": "Email sending started in background...",
-    "email_prepare_failed": "Failed to prepare email: {error}"
+    "email_prepare_failed": "Failed to prepare email: {error}",
+    "print_title": "CB POS - {name}",
+    "generated_on": "Generated on:"
   },
   "manager_override": {
     "title": "Manager Override",
@@ -2465,7 +2470,11 @@
     "context_discard_draft": "Discard Draft",
     "resume_failed": "This draft could not be loaded — it may have already been finalized or voided.",
     "confirm_discard_title": "Discard Draft",
-    "confirm_discard_message": "Discard this draft stock count? It will be marked void and cannot be resumed."
+    "confirm_discard_message": "Discard this draft stock count? It will be marked void and cannot be resumed.",
+    "product_already_in_count": "Product already in this stock count.",
+    "not_in_draft_status": "Stock count not found or not in DRAFT status.",
+    "cannot_approve_empty": "Cannot approve count with no items.",
+    "must_be_counted_to_approve": "Count must be in COUNTED status to approve."
   },
   "sale_history": {
     "title": "Sale History",

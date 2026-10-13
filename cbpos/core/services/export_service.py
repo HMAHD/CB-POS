@@ -4,6 +4,8 @@ from pathlib import Path
 import pandas as pd
 from xhtml2pdf import pisa
 
+from cbpos.i18n import _t
+
 logger = logging.getLogger(__name__)
 
 
@@ -104,7 +106,7 @@ class ExportService:
             </head>
             <body>
                 <h1>{title}</h1>
-                <p>Generated on: {timestamp}</p>
+                <p>{generated_on_label} {timestamp}</p>
                 {table_html}
                 <p style="text-align: center; color: #999; font-size: 9px; margin-top: 30px;">
                     Powered by CB POS &mdash; ceybyte.com
@@ -114,6 +116,7 @@ class ExportService:
             """
         ).format(
             title=title,
+            generated_on_label=_t("report_viewer.generated_on"),
             timestamp=pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
             table_html=table_html,
         )

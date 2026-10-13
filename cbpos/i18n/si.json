@@ -65,7 +65,7 @@
     "category": "කාණ්ඩය",
     "notes": "සටහන්",
     "update": "අප්ඩේට්",
-    "na": "N/A",
+    "na": "අදාළ නොවේ",
     "unknown": "නොදන්නා",
     "important": "වැදගත්"
   },
@@ -1616,7 +1616,10 @@
       "backup_folder": "බැකප් ෆෝල්ඩරය:",
       "backup_folder_placeholder": "පෙරනිමිය: ~/Documents/CB-POS-Backups",
       "btn_browse_backup": "සොයන්න",
-      "choose_backup_folder": "බැකප් ෆෝල්ඩරය තෝරන්න"
+      "choose_backup_folder": "බැකප් ෆෝල්ඩරය තෝරන්න",
+      "suffix_min": " මිනි",
+      "suffix_sec": " තත්",
+      "suffix_backups": " උපස්ථ"
     },
     "network": {
       "title": "නෙට්වර්ක්",
@@ -1950,7 +1953,9 @@
     "email_subject_prefix": "වාර්තාව",
     "email_failed": "ඊමේල් අසාර්ථකයි",
     "email_sending": "ඊමේල් එක පසුබිමින් යවමින් තියෙනවා...",
-    "email_prepare_failed": "ඊමේල් සූදානම් කරන්න බැරි උනා: {error}"
+    "email_prepare_failed": "ඊමේල් සූදානම් කරන්න බැරි උනා: {error}",
+    "print_title": "CB POS - {name}",
+    "generated_on": "ජනනය කළ දිනය:"
   },
   "manager_override": {
     "title": "කළමනාකරු අනුමැතිය",
@@ -2465,7 +2470,11 @@
     "context_discard_draft": "කටු සටහන ඉවත් කරන්න",
     "resume_failed": "මේ කටු සටහන ලෝඩ් කරන්න බැරි උනා — ඒක දැනටමත් අවසන් කරලා නැත්නම් අවලංගු කරලා ඇති.",
     "confirm_discard_title": "කටු සටහන ඉවත් කරන්න",
-    "confirm_discard_message": "මේ කටු ස්ටොක් ගණන් කිරීම ඉවත් කරන්නද? ඒක අවලංගු කියලා සලකුණු වේවි, ආයෙත් දිගටම කරගෙන යන්න බැහැ."
+    "confirm_discard_message": "මේ කටු ස්ටොක් ගණන් කිරීම ඉවත් කරන්නද? ඒක අවලංගු කියලා සලකුණු වේවි, ආයෙත් දිගටම කරගෙන යන්න බැහැ.",
+    "product_already_in_count": "දැනටමත් මෙම තොග ගණන් කිරීමට එකතු කර ඇත.",
+    "not_in_draft_status": "තොග ගණන් කිරීම හමු නොවීය හෝ කෙටුම්පත් (DRAFT) තත්ත්වයේ නැත.",
+    "cannot_approve_empty": "භාණ්ඩ නොමැතිව තොග ගණන් කිරීම අනුමත කළ නොහැක.",
+    "must_be_counted_to_approve": "අනුමත කිරීමට පෙර තොග ගණනය කර අවසන් (COUNTED) විය යුතුය."
   },
   "sale_history": {
     "title": "විකුණුම් ඉතිහාසය",

@@ -701,6 +701,23 @@ class StockTakeView(QWidget):
         for cat in categories:
             self.category_combo.addItem(cat.name, cat.id)
 
+    @staticmethod
+    def _translate_service_error(error: Exception | str) -> str:
+        """Translate raw ValueError messages from StockCountService to localized strings."""
+        msg = str(error)
+        mapping = {
+            "Product already in this stock count.": _t("stock_take.product_already_in_count"),
+            "Stock count not found or not in DRAFT status.": _t("stock_take.not_in_draft_status"),
+            "Product not found.": _t("stock_take.product_not_found"),
+            "Cannot approve count with no items.": _t("stock_take.cannot_approve_empty"),
+            "Count must be in COUNTED status to approve.": _t("stock_take.must_be_counted_to_approve"),
+            "Count is not in DRAFT status.": _t("stock_take.not_in_draft_status"),
+        }
+        for eng, trans in mapping.items():
+            if eng in msg:
+                return trans
+        return msg
+
     def load_products(self) -> None:
         """Create stock count and load products."""
         if not hasattr(self, "user") or not self.user:
@@ -717,7 +734,7 @@ class StockTakeView(QWidget):
             QMessageBox.information(self, _t("stock_take.loaded_title"), _t("stock_take.products_loaded", count=count))
             self._reload_items()
         except ValueError as e:
-            QMessageBox.warning(self, _t("common.error"), str(e))
+            QMessageBox.warning(self, _t("common.error"), self._translate_service_error(e))
 
     def add_single_product(self) -> None:
         """Add or count a product typed/scanned into the search field."""
@@ -773,7 +790,7 @@ class StockTakeView(QWidget):
             if not product.is_weighted:
                 StockCountService.increment_count(item_id, Decimal("1"))
         except ValueError as e:
-            QMessageBox.warning(self, _t("common.error"), str(e))
+            QMessageBox.warning(self, _t("common.error"), self._translate_service_error(e))
             return False
 
         self._reload_items()
@@ -878,7 +895,7 @@ class StockTakeView(QWidget):
             )
             self._reload_items()
         except ValueError as e:
-            QMessageBox.warning(self, _t("common.error"), str(e))
+            QMessageBox.warning(self, _t("common.error"), self._translate_service_error(e))
 
     def approve_and_apply(self) -> None:
         """Approve the count and apply stock adjustments."""
@@ -911,7 +928,7 @@ class StockTakeView(QWidget):
             # the next count can start straight away (#615).
             self.reset_form()
         except ValueError as e:
-            QMessageBox.warning(self, _t("common.error"), str(e))
+            QMessageBox.warning(self, _t("common.error"), self._translate_service_error(e))
 
     def void_count(self) -> None:
         """Void the current stock count."""
@@ -938,7 +955,7 @@ class StockTakeView(QWidget):
             QMessageBox.information(self, _t("stock_take.voided_title"), _t("stock_take.voided_message"))
             self.reset_form()  # Same as after Approve: ready for a new count (#615)
         except ValueError as e:
-            QMessageBox.warning(self, _t("common.error"), str(e))
+            QMessageBox.warning(self, _t("common.error"), self._translate_service_error(e))
 
     def reset_form(self) -> None:
         """Reset the form for a new stock count."""
@@ -1053,7 +1070,7 @@ class StockTakeView(QWidget):
                 self.reset_form()
             self.refresh_history()
         except ValueError as e:
-            QMessageBox.warning(self, _t("common.error"), str(e))
+            QMessageBox.warning(self, _t("common.error"), self._translate_service_error(e))
 
     def set_user(self, user) -> None:
         """Store the logged-in user for permission checks and count creation."""

@@ -535,16 +535,17 @@ class ReportViewer(QWidget):
                 </style>
             </head>
             <body>
-                <h1>CB POS - {report_name}</h1>
+                <h1>{print_title}</h1>
                 <p style="text-align: center;">
-                    Generated on: {generated_on}
+                    {generated_on_label} {generated_on}
                 </p>
                 {table_html}
             </body>
             </html>
             """
             ).format(
-                report_name=self.current_report.name,
+                print_title=_t("report_viewer.print_title", name=self.current_report.name),
+                generated_on_label=_t("report_viewer.generated_on"),
                 generated_on=pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
                 table_html=df.to_html(classes="table", index=False, border=0),
             )

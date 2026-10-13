@@ -65,7 +65,7 @@
     "category": "வகை",
     "notes": "குறிப்புகள்",
     "update": "அப்டேட்",
-    "na": "N/A",
+    "na": "பொருந்தாது",
     "unknown": "தெரியாத",
     "important": "முக்கியம்"
   },
@@ -1616,7 +1616,10 @@
       "backup_folder": "பேக்அப் ஃபோல்டர்:",
       "backup_folder_placeholder": "இயல்பு: ~/Documents/CB-POS-Backups",
       "btn_browse_backup": "தேடு",
-      "choose_backup_folder": "பேக்அப் ஃபோல்டரைத் தேர்ந்தெடு"
+      "choose_backup_folder": "பேக்அப் ஃபோல்டரைத் தேர்ந்தெடு",
+      "suffix_min": " நிமி",
+      "suffix_sec": " விநாடி",
+      "suffix_backups": " காப்புப்பிரதிகள்"
     },
     "network": {
       "title": "நெட்வொர்க்",
@@ -1950,7 +1953,9 @@
     "email_subject_prefix": "அறிக்கை",
     "email_failed": "மின்னஞ்சல் தோல்வி",
     "email_sending": "மின்னஞ்சல் பின்னணியில் அனுப்பப்படுது...",
-    "email_prepare_failed": "மின்னஞ்சலைத் தயார் செய்ய முடியல: {error}"
+    "email_prepare_failed": "மின்னஞ்சலைத் தயார் செய்ய முடியல: {error}",
+    "print_title": "CB POS - {name}",
+    "generated_on": "உருவாக்கப்பட்ட தேதி:"
   },
   "manager_override": {
     "title": "மேலாளர் அங்கீகாரம்",
@@ -2465,7 +2470,11 @@
     "context_discard_draft": "வரைவை நிராகரி",
     "resume_failed": "இந்த வரைவை ஏத்த முடியல — அது ஏற்கனவே முடிக்கப்பட்டு இருக்கலாம் அல்லது ரத்து செய்யப்பட்டு இருக்கலாம்.",
     "confirm_discard_title": "வரைவை நிராகரி",
-    "confirm_discard_message": "இந்த வரைவு ஸ்டாக் எண்ணிக்கையை நிராகரிக்கணுமா? இது ரத்து எண்ணு குறிக்கப்பட்டு, தொடர முடியாது."
+    "confirm_discard_message": "இந்த வரைவு ஸ்டாக் எண்ணிக்கையை நிராகரிக்கணுமா? இது ரத்து எண்ணு குறிக்கப்பட்டு, தொடர முடியாது.",
+    "product_already_in_count": "தயாரிப்பு ஏற்கனவே இந்த சரக்குக் கணக்கில் சேர்க்கப்பட்டுள்ளது.",
+    "not_in_draft_status": "சரக்குக் கணக்கு காணப்படவில்லை அல்லது வரைவு (DRAFT) நிலையில் இல்லை.",
+    "cannot_approve_empty": "பொருட்கள் இல்லாத சரக்குக் கணக்கை அங்கீகரிக்க முடியாது.",
+    "must_be_counted_to_approve": "அங்கீகரிக்க சரக்கு எண்ணப்பட்டு (COUNTED) இருக்க வேண்டும்."
   },
   "sale_history": {
     "title": "விற்பனை வரலாறு",

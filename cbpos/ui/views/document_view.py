@@ -580,7 +580,7 @@ class DocumentBrowserView(QWidget):
 
         html = (
             f"<b>{_t('document_browser.detail_date')}:</b> "
-            f"{doc['date'].strftime('%Y-%m-%d %H:%M:%S') if doc['date'] else 'N/A'}<br>"
+            f"{doc['date'].strftime('%Y-%m-%d %H:%M:%S') if doc['date'] else _t('common.na')}<br>"
             f"<b>{_t('document_browser.detail_status')}:</b> {self._status_badge_html(doc['status'])}<br>"
             f"<b>{_t('document_browser.detail_user')}:</b> {doc.get('username', '')}<br>"
         )

@@ -336,8 +336,8 @@ class PriceListView(QWidget):
         self.current_list = price_list
         self.lbl_list_name.setText(price_list.name)
 
-        start = price_list.start_date.strftime("%Y-%m-%d") if price_list.start_date else "N/A"
-        end = price_list.end_date.strftime("%Y-%m-%d") if price_list.end_date else "N/A"
+        start = price_list.start_date.strftime("%Y-%m-%d") if price_list.start_date else _t("common.na")
+        end = price_list.end_date.strftime("%Y-%m-%d") if price_list.end_date else _t("common.na")
         self.lbl_dates.setText(_t("pricelist.valid_range", start=start, end=end))
 
         # Update status badge

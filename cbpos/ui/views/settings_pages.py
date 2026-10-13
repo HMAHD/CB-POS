@@ -2112,12 +2112,14 @@ class SystemPage(SettingsPage):
         # Security
         self._lbl_timeout.setText(_t("settings.system.inactivity_timeout"))
         self.spin_timeout.setSpecialValueText(_t("settings.system.timeout_disabled"))
+        self.spin_timeout.setSuffix(_t("settings.system.suffix_min"))
         self.spin_timeout.setToolTip(_t("settings.system.tooltip_timeout"))
         self._lbl_void_reason.setText(_t("settings.system.require_void_reason"))
         self.chk_void_reason.setToolTip(_t("settings.system.tooltip_void_reason"))
         self._lbl_max_login.setText(_t("settings.system.max_login_attempts"))
         self.spin_max_login.setToolTip(_t("settings.system.tooltip_max_login"))
         self._lbl_lockout.setText(_t("settings.system.lockout_duration"))
+        self.spin_lockout.setSuffix(_t("settings.system.suffix_sec"))
         self.spin_lockout.setToolTip(_t("settings.system.tooltip_lockout"))
 
         # POS Behavior
@@ -2142,6 +2144,7 @@ class SystemPage(SettingsPage):
         self._lbl_auto_backup.setText(_t("settings.system.auto_backup"))
         self.chk_auto_backup.setToolTip(_t("settings.system.tooltip_auto_backup"))
         self._lbl_retention.setText(_t("settings.system.backup_retention"))
+        self.spin_retention.setSuffix(_t("settings.system.suffix_backups"))
         self.spin_retention.setToolTip(_t("settings.system.tooltip_retention"))
         self._lbl_backup_folder.setText(_t("settings.system.backup_folder"))
         self.input_backup_dir.setPlaceholderText(_t("settings.system.backup_folder_placeholder"))

@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
     QTextEdit,
@@ -50,14 +51,15 @@ class ProformaDialog(QDialog):
     def init_ui(self) -> None:
         """Build the header form, product search, items grid, and footer controls."""
         layout = QVBoxLayout(self)
-        layout.setSpacing(10)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
 
         # Header Section
         form = QFormLayout()
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-        form.setContentsMargins(16, 16, 16, 16)
-        form.setSpacing(12)
+        form.setContentsMargins(0, 0, 0, 0)
+        form.setSpacing(10)
 
         # Searchable -- type to filter (#294), same recipe already proven
         # for payment_dialog.py's customer combo. setEditable(True) alone
@@ -66,6 +68,7 @@ class ProformaDialog(QDialog):
         # typing that then does nothing. The QCompleter itself is built in
         # load_customers() where the current customer list is available.
         self.customer_combo = QComboBox()
+        self.customer_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.customer_combo.setEditable(True)
         self.customer_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
         self.customer_combo.addItem(_t("proforma.no_customer"), None)
@@ -82,13 +85,13 @@ class ProformaDialog(QDialog):
         self.notes_edit = QTextEdit()
         self.notes_edit.setMaximumHeight(60)
         self.notes_edit.setPlaceholderText(_t("proforma.notes_placeholder"))
-        form.addRow(_t("common.notes") + ":", self.notes_edit)
+        form.addRow(_t("common.notes"), self.notes_edit)
 
-        layout.addLayout(form)
+        # Product Search as part of the form for unified label column alignment (#574)
+        search_row = QHBoxLayout()
+        search_row.setContentsMargins(0, 0, 0, 0)
+        search_row.setSpacing(8)
 
-        # Product Search
-        search_layout = QHBoxLayout()
-        search_layout.addWidget(QLabel(_t("proforma.add_product")))
         self.product_search = QLineEdit()
         self.product_search.setPlaceholderText(_t("proforma.search_placeholder"))
         self.product_completer = QCompleter()
@@ -96,14 +99,16 @@ class ProformaDialog(QDialog):
         self.product_completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.product_search.setCompleter(self.product_completer)
         self.product_search.returnPressed.connect(self.add_product)
-        search_layout.addWidget(self.product_search, 1)
+        search_row.addWidget(self.product_search, 1)
 
         add_btn = QPushButton(_t("common.add"))
         add_btn.setAutoDefault(False)  # Enter in the search already adds; don't fire twice (#546)
         add_btn.clicked.connect(self.add_product)
-        search_layout.addWidget(add_btn)
+        search_row.addWidget(add_btn)
 
-        layout.addLayout(search_layout)
+        form.addRow(_t("proforma.add_product"), search_row)
+
+        layout.addLayout(form)
 
         # Items Grid
         self.items_table = QTableWidget()

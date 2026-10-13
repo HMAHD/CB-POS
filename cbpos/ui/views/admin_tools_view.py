@@ -41,6 +41,7 @@ from cbpos.core.services.maintenance_service import MaintenanceService
 from cbpos.core.utils.formatters import format_number
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import drawer_pin_setting
+from cbpos.ui.constants import SPACING_SM
 from cbpos.ui.hardware_test_feedback import set_hardware_test_status, show_hardware_test_result
 from cbpos.ui.resources.status_colors import DANGER, WARNING, status_color
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
@@ -318,10 +319,12 @@ class AdminToolsView(QWidget):
         filter_layout.addStretch()
         layout.addLayout(filter_layout)
 
-        # Stats label
+        # Stats label (spaced so it never crowds or overlaps dividers)
         self.lbl_log_stats = QLabel("")
         self.lbl_log_stats.setProperty("class", "muted")
+        layout.addSpacing(SPACING_SM)
         layout.addWidget(self.lbl_log_stats)
+        layout.addSpacing(SPACING_SM)
 
         # Log table
         self.log_table = QTableWidget()

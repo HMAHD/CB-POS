@@ -40,6 +40,7 @@ from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.constants import BAR_GROUP_SPACING, BAR_ITEM_SPACING, BAR_MARGIN_V
 from cbpos.ui.resources.status_colors import DANGER, SUCCESS, WARNING, status_color
 
 logger = logging.getLogger(__name__)
@@ -528,6 +529,8 @@ class PurchaseView(QWidget):
 
         # Footer
         footer_layout = QHBoxLayout()
+        footer_layout.setContentsMargins(0, BAR_MARGIN_V, 0, BAR_MARGIN_V)
+        footer_layout.setSpacing(BAR_ITEM_SPACING)
 
         self.lbl_grn_input_vat = QLabel()
         self.input_vat_field = QLineEdit()
@@ -536,16 +539,17 @@ class PurchaseView(QWidget):
         self.input_vat_field.setToolTip(_t("purchase.input_vat_tooltip"))
 
         self.total_label = QLabel()
-        self.total_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.total_label.setObjectName("GrnTotalLabel")
 
         self.btn_commit = QPushButton()
-        self.btn_commit.setStyleSheet("background-color: #39FF14; color: black; font-weight: bold; padding: 10px;")
+        self.btn_commit.setObjectName("BtnCommitGrn")
+        self.btn_commit.setProperty("class", "primary")
         self.btn_commit.clicked.connect(self.commit_grn)
 
         footer_layout.addStretch()
         footer_layout.addWidget(self.lbl_grn_input_vat)
         footer_layout.addWidget(self.input_vat_field)
-        footer_layout.addSpacing(16)
+        footer_layout.addSpacing(BAR_GROUP_SPACING)
         footer_layout.addWidget(self.total_label)
         footer_layout.addWidget(self.btn_commit)
         layout.addLayout(footer_layout)
@@ -560,6 +564,8 @@ class PurchaseView(QWidget):
 
         # Filters bar
         filter_layout = QHBoxLayout()
+        filter_layout.setContentsMargins(0, BAR_MARGIN_V, 0, BAR_MARGIN_V)
+        filter_layout.setSpacing(BAR_ITEM_SPACING)
 
         self.lbl_hist_supplier = QLabel()
         filter_layout.addWidget(self.lbl_hist_supplier)
@@ -572,6 +578,8 @@ class PurchaseView(QWidget):
         filter_layout.addWidget(self.lbl_hist_status)
         self.history_status_combo = QComboBox()
         filter_layout.addWidget(self.history_status_combo)
+
+        filter_layout.addSpacing(BAR_GROUP_SPACING)
 
         self.lbl_hist_from = QLabel()
         filter_layout.addWidget(self.lbl_hist_from)
@@ -586,6 +594,8 @@ class PurchaseView(QWidget):
         self.history_date_to.setCalendarPopup(True)
         self.history_date_to.setDate(QDate.currentDate())
         filter_layout.addWidget(self.history_date_to)
+
+        filter_layout.addSpacing(BAR_GROUP_SPACING)
 
         self.btn_refresh_history = QPushButton()
         self.btn_refresh_history.setProperty("class", "primary")
@@ -1201,8 +1211,8 @@ class PurchaseView(QWidget):
         filter_bar = QFrame()
         filter_bar.setObjectName("PayableFilterBar")
         filter_layout = QHBoxLayout(filter_bar)
-        filter_layout.setContentsMargins(0, 0, 0, 0)
-        filter_layout.setSpacing(8)
+        filter_layout.setContentsMargins(0, BAR_MARGIN_V, 0, BAR_MARGIN_V)
+        filter_layout.setSpacing(BAR_ITEM_SPACING)
 
         self.lbl_pay_from = QLabel()
         self.lbl_pay_from.setObjectName("PayableFilterLabel")

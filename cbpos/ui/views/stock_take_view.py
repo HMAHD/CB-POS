@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QDateEdit,
     QDialog,
+    QGridLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -35,6 +36,12 @@ from cbpos.core.services.stock_count_service import StockCountService
 from cbpos.core.utils.formatters import format_currency, format_number, format_quantity, format_signed
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
+from cbpos.ui.constants import (
+    BAR_GROUP_SPACING,
+    BAR_MARGIN_V,
+    SPACING_XL,
+    SPACING_XS,
+)
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, status_color
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
@@ -265,22 +272,43 @@ class StockCountReportDialog(QDialog):
         title.setProperty("class", "dialog-title")
         layout.addWidget(title)
 
-        info_layout = QHBoxLayout()
-        info_layout.addWidget(QLabel(_t("stock_take.status_label", status=stock_count.status)))
-        info_layout.addWidget(
-            QLabel(
-                _t(
-                    "stock_take.date_label",
-                    date=stock_count.date.strftime("%Y-%m-%d %H:%M") if stock_count.date else _t("common.na"),
-                )
-            )
-        )
-        info_layout.addWidget(QLabel(_t("stock_take.note_label", note=stock_count.note or _t("common.na"))))
-        info_layout.addStretch()
-        info_layout.addWidget(
-            QLabel(_t("stock_take.total_variance_label", amount=format_currency(stock_count.total_variance_value)))
-        )
-        layout.addLayout(info_layout)
+        # Header info grid (label/value pairs with 24px gaps, UI-019)
+        info_grid = QGridLayout()
+        info_grid.setHorizontalSpacing(SPACING_XL)
+        info_grid.setVerticalSpacing(SPACING_XS)
+        info_grid.setContentsMargins(0, 4, 0, 8)
+
+        lbl_status_key = QLabel(_t("common.status"))
+        lbl_status_key.setProperty("class", "muted")
+        lbl_status_val = QLabel(stock_count.status or _t("common.na"))
+        lbl_status_val.setStyleSheet("font-weight: bold;")
+
+        lbl_date_key = QLabel(_t("common.date"))
+        lbl_date_key.setProperty("class", "muted")
+        date_str = stock_count.date.strftime("%Y-%m-%d %H:%M") if stock_count.date else _t("common.na")
+        lbl_date_val = QLabel(date_str)
+        lbl_date_val.setStyleSheet("font-weight: bold;")
+
+        lbl_note_key = QLabel(_t("common.notes"))
+        lbl_note_key.setProperty("class", "muted")
+        lbl_note_val = QLabel(stock_count.note or _t("common.na"))
+        lbl_note_val.setStyleSheet("font-weight: bold;")
+
+        lbl_var_key = QLabel(_t("stock_take.hist_col_variance_total"))
+        lbl_var_key.setProperty("class", "muted")
+        lbl_var_val = QLabel(format_currency(stock_count.total_variance_value))
+        lbl_var_val.setStyleSheet("font-weight: bold;")
+
+        info_grid.addWidget(lbl_status_key, 0, 0)
+        info_grid.addWidget(lbl_status_val, 1, 0)
+        info_grid.addWidget(lbl_date_key, 0, 1)
+        info_grid.addWidget(lbl_date_val, 1, 1)
+        info_grid.addWidget(lbl_note_key, 0, 2)
+        info_grid.addWidget(lbl_note_val, 1, 2)
+        info_grid.addWidget(lbl_var_key, 0, 3)
+        info_grid.addWidget(lbl_var_val, 1, 3)
+        info_grid.setColumnStretch(2, 1)
+        layout.addLayout(info_grid)
 
         # Items table
         table = QTableWidget()
@@ -342,8 +370,12 @@ class StockCountReportDialog(QDialog):
         layout.addWidget(table, 1)
 
         close_btn = QPushButton(_t("common.close"))
+        close_btn.setAutoDefault(False)
         close_btn.clicked.connect(self.accept)
-        layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
+        close_layout = QHBoxLayout()
+        close_layout.addStretch()
+        close_layout.addWidget(close_btn)
+        layout.addLayout(close_layout)
 
 
 class StockTakeView(QWidget):
@@ -468,6 +500,8 @@ class StockTakeView(QWidget):
 
         # Stats bar
         stats_layout = QHBoxLayout()
+        stats_layout.setContentsMargins(0, BAR_MARGIN_V, 0, BAR_MARGIN_V)
+        stats_layout.setSpacing(BAR_GROUP_SPACING)
         self.lbl_items = QLabel(_t("stock_take.items_count", count=0))
         self.lbl_counted = QLabel(_t("stock_take.counted_progress", counted=0, total=0))
         self.lbl_variance = QLabel(_t("stock_take.variance_amount", amount=format_currency(Decimal("0"))))

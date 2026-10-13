@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QDialog,
     QDoubleSpinBox,
     QFormLayout,
+    QGridLayout,
     QHBoxLayout,
     QHeaderView,
     QLineEdit,
@@ -261,7 +262,7 @@ class PromotionDialog(QDialog):
         super().__init__(parent)
         self.promotion = promotion
         self.setWindowTitle(_t("promotion.edit_promotion") if promotion else _t("promotion.new_promotion"))
-        self.setMinimumWidth(400)
+        self.setMinimumWidth(480)
         self.init_ui()
 
         if promotion:
@@ -284,25 +285,35 @@ class PromotionDialog(QDialog):
             for i, checkbox in enumerate(self.day_checkboxes):
                 checkbox.setChecked(checked_days is None or str(i) in checked_days)
 
+    def _set_days_checked(self, indices) -> None:
+        """Check or uncheck day checkboxes by day index."""
+        target = set(indices)
+        for i, checkbox in enumerate(self.day_checkboxes):
+            checkbox.setChecked(i in target)
+
     def init_ui(self):
         """Build the name, type, value, scope, schedule, and days-of-week form."""
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+
         form = QFormLayout()
+        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        form.setContentsMargins(0, 0, 0, 0)
+        form.setSpacing(10)
 
         self.name_input = QLineEdit()
 
         self.type_combo = QComboBox()
         self.type_combo.addItem(_t("promotion.type_percentage"), "PERCENTAGE")
         self.type_combo.addItem(_t("promotion.type_fixed_amount"), "FIXED_AMOUNT")
-        self.type_combo.setMaximumWidth(200)
 
         self.value_input = QDoubleSpinBox()
         self.value_input.setRange(0, 100000)
         self.value_input.setDecimals(2)
-        self.value_input.setMaximumWidth(150)
 
         self.category_combo = QComboBox()
-        self.category_combo.setMaximumWidth(250)
         self.category_combo.addItem(_t("promotion.scope_all_products"), None)
         for category in CategoryService.get_all():
             self.category_combo.addItem(category.name, category.id)
@@ -310,20 +321,58 @@ class PromotionDialog(QDialog):
         self.start_dt = QDateTimeEdit()
         self.start_dt.setDateTime(QDateTime.currentDateTime())
         self.start_dt.setCalendarPopup(True)
-        self.start_dt.setMaximumWidth(220)
 
         self.end_dt = QDateTimeEdit()
         self.end_dt.setDateTime(QDateTime.currentDateTime().addDays(7))
         self.end_dt.setCalendarPopup(True)
-        self.end_dt.setMaximumWidth(220)
 
-        days_row = QHBoxLayout()
+        days_box = QWidget()
+        days_box_layout = QVBoxLayout(days_box)
+        days_box_layout.setContentsMargins(0, 0, 0, 0)
+        days_box_layout.setSpacing(6)
+
+        # Quick select buttons (All / Weekdays / Weekend)
+        quick_layout = QHBoxLayout()
+        quick_layout.setSpacing(6)
+
+        self.btn_all_days = QPushButton(_t("promotion.quick_all"))
+        self.btn_all_days.setProperty("class", "secondary")
+        self.btn_all_days.setAutoDefault(False)
+        self.btn_all_days.setFixedHeight(26)
+        self.btn_all_days.clicked.connect(lambda: self._set_days_checked(range(7)))
+
+        self.btn_weekdays = QPushButton(_t("promotion.quick_weekdays"))
+        self.btn_weekdays.setProperty("class", "secondary")
+        self.btn_weekdays.setAutoDefault(False)
+        self.btn_weekdays.setFixedHeight(26)
+        self.btn_weekdays.clicked.connect(lambda: self._set_days_checked(range(5)))
+
+        self.btn_weekend = QPushButton(_t("promotion.quick_weekend"))
+        self.btn_weekend.setProperty("class", "secondary")
+        self.btn_weekend.setAutoDefault(False)
+        self.btn_weekend.setFixedHeight(26)
+        self.btn_weekend.clicked.connect(lambda: self._set_days_checked([5, 6]))
+
+        quick_layout.addWidget(self.btn_all_days)
+        quick_layout.addWidget(self.btn_weekdays)
+        quick_layout.addWidget(self.btn_weekend)
+        quick_layout.addStretch()
+        days_box_layout.addLayout(quick_layout)
+
+        # 4+3 Grid layout for day checkboxes so they fit comfortably in en/si/ta
+        grid_days = QGridLayout()
+        grid_days.setHorizontalSpacing(12)
+        grid_days.setVerticalSpacing(4)
         self.day_checkboxes = []
-        for key in _DAY_KEYS:
+        for i, key in enumerate(_DAY_KEYS):
             checkbox = QCheckBox(_t(key))
             checkbox.setChecked(True)
-            days_row.addWidget(checkbox)
+            row = 0 if i < 4 else 1
+            col = i if i < 4 else i - 4
+            grid_days.addWidget(checkbox, row, col)
             self.day_checkboxes.append(checkbox)
+
+        days_box_layout.addLayout(grid_days)
 
         form.addRow(_t("promotion.name_label"), self.name_input)
         form.addRow(_t("promotion.type_label"), self.type_combo)
@@ -331,7 +380,7 @@ class PromotionDialog(QDialog):
         form.addRow(_t("promotion.scope_label"), self.category_combo)
         form.addRow(_t("promotion.start_time_label"), self.start_dt)
         form.addRow(_t("promotion.end_time_label"), self.end_dt)
-        form.addRow(_t("promotion.days_label"), days_row)
+        form.addRow(_t("promotion.days_label"), days_box)
 
         layout.addLayout(form)
 

@@ -28,6 +28,7 @@ from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.utils.formatters import format_currency, format_number, money_header
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.constants import BAR_MARGIN_H, BAR_MARGIN_V
 from cbpos.ui.dialogs.customer_editor import CustomerEditor
 from cbpos.ui.resources.status_colors import DANGER, NEUTRAL, SUCCESS, WARNING, status_color
 from cbpos.ui.widgets.table_helpers import align_numeric_headers, configure_table_columns
@@ -150,7 +151,7 @@ class CreditBookView(QWidget):
         footer = QFrame()
         footer.setObjectName("CreditListFooter")
         footer_layout = QHBoxLayout(footer)
-        footer_layout.setContentsMargins(8, 8, 8, 8)
+        footer_layout.setContentsMargins(BAR_MARGIN_H, BAR_MARGIN_V, BAR_MARGIN_H, BAR_MARGIN_V)
         self.lbl_total_customers = QLabel()
         self.lbl_total_customers.setObjectName("CreditFooterLabel")
         self.lbl_total_outstanding = QLabel()

@@ -63,7 +63,7 @@ class EmptyStateWidget(QWidget):
         from PyQt6.QtCore import QEvent
 
         if watched is self.parent() and event.type() == QEvent.Type.Resize:
-            self.resize(watched.size())
+            self.resize(event.size())
         return super().eventFilter(watched, event)
 
     def setVisible(self, visible: bool) -> None:

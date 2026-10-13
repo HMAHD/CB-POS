@@ -48,7 +48,9 @@ from cbpos.ui.constants import (
     SPACING_XL,
     SPACING_XS,
 )
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, status_color
+from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
 
@@ -507,6 +509,9 @@ class StockTakeView(QWidget):
         )
         layout.addWidget(self.item_table, 1)
 
+        self.empty_items_label = EmptyStateWidget(Icons.STOCK_TAKE, self.item_table.viewport())
+        self.empty_items_label.setVisible(True)
+
         # Stats bar
         stats_layout = QHBoxLayout()
         stats_layout.setContentsMargins(0, BAR_MARGIN_V, 0, BAR_MARGIN_V)
@@ -637,6 +642,10 @@ class StockTakeView(QWidget):
         # Tabs
         self.tabs.setTabText(0, _t("stock_take.tab_new_count"))
         self.tabs.setTabText(1, _t("stock_take.tab_history"))
+
+        if hasattr(self, "empty_items_label"):
+            self.empty_items_label.set_title(_t("stock_take.empty_items_title"))
+            self.empty_items_label.set_subtitle(_t("stock_take.empty_items_subtitle"))
 
         # New count tab - header
         self.note_label.setText(_t("stock_take.note_field"))
@@ -822,6 +831,15 @@ class StockTakeView(QWidget):
         # A saved count must update progress and enable Finalize right away,
         # not only after the next reload.
         model.dataChanged.connect(self._update_stats)
+        model.rowsInserted.connect(self._update_empty_state)
+        model.rowsRemoved.connect(self._update_empty_state)
+        model.modelReset.connect(self._update_empty_state)
+        self._update_empty_state()
+
+    def _update_empty_state(self, *_) -> None:
+        """Show empty state overlay when the items table has no rows."""
+        if hasattr(self, "empty_items_label"):
+            self.empty_items_label.setVisible(self.item_model.rowCount() == 0)
 
     def _snap_to_counted(self, current: QModelIndex, _previous: QModelIndex) -> None:
         """Keep the current cell on Counted so typing a number edits it (#615)."""
@@ -982,6 +1000,16 @@ class StockTakeView(QWidget):
 
         self.history_table.setRowCount(0)
         self._history_ids = []
+
+        if not counts:
+            self.history_table.setRowCount(1)
+            empty_item = QTableWidgetItem(_t("stock_take.no_history_found"))
+            empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty_item.setForeground(status_color(NEUTRAL))
+            empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
+            self.history_table.setItem(0, 0, empty_item)
+            self.history_table.setSpan(0, 0, 1, self.history_table.columnCount())
+            return
 
         for sc in counts:
             row = self.history_table.rowCount()

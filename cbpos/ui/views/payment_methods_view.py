@@ -87,12 +87,10 @@ class PaymentMethodDialog(QDialog):
         self._form.addRow(self._lbl_shortcut, self.txt_shortcut)
 
         self.chk_cash = QCheckBox()
-        self._lbl_is_cash = QLabel()
-        self._form.addRow(self._lbl_is_cash, self.chk_cash)
+        self._form.addRow("", self.chk_cash)
 
         self.chk_drawer = QCheckBox()
-        self._lbl_drawer = QLabel()
-        self._form.addRow(self._lbl_drawer, self.chk_drawer)
+        self._form.addRow("", self.chk_drawer)
 
         layout.addLayout(self._form)
 
@@ -132,9 +130,7 @@ class PaymentMethodDialog(QDialog):
         line_edit = self.txt_shortcut.findChild(QLineEdit)
         if line_edit is not None:
             line_edit.setPlaceholderText(_t("payment_methods.shortcut_placeholder"))
-        self._lbl_is_cash.setText(_t("payment_methods.form_is_cash"))
         self.chk_cash.setText(_t("payment_methods.chk_is_cash"))
-        self._lbl_drawer.setText(_t("payment_methods.form_open_drawer"))
         self.chk_drawer.setText(_t("payment_methods.chk_open_drawer"))
         self.lbl_hint.setText(_t("payment_methods.form_hint"))
         self.btn_cancel.setText(_t("common.cancel"))

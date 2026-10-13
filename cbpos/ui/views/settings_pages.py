@@ -9,6 +9,7 @@ from PyQt6.QtCore import Qt, QThread, QTime, pyqtSignal
 from PyQt6.QtGui import QIntValidator
 from PyQt6.QtPrintSupport import QPrinterInfo
 from PyQt6.QtWidgets import (
+    QAbstractSpinBox,
     QApplication,
     QCheckBox,
     QComboBox,
@@ -249,6 +250,40 @@ class SettingsPage(QWidget):
 
         return container
 
+    def equalize_form_labels(self, container: QWidget | None = None) -> None:
+        """Ensure all QFormLayout label widgets in container (or this page) have identical width.
+
+        Collects all non-empty QLabel widgets acting as row labels across all
+        QFormLayouts, calculates the maximum intrinsic sizeHint width, and sets
+        setFixedWidth(max_width) on each. This guarantees that all input fields
+        start at the exact same X coordinate on the page regardless of how many
+        sections or separate forms the page is composed of (#573).
+        """
+        target = container or self
+        forms = target.findChildren(QFormLayout)
+        if not forms:
+            return
+
+        labels: list[QLabel] = []
+        for form in forms:
+            for row in range(form.rowCount()):
+                item = form.itemAt(row, QFormLayout.ItemRole.LabelRole)
+                if item and item.widget() and isinstance(item.widget(), QLabel):
+                    lbl = item.widget()
+                    if lbl.text().strip():
+                        labels.append(lbl)
+
+        if not labels:
+            return
+
+        for lbl in labels:
+            lbl.setMinimumWidth(0)
+            lbl.setMaximumWidth(16777215)
+
+        max_w = max(lbl.sizeHint().width() for lbl in labels)
+        for lbl in labels:
+            lbl.setFixedWidth(max_w)
+
 
 class ShopInfoPage(SettingsPage):
     """Consolidated: General + Payment banking + Automation email settings."""
@@ -461,6 +496,7 @@ class ShopInfoPage(SettingsPage):
 
         self._lbl_language.setText(_t("settings.shop_info.language"))
         self.lbl_restart.setText(_t("settings.shop_info.restart_hint"))
+        self.equalize_form_labels()
 
     def _prefill_gmail(self):
         """Pre-fill SMTP fields with Gmail defaults."""
@@ -559,6 +595,7 @@ class SalesTaxPage(SettingsPage):
         self._form_sales.addRow(self._lbl_search_mode, self.combo_search_mode)
 
         self.spin_max_discount = QDoubleSpinBox()
+        self.spin_max_discount.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_max_discount.setRange(0, 100)
         self.spin_max_discount.setDecimals(1)
         self.spin_max_discount.setSuffix("%")
@@ -567,12 +604,14 @@ class SalesTaxPage(SettingsPage):
         self._form_sales.addRow(self._lbl_max_discount, self.spin_max_discount)
 
         self.spin_loyalty_ratio = QSpinBox()
+        self.spin_loyalty_ratio.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_loyalty_ratio.setRange(1, 10000)
         self.spin_loyalty_ratio.setFixedWidth(200)
         self._lbl_loyalty_ratio = QLabel()
         self._form_sales.addRow(self._lbl_loyalty_ratio, self.spin_loyalty_ratio)
 
         self.spin_default_credit = QSpinBox()
+        self.spin_default_credit.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_default_credit.setRange(0, 1000000)
         self.spin_default_credit.setFixedWidth(200)
         self._lbl_default_credit = QLabel()
@@ -599,6 +638,7 @@ class SalesTaxPage(SettingsPage):
         self._form_tax.addRow(self.lbl_tax_warn)
 
         self.spin_vat = QSpinBox()
+        self.spin_vat.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_vat.setRange(0, 100)
         self.spin_vat.setSuffix("%")
         self.spin_vat.setFixedWidth(200)
@@ -606,6 +646,7 @@ class SalesTaxPage(SettingsPage):
         self._form_tax.addRow(self._lbl_vat_rate, self.spin_vat)
 
         self.spin_sscl = QDoubleSpinBox()
+        self.spin_sscl.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_sscl.setRange(0, 100)
         self.spin_sscl.setDecimals(2)
         self.spin_sscl.setSuffix("%")
@@ -615,6 +656,7 @@ class SalesTaxPage(SettingsPage):
 
         sscl_turnover_row = QHBoxLayout()
         self.spin_sscl_turnover = QDoubleSpinBox()
+        self.spin_sscl_turnover.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_sscl_turnover.setRange(0, 100)
         self.spin_sscl_turnover.setDecimals(1)
         self.spin_sscl_turnover.setSuffix("%")
@@ -735,6 +777,7 @@ class SalesTaxPage(SettingsPage):
         self.chk_item_tax_exemptions.setToolTip(_t("settings.sales_tax.tooltip_item_tax_exemptions"))
         self.btn_item_exempt_help.setToolTip(_t("settings.sales_tax.tooltip_item_tax_exemptions"))
         self.lbl_item_exemptions_hint.setText(_t("settings.sales_tax.hint_item_tax_exemptions"))
+        self.equalize_form_labels()
 
     def _toggle_tax_fields(self) -> None:
         """Enable/disable tax rate fields and sub-options based on VAT registration status."""
@@ -803,24 +846,29 @@ class DocumentPage(SettingsPage):
         self._tab_docs, self._form_docs = self._build_form_tab()
 
         self.input_terminal_id = QLineEdit()
+        self.input_terminal_id.setMaximumWidth(420)
         self._lbl_terminal_id = QLabel()
         self._form_docs.addRow(self._lbl_terminal_id, self.input_terminal_id)
 
         self.combo_reset_period = QComboBox()
+        self.combo_reset_period.setMaximumWidth(420)
         self._lbl_reset_period = QLabel()
         self._form_docs.addRow(self._lbl_reset_period, self.combo_reset_period)
 
         self.input_fmt_sale = QLineEdit()
+        self.input_fmt_sale.setMaximumWidth(420)
         self._lbl_sale_fmt = QLabel()
         self._form_docs.addRow(self._lbl_sale_fmt, self.input_fmt_sale)
         self._preview_sale = self._add_preview_row()
 
         self.input_fmt_purchase = QLineEdit()
+        self.input_fmt_purchase.setMaximumWidth(420)
         self._lbl_purchase_fmt = QLabel()
         self._form_docs.addRow(self._lbl_purchase_fmt, self.input_fmt_purchase)
         self._preview_purchase = self._add_preview_row()
 
         self.input_fmt_return = QLineEdit()
+        self.input_fmt_return.setMaximumWidth(420)
         self._lbl_return_fmt = QLabel()
         self._form_docs.addRow(self._lbl_return_fmt, self.input_fmt_return)
         self._preview_return = self._add_preview_row()
@@ -889,6 +937,7 @@ class DocumentPage(SettingsPage):
         self.input_fmt_return.setPlaceholderText(_t("settings.documents.return_format_placeholder"))
         self._lbl_fmt_legend.setText(_t("settings.documents.fmt_legend"))
         self._update_previews()
+        self.equalize_form_labels()
 
     def _add_preview_row(self) -> QLabel:
         """Add an empty preview/error label under the format field just added."""
@@ -1045,8 +1094,7 @@ class HardwarePage(SettingsPage):
         beh_form.setVerticalSpacing(10)
 
         self.chk_auto_print = QCheckBox()
-        self._lbl_auto_print = QLabel()
-        beh_form.addRow(self._lbl_auto_print, self.chk_auto_print)
+        beh_form.addRow("", self.chk_auto_print)
 
         self.spin_copies = QSpinBox()
         self.spin_copies.setRange(1, 5)
@@ -1098,8 +1146,7 @@ class HardwarePage(SettingsPage):
         cut_form.setVerticalSpacing(10)
 
         self.chk_auto_cut = QCheckBox()
-        self._lbl_auto_cut = QLabel()
-        cut_form.addRow(self._lbl_auto_cut, self.chk_auto_cut)
+        cut_form.addRow("", self.chk_auto_cut)
         # Tear-bar advice lives in a hint, not the checkbox text: "Disable for..." next to a box that
         # enables auto-cut read as "tick to disable" (#575).
         self.lbl_auto_cut_hint = QLabel()
@@ -1127,8 +1174,7 @@ class HardwarePage(SettingsPage):
         drawer_form.setVerticalSpacing(10)
 
         self.chk_drawer_cash_only = QCheckBox()
-        self._lbl_drawer_cash_only = QLabel()
-        drawer_form.addRow(self._lbl_drawer_cash_only, self.chk_drawer_cash_only)
+        drawer_form.addRow("", self.chk_drawer_cash_only)
         vbox_cut.addLayout(drawer_form)
 
         self.tabs.addTab(tab_cut, "")
@@ -1145,12 +1191,16 @@ class HardwarePage(SettingsPage):
         scale_form.setVerticalSpacing(10)
 
         self.input_scale_prefix = QLineEdit()
+        self.input_scale_prefix.setValidator(QIntValidator(0, 99, self))
         self.input_scale_prefix.setMaxLength(2)
+        self.input_scale_prefix.setFixedWidth(80)
         self._lbl_barcode_prefix = QLabel()
         scale_form.addRow(self._lbl_barcode_prefix, self.input_scale_prefix)
 
         self.spin_decimal_places = QSpinBox()
+        self.spin_decimal_places.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_decimal_places.setRange(0, 4)
+        self.spin_decimal_places.setFixedWidth(80)
         self._lbl_decimal_places = QLabel()
         scale_form.addRow(self._lbl_decimal_places, self.spin_decimal_places)
         vbox_scale.addLayout(scale_form)
@@ -1195,7 +1245,6 @@ class HardwarePage(SettingsPage):
         self._lbl_a4_printer.setText(_t("settings.hardware.a4_printer"))
         self.btn_refresh_printers.setText(_t("settings.hardware.btn_refresh_printers"))
         self._lbl_paper_width.setText(_t("settings.hardware.paper_width"))
-        self._lbl_auto_print.setText(_t("settings.hardware.auto_print"))
         self.chk_auto_print.setText(_t("settings.hardware.chk_auto_print"))
         self.chk_auto_print.setToolTip(_t("settings.hardware.tooltip_auto_print"))
         self._lbl_copies.setText(_t("settings.hardware.copies"))
@@ -1205,7 +1254,6 @@ class HardwarePage(SettingsPage):
         self.combo_drawer_pin.setToolTip(_t("settings.hardware.tooltip_drawer_pin"))
 
         # Cut & Drawer tab
-        self._lbl_auto_cut.setText(_t("settings.hardware.auto_cut"))
         self.chk_auto_cut.setText(_t("settings.hardware.chk_auto_cut"))
         self.chk_auto_cut.setToolTip(_t("settings.hardware.tooltip_auto_cut"))
         self.lbl_auto_cut_hint.setText(_t("settings.hardware.hint_auto_cut"))
@@ -1224,13 +1272,13 @@ class HardwarePage(SettingsPage):
 
         self._lbl_feed_lines.setText(_t("settings.hardware.feed_lines"))
         self.spin_feed_lines.setToolTip(_t("settings.hardware.tooltip_feed_lines"))
-        self._lbl_drawer_cash_only.setText(_t("settings.hardware.drawer_cash_only"))
         self.chk_drawer_cash_only.setText(_t("settings.hardware.chk_drawer_cash_only"))
         self.chk_drawer_cash_only.setToolTip(_t("settings.hardware.tooltip_drawer_cash_only"))
 
         # Scale tab
         self._lbl_barcode_prefix.setText(_t("settings.hardware.barcode_prefix"))
         self._lbl_decimal_places.setText(_t("settings.hardware.decimal_places"))
+        self.equalize_form_labels()
 
     def _receipt_printer_placeholder(self) -> str:
         """Text of the receipt printer combo's empty first item."""
@@ -1491,21 +1539,23 @@ class ReceiptPage(SettingsPage):
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(8)
 
-        # Independent of the real Hardware-tab paper width -- lets a shop
-        # see how the OTHER paper size would look without touching their
-        # actual printer configuration just to check.
-        preview_width_row = QHBoxLayout()
-        preview_width_row.addStretch()
+        # Preview header row: title on the left, width selector on the right (#573)
+        preview_header_row = QHBoxLayout()
+        preview_header_row.setContentsMargins(0, 0, 0, 0)
+        self._lbl_preview_title = QLabel()
+        self._lbl_preview_title.setObjectName("SettingsSectionTitle")
+        preview_header_row.addWidget(self._lbl_preview_title)
+        preview_header_row.addStretch()
+
         self._lbl_preview_width = QLabel()
         self._lbl_preview_width.setProperty("class", "muted")
-        preview_width_row.addWidget(self._lbl_preview_width)
+        preview_header_row.addWidget(self._lbl_preview_width)
         self.combo_preview_width = QComboBox()
         self.combo_preview_width.addItem("80mm", "80mm")
         self.combo_preview_width.addItem("58mm", "58mm")
         self.combo_preview_width.currentIndexChanged.connect(self._schedule_refresh)
-        preview_width_row.addWidget(self.combo_preview_width)
-        preview_width_row.addStretch()
-        right_layout.addLayout(preview_width_row)
+        preview_header_row.addWidget(self.combo_preview_width)
+        right_layout.addLayout(preview_header_row)
 
         # ReceiptPreviewWidget sizes its browser to the full receipt height
         # rather than scrolling internally -- a receipt with many items
@@ -1545,8 +1595,12 @@ class ReceiptPage(SettingsPage):
         self.input_logo_path = QLineEdit()
         self.input_logo_path.setReadOnly(True)
         self.btn_browse_logo = QPushButton()
+        self.btn_browse_logo.setProperty("class", "secondary")
+        self.btn_browse_logo.setFixedHeight(32)
         self.btn_browse_logo.clicked.connect(self.browse_logo)
         self.btn_clear_logo = QPushButton()
+        self.btn_clear_logo.setProperty("class", "secondary")
+        self.btn_clear_logo.setFixedHeight(32)
         self.btn_clear_logo.clicked.connect(self._clear_logo)
         self.btn_logo_help = HelpIconButton(on_click=self._show_logo_guide)
         logo_row.addWidget(self.input_logo_path, 1)
@@ -1654,9 +1708,9 @@ class ReceiptPage(SettingsPage):
         self._lbl_merge_items = QLabel()
         self._lbl_tax_breakdown = QLabel()
 
-        elem_form.addRow(self._lbl_show_barcode, self.chk_show_barcode)
-        elem_form.addRow(self._lbl_merge_items, self.chk_merge_items)
-        elem_form.addRow(self._lbl_tax_breakdown, self.chk_show_tax)
+        elem_form.addRow("", self.chk_show_barcode)
+        elem_form.addRow("", self.chk_merge_items)
+        elem_form.addRow("", self.chk_show_tax)
         vbox_display.addLayout(elem_form)
 
         # Section: QR Code -- the schema and config keys
@@ -1672,8 +1726,7 @@ class ReceiptPage(SettingsPage):
         qr_form.setVerticalSpacing(10)
 
         self.chk_show_qr = QCheckBox()
-        self._lbl_show_qr = QLabel()
-        qr_form.addRow(self._lbl_show_qr, self.chk_show_qr)
+        qr_form.addRow("", self.chk_show_qr)
 
         self.txt_qr_content = QLineEdit()
         self._lbl_qr_content = QLabel()
@@ -1694,11 +1747,8 @@ class ReceiptPage(SettingsPage):
         self.chk_show_cashier = QCheckBox()
         self.chk_show_terminal = QCheckBox()
 
-        self._lbl_cashier_name = QLabel()
-        self._lbl_terminal_id = QLabel()
-
-        staff_form.addRow(self._lbl_cashier_name, self.chk_show_cashier)
-        staff_form.addRow(self._lbl_terminal_id, self.chk_show_terminal)
+        staff_form.addRow("", self.chk_show_cashier)
+        staff_form.addRow("", self.chk_show_terminal)
         vbox_display.addLayout(staff_form)
 
         vbox_display.addStretch()
@@ -1746,6 +1796,7 @@ class ReceiptPage(SettingsPage):
 
         self.tabs.setTabText(0, _t("settings.receipt.tab_content"))
         self.tabs.setTabText(1, _t("settings.receipt.tab_display"))
+        self._lbl_preview_title.setText(_t("settings.receipt.section_live_preview"))
         self._lbl_preview_width.setText(_t("settings.receipt.preview_width_label"))
 
         # Content tab
@@ -1771,26 +1822,21 @@ class ReceiptPage(SettingsPage):
         self.combo_receipt_lang.setItemText(0, _t("settings.receipt.lang_same_as_ui"))
 
         # Display tab
-        self._lbl_show_barcode.setText(_t("settings.receipt.show_barcode"))
         self.chk_show_barcode.setText(_t("settings.receipt.chk_show_barcode"))
         self.chk_show_barcode.setToolTip(_t("settings.receipt.tooltip_show_barcode"))
-        self._lbl_merge_items.setText(_t("settings.receipt.merge_items"))
         self.chk_merge_items.setText(_t("settings.receipt.chk_merge_items"))
         self.chk_merge_items.setToolTip(_t("settings.receipt.tooltip_merge_items"))
-        self._lbl_tax_breakdown.setText(_t("settings.receipt.tax_breakdown"))
         self.chk_show_tax.setText(_t("settings.receipt.chk_show_tax"))
         self.chk_show_tax.setToolTip(_t("settings.receipt.tooltip_show_tax"))
-        self._lbl_show_qr.setText(_t("settings.receipt.show_qr"))
         self.chk_show_qr.setText(_t("settings.receipt.chk_show_qr"))
         self.chk_show_qr.setToolTip(_t("settings.receipt.tooltip_show_qr"))
         self._lbl_qr_content.setText(_t("settings.receipt.qr_content"))
         self.txt_qr_content.setPlaceholderText(_t("settings.receipt.qr_content_placeholder"))
-        self._lbl_cashier_name.setText(_t("settings.receipt.cashier_name"))
         self.chk_show_cashier.setText(_t("settings.receipt.chk_show_cashier"))
         self.chk_show_cashier.setToolTip(_t("settings.receipt.tooltip_show_cashier"))
-        self._lbl_terminal_id.setText(_t("settings.receipt.terminal_id"))
         self.chk_show_terminal.setText(_t("settings.receipt.chk_show_terminal"))
         self.chk_show_terminal.setToolTip(_t("settings.receipt.tooltip_show_terminal"))
+        self.equalize_form_labels()
 
     # ------------------------------------------------------------------
     # Signal wiring for live preview
@@ -2015,28 +2061,30 @@ class SystemPage(SettingsPage):
         # --- Tab 1: Security ---
         self._tab_sec, self._form_sec = self._build_form_tab()
 
+        self.chk_timeout = QCheckBox()
+        self.chk_timeout.toggled.connect(self._on_timeout_toggled)
+        self._form_sec.addRow("", self.chk_timeout)
+
         self.spin_timeout = QSpinBox()
-        self.spin_timeout.setRange(0, 60)
+        self.spin_timeout.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+        self.spin_timeout.setRange(1, 60)
         self.spin_timeout.setSuffix(" min")
-        # Wider than the usual 200px house convention -- its special
-        # value text ("Disabled (no auto-lock)") needs the extra room,
-        # confirmed by rendering it: at 200px it clips to ")led (no
-        # auto-lock)", reproducing the exact truncation #332 described.
         self.spin_timeout.setFixedWidth(260)
         self._lbl_timeout = QLabel()
         self._form_sec.addRow(self._lbl_timeout, self.spin_timeout)
 
         self.chk_void_reason = QCheckBox()
-        self._lbl_void_reason = QLabel()
-        self._form_sec.addRow(self._lbl_void_reason, self.chk_void_reason)
+        self._form_sec.addRow("", self.chk_void_reason)
 
         self.spin_max_login = QSpinBox()
+        self.spin_max_login.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_max_login.setRange(3, 20)
         self.spin_max_login.setFixedWidth(200)
         self._lbl_max_login = QLabel()
         self._form_sec.addRow(self._lbl_max_login, self.spin_max_login)
 
         self.spin_lockout = QSpinBox()
+        self.spin_lockout.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_lockout.setRange(30, 3600)
         self.spin_lockout.setSuffix(" sec")
         self.spin_lockout.setFixedWidth(200)
@@ -2049,20 +2097,16 @@ class SystemPage(SettingsPage):
         self._tab_pos, self._form_pos = self._build_form_tab()
 
         self.chk_quick_pay = QCheckBox()
-        self._lbl_quick_pay = QLabel()
-        self._form_pos.addRow(self._lbl_quick_pay, self.chk_quick_pay)
+        self._form_pos.addRow("", self.chk_quick_pay)
 
         self.chk_show_receipt_dialog = QCheckBox()
-        self._lbl_receipt_dialog = QLabel()
-        self._form_pos.addRow(self._lbl_receipt_dialog, self.chk_show_receipt_dialog)
+        self._form_pos.addRow("", self.chk_show_receipt_dialog)
 
         self.chk_auto_barcode_select = QCheckBox()
-        self._lbl_auto_barcode = QLabel()
-        self._form_pos.addRow(self._lbl_auto_barcode, self.chk_auto_barcode_select)
+        self._form_pos.addRow("", self.chk_auto_barcode_select)
 
         self.chk_enable_sounds = QCheckBox()
-        self._lbl_sounds = QLabel()
-        self._form_pos.addRow(self._lbl_sounds, self.chk_enable_sounds)
+        self._form_pos.addRow("", self.chk_enable_sounds)
 
         self.tabs.addTab(self._tab_pos, "")
 
@@ -2070,16 +2114,13 @@ class SystemPage(SettingsPage):
         self._tab_inv, self._form_inv = self._build_form_tab()
 
         self.chk_negative_stock = QCheckBox()
-        self._lbl_negative_stock = QLabel()
-        self._form_inv.addRow(self._lbl_negative_stock, self.chk_negative_stock)
+        self._form_inv.addRow("", self.chk_negative_stock)
 
         self.chk_auto_barcodes = QCheckBox()
-        self._lbl_auto_barcodes = QLabel()
-        self._form_inv.addRow(self._lbl_auto_barcodes, self.chk_auto_barcodes)
+        self._form_inv.addRow("", self.chk_auto_barcodes)
 
         self.chk_loyalty = QCheckBox()
-        self._lbl_loyalty = QLabel()
-        self._form_inv.addRow(self._lbl_loyalty, self.chk_loyalty)
+        self._form_inv.addRow("", self.chk_loyalty)
 
         self.tabs.addTab(self._tab_inv, "")
 
@@ -2087,10 +2128,10 @@ class SystemPage(SettingsPage):
         self._tab_backup, self._form_backup = self._build_form_tab()
 
         self.chk_auto_backup = QCheckBox()
-        self._lbl_auto_backup = QLabel()
-        self._form_backup.addRow(self._lbl_auto_backup, self.chk_auto_backup)
+        self._form_backup.addRow("", self.chk_auto_backup)
 
         self.spin_retention = QSpinBox()
+        self.spin_retention.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_retention.setRange(1, 50)
         self.spin_retention.setSuffix(" backups")
         self._lbl_retention = QLabel()
@@ -2103,6 +2144,7 @@ class SystemPage(SettingsPage):
 
         self.btn_browse_backup = QPushButton()
         self.btn_browse_backup.setProperty("class", "secondary")
+        self.btn_browse_backup.setFixedHeight(32)
         self.btn_browse_backup.clicked.connect(self._browse_backup_dir)
         backup_dir_layout.addWidget(self.btn_browse_backup)
 
@@ -2137,11 +2179,11 @@ class SystemPage(SettingsPage):
         self.tabs.setTabText(3, _t("settings.system.tab_backup"))
 
         # Security
+        self.chk_timeout.setText(_t("settings.system.lock_on_idle"))
         self._lbl_timeout.setText(_t("settings.system.inactivity_timeout"))
-        self.spin_timeout.setSpecialValueText(_t("settings.system.timeout_disabled"))
         self.spin_timeout.setSuffix(_t("settings.system.suffix_min"))
         self.spin_timeout.setToolTip(_t("settings.system.tooltip_timeout"))
-        self._lbl_void_reason.setText(_t("settings.system.require_void_reason"))
+        self.chk_void_reason.setText(_t("settings.system.require_void_reason"))
         self.chk_void_reason.setToolTip(_t("settings.system.tooltip_void_reason"))
         self._lbl_max_login.setText(_t("settings.system.max_login_attempts"))
         self.spin_max_login.setToolTip(_t("settings.system.tooltip_max_login"))
@@ -2150,25 +2192,25 @@ class SystemPage(SettingsPage):
         self.spin_lockout.setToolTip(_t("settings.system.tooltip_lockout"))
 
         # POS Behavior
-        self._lbl_quick_pay.setText(_t("settings.system.quick_pay"))
+        self.chk_quick_pay.setText(_t("settings.system.quick_pay"))
         self.chk_quick_pay.setToolTip(_t("settings.system.tooltip_quick_pay"))
-        self._lbl_receipt_dialog.setText(_t("settings.system.show_receipt_dialog"))
+        self.chk_show_receipt_dialog.setText(_t("settings.system.show_receipt_dialog"))
         self.chk_show_receipt_dialog.setToolTip(_t("settings.system.tooltip_receipt_dialog"))
-        self._lbl_auto_barcode.setText(_t("settings.system.auto_barcode_select"))
+        self.chk_auto_barcode_select.setText(_t("settings.system.auto_barcode_select"))
         self.chk_auto_barcode_select.setToolTip(_t("settings.system.tooltip_auto_barcode"))
-        self._lbl_sounds.setText(_t("settings.system.enable_sounds"))
+        self.chk_enable_sounds.setText(_t("settings.system.enable_sounds"))
         self.chk_enable_sounds.setToolTip(_t("settings.system.tooltip_sounds"))
 
         # Features
-        self._lbl_negative_stock.setText(_t("settings.system.negative_stock"))
+        self.chk_negative_stock.setText(_t("settings.system.negative_stock"))
         self.chk_negative_stock.setToolTip(_t("settings.system.tooltip_negative_stock"))
-        self._lbl_auto_barcodes.setText(_t("settings.system.auto_barcodes"))
+        self.chk_auto_barcodes.setText(_t("settings.system.auto_barcodes"))
         self.chk_auto_barcodes.setToolTip(_t("settings.system.tooltip_auto_barcodes"))
-        self._lbl_loyalty.setText(_t("settings.system.loyalty_points"))
+        self.chk_loyalty.setText(_t("settings.system.loyalty_points"))
         self.chk_loyalty.setToolTip(_t("settings.system.tooltip_loyalty"))
 
         # Backup
-        self._lbl_auto_backup.setText(_t("settings.system.auto_backup"))
+        self.chk_auto_backup.setText(_t("settings.system.auto_backup"))
         self.chk_auto_backup.setToolTip(_t("settings.system.tooltip_auto_backup"))
         self._lbl_retention.setText(_t("settings.system.backup_retention"))
         self.spin_retention.setSuffix(_t("settings.system.suffix_backups"))
@@ -2176,6 +2218,12 @@ class SystemPage(SettingsPage):
         self._lbl_backup_folder.setText(_t("settings.system.backup_folder"))
         self.input_backup_dir.setPlaceholderText(_t("settings.system.backup_folder_placeholder"))
         self.btn_browse_backup.setText(_t("settings.system.btn_browse_backup"))
+        self.equalize_form_labels()
+
+    def _on_timeout_toggled(self, checked: bool) -> None:
+        """Enable or disable inactivity timeout minutes input based on checkbox."""
+        self.spin_timeout.setEnabled(checked)
+        self._lbl_timeout.setEnabled(checked)
 
     def _browse_backup_dir(self) -> None:
         current = self.input_backup_dir.text() or ""
@@ -2185,7 +2233,17 @@ class SystemPage(SettingsPage):
 
     def load(self, settings: dict):
         """Populate session security, POS behavior, feature toggle and backup fields from the settings dict."""
-        self.spin_timeout.setValue(int(settings.get("session_timeout_minutes", 0)))
+        timeout_val = int(settings.get("session_timeout_minutes", 0))
+        if timeout_val > 0:
+            self.chk_timeout.setChecked(True)
+            self.spin_timeout.setValue(timeout_val)
+            self.spin_timeout.setEnabled(True)
+            self._lbl_timeout.setEnabled(True)
+        else:
+            self.chk_timeout.setChecked(False)
+            self.spin_timeout.setValue(5)
+            self.spin_timeout.setEnabled(False)
+            self._lbl_timeout.setEnabled(False)
         self.chk_void_reason.setChecked(settings.get("require_void_reason", True))
         self.spin_max_login.setValue(int(settings.get("max_login_attempts", 5)))
         self.spin_lockout.setValue(int(settings.get("lockout_duration_seconds", 300)))
@@ -2203,7 +2261,7 @@ class SystemPage(SettingsPage):
     def save(self) -> dict:
         """Return session security, POS behavior, feature toggle and backup fields as a settings dict."""
         return {
-            "session_timeout_minutes": self.spin_timeout.value(),
+            "session_timeout_minutes": self.spin_timeout.value() if self.chk_timeout.isChecked() else 0,
             "require_void_reason": self.chk_void_reason.isChecked(),
             "max_login_attempts": self.spin_max_login.value(),
             "lockout_duration_seconds": self.spin_lockout.value(),
@@ -2761,6 +2819,7 @@ class NetworkPage(SettingsPage):
 
         self.btn_forget_main.setText(_t("settings.network.btn_forget_main"))
         self.btn_forget_main.setToolTip(_t("settings.network.tooltip_forget_main"))
+        self.equalize_form_labels()
 
     def load(self, settings: dict):
         """Populate database mode, server connection and LAN sync fields from the settings dict."""

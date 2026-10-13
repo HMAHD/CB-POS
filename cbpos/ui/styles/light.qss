@@ -2949,6 +2949,9 @@ QScrollArea#SettingsScrollArea {
 QWidget#SettingsScrollInner {
     background: transparent;
 }
+QWidget#SettingsScrollInner QCheckBox {
+    margin-left: 4px;
+}
 
 /* Settings page section headers */
 QLabel#SettingsSectionTitle {

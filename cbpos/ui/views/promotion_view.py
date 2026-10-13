@@ -2,7 +2,6 @@
 
 import weakref
 from datetime import datetime
-from decimal import Decimal
 
 from PyQt6.QtCore import QDateTime, Qt
 from PyQt6.QtWidgets import (
@@ -10,7 +9,6 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QDateTimeEdit,
     QDialog,
-    QDoubleSpinBox,
     QFormLayout,
     QGridLayout,
     QHBoxLayout,
@@ -30,6 +28,7 @@ from cbpos.core.services.promotion_service import SUPPORTED_TYPES, PromotionServ
 from cbpos.core.utils.formatters import format_discount, format_promotion_type
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS
+from cbpos.ui.widgets.decimal_line_edit import DecimalLineEdit
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
@@ -273,7 +272,7 @@ class PromotionDialog(QDialog):
             index = self.type_combo.findData(promotion.type)
             if index >= 0:
                 self.type_combo.setCurrentIndex(index)
-            self.value_input.setValue(float(promotion.value))
+            self.value_input.setValue(promotion.value)
             self.start_dt.setDateTime(QDateTime(promotion.start_time))
             self.end_dt.setDateTime(QDateTime(promotion.end_time))
 
@@ -309,9 +308,7 @@ class PromotionDialog(QDialog):
         self.type_combo.addItem(_t("promotion.type_percentage"), "PERCENTAGE")
         self.type_combo.addItem(_t("promotion.type_fixed_amount"), "FIXED_AMOUNT")
 
-        self.value_input = QDoubleSpinBox()
-        self.value_input.setRange(0, 100000)
-        self.value_input.setDecimals(2)
+        self.value_input = DecimalLineEdit(0.0, 100000.0, 2, self)
 
         self.category_combo = QComboBox()
         self.category_combo.addItem(_t("promotion.scope_all_products"), None)
@@ -420,7 +417,7 @@ class PromotionDialog(QDialog):
         return {
             "name": self.name_input.text(),
             "type": self.type_combo.currentData(),
-            "value": Decimal(str(self.value_input.value())),
+            "value": self.value_input.decimal_value(),
             "start_time": self.start_dt.dateTime().toPyDateTime(),
             "end_time": self.end_dt.dateTime().toPyDateTime(),
             "days_of_week": None if all_checked else ",".join(checked_indices),

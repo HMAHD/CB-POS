@@ -37,7 +37,7 @@ class HelpIconButton(QPushButton):
         info_icon_path = str(Config.BASE_DIR / "cbpos" / "assets" / "icons" / "info-circle-cyan.svg")
         self.setIcon(QIcon(info_icon_path))
         self.setIconSize(QSize(24, 24))
-        self.setFixedSize(28, 28)
+        self.setFixedSize(32, 32)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setObjectName("BtnInfoIcon")
         if tooltip:

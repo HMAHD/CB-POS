@@ -810,24 +810,29 @@ class DocumentPage(SettingsPage):
         self._tab_docs, self._form_docs = self._build_form_tab()
 
         self.input_terminal_id = QLineEdit()
+        self.input_terminal_id.setMaximumWidth(420)
         self._lbl_terminal_id = QLabel()
         self._form_docs.addRow(self._lbl_terminal_id, self.input_terminal_id)
 
         self.combo_reset_period = QComboBox()
+        self.combo_reset_period.setMaximumWidth(420)
         self._lbl_reset_period = QLabel()
         self._form_docs.addRow(self._lbl_reset_period, self.combo_reset_period)
 
         self.input_fmt_sale = QLineEdit()
+        self.input_fmt_sale.setMaximumWidth(420)
         self._lbl_sale_fmt = QLabel()
         self._form_docs.addRow(self._lbl_sale_fmt, self.input_fmt_sale)
         self._preview_sale = self._add_preview_row()
 
         self.input_fmt_purchase = QLineEdit()
+        self.input_fmt_purchase.setMaximumWidth(420)
         self._lbl_purchase_fmt = QLabel()
         self._form_docs.addRow(self._lbl_purchase_fmt, self.input_fmt_purchase)
         self._preview_purchase = self._add_preview_row()
 
         self.input_fmt_return = QLineEdit()
+        self.input_fmt_return.setMaximumWidth(420)
         self._lbl_return_fmt = QLabel()
         self._form_docs.addRow(self._lbl_return_fmt, self.input_fmt_return)
         self._preview_return = self._add_preview_row()
@@ -1149,12 +1154,16 @@ class HardwarePage(SettingsPage):
         scale_form.setVerticalSpacing(10)
 
         self.input_scale_prefix = QLineEdit()
+        self.input_scale_prefix.setValidator(QIntValidator(0, 99, self))
         self.input_scale_prefix.setMaxLength(2)
+        self.input_scale_prefix.setFixedWidth(80)
         self._lbl_barcode_prefix = QLabel()
         scale_form.addRow(self._lbl_barcode_prefix, self.input_scale_prefix)
 
         self.spin_decimal_places = QSpinBox()
+        self.spin_decimal_places.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_decimal_places.setRange(0, 4)
+        self.spin_decimal_places.setFixedWidth(80)
         self._lbl_decimal_places = QLabel()
         scale_form.addRow(self._lbl_decimal_places, self.spin_decimal_places)
         vbox_scale.addLayout(scale_form)

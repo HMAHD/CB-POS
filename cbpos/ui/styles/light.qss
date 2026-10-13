@@ -1183,7 +1183,7 @@ QLabel#ItemCountLabel {
 }
 
 QLabel#EmptyCartLabel, QLabel#EmptyTableLabel {
-    color: #AAAAAA;
+    color: #6C757D;
     font-size: 16px;
     background: transparent;
     padding: 40px;
@@ -1198,8 +1198,9 @@ QLabel#EmptyStateIcon {
 }
 
 QLabel#EmptyStateTitle {
-    color: #AAAAAA;
+    color: #495057;
     font-size: 16px;
+    font-weight: 600;
     background: transparent;
 }
 

@@ -69,5 +69,5 @@ class EmptyStateWidget(QWidget):
         # (QLabel#EmptyCartLabel/EmptyTableLabel) in each theme -- a
         # qtawesome icon is a baked pixmap, so QSS can't recolor it the
         # way it recolors text; this keeps it in the same palette anyway.
-        color = "#555555" if ThemeService.current_theme.lower() != "light" else "#AAAAAA"
+        color = "#888888" if ThemeService.current_theme.lower() != "light" else "#6C757D"
         self._icon_label.setPixmap(Icons.get(self._icon_name, color).pixmap(64, 64))

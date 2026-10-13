@@ -1648,9 +1648,9 @@ class ReceiptPage(SettingsPage):
         self._lbl_merge_items = QLabel()
         self._lbl_tax_breakdown = QLabel()
 
-        elem_form.addRow(self._lbl_show_barcode, self.chk_show_barcode)
-        elem_form.addRow(self._lbl_merge_items, self.chk_merge_items)
-        elem_form.addRow(self._lbl_tax_breakdown, self.chk_show_tax)
+        elem_form.addRow("", self.chk_show_barcode)
+        elem_form.addRow("", self.chk_merge_items)
+        elem_form.addRow("", self.chk_show_tax)
         vbox_display.addLayout(elem_form)
 
         # Section: QR Code -- the schema and config keys
@@ -1666,8 +1666,7 @@ class ReceiptPage(SettingsPage):
         qr_form.setVerticalSpacing(10)
 
         self.chk_show_qr = QCheckBox()
-        self._lbl_show_qr = QLabel()
-        qr_form.addRow(self._lbl_show_qr, self.chk_show_qr)
+        qr_form.addRow("", self.chk_show_qr)
 
         self.txt_qr_content = QLineEdit()
         self._lbl_qr_content = QLabel()
@@ -1688,11 +1687,8 @@ class ReceiptPage(SettingsPage):
         self.chk_show_cashier = QCheckBox()
         self.chk_show_terminal = QCheckBox()
 
-        self._lbl_cashier_name = QLabel()
-        self._lbl_terminal_id = QLabel()
-
-        staff_form.addRow(self._lbl_cashier_name, self.chk_show_cashier)
-        staff_form.addRow(self._lbl_terminal_id, self.chk_show_terminal)
+        staff_form.addRow("", self.chk_show_cashier)
+        staff_form.addRow("", self.chk_show_terminal)
         vbox_display.addLayout(staff_form)
 
         vbox_display.addStretch()
@@ -1765,24 +1761,18 @@ class ReceiptPage(SettingsPage):
         self.combo_receipt_lang.setItemText(0, _t("settings.receipt.lang_same_as_ui"))
 
         # Display tab
-        self._lbl_show_barcode.setText(_t("settings.receipt.show_barcode"))
         self.chk_show_barcode.setText(_t("settings.receipt.chk_show_barcode"))
         self.chk_show_barcode.setToolTip(_t("settings.receipt.tooltip_show_barcode"))
-        self._lbl_merge_items.setText(_t("settings.receipt.merge_items"))
         self.chk_merge_items.setText(_t("settings.receipt.chk_merge_items"))
         self.chk_merge_items.setToolTip(_t("settings.receipt.tooltip_merge_items"))
-        self._lbl_tax_breakdown.setText(_t("settings.receipt.tax_breakdown"))
         self.chk_show_tax.setText(_t("settings.receipt.chk_show_tax"))
         self.chk_show_tax.setToolTip(_t("settings.receipt.tooltip_show_tax"))
-        self._lbl_show_qr.setText(_t("settings.receipt.show_qr"))
         self.chk_show_qr.setText(_t("settings.receipt.chk_show_qr"))
         self.chk_show_qr.setToolTip(_t("settings.receipt.tooltip_show_qr"))
         self._lbl_qr_content.setText(_t("settings.receipt.qr_content"))
         self.txt_qr_content.setPlaceholderText(_t("settings.receipt.qr_content_placeholder"))
-        self._lbl_cashier_name.setText(_t("settings.receipt.cashier_name"))
         self.chk_show_cashier.setText(_t("settings.receipt.chk_show_cashier"))
         self.chk_show_cashier.setToolTip(_t("settings.receipt.tooltip_show_cashier"))
-        self._lbl_terminal_id.setText(_t("settings.receipt.terminal_id"))
         self.chk_show_terminal.setText(_t("settings.receipt.chk_show_terminal"))
         self.chk_show_terminal.setToolTip(_t("settings.receipt.tooltip_show_terminal"))
 
@@ -2021,8 +2011,7 @@ class SystemPage(SettingsPage):
         self._form_sec.addRow(self._lbl_timeout, self.spin_timeout)
 
         self.chk_void_reason = QCheckBox()
-        self._lbl_void_reason = QLabel()
-        self._form_sec.addRow(self._lbl_void_reason, self.chk_void_reason)
+        self._form_sec.addRow("", self.chk_void_reason)
 
         self.spin_max_login = QSpinBox()
         self.spin_max_login.setRange(3, 20)
@@ -2043,20 +2032,16 @@ class SystemPage(SettingsPage):
         self._tab_pos, self._form_pos = self._build_form_tab()
 
         self.chk_quick_pay = QCheckBox()
-        self._lbl_quick_pay = QLabel()
-        self._form_pos.addRow(self._lbl_quick_pay, self.chk_quick_pay)
+        self._form_pos.addRow("", self.chk_quick_pay)
 
         self.chk_show_receipt_dialog = QCheckBox()
-        self._lbl_receipt_dialog = QLabel()
-        self._form_pos.addRow(self._lbl_receipt_dialog, self.chk_show_receipt_dialog)
+        self._form_pos.addRow("", self.chk_show_receipt_dialog)
 
         self.chk_auto_barcode_select = QCheckBox()
-        self._lbl_auto_barcode = QLabel()
-        self._form_pos.addRow(self._lbl_auto_barcode, self.chk_auto_barcode_select)
+        self._form_pos.addRow("", self.chk_auto_barcode_select)
 
         self.chk_enable_sounds = QCheckBox()
-        self._lbl_sounds = QLabel()
-        self._form_pos.addRow(self._lbl_sounds, self.chk_enable_sounds)
+        self._form_pos.addRow("", self.chk_enable_sounds)
 
         self.tabs.addTab(self._tab_pos, "")
 
@@ -2064,16 +2049,13 @@ class SystemPage(SettingsPage):
         self._tab_inv, self._form_inv = self._build_form_tab()
 
         self.chk_negative_stock = QCheckBox()
-        self._lbl_negative_stock = QLabel()
-        self._form_inv.addRow(self._lbl_negative_stock, self.chk_negative_stock)
+        self._form_inv.addRow("", self.chk_negative_stock)
 
         self.chk_auto_barcodes = QCheckBox()
-        self._lbl_auto_barcodes = QLabel()
-        self._form_inv.addRow(self._lbl_auto_barcodes, self.chk_auto_barcodes)
+        self._form_inv.addRow("", self.chk_auto_barcodes)
 
         self.chk_loyalty = QCheckBox()
-        self._lbl_loyalty = QLabel()
-        self._form_inv.addRow(self._lbl_loyalty, self.chk_loyalty)
+        self._form_inv.addRow("", self.chk_loyalty)
 
         self.tabs.addTab(self._tab_inv, "")
 
@@ -2081,8 +2063,7 @@ class SystemPage(SettingsPage):
         self._tab_backup, self._form_backup = self._build_form_tab()
 
         self.chk_auto_backup = QCheckBox()
-        self._lbl_auto_backup = QLabel()
-        self._form_backup.addRow(self._lbl_auto_backup, self.chk_auto_backup)
+        self._form_backup.addRow("", self.chk_auto_backup)
 
         self.spin_retention = QSpinBox()
         self.spin_retention.setRange(1, 50)
@@ -2135,7 +2116,7 @@ class SystemPage(SettingsPage):
         self.spin_timeout.setSpecialValueText(_t("settings.system.timeout_disabled"))
         self.spin_timeout.setSuffix(_t("settings.system.suffix_min"))
         self.spin_timeout.setToolTip(_t("settings.system.tooltip_timeout"))
-        self._lbl_void_reason.setText(_t("settings.system.require_void_reason"))
+        self.chk_void_reason.setText(_t("settings.system.require_void_reason"))
         self.chk_void_reason.setToolTip(_t("settings.system.tooltip_void_reason"))
         self._lbl_max_login.setText(_t("settings.system.max_login_attempts"))
         self.spin_max_login.setToolTip(_t("settings.system.tooltip_max_login"))
@@ -2144,25 +2125,25 @@ class SystemPage(SettingsPage):
         self.spin_lockout.setToolTip(_t("settings.system.tooltip_lockout"))
 
         # POS Behavior
-        self._lbl_quick_pay.setText(_t("settings.system.quick_pay"))
+        self.chk_quick_pay.setText(_t("settings.system.quick_pay"))
         self.chk_quick_pay.setToolTip(_t("settings.system.tooltip_quick_pay"))
-        self._lbl_receipt_dialog.setText(_t("settings.system.show_receipt_dialog"))
+        self.chk_show_receipt_dialog.setText(_t("settings.system.show_receipt_dialog"))
         self.chk_show_receipt_dialog.setToolTip(_t("settings.system.tooltip_receipt_dialog"))
-        self._lbl_auto_barcode.setText(_t("settings.system.auto_barcode_select"))
+        self.chk_auto_barcode_select.setText(_t("settings.system.auto_barcode_select"))
         self.chk_auto_barcode_select.setToolTip(_t("settings.system.tooltip_auto_barcode"))
-        self._lbl_sounds.setText(_t("settings.system.enable_sounds"))
+        self.chk_enable_sounds.setText(_t("settings.system.enable_sounds"))
         self.chk_enable_sounds.setToolTip(_t("settings.system.tooltip_sounds"))
 
         # Features
-        self._lbl_negative_stock.setText(_t("settings.system.negative_stock"))
+        self.chk_negative_stock.setText(_t("settings.system.negative_stock"))
         self.chk_negative_stock.setToolTip(_t("settings.system.tooltip_negative_stock"))
-        self._lbl_auto_barcodes.setText(_t("settings.system.auto_barcodes"))
+        self.chk_auto_barcodes.setText(_t("settings.system.auto_barcodes"))
         self.chk_auto_barcodes.setToolTip(_t("settings.system.tooltip_auto_barcodes"))
-        self._lbl_loyalty.setText(_t("settings.system.loyalty_points"))
+        self.chk_loyalty.setText(_t("settings.system.loyalty_points"))
         self.chk_loyalty.setToolTip(_t("settings.system.tooltip_loyalty"))
 
         # Backup
-        self._lbl_auto_backup.setText(_t("settings.system.auto_backup"))
+        self.chk_auto_backup.setText(_t("settings.system.auto_backup"))
         self.chk_auto_backup.setToolTip(_t("settings.system.tooltip_auto_backup"))
         self._lbl_retention.setText(_t("settings.system.backup_retention"))
         self.spin_retention.setSuffix(_t("settings.system.suffix_backups"))

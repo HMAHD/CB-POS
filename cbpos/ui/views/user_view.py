@@ -214,7 +214,16 @@ class UserView(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(4)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,  # ID
+                1: QHeaderView.ResizeMode.Stretch,  # Username
+                2: QHeaderView.ResizeMode.ResizeToContents,  # Role
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Status
+            },
+            minimum_section_size=60,
+        )
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         # Qt's default row-number gutter and the real "ID" column both show

@@ -20,6 +20,7 @@ from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.user_service import UserService
 from cbpos.core.utils.display_labels import display_role_name, permission_group_label, permission_label
 from cbpos.i18n import _t
+from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 # Per-cell flag for a role-column cell that must stay ticked. Item flags are per-row in a
 # QTreeWidget, so the lock lives in the cell's data and _RoleCheckDelegate enforces it (#614).
@@ -189,10 +190,16 @@ class PermissionDialog(QDialog):
                         perm_item.setData(col_index, LOCKED_CELL_ROLE, True)
                         perm_item.setToolTip(col_index, _t("permission.admin_locked_tooltip"))
 
-        # Resize columns. No stretched last column: it would push that role's centered checkbox far right.
-        self.tree.header().setStretchLastSection(False)
-        for i in range(len(headers)):
-            self.tree.header().setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
+        # Resize columns: permission title column stretches to absorb space, while role columns resize to content.
+        column_modes = {0: QHeaderView.ResizeMode.Stretch}
+        for i in range(1, len(headers)):
+            column_modes[i] = QHeaderView.ResizeMode.ResizeToContents
+        configure_table_columns(
+            self.tree.header(),
+            column_modes,
+            stretch_last_section=False,
+            minimum_section_size=80,
+        )
 
     @staticmethod
     def collect_role_permission_map(tree: QTreeWidget, roles: list) -> dict:

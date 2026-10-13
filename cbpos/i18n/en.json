@@ -1649,6 +1649,7 @@
       "tab_pos_behavior": "POS Behavior",
       "tab_features": "Features",
       "tab_backup": "Backup",
+      "lock_on_idle": "Lock screen when idle",
       "inactivity_timeout": "Inactivity Timeout:",
       "timeout_disabled": "Disabled (no auto-lock)",
       "tooltip_timeout": "Auto-logout after inactivity. 0 = disabled.",

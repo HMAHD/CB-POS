@@ -1619,6 +1619,7 @@
       "tab_pos_behavior": "POS நடத்தை",
       "tab_features": "அம்சங்கள்",
       "tab_backup": "பேக்அப்",
+      "lock_on_idle": "செயலற்ற போது திரையைப் பூட்டு",
       "inactivity_timeout": "செயலற்ற நேர வரம்பு:",
       "timeout_disabled": "ஆஃப் (ஆட்டோ-லாக் இல்ல)",
       "tooltip_timeout": "செயலில்லாமல் இருந்தா ஆட்டோவா லாக்அவுட் ஆகும். 0 = ஆஃப்.",

@@ -2006,13 +2006,14 @@ class SystemPage(SettingsPage):
         # --- Tab 1: Security ---
         self._tab_sec, self._form_sec = self._build_form_tab()
 
+        self.chk_timeout = QCheckBox()
+        self.chk_timeout.toggled.connect(self._on_timeout_toggled)
+        self._form_sec.addRow("", self.chk_timeout)
+
         self.spin_timeout = QSpinBox()
-        self.spin_timeout.setRange(0, 60)
+        self.spin_timeout.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+        self.spin_timeout.setRange(1, 60)
         self.spin_timeout.setSuffix(" min")
-        # Wider than the usual 200px house convention -- its special
-        # value text ("Disabled (no auto-lock)") needs the extra room,
-        # confirmed by rendering it: at 200px it clips to ")led (no
-        # auto-lock)", reproducing the exact truncation #332 described.
         self.spin_timeout.setFixedWidth(260)
         self._lbl_timeout = QLabel()
         self._form_sec.addRow(self._lbl_timeout, self.spin_timeout)
@@ -2021,12 +2022,14 @@ class SystemPage(SettingsPage):
         self._form_sec.addRow("", self.chk_void_reason)
 
         self.spin_max_login = QSpinBox()
+        self.spin_max_login.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_max_login.setRange(3, 20)
         self.spin_max_login.setFixedWidth(200)
         self._lbl_max_login = QLabel()
         self._form_sec.addRow(self._lbl_max_login, self.spin_max_login)
 
         self.spin_lockout = QSpinBox()
+        self.spin_lockout.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_lockout.setRange(30, 3600)
         self.spin_lockout.setSuffix(" sec")
         self.spin_lockout.setFixedWidth(200)
@@ -2073,6 +2076,7 @@ class SystemPage(SettingsPage):
         self._form_backup.addRow("", self.chk_auto_backup)
 
         self.spin_retention = QSpinBox()
+        self.spin_retention.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_retention.setRange(1, 50)
         self.spin_retention.setSuffix(" backups")
         self._lbl_retention = QLabel()
@@ -2119,8 +2123,8 @@ class SystemPage(SettingsPage):
         self.tabs.setTabText(3, _t("settings.system.tab_backup"))
 
         # Security
+        self.chk_timeout.setText(_t("settings.system.lock_on_idle"))
         self._lbl_timeout.setText(_t("settings.system.inactivity_timeout"))
-        self.spin_timeout.setSpecialValueText(_t("settings.system.timeout_disabled"))
         self.spin_timeout.setSuffix(_t("settings.system.suffix_min"))
         self.spin_timeout.setToolTip(_t("settings.system.tooltip_timeout"))
         self.chk_void_reason.setText(_t("settings.system.require_void_reason"))
@@ -2159,6 +2163,11 @@ class SystemPage(SettingsPage):
         self.input_backup_dir.setPlaceholderText(_t("settings.system.backup_folder_placeholder"))
         self.btn_browse_backup.setText(_t("settings.system.btn_browse_backup"))
 
+    def _on_timeout_toggled(self, checked: bool) -> None:
+        """Enable or disable inactivity timeout minutes input based on checkbox."""
+        self.spin_timeout.setEnabled(checked)
+        self._lbl_timeout.setEnabled(checked)
+
     def _browse_backup_dir(self) -> None:
         current = self.input_backup_dir.text() or ""
         chosen = QFileDialog.getExistingDirectory(self, _t("settings.system.choose_backup_folder"), current)
@@ -2167,7 +2176,17 @@ class SystemPage(SettingsPage):
 
     def load(self, settings: dict):
         """Populate session security, POS behavior, feature toggle and backup fields from the settings dict."""
-        self.spin_timeout.setValue(int(settings.get("session_timeout_minutes", 0)))
+        timeout_val = int(settings.get("session_timeout_minutes", 0))
+        if timeout_val > 0:
+            self.chk_timeout.setChecked(True)
+            self.spin_timeout.setValue(timeout_val)
+            self.spin_timeout.setEnabled(True)
+            self._lbl_timeout.setEnabled(True)
+        else:
+            self.chk_timeout.setChecked(False)
+            self.spin_timeout.setValue(5)
+            self.spin_timeout.setEnabled(False)
+            self._lbl_timeout.setEnabled(False)
         self.chk_void_reason.setChecked(settings.get("require_void_reason", True))
         self.spin_max_login.setValue(int(settings.get("max_login_attempts", 5)))
         self.spin_lockout.setValue(int(settings.get("lockout_duration_seconds", 300)))
@@ -2185,7 +2204,7 @@ class SystemPage(SettingsPage):
     def save(self) -> dict:
         """Return session security, POS behavior, feature toggle and backup fields as a settings dict."""
         return {
-            "session_timeout_minutes": self.spin_timeout.value(),
+            "session_timeout_minutes": self.spin_timeout.value() if self.chk_timeout.isChecked() else 0,
             "require_void_reason": self.chk_void_reason.isChecked(),
             "max_login_attempts": self.spin_max_login.value(),
             "lockout_duration_seconds": self.spin_lockout.value(),

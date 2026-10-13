@@ -41,7 +41,9 @@ from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.constants import BAR_GROUP_SPACING, BAR_ITEM_SPACING, BAR_MARGIN_V
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, SUCCESS, WARNING, status_color
+from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 
 logger = logging.getLogger(__name__)
 
@@ -460,6 +462,9 @@ class PurchaseView(QWidget):
         self.supplier_table.doubleClicked.connect(self.edit_supplier)
         layout.addWidget(self.supplier_table)
 
+        self.empty_supplier_label = EmptyStateWidget(Icons.CUSTOMERS, self.supplier_table.viewport())
+        self.empty_supplier_label.setVisible(False)
+
     def setup_grn_tab(self):
         """Build the New GRN tab: header form, product search, line items grid, and commit footer."""
         layout = QVBoxLayout(self.grn_tab)
@@ -526,6 +531,16 @@ class PurchaseView(QWidget):
         self.grn_table.setModel(self.grn_model)
         self.grn_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.grn_table)
+
+        self.empty_grn_label = EmptyStateWidget(Icons.INVENTORY, self.grn_table.viewport())
+        self.empty_grn_label.setVisible(True)
+
+        def _update_grn_empty(*_):
+            self.empty_grn_label.setVisible(self.grn_model.rowCount() == 0)
+
+        self.grn_model.rowsInserted.connect(_update_grn_empty)
+        self.grn_model.rowsRemoved.connect(_update_grn_empty)
+        self.grn_model.modelReset.connect(_update_grn_empty)
 
         # Footer
         footer_layout = QHBoxLayout()
@@ -627,9 +642,7 @@ class PurchaseView(QWidget):
         # empty_cart_label: an overlay positioned over the viewport,
         # shown/hidden by refresh_history() based on whether there are
         # any rows.
-        self.empty_history_label = QLabel(self.history_table.viewport())
-        self.empty_history_label.setObjectName("EmptyTableLabel")
-        self.empty_history_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_history_label = EmptyStateWidget(Icons.PURCHASE, self.history_table.viewport())
         self.empty_history_label.setVisible(False)
 
     def retranslate_ui(self) -> None:
@@ -640,7 +653,12 @@ class PurchaseView(QWidget):
         self.tabs.setTabText(1, _t("purchase.tab_new_grn"))
         self.tabs.setTabText(2, _t("purchase.tab_grn_history"))
         self.tabs.setTabText(3, _t("purchase.tab_payables"))
-        self.empty_history_label.setText(_t("purchase.grn_history_empty_state"))
+        self.empty_history_label.set_title(_t("purchase.grn_history_empty_state"))
+        self.empty_history_label.set_subtitle(_t("purchase.empty_history_subtitle"))
+        self.empty_supplier_label.set_title(_t("purchase.empty_suppliers_title"))
+        self.empty_supplier_label.set_subtitle(_t("purchase.empty_suppliers_subtitle"))
+        self.empty_grn_label.set_title(_t("purchase.empty_grn_items_title"))
+        self.empty_grn_label.set_subtitle(_t("purchase.empty_grn_items_subtitle"))
 
         # Supplier tab
         self.btn_add_supplier.setText(_t("purchase.btn_add_supplier"))
@@ -765,6 +783,8 @@ class PurchaseView(QWidget):
         """Reload suppliers and refresh the supplier table, GRN combo, history filter combo, and payables list."""
         self.suppliers = SupplierService.get_all_suppliers()
         self.supplier_table.setModel(SupplierTableModel(self.suppliers))
+        if hasattr(self, "empty_supplier_label"):
+            self.empty_supplier_label.setVisible(not self.suppliers)
         names = [s.company_name for s in self.suppliers]
 
         # Update GRN Combo

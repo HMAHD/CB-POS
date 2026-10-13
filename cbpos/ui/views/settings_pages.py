@@ -1045,8 +1045,7 @@ class HardwarePage(SettingsPage):
         beh_form.setVerticalSpacing(10)
 
         self.chk_auto_print = QCheckBox()
-        self._lbl_auto_print = QLabel()
-        beh_form.addRow(self._lbl_auto_print, self.chk_auto_print)
+        beh_form.addRow("", self.chk_auto_print)
 
         self.spin_copies = QSpinBox()
         self.spin_copies.setRange(1, 5)
@@ -1098,8 +1097,7 @@ class HardwarePage(SettingsPage):
         cut_form.setVerticalSpacing(10)
 
         self.chk_auto_cut = QCheckBox()
-        self._lbl_auto_cut = QLabel()
-        cut_form.addRow(self._lbl_auto_cut, self.chk_auto_cut)
+        cut_form.addRow("", self.chk_auto_cut)
         # Tear-bar advice lives in a hint, not the checkbox text: "Disable for..." next to a box that
         # enables auto-cut read as "tick to disable" (#575).
         self.lbl_auto_cut_hint = QLabel()
@@ -1127,8 +1125,7 @@ class HardwarePage(SettingsPage):
         drawer_form.setVerticalSpacing(10)
 
         self.chk_drawer_cash_only = QCheckBox()
-        self._lbl_drawer_cash_only = QLabel()
-        drawer_form.addRow(self._lbl_drawer_cash_only, self.chk_drawer_cash_only)
+        drawer_form.addRow("", self.chk_drawer_cash_only)
         vbox_cut.addLayout(drawer_form)
 
         self.tabs.addTab(tab_cut, "")
@@ -1195,7 +1192,6 @@ class HardwarePage(SettingsPage):
         self._lbl_a4_printer.setText(_t("settings.hardware.a4_printer"))
         self.btn_refresh_printers.setText(_t("settings.hardware.btn_refresh_printers"))
         self._lbl_paper_width.setText(_t("settings.hardware.paper_width"))
-        self._lbl_auto_print.setText(_t("settings.hardware.auto_print"))
         self.chk_auto_print.setText(_t("settings.hardware.chk_auto_print"))
         self.chk_auto_print.setToolTip(_t("settings.hardware.tooltip_auto_print"))
         self._lbl_copies.setText(_t("settings.hardware.copies"))
@@ -1205,7 +1201,6 @@ class HardwarePage(SettingsPage):
         self.combo_drawer_pin.setToolTip(_t("settings.hardware.tooltip_drawer_pin"))
 
         # Cut & Drawer tab
-        self._lbl_auto_cut.setText(_t("settings.hardware.auto_cut"))
         self.chk_auto_cut.setText(_t("settings.hardware.chk_auto_cut"))
         self.chk_auto_cut.setToolTip(_t("settings.hardware.tooltip_auto_cut"))
         self.lbl_auto_cut_hint.setText(_t("settings.hardware.hint_auto_cut"))
@@ -1224,7 +1219,6 @@ class HardwarePage(SettingsPage):
 
         self._lbl_feed_lines.setText(_t("settings.hardware.feed_lines"))
         self.spin_feed_lines.setToolTip(_t("settings.hardware.tooltip_feed_lines"))
-        self._lbl_drawer_cash_only.setText(_t("settings.hardware.drawer_cash_only"))
         self.chk_drawer_cash_only.setText(_t("settings.hardware.chk_drawer_cash_only"))
         self.chk_drawer_cash_only.setToolTip(_t("settings.hardware.tooltip_drawer_cash_only"))
 

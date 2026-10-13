@@ -250,6 +250,40 @@ class SettingsPage(QWidget):
 
         return container
 
+    def equalize_form_labels(self, container: QWidget | None = None) -> None:
+        """Ensure all QFormLayout label widgets in container (or this page) have identical width.
+
+        Collects all non-empty QLabel widgets acting as row labels across all
+        QFormLayouts, calculates the maximum intrinsic sizeHint width, and sets
+        setFixedWidth(max_width) on each. This guarantees that all input fields
+        start at the exact same X coordinate on the page regardless of how many
+        sections or separate forms the page is composed of (#573).
+        """
+        target = container or self
+        forms = target.findChildren(QFormLayout)
+        if not forms:
+            return
+
+        labels: list[QLabel] = []
+        for form in forms:
+            for row in range(form.rowCount()):
+                item = form.itemAt(row, QFormLayout.ItemRole.LabelRole)
+                if item and item.widget() and isinstance(item.widget(), QLabel):
+                    lbl = item.widget()
+                    if lbl.text().strip():
+                        labels.append(lbl)
+
+        if not labels:
+            return
+
+        for lbl in labels:
+            lbl.setMinimumWidth(0)
+            lbl.setMaximumWidth(16777215)
+
+        max_w = max(lbl.sizeHint().width() for lbl in labels)
+        for lbl in labels:
+            lbl.setFixedWidth(max_w)
+
 
 class ShopInfoPage(SettingsPage):
     """Consolidated: General + Payment banking + Automation email settings."""
@@ -462,6 +496,7 @@ class ShopInfoPage(SettingsPage):
 
         self._lbl_language.setText(_t("settings.shop_info.language"))
         self.lbl_restart.setText(_t("settings.shop_info.restart_hint"))
+        self.equalize_form_labels()
 
     def _prefill_gmail(self):
         """Pre-fill SMTP fields with Gmail defaults."""
@@ -742,6 +777,7 @@ class SalesTaxPage(SettingsPage):
         self.chk_item_tax_exemptions.setToolTip(_t("settings.sales_tax.tooltip_item_tax_exemptions"))
         self.btn_item_exempt_help.setToolTip(_t("settings.sales_tax.tooltip_item_tax_exemptions"))
         self.lbl_item_exemptions_hint.setText(_t("settings.sales_tax.hint_item_tax_exemptions"))
+        self.equalize_form_labels()
 
     def _toggle_tax_fields(self) -> None:
         """Enable/disable tax rate fields and sub-options based on VAT registration status."""
@@ -901,6 +937,7 @@ class DocumentPage(SettingsPage):
         self.input_fmt_return.setPlaceholderText(_t("settings.documents.return_format_placeholder"))
         self._lbl_fmt_legend.setText(_t("settings.documents.fmt_legend"))
         self._update_previews()
+        self.equalize_form_labels()
 
     def _add_preview_row(self) -> QLabel:
         """Add an empty preview/error label under the format field just added."""
@@ -1241,6 +1278,7 @@ class HardwarePage(SettingsPage):
         # Scale tab
         self._lbl_barcode_prefix.setText(_t("settings.hardware.barcode_prefix"))
         self._lbl_decimal_places.setText(_t("settings.hardware.decimal_places"))
+        self.equalize_form_labels()
 
     def _receipt_printer_placeholder(self) -> str:
         """Text of the receipt printer combo's empty first item."""
@@ -1798,6 +1836,7 @@ class ReceiptPage(SettingsPage):
         self.chk_show_cashier.setToolTip(_t("settings.receipt.tooltip_show_cashier"))
         self.chk_show_terminal.setText(_t("settings.receipt.chk_show_terminal"))
         self.chk_show_terminal.setToolTip(_t("settings.receipt.tooltip_show_terminal"))
+        self.equalize_form_labels()
 
     # ------------------------------------------------------------------
     # Signal wiring for live preview
@@ -2179,6 +2218,7 @@ class SystemPage(SettingsPage):
         self._lbl_backup_folder.setText(_t("settings.system.backup_folder"))
         self.input_backup_dir.setPlaceholderText(_t("settings.system.backup_folder_placeholder"))
         self.btn_browse_backup.setText(_t("settings.system.btn_browse_backup"))
+        self.equalize_form_labels()
 
     def _on_timeout_toggled(self, checked: bool) -> None:
         """Enable or disable inactivity timeout minutes input based on checkbox."""
@@ -2779,6 +2819,7 @@ class NetworkPage(SettingsPage):
 
         self.btn_forget_main.setText(_t("settings.network.btn_forget_main"))
         self.btn_forget_main.setToolTip(_t("settings.network.tooltip_forget_main"))
+        self.equalize_form_labels()
 
     def load(self, settings: dict):
         """Populate database mode, server connection and LAN sync fields from the settings dict."""

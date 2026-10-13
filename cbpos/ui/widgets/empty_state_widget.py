@@ -76,6 +76,14 @@ class EmptyStateWidget(QWidget):
         """Set the bold headline text (e.g. "Cart is Empty")."""
         self._title_label.setText(text)
 
+    def setText(self, text: str) -> None:
+        """Compatibility with QLabel.setText."""
+        self.set_title(text)
+
+    def text(self) -> str:
+        """Compatibility with QLabel.text."""
+        return self._title_label.text()
+
     def set_subtitle(self, text: str) -> None:
         """Set optional smaller supporting text; hidden if *text* is empty."""
         self._subtitle_label.setText(text)

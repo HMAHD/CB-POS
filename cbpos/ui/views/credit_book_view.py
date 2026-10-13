@@ -519,6 +519,7 @@ class CreditBookView(QWidget):
         if not self.selected_customer:
             return
 
+        self._showing_all_dates = False
         date_from = datetime(
             self.date_from.date().year(),
             self.date_from.date().month(),
@@ -545,6 +546,7 @@ class CreditBookView(QWidget):
         if not self.selected_customer:
             return
 
+        self._showing_all_dates = True
         entries = CustomerCreditService.get_ledger(self.selected_customer.id)
         self.populate_ledger(entries)
 
@@ -555,6 +557,28 @@ class CreditBookView(QWidget):
         total_debit = Decimal("0.00")
         total_credit = Decimal("0.00")
         closing_balance = Decimal("0.00")
+
+        if not entries:
+            self.ledger_table.setRowCount(1)
+            has_any = (
+                not getattr(self, "_showing_all_dates", False)
+                and bool(self.selected_customer)
+                and len(CustomerCreditService.get_ledger(self.selected_customer.id)) > 0
+            )
+            msg = _t("credit_book.ledger_empty_range") if has_any else _t("credit_book.ledger_no_history")
+            empty_item = QTableWidgetItem(msg)
+            empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty_item.setForeground(status_color(NEUTRAL))
+            empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
+            self.ledger_table.setItem(0, 0, empty_item)
+            self.ledger_table.setSpan(0, 0, 1, self.ledger_table.columnCount())
+
+            # Update footer
+            self.lbl_total_sales.setText(_t("credit_book.sales_label") + " " + format_currency(total_debit))
+            self.lbl_total_payments.setText(_t("credit_book.payments_label") + " " + format_currency(total_credit))
+            self.lbl_closing.setText(_t("credit_book.closing_label") + " " + format_currency(closing_balance))
+            self._update_credit_range_hint(closing_balance)
+            return
 
         for entry in entries:
             row = self.ledger_table.rowCount()

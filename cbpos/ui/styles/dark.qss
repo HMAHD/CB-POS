@@ -902,7 +902,7 @@ QLabel#MenuSectionHeader {
 /* Nav Tiles — 2-column grid */
 QPushButton#NavTile {
     background-color: #252526;
-    border: 1px solid #333333;
+    border: 2px solid #333333;
     border-radius: 8px;
 }
 
@@ -912,8 +912,8 @@ QPushButton#NavTile:hover {
 }
 
 QPushButton#NavTile[active="true"] {
-    background-color: rgba(0, 188, 235, 0.10);
-    border-color: #00BCEB;
+    border: 2px solid #00BCEB;
+    background-color: rgba(0, 188, 235, 0.15);
 }
 
 /* pt scales with DPI (px doesn't) — #207 */

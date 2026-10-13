@@ -9,6 +9,7 @@ from PyQt6.QtCore import Qt, QThread, QTime, pyqtSignal
 from PyQt6.QtGui import QIntValidator
 from PyQt6.QtPrintSupport import QPrinterInfo
 from PyQt6.QtWidgets import (
+    QAbstractSpinBox,
     QApplication,
     QCheckBox,
     QComboBox,
@@ -559,6 +560,7 @@ class SalesTaxPage(SettingsPage):
         self._form_sales.addRow(self._lbl_search_mode, self.combo_search_mode)
 
         self.spin_max_discount = QDoubleSpinBox()
+        self.spin_max_discount.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_max_discount.setRange(0, 100)
         self.spin_max_discount.setDecimals(1)
         self.spin_max_discount.setSuffix("%")
@@ -567,12 +569,14 @@ class SalesTaxPage(SettingsPage):
         self._form_sales.addRow(self._lbl_max_discount, self.spin_max_discount)
 
         self.spin_loyalty_ratio = QSpinBox()
+        self.spin_loyalty_ratio.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_loyalty_ratio.setRange(1, 10000)
         self.spin_loyalty_ratio.setFixedWidth(200)
         self._lbl_loyalty_ratio = QLabel()
         self._form_sales.addRow(self._lbl_loyalty_ratio, self.spin_loyalty_ratio)
 
         self.spin_default_credit = QSpinBox()
+        self.spin_default_credit.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_default_credit.setRange(0, 1000000)
         self.spin_default_credit.setFixedWidth(200)
         self._lbl_default_credit = QLabel()
@@ -599,6 +603,7 @@ class SalesTaxPage(SettingsPage):
         self._form_tax.addRow(self.lbl_tax_warn)
 
         self.spin_vat = QSpinBox()
+        self.spin_vat.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_vat.setRange(0, 100)
         self.spin_vat.setSuffix("%")
         self.spin_vat.setFixedWidth(200)
@@ -606,6 +611,7 @@ class SalesTaxPage(SettingsPage):
         self._form_tax.addRow(self._lbl_vat_rate, self.spin_vat)
 
         self.spin_sscl = QDoubleSpinBox()
+        self.spin_sscl.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_sscl.setRange(0, 100)
         self.spin_sscl.setDecimals(2)
         self.spin_sscl.setSuffix("%")
@@ -615,6 +621,7 @@ class SalesTaxPage(SettingsPage):
 
         sscl_turnover_row = QHBoxLayout()
         self.spin_sscl_turnover = QDoubleSpinBox()
+        self.spin_sscl_turnover.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.spin_sscl_turnover.setRange(0, 100)
         self.spin_sscl_turnover.setDecimals(1)
         self.spin_sscl_turnover.setSuffix("%")

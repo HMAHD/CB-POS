@@ -38,6 +38,7 @@ from cbpos.ui.widgets.charts import (
     HorizontalBarChart,
     VerticalBarChart,
 )
+from cbpos.ui.widgets.table_helpers import align_numeric_headers, configure_table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -345,9 +346,14 @@ class DashboardView(QWidget):
         self.products_table.setObjectName("DashboardTable")
         self.products_table.setColumnCount(2)
         self.products_table.setHorizontalHeaderLabels(["", ""])
-        self.products_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.products_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
-        self.products_table.setColumnWidth(1, 110)
+        configure_table_columns(
+            self.products_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+            },
+            minimum_section_size=110,
+        )
         self.products_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.products_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.products_table.verticalHeader().setVisible(False)
@@ -535,6 +541,7 @@ class DashboardView(QWidget):
         self.lbl_top_products.setText(_t("dashboard.top_products"))
         self.lbl_top_products_sub.setText(_t("dashboard.by_revenue"))
         self.products_table.setHorizontalHeaderLabels([_t("dashboard.header_product"), _t("dashboard.header_total")])
+        align_numeric_headers(self.products_table, [1])
         self.lbl_hourly_sales.setText(_t("dashboard.hourly_sales"))
         self.lbl_avg_order_title.setText(_t("dashboard.avg_order_value"))
         self.lbl_items_sold_title.setText(_t("dashboard.items_sold"))

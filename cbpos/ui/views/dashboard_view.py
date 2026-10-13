@@ -12,7 +12,7 @@ import logging
 import weakref
 from datetime import date
 
-from PyQt6.QtCore import QDate, Qt, QThread, pyqtSignal
+from PyQt6.QtCore import QDate, QEvent, QObject, Qt, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QDateEdit,
     QFrame,
@@ -41,6 +41,25 @@ from cbpos.ui.widgets.charts import (
 from cbpos.ui.widgets.table_helpers import align_numeric_headers, configure_table_columns
 
 logger = logging.getLogger(__name__)
+
+
+class _DashboardWheelForwarder(QObject):
+    """Forward mouse wheel events to parent QScrollArea so wheeling over charts or tables scrolls the dashboard (#609)."""
+
+    def __init__(self, scroll_area: QScrollArea) -> None:
+        super().__init__(scroll_area)
+        self._scroll = scroll_area
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if event.type() == QEvent.Type.Wheel:
+            vbar = self._scroll.verticalScrollBar()
+            if vbar is not None and vbar.maximum() > 0:
+                delta = event.angleDelta().y()
+                if delta != 0:
+                    step = (delta / 120.0) * vbar.singleStep() * 3
+                    vbar.setValue(int(vbar.value() - step))
+                    return True
+        return False
 
 
 class _YearlyWorker(QThread):
@@ -143,12 +162,14 @@ class DashboardView(QWidget):
         outer.addLayout(header_row)
 
         # Scroll area for the dashboard content
-        scroll = QScrollArea()
+        self.scroll_area = scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setObjectName("DashboardScroll")
         scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
-        container = QWidget()
+        self.container = container = QWidget()
         layout = QVBoxLayout(container)
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(16)
@@ -181,6 +202,12 @@ class DashboardView(QWidget):
 
         scroll.setWidget(container)
         outer.addWidget(scroll)
+
+        # Forward mouse wheel events so wheeling anywhere over charts or panels scrolls the dashboard (#609)
+        self._wheel_filter = _DashboardWheelForwarder(self.scroll_area)
+        for child in container.findChildren(QObject):
+            child.installEventFilter(self._wheel_filter)
+        container.installEventFilter(self._wheel_filter)
 
     # --- Row 1: Monthly Chart ---
     def _build_monthly_panel(self, parent_layout: QHBoxLayout) -> None:
@@ -356,11 +383,11 @@ class DashboardView(QWidget):
         )
         self.products_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.products_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.products_table.verticalHeader().setVisible(False)
-        self.products_table.setShowGrid(False)
+        self.products_table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.products_table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         vbox.addWidget(self.products_table, 1)
 
-        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
+        panel.setMinimumWidth(200)  # keep panels legible and fitting 1024/1366 screens (#203, #609)
         parent_layout.addWidget(panel, 2)
 
     # --- Row 3: Hourly Sales Chart ---
@@ -378,7 +405,7 @@ class DashboardView(QWidget):
         self.hourly_chart = VerticalBarChart()
         vbox.addWidget(self.hourly_chart, 1)
 
-        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
+        panel.setMinimumWidth(200)  # keep charts legible when the row wraps (#203, #609)
         parent_layout.addWidget(panel, 2)
 
     # --- Row 3: Quick Stats ---
@@ -432,7 +459,7 @@ class DashboardView(QWidget):
         vbox.addWidget(self.lbl_txn_count)
 
         vbox.addStretch()
-        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
+        panel.setMinimumWidth(200)  # keep charts legible when the row wraps (#203, #609)
         parent_layout.addWidget(panel, 1)
 
     # --- Row 3: Tax Today ---
@@ -476,7 +503,7 @@ class DashboardView(QWidget):
 
         vbox.addStretch()
         self.tax_today_panel = panel
-        panel.setMinimumWidth(220)  # keep charts legible when the row wraps (#203)
+        panel.setMinimumWidth(200)  # keep charts legible when the row wraps (#203, #609)
         parent_layout.addWidget(panel, 1)
 
     # --- Row 4: Categories Donut ---

@@ -55,6 +55,23 @@ class EmptyStateWidget(QWidget):
         self._refresh_icon()
         ThemeService.register_theme_callback(self._refresh_icon)
 
+        if parent is not None:
+            parent.installEventFilter(self)
+
+    def eventFilter(self, watched, event):
+        """Auto-resize overlay to match parent viewport size when parent resizes."""
+        from PyQt6.QtCore import QEvent
+
+        if watched is self.parent() and event.type() == QEvent.Type.Resize:
+            self.resize(watched.size())
+        return super().eventFilter(watched, event)
+
+    def setVisible(self, visible: bool) -> None:
+        """Show or hide widget, updating size from parent viewport on show."""
+        super().setVisible(visible)
+        if visible and self.parent() is not None:
+            self.resize(self.parent().size())
+
     def set_title(self, text: str) -> None:
         """Set the bold headline text (e.g. "Cart is Empty")."""
         self._title_label.setText(text)

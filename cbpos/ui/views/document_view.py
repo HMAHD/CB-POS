@@ -198,6 +198,7 @@ class DocumentBrowserView(QWidget):
                 5: QHeaderView.ResizeMode.ResizeToContents,  # Status
                 6: QHeaderView.ResizeMode.ResizeToContents,  # User
             },
+            minimum_section_size=80,
         )
         self.doc_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.doc_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
@@ -263,7 +264,17 @@ class DocumentBrowserView(QWidget):
         self.items_table = QTableWidget()
         self.items_table.setObjectName("DocItemsTable")
         self.items_table.setColumnCount(5)
-        self.items_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.items_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,  # Product
+                1: QHeaderView.ResizeMode.ResizeToContents,  # Qty
+                2: QHeaderView.ResizeMode.ResizeToContents,  # Unit Price
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Discount
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Total
+            },
+            minimum_section_size=70,
+        )
         self.items_table.verticalHeader().setVisible(False)
         self.items_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.items_table.setMaximumHeight(200)

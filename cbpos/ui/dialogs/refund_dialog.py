@@ -20,6 +20,7 @@ from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.core.utils.permission_helper import check_permission_with_override
 from cbpos.i18n import _t
+from cbpos.ui.refund_messages import refund_confirm_text, refund_done_text
 
 logger = logging.getLogger(__name__)
 
@@ -206,16 +207,16 @@ class RefundDialog(QDialog):
         if not authorized_user:
             return
 
-        # Confirm
+        # Confirm -- spelling out what is handed back vs. taken off credit (#715)
+        breakdown = TransactionService.refund_breakdown(self.found_sale.id)
+        if breakdown is None:
+            QMessageBox.warning(self, _t("refund.not_found_title"), _t("refund.not_found_message"))
+            return
+        doc_number = self.found_sale.document_number
         reply = QMessageBox.question(
             self,
             _t("refund.confirm_title"),
-            _t(
-                "refund.confirm_message",
-                amount=format_currency(self.found_sale.total_amount),
-                doc_number=self.found_sale.document_number,
-                reason=reason,
-            ),
+            refund_confirm_text(doc_number, breakdown, reason),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
@@ -234,7 +235,7 @@ class RefundDialog(QDialog):
                 QMessageBox.information(
                     self,
                     _t("refund.success_title"),
-                    _t("refund.success_message", amount=format_currency(self.found_sale.total_amount)),
+                    refund_done_text(doc_number, breakdown),
                 )
                 self.accept()
             else:

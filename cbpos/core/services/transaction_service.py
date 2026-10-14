@@ -1,10 +1,12 @@
 import logging
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
+from cbpos.core.constants.status import Precision
 from cbpos.core.database import Database
 from cbpos.core.models import (
     AuditLog,
@@ -414,6 +416,12 @@ class TransactionService:
                             session=session,
                         )
 
+                # Give back any credit this sale put on the customer's book,
+                # in this same transaction (#715).
+                CustomerCreditService.reverse_credit_sale_in_session(
+                    session, sale, "VOID", user_id, reference_doc=sale.document_number
+                )
+
                 logger.info("VOID Sale %s by User %s: %s", sale.document_number, user_id, reason)
 
                 log = AuditLog(
@@ -429,10 +437,14 @@ class TransactionService:
             return False
 
     @staticmethod
-    def _build_refund_receipt(session: Session, original_sale: Sale, refund_sale: Sale) -> list[dict] | None:
+    def _build_refund_receipt(
+        session: Session, original_sale: Sale, refund_sale: Sale, credit_reversed: Decimal = Decimal("0.00")
+    ) -> list[dict] | None:
         """Build the refund voucher with `ReceiptBuilder` (None if it can't be built).
 
         A receipt problem must never undo a refund, so errors are logged.
+        ``credit_reversed`` is the part taken off the customer's credit rather
+        than handed back (#715); the voucher shows the split when it's non-zero.
         """
         try:
             authorizer = session.get(User, refund_sale.user_id)
@@ -441,10 +453,52 @@ class TransactionService:
                 refund_amount=original_sale.total_amount,
                 authorized_by=authorizer.username if authorizer else "",
                 refund_timestamp=refund_sale.date,
+                credit_reversed=credit_reversed,
             )
         except Exception as e:
             logger.error("Could not build refund receipt for %s: %s", refund_sale.document_number, e)
             return None
+
+    @staticmethod
+    def refund_breakdown(sale_id: int) -> dict[str, Any] | None:
+        """Split a full refund of a sale into money handed back and credit given back (#715).
+
+        A refund of a credit sale takes the credit part off the customer's
+        debt (``CustomerCreditService.reverse_credit_sale_in_session``), so
+        only the rest is handed back -- the refund screens show both parts so
+        a credit sale isn't paid back twice. Uses the same rule and cap as the
+        reversal itself (``CustomerCreditService.credit_to_reverse``).
+
+        Args:
+            sale_id: ID of the original sale.
+
+        Returns:
+            ``{"total", "cash_back", "credit_reversed", "customer_name", "refundable"}``
+            (Decimals for money), or None if the sale doesn't exist. A sale that
+            is voided, already refunded, or itself a refund is not refundable and
+            reports 0.00 for both parts.
+        """
+        db = Database()
+        with db.get_session() as session:
+            sale = session.get(Sale, sale_id)
+            if not sale:
+                return None
+
+            customer = session.get(Customer, sale.customer_id) if sale.customer_id else None
+            total = Decimal(str(sale.total_amount or 0)).quantize(Precision.MONEY)
+            already_refunded = session.query(Sale.id).filter(Sale.refund_of_sale_id == sale_id).first() is not None
+            refundable = sale.status != "VOID" and sale.payment_method != "REFUND" and not already_refunded
+
+            zero = Decimal("0.00")
+            credit = CustomerCreditService.credit_to_reverse(session, sale) if refundable else zero
+            cash_back = max(total - credit, zero) if refundable else zero
+            return {
+                "total": total,
+                "cash_back": cash_back,
+                "credit_reversed": credit,
+                "customer_name": customer.name if customer else "",
+                "refundable": refundable,
+            }
 
     @staticmethod
     def process_refund(original_sale_id: int, refund_reason: str, user_id: int) -> bool:
@@ -549,7 +603,14 @@ class TransactionService:
                             session=session,
                         )
 
-                # 5. Create refund payment record
+                # 5. Give back any credit the original sale put on the
+                # customer's book, in this same transaction (#715).
+                credit_entry = CustomerCreditService.reverse_credit_sale_in_session(
+                    session, original_sale, "REFUND", user_id, reference_doc=refund_receipt_no
+                )
+                credit_reversed = -credit_entry.amount if credit_entry else Decimal("0.00")
+
+                # 6. Create refund payment record
                 refund_payment = SalePayment(
                     sale_id=refund_sale.id,
                     payment_method="REFUND",
@@ -575,9 +636,11 @@ class TransactionService:
                 )
                 session.add(log)
 
-                # 6. Build the refund voucher while items/products are loaded;
+                # 7. Build the refund voucher while items/products are loaded;
                 # it is queued only after the commit below succeeds.
-                refund_commands = TransactionService._build_refund_receipt(session, original_sale, refund_sale)
+                refund_commands = TransactionService._build_refund_receipt(
+                    session, original_sale, refund_sale, credit_reversed
+                )
 
             if refund_commands:
                 try:

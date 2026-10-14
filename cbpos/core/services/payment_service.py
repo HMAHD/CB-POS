@@ -1,7 +1,9 @@
 import logging
 
+from sqlalchemy import func, select, union
+
 from cbpos.core.database import Database
-from cbpos.core.models import PaymentMethod, SalePayment
+from cbpos.core.models import CustomerPayment, PaymentMethod, Sale, SalePayment, SupplierPayment
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +51,92 @@ class ShortcutConflictError(ValueError):
         super().__init__(msg)
 
 
+class PaymentMethodInUseError(ValueError):
+    """A payment method already used in past payments can't be renamed (#639).
+
+    Payments store the method *name* as text, so a rename would orphan the
+    old rows from the method: reports split, and the "has history" delete
+    protection would no longer see them.
+
+    Attributes:
+        name: The method's current (locked) name.
+    """
+
+    def __init__(self, name: str):
+        self.name = name
+        super().__init__(f"Payment method '{name}' is used in past payments and can't be renamed")
+
+
+# Every column that stores a payment method by name.
+_PAYMENT_NAME_COLUMNS = (
+    SalePayment.payment_method,
+    Sale.payment_method,
+    CustomerPayment.payment_method,
+    SupplierPayment.payment_method,
+)
+
+
 class PaymentService:
     """Service to manage Payment Methods."""
+
+    @staticmethod
+    def _used_names(session) -> set[str]:
+        """Casefolded names of every method that appears on a recorded payment.
+
+        Args:
+            session: Open DB session.
+
+        Returns:
+            Set of lower-cased method names found in payment history.
+        """
+        stmt = union(*(select(func.lower(column)).distinct() for column in _PAYMENT_NAME_COLUMNS))
+        return {name for name in session.scalars(stmt) if name}
+
+    @staticmethod
+    def _name_is_used(session, name: str) -> bool:
+        """Whether any recorded payment (sale, credit book, supplier) uses ``name``.
+
+        Matched case-insensitively, as checkout compares methods that way.
+
+        Args:
+            session: Open DB session.
+            name: Method name to look for.
+
+        Returns:
+            True if the name appears in payment history.
+        """
+        key = name.lower()
+        return any(
+            session.scalar(select(column).where(func.lower(column) == key).limit(1)) is not None
+            for column in _PAYMENT_NAME_COLUMNS
+        )
+
+    @staticmethod
+    def is_method_used(method_id: int) -> bool:
+        """Whether a payment method has payment history (so it can't be renamed or deleted).
+
+        Args:
+            method_id: ID of the method.
+
+        Returns:
+            True if past payments reference the method; False if it has none or doesn't exist.
+        """
+        db = Database()
+        with db.get_session() as session:
+            method = session.get(PaymentMethod, method_id)
+            return method is not None and PaymentService._name_is_used(session, method.name)
+
+    @staticmethod
+    def get_used_method_ids() -> set[int]:
+        """IDs of all payment methods that have payment history.
+
+        Returns:
+            Set of method IDs whose name appears on a recorded payment.
+        """
+        db = Database()
+        with db.get_session() as session:
+            used = PaymentService._used_names(session)
+            return {m.id for m in session.query(PaymentMethod).all() if m.name.lower() in used}
 
     @staticmethod
     def _check_shortcut(session, shortcut: str | None, exclude_id: int | None, check_reserved: bool) -> None:
@@ -187,6 +273,8 @@ class PaymentService:
 
         Raises:
             ValueError: If new name conflicts with another method.
+            PaymentMethodInUseError: If the name changes on a method that past
+                payments already use (#639).
             ShortcutConflictError: If the shortcut is reserved, or the method would
                 end up active sharing a key with another active method.
         """
@@ -211,6 +299,8 @@ class PaymentService:
                 )
                 if conflict:
                     raise ValueError(f"Payment method '{name}' already exists")
+                if name != method.name and PaymentService._name_is_used(session, method.name):
+                    raise PaymentMethodInUseError(method.name)
                 method.name = name
             if is_cash is not None:
                 method.is_cash = is_cash
@@ -238,10 +328,11 @@ class PaymentService:
 
     @staticmethod
     def delete_method(method_id: int) -> bool:
-        """Delete a payment method if it has no associated sales.
+        """Delete a payment method if it has no payment history.
 
-        Methods that have been used in completed sales are deactivated instead
-        of deleted to preserve referential integrity.
+        Methods that have been used (sales, credit book or supplier payments)
+        are deactivated instead of deleted to preserve history. A used method
+        can't be renamed (#639), so its name always still matches its history.
 
         Args:
             method_id: ID of the method to delete.
@@ -256,17 +347,12 @@ class PaymentService:
                 logger.warning("Payment method id=%d not found for deletion", method_id)
                 return False
 
-            # Check if method is referenced by any sale payments
-            has_sales = (
-                session.query(SalePayment).filter(SalePayment.payment_method == method.name).first()
-            ) is not None
-
-            if has_sales:
+            if PaymentService._name_is_used(session, method.name):
                 # Deactivate instead of deleting to preserve history
                 method.is_active = False
                 session.commit()
                 logger.info(
-                    "Deactivated payment method '%s' (id=%d) — has existing sales",
+                    "Deactivated payment method '%s' (id=%d) — has payment history",
                     method.name,
                     method.id,
                 )

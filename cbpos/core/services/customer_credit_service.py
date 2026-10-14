@@ -5,10 +5,14 @@ from typing import Any
 
 from sqlalchemy import func
 
+from cbpos.core.constants.status import PaymentMethodType, Precision
 from cbpos.core.database import Database
-from cbpos.core.models import AuditLog, Customer, CustomerLedgerEntry, CustomerPayment
+from cbpos.core.models import AuditLog, Customer, CustomerLedgerEntry, CustomerPayment, Sale, SalePayment
 
 logger = logging.getLogger(__name__)
+
+# Ledger entry types that give back credit a sale put on the book (#715).
+CREDIT_REVERSAL_TYPES: tuple[str, ...] = ("VOID", "REFUND")
 
 
 class CustomerCreditService:
@@ -173,6 +177,156 @@ class CustomerCreditService:
             user_id=user_id,
         )
         session.add(entry)
+
+    @staticmethod
+    def credit_to_reverse(session: Any, sale: Sale, refund_amount: Decimal | None = None) -> Decimal:
+        """How much credit a void/refund of ``sale`` gives back -- without writing anything.
+
+        The single source of the rule used by ``reverse_credit_sale_in_session``
+        and by the refund screens' cash/credit split (#715): the sale's credit
+        payments, less what earlier VOID/REFUND entries already gave back, and
+        for a partial refund only its proportional share (see
+        ``reverse_credit_sale_in_session``).
+
+        Args:
+            session: Open DB session.
+            sale: The original sale.
+            refund_amount: Positive amount refunded for a partial refund; None
+                for a full void/refund.
+
+        Returns:
+            Credit to give back (0.00 when the sale has no credit left on the book).
+        """
+        zero = Decimal("0.00")
+        if not sale.customer_id:
+            return zero
+
+        credit_portion = Decimal(
+            str(
+                session.query(func.coalesce(func.sum(SalePayment.amount), 0))
+                .filter(
+                    SalePayment.sale_id == sale.id,
+                    func.upper(SalePayment.payment_method) == PaymentMethodType.CREDIT.upper(),
+                )
+                .scalar()
+            )
+        )
+        if credit_portion <= 0:
+            return zero
+
+        already_reversed = -Decimal(
+            str(
+                session.query(func.coalesce(func.sum(CustomerLedgerEntry.amount), 0))
+                .filter(
+                    CustomerLedgerEntry.customer_id == sale.customer_id,
+                    CustomerLedgerEntry.reference_id == sale.id,
+                    CustomerLedgerEntry.entry_type.in_(CREDIT_REVERSAL_TYPES),
+                )
+                .scalar()
+            )
+        )
+        remaining = credit_portion - already_reversed
+
+        reversal = remaining
+        if refund_amount is not None:
+            sale_total = Decimal(str(sale.total_amount or 0))
+            if sale_total > 0:
+                share = (credit_portion * Decimal(str(refund_amount)) / sale_total).quantize(Precision.MONEY)
+                reversal = min(share, remaining)
+        reversal = reversal.quantize(Precision.MONEY)
+        if reversal <= 0 or session.get(Customer, sale.customer_id) is None:
+            return zero
+        return reversal
+
+    @staticmethod
+    def reverse_credit_sale_in_session(
+        session: Any,
+        sale: Sale,
+        entry_type: str,
+        user_id: int,
+        reference_doc: str,
+        refund_amount: Decimal | None = None,
+    ) -> CustomerLedgerEntry | None:
+        """Give back the credit a sale put on the customer's book (#715).
+
+        Called by TransactionService inside the void/refund transaction, so
+        the debt and its ledger row commit (or roll back) with the void or
+        refund itself. The row is an ordinary ``CustomerLedgerEntry`` with
+        ``synced = False``, so LAN Sync pushes it and the Main PC moves its
+        balance by the same amount, exactly as for a credit sale or payment.
+
+        Only the credit part of the sale is reversed: a sale paid 120 cash +
+        80 credit gives back 80 of debt; the cash part is not the credit
+        book's business.
+
+        Partial refunds: the credit given back is the refund's share of the
+        sale's credit, i.e. ``credit * refund_amount / sale total`` -- each
+        refunded rupee is split between credit and cash in the same ratio the
+        sale was paid. The total ever reversed for one sale is capped at what
+        the sale put on credit, so repeated partial refunds (or a void after a
+        refund) can never take back more than was owed.
+
+        The balance is not clamped at zero: if the customer already paid the
+        debt off, the shop now owes them, and a negative balance says so.
+        (The Main PC applies the same amount unclamped, so both agree.)
+
+        Args:
+            session: The open session of the void/refund.
+            sale: The original sale being voided or refunded.
+            entry_type: ``"VOID"`` or ``"REFUND"``.
+            user_id: User performing the void/refund.
+            reference_doc: Document number shown in the credit book -- the
+                voided sale's, or the refund receipt's.
+            refund_amount: Positive amount refunded, for a partial refund;
+                None reverses all the credit still outstanding on the sale.
+
+        Returns:
+            The new ledger entry, or None if nothing was owed on credit.
+        """
+        if entry_type not in CREDIT_REVERSAL_TYPES:
+            raise ValueError(f"Unsupported credit reversal type: {entry_type}")
+        session.flush()  # earlier reversals of this sale in the same session count too
+        reversal = CustomerCreditService.credit_to_reverse(session, sale, refund_amount)
+        if reversal <= 0:
+            return None
+
+        customer = session.get(Customer, sale.customer_id, with_for_update=True)
+        if not customer:
+            logger.warning("Credit reversal: customer %d of sale %s not found", sale.customer_id, sale.id)
+            return None
+
+        customer.current_debt = (customer.current_debt or Decimal("0.00")) - reversal
+        entry = CustomerLedgerEntry(
+            customer_id=customer.id,
+            entry_type=entry_type,
+            amount=-reversal,
+            balance_after=customer.current_debt,
+            reference_id=sale.id,
+            reference_doc=reference_doc,
+            note=f"{entry_type.title()} of {sale.document_number}",
+            user_id=user_id,
+        )
+        session.add(entry)
+        session.add(
+            AuditLog(
+                user_id=user_id,
+                action="CREDIT_REVERSAL",
+                event_type="CREDIT",
+                details=(
+                    f"{entry_type.title()} of credit sale {sale.document_number} gave back {reversal:.2f} "
+                    f"to {customer.name}. New balance: {customer.current_debt:.2f}."
+                ),
+            )
+        )
+        logger.info(
+            "Credit reversal (%s): Customer %d, Sale %s, Amount %s, New Debt %s",
+            entry_type,
+            customer.id,
+            sale.document_number,
+            reversal,
+            customer.current_debt,
+        )
+        return entry
 
     @staticmethod
     def record_adjustment(
@@ -349,12 +503,12 @@ class CustomerCreditService:
             if not customer:
                 return {}
 
-            # Total purchases (sum of positive ledger amounts)
+            # Total purchases on credit, net of voided/refunded credit sales
             total_purchases = (
                 session.query(func.coalesce(func.sum(CustomerLedgerEntry.amount), 0))
                 .filter(
                     CustomerLedgerEntry.customer_id == customer_id,
-                    CustomerLedgerEntry.entry_type == "SALE",
+                    CustomerLedgerEntry.entry_type.in_(("SALE", *CREDIT_REVERSAL_TYPES)),
                 )
                 .scalar()
             )

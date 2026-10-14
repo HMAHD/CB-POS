@@ -96,7 +96,13 @@ TERMINAL_REFS: dict[str, dict[str, str]] = {
 
 # Ledger reference_id is a plain integer whose target depends on the entry.
 LEDGER_REFS: dict[str, dict[str, str]] = {
-    "customer_ledger": {"SALE": DOCUMENT_ID_SPACE, "PAYMENT": "customer_payments"},
+    # VOID/REFUND rows point at the credit sale they give back (#715).
+    "customer_ledger": {
+        "SALE": DOCUMENT_ID_SPACE,
+        "VOID": DOCUMENT_ID_SPACE,
+        "REFUND": DOCUMENT_ID_SPACE,
+        "PAYMENT": "customer_payments",
+    },
     "supplier_ledger": {"PURCHASE": DOCUMENT_ID_SPACE, "PAYMENT": "supplier_payments"},
 }
 

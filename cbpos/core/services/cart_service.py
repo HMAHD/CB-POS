@@ -2,8 +2,11 @@ import logging
 from decimal import Decimal
 from typing import Any
 
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy import select
+
 from cbpos.core.constants.status import Precision
-from cbpos.core.models import Customer, Product
+from cbpos.core.models import Category, Customer, Product
 from cbpos.core.services.logging_service import LoggingService
 from cbpos.core.services.pricing_service import PricingService
 
@@ -64,6 +67,9 @@ class CartService:
             "is_manual_price": False,
             "total": Decimal("0.00"),
             "subtotal": Decimal("0.00"),  # Gross line total
+            # Captured now, not at totals time: by then nothing guarantees
+            # the detached product can still reach its category (#701).
+            "tax_exempt": self._resolve_tax_exempt(product),
         }
         self._recalculate_line(new_item)
         self.items.append(new_item)
@@ -229,15 +235,77 @@ class CartService:
             self._recalculate_line(item)
 
     def _is_item_tax_exempt(self, item: dict[str, Any]) -> bool:
-        """Check if a cart item is tax exempt via its category."""
-        try:
-            product = item.get("product")
-            if product and hasattr(product, "category") and product.category:
-                return bool(getattr(product.category, "tax_exempt", False))
-        except Exception:
-            # Guard against DetachedInstanceError if category wasn't eager-loaded
-            pass
-        return False
+        """Check if a cart item is tax exempt via its category.
+
+        Uses the flag captured when the line was added; a line built some
+        other way (e.g. by hand in a test) is resolved once and cached.
+        """
+        if "tax_exempt" not in item:
+            item["tax_exempt"] = self._resolve_tax_exempt(item.get("product"))
+        return item["tax_exempt"]
+
+    @staticmethod
+    def _resolve_tax_exempt(product: Any) -> bool:
+        """Return whether ``product``'s category is tax exempt (#701).
+
+        Cart products are detached: the session that loaded them has closed.
+        ``Product.category`` is joined-loaded by normal queries, but a product
+        that was flushed without a refresh, or whose attributes were expired,
+        reaches the cart without it, and touching ``product.category`` then
+        raises ``DetachedInstanceError``. That used to be swallowed and the
+        item silently taxed. Instead, read the already-loaded value when it is
+        there, and otherwise look the flag up in the database.
+
+        Args:
+            product: The cart line's product (ORM instance or a plain stand-in).
+
+        Returns:
+            True if the product's category is marked tax exempt.
+        """
+        if product is None:
+            return False
+
+        state = sa_inspect(product, raiseerr=False)
+        if state is None:
+            # Not an ORM instance: nothing can lazy-load, read it as-is.
+            category = getattr(product, "category", None)
+            return bool(getattr(category, "tax_exempt", False)) if category is not None else False
+
+        if "category" not in state.unloaded:
+            category = state.dict.get("category")
+            if category is None:
+                return False
+            if "tax_exempt" not in sa_inspect(category).unloaded:
+                return bool(category.tax_exempt)
+
+        return CartService._load_tax_exempt(state)
+
+    @staticmethod
+    def _load_tax_exempt(state: Any) -> bool:
+        """Read a product's category ``tax_exempt`` flag from the database.
+
+        Args:
+            state: SQLAlchemy ``InstanceState`` of the product.
+
+        Returns:
+            The category's flag, or False if the product has no category.
+        """
+        from cbpos.core.database import Database
+
+        if state.identity:
+            stmt = (
+                select(Category.tax_exempt)
+                .join(Product, Product.category_id == Category.id)
+                .where(Product.id == state.identity[0])
+            )
+        else:
+            category_id = state.dict.get("category_id")
+            if category_id is None:
+                return False
+            stmt = select(Category.tax_exempt).where(Category.id == category_id)
+
+        with Database().get_session() as session:
+            return bool(session.scalar(stmt))
 
     def get_totals(self) -> dict[str, Any]:
         """Return the cart totals."""

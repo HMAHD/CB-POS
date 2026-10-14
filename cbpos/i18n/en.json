@@ -317,6 +317,15 @@
     "unknown_product": "Unknown Product",
     "walk_in": "Walk-in"
   },
+  "refund_split": {
+    "confirm_question": "Refund {doc_number}? Total {amount}.",
+    "done": "Refund for {doc_number} is done.",
+    "cash_back": "Give back {amount} to the customer.",
+    "nothing_to_hand_back": "Nothing to hand back -- this sale was all on credit.",
+    "credit_will_reverse": "{amount} will be taken off {customer}'s credit.",
+    "credit_reversed": "{amount} taken off {customer}'s credit.",
+    "reason": "Reason: {reason}"
+  },
   "customer_selection": {
     "title": "Select Customer",
     "search_placeholder": "Search by Name or Phone...",
@@ -1238,7 +1247,7 @@
     "btn_deactivate": "Deactivate",
     "btn_activate": "Activate",
     "btn_delete": "Delete",
-    "hint": "Deactivate methods to hide from checkout. Cash method cannot be deleted.",
+    "hint": "Deactivate methods to hide them from checkout. Cash, and methods already used in sales, can't be deleted.",
     "name_placeholder": "e.g. Cash, Card, PayHere",
     "shortcut_placeholder": "Press a key, e.g. F5 (optional)",
     "shortcut_reserved": "{shortcut} is already used on the payment screen (Enter, F12 and Esc are taken). Please choose a different key.",
@@ -1252,7 +1261,12 @@
     "cannot_delete_cash": "Cash payment method cannot be deleted.",
     "delete_confirm_title": "Delete Payment Method",
     "delete_confirm_message": "Are you sure you want to delete \"{name}\"?\n\nTip: You can deactivate it instead to keep transaction history.",
-    "error_delete": "Failed to delete payment method: {error}"
+    "error_delete": "Failed to delete payment method: {error}",
+    "tag_has_history": "Has sales history",
+    "name_locked_hint": "Already used in past sales, so the name can't be changed. That keeps old sales and reports linked to it.",
+    "rename_blocked": "\"{name}\" is already used in past sales, so it can't be renamed. Add a new method instead, and deactivate this one if you no longer need it.",
+    "deactivated_instead_title": "Deactivated Instead",
+    "deactivated_instead_message": "\"{name}\" is used in past sales, so it was deactivated instead of deleted. Its sales history is kept."
   },
   "reports": {
     "sidebar_title": "REPORTS",
@@ -1883,7 +1897,9 @@
     "txn_count": "Transactions",
     "void_count": "Voids",
     "void_value": "Void Value",
-    "end_of_report": "*** END OF REPORT ***"
+    "end_of_report": "*** END OF REPORT ***",
+    "refund_given_back": "Given back: {amount}",
+    "refund_off_credit": "Off credit: {amount}"
   },
   "cash_movement": {
     "record_title_out": "Take money out of the drawer",

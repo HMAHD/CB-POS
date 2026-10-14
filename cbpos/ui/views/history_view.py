@@ -1,4 +1,5 @@
 import contextlib
+import html
 import logging
 from datetime import datetime
 
@@ -25,6 +26,7 @@ from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.ui.refund_messages import as_html, refund_done_text, refund_split_lines
 from cbpos.ui.resources.status_colors import DANGER, WARNING, status_color
 
 logger = logging.getLogger(__name__)
@@ -359,13 +361,19 @@ class HistoryView(QWidget):
         if not self.current_sale:
             return
 
-        # Confirmation dialog
+        # Confirmation -- what is handed back vs. taken off credit (#715)
+        doc_number = self.current_sale.document_number
+        breakdown = TransactionService.refund_breakdown(self.current_sale.id)
+        if breakdown is None:
+            QMessageBox.critical(self, _t("common.error"), _t("history.refund_failed"))
+            return
         reply = QMessageBox.question(
             self,
             _t("history.confirm_refund"),
             f"<b>{_t('history.refund_transaction_q')}</b><br><br>"
-            f"{_t('history.detail_receipt')}: {self.current_sale.document_number}<br>"
+            f"{_t('history.detail_receipt')}: {html.escape(doc_number)}<br>"
             f"{_t('common.amount')}: {format_currency(self.current_sale.total_amount)}<br><br>"
+            f"{as_html(chr(10).join(refund_split_lines(breakdown)))}<br><br>"
             f"<b style='color: #FF4136'>{_t('common.warning')}:</b> "
             f"{_t('history.refund_warning')}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -382,7 +390,7 @@ class HistoryView(QWidget):
                 success = TransactionService.process_refund(self.current_sale.id, "Customer Return", current_user.id)
 
                 if success:
-                    QMessageBox.information(self, _t("common.success"), _t("history.refund_success"))
+                    QMessageBox.information(self, _t("common.success"), refund_done_text(doc_number, breakdown))
                     self.apply_filter()  # Refresh list
                 else:
                     QMessageBox.critical(self, _t("common.error"), _t("history.refund_failed"))

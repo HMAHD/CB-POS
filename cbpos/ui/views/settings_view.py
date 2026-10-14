@@ -358,8 +358,9 @@ class SettingsView(QWidget):
     def save_all(self):
         """Validate and save all config pages, then apply the changes live.
 
-        Checks the ADMIN_SETTINGS permission, audits real tax-rate changes
-        via SettingsAuditService, persists settings, restarts the scheduler timer if the
+        Checks the ADMIN_SETTINGS permission, saves through SettingsAuditService
+        (which audits real tax-rate changes in the same save, or reports an
+        error and changes nothing), restarts the scheduler timer if the
         auto-report toggle changed, and if theme, language, font size or
         terminal/db mode changed, asks to restart now or apply them at the
         next launch (they are never applied live, #581).
@@ -397,12 +398,15 @@ class SettingsView(QWidget):
             if reply != QMessageBox.StandardButton.Yes:
                 return
 
-        # Only real tax changes are audited (Decimal compare, #613); the service knows who and where (#642)
+        # The service saves and writes the audit row together: a failed save logs nothing (#729)
         from cbpos.core.services.settings_audit_service import SettingsAuditService
 
-        SettingsAuditService.log_tax_changes(current_config, all_settings)
-
-        ConfigService.update_all(all_settings)
+        try:
+            SettingsAuditService.save_settings(all_settings)
+        except Exception:
+            logger.exception("Settings save failed")
+            QMessageBox.critical(self, _t("common.error"), _t("settings.save_failed"))
+            return
 
         # Start/stop the auto-report scheduler timer live (#320) -- it used
         # to only be read once at process launch, so toggling this

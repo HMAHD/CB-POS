@@ -179,6 +179,66 @@ class CustomerCreditService:
         session.add(entry)
 
     @staticmethod
+    def credit_to_reverse(session: Any, sale: Sale, refund_amount: Decimal | None = None) -> Decimal:
+        """How much credit a void/refund of ``sale`` gives back -- without writing anything.
+
+        The single source of the rule used by ``reverse_credit_sale_in_session``
+        and by the refund screens' cash/credit split (#715): the sale's credit
+        payments, less what earlier VOID/REFUND entries already gave back, and
+        for a partial refund only its proportional share (see
+        ``reverse_credit_sale_in_session``).
+
+        Args:
+            session: Open DB session.
+            sale: The original sale.
+            refund_amount: Positive amount refunded for a partial refund; None
+                for a full void/refund.
+
+        Returns:
+            Credit to give back (0.00 when the sale has no credit left on the book).
+        """
+        zero = Decimal("0.00")
+        if not sale.customer_id:
+            return zero
+
+        credit_portion = Decimal(
+            str(
+                session.query(func.coalesce(func.sum(SalePayment.amount), 0))
+                .filter(
+                    SalePayment.sale_id == sale.id,
+                    func.upper(SalePayment.payment_method) == PaymentMethodType.CREDIT.upper(),
+                )
+                .scalar()
+            )
+        )
+        if credit_portion <= 0:
+            return zero
+
+        already_reversed = -Decimal(
+            str(
+                session.query(func.coalesce(func.sum(CustomerLedgerEntry.amount), 0))
+                .filter(
+                    CustomerLedgerEntry.customer_id == sale.customer_id,
+                    CustomerLedgerEntry.reference_id == sale.id,
+                    CustomerLedgerEntry.entry_type.in_(CREDIT_REVERSAL_TYPES),
+                )
+                .scalar()
+            )
+        )
+        remaining = credit_portion - already_reversed
+
+        reversal = remaining
+        if refund_amount is not None:
+            sale_total = Decimal(str(sale.total_amount or 0))
+            if sale_total > 0:
+                share = (credit_portion * Decimal(str(refund_amount)) / sale_total).quantize(Precision.MONEY)
+                reversal = min(share, remaining)
+        reversal = reversal.quantize(Precision.MONEY)
+        if reversal <= 0 or session.get(Customer, sale.customer_id) is None:
+            return zero
+        return reversal
+
+    @staticmethod
     def reverse_credit_sale_in_session(
         session: Any,
         sale: Sale,
@@ -225,43 +285,8 @@ class CustomerCreditService:
         """
         if entry_type not in CREDIT_REVERSAL_TYPES:
             raise ValueError(f"Unsupported credit reversal type: {entry_type}")
-        if not sale.customer_id:
-            return None
-
-        credit_portion = Decimal(
-            str(
-                session.query(func.coalesce(func.sum(SalePayment.amount), 0))
-                .filter(
-                    SalePayment.sale_id == sale.id,
-                    func.upper(SalePayment.payment_method) == PaymentMethodType.CREDIT.upper(),
-                )
-                .scalar()
-            )
-        )
-        if credit_portion <= 0:
-            return None
-
         session.flush()  # earlier reversals of this sale in the same session count too
-        already_reversed = -Decimal(
-            str(
-                session.query(func.coalesce(func.sum(CustomerLedgerEntry.amount), 0))
-                .filter(
-                    CustomerLedgerEntry.customer_id == sale.customer_id,
-                    CustomerLedgerEntry.reference_id == sale.id,
-                    CustomerLedgerEntry.entry_type.in_(CREDIT_REVERSAL_TYPES),
-                )
-                .scalar()
-            )
-        )
-        remaining = credit_portion - already_reversed
-
-        reversal = remaining
-        if refund_amount is not None:
-            sale_total = Decimal(str(sale.total_amount or 0))
-            if sale_total > 0:
-                share = (credit_portion * Decimal(str(refund_amount)) / sale_total).quantize(Precision.MONEY)
-                reversal = min(share, remaining)
-        reversal = reversal.quantize(Precision.MONEY)
+        reversal = CustomerCreditService.credit_to_reverse(session, sale, refund_amount)
         if reversal <= 0:
             return None
 

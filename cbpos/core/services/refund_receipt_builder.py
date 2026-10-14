@@ -20,6 +20,7 @@ class RefundReceiptBuilder(BaseReceiptBuilder):
         authorized_by: str = "",
         config_override: dict[str, Any] | None = None,
         refund_timestamp: datetime | None = None,
+        credit_reversed: Decimal | None = None,
     ) -> list[dict[str, Any]]:
         """
         Generates a REFUND receipt with distinct visual treatment.
@@ -30,6 +31,9 @@ class RefundReceiptBuilder(BaseReceiptBuilder):
             authorized_by: Username who authorized the refund.
             config_override: Optional config overrides.
             refund_timestamp: Timestamp for the refund (defaults to now).
+            credit_reversed: Part of the refund taken off the customer's credit
+                instead of handed back (#715). When non-zero the voucher shows
+                both parts, so a credit sale isn't paid back in cash too.
         """
         cls._resolve_receipt_lang(config_override)
         commands: list[dict[str, Any]] = []
@@ -76,6 +80,22 @@ class RefundReceiptBuilder(BaseReceiptBuilder):
                 "align": "right",
             }
         )
+        if credit_reversed and credit_reversed > 0:
+            given_back = max(Decimal(str(amount)) - credit_reversed, Decimal("0.00"))
+            commands.append(
+                {
+                    "type": "text",
+                    "val": cls._rt("refund_given_back", amount=format_currency(given_back)),
+                    "align": "right",
+                }
+            )
+            commands.append(
+                {
+                    "type": "text",
+                    "val": cls._rt("refund_off_credit", amount=format_currency(credit_reversed)),
+                    "align": "right",
+                }
+            )
 
         # Tax breakdown on refund
         from cbpos.core.services.tax_service import TaxService

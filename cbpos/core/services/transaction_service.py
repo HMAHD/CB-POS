@@ -142,6 +142,73 @@ class TransactionService:
                     )
 
     @staticmethod
+    def _charge_credit(
+        session: Session, payments: list[dict[str, Any]], customer_id: int | None
+    ) -> tuple[Decimal, Decimal] | None:
+        """Put the CREDIT part of the payments on the customer's book (debt only, no ledger row yet).
+
+        Locks the customer row and checks the credit limit before each charge.
+        The ledger row needs the sale's id, so it is written afterwards by
+        ``_record_credit_charge``.
+
+        Args:
+            session: The open session the sale is being written in.
+            payments: ``[{"method", "amount"}, ...]`` as passed to ``process_sale``.
+            customer_id: The sale's customer, if any.
+
+        Returns:
+            ``(amount, balance_after)`` of the (last) CREDIT payment, or None if
+            nothing was paid on credit.
+
+        Raises:
+            ValueError: If there is no customer, it doesn't exist, or the
+                charge would go over the credit limit.
+        """
+        from cbpos.core.constants.status import PaymentMethodType
+
+        charge = None
+        for p in payments:
+            if p["method"].upper() != PaymentMethodType.CREDIT.upper():
+                continue
+
+            if not customer_id:
+                raise ValueError("Customer required for Credit sale.")
+
+            customer = session.get(Customer, customer_id, with_for_update=True)
+            if not customer:
+                raise ValueError("Invalid Customer.")
+
+            if customer.current_debt + p["amount"] > customer.credit_limit:
+                raise ValueError(f"Credit limit exceeded for {customer.name}.")
+
+            customer.current_debt += p["amount"]
+            charge = (p["amount"], customer.current_debt)
+        return charge
+
+    @staticmethod
+    def _record_credit_charge(session: Session, sale: Sale, charge: tuple[Decimal, Decimal] | None) -> None:
+        """Write the customer ledger row for a ``_charge_credit`` charge, once ``sale`` has its id and number.
+
+        Args:
+            session: The open session the sale is being written in.
+            sale: The flushed sale (id, document_number, customer and cashier set).
+            charge: ``_charge_credit``'s ``(amount, balance_after)``, or None.
+        """
+        if not sale.customer_id or charge is None:
+            return
+
+        amount, balance_after = charge
+        CustomerCreditService.record_credit_sale_in_session(
+            session=session,
+            customer_id=sale.customer_id,
+            sale_id=sale.id,
+            amount=amount,
+            doc_number=sale.document_number,
+            balance_after=balance_after,
+            user_id=sale.user_id,
+        )
+
+    @staticmethod
     def _move_stock(
         session: Session,
         composite_map: dict[int, list[CompositeItem]],
@@ -276,27 +343,8 @@ class TransactionService:
                 raise ValueError("No user logged in.")
             cashier_id = current_user.id
 
-            # Handle Credit Logic
-            from cbpos.core.constants.status import PaymentMethodType
-
-            credit_amount_for_ledger = None
-            credit_customer_balance = None
-            for p in payments:
-                if p["method"].upper() == PaymentMethodType.CREDIT.upper():
-                    if not customer_id:
-                        raise ValueError("Customer required for Credit sale.")
-
-                    customer = session.get(Customer, customer_id, with_for_update=True)
-                    if not customer:
-                        raise ValueError("Invalid Customer.")
-
-                    if customer.current_debt + p["amount"] > customer.credit_limit:
-                        raise ValueError(f"Credit limit exceeded for {customer.name}.")
-
-                    customer.current_debt += p["amount"]
-                    # Ledger entry will be created after sale is flushed (need sale.id)
-                    credit_amount_for_ledger = p["amount"]
-                    credit_customer_balance = customer.current_debt
+            # Ledger entry is written after the sale is flushed (needs sale.id)
+            credit_charge = TransactionService._charge_credit(session, payments, customer_id)
 
             # 2. Create Sale Header — use tax values from cart totals (single source of truth)
             exempt_amount = totals.get("exempt_amount", Decimal("0"))
@@ -324,19 +372,7 @@ class TransactionService:
             # Attach exempt amount for receipt builder (transient, not persisted)
             sale._exempt_amount = exempt_amount
             TransactionService._insert_numbered(session, sale, "SALE")
-            receipt_no = sale.document_number
-
-            # Record credit sale in ledger (if applicable)
-            if customer_id and credit_amount_for_ledger is not None:
-                CustomerCreditService.record_credit_sale_in_session(
-                    session=session,
-                    customer_id=customer_id,
-                    sale_id=sale.id,
-                    amount=credit_amount_for_ledger,
-                    doc_number=receipt_no,
-                    balance_after=credit_customer_balance,
-                    user_id=cashier_id,
-                )
+            TransactionService._record_credit_charge(session, sale, credit_charge)
 
             # 3. Create Sale Payments
             for p in payments:

@@ -397,46 +397,45 @@ class TransactionService:
 
     @staticmethod
     def _execute_sale(cart_service: CartService, payments: list, customer_id: int = None) -> Sale:
-        """Internal method that executes the sale transaction."""
+        """Write the sale in one transaction; see ``process_sale`` for the interface.
+
+        Steps, in order: payment check, stock check, credit charge, sale
+        header (numbered), credit ledger row, payments, lines + stock out,
+        then load what the receipt needs. Any ValueError rolls everything back.
+        """
         db = Database()
         with db.get_session() as session:
-            # 1. Prepare Data
+            # 1. Validate payment, stock and cashier
             totals = cart_service.get_totals()
             total_amount = totals["final_total"]
-
-            # Validate Payments
             total_paid = sum(p["amount"] for p in payments)
             if total_paid < total_amount:
                 raise ValueError(f"Insufficient payment. Paid: {total_paid}, Due: {total_amount}")
 
             # Pre-fetch composite items for all cart products (avoids N+1 queries later)
             cart_items = cart_service.items
-            parent_ids = [item["product"].id for item in cart_items]
-            composite_map = TransactionService._fetch_composite_map(session, parent_ids)
-
+            composite_map = TransactionService._fetch_composite_map(
+                session, [item["product"].id for item in cart_items]
+            )
             TransactionService._check_stock(session, cart_items, composite_map)
 
-            # Get Current User
             current_user = AuthService.get_current_user()
             if not current_user:
                 raise ValueError("No user logged in.")
             cashier_id = current_user.id
 
-            # Ledger entry is written after the sale is flushed (needs sale.id)
+            # 2. Charge credit (ledger row follows once the sale has an id)
             credit_charge = TransactionService._charge_credit(session, payments, customer_id)
 
-            # 2. Write the sale header
+            # 3. Write the numbered sale header, then its credit ledger row
             sale = TransactionService._new_sale(totals, payments, cashier_id, customer_id)
             TransactionService._insert_numbered(session, sale, "SALE")
             TransactionService._record_credit_charge(session, sale, credit_charge)
 
-            # 3. Create Sale Payments
+            # 4. Payments, then lines + stock out
             for p in payments:
-                payment = SalePayment(sale_id=sale.id, payment_method=p["method"], amount=p["amount"])
-                session.add(payment)
-
-            # 4. Process Items & Deduct Stock
-            TransactionService._write_sale_lines(session, sale, cart_service.items, composite_map)
+                session.add(SalePayment(sale_id=sale.id, payment_method=p["method"], amount=p["amount"]))
+            TransactionService._write_sale_lines(session, sale, cart_items, composite_map)
 
             # 5. Eager-load relationships before session closes (prevents DetachedInstanceError)
             TransactionService._load_receipt_relations(sale)

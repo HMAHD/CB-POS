@@ -751,7 +751,7 @@
     "btn_load_po": "லோட் செய்",
     "discrepancy_title": "ஆர்டருடன் பொருந்தவில்லை",
     "discrepancy_confirm": "இந்த GRN ஆர்டரோட பொருந்தல:\n\n{details}\n\nஇருந்தும் GRN-ஐ கமிட் பண்ணவா?",
-    "discrepancy_line": "{product}: ஆர்டர் {outstanding}, பெறுவது {received}",
+    "discrepancy_line": "{product}: இன்னும் {outstanding} வர வேண்டும், இப்போ பெறுவது {received}",
     "discrepancy_line_not_on_order": "{product}: இந்த ஆர்டரில் இல்லை, பெறுவது {received}",
     "discrepancy_line_not_received": "{product}: வரவில்லை (இன்னும் {outstanding} வர வேண்டும்)",
     "from": "இருந்து:",

@@ -751,7 +751,7 @@
     "btn_load_po": "පූරණය කරන්න",
     "discrepancy_title": "ඇණවුමට ගැලපෙන්නේ නැහැ",
     "discrepancy_confirm": "මේ GRN එක ඇණවුමට ගැලපෙන්නේ නැහැ:\n\n{details}\n\nඒත් GRN එක කමිට් කරන්නද?",
-    "discrepancy_line": "{product}: ඇණවුම් කළේ {outstanding}, ලැබෙන්නේ {received}",
+    "discrepancy_line": "{product}: තව {outstanding} ලැබෙන්න තියෙනවා, දැන් ලැබෙන්නේ {received}",
     "discrepancy_line_not_on_order": "{product}: මේ ඇණවුමේ නැහැ, ලැබෙන්නේ {received}",
     "discrepancy_line_not_received": "{product}: ලැබිලා නැහැ (තව {outstanding} ලැබෙන්න තියෙනවා)",
     "from": "සිට:",

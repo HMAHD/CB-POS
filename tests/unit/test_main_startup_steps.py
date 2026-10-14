@@ -132,6 +132,17 @@ def test_misconfigured_lan_sync_starts_nothing_so_says_nothing(run_main, setting
     assert seen == _COMMON_HEAD + _COMMON_TAIL
 
 
+def test_startup_installs_the_receipt_printer_and_drawer(run_main, peripherals):
+    """#733: forgetting this install would silently stop every receipt and drawer kick."""
+    from cbpos.core.services.transaction_service import TransactionService
+    from cbpos.infrastructure.hardware.print_worker_peripherals import PrintWorkerPeripherals
+
+    run_main({"terminal_mode": "standalone"}, migration_pending=False)
+
+    installed = TransactionService.use_peripherals(peripherals)
+    assert isinstance(installed, PrintWorkerPeripherals)
+
+
 def test_an_already_loaded_stage_is_not_announced(monkeypatch):
     """A stage some earlier step already imported is skipped, never named."""
     seen: list[str] = []

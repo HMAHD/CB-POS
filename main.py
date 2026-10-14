@@ -484,6 +484,14 @@ def main():
     # Launch main window
     main_window_cls = _load_main_window_class(set_startup_status)
 
+    # Sales and refunds reach the receipt printer and cash drawer only
+    # through this adapter (#733). Installed after the printing stage above
+    # has loaded, so the splash still announces it.
+    from cbpos.core.services.transaction_service import TransactionService
+    from cbpos.infrastructure.hardware.print_worker_peripherals import PrintWorkerPeripherals
+
+    TransactionService.use_peripherals(PrintWorkerPeripherals())
+
     set_startup_status("startup.preparing_counter")
     window = main_window_cls()
     _front["window"] = window

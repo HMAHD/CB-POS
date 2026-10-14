@@ -23,7 +23,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from cbpos.core.services.payment_service import PaymentService, ShortcutConflictError
+from cbpos.core.services.payment_service import PaymentMethodInUseError, PaymentService, ShortcutConflictError
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 
@@ -42,10 +42,18 @@ def _shortcut_error_text(err: ShortcutConflictError) -> str:
 class PaymentMethodDialog(QDialog):
     """Dialog to add or edit a payment method."""
 
-    def __init__(self, method=None, parent=None):
-        """Build the form, pre-filled with `method`'s values when editing."""
+    def __init__(self, method=None, parent=None, name_locked: bool = False):
+        """Build the form, pre-filled with `method`'s values when editing.
+
+        Args:
+            method: The method being edited, or None to add a new one.
+            parent: Parent widget.
+            name_locked: True when the method has payment history, so its
+                name can't change (#639).
+        """
         super().__init__(parent)
         self.method = method
+        self._name_locked = bool(method) and name_locked
         self.setMinimumWidth(400)
         self.setObjectName("PaymentMethodDialog")
         self._init_ui()
@@ -65,6 +73,15 @@ class PaymentMethodDialog(QDialog):
         self.txt_name.setMaxLength(50)
         self._lbl_name = QLabel()
         self._form.addRow(self._lbl_name, self.txt_name)
+
+        # Payments store the method by name, so a used method's name is
+        # read-only -- renaming it would cut it off from its history (#639).
+        self.txt_name.setReadOnly(self._name_locked)
+        self.lbl_name_locked = QLabel()
+        self.lbl_name_locked.setProperty("class", "muted")
+        self.lbl_name_locked.setWordWrap(True)
+        self.lbl_name_locked.setVisible(self._name_locked)
+        self._form.addRow("", self.lbl_name_locked)
 
         # Captures a real key press instead of free text, so typos can't be
         # stored and the value is always in the format QShortcut parses (#640).
@@ -113,6 +130,7 @@ class PaymentMethodDialog(QDialog):
         else:
             self.setWindowTitle(_t("payment_methods.dialog_add_title"))
         self._lbl_name.setText(_t("payment_methods.form_name"))
+        self.lbl_name_locked.setText(_t("payment_methods.name_locked_hint"))
         self.txt_name.setPlaceholderText(_t("payment_methods.name_placeholder"))
         self._lbl_shortcut.setText(_t("payment_methods.form_shortcut"))
         line_edit = self.txt_shortcut.findChild(QLineEdit)
@@ -173,10 +191,19 @@ class PaymentMethodDialog(QDialog):
 class _MethodCard(QFrame):
     """A single payment method row card."""
 
-    def __init__(self, method, parent_view: "PaymentMethodsView", parent=None):
-        """Build the card showing the method's name, tags, status, and action buttons."""
+    def __init__(self, method, parent_view: "PaymentMethodsView", parent=None, has_history: bool = False):
+        """Build the card showing the method's name, tags, status, and action buttons.
+
+        Args:
+            method: The payment method shown.
+            parent_view: View that handles the card's actions.
+            parent: Parent widget.
+            has_history: True when past payments use the method, so it can't
+                be deleted (only deactivated) or renamed (#639).
+        """
         super().__init__(parent)
         self.method = method
+        self.has_history = has_history
         self._parent_view = parent_view
         self.setObjectName("PMCard")
         self.setFrameShape(QFrame.Shape.NoFrame)
@@ -224,6 +251,8 @@ class _MethodCard(QFrame):
             tags.append(_t("payment_methods.tag_opens_drawer"))
         if self.method.shortcut:
             tags.append(self.method.shortcut)
+        if self.has_history:
+            tags.append(_t("payment_methods.tag_has_history"))
 
         if tags:
             tag_label = QLabel(" \u00b7 ".join(tags))
@@ -240,7 +269,7 @@ class _MethodCard(QFrame):
         btn_edit.setObjectName("PMCardBtn")
         btn_edit.setProperty("class", "secondary")
         btn_edit.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        btn_edit.clicked.connect(lambda: self._parent_view._edit_method(self.method))
+        btn_edit.clicked.connect(lambda: self._parent_view._edit_method(self.method, self.has_history))
         btn_layout.addWidget(btn_edit)
 
         if self.method.is_active:
@@ -256,16 +285,17 @@ class _MethodCard(QFrame):
         btn_toggle.clicked.connect(lambda: self._parent_view._toggle_method(self.method))
         btn_layout.addWidget(btn_toggle)
 
-        # Cash can't be deleted, but the button still gets added (just
-        # hidden, with its layout slot retained) rather than omitted --
-        # otherwise Cash's narrower 2-button group shifts left, landing
-        # its Edit button out of line with every other row's Edit button.
+        # Cash can't be deleted, nor can a method with payment history
+        # (#639: Deactivate is the only way out for those). The button still
+        # gets added (just hidden, with its layout slot retained) rather than
+        # omitted -- otherwise the narrower 2-button group shifts left,
+        # landing its Edit button out of line with every other row's.
         self.btn_delete = QPushButton(_t("payment_methods.btn_delete"))
         self.btn_delete.setObjectName("PMCardBtn")
         self.btn_delete.setProperty("class", "danger")
         self.btn_delete.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.btn_delete.clicked.connect(lambda: self._parent_view._delete_method(self.method))
-        if self.method.is_cash:
+        if self.method.is_cash or self.has_history:
             self.btn_delete.setVisible(False)
             size_policy = self.btn_delete.sizePolicy()
             size_policy.setRetainSizeWhenHidden(True)
@@ -349,6 +379,7 @@ class PaymentMethodsView(QWidget):
     def _load_methods(self) -> None:
         """Rebuild the card list from database."""
         self._methods = PaymentService.get_all_methods()
+        used_ids = PaymentService.get_used_method_ids()
 
         # Clear existing cards
         while self._list_layout.count() > 1:
@@ -358,7 +389,7 @@ class PaymentMethodsView(QWidget):
 
         # Add cards
         for i, method in enumerate(self._methods):
-            card = _MethodCard(method, parent_view=self)
+            card = _MethodCard(method, parent_view=self, has_history=method.id in used_ids)
             self._list_layout.insertWidget(i, card)
 
     def _add_method(self) -> None:
@@ -380,8 +411,8 @@ class PaymentMethodsView(QWidget):
                     _t("payment_methods.error_create", error=str(e)),
                 )
 
-    def _edit_method(self, method) -> None:
-        dialog = PaymentMethodDialog(method=method, parent=self)
+    def _edit_method(self, method, has_history: bool = False) -> None:
+        dialog = PaymentMethodDialog(method=method, parent=self, name_locked=has_history)
         if dialog.exec():
             data = dialog.result_data
             try:
@@ -391,6 +422,13 @@ class PaymentMethodsView(QWidget):
                     is_cash=data["is_cash"],
                     open_drawer=data["open_drawer"],
                     shortcut=data["shortcut"],
+                )
+                self._load_methods()
+            except PaymentMethodInUseError as e:
+                QMessageBox.warning(
+                    self,
+                    _t("payment_methods.validation_title"),
+                    _t("payment_methods.rename_blocked", name=e.name),
                 )
                 self._load_methods()
             except Exception as e:
@@ -434,8 +472,17 @@ class PaymentMethodsView(QWidget):
         )
         if reply == QMessageBox.StandardButton.Yes:
             try:
+                # The card hides Delete for a used method, but history may
+                # have arrived since the list loaded (another till, LAN Sync).
+                kept_for_history = PaymentService.is_method_used(method.id)
                 PaymentService.delete_method(method.id)
                 self._load_methods()
+                if kept_for_history:
+                    QMessageBox.information(
+                        self,
+                        _t("payment_methods.deactivated_instead_title"),
+                        _t("payment_methods.deactivated_instead_message", name=method.name),
+                    )
             except Exception as e:
                 QMessageBox.critical(
                     self,

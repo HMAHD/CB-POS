@@ -1238,7 +1238,7 @@
     "btn_deactivate": "Deactivate",
     "btn_activate": "Activate",
     "btn_delete": "Delete",
-    "hint": "Deactivate methods to hide from checkout. Cash method cannot be deleted.",
+    "hint": "Deactivate methods to hide them from checkout. Cash, and methods already used in sales, can't be deleted.",
     "name_placeholder": "e.g. Cash, Card, PayHere",
     "shortcut_placeholder": "Press a key, e.g. F5 (optional)",
     "shortcut_reserved": "{shortcut} is already used on the payment screen (Enter, F12 and Esc are taken). Please choose a different key.",
@@ -1252,7 +1252,12 @@
     "cannot_delete_cash": "Cash payment method cannot be deleted.",
     "delete_confirm_title": "Delete Payment Method",
     "delete_confirm_message": "Are you sure you want to delete \"{name}\"?\n\nTip: You can deactivate it instead to keep transaction history.",
-    "error_delete": "Failed to delete payment method: {error}"
+    "error_delete": "Failed to delete payment method: {error}",
+    "tag_has_history": "Has sales history",
+    "name_locked_hint": "Already used in past sales, so the name can't be changed. That keeps old sales and reports linked to it.",
+    "rename_blocked": "\"{name}\" is already used in past sales, so it can't be renamed. Add a new method instead, and deactivate this one if you no longer need it.",
+    "deactivated_instead_title": "Deactivated Instead",
+    "deactivated_instead_message": "\"{name}\" is used in past sales, so it was deactivated instead of deleted. Its sales history is kept."
   },
   "reports": {
     "sidebar_title": "REPORTS",

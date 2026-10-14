@@ -5,7 +5,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
 from PyQt6.QtCore import QAbstractTableModel, QDate, QEvent, QModelIndex, QRegularExpression, Qt, pyqtSignal
-from PyQt6.QtGui import QRegularExpressionValidator
+from PyQt6.QtGui import QKeySequence, QRegularExpressionValidator, QShortcut
 from PyQt6.QtWidgets import (
     QAbstractItemDelegate,
     QAbstractItemView,
@@ -619,10 +619,43 @@ class StockTakeView(QWidget):
         self.history_table.setItemDelegateForColumn(5, StatusPillDelegate(self.history_table))  # (#560)
         self.history_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.history_table.customContextMenuRequested.connect(self.show_history_context_menu)
+        self.history_table.itemSelectionChanged.connect(self._update_history_actions)
+        # Enter opens the selected count. A shortcut, so it works whatever the
+        # table does with Enter itself; widget context keeps Enter in the
+        # filters (date edits, status combo) out of it (#594).
+        for key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            shortcut = QShortcut(QKeySequence(key), self.history_table)
+            shortcut.setContext(Qt.ShortcutContext.WidgetShortcut)
+            shortcut.activated.connect(self.open_selected_history)
         layout.addWidget(self.history_table, 1)
+
+        # Row actions, visible instead of hidden in a double-click and a
+        # right-click menu (#594). Enabled by selection and the row's status.
+        actions_row = QHBoxLayout()
+        actions_row.addStretch()
+        self.btn_hist_open = QPushButton(_t("stock_take.hist_btn_open"))
+        self.btn_hist_open.setProperty("class", "secondary")
+        self.btn_hist_open.setAutoDefault(False)
+        self.btn_hist_open.clicked.connect(self.open_selected_history)
+        actions_row.addWidget(self.btn_hist_open)
+        self.btn_hist_resume = QPushButton(_t("stock_take.hist_btn_resume"))
+        self.btn_hist_resume.setProperty("class", "primary")
+        self.btn_hist_resume.setAutoDefault(False)
+        self.btn_hist_resume.clicked.connect(self.resume_selected_history)
+        actions_row.addWidget(self.btn_hist_resume)
+        self.btn_hist_discard = QPushButton(_t("stock_take.hist_btn_discard"))
+        self.btn_hist_discard.setProperty("class", "danger")
+        self.btn_hist_discard.setAutoDefault(False)
+        self.btn_hist_discard.clicked.connect(self.discard_selected_history)
+        actions_row.addWidget(self.btn_hist_discard)
+        layout.addLayout(actions_row)
 
         # Store IDs for double-click lookup
         self._history_ids = []
+        self._update_history_actions()
+
+        # Load the list when the tab is shown, not only on Refresh (#594).
+        self.tabs.currentChanged.connect(self._on_tab_changed)
 
     def retranslate_ui(self) -> None:
         """Update all widget text from the translation system."""
@@ -675,6 +708,9 @@ class StockTakeView(QWidget):
         self.hist_from_label.setText(_t("common.from"))
         self.hist_to_label.setText(_t("common.to"))
         self.hist_refresh_btn.setText(_t("common.refresh"))
+        self.btn_hist_open.setText(_t("stock_take.hist_btn_open"))
+        self.btn_hist_resume.setText(_t("stock_take.hist_btn_resume"))
+        self.btn_hist_discard.setText(_t("stock_take.hist_btn_discard"))
 
         self.history_table.setHorizontalHeaderLabels(
             [
@@ -974,6 +1010,21 @@ class StockTakeView(QWidget):
 
     # ========== History Methods ==========
 
+    def _is_history_shown(self) -> bool:
+        """True when the History tab is the current tab."""
+        return self.tabs.currentWidget() is self.history_tab
+
+    def _on_tab_changed(self, _index: int) -> None:
+        """Reload the history list whenever its tab comes into view (#594)."""
+        if self._is_history_shown():
+            self.refresh_history()
+
+    def showEvent(self, event) -> None:
+        """Reload the history list when the view reopens on the History tab."""
+        super().showEvent(event)
+        if self._is_history_shown():
+            self.refresh_history()
+
     def refresh_history(self) -> None:
         """Refresh the stock count history table."""
         status = self.hist_status_combo.currentData()
@@ -987,7 +1038,9 @@ class StockTakeView(QWidget):
         counts = StockCountService.get_all_stock_counts(status=status, date_from=date_from, date_to=date_to)
 
         self.history_table.setRowCount(0)
+        self.history_table.clearSpans()
         self._history_ids = []
+        self._update_history_actions()
 
         if not counts:
             self.history_table.setRowCount(1)
@@ -1021,40 +1074,81 @@ class StockTakeView(QWidget):
             item.setData(Qt.ItemDataRole.UserRole, sc.status)
             self.history_table.setItem(row, 5, set_status_pill(item, format_document_status(sc.status), meaning))
 
+    def _selected_history_row(self) -> int | None:
+        """Row of the selected history count, or None (no selection / placeholder row)."""
+        rows = self.history_table.selectionModel().selectedRows()
+        if not rows:
+            return None
+        row = rows[0].row()
+        return row if 0 <= row < len(self._history_ids) else None
+
+    def _history_row_status(self, row: int) -> str | None:
+        """Status code of a history row, read from its status cell."""
+        status_item = self.history_table.item(row, 5)
+        if not status_item:
+            return None
+        return status_item.data(Qt.ItemDataRole.UserRole) or status_item.text()
+
+    def _update_history_actions(self) -> None:
+        """Enable Open for any selected count; Resume and Discard only for a DRAFT."""
+        row = self._selected_history_row()
+        is_draft = row is not None and self._history_row_status(row) == DocumentStatus.DRAFT
+        self.btn_hist_open.setEnabled(row is not None)
+        self.btn_hist_resume.setEnabled(is_draft)
+        self.btn_hist_discard.setEnabled(is_draft)
+
+    def open_history_report(self, stock_count_id: int) -> None:
+        """Show the read-only report for a stock count."""
+        dialog = StockCountReportDialog(stock_count_id, self)
+        dialog.exec()
+
+    def open_selected_history(self) -> None:
+        """Open the report for the selected history row (Open button / Enter)."""
+        row = self._selected_history_row()
+        if row is not None:
+            self.open_history_report(self._history_ids[row])
+
+    def resume_selected_history(self) -> None:
+        """Resume the selected DRAFT count in New Count."""
+        row = self._selected_history_row()
+        if row is not None and self._history_row_status(row) == DocumentStatus.DRAFT:
+            self.resume_draft_count(self._history_ids[row])
+
+    def discard_selected_history(self) -> None:
+        """Discard (void) the selected DRAFT count, after confirmation."""
+        row = self._selected_history_row()
+        if row is not None and self._history_row_status(row) == DocumentStatus.DRAFT:
+            self.discard_draft_count(self._history_ids[row])
+
     def on_history_double_click(self, index: QModelIndex) -> None:
         """Open stock count report dialog on double-click."""
         row = index.row()
         if 0 <= row < len(self._history_ids):
-            dialog = StockCountReportDialog(self._history_ids[row], self)
-            dialog.exec()
+            self.open_history_report(self._history_ids[row])
 
     def show_history_context_menu(self, position) -> None:
-        """Offer Resume/Discard on a DRAFT history row (#312).
+        """Offer Open on any history row, plus Resume/Discard on a DRAFT (#312, #594).
 
-        Without this, a DRAFT count that outlives the session it was
-        started in (app restart, navigating away) has no way back into an
-        editable state and no way to be discarded either -- it just
-        accumulates as permanent, unfinishable clutter.
+        Without Resume/Discard, a DRAFT count that outlives the session it
+        was started in (app restart, navigating away) has no way back into
+        an editable state and no way to be discarded either -- it just
+        accumulates as permanent, unfinishable clutter. The same actions
+        sit in the row under the table.
         """
         row = self.history_table.indexAt(position).row()
         if row < 0 or row >= len(self._history_ids):
             return
         self.history_table.selectRow(row)
-
-        status_item = self.history_table.item(row, 5)
-        if not status_item:
-            return
-        status_code = status_item.data(Qt.ItemDataRole.UserRole) or status_item.text()
-        if status_code != DocumentStatus.DRAFT:
-            return
-
         stock_count_id = self._history_ids[row]
 
         menu = QMenu(self)
-        resume_action = menu.addAction(_t("stock_take.context_resume"))
-        resume_action.triggered.connect(lambda: self.resume_draft_count(stock_count_id))
-        discard_action = menu.addAction(_t("stock_take.context_discard_draft"))
-        discard_action.triggered.connect(lambda: self.discard_draft_count(stock_count_id))
+        open_action = menu.addAction(_t("stock_take.hist_btn_open"))
+        open_action.triggered.connect(lambda: self.open_history_report(stock_count_id))
+        if self._history_row_status(row) == DocumentStatus.DRAFT:
+            resume_action = menu.addAction(_t("stock_take.context_resume"))
+            resume_action.triggered.connect(lambda: self.resume_draft_count(stock_count_id))
+            discard_action = menu.addAction(_t("stock_take.context_discard_draft"))
+            discard_action.triggered.connect(lambda: self.discard_draft_count(stock_count_id))
         menu.exec(self.history_table.viewport().mapToGlobal(position))
 
     def resume_draft_count(self, stock_count_id: int) -> None:

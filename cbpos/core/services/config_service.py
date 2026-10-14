@@ -364,8 +364,12 @@ class ConfigService:
         return changed
 
     @classmethod
-    def save(cls):
-        """Save current settings to file with sensitive values encoded."""
+    def save(cls, *, raise_errors: bool = False):
+        """Save current settings to file with sensitive values encoded.
+
+        Args:
+            raise_errors: Re-raise a failed write instead of only logging it.
+        """
         try:
             # Create a copy with sensitive values encoded
             save_data = cls._settings.copy()
@@ -378,6 +382,8 @@ class ConfigService:
             )
         except Exception as e:
             logger.error("Error saving settings: %s", e)
+            if raise_errors:
+                raise
 
     @classmethod
     def _terminal_key(cls, key: str) -> str:
@@ -432,9 +438,22 @@ class ConfigService:
         return cls._settings.copy()
 
     @classmethod
-    def update_all(cls, data: dict[str, Any]):
-        """Update multiple settings at once."""
+    def update_all(cls, data: dict[str, Any], *, raise_errors: bool = False):
+        """Update multiple settings at once and save them.
+
+        Args:
+            data: Settings to change.
+            raise_errors: If the write fails, put the previous values back and
+                re-raise, so nothing changed (Settings save, #729). By default
+                a failed write is only logged and the new values stay in memory.
+        """
         if not cls._settings:
             cls.load()
+        previous = cls._settings.copy()
         cls._settings.update(data)
-        cls.save()
+        try:
+            cls.save(raise_errors=raise_errors)
+        except Exception:
+            cls._settings.clear()
+            cls._settings.update(previous)
+            raise

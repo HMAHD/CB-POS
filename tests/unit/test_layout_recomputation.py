@@ -61,10 +61,11 @@ class TestLayoutRecomputation:
         assert current_view._page_header.isVisible()
         assert current_view._page_header.height() > 0
 
-    def test_reports_view_switching_preserves_sidebar_scroll_and_header(self, qapp, db_session):
+    def test_reports_view_switching_preserves_sidebar_scroll_and_header(self, qapp, db_session, monkeypatch):
         """Switching Reports -> Sales -> Reports 5 times keeps header, sidebar scroll and splitter intact."""
-        # Allow all permissions for test
-        PermissionService.user_has_permission = staticmethod(lambda *args: True)
+        # Allow all permissions for this test only; a bare assignment leaked "allow everything"
+        # into every later test in the process (#728's menu gates then saw a cashier as admin)
+        monkeypatch.setattr(PermissionService, "user_has_permission", staticmethod(lambda *args: True))
 
         win = MainWindow()
         win.resize(1366, 768)

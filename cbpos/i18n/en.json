@@ -1429,6 +1429,7 @@
     "unsaved_message": "You have unsaved changes. Continue without saving?",
     "saved_title": "Saved",
     "saved_message": "Settings saved successfully.",
+    "save_failed": "Couldn't save the settings, so nothing was changed. Please try again.",
     "restart_prompt": {
       "title": "Restart CB POS?",
       "message": "Your changes are saved. Restart CB POS now to apply them, or they'll apply the next time you open it.",

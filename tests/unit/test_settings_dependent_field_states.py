@@ -29,7 +29,7 @@ class _FakeConfigStore:
     def set(self, key, value):
         self._data[key] = value
 
-    def update_all(self, data):
+    def update_all(self, data, **_kwargs):
         self._data.update(data)
 
 

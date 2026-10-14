@@ -56,6 +56,9 @@ class CustomerEditor(QDialog):
         self.setup_ui()
         if customer:
             self.load_data()
+        elif (default_limit := CustomerService.default_credit_limit()) > 0:
+            # A new customer starts at the Settings default credit limit
+            self.limit_input.setText(format(default_limit, "f"))
         install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
     def setup_ui(self):

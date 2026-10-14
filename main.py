@@ -1,8 +1,10 @@
+import importlib
 import logging
 import logging.handlers
 import os
 import shutil
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, QtMsgType, qInstallMessageHandler
@@ -13,7 +15,14 @@ from cbpos.config import Config
 from cbpos.infrastructure.resource_loader import ResourceLoader
 
 # MainWindow pulls in most of the app (pandas, reportlab, ...), so it is imported
-# inside main() after the splash is up (#691).
+# inside main() after the splash is up (#691), in stages so the splash can say
+# which part is loading (#722). The two heavy dependencies go first, then the
+# rest of the screens. Measured with ``python -X importtime``.
+_MAIN_WINDOW_IMPORT_STAGES: tuple[tuple[str, str], ...] = (
+    ("startup.loading_printing", "cbpos.core.services.printer_service"),  # python-escpos
+    ("startup.loading_pdf", "cbpos.core.services.export_service"),  # xhtml2pdf
+    ("startup.loading_screens", "cbpos.ui.main_window"),
+)
 
 # Buffer for early messages emitted before the logging system is ready.
 # Flushed to the logger by ``_flush_early_log()`` after ``setup_logging()``.
@@ -21,6 +30,30 @@ _early_log: list[str] = []
 
 # Startup splash (#691); closed once the first real window shows.
 _splash = None
+
+
+def _is_imported(module: str) -> bool:
+    """Whether *module* is already loaded (seam for tests)."""
+    return module in sys.modules
+
+
+def _load_main_window_class(status: Callable[[str], None]) -> type:
+    """Import MainWindow stage by stage, announcing each stage that really loads.
+
+    A stage already imported by an earlier step is skipped silently, so the
+    splash never names work that isn't happening.
+
+    Args:
+        status: Called with a ``startup.*`` i18n key before each stage.
+
+    Returns:
+        type: The MainWindow class.
+    """
+    for key, module in _MAIN_WINDOW_IMPORT_STAGES:
+        if not _is_imported(module):
+            status(key)
+            importlib.import_module(module)
+    return importlib.import_module("cbpos.ui.main_window").MainWindow
 
 
 def _close_splash() -> None:
@@ -74,7 +107,7 @@ def _report_crash(exc_type, exc_value, exc_traceback) -> None:
         )
 
 
-def run_migrations() -> str | None:
+def run_migrations(status: Callable[[str], None] | None = None) -> str | None:
     """Apply pending Alembic migrations to bring the database schema up to date.
 
     For databases created via ``Base.metadata.create_all()`` (first-run) that
@@ -85,6 +118,11 @@ def run_migrations() -> str | None:
     Safe to call on every startup — if the DB is already at head, this is a
     fast no-op.
 
+    Args:
+        status: Optional startup-splash hook (#722). Called with
+            ``startup.checking_data`` once there is a database to check, and
+            ``startup.updating_data`` only right before a real upgrade.
+
     Returns:
         None on success, or the error message if migration failed -- the
         caller must not continue on an out-of-date schema (#630).
@@ -94,6 +132,9 @@ def run_migrations() -> str | None:
     db_path = Config.DATA_DIR / "cbpos.db"
     if not db_path.exists():
         return None  # No database yet — will be created by DatabaseSetupService
+
+    if status is not None:
+        status("startup.checking_data")
 
     try:
         from alembic.config import Config as AlembicConfig
@@ -130,6 +171,8 @@ def run_migrations() -> str | None:
             head_rev = script.get_current_head()
 
             if not current_rev or head_rev not in current_rev:
+                if status is not None:
+                    status("startup.updating_data")
                 command.upgrade(alembic_cfg, "head")
                 _early_log.append("Database migrated to latest schema.")
 
@@ -320,7 +363,7 @@ def main():
 
     # Show loading feedback right away; the rest of startup can take seconds (#691).
     global _splash
-    from cbpos.ui.startup_splash import create_startup_splash
+    from cbpos.ui.startup_splash import create_startup_splash, set_startup_status
 
     _splash = create_startup_splash()
     _splash.show()
@@ -338,7 +381,7 @@ def main():
     instance.activation_requested.connect(_activate_existing)
 
     # Apply any pending database schema migrations
-    migration_error = run_migrations()
+    migration_error = run_migrations(status=set_startup_status)
     _flush_early_log()
 
     # Install Global Input Manager
@@ -348,6 +391,7 @@ def main():
     app.installEventFilter(input_manager)
 
     # Initialize Theme (Load from settings or default to Dark)
+    set_startup_status("startup.preparing_screen")
     from cbpos.core.services.theme_service import ThemeService
 
     # Inject stylesheet handler so ThemeService doesn't need PyQt imports
@@ -373,6 +417,7 @@ def main():
         sys.exit(1)
 
     # Register Reports
+    set_startup_status("startup.setting_up_reports")
     from cbpos.core.reports import register_all_reports
 
     register_all_reports()
@@ -437,14 +482,12 @@ def main():
     set_override_handler(_manager_override)
 
     # Launch main window
-    from cbpos.ui.main_window import MainWindow
+    main_window_cls = _load_main_window_class(set_startup_status)
 
-    window = MainWindow()
+    set_startup_status("startup.preparing_counter")
+    window = main_window_cls()
     _front["window"] = window
     window.showMaximized()  # Industrial apps usually run full screen
-    if _splash is not None:
-        _splash.finish(window)
-        _splash = None
 
     # --- Multi-Terminal LAN Sync ---
     terminal_mode = ConfigService.get("terminal_mode") or "standalone"
@@ -465,6 +508,7 @@ def main():
         print("[BOOTSTRAP] Starting sync server (Main PC mode)...")
         from cbpos.infrastructure.sync_server import SyncServer
 
+        set_startup_status("startup.starting_sync")
         sync_port = int(ConfigService.get("sync_server_port") or 5555)
         sync_server = SyncServer(port=sync_port)
         sync_server.started_signal.connect(window.sync_status.set_server_address)
@@ -479,6 +523,7 @@ def main():
         main_pc_address = ConfigService.get("main_pc_address") or ""
         if main_pc_address:
             print(f"[BOOTSTRAP] Starting sync client (Terminal mode) -> {main_pc_address}")
+            set_startup_status("startup.connecting_main_pc")
             from cbpos.infrastructure.sync_client import SyncClient
 
             terminal_id = ConfigService.get("terminal_id") or "TERM-01"
@@ -498,6 +543,11 @@ def main():
             window.sync_status.set_config_error(_t("sync_status.error_main_pc_address_required"))
     else:
         window.sync_status.set_mode("standalone")
+
+    # Kept up through LAN Sync start so its step shows too (#722).
+    if _splash is not None:
+        _splash.finish(window)
+        _splash = None
 
     # Check for updates 3 seconds after startup (non-blocking).
     # The thread reference is kept on the app object to prevent GC.

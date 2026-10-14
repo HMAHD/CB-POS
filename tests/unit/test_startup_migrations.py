@@ -85,3 +85,24 @@ def test_migrate_only_exits_nonzero_on_failure(monkeypatch):
     with pytest.raises(SystemExit) as exc:
         main.main()
     assert exc.value.code == 1
+
+
+# --- Startup splash steps (#722): name only the migration work that runs ---
+
+
+def test_status_says_updating_only_when_a_migration_is_applied(old_db):
+    seen: list[str] = []
+    assert main.run_migrations(status=seen.append) is None
+    assert seen == ["startup.checking_data", "startup.updating_data"]
+
+    # Now at head: checked again, nothing to apply, no "updating" line.
+    seen.clear()
+    assert main.run_migrations(status=seen.append) is None
+    assert seen == ["startup.checking_data"]
+
+
+def test_no_status_when_there_is_no_database_yet(tmp_path, monkeypatch):
+    monkeypatch.setattr(Config, "DATA_DIR", tmp_path)
+    seen: list[str] = []
+    assert main.run_migrations(status=seen.append) is None
+    assert seen == []

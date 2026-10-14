@@ -20,11 +20,13 @@ from decimal import Decimal
 from typing import Any
 
 from PyQt6.QtCore import QThread, pyqtSignal
+from sqlalchemy import func
 
 from cbpos.core.database import Database
 from cbpos.core.models import (
     AuditLog,
     CashMovement,
+    Customer,
     CustomerLedgerEntry,
     CustomerPayment,
     Document,
@@ -37,6 +39,7 @@ from cbpos.core.models import (
     SupplierPayment,
 )
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.sync_customer_renumber import renumber_customers
 from cbpos.core.services.sync_protocol import (
     CATALOG_TABLES,
     EP_PULL_CATALOG,
@@ -53,6 +56,76 @@ from cbpos.core.services.sync_protocol import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Pushed tables without children, in push order: (table name, model).
+_FLAT_PUSH_TABLES: tuple[tuple[str, type], ...] = (
+    ("stock_movements", StockMovement),
+    ("shifts", Shift),
+    ("cash_movements", CashMovement),
+    ("customer_payments", CustomerPayment),
+    ("customer_ledger", CustomerLedgerEntry),
+    ("supplier_payments", SupplierPayment),
+    ("supplier_ledger", SupplierLedgerEntry),
+)
+
+# Children pushed with their document: relationship names per document type.
+_PUSHED_CHILDREN: dict[type, tuple[str, ...]] = {
+    Sale: ("items", "payments"),
+    Purchase: ("items",),
+}
+
+
+# Balance owner table -> (its ledger model, balance column) (#678).
+_BALANCE_LEDGERS: dict[str, tuple[type, str]] = {
+    "customers": (CustomerLedgerEntry, "current_debt"),
+    "suppliers": (SupplierLedgerEntry, "current_payable"),
+}
+
+
+def _set_local_balance(session: Any, table_name: str, owner_id: int, main_value: Decimal) -> None:
+    """Set a customer's debt / supplier's payable on this till from the Main PC's figure.
+
+    The Main PC's balance covers every till's *pushed* ledger rows; this
+    till's own rows that are not pushed yet are added on top, so a credit
+    sale made since the last push isn't wiped out by a catalog pull.
+    """
+    ledger_model, balance_column = _BALANCE_LEDGERS[table_name]
+    owner = session.get(get_model_for_table(table_name), owner_id)
+    if owner is None:
+        return
+    owner_column = "customer_id" if table_name == "customers" else "supplier_id"
+    unpushed = (
+        session.query(func.coalesce(func.sum(ledger_model.amount), 0))
+        .filter(getattr(ledger_model, owner_column) == owner_id, ledger_model.synced.is_(False))
+        .scalar()
+    )
+    setattr(owner, balance_column, (main_value + Decimal(str(unpushed or 0))).quantize(Decimal("0.01")))
+
+
+def _unpushed_customer_keys(session: Any) -> dict[str, set[Any]]:
+    """Ids, phones and loyalty cards of the customers this till created and hasn't pushed."""
+    keys: dict[str, set[Any]] = {"id": set(), "phone": set(), "loyalty_card_code": set()}
+    for customer in session.query(Customer).filter_by(synced=False):
+        for column, values in keys.items():
+            value = getattr(customer, column)
+            if value is not None:
+                values.add(value)
+    return keys
+
+
+def _clashes(record: dict[str, Any], unpushed: dict[str, set[Any]]) -> bool:
+    return any(record.get(column) is not None and record.get(column) in values for column, values in unpushed.items())
+
+
+def _fingerprint(obj: Any) -> str:
+    """Snapshot a pushed row (and the children pushed with it), ignoring ``synced``."""
+    row = model_to_dict(obj)
+    row.pop("synced", None)
+    for relationship in _PUSHED_CHILDREN.get(type(obj), ()):
+        row[relationship] = sorted(
+            (model_to_dict(child) for child in getattr(obj, relationship)), key=lambda c: c.get("id") or 0
+        )
+    return sync_json_dumps(row)
 
 
 class SyncClient(QThread):
@@ -221,9 +294,7 @@ class SyncClient(QThread):
 
                 # Step 2: Run a sync cycle
                 self._set_state(self.STATE_SYNCING)
-                pushed = self._push_transactions()
-                pulled = self._pull_catalog()
-                self._pull_stock()
+                pushed, pulled = self._sync_cycle()
 
                 if pushed >= 0 and pulled >= 0:
                     self._consecutive_failures = 0
@@ -243,6 +314,17 @@ class SyncClient(QThread):
             self._sleep(self._sync_interval)
 
         logger.info("SyncClient stopped")
+
+    def _sync_cycle(self) -> tuple[int, int]:
+        """Push local changes, then pull the catalog and stock.
+
+        Returns:
+            (records pushed, catalog records pulled); -1 for a failed step.
+        """
+        pushed = self._push_transactions()
+        pulled = self._pull_catalog()
+        self._pull_stock()
+        return pushed, pulled
 
     def _sleep(self, seconds: int) -> None:
         """Sleep that can be interrupted by stop()."""
@@ -326,116 +408,14 @@ class SyncClient(QThread):
     def _push_transactions(self) -> int:
         """Push unsynced local transactions to the Main PC.
 
+        A row is unsynced when it is new or changed since its last push
+        (#677, see sync_change_tracking), so voids, GRN commits and shift
+        closes are sent again and the Main PC updates its copy in place.
+
         Returns the number of records pushed, or -1 on error.
         """
-        db = Database()
-        payload: dict[str, list[dict[str, Any]]] = {}
-
         try:
-            with db.get_session() as session:
-                # Find unsynced sales (with items and payments)
-                unsynced_sales = session.query(Sale).filter_by(synced=False).all()
-
-                if unsynced_sales:
-                    # Get parent Document data for each sale
-                    docs = []
-                    sales = []
-                    items = []
-                    payments = []
-                    for sale in unsynced_sales:
-                        # Document base fields
-                        doc_dict = model_to_dict(sale)
-                        # Remove polymorphic child columns from document
-                        docs.append(
-                            {
-                                "id": doc_dict["id"],
-                                "document_number": sale.document_number,
-                                "date": sale.date.isoformat() if sale.date else None,
-                                "type": sale.type,
-                                "status": sale.status,
-                                "user_id": sale.user_id,
-                                "void_reason_id": sale.void_reason_id,
-                                "terminal_id": sale.terminal_id,
-                                "origin_terminal_id": sale.origin_terminal_id or self._terminal_id,
-                                "synced": True,
-                            }
-                        )
-                        sales.append(model_to_dict(sale))
-                        for item in sale.items:
-                            items.append(model_to_dict(item))
-                        for pmt in sale.payments:
-                            payments.append(model_to_dict(pmt))
-
-                    payload["documents"] = docs
-                    payload["sales"] = sales
-                    payload["sale_items"] = items
-                    payload["sale_payments"] = payments
-
-                # Find unsynced purchases
-                unsynced_purchases = session.query(Purchase).filter_by(synced=False).all()
-                if unsynced_purchases:
-                    p_docs = []
-                    purchases = []
-                    p_items = []
-                    for purchase in unsynced_purchases:
-                        p_docs.append(
-                            {
-                                "id": purchase.id,
-                                "document_number": purchase.document_number,
-                                "date": purchase.date.isoformat() if purchase.date else None,
-                                "type": purchase.type,
-                                "status": purchase.status,
-                                "user_id": purchase.user_id,
-                                "terminal_id": purchase.terminal_id,
-                                "origin_terminal_id": purchase.origin_terminal_id or self._terminal_id,
-                                "synced": True,
-                            }
-                        )
-                        purchases.append(model_to_dict(purchase))
-                        for item in purchase.items:
-                            p_items.append(model_to_dict(item))
-                    if "documents" in payload:
-                        payload["documents"].extend(p_docs)
-                    else:
-                        payload["documents"] = p_docs
-                    payload["purchases"] = purchases
-                    payload["purchase_items"] = p_items
-
-                # Find unsynced stock movements
-                unsynced_movements = session.query(StockMovement).filter_by(synced=False).all()
-                if unsynced_movements:
-                    payload["stock_movements"] = [model_to_dict(m) for m in unsynced_movements]
-
-                # Find unsynced shifts
-                unsynced_shifts = session.query(Shift).filter_by(synced=False).all()
-                if unsynced_shifts:
-                    payload["shifts"] = [model_to_dict(s) for s in unsynced_shifts]
-
-                # Find unsynced cash movements
-                unsynced_cash = session.query(CashMovement).filter_by(synced=False).all()
-                if unsynced_cash:
-                    payload["cash_movements"] = [model_to_dict(c) for c in unsynced_cash]
-
-                # Find unsynced customer payments
-                unsynced_cpay = session.query(CustomerPayment).filter_by(synced=False).all()
-                if unsynced_cpay:
-                    payload["customer_payments"] = [model_to_dict(p) for p in unsynced_cpay]
-
-                # Find unsynced customer ledger entries
-                unsynced_cledger = session.query(CustomerLedgerEntry).filter_by(synced=False).all()
-                if unsynced_cledger:
-                    payload["customer_ledger"] = [model_to_dict(e) for e in unsynced_cledger]
-
-                # Find unsynced supplier payments
-                unsynced_spay = session.query(SupplierPayment).filter_by(synced=False).all()
-                if unsynced_spay:
-                    payload["supplier_payments"] = [model_to_dict(p) for p in unsynced_spay]
-
-                # Find unsynced supplier ledger entries
-                unsynced_sledger = session.query(SupplierLedgerEntry).filter_by(synced=False).all()
-                if unsynced_sledger:
-                    payload["supplier_ledger"] = [model_to_dict(e) for e in unsynced_sledger]
-
+            payload, fingerprints = self._collect_unsynced()
         except Exception as e:
             logger.error("Error collecting unsynced transactions: %s", e)
             return -1
@@ -460,52 +440,154 @@ class SyncClient(QThread):
         if status in ("ok", "partial", "duplicate"):
             # Mark local records as synced
             total_pushed = sum(len(v) for v in payload.values() if isinstance(v, list))
-            self._mark_as_synced(payload)
+            self._mark_as_synced(fingerprints)
+            self._adopt_customer_ids((result.get("id_map") or {}).get("customers") or {})
+            self._apply_main_balances(result.get("balances") or {})
             logger.info("Pushed %d records (status=%s)", total_pushed, status)
             return total_pushed
         else:
             logger.warning("Push failed: %s", result)
             return -1
 
-    def _mark_as_synced(self, payload: dict[str, list[dict[str, Any]]]) -> None:
-        """Mark local records as synced after successful push."""
+    def _collect_unsynced(self) -> tuple[dict[str, list[dict[str, Any]]], dict[tuple[str, int], str]]:
+        """Build the push payload from every unsynced row.
+
+        Returns:
+            (payload, fingerprints): ``fingerprints`` maps each pushed row
+            that carries the ``synced`` flag, as ``(table, id)``, to a
+            snapshot of what was sent (see :func:`_fingerprint`), so that a
+            row edited while the push was in flight is not marked synced.
+        """
+        payload: dict[str, list[dict[str, Any]]] = {}
+        fingerprints: dict[tuple[str, int], str] = {}
+        db = Database()
+        with db.get_session() as session:
+            # Customers created on this till first: sales and credit book
+            # rows in this batch may point at them (#680).
+            new_customers = session.query(Customer).filter_by(synced=False).all()
+            if new_customers:
+                payload["customers"] = [model_to_dict(c) for c in new_customers]
+
+            # Find unsynced sales (with items and payments)
+            unsynced_sales = session.query(Sale).filter_by(synced=False).all()
+
+            if unsynced_sales:
+                # Get parent Document data for each sale
+                docs = []
+                sales = []
+                items = []
+                payments = []
+                for sale in unsynced_sales:
+                    docs.append(self._document_row(sale))
+                    sales.append(model_to_dict(sale))
+                    for item in sale.items:
+                        items.append(model_to_dict(item))
+                    for pmt in sale.payments:
+                        payments.append(model_to_dict(pmt))
+                    fingerprints[("sales", sale.id)] = _fingerprint(sale)
+
+                payload["documents"] = docs
+                payload["sales"] = sales
+                payload["sale_items"] = items
+                payload["sale_payments"] = payments
+
+            # Find unsynced purchases
+            unsynced_purchases = session.query(Purchase).filter_by(synced=False).all()
+            if unsynced_purchases:
+                p_docs = []
+                purchases = []
+                p_items = []
+                for purchase in unsynced_purchases:
+                    p_docs.append(self._document_row(purchase))
+                    purchases.append(model_to_dict(purchase))
+                    for item in purchase.items:
+                        p_items.append(model_to_dict(item))
+                    fingerprints[("purchases", purchase.id)] = _fingerprint(purchase)
+                payload.setdefault("documents", []).extend(p_docs)
+                payload["purchases"] = purchases
+                payload["purchase_items"] = p_items
+
+            for table_name, model_class in _FLAT_PUSH_TABLES:
+                rows = session.query(model_class).filter_by(synced=False).all()
+                if rows:
+                    payload[table_name] = [model_to_dict(r) for r in rows]
+                    for row in rows:
+                        fingerprints[(table_name, row.id)] = _fingerprint(row)
+
+        return payload, fingerprints
+
+    def _document_row(self, doc: Document) -> dict[str, Any]:
+        """The base ``documents`` columns of a sale/purchase, as pushed."""
+        return {
+            "id": doc.id,
+            "document_number": doc.document_number,
+            "date": doc.date.isoformat() if doc.date else None,
+            "type": doc.type,
+            "status": doc.status,
+            "user_id": doc.user_id,
+            "void_reason_id": doc.void_reason_id,
+            "terminal_id": doc.terminal_id,
+            "origin_terminal_id": doc.origin_terminal_id or self._terminal_id,
+            "synced": True,
+        }
+
+    def _mark_as_synced(self, fingerprints: dict[tuple[str, int], str]) -> None:
+        """Mark the pushed rows synced after the Main PC acknowledged them.
+
+        A row whose content no longer matches what was sent changed while
+        the push was in flight; it stays unsynced so that change goes out
+        with the next push instead of being lost (#677).
+        """
         db = Database()
         try:
             with db.get_session() as session:
-                # Mark documents (sales, purchases)
-                for table_name in ("documents", "sales", "purchases"):
-                    for record in payload.get(table_name, []):
-                        record_id = record.get("id")
-                        if record_id is not None:
-                            model_class = get_model_for_table(table_name)
-                            if model_class:
-                                obj = session.get(model_class, record_id)
-                                if obj:
-                                    obj.synced = True
-
-                # Mark other transaction records
-                synced_tables = [
-                    "stock_movements",
-                    "shifts",
-                    "cash_movements",
-                    "customer_payments",
-                    "customer_ledger",
-                    "supplier_payments",
-                    "supplier_ledger",
-                ]
-                for table_name in synced_tables:
-                    for record in payload.get(table_name, []):
-                        record_id = record.get("id")
-                        if record_id is not None:
-                            model_class = get_model_for_table(table_name)
-                            if model_class:
-                                obj = session.get(model_class, record_id)
-                                if obj:
-                                    obj.synced = True
+                for (table_name, record_id), sent in fingerprints.items():
+                    model_class = get_model_for_table(table_name)
+                    obj = session.get(model_class, record_id) if model_class else None
+                    if obj is None:
+                        continue
+                    if _fingerprint(obj) == sent:
+                        obj.synced = True
+                    else:
+                        logger.info("Sync: %s[%s] changed during push; will re-send", table_name, record_id)
 
                 session.commit()
         except Exception as e:
             logger.error("Error marking records as synced: %s", e)
+
+    def _adopt_customer_ids(self, id_map: dict[str, int]) -> None:
+        """Renumber the customers this till created to the ids the Main PC gave them (#680)."""
+        if not id_map:
+            return
+        db = Database()
+        try:
+            with db.get_session() as session:
+                renumber_customers(session, {int(local): int(server) for local, server in id_map.items()})
+                session.commit()
+        except Exception as e:
+            # They stay unsynced and are re-sent; the Main PC answers with
+            # the same ids, so the next push tries again.
+            logger.error("Error renumbering pushed customers: %s", e)
+
+    def _apply_main_balances(self, balances: dict[str, dict[str, str]]) -> None:
+        """Take the shop-wide balances the Main PC sent back with a push (#678).
+
+        Each becomes this till's balance plus the ledger amounts this till
+        has not pushed yet (see :func:`_local_balance`).
+        """
+        if not balances:
+            return
+        db = Database()
+        try:
+            with db.get_session() as session:
+                for table_name, rows in balances.items():
+                    if table_name not in _BALANCE_LEDGERS:
+                        continue
+                    for owner_id, main_value in rows.items():
+                        _set_local_balance(session, table_name, int(owner_id), Decimal(str(main_value)))
+                session.commit()
+        except Exception as e:
+            logger.error("Error applying Main PC balances: %s", e)
 
     # --- Pull Catalog ---
 
@@ -538,8 +620,11 @@ class SyncClient(QThread):
         # Apply catalog updates to local database
         db = Database()
         records_applied = 0
+        pulled_balances: list[tuple[str, int, Decimal]] = []
+        held_back = 0
         try:
             with db.get_session() as session:
+                unpushed_customers = _unpushed_customer_keys(session)
                 for table_name in CATALOG_TABLES:
                     records = payload.get(table_name, [])
                     if not records:
@@ -550,9 +635,20 @@ class SyncClient(QThread):
                         continue
 
                     for record_data in records:
+                        if table_name == "customers" and _clashes(record_data, unpushed_customers):
+                            # Would overwrite (or duplicate the phone of) a
+                            # customer this till created and hasn't pushed:
+                            # wait until the push renumbers it (#680).
+                            held_back += 1
+                            continue
                         try:
                             instance = dict_to_model(model_class, record_data)
-                            session.merge(instance)
+                            merged = session.merge(instance)
+                            if table_name in _BALANCE_LEDGERS:
+                                # The Main PC's figure doesn't include what this
+                                # till hasn't pushed yet -- keep that on top (#678).
+                                _, balance_column = _BALANCE_LEDGERS[table_name]
+                                pulled_balances.append((table_name, merged.id, getattr(merged, balance_column)))
                             records_applied += 1
                         except Exception as e:
                             logger.error(
@@ -562,13 +658,20 @@ class SyncClient(QThread):
                                 e,
                             )
 
+                for table_name, owner_id, main_value in pulled_balances:
+                    _set_local_balance(session, table_name, owner_id, main_value or Decimal("0"))
+
                 session.commit()
 
         except Exception as e:
             logger.error("Error applying catalog update: %s", e)
             return -1
 
-        self._last_catalog_sync = server_timestamp
+        if held_back:
+            # Keep the watermark so the held-back customers come again.
+            logger.info("Held back %d pulled customer(s) until this till's new customers are pushed", held_back)
+        else:
+            self._last_catalog_sync = server_timestamp
         logger.info("Pulled %d catalog records", records_applied)
         return records_applied
 

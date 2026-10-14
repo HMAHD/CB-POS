@@ -26,6 +26,10 @@ class CustomerService:
         contacts_data = data.pop("contacts", [])
         with self.db.get_session() as session:
             customer = Customer(**data)
+            if ConfigService.get("terminal_mode") == "terminal":
+                # A LAN Sync till pushes the customers it creates to the
+                # Main PC (#680), which gives them their shop-wide id.
+                customer.synced = False
 
             for contact_data in contacts_data:
                 contact = CustomerContact(**contact_data)

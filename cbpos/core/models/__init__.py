@@ -15,6 +15,7 @@ from sqlalchemy import (
     Table,
     Text,
     UniqueConstraint,
+    true,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -429,6 +430,10 @@ class Customer(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     price_list_id: Mapped[int | None] = mapped_column(ForeignKey("price_lists.id"), nullable=True)
     last_modified: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, index=True)
+    # LAN Sync (#680): False only for a customer created on a till that the
+    # Main PC doesn't have yet. Edits don't clear it -- the Main PC owns
+    # customer details; tills push only the customers they create.
+    synced: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
 
     sales: Mapped[list["Sale"]] = relationship(back_populates="customer")
     price_list: Mapped["PriceList"] = relationship()
@@ -853,3 +858,9 @@ class SyncIdMap(Base):
     local_id: Mapped[int] = mapped_column(Integer, nullable=False)
     server_id: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+
+# Registers the session hook that re-sends a till row to the Main PC when it
+# changes after its first push (#677). Imported here so it is active wherever
+# the models are.
+from cbpos.core.services import sync_change_tracking  # noqa: E402, F401

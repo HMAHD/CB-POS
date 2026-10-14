@@ -270,3 +270,28 @@ def db_session(test_engine):
             + "\n".join(cross_thread_uses),
             pytrace=False,
         )
+
+
+@pytest.fixture(autouse=True)
+def _fresh_background_job_registry():
+    """Give every test an empty ``start_background_job`` registry.
+
+    The registry is process-global (it must outlive views, #643). Without a
+    reset, a stand-in worker one test handed to it (a MagicMock) was still
+    held when a later test's real job finished, and the cleanup pass then
+    crashed on it in ``sip.isdeleted``. Real threads still running are waited
+    on first, so dropping the registry never destroys a running QThread.
+    """
+    yield
+    from PyQt6 import sip
+    from PyQt6.QtCore import QThread
+
+    from cbpos.ui import workers
+
+    jobs = workers._jobs
+    if jobs is None:
+        return
+    for worker in list(jobs._running):
+        if isinstance(worker, QThread) and not sip.isdeleted(worker):
+            worker.wait(5000)
+    workers._jobs = None

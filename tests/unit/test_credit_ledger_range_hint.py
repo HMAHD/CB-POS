@@ -14,8 +14,10 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 import pytest
+from PyQt6.QtCore import Qt
 
 from cbpos.core.models import Customer, CustomerLedgerEntry, User
+from cbpos.i18n import _t
 from cbpos.ui.views.credit_book_view import CreditBookView
 
 pytestmark = pytest.mark.usefixtures("qapp")
@@ -67,7 +69,11 @@ class TestCreditRangeHint:
 
         _open_customer(view, customer)
 
-        assert view.ledger_table.rowCount() == 0
+        # #596: an empty range shows one non-selectable placeholder row, not real entries
+        assert view.ledger_table.rowCount() == 1
+        placeholder = view.ledger_table.item(0, 0)
+        assert placeholder.flags() == Qt.ItemFlag.NoItemFlags
+        assert placeholder.text() == _t("credit_book.ledger_empty_range")
         assert view.credit_range_hint.isVisible() is True
         assert "7,200" in view.lbl_credit_range_hint.text() or "7200" in view.lbl_credit_range_hint.text()
 

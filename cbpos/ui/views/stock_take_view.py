@@ -5,7 +5,16 @@ import weakref
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
-from PyQt6.QtCore import QAbstractTableModel, QDate, QEvent, QModelIndex, QRegularExpression, Qt, pyqtSignal
+from PyQt6.QtCore import (
+    QAbstractTableModel,
+    QDate,
+    QEvent,
+    QModelIndex,
+    QRegularExpression,
+    Qt,
+    QTimer,
+    pyqtSignal,
+)
 from PyQt6.QtGui import QKeySequence, QRegularExpressionValidator, QShortcut
 from PyQt6.QtWidgets import (
     QAbstractItemDelegate,
@@ -198,6 +207,11 @@ def _count_decimals(product) -> int:
     if product.unit is not None:
         return min(product.unit.decimal_places or 0, 3)
     return 3 if product.is_weighted else 0
+
+
+def _is_measured(product) -> bool:
+    """True for items counted by weight or measure (kg, L, m), where one scan isn't one unit."""
+    return product is not None and (bool(product.is_weighted) or _count_decimals(product) > 0)
 
 
 def _format_count(qty, product) -> str:
@@ -426,6 +440,9 @@ class StockCountReportDialog(QDialog):
 class StockTakeView(QWidget):
     """Stock take view with New Count and History tabs."""
 
+    # How long the "<product> counted: N" note stays after a scan
+    SCAN_FEEDBACK_MS = 2500
+
     # History table columns
     HIST_COL_ITEMS = 3
     HIST_COL_NET = 4
@@ -518,6 +535,16 @@ class StockTakeView(QWidget):
         self.search_input.setPlaceholderText(_t("stock_take.search_placeholder"))
         self.search_input.returnPressed.connect(self.add_single_product)
         search_layout.addWidget(self.search_input)
+        # Brief "Soap counted: 2" after a scan, so the counter sees it landed
+        # without looking for the row (#548). Hidden again by a timer.
+        self.lbl_scan_feedback = QLabel()
+        self.lbl_scan_feedback.setObjectName("StockTakeScanFeedback")
+        self.lbl_scan_feedback.setVisible(False)
+        search_layout.addWidget(self.lbl_scan_feedback)
+        self._scan_feedback_timer = QTimer(self)
+        self._scan_feedback_timer.setSingleShot(True)
+        self._scan_feedback_timer.setInterval(self.SCAN_FEEDBACK_MS)
+        self._scan_feedback_timer.timeout.connect(self.lbl_scan_feedback.hide)
         layout.addLayout(search_layout)
 
         # Items table
@@ -805,6 +832,7 @@ class StockTakeView(QWidget):
             "Product already in this stock count.": _t("stock_take.product_already_in_count"),
             "Stock count not found or not in DRAFT status.": _t("stock_take.not_in_draft_status"),
             "Product not found.": _t("stock_take.product_not_found"),
+            "Service items are not stock-counted.": _t("stock_take.service_not_counted"),
             "Cannot approve count with no items.": _t("stock_take.cannot_approve_empty"),
             "Count must be in COUNTED status to approve.": _t("stock_take.must_be_counted_to_approve"),
             "Count is not in DRAFT status.": _t("stock_take.not_in_draft_status"),
@@ -857,8 +885,10 @@ class StockTakeView(QWidget):
 
         Adds the product to the count first if needed (starting a count if
         none is open). A product already in the count is counted up rather
-        than rejected (#615). Weighed items get their Counted editor opened
-        instead, since one scan isn't one unit of weight.
+        than rejected (#615). Weighed or measured items (kg, L, m) get their
+        Counted editor opened instead, since one scan isn't one unit of
+        weight. The row is selected and scrolled to, and a short note says
+        what was counted (#548).
 
         Returns:
             True if the product was found and added/counted.
@@ -879,11 +909,12 @@ class StockTakeView(QWidget):
             QMessageBox.warning(self, _t("stock_take.not_found_title"), _t("stock_take.product_not_found"))
             return False
 
+        measured = _is_measured(product)
         item_id = next((i.id for i in self.item_model.items if i.product_id == product.id), None)
         try:
             if item_id is None:
                 item_id = StockCountService.add_single_item(self.current_stock_count.id, product.id).id
-            if not product.is_weighted:
+            if not measured:
                 StockCountService.increment_count(item_id, Decimal("1"))
         except ValueError as e:
             QMessageBox.warning(self, _t("common.error"), self._translate_service_error(e))
@@ -894,10 +925,23 @@ class StockTakeView(QWidget):
         if row is not None:
             index = self.item_model.index(row, StockCountItemModel.COL_COUNTED)
             self.item_table.setCurrentIndex(index)
-            self.item_table.scrollTo(index)
-            if product.is_weighted:
+            self.item_table.scrollTo(index, QAbstractItemView.ScrollHint.PositionAtCenter)
+            item = self.item_model.items[row]
+            if measured:
                 self.item_table.edit(index)
+                self._show_scan_feedback(_t("stock_take.scan_enter_quantity", product=item.product.display_name))
+            else:
+                counted = _format_count(item.counted_qty, item.product)
+                self._show_scan_feedback(
+                    _t("stock_take.scan_counted", product=item.product.display_name, counted=counted)
+                )
         return True
+
+    def _show_scan_feedback(self, text: str) -> None:
+        """Show a short note beside the search box, hidden after SCAN_FEEDBACK_MS."""
+        self.lbl_scan_feedback.setText(text)
+        self.lbl_scan_feedback.show()
+        self._scan_feedback_timer.start()
 
     def _reload_items(self) -> None:
         """Reload items from the database for the current stock count."""
@@ -1077,6 +1121,8 @@ class StockTakeView(QWidget):
     def reset_form(self) -> None:
         """Reset the form for a new stock count."""
         self.current_stock_count = None
+        self._scan_feedback_timer.stop()
+        self.lbl_scan_feedback.hide()
         self._set_item_model(StockCountItemModel())
         self.note_input.clear()
         self.search_input.clear()

@@ -4274,3 +4274,10 @@ QDialog#ShiftManagementDialog QFrame#ShiftDivider {
     border: none;
     max-height: 1px;
 }
+
+/* Stock Take: brief "<product> counted: N" note after a scan (#548).
+   Success colour from status_colors.PALETTE. */
+QLabel#StockTakeScanFeedback {
+    color: #39FF14;
+    font-weight: bold;
+}

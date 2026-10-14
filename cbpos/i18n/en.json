@@ -95,7 +95,17 @@
     "auto_backup_skipped_msg": "No backup was made because you haven't set a backup password yet.\n\nSet one on the Data Safety page so your automatic backups can be restored."
   },
   "startup": {
-    "splash_loading": "Starting CB POS..."
+    "splash_loading": "Starting CB POS...",
+    "checking_data": "Checking your shop data...",
+    "updating_data": "Updating your data to the new version...",
+    "preparing_screen": "Getting the screen ready...",
+    "setting_up_reports": "Setting up reports...",
+    "loading_printing": "Getting receipt printing ready...",
+    "loading_pdf": "Getting PDF export ready...",
+    "loading_screens": "Loading sales, stock and customers...",
+    "preparing_counter": "Preparing the sales counter...",
+    "starting_sync": "Starting sync for your terminals...",
+    "connecting_main_pc": "Connecting to the Main PC..."
   },
   "sync_status": {
     "tooltip": "Click for sync details",

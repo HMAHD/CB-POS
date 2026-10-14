@@ -54,6 +54,13 @@ def restart_application(window: QWidget) -> bool:
     except Exception:
         logger.exception("Shutdown before restart was not fully clean")
 
+    # Free the single-instance name and flag the child as our relaunch, so it
+    # takes over instead of handing off to this exiting process (#691).
+    from cbpos.infrastructure import single_instance
+
+    single_instance.release()
+    os.environ[single_instance.RESTART_ENV_VAR] = "1"
+
     program, args = restart_command()
     if getattr(sys, "frozen", False):
         # A one-file exe started by another one-file instance would otherwise
@@ -62,6 +69,7 @@ def restart_application(window: QWidget) -> bool:
     started = QProcess.startDetached(program, args)
     # PyQt6 returns (ok, pid) for the static overload
     ok = started[0] if isinstance(started, tuple) else bool(started)
+    os.environ.pop(single_instance.RESTART_ENV_VAR, None)
     if not ok:
         logger.error("Could not relaunch CB POS (%s %s)", program, args)
 

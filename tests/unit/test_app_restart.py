@@ -12,15 +12,17 @@ from unittest.mock import MagicMock
 import pytest
 
 from cbpos.config import Config
+from cbpos.infrastructure import single_instance
 from cbpos.ui import app_restart
 
 
 @pytest.fixture
 def fakes(monkeypatch):
-    calls: dict = {"start": [], "quit": 0, "dispose": 0, "stop_timer": 0}
+    calls: dict = {"start": [], "quit": 0, "dispose": 0, "stop_timer": 0, "release": 0, "restart_env": []}
 
     def _start(program, args):
         calls["start"].append((program, list(args)))
+        calls["restart_env"].append(os.environ.get(single_instance.RESTART_ENV_VAR))
         return (True, 1234)
 
     def _quit():
@@ -37,6 +39,8 @@ def fakes(monkeypatch):
         lambda: calls.__setitem__("stop_timer", calls["stop_timer"] + 1),
     )
     monkeypatch.delenv("PYINSTALLER_RESET_ENVIRONMENT", raising=False)
+    monkeypatch.delenv(single_instance.RESTART_ENV_VAR, raising=False)
+    monkeypatch.setattr(single_instance, "release", lambda: calls.__setitem__("release", calls["release"] + 1))
     return calls
 
 
@@ -88,3 +92,22 @@ def test_refused_close_never_relaunches(fakes):
     assert app_restart.restart_application(window) is False
     assert fakes["start"] == []
     assert fakes["quit"] == 0
+
+
+def test_restart_frees_single_instance_name_and_flags_child(fakes, monkeypatch):
+    """The relaunched process must take over, not hand off to us (#691, #673)."""
+    monkeypatch.delattr(sys, "frozen", raising=False)
+    window = MagicMock()
+    window.close.return_value = True
+
+    assert app_restart.restart_application(window) is True
+    assert fakes["release"] == 1
+    assert fakes["restart_env"] == ["1"]  # visible to the child at spawn time
+    assert single_instance.RESTART_ENV_VAR not in os.environ  # not leaked afterwards
+
+
+def test_refused_close_keeps_single_instance(fakes):
+    window = MagicMock()
+    window.close.return_value = False
+    assert app_restart.restart_application(window) is False
+    assert fakes["release"] == 0

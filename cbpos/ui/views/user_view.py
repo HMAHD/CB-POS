@@ -332,6 +332,7 @@ class UserView(QWidget):
         self.log_event_filter.addItem(_t("user.event_transaction"), "TRANSACTION")
         self.log_event_filter.addItem(_t("user.event_credit"), "CREDIT")
         self.log_event_filter.addItem(_t("user.event_purchase"), "PURCHASE")
+        self.log_event_filter.addItem(_t("user.event_pricing"), "PRICING")
         restored_index = self.log_event_filter.findData(current_event_type)
         self.log_event_filter.setCurrentIndex(restored_index if restored_index != -1 else 0)
 
@@ -369,6 +370,7 @@ class UserView(QWidget):
         "TRANSACTION": INFO,
         "CREDIT": SUCCESS,
         "PURCHASE": ("#B794F6", "#6F42C1"),
+        "PRICING": ("#FD9A4B", "#B35400"),
     }
 
     def _log_event_color(self, log) -> QColor:

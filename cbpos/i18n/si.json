@@ -2062,7 +2062,8 @@
       "stock_take": "තොග ගණන් කිරීම",
       "cash": "මුදල්",
       "admin": "පරිපාලනය",
-      "other": "වෙනත්"
+      "other": "වෙනත්",
+      "screens": "තිර"
     },
     "code": {
       "sales.view": "විකුණුම් තිරය පාවිච්චි කිරීම",
@@ -2099,7 +2100,9 @@
       "admin.manage_users": "පරිශීලකයෝ කළමනාකරණය",
       "admin.manage_roles": "භූමිකා සහ අවසර කළමනාකරණය",
       "admin.settings": "සැකසුම් වෙනස් කිරීම",
-      "admin.tools": "පරිපාලන මෙවලම් පාවිච්චි කිරීම"
+      "admin.tools": "පරිපාලන මෙවලම් පාවිච්චි කිරීම",
+      "management.view": "කළමනාකරණ තිරය ඇරීම",
+      "settings.view": "සැකසුම් තිරය ඇරීම"
     }
   },
   "roles": {
@@ -2126,7 +2129,18 @@
       "update_user": "පරිශීලකයාගේ විස්තර වෙනස් කළා",
       "tax_rate_change": "බදු සැකසුම් වෙනස් කළා",
       "price_override": "බිල් කරනකොට මිල වෙනස් කළා",
-      "line_discount": "අයිතමයකට වට්ටමක් දුන්නා"
+      "line_discount": "අයිතමයකට වට්ටමක් දුන්නා",
+      "price_list_create": "මිල ලැයිස්තුවක් එකතු කළා",
+      "price_list_update": "මිල ලැයිස්තුව වෙනස් කළා",
+      "price_list_toggle": "මිල ලැයිස්තුව ඔන්/ඕෆ් කළා",
+      "price_list_delete": "මිල ලැයිස්තුව මැකුවා",
+      "price_list_price_set": "ලැයිස්තු මිලක් දැම්මා",
+      "price_list_price_remove": "ලැයිස්තු මිලක් අයින් කළා",
+      "promotion_create": "ප්‍රවර්ධනයක් එකතු කළා",
+      "promotion_update": "ප්‍රවර්ධනය වෙනස් කළා",
+      "promotion_toggle": "ප්‍රවර්ධනය ඔන්/ඕෆ් කළා",
+      "promotion_delete": "ප්‍රවර්ධනය මැකුවා",
+      "product_price_change": "අයිතමයේ මිල වෙනස් කළා"
     },
     "detail": {
       "tax_vat_rate": "VAT අනුපාතය {old}% සිට {new}% දක්වා වෙනස් කළා",
@@ -2134,7 +2148,26 @@
       "tax_sscl_turnover_pct": "SSCL පදනම් පිරිවැටුම {old}% සිට {new}% දක්වා වෙනස් කළා",
       "vat_registered_on": "VAT ලියාපදිංචිය ඔන් කළා",
       "vat_registered_off": "VAT ලියාපදිංචිය ඕෆ් කළා",
-      "generic": "{setting} {old} සිට {new} දක්වා වෙනස් කළා"
+      "generic": "{setting} {old} සිට {new} දක්වා වෙනස් කළා",
+      "field_value": "{field}: {value}",
+      "field_set": "{field} {new} විදියට දැම්මා",
+      "field_changed": "{field} {old} සිට {new} දක්වා වෙනස් කළා",
+      "field_removed": "{field} අයින් කළා (කලින් තිබුණේ {old})",
+      "turned_on": "ඔන් කළා",
+      "turned_off": "ඕෆ් කළා",
+      "item_prices_removed": "ඒකේ තිබුණ ලැයිස්තු මිල {count}ක් අයින් උනා"
+    },
+    "field": {
+      "name": "නම",
+      "start_date": "පටන් ගන්න දිනය",
+      "end_date": "අවසන් වෙන දිනය",
+      "start_time": "පටන් ගන්න වේලාව",
+      "end_time": "අවසන් වෙන වේලාව",
+      "price": "මිල",
+      "type": "වර්ගය",
+      "value": "වට්ටම",
+      "days_of_week": "දවස්",
+      "category": "අදාළ වන්නේ"
     }
   },
   "profile": {
@@ -2425,7 +2458,8 @@
     "event_inventory": "ඉන්වෙන්ටරි",
     "event_transaction": "ගනුදෙනුව",
     "event_credit": "ණය",
-    "event_purchase": "මිලදී ගැනීම"
+    "event_purchase": "මිලදී ගැනීම",
+    "event_pricing": "මිල ගණන්"
   },
   "promotion": {
     "title": "ප්‍රවර්ධන කළමනාකරණය",

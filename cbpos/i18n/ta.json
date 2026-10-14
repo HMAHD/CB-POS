@@ -2062,7 +2062,8 @@
       "stock_take": "சரக்கு எண்ணிக்கை",
       "cash": "பணம்",
       "admin": "நிர்வாகம்",
-      "other": "மற்றவை"
+      "other": "மற்றவை",
+      "screens": "திரைகள்"
     },
     "code": {
       "sales.view": "விற்பனைத் திரையைப் பயன்படுத்துதல்",
@@ -2099,7 +2100,9 @@
       "admin.manage_users": "பயனர்களை நிர்வகித்தல்",
       "admin.manage_roles": "ரோல்களையும் அனுமதிகளையும் நிர்வகித்தல்",
       "admin.settings": "அமைப்புகளை மாற்றுதல்",
-      "admin.tools": "நிர்வாக கருவிகளைப் பயன்படுத்துதல்"
+      "admin.tools": "நிர்வாக கருவிகளைப் பயன்படுத்துதல்",
+      "management.view": "மேலாண்மைத் திரையைத் திறத்தல்",
+      "settings.view": "அமைப்புகள் திரையைத் திறத்தல்"
     }
   },
   "roles": {
@@ -2126,7 +2129,18 @@
       "update_user": "பயனர் விவரம் மாற்றப்பட்டது",
       "tax_rate_change": "வரி அமைப்புகள் மாற்றப்பட்டன",
       "price_override": "பில் போடும்போது விலை மாற்றப்பட்டது",
-      "line_discount": "பொருளுக்கு தள்ளுபடி கொடுக்கப்பட்டது"
+      "line_discount": "பொருளுக்கு தள்ளுபடி கொடுக்கப்பட்டது",
+      "price_list_create": "விலைப் பட்டியல் சேர்க்கப்பட்டது",
+      "price_list_update": "விலைப் பட்டியல் மாற்றப்பட்டது",
+      "price_list_toggle": "விலைப் பட்டியல் ஆன்/ஆஃப் செய்யப்பட்டது",
+      "price_list_delete": "விலைப் பட்டியல் நீக்கப்பட்டது",
+      "price_list_price_set": "பட்டியல் விலை போடப்பட்டது",
+      "price_list_price_remove": "பட்டியல் விலை நீக்கப்பட்டது",
+      "promotion_create": "சலுகை சேர்க்கப்பட்டது",
+      "promotion_update": "சலுகை மாற்றப்பட்டது",
+      "promotion_toggle": "சலுகை ஆன்/ஆஃப் செய்யப்பட்டது",
+      "promotion_delete": "சலுகை நீக்கப்பட்டது",
+      "product_price_change": "பொருள் விலை மாற்றப்பட்டது"
     },
     "detail": {
       "tax_vat_rate": "VAT விகிதம் {old}%-லிருந்து {new}%-ஆ மாற்றப்பட்டது",
@@ -2134,7 +2148,26 @@
       "tax_sscl_turnover_pct": "SSCL அடிப்படை வர்த்தகம் {old}%-லிருந்து {new}%-ஆ மாற்றப்பட்டது",
       "vat_registered_on": "VAT பதிவு ஆன் செய்யப்பட்டது",
       "vat_registered_off": "VAT பதிவு ஆஃப் செய்யப்பட்டது",
-      "generic": "{setting} {old}-லிருந்து {new}-ஆ மாற்றப்பட்டது"
+      "generic": "{setting} {old}-லிருந்து {new}-ஆ மாற்றப்பட்டது",
+      "field_value": "{field}: {value}",
+      "field_set": "{field} {new}-ஆ அமைக்கப்பட்டது",
+      "field_changed": "{field} {old}-லிருந்து {new}-ஆ மாற்றப்பட்டது",
+      "field_removed": "{field} நீக்கப்பட்டது (முன்பு {old})",
+      "turned_on": "ஆன் செய்யப்பட்டது",
+      "turned_off": "ஆஃப் செய்யப்பட்டது",
+      "item_prices_removed": "அதிலிருந்த {count} பட்டியல் விலைகளும் நீக்கப்பட்டன"
+    },
+    "field": {
+      "name": "பேர்",
+      "start_date": "தொடக்க தேதி",
+      "end_date": "முடிவு தேதி",
+      "start_time": "தொடக்க நேரம்",
+      "end_time": "முடிவு நேரம்",
+      "price": "விலை",
+      "type": "வகை",
+      "value": "தள்ளுபடி",
+      "days_of_week": "நாட்கள்",
+      "category": "பொருந்துவது"
     }
   },
   "profile": {
@@ -2425,7 +2458,8 @@
     "event_inventory": "இன்வென்டரி",
     "event_transaction": "பரிவர்த்தனை",
     "event_credit": "கடன்",
-    "event_purchase": "கொள்முதல்"
+    "event_purchase": "கொள்முதல்",
+    "event_pricing": "விலை"
   },
   "promotion": {
     "title": "சலுகை மேலாண்மை",

@@ -1,5 +1,4 @@
 import logging
-import weakref
 from decimal import Decimal
 
 from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QSize, Qt, QTimer, pyqtSignal
@@ -35,7 +34,7 @@ from cbpos.core.services.sound_service import SoundService
 from cbpos.core.services.suspended_transaction_service import SuspendedTransactionService
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import printer_not_configured_message, receipt_printer_configured
 from cbpos.ui.constants import CART_TABLE_ROW_HEIGHT, SEARCH_BAR_HEIGHT
 from cbpos.ui.dialogs.advanced_search_dialog import AdvancedSearchDialog
@@ -101,18 +100,7 @@ class SalesView(QWidget):
         self.installEventFilter(self)
 
         # Register for language changes
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def init_ui(self):
         """Build the header, cart/totals panel, action panel, and keyboard shortcuts."""

@@ -2,7 +2,6 @@
 
 import contextlib
 import logging
-import weakref
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
@@ -29,7 +28,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.constants.permissions import Permissions
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.permission_service import PermissionService
-from cbpos.i18n import _t, get_language, register_language_callback, translate_in, unregister_language_callback
+from cbpos.i18n import _t, get_language, register_language_callback, translate_in
 from cbpos.ui.app_restart import restart_application
 from cbpos.ui.views.settings_pages import (
     DocumentPage,
@@ -66,18 +65,7 @@ class SettingsView(QWidget):
         self._watch_page_edits()
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def init_ui(self):
         """Build the sidebar and, beside it, the stacked pages over one action bar."""

@@ -1,6 +1,5 @@
 """User management view: accounts, roles, permissions, and activity log."""
 
-import weakref
 from datetime import datetime, time
 
 from PyQt6.QtCore import QDate
@@ -27,7 +26,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.user_service import UserService
 from cbpos.core.utils.audit_format import format_audit_action, format_audit_details, format_log_time
 from cbpos.core.utils.display_labels import display_role_name, event_type_label
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.permission_dialog import PermissionDialog
 from cbpos.ui.dialogs.role_manager import RoleManagerDialog
 from cbpos.ui.resources.icons import Icons
@@ -138,23 +137,7 @@ class UserView(QWidget):
         self.init_ui()
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # A plain `lambda: unregister_language_callback(self.retranslate_ui)`
-        # closes over self, so self -> destroyed signal -> lambda -> self is
-        # a reference cycle that only the cyclic GC can break. When that GC
-        # pass runs late enough to have to unwind a QObject whose C++ side is
-        # already mid-teardown, calling back into it here segfaults instead
-        # of raising. A weakref avoids creating the cycle in the first place,
-        # so plain refcounting reclaims the view without ever needing a GC
-        # pass to touch it.
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def init_ui(self):
         """Build the page header and the Users/Activity Log tabs, then load their initial data."""

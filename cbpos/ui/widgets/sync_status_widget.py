@@ -13,7 +13,6 @@ Design:
 """
 
 import logging
-import weakref
 
 from PyQt6.QtCore import Qt, pyqtSlot
 from PyQt6.QtGui import QCursor
@@ -24,7 +23,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 
 logger = logging.getLogger(__name__)
 
@@ -57,18 +56,7 @@ class SyncStatusWidget(QWidget):
         self._config_error: str = ""
 
         self._setup_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            widget = self_ref()
-            if widget is not None:
-                unregister_language_callback(widget.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def retranslate_ui(self) -> None:
         """Update the tooltip and status text from i18n (called on language change)."""

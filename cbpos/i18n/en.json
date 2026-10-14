@@ -95,7 +95,17 @@
     "auto_backup_skipped_msg": "No backup was made because you haven't set a backup password yet.\n\nSet one on the Data Safety page so your automatic backups can be restored."
   },
   "startup": {
-    "splash_loading": "Starting CB POS..."
+    "splash_loading": "Starting CB POS...",
+    "checking_data": "Checking your shop data...",
+    "updating_data": "Updating your data to the new version...",
+    "preparing_screen": "Getting the screen ready...",
+    "setting_up_reports": "Setting up reports...",
+    "loading_printing": "Getting receipt printing ready...",
+    "loading_pdf": "Getting PDF export ready...",
+    "loading_screens": "Loading sales, stock and customers...",
+    "preparing_counter": "Preparing the sales counter...",
+    "starting_sync": "Starting sync for your terminals...",
+    "connecting_main_pc": "Connecting to the Main PC..."
   },
   "sync_status": {
     "tooltip": "Click for sync details",
@@ -2076,8 +2086,14 @@
     "email_body": "Please find attached the {report_name}.",
     "email_subject_prefix": "Report",
     "email_failed": "Email Failed",
-    "email_sending": "Email sending started in background...",
+    "email_sending": "Sending the email...",
     "email_prepare_failed": "Failed to prepare email: {error}",
+    "email_sent": "Report emailed to {email}.",
+    "email_not_configured": "Email isn't set up yet, so nothing was sent. Add your email details in Settings first.",
+    "email_send_failed": "Couldn't send the email: {error}",
+    "printing": "Sending to the printer...",
+    "print_sent": "{name} sent to the printer.",
+    "print_failed": "Couldn't print the report. Check the printer and try again.\n\n{error}",
     "print_title": "CB POS - {name}",
     "generated_on": "Generated on:"
   },

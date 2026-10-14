@@ -107,20 +107,18 @@ def test_report_print_html_localized():
         viewer.current_report = mock_report
         viewer._full_df = pd.DataFrame({"Item": ["A"], "Total": [100]})
 
-        captured_html = []
-
-        def mock_set_html(self, html):
-            captured_html.append(html)
-
+        # The HTML is built and printed in a worker thread (#643): capture the
+        # worker's inputs and render the page it would print.
         with (
             patch("PyQt6.QtPrintSupport.QPrintDialog.exec", return_value=1),
-            patch("PyQt6.QtGui.QTextDocument.setHtml", mock_set_html),
-            patch("PyQt6.QtGui.QTextDocument.print"),
+            patch("cbpos.ui.views.reports.report_viewer.ReportPrintWorker") as worker_cls,
         ):
             viewer.print_report()
 
-        assert len(captured_html) == 1
-        html = captured_html[0]
+        from cbpos.ui.workers import report_print_html
+
+        _printer, df, title, generated_on_label = worker_cls.call_args.args
+        html = report_print_html(df, title, generated_on_label)
         assert "ජනනය කළ දිනය:" in html
         assert "Generated on:" not in html
     finally:

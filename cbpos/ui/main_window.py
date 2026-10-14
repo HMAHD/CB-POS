@@ -298,6 +298,11 @@ class MainWindow(QMainWindow):
 
         PrintWorker.shutdown()
 
+        # Same for report jobs (run/export/print/email) still going (#643).
+        from cbpos.ui.workers import wait_for_background_jobs
+
+        wait_for_background_jobs()
+
         if ConfigService.get("auto_backup_on_close"):
             self._auto_backup_on_close()
         super().closeEvent(event)

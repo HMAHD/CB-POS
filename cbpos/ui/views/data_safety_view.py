@@ -888,7 +888,7 @@ class DataSafetyView(QWidget):
 
         from cbpos.core.services.data_export_service import DataExportService
         from cbpos.core.services.export_service import ExportService
-        from cbpos.ui.workers import ExportWorker
+        from cbpos.ui.workers import ExportWorker, start_background_job
 
         # Validate date range for Sales export
         data_type = self.cmb_export_data.currentText()
@@ -956,7 +956,7 @@ class DataSafetyView(QWidget):
         self._export_worker = ExportWorker(ExportService(), df, filepath, title, fmt)
         self._export_worker.result.connect(self._on_export_finished)
         self._export_worker.error.connect(self._on_export_error)
-        self._export_worker.start()
+        start_background_job(self._export_worker)  # outlives the view if it closes mid-export
 
     def _on_export_finished(self, _msg: str) -> None:
         """Handle successful export from background thread."""

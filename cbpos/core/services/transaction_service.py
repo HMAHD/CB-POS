@@ -1,12 +1,11 @@
 import logging
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from cbpos.core.constants.status import Precision
+from cbpos.core.constants.status import DocumentStatus, PaymentMethodType, Precision
 from cbpos.core.database import Database
 from cbpos.core.models import (
     AuditLog,
@@ -26,6 +25,7 @@ from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.document_service import DocumentService
 from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
+from cbpos.core.services.refund_breakdown import ZERO_MONEY, RefundBreakdown, refund_cash_back
 from cbpos.core.services.stock_service import StockService
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
@@ -460,7 +460,7 @@ class TransactionService:
             return None
 
     @staticmethod
-    def refund_breakdown(sale_id: int) -> dict[str, Any] | None:
+    def refund_breakdown(sale_id: int) -> RefundBreakdown | None:
         """Split a full refund of a sale into money handed back and credit given back (#715).
 
         A refund of a credit sale takes the credit part off the customer's
@@ -473,9 +473,8 @@ class TransactionService:
             sale_id: ID of the original sale.
 
         Returns:
-            ``{"total", "cash_back", "credit_reversed", "customer_name", "refundable"}``
-            (Decimals for money), or None if the sale doesn't exist. A sale that
-            is voided, already refunded, or itself a refund is not refundable and
+            The split, or None if the sale doesn't exist. A sale that is
+            voided, already refunded, or itself a refund is not refundable and
             reports 0.00 for both parts.
         """
         db = Database()
@@ -485,20 +484,24 @@ class TransactionService:
                 return None
 
             customer = session.get(Customer, sale.customer_id) if sale.customer_id else None
+            customer_name = customer.name if customer else ""
             total = Decimal(str(sale.total_amount or 0)).quantize(Precision.MONEY)
             already_refunded = session.query(Sale.id).filter(Sale.refund_of_sale_id == sale_id).first() is not None
-            refundable = sale.status != "VOID" and sale.payment_method != "REFUND" and not already_refunded
+            refundable = (
+                sale.status != DocumentStatus.VOID
+                and sale.payment_method != PaymentMethodType.REFUND
+                and not already_refunded
+            )
+            if not refundable:
+                return RefundBreakdown(total, ZERO_MONEY, ZERO_MONEY, customer_name)
 
-            zero = Decimal("0.00")
-            credit = CustomerCreditService.credit_to_reverse(session, sale) if refundable else zero
-            cash_back = max(total - credit, zero) if refundable else zero
-            return {
-                "total": total,
-                "cash_back": cash_back,
-                "credit_reversed": credit,
-                "customer_name": customer.name if customer else "",
-                "refundable": refundable,
-            }
+            credit = CustomerCreditService.credit_to_reverse(session, sale)
+            return RefundBreakdown(
+                total=total,
+                cash_back=refund_cash_back(total, credit),
+                credit_reversed=credit,
+                customer_name=customer_name,
+            )
 
     @staticmethod
     def process_refund(original_sale_id: int, refund_reason: str, user_id: int) -> bool:

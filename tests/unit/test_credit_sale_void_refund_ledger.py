@@ -199,22 +199,22 @@ class TestRefundBreakdown:
 
         b = TransactionService.refund_breakdown(sale.id)
 
-        assert (b["cash_back"], b["credit_reversed"], b["refundable"]) == (Decimal("200.00"), Decimal("0.00"), True)
+        assert (b.cash_back, b.credit_reversed) == (Decimal("200.00"), Decimal("0.00"))
 
     def test_credit_only_sale_hands_nothing_back(self, db_session, user, product, customer):
         sale = _sell(db_session, user, product, customer, [("Credit", "200.00")])
 
         b = TransactionService.refund_breakdown(sale.id)
 
-        assert (b["cash_back"], b["credit_reversed"]) == (Decimal("0.00"), Decimal("200.00"))
-        assert b["customer_name"] == "Credit 715"
+        assert (b.cash_back, b.credit_reversed) == (Decimal("0.00"), Decimal("200.00"))
+        assert b.customer_name == "Credit 715"
 
     def test_mixed_sale_splits(self, db_session, user, product, customer):
         sale = _sell(db_session, user, product, customer, [("Cash", "120.00"), ("Credit", "80.00")])
 
         b = TransactionService.refund_breakdown(sale.id)
 
-        assert (b["total"], b["cash_back"], b["credit_reversed"]) == (
+        assert (b.total, b.cash_back, b.credit_reversed) == (
             Decimal("200.00"),
             Decimal("120.00"),
             Decimal("80.00"),
@@ -226,7 +226,7 @@ class TestRefundBreakdown:
 
         TransactionService.process_refund(sale.id, "Returned", user.id)
 
-        assert [-e.amount for e in _reversals(db_session, customer)] == [b["credit_reversed"]]
+        assert [-e.amount for e in _reversals(db_session, customer)] == [b.credit_reversed]
 
     def test_already_refunded_sale_has_nothing_left(self, db_session, user, product, customer):
         sale = _sell(db_session, user, product, customer, [("Cash", "120.00"), ("Credit", "80.00")])
@@ -234,7 +234,7 @@ class TestRefundBreakdown:
 
         b = TransactionService.refund_breakdown(sale.id)
 
-        assert (b["cash_back"], b["credit_reversed"], b["refundable"]) == (Decimal("0.00"), Decimal("0.00"), False)
+        assert (b.cash_back, b.credit_reversed) == (Decimal("0.00"), Decimal("0.00"))
 
     def test_voided_sale_has_nothing_left(self, db_session, user, product, customer):
         sale = _sell(db_session, user, product, customer, [("Credit", "200.00")])
@@ -242,7 +242,7 @@ class TestRefundBreakdown:
 
         b = TransactionService.refund_breakdown(sale.id)
 
-        assert (b["cash_back"], b["credit_reversed"], b["refundable"]) == (Decimal("0.00"), Decimal("0.00"), False)
+        assert (b.cash_back, b.credit_reversed) == (Decimal("0.00"), Decimal("0.00"))
 
     def test_missing_sale(self, db_session):
         assert TransactionService.refund_breakdown(99999999) is None

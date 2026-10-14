@@ -137,8 +137,9 @@ def test_stock_take_stats_bar_uses_the_currency_symbol(qapp, db_session, currenc
 
     currency("$")
     view = StockTakeView()
-    assert "$ 0.00" in view.lbl_variance.text()
-    assert "Rs." not in view.lbl_variance.text()
+    assert "$ 0.00" in view.lbl_net_variance.text()
+    assert "$ 0.00" in view.lbl_discrepancy.text()
+    assert "Rs." not in view.lbl_net_variance.text() + view.lbl_discrepancy.text()
     view.deleteLater()
 
 

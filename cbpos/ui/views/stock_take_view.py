@@ -1,6 +1,7 @@
 """Stock Take view for physical inventory counting and variance workflow."""
 
 import logging
+import weakref
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
@@ -31,7 +32,9 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.constants.status import DocumentStatus, Precision
 from cbpos.core.services.product_service import ProductService
-from cbpos.core.services.stock_count_service import StockCountService
+from cbpos.core.services.stock_count_service import StockCountService, VarianceTotals
+from cbpos.core.services.theme_service import ThemeService
+from cbpos.core.utils.destroy_hooks import call_on_destroyed
 from cbpos.core.utils.formatters import (
     format_currency,
     format_document_status,
@@ -48,7 +51,7 @@ from cbpos.ui.constants import (
     SPACING_XS,
 )
 from cbpos.ui.resources.icons import Icons
-from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, status_color
+from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, status_color, status_hex
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
@@ -218,6 +221,26 @@ def _variance_meaning(value) -> str:
     return SUCCESS if value > 0 else NEUTRAL
 
 
+def _format_net(value: Decimal) -> str:
+    """Net variance as signed money: +Rs. 500.00 / \u2212Rs. 500.00 / Rs. 0.00."""
+    return format_signed(value, format_currency)
+
+
+def _net_variance_text(totals: VarianceTotals) -> str:
+    """'Net variance: <signed amount>' -- the one wording every screen uses (#644)."""
+    return _t("stock_take.net_variance_amount", amount=_format_net(totals.net))
+
+
+def _discrepancy_text(totals: VarianceTotals) -> str:
+    """'Total discrepancy: <amount>' -- the one wording every screen uses (#644)."""
+    return _t("stock_take.total_discrepancy_amount", amount=format_currency(totals.discrepancy))
+
+
+def _totals_block(totals: VarianceTotals) -> str:
+    """Both figures on their own lines, for the finalize and approve messages."""
+    return f"{_net_variance_text(totals)}\n{_discrepancy_text(totals)}"
+
+
 class CountedDelegate(QStyledItemDelegate):
     """Editor for the Counted column built for fast keyboard counting (#615).
 
@@ -301,10 +324,20 @@ class StockCountReportDialog(QDialog):
         lbl_note_val = QLabel(stock_count.note or _t("common.na"))
         lbl_note_val.setStyleSheet("font-weight: bold;")
 
-        lbl_var_key = QLabel(_t("stock_take.hist_col_variance_total"))
-        lbl_var_key.setProperty("class", "muted")
-        lbl_var_val = QLabel(format_currency(stock_count.total_variance_value))
-        lbl_var_val.setStyleSheet("font-weight: bold;")
+        # Net variance and total discrepancy, same labels as the stats bar (#644)
+        totals = StockCountService.variance_totals(stock_count.items)
+        self.lbl_net_variance_key = QLabel(_t("stock_take.net_variance"))
+        self.lbl_net_variance_key.setProperty("class", "muted")
+        self.lbl_net_variance_key.setToolTip(_t("stock_take.net_variance_hint"))
+        self.lbl_net_variance_val = QLabel(_format_net(totals.net))
+        self.lbl_net_variance_val.setStyleSheet(
+            f"font-weight: bold; color: {status_hex(_variance_meaning(totals.net))};"
+        )
+        self.lbl_discrepancy_key = QLabel(_t("stock_take.total_discrepancy"))
+        self.lbl_discrepancy_key.setProperty("class", "muted")
+        self.lbl_discrepancy_key.setToolTip(_t("stock_take.total_discrepancy_hint"))
+        self.lbl_discrepancy_val = QLabel(format_currency(totals.discrepancy))
+        self.lbl_discrepancy_val.setStyleSheet("font-weight: bold;")
 
         info_grid.addWidget(lbl_status_key, 0, 0)
         info_grid.addWidget(lbl_status_val, 1, 0)
@@ -312,8 +345,10 @@ class StockCountReportDialog(QDialog):
         info_grid.addWidget(lbl_date_val, 1, 1)
         info_grid.addWidget(lbl_note_key, 0, 2)
         info_grid.addWidget(lbl_note_val, 1, 2)
-        info_grid.addWidget(lbl_var_key, 0, 3)
-        info_grid.addWidget(lbl_var_val, 1, 3)
+        info_grid.addWidget(self.lbl_net_variance_key, 0, 3)
+        info_grid.addWidget(self.lbl_net_variance_val, 1, 3)
+        info_grid.addWidget(self.lbl_discrepancy_key, 0, 4)
+        info_grid.addWidget(self.lbl_discrepancy_val, 1, 4)
         info_grid.setColumnStretch(2, 1)
         layout.addLayout(info_grid)
 
@@ -391,14 +426,35 @@ class StockCountReportDialog(QDialog):
 class StockTakeView(QWidget):
     """Stock take view with New Count and History tabs."""
 
+    # History table columns
+    HIST_COL_ITEMS = 3
+    HIST_COL_NET = 4
+    HIST_COL_DISCREPANCY = 5
+    HIST_COL_STATUS = 6
+
     def __init__(self) -> None:
         """Initialize the view, build its UI, and register for language updates."""
         super().__init__()
         self.current_stock_count = None
+        self._net_meaning = NEUTRAL
         self.init_ui()
 
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui, owner=self)
+
+        # Repaint the signed net variance for a new theme. Held through a
+        # weakref: ThemeService's callback list is class-level and would
+        # otherwise keep the view alive.
+        self_ref = weakref.ref(self)
+
+        def _on_theme_changed() -> None:
+            view = self_ref()
+            if view is not None:
+                view._paint_net_variance()
+
+        ThemeService.register_theme_callback(_on_theme_changed)
+        # Not destroyed.connect(<nested function>): that can segfault (see destroy_hooks).
+        call_on_destroyed(self, ThemeService.unregister_theme_callback, _on_theme_changed)
 
     def init_ui(self) -> None:
         """Build the page header and the New Count / History tabs."""
@@ -506,11 +562,15 @@ class StockTakeView(QWidget):
         stats_layout.setSpacing(BAR_GROUP_SPACING)
         self.lbl_items = QLabel(_t("stock_take.items_count", count=0))
         self.lbl_counted = QLabel(_t("stock_take.counted_progress", counted=0, total=0))
-        self.lbl_variance = QLabel(_t("stock_take.variance_amount", amount=format_currency(Decimal("0"))))
+        # Net variance (signed) and total discrepancy (absolute), labelled
+        # apart so +500 and -500 can't read as both 0 and 1,000 (#644).
+        self.lbl_net_variance = QLabel()
+        self.lbl_discrepancy = QLabel()
         self.lbl_status = QLabel(_t("stock_take.status_display", status="---"))
         stats_layout.addWidget(self.lbl_items)
         stats_layout.addWidget(self.lbl_counted)
-        stats_layout.addWidget(self.lbl_variance)
+        stats_layout.addWidget(self.lbl_net_variance)
+        stats_layout.addWidget(self.lbl_discrepancy)
         stats_layout.addStretch()
         stats_layout.addWidget(self.lbl_status)
         layout.addLayout(stats_layout)
@@ -588,18 +648,8 @@ class StockTakeView(QWidget):
 
         # History table
         self.history_table = QTableWidget()
-        self.history_table.setColumnCount(6)
-        self.history_table.setHorizontalHeaderLabels(
-            [
-                _t("stock_take.hist_col_stk"),
-                _t("common.date"),
-                _t("stock_take.hist_col_user"),
-                _t("stock_take.hist_col_items"),
-                _t("stock_take.hist_col_variance_total"),
-                _t("common.status"),
-            ]
-        )
-        align_numeric_headers(self.history_table, (3, 4))  # Items, Variance Total
+        self.history_table.setColumnCount(len(self._history_headers()))
+        self._set_history_headers()
         configure_table_columns(
             self.history_table.horizontalHeader(),
             {
@@ -607,8 +657,9 @@ class StockTakeView(QWidget):
                 1: QHeaderView.ResizeMode.ResizeToContents,  # Date
                 2: QHeaderView.ResizeMode.Stretch,  # User - needs the room
                 3: QHeaderView.ResizeMode.ResizeToContents,  # Items
-                4: QHeaderView.ResizeMode.ResizeToContents,  # Variance Total
-                5: QHeaderView.ResizeMode.ResizeToContents,  # Status
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Net variance
+                5: QHeaderView.ResizeMode.ResizeToContents,  # Total discrepancy
+                6: QHeaderView.ResizeMode.ResizeToContents,  # Status
             },
             minimum_section_size=70,
         )
@@ -616,7 +667,7 @@ class StockTakeView(QWidget):
         self.history_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.history_table.setAlternatingRowColors(True)
         self.history_table.doubleClicked.connect(self.on_history_double_click)
-        self.history_table.setItemDelegateForColumn(5, StatusPillDelegate(self.history_table))  # (#560)
+        self.history_table.setItemDelegateForColumn(self.HIST_COL_STATUS, StatusPillDelegate(self.history_table))
         self.history_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.history_table.customContextMenuRequested.connect(self.show_history_context_menu)
         self.history_table.itemSelectionChanged.connect(self._update_history_actions)
@@ -712,17 +763,29 @@ class StockTakeView(QWidget):
         self.btn_hist_resume.setText(_t("stock_take.hist_btn_resume"))
         self.btn_hist_discard.setText(_t("stock_take.hist_btn_discard"))
 
-        self.history_table.setHorizontalHeaderLabels(
-            [
-                _t("stock_take.hist_col_stk"),
-                _t("common.date"),
-                _t("stock_take.hist_col_user"),
-                _t("stock_take.hist_col_items"),
-                _t("stock_take.hist_col_variance_total"),
-                _t("common.status"),
-            ]
+        self._set_history_headers()
+
+    @staticmethod
+    def _history_headers() -> list[str]:
+        """Translated History column headers."""
+        return [
+            _t("stock_take.hist_col_stk"),
+            _t("common.date"),
+            _t("stock_take.hist_col_user"),
+            _t("stock_take.hist_col_items"),
+            _t("stock_take.net_variance"),
+            _t("stock_take.total_discrepancy"),
+            _t("common.status"),
+        ]
+
+    def _set_history_headers(self) -> None:
+        """Label the History columns, right-align the numeric ones, explain the two variances."""
+        self.history_table.setHorizontalHeaderLabels(self._history_headers())
+        align_numeric_headers(self.history_table, (self.HIST_COL_ITEMS, self.HIST_COL_NET, self.HIST_COL_DISCREPANCY))
+        self.history_table.horizontalHeaderItem(self.HIST_COL_NET).setToolTip(_t("stock_take.net_variance_hint"))
+        self.history_table.horizontalHeaderItem(self.HIST_COL_DISCREPANCY).setToolTip(
+            _t("stock_take.total_discrepancy_hint")
         )
-        align_numeric_headers(self.history_table, (3, 4))  # Items, Variance Total
 
     # ========== New Count Methods ==========
 
@@ -884,7 +947,7 @@ class StockTakeView(QWidget):
         if not self.current_stock_count:
             self.lbl_items.setText(_t("stock_take.items_count", count=0))
             self.lbl_counted.setText(_t("stock_take.counted_progress", counted=0, total=0))
-            self.lbl_variance.setText(_t("stock_take.variance_amount", amount=format_currency(Decimal("0"))))
+            self._show_variance_totals(StockCountService.variance_totals([]))
             self.lbl_status.setText(_t("stock_take.status_display", status="---"))
             # No count yet: only starting one makes sense. Without this the
             # buttons kept the last count's state, so Load Products stayed
@@ -897,11 +960,10 @@ class StockTakeView(QWidget):
         items = self.item_model.items
         total = len(items)
         counted = sum(1 for i in items if i.counted_qty is not None)
-        variance = sum(abs(i.variance_value) for i in items if i.variance_value is not None)
 
         self.lbl_items.setText(_t("stock_take.items_count", count=total))
         self.lbl_counted.setText(_t("stock_take.counted_progress", counted=counted, total=total))
-        self.lbl_variance.setText(_t("stock_take.variance_amount", amount=format_currency(variance)))
+        self._show_variance_totals(StockCountService.variance_totals(items))
         self.lbl_status.setText(
             _t("stock_take.status_display", status=format_document_status(self.current_stock_count.status))
         )
@@ -915,6 +977,19 @@ class StockTakeView(QWidget):
         self.btn_approve.setEnabled(is_counted)
         self.btn_void.setEnabled(is_draft or is_counted)
 
+    def _show_variance_totals(self, totals: VarianceTotals) -> None:
+        """Show net variance (coloured by sign) and total discrepancy on the stats bar."""
+        self.lbl_net_variance.setText(_net_variance_text(totals))
+        self.lbl_net_variance.setToolTip(_t("stock_take.net_variance_hint"))
+        self.lbl_discrepancy.setText(_discrepancy_text(totals))
+        self.lbl_discrepancy.setToolTip(_t("stock_take.total_discrepancy_hint"))
+        self._net_meaning = _variance_meaning(totals.net)
+        self._paint_net_variance()
+
+    def _paint_net_variance(self) -> None:
+        """Colour the net variance for its sign in the current theme (#559 palette)."""
+        self.lbl_net_variance.setStyleSheet(f"color: {status_hex(self._net_meaning)};")
+
     def save_draft(self) -> None:
         """Save current state (items are already persisted via update_count)."""
         QMessageBox.information(self, _t("common.saved"), _t("stock_take.draft_saved"))
@@ -926,16 +1001,16 @@ class StockTakeView(QWidget):
 
         try:
             self.current_stock_count = StockCountService.finalize_count(self.current_stock_count.id)
+            self._reload_items()
             QMessageBox.information(
                 self,
                 _t("stock_take.finalized_title"),
                 _t(
                     "stock_take.finalized_message",
                     number=self.current_stock_count.document_number,
-                    variance=format_currency(self.current_stock_count.total_variance_value),
+                    totals=_totals_block(StockCountService.variance_totals(self.item_model.items)),
                 ),
             )
-            self._reload_items()
         except ValueError as e:
             QMessageBox.warning(self, _t("common.error"), self._translate_service_error(e))
 
@@ -949,11 +1024,11 @@ class StockTakeView(QWidget):
             return
 
         # Confirmation
-        variance = self.current_stock_count.total_variance_value
+        totals = StockCountService.variance_totals(self.item_model.items)
         reply = QMessageBox.question(
             self,
             _t("stock_take.confirm_approval_title"),
-            _t("stock_take.confirm_approval_message", variance=format_currency(variance)),
+            _t("stock_take.confirm_approval_message", totals=_totals_block(totals)),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -1062,17 +1137,24 @@ class StockTakeView(QWidget):
             self.history_table.setItem(row, 2, QTableWidgetItem(sc.user.username if sc.user else ""))
 
             items_item = QTableWidgetItem(format_number(len(sc.items or []), 0))
-            items_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.history_table.setItem(row, 3, items_item)
+            items_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.history_table.setItem(row, self.HIST_COL_ITEMS, items_item)
 
-            var_item = QTableWidgetItem(format_currency(sc.total_variance_value))
-            var_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.history_table.setItem(row, 4, var_item)
+            totals = StockCountService.variance_totals(sc.items or [])
+            net_item = QTableWidgetItem(_format_net(totals.net))
+            net_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            net_item.setForeground(status_color(_variance_meaning(totals.net)))
+            self.history_table.setItem(row, self.HIST_COL_NET, net_item)
+
+            discrepancy_item = QTableWidgetItem(format_currency(totals.discrepancy))
+            discrepancy_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.history_table.setItem(row, self.HIST_COL_DISCREPANCY, discrepancy_item)
 
             meaning = _HISTORY_STATUS_MEANINGS.get(sc.status)
             item = QTableWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, sc.status)
-            self.history_table.setItem(row, 5, set_status_pill(item, format_document_status(sc.status), meaning))
+            status_text = format_document_status(sc.status)
+            self.history_table.setItem(row, self.HIST_COL_STATUS, set_status_pill(item, status_text, meaning))
 
     def _selected_history_row(self) -> int | None:
         """Row of the selected history count, or None (no selection / placeholder row)."""
@@ -1084,7 +1166,7 @@ class StockTakeView(QWidget):
 
     def _history_row_status(self, row: int) -> str | None:
         """Status code of a history row, read from its status cell."""
-        status_item = self.history_table.item(row, 5)
+        status_item = self.history_table.item(row, self.HIST_COL_STATUS)
         if not status_item:
             return None
         return status_item.data(Qt.ItemDataRole.UserRole) or status_item.text()

@@ -226,12 +226,13 @@ def test_failure_then_retry_queues_a_second_job(closing_dialog, worker):
         patch.object(closing_dialog, "_offer_backup", return_value=False),
         patch.object(closing_dialog, "accept"),
     ):
-        box.return_value.clickedButton.side_effect = lambda: box.return_value.addButton.return_value
+        retry_btn = box.return_value.addButton.return_value
+        box.return_value.clickedButton.return_value = retry_btn
         closing_dialog._close_shift()
-        box.return_value.clickedButton.side_effect = None
-        worker.error_occurred.emit("Paper out")
+        worker.error_occurred.emit("Paper out")  # -> Retry: queues the Z-Report again
 
     assert len(worker.jobs) == 2
+    assert worker.jobs[0] == worker.jobs[1]
 
 
 def test_closed_dialog_cannot_be_cancelled_while_printing(closing_dialog, worker):

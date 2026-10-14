@@ -380,6 +380,22 @@ class TransactionService:
             TransactionService._move_stock(session, composite_map, product.id, -qty, "SALE", sale.id, sale.user_id)
 
     @staticmethod
+    def _load_receipt_relations(sale: Sale) -> None:
+        """Load what the receipt needs while the session is still open (prevents DetachedInstanceError).
+
+        Customer, cashier (also for a later print from ReceiptOptionsDialog,
+        #681) and each line's product.
+
+        Args:
+            sale: The sale, still attached to its session.
+        """
+        if sale.customer_id:
+            _ = sale.customer
+        _ = sale.user
+        for item in sale.items:
+            _ = item.product
+
+    @staticmethod
     def _execute_sale(cart_service: CartService, payments: list, customer_id: int = None) -> Sale:
         """Internal method that executes the sale transaction."""
         db = Database()
@@ -423,11 +439,7 @@ class TransactionService:
             TransactionService._write_sale_lines(session, sale, cart_service.items, composite_map)
 
             # 5. Eager-load relationships before session closes (prevents DetachedInstanceError)
-            if sale.customer_id:
-                _ = sale.customer  # Force load while session is open
-            _ = sale.user  # Cashier for the receipt, also when printed later from ReceiptOptionsDialog (#681)
-            for item in sale.items:  # Force load items + product for ReceiptOptionsDialog
-                _ = item.product
+            TransactionService._load_receipt_relations(sale)
 
             # 6. Context manager handles commit
 

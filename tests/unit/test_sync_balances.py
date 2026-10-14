@@ -14,9 +14,10 @@ from decimal import Decimal
 
 import pytest
 
-from cbpos.core.models import Customer, CustomerLedgerEntry, Sale, Supplier
+from cbpos.core.models import Customer, CustomerLedgerEntry, Sale, SalePayment, Supplier
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
+from cbpos.core.services.transaction_service import TransactionService
 from tests.unit.sync_two_machines import Shop, isolated_settings
 
 TILL_A = "TERM-02"
@@ -45,7 +46,7 @@ def catalog(shop):
     return ids
 
 
-def _credit_sale(shop, till: str, catalog, number: str, amount: str) -> None:
+def _credit_sale(shop, till: str, catalog, number: str, amount: str) -> int:
     """A credit sale on a till, booked the way TransactionService books one."""
     with shop.session(till) as s:
         sale = Sale(
@@ -61,9 +62,11 @@ def _credit_sale(shop, till: str, catalog, number: str, amount: str) -> None:
         )
         s.add(sale)
         s.flush()
+        s.add(SalePayment(sale_id=sale.id, payment_method="Credit", amount=Decimal(amount)))
         sale_id = sale.id
     with shop.on(till):
         CustomerCreditService.record_credit_sale(catalog["customer"], sale_id, Decimal(amount), number, catalog["user"])
+    return sale_id
 
 
 def _debt(shop, machine: str, catalog) -> Decimal:
@@ -147,6 +150,47 @@ class TestCustomerDebt:
 
         assert _debt(shop, "main", catalog) == Decimal("600.00")
         assert _debt(shop, TILL_A, catalog) == Decimal("600.00")
+
+
+class TestCreditSaleReversal:
+    """#715: a void/refund on a till gives the credit back on the Main PC too."""
+
+    def test_void_on_till_lowers_debt_on_main_pc(self, shop, catalog):
+        sale_id = _credit_sale(shop, TILL_A, catalog, "02-INV-1", "500.00")
+        shop.cycle(TILL_A)
+        assert _debt(shop, "main", catalog) == Decimal("600.00")
+
+        with shop.on(TILL_A):
+            assert TransactionService.void_sale(sale_id, catalog["user"], "Mistake") is True
+        assert _debt(shop, TILL_A, catalog) == Decimal("100.00")
+        shop.cycle(TILL_A)
+
+        assert _debt(shop, "main", catalog) == Decimal("100.00")
+        assert _debt(shop, TILL_A, catalog) == Decimal("100.00")
+        with shop.session("main") as s:
+            entry = s.query(CustomerLedgerEntry).filter(CustomerLedgerEntry.entry_type == "VOID").one()
+            voided = s.get(Sale, entry.reference_id)
+            assert voided.document_number == "02-INV-1"
+            assert voided.status == "VOID"
+
+    def test_void_pushed_together_with_its_sale(self, shop, catalog):
+        sale_id = _credit_sale(shop, TILL_A, catalog, "02-INV-1", "500.00")
+        with shop.on(TILL_A):
+            TransactionService.void_sale(sale_id, catalog["user"], "Mistake")
+        shop.cycle(TILL_A)
+
+        assert _debt(shop, "main", catalog) == Decimal("100.00")
+
+    def test_refund_on_till_lowers_debt_on_main_pc(self, shop, catalog):
+        sale_id = _credit_sale(shop, TILL_A, catalog, "02-INV-1", "500.00")
+        shop.cycle(TILL_A)
+
+        with shop.on(TILL_A):
+            assert TransactionService.process_refund(sale_id, "Returned", catalog["user"]) is True
+        shop.cycle(TILL_A)
+
+        assert _debt(shop, "main", catalog) == Decimal("100.00")
+        assert _debt(shop, TILL_A, catalog) == Decimal("100.00")
 
 
 class TestSupplierPayable:

@@ -317,6 +317,40 @@ class TransactionService:
             logger.error("Auto-print of %s failed: %s", sale.document_number, e)
 
     @staticmethod
+    def _new_sale(
+        totals: dict[str, Any], payments: list[dict[str, Any]], cashier_id: int, customer_id: int | None
+    ) -> Sale:
+        """Build the (not yet added) sale header from the cart totals.
+
+        Tax values come straight from the cart totals (single source of
+        truth). The exempt amount rides along on ``sale._exempt_amount`` for
+        the receipt builder -- transient, not persisted.
+
+        Args:
+            totals: ``CartService.get_totals()``.
+            payments: ``[{"method", "amount"}, ...]`` -- one method is shown as is, several as "SPLIT".
+            cashier_id: The signed-in cashier.
+            customer_id: The sale's customer, if any.
+
+        Returns:
+            Sale: The new header, without a document number.
+        """
+        sale = Sale(
+            date=datetime.now(),
+            total_amount=totals["final_total"],
+            tax_vat=totals["tax_vat"],
+            tax_sscl=totals["tax_sscl"],
+            net_revenue=totals["net_revenue"],
+            payment_method=payments[0]["method"] if len(payments) == 1 else "SPLIT",
+            user_id=cashier_id,
+            customer_id=customer_id,
+            terminal_id=ConfigService.get("terminal_id") or "TERM-01",
+            origin_terminal_id=ConfigService.get("terminal_id") or "TERM-01",
+        )
+        sale._exempt_amount = totals.get("exempt_amount", Decimal("0"))
+        return sale
+
+    @staticmethod
     def _execute_sale(cart_service: CartService, payments: list, customer_id: int = None) -> Sale:
         """Internal method that executes the sale transaction."""
         db = Database()
@@ -346,31 +380,8 @@ class TransactionService:
             # Ledger entry is written after the sale is flushed (needs sale.id)
             credit_charge = TransactionService._charge_credit(session, payments, customer_id)
 
-            # 2. Create Sale Header — use tax values from cart totals (single source of truth)
-            exempt_amount = totals.get("exempt_amount", Decimal("0"))
-            tax_info = {
-                "vat": totals["tax_vat"],
-                "sscl": totals["tax_sscl"],
-                "net": totals["net_revenue"],
-            }
-
-            # Determine primary method for simple display
-            primary_method = payments[0]["method"] if len(payments) == 1 else "SPLIT"
-
-            sale = Sale(
-                date=datetime.now(),
-                total_amount=total_amount,
-                tax_vat=tax_info["vat"],
-                tax_sscl=tax_info["sscl"],
-                net_revenue=tax_info["net"],
-                payment_method=primary_method,
-                user_id=cashier_id,
-                customer_id=customer_id,
-                terminal_id=ConfigService.get("terminal_id") or "TERM-01",
-                origin_terminal_id=ConfigService.get("terminal_id") or "TERM-01",
-            )
-            # Attach exempt amount for receipt builder (transient, not persisted)
-            sale._exempt_amount = exempt_amount
+            # 2. Write the sale header
+            sale = TransactionService._new_sale(totals, payments, cashier_id, customer_id)
             TransactionService._insert_numbered(session, sale, "SALE")
             TransactionService._record_credit_charge(session, sale, credit_charge)
 

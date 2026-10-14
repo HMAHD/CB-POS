@@ -5,7 +5,7 @@ from typing import Any
 from sqlalchemy.orm import joinedload
 
 from cbpos.core.database import Database
-from cbpos.core.models import PurchaseOrder, PurchaseOrderItem
+from cbpos.core.models import Product, PurchaseOrder, PurchaseOrderItem
 from cbpos.core.services.document_service import DocumentService
 
 
@@ -89,33 +89,109 @@ class PurchaseOrderService:
 
     @staticmethod
     def check_receipt_discrepancies(order_id: int, items_data: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Compare GRN line quantities against each order line's outstanding
-        qty (qty_ordered - qty_received so far). Returns one entry per line
-        whose received qty this GRN doesn't match what's outstanding --
-        over-receipt or under-receipt alike -- for the caller to confirm
-        with the cashier before committing.
+        """Compare a GRN against what is still outstanding on a Purchase Order.
 
-        items_data format: [{'product_id': int, 'qty': Decimal, ...}]
+        Outstanding is ``qty_ordered - qty_received`` so far, so earlier
+        partial GRNs are taken into account. GRN lines for the same product
+        are summed. This only reports differences for the caller to confirm
+        with the cashier; partial deliveries are valid, so nothing here
+        blocks a receipt (#486, #719).
+
+        Args:
+            order_id: The Purchase Order the GRN is received against.
+            items_data: GRN lines, ``[{'product_id': int, 'qty': Decimal, ...}]``.
+
+        Returns:
+            One dict per mismatch, GRN lines first (in GRN order), then
+            order lines missing from the GRN (in order-line order)::
+
+                {
+                    "kind": "over" | "under" | "not_on_order" | "not_received",
+                    "product_id": int,
+                    "product_name": str,   # Product.get_display_name(), UI language
+                    "outstanding": Decimal,  # 0 for "not_on_order"
+                    "received": Decimal,     # 0 for "not_received"
+                    "decimal_places": int,   # for format_quantity
+                }
+
+            An unknown order, or a GRN that exactly matches every
+            outstanding line, gives an empty list.
         """
-        order = PurchaseOrderService.get_order(order_id)
-        if not order:
-            return []
-
-        order_items_by_product = {item.product_id: item for item in order.items}
-
-        discrepancies = []
+        received_by_product: dict[int, Decimal] = {}
         for data in items_data:
-            order_item = order_items_by_product.get(data["product_id"])
-            if not order_item:
-                continue
-            outstanding = order_item.qty_ordered - order_item.qty_received
-            received = Decimal(str(data["qty"]))
-            if received != outstanding:
-                discrepancies.append(
-                    {
-                        "product_name": order_item.product.name_en,
-                        "outstanding": outstanding,
-                        "received": received,
-                    }
-                )
-        return discrepancies
+            product_id = int(data["product_id"])
+            qty = Decimal(str(data["qty"]))
+            received_by_product[product_id] = received_by_product.get(product_id, Decimal("0")) + qty
+
+        db = Database()
+        with db.get_session() as session:
+            order = (
+                session.query(PurchaseOrder)
+                .options(joinedload(PurchaseOrder.items).joinedload(PurchaseOrderItem.product))
+                .filter_by(id=order_id)
+                .first()
+            )
+            if not order:
+                return []
+
+            order_items_by_product = {item.product_id: item for item in order.items}
+            unordered_ids = [pid for pid in received_by_product if pid not in order_items_by_product]
+            unordered_products = (
+                {p.id: p for p in session.query(Product).filter(Product.id.in_(unordered_ids)).all()}
+                if unordered_ids
+                else {}
+            )
+
+            discrepancies: list[dict[str, Any]] = []
+            for product_id, received in received_by_product.items():
+                order_item = order_items_by_product.get(product_id)
+                if order_item is None:
+                    product = unordered_products.get(product_id)
+                    if product is None:
+                        continue
+                    discrepancies.append(
+                        PurchaseOrderService._discrepancy("not_on_order", product, Decimal("0"), received)
+                    )
+                    continue
+                outstanding = order_item.qty_ordered - order_item.qty_received
+                if received != outstanding:
+                    kind = "over" if received > outstanding else "under"
+                    discrepancies.append(
+                        PurchaseOrderService._discrepancy(kind, order_item.product, outstanding, received)
+                    )
+
+            for order_item in order.items:
+                if order_item.product_id in received_by_product:
+                    continue
+                outstanding = order_item.qty_ordered - order_item.qty_received
+                if outstanding > 0:
+                    discrepancies.append(
+                        PurchaseOrderService._discrepancy("not_received", order_item.product, outstanding, Decimal("0"))
+                    )
+            return discrepancies
+
+    @staticmethod
+    def _discrepancy(kind: str, product: Product, outstanding: Decimal, received: Decimal) -> dict[str, Any]:
+        """Build one discrepancy entry with what the UI needs to show it.
+
+        Args:
+            kind: "over", "under", "not_on_order" or "not_received".
+            product: The product the line is for (unit loaded).
+            outstanding: Quantity still outstanding on the order.
+            received: Quantity on this GRN.
+
+        Returns:
+            The discrepancy dict described in ``check_receipt_discrepancies``.
+        """
+        if product.unit is not None:
+            decimal_places = min(product.unit.decimal_places or 0, 3)
+        else:
+            decimal_places = 3 if product.is_weighted else 0
+        return {
+            "kind": kind,
+            "product_id": product.id,
+            "product_name": product.get_display_name(),
+            "outstanding": outstanding,
+            "received": received,
+            "decimal_places": decimal_places,
+        }

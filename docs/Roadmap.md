@@ -594,8 +594,9 @@
 
 - [x] **22.1 Goods Received Note (GRN)**
     - [x] Receive stock against purchase order
-    - [ ] Verify quantities against PO — no PO-vs-received quantity verification exists in
-      the GRN flow — see #486
+    - [x] Verify quantities against PO — before a GRN against a PO is committed, over/under
+      receipts, items not on the order, and outstanding order lines left off the GRN are
+      listed for the cashier to confirm (a confirm, never a block) — #486, #719
     - [x] Update stock on confirmation
     - [x] External document reference (supplier invoice number)
     - [x] GRN History tab with filters and detail dialog

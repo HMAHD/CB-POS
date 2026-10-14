@@ -4,7 +4,11 @@ from decimal import Decimal
 from sqlalchemy import ColumnElement, and_, or_, select
 
 from cbpos.core.database import Database
-from cbpos.core.models import PriceList, PriceListItem
+from cbpos.core.models import PriceList, PriceListItem, Product
+from cbpos.core.services.logging_service import LoggingService, diff_changes, snapshot_changes
+
+# Activity Log category for price lists, list prices and promotions (#642)
+PRICING_EVENT = "PRICING"
 
 
 def live_price_list_condition(now: datetime) -> ColumnElement[bool]:
@@ -20,8 +24,22 @@ def live_price_list_condition(now: datetime) -> ColumnElement[bool]:
     )
 
 
+def _list_fields(price_list: PriceList) -> dict:
+    """The audited fields of a price list."""
+    return {
+        "name": price_list.name,
+        "start_date": price_list.start_date,
+        "end_date": price_list.end_date,
+        "is_active": price_list.is_active,
+    }
+
+
 class PriceListService:
-    """Manages price lists (e.g. wholesale, promotional) and their per-product price overrides."""
+    """Manages price lists (e.g. wholesale, promotional) and their per-product price overrides.
+
+    Every create, update, on/off switch and delete of a list or a list price is written to the
+    Activity Log in the same transaction (#642).
+    """
 
     def __init__(self):
         """Bind this service instance to the database singleton."""
@@ -38,6 +56,9 @@ class PriceListService:
         with self.db.get_session() as session:
             price_list = PriceList(name=name, start_date=start_date, end_date=end_date, is_active=is_active)
             session.add(price_list)
+            # No dates means "no limit" and lists usually start on: only note what was actually set
+            created = {k: v for k, v in _list_fields(price_list).items() if v is not None and v is not True}
+            LoggingService.add_change(session, "PRICE_LIST_CREATE", PRICING_EVENT, name, snapshot_changes(created))
             session.commit()
             session.refresh(price_list)
             session.expunge(price_list)
@@ -71,6 +92,7 @@ class PriceListService:
             price_list = session.get(PriceList, list_id)
             if not price_list:
                 raise ValueError(f"Price list with ID {list_id} not found.")
+            before = _list_fields(price_list)
 
             if name is not None:
                 name = name.strip()
@@ -88,6 +110,10 @@ class PriceListService:
                 price_list.end_date = end_date
             if is_active is not None:
                 price_list.is_active = is_active
+
+            changes = diff_changes(before, _list_fields(price_list))
+            action = "PRICE_LIST_TOGGLE" if changes.keys() == {"is_active"} else "PRICE_LIST_UPDATE"
+            LoggingService.add_change(session, action, PRICING_EVENT, before["name"], changes)
 
             session.commit()
             session.refresh(price_list)
@@ -142,6 +168,7 @@ class PriceListService:
                 PriceListItem.product_id == product_id,
             )
             item = session.scalar(stmt)
+            old_price = item.price if item else None
 
             if item:
                 item.price = price
@@ -149,6 +176,7 @@ class PriceListService:
                 item = PriceListItem(price_list_id=list_id, product_id=product_id, price=price)
                 session.add(item)
 
+            self._log_item_price(session, "PRICE_LIST_PRICE_SET", list_id, product_id, old_price, price)
             session.commit()
             session.refresh(item)
             session.expunge(item)
@@ -172,6 +200,7 @@ class PriceListService:
             item = session.scalar(stmt)
             if not item:
                 raise ValueError(f"No price override found for product {product_id} on this list.")
+            self._log_item_price(session, "PRICE_LIST_PRICE_REMOVE", list_id, product_id, item.price, None)
             session.delete(item)
             session.commit()
 
@@ -189,9 +218,33 @@ class PriceListService:
             if not price_list:
                 raise ValueError(f"Price list with ID {list_id} not found.")
             # Delete associated items first
-            session.query(PriceListItem).filter(PriceListItem.price_list_id == list_id).delete()
+            item_count = session.query(PriceListItem).filter(PriceListItem.price_list_id == list_id).delete()
+            gone = {k: v for k, v in _list_fields(price_list).items() if v is not None and k != "is_active"}
+            gone["item_count"] = item_count
+            LoggingService.add_change(
+                session, "PRICE_LIST_DELETE", PRICING_EVENT, price_list.name, snapshot_changes(gone, deleted=True)
+            )
             session.delete(price_list)
             session.commit()
+
+    @staticmethod
+    def _log_item_price(
+        session, action: str, list_id: int, product_id: int, old: Decimal | None, new: Decimal | None
+    ) -> None:
+        """Activity Log row for one list price: "<list> / <product>: price old -> new"."""
+        changes = diff_changes({"price": old}, {"price": new})
+        if not changes:
+            return
+        price_list = session.get(PriceList, list_id)
+        product = session.get(Product, product_id)
+        LoggingService.add_change(
+            session,
+            action,
+            PRICING_EVENT,
+            price_list.name if price_list else f"#{list_id}",
+            changes,
+            item=product.name_en if product else f"#{product_id}",
+        )
 
     def get_items(self, list_id: int) -> list[PriceListItem]:
         """Return a price list's product overrides, with each item's product eager-loaded."""

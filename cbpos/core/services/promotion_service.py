@@ -5,7 +5,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from cbpos.core.database import Database
-from cbpos.core.models import Product, Promotion
+from cbpos.core.models import Category, Product, Promotion
+from cbpos.core.services.logging_service import LoggingService, diff_changes, snapshot_changes
+from cbpos.core.services.price_list_service import PRICING_EVENT
 from cbpos.i18n import _t
 
 # Types pricing_service.calculate_price() actually applies. BOGO has no branch
@@ -13,8 +15,27 @@ from cbpos.i18n import _t
 SUPPORTED_TYPES = ("PERCENTAGE", "FIXED_AMOUNT")
 
 
+def _promotion_fields(session: Session, promotion: Promotion) -> dict:
+    """The audited fields of a promotion; the category is kept by name so the log stays readable."""
+    category = session.get(Category, promotion.category_id) if promotion.category_id is not None else None
+    return {
+        "name": promotion.name,
+        "type": promotion.type,
+        "value": promotion.value,
+        "start_time": promotion.start_time,
+        "end_time": promotion.end_time,
+        "days_of_week": promotion.days_of_week,
+        "category": category.name if category else None,
+        "is_active": promotion.is_active,
+    }
+
+
 class PromotionService:
-    """Manages time-boxed promotions (e.g. happy-hour or category discounts)."""
+    """Manages time-boxed promotions (e.g. happy-hour or category discounts).
+
+    Every create, update, on/off switch and delete is written to the Activity Log in the same
+    transaction (#642).
+    """
 
     def __init__(self):
         """Bind this service instance to the database singleton."""
@@ -98,6 +119,12 @@ class PromotionService:
                 is_active=True,
             )
             session.add(promotion)
+            with session.no_autoflush:
+                created = _promotion_fields(session, promotion)
+            del created["is_active"]  # promotions always start switched on
+            LoggingService.add_change(
+                session, "PROMOTION_CREATE", PRICING_EVENT, name, snapshot_changes(created), value_type=type
+            )
             session.commit()
             session.refresh(promotion)
             session.expunge(promotion)
@@ -142,6 +169,7 @@ class PromotionService:
             promotion = session.get(Promotion, promotion_id)
             if not promotion:
                 raise ValueError(f"Promotion with ID {promotion_id} not found.")
+            before = _promotion_fields(session, promotion)
 
             if name is not None:
                 name = name.strip()
@@ -180,6 +208,13 @@ class PromotionService:
                         session, promotion.type, promotion.value, promotion.days_of_week, promotion.category_id
                     )
 
+            with session.no_autoflush:
+                changes = diff_changes(before, _promotion_fields(session, promotion))
+            action = "PROMOTION_TOGGLE" if changes.keys() == {"is_active"} else "PROMOTION_UPDATE"
+            LoggingService.add_change(
+                session, action, PRICING_EVENT, before["name"], changes, value_type=promotion.type
+            )
+
             session.commit()
             session.refresh(promotion)
             session.expunge(promotion)
@@ -198,6 +233,16 @@ class PromotionService:
             promotion = session.get(Promotion, promotion_id)
             if not promotion:
                 raise ValueError(f"Promotion with ID {promotion_id} not found.")
+            gone = _promotion_fields(session, promotion)
+            del gone["is_active"]
+            LoggingService.add_change(
+                session,
+                "PROMOTION_DELETE",
+                PRICING_EVENT,
+                promotion.name,
+                snapshot_changes(gone, deleted=True),
+                value_type=promotion.type,
+            )
             session.delete(promotion)
             session.commit()
 

@@ -1,7 +1,9 @@
 from datetime import datetime
 from decimal import Decimal
+from types import EllipsisType
 
 from sqlalchemy import ColumnElement, and_, or_, select
+from sqlalchemy.orm import Session
 
 from cbpos.core.constants.audit import PRICING_EVENT
 from cbpos.core.database import Database
@@ -66,8 +68,8 @@ class PriceListService:
         self,
         list_id: int,
         name: str | None = None,
-        start_date: object = ...,
-        end_date: object = ...,
+        start_date: datetime | EllipsisType | None = ...,
+        end_date: datetime | EllipsisType | None = ...,
         is_active: bool | None = None,
     ) -> PriceList:
         """Update a price list's name, validity dates and/or on/off switch.
@@ -227,9 +229,23 @@ class PriceListService:
 
     @staticmethod
     def _log_item_price(
-        session, action: str, list_id: int, product_id: int, old: Decimal | None, new: Decimal | None
+        session: Session, action: str, list_id: int, product_id: int, old: Decimal | None, new: Decimal | None
     ) -> None:
-        """Activity Log row for one list price: "<list> / <product>: price old -> new"."""
+        """Activity Log row for one list price: "<list> / <product>: price old -> new".
+
+        Writes nothing when the price didn't really change.
+
+        Args:
+            session: Open DB session; the row commits with the caller's change.
+            action: Audit action, e.g. "PRICE_LIST_PRICE_SET".
+            list_id: ID of the price list.
+            product_id: ID of the product whose list price changed.
+            old: Price before the change (None when newly added).
+            new: Price after the change (None when removed).
+
+        Returns:
+            None.
+        """
         changes = diff_changes({"price": old}, {"price": new})
         if not changes:
             return

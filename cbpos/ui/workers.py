@@ -23,6 +23,8 @@ from PyQt6.QtGui import QTextDocument
 if TYPE_CHECKING:
     from PyQt6.QtPrintSupport import QPrinter
 
+    from cbpos.core.services.export_service import ExportService
+
 logger = logging.getLogger(__name__)
 
 
@@ -382,7 +384,7 @@ class ExportWorker(QThread):
 
     def __init__(
         self,
-        export_service: object,
+        export_service: "ExportService",
         df: pd.DataFrame,
         filepath: str,
         report_name: str,
@@ -551,7 +553,7 @@ class ReportEmailWorker(QThread):
 
     def __init__(
         self,
-        export_service: object,
+        export_service: "ExportService",
         df: pd.DataFrame,
         report_name: str,
         to_email: str,

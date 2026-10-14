@@ -9,11 +9,11 @@ translated only when the sidebar is drawn.
 """
 
 import pytest
-from PyQt6.QtWidgets import QLabel
+from PyQt6.QtWidgets import QLabel, QPushButton
 
 from cbpos.core.reports import register_all_reports
 from cbpos.core.reports.registry import ReportRegistry
-from cbpos.i18n import get_language, set_language
+from cbpos.i18n import get_language, set_language, translate_in
 from cbpos.ui.views.reports.report_viewer import ReportViewer
 
 FIXED_ORDER = ["sales", "inventory", "financial", "audit"]
@@ -47,3 +47,43 @@ def test_sidebar_shows_category_names_in_business_order(language):
     viewer = ReportViewer()
 
     assert _category_labels(viewer) == ["Sales", "Inventory", "Financial", "Audit"]
+
+
+def _nav_items(viewer) -> list[QPushButton]:
+    return viewer.findChildren(QPushButton, "ReportNavItem")
+
+
+@pytest.mark.usefixtures("qapp", "db_session")
+def test_switching_language_updates_category_names(language):
+    language("en")
+    register_all_reports()
+    viewer = ReportViewer()
+
+    language("si")
+
+    assert _category_labels(viewer) == ["විකුණුම්", "තොග", "මූල්‍ය", "විගණනය"]
+
+
+@pytest.mark.usefixtures("qapp", "db_session")
+def test_switching_language_updates_report_names(language):
+    language("en")
+    register_all_reports()
+    viewer = ReportViewer()
+
+    language("ta")
+
+    names = {btn.property("report_id"): btn.text() for btn in _nav_items(viewer)}
+    assert names["daily_sales_summary"] == translate_in("ta", "reports.daily_sales_summary")
+
+
+@pytest.mark.usefixtures("qapp", "db_session")
+def test_selected_report_stays_selected_after_language_switch(language):
+    language("en")
+    register_all_reports()
+    viewer = ReportViewer()
+    next(b for b in _nav_items(viewer) if b.property("report_id") == "low_stock").click()
+
+    language("si")
+
+    checked = [b.property("report_id") for b in _nav_items(viewer) if b.isChecked()]
+    assert checked == ["low_stock"]

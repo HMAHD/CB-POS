@@ -98,23 +98,13 @@ class ReportViewer(QWidget):
         self.sidebar_title.setObjectName("ReportSidebarTitle")
         sidebar_layout.addWidget(self.sidebar_title)
 
-        # Scrollable report navigation
-        scroll = QScrollArea()
+        # Scrollable report navigation -- its contents are built (and
+        # rebuilt on language/VAT change) by _rebuild_sidebar().
+        self._nav_scroll = scroll = QScrollArea()
         scroll.setObjectName("ReportSidebarScroll")
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-
-        nav_container = QWidget()
-        nav_container.setObjectName("ReportNavContainer")
-        self._nav_layout = QVBoxLayout(nav_container)
-        self._nav_layout.setContentsMargins(12, 8, 12, 12)
-        self._nav_layout.setSpacing(4)
-
-        self._populate_sidebar()
-        self._nav_layout.addStretch()
-
-        scroll.setWidget(nav_container)
         scroll.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         sidebar_layout.addWidget(scroll, 1)
 
@@ -276,6 +266,11 @@ class ReportViewer(QWidget):
         self.btn_export_excel.setText(_t("report_viewer.btn_excel"))
         self.btn_export_pdf.setText(_t("report_viewer.btn_pdf"))
         self.btn_email.setText(_t("common.email"))
+        if self.current_report is not None:
+            self.report_title.setText(self.current_report.name)
+            self.report_description.setText(category_label(self.current_report.category))
+        # Category and report names are drawn in the current language (#541)
+        self._rebuild_sidebar()
 
     def showEvent(self, event) -> None:
         """Ensure splitter sizes and layouts are properly computed on display."""
@@ -291,14 +286,35 @@ class ReportViewer(QWidget):
     # Sidebar construction
     # ------------------------------------------------------------------
 
+    def _rebuild_sidebar(self) -> None:
+        """Replace the report list with a fresh one in the current language.
+
+        Setting a new scroll-area widget deletes the old list, so no stale
+        buttons linger. The selected report stays selected.
+        """
+        nav_container = QWidget()
+        nav_container.setObjectName("ReportNavContainer")
+        self._nav_layout = QVBoxLayout(nav_container)
+        self._nav_layout.setContentsMargins(12, 8, 12, 12)
+        self._nav_layout.setSpacing(4)
+
+        self._populate_sidebar()
+        self._nav_layout.addStretch()
+        self._nav_scroll.setWidget(nav_container)
+
+        if self.current_report is not None:
+            for btn in nav_container.findChildren(QPushButton, "ReportNavItem"):
+                if btn.property("report_id") == self.current_report.id:
+                    btn.setChecked(True)
+
     def _populate_sidebar(self) -> None:
-        """Build category sections with report buttons."""
+        """Build category sections with report buttons, in the fixed category order."""
         categories = self.registry.get_all_categories()
 
         vat_active = TaxService.is_vat_active()
         rendered_any = False
 
-        for _idx, category in enumerate(categories):
+        for category in categories:
             all_reports = self.registry.get_reports_by_category(category)
             # Filter out VAT-only reports when VAT is not active
             reports = [r for r in all_reports if not getattr(r, "requires_vat", False) or vat_active]

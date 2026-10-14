@@ -100,6 +100,27 @@ def _autocomplete_preload_runs_inline():
 
 
 @pytest.fixture(autouse=True)
+def peripherals():
+    """Install a ``RecordingPeripherals`` fake as the transaction hardware for every test (#733).
+
+    No test reaches a real printer or cash drawer through a sale or refund;
+    a test asserts on ``peripherals.events`` instead. The adapter that was
+    installed before is put back afterwards. Swapped by hand, not via
+    ``monkeypatch``, for the teardown-order reason given in
+    ``_autocomplete_preload_runs_inline``.
+    """
+    from cbpos.core.services.transaction_service import TransactionService
+    from tests.fakes import RecordingPeripherals
+
+    fake = RecordingPeripherals()
+    previous = TransactionService.use_peripherals(fake)
+    try:
+        yield fake
+    finally:
+        TransactionService.use_peripherals(previous)
+
+
+@pytest.fixture(autouse=True)
 def _signed_out_after_each_test():
     """Sign out after every test so the logged-in user never leaks into the next one.
 

@@ -8,6 +8,11 @@ from sqlalchemy.orm import Session, joinedload
 
 from cbpos.core.constants.status import DocumentStatus, PaymentMethodType, Precision
 from cbpos.core.database import Database
+from cbpos.core.interfaces.transaction_peripherals import (
+    NullPeripherals,
+    SaleCompleted,
+    TransactionPeripherals,
+)
 from cbpos.core.models import (
     AuditLog,
     CompositeItem,
@@ -28,7 +33,6 @@ from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.refund_breakdown import ZERO_MONEY, RefundBreakdown, refund_cash_back
 from cbpos.core.services.stock_service import StockService
-from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +44,38 @@ class TransactionService:
 
     For sale queries, see SaleQueryService.
     For suspended/held bills, see SuspendedTransactionService.
+
+    Hardware (receipt, invoice, cash drawer) is reached only through the
+    installed ``TransactionPeripherals`` adapter -- see ``use_peripherals``.
     """
 
+    _peripherals: TransactionPeripherals = NullPeripherals()
+
     @staticmethod
-    def process_sale(cart_service: CartService, payments: list, customer_id: int = None) -> Sale | None:
+    def use_peripherals(peripherals: TransactionPeripherals) -> TransactionPeripherals:
+        """Install the hardware adapter every committed transaction is reported to.
+
+        Called once at app startup (``main()``) with the production adapter;
+        until then the headless ``NullPeripherals`` default does nothing.
+
+        Args:
+            peripherals: The adapter to install.
+
+        Returns:
+            TransactionPeripherals: The adapter it replaces (so a test can put it back).
+        """
+        previous = TransactionService._peripherals
+        TransactionService._peripherals = peripherals
+        return previous
+
+    @staticmethod
+    def process_sale(
+        cart_service: CartService,
+        payments: list,
+        customer_id: int = None,
+        *,
+        peripherals: TransactionPeripherals | None = None,
+    ) -> Sale | None:
         """
         Process the sale with multiple payments.
 
@@ -51,6 +83,8 @@ class TransactionService:
             cart_service: The cart containing items.
             payments: List of dicts [{'method': 'CASH', 'amount': 500}, ...]
             customer_id: Optional Customer ID for credit sales.
+            peripherals: Hardware adapter for this sale only; defaults to the
+                installed one (``use_peripherals``).
 
         Returns:
             Sale object on success, None on failure.
@@ -59,7 +93,9 @@ class TransactionService:
             ValueError: If validation fails or insufficient stock.
         """
         try:
-            return TransactionService._execute_sale(cart_service, payments, customer_id)
+            return TransactionService._execute_sale(
+                cart_service, payments, customer_id, peripherals or TransactionService._peripherals
+            )
         except ValueError:
             raise
         except Exception as e:
@@ -397,7 +433,9 @@ class TransactionService:
             _ = item.product
 
     @staticmethod
-    def _execute_sale(cart_service: CartService, payments: list, customer_id: int = None) -> Sale:
+    def _execute_sale(
+        cart_service: CartService, payments: list, customer_id: int | None, peripherals: TransactionPeripherals
+    ) -> Sale:
         """Write the sale in one transaction; see ``process_sale`` for the interface.
 
         Steps, in order: payment check, stock check, credit charge, sale
@@ -441,21 +479,16 @@ class TransactionService:
             # 5. Eager-load relationships before session closes (prevents DetachedInstanceError)
             TransactionService._load_receipt_relations(sale)
 
-            # 6. Context manager handles commit
+            # 6. The event carries the loaded, soon-detached sale (payments loaded here too)
+            completed = SaleCompleted(sale, tuple(p.payment_method for p in sale.payments))
 
-            # 7. Hardware Output (after successful commit)
-            worker = PrintWorker.instance()
-
-            # If receipt dialog is enabled, skip auto-print (dialog handles it).
-            # Otherwise, print receipt automatically for frictionless flow.
-            show_dialog = ConfigService.get("show_receipt_dialog")
-            if not show_dialog:
-                TransactionService._print_receipt_async(sale)
-
-            payment_methods = [p.payment_method for p in sale.payments] if sale.payments else []
-            worker.add_job("kick_drawer", payment_methods)
-
-            return sale
+        # 7. Hardware -- only once the context manager has committed. The sale
+        # is saved whatever the printer does, so a hardware error is only logged.
+        try:
+            peripherals.sale_completed(completed)
+        except Exception as e:
+            logger.error("Receipt/drawer for %s failed: %s", sale.document_number, e)
+        return sale
 
     @staticmethod
     def get_void_reasons() -> list[dict]:

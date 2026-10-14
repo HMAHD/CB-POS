@@ -135,14 +135,46 @@ class Permissions:
         }
 
 
-# Any one of these opens a screen (#549): its own "open" permission, or an admin permission
-# that is only usable inside it (Users/Roles live in Management; settings and admin tools in Settings).
-MANAGEMENT_ACCESS_PERMISSIONS = (
+# Which permissions show each sidebar tab of Management and Settings -- the one definition of
+# screen access (#728). A user sees a tab if they hold any of its permissions, and the side menu
+# offers a screen exactly when the user would see at least one of its tabs, so the menu can never
+# open a screen with nothing usable inside (#549 opened Management for admin.manage_roles while
+# Users was gated on admin.manage_users only).
+#
+# General tabs are open to everyone the screen lets in: its own "open" permission, or an admin
+# permission that is used inside it.
+_EVERYONE_IN_MANAGEMENT = (
     Permissions.MANAGEMENT_VIEW,
     Permissions.ADMIN_MANAGE_USERS,
     Permissions.ADMIN_MANAGE_ROLES,
 )
-SETTINGS_ACCESS_PERMISSIONS = (Permissions.SETTINGS_VIEW, Permissions.ADMIN_SETTINGS, Permissions.ADMIN_TOOLS)
+MANAGEMENT_TAB_PERMISSIONS: dict[str, tuple[str, ...]] = {
+    "dashboard": _EVERYONE_IN_MANAGEMENT,
+    "inventory": _EVERYONE_IN_MANAGEMENT,
+    "purchasing": _EVERYONE_IN_MANAGEMENT,
+    "credit_book": _EVERYONE_IN_MANAGEMENT,
+    "reports": _EVERYONE_IN_MANAGEMENT,
+    "documents": _EVERYONE_IN_MANAGEMENT,
+    "users": (Permissions.ADMIN_MANAGE_USERS, Permissions.ADMIN_MANAGE_ROLES),
+    "pricelists": (Permissions.ADMIN_MANAGE_USERS,),
+    "promotions": (Permissions.ADMIN_MANAGE_USERS,),
+    "stock_take": (Permissions.ADMIN_MANAGE_USERS,),
+    "reorder": _EVERYONE_IN_MANAGEMENT,
+}
+
+_EVERYONE_IN_SETTINGS = (Permissions.SETTINGS_VIEW, Permissions.ADMIN_SETTINGS, Permissions.ADMIN_TOOLS)
+SETTINGS_PAGE_PERMISSIONS: dict[str, tuple[str, ...]] = {
+    "shop_info": _EVERYONE_IN_SETTINGS,
+    "sales_tax": _EVERYONE_IN_SETTINGS,
+    "documents": _EVERYONE_IN_SETTINGS,
+    "hardware": _EVERYONE_IN_SETTINGS,
+    "receipt": _EVERYONE_IN_SETTINGS,
+    "system": _EVERYONE_IN_SETTINGS,
+    "network": _EVERYONE_IN_SETTINGS,
+    "payment_methods": _EVERYONE_IN_SETTINGS,
+    "data_safety": (Permissions.ADMIN_SETTINGS,),
+    "admin_tools": (Permissions.ADMIN_SETTINGS, Permissions.ADMIN_TOOLS),
+}
 
 # Never revocable from the Admin role -- PermissionService re-adds them on save (lockout guard).
 CRITICAL_ADMIN_PERMISSIONS = [Permissions.ADMIN_MANAGE_USERS, Permissions.ADMIN_MANAGE_ROLES]

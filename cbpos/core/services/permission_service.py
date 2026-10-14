@@ -1,8 +1,8 @@
 from cbpos.core.constants.permissions import (
     ADMIN_ROLE_NAME,
     CRITICAL_ADMIN_PERMISSIONS,
-    MANAGEMENT_ACCESS_PERMISSIONS,
-    SETTINGS_ACCESS_PERMISSIONS,
+    MANAGEMENT_TAB_PERMISSIONS,
+    SETTINGS_PAGE_PERMISSIONS,
 )
 from cbpos.core.models import User
 from cbpos.core.services.auth_service import AuthService
@@ -40,14 +40,32 @@ class PermissionService:
         return any(PermissionService.user_has_permission(user, code) for code in permission_codes)
 
     @staticmethod
+    def management_tabs(user: User) -> set[str]:
+        """Names of the Management tabs this user may see (keys of ``MANAGEMENT_TAB_PERMISSIONS``)."""
+        return {
+            tab
+            for tab, codes in MANAGEMENT_TAB_PERMISSIONS.items()
+            if PermissionService.user_has_any_permission(user, codes)
+        }
+
+    @staticmethod
+    def settings_pages(user: User) -> set[str]:
+        """Names of the Settings pages this user may see (keys of ``SETTINGS_PAGE_PERMISSIONS``)."""
+        return {
+            page
+            for page, codes in SETTINGS_PAGE_PERMISSIONS.items()
+            if PermissionService.user_has_any_permission(user, codes)
+        }
+
+    @staticmethod
     def can_open_management(user: User) -> bool:
-        """Whether the side menu offers Management to this user -- by permission, never role name (#549)."""
-        return PermissionService.user_has_any_permission(user, MANAGEMENT_ACCESS_PERMISSIONS)
+        """Whether the side menu offers Management: only if the user would see a tab in it (#549, #728)."""
+        return bool(PermissionService.management_tabs(user))
 
     @staticmethod
     def can_open_settings(user: User) -> bool:
-        """Whether the side menu offers Settings to this user -- by permission, never role name (#549)."""
-        return PermissionService.user_has_any_permission(user, SETTINGS_ACCESS_PERMISSIONS)
+        """Whether the side menu offers Settings: only if the user would see a page in it (#549, #728)."""
+        return bool(PermissionService.settings_pages(user))
 
     @staticmethod
     def get_all_permissions():

@@ -428,6 +428,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         records_applied = 0
         errors: list[str] = []
         balances: dict[str, dict[str, str]] = {}
+        id_map: dict[str, dict[str, int]] = {}
 
         for attempt in range(1, max_attempts + 1):
             try:
@@ -435,6 +436,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
                     applier = SyncApplyService(session, terminal_id)
                     records_applied, errors = applier.apply_batch(payload)
                     balances = applier.balances()
+                    id_map = {"customers": applier.customer_id_map()}
                     session.commit()
                 break  # success — exit retry loop
 
@@ -476,6 +478,8 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
                 "errors": errors,
                 # Shop-wide credit/payable balances the batch touched (#678).
                 "balances": balances,
+                # Main PC ids for the customers the till created (#680).
+                "id_map": id_map,
             }
         )
 

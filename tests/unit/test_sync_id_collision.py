@@ -810,7 +810,7 @@ class TestSyncIdMapMigration:
     def test_downgrade_drops_and_upgrade_recreates_table(self, alembic_cfg):
         cfg, db_path, uri = alembic_cfg
 
-        command.downgrade(cfg, "-1")
+        command.downgrade(cfg, "b4d6fbce9cf4")  # the revision before sync_id_map
         engine = create_engine(uri)
         assert "sync_id_map" not in inspect(engine).get_table_names()
         engine.dispose()

@@ -65,6 +65,7 @@ CATALOG_TABLES = [
 # Order: parent tables before children (for FK integrity).
 # ---------------------------------------------------------------------------
 TRANSACTION_TABLES = [
+    "customers",  # Only those created on the till (#680); first, as sales point at them
     "documents",  # Base (polymorphic: sale, purchase, proforma, stock_count)
     "sales",
     "sale_items",

@@ -26,6 +26,7 @@ from cbpos.core.database import Database
 from cbpos.core.models import (
     AuditLog,
     CashMovement,
+    Customer,
     CustomerLedgerEntry,
     CustomerPayment,
     Document,
@@ -38,6 +39,7 @@ from cbpos.core.models import (
     SupplierPayment,
 )
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.sync_customer_renumber import renumber_customers
 from cbpos.core.services.sync_protocol import (
     CATALOG_TABLES,
     EP_PULL_CATALOG,
@@ -98,6 +100,21 @@ def _set_local_balance(session: Any, table_name: str, owner_id: int, main_value:
         .scalar()
     )
     setattr(owner, balance_column, (main_value + Decimal(str(unpushed or 0))).quantize(Decimal("0.01")))
+
+
+def _unpushed_customer_keys(session: Any) -> dict[str, set[Any]]:
+    """Ids, phones and loyalty cards of the customers this till created and hasn't pushed."""
+    keys: dict[str, set[Any]] = {"id": set(), "phone": set(), "loyalty_card_code": set()}
+    for customer in session.query(Customer).filter_by(synced=False):
+        for column, values in keys.items():
+            value = getattr(customer, column)
+            if value is not None:
+                values.add(value)
+    return keys
+
+
+def _clashes(record: dict[str, Any], unpushed: dict[str, set[Any]]) -> bool:
+    return any(record.get(column) is not None and record.get(column) in values for column, values in unpushed.items())
 
 
 def _fingerprint(obj: Any) -> str:
@@ -424,6 +441,7 @@ class SyncClient(QThread):
             # Mark local records as synced
             total_pushed = sum(len(v) for v in payload.values() if isinstance(v, list))
             self._mark_as_synced(fingerprints)
+            self._adopt_customer_ids((result.get("id_map") or {}).get("customers") or {})
             self._apply_main_balances(result.get("balances") or {})
             logger.info("Pushed %d records (status=%s)", total_pushed, status)
             return total_pushed
@@ -444,6 +462,12 @@ class SyncClient(QThread):
         fingerprints: dict[tuple[str, int], str] = {}
         db = Database()
         with db.get_session() as session:
+            # Customers created on this till first: sales and credit book
+            # rows in this batch may point at them (#680).
+            new_customers = session.query(Customer).filter_by(synced=False).all()
+            if new_customers:
+                payload["customers"] = [model_to_dict(c) for c in new_customers]
+
             # Find unsynced sales (with items and payments)
             unsynced_sales = session.query(Sale).filter_by(synced=False).all()
 
@@ -531,6 +555,20 @@ class SyncClient(QThread):
         except Exception as e:
             logger.error("Error marking records as synced: %s", e)
 
+    def _adopt_customer_ids(self, id_map: dict[str, int]) -> None:
+        """Renumber the customers this till created to the ids the Main PC gave them (#680)."""
+        if not id_map:
+            return
+        db = Database()
+        try:
+            with db.get_session() as session:
+                renumber_customers(session, {int(local): int(server) for local, server in id_map.items()})
+                session.commit()
+        except Exception as e:
+            # They stay unsynced and are re-sent; the Main PC answers with
+            # the same ids, so the next push tries again.
+            logger.error("Error renumbering pushed customers: %s", e)
+
     def _apply_main_balances(self, balances: dict[str, dict[str, str]]) -> None:
         """Take the shop-wide balances the Main PC sent back with a push (#678).
 
@@ -583,8 +621,10 @@ class SyncClient(QThread):
         db = Database()
         records_applied = 0
         pulled_balances: list[tuple[str, int, Decimal]] = []
+        held_back = 0
         try:
             with db.get_session() as session:
+                unpushed_customers = _unpushed_customer_keys(session)
                 for table_name in CATALOG_TABLES:
                     records = payload.get(table_name, [])
                     if not records:
@@ -595,6 +635,12 @@ class SyncClient(QThread):
                         continue
 
                     for record_data in records:
+                        if table_name == "customers" and _clashes(record_data, unpushed_customers):
+                            # Would overwrite (or duplicate the phone of) a
+                            # customer this till created and hasn't pushed:
+                            # wait until the push renumbers it (#680).
+                            held_back += 1
+                            continue
                         try:
                             instance = dict_to_model(model_class, record_data)
                             merged = session.merge(instance)
@@ -621,7 +667,11 @@ class SyncClient(QThread):
             logger.error("Error applying catalog update: %s", e)
             return -1
 
-        self._last_catalog_sync = server_timestamp
+        if held_back:
+            # Keep the watermark so the held-back customers come again.
+            logger.info("Held back %d pulled customer(s) until this till's new customers are pushed", held_back)
+        else:
+            self._last_catalog_sync = server_timestamp
         logger.info("Pulled %d catalog records", records_applied)
         return records_applied
 

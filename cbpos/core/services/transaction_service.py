@@ -416,28 +416,9 @@ class TransactionService:
 
                 # Reverse Stock via StockService
                 for item in sale.items:
-                    composite_children = composite_map.get(item.product_id, [])
-
-                    if composite_children:
-                        for comp in composite_children:
-                            restoration = comp.qty * item.qty
-                            StockService.record_movement(
-                                product_id=comp.child_product_id,
-                                qty_change=restoration,
-                                movement_type="VOID",
-                                document_id=sale.id,
-                                user_id=user_id,
-                                session=session,
-                            )
-                    else:
-                        StockService.record_movement(
-                            product_id=item.product_id,
-                            qty_change=item.qty,
-                            movement_type="VOID",
-                            document_id=sale.id,
-                            user_id=user_id,
-                            session=session,
-                        )
+                    TransactionService._move_stock(
+                        session, composite_map, item.product_id, item.qty, "VOID", sale.id, user_id
+                    )
 
                 # Give back any credit this sale put on the customer's book,
                 # in this same transaction (#715).

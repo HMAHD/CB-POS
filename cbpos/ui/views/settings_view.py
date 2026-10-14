@@ -50,6 +50,9 @@ class SettingsView(QWidget):
     close_requested = pyqtSignal()
     logout_requested = pyqtSignal()
     request_pos_view = pyqtSignal()
+    # Emitted after a successful save, so the window can apply settings
+    # it holds live (e.g. the idle-lock timeout, #641).
+    settings_saved = pyqtSignal()
 
     HARDWARE_PAGE = 3  # stack index of HardwarePage
 
@@ -437,6 +440,7 @@ class SettingsView(QWidget):
         self._page_snapshots = [self._page_values(page) for page in self.pages]
         self._saved_snapshot = self._take_snapshot()
         self._refresh_unsaved_markers()
+        self.settings_saved.emit()
 
         if restart_required:
             if self._prompt_restart(get_language(), new_lang):

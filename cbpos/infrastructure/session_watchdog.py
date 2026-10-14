@@ -26,9 +26,14 @@ class SessionWatchdog(QObject):
         self.timer.timeout.connect(self.on_timeout)
 
         self._monitoring = False
+        # True between start_monitoring() and stop_monitoring() -- i.e. while
+        # a user is logged in -- even when a 0 timeout keeps the timer off,
+        # so set_timeout() knows whether to start the countdown now.
+        self._session_active = False
 
     def start_monitoring(self):
         """Start monitoring user activity. Does nothing if timeout is 0 (disabled)."""
+        self._session_active = True
         if self.timeout_minutes <= 0:
             return
         if not self._monitoring:
@@ -38,10 +43,29 @@ class SessionWatchdog(QObject):
 
     def stop_monitoring(self):
         """Stop monitoring."""
+        self._session_active = False
         if self._monitoring:
             QApplication.instance().removeEventFilter(self)
             self.timer.stop()
             self._monitoring = False
+
+    def set_timeout(self, timeout_minutes: int) -> None:
+        """Apply a new inactivity timeout without a restart (#641).
+
+        During a session the countdown restarts with the new length, or
+        stops if it is 0; while logged out it is only stored for the next
+        start_monitoring().
+
+        Args:
+            timeout_minutes: Minutes of inactivity before the session
+                expires. 0 disables monitoring.
+        """
+        session_active = self._session_active
+        self.stop_monitoring()
+        self.timeout_minutes = timeout_minutes
+        self.timeout_ms = timeout_minutes * 60 * 1000
+        if session_active:
+            self.start_monitoring()
 
     def eventFilter(self, obj, event):
         """Intercept events to reset the timer."""

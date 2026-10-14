@@ -3,12 +3,10 @@ from decimal import Decimal
 
 from sqlalchemy import ColumnElement, and_, or_, select
 
+from cbpos.core.constants.audit import PRICING_EVENT
 from cbpos.core.database import Database
 from cbpos.core.models import PriceList, PriceListItem, Product
 from cbpos.core.services.logging_service import LoggingService, diff_changes, snapshot_changes
-
-# Activity Log category for price lists, list prices and promotions (#642)
-PRICING_EVENT = "PRICING"
 
 
 def live_price_list_condition(now: datetime) -> ColumnElement[bool]:

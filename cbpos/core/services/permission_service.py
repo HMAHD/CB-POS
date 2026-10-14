@@ -1,4 +1,9 @@
-from cbpos.core.constants.permissions import ADMIN_ROLE_NAME, CRITICAL_ADMIN_PERMISSIONS
+from cbpos.core.constants.permissions import (
+    ADMIN_ROLE_NAME,
+    CRITICAL_ADMIN_PERMISSIONS,
+    MANAGEMENT_ACCESS_PERMISSIONS,
+    SETTINGS_ACCESS_PERMISSIONS,
+)
 from cbpos.core.models import User
 from cbpos.core.services.auth_service import AuthService
 
@@ -27,7 +32,22 @@ class PermissionService:
         if user.role.name == ADMIN_ROLE_NAME:
             return True
 
-        return any(perm.code == permission_code for perm in user.role.permissions)
+        return any(perm.code == permission_code for perm in getattr(user.role, "permissions", None) or [])
+
+    @staticmethod
+    def user_has_any_permission(user: User, permission_codes) -> bool:
+        """True if the user has at least one of ``permission_codes`` (see ``user_has_permission``)."""
+        return any(PermissionService.user_has_permission(user, code) for code in permission_codes)
+
+    @staticmethod
+    def can_open_management(user: User) -> bool:
+        """Whether the side menu offers Management to this user -- by permission, never role name (#549)."""
+        return PermissionService.user_has_any_permission(user, MANAGEMENT_ACCESS_PERMISSIONS)
+
+    @staticmethod
+    def can_open_settings(user: User) -> bool:
+        """Whether the side menu offers Settings to this user -- by permission, never role name (#549)."""
+        return PermissionService.user_has_any_permission(user, SETTINGS_ACCESS_PERMISSIONS)
 
     @staticmethod
     def get_all_permissions():

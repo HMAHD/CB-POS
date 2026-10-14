@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
@@ -78,6 +79,184 @@ class TransactionService:
         return composite_map
 
     @staticmethod
+    def _check_stock(
+        session: Session, cart_items: list[dict[str, Any]], composite_map: dict[int, list[CompositeItem]]
+    ) -> None:
+        """Make sure every cart line can be taken from stock, unless negative stock is allowed.
+
+        Locks the products involved (parents and components) for the rest of
+        the transaction, then checks each line in memory: a composite against
+        each component's bill-of-materials qty, any other product against its
+        own stock.
+
+        Args:
+            session: The open session the sale is being written in.
+            cart_items: ``CartService.items`` -- dicts with ``product`` and ``qty``.
+            composite_map: ``_fetch_composite_map`` result for the cart's products.
+
+        Raises:
+            ValueError: If a product or component is missing, or stock is short.
+        """
+        if ConfigService.get("allow_negative_stock"):
+            return
+
+        parent_ids = [item["product"].id for item in cart_items]
+        child_ids = [c.child_product_id for comps in composite_map.values() for c in comps]
+
+        # Fetch ALL involved Products (Parents + Children) in one query
+        all_products = (
+            session.query(Product)
+            .filter(Product.id.in_(set(parent_ids) | set(child_ids)))
+            .with_for_update()  # Lock rows for stock check
+            .all()
+        )
+        product_map = {p.id: p for p in all_products}
+
+        for item in cart_items:
+            product_id = item["product"].id
+            qty_needed = item["qty"]
+
+            product = product_map.get(product_id)
+            if not product:
+                raise ValueError(f"Product {product_id} missing from database.")
+
+            comps = composite_map.get(product_id, [])
+            if not comps:
+                if product.stock_qty < qty_needed:
+                    raise ValueError(
+                        f"Insufficient stock for '{product.name_en}'. "
+                        f"Available: {product.stock_qty}, Required: {qty_needed}"
+                    )
+                continue
+
+            for comp in comps:
+                child_product = product_map.get(comp.child_product_id)
+                if not child_product:
+                    raise ValueError(f"Component product {comp.child_product_id} missing.")
+
+                required_qty = comp.qty * qty_needed
+                if child_product.stock_qty < required_qty:
+                    raise ValueError(
+                        f"Insufficient stock for component '{child_product.name_en}' "
+                        f"(in {product.name_en}). Available: {child_product.stock_qty}, "
+                        f"Required: {required_qty}"
+                    )
+
+    @staticmethod
+    def _charge_credit(
+        session: Session, payments: list[dict[str, Any]], customer_id: int | None
+    ) -> tuple[Decimal, Decimal] | None:
+        """Put the CREDIT part of the payments on the customer's book (debt only, no ledger row yet).
+
+        Locks the customer row and checks the credit limit before each charge.
+        The ledger row needs the sale's id, so it is written afterwards by
+        ``_record_credit_charge``.
+
+        Args:
+            session: The open session the sale is being written in.
+            payments: ``[{"method", "amount"}, ...]`` as passed to ``process_sale``.
+            customer_id: The sale's customer, if any.
+
+        Returns:
+            ``(amount, balance_after)`` of the (last) CREDIT payment, or None if
+            nothing was paid on credit.
+
+        Raises:
+            ValueError: If there is no customer, it doesn't exist, or the
+                charge would go over the credit limit.
+        """
+        from cbpos.core.constants.status import PaymentMethodType
+
+        charge = None
+        for p in payments:
+            if p["method"].upper() != PaymentMethodType.CREDIT.upper():
+                continue
+
+            if not customer_id:
+                raise ValueError("Customer required for Credit sale.")
+
+            customer = session.get(Customer, customer_id, with_for_update=True)
+            if not customer:
+                raise ValueError("Invalid Customer.")
+
+            if customer.current_debt + p["amount"] > customer.credit_limit:
+                raise ValueError(f"Credit limit exceeded for {customer.name}.")
+
+            customer.current_debt += p["amount"]
+            charge = (p["amount"], customer.current_debt)
+        return charge
+
+    @staticmethod
+    def _record_credit_charge(session: Session, sale: Sale, charge: tuple[Decimal, Decimal] | None) -> None:
+        """Write the customer ledger row for a ``_charge_credit`` charge, once ``sale`` has its id and number.
+
+        Args:
+            session: The open session the sale is being written in.
+            sale: The flushed sale (id, document_number, customer and cashier set).
+            charge: ``_charge_credit``'s ``(amount, balance_after)``, or None.
+        """
+        if not sale.customer_id or charge is None:
+            return
+
+        amount, balance_after = charge
+        CustomerCreditService.record_credit_sale_in_session(
+            session=session,
+            customer_id=sale.customer_id,
+            sale_id=sale.id,
+            amount=amount,
+            doc_number=sale.document_number,
+            balance_after=balance_after,
+            user_id=sale.user_id,
+        )
+
+    @staticmethod
+    def _move_stock(
+        session: Session,
+        composite_map: dict[int, list[CompositeItem]],
+        product_id: int,
+        qty_change: Decimal,
+        movement_type: str,
+        document_id: int,
+        user_id: int,
+    ) -> None:
+        """Record one line's stock movement, exploding a composite into its components.
+
+        A composite (bundle) holds no stock of its own: each component moves by
+        its bill-of-materials qty times ``qty_change``. Any other product moves
+        by ``qty_change`` itself.
+
+        Args:
+            session: The open session the document is being written in.
+            composite_map: ``_fetch_composite_map`` result for the document's products.
+            product_id: The line's product.
+            qty_change: Signed change for one line (negative takes stock out).
+            movement_type: StockMovement type -- "SALE", "VOID" or "RETURN".
+            document_id: The sale/refund/voided document the movement belongs to.
+            user_id: User the movement is recorded against.
+        """
+        components = composite_map.get(product_id, [])
+        if not components:
+            StockService.record_movement(
+                product_id=product_id,
+                qty_change=qty_change,
+                movement_type=movement_type,
+                document_id=document_id,
+                user_id=user_id,
+                session=session,
+            )
+            return
+
+        for comp in components:
+            StockService.record_movement(
+                product_id=comp.child_product_id,
+                qty_change=comp.qty * qty_change,
+                movement_type=movement_type,
+                document_id=document_id,
+                user_id=user_id,
+                session=session,
+            )
+
+    @staticmethod
     def _insert_numbered(session: Session, sale: Sale, doc_type: str) -> None:
         """Give ``sale`` the next ``doc_type`` number and flush it, in ``session``'s transaction.
 
@@ -139,195 +318,128 @@ class TransactionService:
             logger.error("Auto-print of %s failed: %s", sale.document_number, e)
 
     @staticmethod
+    def _new_sale(
+        totals: dict[str, Any], payments: list[dict[str, Any]], cashier_id: int, customer_id: int | None
+    ) -> Sale:
+        """Build the (not yet added) sale header from the cart totals.
+
+        Tax values come straight from the cart totals (single source of
+        truth). The exempt amount rides along on ``sale._exempt_amount`` for
+        the receipt builder -- transient, not persisted.
+
+        Args:
+            totals: ``CartService.get_totals()``.
+            payments: ``[{"method", "amount"}, ...]`` -- one method is shown as is, several as "SPLIT".
+            cashier_id: The signed-in cashier.
+            customer_id: The sale's customer, if any.
+
+        Returns:
+            Sale: The new header, without a document number.
+        """
+        sale = Sale(
+            date=datetime.now(),
+            total_amount=totals["final_total"],
+            tax_vat=totals["tax_vat"],
+            tax_sscl=totals["tax_sscl"],
+            net_revenue=totals["net_revenue"],
+            payment_method=payments[0]["method"] if len(payments) == 1 else "SPLIT",
+            user_id=cashier_id,
+            customer_id=customer_id,
+            terminal_id=ConfigService.get("terminal_id") or "TERM-01",
+            origin_terminal_id=ConfigService.get("terminal_id") or "TERM-01",
+        )
+        sale._exempt_amount = totals.get("exempt_amount", Decimal("0"))
+        return sale
+
+    @staticmethod
+    def _write_sale_lines(
+        session: Session, sale: Sale, cart_items: list[dict[str, Any]], composite_map: dict[int, list[CompositeItem]]
+    ) -> None:
+        """Add a SaleItem per cart line and take its stock out (components for a composite).
+
+        Args:
+            session: The open session the sale is being written in.
+            sale: The flushed sale (id and cashier set).
+            cart_items: ``CartService.items``.
+            composite_map: ``_fetch_composite_map`` result for the cart's products.
+        """
+        for item in cart_items:
+            product = item["product"]
+            qty = item["qty"]
+
+            sale_item = SaleItem(
+                sale_id=sale.id,
+                product_id=product.id,
+                qty=qty,
+                unit_price=item["unit_price"],
+                original_price=item["original_price"],
+                subtotal=item["total"],
+                notes=item.get("note") or None,
+            )
+            session.add(sale_item)
+
+            TransactionService._move_stock(session, composite_map, product.id, -qty, "SALE", sale.id, sale.user_id)
+
+    @staticmethod
+    def _load_receipt_relations(sale: Sale) -> None:
+        """Load what the receipt needs while the session is still open (prevents DetachedInstanceError).
+
+        Customer, cashier (also for a later print from ReceiptOptionsDialog,
+        #681) and each line's product.
+
+        Args:
+            sale: The sale, still attached to its session.
+        """
+        if sale.customer_id:
+            _ = sale.customer
+        _ = sale.user
+        for item in sale.items:
+            _ = item.product
+
+    @staticmethod
     def _execute_sale(cart_service: CartService, payments: list, customer_id: int = None) -> Sale:
-        """Internal method that executes the sale transaction."""
+        """Write the sale in one transaction; see ``process_sale`` for the interface.
+
+        Steps, in order: payment check, stock check, credit charge, sale
+        header (numbered), credit ledger row, payments, lines + stock out,
+        then load what the receipt needs. Any ValueError rolls everything back.
+        """
         db = Database()
         with db.get_session() as session:
-            # 1. Prepare Data
+            # 1. Validate payment, stock and cashier
             totals = cart_service.get_totals()
             total_amount = totals["final_total"]
-
-            # Validate Payments
             total_paid = sum(p["amount"] for p in payments)
             if total_paid < total_amount:
                 raise ValueError(f"Insufficient payment. Paid: {total_paid}, Due: {total_amount}")
 
             # Pre-fetch composite items for all cart products (avoids N+1 queries later)
             cart_items = cart_service.items
-            parent_ids = [item["product"].id for item in cart_items]
-            composite_map = TransactionService._fetch_composite_map(session, parent_ids)
+            composite_map = TransactionService._fetch_composite_map(
+                session, [item["product"].id for item in cart_items]
+            )
+            TransactionService._check_stock(session, cart_items, composite_map)
 
-            # Negative Stock Check
-            if not ConfigService.get("allow_negative_stock"):
-                # Collect Child IDs from Composites
-                composites = [c for comps in composite_map.values() for c in comps]
-                child_ids = [c.child_product_id for c in composites]
-
-                # Fetch ALL involved Products (Parents + Children) in one query
-                all_product_ids = set(parent_ids) | set(child_ids)
-                all_products = (
-                    session.query(Product)
-                    .filter(Product.id.in_(all_product_ids))
-                    .with_for_update()  # Lock rows for stock check
-                    .all()
-                )
-                product_map = {p.id: p for p in all_products}
-
-                # Perform Stock Check in Memory
-                for item in cart_items:
-                    product_id = item["product"].id
-                    qty_needed = item["qty"]
-
-                    # Get fresh product from map
-                    product = product_map.get(product_id)
-                    if not product:
-                        raise ValueError(f"Product {product_id} missing from database.")
-
-                    comps = composite_map.get(product_id, [])
-
-                    if comps:
-                        # Check children stock
-                        for comp in comps:
-                            child_product = product_map.get(comp.child_product_id)
-                            if not child_product:
-                                raise ValueError(f"Component product {comp.child_product_id} missing.")
-
-                            required_qty = comp.qty * qty_needed
-                            if child_product.stock_qty < required_qty:
-                                raise ValueError(
-                                    f"Insufficient stock for component '{child_product.name_en}' "
-                                    f"(in {product.name_en}). Available: {child_product.stock_qty}, "
-                                    f"Required: {required_qty}"
-                                )
-                    else:
-                        # Check direct stock
-                        if product.stock_qty < qty_needed:
-                            raise ValueError(
-                                f"Insufficient stock for '{product.name_en}'. "
-                                f"Available: {product.stock_qty}, Required: {qty_needed}"
-                            )
-
-            # Get Current User
             current_user = AuthService.get_current_user()
             if not current_user:
                 raise ValueError("No user logged in.")
             cashier_id = current_user.id
 
-            # Handle Credit Logic
-            from cbpos.core.constants.status import PaymentMethodType
+            # 2. Charge credit (ledger row follows once the sale has an id)
+            credit_charge = TransactionService._charge_credit(session, payments, customer_id)
 
-            credit_amount_for_ledger = None
-            credit_customer_balance = None
-            for p in payments:
-                if p["method"].upper() == PaymentMethodType.CREDIT.upper():
-                    if not customer_id:
-                        raise ValueError("Customer required for Credit sale.")
-
-                    customer = session.get(Customer, customer_id, with_for_update=True)
-                    if not customer:
-                        raise ValueError("Invalid Customer.")
-
-                    if customer.current_debt + p["amount"] > customer.credit_limit:
-                        raise ValueError(f"Credit limit exceeded for {customer.name}.")
-
-                    customer.current_debt += p["amount"]
-                    # Ledger entry will be created after sale is flushed (need sale.id)
-                    credit_amount_for_ledger = p["amount"]
-                    credit_customer_balance = customer.current_debt
-
-            # 2. Create Sale Header — use tax values from cart totals (single source of truth)
-            exempt_amount = totals.get("exempt_amount", Decimal("0"))
-            tax_info = {
-                "vat": totals["tax_vat"],
-                "sscl": totals["tax_sscl"],
-                "net": totals["net_revenue"],
-            }
-
-            # Determine primary method for simple display
-            primary_method = payments[0]["method"] if len(payments) == 1 else "SPLIT"
-
-            sale = Sale(
-                date=datetime.now(),
-                total_amount=total_amount,
-                tax_vat=tax_info["vat"],
-                tax_sscl=tax_info["sscl"],
-                net_revenue=tax_info["net"],
-                payment_method=primary_method,
-                user_id=cashier_id,
-                customer_id=customer_id,
-                terminal_id=ConfigService.get("terminal_id") or "TERM-01",
-                origin_terminal_id=ConfigService.get("terminal_id") or "TERM-01",
-            )
-            # Attach exempt amount for receipt builder (transient, not persisted)
-            sale._exempt_amount = exempt_amount
+            # 3. Write the numbered sale header, then its credit ledger row
+            sale = TransactionService._new_sale(totals, payments, cashier_id, customer_id)
             TransactionService._insert_numbered(session, sale, "SALE")
-            receipt_no = sale.document_number
+            TransactionService._record_credit_charge(session, sale, credit_charge)
 
-            # Record credit sale in ledger (if applicable)
-            if customer_id and credit_amount_for_ledger is not None:
-                CustomerCreditService.record_credit_sale_in_session(
-                    session=session,
-                    customer_id=customer_id,
-                    sale_id=sale.id,
-                    amount=credit_amount_for_ledger,
-                    doc_number=receipt_no,
-                    balance_after=credit_customer_balance,
-                    user_id=cashier_id,
-                )
-
-            # 3. Create Sale Payments
+            # 4. Payments, then lines + stock out
             for p in payments:
-                payment = SalePayment(sale_id=sale.id, payment_method=p["method"], amount=p["amount"])
-                session.add(payment)
-
-            # 4. Process Items & Deduct Stock
-            for item in cart_service.items:
-                product = item["product"]
-                qty = item["qty"]
-
-                sale_item = SaleItem(
-                    sale_id=sale.id,
-                    product_id=product.id,
-                    qty=qty,
-                    unit_price=item["unit_price"],
-                    original_price=item["original_price"],
-                    subtotal=item["total"],
-                    notes=item.get("note") or None,
-                )
-                session.add(sale_item)
-
-                # Check for Composite Item (using pre-fetched map)
-                composite_children = composite_map.get(product.id, [])
-
-                if composite_children:
-                    # Deduct from children
-                    for comp in composite_children:
-                        deduction = comp.qty * qty
-                        StockService.record_movement(
-                            product_id=comp.child_product_id,
-                            qty_change=-deduction,
-                            movement_type="SALE",
-                            document_id=sale.id,
-                            user_id=cashier_id,
-                            session=session,
-                        )
-                else:
-                    # Deduct from product itself
-                    StockService.record_movement(
-                        product_id=product.id,
-                        qty_change=-qty,
-                        movement_type="SALE",
-                        document_id=sale.id,
-                        user_id=cashier_id,
-                        session=session,
-                    )
+                session.add(SalePayment(sale_id=sale.id, payment_method=p["method"], amount=p["amount"]))
+            TransactionService._write_sale_lines(session, sale, cart_items, composite_map)
 
             # 5. Eager-load relationships before session closes (prevents DetachedInstanceError)
-            if sale.customer_id:
-                _ = sale.customer  # Force load while session is open
-            _ = sale.user  # Cashier for the receipt, also when printed later from ReceiptOptionsDialog (#681)
-            for item in sale.items:  # Force load items + product for ReceiptOptionsDialog
-                _ = item.product
+            TransactionService._load_receipt_relations(sale)
 
             # 6. Context manager handles commit
 
@@ -393,28 +505,9 @@ class TransactionService:
 
                 # Reverse Stock via StockService
                 for item in sale.items:
-                    composite_children = composite_map.get(item.product_id, [])
-
-                    if composite_children:
-                        for comp in composite_children:
-                            restoration = comp.qty * item.qty
-                            StockService.record_movement(
-                                product_id=comp.child_product_id,
-                                qty_change=restoration,
-                                movement_type="VOID",
-                                document_id=sale.id,
-                                user_id=user_id,
-                                session=session,
-                            )
-                    else:
-                        StockService.record_movement(
-                            product_id=item.product_id,
-                            qty_change=item.qty,
-                            movement_type="VOID",
-                            document_id=sale.id,
-                            user_id=user_id,
-                            session=session,
-                        )
+                    TransactionService._move_stock(
+                        session, composite_map, item.product_id, item.qty, "VOID", sale.id, user_id
+                    )
 
                 # Give back any credit this sale put on the customer's book,
                 # in this same transaction (#715).
@@ -581,30 +674,15 @@ class TransactionService:
                     session.add(refund_item)
 
                     # 4. RESTORE stock via StockService (proper audit trail)
-                    composite_children = composite_map.get(original_item.product_id, [])
-
-                    if composite_children:
-                        # Restore child product stock
-                        for comp in composite_children:
-                            restoration = comp.qty * original_item.qty
-                            StockService.record_movement(
-                                product_id=comp.child_product_id,
-                                qty_change=restoration,
-                                movement_type="RETURN",
-                                document_id=refund_sale.id,
-                                user_id=user_id,
-                                session=session,
-                            )
-                    else:
-                        # Restore product stock directly
-                        StockService.record_movement(
-                            product_id=original_item.product_id,
-                            qty_change=original_item.qty,
-                            movement_type="RETURN",
-                            document_id=refund_sale.id,
-                            user_id=user_id,
-                            session=session,
-                        )
+                    TransactionService._move_stock(
+                        session,
+                        composite_map,
+                        original_item.product_id,
+                        original_item.qty,
+                        "RETURN",
+                        refund_sale.id,
+                        user_id,
+                    )
 
                 # 5. Give back any credit the original sale put on the
                 # customer's book, in this same transaction (#715).

@@ -5,8 +5,8 @@ import shutil
 import sys
 from pathlib import Path
 
-from PyQt6.QtCore import QtMsgType, qInstallMessageHandler
-from PyQt6.QtGui import QFont
+from PyQt6.QtCore import Qt, QtMsgType, qInstallMessageHandler
+from PyQt6.QtGui import QFont, QGuiApplication
 from PyQt6.QtWidgets import QApplication
 
 from cbpos.config import Config
@@ -258,8 +258,9 @@ def main():
     # Install custom message handler to suppress Qt internal warnings
     qInstallMessageHandler(qt_message_handler)
 
-    # Ensure high DPI scaling
+    # Ensure high DPI scaling and consistent fractional display scaling across platforms (#600)
     os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
+    QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 
     # Own taskbar identity (must precede the first window) (#692)
     from cbpos.infrastructure.app_identity import apply_app_icon, set_windows_app_user_model_id

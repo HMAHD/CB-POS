@@ -455,11 +455,15 @@ class SideMenu(QWidget):
             self.lbl_username.setText(user.username)
             self.lbl_role.setText(display_role_name(user.role) if user.role else _t("side_menu.unknown_role"))
 
-            is_admin = user.role and user.role.name.lower() in [
-                "admin",
-                "manager",
-                "owner",
-            ]
+            is_admin = bool(
+                user.role
+                and user.role.name.lower()
+                in [
+                    "admin",
+                    "manager",
+                    "owner",
+                ]
+            )
 
             self.btn_management.setVisible(is_admin)
             self.btn_settings.setVisible(is_admin)

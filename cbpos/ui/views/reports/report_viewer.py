@@ -114,7 +114,8 @@ class ReportViewer(QWidget):
         self._nav_layout.addStretch()
 
         scroll.setWidget(nav_container)
-        sidebar_layout.addWidget(scroll)
+        scroll.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        sidebar_layout.addWidget(scroll, 1)
 
         splitter.addWidget(sidebar)
 
@@ -243,6 +244,8 @@ class ReportViewer(QWidget):
         splitter.addWidget(content)
         splitter.setSizes([280, 720])
         splitter.setHandleWidth(1)
+        splitter.setCollapsible(0, False)
+        splitter.setCollapsible(1, False)
         sidebar.setMinimumWidth(260)
         # Without explicit stretch factors, a plain QSplitter keeps its
         # panels' proportional ratio as the window resizes -- on a large
@@ -272,6 +275,16 @@ class ReportViewer(QWidget):
         self.btn_export_excel.setText(_t("report_viewer.btn_excel"))
         self.btn_export_pdf.setText(_t("report_viewer.btn_pdf"))
         self.btn_email.setText(_t("common.email"))
+
+    def showEvent(self, event) -> None:
+        """Ensure splitter sizes and layouts are properly computed on display."""
+        super().showEvent(event)
+        sizes = self.splitter.sizes()
+        if sizes and sizes[0] < 260:
+            remaining = sum(sizes) - 280
+            self.splitter.setSizes([280, max(remaining, 100)])
+        if self.layout() is not None:
+            self.layout().activate()
 
     # ------------------------------------------------------------------
     # Sidebar construction

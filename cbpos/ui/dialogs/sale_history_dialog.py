@@ -25,6 +25,7 @@ from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
+from cbpos.ui.refund_messages import refund_confirm_text, refund_done_text
 from cbpos.ui.resources.status_colors import DANGER, SUCCESS, WARNING, status_color
 
 logger = logging.getLogger(__name__)
@@ -565,17 +566,16 @@ class SaleHistoryDialog(QDialog):
         if not authorized_user:
             return
 
-        # Confirmation dialog
+        # Confirmation -- what is handed back vs. taken off credit (#715)
         sale = self._selected_sale
+        breakdown = TransactionService.refund_breakdown(sale.id)
+        if breakdown is None:
+            QMessageBox.critical(self, _t("common.error"), _t("common.unknown_error"))
+            return
         reply = QMessageBox.question(
             self,
             _t("common.confirm"),
-            _t(
-                "sale_history.refund_header",
-                receipt=sale.document_number,
-                amount=format_currency(sale.total_amount),
-            )
-            + f"\n\n{reason}",
+            refund_confirm_text(sale.document_number, breakdown, reason),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -592,10 +592,7 @@ class SaleHistoryDialog(QDialog):
                 QMessageBox.information(
                     self,
                     _t("common.success"),
-                    _t(
-                        "sale_history.refund_success",
-                        amount=format_currency(sale.total_amount),
-                    ),
+                    refund_done_text(sale.document_number, breakdown),
                 )
                 self._cancel_refund()
                 self._load_sales()

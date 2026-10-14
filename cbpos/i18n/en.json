@@ -317,6 +317,15 @@
     "unknown_product": "Unknown Product",
     "walk_in": "Walk-in"
   },
+  "refund_split": {
+    "confirm_question": "Refund {doc_number}? Total {amount}.",
+    "done": "Refund for {doc_number} is done.",
+    "cash_back": "Give back {amount} to the customer.",
+    "nothing_to_hand_back": "Nothing to hand back -- this sale was all on credit.",
+    "credit_will_reverse": "{amount} will be taken off {customer}'s credit.",
+    "credit_reversed": "{amount} taken off {customer}'s credit.",
+    "reason": "Reason: {reason}"
+  },
   "customer_selection": {
     "title": "Select Customer",
     "search_placeholder": "Search by Name or Phone...",
@@ -1888,7 +1897,9 @@
     "txn_count": "Transactions",
     "void_count": "Voids",
     "void_value": "Void Value",
-    "end_of_report": "*** END OF REPORT ***"
+    "end_of_report": "*** END OF REPORT ***",
+    "refund_given_back": "Given back: {amount}",
+    "refund_off_credit": "Off credit: {amount}"
   },
   "cash_movement": {
     "record_title_out": "Take money out of the drawer",

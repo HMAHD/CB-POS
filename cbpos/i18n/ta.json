@@ -317,6 +317,15 @@
     "unknown_product": "தெரியாத பொருள்",
     "walk_in": "சாதாரண வாடிக்கையாளர்"
   },
+  "refund_split": {
+    "confirm_question": "{doc_number} பில்லுக்கு திருப்பிச் செலுத்தணுமா? மொத்தம் {amount}.",
+    "done": "{doc_number} பில்லுக்கு திருப்பிச்செலுத்தல் முடிஞ்சது.",
+    "cash_back": "வாடிக்கையாளருக்கு {amount} திருப்பிக் கொடுங்க.",
+    "nothing_to_hand_back": "திருப்பிக் கொடுக்க பணம் இல்ல -- இந்த பில் முழுசா கடன்ல வாங்கினது.",
+    "credit_will_reverse": "{customer}-இன் கடன்ல இருந்து {amount} குறையும்.",
+    "credit_reversed": "{customer}-இன் கடன்ல இருந்து {amount} குறைச்சிட்டோம்.",
+    "reason": "காரணம்: {reason}"
+  },
   "customer_selection": {
     "title": "வாடிக்கையாளரைத் தேர்ந்தெடு",
     "search_placeholder": "வாடிக்கையாளர் தேடு...",
@@ -1858,7 +1867,9 @@
     "txn_count": "பரிவர்த்தனைகள்",
     "void_count": "ரத்து செய்த பில்கள்",
     "void_value": "ரத்து செய்த மதிப்பு",
-    "end_of_report": "*** அறிக்கை முடிந்தது ***"
+    "end_of_report": "*** அறிக்கை முடிந்தது ***",
+    "refund_given_back": "திருப்பிக் கொடுத்தது: {amount}",
+    "refund_off_credit": "கடன்ல குறைச்சது: {amount}"
   },
   "cash_movement": {
     "record_title_out": "பணப்பெட்டியிலிருந்து காசு எடுங்க",

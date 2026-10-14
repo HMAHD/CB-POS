@@ -189,3 +189,142 @@ class TestPartialRefundRule:
 
         assert sum(e.amount for e in _reversals(db_session, customer)) == Decimal("-80.00")
         assert _debt(db_session, customer) == Decimal("50.00")
+
+
+class TestRefundBreakdown:
+    """The refund screens' split: what is handed back vs. taken off credit."""
+
+    def test_cash_only_sale_hands_everything_back(self, db_session, user, product, customer):
+        sale = _sell(db_session, user, product, customer, [("Cash", "200.00")])
+
+        b = TransactionService.refund_breakdown(sale.id)
+
+        assert (b["cash_back"], b["credit_reversed"], b["refundable"]) == (Decimal("200.00"), Decimal("0.00"), True)
+
+    def test_credit_only_sale_hands_nothing_back(self, db_session, user, product, customer):
+        sale = _sell(db_session, user, product, customer, [("Credit", "200.00")])
+
+        b = TransactionService.refund_breakdown(sale.id)
+
+        assert (b["cash_back"], b["credit_reversed"]) == (Decimal("0.00"), Decimal("200.00"))
+        assert b["customer_name"] == "Credit 715"
+
+    def test_mixed_sale_splits(self, db_session, user, product, customer):
+        sale = _sell(db_session, user, product, customer, [("Cash", "120.00"), ("Credit", "80.00")])
+
+        b = TransactionService.refund_breakdown(sale.id)
+
+        assert (b["total"], b["cash_back"], b["credit_reversed"]) == (
+            Decimal("200.00"),
+            Decimal("120.00"),
+            Decimal("80.00"),
+        )
+
+    def test_breakdown_matches_what_the_refund_reverses(self, db_session, user, product, customer):
+        sale = _sell(db_session, user, product, customer, [("Cash", "120.00"), ("Credit", "80.00")])
+        b = TransactionService.refund_breakdown(sale.id)
+
+        TransactionService.process_refund(sale.id, "Returned", user.id)
+
+        assert [-e.amount for e in _reversals(db_session, customer)] == [b["credit_reversed"]]
+
+    def test_already_refunded_sale_has_nothing_left(self, db_session, user, product, customer):
+        sale = _sell(db_session, user, product, customer, [("Cash", "120.00"), ("Credit", "80.00")])
+        TransactionService.process_refund(sale.id, "Returned", user.id)
+
+        b = TransactionService.refund_breakdown(sale.id)
+
+        assert (b["cash_back"], b["credit_reversed"], b["refundable"]) == (Decimal("0.00"), Decimal("0.00"), False)
+
+    def test_voided_sale_has_nothing_left(self, db_session, user, product, customer):
+        sale = _sell(db_session, user, product, customer, [("Credit", "200.00")])
+        TransactionService.void_sale(sale.id, user.id, "Mistake")
+
+        b = TransactionService.refund_breakdown(sale.id)
+
+        assert (b["cash_back"], b["credit_reversed"], b["refundable"]) == (Decimal("0.00"), Decimal("0.00"), False)
+
+    def test_missing_sale(self, db_session):
+        assert TransactionService.refund_breakdown(99999999) is None
+
+
+@pytest.mark.usefixtures("qapp")
+class TestRefundDialogStatesTheSplit:
+    """The refund dialog no longer tells the cashier to hand back the full total."""
+
+    def _run(self, db_session, user, sale):
+        from PyQt6.QtWidgets import QMessageBox
+
+        from cbpos.ui.dialogs.refund_dialog import RefundDialog
+
+        dialog = RefundDialog()
+        dialog.found_sale = sale
+        dialog.txt_reason.setPlainText("Returned")
+        with (
+            patch("cbpos.ui.dialogs.refund_dialog.check_permission_with_override", return_value=user),
+            patch.object(QMessageBox, "question", return_value=QMessageBox.StandardButton.Yes) as question,
+            patch.object(QMessageBox, "information") as information,
+        ):
+            dialog.process_refund()
+        dialog.deleteLater()
+        return question.call_args.args[2], information.call_args.args[2]
+
+    def test_mixed_sale_confirm_and_done_show_both_parts(self, db_session, user, product, customer):
+        from cbpos.core.utils.formatters import format_currency
+        from cbpos.i18n import _t
+
+        sale = _sell(db_session, user, product, customer, [("Cash", "120.00"), ("Credit", "80.00")])
+
+        confirm, done = self._run(db_session, user, sale)
+
+        cash = _t("refund_split.cash_back", amount=format_currency(Decimal("120.00")))
+        assert cash in confirm
+        assert (
+            _t("refund_split.credit_will_reverse", amount=format_currency(Decimal("80.00")), customer="Credit 715")
+            in confirm
+        )
+        assert "Returned" in confirm
+        assert cash in done
+        assert (
+            _t("refund_split.credit_reversed", amount=format_currency(Decimal("80.00")), customer="Credit 715") in done
+        )
+        assert format_currency(Decimal("200.00")) not in done
+
+    def test_credit_only_sale_says_nothing_to_hand_back(self, db_session, user, product, customer):
+        from cbpos.core.utils.formatters import format_currency
+        from cbpos.i18n import _t
+
+        sale = _sell(db_session, user, product, customer, [("Credit", "200.00")])
+
+        confirm, done = self._run(db_session, user, sale)
+
+        for text in (confirm, done):
+            assert _t("refund_split.nothing_to_hand_back") in text
+            assert _t("refund_split.cash_back", amount=format_currency(Decimal("200.00"))) not in text
+
+    def test_cash_only_sale_mentions_no_credit(self, db_session, user, product, customer):
+        from cbpos.core.utils.formatters import format_currency
+        from cbpos.i18n import _t
+
+        sale = _sell(db_session, user, product, customer, [("Cash", "200.00")])
+
+        confirm, done = self._run(db_session, user, sale)
+
+        assert _t("refund_split.cash_back", amount=format_currency(Decimal("200.00"))) in confirm
+        assert "Credit 715" not in confirm
+        assert "Credit 715" not in done
+
+
+class TestRefundVoucherSplit:
+    def test_voucher_shows_given_back_and_off_credit(self):
+        from cbpos.core.services.refund_receipt_builder import RefundReceiptBuilder
+        from cbpos.core.utils.formatters import format_currency
+
+        sale = Sale(document_number="REC-V-1", date=None, total_amount=Decimal("200.00"))
+        sale.items = []
+        with patch.object(RefundReceiptBuilder, "_append_header_block", return_value=32):
+            commands = RefundReceiptBuilder.build_refund_receipt(sale, credit_reversed=Decimal("80.00"))
+        text = "\n".join(str(c.get("val", "")) for c in commands)
+
+        assert RefundReceiptBuilder._rt("refund_given_back", amount=format_currency(Decimal("120.00"))) in text
+        assert RefundReceiptBuilder._rt("refund_off_credit", amount=format_currency(Decimal("80.00"))) in text

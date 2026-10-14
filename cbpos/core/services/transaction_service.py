@@ -351,6 +351,35 @@ class TransactionService:
         return sale
 
     @staticmethod
+    def _write_sale_lines(
+        session: Session, sale: Sale, cart_items: list[dict[str, Any]], composite_map: dict[int, list[CompositeItem]]
+    ) -> None:
+        """Add a SaleItem per cart line and take its stock out (components for a composite).
+
+        Args:
+            session: The open session the sale is being written in.
+            sale: The flushed sale (id and cashier set).
+            cart_items: ``CartService.items``.
+            composite_map: ``_fetch_composite_map`` result for the cart's products.
+        """
+        for item in cart_items:
+            product = item["product"]
+            qty = item["qty"]
+
+            sale_item = SaleItem(
+                sale_id=sale.id,
+                product_id=product.id,
+                qty=qty,
+                unit_price=item["unit_price"],
+                original_price=item["original_price"],
+                subtotal=item["total"],
+                notes=item.get("note") or None,
+            )
+            session.add(sale_item)
+
+            TransactionService._move_stock(session, composite_map, product.id, -qty, "SALE", sale.id, sale.user_id)
+
+    @staticmethod
     def _execute_sale(cart_service: CartService, payments: list, customer_id: int = None) -> Sale:
         """Internal method that executes the sale transaction."""
         db = Database()
@@ -391,22 +420,7 @@ class TransactionService:
                 session.add(payment)
 
             # 4. Process Items & Deduct Stock
-            for item in cart_service.items:
-                product = item["product"]
-                qty = item["qty"]
-
-                sale_item = SaleItem(
-                    sale_id=sale.id,
-                    product_id=product.id,
-                    qty=qty,
-                    unit_price=item["unit_price"],
-                    original_price=item["original_price"],
-                    subtotal=item["total"],
-                    notes=item.get("note") or None,
-                )
-                session.add(sale_item)
-
-                TransactionService._move_stock(session, composite_map, product.id, -qty, "SALE", sale.id, cashier_id)
+            TransactionService._write_sale_lines(session, sale, cart_service.items, composite_map)
 
             # 5. Eager-load relationships before session closes (prevents DetachedInstanceError)
             if sale.customer_id:

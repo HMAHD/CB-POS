@@ -371,6 +371,8 @@ class DashboardView(QWidget):
         )
         self.products_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.products_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.products_table.verticalHeader().setVisible(False)
+        self.products_table.setShowGrid(False)
         self.products_table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.products_table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         vbox.addWidget(self.products_table, 1)

@@ -78,6 +78,70 @@ class TransactionService:
         return composite_map
 
     @staticmethod
+    def _check_stock(
+        session: Session, cart_items: list[dict[str, Any]], composite_map: dict[int, list[CompositeItem]]
+    ) -> None:
+        """Make sure every cart line can be taken from stock, unless negative stock is allowed.
+
+        Locks the products involved (parents and components) for the rest of
+        the transaction, then checks each line in memory: a composite against
+        each component's bill-of-materials qty, any other product against its
+        own stock.
+
+        Args:
+            session: The open session the sale is being written in.
+            cart_items: ``CartService.items`` -- dicts with ``product`` and ``qty``.
+            composite_map: ``_fetch_composite_map`` result for the cart's products.
+
+        Raises:
+            ValueError: If a product or component is missing, or stock is short.
+        """
+        if ConfigService.get("allow_negative_stock"):
+            return
+
+        parent_ids = [item["product"].id for item in cart_items]
+        child_ids = [c.child_product_id for comps in composite_map.values() for c in comps]
+
+        # Fetch ALL involved Products (Parents + Children) in one query
+        all_products = (
+            session.query(Product)
+            .filter(Product.id.in_(set(parent_ids) | set(child_ids)))
+            .with_for_update()  # Lock rows for stock check
+            .all()
+        )
+        product_map = {p.id: p for p in all_products}
+
+        for item in cart_items:
+            product_id = item["product"].id
+            qty_needed = item["qty"]
+
+            product = product_map.get(product_id)
+            if not product:
+                raise ValueError(f"Product {product_id} missing from database.")
+
+            comps = composite_map.get(product_id, [])
+            if not comps:
+                if product.stock_qty < qty_needed:
+                    raise ValueError(
+                        f"Insufficient stock for '{product.name_en}'. "
+                        f"Available: {product.stock_qty}, Required: {qty_needed}"
+                    )
+                continue
+
+            for comp in comps:
+                child_product = product_map.get(comp.child_product_id)
+                if not child_product:
+                    raise ValueError(f"Component product {comp.child_product_id} missing.")
+
+                required_qty = comp.qty * qty_needed
+                if child_product.stock_qty < required_qty:
+                    raise ValueError(
+                        f"Insufficient stock for component '{child_product.name_en}' "
+                        f"(in {product.name_en}). Available: {child_product.stock_qty}, "
+                        f"Required: {required_qty}"
+                    )
+
+    @staticmethod
     def _move_stock(
         session: Session,
         composite_map: dict[int, list[CompositeItem]],
@@ -204,55 +268,7 @@ class TransactionService:
             parent_ids = [item["product"].id for item in cart_items]
             composite_map = TransactionService._fetch_composite_map(session, parent_ids)
 
-            # Negative Stock Check
-            if not ConfigService.get("allow_negative_stock"):
-                # Collect Child IDs from Composites
-                composites = [c for comps in composite_map.values() for c in comps]
-                child_ids = [c.child_product_id for c in composites]
-
-                # Fetch ALL involved Products (Parents + Children) in one query
-                all_product_ids = set(parent_ids) | set(child_ids)
-                all_products = (
-                    session.query(Product)
-                    .filter(Product.id.in_(all_product_ids))
-                    .with_for_update()  # Lock rows for stock check
-                    .all()
-                )
-                product_map = {p.id: p for p in all_products}
-
-                # Perform Stock Check in Memory
-                for item in cart_items:
-                    product_id = item["product"].id
-                    qty_needed = item["qty"]
-
-                    # Get fresh product from map
-                    product = product_map.get(product_id)
-                    if not product:
-                        raise ValueError(f"Product {product_id} missing from database.")
-
-                    comps = composite_map.get(product_id, [])
-
-                    if comps:
-                        # Check children stock
-                        for comp in comps:
-                            child_product = product_map.get(comp.child_product_id)
-                            if not child_product:
-                                raise ValueError(f"Component product {comp.child_product_id} missing.")
-
-                            required_qty = comp.qty * qty_needed
-                            if child_product.stock_qty < required_qty:
-                                raise ValueError(
-                                    f"Insufficient stock for component '{child_product.name_en}' "
-                                    f"(in {product.name_en}). Available: {child_product.stock_qty}, "
-                                    f"Required: {required_qty}"
-                                )
-                    else:
-                        # Check direct stock
-                        if product.stock_qty < qty_needed:
-                            raise ValueError(
-                                f"Insufficient stock for '{product.name_en}'. "
-                                f"Available: {product.stock_qty}, Required: {qty_needed}"
-                            )
+            TransactionService._check_stock(session, cart_items, composite_map)
 
             # Get Current User
             current_user = AuthService.get_current_user()

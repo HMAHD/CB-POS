@@ -6,6 +6,7 @@ from typing import Any
 
 from cbpos.core.models import Sale
 from cbpos.core.services.base_receipt_builder import BaseReceiptBuilder
+from cbpos.core.services.refund_breakdown import refund_cash_back
 from cbpos.core.utils.formatters import format_currency
 
 
@@ -81,7 +82,7 @@ class RefundReceiptBuilder(BaseReceiptBuilder):
             }
         )
         if credit_reversed and credit_reversed > 0:
-            given_back = max(Decimal(str(amount)) - credit_reversed, Decimal("0.00"))
+            given_back = refund_cash_back(Decimal(str(amount)), credit_reversed)
             commands.append(
                 {
                     "type": "text",

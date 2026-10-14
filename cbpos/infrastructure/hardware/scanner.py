@@ -48,9 +48,15 @@ class BarcodeScanner(QObject):
         # A scan's Enter must not fire an Enter shortcut on the focused
         # widget (Stock Take History's Enter-to-open, #548/#594): Qt offers
         # a key to shortcuts before delivering it, so claim the override
-        # and let the KeyPress below route the scan.
+        # and let the KeyPress below route the scan. Not while a modal
+        # dialog is up: its Enter shortcut (payment, quantity) keeps the
+        # key rather than a scan reaching the view behind it.
         if event.type() == QEvent.Type.ShortcutOverride and obj.isWidgetType():
-            if event.key() in (Qt.Key.Key_Return.value, Qt.Key.Key_Enter.value) and self._completes_scan(obj):
+            if (
+                event.key() in (Qt.Key.Key_Return.value, Qt.Key.Key_Enter.value)
+                and QApplication.activeModalWidget() is None
+                and self._completes_scan(obj)
+            ):
                 event.accept()
                 return True
         # App-level filters see each key twice (QWindow, then the focused

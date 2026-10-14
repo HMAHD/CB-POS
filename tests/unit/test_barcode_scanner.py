@@ -9,7 +9,7 @@ import pytest
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtTest import QTest
-from PyQt6.QtWidgets import QAbstractItemView, QApplication, QLineEdit, QPushButton, QTableWidget
+from PyQt6.QtWidgets import QAbstractItemView, QApplication, QDialog, QLineEdit, QPushButton, QTableWidget
 
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 
@@ -132,6 +132,29 @@ class TestBarcodeScannerVsEnterShortcut:
         table, fired = table_with_enter_shortcut
 
         QTest.keyClick(table, Qt.Key.Key_Return)
+
+        assert fired == [1]
+        assert scans == []
+
+    def test_modal_dialog_enter_shortcut_keeps_its_enter(self, scanner_and_field):
+        """Behind a modal (payment, quantity) the scan must not reach the view; the
+        dialog's own Enter shortcut keeps the key, as before #548."""
+        _scanner, _field, scans, _returns = scanner_and_field
+        dialog = QDialog()
+        dialog.setModal(True)
+        button = QPushButton(dialog)
+        fired: list[int] = []
+        QShortcut(QKeySequence(Qt.Key.Key_Return), dialog).activated.connect(lambda: fired.append(1))
+        dialog.show()
+        dialog.activateWindow()
+        QTest.qWaitForWindowActive(dialog)
+        button.setFocus()
+        try:
+            QTest.keyClicks(button, "4791234567890")
+            QTest.keyClick(button, Qt.Key.Key_Return)
+        finally:
+            dialog.hide()
+            dialog.deleteLater()
 
         assert fired == [1]
         assert scans == []

@@ -12,7 +12,7 @@ from decimal import Decimal
 
 import pytest
 
-from cbpos.core.models import Permission, Product, PurchaseItem, PurchaseOrder, Role, Supplier, User
+from cbpos.core.models import Permission, Product, PurchaseItem, PurchaseOrder, Role, Supplier, Unit, User
 from cbpos.core.services.purchase_order_service import PurchaseOrderService
 from cbpos.core.services.purchase_service import PurchaseService
 
@@ -52,6 +52,23 @@ def test_product(db_session):
         price=Decimal("100.00"),
         cost=Decimal("50.00"),
         stock_qty=Decimal("0"),
+    )
+    db_session.add(product)
+    db_session.flush()
+    return product
+
+
+def _make_product(db_session, name_en: str, **fields) -> Product:
+    """Add a product with a unique barcode, flushed so it has an id."""
+    global _counter
+    _counter += 1
+    product = Product(
+        name_en=name_en,
+        barcode=f"POX{_counter:04d}",
+        price=Decimal("100.00"),
+        cost=Decimal("50.00"),
+        stock_qty=Decimal("0"),
+        **fields,
     )
     db_session.add(product)
     db_session.flush()
@@ -192,6 +209,7 @@ class TestCheckReceiptDiscrepancies:
         assert len(discrepancies) == 1
         assert discrepancies[0]["outstanding"] == Decimal("10")
         assert discrepancies[0]["received"] == Decimal("15")
+        assert discrepancies[0]["kind"] == "over"
 
     def test_flags_under_receipt(self, db_session, test_supplier, test_product, test_user):
         order = PurchaseOrderService.create_purchase_order(
@@ -205,8 +223,9 @@ class TestCheckReceiptDiscrepancies:
         assert len(discrepancies) == 1
         assert discrepancies[0]["outstanding"] == Decimal("10")
         assert discrepancies[0]["received"] == Decimal("3")
+        assert discrepancies[0]["kind"] == "under"
 
-    def test_ignores_lines_not_on_the_order(self, db_session, test_supplier, test_product, test_user):
+    def test_flags_lines_not_on_the_order(self, db_session, test_supplier, test_product, test_user):
         other_product = Product(
             name_en="Unrelated Product", barcode="POT-UNREL", price=Decimal("10"), cost=Decimal("5")
         )
@@ -218,7 +237,181 @@ class TestCheckReceiptDiscrepancies:
         )
 
         discrepancies = PurchaseOrderService.check_receipt_discrepancies(
-            order.id, [{"product_id": other_product.id, "qty": Decimal("999")}]
+            order.id,
+            [
+                {"product_id": test_product.id, "qty": Decimal("10")},
+                {"product_id": other_product.id, "qty": Decimal("999")},
+            ],
+        )
+
+        assert len(discrepancies) == 1
+        assert discrepancies[0]["kind"] == "not_on_order"
+        assert discrepancies[0]["product_id"] == other_product.id
+        assert discrepancies[0]["product_name"] == "Unrelated Product"
+        assert discrepancies[0]["outstanding"] == Decimal("0")
+        assert discrepancies[0]["received"] == Decimal("999")
+
+    def test_flags_outstanding_line_missing_from_the_grn(self, db_session, test_supplier, test_product, test_user):
+        second = _make_product(db_session, "Dropped Product")
+        order = PurchaseOrderService.create_purchase_order(
+            test_supplier.id,
+            test_user.id,
+            [
+                {"product_id": test_product.id, "qty_ordered": Decimal("10")},
+                {"product_id": second.id, "qty_ordered": Decimal("6")},
+            ],
+        )
+
+        discrepancies = PurchaseOrderService.check_receipt_discrepancies(
+            order.id, [{"product_id": test_product.id, "qty": Decimal("10")}]
+        )
+
+        assert len(discrepancies) == 1
+        assert discrepancies[0]["kind"] == "not_received"
+        assert discrepancies[0]["product_id"] == second.id
+        assert discrepancies[0]["outstanding"] == Decimal("6")
+        assert discrepancies[0]["received"] == Decimal("0")
+
+    def test_does_not_flag_a_missing_line_that_is_already_fully_received(
+        self, db_session, test_supplier, test_product, test_user
+    ):
+        second = _make_product(db_session, "Already Received Product")
+        order = PurchaseOrderService.create_purchase_order(
+            test_supplier.id,
+            test_user.id,
+            [
+                {"product_id": test_product.id, "qty_ordered": Decimal("10")},
+                {"product_id": second.id, "qty_ordered": Decimal("6")},
+            ],
+        )
+        first_grn = PurchaseService.create_purchase(
+            test_supplier.id, "INV-PO-5A", test_user.id, purchase_order_id=order.id
+        )
+        PurchaseService.commit_purchase(
+            first_grn.id, [{"product_id": second.id, "qty": Decimal("6"), "cost": Decimal("50")}]
+        )
+
+        discrepancies = PurchaseOrderService.check_receipt_discrepancies(
+            order.id, [{"product_id": test_product.id, "qty": Decimal("10")}]
         )
 
         assert discrepancies == []
+
+    def test_over_and_under_receipts_carry_their_kind(self, db_session, test_supplier, test_product, test_user):
+        second = _make_product(db_session, "Under Product")
+        order = PurchaseOrderService.create_purchase_order(
+            test_supplier.id,
+            test_user.id,
+            [
+                {"product_id": test_product.id, "qty_ordered": Decimal("10")},
+                {"product_id": second.id, "qty_ordered": Decimal("10")},
+            ],
+        )
+
+        discrepancies = PurchaseOrderService.check_receipt_discrepancies(
+            order.id,
+            [
+                {"product_id": test_product.id, "qty": Decimal("12")},
+                {"product_id": second.id, "qty": Decimal("4")},
+            ],
+        )
+
+        kinds = {d["product_id"]: d["kind"] for d in discrepancies}
+        assert kinds == {test_product.id: "over", second.id: "under"}
+
+    def test_reports_every_kind_together(self, db_session, test_supplier, test_product, test_user):
+        under = _make_product(db_session, "Combo Under")
+        dropped = _make_product(db_session, "Combo Dropped")
+        unordered = _make_product(db_session, "Combo Unordered")
+        order = PurchaseOrderService.create_purchase_order(
+            test_supplier.id,
+            test_user.id,
+            [
+                {"product_id": test_product.id, "qty_ordered": Decimal("10")},
+                {"product_id": under.id, "qty_ordered": Decimal("10")},
+                {"product_id": dropped.id, "qty_ordered": Decimal("3")},
+            ],
+        )
+
+        discrepancies = PurchaseOrderService.check_receipt_discrepancies(
+            order.id,
+            [
+                {"product_id": test_product.id, "qty": Decimal("11")},
+                {"product_id": under.id, "qty": Decimal("2")},
+                {"product_id": unordered.id, "qty": Decimal("5")},
+            ],
+        )
+
+        assert [(d["product_id"], d["kind"]) for d in discrepancies] == [
+            (test_product.id, "over"),
+            (under.id, "under"),
+            (unordered.id, "not_on_order"),
+            (dropped.id, "not_received"),
+        ]
+
+    def test_exact_receipt_of_a_multi_line_order_gives_no_discrepancies(
+        self, db_session, test_supplier, test_product, test_user
+    ):
+        second = _make_product(db_session, "Exact Second")
+        order = PurchaseOrderService.create_purchase_order(
+            test_supplier.id,
+            test_user.id,
+            [
+                {"product_id": test_product.id, "qty_ordered": Decimal("10")},
+                {"product_id": second.id, "qty_ordered": Decimal("1.250")},
+            ],
+        )
+
+        discrepancies = PurchaseOrderService.check_receipt_discrepancies(
+            order.id,
+            [
+                {"product_id": second.id, "qty": Decimal("1.25")},
+                {"product_id": test_product.id, "qty": Decimal("10.000")},
+            ],
+        )
+
+        assert discrepancies == []
+
+    def test_duplicate_grn_lines_for_one_product_are_summed(self, db_session, test_supplier, test_product, test_user):
+        order = PurchaseOrderService.create_purchase_order(
+            test_supplier.id, test_user.id, [{"product_id": test_product.id, "qty_ordered": Decimal("10")}]
+        )
+
+        discrepancies = PurchaseOrderService.check_receipt_discrepancies(
+            order.id,
+            [
+                {"product_id": test_product.id, "qty": Decimal("6")},
+                {"product_id": test_product.id, "qty": Decimal("4")},
+            ],
+        )
+
+        assert discrepancies == []
+
+    def test_includes_display_name_and_unit_decimal_places(self, db_session, test_supplier, test_user, monkeypatch):
+        kg = Unit(name="POTestKg", abbreviation="kg", decimal_places=3)
+        db_session.add(kg)
+        db_session.flush()
+        rice = _make_product(db_session, "Rice", name_si="සහල්", unit_id=kg.id)
+        loose = _make_product(db_session, "Loose Item")
+        order = PurchaseOrderService.create_purchase_order(
+            test_supplier.id,
+            test_user.id,
+            [
+                {"product_id": rice.id, "qty_ordered": Decimal("5")},
+                {"product_id": loose.id, "qty_ordered": Decimal("20")},
+            ],
+        )
+
+        monkeypatch.setattr("cbpos.i18n.get_language", lambda: "si")
+        discrepancies = PurchaseOrderService.check_receipt_discrepancies(
+            order.id, [{"product_id": rice.id, "qty": Decimal("1.250")}]
+        )
+
+        by_product = {d["product_id"]: d for d in discrepancies}
+        assert by_product[rice.id]["product_name"] == "සහල්"
+        assert by_product[rice.id]["decimal_places"] == 3
+        assert by_product[loose.id]["product_name"] == "Loose Item"
+        assert by_product[loose.id]["decimal_places"] == 0
+
+    def test_unknown_order_gives_no_discrepancies(self, db_session):
+        assert PurchaseOrderService.check_receipt_discrepancies(999_999, [{"product_id": 1, "qty": Decimal("1")}]) == []

@@ -21,6 +21,9 @@ import sys
 
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
+# A cold child import of PyQt6 + cbpos takes 6 s+ under parallel load (#683).
+_CHILD_TIMEOUT_S = 90
+
 
 class TestPrintWorkerSingleton:
     def teardown_method(self):
@@ -56,27 +59,47 @@ class TestPrintWorkerProcessLifetime:
     """Subprocess-level regression tests -- these actually crash the
     subprocess (not this test process) if the underlying bug reappears."""
 
+    def test_bare_print_worker_dies_with_its_last_python_reference(self, qapp):
+        """A bare PrintWorker() has no Qt parent, so Python owns it: when its
+        last Python reference goes, sip deletes the C++ QThread with it."""
+        from PyQt6 import sip
+
+        worker = PrintWorker()
+        try:
+            assert worker.parent() is None
+            assert sip.ispyowned(worker)
+        finally:
+            sip.delete(worker)  # never started, so deleting it is safe
+
     def test_locally_scoped_print_worker_would_abort_the_process(self):
-        """Documents the exact bug: a bare PrintWorker(), never reused
-        through .instance(), aborts the process once its only Python
-        reference goes out of scope while the thread is still running."""
+        """Documents the exact bug: destroying a bare PrintWorker() while its
+        thread runs aborts the process -- what happens when its only Python
+        reference goes out of scope (see the ownership test above).
+
+        Dropping the reference itself is racy (#683): once the thread enters
+        run(), that frame holds ``self`` and the drop deletes nothing. So the
+        child waits until the thread really runs, then deletes the C++ object
+        directly -- the same destructor the lost reference would call.
+        """
         script = (
-            "import sys; from PyQt6.QtWidgets import QApplication; "
+            "import sys; from PyQt6.QtWidgets import QApplication; from PyQt6 import sip; "
             "app = QApplication(sys.argv); "
             "from cbpos.infrastructure.hardware.escpos_driver import PrintWorker; "
             "worker = PrintWorker(); worker.add_job('print_receipt', ['x']); "
-            "worker = None; import gc; gc.collect(); "
-            "from PyQt6.QtCore import QTimer; QTimer.singleShot(300, app.quit); app.exec()"
+            "assert worker.isRunning(); "
+            "sip.delete(worker); "
+            "print('NOT_ABORTED')"
         )
         result = subprocess.run(
             [sys.executable, "-c", script],
             capture_output=True,
             text=True,
             env={"QT_QPA_PLATFORM": "offscreen", "PATH": "/usr/bin:/bin"},
-            timeout=15,
+            timeout=_CHILD_TIMEOUT_S,
         )
         assert result.returncode != 0
         assert "still running" in result.stderr
+        assert "NOT_ABORTED" not in result.stdout
 
     def test_shared_print_worker_does_not_abort_the_process(self):
         """The fix: going through PrintWorker.instance() instead keeps the
@@ -97,7 +120,7 @@ class TestPrintWorkerProcessLifetime:
             capture_output=True,
             text=True,
             env={"QT_QPA_PLATFORM": "offscreen", "PATH": "/usr/bin:/bin"},
-            timeout=15,
+            timeout=_CHILD_TIMEOUT_S,
         )
         assert result.returncode == 0
         assert "CLEAN_EXIT" in result.stdout

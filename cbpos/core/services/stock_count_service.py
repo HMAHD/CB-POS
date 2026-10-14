@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
+from sqlalchemy import func, update
 from sqlalchemy.orm import joinedload
 
 from cbpos.core.constants.status import DocumentStatus, Precision
@@ -155,7 +156,9 @@ class StockCountService:
             The created StockCountItem.
 
         Raises:
-            ValueError: If product already in count or count not in DRAFT.
+            ValueError: If product already in count, count not in DRAFT, or
+                the product is a service (services carry no stock, so
+                ``add_all_products`` leaves them out too).
         """
         db = Database()
         with db.get_session() as session:
@@ -172,6 +175,8 @@ class StockCountService:
             product = session.get(Product, product_id)
             if not product:
                 raise ValueError("Product not found.")
+            if product.is_service:
+                raise ValueError("Service items are not stock-counted.")
 
             item = StockCountItem(
                 stock_count_id=stock_count_id,
@@ -221,7 +226,10 @@ class StockCountService:
         Add ``by`` to an item's counted quantity (uncounted counts as 0).
 
         Used when a product already in the count is scanned or added again,
-        so it is counted up instead of rejected (#615).
+        so it is counted up instead of rejected (#615). The addition runs in
+        SQL against the stored count, so a count saved meanwhile (a quick
+        second scan, another terminal) is added to, never overwritten with
+        a stale value plus ``by`` (#548).
 
         Args:
             item_id: StockCountItem ID.
@@ -243,7 +251,14 @@ class StockCountService:
             if not stock_count or stock_count.status != DocumentStatus.DRAFT:
                 raise ValueError("Stock count not found or not in DRAFT status.")
 
-            item.counted_qty = ((item.counted_qty or Decimal("0")) + by).quantize(Precision.QUANTITY)
+            session.execute(
+                update(StockCountItem)
+                .where(StockCountItem.id == item_id)
+                .values(counted_qty=func.coalesce(StockCountItem.counted_qty, 0) + by)
+                .execution_options(synchronize_session=False)
+            )
+            session.refresh(item)
+            item.counted_qty = Decimal(item.counted_qty).quantize(Precision.QUANTITY)
             item.variance_qty = (item.counted_qty - item.expected_qty).quantize(Precision.QUANTITY)
 
             product = session.get(Product, item.product_id)

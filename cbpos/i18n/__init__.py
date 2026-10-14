@@ -14,8 +14,11 @@ To switch language at runtime::
     set_language("si")  # Sinhala
 """
 
+import weakref
 from collections.abc import Callable
+from typing import Any
 
+from cbpos.core.utils.destroy_hooks import call_on_destroyed
 from cbpos.i18n.translation_service import TranslationService
 
 # Singleton instance — shared across the entire application
@@ -59,9 +62,27 @@ def translate_in(lang_code: str, key: str, **kwargs) -> str:
     return _service.translate_in(lang_code, key, **kwargs)
 
 
-def register_language_callback(callback: Callable[[], None]) -> None:
-    """Register a callback to be invoked when language changes."""
+def register_language_callback(callback: Callable[[], None], owner: Any = None) -> None:
+    """Register a callback to be invoked when language changes.
+
+    Args:
+        callback: Called with no arguments after every language switch. Held
+            weakly, so a bound method does not keep its widget alive.
+        owner: Optional QObject (usually the widget ``callback`` belongs to).
+            When it is destroyed, ``callback`` is unregistered. This goes through
+            ``call_on_destroyed``; never connect ``owner.destroyed`` to a lambda
+            or nested function yourself, since that can segfault.
+    """
     _service.register_change_callback(callback)
+    if owner is not None:
+        call_on_destroyed(owner, _unregister_if_alive, TranslationService._make_ref(callback))
+
+
+def _unregister_if_alive(callback_ref: "weakref.ref | None") -> None:
+    """Unregister the callback behind ``callback_ref`` unless it is already gone."""
+    callback = callback_ref() if callback_ref is not None else None
+    if callback is not None:
+        _service.unregister_change_callback(callback)
 
 
 def unregister_language_callback(callback: Callable[[], None]) -> None:

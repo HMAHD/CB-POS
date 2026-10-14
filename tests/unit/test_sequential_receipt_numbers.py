@@ -183,4 +183,37 @@ def test_preview_includes_terminal_for_sync_tills(db_session, monkeypatch):
     monkeypatch.setattr(ConfigService, "get", lambda key, default=None: {"terminal_mode": "terminal"}.get(key, default))
 
     assert DocumentService.preview_number("INV-{Y}-{seq:05d}", "YEARLY", "TERM-02", "SALE") == f"02-INV-{YEAR}-00001"
-    assert DocumentService.preview_number("GRN-{Y}-{seq:05d}", "YEARLY", "TERM-02", "PURCHASE") == f"GRN-{YEAR}-00001"
+    assert (
+        DocumentService.preview_number("GRN-{Y}-{seq:05d}", "YEARLY", "TERM-02", "PURCHASE") == f"02-GRN-{YEAR}-00001"
+    )
+    assert (
+        DocumentService.preview_number("PO-{Y}-{seq:05d}", "YEARLY", "TERM-02", "PURCHASE_ORDER") == f"PO-{YEAR}-00001"
+    )
+
+
+class TestPurchaseNumbers:
+    """#679: GRNs are pushed to the Main PC like receipts, where
+    ``document_number`` is unique, so a synced till's GRNs carry its terminal."""
+
+    def _grn(self, db_session, user) -> str:
+        from cbpos.core.models import Supplier
+        from cbpos.core.services.purchase_service import PurchaseService
+
+        supplier = db_session.query(Supplier).filter_by(company_name="SeqRcpt Supplier").one_or_none()
+        if supplier is None:
+            supplier = Supplier(company_name="SeqRcpt Supplier")
+            db_session.add(supplier)
+            db_session.flush()
+        return PurchaseService.create_purchase(supplier.id, "INV-X", user.id).document_number
+
+    def test_standalone_grn_keeps_the_shared_series(self, db_session, user, settings):
+        assert self._grn(db_session, user) == f"GRN-{YEAR}-00001"
+
+    def test_two_tills_number_grns_in_their_own_series(self, db_session, user, settings):
+        settings.update(terminal_mode="terminal", terminal_id="TERM-02")
+        first = self._grn(db_session, user)
+        settings.update(terminal_id="TERM-03")
+        other_till = self._grn(db_session, user)
+
+        assert first == f"02-GRN-{YEAR}-00001"
+        assert other_till == f"03-GRN-{YEAR}-00001"

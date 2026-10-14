@@ -8,6 +8,7 @@ from cbpos.core.models import Sale
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.invoice_service import InvoiceService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
+from cbpos.core.services.shift_report_builder import ShiftReportBuilder
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
 logger = logging.getLogger(__name__)
@@ -107,6 +108,28 @@ class PrinterService:
             copies = 1 if is_reprint else PrinterService.receipt_copies()
         commands = ReceiptBuilder.build_receipt(sale, is_reprint=is_reprint)
         PrinterService.queue_commands(commands, copies)
+
+    @staticmethod
+    def print_shift_report(summary: dict[str, Any], x_read: bool = False) -> None:
+        """Print the shift Z-Report (at close) or the mid-shift X-Read (#682).
+
+        Queued as one job on the shared PrintWorker, like a receipt, so the
+        caller hears the real outcome on job_completed / error_occurred --
+        including the translated "no printer set up" message. Always one
+        copy: receipt_copies is for customer receipts.
+
+        Args:
+            summary: ``ShiftService`` summary (``close_shift`` output for a Z-Report).
+            x_read: True for the mid-shift X-Read.
+
+        Raises:
+            Exception: If the report can't be built; the caller reports it.
+        """
+        commands = ShiftReportBuilder.build_shift_report(summary, x_read=x_read)
+        PrintWorker.instance().add_job("print_receipt", commands)
+        logger.info(
+            "[PrinterService] Queued %s for shift %s", "X-Read" if x_read else "Z-Report", summary.get("shift_id")
+        )
 
     @staticmethod
     def maybe_print_b2b_invoice(sale: Sale) -> None:

@@ -366,7 +366,7 @@ with db.get_session() as session:
 
 | Service | Responsibility |
 |---------|----------------|
-| **receipt_service.py** | Receipt text/image generation, multilingual support |
+| **shift_report_builder.py** | Shift Z-Report and X-Read receipt commands |
 | **receipt_builder.py** | ESC/POS command generation |
 | **printer_service.py** | Printer queue management, USB/Network support |
 | **scale_service.py** | Scale barcode parsing (prefix "20"), weight extraction |

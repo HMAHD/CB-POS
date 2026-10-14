@@ -2108,7 +2108,8 @@
       "stock_take": "Stock Take",
       "cash": "Cash",
       "admin": "Admin",
-      "other": "Other"
+      "other": "Other",
+      "screens": "Screens"
     },
     "code": {
       "sales.view": "Use the sales screen",
@@ -2145,7 +2146,9 @@
       "admin.manage_users": "Manage users",
       "admin.manage_roles": "Manage roles and permissions",
       "admin.settings": "Change settings",
-      "admin.tools": "Use admin tools"
+      "admin.tools": "Use admin tools",
+      "management.view": "Open the Management screen",
+      "settings.view": "Open the Settings screen"
     }
   },
   "roles": {
@@ -2172,7 +2175,18 @@
       "update_user": "User details changed",
       "tax_rate_change": "Tax settings changed",
       "price_override": "Price changed at checkout",
-      "line_discount": "Item discount given"
+      "line_discount": "Item discount given",
+      "price_list_create": "Price list added",
+      "price_list_update": "Price list changed",
+      "price_list_toggle": "Price list switched on/off",
+      "price_list_delete": "Price list deleted",
+      "price_list_price_set": "List price set",
+      "price_list_price_remove": "List price removed",
+      "promotion_create": "Promotion added",
+      "promotion_update": "Promotion changed",
+      "promotion_toggle": "Promotion switched on/off",
+      "promotion_delete": "Promotion deleted",
+      "product_price_change": "Item price changed"
     },
     "detail": {
       "tax_vat_rate": "VAT rate changed from {old}% to {new}%",
@@ -2180,7 +2194,26 @@
       "tax_sscl_turnover_pct": "SSCL turnover base changed from {old}% to {new}%",
       "vat_registered_on": "VAT registration turned on",
       "vat_registered_off": "VAT registration turned off",
-      "generic": "{setting} changed from {old} to {new}"
+      "generic": "{setting} changed from {old} to {new}",
+      "field_value": "{field}: {value}",
+      "field_set": "{field} set to {new}",
+      "field_changed": "{field} changed from {old} to {new}",
+      "field_removed": "{field} removed (was {old})",
+      "turned_on": "Switched on",
+      "turned_off": "Switched off",
+      "item_prices_removed": "{count} list price(s) removed with it"
+    },
+    "field": {
+      "name": "Name",
+      "start_date": "Start date",
+      "end_date": "End date",
+      "start_time": "Start time",
+      "end_time": "End time",
+      "price": "Price",
+      "type": "Type",
+      "value": "Discount",
+      "days_of_week": "Days",
+      "category": "Applies to"
     }
   },
   "profile": {
@@ -2441,7 +2474,8 @@
     "event_inventory": "Inventory",
     "event_transaction": "Transaction",
     "event_credit": "Credit",
-    "event_purchase": "Purchase"
+    "event_purchase": "Purchase",
+    "event_pricing": "Pricing"
   },
   "promotion": {
     "title": "Promotions & Campaigns",

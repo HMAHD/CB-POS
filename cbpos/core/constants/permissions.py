@@ -58,6 +58,10 @@ class Permissions:
     # Cash
     CASH_OPEN_DRAWER = "cash.open_drawer"
 
+    # Screens: who sees Management / Settings in the side menu (#549)
+    MANAGEMENT_VIEW = "management.view"
+    SETTINGS_VIEW = "settings.view"
+
     # Admin
     ADMIN_MANAGE_USERS = "admin.manage_users"
     ADMIN_MANAGE_ROLES = "admin.manage_roles"
@@ -118,6 +122,10 @@ class Permissions:
             "Cash": [
                 cls.CASH_OPEN_DRAWER,
             ],
+            "Screens": [
+                cls.MANAGEMENT_VIEW,
+                cls.SETTINGS_VIEW,
+            ],
             "Admin": [
                 cls.ADMIN_MANAGE_USERS,
                 cls.ADMIN_MANAGE_ROLES,
@@ -126,6 +134,15 @@ class Permissions:
             ],
         }
 
+
+# Any one of these opens a screen (#549): its own "open" permission, or an admin permission
+# that is only usable inside it (Users/Roles live in Management; settings and admin tools in Settings).
+MANAGEMENT_ACCESS_PERMISSIONS = (
+    Permissions.MANAGEMENT_VIEW,
+    Permissions.ADMIN_MANAGE_USERS,
+    Permissions.ADMIN_MANAGE_ROLES,
+)
+SETTINGS_ACCESS_PERMISSIONS = (Permissions.SETTINGS_VIEW, Permissions.ADMIN_SETTINGS, Permissions.ADMIN_TOOLS)
 
 # Never revocable from the Admin role -- PermissionService re-adds them on save (lockout guard).
 CRITICAL_ADMIN_PERMISSIONS = [Permissions.ADMIN_MANAGE_USERS, Permissions.ADMIN_MANAGE_ROLES]

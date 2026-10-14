@@ -100,6 +100,21 @@ def _autocomplete_preload_runs_inline():
 
 
 @pytest.fixture(autouse=True)
+def _signed_out_after_each_test():
+    """Sign out after every test so the logged-in user never leaks into the next one.
+
+    ``AuthService._current_user`` is process-global. Services that audit a
+    change (#642) stamp it on the AuditLog row; a user left behind by an
+    earlier test -- whose row that test's rollback already removed -- made
+    later audited writes fail with "FOREIGN KEY constraint failed".
+    """
+    yield
+    from cbpos.core.services.auth_service import AuthService
+
+    AuthService._current_user = None
+
+
+@pytest.fixture(autouse=True)
 def _collect_garbage_after_each_test():
     """Force a GC pass after every test, then wait out any background thread left running.
 

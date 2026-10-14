@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.utils.display_labels import display_role_name
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.constants import ACTION_BTN_HEIGHT, SIDEBAR_WIDTH
@@ -455,18 +456,9 @@ class SideMenu(QWidget):
             self.lbl_username.setText(user.username)
             self.lbl_role.setText(display_role_name(user.role) if user.role else _t("side_menu.unknown_role"))
 
-            is_admin = bool(
-                user.role
-                and user.role.name.lower()
-                in [
-                    "admin",
-                    "manager",
-                    "owner",
-                ]
-            )
-
-            self.btn_management.setVisible(is_admin)
-            self.btn_settings.setVisible(is_admin)
+            # By permission, never by role name: renaming a role must not change access (#549)
+            self.btn_management.setVisible(PermissionService.can_open_management(user))
+            self.btn_settings.setVisible(PermissionService.can_open_settings(user))
         else:
             self.lbl_username.setText(_t("side_menu.guest"))
             self.lbl_role.setText(_t("side_menu.not_logged_in"))

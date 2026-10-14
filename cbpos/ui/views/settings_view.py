@@ -383,17 +383,10 @@ class SettingsView(QWidget):
             if reply != QMessageBox.StandardButton.Yes:
                 return
 
-        # Only real tax changes are audited (Decimal compare, #613)
-        from cbpos.core.services.auth_service import AuthService
+        # Only real tax changes are audited (Decimal compare, #613); the service knows who and where (#642)
         from cbpos.core.services.settings_audit_service import SettingsAuditService
 
-        user = AuthService.get_current_user()
-        SettingsAuditService.log_tax_changes(
-            current_config,
-            all_settings,
-            user.id if user else None,
-            ConfigService.get("terminal_id") or "TERM-01",
-        )
+        SettingsAuditService.log_tax_changes(current_config, all_settings)
 
         ConfigService.update_all(all_settings)
 

@@ -52,7 +52,9 @@ class SettingsAuditService:
         return changes
 
     @classmethod
-    def log_tax_changes(cls, old_config: dict, new_settings: dict, user_id: int | None, terminal_id: str) -> bool:
+    def log_tax_changes(
+        cls, old_config: dict, new_settings: dict, user_id: int | None = None, terminal_id: str | None = None
+    ) -> bool:
         """Write one TAX_RATE_CHANGE row if any audited tax setting really changed.
 
         Details are stored as raw JSON; the Activity Log formats them at display time.
@@ -60,12 +62,19 @@ class SettingsAuditService:
         Args:
             old_config: Settings before the save.
             new_settings: Settings being saved.
-            user_id: Who saved (no row is written without a user).
-            terminal_id: Terminal the save came from.
+            user_id: Who saved; defaults to the signed-in user (no row is written without a user).
+            terminal_id: Terminal the save came from; defaults to this terminal.
 
         Returns:
             bool: True if a row was written.
         """
+        from cbpos.core.services.auth_service import AuthService
+        from cbpos.core.services.config_service import ConfigService
+
+        if user_id is None:
+            user = AuthService.get_current_user()
+            user_id = user.id if user else None
+        terminal_id = terminal_id or ConfigService.get("terminal_id") or "TERM-01"
         changes = cls.tax_changes(old_config, new_settings)
         if not changes or user_id is None:
             return False

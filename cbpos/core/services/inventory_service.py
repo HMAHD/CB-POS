@@ -7,6 +7,7 @@ from sqlalchemy.orm.exc import StaleDataError
 
 from cbpos.core.database import Database
 from cbpos.core.models import AuditLog, CompositeItem, InventoryLog, Product
+from cbpos.core.services.logging_service import LoggingService, diff_changes
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +42,15 @@ class InventoryService:
             return product
 
     def update_product(self, product_id: int, data: dict[str, Any]) -> Product | None:
-        """Update an existing product."""
+        """Update an existing product; a selling price change goes to the Activity Log (#642)."""
         with self.db.get_session() as session:
             product = session.get(Product, product_id)
             if not product:
                 return None
+
+            if data.get("price") is not None:
+                price_change = diff_changes({"price": product.price}, {"price": Decimal(str(data["price"]))})
+                LoggingService.add_change(session, "PRODUCT_PRICE_CHANGE", "INVENTORY", product.name_en, price_change)
 
             # Extract composite items data if present
             components_data = data.pop("components", None)

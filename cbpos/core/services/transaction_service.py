@@ -323,6 +323,7 @@ class TransactionService:
             # 5. Eager-load relationships before session closes (prevents DetachedInstanceError)
             if sale.customer_id:
                 _ = sale.customer  # Force load while session is open
+            _ = sale.user  # Cashier for the receipt, also when printed later from ReceiptOptionsDialog (#681)
             for item in sale.items:  # Force load items + product for ReceiptOptionsDialog
                 _ = item.product
 

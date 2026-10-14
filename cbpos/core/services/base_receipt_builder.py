@@ -192,3 +192,23 @@ class BaseReceiptBuilder:
         except Exception as e:
             logger.debug("Could not get current cashier name: %s", e)
             return ""
+
+    @classmethod
+    def _get_sale_cashier_name(cls, sale: Any) -> str:
+        """Username of the cashier who made *sale*, for its receipt (#681).
+
+        A reprint must show the sale's own cashier, not whoever is logged in
+        now. Only an unsaved sale (the Settings preview, no ``user_id``)
+        falls back to the current user. A saved sale whose user wasn't
+        loaded prints no cashier rather than the wrong one.
+        """
+        try:
+            user = getattr(sale, "user", None)
+        except Exception as e:  # detached sale, relationship not eager-loaded
+            logger.warning("Receipt for %s: cashier not loaded (%s)", getattr(sale, "document_number", "?"), e)
+            return ""
+        if user is not None:
+            return getattr(user, "username", "") or ""
+        if getattr(sale, "user_id", None) is None:
+            return cls._get_current_cashier_name()
+        return ""

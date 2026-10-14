@@ -28,6 +28,7 @@ class SaleQueryService:
                 session.query(Sale)
                 .options(
                     joinedload(Sale.items).joinedload(SaleItem.product),
+                    joinedload(Sale.user),
                     joinedload(Sale.customer),
                     joinedload(Sale.payments),
                 )

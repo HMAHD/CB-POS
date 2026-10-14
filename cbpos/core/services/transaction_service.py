@@ -78,6 +78,53 @@ class TransactionService:
         return composite_map
 
     @staticmethod
+    def _move_stock(
+        session: Session,
+        composite_map: dict[int, list[CompositeItem]],
+        product_id: int,
+        qty_change: Decimal,
+        movement_type: str,
+        document_id: int,
+        user_id: int,
+    ) -> None:
+        """Record one line's stock movement, exploding a composite into its components.
+
+        A composite (bundle) holds no stock of its own: each component moves by
+        its bill-of-materials qty times ``qty_change``. Any other product moves
+        by ``qty_change`` itself.
+
+        Args:
+            session: The open session the document is being written in.
+            composite_map: ``_fetch_composite_map`` result for the document's products.
+            product_id: The line's product.
+            qty_change: Signed change for one line (negative takes stock out).
+            movement_type: StockMovement type -- "SALE", "VOID" or "RETURN".
+            document_id: The sale/refund/voided document the movement belongs to.
+            user_id: User the movement is recorded against.
+        """
+        components = composite_map.get(product_id, [])
+        if not components:
+            StockService.record_movement(
+                product_id=product_id,
+                qty_change=qty_change,
+                movement_type=movement_type,
+                document_id=document_id,
+                user_id=user_id,
+                session=session,
+            )
+            return
+
+        for comp in components:
+            StockService.record_movement(
+                product_id=comp.child_product_id,
+                qty_change=comp.qty * qty_change,
+                movement_type=movement_type,
+                document_id=document_id,
+                user_id=user_id,
+                session=session,
+            )
+
+    @staticmethod
     def _insert_numbered(session: Session, sale: Sale, doc_type: str) -> None:
         """Give ``sale`` the next ``doc_type`` number and flush it, in ``session``'s transaction.
 
@@ -296,31 +343,7 @@ class TransactionService:
                 )
                 session.add(sale_item)
 
-                # Check for Composite Item (using pre-fetched map)
-                composite_children = composite_map.get(product.id, [])
-
-                if composite_children:
-                    # Deduct from children
-                    for comp in composite_children:
-                        deduction = comp.qty * qty
-                        StockService.record_movement(
-                            product_id=comp.child_product_id,
-                            qty_change=-deduction,
-                            movement_type="SALE",
-                            document_id=sale.id,
-                            user_id=cashier_id,
-                            session=session,
-                        )
-                else:
-                    # Deduct from product itself
-                    StockService.record_movement(
-                        product_id=product.id,
-                        qty_change=-qty,
-                        movement_type="SALE",
-                        document_id=sale.id,
-                        user_id=cashier_id,
-                        session=session,
-                    )
+                TransactionService._move_stock(session, composite_map, product.id, -qty, "SALE", sale.id, cashier_id)
 
             # 5. Eager-load relationships before session closes (prevents DetachedInstanceError)
             if sale.customer_id:

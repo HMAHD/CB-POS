@@ -199,22 +199,22 @@ class TestRefundBreakdown:
 
         b = TransactionService.refund_breakdown(sale.id)
 
-        assert (b["cash_back"], b["credit_reversed"], b["refundable"]) == (Decimal("200.00"), Decimal("0.00"), True)
+        assert (b.cash_back, b.credit_reversed) == (Decimal("200.00"), Decimal("0.00"))
 
     def test_credit_only_sale_hands_nothing_back(self, db_session, user, product, customer):
         sale = _sell(db_session, user, product, customer, [("Credit", "200.00")])
 
         b = TransactionService.refund_breakdown(sale.id)
 
-        assert (b["cash_back"], b["credit_reversed"]) == (Decimal("0.00"), Decimal("200.00"))
-        assert b["customer_name"] == "Credit 715"
+        assert (b.cash_back, b.credit_reversed) == (Decimal("0.00"), Decimal("200.00"))
+        assert b.customer_name == "Credit 715"
 
     def test_mixed_sale_splits(self, db_session, user, product, customer):
         sale = _sell(db_session, user, product, customer, [("Cash", "120.00"), ("Credit", "80.00")])
 
         b = TransactionService.refund_breakdown(sale.id)
 
-        assert (b["total"], b["cash_back"], b["credit_reversed"]) == (
+        assert (b.total, b.cash_back, b.credit_reversed) == (
             Decimal("200.00"),
             Decimal("120.00"),
             Decimal("80.00"),
@@ -226,7 +226,7 @@ class TestRefundBreakdown:
 
         TransactionService.process_refund(sale.id, "Returned", user.id)
 
-        assert [-e.amount for e in _reversals(db_session, customer)] == [b["credit_reversed"]]
+        assert [-e.amount for e in _reversals(db_session, customer)] == [b.credit_reversed]
 
     def test_already_refunded_sale_has_nothing_left(self, db_session, user, product, customer):
         sale = _sell(db_session, user, product, customer, [("Cash", "120.00"), ("Credit", "80.00")])
@@ -234,7 +234,7 @@ class TestRefundBreakdown:
 
         b = TransactionService.refund_breakdown(sale.id)
 
-        assert (b["cash_back"], b["credit_reversed"], b["refundable"]) == (Decimal("0.00"), Decimal("0.00"), False)
+        assert (b.cash_back, b.credit_reversed) == (Decimal("0.00"), Decimal("0.00"))
 
     def test_voided_sale_has_nothing_left(self, db_session, user, product, customer):
         sale = _sell(db_session, user, product, customer, [("Credit", "200.00")])
@@ -242,7 +242,7 @@ class TestRefundBreakdown:
 
         b = TransactionService.refund_breakdown(sale.id)
 
-        assert (b["cash_back"], b["credit_reversed"], b["refundable"]) == (Decimal("0.00"), Decimal("0.00"), False)
+        assert (b.cash_back, b.credit_reversed) == (Decimal("0.00"), Decimal("0.00"))
 
     def test_missing_sale(self, db_session):
         assert TransactionService.refund_breakdown(99999999) is None
@@ -328,3 +328,91 @@ class TestRefundVoucherSplit:
 
         assert RefundReceiptBuilder._rt("refund_given_back", amount=format_currency(Decimal("120.00"))) in text
         assert RefundReceiptBuilder._rt("refund_off_credit", amount=format_currency(Decimal("80.00"))) in text
+
+    def test_all_credit_voucher_gives_nothing_back(self):
+        from cbpos.core.services.refund_receipt_builder import RefundReceiptBuilder
+        from cbpos.core.utils.formatters import format_currency
+
+        sale = Sale(document_number="REC-V-2", date=None, total_amount=Decimal("200.00"))
+        sale.items = []
+        with patch.object(RefundReceiptBuilder, "_append_header_block", return_value=32):
+            commands = RefundReceiptBuilder.build_refund_receipt(sale, credit_reversed=Decimal("200.00"))
+        text = "\n".join(str(c.get("val", "")) for c in commands)
+
+        assert RefundReceiptBuilder._rt("refund_given_back", amount=format_currency(Decimal("0.00"))) in text
+
+
+@pytest.mark.usefixtures("qapp")
+class TestEveryRefundEntryPointStatesTheSplit:
+    """History, Documents and Sale History confirm with the same split as the Refund dialog (#730)."""
+
+    @staticmethod
+    def _confirm_text(module: str, view, start) -> str:
+        from PyQt6.QtWidgets import QMessageBox
+
+        with patch(f"{module}.QMessageBox") as box:
+            box.StandardButton = QMessageBox.StandardButton
+            box.question.return_value = QMessageBox.StandardButton.No
+            start()
+        view.deleteLater()
+        return box.question.call_args.args[2]
+
+    @staticmethod
+    def _expected_html(sale: Sale) -> str:
+        from cbpos.core.utils.formatters import format_currency
+
+        return (
+            "<b>Refund Transaction?</b><br><br>"
+            f"Receipt: {sale.document_number}<br>"
+            f"Amount: {format_currency(Decimal('200.00'))}<br><br>"
+            f"Give back {format_currency(Decimal('120.00'))} to the customer.<br>"
+            f"{format_currency(Decimal('80.00'))} will be taken off Credit 715&#x27;s credit.<br><br>"
+            "<b style='color: #FF4136'>Warning:</b> "
+            "Stock will be restored. This action cannot be undone."
+        )
+
+    def test_history_view_confirm(self, db_session, user, product, customer):
+        from cbpos.ui.views.history_view import HistoryView
+
+        sale = _sell(db_session, user, product, customer, [("Cash", "120.00"), ("Credit", "80.00")])
+        view = HistoryView()
+        view.current_sale = sale
+
+        text = self._confirm_text("cbpos.ui.views.history_view", view, view.process_refund)
+
+        assert text == self._expected_html(sale)
+
+    def test_document_view_confirm(self, db_session, user, product, customer):
+        from cbpos.ui.views.document_view import DocumentBrowserView
+
+        sale = _sell(db_session, user, product, customer, [("Cash", "120.00"), ("Credit", "80.00")])
+        view = DocumentBrowserView()
+        view.current_doc = {
+            "id": sale.id,
+            "type": "sale",
+            "document_number": sale.document_number,
+            "total_amount": sale.total_amount,
+        }
+
+        text = self._confirm_text("cbpos.ui.views.document_view", view, view.process_refund)
+
+        assert text == self._expected_html(sale)
+
+    def test_sale_history_dialog_confirm(self, db_session, user, product, customer):
+        from cbpos.core.utils.formatters import format_currency
+        from cbpos.ui.dialogs.sale_history_dialog import SaleHistoryDialog
+
+        sale = _sell(db_session, user, product, customer, [("Cash", "120.00"), ("Credit", "80.00")])
+        dialog = SaleHistoryDialog()
+        dialog._selected_sale = sale
+        dialog.txt_refund_reason.setPlainText("Returned")
+
+        with patch("cbpos.core.utils.permission_helper.check_permission_with_override", return_value=user):
+            text = self._confirm_text("cbpos.ui.dialogs.sale_history_dialog", dialog, dialog._confirm_refund)
+
+        assert text == (
+            f"Refund {sale.document_number}? Total {format_currency(Decimal('200.00'))}.\n\n"
+            f"Give back {format_currency(Decimal('120.00'))} to the customer.\n"
+            f"{format_currency(Decimal('80.00'))} will be taken off Credit 715's credit.\n\n"
+            "Reason: Returned"
+        )

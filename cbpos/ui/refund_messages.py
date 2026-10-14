@@ -9,14 +9,13 @@ credit sale back twice. These helpers spell out both parts instead, from
 """
 
 import html
-from decimal import Decimal
-from typing import Any
 
+from cbpos.core.services.refund_breakdown import RefundBreakdown
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 
 
-def refund_split_lines(breakdown: dict[str, Any], done: bool = False) -> list[str]:
+def refund_split_lines(breakdown: RefundBreakdown, done: bool = False) -> list[str]:
     """What the cashier hands back and what comes off the customer's credit.
 
     Only non-zero parts are listed; an all-credit sale says there is nothing
@@ -29,8 +28,8 @@ def refund_split_lines(breakdown: dict[str, Any], done: bool = False) -> list[st
     Returns:
         Translated lines, in display order.
     """
-    cash_back = breakdown.get("cash_back") or Decimal("0.00")
-    credit = breakdown.get("credit_reversed") or Decimal("0.00")
+    cash_back = breakdown.cash_back
+    credit = breakdown.credit_reversed
     lines: list[str] = []
     if cash_back > 0:
         lines.append(_t("refund_split.cash_back", amount=format_currency(cash_back)))
@@ -38,12 +37,12 @@ def refund_split_lines(breakdown: dict[str, Any], done: bool = False) -> list[st
         lines.append(_t("refund_split.nothing_to_hand_back"))
     if credit > 0:
         key = "refund_split.credit_reversed" if done else "refund_split.credit_will_reverse"
-        customer = breakdown.get("customer_name") or _t("refund.walk_in")
+        customer = breakdown.customer_name or _t("refund.walk_in")
         lines.append(_t(key, amount=format_currency(credit), customer=customer))
     return lines
 
 
-def refund_confirm_text(doc_number: str, breakdown: dict[str, Any], reason: str = "") -> str:
+def refund_confirm_text(doc_number: str, breakdown: RefundBreakdown, reason: str = "") -> str:
     """Plain-text confirmation: the question, the split, then the reason if any.
 
     Args:
@@ -54,14 +53,14 @@ def refund_confirm_text(doc_number: str, breakdown: dict[str, Any], reason: str 
     Returns:
         Message text for a QMessageBox.
     """
-    parts = [_t("refund_split.confirm_question", doc_number=doc_number, amount=format_currency(breakdown["total"]))]
+    parts = [_t("refund_split.confirm_question", doc_number=doc_number, amount=format_currency(breakdown.total))]
     parts.append("\n".join(refund_split_lines(breakdown)))
     if reason:
         parts.append(_t("refund_split.reason", reason=reason))
     return "\n\n".join(p for p in parts if p)
 
 
-def refund_done_text(doc_number: str, breakdown: dict[str, Any]) -> str:
+def refund_done_text(doc_number: str, breakdown: RefundBreakdown) -> str:
     """Plain-text success message: refund done, then the split.
 
     Args:
@@ -73,6 +72,34 @@ def refund_done_text(doc_number: str, breakdown: dict[str, Any]) -> str:
     """
     lines = refund_split_lines(breakdown, done=True)
     return "\n\n".join([_t("refund_split.done", doc_number=doc_number), "\n".join(lines)]).strip()
+
+
+def refund_confirm_html(
+    doc_number: str, breakdown: RefundBreakdown, *, question: str, receipt_label: str, warning: str
+) -> str:
+    """Rich-text confirmation for screens that show the refund as a bold question with a warning.
+
+    The receipt number and the split are escaped; the screen's own translated
+    ``question``, ``receipt_label`` and ``warning`` are used as given.
+
+    Args:
+        doc_number: Receipt number of the sale being refunded.
+        breakdown: Result of ``TransactionService.refund_breakdown``.
+        question: Bold heading, e.g. "Refund Transaction?".
+        receipt_label: Label for the receipt number line.
+        warning: Text after the red "Warning:" at the end.
+
+    Returns:
+        HTML for a rich-text QMessageBox.
+    """
+    return (
+        f"<b>{question}</b><br><br>"
+        f"{receipt_label}: {html.escape(doc_number)}<br>"
+        f"{_t('common.amount')}: {format_currency(breakdown.total)}<br><br>"
+        f"{as_html(chr(10).join(refund_split_lines(breakdown)))}<br><br>"
+        f"<b style='color: #FF4136'>{_t('common.warning')}:</b> "
+        f"{warning}"
+    )
 
 
 def as_html(text: str) -> str:

@@ -1,5 +1,4 @@
 import contextlib
-import html
 import logging
 from datetime import datetime
 
@@ -42,7 +41,7 @@ from cbpos.core.utils.formatters import (
 from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.dialogs.void_reason_dialog import VoidReasonDialog
-from cbpos.ui.refund_messages import as_html, refund_done_text, refund_split_lines
+from cbpos.ui.refund_messages import refund_confirm_html, refund_done_text
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING, pill_colors
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import align_numeric_headers, configure_table_columns
@@ -789,12 +788,13 @@ class DocumentBrowserView(QWidget):
         reply = QMessageBox.question(
             self,
             _t("document_browser.confirm_refund_title"),
-            f"<b>{_t('document_browser.refund_question')}</b><br><br>"
-            f"{_t('document_browser.detail_receipt')}: {html.escape(doc_number)}<br>"
-            f"{_t('common.amount')}: {format_currency(self.current_doc['total_amount'])}<br><br>"
-            f"{as_html(chr(10).join(refund_split_lines(breakdown)))}<br><br>"
-            f"<b style='color: #FF4136'>{_t('common.warning')}:</b> "
-            f"{_t('document_browser.refund_warning')}",
+            refund_confirm_html(
+                doc_number,
+                breakdown,
+                question=_t("document_browser.refund_question"),
+                receipt_label=_t("document_browser.detail_receipt"),
+                warning=_t("document_browser.refund_warning"),
+            ),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )

@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from cbpos.core.reports.base_report import category_label
 from cbpos.core.reports.registry import ReportRegistry
 from cbpos.core.services.export_service import ExportService
 from cbpos.core.services.tax_service import TaxService
@@ -312,7 +313,7 @@ class ReportViewer(QWidget):
             cat_row = QHBoxLayout()
             cat_row.setContentsMargins(6, 8, 6, 4)
 
-            cat_label = QLabel(category.upper())
+            cat_label = QLabel(category_label(category))
             cat_label.setObjectName("ReportCategoryLabel")
             cat_row.addWidget(cat_label)
 
@@ -349,7 +350,7 @@ class ReportViewer(QWidget):
 
         # Show header
         self.report_title.setText(self.current_report.name)
-        self.report_description.setText(self.current_report.category)
+        self.report_description.setText(category_label(self.current_report.category))
         self.report_header.setVisible(True)
 
         # Show filter bar

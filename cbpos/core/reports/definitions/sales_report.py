@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 
 from cbpos.core.database import Database
 from cbpos.core.models import Sale
-from cbpos.core.reports.base_report import DATE, INT, MONEY, BaseReport, report_columns
+from cbpos.core.reports.base_report import CATEGORY_SALES, DATE, INT, MONEY, BaseReport, report_columns
 from cbpos.i18n import _t
 
 
@@ -26,7 +26,7 @@ class DailySalesSummaryReport(BaseReport):
     @property
     def category(self) -> str:
         """Report category."""
-        return _t("reports.category_sales")
+        return CATEGORY_SALES
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Date range filter, defaulting to today."""

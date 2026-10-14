@@ -6,7 +6,7 @@ from sqlalchemy import func
 
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Product, Purchase, Sale, SaleItem
-from cbpos.core.reports.base_report import DATE, MONEY, PERCENT, TEXT, BaseReport, report_columns
+from cbpos.core.reports.base_report import CATEGORY_FINANCIAL, DATE, MONEY, PERCENT, TEXT, BaseReport, report_columns
 from cbpos.i18n import _t
 
 
@@ -26,7 +26,7 @@ class ProfitLossReport(BaseReport):
     @property
     def category(self) -> str:
         """Report category."""
-        return _t("reports.category_financial")
+        return CATEGORY_FINANCIAL
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Date range filter only."""
@@ -120,7 +120,7 @@ class TaxLiabilityReport(BaseReport):
     @property
     def category(self) -> str:
         """Report category."""
-        return _t("reports.category_financial")
+        return CATEGORY_FINANCIAL
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Date range filter only."""
@@ -230,7 +230,7 @@ class TaxFilingSummaryReport(BaseReport):
     @property
     def category(self) -> str:
         """Report category."""
-        return _t("reports.category_financial")
+        return CATEGORY_FINANCIAL
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Period preset (monthly/quarterly/custom) plus the date range it resolves to."""

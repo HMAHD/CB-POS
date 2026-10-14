@@ -4,7 +4,7 @@ import pandas as pd
 
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Category, Product
-from cbpos.core.reports.base_report import MONEY, QTY, TEXT, BaseReport, report_columns
+from cbpos.core.reports.base_report import CATEGORY_INVENTORY, MONEY, QTY, TEXT, BaseReport, report_columns
 from cbpos.i18n import _t
 
 
@@ -24,7 +24,7 @@ class InventoryValuationReport(BaseReport):
     @property
     def category(self) -> str:
         """Report category."""
-        return _t("reports.category_inventory")
+        return CATEGORY_INVENTORY
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Optional category filter, populated from active categories in the DB."""
@@ -111,7 +111,7 @@ class LowStockReport(BaseReport):
     @property
     def category(self) -> str:
         """Report category."""
-        return _t("reports.category_inventory")
+        return CATEGORY_INVENTORY
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """No filters; always shows all products at or below their reorder point."""

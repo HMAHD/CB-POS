@@ -1,4 +1,4 @@
-from cbpos.core.reports.base_report import BaseReport
+from cbpos.core.reports.base_report import CATEGORY_ORDER, BaseReport
 
 
 class ReportRegistry:
@@ -36,11 +36,17 @@ class ReportRegistry:
         self._all_reports[report_instance.id] = report_instance
 
     def get_all_categories(self) -> list[str]:
-        """Returns a list of all report categories."""
-        return sorted(self._reports.keys())
+        """Return the IDs of every category that has reports, in the fixed business order.
+
+        Order is ``CATEGORY_ORDER`` (Sales first) regardless of language; any
+        category ID outside it follows, in the order it was first registered.
+        """
+        known = [c for c in CATEGORY_ORDER if c in self._reports]
+        extra = [c for c in self._reports if c not in CATEGORY_ORDER]
+        return known + extra
 
     def get_reports_by_category(self, category: str) -> list[BaseReport]:
-        """Returns a list of reports for a specific category."""
+        """Return the reports registered under a category ID, in registration order."""
         return self._reports.get(category, [])
 
     def get_report_by_id(self, report_id: str) -> BaseReport:

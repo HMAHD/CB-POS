@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 from cbpos.core.constants.permissions import (
     ADMIN_ROLE_NAME,
     CRITICAL_ADMIN_PERMISSIONS,
@@ -35,7 +37,7 @@ class PermissionService:
         return any(perm.code == permission_code for perm in getattr(user.role, "permissions", None) or [])
 
     @staticmethod
-    def user_has_any_permission(user: User, permission_codes) -> bool:
+    def user_has_any_permission(user: User, permission_codes: Iterable[str]) -> bool:
         """True if the user has at least one of ``permission_codes`` (see ``user_has_permission``)."""
         return any(PermissionService.user_has_permission(user, code) for code in permission_codes)
 

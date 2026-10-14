@@ -1,6 +1,7 @@
 import logging
 
 from sqlalchemy import func, select, union
+from sqlalchemy.orm import Session
 
 from cbpos.core.database import Database
 from cbpos.core.models import CustomerPayment, PaymentMethod, Sale, SalePayment, SupplierPayment
@@ -80,7 +81,7 @@ class PaymentService:
     """Service to manage Payment Methods."""
 
     @staticmethod
-    def _used_names(session) -> set[str]:
+    def _used_names(session: Session) -> set[str]:
         """Casefolded names of every method that appears on a recorded payment.
 
         Args:
@@ -93,7 +94,7 @@ class PaymentService:
         return {name for name in session.scalars(stmt) if name}
 
     @staticmethod
-    def _name_is_used(session, name: str) -> bool:
+    def _name_is_used(session: Session, name: str) -> bool:
         """Whether any recorded payment (sale, credit book, supplier) uses ``name``.
 
         Matched case-insensitively, as checkout compares methods that way.
@@ -139,7 +140,7 @@ class PaymentService:
             return {m.id for m in session.query(PaymentMethod).all() if m.name.lower() in used}
 
     @staticmethod
-    def _check_shortcut(session, shortcut: str | None, exclude_id: int | None, check_reserved: bool) -> None:
+    def _check_shortcut(session: Session, shortcut: str | None, exclude_id: int | None, check_reserved: bool) -> None:
         """Raise ShortcutConflictError if `shortcut` can't be used by an active method.
 
         Args:

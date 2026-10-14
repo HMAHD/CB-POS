@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from cbpos.core.constants.status import PaymentMethodType, Precision
 from cbpos.core.database import Database
@@ -154,7 +155,7 @@ class CustomerCreditService:
 
     @staticmethod
     def record_credit_sale_in_session(
-        session: Any,
+        session: Session,
         customer_id: int,
         sale_id: int,
         amount: Decimal,
@@ -179,7 +180,7 @@ class CustomerCreditService:
         session.add(entry)
 
     @staticmethod
-    def credit_to_reverse(session: Any, sale: Sale, refund_amount: Decimal | None = None) -> Decimal:
+    def credit_to_reverse(session: Session, sale: Sale, refund_amount: Decimal | None = None) -> Decimal:
         """How much credit a void/refund of ``sale`` gives back -- without writing anything.
 
         The single source of the rule used by ``reverse_credit_sale_in_session``
@@ -240,7 +241,7 @@ class CustomerCreditService:
 
     @staticmethod
     def reverse_credit_sale_in_session(
-        session: Any,
+        session: Session,
         sale: Sale,
         entry_type: str,
         user_id: int,

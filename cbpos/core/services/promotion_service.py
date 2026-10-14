@@ -4,10 +4,10 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
+from cbpos.core.constants.audit import PRICING_EVENT
 from cbpos.core.database import Database
 from cbpos.core.models import Category, Product, Promotion
 from cbpos.core.services.logging_service import LoggingService, diff_changes, snapshot_changes
-from cbpos.core.services.price_list_service import PRICING_EVENT
 from cbpos.i18n import _t
 
 # Types pricing_service.calculate_price() actually applies. BOGO has no branch

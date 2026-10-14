@@ -9,7 +9,6 @@ Provides a tabbed interface for admin diagnostic tools:
 
 import logging
 import time
-import weakref
 from datetime import datetime
 
 from PyQt6 import sip
@@ -41,7 +40,7 @@ from cbpos.core.services.error_log_service import ErrorLogService
 from cbpos.core.services.hardware_test_service import HardwareTestResult, HardwareTestService
 from cbpos.core.services.maintenance_service import MaintenanceService
 from cbpos.core.utils.formatters import format_number
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import drawer_pin_setting
 from cbpos.ui.constants import SPACING_SM
 from cbpos.ui.hardware_test_feedback import set_hardware_test_status, show_hardware_test_result
@@ -75,18 +74,7 @@ class AdminToolsView(QWidget):
         self._current_log_entries: list = []
         self._init_ui()
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def showEvent(self, event) -> None:
         """Refresh data when the view becomes visible."""

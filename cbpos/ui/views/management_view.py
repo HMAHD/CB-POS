@@ -1,5 +1,4 @@
 import logging
-import weakref
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
@@ -11,7 +10,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.constants.permissions import Permissions
 from cbpos.core.services.permission_service import PermissionService
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.views.credit_book_view import CreditBookView
 from cbpos.ui.views.dashboard_view import DashboardView
@@ -45,18 +44,7 @@ class ManagementView(QWidget):
         self.init_ui()
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
         # Views are now built lazily by switch_tab() (#227), so the stack
         # starts with zero widgets and nothing to show. Before that change,

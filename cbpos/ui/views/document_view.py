@@ -1,6 +1,5 @@
 import contextlib
 import logging
-import weakref
 from datetime import datetime
 
 from PyQt6.QtCore import QDate, Qt, pyqtSignal
@@ -39,7 +38,7 @@ from cbpos.core.utils.formatters import (
     format_payment_method,
     format_quantity,
 )
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.dialogs.void_reason_dialog import VoidReasonDialog
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING, pill_colors
@@ -79,18 +78,7 @@ class DocumentBrowserView(QWidget):
         self.total_docs = 0
         self.init_ui()
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
         try:
             self.load_documents()
         except Exception as e:

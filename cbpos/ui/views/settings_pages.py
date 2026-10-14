@@ -3,7 +3,6 @@
 import decimal
 import logging
 import socket
-import weakref
 
 from PyQt6.QtCore import Qt, QThread, QTime, pyqtSignal
 from PyQt6.QtGui import QIntValidator
@@ -48,7 +47,7 @@ from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.receipt_logo_service import store_receipt_logo
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.utils.formatters import DEFAULT_CURRENCY_SYMBOL, get_currency_symbol
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.guide_dialog import GuideDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.help_icon_button import HelpIconButton
@@ -422,18 +421,7 @@ class ShopInfoPage(SettingsPage):
         self.tabs.addTab(self._tab_appear, "")
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def retranslate_ui(self) -> None:
         """Update all widget text and tab labels from the translation system."""
@@ -692,18 +680,7 @@ class SalesTaxPage(SettingsPage):
 
         self._toggle_tax_fields()
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def _show_sscl_guide(self) -> None:
         """Show guide dialog explaining SSCL turnover liable base percentage."""
@@ -892,18 +869,7 @@ class DocumentPage(SettingsPage):
         self.tabs.addTab(self._tab_docs, "")
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def retranslate_ui(self) -> None:
         """Update all widget text and tab labels from the translation system."""
@@ -1208,18 +1174,7 @@ class HardwarePage(SettingsPage):
         self.tabs.addTab(tab_scale, "")
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def retranslate_ui(self) -> None:
         """Update all widget text and tab labels from the translation system."""
@@ -1759,18 +1714,7 @@ class ReceiptPage(SettingsPage):
         self._connect_live_signals()
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def _show_logo_guide(self) -> None:
         """Show guide dialog explaining monochrome receipt logo optimization."""
@@ -2154,18 +2098,7 @@ class SystemPage(SettingsPage):
         self.tabs.addTab(self._tab_backup, "")
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def retranslate_ui(self) -> None:
         """Update all widget text and tab labels from the translation system."""
@@ -2643,18 +2576,7 @@ class NetworkPage(SettingsPage):
         self._on_terminal_mode_changed(0)
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
         # The first style polish on show() re-expands these spinboxes past
         # their #InputNetwork height (a pre-existing QSS specificity clash

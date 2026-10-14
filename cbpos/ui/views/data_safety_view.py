@@ -12,7 +12,6 @@ No hardcoded colors — works with both dark and light themes.
 """
 
 import logging
-import weakref
 
 from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtWidgets import (
@@ -38,7 +37,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.backup_service import BackupService
 from cbpos.core.services.config_service import ConfigService
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.backup_password_dialog import BackupPasswordDialog, ensure_backup_password
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.workers import BackupListWorker, BackupWorker, RestoreWorker, VerifyBackupWorker
@@ -63,18 +62,7 @@ class DataSafetyView(QWidget):
         self._init_ui()
         self._overlay = LoadingOverlay(self)
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def showEvent(self, event) -> None:
         """Refresh data when the view becomes visible."""

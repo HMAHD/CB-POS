@@ -1,6 +1,5 @@
 """Promotion view for listing, creating, and managing discount promotions."""
 
-import weakref
 from datetime import datetime
 
 from PyQt6.QtCore import QDateTime, Qt
@@ -26,7 +25,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.category_service import CategoryService
 from cbpos.core.services.promotion_service import SUPPORTED_TYPES, PromotionService
 from cbpos.core.utils.formatters import format_discount, format_promotion_type
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS
 from cbpos.ui.widgets.decimal_line_edit import DecimalLineEdit
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
@@ -55,18 +54,7 @@ class PromotionView(QWidget):
         self.load_promotions()
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def init_ui(self):
         """Build the header and promotions table layout."""

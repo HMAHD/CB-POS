@@ -1,7 +1,6 @@
 """Purchases view: supplier management, GRN intake, purchase history, and payables."""
 
 import logging
-import weakref
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
@@ -39,7 +38,7 @@ from cbpos.core.services.purchase_service import PurchaseService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.formatters import format_currency
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.constants import BAR_GROUP_SPACING, BAR_ITEM_SPACING, BAR_MARGIN_V
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, SUCCESS, WARNING, status_color
@@ -386,18 +385,7 @@ class PurchaseView(QWidget):
         super().__init__()
         self.init_ui()
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
         self.refresh_suppliers()
         self.load_products_for_completer()
 

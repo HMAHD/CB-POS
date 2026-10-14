@@ -9,7 +9,6 @@ Layout:
 """
 
 import logging
-import weakref
 from datetime import date
 
 from PyQt6.QtCore import QDate, Qt, QThread, pyqtSignal
@@ -30,7 +29,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.utils.formatters import format_currency, get_currency_symbol
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.widgets.charts import (
     HOURLY_COLORS,
     MONTH_COLORS,
@@ -110,18 +109,7 @@ class DashboardView(QWidget):
         self._monthly_overlay = LoadingOverlay(self.monthly_panel)
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     # ------------------------------------------------------------------
     # UI construction

@@ -41,15 +41,32 @@ class BarcodeScanner(QObject):
         (returns True) only when it completed a scanner burst of at least
         ``MIN_SCAN_LENGTH`` characters while focus is NOT in a text field;
         any other Enter reaches the focused widget so ``returnPressed``
-        fires normally (#546).
+        fires normally (#546). Such an Enter also claims its shortcut
+        override, so an Enter shortcut on the focused widget doesn't take
+        it first (#548).
         """
+        # A scan's Enter must not fire an Enter shortcut on the focused
+        # widget (Stock Take History's Enter-to-open, #548/#594): Qt offers
+        # a key to shortcuts before delivering it, so claim the override
+        # and let the KeyPress below route the scan. Not while a modal
+        # dialog is up: its Enter shortcut (payment, quantity) keeps the
+        # key rather than a scan reaching the view behind it.
+        if event.type() == QEvent.Type.ShortcutOverride and obj.isWidgetType():
+            if (
+                event.key() in (Qt.Key.Key_Return.value, Qt.Key.Key_Enter.value)
+                and QApplication.activeModalWidget() is None
+                and self._completes_scan(obj)
+            ):
+                event.accept()
+                return True
         # App-level filters see each key twice (QWindow, then the focused
         # widget); count only the widget copy or every char doubles.
         if event.type() == QEvent.Type.KeyPress and obj.isWidgetType():
             if event.key() in (Qt.Key.Key_Return.value, Qt.Key.Key_Enter.value):
                 barcode = self.buffer.strip()
+                is_scan = self._completes_scan(obj)
                 self.buffer = ""
-                if len(barcode) >= self.MIN_SCAN_LENGTH and not self._is_text_input(obj):
+                if is_scan:
                     self.barcode_scanned.emit(barcode)
                     return True
             elif event.text():
@@ -57,6 +74,14 @@ class BarcodeScanner(QObject):
                 self.timer.start(50)  # Reset buffer if no input for 50ms (Scanner is fast)
 
         return super().eventFilter(obj, event)
+
+    def _completes_scan(self, widget) -> bool:
+        """True if an Enter now ends a scanner burst that should be routed as a scan.
+
+        That is a buffer of at least ``MIN_SCAN_LENGTH`` characters, with
+        focus outside a text field that submits scans itself.
+        """
+        return len(self.buffer.strip()) >= self.MIN_SCAN_LENGTH and not self._is_text_input(widget)
 
     @staticmethod
     def _is_text_input(widget) -> bool:

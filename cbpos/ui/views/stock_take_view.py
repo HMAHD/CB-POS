@@ -1,11 +1,21 @@
 """Stock Take view for physical inventory counting and variance workflow."""
 
 import logging
+import weakref
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
-from PyQt6.QtCore import QAbstractTableModel, QDate, QEvent, QModelIndex, QRegularExpression, Qt, pyqtSignal
-from PyQt6.QtGui import QRegularExpressionValidator
+from PyQt6.QtCore import (
+    QAbstractTableModel,
+    QDate,
+    QEvent,
+    QModelIndex,
+    QRegularExpression,
+    Qt,
+    QTimer,
+    pyqtSignal,
+)
+from PyQt6.QtGui import QKeySequence, QRegularExpressionValidator, QShortcut
 from PyQt6.QtWidgets import (
     QAbstractItemDelegate,
     QAbstractItemView,
@@ -31,7 +41,9 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.constants.status import DocumentStatus, Precision
 from cbpos.core.services.product_service import ProductService
-from cbpos.core.services.stock_count_service import StockCountService
+from cbpos.core.services.stock_count_service import StockCountService, VarianceTotals
+from cbpos.core.services.theme_service import ThemeService
+from cbpos.core.utils.destroy_hooks import call_on_destroyed
 from cbpos.core.utils.formatters import (
     format_currency,
     format_document_status,
@@ -48,7 +60,7 @@ from cbpos.ui.constants import (
     SPACING_XS,
 )
 from cbpos.ui.resources.icons import Icons
-from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, status_color
+from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, status_color, status_hex
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
@@ -197,6 +209,11 @@ def _count_decimals(product) -> int:
     return 3 if product.is_weighted else 0
 
 
+def _is_measured(product) -> bool:
+    """True for items counted by weight or measure (kg, L, m), where one scan isn't one unit."""
+    return product is not None and (bool(product.is_weighted) or _count_decimals(product) > 0)
+
+
 def _format_count(qty, product) -> str:
     """A count in its product's unit: ``12`` for pieces, ``1.250`` for kg; "" if not counted yet."""
     if qty is None:
@@ -216,6 +233,26 @@ def _variance_meaning(value) -> str:
     if value < 0:
         return DANGER
     return SUCCESS if value > 0 else NEUTRAL
+
+
+def _format_net(value: Decimal) -> str:
+    """Net variance as signed money: +Rs. 500.00 / \u2212Rs. 500.00 / Rs. 0.00."""
+    return format_signed(value, format_currency)
+
+
+def _net_variance_text(totals: VarianceTotals) -> str:
+    """'Net variance: <signed amount>' -- the one wording every screen uses (#644)."""
+    return _t("stock_take.net_variance_amount", amount=_format_net(totals.net))
+
+
+def _discrepancy_text(totals: VarianceTotals) -> str:
+    """'Total discrepancy: <amount>' -- the one wording every screen uses (#644)."""
+    return _t("stock_take.total_discrepancy_amount", amount=format_currency(totals.discrepancy))
+
+
+def _totals_block(totals: VarianceTotals) -> str:
+    """Both figures on their own lines, for the finalize and approve messages."""
+    return f"{_net_variance_text(totals)}\n{_discrepancy_text(totals)}"
 
 
 class CountedDelegate(QStyledItemDelegate):
@@ -301,10 +338,20 @@ class StockCountReportDialog(QDialog):
         lbl_note_val = QLabel(stock_count.note or _t("common.na"))
         lbl_note_val.setStyleSheet("font-weight: bold;")
 
-        lbl_var_key = QLabel(_t("stock_take.hist_col_variance_total"))
-        lbl_var_key.setProperty("class", "muted")
-        lbl_var_val = QLabel(format_currency(stock_count.total_variance_value))
-        lbl_var_val.setStyleSheet("font-weight: bold;")
+        # Net variance and total discrepancy, same labels as the stats bar (#644)
+        totals = StockCountService.variance_totals(stock_count.items)
+        self.lbl_net_variance_key = QLabel(_t("stock_take.net_variance"))
+        self.lbl_net_variance_key.setProperty("class", "muted")
+        self.lbl_net_variance_key.setToolTip(_t("stock_take.net_variance_hint"))
+        self.lbl_net_variance_val = QLabel(_format_net(totals.net))
+        self.lbl_net_variance_val.setStyleSheet(
+            f"font-weight: bold; color: {status_hex(_variance_meaning(totals.net))};"
+        )
+        self.lbl_discrepancy_key = QLabel(_t("stock_take.total_discrepancy"))
+        self.lbl_discrepancy_key.setProperty("class", "muted")
+        self.lbl_discrepancy_key.setToolTip(_t("stock_take.total_discrepancy_hint"))
+        self.lbl_discrepancy_val = QLabel(format_currency(totals.discrepancy))
+        self.lbl_discrepancy_val.setStyleSheet("font-weight: bold;")
 
         info_grid.addWidget(lbl_status_key, 0, 0)
         info_grid.addWidget(lbl_status_val, 1, 0)
@@ -312,8 +359,10 @@ class StockCountReportDialog(QDialog):
         info_grid.addWidget(lbl_date_val, 1, 1)
         info_grid.addWidget(lbl_note_key, 0, 2)
         info_grid.addWidget(lbl_note_val, 1, 2)
-        info_grid.addWidget(lbl_var_key, 0, 3)
-        info_grid.addWidget(lbl_var_val, 1, 3)
+        info_grid.addWidget(self.lbl_net_variance_key, 0, 3)
+        info_grid.addWidget(self.lbl_net_variance_val, 1, 3)
+        info_grid.addWidget(self.lbl_discrepancy_key, 0, 4)
+        info_grid.addWidget(self.lbl_discrepancy_val, 1, 4)
         info_grid.setColumnStretch(2, 1)
         layout.addLayout(info_grid)
 
@@ -391,14 +440,38 @@ class StockCountReportDialog(QDialog):
 class StockTakeView(QWidget):
     """Stock take view with New Count and History tabs."""
 
+    # How long the "<product> counted: N" note stays after a scan
+    SCAN_FEEDBACK_MS = 2500
+
+    # History table columns
+    HIST_COL_ITEMS = 3
+    HIST_COL_NET = 4
+    HIST_COL_DISCREPANCY = 5
+    HIST_COL_STATUS = 6
+
     def __init__(self) -> None:
         """Initialize the view, build its UI, and register for language updates."""
         super().__init__()
         self.current_stock_count = None
+        self._net_meaning = NEUTRAL
         self.init_ui()
 
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui, owner=self)
+
+        # Repaint the signed net variance for a new theme. Held through a
+        # weakref: ThemeService's callback list is class-level and would
+        # otherwise keep the view alive.
+        self_ref = weakref.ref(self)
+
+        def _on_theme_changed() -> None:
+            view = self_ref()
+            if view is not None:
+                view._paint_net_variance()
+
+        ThemeService.register_theme_callback(_on_theme_changed)
+        # Not destroyed.connect(<nested function>): that can segfault (see destroy_hooks).
+        call_on_destroyed(self, ThemeService.unregister_theme_callback, _on_theme_changed)
 
     def init_ui(self) -> None:
         """Build the page header and the New Count / History tabs."""
@@ -462,6 +535,16 @@ class StockTakeView(QWidget):
         self.search_input.setPlaceholderText(_t("stock_take.search_placeholder"))
         self.search_input.returnPressed.connect(self.add_single_product)
         search_layout.addWidget(self.search_input)
+        # Brief "Soap counted: 2" after a scan, so the counter sees it landed
+        # without looking for the row (#548). Hidden again by a timer.
+        self.lbl_scan_feedback = QLabel()
+        self.lbl_scan_feedback.setObjectName("StockTakeScanFeedback")
+        self.lbl_scan_feedback.setVisible(False)
+        search_layout.addWidget(self.lbl_scan_feedback)
+        self._scan_feedback_timer = QTimer(self)
+        self._scan_feedback_timer.setSingleShot(True)
+        self._scan_feedback_timer.setInterval(self.SCAN_FEEDBACK_MS)
+        self._scan_feedback_timer.timeout.connect(self.lbl_scan_feedback.hide)
         layout.addLayout(search_layout)
 
         # Items table
@@ -506,11 +589,15 @@ class StockTakeView(QWidget):
         stats_layout.setSpacing(BAR_GROUP_SPACING)
         self.lbl_items = QLabel(_t("stock_take.items_count", count=0))
         self.lbl_counted = QLabel(_t("stock_take.counted_progress", counted=0, total=0))
-        self.lbl_variance = QLabel(_t("stock_take.variance_amount", amount=format_currency(Decimal("0"))))
+        # Net variance (signed) and total discrepancy (absolute), labelled
+        # apart so +500 and -500 can't read as both 0 and 1,000 (#644).
+        self.lbl_net_variance = QLabel()
+        self.lbl_discrepancy = QLabel()
         self.lbl_status = QLabel(_t("stock_take.status_display", status="---"))
         stats_layout.addWidget(self.lbl_items)
         stats_layout.addWidget(self.lbl_counted)
-        stats_layout.addWidget(self.lbl_variance)
+        stats_layout.addWidget(self.lbl_net_variance)
+        stats_layout.addWidget(self.lbl_discrepancy)
         stats_layout.addStretch()
         stats_layout.addWidget(self.lbl_status)
         layout.addLayout(stats_layout)
@@ -588,18 +675,8 @@ class StockTakeView(QWidget):
 
         # History table
         self.history_table = QTableWidget()
-        self.history_table.setColumnCount(6)
-        self.history_table.setHorizontalHeaderLabels(
-            [
-                _t("stock_take.hist_col_stk"),
-                _t("common.date"),
-                _t("stock_take.hist_col_user"),
-                _t("stock_take.hist_col_items"),
-                _t("stock_take.hist_col_variance_total"),
-                _t("common.status"),
-            ]
-        )
-        align_numeric_headers(self.history_table, (3, 4))  # Items, Variance Total
+        self.history_table.setColumnCount(len(self._history_headers()))
+        self._set_history_headers()
         configure_table_columns(
             self.history_table.horizontalHeader(),
             {
@@ -607,8 +684,9 @@ class StockTakeView(QWidget):
                 1: QHeaderView.ResizeMode.ResizeToContents,  # Date
                 2: QHeaderView.ResizeMode.Stretch,  # User - needs the room
                 3: QHeaderView.ResizeMode.ResizeToContents,  # Items
-                4: QHeaderView.ResizeMode.ResizeToContents,  # Variance Total
-                5: QHeaderView.ResizeMode.ResizeToContents,  # Status
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Net variance
+                5: QHeaderView.ResizeMode.ResizeToContents,  # Total discrepancy
+                6: QHeaderView.ResizeMode.ResizeToContents,  # Status
             },
             minimum_section_size=70,
         )
@@ -616,13 +694,46 @@ class StockTakeView(QWidget):
         self.history_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.history_table.setAlternatingRowColors(True)
         self.history_table.doubleClicked.connect(self.on_history_double_click)
-        self.history_table.setItemDelegateForColumn(5, StatusPillDelegate(self.history_table))  # (#560)
+        self.history_table.setItemDelegateForColumn(self.HIST_COL_STATUS, StatusPillDelegate(self.history_table))
         self.history_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.history_table.customContextMenuRequested.connect(self.show_history_context_menu)
+        self.history_table.itemSelectionChanged.connect(self._update_history_actions)
+        # Enter opens the selected count. A shortcut, so it works whatever the
+        # table does with Enter itself; widget context keeps Enter in the
+        # filters (date edits, status combo) out of it (#594).
+        for key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            shortcut = QShortcut(QKeySequence(key), self.history_table)
+            shortcut.setContext(Qt.ShortcutContext.WidgetShortcut)
+            shortcut.activated.connect(self.open_selected_history)
         layout.addWidget(self.history_table, 1)
+
+        # Row actions, visible instead of hidden in a double-click and a
+        # right-click menu (#594). Enabled by selection and the row's status.
+        actions_row = QHBoxLayout()
+        actions_row.addStretch()
+        self.btn_hist_open = QPushButton(_t("stock_take.hist_btn_open"))
+        self.btn_hist_open.setProperty("class", "secondary")
+        self.btn_hist_open.setAutoDefault(False)
+        self.btn_hist_open.clicked.connect(self.open_selected_history)
+        actions_row.addWidget(self.btn_hist_open)
+        self.btn_hist_resume = QPushButton(_t("stock_take.hist_btn_resume"))
+        self.btn_hist_resume.setProperty("class", "primary")
+        self.btn_hist_resume.setAutoDefault(False)
+        self.btn_hist_resume.clicked.connect(self.resume_selected_history)
+        actions_row.addWidget(self.btn_hist_resume)
+        self.btn_hist_discard = QPushButton(_t("stock_take.hist_btn_discard"))
+        self.btn_hist_discard.setProperty("class", "danger")
+        self.btn_hist_discard.setAutoDefault(False)
+        self.btn_hist_discard.clicked.connect(self.discard_selected_history)
+        actions_row.addWidget(self.btn_hist_discard)
+        layout.addLayout(actions_row)
 
         # Store IDs for double-click lookup
         self._history_ids = []
+        self._update_history_actions()
+
+        # Load the list when the tab is shown, not only on Refresh (#594).
+        self.tabs.currentChanged.connect(self._on_tab_changed)
 
     def retranslate_ui(self) -> None:
         """Update all widget text from the translation system."""
@@ -675,18 +786,33 @@ class StockTakeView(QWidget):
         self.hist_from_label.setText(_t("common.from"))
         self.hist_to_label.setText(_t("common.to"))
         self.hist_refresh_btn.setText(_t("common.refresh"))
+        self.btn_hist_open.setText(_t("stock_take.hist_btn_open"))
+        self.btn_hist_resume.setText(_t("stock_take.hist_btn_resume"))
+        self.btn_hist_discard.setText(_t("stock_take.hist_btn_discard"))
 
-        self.history_table.setHorizontalHeaderLabels(
-            [
-                _t("stock_take.hist_col_stk"),
-                _t("common.date"),
-                _t("stock_take.hist_col_user"),
-                _t("stock_take.hist_col_items"),
-                _t("stock_take.hist_col_variance_total"),
-                _t("common.status"),
-            ]
+        self._set_history_headers()
+
+    @staticmethod
+    def _history_headers() -> list[str]:
+        """Translated History column headers."""
+        return [
+            _t("stock_take.hist_col_stk"),
+            _t("common.date"),
+            _t("stock_take.hist_col_user"),
+            _t("stock_take.hist_col_items"),
+            _t("stock_take.net_variance"),
+            _t("stock_take.total_discrepancy"),
+            _t("common.status"),
+        ]
+
+    def _set_history_headers(self) -> None:
+        """Label the History columns, right-align the numeric ones, explain the two variances."""
+        self.history_table.setHorizontalHeaderLabels(self._history_headers())
+        align_numeric_headers(self.history_table, (self.HIST_COL_ITEMS, self.HIST_COL_NET, self.HIST_COL_DISCREPANCY))
+        self.history_table.horizontalHeaderItem(self.HIST_COL_NET).setToolTip(_t("stock_take.net_variance_hint"))
+        self.history_table.horizontalHeaderItem(self.HIST_COL_DISCREPANCY).setToolTip(
+            _t("stock_take.total_discrepancy_hint")
         )
-        align_numeric_headers(self.history_table, (3, 4))  # Items, Variance Total
 
     # ========== New Count Methods ==========
 
@@ -706,6 +832,7 @@ class StockTakeView(QWidget):
             "Product already in this stock count.": _t("stock_take.product_already_in_count"),
             "Stock count not found or not in DRAFT status.": _t("stock_take.not_in_draft_status"),
             "Product not found.": _t("stock_take.product_not_found"),
+            "Service items are not stock-counted.": _t("stock_take.service_not_counted"),
             "Cannot approve count with no items.": _t("stock_take.cannot_approve_empty"),
             "Count must be in COUNTED status to approve.": _t("stock_take.must_be_counted_to_approve"),
             "Count is not in DRAFT status.": _t("stock_take.not_in_draft_status"),
@@ -758,8 +885,10 @@ class StockTakeView(QWidget):
 
         Adds the product to the count first if needed (starting a count if
         none is open). A product already in the count is counted up rather
-        than rejected (#615). Weighed items get their Counted editor opened
-        instead, since one scan isn't one unit of weight.
+        than rejected (#615). Weighed or measured items (kg, L, m) get their
+        Counted editor opened instead, since one scan isn't one unit of
+        weight. The row is selected and scrolled to, and a short note says
+        what was counted (#548).
 
         Returns:
             True if the product was found and added/counted.
@@ -780,11 +909,12 @@ class StockTakeView(QWidget):
             QMessageBox.warning(self, _t("stock_take.not_found_title"), _t("stock_take.product_not_found"))
             return False
 
+        measured = _is_measured(product)
         item_id = next((i.id for i in self.item_model.items if i.product_id == product.id), None)
         try:
             if item_id is None:
                 item_id = StockCountService.add_single_item(self.current_stock_count.id, product.id).id
-            if not product.is_weighted:
+            if not measured:
                 StockCountService.increment_count(item_id, Decimal("1"))
         except ValueError as e:
             QMessageBox.warning(self, _t("common.error"), self._translate_service_error(e))
@@ -795,10 +925,23 @@ class StockTakeView(QWidget):
         if row is not None:
             index = self.item_model.index(row, StockCountItemModel.COL_COUNTED)
             self.item_table.setCurrentIndex(index)
-            self.item_table.scrollTo(index)
-            if product.is_weighted:
+            self.item_table.scrollTo(index, QAbstractItemView.ScrollHint.PositionAtCenter)
+            item = self.item_model.items[row]
+            if measured:
                 self.item_table.edit(index)
+                self._show_scan_feedback(_t("stock_take.scan_enter_quantity", product=item.product.display_name))
+            else:
+                counted = _format_count(item.counted_qty, item.product)
+                self._show_scan_feedback(
+                    _t("stock_take.scan_counted", product=item.product.display_name, counted=counted)
+                )
         return True
+
+    def _show_scan_feedback(self, text: str) -> None:
+        """Show a short note beside the search box, hidden after SCAN_FEEDBACK_MS."""
+        self.lbl_scan_feedback.setText(text)
+        self.lbl_scan_feedback.show()
+        self._scan_feedback_timer.start()
 
     def _reload_items(self) -> None:
         """Reload items from the database for the current stock count."""
@@ -848,7 +991,7 @@ class StockTakeView(QWidget):
         if not self.current_stock_count:
             self.lbl_items.setText(_t("stock_take.items_count", count=0))
             self.lbl_counted.setText(_t("stock_take.counted_progress", counted=0, total=0))
-            self.lbl_variance.setText(_t("stock_take.variance_amount", amount=format_currency(Decimal("0"))))
+            self._show_variance_totals(StockCountService.variance_totals([]))
             self.lbl_status.setText(_t("stock_take.status_display", status="---"))
             # No count yet: only starting one makes sense. Without this the
             # buttons kept the last count's state, so Load Products stayed
@@ -861,11 +1004,10 @@ class StockTakeView(QWidget):
         items = self.item_model.items
         total = len(items)
         counted = sum(1 for i in items if i.counted_qty is not None)
-        variance = sum(abs(i.variance_value) for i in items if i.variance_value is not None)
 
         self.lbl_items.setText(_t("stock_take.items_count", count=total))
         self.lbl_counted.setText(_t("stock_take.counted_progress", counted=counted, total=total))
-        self.lbl_variance.setText(_t("stock_take.variance_amount", amount=format_currency(variance)))
+        self._show_variance_totals(StockCountService.variance_totals(items))
         self.lbl_status.setText(
             _t("stock_take.status_display", status=format_document_status(self.current_stock_count.status))
         )
@@ -879,6 +1021,19 @@ class StockTakeView(QWidget):
         self.btn_approve.setEnabled(is_counted)
         self.btn_void.setEnabled(is_draft or is_counted)
 
+    def _show_variance_totals(self, totals: VarianceTotals) -> None:
+        """Show net variance (coloured by sign) and total discrepancy on the stats bar."""
+        self.lbl_net_variance.setText(_net_variance_text(totals))
+        self.lbl_net_variance.setToolTip(_t("stock_take.net_variance_hint"))
+        self.lbl_discrepancy.setText(_discrepancy_text(totals))
+        self.lbl_discrepancy.setToolTip(_t("stock_take.total_discrepancy_hint"))
+        self._net_meaning = _variance_meaning(totals.net)
+        self._paint_net_variance()
+
+    def _paint_net_variance(self) -> None:
+        """Colour the net variance for its sign in the current theme (#559 palette)."""
+        self.lbl_net_variance.setStyleSheet(f"color: {status_hex(self._net_meaning)};")
+
     def save_draft(self) -> None:
         """Save current state (items are already persisted via update_count)."""
         QMessageBox.information(self, _t("common.saved"), _t("stock_take.draft_saved"))
@@ -890,16 +1045,16 @@ class StockTakeView(QWidget):
 
         try:
             self.current_stock_count = StockCountService.finalize_count(self.current_stock_count.id)
+            self._reload_items()
             QMessageBox.information(
                 self,
                 _t("stock_take.finalized_title"),
                 _t(
                     "stock_take.finalized_message",
                     number=self.current_stock_count.document_number,
-                    variance=format_currency(self.current_stock_count.total_variance_value),
+                    totals=_totals_block(StockCountService.variance_totals(self.item_model.items)),
                 ),
             )
-            self._reload_items()
         except ValueError as e:
             QMessageBox.warning(self, _t("common.error"), self._translate_service_error(e))
 
@@ -913,11 +1068,11 @@ class StockTakeView(QWidget):
             return
 
         # Confirmation
-        variance = self.current_stock_count.total_variance_value
+        totals = StockCountService.variance_totals(self.item_model.items)
         reply = QMessageBox.question(
             self,
             _t("stock_take.confirm_approval_title"),
-            _t("stock_take.confirm_approval_message", variance=format_currency(variance)),
+            _t("stock_take.confirm_approval_message", totals=_totals_block(totals)),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -966,6 +1121,8 @@ class StockTakeView(QWidget):
     def reset_form(self) -> None:
         """Reset the form for a new stock count."""
         self.current_stock_count = None
+        self._scan_feedback_timer.stop()
+        self.lbl_scan_feedback.hide()
         self._set_item_model(StockCountItemModel())
         self.note_input.clear()
         self.search_input.clear()
@@ -973,6 +1130,21 @@ class StockTakeView(QWidget):
         self._update_stats()
 
     # ========== History Methods ==========
+
+    def _is_history_shown(self) -> bool:
+        """True when the History tab is the current tab."""
+        return self.tabs.currentWidget() is self.history_tab
+
+    def _on_tab_changed(self, _index: int) -> None:
+        """Reload the history list whenever its tab comes into view (#594)."""
+        if self._is_history_shown():
+            self.refresh_history()
+
+    def showEvent(self, event) -> None:
+        """Reload the history list when the view reopens on the History tab."""
+        super().showEvent(event)
+        if self._is_history_shown():
+            self.refresh_history()
 
     def refresh_history(self) -> None:
         """Refresh the stock count history table."""
@@ -987,7 +1159,9 @@ class StockTakeView(QWidget):
         counts = StockCountService.get_all_stock_counts(status=status, date_from=date_from, date_to=date_to)
 
         self.history_table.setRowCount(0)
+        self.history_table.clearSpans()
         self._history_ids = []
+        self._update_history_actions()
 
         if not counts:
             self.history_table.setRowCount(1)
@@ -1009,52 +1183,100 @@ class StockTakeView(QWidget):
             self.history_table.setItem(row, 2, QTableWidgetItem(sc.user.username if sc.user else ""))
 
             items_item = QTableWidgetItem(format_number(len(sc.items or []), 0))
-            items_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.history_table.setItem(row, 3, items_item)
+            items_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.history_table.setItem(row, self.HIST_COL_ITEMS, items_item)
 
-            var_item = QTableWidgetItem(format_currency(sc.total_variance_value))
-            var_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.history_table.setItem(row, 4, var_item)
+            totals = StockCountService.variance_totals(sc.items or [])
+            net_item = QTableWidgetItem(_format_net(totals.net))
+            net_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            net_item.setForeground(status_color(_variance_meaning(totals.net)))
+            self.history_table.setItem(row, self.HIST_COL_NET, net_item)
+
+            discrepancy_item = QTableWidgetItem(format_currency(totals.discrepancy))
+            discrepancy_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.history_table.setItem(row, self.HIST_COL_DISCREPANCY, discrepancy_item)
 
             meaning = _HISTORY_STATUS_MEANINGS.get(sc.status)
             item = QTableWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, sc.status)
-            self.history_table.setItem(row, 5, set_status_pill(item, format_document_status(sc.status), meaning))
+            status_text = format_document_status(sc.status)
+            self.history_table.setItem(row, self.HIST_COL_STATUS, set_status_pill(item, status_text, meaning))
+
+    def _selected_history_row(self) -> int | None:
+        """Row of the selected history count, or None (no selection / placeholder row)."""
+        rows = self.history_table.selectionModel().selectedRows()
+        if not rows:
+            return None
+        row = rows[0].row()
+        return row if 0 <= row < len(self._history_ids) else None
+
+    def _history_row_status(self, row: int) -> str | None:
+        """Status code of a history row, read from its status cell."""
+        status_item = self.history_table.item(row, self.HIST_COL_STATUS)
+        if not status_item:
+            return None
+        return status_item.data(Qt.ItemDataRole.UserRole) or status_item.text()
+
+    def _update_history_actions(self) -> None:
+        """Enable Open for any selected count; Resume and Discard only for a DRAFT."""
+        row = self._selected_history_row()
+        is_draft = row is not None and self._history_row_status(row) == DocumentStatus.DRAFT
+        self.btn_hist_open.setEnabled(row is not None)
+        self.btn_hist_resume.setEnabled(is_draft)
+        self.btn_hist_discard.setEnabled(is_draft)
+
+    def open_history_report(self, stock_count_id: int) -> None:
+        """Show the read-only report for a stock count."""
+        dialog = StockCountReportDialog(stock_count_id, self)
+        dialog.exec()
+
+    def open_selected_history(self) -> None:
+        """Open the report for the selected history row (Open button / Enter)."""
+        row = self._selected_history_row()
+        if row is not None:
+            self.open_history_report(self._history_ids[row])
+
+    def resume_selected_history(self) -> None:
+        """Resume the selected DRAFT count in New Count."""
+        row = self._selected_history_row()
+        if row is not None and self._history_row_status(row) == DocumentStatus.DRAFT:
+            self.resume_draft_count(self._history_ids[row])
+
+    def discard_selected_history(self) -> None:
+        """Discard (void) the selected DRAFT count, after confirmation."""
+        row = self._selected_history_row()
+        if row is not None and self._history_row_status(row) == DocumentStatus.DRAFT:
+            self.discard_draft_count(self._history_ids[row])
 
     def on_history_double_click(self, index: QModelIndex) -> None:
         """Open stock count report dialog on double-click."""
         row = index.row()
         if 0 <= row < len(self._history_ids):
-            dialog = StockCountReportDialog(self._history_ids[row], self)
-            dialog.exec()
+            self.open_history_report(self._history_ids[row])
 
     def show_history_context_menu(self, position) -> None:
-        """Offer Resume/Discard on a DRAFT history row (#312).
+        """Offer Open on any history row, plus Resume/Discard on a DRAFT (#312, #594).
 
-        Without this, a DRAFT count that outlives the session it was
-        started in (app restart, navigating away) has no way back into an
-        editable state and no way to be discarded either -- it just
-        accumulates as permanent, unfinishable clutter.
+        Without Resume/Discard, a DRAFT count that outlives the session it
+        was started in (app restart, navigating away) has no way back into
+        an editable state and no way to be discarded either -- it just
+        accumulates as permanent, unfinishable clutter. The same actions
+        sit in the row under the table.
         """
         row = self.history_table.indexAt(position).row()
         if row < 0 or row >= len(self._history_ids):
             return
         self.history_table.selectRow(row)
-
-        status_item = self.history_table.item(row, 5)
-        if not status_item:
-            return
-        status_code = status_item.data(Qt.ItemDataRole.UserRole) or status_item.text()
-        if status_code != DocumentStatus.DRAFT:
-            return
-
         stock_count_id = self._history_ids[row]
 
         menu = QMenu(self)
-        resume_action = menu.addAction(_t("stock_take.context_resume"))
-        resume_action.triggered.connect(lambda: self.resume_draft_count(stock_count_id))
-        discard_action = menu.addAction(_t("stock_take.context_discard_draft"))
-        discard_action.triggered.connect(lambda: self.discard_draft_count(stock_count_id))
+        open_action = menu.addAction(_t("stock_take.hist_btn_open"))
+        open_action.triggered.connect(lambda: self.open_history_report(stock_count_id))
+        if self._history_row_status(row) == DocumentStatus.DRAFT:
+            resume_action = menu.addAction(_t("stock_take.context_resume"))
+            resume_action.triggered.connect(lambda: self.resume_draft_count(stock_count_id))
+            discard_action = menu.addAction(_t("stock_take.context_discard_draft"))
+            discard_action.triggered.connect(lambda: self.discard_draft_count(stock_count_id))
         menu.exec(self.history_table.viewport().mapToGlobal(position))
 
     def resume_draft_count(self, stock_count_id: int) -> None:

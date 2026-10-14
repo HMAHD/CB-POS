@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import QAbstractItemDelegate, QAbstractItemView, QApplicati
 
 from cbpos.core.models import Product, StockCountItem, Unit, User
 from cbpos.core.services.stock_count_service import StockCountService
+from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 from cbpos.ui.views.stock_take_view import StockCountItemModel, StockTakeView
 
@@ -164,3 +165,84 @@ class TestScanWhileEditing:
 
         assert _counted(db_session, view, SOAP) == Decimal("1.000")
         assert _counted(db_session, view, TEA) == Decimal("2.000")
+
+
+GHEE, DELIVERY = "4790000000042", "4790000000059"
+
+
+@pytest.fixture
+def more_products(db_session):
+    """A loose-sold item (kg unit, not flagged weighed) and a service."""
+    kg = Unit(name="Kilogram (scan test 2)", abbreviation="kg", decimal_places=3)
+    ghee = Product(barcode=GHEE, name_en="Loose Ghee", price=Decimal("900"), stock_qty=Decimal("1.5"))
+    ghee.unit = kg
+    delivery = Product(barcode=DELIVERY, name_en="Delivery", price=Decimal("200"), is_service=True)
+    db_session.add_all([kg, ghee, delivery])
+    db_session.flush()
+
+
+class TestScanAcceptance:
+    """#548 QA: scanning an item twice shows Counted = 2 and selects its row."""
+
+    def test_two_scans_show_counted_two_and_select_the_row(self, view, db_session):
+        view.process_barcode_external(TEA)
+        view.process_barcode_external(SOAP)
+        view.process_barcode_external(SOAP)
+
+        row = _row_of(view, SOAP)
+        assert view.item_model.index(row, COUNTED).data() == "2"
+        assert [i.row() for i in view.item_table.selectionModel().selectedRows()] == [row]
+
+    def test_scan_shows_brief_feedback_naming_the_product(self, view):
+        view.process_barcode_external(SOAP)
+        view.process_barcode_external(SOAP)
+
+        assert view.lbl_scan_feedback.isVisible()
+        assert view.lbl_scan_feedback.text() == _t("stock_take.scan_counted", product="Soap", counted="2")
+
+        view._scan_feedback_timer.timeout.emit()
+
+        assert not view.lbl_scan_feedback.isVisible()
+
+
+class TestMeasuredUnits:
+    def test_item_sold_by_a_fractional_unit_opens_the_editor(self, view, db_session, more_products):
+        view.process_barcode_external(GHEE)
+
+        assert _counted(db_session, view, GHEE) is None
+        assert view.item_table.state() == QAbstractItemView.State.EditingState
+        assert view.lbl_scan_feedback.text() == _t("stock_take.scan_enter_quantity", product="Loose Ghee")
+
+
+class TestScope:
+    def test_scanning_a_service_warns_and_adds_nothing(self, view, warnings, more_products):
+        view.process_barcode_external(DELIVERY)
+
+        assert warnings == [_t("stock_take.service_not_counted")]
+        assert view.item_model.rowCount() == 0
+
+
+class TestScanOnHistoryTable:
+    def test_scan_with_the_history_table_focused_counts_instead_of_opening(self, view, db_session, monkeypatch):
+        """History's Enter-to-open shortcut (#594) must not eat a scanner's Enter."""
+        opened: list[int] = []
+        monkeypatch.setattr(StockTakeView, "open_history_report", lambda _self, sc_id: opened.append(sc_id))
+        view.process_barcode_external(SOAP)  # one count in History to select
+        view.tabs.setCurrentWidget(view.history_tab)
+        view.history_table.selectRow(0)
+        view.activateWindow()
+        QTest.qWaitForWindowActive(view)
+        view.history_table.setFocus()
+
+        app = QApplication.instance()
+        scanner = BarcodeScanner(app)
+        scanner.barcode_scanned.connect(view.process_barcode_external)
+        try:
+            QTest.keyClicks(view.history_table, SOAP)
+            QTest.keyClick(view.history_table, Qt.Key.Key_Return)
+        finally:
+            app.removeEventFilter(scanner)
+
+        assert opened == []
+        assert view.tabs.currentWidget() is view.new_count_tab
+        assert _counted(db_session, view, SOAP) == Decimal("2.000")

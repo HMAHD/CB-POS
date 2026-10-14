@@ -113,7 +113,7 @@ def test_stock_take_history_status_is_a_pill(db_session):
     from cbpos.ui.views.stock_take_view import _HISTORY_STATUS_MEANINGS, StockTakeView
 
     view = StockTakeView()
-    assert isinstance(view.history_table.itemDelegateForColumn(5), StatusPillDelegate)
+    assert isinstance(view.history_table.itemDelegateForColumn(view.HIST_COL_STATUS), StatusPillDelegate)
     assert len(set(_HISTORY_STATUS_MEANINGS.values())) == len(_HISTORY_STATUS_MEANINGS)
     view.deleteLater()
 

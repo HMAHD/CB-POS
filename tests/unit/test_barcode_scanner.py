@@ -7,8 +7,9 @@ only be consumed when it completes a genuine scanner burst.
 
 import pytest
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtTest import QTest
-from PyQt6.QtWidgets import QApplication, QLineEdit, QPushButton
+from PyQt6.QtWidgets import QAbstractItemView, QApplication, QDialog, QLineEdit, QPushButton, QTableWidget
 
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 
@@ -91,4 +92,69 @@ class TestBarcodeScannerEnter:
         QTest.keyClick(field, Qt.Key.Key_Return)
 
         assert returns == ["7"]
+        assert scans == []
+
+
+@pytest.fixture
+def table_with_enter_shortcut():
+    """A focused table whose Enter is a widget shortcut (Stock Take History, #594)."""
+    table = QTableWidget(1, 1)
+    table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)  # like History
+    fired: list[int] = []
+    shortcut = QShortcut(QKeySequence(Qt.Key.Key_Return), table)
+    shortcut.setContext(Qt.ShortcutContext.WidgetShortcut)
+    shortcut.activated.connect(lambda: fired.append(1))
+    table.show()
+    table.activateWindow()
+    QTest.qWaitForWindowActive(table)
+    table.setFocus()
+    yield table, fired
+    table.hide()
+    table.deleteLater()
+
+
+class TestBarcodeScannerVsEnterShortcut:
+    def test_burst_is_routed_as_a_scan_not_taken_by_the_shortcut(self, scanner_and_field, table_with_enter_shortcut):
+        """#548: a scan on a widget with an Enter shortcut used to fire the shortcut
+        and lose the scan."""
+        scanner, _field, scans, _returns = scanner_and_field
+        table, fired = table_with_enter_shortcut
+
+        QTest.keyClicks(table, "4791234567890")
+        QTest.keyClick(table, Qt.Key.Key_Return)
+
+        assert scans == ["4791234567890"]
+        assert fired == []
+        assert scanner.buffer == ""
+
+    def test_human_enter_still_fires_the_shortcut(self, scanner_and_field, table_with_enter_shortcut):
+        _scanner, _field, scans, _returns = scanner_and_field
+        table, fired = table_with_enter_shortcut
+
+        QTest.keyClick(table, Qt.Key.Key_Return)
+
+        assert fired == [1]
+        assert scans == []
+
+    def test_modal_dialog_enter_shortcut_keeps_its_enter(self, scanner_and_field):
+        """Behind a modal (payment, quantity) the scan must not reach the view; the
+        dialog's own Enter shortcut keeps the key, as before #548."""
+        _scanner, _field, scans, _returns = scanner_and_field
+        dialog = QDialog()
+        dialog.setModal(True)
+        button = QPushButton(dialog)
+        fired: list[int] = []
+        QShortcut(QKeySequence(Qt.Key.Key_Return), dialog).activated.connect(lambda: fired.append(1))
+        dialog.show()
+        dialog.activateWindow()
+        QTest.qWaitForWindowActive(dialog)
+        button.setFocus()
+        try:
+            QTest.keyClicks(button, "4791234567890")
+            QTest.keyClick(button, Qt.Key.Key_Return)
+        finally:
+            dialog.hide()
+            dialog.deleteLater()
+
+        assert fired == [1]
         assert scans == []

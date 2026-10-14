@@ -8,6 +8,7 @@ recomputes variance) in one transaction so re-add/scan can count up.
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import update
 
 from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.models import Product, StockCount, StockCountItem, User
@@ -59,3 +60,40 @@ class TestIncrementCount:
 
         assert db_session.get(StockCount, stock_count.id).status == DocumentStatus.VOID
         assert db_session.get(StockCountItem, item.id).counted_qty is None
+
+    def test_increment_adds_to_the_stored_count_not_a_stale_copy(self, count_item, db_session):
+        """#548: the add happens in SQL, so a scan can't overwrite a count saved
+        meanwhile (another scan, another terminal) with a stale value plus one."""
+        _sc, item = count_item
+        db_session.get(StockCountItem, item.id)  # identity map now holds counted_qty=None
+        db_session.execute(
+            update(StockCountItem)
+            .where(StockCountItem.id == item.id)
+            .values(counted_qty=Decimal("3"))
+            .execution_options(synchronize_session=False)
+        )
+
+        updated = StockCountService.increment_count(item.id, Decimal("1"))
+
+        assert updated.counted_qty == Decimal("4.000")
+        assert updated.variance_qty == Decimal("-1.000")
+        assert updated.variance_value == Decimal("-60.00")
+
+    def test_fractional_increment_stays_exact(self, count_item):
+        _sc, item = count_item
+        for _ in range(3):
+            updated = StockCountService.increment_count(item.id, Decimal("0.1"))
+
+        assert updated.counted_qty == Decimal("0.300")
+
+
+class TestAddSingleItemScope:
+    def test_service_products_are_not_stock_counted(self, count_item, db_session):
+        """add_all_products leaves services out; a scan or typed add must too (#548)."""
+        stock_count, _item = count_item
+        service = Product(barcode="STK-INC-SVC", name_en="Delivery", price=Decimal("200"), is_service=True)
+        db_session.add(service)
+        db_session.flush()
+
+        with pytest.raises(ValueError, match="Service items"):
+            StockCountService.add_single_item(stock_count.id, service.id)

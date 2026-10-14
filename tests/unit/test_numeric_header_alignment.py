@@ -79,7 +79,7 @@ class TestStockTake:
         view = StockTakeView()
         qtbot.addWidget(view)
 
-        assert _right_header_columns(view.history_table) == {3, 4}
+        assert _right_header_columns(view.history_table) == {3, 4, 5}
 
 
 class TestPriceLists:

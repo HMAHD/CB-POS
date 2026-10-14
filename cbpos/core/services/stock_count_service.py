@@ -1,9 +1,12 @@
 """Service for managing physical stock take (count → compare → adjust) workflow."""
 
 import logging
+from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
+from sqlalchemy import func, update
 from sqlalchemy.orm import joinedload
 
 from cbpos.core.constants.status import DocumentStatus, Precision
@@ -15,8 +18,44 @@ from cbpos.core.services.stock_service import StockService
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class VarianceTotals:
+    """A stock count's two value-variance figures (#644).
+
+    Attributes:
+        net: Signed sum of every line's variance value -- surpluses minus
+            shortages. +500 and -500 give 0.
+        discrepancy: Sum of the absolute variance values -- how far the
+            shelf is from the records in total. +500 and -500 give 1,000.
+            This is what ``StockCount.total_variance_value`` stores.
+    """
+
+    net: Decimal
+    discrepancy: Decimal
+
+
 class StockCountService:
     """Service for physical stock count lifecycle."""
+
+    @staticmethod
+    def variance_totals(items: Iterable[StockCountItem]) -> VarianceTotals:
+        """
+        Net variance and total discrepancy of stock count lines, at cost.
+
+        The single place both figures are computed, so every screen shows
+        the same numbers (#644). Lines not counted yet (no variance value)
+        are skipped.
+
+        Args:
+            items: Stock count lines (anything with ``variance_value``).
+
+        Returns:
+            VarianceTotals with ``net`` and ``discrepancy``, rounded to money.
+        """
+        values = [item.variance_value for item in items if item.variance_value is not None]
+        net = sum(values, Decimal("0"))
+        discrepancy = sum((abs(value) for value in values), Decimal("0"))
+        return VarianceTotals(net=net.quantize(Precision.MONEY), discrepancy=discrepancy.quantize(Precision.MONEY))
 
     @staticmethod
     def create_stock_count(user_id: int, note: str | None = None) -> StockCount:
@@ -117,7 +156,9 @@ class StockCountService:
             The created StockCountItem.
 
         Raises:
-            ValueError: If product already in count or count not in DRAFT.
+            ValueError: If product already in count, count not in DRAFT, or
+                the product is a service (services carry no stock, so
+                ``add_all_products`` leaves them out too).
         """
         db = Database()
         with db.get_session() as session:
@@ -134,6 +175,8 @@ class StockCountService:
             product = session.get(Product, product_id)
             if not product:
                 raise ValueError("Product not found.")
+            if product.is_service:
+                raise ValueError("Service items are not stock-counted.")
 
             item = StockCountItem(
                 stock_count_id=stock_count_id,
@@ -183,7 +226,10 @@ class StockCountService:
         Add ``by`` to an item's counted quantity (uncounted counts as 0).
 
         Used when a product already in the count is scanned or added again,
-        so it is counted up instead of rejected (#615).
+        so it is counted up instead of rejected (#615). The addition runs in
+        SQL against the stored count, so a count saved meanwhile (a quick
+        second scan, another terminal) is added to, never overwritten with
+        a stale value plus ``by`` (#548).
 
         Args:
             item_id: StockCountItem ID.
@@ -205,7 +251,14 @@ class StockCountService:
             if not stock_count or stock_count.status != DocumentStatus.DRAFT:
                 raise ValueError("Stock count not found or not in DRAFT status.")
 
-            item.counted_qty = ((item.counted_qty or Decimal("0")) + by).quantize(Precision.QUANTITY)
+            session.execute(
+                update(StockCountItem)
+                .where(StockCountItem.id == item_id)
+                .values(counted_qty=func.coalesce(StockCountItem.counted_qty, 0) + by)
+                .execution_options(synchronize_session=False)
+            )
+            session.refresh(item)
+            item.counted_qty = Decimal(item.counted_qty).quantize(Precision.QUANTITY)
             item.variance_qty = (item.counted_qty - item.expected_qty).quantize(Precision.QUANTITY)
 
             product = session.get(Product, item.product_id)
@@ -279,16 +332,14 @@ class StockCountService:
                 raise ValueError(f"{len(uncounted)} item(s) have not been counted yet.")
 
             # Recalculate all variances
-            total_variance_value = Decimal("0.00")
             for item in stock_count.items:
                 item.variance_qty = (item.counted_qty - item.expected_qty).quantize(Precision.QUANTITY)
                 if item.product:
                     item.variance_value = (item.variance_qty * item.product.cost).quantize(Precision.MONEY)
                 else:
                     item.variance_value = Decimal("0.00")
-                total_variance_value += abs(item.variance_value)
 
-            stock_count.total_variance_value = total_variance_value.quantize(Precision.MONEY)
+            stock_count.total_variance_value = StockCountService.variance_totals(stock_count.items).discrepancy
             stock_count.status = DocumentStatus.COUNTED
 
             session.commit()
@@ -321,8 +372,6 @@ class StockCountService:
             if stock_count.status != DocumentStatus.COUNTED:
                 raise ValueError("Stock count must be in COUNTED status to approve.")
 
-            total_variance_value = Decimal("0.00")
-
             for item in stock_count.items:
                 if item.variance_qty and item.variance_qty != 0:
                     StockService.record_movement(
@@ -333,9 +382,8 @@ class StockCountService:
                         document_id=stock_count.id,
                         session=session,
                     )
-                    total_variance_value += abs(item.variance_value or Decimal("0.00"))
 
-            stock_count.total_variance_value = total_variance_value.quantize(Precision.MONEY)
+            stock_count.total_variance_value = StockCountService.variance_totals(stock_count.items).discrepancy
             stock_count.status = DocumentStatus.COMPLETED
 
             session.commit()

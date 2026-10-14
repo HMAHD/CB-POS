@@ -287,7 +287,7 @@ def test_stock_take_history_context_menu_with_translated_draft(db_session, monke
         view.refresh_history()
 
         # Table displays translated status "කටු සටහන"
-        status_item = view.history_table.item(0, 5)
+        status_item = view.history_table.item(0, view.HIST_COL_STATUS)
         assert status_item.text() == "කටු සටහන"
         assert status_item.data(Qt.ItemDataRole.UserRole) == DocumentStatus.DRAFT
 

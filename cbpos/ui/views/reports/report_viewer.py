@@ -29,7 +29,7 @@ from cbpos.ui.views.reports.pandas_model import PandasModel
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
-from cbpos.ui.workers import ExportWorker
+from cbpos.ui.workers import ExportWorker, ReportEmailWorker, ReportPrintWorker
 
 
 class ReportWorker(QThread):
@@ -493,123 +493,92 @@ class ReportViewer(QWidget):
         self.btn_print.setEnabled(enabled)
         self.btn_email.setEnabled(enabled)
 
-    def print_report(self):
-        """Render the full report DataFrame as an HTML table and send it to the system print dialog."""
-        from PyQt6.QtGui import QTextDocument
+    def print_report(self) -> None:
+        """Ask for a printer, then lay out and print the full report off the UI thread (#643)."""
         from PyQt6.QtPrintSupport import QPrintDialog, QPrinter
 
         df = self._full_df
-        if df.empty:
+        if df.empty or self.current_report is None:
             return
 
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
         dialog = QPrintDialog(printer, self)
+        if dialog.exec() != QPrintDialog.DialogCode.Accepted:
+            return
 
-        if dialog.exec() == QPrintDialog.DialogCode.Accepted:
-            import textwrap
+        self._set_export_buttons_enabled(False)
+        self._overlay.show_loading(_t("report_viewer.printing"))
 
-            html_content = textwrap.dedent(
-                """
-            <html>
-            <head>
-                <style>
-                    body {{ font-family: Helvetica, sans-serif; }}
-                    h1 {{ text-align: center; color: #001F3F; }}
-                    table {{
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin-top: 20px;
-                    }}
-                    th {{
-                        background-color: #00BCEB;
-                        color: white;
-                        padding: 8px;
-                        text-align: left;
-                    }}
-                    td {{
-                        padding: 8px;
-                        border-bottom: 1px solid #ddd;
-                    }}
-                    tr:nth-child(even) {{
-                        background-color: #f2f2f2;
-                    }}
-                </style>
-            </head>
-            <body>
-                <h1>{print_title}</h1>
-                <p style="text-align: center;">
-                    {generated_on_label} {generated_on}
-                </p>
-                {table_html}
-            </body>
-            </html>
-            """
-            ).format(
-                print_title=_t("report_viewer.print_title", name=self.current_report.name),
-                generated_on_label=_t("report_viewer.generated_on"),
-                generated_on=pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
-                table_html=df.to_html(classes="table", index=False, border=0),
-            )
+        self._print_report_name = self.current_report.name
+        self._print_worker = ReportPrintWorker(
+            printer,
+            df,
+            _t("report_viewer.print_title", name=self.current_report.name),
+            _t("report_viewer.generated_on"),
+        )
+        self._print_worker.result.connect(self._on_print_finished)
+        self._print_worker.error.connect(self._on_print_error)
+        self._print_worker.start()
 
-            document = QTextDocument()
-            document.setHtml(html_content)
-            document.print(printer)
+    def _on_print_finished(self) -> None:
+        self._overlay.hide_loading()
+        self._set_export_buttons_enabled(True)
+        QMessageBox.information(self, _t("common.print"), _t("report_viewer.print_sent", name=self._print_report_name))
 
-    def email_report(self):
-        """Prompt for a recipient, export the report to a temporary PDF, and email it as an attachment."""
-        import os
-        import tempfile
+    def _on_print_error(self, error_msg: str) -> None:
+        self._overlay.hide_loading()
+        self._set_export_buttons_enabled(True)
+        QMessageBox.critical(self, _t("common.error"), _t("report_viewer.print_failed", error=error_msg))
 
+    def email_report(self) -> None:
+        """Ask for a recipient, then export the report to PDF and email it off the UI thread (#643)."""
         from PyQt6.QtWidgets import QInputDialog
 
         from cbpos.core.services.config_service import ConfigService
-        from cbpos.core.services.email_service import EmailService
 
         df = self._full_df
-        if df.empty:
+        if df.empty or self.current_report is None:
             return
 
-        config = ConfigService.get_all()
-        default_email = config.get("admin_email", "")
-
+        default_email = ConfigService.get_all().get("admin_email", "")
         email, ok = QInputDialog.getText(
             self,
             _t("report_viewer.email_title"),
             _t("report_viewer.email_prompt"),
             text=default_email,
         )
+        email = email.strip()
+        if not ok or not email:
+            return
 
-        if ok and email:
-            try:
-                temp_dir = tempfile.gettempdir()
-                filename = f"{self.current_report.name.replace(' ', '_')}.pdf"
-                filepath = os.path.join(temp_dir, filename)
+        report_name = self.current_report.name
+        self._set_export_buttons_enabled(False)
+        self._overlay.show_loading(_t("report_viewer.email_sending"))
 
-                self.export_service.export_to_pdf(df, filepath, self.current_report.name)
+        self._email_worker = ReportEmailWorker(
+            self.export_service,
+            df,
+            report_name,
+            email,
+            f"{_t('report_viewer.email_subject_prefix')}: {report_name}",
+            _t("report_viewer.email_body", report_name=report_name),
+        )
+        self._email_worker.result.connect(self._on_email_sent)
+        self._email_worker.error.connect(self._on_email_error)
+        self._email_worker.start()
 
-                body = _t("report_viewer.email_body", report_name=self.current_report.name)
+    def _on_email_sent(self, recipient: str) -> None:
+        self._overlay.hide_loading()
+        self._set_export_buttons_enabled(True)
+        QMessageBox.information(self, _t("common.email"), _t("report_viewer.email_sent", email=recipient))
 
-                self._email_thread = EmailService.send_email(
-                    email,
-                    f"{_t('report_viewer.email_subject_prefix')}: {self.current_report.name}",
-                    body,
-                    filepath,
-                    callback=lambda success, msg: (
-                        QMessageBox.information(self, _t("common.email"), msg)
-                        if success
-                        else QMessageBox.warning(self, _t("report_viewer.email_failed"), msg)
-                    ),
-                )
-
-                QMessageBox.information(
-                    self,
-                    _t("common.email"),
-                    _t("report_viewer.email_sending"),
-                )
-
-            except Exception as e:
-                QMessageBox.critical(
-                    self,
-                    _t("common.error"),
-                    _t("report_viewer.email_prepare_failed", error=str(e)),
-                )
+    def _on_email_error(self, stage: str, detail: str) -> None:
+        self._overlay.hide_loading()
+        self._set_export_buttons_enabled(True)
+        if stage == ReportEmailWorker.STAGE_NOT_CONFIGURED:
+            message = _t("report_viewer.email_not_configured")
+        elif stage == ReportEmailWorker.STAGE_EXPORT:
+            message = _t("report_viewer.email_prepare_failed", error=detail)
+        else:
+            message = _t("report_viewer.email_send_failed", error=detail)
+        QMessageBox.warning(self, _t("report_viewer.email_failed"), message)

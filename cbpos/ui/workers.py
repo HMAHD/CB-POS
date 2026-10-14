@@ -6,10 +6,20 @@ and report exports. All workers emit signals on completion or error
 so the UI can react safely from the main thread.
 """
 
+import html
 import logging
+import os
+import re
+import shutil
+import tempfile
+from typing import TYPE_CHECKING
 
 import pandas as pd
 from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtGui import QTextDocument
+
+if TYPE_CHECKING:
+    from PyQt6.QtPrintSupport import QPrinter
 
 logger = logging.getLogger(__name__)
 
@@ -342,3 +352,164 @@ class AutocompleteLoadWorker(QThread):
         except Exception as e:
             logger.error("Autocomplete load worker failed: %s", e)
             self.result.emit([])
+
+
+_REPORT_PRINT_HTML = """
+<html>
+<head>
+    <style>
+        body {{ font-family: Helvetica, sans-serif; }}
+        h1 {{ text-align: center; color: #001F3F; }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }}
+        th {{
+            background-color: #00BCEB;
+            color: white;
+            padding: 8px;
+            text-align: left;
+        }}
+        td {{
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }}
+        tr:nth-child(even) {{
+            background-color: #f2f2f2;
+        }}
+    </style>
+</head>
+<body>
+    <h1>{print_title}</h1>
+    <p style="text-align: center;">
+        {generated_on_label} {generated_on}
+    </p>
+    {table_html}
+</body>
+</html>
+"""
+
+
+def report_print_html(df: pd.DataFrame, title: str, generated_on_label: str) -> str:
+    """Render a report DataFrame as the HTML page sent to the printer.
+
+    Args:
+        df: The full report data.
+        title: Heading printed at the top (already translated).
+        generated_on_label: Label before the timestamp (already translated).
+
+    Returns:
+        str: A complete HTML document.
+    """
+    return _REPORT_PRINT_HTML.format(
+        print_title=html.escape(title),
+        generated_on_label=html.escape(generated_on_label),
+        generated_on=pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
+        table_html=df.to_html(classes="table", index=False, border=0),
+    )
+
+
+class ReportPrintWorker(QThread):
+    """Lays out a report and prints it in a background thread (#643).
+
+    Building the HTML and laying out a large report froze the window when
+    it ran on the UI thread. Qt supports painting on a QPrinter from a
+    worker thread; the print dialog itself stays on the UI thread.
+
+    ``result`` fires only once the whole document went to the printer
+    without the printer reporting an error -- never on a guess.
+    """
+
+    result = pyqtSignal()
+    error = pyqtSignal(str)
+
+    def __init__(self, printer: "QPrinter", df: pd.DataFrame, title: str, generated_on_label: str) -> None:
+        """Set up the print job for a printer already chosen in the print dialog."""
+        super().__init__()
+        self.finished.connect(self.deleteLater)
+        self.printer = printer
+        self.df = df
+        self.title = title
+        self.generated_on_label = generated_on_label
+
+    def run(self) -> None:
+        """Build the HTML, print it, and emit result -- or error if anything failed."""
+        from PyQt6.QtPrintSupport import QPrinter
+
+        try:
+            document = QTextDocument()
+            document.setHtml(report_print_html(self.df, self.title, self.generated_on_label))
+            document.print(self.printer)
+            if self.printer.printerState() in (QPrinter.PrinterState.Error, QPrinter.PrinterState.Aborted):
+                raise RuntimeError(f"printer state {self.printer.printerState().name}")
+            self.result.emit()
+        except Exception as e:
+            logger.error("Report print failed: %s", e)
+            self.error.emit(str(e))
+
+
+class ReportEmailWorker(QThread):
+    """Exports a report to PDF and emails it in a background thread (#643).
+
+    The PDF export and the SMTP send both blocked the UI thread, and the
+    screen said "sending" before anything was known. ``result`` fires only
+    once the mail server accepted the message.
+    """
+
+    result = pyqtSignal(str)  # recipient
+    # (stage, detail): "export" -- the PDF failed; "not_configured" -- no
+    # SMTP settings; "send" -- the server or network refused it.
+    error = pyqtSignal(str, str)
+
+    STAGE_EXPORT = "export"
+    STAGE_NOT_CONFIGURED = "not_configured"
+    STAGE_SEND = "send"
+
+    def __init__(
+        self,
+        export_service: object,
+        df: pd.DataFrame,
+        report_name: str,
+        to_email: str,
+        subject: str,
+        body: str,
+    ) -> None:
+        """Set up the email job: the report to attach and the message to send."""
+        super().__init__()
+        self.finished.connect(self.deleteLater)
+        self.export_service = export_service
+        self.df = df
+        self.report_name = report_name
+        self.to_email = to_email
+        self.subject = subject
+        self.body = body
+
+    def run(self) -> None:
+        """Export the PDF to a private temp folder, send it, and always delete the temp copy."""
+        from cbpos.core.services.email_service import EmailNotConfiguredError, deliver_email
+
+        temp_dir = tempfile.mkdtemp(prefix="cbpos_report_")
+        try:
+            safe_name = re.sub(r"[^\w\-]+", "_", self.report_name).strip("_") or "report"
+            filepath = os.path.join(temp_dir, f"{safe_name}.pdf")
+            try:
+                self.export_service.export_to_pdf(self.df, filepath, self.report_name)
+            except Exception as e:
+                logger.error("Report email: PDF export failed: %s", e)
+                self.error.emit(self.STAGE_EXPORT, str(e))
+                return
+
+            try:
+                deliver_email(self.to_email, self.subject, self.body, filepath)
+            except EmailNotConfiguredError as e:
+                self.error.emit(self.STAGE_NOT_CONFIGURED, str(e))
+                return
+            except Exception as e:
+                logger.error("Report email: sending failed: %s", e)
+                self.error.emit(self.STAGE_SEND, str(e))
+                return
+
+            self.result.emit(self.to_email)
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)

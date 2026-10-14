@@ -11,11 +11,24 @@ from PyQt6.QtWidgets import QApplication
 
 from cbpos.config import Config
 from cbpos.infrastructure.resource_loader import ResourceLoader
-from cbpos.ui.main_window import MainWindow
+
+# MainWindow pulls in most of the app (pandas, reportlab, ...), so it is imported
+# inside main() after the splash is up (#691).
 
 # Buffer for early messages emitted before the logging system is ready.
 # Flushed to the logger by ``_flush_early_log()`` after ``setup_logging()``.
 _early_log: list[str] = []
+
+# Startup splash (#691); closed once the first real window shows.
+_splash = None
+
+
+def _close_splash() -> None:
+    """Hide the startup splash so it never covers a dialog."""
+    global _splash
+    if _splash is not None:
+        _splash.close()
+        _splash = None
 
 
 def _flush_early_log() -> None:
@@ -51,6 +64,8 @@ def _report_crash(exc_type, exc_value, exc_traceback) -> None:
     app = QApplication.instance()
     if app is not None:
         from PyQt6.QtWidgets import QMessageBox
+
+        _close_splash()
 
         QMessageBox.critical(
             None,
@@ -236,13 +251,37 @@ def main():
     Font loading MUST happen before any UI is created to prevent fallback to
     system fonts.
     """
+    if "--migrate-only" in sys.argv:  # CI smoke test of the frozen exe (#630): no GUI, no single-instance
+        ensure_data_dir()
+        sys.exit(1 if run_migrations() else 0)
+
+    # Install custom message handler to suppress Qt internal warnings
+    qInstallMessageHandler(qt_message_handler)
+
+    # Ensure high DPI scaling
+    os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
+
+    # Own taskbar identity (must precede the first window) (#692)
+    from cbpos.infrastructure.app_identity import apply_app_icon, set_windows_app_user_model_id
+
+    set_windows_app_user_model_id()
+
+    app = QApplication(sys.argv)
+    app.setApplicationName("CB POS")
+
+    # One CB POS per user: a second launch brings the running one to the
+    # front and exits here, before any slow startup work (#691).
+    from cbpos.infrastructure import single_instance
+
+    instance = single_instance.acquire()
+    if instance is None:
+        sys.exit(0)
+
+    # Window icon every window and dialog inherits (#692)
+    apply_app_icon(app)
+
     # Ensure user data directory exists and migrate legacy data if needed
     ensure_data_dir()
-
-    # Apply any pending database schema migrations
-    migration_error = run_migrations()
-    if "--migrate-only" in sys.argv:  # CI smoke test of the frozen exe (#630)
-        sys.exit(1 if migration_error else 0)
 
     # Create a named mutex so the Inno Setup installer can detect a running instance.
     # On non-Windows this is harmless — ctypes.windll doesn't exist.
@@ -261,21 +300,6 @@ def main():
     # stdout that doesn't exist on the packaged (console=False) build.
     sys.excepthook = _report_crash
 
-    # Install custom message handler to suppress Qt internal warnings
-    qInstallMessageHandler(qt_message_handler)
-
-    # Ensure high DPI scaling
-    os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
-
-    app = QApplication(sys.argv)
-    app.setApplicationName("CB POS")
-
-    # Install Global Input Manager
-    from cbpos.infrastructure.input_manager import InputManager
-
-    input_manager = InputManager()
-    app.installEventFilter(input_manager)
-
     # CRITICAL: Load fonts BEFORE any UI is created
     print("[BOOTSTRAP] Loading application resources...")
     primary_font_family = ResourceLoader.load_fonts()
@@ -286,20 +310,49 @@ def main():
     app.setFont(default_font)
     print(f"[BOOTSTRAP] Application font set to: {primary_font_family} with fallbacks {default_font.families()}")
 
-    # Initialize Theme (Load from settings or default to Dark)
+    # Set application language from saved config (the splash text needs it)
     from cbpos.core.services.config_service import ConfigService
+    from cbpos.i18n import register_language_callback, set_language
+
+    saved_language = ConfigService.get("language") or "en"
+    set_language(saved_language)
+
+    # Show loading feedback right away; the rest of startup can take seconds (#691).
+    global _splash
+    from cbpos.ui.startup_splash import create_startup_splash
+
+    _splash = create_startup_splash()
+    _splash.show()
+    app.processEvents()
+
+    # Bring the right window forward when another launch asks us to (#691).
+    _front: dict = {"window": None}
+
+    def _activate_existing() -> None:
+        target = _front["window"] or app.activeModalWidget()
+        if target is None and _splash is not None and _splash.isVisible():
+            target = _splash
+        single_instance.bring_to_front(target)
+
+    instance.activation_requested.connect(_activate_existing)
+
+    # Apply any pending database schema migrations
+    migration_error = run_migrations()
+    _flush_early_log()
+
+    # Install Global Input Manager
+    from cbpos.infrastructure.input_manager import InputManager
+
+    input_manager = InputManager()
+    app.installEventFilter(input_manager)
+
+    # Initialize Theme (Load from settings or default to Dark)
     from cbpos.core.services.theme_service import ThemeService
 
     # Inject stylesheet handler so ThemeService doesn't need PyQt imports
     ThemeService.set_stylesheet_handler(lambda css: app.setStyleSheet(css))
     saved_theme = ConfigService.get("theme")  # Returns "Dark" by default
     ThemeService.apply_theme(saved_theme)
-
-    # Set application language from saved config
-    from cbpos.i18n import register_language_callback, set_language
-
-    saved_language = ConfigService.get("language") or "en"
-    set_language(saved_language)
 
     # Re-apply theme on language changes so font-family prioritizes the active script (#589)
     register_language_callback(lambda: ThemeService.apply_theme(ThemeService.current_theme))
@@ -310,6 +363,7 @@ def main():
 
         from cbpos.i18n import _t
 
+        _close_splash()
         QMessageBox.critical(
             None,
             _t("main_window.migration_failed_title"),
@@ -329,6 +383,7 @@ def main():
 
         print("[BOOTSTRAP] First run detected - launching setup wizard...")
         wizard = SetupWizard()
+        _close_splash()
         if not wizard.exec():
             print("[BOOTSTRAP] Setup wizard cancelled. Exiting.")
             sys.exit(0)
@@ -341,6 +396,7 @@ def main():
 
         print("[BOOTSTRAP] No database found - showing database setup dialog...")
         db_dialog = DatabaseSetupDialog()
+        _close_splash()
         if not db_dialog.exec():
             print("[BOOTSTRAP] Database setup cancelled. Exiting.")
             sys.exit(0)
@@ -380,8 +436,14 @@ def main():
     set_override_handler(_manager_override)
 
     # Launch main window
+    from cbpos.ui.main_window import MainWindow
+
     window = MainWindow()
+    _front["window"] = window
     window.showMaximized()  # Industrial apps usually run full screen
+    if _splash is not None:
+        _splash.finish(window)
+        _splash = None
 
     # --- Multi-Terminal LAN Sync ---
     terminal_mode = ConfigService.get("terminal_mode") or "standalone"

@@ -94,6 +94,9 @@
     "auto_backup_skipped_title": "Automatic Backup Skipped",
     "auto_backup_skipped_msg": "No backup was made because you haven't set a backup password yet.\n\nSet one on the Data Safety page so your automatic backups can be restored."
   },
+  "startup": {
+    "splash_loading": "Starting CB POS..."
+  },
   "sync_status": {
     "tooltip": "Click for sync details",
     "disabled": "Sync disabled — see Settings",

@@ -75,7 +75,9 @@ def _mark_unsynced(obj: Any) -> None:
     if obj is None or not getattr(obj, "synced", False) or _synced_set_in_this_flush(obj):
         return
     obj.synced = False
-    logger.debug("Sync: %s[%s] changed after it was pushed; queued to re-send", type(obj).__name__, obj.id)
+    logger.debug(
+        "Sync: %s%s changed after it was pushed; queued to re-send", type(obj).__name__, sa_inspect(obj).identity
+    )
 
 
 def _parent_of(session: Session, child: Any, relationship: str) -> Any | None:
@@ -110,4 +112,6 @@ def flag_changed_rows_for_resend(session: Session, flush_context: Any, instances
     for obj in session.deleted:
         if _CHILD_PARENT.get(getattr(obj, "__tablename__", "")) or _has_sync_flag(obj):
             # The Main PC never deletes a pushed row; it keeps its copy.
-            logger.debug("Sync: deleted %s[%s] is not propagated to the Main PC", type(obj).__name__, obj.id)
+            logger.debug(
+                "Sync: deleted %s%s is not propagated to the Main PC", type(obj).__name__, sa_inspect(obj).identity
+            )

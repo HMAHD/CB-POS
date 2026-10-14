@@ -183,3 +183,13 @@ def test_reprint_of_reloaded_sale_shows_cashier_a_and_plain_quantity(config_stor
             assert any("reprint_cashier_a" in line for line in lines)
             assert not any("reprint_cashier_b" in line for line in lines)
             assert any(line.startswith("   2 x ") for line in lines)
+
+
+@pytest.mark.parametrize("build", ["build_void_receipt", "build_refund_receipt"])
+def test_void_and_refund_receipts_format_quantity_by_unit(config_store, logged_in_as_b, build):
+    sale = _sale(qty="2.000", unit=Unit(name="pcs", decimal_places=0))
+
+    lines = _texts(getattr(ReceiptBuilder, build)(sale))
+
+    assert any(line.startswith("2 x ") for line in lines)
+    assert not any("2.000 x" in line for line in lines)

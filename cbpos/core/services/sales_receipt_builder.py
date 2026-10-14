@@ -5,7 +5,7 @@ from typing import Any
 
 from cbpos.core.models import Sale, SaleItem
 from cbpos.core.services.base_receipt_builder import BaseReceiptBuilder
-from cbpos.core.utils.formatters import format_currency, format_quantity, quantity_decimals
+from cbpos.core.utils.formatters import format_currency, format_quantity
 
 
 class ItemDisplay:
@@ -239,28 +239,6 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
         cls._append_cut(commands, config_override)
 
         return commands
-
-    @staticmethod
-    def _item_qty_decimals(item: Any) -> int:
-        """Decimal places for *item*'s quantity: its unit's, or 0 when it has no unit.
-
-        0 (not the 3-decimal default for an unknown unit) so a plain ``2``
-        stays ``2``; ``format_quantity`` still widens to 3 decimals when the
-        value is fractional, so nothing is hidden.
-        """
-        product = getattr(item, "product", None)
-        unit = getattr(product, "unit", None) if product is not None else None
-        return quantity_decimals(unit) if unit is not None else 0
-
-    @classmethod
-    def _format_item_qty(cls, item: Any) -> str:
-        """Quantity as printed on the receipt, the same for a fresh sale and a reloaded one (#681).
-
-        A sale reloaded from the database carries ``2.000`` (the column's
-        scale) where the cart had ``2``; formatting by unit makes the
-        original print and every reprint agree.
-        """
-        return format_quantity(item.qty, cls._item_qty_decimals(item))
 
     @classmethod
     def _get_doc_title(cls, sale: Sale) -> str:

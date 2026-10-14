@@ -115,6 +115,7 @@ class DatabaseSetupService:
                 "Purchase",
                 "Stock Take",
                 "Cash",
+                "Screens",
             ]
             for grp in manager_groups:
                 for code in groups.get(grp, []):

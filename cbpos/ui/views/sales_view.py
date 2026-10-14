@@ -665,6 +665,15 @@ class SalesView(QWidget):
         # Use product_service with current search mode
         products = self.product_service.search_products(query, mode=self.current_search_mode)
 
+        # ALL mode matches barcodes with LIKE, so a full scan can also hit a
+        # longer barcode that contains it. "Auto-Select on Barcode Match"
+        # (Settings -> System) picks the exact barcode instead of opening
+        # the multi-result search (#641).
+        if len(products) > 1 and ConfigService.get("auto_select_barcode_match"):
+            exact = [p for p in products if p.barcode == query]
+            if len(exact) == 1:
+                products = exact
+
         if len(products) == 1:
             SoundService.play("scan_success")
             dialog = QuantityDialog(products[0], self)

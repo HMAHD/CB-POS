@@ -13,7 +13,14 @@ logger = logging.getLogger(__name__)
 
 
 def audit_value(value: Any) -> Any:
-    """JSON-safe form of a value for an audit detail: Decimal -> "95.00", datetime -> "2026-10-14T09:00"."""
+    """JSON-safe form of a value for an audit detail: Decimal -> "95.00", datetime -> "2026-10-14T09:00".
+
+    Args:
+        value: Any field value being audited.
+
+    Returns:
+        A string for Decimal, datetime and date values; anything else unchanged.
+    """
     if isinstance(value, Decimal):
         return str(value)
     if isinstance(value, datetime):
@@ -52,6 +59,13 @@ def snapshot_changes(fields: dict[str, Any], deleted: bool = False) -> dict[str,
 
     Unlike :func:`diff_changes`, None values are kept: for some fields None has a meaning
     (a promotion with no days runs every day).
+
+    Args:
+        fields: Field values of the created or deleted record.
+        deleted: True when the record was deleted (values go in "old"), False when created.
+
+    Returns:
+        dict: ``{field: {"old": x, "new": y}}`` with JSON-safe values for every field.
     """
     return {
         key: {"old": audit_value(value), "new": None} if deleted else {"old": None, "new": audit_value(value)}

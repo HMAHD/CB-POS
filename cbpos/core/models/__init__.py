@@ -853,3 +853,9 @@ class SyncIdMap(Base):
     local_id: Mapped[int] = mapped_column(Integer, nullable=False)
     server_id: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+
+# Registers the session hook that re-sends a till row to the Main PC when it
+# changes after its first push (#677). Imported here so it is active wherever
+# the models are.
+from cbpos.core.services import sync_change_tracking  # noqa: E402, F401

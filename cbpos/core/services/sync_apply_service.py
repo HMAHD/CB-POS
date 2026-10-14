@@ -26,11 +26,14 @@ Ownership of the tables a push touches:
 """
 
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 from sqlalchemy import inspect as sa_inspect
 
 from cbpos.core.models import Document, Product, SyncIdMap
+from cbpos.core.services.sync_change_tracking import SKIP_CHANGE_TRACKING
 from cbpos.core.services.sync_protocol import TRANSACTION_TABLES, coerce_columns, get_model_for_table
 
 logger = logging.getLogger(__name__)
@@ -148,6 +151,10 @@ class SyncApplyService:
         Raises:
             PushApplyError: A row can't be applied without risking wrong data.
         """
+        with self._applying():
+            return self._apply_batch(payload)
+
+    def _apply_batch(self, payload: dict[str, Any]) -> tuple[int, list[str]]:
         errors: list[str] = []
         for table_name, records in payload.items():
             if table_name not in TRANSACTION_TABLES:
@@ -165,7 +172,7 @@ class SyncApplyService:
             # points at another row of the same table (a refund at its
             # original sale) comes after the row it points at.
             for record in sorted(records, key=lambda r: (r.get("id") is None, r.get("id") or 0)):
-                self.apply_record(table_name, dict(record))
+                self._apply_record(table_name, dict(record))
                 applied += 1
         return applied, errors
 
@@ -179,6 +186,24 @@ class SyncApplyService:
         Raises:
             PushApplyError: The row is malformed or can't be placed safely.
         """
+        with self._applying():
+            self._apply_record(table_name, record)
+
+    @contextmanager
+    def _applying(self) -> Iterator[None]:
+        """Rows stored here are the Main PC's copies, not rows to push again (#677)."""
+        previous = self._session.info.get(SKIP_CHANGE_TRACKING)
+        self._session.info[SKIP_CHANGE_TRACKING] = True
+        try:
+            yield
+            self._session.flush()  # while the flag is still set
+        finally:
+            if previous is None:
+                self._session.info.pop(SKIP_CHANGE_TRACKING, None)
+            else:
+                self._session.info[SKIP_CHANGE_TRACKING] = previous
+
+    def _apply_record(self, table_name: str, record: dict[str, Any]) -> None:
         model_class = get_model_for_table(table_name)
         if model_class is None or table_name not in TRANSACTION_TABLES:
             raise PushApplyError(f"{table_name}: not a pushable table")

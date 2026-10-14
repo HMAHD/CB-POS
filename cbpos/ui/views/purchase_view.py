@@ -37,7 +37,7 @@ from cbpos.core.services.purchase_order_service import PurchaseOrderService
 from cbpos.core.services.purchase_service import PurchaseService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.supplier_service import SupplierService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.formatters import format_currency, format_quantity
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.constants import BAR_GROUP_SPACING, BAR_ITEM_SPACING, BAR_MARGIN_V
 from cbpos.ui.resources.icons import Icons
@@ -45,6 +45,33 @@ from cbpos.ui.resources.status_colors import DANGER, SUCCESS, WARNING, status_co
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 
 logger = logging.getLogger(__name__)
+
+_DISCREPANCY_LINE_KEYS = {
+    "over": "purchase.discrepancy_line",
+    "under": "purchase.discrepancy_line",
+    "not_on_order": "purchase.discrepancy_line_not_on_order",
+    "not_received": "purchase.discrepancy_line_not_received",
+}
+
+
+def format_discrepancy_line(discrepancy: dict) -> str:
+    """Render one PO-vs-GRN discrepancy as a translated line for the confirmation.
+
+    Args:
+        discrepancy: An entry from ``PurchaseOrderService.check_receipt_discrepancies``.
+
+    Returns:
+        The line for its ``kind``, quantities shown in the product's unit
+        (``20`` for pieces, ``1.250`` for kg).
+    """
+    places = discrepancy.get("decimal_places")
+    key = _DISCREPANCY_LINE_KEYS.get(discrepancy.get("kind", ""), "purchase.discrepancy_line")
+    return _t(
+        key,
+        product=discrepancy["product_name"],
+        outstanding=format_quantity(discrepancy["outstanding"], places),
+        received=format_quantity(discrepancy["received"], places),
+    )
 
 
 class SupplierTableModel(QAbstractTableModel):
@@ -1015,21 +1042,13 @@ class PurchaseView(QWidget):
 
                 items_data.append({"product_id": prod_id, "qty": qty, "cost": cost})
 
-            # 2. Flag PO-vs-received discrepancies before committing anything (#486)
+            # 2. Flag PO-vs-received discrepancies before committing anything (#486, #719)
             if self.current_purchase_order_id:
                 discrepancies = PurchaseOrderService.check_receipt_discrepancies(
                     self.current_purchase_order_id, items_data
                 )
                 if discrepancies:
-                    details = "\n".join(
-                        _t(
-                            "purchase.discrepancy_line",
-                            product=d["product_name"],
-                            outstanding=d["outstanding"],
-                            received=d["received"],
-                        )
-                        for d in discrepancies
-                    )
+                    details = "\n".join(format_discrepancy_line(d) for d in discrepancies)
                     reply = QMessageBox.question(
                         self,
                         _t("purchase.discrepancy_title"),

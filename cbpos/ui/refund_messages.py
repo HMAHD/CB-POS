@@ -74,6 +74,34 @@ def refund_done_text(doc_number: str, breakdown: RefundBreakdown) -> str:
     return "\n\n".join([_t("refund_split.done", doc_number=doc_number), "\n".join(lines)]).strip()
 
 
+def refund_confirm_html(
+    doc_number: str, breakdown: RefundBreakdown, *, question: str, receipt_label: str, warning: str
+) -> str:
+    """Rich-text confirmation for screens that show the refund as a bold question with a warning.
+
+    The receipt number and the split are escaped; the screen's own translated
+    ``question``, ``receipt_label`` and ``warning`` are used as given.
+
+    Args:
+        doc_number: Receipt number of the sale being refunded.
+        breakdown: Result of ``TransactionService.refund_breakdown``.
+        question: Bold heading, e.g. "Refund Transaction?".
+        receipt_label: Label for the receipt number line.
+        warning: Text after the red "Warning:" at the end.
+
+    Returns:
+        HTML for a rich-text QMessageBox.
+    """
+    return (
+        f"<b>{question}</b><br><br>"
+        f"{receipt_label}: {html.escape(doc_number)}<br>"
+        f"{_t('common.amount')}: {format_currency(breakdown.total)}<br><br>"
+        f"{as_html(chr(10).join(refund_split_lines(breakdown)))}<br><br>"
+        f"<b style='color: #FF4136'>{_t('common.warning')}:</b> "
+        f"{warning}"
+    )
+
+
 def as_html(text: str) -> str:
     """Escape plain text for a rich-text QMessageBox, keeping line breaks."""
     return html.escape(text).replace("\n", "<br>")

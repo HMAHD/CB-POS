@@ -692,7 +692,8 @@ class CustomerLedgerEntry(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), index=True)
-    entry_type: Mapped[str] = mapped_column(String(20), nullable=False)  # SALE, PAYMENT, ADJUSTMENT
+    # SALE, PAYMENT, ADJUSTMENT, VOID / REFUND (credit given back by a void or refund, #715)
+    entry_type: Mapped[str] = mapped_column(String(20), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)  # positive=debt, negative=payment
     balance_after: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)  # Running balance
     reference_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # sale_id or payment_id

@@ -414,6 +414,12 @@ class TransactionService:
                             session=session,
                         )
 
+                # Give back any credit this sale put on the customer's book,
+                # in this same transaction (#715).
+                CustomerCreditService.reverse_credit_sale_in_session(
+                    session, sale, "VOID", user_id, reference_doc=sale.document_number
+                )
+
                 logger.info("VOID Sale %s by User %s: %s", sale.document_number, user_id, reason)
 
                 log = AuditLog(
@@ -549,7 +555,13 @@ class TransactionService:
                             session=session,
                         )
 
-                # 5. Create refund payment record
+                # 5. Give back any credit the original sale put on the
+                # customer's book, in this same transaction (#715).
+                CustomerCreditService.reverse_credit_sale_in_session(
+                    session, original_sale, "REFUND", user_id, reference_doc=refund_receipt_no
+                )
+
+                # 6. Create refund payment record
                 refund_payment = SalePayment(
                     sale_id=refund_sale.id,
                     payment_method="REFUND",
@@ -575,7 +587,7 @@ class TransactionService:
                 )
                 session.add(log)
 
-                # 6. Build the refund voucher while items/products are loaded;
+                # 7. Build the refund voucher while items/products are loaded;
                 # it is queued only after the commit below succeeds.
                 refund_commands = TransactionService._build_refund_receipt(session, original_sale, refund_sale)
 

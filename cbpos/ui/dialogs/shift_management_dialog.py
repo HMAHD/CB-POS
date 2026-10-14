@@ -1,7 +1,9 @@
 """One place for everything about the cashier's open shift (#605)."""
 
+import contextlib
 import logging
 from decimal import Decimal
+from typing import Any
 
 from PyQt6.QtWidgets import (
     QDialog,
@@ -15,9 +17,11 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.constants.permissions import Permissions
+from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.shift_service import ShiftService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
+from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.dialogs.cash_movement_dialog import CashMovementDialog
 from cbpos.ui.dialogs.shift_closing_dialog import ShiftClosingDialog
 from cbpos.ui.resources.icons import Icons
@@ -67,6 +71,7 @@ class ShiftManagementDialog(QDialog):
         self.user_id = user_id
         self.shift_ended = False
         self.value_labels: dict[str, QLabel] = {}
+        self._summary: dict[str, Any] = {}
 
         self._init_ui()
         self.retranslate_ui()
@@ -127,6 +132,14 @@ class ShiftManagementDialog(QDialog):
         cash_row.addWidget(self.btn_cash_out)
         layout.addLayout(cash_row)
 
+        # Print X-Read -- the figures above on paper, shift stays open (#682)
+        self.btn_print_x_read = QPushButton()
+        self.btn_print_x_read.setProperty("class", "secondary")
+        self.btn_print_x_read.setIcon(Icons.get("fa5s.print", "#00BCEB"))
+        self.btn_print_x_read.setMinimumHeight(44)
+        self.btn_print_x_read.clicked.connect(self._print_x_read)
+        layout.addWidget(self.btn_print_x_read)
+
         layout.addStretch()
 
         # End Shift sits apart from Close so it isn't hit by accident
@@ -157,12 +170,14 @@ class ShiftManagementDialog(QDialog):
             self._row_labels[key].setText(_t(text_key))
         self.btn_cash_in.setText(_t("shift_management.cash_in"))
         self.btn_cash_out.setText(_t("shift_management.cash_out"))
+        self.btn_print_x_read.setText(_t("shift_management.print_x_read"))
         self.btn_end_shift.setText(_t("shift_management.end_shift"))
         self.btn_close.setText(_t("common.close"))
 
     def refresh(self) -> None:
         """Reload the X-read figures from ``ShiftService``."""
         summary = ShiftService().get_shift_summary(self.shift_id)
+        self._summary = summary
         for key, _ in _MONEY_ROWS:
             self.value_labels[key].setText(format_currency(summary.get(key) or Decimal(0)))
         for key, _ in _COUNT_ROWS:
@@ -173,6 +188,36 @@ class ShiftManagementDialog(QDialog):
             if start
             else ""
         )
+
+    def _print_x_read(self) -> None:
+        """Print the current figures as an X-Read; report the printer's real outcome."""
+        worker = PrintWorker.instance()
+        self._disconnect_print_signals(worker)
+        worker.job_completed.connect(self._on_x_read_printed)
+        worker.error_occurred.connect(self._on_x_read_error)
+        self.btn_print_x_read.setEnabled(False)
+        try:
+            PrinterService.print_shift_report(self._summary, x_read=True)
+        except Exception as e:
+            logger.error("X-Read could not be built: %s", e)
+            self._on_x_read_error(str(e))
+
+    def _disconnect_print_signals(self, worker: PrintWorker) -> None:
+        with contextlib.suppress(TypeError):
+            worker.job_completed.disconnect(self._on_x_read_printed)
+        with contextlib.suppress(TypeError):
+            worker.error_occurred.disconnect(self._on_x_read_error)
+
+    def _on_x_read_printed(self) -> None:
+        self._disconnect_print_signals(PrintWorker.instance())
+        self.btn_print_x_read.setEnabled(True)
+        QMessageBox.information(self, _t("common.success"), _t("shift_management.x_read_printed"))
+
+    def _on_x_read_error(self, message: str) -> None:
+        self._disconnect_print_signals(PrintWorker.instance())
+        self.btn_print_x_read.setEnabled(True)
+        logger.error("X-Read print failed: %s", message)
+        QMessageBox.warning(self, _t("common.warning"), _t("shift_management.x_read_failed", error=message))
 
     def _on_cash_in(self) -> None:
         self._record_movement("IN")

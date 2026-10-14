@@ -91,7 +91,9 @@ class VoidReceiptBuilder(BaseReceiptBuilder):
         # Items (for reference)
         for item in sale.items:
             product_name = item.product.name_en if hasattr(item, "product") and item.product else "Unknown"
-            line = f"{item.qty} x {format_currency(item.unit_price)} = {format_currency(item.subtotal)}"
+            line = (
+                f"{cls._format_item_qty(item)} x {format_currency(item.unit_price)} = {format_currency(item.subtotal)}"
+            )
             commands.append({"type": "text", "val": product_name, "align": "left"})
             commands.append({"type": "text", "val": line, "align": "right"})
 

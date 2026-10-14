@@ -1862,7 +1862,26 @@
     "sscl_reversed": "{sscl} Reversed:",
     "vat_refund": "{vat} Refund:",
     "sscl_refund": "{sscl} Refund:",
-    "refund_total": "Refund {total_label}: {amount}"
+    "refund_total": "Refund {total_label}: {amount}",
+    "z_report_title": "Z-REPORT (END OF SHIFT)",
+    "x_read_title": "X-READ (SHIFT SO FAR)",
+    "shift_id": "Shift No.",
+    "shift_start": "Started",
+    "shift_end": "Ended",
+    "sales_by_method": "SALES BY PAYMENT",
+    "cash_control": "CASH DRAWER",
+    "opening_float": "Starting Cash",
+    "cash_sales": "Cash Sales",
+    "cash_in": "Cash In",
+    "cash_out": "Cash Out",
+    "expected_cash": "Expected Cash",
+    "counted_cash": "Counted Cash",
+    "variance": "Variance",
+    "audit": "SUMMARY",
+    "txn_count": "Transactions",
+    "void_count": "Voids",
+    "void_value": "Void Value",
+    "end_of_report": "*** END OF REPORT ***"
   },
   "cash_movement": {
     "record_title_out": "Take money out of the drawer",
@@ -2221,7 +2240,7 @@
     "reason_placeholder": "Enter reason for discrepancy...",
     "reason_required": "Please provide a reason for the variance.",
     "close_and_print": "Close Shift && Print",
-    "closed_success": "Shift closed and Z-Report generated.",
+    "closed_success": "Shift closed. Z-Report printed.",
     "close_failed": "Failed to close shift: {error}",
     "backup": "Backup",
     "backup_prompt": "Would you like to create a backup of the database?",
@@ -2230,7 +2249,12 @@
     "backup_complete": "Backup Complete",
     "backup_saved": "Backup saved to:\n{path}\n\nIt's locked with your backup password.",
     "backup_failed": "Backup Failed",
-    "backup_error": "Backup failed: {error}"
+    "backup_error": "Backup failed: {error}",
+    "printing_z_report": "Printing Z-Report...",
+    "z_report_print_title": "Z-Report Not Printed",
+    "z_report_print_failed": "The shift is closed, but the Z-Report didn't print.\n\n{error}",
+    "z_report_retry": "Try Again",
+    "z_report_skip": "Continue Without Printing"
   },
   "start_shift": {
     "title": "Start Shift",
@@ -2624,6 +2648,9 @@
     "cash_in": "Cash In",
     "cash_out": "Cash Out",
     "end_shift": "End Shift",
-    "movement_failed": "Couldn't record that: {error}"
+    "movement_failed": "Couldn't record that: {error}",
+    "print_x_read": "Print X-Read",
+    "x_read_printed": "X-Read printed.",
+    "x_read_failed": "The X-Read didn't print.\n\n{error}"
   }
 }

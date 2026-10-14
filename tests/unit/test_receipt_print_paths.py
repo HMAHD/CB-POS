@@ -384,8 +384,11 @@ class TestPrintButtonsUseNewBuilder:
 
 
 def test_old_receipt_builder_is_gone():
-    """One source of truth: the old text/image receipt builder was deleted."""
-    from cbpos.core.services.receipt_service import ReceiptService
+    """One source of truth: the old text/image receipt builder was deleted.
 
-    assert not hasattr(ReceiptService, "build_receipt_text")
-    assert not hasattr(ReceiptService, "build_receipt_image")
+    Its last piece, the text Z-Report, moved to ShiftReportBuilder (#682),
+    so the whole ReceiptService module is gone.
+    """
+    import importlib.util
+
+    assert importlib.util.find_spec("cbpos.core.services.receipt_service") is None

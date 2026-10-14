@@ -1832,7 +1832,26 @@
     "sscl_reversed": "{sscl} ආපසු හරවන ලදී:",
     "vat_refund": "{vat} ආපසු ගෙවීම:",
     "sscl_refund": "{sscl} ආපසු ගෙවීම:",
-    "refund_total": "ආපසු ගෙවීම {total_label}: {amount}"
+    "refund_total": "ආපසු ගෙවීම {total_label}: {amount}",
+    "z_report_title": "Z-වාර්තාව (මුරය අවසානය)",
+    "x_read_title": "X-වාර්තාව (මුරයේ මෙතෙක්)",
+    "shift_id": "මුර අංකය",
+    "shift_start": "පටන් ගත්තේ",
+    "shift_end": "ඉවර වුණේ",
+    "sales_by_method": "ගෙවීම් අනුව විකුණුම්",
+    "cash_control": "මුදල් ලාච්චුව",
+    "opening_float": "ආරම්භක මුදල",
+    "cash_sales": "මුදල් විකුණුම්",
+    "cash_in": "මුදල් ඇතුල් කිරීම්",
+    "cash_out": "මුදල් පිටවීම්",
+    "expected_cash": "තිබිය යුතු මුදල",
+    "counted_cash": "ගණන් කළ මුදල",
+    "variance": "වෙනස",
+    "audit": "සාරාංශය",
+    "txn_count": "ගනුදෙනු ගණන",
+    "void_count": "අවලංගු කළ බිල්",
+    "void_value": "අවලංගු කළ වටිනාකම",
+    "end_of_report": "*** වාර්තාව අවසානයි ***"
   },
   "cash_movement": {
     "record_title_out": "ලාච්චුවෙන් මුදල් ගන්න",
@@ -2191,7 +2210,7 @@
     "reason_placeholder": "වෙනස වුනේ ඇයි කියලා ලියන්න...",
     "reason_required": "වෙනසට හේතුවක් දාන්න.",
     "close_and_print": "මුරය වසන්න && ප්‍රින්ට් කරන්න",
-    "closed_success": "මුරය වහලා Z-වාර්තාව හැදුවා.",
+    "closed_success": "මුරය වැහුවා, Z-වාර්තාවත් ප්‍රින්ට් වුණා.",
     "close_failed": "මුරය වහන්න බැරි උනා: {error}",
     "backup": "බැකප්",
     "backup_prompt": "දත්ත සමුදායේ බැකප් එකක් හදන්නද?",
@@ -2200,7 +2219,12 @@
     "backup_complete": "බැකප් එක සම්පූර්ණයි",
     "backup_saved": "බැකප් එක මෙතනට සුරැකුනා:\n{path}\n\nඒක ඔයාගේ බැකප් මුරපදයෙන් ලොක් කරලා තියෙන්නේ.",
     "backup_failed": "බැකප් එක අසාර්ථකයි",
-    "backup_error": "බැකප් එකක් හදන්න බැරි උනා: {error}"
+    "backup_error": "බැකප් එකක් හදන්න බැරි උනා: {error}",
+    "printing_z_report": "Z-වාර්තාව ප්‍රින්ට් වෙනවා...",
+    "z_report_print_title": "Z-වාර්තාව ප්‍රින්ට් වුණේ නැහැ",
+    "z_report_print_failed": "මුරය වැහුවා, ඒත් Z-වාර්තාව ප්‍රින්ට් වුණේ නැහැ.\n\n{error}",
+    "z_report_retry": "ආයෙත් උත්සාහ කරන්න",
+    "z_report_skip": "ප්‍රින්ට් නොකර ඉස්සරහට යන්න"
   },
   "start_shift": {
     "title": "මුරය පටන් ගන්න",
@@ -2624,6 +2648,9 @@
     "cash_in": "මුදල් දාන්න",
     "cash_out": "මුදල් ගන්න",
     "end_shift": "මුරය ඉවර කරන්න",
-    "movement_failed": "ඒක සටහන් කරන්න බැරි වුණා: {error}"
+    "movement_failed": "ඒක සටහන් කරන්න බැරි වුණා: {error}",
+    "print_x_read": "X-වාර්තාව ප්‍රින්ට් කරන්න",
+    "x_read_printed": "X-වාර්තාව ප්‍රින්ට් වුණා.",
+    "x_read_failed": "X-වාර්තාව ප්‍රින්ට් වුණේ නැහැ.\n\n{error}"
   }
 }

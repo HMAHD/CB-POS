@@ -1832,7 +1832,26 @@
     "sscl_reversed": "{sscl} திருப்பப்பட்டது:",
     "vat_refund": "{vat} திருப்பிச்செலுத்தல்:",
     "sscl_refund": "{sscl} திருப்பிச்செலுத்தல்:",
-    "refund_total": "திருப்பிச்செலுத்தல் {total_label}: {amount}"
+    "refund_total": "திருப்பிச்செலுத்தல் {total_label}: {amount}",
+    "z_report_title": "Z-அறிக்கை (ஷிப்ட் முடிவு)",
+    "x_read_title": "X-அறிக்கை (ஷிப்ட் இதுவரை)",
+    "shift_id": "ஷிப்ட் எண்",
+    "shift_start": "ஆரம்பம்",
+    "shift_end": "முடிவு",
+    "sales_by_method": "பணமுறை வாரியாக விற்பனை",
+    "cash_control": "காசு டிராயர்",
+    "opening_float": "ஆரம்ப காசு",
+    "cash_sales": "காசு விற்பனை",
+    "cash_in": "காசு உள்ளே",
+    "cash_out": "காசு வெளியே",
+    "expected_cash": "இருக்க வேண்டிய காசு",
+    "counted_cash": "எண்ணிய காசு",
+    "variance": "வித்தியாசம்",
+    "audit": "சுருக்கம்",
+    "txn_count": "பரிவர்த்தனைகள்",
+    "void_count": "ரத்து செய்த பில்கள்",
+    "void_value": "ரத்து செய்த மதிப்பு",
+    "end_of_report": "*** அறிக்கை முடிந்தது ***"
   },
   "cash_movement": {
     "record_title_out": "பணப்பெட்டியிலிருந்து காசு எடுங்க",
@@ -2191,7 +2210,7 @@
     "reason_placeholder": "வித்தியாசத்துக்கான காரணத்தை எழுதுங்க...",
     "reason_required": "வித்தியாசத்துக்கு ஒரு காரணத்தைக் கொடுங்க.",
     "close_and_print": "ஷிப்ட்டை மூடு && பிரிண்ட் செய்",
-    "closed_success": "ஷிப்ட் மூடி Z-அறிக்கை உருவானது.",
+    "closed_success": "ஷிப்ட் மூடியாச்சு, Z-அறிக்கையும் பிரிண்ட் ஆச்சு.",
     "close_failed": "ஷிப்ட்டை மூட முடியல: {error}",
     "backup": "பேக்அப்",
     "backup_prompt": "டேட்டாபேஸ்-ஐ பேக்அப் எடுக்கணுமா?",
@@ -2200,7 +2219,12 @@
     "backup_complete": "பேக்அப் முடிந்தது",
     "backup_saved": "பேக்அப் இங்க சேமிக்கப்பட்டது:\n{path}\n\nஇது உங்க பேக்அப் பாஸ்வேர்டால லாக் ஆகியிருக்கு.",
     "backup_failed": "பேக்அப் தோல்வி",
-    "backup_error": "பேக்அப் எடுக்க முடியல: {error}"
+    "backup_error": "பேக்அப் எடுக்க முடியல: {error}",
+    "printing_z_report": "Z-அறிக்கை பிரிண்ட் ஆகுது...",
+    "z_report_print_title": "Z-அறிக்கை பிரிண்ட் ஆகல",
+    "z_report_print_failed": "ஷிப்ட் மூடியாச்சு, ஆனா Z-அறிக்கை பிரிண்ட் ஆகல.\n\n{error}",
+    "z_report_retry": "மறுபடி முயற்சி",
+    "z_report_skip": "பிரிண்ட் பண்ணாம தொடருங்க"
   },
   "start_shift": {
     "title": "ஷிப்ட் ஆரம்பி",
@@ -2624,6 +2648,9 @@
     "cash_in": "காசு போடுங்க",
     "cash_out": "காசு எடுங்க",
     "end_shift": "ஷிப்ட்டை முடிங்க",
-    "movement_failed": "அதைப் பதிவு செய்ய முடியலை: {error}"
+    "movement_failed": "அதைப் பதிவு செய்ய முடியலை: {error}",
+    "print_x_read": "X-அறிக்கையை பிரிண்ட் பண்ணுங்க",
+    "x_read_printed": "X-அறிக்கை பிரிண்ட் ஆச்சு.",
+    "x_read_failed": "X-அறிக்கை பிரிண்ட் ஆகல.\n\n{error}"
   }
 }

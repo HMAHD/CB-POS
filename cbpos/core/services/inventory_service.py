@@ -1,4 +1,5 @@
 import logging
+import uuid
 from decimal import Decimal
 from typing import Any
 
@@ -7,6 +8,7 @@ from sqlalchemy.orm.exc import StaleDataError
 
 from cbpos.core.database import Database
 from cbpos.core.models import AuditLog, CompositeItem, InventoryLog, Product
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.logging_service import LoggingService, diff_changes
 
 logger = logging.getLogger(__name__)
@@ -15,9 +17,30 @@ logger = logging.getLogger(__name__)
 class InventoryService:
     """Manages product records, composite (bundle) items, and stock-level adjustments."""
 
+    # GS1 keeps EAN-13 prefixes 20-29 for in-store numbers, so a generated
+    # barcode can never clash with a manufacturer's. 29 stays clear of the
+    # usual weighing-scale prefixes (20-28).
+    IN_STORE_BARCODE_PREFIX = "29"
+
     def __init__(self):
         """Bind this service instance to the database singleton."""
         self.db = Database()
+
+    @staticmethod
+    def _ean13(body: str) -> str:
+        """Return the 12-digit ``body`` with its EAN-13 check digit appended."""
+        odd = sum(int(d) for d in body[0::2])
+        even = sum(int(d) for d in body[1::2])
+        return body + str((10 - (odd + even * 3) % 10) % 10)
+
+    def _in_store_barcode(self, session, product_id: int) -> str:
+        """Return an unused in-store EAN-13 for a product, numbered from its id."""
+        n = product_id
+        while True:
+            candidate = self._ean13(f"{self.IN_STORE_BARCODE_PREFIX}{n:010d}")
+            if session.scalar(select(Product.id).where(Product.barcode == candidate)) is None:
+                return candidate
+            n += 1
 
     def create_product(self, data: dict[str, Any]) -> Product:
         """Create a new product with optional composite items."""
@@ -25,9 +48,20 @@ class InventoryService:
             # Extract composite items data if present
             components_data = data.pop("components", [])
 
+            # "Auto-Generate Barcodes" (Settings -> System, #641): a new
+            # product saved without a barcode gets one. The real number is
+            # built from the id, so hold a unique placeholder until flush.
+            generate_barcode = not data.get("barcode") and ConfigService.get("auto_generate_barcodes")
+            if generate_barcode:
+                data["barcode"] = f"PENDING-{uuid.uuid4().hex}"
+
             product = Product(**data)
             session.add(product)
             session.flush()  # Generate ID
+
+            if generate_barcode:
+                product.barcode = self._in_store_barcode(session, product.id)
+                session.flush()
 
             # Handle composite items
             for comp_data in components_data:

@@ -414,6 +414,7 @@
     "name_si_placeholder": "අවශ්‍ය නැහැ",
     "name_ta_placeholder": "අවශ්‍ය නැහැ",
     "barcode_placeholder": "බාර්කෝඩ් ස්කෑන් කරන්න",
+    "barcode_placeholder_auto": "බාර්කෝඩ් එක ස්කෑන් කරන්න/දාන්න — හිස්ව තිබ්බොත් ඉබේම එකක් හැදෙනවා",
     "select_category": "-- කාණ්ඩය තෝරන්න --",
     "group_stock": "තොග",
     "group_supplier": "පෙරනිමි සැපයුම්කරු",

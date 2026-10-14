@@ -414,6 +414,7 @@
     "name_si_placeholder": "தேவையில்ல",
     "name_ta_placeholder": "தேவையில்ல",
     "barcode_placeholder": "பார்கோடு ஸ்கேன் செய்யவும்",
+    "barcode_placeholder_auto": "பார்கோடை ஸ்கேன் பண்ணுங்க/போடுங்க — காலியா விட்டா தானா ஒண்ணு உருவாகும்",
     "select_category": "-- வகையைத் தேர்ந்தெடு --",
     "group_stock": "சரக்கு",
     "group_supplier": "இயல்பு சப்ளையர்",

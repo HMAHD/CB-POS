@@ -24,6 +24,7 @@ from PyQt6.QtWidgets import (
 from cbpos.config import Config
 from cbpos.core.models import Product
 from cbpos.core.services.category_service import CategoryService
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.error_messages import translate_error
@@ -119,7 +120,10 @@ class ProductEditor(QDialog):
         self.name_ta_input.setPlaceholderText(_t("product_editor.name_ta_placeholder"))
 
         self.barcode_input = QLineEdit()
-        self.barcode_input.setPlaceholderText(_t("product_editor.barcode_placeholder"))
+        # Settings -> System -> Auto-Generate Barcodes lets a new product be saved without one (#641)
+        self._auto_barcode = bool(ConfigService.get("auto_generate_barcodes"))
+        placeholder_key = "barcode_placeholder_auto" if self._auto_barcode else "barcode_placeholder"
+        self.barcode_input.setPlaceholderText(_t(f"product_editor.{placeholder_key}"))
 
         self.category_combo = QComboBox()
         self.category_combo.addItem(_t("product_editor.select_category"), None)
@@ -523,7 +527,7 @@ class ProductEditor(QDialog):
             self.name_en_input.setFocus()
             return
 
-        if not data["barcode"]:
+        if not data["barcode"] and not (self._auto_barcode and not self.product):
             QMessageBox.warning(self, _t("common.validation_error"), _t("product_editor.barcode_required"))
             self.tabs.setCurrentIndex(0)
             self.barcode_input.setFocus()
@@ -547,7 +551,7 @@ class ProductEditor(QDialog):
             if self.product:
                 self.inventory_service.update_product(self.product.id, data)
             else:
-                if self.inventory_service.get_product_by_barcode(data["barcode"]):
+                if data["barcode"] and self.inventory_service.get_product_by_barcode(data["barcode"]):
                     QMessageBox.warning(
                         self,
                         _t("product_editor.duplicate_title"),

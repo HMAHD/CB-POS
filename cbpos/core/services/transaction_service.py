@@ -582,30 +582,15 @@ class TransactionService:
                     session.add(refund_item)
 
                     # 4. RESTORE stock via StockService (proper audit trail)
-                    composite_children = composite_map.get(original_item.product_id, [])
-
-                    if composite_children:
-                        # Restore child product stock
-                        for comp in composite_children:
-                            restoration = comp.qty * original_item.qty
-                            StockService.record_movement(
-                                product_id=comp.child_product_id,
-                                qty_change=restoration,
-                                movement_type="RETURN",
-                                document_id=refund_sale.id,
-                                user_id=user_id,
-                                session=session,
-                            )
-                    else:
-                        # Restore product stock directly
-                        StockService.record_movement(
-                            product_id=original_item.product_id,
-                            qty_change=original_item.qty,
-                            movement_type="RETURN",
-                            document_id=refund_sale.id,
-                            user_id=user_id,
-                            session=session,
-                        )
+                    TransactionService._move_stock(
+                        session,
+                        composite_map,
+                        original_item.product_id,
+                        original_item.qty,
+                        "RETURN",
+                        refund_sale.id,
+                        user_id,
+                    )
 
                 # 5. Give back any credit the original sale put on the
                 # customer's book, in this same transaction (#715).

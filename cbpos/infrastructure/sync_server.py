@@ -427,11 +427,14 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         max_attempts = 3
         records_applied = 0
         errors: list[str] = []
+        balances: dict[str, dict[str, str]] = {}
 
         for attempt in range(1, max_attempts + 1):
             try:
                 with _push_apply_lock, db.get_session() as session:
-                    records_applied, errors = SyncApplyService(session, terminal_id).apply_batch(payload)
+                    applier = SyncApplyService(session, terminal_id)
+                    records_applied, errors = applier.apply_batch(payload)
+                    balances = applier.balances()
                     session.commit()
                 break  # success — exit retry loop
 
@@ -471,6 +474,8 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
                 "sequence": sequence,
                 "records_applied": records_applied,
                 "errors": errors,
+                # Shop-wide credit/payable balances the batch touched (#678).
+                "balances": balances,
             }
         )
 

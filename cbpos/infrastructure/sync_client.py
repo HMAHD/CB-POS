@@ -20,6 +20,7 @@ from decimal import Decimal
 from typing import Any
 
 from PyQt6.QtCore import QThread, pyqtSignal
+from sqlalchemy import func
 
 from cbpos.core.database import Database
 from cbpos.core.models import (
@@ -70,6 +71,33 @@ _PUSHED_CHILDREN: dict[type, tuple[str, ...]] = {
     Sale: ("items", "payments"),
     Purchase: ("items",),
 }
+
+
+# Balance owner table -> (its ledger model, balance column) (#678).
+_BALANCE_LEDGERS: dict[str, tuple[type, str]] = {
+    "customers": (CustomerLedgerEntry, "current_debt"),
+    "suppliers": (SupplierLedgerEntry, "current_payable"),
+}
+
+
+def _set_local_balance(session: Any, table_name: str, owner_id: int, main_value: Decimal) -> None:
+    """Set a customer's debt / supplier's payable on this till from the Main PC's figure.
+
+    The Main PC's balance covers every till's *pushed* ledger rows; this
+    till's own rows that are not pushed yet are added on top, so a credit
+    sale made since the last push isn't wiped out by a catalog pull.
+    """
+    ledger_model, balance_column = _BALANCE_LEDGERS[table_name]
+    owner = session.get(get_model_for_table(table_name), owner_id)
+    if owner is None:
+        return
+    owner_column = "customer_id" if table_name == "customers" else "supplier_id"
+    unpushed = (
+        session.query(func.coalesce(func.sum(ledger_model.amount), 0))
+        .filter(getattr(ledger_model, owner_column) == owner_id, ledger_model.synced.is_(False))
+        .scalar()
+    )
+    setattr(owner, balance_column, (main_value + Decimal(str(unpushed or 0))).quantize(Decimal("0.01")))
 
 
 def _fingerprint(obj: Any) -> str:
@@ -396,6 +424,7 @@ class SyncClient(QThread):
             # Mark local records as synced
             total_pushed = sum(len(v) for v in payload.values() if isinstance(v, list))
             self._mark_as_synced(fingerprints)
+            self._apply_main_balances(result.get("balances") or {})
             logger.info("Pushed %d records (status=%s)", total_pushed, status)
             return total_pushed
         else:
@@ -502,6 +531,26 @@ class SyncClient(QThread):
         except Exception as e:
             logger.error("Error marking records as synced: %s", e)
 
+    def _apply_main_balances(self, balances: dict[str, dict[str, str]]) -> None:
+        """Take the shop-wide balances the Main PC sent back with a push (#678).
+
+        Each becomes this till's balance plus the ledger amounts this till
+        has not pushed yet (see :func:`_local_balance`).
+        """
+        if not balances:
+            return
+        db = Database()
+        try:
+            with db.get_session() as session:
+                for table_name, rows in balances.items():
+                    if table_name not in _BALANCE_LEDGERS:
+                        continue
+                    for owner_id, main_value in rows.items():
+                        _set_local_balance(session, table_name, int(owner_id), Decimal(str(main_value)))
+                session.commit()
+        except Exception as e:
+            logger.error("Error applying Main PC balances: %s", e)
+
     # --- Pull Catalog ---
 
     def _pull_catalog(self, full_sync: bool = False) -> int:
@@ -533,6 +582,7 @@ class SyncClient(QThread):
         # Apply catalog updates to local database
         db = Database()
         records_applied = 0
+        pulled_balances: list[tuple[str, int, Decimal]] = []
         try:
             with db.get_session() as session:
                 for table_name in CATALOG_TABLES:
@@ -547,7 +597,12 @@ class SyncClient(QThread):
                     for record_data in records:
                         try:
                             instance = dict_to_model(model_class, record_data)
-                            session.merge(instance)
+                            merged = session.merge(instance)
+                            if table_name in _BALANCE_LEDGERS:
+                                # The Main PC's figure doesn't include what this
+                                # till hasn't pushed yet -- keep that on top (#678).
+                                _, balance_column = _BALANCE_LEDGERS[table_name]
+                                pulled_balances.append((table_name, merged.id, getattr(merged, balance_column)))
                             records_applied += 1
                         except Exception as e:
                             logger.error(
@@ -556,6 +611,9 @@ class SyncClient(QThread):
                                 record_data.get("id", "?"),
                                 e,
                             )
+
+                for table_name, owner_id, main_value in pulled_balances:
+                    _set_local_balance(session, table_name, owner_id, main_value or Decimal("0"))
 
                 session.commit()
 

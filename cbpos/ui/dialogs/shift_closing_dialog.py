@@ -1,3 +1,5 @@
+import contextlib
+import logging
 from decimal import Decimal
 
 from PyQt6.QtCore import Qt
@@ -16,12 +18,15 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from cbpos.core.services.receipt_service import ReceiptService
+from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.shift_service import ShiftService
 from cbpos.i18n import _t
+from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.widgets.denomination_widget import DenominationWidget
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 from cbpos.ui.workers import BackupWorker
+
+logger = logging.getLogger(__name__)
 
 
 class ShiftClosingDialog(QDialog):
@@ -36,6 +41,7 @@ class ShiftClosingDialog(QDialog):
         self.shift_service = ShiftService()
         self.counted_cash = Decimal(0)
         self.summary = None
+        self._final_summary: dict | None = None  # set once the shift is closed
 
         self.setWindowTitle(_t("shift_closing.title"))
         self.setFixedSize(800, 600)
@@ -165,17 +171,74 @@ class ShiftClosingDialog(QDialog):
 
         try:
             final_summary = self.shift_service.close_shift(self.shift_id, self.counted_cash, reason, reason_category)
-            # Generate Z-Report (printing is delegated to hardware layer)
-            ReceiptService.print_z_report(final_summary)
-
-            QMessageBox.information(self, _t("common.success"), _t("shift_closing.closed_success"))
-
-            # Offer backup after successful shift close.
-            # If user starts a backup, accept() is deferred until it finishes.
-            if not self._offer_backup():
-                self.accept()
         except Exception as e:
             QMessageBox.critical(self, _t("common.error"), _t("shift_closing.close_failed", error=str(e)))
+            return
+
+        # The shift is closed from here on: no going back, no cancelling.
+        self._final_summary = final_summary
+        self.btn_back.setEnabled(False)
+        self.btn_cancel.setEnabled(False)
+        self._print_z_report()
+
+    # ── Z-Report printing (#682) ─────────────────────────────────
+
+    def _print_z_report(self) -> None:
+        """Queue the Z-Report and wait for the printer's real outcome.
+
+        PrintWorker.add_job() only queues the job; success is shown on
+        job_completed, and error_occurred (including "no printer set up")
+        offers Retry or Continue -- never a false "printed" (#669).
+        """
+        self.btn_next.setEnabled(False)
+        self.btn_next.setText(_t("shift_closing.printing_z_report"))
+        worker = PrintWorker.instance()
+        self._disconnect_print_signals(worker)
+        # Connect before queueing so a fast job can't finish unheard.
+        worker.job_completed.connect(self._on_z_report_printed)
+        worker.error_occurred.connect(self._on_z_report_error)
+        try:
+            PrinterService.print_shift_report(self._final_summary)
+        except Exception as e:
+            logger.error("Z-Report could not be built: %s", e)
+            self._on_z_report_error(str(e))
+
+    def _disconnect_print_signals(self, worker: PrintWorker) -> None:
+        with contextlib.suppress(TypeError):
+            worker.job_completed.disconnect(self._on_z_report_printed)
+        with contextlib.suppress(TypeError):
+            worker.error_occurred.disconnect(self._on_z_report_error)
+
+    def _on_z_report_printed(self) -> None:
+        self._disconnect_print_signals(PrintWorker.instance())
+        QMessageBox.information(self, _t("common.success"), _t("shift_closing.closed_success"))
+        self._finish()
+
+    def _on_z_report_error(self, message: str) -> None:
+        self._disconnect_print_signals(PrintWorker.instance())
+        logger.error("Z-Report print failed: %s", message)
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle(_t("shift_closing.z_report_print_title"))
+        box.setText(_t("shift_closing.z_report_print_failed", error=message))
+        retry_btn = box.addButton(_t("shift_closing.z_report_retry"), QMessageBox.ButtonRole.AcceptRole)
+        box.addButton(_t("shift_closing.z_report_skip"), QMessageBox.ButtonRole.RejectRole)
+        box.exec()
+        if box.clickedButton() == retry_btn:
+            self._print_z_report()
+        else:
+            self._finish()
+
+    def _finish(self) -> None:
+        """Offer a backup, then close. accept() waits for an async backup."""
+        if not self._offer_backup():
+            self.accept()
+
+    def reject(self) -> None:
+        """Esc / Cancel can't dismiss the dialog once the shift is closed."""
+        if self._final_summary is not None:
+            return
+        super().reject()
 
     def _offer_backup(self) -> bool:
         """Prompt user to create a backup after closing the shift.

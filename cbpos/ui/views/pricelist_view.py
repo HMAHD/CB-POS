@@ -1,6 +1,5 @@
 """Price list view for managing named price lists and per-item price overrides."""
 
-import weakref
 from datetime import datetime
 from decimal import Decimal
 
@@ -32,7 +31,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.price_list_service import PriceListService
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.utils.formatters import NO_VALUE, format_number, money_header
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import INFO, NEUTRAL, SUCCESS, status_color
@@ -56,18 +55,7 @@ class PriceListView(QWidget):
         self._nav_buttons: dict[int, QPushButton] = {}
         self.init_ui()
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
         self.load_lists()
 
     def init_ui(self):

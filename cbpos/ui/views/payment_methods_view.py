@@ -4,7 +4,6 @@ Card-based list with inline toggle, edit, and delete actions.
 """
 
 import logging
-import weakref
 
 from PyQt6.QtCore import QKeyCombination, Qt
 from PyQt6.QtGui import QKeySequence
@@ -25,7 +24,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.payment_service import PaymentService, ShortcutConflictError
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 
 logger = logging.getLogger(__name__)
@@ -51,18 +50,7 @@ class PaymentMethodDialog(QDialog):
         self.setObjectName("PaymentMethodDialog")
         self._init_ui()
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -297,18 +285,7 @@ class PaymentMethodsView(QWidget):
         self._methods = []
         self._init_ui()
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)

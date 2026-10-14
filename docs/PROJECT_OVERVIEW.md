@@ -366,7 +366,7 @@ with db.get_session() as session:
 
 | Service | Responsibility |
 |---------|----------------|
-| **receipt_service.py** | Receipt text/image generation, multilingual support |
+| **shift_report_builder.py** | Shift Z-Report and X-Read receipt commands |
 | **receipt_builder.py** | ESC/POS command generation |
 | **printer_service.py** | Printer queue management, USB/Network support |
 | **scale_service.py** | Scale barcode parsing (prefix "20"), weight extraction |
@@ -953,7 +953,7 @@ new_cost = (old_cost * old_qty + purchase_cost * purchase_qty) / (old_qty + purc
 **UI Integration Pattern:**
 
 ```python
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 
 
 class MyView(QWidget):
@@ -961,8 +961,11 @@ class MyView(QWidget):
         super().__init__()
         self._init_ui()
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        self.destroyed.connect(lambda: unregister_language_callback(self.retranslate_ui))
+        # owner= unregisters the callback when the widget is destroyed. Never
+        # connect `destroyed` to a lambda or nested function yourself: gc can
+        # clear it before Qt emits the signal, which segfaults
+        # (see cbpos/core/utils/destroy_hooks.py).
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def retranslate_ui(self):
         self._title.setText(_t("my_view.title"))

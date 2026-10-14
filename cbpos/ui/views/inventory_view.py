@@ -1,5 +1,3 @@
-import weakref
-
 from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt
 from PyQt6.QtGui import QBrush, QColor
 from PyQt6.QtWidgets import (
@@ -16,7 +14,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.import_service import ImportService
 from cbpos.core.services.inventory_service import InventoryService
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.product_editor import ProductEditor
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
 from cbpos.ui.widgets.table_helpers import configure_table_columns
@@ -106,18 +104,7 @@ class InventoryView(QWidget):
         self.load_data()
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def init_ui(self):
         """Build the toolbar, product table, empty-state placeholder, and pagination."""

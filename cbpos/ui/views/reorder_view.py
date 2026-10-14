@@ -1,6 +1,5 @@
 """Reorder view listing products that have fallen at or below their reorder point."""
 
-import weakref
 from decimal import Decimal
 
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -19,7 +18,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.purchase_order_service import PurchaseOrderService
 from cbpos.core.services.stock_service import StockService
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.resources.status_colors import DANGER, status_color
 
 
@@ -41,18 +40,7 @@ class ReorderView(QWidget):
         self.load_reorder_items()
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def init_ui(self):
         """Build the title, info text, reorder table, and action buttons."""

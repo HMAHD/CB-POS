@@ -5,7 +5,6 @@ Provides Previous/Next navigation, a "Showing X-Y of Z" indicator,
 and a signal when the page changes so the parent view can update its table.
 """
 
-import weakref
 from typing import TypeVar
 
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -16,7 +15,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 
 T = TypeVar("T")
 
@@ -72,18 +71,7 @@ class PaginationWidget(QWidget):
         layout.addWidget(self._btn_next)
 
         self._update_controls()
-        register_language_callback(self._retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            widget = self_ref()
-            if widget is not None:
-                unregister_language_callback(widget._retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self._retranslate_ui, owner=self)
 
     # ------------------------------------------------------------------
     # Public API

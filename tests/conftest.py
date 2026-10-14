@@ -79,14 +79,24 @@ def _autocomplete_preload_runs_inline():
     ``_collect_garbage_after_each_test``, so every test's own monkeypatches
     would be undone only *after* that fixture's gc/thread-drain pass instead
     of before it -- which reorders teardown enough to segfault later tests.
+
+    The dashboard's ``_YearlyWorker`` / ``_PeriodicWorker`` get the same
+    treatment: ``refresh_periodic()`` starts one and returns while it is
+    still querying, so the test body's own queries (and its teardown)
+    raced it on the shared Session -- the thread guard below caught it in
+    test_dashboard_periodic_date_bounds.py.
     """
+    from cbpos.ui.views.dashboard_view import _PeriodicWorker, _YearlyWorker
     from cbpos.ui.workers import AutocompleteLoadWorker
 
-    AutocompleteLoadWorker.start = AutocompleteLoadWorker.run
+    inline_workers = (AutocompleteLoadWorker, _YearlyWorker, _PeriodicWorker)
+    for worker_cls in inline_workers:
+        worker_cls.start = worker_cls.run
     try:
         yield
     finally:
-        del AutocompleteLoadWorker.start
+        for worker_cls in inline_workers:
+            del worker_cls.start
 
 
 @pytest.fixture(autouse=True)

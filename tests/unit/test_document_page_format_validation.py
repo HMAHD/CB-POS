@@ -76,7 +76,8 @@ def test_sync_till_preview_explains_the_terminal_prefix(page, monkeypatch):
     year = datetime.now().strftime("%Y")
     assert f"02-INV-{year}-00001" in page._preview_sale.text()
     assert _t("settings.documents.fmt_terminal_added") in page._preview_sale.text()
-    assert _t("settings.documents.fmt_terminal_added") not in page._preview_purchase.text()
+    # GRNs are pushed to the Main PC too, so they get the prefix as well (#679).
+    assert _t("settings.documents.fmt_terminal_added") in page._preview_purchase.text()
 
 
 def test_save_all_blocks_an_invalid_format(qapp, db_session, monkeypatch):

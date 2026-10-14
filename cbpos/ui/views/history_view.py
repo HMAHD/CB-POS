@@ -1,6 +1,5 @@
 import contextlib
 import logging
-import weakref
 from datetime import datetime
 
 from PyQt6.QtCore import QDate, Qt
@@ -24,7 +23,7 @@ from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.resources.status_colors import DANGER, WARNING, status_color
 
@@ -44,18 +43,7 @@ class HistoryView(QWidget):
         self.load_today()
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def init_ui(self):
         """Setup the UI layout"""

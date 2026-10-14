@@ -30,9 +30,11 @@ DEFAULT_PATTERNS: dict[str, str] = {
     "PROFORMA": "QUO-{Y}-{seq:05d}",
 }
 _FALLBACK_PATTERN = "DOC-{Y}-{seq:05d}"
-# Receipts that synced tills (terminal_mode "main"/"terminal") number in
-# their own local database and later push to the Main PC.
-_TERMINAL_SCOPED_TYPES = ("SALE", "RETURN")
+# Documents that synced tills (terminal_mode "main"/"terminal") number in
+# their own local database and later push to the Main PC (receipts, credit
+# notes and GRNs, #674/#679). Purchase orders, quotations and stock counts
+# never leave the till, so they keep one series.
+_TERMINAL_SCOPED_TYPES = ("SALE", "RETURN", "PURCHASE")
 _SYNC_TERMINAL_MODES = ("main", "terminal")
 
 
@@ -116,7 +118,7 @@ def validate_doc_pattern(pattern: str, terminal_id: str = "TERM-01") -> str | No
 
 
 def terminal_scoped_pattern(pattern: str, doc_type: str, terminal_mode: str) -> str:
-    """Put the terminal in front of a sale/return format on synced tills.
+    """Put the terminal in front of a sale/return/GRN format on synced tills.
 
     In sync mode each till numbers receipts offline in its own database and
     pushes them to the Main PC, where ``document_number`` is unique. A shared

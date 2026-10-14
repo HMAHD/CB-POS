@@ -1,5 +1,3 @@
-import weakref
-
 from PyQt6.QtCore import QSize, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QFrame,
@@ -13,7 +11,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.utils.display_labels import display_role_name
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.constants import ACTION_BTN_HEIGHT, SIDEBAR_WIDTH
 from cbpos.ui.resources.icons import Icons
 
@@ -204,18 +202,7 @@ class SideMenu(QWidget):
         self.init_ui()
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            widget = self_ref()
-            if widget is not None:
-                unregister_language_callback(widget.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def init_ui(self) -> None:
         """Lay out the nav tiles, user profile/sign-out block, and bottom toolbar."""

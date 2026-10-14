@@ -1,7 +1,6 @@
 """Stock Take view for physical inventory counting and variance workflow."""
 
 import logging
-import weakref
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
@@ -40,7 +39,7 @@ from cbpos.core.utils.formatters import (
     format_quantity,
     format_signed,
 )
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 from cbpos.ui.constants import (
     BAR_GROUP_SPACING,
@@ -399,18 +398,7 @@ class StockTakeView(QWidget):
         self.init_ui()
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def init_ui(self) -> None:
         """Build the page header and the New Count / History tabs."""

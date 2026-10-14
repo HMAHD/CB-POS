@@ -13,8 +13,9 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.theme_service import ThemeService
+from cbpos.core.utils.destroy_hooks import call_on_destroyed
 from cbpos.core.utils.formatters import format_short_name
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.elided_label import ElidedLabel
 
@@ -147,29 +148,21 @@ class ActionPanel(QWidget):
         self.init_ui()
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # weakref avoids a self -> destroyed-connection -> lambda -> self
-        # reference cycle that only a full gc.collect() can break, which
-        # can segfault mid-teardown (#392).
-        self_ref = weakref.ref(self)
+        register_language_callback(self.retranslate_ui, owner=self)
 
         # Re-tint the tile icons if the theme changes under a live panel
-        # (#603). Held through the weakref too: ThemeService's callback
-        # list is class-level and would otherwise keep the panel alive.
+        # (#603). Held through a weakref: ThemeService's callback list is
+        # class-level and would otherwise keep the panel alive.
+        self_ref = weakref.ref(self)
+
         def _on_theme_changed():
             widget = self_ref()
             if widget is not None:
                 widget.refresh_theme()
 
         ThemeService.register_theme_callback(_on_theme_changed)
-
-        def _unregister():
-            ThemeService.unregister_theme_callback(_on_theme_changed)
-            widget = self_ref()
-            if widget is not None:
-                unregister_language_callback(widget.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        # Not destroyed.connect(<nested function>): that can segfault (see destroy_hooks).
+        call_on_destroyed(self, ThemeService.unregister_theme_callback, _on_theme_changed)
 
     def refresh_theme(self) -> None:
         """Re-tint every action tile's icon for the current theme."""

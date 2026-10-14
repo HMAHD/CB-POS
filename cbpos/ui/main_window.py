@@ -1,5 +1,4 @@
 import logging
-import weakref
 
 from PyQt6.QtCore import QEvent, Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
@@ -14,7 +13,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.shift_service import ShiftService
-from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
 from cbpos.infrastructure.session_watchdog import SessionWatchdog
 from cbpos.ui.dialogs.start_shift_dialog import StartShiftDialog
@@ -76,20 +75,7 @@ class MainWindow(QMainWindow):
         self.init_views()
 
         self.retranslate_ui()
-        register_language_callback(self.retranslate_ui)
-        # A plain lambda closing over `self` creates a reference cycle
-        # (self -> Qt's destroyed-signal connection list -> the lambda ->
-        # self) that only a full gc.collect() pass can break -- and can
-        # segfault if that pass runs while the QObject's C++ side is mid-
-        # teardown (#392). A weakref avoids creating the cycle at all.
-        self_ref = weakref.ref(self)
-
-        def _unregister():
-            view = self_ref()
-            if view is not None:
-                unregister_language_callback(view.retranslate_ui)
-
-        self.destroyed.connect(_unregister)
+        register_language_callback(self.retranslate_ui, owner=self)
 
     def retranslate_ui(self) -> None:
         """Update all translatable text in the window."""

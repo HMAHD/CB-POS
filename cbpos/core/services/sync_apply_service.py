@@ -23,14 +23,28 @@ Ownership of the tables a push touches:
   customers, suppliers, void_reasons, payment methods, ... Columns that
   point at these (user_id, product_id, customer_id, supplier_id,
   void_reason_id) are written as-is.
+- The one exception: a customer *created* on a till (#680) is pushed
+  (first in the batch) and mapped like a till row. A ``customer_id`` in
+  the same batch that names such a customer is translated; the push
+  acknowledgement returns the new ids and the till renumbers its copy
+  (sync_customer_renumber), after which its ids agree with the Main PC's.
+
+Balances (#678): ``Customer.current_debt`` and ``Supplier.current_payable``
+are Main-owned columns that till activity moves. Each pushed ledger row
+moves the Main PC balance by its amount on first arrival only, and the
+push acknowledgement carries the resulting balances back to the till.
 """
 
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import inspect as sa_inspect
 
-from cbpos.core.models import Document, Product, SyncIdMap
+from cbpos.core.models import Customer, Document, Product, Supplier, SyncIdMap
+from cbpos.core.services.sync_change_tracking import SKIP_CHANGE_TRACKING
 from cbpos.core.services.sync_protocol import TRANSACTION_TABLES, coerce_columns, get_model_for_table
 
 logger = logging.getLogger(__name__)
@@ -46,6 +60,7 @@ _DOCUMENT_TABLES = frozenset({"documents", "sales", "purchases"})
 # columns of a sale/purchase, so the full subclass row has to create the
 # server row first and the documents row then just updates it.
 APPLY_ORDER: tuple[str, ...] = (
+    "customers",
     "shifts",
     "sales",
     "purchases",
@@ -85,6 +100,10 @@ LEDGER_REFS: dict[str, dict[str, str]] = {
     "supplier_ledger": {"PURCHASE": DOCUMENT_ID_SPACE, "PAYMENT": "supplier_payments"},
 }
 
+# Tables whose customer_id may point at a customer the till created and
+# pushed in the same batch (#680). Any other customer_id is a Main PC id.
+_CUSTOMER_REF_TABLES = frozenset({"sales", "customer_payments", "customer_ledger", "suspended_transactions"})
+
 # Columns that point at till rows that are never pushed (purchase orders
 # stay on the till that raised them). No Main PC row is that till's row,
 # so the reference is dropped rather than left pointing at whatever the
@@ -100,6 +119,13 @@ UNSYNCED_REFS: dict[str, tuple[str, ...]] = {
 _ORIGIN_COLUMNS: dict[str, tuple[str, tuple[str, ...]]] = {
     DOCUMENT_ID_SPACE: ("documents", ("origin_terminal_id", "terminal_id")),
     "shifts": ("shifts", ("terminal_id",)),
+}
+
+
+# Ledger table -> (balance owner id space, owner id column, balance column).
+_LEDGER_BALANCES: dict[str, tuple[str, str, str]] = {
+    "customer_ledger": ("customers", "customer_id", "current_debt"),
+    "supplier_ledger": ("suppliers", "supplier_id", "current_payable"),
 }
 
 
@@ -132,6 +158,10 @@ class SyncApplyService:
         self._session = session
         self._terminal_id = terminal_id
         self._id_cache: dict[tuple[str, int], int] = {}
+        # Customers/suppliers whose ledger this batch touched (Main PC ids).
+        self._touched_balances: dict[str, set[int]] = {"customers": set(), "suppliers": set()}
+        # Till ids of the customers this batch creates (#680).
+        self._batch_customers: set[int] = set()
 
     # --- Public API ---
 
@@ -148,7 +178,14 @@ class SyncApplyService:
         Raises:
             PushApplyError: A row can't be applied without risking wrong data.
         """
+        with self._applying():
+            return self._apply_batch(payload)
+
+    def _apply_batch(self, payload: dict[str, Any]) -> tuple[int, list[str]]:
         errors: list[str] = []
+        customers = payload.get("customers")
+        if isinstance(customers, list):
+            self._batch_customers = {int(c["id"]) for c in customers if isinstance(c, dict) and c.get("id") is not None}
         for table_name, records in payload.items():
             if table_name not in TRANSACTION_TABLES:
                 errors.append(f"Table not allowed for push: {table_name}")
@@ -165,7 +202,7 @@ class SyncApplyService:
             # points at another row of the same table (a refund at its
             # original sale) comes after the row it points at.
             for record in sorted(records, key=lambda r: (r.get("id") is None, r.get("id") or 0)):
-                self.apply_record(table_name, dict(record))
+                self._apply_record(table_name, dict(record))
                 applied += 1
         return applied, errors
 
@@ -179,6 +216,24 @@ class SyncApplyService:
         Raises:
             PushApplyError: The row is malformed or can't be placed safely.
         """
+        with self._applying():
+            self._apply_record(table_name, record)
+
+    @contextmanager
+    def _applying(self) -> Iterator[None]:
+        """Rows stored here are the Main PC's copies, not rows to push again (#677)."""
+        previous = self._session.info.get(SKIP_CHANGE_TRACKING)
+        self._session.info[SKIP_CHANGE_TRACKING] = True
+        try:
+            yield
+            self._session.flush()  # while the flag is still set
+        finally:
+            if previous is None:
+                self._session.info.pop(SKIP_CHANGE_TRACKING, None)
+            else:
+                self._session.info[SKIP_CHANGE_TRACKING] = previous
+
+    def _apply_record(self, table_name: str, record: dict[str, Any]) -> None:
         model_class = get_model_for_table(table_name)
         if model_class is None or table_name not in TRANSACTION_TABLES:
             raise PushApplyError(f"{table_name}: not a pushable table")
@@ -192,7 +247,13 @@ class SyncApplyService:
 
         values = coerce_columns(model_class, record)
         values.pop("id", None)
+        if table_name == "customers":
+            self._apply_customer(local_id, values)
+            return
         self._remap_references(table_name, model_class, local_id, values)
+        if table_name in _LEDGER_BALANCES and values.get(_LEDGER_BALANCES[table_name][1]) is not None:
+            space, owner_column, _balance = _LEDGER_BALANCES[table_name]
+            self._touched_balances[space].add(int(values[owner_column]))
         if hasattr(model_class, "synced"):
             values["synced"] = True
         if table_name in _DOCUMENT_TABLES and not values.get("origin_terminal_id"):
@@ -232,6 +293,80 @@ class SyncApplyService:
         self._remember(space, local_id, instance.id)
         self._on_insert(table_name, instance)
 
+    def customer_id_map(self) -> dict[str, int]:
+        """Main PC id of each customer this batch created, keyed by the till's id (as a string).
+
+        Sent back with the push acknowledgement so the till can renumber its
+        customer to the shop-wide id (#680).
+        """
+        result: dict[str, int] = {}
+        for local_id in sorted(self._batch_customers):
+            server_id = self._lookup("customers", local_id)
+            if server_id is not None:
+                result[str(local_id)] = server_id
+        return result
+
+    def balances(self) -> dict[str, dict[str, str]]:
+        """Main PC balances of every customer/supplier whose ledger the applied rows touched.
+
+        Sent back to the till with the push acknowledgement (#678), so it
+        can set its own balance to the shop-wide figure plus whatever it
+        has not pushed yet -- even when an earlier acknowledgement was lost.
+
+        Returns:
+            ``{"customers": {id: current_debt}, "suppliers": {id: current_payable}}``
+            with ids as strings and amounts as decimal strings (JSON-safe).
+        """
+        self._session.flush()
+        result: dict[str, dict[str, str]] = {"customers": {}, "suppliers": {}}
+        for customer_id in sorted(self._touched_balances["customers"]):
+            customer = self._session.get(Customer, customer_id)
+            if customer is not None:
+                result["customers"][str(customer_id)] = str(customer.current_debt or Decimal("0"))
+        for supplier_id in sorted(self._touched_balances["suppliers"]):
+            supplier = self._session.get(Supplier, supplier_id)
+            if supplier is not None:
+                result["suppliers"][str(supplier_id)] = str(supplier.current_payable or Decimal("0"))
+        return result
+
+    # --- Customers created on a till (#680) ---
+
+    def _apply_customer(self, local_id: int, values: dict[str, Any]) -> None:
+        """Give a till-created customer a Main PC id (or find the one it already has).
+
+        A customer with the phone number or loyalty card of one the Main PC
+        already has *is* that customer (both are unique): the till's row is
+        mapped onto it and the Main PC's details are kept. Otherwise it is
+        inserted with a zero balance -- its debt arrives through the ledger
+        rows pushed with it. A re-send (lost acknowledgement) changes nothing:
+        the Main PC owns customer details once it has the customer.
+        """
+        if self._lookup("customers", local_id) is not None:
+            return
+
+        for unique_column in ("phone", "loyalty_card_code"):
+            value = values.get(unique_column)
+            if not value:
+                continue
+            existing = self._session.query(Customer).filter(getattr(Customer, unique_column) == value).one_or_none()
+            if existing is not None:
+                logger.info(
+                    "Sync: customer %s from %s has the %s of customer %s; merged into it",
+                    local_id,
+                    self._terminal_id,
+                    unique_column,
+                    existing.id,
+                )
+                self._remember("customers", local_id, existing.id)
+                return
+
+        for column in ("synced", "last_modified", "current_debt"):
+            values.pop(column, None)
+        customer = Customer(**values, current_debt=Decimal("0.00"), synced=True)
+        self._session.add(customer)
+        self._session.flush()
+        self._remember("customers", local_id, customer.id)
+
     # --- References to other till rows ---
 
     def _remap_references(self, table_name: str, model_class: type, local_id: int, values: dict[str, Any]) -> None:
@@ -245,6 +380,17 @@ class SyncApplyService:
                 values["reference_id"] = None
             else:
                 refs["reference_id"] = target
+
+        customer_ref = values.get("customer_id")
+        if (
+            table_name in _CUSTOMER_REF_TABLES
+            and customer_ref is not None
+            and int(customer_ref) in self._batch_customers
+        ):
+            server_customer = self._lookup("customers", int(customer_ref))
+            if server_customer is None:
+                raise PushApplyError(f"{table_name}[{local_id}]: customer {customer_ref} was not applied")
+            values["customer_id"] = server_customer
 
         columns = model_class.__table__.c
         for column, space in refs.items():
@@ -410,3 +556,17 @@ class SyncApplyService:
                 # update raises StaleDataError at flush/commit, which the sync
                 # server retries with a fresh session.
                 product.stock_qty += instance.qty_change
+        elif table_name in _LEDGER_BALANCES:
+            # Same for credit book / payables (#678): the till moved its own
+            # Customer.current_debt / Supplier.current_payable together with
+            # this ledger row, so the Main PC moves its copy by the same
+            # amount -- once, on first arrival. A balance adjustment never
+            # takes a balance below zero (as on the till).
+            space, owner_column, balance_column = _LEDGER_BALANCES[table_name]
+            owner_model = Customer if space == "customers" else Supplier
+            owner = self._session.get(owner_model, getattr(instance, owner_column))
+            if owner is not None:
+                balance = (getattr(owner, balance_column) or Decimal("0")) + instance.amount
+                if instance.entry_type == "ADJUSTMENT" and balance < 0:
+                    balance = Decimal("0.00")
+                setattr(owner, balance_column, balance)

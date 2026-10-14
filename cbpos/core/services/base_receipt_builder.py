@@ -6,6 +6,7 @@ from typing import Any
 
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.receipt_logo_service import resolve_receipt_logo
+from cbpos.core.utils.formatters import format_quantity, quantity_decimals
 from cbpos.i18n import _t, translate_in
 
 logger = logging.getLogger(__name__)
@@ -158,6 +159,28 @@ class BaseReceiptBuilder:
         return line_chars
 
     @staticmethod
+    def _item_qty_decimals(item: Any) -> int:
+        """Decimal places for *item*'s quantity: its unit's, or 0 when it has no unit.
+
+        0 (not the 3-decimal default for an unknown unit) so a plain ``2``
+        stays ``2``; ``format_quantity`` still widens to 3 decimals when the
+        value is fractional, so nothing is hidden.
+        """
+        product = getattr(item, "product", None)
+        unit = getattr(product, "unit", None) if product is not None else None
+        return quantity_decimals(unit) if unit is not None else 0
+
+    @classmethod
+    def _format_item_qty(cls, item: Any) -> str:
+        """Quantity as printed on the receipt, the same for a fresh sale and a reloaded one (#681).
+
+        A sale reloaded from the database carries ``2.000`` (the column's
+        scale) where the cart had ``2``; formatting by unit makes the
+        original print and every reprint agree.
+        """
+        return format_quantity(item.qty, cls._item_qty_decimals(item))
+
+    @staticmethod
     def _two_col(left: str, right: str, width: int) -> str:
         """Format two strings into a single line padded to *width* characters."""
         gap = width - len(left) - len(right)
@@ -192,3 +215,23 @@ class BaseReceiptBuilder:
         except Exception as e:
             logger.debug("Could not get current cashier name: %s", e)
             return ""
+
+    @classmethod
+    def _get_sale_cashier_name(cls, sale: Any) -> str:
+        """Username of the cashier who made *sale*, for its receipt (#681).
+
+        A reprint must show the sale's own cashier, not whoever is logged in
+        now. Only an unsaved sale (the Settings preview, no ``user_id``)
+        falls back to the current user. A saved sale whose user wasn't
+        loaded prints no cashier rather than the wrong one.
+        """
+        try:
+            user = getattr(sale, "user", None)
+        except Exception as e:  # detached sale, relationship not eager-loaded
+            logger.warning("Receipt for %s: cashier not loaded (%s)", getattr(sale, "document_number", "?"), e)
+            return ""
+        if user is not None:
+            return getattr(user, "username", "") or ""
+        if getattr(sale, "user_id", None) is None:
+            return cls._get_current_cashier_name()
+        return ""

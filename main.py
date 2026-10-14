@@ -267,8 +267,14 @@ def main():
     # Ensure high DPI scaling
     os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 
+    # Own taskbar identity + window icon for every window/dialog (#692)
+    from cbpos.infrastructure.app_identity import apply_app_icon, set_windows_app_user_model_id
+
+    set_windows_app_user_model_id()
+
     app = QApplication(sys.argv)
     app.setApplicationName("CB POS")
+    apply_app_icon(app)
 
     # Install Global Input Manager
     from cbpos.infrastructure.input_manager import InputManager

@@ -29,7 +29,7 @@ from cbpos.ui.views.reports.pandas_model import PandasModel
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
-from cbpos.ui.workers import ExportWorker, ReportEmailWorker, ReportPrintWorker
+from cbpos.ui.workers import ExportWorker, ReportEmailWorker, ReportPrintWorker, start_background_job
 
 
 class ReportWorker(QThread):
@@ -381,7 +381,7 @@ class ReportViewer(QWidget):
         self._report_worker = ReportWorker(self.current_report, filters)
         self._report_worker.result.connect(self._on_report_finished)
         self._report_worker.error.connect(self._on_report_error)
-        self._report_worker.start()
+        start_background_job(self._report_worker)
 
     def _on_report_finished(self, df: pd.DataFrame):
         self._overlay.hide_loading()
@@ -475,7 +475,7 @@ class ReportViewer(QWidget):
         )
         self._export_worker.result.connect(self._on_export_finished)
         self._export_worker.error.connect(self._on_export_error)
-        self._export_worker.start()
+        start_background_job(self._export_worker)
 
     def _on_export_finished(self, message: str) -> None:
         self._overlay.hide_loading()
@@ -518,7 +518,7 @@ class ReportViewer(QWidget):
         )
         self._print_worker.result.connect(self._on_print_finished)
         self._print_worker.error.connect(self._on_print_error)
-        self._print_worker.start()
+        start_background_job(self._print_worker)
 
     def _on_print_finished(self) -> None:
         self._overlay.hide_loading()
@@ -565,7 +565,7 @@ class ReportViewer(QWidget):
         )
         self._email_worker.result.connect(self._on_email_sent)
         self._email_worker.error.connect(self._on_email_error)
-        self._email_worker.start()
+        start_background_job(self._email_worker)
 
     def _on_email_sent(self, recipient: str) -> None:
         self._overlay.hide_loading()

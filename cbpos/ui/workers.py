@@ -12,16 +12,99 @@ import os
 import re
 import shutil
 import tempfile
+import time
 from typing import TYPE_CHECKING
 
 import pandas as pd
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6 import sip
+from PyQt6.QtCore import QObject, QThread, pyqtSignal
 from PyQt6.QtGui import QTextDocument
 
 if TYPE_CHECKING:
     from PyQt6.QtPrintSupport import QPrinter
 
 logger = logging.getLogger(__name__)
+
+
+class _BackgroundJobs(QObject):
+    """Holds running report workers so no view's lifetime decides theirs.
+
+    A view used to own its worker through ``self._x_worker``. Destroying
+    the view (logout, closing Management) while the job ran dropped that
+    last reference, and Qt aborts the whole process when a running
+    QThread is destroyed. Here each worker is held strongly until its
+    ``finished`` signal arrives on the UI thread. The worker has no Qt
+    parent, and its own ``finished -> deleteLater`` frees it afterwards.
+
+    Results meant for a view that is gone are dropped by PyQt: a
+    bound-method slot of a destroyed QObject receiver is disconnected.
+    """
+
+    def __init__(self) -> None:
+        """Create the empty registry (on the UI thread, so its slot runs there)."""
+        super().__init__()
+        self._running: set[QThread] = set()
+
+    def start(self, worker: QThread) -> None:
+        """Keep *worker* alive until it finishes, then start it."""
+        self._running.add(worker)
+        worker.finished.connect(self._on_finished)
+        worker.start()
+
+    def _on_finished(self) -> None:
+        """Drop the worker that just finished, and any other already done."""
+        self._running.discard(self.sender())
+        self._running = {w for w in self._running if not sip.isdeleted(w) and not w.isFinished()}
+
+    def running(self) -> list[QThread]:
+        """Workers still held (started and not yet seen to finish)."""
+        return [w for w in self._running if not sip.isdeleted(w)]
+
+    def wait_all(self, timeout_ms: int) -> None:
+        """Wait up to *timeout_ms* in total for running workers, on app exit.
+
+        A worker still running after that is handed to C++ ownership, so
+        Python tearing down its wrapper at exit never destroys the running
+        thread (the abort this registry exists to prevent).
+        """
+        deadline_ms = max(timeout_ms, 0)
+        for worker in self.running():
+            timer_start = time.monotonic()
+            if not worker.wait(deadline_ms):
+                logger.warning("Background job %s still running at exit; leaving it.", type(worker).__name__)
+                sip.transferto(worker, None)
+            deadline_ms = max(0, deadline_ms - int((time.monotonic() - timer_start) * 1000))
+        self._running.clear()
+
+
+_jobs: _BackgroundJobs | None = None
+
+
+def _registry() -> _BackgroundJobs:
+    global _jobs
+    if _jobs is None:
+        _jobs = _BackgroundJobs()
+    return _jobs
+
+
+def start_background_job(worker: QThread) -> None:
+    """Start *worker*, kept alive independently of whoever started it.
+
+    Use for a worker a view starts and might outlive -- never hold it only
+    in ``self._worker`` and call ``start()`` directly. Call from the UI thread.
+    """
+    _registry().start(worker)
+
+
+def running_background_jobs() -> list[QThread]:
+    """Workers started with ``start_background_job`` that haven't finished yet."""
+    return _jobs.running() if _jobs is not None else []
+
+
+def wait_for_background_jobs(timeout_ms: int = 3000) -> None:
+    """On app exit: give running background jobs a short time to finish."""
+    if _jobs is not None:
+        _jobs.wait_all(timeout_ms)
 
 
 class CsvImportWorker(QThread):

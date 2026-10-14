@@ -175,14 +175,21 @@ def viewer(db_session, monkeypatch):
     _FakeWorker.instances = []
     monkeypatch.setattr(rv, "ReportPrintWorker", _FakeWorker)
     monkeypatch.setattr(rv, "ReportEmailWorker", _FakeEmailWorker)
+    started = []  # the view must hand its worker to the job registry
+    monkeypatch.setattr(rv, "start_background_job", lambda w: (started.append(w), w.start()))
     monkeypatch.setattr(rv, "QMessageBox", MagicMock())
     monkeypatch.setattr("PyQt6.QtPrintSupport.QPrintDialog", _AcceptingPrintDialog)
     monkeypatch.setattr("PyQt6.QtWidgets.QInputDialog.getText", lambda *a, **k: (" owner@shop.lk ", True))
     view = rv.ReportViewer()
     view.current_report = SimpleNamespace(name="Stock Valuation")
     view._full_df = _DF
+    view._test_started_jobs = started
     yield view
     view.deleteLater()
+
+
+def started_jobs(view) -> list:
+    return view._test_started_jobs
 
 
 def _buttons(view) -> list:
@@ -194,6 +201,7 @@ class TestPrintFromViewer:
         viewer.print_report()
         worker = _FakeWorker.instances[-1]
         assert worker.started
+        assert started_jobs(viewer) == [worker]
         assert worker.args[1] is _DF
         assert viewer._overlay.isVisibleTo(viewer)
         assert not any(b.isEnabled() for b in _buttons(viewer))
@@ -220,6 +228,7 @@ class TestEmailFromViewer:
         viewer.email_report()
         worker = _FakeWorker.instances[-1]
         assert worker.started
+        assert started_jobs(viewer) == [worker]
         assert worker.args[3] == "owner@shop.lk"
         assert viewer._overlay.isVisibleTo(viewer)
         assert not any(b.isEnabled() for b in _buttons(viewer))

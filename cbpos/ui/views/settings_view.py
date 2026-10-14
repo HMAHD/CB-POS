@@ -95,6 +95,20 @@ class SettingsView(QWidget):
 
         self.sidebar.finalize()
         self.sidebar.highlight(0)
+
+        # Page name (key of SETTINGS_PAGE_PERMISSIONS) -> its sidebar button, for set_user()
+        self._page_buttons = {
+            "shop_info": self.btn_shop_info,
+            "sales_tax": self.btn_sales_tax,
+            "documents": self.btn_documents,
+            "hardware": self.btn_hardware,
+            "receipt": self.btn_receipt,
+            "system": self.btn_system,
+            "network": self.btn_network,
+            "payment_methods": self.btn_payment_methods,
+            "data_safety": self.btn_data_safety,
+            "admin_tools": self.btn_admin_tools,
+        }
         main_layout.addWidget(self.sidebar)
 
         # --- Content Area ---
@@ -323,10 +337,10 @@ class SettingsView(QWidget):
     # ------------------------------------------------------------------
 
     def set_user(self, user) -> None:
-        """Show/hide admin-only sidebar buttons based on user permissions."""
-        is_admin = PermissionService.user_has_permission(user, Permissions.ADMIN_SETTINGS)
-        self.btn_data_safety.setVisible(is_admin)
-        self.btn_admin_tools.setVisible(is_admin)
+        """Show only the sidebar pages this user may see -- the definition the side menu uses too (#728)."""
+        visible = PermissionService.settings_pages(user)
+        for page, button in self._page_buttons.items():
+            button.setVisible(page in visible)
 
     # ------------------------------------------------------------------
     # Load / Save

@@ -9,7 +9,6 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from cbpos.core.constants.permissions import Permissions
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.resources.icons import Icons
@@ -86,6 +85,21 @@ class ManagementView(QWidget):
 
         self.sidebar.finalize()
         main_layout.addWidget(self.sidebar)
+
+        # Tab name (key of MANAGEMENT_TAB_PERMISSIONS) -> its sidebar button, for set_user()
+        self._tab_buttons = {
+            "dashboard": self.btn_dashboard,
+            "inventory": self.btn_inventory,
+            "purchasing": self.btn_purchasing,
+            "credit_book": self.btn_customers,
+            "reports": self.btn_reports,
+            "documents": self.btn_documents,
+            "users": self.btn_users,
+            "pricelists": self.btn_pricelists,
+            "promotions": self.btn_promotions,
+            "stock_take": self.btn_stock_take,
+            "reorder": self.btn_reorder,
+        }
 
         # --- Content Area ---
         content_area = QWidget()
@@ -214,11 +228,10 @@ class ManagementView(QWidget):
         """Store the logged-in user, apply admin-only nav visibility, and propagate to created views."""
         self.user = user
 
-        is_admin = PermissionService.user_has_permission(user, Permissions.ADMIN_MANAGE_USERS)
-        self.btn_users.setVisible(is_admin)
-        self.btn_pricelists.setVisible(is_admin)
-        self.btn_promotions.setVisible(is_admin)
-        self.btn_stock_take.setVisible(is_admin)
+        # Same definition the side menu uses to offer Management (#728)
+        visible = PermissionService.management_tabs(user)
+        for tab, button in self._tab_buttons.items():
+            button.setVisible(tab in visible)
 
         if hasattr(self, "purchase_view"):
             self.purchase_view.set_user(user)

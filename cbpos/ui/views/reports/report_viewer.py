@@ -275,6 +275,10 @@ class ReportViewer(QWidget):
     def showEvent(self, event) -> None:
         """Ensure splitter sizes and layouts are properly computed on display."""
         super().showEvent(event)
+        # The VAT setting is changed on the Settings screen, so coming back
+        # here is the moment VAT-only reports must appear or disappear (#541).
+        if TaxService.is_vat_active() != self._sidebar_vat_active:
+            self._rebuild_sidebar()
         sizes = self.splitter.sizes()
         if sizes and sizes[0] < 260:
             remaining = sum(sizes) - 280
@@ -303,15 +307,34 @@ class ReportViewer(QWidget):
         self._nav_scroll.setWidget(nav_container)
 
         if self.current_report is not None:
-            for btn in nav_container.findChildren(QPushButton, "ReportNavItem"):
-                if btn.property("report_id") == self.current_report.id:
-                    btn.setChecked(True)
+            selected = [
+                btn
+                for btn in nav_container.findChildren(QPushButton, "ReportNavItem")
+                if btn.property("report_id") == self.current_report.id
+            ]
+            if selected:
+                selected[0].setChecked(True)
+            else:
+                # e.g. a VAT report left open when VAT was turned off
+                self._close_report()
+
+    def _close_report(self) -> None:
+        """Go back to the 'pick a report' state, with no report open."""
+        self.current_report = None
+        self.report_header.setVisible(False)
+        self.filter_bar.setVisible(False)
+        self.btn_run.setEnabled(False)
+        self._full_df = pd.DataFrame()
+        self.table_model.set_data(pd.DataFrame())
+        self.content_stack.setCurrentIndex(0)
+        self.action_bar.setVisible(False)
+        self.pagination.setVisible(False)
 
     def _populate_sidebar(self) -> None:
         """Build category sections with report buttons, in the fixed category order."""
         categories = self.registry.get_all_categories()
 
-        vat_active = TaxService.is_vat_active()
+        vat_active = self._sidebar_vat_active = TaxService.is_vat_active()
         rendered_any = False
 
         for category in categories:

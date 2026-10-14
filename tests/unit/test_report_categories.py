@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import QLabel, QPushButton
 
 from cbpos.core.reports import register_all_reports
 from cbpos.core.reports.registry import ReportRegistry
+from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import get_language, set_language, translate_in
 from cbpos.ui.views.reports.report_viewer import ReportViewer
 
@@ -87,3 +88,67 @@ def test_selected_report_stays_selected_after_language_switch(language):
 
     checked = [b.property("report_id") for b in _nav_items(viewer) if b.isChecked()]
     assert checked == ["low_stock"]
+
+
+VAT_REPORTS = {"tax_liability", "tax_filing_summary"}
+
+
+@pytest.fixture
+def vat_registered(monkeypatch):
+    """Set the 'VAT registered' business setting for the rest of the test."""
+    ConfigService.get("vat_registered")  # make sure settings are loaded
+
+    def _set(on: bool) -> None:
+        monkeypatch.setitem(ConfigService._settings, "vat_registered", on)
+
+    return _set
+
+
+def _report_ids(viewer) -> set[str]:
+    return {btn.property("report_id") for btn in _nav_items(viewer)}
+
+
+def _reopen(viewer) -> None:
+    """Leave the Reports screen and come back, as after a trip to Settings."""
+    viewer.hide()
+    viewer.show()
+
+
+@pytest.mark.usefixtures("qapp", "db_session")
+def test_turning_vat_on_shows_vat_reports_when_reports_reopen(vat_registered):
+    register_all_reports()
+    vat_registered(False)
+    viewer = ReportViewer()
+    viewer.show()
+
+    vat_registered(True)
+    _reopen(viewer)
+
+    assert _report_ids(viewer) >= VAT_REPORTS
+
+
+@pytest.mark.usefixtures("qapp", "db_session")
+def test_turning_vat_off_hides_vat_reports_when_reports_reopen(vat_registered):
+    register_all_reports()
+    vat_registered(True)
+    viewer = ReportViewer()
+    viewer.show()
+
+    vat_registered(False)
+    _reopen(viewer)
+
+    assert not VAT_REPORTS & _report_ids(viewer)
+
+
+@pytest.mark.usefixtures("qapp", "db_session")
+def test_turning_vat_off_closes_an_open_vat_report(vat_registered):
+    register_all_reports()
+    vat_registered(True)
+    viewer = ReportViewer()
+    viewer.show()
+    next(b for b in _nav_items(viewer) if b.property("report_id") == "tax_liability").click()
+
+    vat_registered(False)
+    _reopen(viewer)
+
+    assert not viewer.filter_bar.isVisible()

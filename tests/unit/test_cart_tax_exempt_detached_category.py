@@ -57,10 +57,16 @@ def exempt_product(db_session):
     return product
 
 
+def _config_all():
+    # TaxService reads rates via get_all(); pin them so a rate saved by another test can't leak in
+    return {**ConfigService.DEFAULTS, "item_tax_exemptions": True, "vat_registered": True, "tax_vat_rate": 18.0}
+
+
+@patch("cbpos.core.services.config_service.ConfigService.get_all", side_effect=_config_all)
 @patch("cbpos.core.services.config_service.ConfigService.get", side_effect=_config)
 @patch("cbpos.core.services.cart_service.PricingService.calculate_price", side_effect=_mock_pricing)
 class TestDetachedCategoryTaxExempt:
-    def test_detached_exempt_item_is_not_taxed(self, _pricing, _cfg, exempt_product):
+    def test_detached_exempt_item_is_not_taxed(self, _pricing, _cfg, _cfg_all, exempt_product):
         cart = CartService()
         cart.add_item(exempt_product, Decimal("1"))
 
@@ -69,13 +75,13 @@ class TestDetachedCategoryTaxExempt:
         assert totals["exempt_amount"] == Decimal("118.00")
         assert totals["tax"] == Decimal("0.00")
 
-    def test_exempt_flag_is_captured_when_the_item_is_added(self, _pricing, _cfg, exempt_product):
+    def test_exempt_flag_is_captured_when_the_item_is_added(self, _pricing, _cfg, _cfg_all, exempt_product):
         cart = CartService()
         cart.add_item(exempt_product, Decimal("1"))
 
         assert cart.items[0]["tax_exempt"] is True
 
-    def test_loaded_taxable_category_is_taxed(self, _pricing, _cfg, db_session):
+    def test_loaded_taxable_category_is_taxed(self, _pricing, _cfg, _cfg_all, db_session):
         category = Category(name="Taxable701", tax_exempt=False)
         db_session.add(category)
         db_session.flush()
@@ -92,7 +98,7 @@ class TestDetachedCategoryTaxExempt:
         assert totals["exempt_amount"] == Decimal("0.00")
         assert totals["tax_vat"] == Decimal("18.00")
 
-    def test_product_without_category_is_taxable(self, _pricing, _cfg, db_session):
+    def test_product_without_category_is_taxable(self, _pricing, _cfg, _cfg_all, db_session):
         product = Product(name_en="Plain701", barcode="701-N", price=Decimal("50.00"))
         db_session.add(product)
         db_session.flush()

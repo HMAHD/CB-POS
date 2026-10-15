@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.utils.style_helpers import refresh_style
 
 
 class InfoCard(QFrame):
@@ -117,5 +118,4 @@ class InfoCard(QFrame):
         self.trend_label.setText(text)
         self.trend_label.setProperty("trendType", "positive" if positive else "negative")
         # Force style refresh
-        self.trend_label.style().unpolish(self.trend_label)
-        self.trend_label.style().polish(self.trend_label)
+        refresh_style(self.trend_label)

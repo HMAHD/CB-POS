@@ -15,6 +15,7 @@ from cbpos.core.utils.display_labels import display_role_name
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.constants import ACTION_BTN_HEIGHT, SIDEBAR_WIDTH
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.utils.style_helpers import refresh_style
 
 
 class NavTile(QPushButton):
@@ -67,8 +68,7 @@ class NavTile(QPushButton):
         """Toggle active state (highlighted border + accent color)."""
         self._active = active
         self.setProperty("active", active)
-        self.style().unpolish(self)
-        self.style().polish(self)
+        refresh_style(self)
         self._apply_theme()
 
     def _apply_theme(self) -> None:

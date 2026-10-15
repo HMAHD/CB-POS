@@ -50,6 +50,7 @@ from cbpos.core.utils.formatters import DEFAULT_CURRENCY_SYMBOL, get_currency_sy
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.guide_dialog import GuideDialog
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.utils.style_helpers import set_status_class
 from cbpos.ui.widgets.help_icon_button import HelpIconButton
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
@@ -1060,9 +1061,7 @@ class DocumentPage(SettingsPage):
             preview.setVisible(bool(text))
             css_class = "error" if error else "muted"
             if preview.property("class") != css_class:
-                preview.setProperty("class", css_class)
-                preview.style().unpolish(preview)
-                preview.style().polish(preview)
+                set_status_class(preview, css_class)
         return invalid
 
     def validate(self) -> None:

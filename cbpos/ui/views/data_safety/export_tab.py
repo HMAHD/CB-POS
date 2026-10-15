@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.export_service import ExportService
 from cbpos.i18n import _t
+from cbpos.ui.utils.style_helpers import set_status_class
 from cbpos.ui.views.data_safety.export_types import EXPORT_FORMATS, EXPORT_TYPES, ExportFormat, ExportType
 from cbpos.ui.workers import ExportWorker, start_background_job
 
@@ -201,10 +202,7 @@ class ExportTabWidget(QWidget):
 
     def _set_export_status(self, css_class: str, text: str) -> None:
         """Update the export status label with the given class and text."""
-        self.lbl_export_status.setProperty("class", css_class)
-        self.lbl_export_status.setText(text)
-        self.lbl_export_status.style().unpolish(self.lbl_export_status)
-        self.lbl_export_status.style().polish(self.lbl_export_status)
+        set_status_class(self.lbl_export_status, css_class, text)
 
     def retranslate_ui(self) -> None:
         """Update all translatable strings, keeping the chosen type and format."""

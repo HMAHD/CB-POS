@@ -45,6 +45,7 @@ from cbpos.infrastructure.hardware.escpos_driver import drawer_pin_setting
 from cbpos.ui.constants import SPACING_SM
 from cbpos.ui.hardware_test_feedback import set_hardware_test_status, show_hardware_test_result
 from cbpos.ui.resources.status_colors import DANGER, WARNING, status_color
+from cbpos.ui.utils.style_helpers import set_status_class
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers
 
@@ -258,13 +259,13 @@ class AdminToolsView(QWidget):
         self.btn_check_integrity.setEnabled(True)
         self.btn_check_integrity.setText(_t("admin_tools.db_btn_check_integrity"))
         if ok:
-            self.lbl_integrity_status.setProperty("class", "credit")
-            self.lbl_integrity_status.setText(_t("admin_tools.db_integrity_passed"))
+            set_status_class(self.lbl_integrity_status, "credit", _t("admin_tools.db_integrity_passed"))
         else:
-            self.lbl_integrity_status.setProperty("class", "debit")
-            self.lbl_integrity_status.setText(_t("admin_tools.db_integrity_failed", message=message))
-        self.lbl_integrity_status.style().unpolish(self.lbl_integrity_status)
-        self.lbl_integrity_status.style().polish(self.lbl_integrity_status)
+            set_status_class(
+                self.lbl_integrity_status,
+                "debit",
+                _t("admin_tools.db_integrity_failed", message=message),
+            )
 
     # ── Error Logs Tab ───────────────────────────────────────────────────
 
@@ -731,15 +732,15 @@ class AdminToolsView(QWidget):
         self._scanner_keystroke_times.append(time.monotonic())
 
         if text.strip():
-            self.lbl_scanner_status.setText(_t("admin_tools.hw_scanner_barcode_received", barcode=text.strip()))
-            self.lbl_scanner_status.setProperty("class", "credit")
+            set_status_class(
+                self.lbl_scanner_status,
+                "credit",
+                _t("admin_tools.hw_scanner_barcode_received", barcode=text.strip()),
+            )
         else:
-            self.lbl_scanner_status.setText("")
-            self.lbl_scanner_status.setProperty("class", "")
+            set_status_class(self.lbl_scanner_status, "", "")
             self._scanner_keystroke_times.clear()
             self.lbl_scanner_detection.setText("")
-        self.lbl_scanner_status.style().unpolish(self.lbl_scanner_status)
-        self.lbl_scanner_status.style().polish(self.lbl_scanner_status)
 
     def _on_scanner_enter(self) -> None:
         """Evaluate keystroke timing when Enter is pressed to detect scanner vs manual input."""
@@ -756,15 +757,17 @@ class AdminToolsView(QWidget):
         avg_ms = (sum(intervals) / len(intervals)) * 1000
 
         if avg_ms < 50:
-            detection_text = _t("admin_tools.hw_scanner_detected", ms=f"{avg_ms:.0f}")
-            self.lbl_scanner_detection.setProperty("class", "credit")
+            set_status_class(
+                self.lbl_scanner_detection,
+                "credit",
+                _t("admin_tools.hw_scanner_detected", ms=f"{avg_ms:.0f}"),
+            )
         else:
-            detection_text = _t("admin_tools.hw_scanner_manual", ms=f"{avg_ms:.0f}")
-            self.lbl_scanner_detection.setProperty("class", "debit")
-
-        self.lbl_scanner_detection.setText(detection_text)
-        self.lbl_scanner_detection.style().unpolish(self.lbl_scanner_detection)
-        self.lbl_scanner_detection.style().polish(self.lbl_scanner_detection)
+            set_status_class(
+                self.lbl_scanner_detection,
+                "debit",
+                _t("admin_tools.hw_scanner_manual", ms=f"{avg_ms:.0f}"),
+            )
 
     def _clear_scanner(self) -> None:
         """Clear the scanner test input."""

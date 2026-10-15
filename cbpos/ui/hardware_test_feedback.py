@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import QLabel
 from cbpos.core.constants.hardware import HardwareTestOutcome, PrinterError
 from cbpos.core.services.hardware_test_service import HardwareTestResult
 from cbpos.i18n import _t
+from cbpos.ui.utils.style_helpers import set_status_class
 
 _KEYS = {
     HardwareTestOutcome.PRINT_SENT: "printer.test.print_sent",
@@ -62,9 +63,6 @@ def set_hardware_test_status(label: QLabel, text: str, css_class: str) -> None:
         text: Already-translated text.
         css_class: ``success-hint``, ``warning-hint`` or ``muted`` (in progress).
     """
-    label.setText(text)
     label.setToolTip("")
-    label.setProperty("class", css_class)
     label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-    label.style().unpolish(label)
-    label.style().polish(label)
+    set_status_class(label, css_class, text)

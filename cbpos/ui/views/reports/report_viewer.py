@@ -150,6 +150,8 @@ class ReportViewer(QWidget):
         self.btn_run.setEnabled(False)
         self.btn_run.setCursor(Qt.CursorShape.PointingHandCursor)
         filter_layout.addWidget(self.btn_run)
+        # Spare width goes after Run Report, keeping it next to the filters (#611)
+        filter_layout.addStretch()
 
         self.filter_bar.setVisible(False)
         content_layout.addWidget(self.filter_bar)

@@ -47,7 +47,8 @@ class FilterWidget(QWidget):
             # Add spacing
             self.layout.addSpacing(10)
 
-        self.layout.addStretch()
+        # No trailing stretch: the filter bar puts Run Report right after
+        # these filters and stretches *after* it (#611).
 
     def _add_date_range(self, name: str, label: str, definition: dict):
         container = QWidget()

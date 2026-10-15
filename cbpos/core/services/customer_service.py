@@ -5,7 +5,7 @@ from sqlalchemy import desc, or_, select
 from sqlalchemy.orm import selectinload
 
 from cbpos.core.database import Database
-from cbpos.core.models import Customer, CustomerContact, Sale
+from cbpos.core.models import Customer, CustomerContact, LoyaltyLedgerEntry, Sale
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.utils.formatters import escape_like
 
@@ -101,10 +101,20 @@ class CustomerService:
             session.commit()
             return True
 
-    def add_loyalty_points(self, customer_id: int, amount_spent: Decimal) -> int:
-        """
-        Adds loyalty points based on amount spent.
-        Rule: 1 point per N currency units (configurable via loyalty_points_ratio setting).
+    def add_loyalty_points(self, customer_id: int, amount_spent: Decimal, sale_id: int | None = None) -> int:
+        """Award loyalty points for an amount spent.
+
+        Rule: 1 point per N currency units (``loyalty_points_ratio`` setting).
+        The award is stored as a loyalty ledger row as well as on the
+        customer, so LAN Sync can carry it to the Main PC (#716).
+
+        Args:
+            customer_id: Customer earning the points.
+            amount_spent: Amount the points are earned on.
+            sale_id: The sale they were earned on, if any.
+
+        Returns:
+            Points added (0 when loyalty is off or the amount is too small).
         """
 
         if not ConfigService.get("enable_loyalty"):
@@ -122,7 +132,16 @@ class CustomerService:
             if not customer:
                 return 0
 
-            customer.loyalty_points += points_to_add
+            customer.loyalty_points = (customer.loyalty_points or 0) + points_to_add
+            session.add(
+                LoyaltyLedgerEntry(
+                    customer_id=customer_id,
+                    entry_type="EARN",
+                    points=points_to_add,
+                    balance_after=customer.loyalty_points,
+                    reference_id=sale_id,
+                )
+            )
             session.commit()
             return points_to_add
 

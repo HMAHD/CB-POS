@@ -180,6 +180,10 @@ class Till:
             net_revenue=total,
             additional_discount_type="NONE",
             additional_discount_value=Decimal("0"),
+            loyalty_points_redeemed=0,
+            loyalty_points_value=Decimal("0.00"),
+            loyalty_points_earned=0,
+            loyalty_points_balance=None,
             payment_method=payment_method,
             refund_of_sale_id=refund_of_sale_id,
         )

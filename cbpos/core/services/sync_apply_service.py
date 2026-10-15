@@ -298,6 +298,13 @@ class SyncApplyService:
             values["synced"] = True
         if table_name in _DOCUMENT_TABLES and not values.get("origin_terminal_id"):
             values["origin_terminal_id"] = self._terminal_id
+        if table_name == "sales":
+            if values.get("loyalty_points_redeemed") is None:
+                values["loyalty_points_redeemed"] = 0
+            if values.get("loyalty_points_value") is None:
+                values["loyalty_points_value"] = Decimal("0.00")
+            if values.get("loyalty_points_earned") is None:
+                values["loyalty_points_earned"] = 0
 
         space = id_space(table_name)
         server_id = self._lookup(space, local_id)
@@ -597,9 +604,11 @@ class SyncApplyService:
             row.synced = True
             return
 
-        columns = {c.key for c in sa_inspect(type(row)).columns}
+        cols = {c.key: c for c in sa_inspect(type(row)).columns}
         for key, value in values.items():
-            if key == "id" or key not in columns:
+            if key == "id" or key not in cols:
+                continue
+            if not cols[key].nullable and value is None:
                 continue
             if key == "type" and getattr(row, "type", value) != value:
                 raise PushApplyError(f"{table_name}: row {row.id} type {row.type} cannot become {value}")

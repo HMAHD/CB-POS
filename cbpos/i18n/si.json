@@ -158,7 +158,8 @@
       "usb_not_found": "{usb_id} ID එක තියෙන USB ප්‍රින්ටරයක් හම්බ වුනේ නැහැ. කේබල් එකයි පවර් එකයි බලන්න.",
       "usb_access_denied": "වෙන ප්‍රෝග්‍රෑම් එකක් හරි Windows ඩ්‍රයිවර් එක හරි ප්‍රින්ටරය පාවිච්චි කරනවා. \"Windows ප්‍රින්ටරය\" තෝරලා බලන්න.",
       "failed": "ප්‍රින්ටරයෙන් උත්තරයක් නැහැ. කේබල් එක, පවර් එක, සැකසුම් බලන්න."
-    }
+    },
+    "a4_invoice_failed": "{document} බිලේ බදු ඉන්වොයිසය ප්‍රින්ට් වුණේ නැහැ: {error}"
   },
   "sales": {
     "search_placeholder_all": "බාර්කෝඩ් ස්කෑන් කරන්න, නැත්නම් නම ටයිප් කරන්න... (Enter)",
@@ -2732,5 +2733,38 @@
     "print_x_read": "X-වාර්තාව ප්‍රින්ට් කරන්න",
     "x_read_printed": "X-වාර්තාව ප්‍රින්ට් වුණා.",
     "x_read_failed": "X-වාර්තාව ප්‍රින්ට් වුණේ නැහැ.\n\n{error}"
+  },
+  "invoice": {
+    "title_tax": "බදු ඉන්වොයිසය",
+    "title": "ඉන්වොයිසය",
+    "bill_to": "ගැනුම්කරු",
+    "walk_in": "සාමාන්‍ය පාරිභෝගික",
+    "tin": "TIN",
+    "vat_no": "වැට් ලියාපදිංචි අංකය",
+    "invoice_no": "ඉන්වොයිස් අංකය",
+    "date": "දිනය",
+    "payment": "ගෙවීම",
+    "col_description": "විස්තරය",
+    "col_qty": "ප්‍රමාණය",
+    "col_unit_price": "ඒකක මිල",
+    "col_discount": "වට්ටම",
+    "col_amount": "මුදල",
+    "subtotal": "උප එකතුව",
+    "bill_discount": "බිල් වට්ටම",
+    "bill_discount_pct": "බිල් වට්ටම ({pct}%)",
+    "total": "මුළු මුදල",
+    "you_saved": "ඔබට ලැබුණු වට්ටම {amount}",
+    "taxes_included": "මිලට බදු ඇතුළත්:",
+    "net_value": "බදු නැති වටිනාකම",
+    "vat": "වැට් ({rate}%)",
+    "sscl": "SSCL ({rate}%)",
+    "taxable": "බදු අය කෙරෙන විකුණුම්",
+    "exempt": "වැට් නිදහස් විකුණුම්",
+    "bank_details": "බැංකු විස්තර",
+    "bank_name": "බැංකුව: {name}",
+    "bank_account": "ගිණුම් අංකය: {number}",
+    "bank_branch": "ශාඛාව: {name}",
+    "authorized_signature": "බලයලත් අත්සන",
+    "received_by": "භාර ගත්තේ"
   }
 }

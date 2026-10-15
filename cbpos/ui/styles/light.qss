@@ -3678,7 +3678,6 @@ QPushButton#DocDetailCloseBtn {
     border-radius: 4px;
     padding: 4px 12px;
     font-size: 12px;
-    border: 1px solid #ADB5BD;
 }
 
 /* Detail panel beside the list (#612): header bar, scrolling body, splitter */

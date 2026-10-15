@@ -1,13 +1,14 @@
-"""Unit tests for Issue #754: Loyalty settings section: point value, minimum redeem, show on receipt.
+"""Unit tests for Loyalty settings inside SalesTaxPage (Sales & Tax).
 
 Verifies:
-1. One Loyalty section shows all five settings, translated en/si/ta, with tooltips.
+1. SalesTaxPage has a dedicated Loyalty tab showing all five settings, translated en/si/ta, with tooltips.
 2. Existing Enable Loyalty / Points Ratio values carry over after upgrade (no reset).
 3. Defaults: Point Value Rs. 1, Minimum Redeem 100 points, Show on receipt on, Ratio 100, Enable on.
 4. Settings save/validate like other pages (positive values, Points Ratio >= 1).
 5. Turning loyalty off disables the other loyalty settings' controls (documented in tooltip).
 6. Tests for load/save/defaults/migration of old keys.
-7. SalesTaxPage and SystemPage no longer own loyalty settings.
+7. SystemPage no longer owns loyalty settings.
+8. SettingsView does not have a separate loyalty sidebar button (keeps sidebar compact with 7 config pages).
 """
 
 from unittest.mock import patch
@@ -17,7 +18,7 @@ from PyQt6.QtWidgets import QMessageBox
 
 from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import get_language, set_language
-from cbpos.ui.views.settings_pages import LoyaltyPage, SalesTaxPage, SystemPage
+from cbpos.ui.views.settings_pages import SalesTaxPage, SystemPage
 from cbpos.ui.views.settings_view import SettingsView
 
 pytestmark = pytest.mark.usefixtures("qapp")
@@ -40,21 +41,22 @@ class TestLoyaltySettingsDefaults:
         assert ConfigService.DEFAULTS["show_loyalty_on_receipt"] is True
 
 
-class TestLoyaltyPageUI:
-    def test_page_has_all_five_controls_and_section_header(self, qtbot):
-        page = LoyaltyPage()
+class TestSalesTaxPageLoyaltyUI:
+    def test_sales_tax_page_has_loyalty_tab_and_controls(self, qtbot):
+        page = SalesTaxPage()
         qtbot.addWidget(page)
 
+        # Tab count is 3: Sales, Tax, Loyalty
+        assert page.tabs.count() == 3
         assert hasattr(page, "chk_enable_loyalty")
         assert hasattr(page, "spin_points_ratio")
         assert hasattr(page, "spin_point_value")
         assert hasattr(page, "spin_min_redeem")
         assert hasattr(page, "chk_show_on_receipt")
-        assert hasattr(page, "btn_reset_defaults")
         assert hasattr(page, "_header_loyalty")
 
     def test_turning_loyalty_off_disables_dependent_controls(self, qtbot):
-        page = LoyaltyPage()
+        page = SalesTaxPage()
         qtbot.addWidget(page)
 
         # Checked by default -> dependents enabled
@@ -81,7 +83,7 @@ class TestLoyaltyPageUI:
     @pytest.mark.parametrize("lang", ["en", "si", "ta"])
     def test_all_five_settings_have_labels_and_tooltips(self, qtbot, lang):
         set_language(lang)
-        page = LoyaltyPage()
+        page = SalesTaxPage()
         qtbot.addWidget(page)
 
         # Tooltips exist and non-empty
@@ -97,12 +99,20 @@ class TestLoyaltyPageUI:
             assert "disabled" in enable_tip or "off" in enable_tip or "no effect" in enable_tip
 
 
-class TestLoyaltyPageLoadSaveValidation:
+class TestSalesTaxPageLoyaltyLoadSaveValidation:
     def test_load_and_save_cycle(self, qtbot):
-        page = LoyaltyPage()
+        page = SalesTaxPage()
         qtbot.addWidget(page)
 
         settings = {
+            "default_search_mode": "BARCODE",
+            "max_discount_percent": 15.0,
+            "default_credit_limit": 5000,
+            "vat_registered": True,
+            "tax_vat_rate": 18.0,
+            "tax_sscl_rate": 2.5,
+            "tax_sscl_turnover_pct": 50.0,
+            "item_tax_exemptions": True,
             "enable_loyalty": True,
             "loyalty_points_ratio": 200,
             "loyalty_point_value": 2.50,
@@ -120,7 +130,7 @@ class TestLoyaltyPageLoadSaveValidation:
 
     def test_carry_over_existing_enable_loyalty_and_ratio_after_upgrade(self, qtbot):
         """Old settings.json with only old keys carries over without reset."""
-        page = LoyaltyPage()
+        page = SalesTaxPage()
         qtbot.addWidget(page)
 
         old_settings = {
@@ -139,7 +149,7 @@ class TestLoyaltyPageLoadSaveValidation:
 
     def test_migration_of_legacy_aliases(self, qtbot):
         """Legacy aliases like points_ratio or min_redeem_points carry over cleanly."""
-        page = LoyaltyPage()
+        page = SalesTaxPage()
         qtbot.addWidget(page)
 
         legacy = {
@@ -157,7 +167,7 @@ class TestLoyaltyPageLoadSaveValidation:
         assert saved["show_loyalty_on_receipt"] is False
 
     def test_validate_rejects_non_positive_values(self, qtbot):
-        page = LoyaltyPage()
+        page = SalesTaxPage()
         qtbot.addWidget(page)
 
         # Points ratio < 1
@@ -184,7 +194,7 @@ class TestLoyaltyPageLoadSaveValidation:
         page.validate()  # Does not raise
 
     def test_reset_to_defaults(self, qtbot, db_session):
-        page = LoyaltyPage()
+        page = SalesTaxPage()
         qtbot.addWidget(page)
 
         page.load(
@@ -211,13 +221,8 @@ class TestLoyaltyPageLoadSaveValidation:
         assert saved["show_loyalty_on_receipt"] is True
 
 
-class TestDecouplingFromOldPages:
-    def test_sales_tax_and_system_pages_no_longer_save_loyalty_keys(self, qtbot):
-        sales_page = SalesTaxPage()
-        qtbot.addWidget(sales_page)
-        sales_saved = sales_page.save()
-        assert "loyalty_points_ratio" not in sales_saved
-
+class TestDecouplingFromSystemPage:
+    def test_system_page_no_longer_saves_enable_loyalty(self, qtbot):
         sys_page = SystemPage()
         qtbot.addWidget(sys_page)
         sys_saved = sys_page.save()
@@ -225,11 +230,11 @@ class TestDecouplingFromOldPages:
 
 
 class TestSettingsViewIntegration:
-    def test_settings_view_includes_loyalty_page_and_sidebar_button(self, qtbot, db_session):
+    def test_settings_view_has_no_separate_loyalty_sidebar_button(self, qtbot, db_session):
         view = SettingsView()
         qtbot.addWidget(view)
 
-        loyalty_pages = [p for p in view.pages if isinstance(p, LoyaltyPage)]
-        assert len(loyalty_pages) == 1
-        assert hasattr(view, "btn_loyalty")
-        assert view.btn_loyalty.text() != ""
+        # 7 config pages: ShopInfo, SalesTax, Documents, Hardware, Receipt, System, Network
+        assert len(view.pages) == 7
+        assert not hasattr(view, "btn_loyalty")
+        assert "loyalty" not in view._page_buttons

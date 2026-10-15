@@ -620,8 +620,6 @@ class SalesTaxPage(SettingsPage):
         self._lbl_default_credit = QLabel()
         self._form_sales.addRow(self._lbl_default_credit, self.spin_default_credit)
 
-        self.set_currency_symbol(get_currency_symbol())
-
         self.tabs.addTab(self._tab_sales, "")
 
         # --- Tab 2: Tax ---
@@ -693,6 +691,44 @@ class SalesTaxPage(SettingsPage):
 
         self.tabs.addTab(self._tab_tax, "")
 
+        # --- Tab 3: Loyalty ---
+        self._tab_loyalty, self._form_loyalty = self._build_form_tab()
+
+        self._header_loyalty = self._make_section_header("settings.loyalty.section_loyalty")
+        self._form_loyalty.addRow(self._header_loyalty)
+
+        self.chk_enable_loyalty = QCheckBox()
+        self._form_loyalty.addRow("", self.chk_enable_loyalty)
+
+        self.spin_points_ratio = QSpinBox()
+        self.spin_points_ratio.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+        self.spin_points_ratio.setRange(0, 100000)
+        self.spin_points_ratio.setFixedWidth(200)
+        self._lbl_points_ratio = QLabel()
+        self._form_loyalty.addRow(self._lbl_points_ratio, self.spin_points_ratio)
+
+        self.spin_point_value = QDoubleSpinBox()
+        self.spin_point_value.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+        self.spin_point_value.setDecimals(2)
+        self.spin_point_value.setRange(0.0, 10000.0)
+        self.spin_point_value.setFixedWidth(200)
+        self._lbl_point_value = QLabel()
+        self._form_loyalty.addRow(self._lbl_point_value, self.spin_point_value)
+
+        self.spin_min_redeem = QSpinBox()
+        self.spin_min_redeem.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+        self.spin_min_redeem.setRange(0, 100000)
+        self.spin_min_redeem.setFixedWidth(200)
+        self._lbl_min_redeem = QLabel()
+        self._form_loyalty.addRow(self._lbl_min_redeem, self.spin_min_redeem)
+
+        self.chk_show_on_receipt = QCheckBox()
+        self._form_loyalty.addRow("", self.chk_show_on_receipt)
+
+        self.tabs.addTab(self._tab_loyalty, "")
+        self.chk_enable_loyalty.toggled.connect(self._toggle_loyalty_fields)
+
+        self.set_currency_symbol(get_currency_symbol())
         self._toggle_tax_fields()
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui, owner=self)
@@ -734,6 +770,7 @@ class SalesTaxPage(SettingsPage):
 
         self.tabs.setTabText(0, _t("settings.sales_tax.tab_sales"))
         self.tabs.setTabText(1, _t("settings.sales_tax.tab_tax"))
+        self.tabs.setTabText(2, _t("settings.loyalty.tab_loyalty"))
 
         # Sales tab
         self._lbl_search_mode.setText(_t("settings.sales_tax.default_search_mode"))
@@ -769,6 +806,21 @@ class SalesTaxPage(SettingsPage):
         self.chk_item_tax_exemptions.setToolTip(_t("settings.sales_tax.tooltip_item_tax_exemptions"))
         self.btn_item_exempt_help.setToolTip(_t("settings.sales_tax.tooltip_item_tax_exemptions"))
         self.lbl_item_exemptions_hint.setText(_t("settings.sales_tax.hint_item_tax_exemptions"))
+
+        # Loyalty tab
+        self.chk_enable_loyalty.setText(_t("settings.loyalty.enable_loyalty"))
+        self.chk_enable_loyalty.setToolTip(_t("settings.loyalty.tooltip_enable_loyalty"))
+        self._lbl_points_ratio.setText(_t("settings.loyalty.points_ratio"))
+        self.spin_points_ratio.setToolTip(_t("settings.loyalty.tooltip_points_ratio"))
+        self._lbl_point_value.setText(_t("settings.loyalty.point_value"))
+        self.spin_point_value.setToolTip(_t("settings.loyalty.tooltip_point_value"))
+        self._lbl_min_redeem.setText(_t("settings.loyalty.min_redeem_points"))
+        self.spin_min_redeem.setToolTip(_t("settings.loyalty.tooltip_min_redeem_points"))
+        self.spin_min_redeem.setSuffix(_t("settings.loyalty.suffix_points"))
+        self.chk_show_on_receipt.setText(_t("settings.loyalty.show_on_receipt"))
+        self.chk_show_on_receipt.setToolTip(_t("settings.loyalty.tooltip_show_on_receipt"))
+
+        self._retranslate_section_headers()
         self.equalize_form_labels()
 
     def _toggle_tax_fields(self) -> None:
@@ -790,11 +842,24 @@ class SalesTaxPage(SettingsPage):
         ):
             widget.setEnabled(enabled)
 
+    def _toggle_loyalty_fields(self, enabled: bool) -> None:
+        """Enable or disable dependent settings controls based on loyalty toggle."""
+        self.spin_points_ratio.setEnabled(enabled)
+        self.spin_point_value.setEnabled(enabled)
+        self.spin_min_redeem.setEnabled(enabled)
+        self.chk_show_on_receipt.setEnabled(enabled)
+
     def set_currency_symbol(self, symbol: str) -> None:
         """Show ``symbol`` (the Shop Info currency, even unsaved) on the money spin boxes."""
         prefix = f"{(symbol or '').strip() or DEFAULT_CURRENCY_SYMBOL} "
-        self.spin_loyalty_ratio.setPrefix(prefix)
-        self.spin_default_credit.setPrefix(prefix)
+        if hasattr(self, "spin_loyalty_ratio"):
+            self.spin_loyalty_ratio.setPrefix(prefix)
+        if hasattr(self, "spin_points_ratio"):
+            self.spin_points_ratio.setPrefix(prefix)
+        if hasattr(self, "spin_point_value"):
+            self.spin_point_value.setPrefix(prefix)
+        if hasattr(self, "spin_default_credit"):
+            self.spin_default_credit.setPrefix(prefix)
 
     def load(self, settings: dict):
         """Populate sales and tax fields from the settings dict."""
@@ -813,8 +878,37 @@ class SalesTaxPage(SettingsPage):
         self.chk_item_tax_exemptions.setChecked(settings.get("item_tax_exemptions", False))
         self._toggle_tax_fields()
 
+        # Loyalty
+        from cbpos.core.services.config_service import ConfigService
+
+        enabled = settings.get("enable_loyalty", ConfigService.DEFAULTS["enable_loyalty"])
+        self.chk_enable_loyalty.setChecked(bool(enabled))
+
+        ratio = settings.get("loyalty_points_ratio")
+        if ratio is None:
+            ratio = settings.get("points_ratio", ConfigService.DEFAULTS["loyalty_points_ratio"])
+        self.spin_points_ratio.setValue(int(ratio))
+        self.spin_loyalty_ratio.setValue(int(ratio))
+
+        val = settings.get("loyalty_point_value")
+        if val is None:
+            val = settings.get("point_value", ConfigService.DEFAULTS["loyalty_point_value"])
+        self.spin_point_value.setValue(float(val))
+
+        min_pts = settings.get("loyalty_min_redeem_points")
+        if min_pts is None:
+            min_pts = settings.get("min_redeem_points", ConfigService.DEFAULTS["loyalty_min_redeem_points"])
+        self.spin_min_redeem.setValue(int(min_pts))
+
+        show_rec = settings.get("show_loyalty_on_receipt")
+        if show_rec is None:
+            show_rec = settings.get("receipt_show_loyalty", ConfigService.DEFAULTS["show_loyalty_on_receipt"])
+        self.chk_show_on_receipt.setChecked(bool(show_rec))
+
+        self._toggle_loyalty_fields(self.chk_enable_loyalty.isChecked())
+
     def save(self) -> dict:
-        """Return sales and tax fields as a settings dict."""
+        """Return sales, tax, and loyalty fields as a settings dict."""
         return {
             "default_search_mode": self.combo_search_mode.currentData() or "ALL",
             "max_discount_percent": self.spin_max_discount.value(),
@@ -824,7 +918,21 @@ class SalesTaxPage(SettingsPage):
             "tax_sscl_rate": self.spin_sscl.value(),
             "tax_sscl_turnover_pct": self.spin_sscl_turnover.value(),
             "item_tax_exemptions": self.chk_item_tax_exemptions.isChecked(),
+            "enable_loyalty": self.chk_enable_loyalty.isChecked(),
+            "loyalty_points_ratio": self.spin_points_ratio.value(),
+            "loyalty_point_value": round(self.spin_point_value.value(), 2),
+            "loyalty_min_redeem_points": self.spin_min_redeem.value(),
+            "show_loyalty_on_receipt": self.chk_show_on_receipt.isChecked(),
         }
+
+    def validate(self) -> None:
+        """Validate sales, tax, and loyalty settings."""
+        if self.spin_points_ratio.value() < 1:
+            raise ValueError(_t("settings.loyalty.error_points_ratio_positive"))
+        if self.spin_point_value.value() <= 0:
+            raise ValueError(_t("settings.loyalty.error_point_value_positive"))
+        if self.spin_min_redeem.value() <= 0:
+            raise ValueError(_t("settings.loyalty.error_min_redeem_positive"))
 
 
 class DocumentPage(SettingsPage):
@@ -3101,142 +3209,3 @@ class NetworkPage(SettingsPage):
                 _t("settings.network.btn_forget_main"),
                 _t("settings.network.sync_forget_main_done_message"),
             )
-
-
-class LoyaltyPage(SettingsPage):
-    """Customer loyalty program configuration."""
-
-    def init_ui(self):
-        """Build the single-tab loyalty configuration page."""
-        _layout, self.tabs = self._create_page_layout(
-            _t("settings.loyalty.title"),
-            _t("settings.loyalty.subtitle"),
-        )
-
-        self._tab_loyalty, self._form_loyalty = self._build_form_tab()
-        self.tabs.addTab(self._tab_loyalty, "")
-
-        self._header_loyalty = self._make_section_header("settings.loyalty.section_loyalty")
-        self._form_loyalty.addRow(self._header_loyalty)
-
-        self.chk_enable_loyalty = QCheckBox()
-        self._form_loyalty.addRow("", self.chk_enable_loyalty)
-
-        self.spin_points_ratio = QSpinBox()
-        self.spin_points_ratio.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
-        self.spin_points_ratio.setRange(0, 100000)
-        self.spin_points_ratio.setFixedWidth(200)
-        self._lbl_points_ratio = QLabel()
-        self._form_loyalty.addRow(self._lbl_points_ratio, self.spin_points_ratio)
-
-        self.spin_point_value = QDoubleSpinBox()
-        self.spin_point_value.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
-        self.spin_point_value.setDecimals(2)
-        self.spin_point_value.setRange(0.0, 10000.0)
-        self.spin_point_value.setFixedWidth(200)
-        self._lbl_point_value = QLabel()
-        self._form_loyalty.addRow(self._lbl_point_value, self.spin_point_value)
-
-        self.spin_min_redeem = QSpinBox()
-        self.spin_min_redeem.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
-        self.spin_min_redeem.setRange(0, 100000)
-        self.spin_min_redeem.setFixedWidth(200)
-        self._lbl_min_redeem = QLabel()
-        self._form_loyalty.addRow(self._lbl_min_redeem, self.spin_min_redeem)
-
-        self.chk_show_on_receipt = QCheckBox()
-        self._form_loyalty.addRow("", self.chk_show_on_receipt)
-
-        self.chk_enable_loyalty.toggled.connect(self._toggle_loyalty_fields)
-
-        self.retranslate_ui()
-        register_language_callback(self.retranslate_ui, owner=self)
-
-    def _toggle_loyalty_fields(self, enabled: bool) -> None:
-        """Enable or disable dependent settings controls based on loyalty toggle."""
-        self.spin_points_ratio.setEnabled(enabled)
-        self.spin_point_value.setEnabled(enabled)
-        self.spin_min_redeem.setEnabled(enabled)
-        self.chk_show_on_receipt.setEnabled(enabled)
-
-    def set_currency_symbol(self, symbol: str) -> None:
-        """Show currency symbol on currency-denominated inputs."""
-        prefix = f"{(symbol or '').strip() or DEFAULT_CURRENCY_SYMBOL} "
-        self.spin_points_ratio.setPrefix(prefix)
-        self.spin_point_value.setPrefix(prefix)
-
-    def load(self, settings: dict) -> None:
-        """Load loyalty settings into controls."""
-        from cbpos.core.services.config_service import ConfigService
-
-        self.set_currency_symbol(settings.get("currency_symbol") or get_currency_symbol())
-
-        enabled = settings.get("enable_loyalty", ConfigService.DEFAULTS["enable_loyalty"])
-        self.chk_enable_loyalty.setChecked(bool(enabled))
-
-        ratio = settings.get("loyalty_points_ratio")
-        if ratio is None:
-            ratio = settings.get("points_ratio", ConfigService.DEFAULTS["loyalty_points_ratio"])
-        self.spin_points_ratio.setValue(int(ratio))
-
-        val = settings.get("loyalty_point_value")
-        if val is None:
-            val = settings.get("point_value", ConfigService.DEFAULTS["loyalty_point_value"])
-        self.spin_point_value.setValue(float(val))
-
-        min_pts = settings.get("loyalty_min_redeem_points")
-        if min_pts is None:
-            min_pts = settings.get("min_redeem_points", ConfigService.DEFAULTS["loyalty_min_redeem_points"])
-        self.spin_min_redeem.setValue(int(min_pts))
-
-        show_rec = settings.get("show_loyalty_on_receipt")
-        if show_rec is None:
-            show_rec = settings.get("receipt_show_loyalty", ConfigService.DEFAULTS["show_loyalty_on_receipt"])
-        self.chk_show_on_receipt.setChecked(bool(show_rec))
-
-        self._toggle_loyalty_fields(self.chk_enable_loyalty.isChecked())
-
-    def save(self) -> dict:
-        """Return loyalty settings dict."""
-        return {
-            "enable_loyalty": self.chk_enable_loyalty.isChecked(),
-            "loyalty_points_ratio": self.spin_points_ratio.value(),
-            "loyalty_point_value": round(self.spin_point_value.value(), 2),
-            "loyalty_min_redeem_points": self.spin_min_redeem.value(),
-            "show_loyalty_on_receipt": self.chk_show_on_receipt.isChecked(),
-        }
-
-    def validate(self) -> None:
-        """Validate loyalty settings."""
-        if self.spin_points_ratio.value() < 1:
-            raise ValueError(_t("settings.loyalty.error_points_ratio_positive"))
-        if self.spin_point_value.value() <= 0:
-            raise ValueError(_t("settings.loyalty.error_point_value_positive"))
-        if self.spin_min_redeem.value() <= 0:
-            raise ValueError(_t("settings.loyalty.error_min_redeem_positive"))
-
-    def retranslate_ui(self) -> None:
-        """Update translatable text."""
-        self._page_title.setText(_t("settings.loyalty.title"))
-        self._page_subtitle.setText(_t("settings.loyalty.subtitle"))
-        self.tabs.setTabText(0, _t("settings.loyalty.tab_loyalty"))
-        self.btn_reset_defaults.setText(_t("settings.btn_reset_defaults"))
-        self._retranslate_section_headers()
-
-        self.chk_enable_loyalty.setText(_t("settings.loyalty.enable_loyalty"))
-        self.chk_enable_loyalty.setToolTip(_t("settings.loyalty.tooltip_enable_loyalty"))
-
-        self._lbl_points_ratio.setText(_t("settings.loyalty.points_ratio"))
-        self.spin_points_ratio.setToolTip(_t("settings.loyalty.tooltip_points_ratio"))
-
-        self._lbl_point_value.setText(_t("settings.loyalty.point_value"))
-        self.spin_point_value.setToolTip(_t("settings.loyalty.tooltip_point_value"))
-
-        self._lbl_min_redeem.setText(_t("settings.loyalty.min_redeem_points"))
-        self.spin_min_redeem.setToolTip(_t("settings.loyalty.tooltip_min_redeem_points"))
-        self.spin_min_redeem.setSuffix(_t("settings.loyalty.suffix_points"))
-
-        self.chk_show_on_receipt.setText(_t("settings.loyalty.show_on_receipt"))
-        self.chk_show_on_receipt.setToolTip(_t("settings.loyalty.tooltip_show_on_receipt"))
-
-        self.equalize_form_labels()

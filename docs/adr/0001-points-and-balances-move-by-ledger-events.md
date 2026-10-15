@@ -1,0 +1,3 @@
+# Points and balances move by ledger events, not copied figures
+
+A customer's debt, a supplier's payable and a customer's loyalty points are each the running total of their own ledger rows (credit ledger, supplier ledger, loyalty ledger). Every change writes a ledger row in the same transaction; the figure on the customer/supplier row is derived from it. LAN Sync pushes the rows, the Main PC applies each row once (keyed through `sync_id_map`), and a till's figure is the Main PC's figure plus its own unpushed rows. We chose this over syncing the figures because copying numbers between machines lost changes made on another till or between a pull and a push (#678, #716). Consequence: never set these figures directly — write a ledger row.

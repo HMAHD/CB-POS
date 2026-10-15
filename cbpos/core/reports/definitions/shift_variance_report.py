@@ -6,7 +6,7 @@ from sqlalchemy import func
 from cbpos.core.constants.status import ShiftStatus
 from cbpos.core.database import get_db_session
 from cbpos.core.models import Shift, User
-from cbpos.core.reports.base_report import DATE, MONEY, TEXT, BaseReport, report_columns
+from cbpos.core.reports.base_report import CATEGORY_AUDIT, DATE, MONEY, TEXT, BaseReport, report_columns
 from cbpos.i18n import _t
 
 
@@ -28,7 +28,7 @@ class ShiftVarianceReport(BaseReport):
     @property
     def category(self) -> str:
         """Report category."""
-        return _t("reports.category_audit")
+        return CATEGORY_AUDIT
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Date range plus an optional cashier filter, populated from active users."""

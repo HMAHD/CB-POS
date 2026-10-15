@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from cbpos.core.reports.base_report import category_label
 from cbpos.core.reports.registry import ReportRegistry
 from cbpos.core.services.export_service import ExportService
 from cbpos.core.services.tax_service import TaxService
@@ -27,6 +28,7 @@ from cbpos.ui.resources.icons import Icons
 from cbpos.ui.views.reports.filter_widget import FilterWidget
 from cbpos.ui.views.reports.pandas_model import PandasModel
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
+from cbpos.ui.widgets.flow_layout import FlowLayout
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
 from cbpos.ui.workers import ExportWorker, ReportEmailWorker, ReportPrintWorker, start_background_job
@@ -97,23 +99,13 @@ class ReportViewer(QWidget):
         self.sidebar_title.setObjectName("ReportSidebarTitle")
         sidebar_layout.addWidget(self.sidebar_title)
 
-        # Scrollable report navigation
-        scroll = QScrollArea()
+        # Scrollable report navigation -- its contents are built (and
+        # rebuilt on language/VAT change) by _rebuild_sidebar().
+        self._nav_scroll = scroll = QScrollArea()
         scroll.setObjectName("ReportSidebarScroll")
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-
-        nav_container = QWidget()
-        nav_container.setObjectName("ReportNavContainer")
-        self._nav_layout = QVBoxLayout(nav_container)
-        self._nav_layout.setContentsMargins(12, 8, 12, 12)
-        self._nav_layout.setSpacing(4)
-
-        self._populate_sidebar()
-        self._nav_layout.addStretch()
-
-        scroll.setWidget(nav_container)
         scroll.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         sidebar_layout.addWidget(scroll, 1)
 
@@ -147,7 +139,9 @@ class ReportViewer(QWidget):
         # Filter Bar (hidden until report selected)
         self.filter_bar = QWidget()
         self.filter_bar.setObjectName("ReportFilterBar")
-        filter_layout = QHBoxLayout(self.filter_bar)
+        # Run Report follows the filters directly, wrapping below them
+        # rather than widening the screen on a narrow window (#611).
+        filter_layout = FlowLayout(self.filter_bar)
         filter_layout.setContentsMargins(24, 10, 24, 10)
 
         self.filter_widget = FilterWidget()
@@ -212,31 +206,38 @@ class ReportViewer(QWidget):
         self.row_count_label.setObjectName("ReportRowCount")
         action_layout.addWidget(self.row_count_label)
 
-        action_layout.addStretch()
+        # Export buttons wrap onto a second row instead of being squeezed
+        # below their labels on narrow windows / large text (#611); the
+        # container takes the spare width and keeps them right-aligned.
+        export_buttons = QWidget()
+        export_buttons.setObjectName("ReportExportButtons")
+        export_layout = FlowLayout(export_buttons, align_right=True)
+        export_layout.setContentsMargins(0, 0, 0, 0)
+        action_layout.addWidget(export_buttons, 1)
 
         self.btn_print = QPushButton("")
         self.btn_print.setObjectName("ReportPrintBtn")
         self.btn_print.clicked.connect(self.print_report)
         self.btn_print.setCursor(Qt.CursorShape.PointingHandCursor)
-        action_layout.addWidget(self.btn_print)
+        export_layout.addWidget(self.btn_print)
 
         self.btn_export_excel = QPushButton("")
         self.btn_export_excel.setObjectName("ReportExportExcelBtn")
         self.btn_export_excel.clicked.connect(self.export_excel)
         self.btn_export_excel.setCursor(Qt.CursorShape.PointingHandCursor)
-        action_layout.addWidget(self.btn_export_excel)
+        export_layout.addWidget(self.btn_export_excel)
 
         self.btn_export_pdf = QPushButton("")
         self.btn_export_pdf.setObjectName("ReportExportPdfBtn")
         self.btn_export_pdf.clicked.connect(self.export_pdf)
         self.btn_export_pdf.setCursor(Qt.CursorShape.PointingHandCursor)
-        action_layout.addWidget(self.btn_export_pdf)
+        export_layout.addWidget(self.btn_export_pdf)
 
         self.btn_email = QPushButton("")
         self.btn_email.setObjectName("ReportEmailBtn")
         self.btn_email.clicked.connect(self.email_report)
         self.btn_email.setCursor(Qt.CursorShape.PointingHandCursor)
-        action_layout.addWidget(self.btn_email)
+        export_layout.addWidget(self.btn_email)
 
         self.action_bar.setVisible(False)
         content_layout.addWidget(self.action_bar)
@@ -275,10 +276,19 @@ class ReportViewer(QWidget):
         self.btn_export_excel.setText(_t("report_viewer.btn_excel"))
         self.btn_export_pdf.setText(_t("report_viewer.btn_pdf"))
         self.btn_email.setText(_t("common.email"))
+        if self.current_report is not None:
+            self.report_title.setText(self.current_report.name)
+            self.report_description.setText(category_label(self.current_report.category))
+        # Category and report names are drawn in the current language (#541)
+        self._rebuild_sidebar()
 
     def showEvent(self, event) -> None:
         """Ensure splitter sizes and layouts are properly computed on display."""
         super().showEvent(event)
+        # The VAT setting is changed on the Settings screen, so coming back
+        # here is the moment VAT-only reports must appear or disappear (#541).
+        if TaxService.is_vat_active() != self._sidebar_vat_active:
+            self._rebuild_sidebar()
         sizes = self.splitter.sizes()
         if sizes and sizes[0] < 260:
             remaining = sum(sizes) - 280
@@ -290,14 +300,54 @@ class ReportViewer(QWidget):
     # Sidebar construction
     # ------------------------------------------------------------------
 
+    def _rebuild_sidebar(self) -> None:
+        """Replace the report list with a fresh one in the current language.
+
+        Setting a new scroll-area widget deletes the old list, so no stale
+        buttons linger. The selected report stays selected.
+        """
+        nav_container = QWidget()
+        nav_container.setObjectName("ReportNavContainer")
+        self._nav_layout = QVBoxLayout(nav_container)
+        self._nav_layout.setContentsMargins(12, 8, 12, 12)
+        self._nav_layout.setSpacing(4)
+
+        self._populate_sidebar()
+        self._nav_layout.addStretch()
+        self._nav_scroll.setWidget(nav_container)
+
+        if self.current_report is not None:
+            selected = [
+                btn
+                for btn in nav_container.findChildren(QPushButton, "ReportNavItem")
+                if btn.property("report_id") == self.current_report.id
+            ]
+            if selected:
+                selected[0].setChecked(True)
+            else:
+                # e.g. a VAT report left open when VAT was turned off
+                self._close_report()
+
+    def _close_report(self) -> None:
+        """Go back to the 'pick a report' state, with no report open."""
+        self.current_report = None
+        self.report_header.setVisible(False)
+        self.filter_bar.setVisible(False)
+        self.btn_run.setEnabled(False)
+        self._full_df = pd.DataFrame()
+        self.table_model.set_data(pd.DataFrame())
+        self.content_stack.setCurrentIndex(0)
+        self.action_bar.setVisible(False)
+        self.pagination.setVisible(False)
+
     def _populate_sidebar(self) -> None:
-        """Build category sections with report buttons."""
+        """Build category sections with report buttons, in the fixed category order."""
         categories = self.registry.get_all_categories()
 
-        vat_active = TaxService.is_vat_active()
+        vat_active = self._sidebar_vat_active = TaxService.is_vat_active()
         rendered_any = False
 
-        for _idx, category in enumerate(categories):
+        for category in categories:
             all_reports = self.registry.get_reports_by_category(category)
             # Filter out VAT-only reports when VAT is not active
             reports = [r for r in all_reports if not getattr(r, "requires_vat", False) or vat_active]
@@ -312,7 +362,7 @@ class ReportViewer(QWidget):
             cat_row = QHBoxLayout()
             cat_row.setContentsMargins(6, 8, 6, 4)
 
-            cat_label = QLabel(category.upper())
+            cat_label = QLabel(category_label(category))
             cat_label.setObjectName("ReportCategoryLabel")
             cat_row.addWidget(cat_label)
 
@@ -349,7 +399,7 @@ class ReportViewer(QWidget):
 
         # Show header
         self.report_title.setText(self.current_report.name)
-        self.report_description.setText(self.current_report.category)
+        self.report_description.setText(category_label(self.current_report.category))
         self.report_header.setVisible(True)
 
         # Show filter bar

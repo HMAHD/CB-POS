@@ -7,7 +7,16 @@ from sqlalchemy import func, select
 from cbpos.core.constants.status import DocumentStatus
 from cbpos.core.database import Database
 from cbpos.core.models import Sale, User
-from cbpos.core.reports.base_report import DATE, INT, MONEY, TEXT, BaseReport, report_columns
+from cbpos.core.reports.base_report import (
+    CATEGORY_AUDIT,
+    CATEGORY_SALES,
+    DATE,
+    INT,
+    MONEY,
+    TEXT,
+    BaseReport,
+    report_columns,
+)
 from cbpos.i18n import _t
 
 
@@ -27,7 +36,7 @@ class VoidRefundReport(BaseReport):
     @property
     def category(self) -> str:
         """Report category."""
-        return _t("reports.category_audit")
+        return CATEGORY_AUDIT
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Date range filter, defaulting to today."""
@@ -116,7 +125,7 @@ class PaymentMethodSummaryReport(BaseReport):
     @property
     def category(self) -> str:
         """Report category."""
-        return _t("reports.category_sales")
+        return CATEGORY_SALES
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Date range filter, defaulting to today."""

@@ -4,6 +4,8 @@ from typing import Any
 
 import pandas as pd
 
+from cbpos.i18n import _t
+
 # Column types a report declares in its render hints (#556), so the table
 # formats and aligns each column by what it holds rather than by guessing
 # from runtime value types (np.int64, Decimal and None defeated the guess).
@@ -14,6 +16,22 @@ PERCENT = "percent"  # already-formatted "12.50%" text, right-aligned
 DATE = "date"
 TEXT = "text"
 NUMERIC_COLUMN_TYPES = frozenset({MONEY, INT, QTY, PERCENT})
+
+# Stable report category IDs (#541). A report's ``category`` is one of
+# these, never a translated name: the registry keys and orders categories
+# by ID, and the sidebar translates the label only when it is drawn, so
+# the order is the same in every language and follows a language switch.
+CATEGORY_SALES = "sales"
+CATEGORY_INVENTORY = "inventory"
+CATEGORY_FINANCIAL = "financial"
+CATEGORY_AUDIT = "audit"
+# Fixed business order for the Reports sidebar, Sales first.
+CATEGORY_ORDER = (CATEGORY_SALES, CATEGORY_INVENTORY, CATEGORY_FINANCIAL, CATEGORY_AUDIT)
+
+
+def category_label(category_id: str) -> str:
+    """Return the category's display name in the current language."""
+    return _t(f"reports.category_{category_id}")
 
 
 def report_columns(types: dict[str, str]) -> dict[str, dict[str, str]]:
@@ -50,7 +68,10 @@ class BaseReport(ABC):
     @property
     @abstractmethod
     def category(self) -> str:
-        """Category of the report (e.g., 'Sales', 'Inventory')."""
+        """Stable category ID, one of the ``CATEGORY_*`` constants (e.g. ``CATEGORY_SALES``).
+
+        Not a display name: use :func:`category_label` to show it.
+        """
 
     @abstractmethod
     def get_filter_definitions(self) -> list[dict[str, Any]]:

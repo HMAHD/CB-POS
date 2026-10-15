@@ -5,7 +5,7 @@ from sqlalchemy import func
 
 from cbpos.core.database import get_db_session
 from cbpos.core.models import CashMovement, Product, StockMovement, User
-from cbpos.core.reports.base_report import DATE, MONEY, QTY, TEXT, BaseReport, report_columns
+from cbpos.core.reports.base_report import CATEGORY_AUDIT, DATE, MONEY, QTY, TEXT, BaseReport, report_columns
 from cbpos.i18n import _t
 
 
@@ -25,7 +25,7 @@ class StockMovementReport(BaseReport):
     @property
     def category(self) -> str:
         """Report category."""
-        return _t("reports.category_audit")
+        return CATEGORY_AUDIT
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Date range filter only."""
@@ -100,7 +100,7 @@ class CashMovementAuditReport(BaseReport):
     @property
     def category(self) -> str:
         """Report category."""
-        return _t("reports.category_audit")
+        return CATEGORY_AUDIT
 
     def get_filter_definitions(self) -> list[dict[str, Any]]:
         """Date range filter only."""

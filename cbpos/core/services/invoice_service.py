@@ -30,6 +30,28 @@ class InvoiceService:
     """
 
     @staticmethod
+    def bank_detail_lines() -> list[str]:
+        """Return the invoice's bank-detail lines from Settings -> Shop Info.
+
+        Reads the keys the Shop Info page saves (it used to read bank_name /
+        bank_account / bank_branch, which nothing wrote, so it never printed).
+        Empty when neither a bank name nor an account number is set.
+        """
+        bank_name = ConfigService.get("company_bank_name") or ""
+        bank_account = ConfigService.get("company_account_number") or ""
+        bank_branch = ConfigService.get("company_bank_branch") or ""
+        if not (bank_name or bank_account):
+            return []
+        lines = []
+        if bank_name:
+            lines.append(f"Bank: {bank_name}")
+        if bank_account:
+            lines.append(f"Account No: {bank_account}")
+        if bank_branch:
+            lines.append(f"Branch: {bank_branch}")
+        return lines
+
+    @staticmethod
     def generate_pdf(sale: Sale, filepath: str) -> str:
         """
         Generate a professional A4 Tax Invoice PDF.
@@ -224,18 +246,12 @@ class InvoiceService:
         # === FOOTER SECTION ===
         footer_style = ParagraphStyle("Footer", parent=styles["Normal"], fontSize=9, alignment=TA_LEFT)
 
-        # Banking details (from config)
-        bank_name = ConfigService.get("bank_name") or ""
-        bank_account = ConfigService.get("bank_account") or ""
-        bank_branch = ConfigService.get("bank_branch") or ""
-        if bank_name or bank_account:
+        # Banking details (Settings -> Shop Info)
+        bank_lines = InvoiceService.bank_detail_lines()
+        if bank_lines:
             elements.append(Paragraph("<b>Banking Details:</b>", footer_style))
-            if bank_name:
-                elements.append(Paragraph(f"Bank: {bank_name}", footer_style))
-            if bank_account:
-                elements.append(Paragraph(f"Account No: {bank_account}", footer_style))
-            if bank_branch:
-                elements.append(Paragraph(f"Branch: {bank_branch}", footer_style))
+            for line in bank_lines:
+                elements.append(Paragraph(line, footer_style))
             elements.append(Spacer(1, 10 * mm))
 
         signature_data = [["Authorized Signature:", "_" * 30, "Company Stamp:", "[STAMP]"]]

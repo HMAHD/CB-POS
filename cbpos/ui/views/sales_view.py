@@ -48,6 +48,7 @@ from cbpos.ui.dialogs.quantity_dialog import QuantityDialog
 from cbpos.ui.dialogs.receipt_options_dialog import ReceiptOptionsDialog
 from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.utils.style_helpers import refresh_style
 from cbpos.ui.widgets.action_panel import ActionPanel
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 from cbpos.ui.widgets.order_bar import OrderBar
@@ -566,8 +567,7 @@ class SalesView(QWidget):
         compact = self.height() < 900
         if self.total_label.property("compact") != compact:
             self.total_label.setProperty("compact", compact)
-            self.total_label.style().unpolish(self.total_label)
-            self.total_label.style().polish(self.total_label)
+            refresh_style(self.total_label)
 
         # Keep the undo toast anchored correctly if the window is resized
         # while it's showing (#205) — it's positioned with absolute pixel
@@ -1221,13 +1221,11 @@ class SalesView(QWidget):
         """
         btn = self.action_panel.btn_pay
         btn.setProperty("state", "error")
-        btn.style().unpolish(btn)
-        btn.style().polish(btn)
+        refresh_style(btn)
 
         def _clear_error() -> None:
             btn.setProperty("state", "")
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
+            refresh_style(btn)
 
         # Owned by the button, so it dies with it instead of firing on a deleted widget.
         timer = QTimer(btn)

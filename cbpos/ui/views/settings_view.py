@@ -30,6 +30,7 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.i18n import _t, get_language, register_language_callback, translate_in
 from cbpos.ui.app_restart import restart_application
+from cbpos.ui.utils.style_helpers import refresh_style
 from cbpos.ui.views.settings_pages import (
     DocumentPage,
     HardwarePage,
@@ -307,8 +308,7 @@ class SettingsView(QWidget):
         self.lbl_status.setText(text)
         if self.lbl_status.property("state") != state:
             self.lbl_status.setProperty("state", state)
-            self.lbl_status.style().unpolish(self.lbl_status)
-            self.lbl_status.style().polish(self.lbl_status)
+            refresh_style(self.lbl_status)
 
     def _check_discard_unsaved(self) -> bool:
         """Check for unsaved changes and prompt user. Returns True if safe to proceed."""

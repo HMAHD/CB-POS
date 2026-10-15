@@ -22,6 +22,7 @@ from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.shift_service import ShiftService
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.ui.utils.style_helpers import refresh_style
 from cbpos.ui.widgets.denomination_widget import DenominationWidget
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 from cbpos.ui.workers import BackupWorker
@@ -143,8 +144,7 @@ class ShiftClosingDialog(QDialog):
                 "variance",
                 "negative" if variance < 0 else "positive",
             )
-            self.lbl_variance.style().unpolish(self.lbl_variance)
-            self.lbl_variance.style().polish(self.lbl_variance)
+            refresh_style(self.lbl_variance)
 
         elif current == 1:  # close shift
             self._close_shift()

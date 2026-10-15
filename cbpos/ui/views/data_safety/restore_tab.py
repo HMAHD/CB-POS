@@ -19,6 +19,7 @@ from cbpos.core.services.backup_service import BackupService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import _t
 from cbpos.ui.dialogs.backup_password_dialog import ensure_backup_password
+from cbpos.ui.utils.style_helpers import set_status_class
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.workers import RestoreWorker, VerifyBackupWorker
 
@@ -175,16 +176,15 @@ class RestoreTabWidget(QWidget):
         self.btn_restore.setEnabled(True)
         if result["valid"]:
             file_count = len(result["files"])
-            self.lbl_verify_result.setProperty("class", "credit")
-            self.lbl_verify_result.setText(_t("data_safety.restore_valid", size=result["size"], count=file_count))
+            set_status_class(
+                self.lbl_verify_result,
+                "credit",
+                _t("data_safety.restore_valid", size=result["size"], count=file_count),
+            )
         else:
-            self.lbl_verify_result.setProperty("class", "debit")
             code = result.get("error_code")
             error = _t(f"data_safety.error_{code}") if code else result["error"]
-            self.lbl_verify_result.setText(_t("data_safety.restore_invalid", error=error))
-        # Force style refresh after property change
-        self.lbl_verify_result.style().unpolish(self.lbl_verify_result)
-        self.lbl_verify_result.style().polish(self.lbl_verify_result)
+            set_status_class(self.lbl_verify_result, "debit", _t("data_safety.restore_invalid", error=error))
 
     def _restore_backup(self) -> None:
         from cbpos.core.constants.permissions import Permissions

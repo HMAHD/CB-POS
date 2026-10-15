@@ -15,6 +15,7 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.utils.style_helpers import refresh_style
 from cbpos.ui.widgets.custom_widgets import SidebarButton
 
 EXPANDED_WIDTH = 250
@@ -238,8 +239,7 @@ class CollapsibleSidebar(QFrame):
             is_active = i == index
             btn.set_active(is_active)
             btn.setProperty("active", is_active)
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
+            refresh_style(btn)
 
     def retranslate_pos_logout(self) -> None:
         """Update POS and Logout button text from i18n.
@@ -318,8 +318,7 @@ class CollapsibleSidebar(QFrame):
         for btn in [*self.nav_buttons, self.btn_pos, self.btn_logout]:
             btn.setFixedHeight(height)
             btn.setProperty("compact", compact)
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
+            refresh_style(btn)
 
     def handle_resize(self, width: int) -> None:
         """Auto-collapse/expand based on parent width.
@@ -363,8 +362,7 @@ class CollapsibleSidebar(QFrame):
         buttons = [*self.nav_buttons, self.btn_pos, self.btn_logout]
         for btn in buttons:
             btn.setProperty("collapsed", self.is_collapsed)
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
+            refresh_style(btn)
 
         # Section-label text has no room on the icon-only rail; the
         # divider line above each one stays visible either way.

@@ -21,6 +21,7 @@ from cbpos.core.services.backup_service import BackupService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import _t
 from cbpos.ui.dialogs.backup_password_dialog import BackupPasswordDialog, ensure_backup_password
+from cbpos.ui.utils.style_helpers import set_status_class
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.workers import BackupListWorker, BackupWorker
 
@@ -178,10 +179,7 @@ class BackupTabWidget(QWidget):
             text, css = _t("data_safety.last_backup_ok", date=status["date"]), "credit"
         else:
             text, css = _t("data_safety.last_backup_unverified", date=status["date"]), "debit"
-        self.lbl_last_backup.setText(text)
-        self.lbl_last_backup.setProperty("class", css)
-        self.lbl_last_backup.style().unpolish(self.lbl_last_backup)
-        self.lbl_last_backup.style().polish(self.lbl_last_backup)
+        set_status_class(self.lbl_last_backup, css, text)
 
     def _on_backup_list_loaded(self, backups: list) -> None:
         self._overlay.hide_loading()

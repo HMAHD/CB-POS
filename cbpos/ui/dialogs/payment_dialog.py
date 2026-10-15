@@ -27,6 +27,7 @@ from cbpos.core.services.payment_service import RESERVED_SHORTCUTS, PaymentServi
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.utils.style_helpers import refresh_style
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
@@ -426,13 +427,11 @@ class PaymentDialog(QDialog):
         # Update active tile styling via properties (no inline stylesheets)
         if self._active_btn:
             self._active_btn.setProperty("selected", False)
-            self._active_btn.style().unpolish(self._active_btn)
-            self._active_btn.style().polish(self._active_btn)
+            refresh_style(self._active_btn)
 
         if btn:
             btn.setProperty("selected", True)
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
+            refresh_style(btn)
             self._active_btn = btn
 
         # Show customer combo for CREDIT only
@@ -716,8 +715,7 @@ class PaymentDialog(QDialog):
             rem = self.get_remaining_amount()
             self.lbl_remaining.setText(f"{_t('payment.remaining')} {format_currency(rem)}")
             self.lbl_remaining.setProperty("state", "remaining")
-            self.lbl_remaining.style().unpolish(self.lbl_remaining)
-            self.lbl_remaining.style().polish(self.lbl_remaining)
+            refresh_style(self.lbl_remaining)
             self.btn_finish.setEnabled(False)
             self.btn_finish.setToolTip(_t("payment.finish_tooltip_remaining", amount=format_currency(rem)))
 
@@ -734,8 +732,7 @@ class PaymentDialog(QDialog):
             else:
                 self.lbl_remaining.setText(f"{_t('payment.remaining')} {format_currency(remaining)}")
             self.lbl_remaining.setProperty("state", "remaining")
-            self.lbl_remaining.style().unpolish(self.lbl_remaining)
-            self.lbl_remaining.style().polish(self.lbl_remaining)
+            refresh_style(self.lbl_remaining)
             self.btn_finish.setEnabled(False)
             self.btn_finish.setToolTip(_t("payment.finish_tooltip_remaining", amount=format_currency(remaining)))
             self.txt_amount.setText(str(remaining))
@@ -743,8 +740,7 @@ class PaymentDialog(QDialog):
             change = abs(remaining)
             self.lbl_remaining.setText(f"{_t('payment.change')} {format_currency(change)}")
             self.lbl_remaining.setProperty("state", "change")
-            self.lbl_remaining.style().unpolish(self.lbl_remaining)
-            self.lbl_remaining.style().polish(self.lbl_remaining)
+            refresh_style(self.lbl_remaining)
             self.btn_finish.setEnabled(True)
             self.btn_finish.setToolTip("")
             self.btn_finish.setFocus()

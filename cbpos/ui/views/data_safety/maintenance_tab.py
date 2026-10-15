@@ -5,6 +5,7 @@ import logging
 from PyQt6.QtWidgets import QFormLayout, QFrame, QGroupBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from cbpos.i18n import _t
+from cbpos.ui.utils.style_helpers import set_status_class
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 
 logger = logging.getLogger(__name__)
@@ -146,20 +147,22 @@ class MaintenanceTabWidget(QWidget):
         self.btn_vacuum.setEnabled(True)
         self.btn_vacuum.setText(_t("data_safety.maintenance_btn_optimize"))
         saved = result.get("saved", "0 KB")
-        self.lbl_maintenance_status.setProperty("class", "credit")
-        self.lbl_maintenance_status.style().unpolish(self.lbl_maintenance_status)
-        self.lbl_maintenance_status.style().polish(self.lbl_maintenance_status)
-        self.lbl_maintenance_status.setText(_t("data_safety.maintenance_optimize_complete", saved=saved))
+        set_status_class(
+            self.lbl_maintenance_status,
+            "credit",
+            _t("data_safety.maintenance_optimize_complete", saved=saved),
+        )
         self.refresh()
 
     def _on_vacuum_error(self, error: str) -> None:
         self._overlay.hide_loading()
         self.btn_vacuum.setEnabled(True)
         self.btn_vacuum.setText(_t("data_safety.maintenance_btn_optimize"))
-        self.lbl_maintenance_status.setProperty("class", "debit")
-        self.lbl_maintenance_status.style().unpolish(self.lbl_maintenance_status)
-        self.lbl_maintenance_status.style().polish(self.lbl_maintenance_status)
-        self.lbl_maintenance_status.setText(_t("data_safety.maintenance_optimize_failed", error=error))
+        set_status_class(
+            self.lbl_maintenance_status,
+            "debit",
+            _t("data_safety.maintenance_optimize_failed", error=error),
+        )
 
     def _run_integrity_check(self) -> None:
         self.btn_integrity.setEnabled(False)
@@ -177,13 +180,17 @@ class MaintenanceTabWidget(QWidget):
         self.btn_integrity.setEnabled(True)
         self.btn_integrity.setText(_t("data_safety.maintenance_btn_check"))
         if ok:
-            self.lbl_maintenance_status.setProperty("class", "credit")
-            self.lbl_maintenance_status.setText(_t("data_safety.maintenance_integrity_passed"))
+            set_status_class(
+                self.lbl_maintenance_status,
+                "credit",
+                _t("data_safety.maintenance_integrity_passed"),
+            )
         else:
-            self.lbl_maintenance_status.setProperty("class", "debit")
-            self.lbl_maintenance_status.setText(_t("data_safety.maintenance_integrity_failed", message=message))
-        self.lbl_maintenance_status.style().unpolish(self.lbl_maintenance_status)
-        self.lbl_maintenance_status.style().polish(self.lbl_maintenance_status)
+            set_status_class(
+                self.lbl_maintenance_status,
+                "debit",
+                _t("data_safety.maintenance_integrity_failed", message=message),
+            )
 
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""

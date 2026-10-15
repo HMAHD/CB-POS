@@ -92,6 +92,9 @@ def test_permission_service_handles_missing_permissions():
 # ---------------------------------------------------------------------------
 
 PREVIOUS_HEAD = "c3f1a9d27e54"
+# Upgrade to this migration only, not "head": the schema comes from
+# create_all(), so a later migration creating a table would find it there.
+SCREEN_PERMISSIONS = "c83b41393b82"
 
 
 @pytest.fixture
@@ -131,7 +134,7 @@ def _grants(db_path) -> dict[str, set[str]]:
 
 def test_upgrade_grants_screens_to_the_roles_the_old_name_check_let_in(old_db):
     db_path, cfg = old_db
-    command.upgrade(cfg, "head")
+    command.upgrade(cfg, SCREEN_PERMISSIONS)
 
     screens = {Permissions.MANAGEMENT_VIEW, Permissions.SETTINGS_VIEW}
     grants = _grants(db_path)

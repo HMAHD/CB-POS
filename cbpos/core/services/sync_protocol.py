@@ -60,12 +60,18 @@ CATALOG_TABLES = [
     "composite_items",
 ]
 
+# Push reply error for a table the Main PC doesn't take, followed by the
+# table name. Every Main PC version answers this way, so a till can tell
+# which of its rows an older Main PC turned away (and keep them to re-send).
+REJECTED_TABLE_ERROR = "Table not allowed for push: "
+
 # ---------------------------------------------------------------------------
 # Transaction tables — Terminals push these to the Main PC.
 # Order: parent tables before children (for FK integrity).
 # ---------------------------------------------------------------------------
 TRANSACTION_TABLES = [
     "customers",  # Only those created on the till (#680); first, as sales point at them
+    "customer_contacts",  # Only those of the customers above, pushed with them (#717)
     "documents",  # Base (polymorphic: sale, purchase, proforma, stock_count)
     "sales",
     "sale_items",
@@ -78,6 +84,7 @@ TRANSACTION_TABLES = [
     "audit_logs",
     "customer_payments",
     "customer_ledger",
+    "loyalty_ledger",  # Loyalty points move by event (#716)
     "supplier_payments",
     "supplier_ledger",
     "suspended_transactions",
@@ -316,6 +323,7 @@ def get_table_model_map() -> dict[str, type[Base]]:
         CustomerPayment,
         Document,
         InventoryLog,
+        LoyaltyLedgerEntry,
         PaymentMethod,
         Permission,
         PriceList,
@@ -377,6 +385,7 @@ def get_table_model_map() -> dict[str, type[Base]]:
         "suspended_transactions": SuspendedTransaction,
         "customer_payments": CustomerPayment,
         "customer_ledger": CustomerLedgerEntry,
+        "loyalty_ledger": LoyaltyLedgerEntry,
         "stock_counts": StockCount,
         "stock_count_items": StockCountItem,
         "supplier_payments": SupplierPayment,

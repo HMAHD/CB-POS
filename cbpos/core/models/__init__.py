@@ -707,6 +707,29 @@ class CustomerLedgerEntry(Base):
     user: Mapped["User"] = relationship()
 
 
+class LoyaltyLedgerEntry(Base):
+    """One change to a customer's loyalty points (#716).
+
+    Points move by event so LAN Sync can carry them: a till pushes each row,
+    the Main PC adds ``points`` to its ``Customer.loyalty_points`` once, and a
+    till's figure is the Main PC's plus its own rows not pushed yet.
+    """
+
+    __tablename__ = "loyalty_ledger"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), index=True)
+    entry_type: Mapped[str] = mapped_column(String(20), nullable=False)  # EARN, ADJUSTMENT
+    points: Mapped[int] = mapped_column(Integer, nullable=False)  # positive=earned, negative=taken off
+    balance_after: Mapped[int] = mapped_column(Integer, nullable=False)  # Points on this machine afterwards
+    reference_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # sale_id for EARN
+    note: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)
+    synced: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+
+    customer: Mapped["Customer"] = relationship()
+
+
 class StockCount(Document):
     """Physical stock count document using joined table inheritance."""
 

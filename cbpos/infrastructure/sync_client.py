@@ -15,6 +15,8 @@ Features:
 import logging
 import urllib.error
 import urllib.request
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -30,6 +32,7 @@ from cbpos.core.models import (
     CustomerLedgerEntry,
     CustomerPayment,
     Document,
+    LoyaltyLedgerEntry,
     Product,
     Purchase,
     Sale,
@@ -47,6 +50,7 @@ from cbpos.core.services.sync_protocol import (
     EP_PUSH_AUDIT,
     EP_PUSH_TRANSACTIONS,
     EP_REGISTER,
+    REJECTED_TABLE_ERROR,
     dict_to_model,
     get_model_for_table,
     make_envelope,
@@ -64,6 +68,7 @@ _FLAT_PUSH_TABLES: tuple[tuple[str, type], ...] = (
     ("cash_movements", CashMovement),
     ("customer_payments", CustomerPayment),
     ("customer_ledger", CustomerLedgerEntry),
+    ("loyalty_ledger", LoyaltyLedgerEntry),
     ("supplier_payments", SupplierPayment),
     ("supplier_ledger", SupplierLedgerEntry),
 )
@@ -75,31 +80,69 @@ _PUSHED_CHILDREN: dict[type, tuple[str, ...]] = {
 }
 
 
-# Balance owner table -> (its ledger model, balance column) (#678).
-_BALANCE_LEDGERS: dict[str, tuple[type, str]] = {
-    "customers": (CustomerLedgerEntry, "current_debt"),
-    "suppliers": (SupplierLedgerEntry, "current_payable"),
+def _money(value: Any) -> Decimal:
+    return Decimal(str(value or 0)).quantize(Decimal("0.01"))
+
+
+def _points(value: Any) -> int:
+    return int(Decimal(str(value or 0)))
+
+
+@dataclass(frozen=True)
+class _Balance:
+    """A Main-owned figure that this till's ledger rows move (#678, #716)."""
+
+    owner_table: str  # catalog table holding the figure
+    balance_column: str
+    ledger: type
+    owner_column: str  # ledger column naming the owner row
+    amount_column: str  # ledger column the figure moves by
+    parse: Callable[[Any], Any]
+
+
+# Key in the push acknowledgement's "balances" -> the figure.
+_BALANCES: dict[str, _Balance] = {
+    "customers": _Balance("customers", "current_debt", CustomerLedgerEntry, "customer_id", "amount", _money),
+    "suppliers": _Balance("suppliers", "current_payable", SupplierLedgerEntry, "supplier_id", "amount", _money),
+    "loyalty_points": _Balance("customers", "loyalty_points", LoyaltyLedgerEntry, "customer_id", "points", _points),
 }
 
 
-def _set_local_balance(session: Any, table_name: str, owner_id: int, main_value: Decimal) -> None:
-    """Set a customer's debt / supplier's payable on this till from the Main PC's figure.
-
-    The Main PC's balance covers every till's *pushed* ledger rows; this
-    till's own rows that are not pushed yet are added on top, so a credit
-    sale made since the last push isn't wiped out by a catalog pull.
-    """
-    ledger_model, balance_column = _BALANCE_LEDGERS[table_name]
-    owner = session.get(get_model_for_table(table_name), owner_id)
-    if owner is None:
-        return
-    owner_column = "customer_id" if table_name == "customers" else "supplier_id"
-    unpushed = (
-        session.query(func.coalesce(func.sum(ledger_model.amount), 0))
-        .filter(getattr(ledger_model, owner_column) == owner_id, ledger_model.synced.is_(False))
+def _unpushed(session: Any, balance: _Balance, owner_id: int) -> Any:
+    """Sum of this till's ledger rows for ``owner_id`` that the Main PC doesn't have yet."""
+    ledger = balance.ledger
+    total = (
+        session.query(func.coalesce(func.sum(getattr(ledger, balance.amount_column)), 0))
+        .filter(getattr(ledger, balance.owner_column) == owner_id, ledger.synced.is_(False))
         .scalar()
     )
-    setattr(owner, balance_column, (main_value + Decimal(str(unpushed or 0))).quantize(Decimal("0.01")))
+    return balance.parse(total)
+
+
+def _set_local_balance(session: Any, balance: _Balance, owner_id: int, main_value: Any) -> None:
+    """Set a debt / payable / points figure on this till from the Main PC's figure.
+
+    The Main PC's figure covers every till's *pushed* ledger rows; this
+    till's own rows that are not pushed yet are added on top, so a credit
+    sale or points earned since the last push aren't wiped out by a
+    catalog pull.
+    """
+    owner = session.get(get_model_for_table(balance.owner_table), owner_id)
+    if owner is None:
+        return
+    setattr(owner, balance.balance_column, balance.parse(main_value) + _unpushed(session, balance, owner_id))
+
+
+def _rejected_tables(errors: Any) -> set[str]:
+    """Tables the Main PC turned away in a ``partial`` push reply.
+
+    A Main PC older than this till rejects tables it doesn't know (e.g.
+    "loyalty_ledger" before #716) and applies the rest. Those rows must stay
+    unsynced, to go out once the Main PC is upgraded.
+    """
+    if not isinstance(errors, list):
+        return set()
+    return {e[len(REJECTED_TABLE_ERROR) :] for e in errors if isinstance(e, str) and e.startswith(REJECTED_TABLE_ERROR)}
 
 
 def _unpushed_customer_keys(session: Any) -> dict[str, set[Any]]:
@@ -440,6 +483,10 @@ class SyncClient(QThread):
         if status in ("ok", "partial", "duplicate"):
             # Mark local records as synced
             total_pushed = sum(len(v) for v in payload.values() if isinstance(v, list))
+            rejected = _rejected_tables(result.get("errors"))
+            if rejected:
+                logger.warning("Main PC did not take %s; kept to re-send after it is upgraded", sorted(rejected))
+                fingerprints = {key: sent for key, sent in fingerprints.items() if key[0] not in rejected}
             self._mark_as_synced(fingerprints)
             self._adopt_customer_ids((result.get("id_map") or {}).get("customers") or {})
             self._apply_main_balances(result.get("balances") or {})
@@ -466,7 +513,12 @@ class SyncClient(QThread):
             # rows in this batch may point at them (#680).
             new_customers = session.query(Customer).filter_by(synced=False).all()
             if new_customers:
-                payload["customers"] = [model_to_dict(c) for c in new_customers]
+                payload["customers"] = [self._new_customer_row(session, c) for c in new_customers]
+                # Their contacts go with them (#717); the Main PC stores them
+                # under its own id for the customer.
+                contacts = [model_to_dict(contact) for c in new_customers for contact in c.contacts]
+                if contacts:
+                    payload["customer_contacts"] = contacts
 
             # Find unsynced sales (with items and payments)
             unsynced_sales = session.query(Sale).filter_by(synced=False).all()
@@ -515,6 +567,19 @@ class SyncClient(QThread):
                         fingerprints[(table_name, row.id)] = _fingerprint(row)
 
         return payload, fingerprints
+
+    @staticmethod
+    def _new_customer_row(session: Any, customer: Customer) -> dict[str, Any]:
+        """A till-created customer as pushed.
+
+        Its points go out as loyalty ledger rows (#716), so the row carries
+        only the points no unpushed ledger row accounts for -- the Main PC
+        keeps that figure, and every ledger row then adds its own points once.
+        """
+        row = model_to_dict(customer)
+        loyalty = _BALANCES["loyalty_points"]
+        row["loyalty_points"] = (customer.loyalty_points or 0) - _unpushed(session, loyalty, customer.id)
+        return row
 
     def _document_row(self, doc: Document) -> dict[str, Any]:
         """The base ``documents`` columns of a sale/purchase, as pushed."""
@@ -570,21 +635,22 @@ class SyncClient(QThread):
             logger.error("Error renumbering pushed customers: %s", e)
 
     def _apply_main_balances(self, balances: dict[str, dict[str, str]]) -> None:
-        """Take the shop-wide balances the Main PC sent back with a push (#678).
+        """Take the shop-wide figures the Main PC sent back with a push (#678, #716).
 
-        Each becomes this till's balance plus the ledger amounts this till
-        has not pushed yet (see :func:`_local_balance`).
+        Each becomes this till's figure plus the ledger amounts this till
+        has not pushed yet (see :func:`_set_local_balance`).
         """
         if not balances:
             return
         db = Database()
         try:
             with db.get_session() as session:
-                for table_name, rows in balances.items():
-                    if table_name not in _BALANCE_LEDGERS:
+                for reply_key, rows in balances.items():
+                    balance = _BALANCES.get(reply_key)
+                    if balance is None or not isinstance(rows, dict):
                         continue
                     for owner_id, main_value in rows.items():
-                        _set_local_balance(session, table_name, int(owner_id), Decimal(str(main_value)))
+                        _set_local_balance(session, balance, int(owner_id), main_value)
                 session.commit()
         except Exception as e:
             logger.error("Error applying Main PC balances: %s", e)
@@ -620,7 +686,7 @@ class SyncClient(QThread):
         # Apply catalog updates to local database
         db = Database()
         records_applied = 0
-        pulled_balances: list[tuple[str, int, Decimal]] = []
+        pulled_balances: list[tuple[_Balance, int, Any]] = []
         held_back = 0
         try:
             with db.get_session() as session:
@@ -644,11 +710,12 @@ class SyncClient(QThread):
                         try:
                             instance = dict_to_model(model_class, record_data)
                             merged = session.merge(instance)
-                            if table_name in _BALANCE_LEDGERS:
-                                # The Main PC's figure doesn't include what this
-                                # till hasn't pushed yet -- keep that on top (#678).
-                                _, balance_column = _BALANCE_LEDGERS[table_name]
-                                pulled_balances.append((table_name, merged.id, getattr(merged, balance_column)))
+                            # The Main PC's figures don't include what this till
+                            # hasn't pushed yet -- keep that on top (#678, #716).
+                            for balance in _BALANCES.values():
+                                if balance.owner_table == table_name:
+                                    main_value = getattr(merged, balance.balance_column)
+                                    pulled_balances.append((balance, merged.id, main_value))
                             records_applied += 1
                         except Exception as e:
                             logger.error(
@@ -658,8 +725,8 @@ class SyncClient(QThread):
                                 e,
                             )
 
-                for table_name, owner_id, main_value in pulled_balances:
-                    _set_local_balance(session, table_name, owner_id, main_value or Decimal("0"))
+                for balance, owner_id, main_value in pulled_balances:
+                    _set_local_balance(session, balance, owner_id, main_value)
 
                 session.commit()
 

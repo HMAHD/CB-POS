@@ -171,6 +171,7 @@ SETTINGS_PAGE_PERMISSIONS: dict[str, tuple[str, ...]] = {
     "receipt": _EVERYONE_IN_SETTINGS,
     "system": _EVERYONE_IN_SETTINGS,
     "network": _EVERYONE_IN_SETTINGS,
+    "loyalty": _EVERYONE_IN_SETTINGS,
     "payment_methods": _EVERYONE_IN_SETTINGS,
     "data_safety": (Permissions.ADMIN_SETTINGS,),
     "admin_tools": (Permissions.ADMIN_SETTINGS, Permissions.ADMIN_TOOLS),

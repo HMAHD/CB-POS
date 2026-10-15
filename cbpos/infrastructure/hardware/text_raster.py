@@ -19,21 +19,16 @@ from PIL import Image
 from PyQt6.QtCore import QBuffer, QIODevice, QRect, Qt
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter
 
+from cbpos.core.utils.text_scripts import needs_raster
 from cbpos.core.utils.thermal_image import PAPER_DOT_WIDTH
 
-# Unicode blocks with no ESC/POS code page: Tamil, Sinhala.
-_RASTER_RANGES = ((0x0B80, 0x0BFF), (0x0D80, 0x0DFF))
+__all__ = ["needs_raster", "render_text_line", "render_text_png"]
 
 _FONT_FAMILIES = ["Noto Sans Sinhala", "Noto Sans Tamil", "Noto Sans"]
 _PIXEL_SIZE = 24  # ~ the printer's own 12x24 font height
 _MIN_PIXEL_SIZE = 14
 _PADDING = 2
 _THRESHOLD = 160  # grey levels above this become white paper
-
-
-def needs_raster(text: str) -> bool:
-    """True if *text* has characters the printer can't print as text (Sinhala/Tamil)."""
-    return any(lo <= ord(ch) <= hi for ch in text for lo, hi in _RASTER_RANGES)
 
 
 def _font(bold: bool, pixel_size: int) -> QFont:

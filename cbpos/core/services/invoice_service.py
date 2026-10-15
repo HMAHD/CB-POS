@@ -25,8 +25,8 @@ from cbpos.core.models import Sale
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.utils.formatters import format_currency, format_quantity, quantity_decimals
+from cbpos.core.utils.text_scripts import needs_raster
 from cbpos.i18n import get_language, translate_in
-from cbpos.infrastructure.hardware.text_raster import needs_raster, render_text_png
 
 _NAVY = colors.HexColor("#003366")
 _GREY = colors.HexColor("#666666")
@@ -96,6 +96,9 @@ def _text(text: Any, style: ParagraphStyle, width: float | None = None) -> Flowa
     text = str(text or "")
     if not needs_raster(text):
         return Paragraph(escape(text), style)
+    # Qt only when there is Sinhala/Tamil to draw: the service itself imports no PyQt.
+    from cbpos.infrastructure.hardware.text_raster import render_text_png
+
     align = {TA_CENTER: "center", TA_RIGHT: "right"}.get(style.alignment, "left")
     png, w, h = render_text_png(
         text,

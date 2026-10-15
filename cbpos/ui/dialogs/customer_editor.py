@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QHeaderView,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -197,23 +198,155 @@ class CustomerEditor(QDialog):
         return widget
 
     def create_loyalty_tab(self):
-        """Build the Loyalty tab: loyalty card code and current points balance."""
+        """Build the Loyalty tab: loyalty card code, current points balance, manual adjustment and points history."""
         widget = QWidget()
-        form = QFormLayout(widget)
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+
+        form = QFormLayout()
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-        form.setContentsMargins(16, 16, 16, 16)
+        form.setContentsMargins(0, 0, 0, 0)
         form.setSpacing(12)
 
         self.loyalty_code_input = QLineEdit()
         self.loyalty_code_input.setPlaceholderText(_t("customer_editor.loyalty_card_placeholder"))
 
+        points_layout = QHBoxLayout()
         self.points_label = QLabel("0")
+        self.points_label.setStyleSheet("font-weight: bold;")
+        points_layout.addWidget(self.points_label)
+
+        self.btn_adjust_points = QPushButton(_t("customer_editor.btn_adjust_points"))
+        self.btn_adjust_points.setEnabled(bool(self.customer and getattr(self.customer, "id", None)))
+        self.btn_adjust_points.clicked.connect(self.adjust_points)
+        points_layout.addSpacing(16)
+        points_layout.addWidget(self.btn_adjust_points)
+        points_layout.addStretch()
 
         form.addRow(_t("customer_editor.loyalty_card_code"), self.loyalty_code_input)
-        form.addRow(_t("customer_editor.current_points"), self.points_label)
+        form.addRow(_t("customer_editor.current_points"), points_layout)
+        layout.addLayout(form)
+
+        # Points History Header & Table
+        history_header = QLabel(_t("customer_editor.points_history_title"))
+        history_header.setStyleSheet("font-weight: bold; margin-top: 8px;")
+        layout.addWidget(history_header)
+
+        self.points_history_table = QTableWidget()
+        self.points_history_table.setColumnCount(5)
+        self.points_history_table.setHorizontalHeaderLabels(
+            [
+                _t("customer_editor.points_header_date"),
+                _t("customer_editor.points_header_type"),
+                _t("customer_editor.points_header_points"),
+                _t("customer_editor.points_header_balance"),
+                _t("customer_editor.points_header_reason"),
+            ]
+        )
+        self.points_history_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.points_history_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.points_history_table.setAlternatingRowColors(True)
+        self.points_history_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self.points_history_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.points_history_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        self.points_history_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self.points_history_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        layout.addWidget(self.points_history_table)
 
         return widget
+
+    def adjust_points(self):
+        """Prompt to adjust the customer's loyalty points with permission check and required reason."""
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.services.auth_service import AuthService
+        from cbpos.core.services.loyalty_service import LoyaltyService
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        if not check_permission_with_override(Permissions.LOYALTY_ADJUST_POINTS, self):
+            return
+
+        if not self.customer or not getattr(self.customer, "id", None):
+            return
+
+        current_pts = getattr(self.customer, "loyalty_points", 0) or 0
+        pts_delta, ok = QInputDialog.getInt(
+            self,
+            _t("customer_editor.adjust_points_title"),
+            _t("customer_editor.adjust_points_prompt"),
+            0,
+            -current_pts,
+            999999,
+            1,
+        )
+        if not ok or pts_delta == 0:
+            return
+
+        reason, ok = QInputDialog.getText(
+            self,
+            _t("customer_editor.adjust_reason_title"),
+            _t("customer_editor.adjust_reason_prompt"),
+        )
+        if not ok or not reason.strip():
+            QMessageBox.warning(
+                self,
+                _t("common.error"),
+                _t("customer_editor.reason_required"),
+            )
+            return
+
+        current_user = AuthService.get_current_user()
+        user_id = current_user.id if current_user else None
+
+        try:
+            entry = LoyaltyService.adjust_points(
+                customer_id=self.customer.id,
+                points_delta=pts_delta,
+                reason=reason.strip(),
+                user_id=user_id,
+            )
+            self.customer.loyalty_points = entry.balance_after
+            self.points_label.setText(str(entry.balance_after))
+            self.load_points_history()
+        except ValueError as e:
+            QMessageBox.warning(self, _t("common.error"), str(e))
+
+    def load_points_history(self):
+        """Load points history for this customer into the points history table."""
+        if not self.customer or not getattr(self.customer, "id", None) or not hasattr(self, "points_history_table"):
+            return
+
+        from cbpos.core.services.loyalty_service import LoyaltyService
+
+        history = LoyaltyService.get_points_history(self.customer.id)
+        self.points_history_table.setRowCount(0)
+
+        for entry in history:
+            row = self.points_history_table.rowCount()
+            self.points_history_table.insertRow(row)
+
+            date_str = entry.timestamp.strftime("%Y-%m-%d %H:%M") if entry.timestamp else ""
+            self.points_history_table.setItem(row, 0, QTableWidgetItem(date_str))
+
+            type_label = entry.entry_type or ""
+            if type_label == "EARN":
+                type_label = _t("customer_editor.points_type_earn")
+            elif type_label == "REVERSAL":
+                type_label = _t("customer_editor.points_type_reversal")
+            elif type_label == "ADJUSTMENT":
+                type_label = _t("customer_editor.points_type_adjustment")
+
+            self.points_history_table.setItem(row, 1, QTableWidgetItem(type_label))
+
+            pts_str = f"+{entry.points}" if entry.points > 0 else str(entry.points)
+            self.points_history_table.setItem(row, 2, QTableWidgetItem(pts_str))
+            self.points_history_table.setItem(row, 3, QTableWidgetItem(str(entry.balance_after)))
+
+            reason_str = entry.note or ""
+            if entry.reference_id:
+                reason_str = f"Sale #{entry.reference_id}" + (f" - {entry.note}" if entry.note else "")
+            self.points_history_table.setItem(row, 4, QTableWidgetItem(reason_str))
 
     def create_history_tab(self):
         """Build the History tab: a read-only table of the customer's past sales."""
@@ -239,9 +372,12 @@ class CustomerEditor(QDialog):
         return widget
 
     def on_tab_changed(self, index):
-        """Lazily load purchase history the first time the History tab is opened."""
-        if self.tabs.tabText(index) == _t("customer_editor.tab_history"):
+        """Lazily load purchase history or points history when their tabs are opened."""
+        tab_text = self.tabs.tabText(index)
+        if tab_text == _t("customer_editor.tab_history"):
             self.load_history()
+        elif tab_text == _t("customer_editor.tab_loyalty"):
+            self.load_points_history()
 
     def load_history(self):
         """Load the customer's purchase history into the history table."""
@@ -300,6 +436,10 @@ class CustomerEditor(QDialog):
 
         self.loyalty_code_input.setText(self.customer.loyalty_card_code or "")
         self.points_label.setText(str(self.customer.loyalty_points))
+        if hasattr(self, "btn_adjust_points"):
+            self.btn_adjust_points.setEnabled(bool(self.customer and getattr(self.customer, "id", None)))
+        if hasattr(self, "points_history_table"):
+            self.load_points_history()
 
         # Load Contacts
         if hasattr(self.customer, "contacts"):

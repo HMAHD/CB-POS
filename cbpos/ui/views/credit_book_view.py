@@ -24,6 +24,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.auth_service import AuthService
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.utils.formatters import format_currency, format_number, money_header
@@ -209,10 +210,13 @@ class CreditBookView(QWidget):
         self.lbl_debt.setObjectName("CreditMetricDebt")
         self.lbl_available = QLabel()
         self.lbl_available.setObjectName("CreditMetricAvail")
+        self.lbl_points = QLabel()
+        self.lbl_points.setObjectName("CreditMetricPoints")
         self.lbl_last_payment = QLabel()
         self.lbl_last_payment.setObjectName("CreditMetricLast")
         row2.addWidget(self.lbl_debt)
         row2.addWidget(self.lbl_available)
+        row2.addWidget(self.lbl_points)
         row2.addStretch()
         row2.addWidget(self.lbl_last_payment)
         header_layout.addLayout(row2)
@@ -240,6 +244,11 @@ class CreditBookView(QWidget):
         self.btn_adjust.setObjectName("CreditAdjustBtn")
         self.btn_adjust.clicked.connect(self.adjust_balance)
         action_layout.addWidget(self.btn_adjust)
+
+        self.btn_adjust_points = QPushButton()
+        self.btn_adjust_points.setObjectName("CreditAdjustPointsBtn")
+        self.btn_adjust_points.clicked.connect(self.adjust_loyalty_points)
+        action_layout.addWidget(self.btn_adjust_points)
 
         self.btn_edit_customer = QPushButton()
         self.btn_edit_customer.setObjectName("CreditEditBtn")
@@ -368,6 +377,7 @@ class CreditBookView(QWidget):
         self.btn_receive_payment.setText(_t("credit_book.btn_receive_payment"))
         self.btn_print_statement.setText(_t("credit_book.btn_print_statement"))
         self.btn_adjust.setText(_t("credit_book.btn_adjust_balance"))
+        self.btn_adjust_points.setText(_t("credit_book.btn_adjust_points"))
         self.btn_edit_customer.setText(_t("credit_book.btn_edit_customer"))
         self.lbl_from.setText(_t("credit_book.from"))
         self.lbl_to.setText(_t("credit_book.to"))
@@ -445,6 +455,11 @@ class CreditBookView(QWidget):
         edit_action = QAction(_t("credit_book.btn_edit_customer"), menu)
         edit_action.triggered.connect(self.edit_customer)
         menu.addAction(edit_action)
+
+        if ConfigService.get("enable_loyalty"):
+            points_action = QAction(_t("credit_book.btn_adjust_points"), menu)
+            points_action.triggered.connect(lambda: self.adjust_loyalty_points(customer))
+            menu.addAction(points_action)
 
         menu.exec(self.customer_table.viewport().mapToGlobal(pos))
 
@@ -565,6 +580,14 @@ class CreditBookView(QWidget):
             self.lbl_debt.setText(_t("credit_book.debt_label") + " ---")
             self.lbl_available.setText(_t("credit_book.available_label") + " ---")
             self.lbl_last_payment.setText(_t("credit_book.last_payment_label") + " ---")
+
+        if ConfigService.get("enable_loyalty"):
+            self.lbl_points.setVisible(True)
+            self.lbl_points.setText(_t("credit_book.points_label") + f" {getattr(customer, 'loyalty_points', 0)}")
+            self.btn_adjust_points.setVisible(True)
+        else:
+            self.lbl_points.setVisible(False)
+            self.btn_adjust_points.setVisible(False)
 
     # ========== Ledger Methods ==========
 
@@ -817,6 +840,67 @@ class CreditBookView(QWidget):
             self.selected_customer = self.customer_service.get_customer(self.selected_customer.id)
             self.update_header(self.selected_customer)
             self.reload_ledger()
+        except ValueError as e:
+            QMessageBox.warning(self, _t("common.error"), str(e))
+
+    def adjust_loyalty_points(self, customer=None) -> None:
+        """Adjust the customer's loyalty points with permission check and required reason."""
+        from cbpos.core.constants.permissions import Permissions
+        from cbpos.core.services.loyalty_service import LoyaltyService
+        from cbpos.core.utils.permission_helper import check_permission_with_override
+
+        if not check_permission_with_override(Permissions.LOYALTY_ADJUST_POINTS, self):
+            return
+
+        target = customer or self.selected_customer
+        if not target:
+            QMessageBox.warning(
+                self,
+                _t("credit_book.no_customer_title"),
+                _t("credit_book.no_customer_msg"),
+            )
+            return
+
+        current_pts = getattr(target, "loyalty_points", 0) or 0
+        pts_delta, ok = QInputDialog.getInt(
+            self,
+            _t("customer_editor.adjust_points_title"),
+            _t("customer_editor.adjust_points_prompt"),
+            0,
+            -current_pts,
+            999999,
+            1,
+        )
+        if not ok or pts_delta == 0:
+            return
+
+        reason, ok = QInputDialog.getText(
+            self,
+            _t("customer_editor.adjust_reason_title"),
+            _t("customer_editor.adjust_reason_prompt"),
+        )
+        if not ok or not reason.strip():
+            QMessageBox.warning(
+                self,
+                _t("credit_book.required_title"),
+                _t("customer_editor.reason_required"),
+            )
+            return
+
+        current_user = AuthService.get_current_user()
+        user_id = current_user.id if current_user else None
+
+        try:
+            entry = LoyaltyService.adjust_points(
+                customer_id=target.id,
+                points_delta=pts_delta,
+                reason=reason.strip(),
+                user_id=user_id,
+            )
+            target.loyalty_points = entry.balance_after
+            if self.selected_customer and self.selected_customer.id == target.id:
+                self.update_header(target)
+            self._refresh_customer_list()
         except ValueError as e:
             QMessageBox.warning(self, _t("common.error"), str(e))
 

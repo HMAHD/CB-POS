@@ -156,8 +156,12 @@ def format_audit_details(action: str | None, details: str | None) -> str:
         data = json.loads(details)
     except (ValueError, TypeError):
         return details
-    if not isinstance(data, dict):
-        return details
+    if action == "LOYALTY_ADJUSTMENT" and isinstance(data, dict):
+        customer = data.get("customer", "")
+        old = data.get("old", 0)
+        new = data.get("new", 0)
+        reason = data.get("reason", "")
+        return _t("audit.detail.loyalty_adjustment", customer=customer, old=old, new=new, reason=reason)
     if "subject" in data and isinstance(data.get("changes"), dict) and all(map(_is_change, data["changes"].values())):
         return _subject_change_text(action, data)
     if not all(_is_change(v) for v in data.values()):

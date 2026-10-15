@@ -167,7 +167,6 @@ def test_reprint_of_reloaded_sale_shows_cashier_a_and_plain_quantity(config_stor
     cart.add_item(product, qty=Decimal("2"))
     with (
         patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=cashier_a),
-        patch("cbpos.core.services.transaction_service.PrintWorker"),
     ):
         sale = TransactionService.process_sale(cart, [{"method": "CASH", "amount": Decimal("200")}])
     sale_id = sale.id

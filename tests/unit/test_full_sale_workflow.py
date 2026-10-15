@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
+from cbpos.core.interfaces.transaction_peripherals import SaleCompleted
 from cbpos.core.models import (
     Customer,
     CustomerLedgerEntry,
@@ -62,7 +63,7 @@ def _setup_scenario(db_session):
 class TestFullSaleWorkflow:
     """End-to-end sale workflow: cart → payment → stock → tax → records."""
 
-    def test_cash_sale_full_workflow(self, db_session):
+    def test_cash_sale_full_workflow(self, db_session, peripherals):
         """Complete cash sale: 2 products, cash payment, stock deducted, tax calculated."""
         user, product_a, product_b, _ = _setup_scenario(db_session)
 
@@ -90,12 +91,12 @@ class TestFullSaleWorkflow:
 
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
-            patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.PrinterService"),
         ):
             result = TransactionService.process_sale(cart, payments)
 
         assert result is not None
+        # Receipt + drawer requested exactly once, after the commit (#733)
+        assert peripherals.events == [SaleCompleted(result, ("CASH",))]
 
         # 3. Verify Sale Record
         sale = db_session.query(Sale).order_by(Sale.id.desc()).first()
@@ -165,8 +166,6 @@ class TestFullSaleWorkflow:
 
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
-            patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.PrinterService"),
         ):
             result = TransactionService.process_sale(cart, payments, customer_id=customer.id)
 
@@ -188,7 +187,7 @@ class TestFullSaleWorkflow:
         assert len(entries) == 1
         assert entries[0].amount == Decimal("850.00")
 
-    def test_split_payment_sale(self, db_session):
+    def test_split_payment_sale(self, db_session, peripherals):
         """Split payment: partial cash + partial card."""
         user, product_a, _, _ = _setup_scenario(db_session)
 
@@ -211,8 +210,6 @@ class TestFullSaleWorkflow:
 
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
-            patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.PrinterService"),
         ):
             result = TransactionService.process_sale(cart, payments)
 
@@ -226,6 +223,8 @@ class TestFullSaleWorkflow:
         assert len(sale_payments) == 2
         methods = {p.payment_method for p in sale_payments}
         assert methods == {"CASH", "CARD"}
+        # The drawer hears about both methods (drawer_on_cash_only needs the cash one)
+        assert [e.payment_methods for e in peripherals.events] == [("CASH", "CARD")]
 
     def test_sale_then_void_then_verify_stock(self, db_session):
         """Full cycle: sale deducts stock, void restores it."""
@@ -248,8 +247,6 @@ class TestFullSaleWorkflow:
 
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
-            patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.PrinterService"),
         ):
             TransactionService.process_sale(cart, payments)
 
@@ -288,8 +285,6 @@ class TestFullSaleWorkflow:
 
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
-            patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.PrinterService"),
         ):
             TransactionService.process_sale(cart, payments)
 
@@ -299,7 +294,6 @@ class TestFullSaleWorkflow:
 
         # Refund
         with (
-            patch("cbpos.core.services.transaction_service.PrintWorker"),
             patch("cbpos.core.services.transaction_service.PrinterService"),
             patch("cbpos.core.services.transaction_service.ConfigService.get_all", return_value={"language": "en"}),
         ):
@@ -316,7 +310,7 @@ class TestFullSaleWorkflow:
         assert refund is not None
         assert refund.total_amount == -sale.total_amount
 
-    def test_insufficient_payment_rejected(self, db_session):
+    def test_insufficient_payment_rejected(self, db_session, peripherals):
         """Payment less than total amount is rejected."""
         user, product_a, _, _ = _setup_scenario(db_session)
 
@@ -335,17 +329,16 @@ class TestFullSaleWorkflow:
 
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
-            patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.PrinterService"),
             pytest.raises(ValueError, match="Insufficient payment"),
         ):
             TransactionService.process_sale(cart, payments)
 
-        # Stock should be unchanged
+        # Stock should be unchanged, and nothing printed or opened
         db_session.refresh(product_a)
         assert product_a.stock_qty == Decimal("50.000")
+        assert peripherals.events == []
 
-    def test_credit_limit_exceeded_rejected(self, db_session):
+    def test_credit_limit_exceeded_rejected(self, db_session, peripherals):
         """Credit sale exceeding customer limit is rejected."""
         user, product_a, _, customer = _setup_scenario(db_session)
 
@@ -368,11 +361,11 @@ class TestFullSaleWorkflow:
 
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
-            patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.PrinterService"),
             pytest.raises(ValueError, match="Credit limit exceeded"),
         ):
             TransactionService.process_sale(cart, payments, customer_id=customer.id)
+
+        assert peripherals.events == []
 
     def test_tax_breakdown_accuracy(self, db_session):
         """Verify that tax breakdown on a saved sale matches TaxService calculation."""
@@ -393,8 +386,6 @@ class TestFullSaleWorkflow:
 
         with (
             patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
-            patch("cbpos.core.services.transaction_service.PrintWorker"),
-            patch("cbpos.core.services.transaction_service.PrinterService"),
         ):
             TransactionService.process_sale(cart, payments)
 

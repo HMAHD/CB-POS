@@ -91,8 +91,6 @@ def _sell(db_session, user, lines, payments, customer_id=None):
     with (
         patch("cbpos.core.services.cart_service.PricingService.calculate_price", side_effect=_list_price),
         patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
-        patch("cbpos.core.services.transaction_service.PrintWorker"),
-        patch("cbpos.core.services.transaction_service.PrinterService"),
     ):
         cart = CartService()
         for product, qty in lines:

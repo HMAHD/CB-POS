@@ -97,6 +97,7 @@ def seed_data():
             "Purchase",
             "Stock Take",
             "Cash",
+            "Loyalty",
             "Screens",
         ]
         for grp in manager_groups:

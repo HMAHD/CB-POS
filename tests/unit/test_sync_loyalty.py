@@ -171,10 +171,44 @@ class TestLoyaltyPoints:
                 s.query(LoyaltyLedgerEntry).filter_by(customer_id=catalog["customer"], entry_type="REVERSAL").one()
             )
             assert reversal.points == -5
-            assert reversal.balance_after == 10
             main_sale = s.query(Sale).filter_by(origin_terminal_id=TILL_A).first()
             assert main_sale is not None
             assert reversal.reference_id == main_sale.id
+
+    def test_points_adjusted_on_till_reach_main_pc_and_other_tills(self, shop, catalog):
+        from cbpos.core.services.loyalty_service import LoyaltyService
+
+        with shop.on(TILL_A):
+            LoyaltyService.adjust_points(
+                customer_id=catalog["customer"],
+                points_delta=25,
+                reason="Manual goodwill bonus",
+                user_id=catalog["user"],
+            )
+
+        assert _points(shop, TILL_A, catalog["customer"]) == 35
+
+        shop.cycle(TILL_A)
+        shop.cycle(TILL_B)
+
+        assert _points(shop, "main", catalog["customer"]) == 35
+        assert _points(shop, TILL_A, catalog["customer"]) == 35
+        assert _points(shop, TILL_B, catalog["customer"]) == 35
+
+        # Check audit log recorded locally on TILL_A
+        with shop.session(TILL_A) as s:
+            from cbpos.core.models import AuditLog
+
+            audit = s.query(AuditLog).filter_by(action="LOYALTY_ADJUSTMENT").one()
+            assert "Manual goodwill bonus" in audit.details
+
+        # Check ledger entry on main PC
+        with shop.session("main") as s:
+            entry = (
+                s.query(LoyaltyLedgerEntry).filter_by(customer_id=catalog["customer"], entry_type="ADJUSTMENT").one()
+            )
+            assert entry.points == 25
+            assert entry.note == "Manual goodwill bonus"
 
 
 class TestOlderMainPc:

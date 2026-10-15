@@ -58,6 +58,9 @@ class Permissions:
     # Cash
     CASH_OPEN_DRAWER = "cash.open_drawer"
 
+    # Loyalty
+    LOYALTY_ADJUST_POINTS = "loyalty.adjust_points"
+
     # Screens: who sees Management / Settings in the side menu (#549)
     MANAGEMENT_VIEW = "management.view"
     SETTINGS_VIEW = "settings.view"
@@ -121,6 +124,9 @@ class Permissions:
             ],
             "Cash": [
                 cls.CASH_OPEN_DRAWER,
+            ],
+            "Loyalty": [
+                cls.LOYALTY_ADJUST_POINTS,
             ],
             "Screens": [
                 cls.MANAGEMENT_VIEW,

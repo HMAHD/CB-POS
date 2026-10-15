@@ -112,6 +112,7 @@ class DatabaseSetupService:
                 "Reports",
                 "Documents",
                 "Credit",
+                "Loyalty",
                 "Purchase",
                 "Stock Take",
                 "Cash",

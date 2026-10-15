@@ -28,6 +28,7 @@ from cbpos.ui.resources.icons import Icons
 from cbpos.ui.views.reports.filter_widget import FilterWidget
 from cbpos.ui.views.reports.pandas_model import PandasModel
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
+from cbpos.ui.widgets.flow_layout import FlowLayout
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
 from cbpos.ui.workers import ExportWorker, ReportEmailWorker, ReportPrintWorker, start_background_job
@@ -205,31 +206,38 @@ class ReportViewer(QWidget):
         self.row_count_label.setObjectName("ReportRowCount")
         action_layout.addWidget(self.row_count_label)
 
-        action_layout.addStretch()
+        # Export buttons wrap onto a second row instead of being squeezed
+        # below their labels on narrow windows / large text (#611); the
+        # container takes the spare width and keeps them right-aligned.
+        export_buttons = QWidget()
+        export_buttons.setObjectName("ReportExportButtons")
+        export_layout = FlowLayout(export_buttons)
+        export_layout.setContentsMargins(0, 0, 0, 0)
+        action_layout.addWidget(export_buttons, 1)
 
         self.btn_print = QPushButton("")
         self.btn_print.setObjectName("ReportPrintBtn")
         self.btn_print.clicked.connect(self.print_report)
         self.btn_print.setCursor(Qt.CursorShape.PointingHandCursor)
-        action_layout.addWidget(self.btn_print)
+        export_layout.addWidget(self.btn_print)
 
         self.btn_export_excel = QPushButton("")
         self.btn_export_excel.setObjectName("ReportExportExcelBtn")
         self.btn_export_excel.clicked.connect(self.export_excel)
         self.btn_export_excel.setCursor(Qt.CursorShape.PointingHandCursor)
-        action_layout.addWidget(self.btn_export_excel)
+        export_layout.addWidget(self.btn_export_excel)
 
         self.btn_export_pdf = QPushButton("")
         self.btn_export_pdf.setObjectName("ReportExportPdfBtn")
         self.btn_export_pdf.clicked.connect(self.export_pdf)
         self.btn_export_pdf.setCursor(Qt.CursorShape.PointingHandCursor)
-        action_layout.addWidget(self.btn_export_pdf)
+        export_layout.addWidget(self.btn_export_pdf)
 
         self.btn_email = QPushButton("")
         self.btn_email.setObjectName("ReportEmailBtn")
         self.btn_email.clicked.connect(self.email_report)
         self.btn_email.setCursor(Qt.CursorShape.PointingHandCursor)
-        action_layout.addWidget(self.btn_email)
+        export_layout.addWidget(self.btn_email)
 
         self.action_bar.setVisible(False)
         content_layout.addWidget(self.action_bar)

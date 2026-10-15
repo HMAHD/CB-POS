@@ -3397,6 +3397,11 @@ QPushButton#ReportNavItem:checked {
     font-weight: bold;
 }
 
+/* Export buttons wrap onto a second row when narrow (#611) */
+#ReportExportButtons {
+    background: transparent;
+}
+
 #ReportPrintBtn,
 #ReportExportExcelBtn,
 #ReportExportPdfBtn,

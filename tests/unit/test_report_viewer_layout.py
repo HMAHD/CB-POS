@@ -5,6 +5,7 @@ Print / Excel / PDF / Email buttons were squeezed below their labels'
 width on narrow windows (1024 px, or larger text, or long Tamil labels).
 """
 
+import pandas as pd
 import pytest
 from PyQt6.QtCore import QPoint
 from PyQt6.QtWidgets import QApplication, QHBoxLayout, QPushButton, QWidget
@@ -19,8 +20,12 @@ MANAGEMENT_SIDEBAR_WIDTH = 250  # CollapsibleSidebar's expanded width, left of R
 
 
 @pytest.fixture
-def reports_screen(qapp, db_session, monkeypatch):
-    """Build the themed Reports screen inside a window of the given size and language."""
+def reports_screen(app_fixture, db_session, monkeypatch):
+    """Build the themed Reports screen inside a window of the given size and language.
+
+    app_fixture loads the app's bundled fonts (Noto Sans / Sinhala / Tamil),
+    which decide how wide each label really is.
+    """
     original_language = get_language()
     monkeypatch.setattr(ThemeService, "current_theme", ThemeService.current_theme)
     captured: list[str] = []
@@ -81,3 +86,30 @@ def test_run_report_sits_right_after_the_filters(reports_screen, lang):
     gap = _left(viewer.btn_run, viewer) - _right(last_filter, viewer)
 
     assert 0 <= gap <= 24
+
+
+def _run_report_with_rows(viewer: ReportViewer, qtbot, monkeypatch) -> None:
+    """Open a report and run it, with the report returning a page of rows."""
+    _open_report(viewer, "daily_sales_summary")
+    rows = pd.DataFrame({"Date": ["2026-10-01"] * 3, "Total Sales": [1250.0, 980.5, 40.0]})
+    monkeypatch.setattr(viewer.current_report, "generate", lambda _filters: rows)
+    viewer.btn_run.click()
+    qtbot.waitUntil(viewer.action_bar.isVisible, timeout=3000)
+    QApplication.processEvents()
+
+
+# 1024 px is the issue's narrow window; font size 20 is a large-text user.
+@pytest.mark.parametrize(("width", "font_size"), [(1366, 12), (1366, 20), (1024, 12), (1024, 20)])
+@pytest.mark.parametrize("lang", ["en", "si", "ta"])
+def test_export_buttons_show_their_whole_label(reports_screen, qtbot, monkeypatch, width, font_size, lang):
+    viewer = reports_screen(width, 768, lang, font_size)
+    _run_report_with_rows(viewer, qtbot, monkeypatch)
+
+    squeezed = [
+        btn.text()
+        for btn in (viewer.btn_print, viewer.btn_export_excel, viewer.btn_export_pdf, viewer.btn_email)
+        if btn.width() < btn.sizeHint().width()
+        or _right(btn, viewer) > viewer.width()
+        or btn.mapTo(viewer.action_bar, QPoint(0, btn.height())).y() > viewer.action_bar.height()
+    ]
+    assert squeezed == []

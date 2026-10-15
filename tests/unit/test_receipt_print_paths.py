@@ -10,7 +10,8 @@ build with ReceiptBuilder (what the Settings preview shows) and queue one
 print job on the worker.
 
 No real printer or settings file is touched: ConfigService is backed by a
-dict and PrintWorker is a mock.
+dict and PrintWorker is a mock. Sales print through the production
+peripherals adapter (#733), passed per call.
 """
 
 from datetime import datetime
@@ -24,6 +25,8 @@ from cbpos.core.models import Customer, Product, Sale, SaleItem, SalePayment
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
+from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.infrastructure.hardware.print_worker_peripherals import PrintWorkerPeripherals
 
 
 class _FakeConfigStore:
@@ -59,10 +62,9 @@ def cashier():
 
 @pytest.fixture
 def worker():
-    """The shared PrintWorker, replaced by a mock that records add_job calls."""
+    """The shared PrintWorker, replaced by a mock that records add_job calls (receipts and drawer kicks)."""
     mock_worker = MagicMock()
-    with patch("cbpos.core.services.printer_service.PrintWorker") as mock_cls:
-        mock_cls.instance.return_value = mock_worker
+    with patch.object(PrintWorker, "instance", return_value=mock_worker):
         yield mock_worker
 
 
@@ -237,14 +239,20 @@ def db_product(db_session):
     return product
 
 
-def _sell(product: Product) -> Sale:
+def _sell(product: Product, peripherals: PrintWorkerPeripherals | None = None) -> Sale:
+    """Ring up a cash sale; pass the production peripherals to really auto-print it (#733)."""
     from cbpos.core.services.cart_service import CartService
     from cbpos.core.services.transaction_service import TransactionService
 
     cart = CartService()
     cart.add_item(product, qty=Decimal("2"))
-    with patch("cbpos.core.services.transaction_service.PrintWorker"):
-        return TransactionService.process_sale(cart, [{"method": "CASH", "amount": Decimal("200")}])
+    return TransactionService.process_sale(
+        cart, [{"method": "CASH", "amount": Decimal("200")}], peripherals=peripherals
+    )
+
+
+def job_types(mock_worker: MagicMock) -> list[str]:
+    return [job_type for job_type, _ in queued_jobs(mock_worker)]
 
 
 class TestTransactionAutoPrint:
@@ -260,26 +268,26 @@ class TestTransactionAutoPrint:
             return commands
 
         with patch.object(ReceiptBuilder, "build_receipt", side_effect=spy):
-            sale = _sell(db_product)
+            sale = _sell(db_product, PrintWorkerPeripherals())
 
         ((built_for, commands),) = built
         assert built_for is sale
-        assert queued_jobs(worker) == [("print_receipt", commands)]
+        assert queued_jobs(worker) == [("print_receipt", commands), ("kick_drawer", ["CASH"])]
         assert any(db_user.username in line for line in texts(queued_jobs(worker)[0][1]))
 
     def test_receipt_dialog_on_leaves_printing_to_the_dialog(self, config_store, db_user, db_product, worker):
         config_store.set("show_receipt_dialog", True)
 
-        _sell(db_product)
+        _sell(db_product, PrintWorkerPeripherals())
 
-        worker.add_job.assert_not_called()
+        assert job_types(worker) == ["kick_drawer"]
 
     def test_sale_with_auto_print_off_prints_nothing(self, config_store, db_user, db_product, worker):
         config_store.set("auto_print_receipt", False)
 
-        _sell(db_product)
+        _sell(db_product, PrintWorkerPeripherals())
 
-        worker.add_job.assert_not_called()
+        assert job_types(worker) == ["kick_drawer"]
 
     def test_refund_auto_prints_the_refund_receipt(self, config_store, db_user, db_product, worker):
         from cbpos.core.services.transaction_service import TransactionService

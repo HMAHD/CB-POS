@@ -59,7 +59,6 @@ def test_product(db_session):
 def test_sale_items_and_product_are_loaded_after_process_sale(db_session, test_user, test_product):
     with (
         patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user),
-        patch("cbpos.core.services.transaction_service.PrintWorker"),
     ):
         cart_service = CartService()
         cart_service.add_item(test_product, qty=Decimal("2.0"))

@@ -52,10 +52,8 @@ def settings(monkeypatch):
 
 @pytest.fixture
 def no_print():
-    with (
-        patch("cbpos.core.services.transaction_service.PrintWorker"),
-        patch("cbpos.core.services.transaction_service.PrinterService"),
-    ):
+    """Keep the refund voucher off the print worker (sales go to the recording fake)."""
+    with patch("cbpos.core.services.transaction_service.PrinterService"):
         yield
 
 

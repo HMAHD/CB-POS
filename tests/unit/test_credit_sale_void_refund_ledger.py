@@ -56,7 +56,6 @@ def _sell(db_session, user, product, customer, payments: list[tuple[str, str]], 
     db_session.commit()
     with (
         patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user),
-        patch("cbpos.core.services.transaction_service.PrintWorker"),
     ):
         cart = CartService()
         cart.add_item(product, qty=Decimal(qty))

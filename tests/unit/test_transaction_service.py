@@ -87,7 +87,6 @@ def test_process_sale_atomic(db_session, test_user, test_product):
 
     with (
         patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user),
-        patch("cbpos.core.services.transaction_service.PrintWorker"),
     ):
         cart_service = CartService()
         cart_service.add_item(test_product, qty=Decimal("2.0"))
@@ -114,7 +113,6 @@ def test_process_sale_persists_the_cart_line_note(db_session, test_user, test_pr
 
     with (
         patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user),
-        patch("cbpos.core.services.transaction_service.PrintWorker"),
     ):
         cart_service = CartService()
         cart_service.add_item(test_product, qty=Decimal("1.0"))
@@ -133,7 +131,6 @@ def test_process_sale_rollback_on_error(db_session, test_user, test_product):
 
     with (
         patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user),
-        patch("cbpos.core.services.transaction_service.PrintWorker"),
     ):
         cart_service = CartService()
         cart_service.add_item(test_product, qty=Decimal("2.0"))
@@ -254,7 +251,6 @@ def test_void_creates_stock_movements(db_session, test_user, test_product, compl
 def test_process_refund(db_session, test_user, test_product, completed_sale):
     """Full refund creates a negative sale, restores stock, links to original."""
     with (
-        patch("cbpos.core.services.transaction_service.PrintWorker"),
         patch("cbpos.core.services.transaction_service.PrinterService"),
         patch("cbpos.core.services.transaction_service.ConfigService.get_all", return_value={"language": "en"}),
     ):
@@ -295,8 +291,7 @@ def test_refund_voided_sale_fails(db_session, test_user):
     db_session.add(sale)
     db_session.commit()
 
-    with patch("cbpos.core.services.transaction_service.PrintWorker"):
-        result = TransactionService.process_refund(sale.id, "Should fail", test_user.id)
+    result = TransactionService.process_refund(sale.id, "Should fail", test_user.id)
 
     assert result is False
 
@@ -321,8 +316,7 @@ def test_double_refund_fails(db_session, test_user, test_product, completed_sale
     db_session.add(existing_refund)
     db_session.commit()
 
-    with patch("cbpos.core.services.transaction_service.PrintWorker"):
-        result = TransactionService.process_refund(completed_sale.id, "Second refund attempt", test_user.id)
+    result = TransactionService.process_refund(completed_sale.id, "Second refund attempt", test_user.id)
 
     assert result is False
 
@@ -345,8 +339,7 @@ def test_refund_of_refund_fails(db_session, test_user):
     db_session.add(refund_sale)
     db_session.commit()
 
-    with patch("cbpos.core.services.transaction_service.PrintWorker"):
-        result = TransactionService.process_refund(refund_sale.id, "Meta refund", test_user.id)
+    result = TransactionService.process_refund(refund_sale.id, "Meta refund", test_user.id)
 
     assert result is False
 
@@ -356,49 +349,43 @@ def test_refund_of_refund_fails(db_session, test_user):
 
 def test_refund_nonexistent_sale(db_session):
     """Refunding a non-existent sale returns False."""
-    with patch("cbpos.core.services.transaction_service.PrintWorker"):
-        result = TransactionService.process_refund(999999, "Ghost sale", 1)
+    result = TransactionService.process_refund(999999, "Ghost sale", 1)
     assert result is False
 
 
 # ── Test Case L: B2B customers additionally get an A4 Tax Invoice ───────
 
 
-def test_b2b_sale_triggers_invoice_print(db_session, test_user, test_product):
-    """A VAT-registered customer's sale auto-prints via print_transaction (receipt + A4 invoice)."""
+def test_b2b_sale_hands_the_receipt_its_vat_customer(db_session, test_user, test_product, peripherals):
+    """A VAT-registered customer's sale reaches the peripherals with the customer loaded,
+    so the receipt and the A4 Tax Invoice can be printed after the session has closed."""
     customer = Customer(name="Registered Co", vat_number="VAT-12345")
     db_session.add(customer)
     db_session.commit()
 
-    with (
-        patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user),
-        patch("cbpos.core.services.transaction_service.PrintWorker"),
-        patch("cbpos.core.services.transaction_service.PrinterService") as mock_printer,
-    ):
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
         cart_service = CartService()
         cart_service.add_item(test_product, qty=Decimal("2.0"))
         payments = [{"method": "CASH", "amount": Decimal("200.0")}]
 
         result = TransactionService.process_sale(cart_service, payments, customer_id=customer.id)
 
-    assert result is not None
-    mock_printer.print_transaction.assert_called_once()
+    (event,) = peripherals.events
+    assert event.sale is result
+    assert event.sale.customer.vat_number == "VAT-12345"
 
 
-def test_walkin_sale_does_not_error_on_invoice_check(db_session, test_user, test_product):
-    """A walk-in (no customer) sale auto-prints via the same print_transaction path."""
+def test_walkin_sale_reaches_the_peripherals_without_a_customer(db_session, test_user, test_product, peripherals):
+    """A walk-in (no customer) sale goes through the same single sale event."""
     db_session.commit()
 
-    with (
-        patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user),
-        patch("cbpos.core.services.transaction_service.PrintWorker"),
-        patch("cbpos.core.services.transaction_service.PrinterService") as mock_printer,
-    ):
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
         cart_service = CartService()
         cart_service.add_item(test_product, qty=Decimal("2.0"))
         payments = [{"method": "CASH", "amount": Decimal("200.0")}]
 
         result = TransactionService.process_sale(cart_service, payments)
 
-    assert result is not None
-    mock_printer.print_transaction.assert_called_once()
+    (event,) = peripherals.events
+    assert event.sale is result
+    assert event.sale.customer is None

@@ -33,11 +33,13 @@ Balances (#678): ``Customer.current_debt`` and ``Supplier.current_payable``
 are Main-owned columns that till activity moves. Each pushed ledger row
 moves the Main PC balance by its amount on first arrival only, and the
 push acknowledgement carries the resulting balances back to the till.
+``Customer.loyalty_points`` moves the same way, by loyalty ledger rows (#716).
 """
 
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
@@ -45,7 +47,12 @@ from sqlalchemy import inspect as sa_inspect
 
 from cbpos.core.models import Customer, Document, Product, Supplier, SyncIdMap
 from cbpos.core.services.sync_change_tracking import SKIP_CHANGE_TRACKING
-from cbpos.core.services.sync_protocol import TRANSACTION_TABLES, coerce_columns, get_model_for_table
+from cbpos.core.services.sync_protocol import (
+    REJECTED_TABLE_ERROR,
+    TRANSACTION_TABLES,
+    coerce_columns,
+    get_model_for_table,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +79,7 @@ APPLY_ORDER: tuple[str, ...] = (
     "cash_movements",
     "customer_payments",
     "customer_ledger",
+    "loyalty_ledger",
     "supplier_payments",
     "supplier_ledger",
     "audit_logs",
@@ -103,12 +111,15 @@ LEDGER_REFS: dict[str, dict[str, str]] = {
         "REFUND": DOCUMENT_ID_SPACE,
         "PAYMENT": "customer_payments",
     },
+    "loyalty_ledger": {"EARN": DOCUMENT_ID_SPACE},
     "supplier_ledger": {"PURCHASE": DOCUMENT_ID_SPACE, "PAYMENT": "supplier_payments"},
 }
 
 # Tables whose customer_id may point at a customer the till created and
 # pushed in the same batch (#680). Any other customer_id is a Main PC id.
-_CUSTOMER_REF_TABLES = frozenset({"sales", "customer_payments", "customer_ledger", "suspended_transactions"})
+_CUSTOMER_REF_TABLES = frozenset(
+    {"sales", "customer_payments", "customer_ledger", "loyalty_ledger", "suspended_transactions"}
+)
 
 # Columns that point at till rows that are never pushed (purchase orders
 # stay on the till that raised them). No Main PC row is that till's row,
@@ -128,10 +139,22 @@ _ORIGIN_COLUMNS: dict[str, tuple[str, tuple[str, ...]]] = {
 }
 
 
-# Ledger table -> (balance owner id space, owner id column, balance column).
-_LEDGER_BALANCES: dict[str, tuple[str, str, str]] = {
-    "customer_ledger": ("customers", "customer_id", "current_debt"),
-    "supplier_ledger": ("suppliers", "supplier_id", "current_payable"),
+@dataclass(frozen=True)
+class _LedgerBalance:
+    """A Main-owned figure that a till's ledger rows move (#678, #716)."""
+
+    reply_key: str  # key of the figure in the push acknowledgement's "balances"
+    owner_model: type
+    owner_column: str  # ledger column naming the owner row
+    balance_column: str  # the figure on the owner row
+    amount_column: str  # ledger column it moves by
+
+
+# Ledger table -> the figure its rows move.
+_LEDGER_BALANCES: dict[str, _LedgerBalance] = {
+    "customer_ledger": _LedgerBalance("customers", Customer, "customer_id", "current_debt", "amount"),
+    "supplier_ledger": _LedgerBalance("suppliers", Supplier, "supplier_id", "current_payable", "amount"),
+    "loyalty_ledger": _LedgerBalance("loyalty_points", Customer, "customer_id", "loyalty_points", "points"),
 }
 
 
@@ -164,8 +187,8 @@ class SyncApplyService:
         self._session = session
         self._terminal_id = terminal_id
         self._id_cache: dict[tuple[str, int], int] = {}
-        # Customers/suppliers whose ledger this batch touched (Main PC ids).
-        self._touched_balances: dict[str, set[int]] = {"customers": set(), "suppliers": set()}
+        # Owners (Main PC ids) whose figure this batch's ledger rows touched, per reply key.
+        self._touched_balances: dict[str, set[int]] = {b.reply_key: set() for b in _LEDGER_BALANCES.values()}
         # Till ids of the customers this batch creates (#680).
         self._batch_customers: set[int] = set()
 
@@ -194,7 +217,7 @@ class SyncApplyService:
             self._batch_customers = {int(c["id"]) for c in customers if isinstance(c, dict) and c.get("id") is not None}
         for table_name, records in payload.items():
             if table_name not in TRANSACTION_TABLES:
-                errors.append(f"Table not allowed for push: {table_name}")
+                errors.append(f"{REJECTED_TABLE_ERROR}{table_name}")
                 logger.warning("Terminal %s attempted to push disallowed table %r", self._terminal_id, table_name)
             elif not isinstance(records, list):
                 raise PushApplyError(f"{table_name}: expected a list of rows")
@@ -257,9 +280,9 @@ class SyncApplyService:
             self._apply_customer(local_id, values)
             return
         self._remap_references(table_name, model_class, local_id, values)
-        if table_name in _LEDGER_BALANCES and values.get(_LEDGER_BALANCES[table_name][1]) is not None:
-            space, owner_column, _balance = _LEDGER_BALANCES[table_name]
-            self._touched_balances[space].add(int(values[owner_column]))
+        balance = _LEDGER_BALANCES.get(table_name)
+        if balance is not None and values.get(balance.owner_column) is not None:
+            self._touched_balances[balance.reply_key].add(int(values[balance.owner_column]))
         if hasattr(model_class, "synced"):
             values["synced"] = True
         if table_name in _DOCUMENT_TABLES and not values.get("origin_terminal_id"):
@@ -313,26 +336,25 @@ class SyncApplyService:
         return result
 
     def balances(self) -> dict[str, dict[str, str]]:
-        """Main PC balances of every customer/supplier whose ledger the applied rows touched.
+        """Main PC figures of every customer/supplier whose ledger the applied rows touched.
 
-        Sent back to the till with the push acknowledgement (#678), so it
-        can set its own balance to the shop-wide figure plus whatever it
-        has not pushed yet -- even when an earlier acknowledgement was lost.
+        Sent back to the till with the push acknowledgement (#678, #716), so
+        it can set its own figure to the shop-wide one plus whatever it has
+        not pushed yet -- even when an earlier acknowledgement was lost.
 
         Returns:
-            ``{"customers": {id: current_debt}, "suppliers": {id: current_payable}}``
-            with ids as strings and amounts as decimal strings (JSON-safe).
+            ``{"customers": {id: current_debt}, "suppliers": {id: current_payable},
+            "loyalty_points": {id: loyalty_points}}`` with ids and figures as
+            strings (JSON-safe). Tills older than #716 ignore "loyalty_points".
         """
         self._session.flush()
-        result: dict[str, dict[str, str]] = {"customers": {}, "suppliers": {}}
-        for customer_id in sorted(self._touched_balances["customers"]):
-            customer = self._session.get(Customer, customer_id)
-            if customer is not None:
-                result["customers"][str(customer_id)] = str(customer.current_debt or Decimal("0"))
-        for supplier_id in sorted(self._touched_balances["suppliers"]):
-            supplier = self._session.get(Supplier, supplier_id)
-            if supplier is not None:
-                result["suppliers"][str(supplier_id)] = str(supplier.current_payable or Decimal("0"))
+        result: dict[str, dict[str, str]] = {}
+        for balance in _LEDGER_BALANCES.values():
+            figures = result.setdefault(balance.reply_key, {})
+            for owner_id in sorted(self._touched_balances[balance.reply_key]):
+                owner = self._session.get(balance.owner_model, owner_id)
+                if owner is not None:
+                    figures[str(owner_id)] = str(getattr(owner, balance.balance_column) or 0)
         return result
 
     # --- Customers created on a till (#680) ---
@@ -344,8 +366,10 @@ class SyncApplyService:
         already has *is* that customer (both are unique): the till's row is
         mapped onto it and the Main PC's details are kept. Otherwise it is
         inserted with a zero balance -- its debt arrives through the ledger
-        rows pushed with it. A re-send (lost acknowledgement) changes nothing:
-        the Main PC owns customer details once it has the customer.
+        rows pushed with it. Its ``loyalty_points`` are kept as sent: a till
+        sends only the points no loyalty ledger row carries (#716). A re-send
+        (lost acknowledgement) changes nothing: the Main PC owns customer
+        details once it has the customer.
         """
         if self._lookup("customers", local_id) is not None:
             return
@@ -563,16 +587,15 @@ class SyncApplyService:
                 # server retries with a fresh session.
                 product.stock_qty += instance.qty_change
         elif table_name in _LEDGER_BALANCES:
-            # Same for credit book / payables (#678): the till moved its own
-            # Customer.current_debt / Supplier.current_payable together with
-            # this ledger row, so the Main PC moves its copy by the same
-            # amount -- once, on first arrival. A balance adjustment never
-            # takes a balance below zero (as on the till).
-            space, owner_column, balance_column = _LEDGER_BALANCES[table_name]
-            owner_model = Customer if space == "customers" else Supplier
-            owner = self._session.get(owner_model, getattr(instance, owner_column))
+            # Same for credit book / payables (#678) and loyalty points
+            # (#716): the till moved its own figure together with this ledger
+            # row, so the Main PC moves its copy by the same amount -- once,
+            # on first arrival. An adjustment never takes a figure below zero
+            # (as on the till).
+            balance = _LEDGER_BALANCES[table_name]
+            owner = self._session.get(balance.owner_model, getattr(instance, balance.owner_column))
             if owner is not None:
-                balance = (getattr(owner, balance_column) or Decimal("0")) + instance.amount
-                if instance.entry_type == "ADJUSTMENT" and balance < 0:
-                    balance = Decimal("0.00")
-                setattr(owner, balance_column, balance)
+                figure = (getattr(owner, balance.balance_column) or 0) + getattr(instance, balance.amount_column)
+                if instance.entry_type == "ADJUSTMENT" and figure < 0:
+                    figure = Decimal("0.00") if isinstance(figure, Decimal) else 0
+                setattr(owner, balance.balance_column, figure)

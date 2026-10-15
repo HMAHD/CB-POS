@@ -130,7 +130,10 @@ def _set_local_balance(session: Any, balance: _Balance, owner_id: int, main_valu
     owner = session.get(get_model_for_table(balance.owner_table), owner_id)
     if owner is None:
         return
-    setattr(owner, balance.balance_column, balance.parse(main_value) + _unpushed(session, balance, owner_id))
+    figure = balance.parse(main_value) + _unpushed(session, balance, owner_id)
+    if balance.balance_column == "loyalty_points" and figure < 0:
+        figure = 0
+    setattr(owner, balance.balance_column, figure)
 
 
 def _rejected_tables(errors: Any) -> set[str]:

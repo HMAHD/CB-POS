@@ -10,12 +10,15 @@ figure is the Main PC's plus the rows it has not pushed yet.
 """
 
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 
-from cbpos.core.models import Customer
+from cbpos.core.models import Customer, LoyaltyLedgerEntry, Product, Sale, User
 from cbpos.core.services import sync_apply_service
+from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.customer_service import CustomerService
+from cbpos.core.services.transaction_service import TransactionService
 from tests.unit.sync_two_machines import Shop, isolated_settings
 
 TILL_A = "TERM-02"
@@ -121,6 +124,57 @@ class TestLoyaltyPoints:
             main_id, main_points = main_customer.id, main_customer.loyalty_points
         assert main_points == 7
         assert _points(shop, TILL_A, main_id) == 7
+
+    def test_checkout_points_and_reversal_sync_across_machines(self, shop, catalog):
+        # 1. Till A completes a sale for customer -> earns points
+        with shop.on(TILL_A):
+            with shop.session(TILL_A) as s:
+                user = s.get(User, catalog["user"])
+                product = s.get(Product, catalog["product"])
+                with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user):
+                    cart = CartService()
+                    cart.add_item(product, qty=Decimal("5.0"))
+                    sale = TransactionService.process_sale(
+                        cart, [{"method": "CASH", "amount": Decimal("500")}], customer_id=catalog["customer"]
+                    )
+                    assert sale is not None
+                    sale_id = sale.id
+
+        assert _points(shop, TILL_A, catalog["customer"]) == 15
+
+        # Sync Till A and Till B
+        shop.cycle(TILL_A)
+        shop.cycle(TILL_B)
+
+        assert _points(shop, "main", catalog["customer"]) == 15
+        assert _points(shop, TILL_A, catalog["customer"]) == 15
+        assert _points(shop, TILL_B, catalog["customer"]) == 15
+
+        # 2. Till A voids the sale -> points reversed
+        with shop.on(TILL_A):
+            success = TransactionService.void_sale(sale_id, catalog["user"], "Cancelled")
+            assert success is True
+
+        assert _points(shop, TILL_A, catalog["customer"]) == 10
+
+        # Sync Till A and Till B
+        shop.cycle(TILL_A)
+        shop.cycle(TILL_B)
+
+        assert _points(shop, "main", catalog["customer"]) == 10
+        assert _points(shop, TILL_A, catalog["customer"]) == 10
+        assert _points(shop, TILL_B, catalog["customer"]) == 10
+
+        # Verify REVERSAL entry reached Main PC and its reference_id points to Main's sale document
+        with shop.session("main") as s:
+            reversal = (
+                s.query(LoyaltyLedgerEntry).filter_by(customer_id=catalog["customer"], entry_type="REVERSAL").one()
+            )
+            assert reversal.points == -5
+            assert reversal.balance_after == 10
+            main_sale = s.query(Sale).filter_by(origin_terminal_id=TILL_A).first()
+            assert main_sale is not None
+            assert reversal.reference_id == main_sale.id
 
 
 class TestOlderMainPc:

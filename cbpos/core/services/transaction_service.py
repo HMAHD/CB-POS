@@ -10,6 +10,7 @@ from cbpos.core.constants.status import DocumentStatus, PaymentMethodType, Preci
 from cbpos.core.database import Database
 from cbpos.core.interfaces.transaction_peripherals import (
     NullPeripherals,
+    RefundCompleted,
     SaleCompleted,
     TransactionPeripherals,
 )
@@ -29,7 +30,6 @@ from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.document_service import DocumentService
-from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.refund_breakdown import ZERO_MONEY, RefundBreakdown, refund_cash_back
 from cbpos.core.services.stock_service import StockService
@@ -45,7 +45,7 @@ class TransactionService:
     For sale queries, see SaleQueryService.
     For suspended/held bills, see SuspendedTransactionService.
 
-    Hardware (receipt, invoice, cash drawer) is reached only through the
+    Hardware (receipt, invoice, cash drawer, refund voucher) is reached only through the
     installed ``TransactionPeripherals`` adapter -- see ``use_peripherals``.
     """
 
@@ -618,22 +618,32 @@ class TransactionService:
             )
 
     @staticmethod
-    def process_refund(original_sale_id: int, refund_reason: str, user_id: int) -> bool:
+    def process_refund(
+        original_sale_id: int,
+        refund_reason: str,
+        user_id: int,
+        *,
+        peripherals: TransactionPeripherals | None = None,
+    ) -> bool:
         """
         Process a full refund for a previous sale.
         Creates a negative transaction and restores stock via StockService
         for proper audit trail.
 
+        The refund voucher reaches the hardware through the peripherals port,
+        only once the refund has committed (#734).
+
         Args:
             original_sale_id: ID of the original sale to refund
             refund_reason: Reason for the refund
             user_id: Current user ID processing the refund
+            peripherals: Hardware adapter for this refund only; defaults to the
+                installed one (``use_peripherals``).
 
         Returns:
-            bool: True if successful
+            bool: True if the refund was committed (whatever the printer does).
         """
         db = Database()
-        refund_commands: list[dict] | None = None
         try:
             with db.get_session() as session:
                 # 1. Validate original sale
@@ -739,21 +749,21 @@ class TransactionService:
                 session.add(log)
 
                 # 7. Build the refund voucher while items/products are loaded;
-                # it is queued only after the commit below succeeds.
-                refund_commands = TransactionService._build_refund_receipt(
-                    session, original_sale, refund_sale, credit_reversed
-                )
-
-            if refund_commands:
-                try:
-                    PrinterService.auto_print(refund_commands)
-                except Exception as e:
-                    logger.error("Auto-print of refund %s failed: %s", refund_receipt_no, e)
-            return True
+                # the event reaches the hardware only after the commit below.
+                voucher = TransactionService._build_refund_receipt(session, original_sale, refund_sale, credit_reversed)
+                completed = RefundCompleted(refund_sale, voucher)
 
         except Exception as e:
             logger.error("Refund Failed: %s", e)
             return False
+
+        # 8. Hardware -- only once the context manager has committed. The
+        # refund is saved whatever the printer does, so an error is only logged.
+        try:
+            (peripherals or TransactionService._peripherals).refund_completed(completed)
+        except Exception as e:
+            logger.error("Refund voucher for %s failed: %s", refund_receipt_no, e)
+        return True
 
     @staticmethod
     def lock_order(sale_id: int) -> bool:

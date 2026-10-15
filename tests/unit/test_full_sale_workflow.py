@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from cbpos.core.interfaces.transaction_peripherals import SaleCompleted
+from cbpos.core.interfaces.transaction_peripherals import RefundCompleted, SaleCompleted
 from cbpos.core.models import (
     Customer,
     CustomerLedgerEntry,
@@ -264,7 +264,7 @@ class TestFullSaleWorkflow:
         db_session.refresh(sale)
         assert sale.status == "VOID"
 
-    def test_sale_then_refund_cycle(self, db_session):
+    def test_sale_then_refund_cycle(self, db_session, peripherals):
         """Full cycle: sale → refund creates negative sale and restores stock."""
         user, product_a, _, _ = _setup_scenario(db_session)
         original_stock = product_a.stock_qty
@@ -293,13 +293,11 @@ class TestFullSaleWorkflow:
         assert product_a.stock_qty == original_stock - Decimal("3.000")
 
         # Refund
-        with (
-            patch("cbpos.core.services.transaction_service.PrinterService"),
-            patch("cbpos.core.services.transaction_service.ConfigService.get_all", return_value={"language": "en"}),
-        ):
+        with patch("cbpos.core.services.transaction_service.ConfigService.get_all", return_value={"language": "en"}):
             result = TransactionService.process_refund(sale.id, "Defective goods", user.id)
 
         assert result is True
+        assert [type(e) for e in peripherals.events] == [SaleCompleted, RefundCompleted]
 
         # Stock restored
         db_session.refresh(product_a)

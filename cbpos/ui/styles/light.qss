@@ -1817,6 +1817,56 @@ QLabel#PaymentMethodsHeader {
     letter-spacing: 1px;
 }
 
+QFrame#PaymentLoyaltyFrame {
+    background-color: #F8F9FA;
+    border: 1px solid #DEE2E6;
+    border-radius: 8px;
+    padding: 4px;
+}
+
+QLabel#PaymentLoyaltyInfo {
+    font-size: 13px;
+    color: #495057;
+}
+
+QLabel#PaymentLoyaltyRedeemed {
+    font-size: 13px;
+    font-weight: bold;
+    color: #198754;
+}
+
+QPushButton#BtnRedeemLoyalty {
+    background-color: #0D6EFD;
+    color: #FFFFFF;
+    font-weight: bold;
+    font-size: 12px;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+}
+
+QPushButton#BtnRedeemLoyalty:hover {
+    background-color: #0B5ED7;
+}
+
+QPushButton#BtnRedeemLoyalty:disabled {
+    background-color: #E9ECEF;
+    color: #ADB5BD;
+}
+
+QPushButton#BtnCancelLoyalty {
+    background-color: #F8D7DA;
+    color: #842029;
+    border: 1px solid #F5C2C7;
+    font-size: 12px;
+    border-radius: 4px;
+    padding: 4px 12px;
+}
+
+QPushButton#BtnCancelLoyalty:hover {
+    background-color: #F1AEB5;
+}
+
 /* Payment Method Buttons */
 QPushButton#PayMethodBtn {
     background-color: #FFFFFF;

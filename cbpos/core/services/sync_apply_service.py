@@ -116,6 +116,7 @@ LEDGER_REFS: dict[str, dict[str, str]] = {
     "loyalty_ledger": {
         "EARN": DOCUMENT_ID_SPACE,
         "REVERSAL": DOCUMENT_ID_SPACE,
+        "REDEEM": DOCUMENT_ID_SPACE,
     },
     "supplier_ledger": {"PURCHASE": DOCUMENT_ID_SPACE, "PAYMENT": "supplier_payments"},
 }

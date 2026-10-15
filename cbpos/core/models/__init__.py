@@ -191,6 +191,8 @@ class Sale(Document):
     net_revenue: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     additional_discount_type: Mapped[str] = mapped_column(String(20), default="NONE")
     additional_discount_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    loyalty_points_redeemed: Mapped[int] = mapped_column(Integer, default=0)
+    loyalty_points_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     payment_method: Mapped[str] = mapped_column(String(20), nullable=False)  # Primary method
     refund_of_sale_id: Mapped[int | None] = mapped_column(ForeignKey("sales.id"), nullable=True)
 
@@ -719,10 +721,10 @@ class LoyaltyLedgerEntry(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), index=True)
-    entry_type: Mapped[str] = mapped_column(String(20), nullable=False)  # EARN, REVERSAL, ADJUSTMENT
+    entry_type: Mapped[str] = mapped_column(String(20), nullable=False)  # EARN, REVERSAL, ADJUSTMENT, REDEEM
     points: Mapped[int] = mapped_column(Integer, nullable=False)  # positive=earned, negative=taken off
     balance_after: Mapped[int] = mapped_column(Integer, nullable=False)  # Points on this machine afterwards
-    reference_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # sale_id for EARN, REVERSAL
+    reference_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # sale_id for EARN, REVERSAL, REDEEM
     note: Mapped[str | None] = mapped_column(String(200), nullable=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True)
     synced: Mapped[bool] = mapped_column(Boolean, default=False, index=True)

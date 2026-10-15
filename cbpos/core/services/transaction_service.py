@@ -74,8 +74,8 @@ class TransactionService:
         cart_service: CartService,
         payments: list,
         customer_id: int = None,
-        *,
         peripherals: TransactionPeripherals | None = None,
+        loyalty_points_redeemed: int = 0,
     ) -> Sale | None:
         """
         Process the sale with multiple payments.
@@ -86,6 +86,7 @@ class TransactionService:
             customer_id: Optional Customer ID for credit sales.
             peripherals: Hardware adapter for this sale only; defaults to the
                 installed one (``use_peripherals``).
+            loyalty_points_redeemed: Optional loyalty points redeemed as discount.
 
         Returns:
             Sale object on success, None on failure.
@@ -95,7 +96,11 @@ class TransactionService:
         """
         try:
             return TransactionService._execute_sale(
-                cart_service, payments, customer_id, peripherals or TransactionService._peripherals
+                cart_service,
+                payments,
+                customer_id,
+                peripherals or TransactionService._peripherals,
+                loyalty_points_redeemed=loyalty_points_redeemed,
             )
         except ValueError:
             raise
@@ -366,6 +371,8 @@ class TransactionService:
             tax_sscl=totals["tax_sscl"],
             net_revenue=totals["net_revenue"],
             payment_method=payments[0]["method"] if len(payments) == 1 else "SPLIT",
+            loyalty_points_redeemed=totals.get("loyalty_points_redeemed", 0),
+            loyalty_points_value=totals.get("loyalty_discount", Decimal("0.00")),
             user_id=cashier_id,
             customer_id=customer_id,
             terminal_id=ConfigService.get("terminal_id") or "TERM-01",
@@ -423,7 +430,11 @@ class TransactionService:
 
     @staticmethod
     def _execute_sale(
-        cart_service: CartService, payments: list, customer_id: int | None, peripherals: TransactionPeripherals
+        cart_service: CartService,
+        payments: list,
+        customer_id: int | None,
+        peripherals: TransactionPeripherals,
+        loyalty_points_redeemed: int = 0,
     ) -> Sale:
         """Write the sale in one transaction; see ``process_sale`` for the interface.
 
@@ -433,6 +444,17 @@ class TransactionService:
         """
         db = Database()
         with db.get_session() as session:
+            # 0. Loyalty redemption validation & application (ADR-0002)
+            if loyalty_points_redeemed > 0:
+                raw_totals = cart_service.get_totals()
+                pre_loyalty_total = raw_totals["subtotal"] - raw_totals["cart_discount"]
+                can_redeem, reason = LoyaltyService.can_redeem_points(
+                    customer_id, loyalty_points_redeemed, pre_loyalty_total, session=session
+                )
+                if not can_redeem:
+                    raise ValueError(f"Loyalty redemption failed: {reason}")
+                cart_service.set_loyalty_redemption(loyalty_points_redeemed)
+
             # 1. Validate payment, stock and cashier
             totals = cart_service.get_totals()
             total_amount = totals["final_total"]
@@ -465,7 +487,11 @@ class TransactionService:
                 session.add(SalePayment(sale_id=sale.id, payment_method=p["method"], amount=p["amount"]))
             TransactionService._write_sale_lines(session, sale, cart_items, composite_map)
 
-            # 4b. Loyalty points earned on final bill (#747)
+            # 4b. Loyalty redemption deduction (ADR-0002)
+            if sale.loyalty_points_redeemed > 0:
+                LoyaltyService.record_redemption(session, sale, sale.loyalty_points_redeemed)
+
+            # 4c. Loyalty points earned on final bill (#747)
             LoyaltyService.record_sale_points(session, sale)
 
             # 5. Eager-load relationships before session closes (prevents DetachedInstanceError)
@@ -542,6 +568,8 @@ class TransactionService:
 
                 # Give back any loyalty points earned on this sale (#747)
                 LoyaltyService.reverse_sale_points(session, sale, reason="VOID")
+                # Return any loyalty points redeemed on this sale (#755)
+                LoyaltyService.return_redeemed_points(session, sale, reason="VOID")
 
                 logger.info("VOID Sale %s by User %s: %s", sale.document_number, user_id, reason)
 
@@ -731,6 +759,8 @@ class TransactionService:
 
                 # 5b. Give back any loyalty points earned on the original sale (#747)
                 LoyaltyService.reverse_sale_points(session, original_sale, reason="REFUND")
+                # 5c. Return any loyalty points redeemed on the original sale (#755)
+                LoyaltyService.return_redeemed_points(session, original_sale, reason="REFUND")
 
                 # 6. Create refund payment record
                 refund_payment = SalePayment(

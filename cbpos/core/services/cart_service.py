@@ -25,6 +25,7 @@ class CartService:
         self._customer: Customer | None = None
         self.cart_discount_type = "NONE"
         self.cart_discount_value = Decimal("0.00")
+        self.loyalty_points_redeemed = 0
 
     def set_customer(self, customer: Customer | None):
         """
@@ -98,6 +99,11 @@ class CartService:
         self._customer = None
         self.cart_discount_type = "NONE"
         self.cart_discount_value = Decimal("0.00")
+        self.loyalty_points_redeemed = 0
+
+    def set_loyalty_redemption(self, points: int):
+        """Set loyalty points to redeem as a rupee discount on checkout (ADR-0002)."""
+        self.loyalty_points_redeemed = max(0, int(points or 0))
 
     def apply_line_discount(self, index: int, type: str, value: Decimal, user: Any = None):
         """Apply discount to a specific line item.
@@ -324,8 +330,17 @@ class CartService:
 
         # Cap discount
         cart_discount_amt = min(cart_discount_amt, subtotal)
+        after_cart_discount = subtotal - cart_discount_amt
 
-        final_total = subtotal - cart_discount_amt
+        # 2b. Apply Loyalty Redemption Discount (ADR-0002)
+        loyalty_discount_amt = Decimal("0.00")
+        if self.loyalty_points_redeemed > 0:
+            from cbpos.core.services.loyalty_service import LoyaltyService
+
+            redeem_val = LoyaltyService.calculate_redeem_value(self.loyalty_points_redeemed)
+            loyalty_discount_amt = min(redeem_val, after_cart_discount)
+
+        final_total = after_cart_discount - loyalty_discount_amt
 
         # 3. Split into taxable vs exempt amounts when item-level exemptions enabled
         taxable_amount = None
@@ -338,9 +353,10 @@ class CartService:
                 else:
                     taxable_sub += item["total"]
 
-            # Distribute cart discount proportionally
-            if cart_discount_amt > Decimal("0") and subtotal > Decimal("0"):
-                discount_ratio = cart_discount_amt / subtotal
+            # Distribute total discount proportionally
+            total_discount_amt = cart_discount_amt + loyalty_discount_amt
+            if total_discount_amt > Decimal("0") and subtotal > Decimal("0"):
+                discount_ratio = total_discount_amt / subtotal
                 taxable_discount = (taxable_sub * discount_ratio).quantize(Precision.MONEY)
                 taxable_amount = (taxable_sub - taxable_discount).quantize(Precision.MONEY)
             else:
@@ -355,6 +371,8 @@ class CartService:
         return {
             "subtotal": subtotal.quantize(Precision.MONEY),
             "cart_discount": cart_discount_amt.quantize(Precision.MONEY),
+            "loyalty_discount": loyalty_discount_amt.quantize(Precision.MONEY),
+            "loyalty_points_redeemed": self.loyalty_points_redeemed,
             "final_total": final_total.quantize(Precision.MONEY),
             "tax_vat": tax_info["vat"],
             "tax_sscl": tax_info["sscl"],

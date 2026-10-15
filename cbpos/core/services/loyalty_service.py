@@ -46,6 +46,82 @@ class LoyaltyService:
         return int(bill // effective_ratio)
 
     @staticmethod
+    def calculate_redeem_value(points: int, point_value: Decimal | None = None) -> Decimal:
+        """Calculate the rupee value of a given number of redeemed loyalty points.
+
+        Args:
+            points: Number of loyalty points being redeemed.
+            point_value: Optional rupee value per point (defaults to loyalty_point_value setting or 1.00).
+
+        Returns:
+            Decimal rupee value.
+        """
+        if points <= 0:
+            return Decimal("0.00")
+        if point_value is None:
+            val_cfg = ConfigService.get("loyalty_point_value")
+            point_val = Decimal(str(val_cfg or "1.00"))
+        else:
+            point_val = Decimal(str(point_value))
+        return (Decimal(points) * point_val).quantize(Decimal("0.01"))
+
+    @staticmethod
+    def can_redeem_points(
+        customer: Customer | int | None,
+        points: int,
+        bill_total: Decimal,
+        session: Session | None = None,
+    ) -> tuple[bool, str]:
+        """Validate whether a customer can redeem points against a bill.
+
+        Args:
+            customer: Customer instance or customer_id, or None.
+            points: Whole number of points to redeem.
+            bill_total: Current bill total before loyalty redemption.
+            session: Optional DB session to load customer if customer is an ID.
+
+        Returns:
+            tuple[bool, str]: (True, "") if eligible, or (False, reason_code) if not.
+            Reason codes: "loyalty_disabled", "no_customer", "customer_not_found",
+            "invalid_points", "insufficient_points", "below_minimum", "exceeds_bill".
+        """
+        if not ConfigService.get("enable_loyalty"):
+            return False, "loyalty_disabled"
+
+        if not isinstance(points, int) or points <= 0:
+            return False, "invalid_points"
+
+        if customer is None:
+            return False, "no_customer"
+
+        cust_obj = None
+        if isinstance(customer, Customer):
+            cust_obj = customer
+        elif isinstance(customer, int):
+            if session:
+                cust_obj = session.get(Customer, customer)
+            else:
+                with Database().get_session() as sess:
+                    cust_obj = sess.get(Customer, customer)
+            if not cust_obj:
+                return False, "customer_not_found"
+
+        available_points = cust_obj.loyalty_points or 0
+        if points > available_points:
+            return False, "insufficient_points"
+
+        min_redeem = int(ConfigService.get("loyalty_minimum_redeem") or 0)
+        if min_redeem > 0 and points < min_redeem:
+            return False, "below_minimum"
+
+        redeem_value = LoyaltyService.calculate_redeem_value(points)
+        bill = Decimal(str(bill_total or 0))
+        if redeem_value > bill:
+            return False, "exceeds_bill"
+
+        return True, ""
+
+    @staticmethod
     def record_sale_points(session: Session, sale: Sale) -> LoyaltyLedgerEntry | None:
         """Award points on a completed sale within the caller's session/transaction.
 
@@ -156,6 +232,97 @@ class LoyaltyService:
             balance_after=customer.loyalty_points,
             reference_id=sale.id,
             note=f"{reason.title()} of {sale.document_number}",
+        )
+        session.add(entry)
+        return entry
+
+    @staticmethod
+    def record_redemption(session: Session, sale: Sale, points: int) -> LoyaltyLedgerEntry | None:
+        """Record loyalty points redemption against a sale within the caller's transaction.
+
+        Args:
+            session: Active SQLAlchemy session.
+            sale: The sale on which points are redeemed.
+            points: Number of points being redeemed.
+
+        Returns:
+            The created LoyaltyLedgerEntry or None if points <= 0 or customer not found.
+        """
+        if points <= 0 or not sale.customer_id:
+            return None
+
+        customer = session.get(Customer, sale.customer_id, with_for_update=True)
+        if not customer:
+            logger.warning("record_redemption: Customer %d not found", sale.customer_id)
+            return None
+
+        customer.loyalty_points = (customer.loyalty_points or 0) - points
+        if customer.loyalty_points < 0:
+            logger.warning("Loyalty redemption: customer %d points would drop below zero; clamped to 0", customer.id)
+            customer.loyalty_points = 0
+
+        entry = LoyaltyLedgerEntry(
+            customer_id=customer.id,
+            entry_type="REDEEM",
+            points=-points,
+            balance_after=customer.loyalty_points,
+            reference_id=sale.id,
+            note=f"Redeemed on sale {sale.document_number}",
+        )
+        session.add(entry)
+        return entry
+
+    @staticmethod
+    def return_redeemed_points(session: Session, sale: Sale, reason: str = "VOID") -> LoyaltyLedgerEntry | None:
+        """Return redeemed points back to the customer upon void or refund.
+
+        Capped at the points redeemed on the sale, and ensures points are returned
+        at most once per sale.
+
+        Args:
+            session: Active SQLAlchemy session.
+            sale: The sale being voided or refunded.
+            reason: "VOID" or "REFUND".
+
+        Returns:
+            The created LoyaltyLedgerEntry or None if no points returned.
+        """
+        if not sale.customer_id or not sale.loyalty_points_redeemed or sale.loyalty_points_redeemed <= 0:
+            return None
+
+        session.flush()
+
+        redeemed = int(sale.loyalty_points_redeemed)
+
+        already_returned = (
+            session.query(func.coalesce(func.sum(LoyaltyLedgerEntry.points), 0))
+            .filter(
+                LoyaltyLedgerEntry.customer_id == sale.customer_id,
+                LoyaltyLedgerEntry.reference_id == sale.id,
+                LoyaltyLedgerEntry.entry_type == "REVERSAL",
+                LoyaltyLedgerEntry.points > 0,
+            )
+            .scalar()
+        )
+
+        points_to_return = max(0, redeemed - int(already_returned))
+        if points_to_return <= 0:
+            return None
+
+        customer = session.get(Customer, sale.customer_id, with_for_update=True)
+        if not customer:
+            logger.warning("return_redeemed_points: Customer %d not found", sale.customer_id)
+            return None
+
+        customer.loyalty_points = (customer.loyalty_points or 0) + points_to_return
+
+        entry = LoyaltyLedgerEntry(
+            customer_id=customer.id,
+            entry_type="REVERSAL",
+            points=points_to_return,
+            balance_after=customer.loyalty_points,
+            reference_id=sale.id,
+            note=f"{reason.title()} redemption return for {sale.document_number}",
         )
         session.add(entry)
         return entry

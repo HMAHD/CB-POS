@@ -251,7 +251,21 @@
     "invalid_amount_title": "වලංගු නොවන මුදල",
     "invalid_amount_message": "කරුණාකර වලංගු මුදලක් ඇතුළත් කරන්න.",
     "credit_no_customer": "ණය විකුණුමට පාරිභෝගිකයෙකු තෝරන්න.",
-    "credit_customer_not_found": "'{name}' පාරිභෝගිකයා හම්බ වුනේ නැහැ."
+    "credit_customer_not_found": "'{name}' පාරිභෝගිකයා හම්බ වුනේ නැහැ.",
+    "loyalty_section": "ලෝයල්ටි ලකුණු අඩු කිරීම",
+    "loyalty_points_available": "{points} ලකුණු (රු. {value})",
+    "loyalty_no_customer": "පාරිභෝගිකයෙකු තෝරා නැත (ලකුණු නැත)",
+    "loyalty_redeem_btn": "ලකුණු භාවිතා කරන්න",
+    "loyalty_redeemed_label": "භාවිත කළ ලකුණු: {points} (-රු. {value})",
+    "loyalty_cancel_redeem": "අවලංගු කරන්න",
+    "loyalty_dialog_title": "ලෝයල්ටි ලකුණු අඩු කිරීම",
+    "loyalty_dialog_prompt": "භාවිතා කිරීමට ලකුණු ගණන (උපරිම: {max}, රු. {max_val}):",
+    "loyalty_err_disabled": "ලෝයල්ටි වැඩසටහන අක්‍රීය කර ඇත.",
+    "loyalty_err_no_customer": "ලකුණු අඩු කිරීමට කරුණාකර පාරිභෝගිකයෙකු තෝරන්න.",
+    "loyalty_err_invalid": "කරුණාකර වලංගු ලකුණු ගණනක් ඇතුළත් කරන්න.",
+    "loyalty_err_insufficient": "පාරිභෝගිකයා සතුව ඇත්තේ ලකුණු {available} පමණි.",
+    "loyalty_err_min_redeem": "අවම ලකුණු {min} ක් භාවිතා කළ යුතුය.",
+    "loyalty_err_exceeds_bill": "ලකුණුවල වටිනාකම (රු. {value}) බිල්පතේ මුදලට (රු. {total}) වඩා වැඩි විය නොහැක."
   },
   "discount": {
     "title": "වට්ටම යොදන්න",

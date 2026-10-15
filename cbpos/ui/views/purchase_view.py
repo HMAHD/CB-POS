@@ -5,14 +5,12 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
 from PyQt6.QtCore import QAbstractTableModel, QDate, QStringListModel, Qt
-from PyQt6.QtGui import QColor, QIntValidator, QKeySequence, QShortcut, QStandardItem, QStandardItemModel
+from PyQt6.QtGui import QColor, QKeySequence, QShortcut, QStandardItem, QStandardItemModel
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
     QCompleter,
     QDateEdit,
-    QDialog,
-    QFormLayout,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -40,6 +38,8 @@ from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.formatters import format_currency, format_quantity
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.constants import BAR_GROUP_SPACING, BAR_ITEM_SPACING, BAR_MARGIN_V
+from cbpos.ui.dialogs.grn_detail_dialog import GRNDetailDialog
+from cbpos.ui.dialogs.supplier_dialog import SupplierDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, SUCCESS, WARNING, status_color
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
@@ -183,225 +183,6 @@ class PurchaseHistoryModel(QAbstractTableModel):
         if 0 <= row < len(self.purchases):
             return self.purchases[row]
         return None
-
-
-class GRNDetailDialog(QDialog):
-    """Read-only detail view of a completed GRN."""
-
-    def __init__(self, purchase_id: int, parent=None):
-        """Configure the dialog window and build its read-only layout for the given purchase."""
-        super().__init__(parent)
-        self.setWindowTitle(_t("purchase.grn_detail_title"))
-        self.setMinimumSize(700, 500)
-        self.resize(800, 550)
-        self.init_ui(purchase_id)
-
-    def init_ui(self, purchase_id: int) -> None:
-        """Load the purchase and render its header info, item table, and total cost."""
-        layout = QVBoxLayout(self)
-        layout.setSpacing(12)
-        layout.setContentsMargins(16, 16, 16, 16)
-
-        purchase = PurchaseService.get_purchase(purchase_id)
-        if not purchase:
-            layout.addWidget(QLabel(_t("purchase.purchase_not_found")))
-            return
-
-        # Header
-        title = QLabel(f"{_t('purchase.grn_label')}: {purchase.document_number}")
-        title.setProperty("class", "dialog-title")
-        layout.addWidget(title)
-
-        # Info row
-        info_layout = QHBoxLayout()
-        supplier_name = purchase.supplier.company_name if purchase.supplier else "N/A"
-        info_layout.addWidget(QLabel(f"{_t('purchase.form_supplier')} {supplier_name}"))
-        info_layout.addWidget(QLabel(f"{_t('purchase.form_ref')} {purchase.reference_external or 'N/A'}"))
-        date_str = purchase.date.strftime("%Y-%m-%d %H:%M") if purchase.date else "N/A"
-        info_layout.addWidget(QLabel(f"{_t('purchase.form_date')} {date_str}"))
-        info_layout.addWidget(QLabel(f"{_t('purchase.detail_status')}: {purchase.status}"))
-        info_layout.addStretch()
-        layout.addLayout(info_layout)
-
-        # Items table
-        table = QTableWidget()
-        table.setColumnCount(5)
-        table.setHorizontalHeaderLabels(
-            [
-                _t("purchase.detail_product"),
-                _t("purchase.detail_barcode"),
-                _t("purchase.detail_qty"),
-                _t("purchase.detail_unit_cost"),
-                _t("purchase.detail_line_total"),
-            ]
-        )
-        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        table.setAlternatingRowColors(True)
-
-        for item in purchase.items:
-            row = table.rowCount()
-            table.insertRow(row)
-            product_name = item.product.name_en if item.product else "Unknown"
-            barcode = item.product.barcode if item.product else ""
-            line_total = item.qty_received * item.unit_cost
-
-            table.setItem(row, 0, QTableWidgetItem(product_name))
-            table.setItem(row, 1, QTableWidgetItem(barcode))
-
-            qty_item = QTableWidgetItem(f"{item.qty_received:.3f}")
-            qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            table.setItem(row, 2, qty_item)
-
-            cost_item = QTableWidgetItem(format_currency(item.unit_cost))
-            cost_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            table.setItem(row, 3, cost_item)
-
-            total_item = QTableWidgetItem(format_currency(line_total))
-            total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            table.setItem(row, 4, total_item)
-
-        layout.addWidget(table, 1)
-
-        # Footer
-        footer = QHBoxLayout()
-        footer.addStretch()
-        total_label = QLabel(f"{_t('purchase.total_cost_label')}: {format_currency(purchase.total_cost)}")
-        total_label.setStyleSheet("font-size: 16px; font-weight: bold;")
-        footer.addWidget(total_label)
-        layout.addLayout(footer)
-
-        # Close button
-        close_btn = QPushButton(_t("common.close"))
-        close_btn.clicked.connect(self.accept)
-        layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
-
-
-class SupplierDialog(QDialog):
-    """Modal dialog for creating or editing a supplier."""
-
-    def __init__(self, parent=None, supplier=None):
-        """Store the supplier being edited (None for a new supplier) and build the form."""
-        super().__init__(parent)
-        self.supplier = supplier
-        self.init_ui()
-        self.retranslate_ui()
-
-    def init_ui(self):
-        """Build the supplier form fields and Save/Cancel buttons."""
-        self.setObjectName("SupplierDialog")
-        self.setMinimumSize(420, 400)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
-
-        self.form_layout = QFormLayout()
-        self.form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-        self.form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-        self.form_layout.setSpacing(10)
-
-        self.company_input = QLineEdit()
-        self.contact_input = QLineEdit()
-        self.phone_input = QLineEdit()
-        self.tax_input = QLineEdit()
-        self.details_input = QLineEdit()
-
-        # QLineEdit + validator instead of QSpinBox -- native +/- steppers
-        # break under QSS (see product_editor.py's Stock group comment).
-        self.payment_terms_input = QLineEdit()
-        self.payment_terms_input.setPlaceholderText("0")
-        self.payment_terms_input.setValidator(QIntValidator(0, 365, self))
-
-        if self.supplier:
-            self.company_input.setText(self.supplier.company_name)
-            self.contact_input.setText(self.supplier.contact_person or "")
-            self.phone_input.setText(self.supplier.phone or "")
-            self.tax_input.setText(self.supplier.tax_number or "")
-            self.details_input.setText(self.supplier.contact_details or "")
-            self.payment_terms_input.setText(str(getattr(self.supplier, "payment_terms", 0)))
-
-        self.lbl_company = QLabel()
-        self.lbl_contact = QLabel()
-        self.lbl_phone = QLabel()
-        self.lbl_tax = QLabel()
-        self.lbl_terms = QLabel()
-        self.lbl_details = QLabel()
-
-        self.form_layout.addRow(self.lbl_company, self.company_input)
-        self.form_layout.addRow(self.lbl_contact, self.contact_input)
-        self.form_layout.addRow(self.lbl_phone, self.phone_input)
-        self.form_layout.addRow(self.lbl_tax, self.tax_input)
-        self.form_layout.addRow(self.lbl_terms, self.payment_terms_input)
-        self.form_layout.addRow(self.lbl_details, self.details_input)
-
-        layout.addLayout(self.form_layout)
-        layout.addStretch()
-
-        btn_box = QHBoxLayout()
-        btn_box.addStretch()
-        self.save_btn = QPushButton()
-        self.save_btn.setObjectName("BtnSave")
-        self.save_btn.clicked.connect(self.save)
-        self.cancel_btn = QPushButton()
-        self.cancel_btn.setObjectName("BtnCancel")
-        self.cancel_btn.clicked.connect(self.reject)
-
-        btn_box.addWidget(self.save_btn)
-        btn_box.addWidget(self.cancel_btn)
-        layout.addLayout(btn_box)
-
-    def retranslate_ui(self) -> None:
-        """Update all translatable strings."""
-        if self.supplier:
-            self.setWindowTitle(_t("purchase.edit_supplier_title"))
-        else:
-            self.setWindowTitle(_t("purchase.add_supplier_title"))
-        self.lbl_company.setText(_t("purchase.supplier_dialog_company"))
-        self.lbl_contact.setText(_t("purchase.supplier_dialog_contact"))
-        self.lbl_phone.setText(_t("purchase.supplier_dialog_phone"))
-        self.lbl_tax.setText(_t("purchase.supplier_dialog_tax"))
-        self.lbl_terms.setText(_t("purchase.supplier_dialog_terms"))
-        self.lbl_details.setText(_t("purchase.supplier_dialog_details"))
-        self.save_btn.setText(_t("common.save"))
-        self.cancel_btn.setText(_t("common.cancel"))
-
-    def save(self) -> None:
-        """Validate required fields before accepting -- an empty company name
-        would otherwise reach SupplierService and raise there instead of
-        giving the cashier immediate, in-dialog feedback (#522)."""
-        if not self.company_input.text().strip():
-            QMessageBox.warning(self, _t("common.validation_error"), _t("purchase.supplier_name_required"))
-            self.company_input.setFocus()
-            return
-        self.accept()
-
-    def get_data(self):
-        """Return the entered supplier field values as a dict."""
-        return {
-            "company_name": self.company_input.text().strip(),
-            "contact_person": self.contact_input.text().strip(),
-            "phone": self.phone_input.text().strip(),
-            "tax_number": self.tax_input.text().strip(),
-            "contact_details": self.details_input.text().strip(),
-            "payment_terms": self._parse_payment_terms(self.payment_terms_input.text()),
-        }
-
-    @staticmethod
-    def _parse_payment_terms(text: str) -> int:
-        """Safely parse the Payment Terms QLineEdit value to int."""
-        cleaned = text.strip()
-        if not cleaned:
-            return 0
-        try:
-            return int(cleaned)
-        except ValueError:
-            return 0
 
 
 class PurchaseView(QWidget):

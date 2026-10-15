@@ -271,31 +271,31 @@ class TestRestoreTab:
 
 class TestMaintenanceTab:
     def test_optimize_reports_space_saved(self, view, started):
-        view.btn_vacuum.click()
-        assert view.btn_vacuum.isEnabled() is False
+        view.maintenance_tab.btn_vacuum.click()
+        assert view.maintenance_tab.btn_vacuum.isEnabled() is False
 
         _last(started, workers.VacuumWorker).result.emit({"saved": "12 KB"})
 
-        assert view.btn_vacuum.isEnabled() is True
-        assert view.lbl_maintenance_status.property("class") == "credit"
-        assert "12 KB" in view.lbl_maintenance_status.text()
+        assert view.maintenance_tab.btn_vacuum.isEnabled() is True
+        assert view.maintenance_tab.lbl_maintenance_status.property("class") == "credit"
+        assert "12 KB" in view.maintenance_tab.lbl_maintenance_status.text()
 
     def test_optimize_failure(self, view, started):
-        view.btn_vacuum.click()
+        view.maintenance_tab.btn_vacuum.click()
 
         _last(started, workers.VacuumWorker).error.emit("locked")
 
-        assert view.lbl_maintenance_status.property("class") == "debit"
-        assert "locked" in view.lbl_maintenance_status.text()
+        assert view.maintenance_tab.lbl_maintenance_status.property("class") == "debit"
+        assert "locked" in view.maintenance_tab.lbl_maintenance_status.text()
 
     @pytest.mark.parametrize("ok, css", [(True, "credit"), (False, "debit")])
     def test_integrity_check(self, view, started, ok, css):
-        view.btn_integrity.click()
+        view.maintenance_tab.btn_integrity.click()
 
         _last(started, workers.IntegrityCheckWorker).result.emit(ok, "page 3 broken")
 
-        assert view.btn_integrity.isEnabled() is True
-        assert view.lbl_maintenance_status.property("class") == css
+        assert view.maintenance_tab.btn_integrity.isEnabled() is True
+        assert view.maintenance_tab.lbl_maintenance_status.property("class") == css
 
     def test_database_info_is_shown(self, view, monkeypatch):
         info = {"size": "8 KB", "products": 5, "customers": 2, "sales": 9}
@@ -303,10 +303,16 @@ class TestMaintenanceTab:
             "cbpos.core.services.maintenance_service.MaintenanceService.get_database_info", lambda: info
         )
 
-        view._load_db_info()
+        view.maintenance_tab.refresh()
 
-        assert [view.lbl_db_size.text(), view.lbl_products_count.text()] == ["8 KB", "5"]
-        assert [view.lbl_customers_count.text(), view.lbl_sales_count.text()] == ["2", "9"]
+        assert [view.maintenance_tab.lbl_db_size.text(), view.maintenance_tab.lbl_products_count.text()] == [
+            "8 KB",
+            "5",
+        ]
+        assert [view.maintenance_tab.lbl_customers_count.text(), view.maintenance_tab.lbl_sales_count.text()] == [
+            "2",
+            "9",
+        ]
 
 
 # ── The page as a whole ───────────────────────────────────────────────────
@@ -334,5 +340,5 @@ def test_switching_language_retranslates_every_tab(view, lang):
     ]
     assert view.btn_create_backup.text() == _t("data_safety.btn_create_backup")
     assert view.btn_verify.text() == _t("data_safety.btn_verify")
-    assert view.btn_vacuum.text() == _t("data_safety.maintenance_btn_optimize")
+    assert view.maintenance_tab.btn_vacuum.text() == _t("data_safety.maintenance_btn_optimize")
     assert view.export_tab.btn_do_export.text() == _t("data_safety.export_btn")

@@ -16,8 +16,6 @@ import logging
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QFileDialog,
-    QFormLayout,
-    QFrame,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
@@ -38,6 +36,7 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.backup_password_dialog import BackupPasswordDialog, ensure_backup_password
 from cbpos.ui.views.data_safety.export_tab import ExportTabWidget
+from cbpos.ui.views.data_safety.maintenance_tab import MaintenanceTabWidget
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.workers import (
     BackupListWorker,
@@ -63,8 +62,8 @@ class DataSafetyView(QWidget):
     def __init__(self) -> None:
         """Build the Backup, Restore, Maintenance, and Export tabs."""
         super().__init__()
-        self._init_ui()
         self._overlay = LoadingOverlay(self)
+        self._init_ui()
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui, owner=self)
 
@@ -73,7 +72,7 @@ class DataSafetyView(QWidget):
         super().showEvent(event)
         self._update_password_status()
         self._refresh_backup_list()
-        self._load_db_info()
+        self.maintenance_tab.refresh()
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -93,7 +92,8 @@ class DataSafetyView(QWidget):
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_backup_tab(), "")
         self.tabs.addTab(self._build_restore_tab(), "")
-        self.tabs.addTab(self._build_maintenance_tab(), "")
+        self.maintenance_tab = MaintenanceTabWidget(self._overlay)
+        self.tabs.addTab(self.maintenance_tab, "")
         self.export_tab = ExportTabWidget()
         self.tabs.addTab(self.export_tab, "")
         layout.addWidget(self.tabs, 1)
@@ -642,168 +642,6 @@ class DataSafetyView(QWidget):
 
     # ── Maintenance Tab ───────────────────────────────────────────────────
 
-    def _build_maintenance_tab(self) -> QWidget:
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        layout.setContentsMargins(8, 16, 8, 8)
-        layout.setSpacing(16)
-
-        # Database info card
-        self.grp_info = QGroupBox()
-        info_layout = QFormLayout(self.grp_info)
-        info_layout.setVerticalSpacing(10)
-        info_layout.setHorizontalSpacing(20)
-
-        self.lbl_db_size = QLabel("--")
-        self.lbl_db_size.setProperty("class", "bold")
-        self.lbl_db_size_label = QLabel()
-        info_layout.addRow(self.lbl_db_size_label, self.lbl_db_size)
-
-        self.lbl_products_count = QLabel("--")
-        self.lbl_products_count.setProperty("class", "bold")
-        self.lbl_products_label = QLabel()
-        info_layout.addRow(self.lbl_products_label, self.lbl_products_count)
-
-        self.lbl_customers_count = QLabel("--")
-        self.lbl_customers_count.setProperty("class", "bold")
-        self.lbl_customers_label = QLabel()
-        info_layout.addRow(self.lbl_customers_label, self.lbl_customers_count)
-
-        self.lbl_sales_count = QLabel("--")
-        self.lbl_sales_count.setProperty("class", "bold")
-        self.lbl_sales_label = QLabel()
-        info_layout.addRow(self.lbl_sales_label, self.lbl_sales_count)
-
-        layout.addWidget(self.grp_info)
-
-        # Actions card
-        self.grp_actions = QGroupBox()
-        actions_layout = QVBoxLayout(self.grp_actions)
-        actions_layout.setSpacing(12)
-
-        # Optimize row
-        optimize_row = QHBoxLayout()
-        optimize_info = QVBoxLayout()
-        self.lbl_opt_title = QLabel()
-        self.lbl_opt_title.setProperty("class", "bold")
-        optimize_info.addWidget(self.lbl_opt_title)
-        self.lbl_opt_desc = QLabel()
-        self.lbl_opt_desc.setProperty("class", "muted")
-        self.lbl_opt_desc.setWordWrap(True)
-        optimize_info.addWidget(self.lbl_opt_desc)
-        optimize_row.addLayout(optimize_info, 1)
-
-        self.btn_vacuum = QPushButton()
-        # Optimize and Check are equivalent maintenance actions -> same
-        # (secondary) emphasis, neither is the screen's primary action.
-        self.btn_vacuum.setProperty("class", "secondary")
-        self.btn_vacuum.setFixedWidth(140)
-        self.btn_vacuum.clicked.connect(self._run_vacuum)
-        optimize_row.addWidget(self.btn_vacuum)
-        actions_layout.addLayout(optimize_row)
-
-        # Separator — let QSS style QFrame HLine
-        sep = QFrame()
-        sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setFrameShadow(QFrame.Shadow.Sunken)
-        actions_layout.addWidget(sep)
-
-        # Integrity check row
-        integrity_row = QHBoxLayout()
-        integrity_info = QVBoxLayout()
-        self.lbl_int_title = QLabel()
-        self.lbl_int_title.setProperty("class", "bold")
-        integrity_info.addWidget(self.lbl_int_title)
-        self.lbl_int_desc = QLabel()
-        self.lbl_int_desc.setProperty("class", "muted")
-        self.lbl_int_desc.setWordWrap(True)
-        integrity_info.addWidget(self.lbl_int_desc)
-        integrity_row.addLayout(integrity_info, 1)
-
-        self.btn_integrity = QPushButton()
-        self.btn_integrity.setProperty("class", "secondary")
-        self.btn_integrity.setFixedWidth(140)
-        self.btn_integrity.clicked.connect(self._run_integrity_check)
-        integrity_row.addWidget(self.btn_integrity)
-        actions_layout.addLayout(integrity_row)
-
-        self.lbl_maintenance_status = QLabel("")
-        self.lbl_maintenance_status.setWordWrap(True)
-        actions_layout.addWidget(self.lbl_maintenance_status)
-
-        layout.addWidget(self.grp_actions)
-        layout.addStretch()
-
-        return tab
-
-    def _load_db_info(self) -> None:
-        try:
-            from cbpos.core.services.maintenance_service import MaintenanceService
-
-            info = MaintenanceService.get_database_info()
-            self.lbl_db_size.setText(info.get("size", "--"))
-            self.lbl_products_count.setText(str(info.get("products", 0)))
-            self.lbl_customers_count.setText(str(info.get("customers", 0)))
-            self.lbl_sales_count.setText(str(info.get("sales", 0)))
-        except Exception as e:
-            logger.warning("Could not load DB info: %s", e)
-
-    def _run_vacuum(self) -> None:
-        self.btn_vacuum.setEnabled(False)
-        self.lbl_maintenance_status.setText("")
-        self._overlay.show_loading(_t("data_safety.maintenance_optimizing"))
-
-        from cbpos.ui.workers import VacuumWorker
-
-        self._vacuum_worker = VacuumWorker()
-        self._vacuum_worker.result.connect(self._on_vacuum_finished)
-        self._vacuum_worker.error.connect(self._on_vacuum_error)
-        self._vacuum_worker.start()
-
-    def _on_vacuum_finished(self, result: dict) -> None:
-        self._overlay.hide_loading()
-        self.btn_vacuum.setEnabled(True)
-        self.btn_vacuum.setText(_t("data_safety.maintenance_btn_optimize"))
-        saved = result.get("saved", "0 KB")
-        self.lbl_maintenance_status.setProperty("class", "credit")
-        self.lbl_maintenance_status.style().unpolish(self.lbl_maintenance_status)
-        self.lbl_maintenance_status.style().polish(self.lbl_maintenance_status)
-        self.lbl_maintenance_status.setText(_t("data_safety.maintenance_optimize_complete", saved=saved))
-        self._load_db_info()
-
-    def _on_vacuum_error(self, error: str) -> None:
-        self._overlay.hide_loading()
-        self.btn_vacuum.setEnabled(True)
-        self.btn_vacuum.setText(_t("data_safety.maintenance_btn_optimize"))
-        self.lbl_maintenance_status.setProperty("class", "debit")
-        self.lbl_maintenance_status.style().unpolish(self.lbl_maintenance_status)
-        self.lbl_maintenance_status.style().polish(self.lbl_maintenance_status)
-        self.lbl_maintenance_status.setText(_t("data_safety.maintenance_optimize_failed", error=error))
-
-    def _run_integrity_check(self) -> None:
-        self.btn_integrity.setEnabled(False)
-        self.lbl_maintenance_status.setText("")
-        self._overlay.show_loading(_t("data_safety.maintenance_checking"))
-
-        from cbpos.ui.workers import IntegrityCheckWorker
-
-        self._integrity_worker = IntegrityCheckWorker()
-        self._integrity_worker.result.connect(self._on_integrity_finished)
-        self._integrity_worker.start()
-
-    def _on_integrity_finished(self, ok: bool, message: str) -> None:
-        self._overlay.hide_loading()
-        self.btn_integrity.setEnabled(True)
-        self.btn_integrity.setText(_t("data_safety.maintenance_btn_check"))
-        if ok:
-            self.lbl_maintenance_status.setProperty("class", "credit")
-            self.lbl_maintenance_status.setText(_t("data_safety.maintenance_integrity_passed"))
-        else:
-            self.lbl_maintenance_status.setProperty("class", "debit")
-            self.lbl_maintenance_status.setText(_t("data_safety.maintenance_integrity_failed", message=message))
-        self.lbl_maintenance_status.style().unpolish(self.lbl_maintenance_status)
-        self.lbl_maintenance_status.style().polish(self.lbl_maintenance_status)
-
     # ── Export Data Tab ───────────────────────────────────────────────────
 
     def retranslate_ui(self) -> None:
@@ -847,18 +685,6 @@ class DataSafetyView(QWidget):
         self.btn_verify.setText(_t("data_safety.btn_verify"))
         self.btn_restore.setText(_t("data_safety.btn_restore"))
 
-        # Maintenance tab
-        self.grp_info.setTitle(_t("data_safety.maintenance_group_info"))
-        self.lbl_db_size_label.setText(_t("data_safety.maintenance_db_size"))
-        self.lbl_products_label.setText(_t("data_safety.maintenance_products"))
-        self.lbl_customers_label.setText(_t("data_safety.maintenance_customers"))
-        self.lbl_sales_label.setText(_t("data_safety.maintenance_sales"))
-        self.grp_actions.setTitle(_t("data_safety.maintenance_group_tools"))
-        self.lbl_opt_title.setText(_t("data_safety.maintenance_optimize_title"))
-        self.lbl_opt_desc.setText(_t("data_safety.maintenance_optimize_desc"))
-        self.btn_vacuum.setText(_t("data_safety.maintenance_btn_optimize"))
-        self.lbl_int_title.setText(_t("data_safety.maintenance_integrity_title"))
-        self.lbl_int_desc.setText(_t("data_safety.maintenance_integrity_desc"))
-        self.btn_integrity.setText(_t("data_safety.maintenance_btn_check"))
+        self.maintenance_tab.retranslate_ui()
 
         self.export_tab.retranslate_ui()

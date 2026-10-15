@@ -3663,6 +3663,12 @@ QPushButton#CreditEditBtn:hover {
 }
 
 /* Filter bar labels */
+QLabel#CreditOpenHint {
+    background-color: transparent;
+    color: #AAAAAA;
+    font-size: 13px;
+}
+
 QLabel#CreditFilterLabel, QLabel#PayableFilterLabel {
     background-color: transparent;
     color: #AAAAAA;

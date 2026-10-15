@@ -3532,6 +3532,12 @@ QPushButton#CreditAdjustBtn:hover, QPushButton#PayableAdjustBtn:hover {
     color: #0D6EFD;
 }
 
+QLabel#CreditOpenHint {
+    background-color: transparent;
+    color: #6C757D;
+    font-size: 13px;
+}
+
 QLabel#CreditFilterLabel, QLabel#PayableFilterLabel {
     background-color: transparent;
     color: #6C757D;

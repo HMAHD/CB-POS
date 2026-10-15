@@ -717,6 +717,7 @@
     "title": "Credit Book",
     "btn_add_customer": "+ Add Customer",
     "btn_open_customer_ledger": "Open Ledger",
+    "row_open_hint": "Double-click a customer or press Enter to open their ledger. Right-click for more.",
     "btn_back": "< Back to Customers",
     "btn_receive_payment": "Receive Payment",
     "btn_print_statement": "Print Statement",

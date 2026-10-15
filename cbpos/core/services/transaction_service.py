@@ -30,6 +30,7 @@ from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.document_service import DocumentService
+from cbpos.core.services.loyalty_service import LoyaltyService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.refund_breakdown import ZERO_MONEY, RefundBreakdown, refund_cash_back
 from cbpos.core.services.stock_service import StockService
@@ -464,6 +465,9 @@ class TransactionService:
                 session.add(SalePayment(sale_id=sale.id, payment_method=p["method"], amount=p["amount"]))
             TransactionService._write_sale_lines(session, sale, cart_items, composite_map)
 
+            # 4b. Loyalty points earned on final bill (#747)
+            LoyaltyService.record_sale_points(session, sale)
+
             # 5. Eager-load relationships before session closes (prevents DetachedInstanceError)
             TransactionService._load_receipt_relations(sale)
 
@@ -535,6 +539,9 @@ class TransactionService:
                 CustomerCreditService.reverse_credit_sale_in_session(
                     session, sale, "VOID", user_id, reference_doc=sale.document_number
                 )
+
+                # Give back any loyalty points earned on this sale (#747)
+                LoyaltyService.reverse_sale_points(session, sale, reason="VOID")
 
                 logger.info("VOID Sale %s by User %s: %s", sale.document_number, user_id, reason)
 
@@ -721,6 +728,9 @@ class TransactionService:
                     session, original_sale, "REFUND", user_id, reference_doc=refund_receipt_no
                 )
                 credit_reversed = -credit_entry.amount if credit_entry else Decimal("0.00")
+
+                # 5b. Give back any loyalty points earned on the original sale (#747)
+                LoyaltyService.reverse_sale_points(session, original_sale, reason="REFUND")
 
                 # 6. Create refund payment record
                 refund_payment = SalePayment(

@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from cbpos.core.database import Database
 from cbpos.core.models import Customer, CustomerContact, LoyaltyLedgerEntry, Sale
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.loyalty_service import LoyaltyService
 from cbpos.core.utils.formatters import escape_like
 
 
@@ -117,13 +118,7 @@ class CustomerService:
             Points added (0 when loyalty is off or the amount is too small).
         """
 
-        if not ConfigService.get("enable_loyalty"):
-            return 0
-
-        ratio = int(ConfigService.get("loyalty_points_ratio") or 100)
-        if ratio <= 0:
-            return 0
-        points_to_add = int(amount_spent // ratio)
+        points_to_add = LoyaltyService.calculate_points_earned(amount_spent)
         if points_to_add <= 0:
             return 0
 

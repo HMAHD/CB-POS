@@ -113,7 +113,10 @@ LEDGER_REFS: dict[str, dict[str, str]] = {
         "REFUND": DOCUMENT_ID_SPACE,
         "PAYMENT": "customer_payments",
     },
-    "loyalty_ledger": {"EARN": DOCUMENT_ID_SPACE},
+    "loyalty_ledger": {
+        "EARN": DOCUMENT_ID_SPACE,
+        "REVERSAL": DOCUMENT_ID_SPACE,
+    },
     "supplier_ledger": {"PURCHASE": DOCUMENT_ID_SPACE, "PAYMENT": "supplier_payments"},
 }
 
@@ -624,6 +627,6 @@ class SyncApplyService:
             owner = self._session.get(balance.owner_model, getattr(instance, balance.owner_column))
             if owner is not None:
                 figure = (getattr(owner, balance.balance_column) or 0) + getattr(instance, balance.amount_column)
-                if instance.entry_type == "ADJUSTMENT" and figure < 0:
+                if instance.entry_type in ("ADJUSTMENT", "REVERSAL") and figure < 0:
                     figure = Decimal("0.00") if isinstance(figure, Decimal) else 0
                 setattr(owner, balance.balance_column, figure)

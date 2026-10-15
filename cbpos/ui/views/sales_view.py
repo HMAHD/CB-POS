@@ -4,6 +4,7 @@ from decimal import Decimal
 from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QBrush, QColor, QKeySequence, QPixmap, QShortcut
 from PyQt6.QtWidgets import (
+    QApplication,
     QButtonGroup,
     QCompleter,
     QFrame,
@@ -626,7 +627,7 @@ class SalesView(QWidget):
         if self.side_menu.isVisible():
             self.side_menu.setVisible(False)
             self.side_menu.clear_active()
-        self.barcode_input.setFocus()
+        self._focus_search()
         self.order_bar.refresh_tabs()
 
         if not SalesView._printer_notice_shown and not receipt_printer_configured():
@@ -642,6 +643,15 @@ class SalesView(QWidget):
         """Hide the notice and ask MainWindow to open Settings -> Hardware."""
         self.printer_notice.setVisible(False)
         self.printer_setup_requested.emit()
+
+    def _focus_search(self) -> None:
+        """Put the cursor back in the search box so the next scan or keystroke lands there (#535).
+
+        Skipped while a dialog is open (e.g. Advanced Search stays up after a
+        pick): the search box gets focus once that dialog's own caller closes it.
+        """
+        if QApplication.activeModalWidget() is None:
+            self.barcode_input.setFocus()
 
     def process_barcode_external(self, barcode):
         """Handle barcode from global scanner hook."""
@@ -661,6 +671,7 @@ class SalesView(QWidget):
         if customer:
             self.set_customer(customer)
             self.barcode_input.clear()
+            self._focus_search()
             return
 
         if self._add_scale_item(query):
@@ -685,7 +696,7 @@ class SalesView(QWidget):
                 self.cart_service.add_item(products[0], qty=dialog.get_quantity())
                 self.update_cart_display()
             self.barcode_input.clear()
-            self.barcode_input.setFocus()
+            self._focus_search()
         elif len(products) > 1:
             SoundService.play("scan_success")
             # Open advanced search with pre-filled query
@@ -695,11 +706,11 @@ class SalesView(QWidget):
             dialog.product_selected.connect(self.on_advanced_search_product_selected)
             dialog.exec()
             self.barcode_input.clear()
-            self.barcode_input.setFocus()
+            self._focus_search()
         else:
             SoundService.play("scan_error")
             QMessageBox.warning(self, _t("sales.not_found_title"), _t("sales.not_found_message"))
-            self.barcode_input.setFocus()
+            self._focus_search()
 
     def _add_scale_item(self, code: str) -> bool:
         """Add a weighing-scale label's item at its printed weight (#641).
@@ -729,7 +740,7 @@ class SalesView(QWidget):
             self.cart_service.add_item(product, qty=parsed["qty"])
             self.update_cart_display()
         self.barcode_input.clear()
-        self.barcode_input.setFocus()
+        self._focus_search()
         return True
 
     def update_cart_display(self):
@@ -914,7 +925,7 @@ class SalesView(QWidget):
         dialog = CustomerSelectionDialog(self)
         if dialog.exec():
             self.set_customer(dialog.selected_customer)
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def set_customer(self, customer):
         """Display the given customer and apply their pricing to the cart."""
@@ -949,13 +960,14 @@ class SalesView(QWidget):
         dialog = CustomerQuickAddDialog(self)
         if dialog.exec():
             self.set_customer(dialog.created_customer)
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def clear_customer(self):
         """Reset the sale back to Walk-in Customer."""
         self.customer = None
         self.action_panel.clear_customer_info()
         self.cart_service.set_customer(None)
+        self._focus_search()
 
     def process_payment(self):
         """Open the payment dialog and complete the sale on confirmation (F5/F10)."""
@@ -965,6 +977,7 @@ class SalesView(QWidget):
         if totals["subtotal"] <= 0:
             SoundService.play("scan_error")
             self._flash_pay_button_error()
+            self._focus_search()
             return
 
         # A payment shortcut (F5/F10/F12) firing while the side menu is open
@@ -996,7 +1009,7 @@ class SalesView(QWidget):
                 QMessageBox.critical(self, _t("common.error"), _t("sales.transaction_failed", error=str(e)))
             finally:
                 self._processing = False
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def hold_bill(self):
         """Suspend the current cart as a held bill and clear the view for a new one (F6)."""
@@ -1016,14 +1029,14 @@ class SalesView(QWidget):
             QMessageBox.information(self, _t("orders.held_title"), _t("orders.held_message", id=held_id))
         else:
             QMessageBox.critical(self, _t("common.error"), _t("orders.held_error"))
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def recall_bill(self):
         """Recall the most recently held bill back into the cart (F7)."""
         suspended = SuspendedTransactionService.get_latest_suspended()
         if not suspended:
             QMessageBox.information(self, _t("orders.empty_title"), _t("orders.empty_message"))
-            self.barcode_input.setFocus()
+            self._focus_search()
             return
 
         if SuspendedTransactionService.recall_bill(suspended.id, self.cart_service):
@@ -1042,7 +1055,7 @@ class SalesView(QWidget):
             QMessageBox.information(self, _t("orders.recalled_title"), _t("orders.recalled_message", id=suspended.id))
         else:
             QMessageBox.critical(self, _t("common.error"), _t("orders.recall_error"))
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def void_bill(self):
         """Void the in-progress cart after permission check and confirmation (Delete)."""
@@ -1077,7 +1090,7 @@ class SalesView(QWidget):
                 event_type="TRANSACTION",
                 details=f"Voided in-progress cart with {item_count} item(s)",
             )
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     # --- Phase 6: Advanced Search & Cart Enhancements ---
 
@@ -1087,7 +1100,7 @@ class SalesView(QWidget):
         self.current_search_mode = mode
         self._update_search_placeholder()
         self._refresh_search_mode_icons()
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def _refresh_search_mode_icons(self) -> None:
         """Re-tint each search-mode icon for the current theme + checked
@@ -1208,7 +1221,12 @@ class SalesView(QWidget):
             btn.style().unpolish(btn)
             btn.style().polish(btn)
 
-        QTimer.singleShot(400, _clear_error)
+        # Owned by the button, so it dies with it instead of firing on a deleted widget.
+        timer = QTimer(btn)
+        timer.setSingleShot(True)
+        timer.timeout.connect(_clear_error)
+        timer.timeout.connect(timer.deleteLater)
+        timer.start(400)
 
     def add_line_note(self):
         """Add note to selected cart line."""
@@ -1218,7 +1236,7 @@ class SalesView(QWidget):
             if ok and note:
                 self.cart_service.items[row]["note"] = note
                 self.update_cart_display()
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def change_line_quantity(self):
         """Change quantity of selected cart line."""
@@ -1229,7 +1247,7 @@ class SalesView(QWidget):
             if dialog.exec():
                 self.cart_service.update_quantity(row, dialog.get_quantity())
                 self.update_cart_display()
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def apply_line_discount(self):
         """Apply discount to selected cart line."""
@@ -1256,10 +1274,10 @@ class SalesView(QWidget):
                     _t("cart.discount_limit_title"),
                     _t("cart.discount_limit_message", value=str(disc_value)),
                 )
-                self.barcode_input.setFocus()
+                self._focus_search()
                 return
             self.update_cart_display()
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def change_line_price(self):
         """Override price of selected cart line (Manager Only)."""
@@ -1280,7 +1298,7 @@ class SalesView(QWidget):
 
         if not item["product"].price_change_allowed:
             QMessageBox.warning(self, _t("common.warning"), _t("cart.price_change_not_allowed"))
-            self.barcode_input.setFocus()
+            self._focus_search()
             return
 
         current_price = item["unit_price"]
@@ -1289,7 +1307,7 @@ class SalesView(QWidget):
             new_price = dialog.get_price()
             self.cart_service.override_price(row, new_price, authorized_user)
             self.update_cart_display()
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def remove_line_item(self):
         """Remove selected item from cart with undo support."""
@@ -1355,7 +1373,7 @@ class SalesView(QWidget):
         dialog = AdvancedSearchDialog(self)
         dialog.product_selected.connect(self.on_advanced_search_product_selected)
         dialog.exec()
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def on_advanced_search_product_selected(self, product):
         """Handle product selection from advanced search."""
@@ -1363,7 +1381,7 @@ class SalesView(QWidget):
         if dialog.exec() and self._confirm_age_restriction(product):
             self.cart_service.add_item(product, qty=dialog.get_quantity())
             self.update_cart_display()
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def _confirm_age_restriction(self, product) -> bool:
         """Require cashier confirmation before adding an age-restricted product (#485)."""
@@ -1388,6 +1406,7 @@ class SalesView(QWidget):
             # We don't ask for note here for speed, or maybe use "Auto-Hold" note
             if not SuspendedTransactionService.hold_bill(self.cart_service, note="Auto-Switch"):
                 QMessageBox.critical(self, _t("common.error"), _t("orders.switch_error"))
+                self._focus_search()
                 return
             self.cart_service.clear()
 
@@ -1399,6 +1418,7 @@ class SalesView(QWidget):
         else:
             QMessageBox.warning(self, _t("common.error"), _t("orders.recall_taken_error"))
             self.order_bar.refresh_tabs()
+        self._focus_search()
 
     def create_new_order(self):
         """
@@ -1418,7 +1438,7 @@ class SalesView(QWidget):
             # Already empty, just refresh tabs to be sure
             self.order_bar.set_active_bill(None)
             self.order_bar.refresh_tabs()
-            self.barcode_input.setFocus()
+        self._focus_search()
 
     def open_receive_payment(self) -> None:
         """Open Receive Payment dialog from POS (quick payment without sale)."""
@@ -1426,7 +1446,7 @@ class SalesView(QWidget):
 
         dialog = ReceivePaymentDialog(parent=self)
         dialog.exec()
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def open_reprint_receipt(self) -> None:
         """Open Receipt Reprint dialog to search and reprint past receipts."""
@@ -1434,7 +1454,7 @@ class SalesView(QWidget):
 
         dialog = ReceiptReprintDialog(parent=self)
         dialog.exec()
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def open_refund(self) -> None:
         """Open Refund dialog to process returns."""
@@ -1442,7 +1462,7 @@ class SalesView(QWidget):
 
         dialog = RefundDialog(parent=self)
         dialog.exec()
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def open_sale_history(self) -> None:
         """Open Sale History dialog for browsing sales, reprinting, and refunds."""
@@ -1452,7 +1472,7 @@ class SalesView(QWidget):
             self.toggle_side_menu()
         dialog = SaleHistoryDialog(parent=self)
         dialog.exec()
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def open_shift_management(self) -> None:
         """Open the Shift dialog (X-read, Cash In/Out, End Shift) for the current user's open shift.
@@ -1478,7 +1498,7 @@ class SalesView(QWidget):
         if dialog.shift_ended:
             self.shift_closed.emit()
         else:
-            self.barcode_input.setFocus()
+            self._focus_search()
 
     def open_cash_drawer(self) -> None:
         """Open the cash drawer via PrintWorker (F8 / Ctrl+D)."""
@@ -1508,7 +1528,7 @@ class SalesView(QWidget):
         SoundService.play("payment_complete")
         self.cart_service.clear()
         self.update_cart_display()
-        self.barcode_input.setFocus()
+        self._focus_search()
         self.customer = None
         self.action_panel.clear_customer_info()
         self.order_bar.set_active_bill(None)
@@ -1518,7 +1538,7 @@ class SalesView(QWidget):
         if ConfigService.get("show_receipt_dialog"):
             dlg = ReceiptOptionsDialog(sale, self)
             dlg.exec()
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def quick_pay(self) -> None:
         """Quick close with full cash payment, skipping the payment dialog (F12)."""
@@ -1527,13 +1547,12 @@ class SalesView(QWidget):
         # Check if quick pay is enabled in settings
         if not ConfigService.get("quick_pay_enabled"):
             QMessageBox.information(self, _t("sales.disabled"), _t("sales.quick_pay_disabled"))
-            return
-
-        if not self.cart_service.items:
+            self._focus_search()
             return
 
         totals = self.cart_service.get_totals()
-        if totals["subtotal"] <= 0:
+        if not self.cart_service.items or totals["subtotal"] <= 0:
+            self._focus_search()
             return
 
         payments = [{"method": "CASH", "amount": totals["final_total"]}]
@@ -1550,7 +1569,7 @@ class SalesView(QWidget):
             QMessageBox.critical(self, _t("common.error"), _t("sales.transaction_failed", error=str(e)))
         finally:
             self._processing = False
-        self.barcode_input.setFocus()
+        self._focus_search()
 
     def select_first_cart_item(self) -> None:
         """Select the first item in the cart table (Page Up)."""
@@ -1569,4 +1588,4 @@ class SalesView(QWidget):
 
         dialog = ShortcutsHelpDialog(self)
         dialog.exec()
-        self.barcode_input.setFocus()
+        self._focus_search()

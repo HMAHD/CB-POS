@@ -201,6 +201,7 @@ def _fake_sales_view(emitted: list):
         side_menu=SimpleNamespace(isVisible=lambda: False),
         toggle_side_menu=MagicMock(),
         barcode_input=MagicMock(),
+        _focus_search=MagicMock(),
         shift_closed=SimpleNamespace(emit=lambda: emitted.append("closed")),
     )
 

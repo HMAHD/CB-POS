@@ -3663,6 +3663,12 @@ QPushButton#CreditEditBtn:hover {
 }
 
 /* Filter bar labels */
+QLabel#CreditOpenHint {
+    background-color: transparent;
+    color: #AAAAAA;
+    font-size: 13px;
+}
+
 QLabel#CreditFilterLabel, QLabel#PayableFilterLabel {
     background-color: transparent;
     color: #AAAAAA;
@@ -3804,6 +3810,23 @@ QPushButton#DocDetailCloseBtn {
     border-radius: 4px;
     padding: 4px 12px;
     font-size: 12px;
+}
+
+/* Detail panel beside the list (#612): header bar, scrolling body, splitter */
+QFrame#DocDetailHeader {
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid #3E3E42;
+}
+
+QScrollArea#DocDetailScroll, QWidget#DocDetailContent {
+    background-color: transparent;
+    border: none;
+}
+
+QSplitter#DocBodySplitter::handle {
+    background-color: #2D2D30;
+    width: 6px;
 }
 
 QLabel#DocInfoLabel, QLabel#DocPaymentLabel, QLabel#DocItemsTitle {

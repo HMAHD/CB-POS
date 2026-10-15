@@ -1,4 +1,5 @@
 import contextlib
+import html
 import logging
 from datetime import datetime
 
@@ -8,6 +9,7 @@ from PyQt6.QtWidgets import (
     QDateEdit,
     QDialog,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QHeaderView,
     QInputDialog,
@@ -15,7 +17,9 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
+    QSplitter,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -51,8 +55,9 @@ logger = logging.getLogger(__name__)
 
 class DocumentBrowserView(QWidget):
     """
-    Unified document browser with full-width table and expandable detail panel.
-    No splitter — details appear below the table when a document is selected.
+    Unified document browser: the document list keeps the full height, and
+    the selected document's details open in a panel beside it (#612), so the
+    arrow keys browse the list while the details follow.
     """
 
     convert_to_sale_requested = pyqtSignal(dict)
@@ -69,6 +74,12 @@ class DocumentBrowserView(QWidget):
         "DRAFT": NEUTRAL,
         "SUSPENDED": WARNING,
     }
+
+    # Side detail panel (#612)
+    DETAIL_PANEL_MIN_WIDTH = 360
+    ITEMS_MIN_HEIGHT = 120
+    ITEMS_FIT_MAX_ROWS = 15
+    USER_COLUMN = 6  # hidden while the panel (which shows the user) is open
 
     def __init__(self) -> None:
         """Build the filter bar, document table, and detail panel, then load the first page."""
@@ -197,117 +208,19 @@ class DocumentBrowserView(QWidget):
         self.doc_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.doc_table.itemSelectionChanged.connect(self.on_selection_changed)
         self.doc_table.setItemDelegateForColumn(5, StatusPillDelegate(self.doc_table))  # Status (#560)
-        layout.addWidget(self.doc_table, 3)
 
-        # Detail Panel (below table, initially hidden)
-        self.detail_panel = QFrame()
-        self.detail_panel.setObjectName("DocDetailPanel")
-        self.detail_panel.setVisible(False)
-        detail_layout = QVBoxLayout(self.detail_panel)
-        detail_layout.setContentsMargins(12, 10, 12, 10)
-        detail_layout.setSpacing(8)
-
-        # Detail header row
-        detail_header = QHBoxLayout()
-        self.detail_title = QLabel()
-        self.detail_title.setObjectName("DocDetailTitle")
-        detail_header.addWidget(self.detail_title)
-        detail_header.addStretch()
-
-        self.btn_close_detail = QPushButton()
-        self.btn_close_detail.setObjectName("DocDetailCloseBtn")
-        self.btn_close_detail.setProperty("class", "secondary")
-        self.btn_close_detail.clicked.connect(self._close_detail)
-        detail_header.addWidget(self.btn_close_detail)
-        detail_layout.addLayout(detail_header)
-
-        # Detail content: info + items side by side
-        detail_content = QHBoxLayout()
-        detail_content.setSpacing(16)
-
-        # Left: document info
-        info_frame = QFrame()
-        info_frame.setObjectName("DocInfoFrame")
-        info_layout = QVBoxLayout(info_frame)
-        info_layout.setContentsMargins(0, 0, 0, 0)
-        self.details_label = QLabel()
-        self.details_label.setObjectName("DocInfoLabel")
-        self.details_label.setWordWrap(True)
-        info_layout.addWidget(self.details_label)
-
-        self.payment_label = QLabel("")
-        self.payment_label.setObjectName("DocPaymentLabel")
-        self.payment_label.setWordWrap(True)
-        info_layout.addWidget(self.payment_label)
-        info_layout.addStretch()
-        detail_content.addWidget(info_frame, 1)
-
-        # Right: line items table
-        items_frame = QWidget()
-        items_layout = QVBoxLayout(items_frame)
-        items_layout.setContentsMargins(0, 0, 0, 0)
-        self.lbl_items_title = QLabel()
-        self.lbl_items_title.setObjectName("DocItemsTitle")
-        items_layout.addWidget(self.lbl_items_title)
-
-        self.items_table = QTableWidget()
-        self.items_table.setObjectName("DocItemsTable")
-        self.items_table.setColumnCount(5)
-        configure_table_columns(
-            self.items_table.horizontalHeader(),
-            {
-                0: QHeaderView.ResizeMode.Stretch,  # Product
-                1: QHeaderView.ResizeMode.ResizeToContents,  # Qty
-                2: QHeaderView.ResizeMode.ResizeToContents,  # Unit Price
-                3: QHeaderView.ResizeMode.ResizeToContents,  # Discount
-                4: QHeaderView.ResizeMode.ResizeToContents,  # Total
-            },
-            minimum_section_size=70,
-        )
-        self.items_table.verticalHeader().setVisible(False)
-        self.items_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.items_table.setMaximumHeight(200)
-        items_layout.addWidget(self.items_table)
-        detail_content.addWidget(items_frame, 2)
-
-        detail_layout.addLayout(detail_content)
-
-        # Action buttons row
-        action_row = QHBoxLayout()
-        action_row.addStretch()
-
-        self.reprint_btn = QPushButton()
-        self.reprint_btn.setObjectName("DocReprintBtn")
-        self.reprint_btn.clicked.connect(self.reprint_document)
-        self.reprint_btn.setEnabled(False)
-        action_row.addWidget(self.reprint_btn)
-
-        self.convert_btn = QPushButton()
-        self.convert_btn.setObjectName("DocConvertBtn")
-        self.convert_btn.clicked.connect(self.convert_proforma)
-        self.convert_btn.setEnabled(False)
-        action_row.addWidget(self.convert_btn)
-
-        self.refund_btn = QPushButton()
-        self.refund_btn.setObjectName("DocRefundBtn")
-        self.refund_btn.clicked.connect(self.process_refund)
-        self.refund_btn.setEnabled(False)
-        action_row.addWidget(self.refund_btn)
-
-        self.void_btn = QPushButton()
-        self.void_btn.setObjectName("DocVoidBtn")
-        self.void_btn.clicked.connect(self.void_document)
-        self.void_btn.setEnabled(False)
-        action_row.addWidget(self.void_btn)
-
-        self.transfer_btn = QPushButton()
-        self.transfer_btn.setObjectName("DocTransferBtn")
-        self.transfer_btn.clicked.connect(self.transfer_order)
-        self.transfer_btn.setEnabled(False)
-        action_row.addWidget(self.transfer_btn)
-
-        detail_layout.addLayout(action_row)
-        layout.addWidget(self.detail_panel, 2)
+        # List and details side by side (#612): the list keeps every row of
+        # height, the panel takes the right-hand side only while it's open.
+        self.body_splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.body_splitter.setObjectName("DocBodySplitter")
+        self.body_splitter.setChildrenCollapsible(False)
+        self.body_splitter.addWidget(self.doc_table)
+        self._build_detail_panel()
+        self.body_splitter.addWidget(self.detail_panel)
+        self.body_splitter.setStretchFactor(0, 1)
+        self.body_splitter.setStretchFactor(1, 0)
+        self._detail_sized = False
+        layout.addWidget(self.body_splitter, 1)
 
         # Pagination bar
         page_bar = QFrame()
@@ -333,6 +246,110 @@ class DocumentBrowserView(QWidget):
         page_layout.addWidget(self.next_btn)
 
         layout.addWidget(page_bar)
+
+    def _build_detail_panel(self) -> None:
+        """Build the right-hand detail panel: header bar, scrollable summary + line items, actions."""
+        self.detail_panel = QFrame()
+        self.detail_panel.setObjectName("DocDetailPanel")
+        self.detail_panel.setMinimumWidth(self.DETAIL_PANEL_MIN_WIDTH)
+        self.detail_panel.setVisible(False)
+        detail_layout = QVBoxLayout(self.detail_panel)
+        detail_layout.setContentsMargins(0, 0, 0, 10)
+        detail_layout.setSpacing(8)
+
+        # Header bar: title + Close
+        header = QFrame()
+        header.setObjectName("DocDetailHeader")
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(12, 8, 8, 8)
+        header_layout.setSpacing(8)
+        self.detail_title = QLabel(header)
+        self.detail_title.setObjectName("DocDetailTitle")
+        self.detail_title.setWordWrap(True)
+        header_layout.addWidget(self.detail_title, 1)
+        self.btn_close_detail = QPushButton(header)
+        self.btn_close_detail.setObjectName("DocDetailCloseBtn")
+        self.btn_close_detail.setProperty("class", "secondary")
+        self.btn_close_detail.clicked.connect(self._close_detail)
+        header_layout.addWidget(self.btn_close_detail, 0, Qt.AlignmentFlag.AlignTop)
+        detail_layout.addWidget(header)
+
+        # Summary, payments and line items scroll together on short screens
+        scroll = QScrollArea()
+        scroll.setObjectName("DocDetailScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        content = QWidget()
+        content.setObjectName("DocDetailContent")
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(12, 0, 12, 0)
+        content_layout.setSpacing(8)
+
+        self.details_label = QLabel()
+        self.details_label.setObjectName("DocInfoLabel")
+        self.details_label.setWordWrap(True)
+        self.details_label.setTextFormat(Qt.TextFormat.RichText)
+        content_layout.addWidget(self.details_label)
+
+        self.payment_label = QLabel("")
+        self.payment_label.setObjectName("DocPaymentLabel")
+        self.payment_label.setWordWrap(True)
+        content_layout.addWidget(self.payment_label)
+
+        self.lbl_items_title = QLabel()
+        self.lbl_items_title.setObjectName("DocItemsTitle")
+        content_layout.addWidget(self.lbl_items_title)
+
+        self.items_table = QTableWidget()
+        self.items_table.setObjectName("DocItemsTable")
+        self.items_table.setColumnCount(5)
+        configure_table_columns(
+            self.items_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,  # Product
+                1: QHeaderView.ResizeMode.ResizeToContents,  # Qty
+                2: QHeaderView.ResizeMode.ResizeToContents,  # Unit Price
+                3: QHeaderView.ResizeMode.ResizeToContents,  # Discount
+                4: QHeaderView.ResizeMode.ResizeToContents,  # Total
+            },
+            minimum_section_size=70,
+        )
+        self.items_table.verticalHeader().setVisible(False)
+        self.items_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.items_table.setMinimumHeight(self.ITEMS_MIN_HEIGHT)
+        self.items_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        content_layout.addWidget(self.items_table, 1)
+        scroll.setWidget(content)
+        detail_layout.addWidget(scroll, 1)
+
+        # Actions: only the ones that apply to this document are shown, two per row
+        self.reprint_btn = QPushButton()
+        self.reprint_btn.setObjectName("DocReprintBtn")
+        self.reprint_btn.clicked.connect(self.reprint_document)
+
+        self.convert_btn = QPushButton()
+        self.convert_btn.setObjectName("DocConvertBtn")
+        self.convert_btn.clicked.connect(self.convert_proforma)
+
+        self.refund_btn = QPushButton()
+        self.refund_btn.setObjectName("DocRefundBtn")
+        self.refund_btn.clicked.connect(self.process_refund)
+
+        self.void_btn = QPushButton()
+        self.void_btn.setObjectName("DocVoidBtn")
+        self.void_btn.clicked.connect(self.void_document)
+
+        self.transfer_btn = QPushButton()
+        self.transfer_btn.setObjectName("DocTransferBtn")
+        self.transfer_btn.clicked.connect(self.transfer_order)
+
+        self._action_buttons = (self.reprint_btn, self.convert_btn, self.refund_btn, self.transfer_btn, self.void_btn)
+        self._action_grid = QGridLayout()
+        self._action_grid.setContentsMargins(12, 0, 12, 0)
+        self._action_grid.setSpacing(8)
+        detail_layout.addLayout(self._action_grid)
+        self.reset_action_buttons()
 
     # ------------------------------------------------------------------
     # Retranslation
@@ -429,15 +446,30 @@ class DocumentBrowserView(QWidget):
     # Detail Panel
     # ------------------------------------------------------------------
 
+    def _hide_detail_panel(self) -> None:
+        """Hide the panel; the list gets its full width and the User column back."""
+        self.detail_panel.setVisible(False)
+        self.doc_table.setColumnHidden(self.USER_COLUMN, False)
+
     def _close_detail(self) -> None:
         """Hide the detail panel."""
-        self.detail_panel.setVisible(False)
+        self._hide_detail_panel()
         self.current_doc = None
         self.reset_action_buttons()
 
     def _show_detail(self) -> None:
-        """Show the detail panel."""
+        """Show the detail panel beside the list, at about a third of the width the first time.
+
+        The panel repeats the user, so the list hides that column and gives
+        the width to the customer/supplier name.
+        """
+        self.doc_table.setColumnHidden(self.USER_COLUMN, True)
         self.detail_panel.setVisible(True)
+        if not self._detail_sized:
+            self._detail_sized = True
+            total = self.body_splitter.width()
+            panel = max(self.DETAIL_PANEL_MIN_WIDTH, total * 3 // 8)
+            self.body_splitter.setSizes([max(0, total - panel), panel])
 
     # ------------------------------------------------------------------
     # Filters
@@ -502,7 +534,7 @@ class DocumentBrowserView(QWidget):
         self.doc_table.setRowCount(0)
         self.current_doc = None
         self.reset_action_buttons()
-        self.detail_panel.setVisible(False)
+        self._hide_detail_panel()
 
         for row, doc in enumerate(documents):
             self.doc_table.insertRow(row)
@@ -568,6 +600,75 @@ class DocumentBrowserView(QWidget):
             f"&nbsp;{display_text}&nbsp;</span>"
         )
 
+    def _summary_html(self, doc: dict) -> str:
+        """The summary as a two-column table (#612): who/when first, then money, right-aligned."""
+
+        def row(label: str, value: str, money: bool = False, bold: bool = False) -> str:
+            value = f"<b>{value}</b>" if bold else value
+            align = ' align="right"' if money else ""
+            return (
+                f'<tr><td style="padding:2px 16px 2px 0;">{html.escape(label)}</td>'
+                f'<td{align} style="padding:2px 0;">{value}</td></tr>'
+            )
+
+        meta = [
+            row(
+                _t("document_browser.detail_date"),
+                doc["date"].strftime("%Y-%m-%d %H:%M:%S") if doc["date"] else _t("common.na"),
+            ),
+            row(_t("document_browser.detail_status"), self._status_badge_html(doc["status"])),
+            row(_t("document_browser.detail_user"), html.escape(doc.get("username") or "")),
+        ]
+        entity = doc.get("entity_name", "")
+        if entity:
+            label = (
+                _t("document_browser.detail_supplier")
+                if doc["type"] == "purchase"
+                else _t("document_browser.detail_customer")
+            )
+            meta.append(row(label, html.escape(entity)))
+        if doc.get("refund_of_sale_id"):
+            meta.append(row(_t("document_browser.detail_refund_of_sale"), f"#{doc['refund_of_sale_id']}"))
+        if doc["type"] == "proforma":
+            if doc.get("validity_days"):
+                meta.append(
+                    row(
+                        _t("document_browser.detail_validity"),
+                        f"{doc['validity_days']} {_t('document_browser.detail_days')}",
+                    )
+                )
+            if doc.get("expiry_date"):
+                meta.append(row(_t("document_browser.detail_expiry"), html.escape(str(doc["expiry_date"]))))
+            if doc.get("converted_sale_id"):
+                meta.append(row(_t("document_browser.detail_converted_to_sale"), f"#{doc['converted_sale_id']}"))
+            if doc.get("notes"):
+                meta.append(row(_t("document_browser.detail_notes"), html.escape(doc["notes"])))
+
+        money = []
+        total = doc.get("total_amount")
+        if total is not None:
+            money.append(row(_t("document_browser.detail_total"), format_currency(total), money=True, bold=True))
+        if doc["type"] == "sale" and (TaxService.is_vat_active() or doc.get("tax_vat", 0) > 0):
+            for key, field in (
+                ("detail_vat", "tax_vat"),
+                ("detail_sscl", "tax_sscl"),
+                ("detail_net_revenue", "net_revenue"),
+            ):
+                if doc.get(field) is not None:
+                    money.append(row(_t(f"document_browser.{key}"), format_currency(doc[field]), money=True))
+
+        gap = '<tr><td colspan="2" style="font-size:6px;">&nbsp;</td></tr>' if money else ""
+        return f'<table width="100%" cellspacing="0" cellpadding="0">{"".join(meta)}{gap}{"".join(money)}</table>'
+
+    def _fit_items_table(self) -> None:
+        """Grow the line-items table to show its rows (up to ITEMS_FIT_MAX_ROWS), so the
+        panel scrolls as one instead of a small table scrolling inside it."""
+        table = self.items_table
+        rows = min(max(table.rowCount(), 1), self.ITEMS_FIT_MAX_ROWS)
+        row_h = table.rowHeight(0) if table.rowCount() else table.verticalHeader().defaultSectionSize()
+        height = table.horizontalHeader().sizeHint().height() + rows * row_h + 2 * table.frameWidth() + 4
+        table.setMinimumHeight(max(self.ITEMS_MIN_HEIGHT, height))
+
     def display_details(self, doc: dict) -> None:
         """Display document details in the detail panel."""
         type_labels = {
@@ -578,54 +679,7 @@ class DocumentBrowserView(QWidget):
 
         self.detail_title.setText(f"{type_labels.get(doc['type'], doc['type'])} — {doc['document_number']}")
 
-        html = (
-            f"<b>{_t('document_browser.detail_date')}:</b> "
-            f"{doc['date'].strftime('%Y-%m-%d %H:%M:%S') if doc['date'] else _t('common.na')}<br>"
-            f"<b>{_t('document_browser.detail_status')}:</b> {self._status_badge_html(doc['status'])}<br>"
-            f"<b>{_t('document_browser.detail_user')}:</b> {doc.get('username', '')}<br>"
-        )
-
-        entity = doc.get("entity_name", "")
-        if entity:
-            label = (
-                _t("document_browser.detail_supplier")
-                if doc["type"] == "purchase"
-                else _t("document_browser.detail_customer")
-            )
-            html += f"<b>{label}:</b> {entity}<br>"
-
-        total = doc.get("total_amount")
-        if total is not None:
-            html += f"<b>{_t('document_browser.detail_total')}:</b> {format_currency(total)}<br>"
-
-        if doc["type"] == "sale" and (TaxService.is_vat_active() or doc.get("tax_vat", 0) > 0):
-            tax_vat = doc.get("tax_vat")
-            if tax_vat is not None:
-                html += f"<b>{_t('document_browser.detail_vat')}:</b> {format_currency(tax_vat)}<br>"
-            tax_sscl = doc.get("tax_sscl")
-            if tax_sscl is not None:
-                html += f"<b>{_t('document_browser.detail_sscl')}:</b> {format_currency(tax_sscl)}<br>"
-            net_revenue = doc.get("net_revenue")
-            if net_revenue is not None:
-                html += f"<b>{_t('document_browser.detail_net_revenue')}:</b> {format_currency(net_revenue)}<br>"
-
-        if doc["type"] == "proforma":
-            if doc.get("validity_days"):
-                html += (
-                    f"<b>{_t('document_browser.detail_validity')}:</b> "
-                    f"{doc['validity_days']} {_t('document_browser.detail_days')}<br>"
-                )
-            if doc.get("expiry_date"):
-                html += f"<b>{_t('document_browser.detail_expiry')}:</b> {doc['expiry_date']}<br>"
-            if doc.get("notes"):
-                html += f"<b>{_t('document_browser.detail_notes')}:</b> {doc['notes']}<br>"
-            if doc.get("converted_sale_id"):
-                html += f"<b>{_t('document_browser.detail_converted_to_sale')}:</b> #{doc['converted_sale_id']}<br>"
-
-        if doc.get("refund_of_sale_id"):
-            html += f"<b>{_t('document_browser.detail_refund_of_sale')}:</b> #{doc['refund_of_sale_id']}<br>"
-
-        self.details_label.setText(html)
+        self.details_label.setText(self._summary_html(doc))
 
         # Populate line items
         items = doc.get("items", [])
@@ -656,6 +710,12 @@ class DocumentBrowserView(QWidget):
             total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.items_table.setItem(idx, 4, total_item)
 
+        # Most documents have no line discounts: drop the empty column so the
+        # amounts fit the side panel without scrolling sideways.
+        has_discount = any(self.items_table.item(r, 3).text() for r in range(self.items_table.rowCount()))
+        self.items_table.setColumnHidden(3, not has_discount)
+        self._fit_items_table()
+
         # Payment info
         payments = doc.get("payments", [])
         if payments:
@@ -672,11 +732,19 @@ class DocumentBrowserView(QWidget):
 
     def reset_action_buttons(self) -> None:
         """Disable all action buttons."""
-        self.reprint_btn.setEnabled(False)
-        self.refund_btn.setEnabled(False)
-        self.convert_btn.setEnabled(False)
-        self.void_btn.setEnabled(False)
-        self.transfer_btn.setEnabled(False)
+        for btn in self._action_buttons:
+            btn.setEnabled(False)
+        self._layout_action_buttons()
+
+    def _layout_action_buttons(self) -> None:
+        """Show only the actions that apply (enabled), packed two per row with no gaps."""
+        while self._action_grid.count():
+            self._action_grid.takeAt(0)
+        shown = [btn for btn in self._action_buttons if btn.isEnabled()]
+        for i, btn in enumerate(shown):
+            self._action_grid.addWidget(btn, i // 2, i % 2)
+        for btn in self._action_buttons:
+            btn.setVisible(btn in shown)
 
     def update_action_buttons(self, doc: dict) -> None:
         """Enable relevant action buttons based on document type and status."""
@@ -700,6 +768,7 @@ class DocumentBrowserView(QWidget):
         )
 
         self.transfer_btn.setEnabled(doc_type == "sale" and status == DocumentStatus.COMPLETED)
+        self._layout_action_buttons()
 
     def reprint_document(self) -> None:
         """Reprint the selected document."""

@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from PyQt6.QtCore import QDate, Qt
-from PyQt6.QtGui import QKeySequence, QShortcut
+from PyQt6.QtGui import QAction, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QDateEdit,
     QFrame,
@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QInputDialog,
     QLabel,
     QLineEdit,
+    QMenu,
     QMessageBox,
     QPushButton,
     QSizePolicy,
@@ -122,18 +123,30 @@ class CreditBookView(QWidget):
         self.customer_table.verticalHeader().setVisible(False)
         self.customer_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.customer_table.doubleClicked.connect(self._on_customer_double_click)
+        # Rows open on double-click / Enter / right-click (#593): say so with the cursor.
+        self.customer_table.viewport().setCursor(Qt.CursorShape.PointingHandCursor)
+        self.customer_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customer_table.customContextMenuRequested.connect(self._show_customer_context_menu)
         page_layout.addWidget(self.customer_table, 1)
 
         open_row = QHBoxLayout()
-        open_row.addStretch()
+        self.lbl_open_hint = QLabel()
+        self.lbl_open_hint.setObjectName("CreditOpenHint")
+        self.lbl_open_hint.setWordWrap(True)
+        open_row.addWidget(self.lbl_open_hint, 1)
         self.btn_open_customer_ledger = QPushButton()
         self.btn_open_customer_ledger.setObjectName("BtnOpenCustomerLedger")
         self.btn_open_customer_ledger.clicked.connect(self._open_selected_customer)
         open_row.addWidget(self.btn_open_customer_ledger)
         page_layout.addLayout(open_row)
 
-        QShortcut(QKeySequence(Qt.Key.Key_Return), self.customer_table).activated.connect(self._open_selected_customer)
-        QShortcut(QKeySequence(Qt.Key.Key_Enter), self.customer_table).activated.connect(self._open_selected_customer)
+        # Enter opens the row only while the table has focus: Enter in the
+        # search box must not open whichever row happens to be current. A
+        # scan's Enter still goes to the scanner first (#548).
+        for key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            shortcut = QShortcut(QKeySequence(key), self.customer_table)
+            shortcut.setContext(Qt.ShortcutContext.WidgetShortcut)
+            shortcut.activated.connect(self._open_selected_customer)
 
         # Summary footer
         footer = QFrame()
@@ -337,6 +350,8 @@ class CreditBookView(QWidget):
         self._page_header.set_title(_t("credit_book.title"))
         self.btn_add_customer.setText(_t("credit_book.btn_add_customer"))
         self.btn_open_customer_ledger.setText(_t("credit_book.btn_open_customer_ledger"))
+        self.lbl_open_hint.setText(_t("credit_book.row_open_hint"))
+        self.btn_open_customer_ledger.setToolTip(_t("credit_book.row_open_hint"))
         self.search_input.setPlaceholderText(_t("credit_book.search_placeholder"))
         self.customer_table.setHorizontalHeaderLabels(
             [
@@ -384,24 +399,73 @@ class CreditBookView(QWidget):
 
     def _open_customer_row(self, row: int) -> None:
         """Drill into the ledger for the given table row."""
-        if row < 0:
-            return
-        customer_id_item = self.customer_table.item(row, 0)
-        if not customer_id_item:
-            return
-
-        customer_id = int(customer_id_item.text())
-        customer = self.customer_service.get_customer(customer_id)
+        customer = self._load_customer_row(row)
         if customer:
-            self.selected_customer = customer
             self.update_header(customer)
             self.reload_ledger()
             self.stack.setCurrentIndex(1)
 
+    def _load_customer_row(self, row: int):
+        """Make the customer on ``row`` the selected customer and return it (None for no/empty row)."""
+        if row < 0:
+            return None
+        customer_id_item = self.customer_table.item(row, 0)
+        if not customer_id_item or not customer_id_item.text().isdigit():
+            return None
+        customer = self.customer_service.get_customer(int(customer_id_item.text()))
+        if customer:
+            self.selected_customer = customer
+        return customer
+
+    def _show_customer_context_menu(self, pos) -> None:
+        """Right-click menu for the customer under the cursor (#593).
+
+        The row under the cursor is selected and loaded *before* any action
+        runs, so Receive Payment / Edit act on the customer that was clicked,
+        never on one opened earlier.
+        """
+        index = self.customer_table.indexAt(pos)
+        if not index.isValid():
+            return
+        self.customer_table.setCurrentCell(index.row(), 1)
+        customer = self._load_customer_row(index.row())
+        if not customer:
+            return
+
+        menu = QMenu(self)
+        open_action = QAction(_t("credit_book.btn_open_customer_ledger"), menu)
+        open_action.triggered.connect(self._open_selected_customer)
+        menu.addAction(open_action)
+
+        pay_action = QAction(_t("credit_book.btn_receive_payment"), menu)
+        pay_action.setEnabled((customer.current_debt or 0) > 0)
+        pay_action.triggered.connect(self.receive_payment)
+        menu.addAction(pay_action)
+
+        edit_action = QAction(_t("credit_book.btn_edit_customer"), menu)
+        edit_action.triggered.connect(self.edit_customer)
+        menu.addAction(edit_action)
+
+        menu.exec(self.customer_table.viewport().mapToGlobal(pos))
+
     def _go_back(self) -> None:
-        """Return to the customer list."""
+        """Return to the customer list and forget the opened customer (#593)."""
+        self.selected_customer = None
         self.stack.setCurrentIndex(0)
-        self.load_customers()
+        self._refresh_customer_list()
+
+    def _refresh_customer_list(self) -> None:
+        """Reload the list, keeping the search filter and the current row's customer selected."""
+        current = self.customer_table.item(self.customer_table.currentRow(), 0)
+        current_id = current.text() if current else None
+        self.filter_customers(self.search_input.text())
+        if current_id is None:
+            return
+        for row in range(self.customer_table.rowCount()):
+            item = self.customer_table.item(row, 0)
+            if item and item.text() == current_id:
+                self.customer_table.setCurrentCell(row, 1)
+                break
 
     # ========== Customer List Methods ==========
 
@@ -443,7 +507,9 @@ class CreditBookView(QWidget):
             self.customer_table.insertRow(row)
 
             self.customer_table.setItem(row, 0, QTableWidgetItem(str(customer.id)))
-            self.customer_table.setItem(row, 1, QTableWidgetItem(customer.name))
+            name_item = QTableWidgetItem(customer.name)
+            name_item.setToolTip(_t("credit_book.row_open_hint"))
+            self.customer_table.setItem(row, 1, name_item)
             self.customer_table.setItem(row, 2, QTableWidgetItem(customer.phone or ""))
 
             # Debt with color coding
@@ -664,6 +730,8 @@ class CreditBookView(QWidget):
             self.selected_customer = self.customer_service.get_customer(self.selected_customer.id)
             self.update_header(self.selected_customer)
             self.reload_ledger()
+            if self.stack.currentIndex() == 0:
+                self._refresh_customer_list()
 
     def print_statement(self) -> None:
         """Open customer statement dialog for viewing and printing."""
@@ -766,6 +834,8 @@ class CreditBookView(QWidget):
         if dialog.exec():
             self.selected_customer = self.customer_service.get_customer(self.selected_customer.id)
             self.update_header(self.selected_customer)
+            if self.stack.currentIndex() == 0:
+                self._refresh_customer_list()
 
     def open_add_customer(self) -> None:
         """Open dialog to add a new customer."""

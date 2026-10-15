@@ -54,6 +54,7 @@ class ProductEditor(QDialog):
         self.setMinimumHeight(520)
         self.resize(750, 580)
 
+        self.current_image_path: str | None = None
         self.categories = []
         self.suppliers = []
         self.load_categories()
@@ -517,7 +518,7 @@ class ProductEditor(QDialog):
             "is_service": self.service_check.isChecked(),
             "price_change_allowed": self.price_change_allowed_check.isChecked(),
             "is_age_restricted": self.age_restricted_check.isChecked(),
-            "image_path": getattr(self, "current_image_path", None),
+            "image_path": self.current_image_path,
             "is_active": True,
         }
 

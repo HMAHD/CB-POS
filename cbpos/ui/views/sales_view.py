@@ -74,6 +74,8 @@ class SalesView(QWidget):
         self.customer = None
         self.current_search_mode = ConfigService.get("default_search_mode") or "ALL"
         self._undo_data = None
+        self._processing: bool = False
+        self._pending_proforma_id: int | None = None
 
         # Listen for print/drawer failures for the rest of the app's
         # lifetime. Covers open_cash_drawer() below, and also the
@@ -971,7 +973,7 @@ class SalesView(QWidget):
 
     def process_payment(self):
         """Open the payment dialog and complete the sale on confirmation (F5/F10)."""
-        if getattr(self, "_processing", False):
+        if self._processing:
             return
         totals = self.cart_service.get_totals()
         if totals["subtotal"] <= 0:
@@ -1001,7 +1003,7 @@ class SalesView(QWidget):
                 )
                 if sale:
                     # Mark proforma as converted if this was a proforma-to-sale conversion
-                    proforma_id = getattr(self, "_pending_proforma_id", None)
+                    proforma_id = self._pending_proforma_id
                     if proforma_id:
                         from cbpos.core.services.proforma_service import ProformaService
 
@@ -1548,7 +1550,7 @@ class SalesView(QWidget):
 
     def quick_pay(self) -> None:
         """Quick close with full cash payment, skipping the payment dialog (F12)."""
-        if getattr(self, "_processing", False):
+        if self._processing:
             return
         # Check if quick pay is enabled in settings
         if not ConfigService.get("quick_pay_enabled"):

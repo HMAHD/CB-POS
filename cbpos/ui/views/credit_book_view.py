@@ -50,6 +50,7 @@ class CreditBookView(QWidget):
         self.setObjectName("CreditBookView")
         self.customer_service = CustomerService()
         self.selected_customer = None
+        self._showing_all_dates: bool = False
         self.init_ui()
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui, owner=self)
@@ -638,7 +639,7 @@ class CreditBookView(QWidget):
         if not entries:
             self.ledger_table.setRowCount(1)
             has_any = (
-                not getattr(self, "_showing_all_dates", False)
+                not self._showing_all_dates
                 and bool(self.selected_customer)
                 and len(CustomerCreditService.get_ledger(self.selected_customer.id)) > 0
             )

@@ -41,6 +41,7 @@ class ManagementView(QWidget):
     def __init__(self):
         """Build the sidebar and content stack, then show the Dashboard tab."""
         super().__init__()
+        self.user = None
         self.init_ui()
 
         self.retranslate_ui()
@@ -219,9 +220,8 @@ class ManagementView(QWidget):
             # created, not just on the next login (set_user() already
             # re-applies to existing views below).
             if index in (2, 9, 10):
-                user = getattr(self, "user", None)
-                if user is not None:
-                    widget.set_user(user)
+                if self.user is not None:
+                    widget.set_user(self.user)
         return self._view_widgets[index]
 
     def set_user(self, user) -> None:

@@ -151,8 +151,7 @@ class TestCompositeSale:
         pack, tea, biscuits = bundle
         sale = _sell(db_session, user, [(pack, "1")], [("CASH", "700.00")])
 
-        with patch("cbpos.core.services.transaction_service.PrinterService"):
-            assert TransactionService.process_refund(sale.id, "Damaged", user.id) is True
+        assert TransactionService.process_refund(sale.id, "Damaged", user.id) is True
 
         assert _stock(db_session, tea) == Decimal("10")
         assert _stock(db_session, biscuits) == Decimal("5")

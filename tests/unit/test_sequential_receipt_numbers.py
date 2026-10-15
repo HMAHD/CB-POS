@@ -50,13 +50,6 @@ def settings(monkeypatch):
     return data
 
 
-@pytest.fixture
-def no_print():
-    """Keep the refund voucher off the print worker (sales go to the recording fake)."""
-    with patch("cbpos.core.services.transaction_service.PrinterService"):
-        yield
-
-
 def _sell(user, product) -> Sale:
     with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user):
         cart = CartService()
@@ -66,7 +59,7 @@ def _sell(user, product) -> Sale:
     return sale
 
 
-@pytest.mark.usefixtures("settings", "no_print")
+@pytest.mark.usefixtures("settings")
 class TestSaleNumbers:
     def test_sales_follow_the_default_format_and_increment(self, db_session, user, product):
         first = _sell(user, product)
@@ -149,18 +142,19 @@ class TestSaleNumbers:
         assert _sell(user, product).document_number == f"INV-01-{YEAR}-00001"
 
 
-@pytest.mark.usefixtures("settings", "no_print")
+@pytest.mark.usefixtures("settings")
 class TestRefundNumbers:
-    def test_refund_gets_a_credit_note_number(self, db_session, user, product):
+    def test_refund_gets_a_credit_note_number(self, db_session, user, product, peripherals):
         sale = _sell(user, product)
 
         assert TransactionService.process_refund(sale.id, "Damaged", user.id) is True
 
         refund = db_session.query(Sale).filter(Sale.refund_of_sale_id == sale.id).one()
         assert refund.document_number == f"CN-{YEAR}-00001"
+        assert peripherals.events[-1].refund_sale.document_number == f"CN-{YEAR}-00001"
 
 
-@pytest.mark.usefixtures("settings", "no_print")
+@pytest.mark.usefixtures("settings")
 def test_search_finds_old_and_new_numbers(db_session, user, product):
     db_session.add(
         Sale(document_number="REC-3F9A1C2B", user_id=user.id, total_amount=Decimal("10"), payment_method="CASH")

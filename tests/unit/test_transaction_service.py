@@ -248,17 +248,17 @@ def test_void_creates_stock_movements(db_session, test_user, test_product, compl
 # ── Test Case G: Refund Full Workflow ────────────────────────────────────
 
 
-def test_process_refund(db_session, test_user, test_product, completed_sale):
-    """Full refund creates a negative sale, restores stock, links to original."""
-    with (
-        patch("cbpos.core.services.transaction_service.PrinterService"),
-        patch("cbpos.core.services.transaction_service.ConfigService.get_all", return_value={"language": "en"}),
-    ):
+def test_process_refund(db_session, test_user, test_product, completed_sale, peripherals):
+    """Full refund creates a negative sale, restores stock, links to original, and reports it to the hardware."""
+    with patch("cbpos.core.services.transaction_service.ConfigService.get_all", return_value={"language": "en"}):
         result = TransactionService.process_refund(completed_sale.id, "Defective item", test_user.id)
 
     assert result is True
 
     refund_sale = db_session.query(Sale).filter(Sale.refund_of_sale_id == completed_sale.id).first()
+    (event,) = peripherals.events
+    assert event.refund_sale.id == refund_sale.id
+    assert event.voucher
     assert refund_sale is not None
     assert refund_sale.total_amount == Decimal("-200")
     assert refund_sale.payment_method == "REFUND"

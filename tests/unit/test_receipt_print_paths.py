@@ -10,8 +10,8 @@ build with ReceiptBuilder (what the Settings preview shows) and queue one
 print job on the worker.
 
 No real printer or settings file is touched: ConfigService is backed by a
-dict and PrintWorker is a mock. Sales print through the production
-peripherals adapter (#733), passed per call.
+dict and PrintWorker is a mock. Sales and refunds print through the production
+peripherals adapter (#733, #734), passed per call.
 """
 
 from datetime import datetime
@@ -297,7 +297,10 @@ class TestTransactionAutoPrint:
         sale = _sell(db_product)
         worker.add_job.reset_mock()
 
-        assert TransactionService.process_refund(sale.id, "Damaged", db_user.id) is True
+        assert (
+            TransactionService.process_refund(sale.id, "Damaged", db_user.id, peripherals=PrintWorkerPeripherals())
+            is True
+        )
 
         ((job_type, commands),) = queued_jobs(worker)
         assert job_type == "print_receipt"
@@ -315,7 +318,10 @@ class TestTransactionAutoPrint:
         worker.add_job.reset_mock()
         config_store.set("auto_print_receipt", False)
 
-        assert TransactionService.process_refund(sale.id, "Damaged", db_user.id) is True
+        assert (
+            TransactionService.process_refund(sale.id, "Damaged", db_user.id, peripherals=PrintWorkerPeripherals())
+            is True
+        )
 
         worker.add_job.assert_not_called()
 

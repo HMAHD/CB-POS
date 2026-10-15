@@ -16,11 +16,9 @@ import logging
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QFileDialog,
-    QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QLineEdit,
     QMenu,
     QMessageBox,
     QPushButton,
@@ -37,12 +35,11 @@ from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.backup_password_dialog import BackupPasswordDialog, ensure_backup_password
 from cbpos.ui.views.data_safety.export_tab import ExportTabWidget
 from cbpos.ui.views.data_safety.maintenance_tab import MaintenanceTabWidget
+from cbpos.ui.views.data_safety.restore_tab import RestoreTabWidget
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.workers import (
     BackupListWorker,
     BackupWorker,
-    RestoreWorker,
-    VerifyBackupWorker,
 )
 
 logger = logging.getLogger(__name__)
@@ -91,7 +88,9 @@ class DataSafetyView(QWidget):
         # Tabs — let QSS handle tab styling
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_backup_tab(), "")
-        self.tabs.addTab(self._build_restore_tab(), "")
+        self.restore_tab = RestoreTabWidget(self._overlay)
+        self.restore_tab.password_changed.connect(self._update_password_status)
+        self.tabs.addTab(self.restore_tab, "")
         self.maintenance_tab = MaintenanceTabWidget(self._overlay)
         self.tabs.addTab(self.maintenance_tab, "")
         self.export_tab = ExportTabWidget()
@@ -269,11 +268,8 @@ class DataSafetyView(QWidget):
         """Open the Restore tab with this backup's file filled in."""
         if row < 0 or row >= len(self._backup_data):
             return
-        self.input_restore_path.setText(self._backup_data[row]["path"])
-        self.input_restore_password.clear()
-        self.lbl_verify_result.setText("")
-        self.tabs.setCurrentIndex(1)
-        self.input_restore_password.setFocus()
+        self.tabs.setCurrentWidget(self.restore_tab)
+        self.restore_tab.load_backup(self._backup_data[row]["path"])
 
     def _on_backup_list_error(self, message: str) -> None:
         self._overlay.hide_loading()
@@ -336,11 +332,10 @@ class DataSafetyView(QWidget):
         if ConfigService.has_backup_password():
             self.lbl_pwd_status.setText(_t("data_safety.pwd_status_set"))
             self.btn_backup_password.setText(_t("data_safety.btn_change_password"))
-            self.input_restore_password.setPlaceholderText(_t("data_safety.restore_pwd_placeholder_shop"))
         else:
             self.lbl_pwd_status.setText(_t("data_safety.pwd_status_not_set"))
             self.btn_backup_password.setText(_t("data_safety.btn_set_password"))
-            self.input_restore_password.setPlaceholderText(_t("data_safety.restore_pwd_placeholder"))
+        self.restore_tab.refresh_password_hint()
 
     def _on_backup_error(self, error: str) -> None:
         self._overlay.hide_loading()
@@ -418,228 +413,6 @@ class DataSafetyView(QWidget):
 
     # ── Restore Tab ───────────────────────────────────────────────────────
 
-    def _build_restore_tab(self) -> QWidget:
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        layout.setContentsMargins(8, 16, 8, 8)
-        layout.setSpacing(16)
-
-        # Warning banner — objectName for theme-specific warning styling
-        self.lbl_restore_warning = QLabel()
-        self.lbl_restore_warning.setObjectName("RestoreWarning")
-        self.lbl_restore_warning.setWordWrap(True)
-        layout.addWidget(self.lbl_restore_warning)
-
-        # File selection
-        self.grp_restore_file = QGroupBox()
-        file_layout = QVBoxLayout(self.grp_restore_file)
-
-        file_row = QHBoxLayout()
-        self.input_restore_path = QLineEdit()
-        self.input_restore_path.setReadOnly(True)
-        file_row.addWidget(self.input_restore_path, 1)
-
-        self.btn_browse = QPushButton()
-        self.btn_browse.clicked.connect(self._browse_restore_file)
-        file_row.addWidget(self.btn_browse)
-        file_layout.addLayout(file_row)
-
-        # Password
-        pwd_row = QHBoxLayout()
-        self.input_restore_password = QLineEdit()
-        self.input_restore_password.setEchoMode(QLineEdit.EchoMode.Password)
-        pwd_row.addWidget(self.input_restore_password, 1)
-
-        self.btn_toggle_restore_pwd = QPushButton()
-        self.btn_toggle_restore_pwd.setFixedWidth(80)
-        self.btn_toggle_restore_pwd.clicked.connect(self._toggle_restore_password_visibility)
-        pwd_row.addWidget(self.btn_toggle_restore_pwd)
-        file_layout.addLayout(pwd_row)
-
-        layout.addWidget(self.grp_restore_file)
-
-        # Verification result
-        self.lbl_verify_result = QLabel("")
-        self.lbl_verify_result.setWordWrap(True)
-        layout.addWidget(self.lbl_verify_result)
-
-        layout.addStretch()
-
-        # Action buttons
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(10)
-
-        self.btn_verify = QPushButton()
-        self.btn_verify.setProperty("class", "accent")
-        self.btn_verify.clicked.connect(self._verify_backup)
-        btn_layout.addWidget(self.btn_verify)
-
-        self.btn_restore = QPushButton()
-        self.btn_restore.setProperty("class", "danger")
-        self.btn_restore.clicked.connect(self._restore_backup)
-        btn_layout.addWidget(self.btn_restore)
-
-        btn_layout.addStretch()
-        layout.addLayout(btn_layout)
-
-        return tab
-
-    def _browse_restore_file(self) -> None:
-        backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
-        path, _ = QFileDialog.getOpenFileName(
-            self, _t("data_safety.restore_select_file"), backup_dir, "Backup Files (*.zip)"
-        )
-        if path:
-            self.input_restore_path.setText(path)
-            self.lbl_verify_result.setText("")
-
-    def _restore_password(self) -> str:
-        """The typed password, or the shop backup password when left empty.
-
-        Older backups made with a per-backup password still restore with
-        the password typed here.
-        """
-        return self.input_restore_password.text() or ConfigService.get_backup_password() or ""
-
-    def _verify_backup(self) -> None:
-        path = self.input_restore_path.text().strip()
-        password = self._restore_password()
-        if not path:
-            QMessageBox.warning(
-                self,
-                _t("data_safety.restore_no_file_title"),
-                _t("data_safety.restore_no_file_msg"),
-            )
-            return
-        if not password:
-            QMessageBox.warning(
-                self,
-                _t("data_safety.restore_no_pwd_title"),
-                _t("data_safety.restore_no_pwd_msg"),
-            )
-            return
-
-        # Verify decrypts and checks the whole database -- keep it off the
-        # UI thread so large backups don't freeze the window (#629).
-        self.btn_verify.setEnabled(False)
-        self.btn_restore.setEnabled(False)
-        self.lbl_verify_result.setText("")
-        self._overlay.show_loading(_t("data_safety.verify_running"))
-        self._verify_worker = VerifyBackupWorker(path, password)
-        self._verify_worker.result.connect(self._on_verify_finished)
-        self._verify_worker.start()
-
-    def _on_verify_finished(self, result: dict) -> None:
-        self._overlay.hide_loading()
-        self.btn_verify.setEnabled(True)
-        self.btn_restore.setEnabled(True)
-        if result["valid"]:
-            file_count = len(result["files"])
-            self.lbl_verify_result.setProperty("class", "credit")
-            self.lbl_verify_result.setText(_t("data_safety.restore_valid", size=result["size"], count=file_count))
-        else:
-            self.lbl_verify_result.setProperty("class", "debit")
-            code = result.get("error_code")
-            error = _t(f"data_safety.error_{code}") if code else result["error"]
-            self.lbl_verify_result.setText(_t("data_safety.restore_invalid", error=error))
-        # Force style refresh after property change
-        self.lbl_verify_result.style().unpolish(self.lbl_verify_result)
-        self.lbl_verify_result.style().polish(self.lbl_verify_result)
-
-    def _restore_backup(self) -> None:
-        from cbpos.core.constants.permissions import Permissions
-        from cbpos.core.utils.permission_helper import check_permission_with_override
-
-        if not check_permission_with_override(Permissions.DATA_SAFETY_RESTORE, self):
-            return
-
-        path = self.input_restore_path.text().strip()
-        password = self._restore_password()
-        if not path:
-            QMessageBox.warning(
-                self,
-                _t("data_safety.restore_no_file_title"),
-                _t("data_safety.restore_no_file_msg"),
-            )
-            return
-        if not password:
-            QMessageBox.warning(
-                self,
-                _t("data_safety.restore_no_pwd_title"),
-                _t("data_safety.restore_no_pwd_msg"),
-            )
-            return
-
-        # The safety snapshot is locked with the shop password -- no
-        # password, no snapshot, no restore (#628).
-        snapshot_password = ensure_backup_password(self)
-        self._update_password_status()
-        if not snapshot_password:
-            return
-
-        reply = QMessageBox.warning(
-            self,
-            _t("data_safety.restore_confirm_title"),
-            _t("data_safety.restore_confirm_msg"),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if reply != QMessageBox.StandardButton.Yes:
-            return
-
-        self.btn_restore.setEnabled(False)
-        self.btn_verify.setEnabled(False)
-        self._overlay.show_loading(_t("data_safety.restore_restoring"))
-
-        self._restore_worker = RestoreWorker(path, password)
-        self._restore_worker.result.connect(self._on_restore_finished)
-        self._restore_worker.refused.connect(self._on_restore_refused)
-        self._restore_worker.error.connect(self._on_restore_error)
-        self._restore_worker.start()
-
-    def _on_restore_refused(self, code: str) -> None:
-        """The backup was rejected before anything changed -- say why in plain words."""
-        self._on_restore_error(_t(f"data_safety.error_{code}"))
-
-    def _on_restore_finished(self, success: bool) -> None:
-        self._overlay.hide_loading()
-        self.btn_restore.setEnabled(True)
-        self.btn_restore.setText(_t("data_safety.btn_restore"))
-        self.btn_verify.setEnabled(True)
-
-        if success:
-            QMessageBox.information(
-                self,
-                _t("data_safety.restore_complete_title"),
-                _t("data_safety.restore_complete_msg"),
-            )
-        else:
-            QMessageBox.critical(
-                self,
-                _t("data_safety.restore_failed_title"),
-                _t("data_safety.restore_failed_msg"),
-            )
-
-    def _on_restore_error(self, error: str) -> None:
-        self._overlay.hide_loading()
-        self.btn_restore.setEnabled(True)
-        self.btn_restore.setText(_t("data_safety.btn_restore"))
-        self.btn_verify.setEnabled(True)
-        QMessageBox.critical(
-            self,
-            _t("data_safety.restore_failed_title"),
-            _t("data_safety.restore_failed_error_msg", error=error),
-        )
-
-    def _toggle_restore_password_visibility(self) -> None:
-        """Toggle visibility of the restore password input."""
-        if self.input_restore_password.echoMode() == QLineEdit.EchoMode.Password:
-            self.input_restore_password.setEchoMode(QLineEdit.EchoMode.Normal)
-            self.btn_toggle_restore_pwd.setText(_t("data_safety.btn_hide"))
-        else:
-            self.input_restore_password.setEchoMode(QLineEdit.EchoMode.Password)
-            self.btn_toggle_restore_pwd.setText(_t("data_safety.btn_show"))
-
     # ── Maintenance Tab ───────────────────────────────────────────────────
 
     # ── Export Data Tab ───────────────────────────────────────────────────
@@ -675,15 +448,7 @@ class DataSafetyView(QWidget):
         if self._last_status is not None:
             self._on_backup_status(self._last_status)
 
-        # Restore tab
-        self.lbl_restore_warning.setText(_t("data_safety.restore_warning_full"))
-        self.grp_restore_file.setTitle(_t("data_safety.restore_file_group"))
-        self.input_restore_path.setPlaceholderText(_t("data_safety.restore_file_placeholder"))
-        self.btn_browse.setText(_t("data_safety.btn_browse"))
-        self._update_password_status()
-        self.btn_toggle_restore_pwd.setText(_t("data_safety.btn_show"))
-        self.btn_verify.setText(_t("data_safety.btn_verify"))
-        self.btn_restore.setText(_t("data_safety.btn_restore"))
+        self.restore_tab.retranslate_ui()
 
         self.maintenance_tab.retranslate_ui()
 

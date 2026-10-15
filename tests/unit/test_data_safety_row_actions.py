@@ -66,15 +66,15 @@ def test_type_column_labels_each_kind(view):
 
 
 def test_row_restore_prefills_the_restore_tab(view):
-    view.input_restore_password.setText("left over")
-    view.lbl_verify_result.setText("old result")
+    view.restore_tab.input_restore_password.setText("left over")
+    view.restore_tab.lbl_verify_result.setText("old result")
 
     _row_button(view, 1, "BackupRowRestore").click()
 
     assert view.tabs.currentIndex() == 1
-    assert view.input_restore_path.text() == BACKUPS[1]["path"]
-    assert view.input_restore_password.text() == ""
-    assert view.lbl_verify_result.text() == ""
+    assert view.restore_tab.input_restore_path.text() == BACKUPS[1]["path"]
+    assert view.restore_tab.input_restore_password.text() == ""
+    assert view.restore_tab.lbl_verify_result.text() == ""
 
 
 def test_row_delete_asks_first(view, monkeypatch):

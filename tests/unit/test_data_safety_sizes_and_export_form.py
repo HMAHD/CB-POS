@@ -65,4 +65,4 @@ def test_export_date_rows_only_for_sales(view):
 
 
 def test_restore_warning_wraps(view):
-    assert view.lbl_restore_warning.wordWrap() is True
+    assert view.restore_tab.lbl_restore_warning.wordWrap() is True

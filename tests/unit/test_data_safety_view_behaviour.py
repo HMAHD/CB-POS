@@ -176,7 +176,9 @@ class TestBackupTab:
         view._update_password_status()
 
         assert view.btn_backup_password.text() == _t("data_safety.btn_change_password")
-        assert view.input_restore_password.placeholderText() == _t("data_safety.restore_pwd_placeholder_shop")
+        assert view.restore_tab.input_restore_password.placeholderText() == _t(
+            "data_safety.restore_pwd_placeholder_shop"
+        )
 
 
 # ── Restore tab ───────────────────────────────────────────────────────────
@@ -184,86 +186,86 @@ class TestBackupTab:
 
 class TestRestoreTab:
     def test_browse_fills_the_path_and_clears_the_old_result(self, view, monkeypatch):
-        view.lbl_verify_result.setText("old")
+        view.restore_tab.lbl_verify_result.setText("old")
         monkeypatch.setattr(QFileDialog, "getOpenFileName", staticmethod(lambda *a, **k: ("/b/cbpos_backup_x.zip", "")))
 
-        view.btn_browse.click()
+        view.restore_tab.btn_browse.click()
 
-        assert view.input_restore_path.text() == "/b/cbpos_backup_x.zip"
-        assert view.lbl_verify_result.text() == ""
+        assert view.restore_tab.input_restore_path.text() == "/b/cbpos_backup_x.zip"
+        assert view.restore_tab.lbl_verify_result.text() == ""
 
     def test_verify_without_a_file_warns(self, view, boxes, started):
-        view.btn_verify.click()
+        view.restore_tab.btn_verify.click()
 
         assert len(boxes["warning"]) == 1
         assert started == []
 
     def test_verify_falls_back_to_the_shop_password(self, view, started):
         ConfigService.set_backup_password("shop-pass-1")
-        view.input_restore_path.setText("/b/x.zip")
+        view.restore_tab.input_restore_path.setText("/b/x.zip")
 
-        view.btn_verify.click()
+        view.restore_tab.btn_verify.click()
 
         worker = _last(started, workers.VerifyBackupWorker)
         assert (worker.backup_path, worker.password) == ("/b/x.zip", "shop-pass-1")
 
     def test_verify_valid_result_is_green(self, view, started):
-        view.input_restore_path.setText("/b/x.zip")
-        view.input_restore_password.setText("typed")
-        view.btn_verify.click()
+        view.restore_tab.input_restore_path.setText("/b/x.zip")
+        view.restore_tab.input_restore_password.setText("typed")
+        view.restore_tab.btn_verify.click()
 
         _last(started, workers.VerifyBackupWorker).result.emit({"valid": True, "files": ["a", "b"], "size": "1 MB"})
 
-        assert view.lbl_verify_result.property("class") == "credit"
-        assert "1 MB" in view.lbl_verify_result.text()
-        assert view.btn_restore.isEnabled() and view.btn_verify.isEnabled()
+        assert view.restore_tab.lbl_verify_result.property("class") == "credit"
+        assert "1 MB" in view.restore_tab.lbl_verify_result.text()
+        assert view.restore_tab.btn_restore.isEnabled() and view.restore_tab.btn_verify.isEnabled()
 
     def test_restore_runs_after_confirmation(self, view, allowed, boxes, started):
         ConfigService.set_backup_password("shop-pass-1")
-        view.input_restore_path.setText("/b/x.zip")
-        view.input_restore_password.setText("typed")
+        view.restore_tab.input_restore_path.setText("/b/x.zip")
+        view.restore_tab.input_restore_password.setText("typed")
 
-        view.btn_restore.click()
+        view.restore_tab.btn_restore.click()
         worker = _last(started, workers.RestoreWorker)
         assert (worker.backup_path, worker.password) == ("/b/x.zip", "typed")
 
         worker.result.emit(True)
 
-        assert view.btn_restore.isEnabled() is True
+        assert view.restore_tab.btn_restore.isEnabled() is True
         assert len(boxes["information"]) == 1
 
     def test_restore_declined_does_nothing(self, view, allowed, boxes, started):
         ConfigService.set_backup_password("shop-pass-1")
         boxes["answer"]["value"] = QMessageBox.StandardButton.No
-        view.input_restore_path.setText("/b/x.zip")
+        view.restore_tab.input_restore_path.setText("/b/x.zip")
 
-        view.btn_restore.click()
+        view.restore_tab.btn_restore.click()
 
         assert started == []
 
     def test_restore_refused_explains_why(self, view, allowed, boxes, started):
         ConfigService.set_backup_password("shop-pass-1")
-        view.input_restore_path.setText("/b/x.zip")
-        view.btn_restore.click()
+        view.restore_tab.input_restore_path.setText("/b/x.zip")
+        view.restore_tab.btn_restore.click()
 
         _last(started, workers.RestoreWorker).refused.emit("corrupt")
 
         assert _t("data_safety.error_corrupt") in boxes["critical"][-1][2]
-        assert view.btn_restore.isEnabled() is True
+        assert view.restore_tab.btn_restore.isEnabled() is True
 
     def test_restore_without_a_file_warns(self, view, allowed, boxes, started):
-        view.btn_restore.click()
+        view.restore_tab.btn_restore.click()
 
         assert len(boxes["warning"]) == 1
         assert started == []
 
     def test_show_hide_password(self, view):
-        view.btn_toggle_restore_pwd.click()
-        assert view.input_restore_password.echoMode() == QLineEdit.EchoMode.Normal
-        assert view.btn_toggle_restore_pwd.text() == _t("data_safety.btn_hide")
+        view.restore_tab.btn_toggle_restore_pwd.click()
+        assert view.restore_tab.input_restore_password.echoMode() == QLineEdit.EchoMode.Normal
+        assert view.restore_tab.btn_toggle_restore_pwd.text() == _t("data_safety.btn_hide")
 
-        view.btn_toggle_restore_pwd.click()
-        assert view.input_restore_password.echoMode() == QLineEdit.EchoMode.Password
+        view.restore_tab.btn_toggle_restore_pwd.click()
+        assert view.restore_tab.input_restore_password.echoMode() == QLineEdit.EchoMode.Password
 
 
 # ── Maintenance tab ───────────────────────────────────────────────────────
@@ -339,6 +341,6 @@ def test_switching_language_retranslates_every_tab(view, lang):
         _t("data_safety.tab_export"),
     ]
     assert view.btn_create_backup.text() == _t("data_safety.btn_create_backup")
-    assert view.btn_verify.text() == _t("data_safety.btn_verify")
+    assert view.restore_tab.btn_verify.text() == _t("data_safety.btn_verify")
     assert view.maintenance_tab.btn_vacuum.text() == _t("data_safety.maintenance_btn_optimize")
     assert view.export_tab.btn_do_export.text() == _t("data_safety.export_btn")

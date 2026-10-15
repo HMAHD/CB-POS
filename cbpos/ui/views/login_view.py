@@ -57,7 +57,10 @@ class LoginView(QWidget):
     def __init__(self):
         """Build the UI and register the theme/language callbacks."""
         super().__init__()
-        self.logo_label = None  # Store reference for theme updates
+        self.logo_label: QLabel | None = None  # Store reference for theme updates
+        self._logo_source: QPixmap | None = None
+        self._logo_side: int | None = None
+        self._btn_size: int | None = _BTN_SIZE
         self.init_ui()
 
         # Register theme callback to update logo
@@ -260,7 +263,7 @@ class LoginView(QWidget):
 
     def _fit_logo(self) -> None:
         """Shrink the branding logo on short windows, hiding it when tiny (#601)."""
-        source = getattr(self, "_logo_source", None)
+        source = self._logo_source
         if source is None or source.isNull():
             return
         # ~320px covers the welcome text, tagline, footer and spacing
@@ -270,7 +273,7 @@ class LoginView(QWidget):
             self.logo_label.setVisible(False)
             return
         self.logo_label.setVisible(True)
-        if side != getattr(self, "_logo_side", None):
+        if side != self._logo_side:
             self._logo_side = side
             self.logo_label.setPixmap(
                 source.scaled(
@@ -312,7 +315,7 @@ class LoginView(QWidget):
         by_w = (avail_w - (_NUM_COLS - 1) * _BTN_GAP) // _NUM_COLS
         btn_size = max(_BTN_SIZE_MIN, min(_BTN_SIZE_MAX, by_h, by_w))
 
-        if btn_size == getattr(self, "_btn_size", None):
+        if btn_size == self._btn_size:
             return
         self._btn_size = btn_size
 

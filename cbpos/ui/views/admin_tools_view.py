@@ -72,6 +72,8 @@ class AdminToolsView(QWidget):
         """Build the Database, Error Logs, and Hardware tabs."""
         super().__init__()
         self._current_log_entries: list = []
+        self._printer_worker = None
+        self._drawer_worker = None
         self._init_ui()
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui, owner=self)
@@ -452,7 +454,7 @@ class AdminToolsView(QWidget):
 
     def _export_logs(self) -> None:
         """Export displayed log entries to a text file."""
-        entries = getattr(self, "_current_log_entries", [])
+        entries = self._current_log_entries
         if not entries:
             QMessageBox.information(
                 self,
@@ -683,7 +685,7 @@ class AdminToolsView(QWidget):
 
     def _on_printer_test_timeout(self) -> None:
         """Handle printer test timeout after 15 seconds."""
-        worker = getattr(self, "_printer_worker", None)
+        worker = self._printer_worker
         # The worker deletes itself via QThread.finished -> deleteLater (#632).
         if worker is not None and not sip.isdeleted(worker) and worker.isRunning():
             self.btn_test_printer.setEnabled(True)
@@ -711,7 +713,7 @@ class AdminToolsView(QWidget):
 
     def _on_drawer_test_timeout(self) -> None:
         """Handle drawer test timeout after 15 seconds."""
-        worker = getattr(self, "_drawer_worker", None)
+        worker = self._drawer_worker
         # The worker deletes itself via QThread.finished -> deleteLater (#632).
         if worker is not None and not sip.isdeleted(worker) and worker.isRunning():
             self.btn_test_drawer.setEnabled(True)

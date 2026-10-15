@@ -9,6 +9,7 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.invoice_service import InvoiceService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.shift_report_builder import ShiftReportBuilder
+from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 
 logger = logging.getLogger(__name__)
@@ -149,26 +150,29 @@ class PrinterService:
         """
         Generate and print A4 Tax Invoice for B2B customers.
 
+        A failure (the PDF won't build, or can't be handed to the printer)
+        goes out on the print worker's ``error_occurred`` -- the Sales
+        screen shows it -- so the cashier knows the buyer has no tax
+        invoice. No A4 printer set up is not a failure.
+
         Args:
             sale: The sale transaction.
         """
+        a4_printer = ConfigService.get("a4_printer_name")
+        if not a4_printer:
+            logger.warning("[PrinterService] A4 printer not configured. Skipping invoice print.")
+            return
+
         try:
-            a4_printer = ConfigService.get("a4_printer_name")
-
-            if not a4_printer:
-                logger.warning("[PrinterService] A4 printer not configured. Skipping invoice print.")
-                return
-
-            temp_dir = tempfile.gettempdir()
-            pdf_path = os.path.join(temp_dir, f"invoice_{sale.id}.pdf")
-
+            pdf_path = os.path.join(tempfile.gettempdir(), f"invoice_{sale.id}.pdf")
             InvoiceService.generate_pdf(sale, pdf_path)
             logger.info("[PrinterService] Generated A4 invoice: %s", pdf_path)
-
             PrinterService._send_pdf_to_printer(pdf_path, a4_printer)
-
         except Exception as e:
-            logger.error("[PrinterService] Error printing A4 invoice: %s", e)
+            logger.exception("[PrinterService] Error printing A4 invoice for %s", sale.document_number)
+            PrintWorker.instance().error_occurred.emit(
+                _t("printer.a4_invoice_failed", document=sale.document_number or "", error=str(e))
+            )
 
     # Only allow safe characters in printer names and file paths
     _SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-\.\s\\/:]+$")
@@ -190,24 +194,23 @@ class PrinterService:
         Args:
             pdf_path: Path to PDF file.
             printer_name: System printer name.
+
+        Raises:
+            ValueError: If the path or printer name has disallowed characters.
+            OSError: If the print command can't be started.
         """
         import subprocess
 
-        try:
-            PrinterService._validate_name(pdf_path, "PDF path")
-            PrinterService._validate_name(printer_name, "printer name")
+        PrinterService._validate_name(pdf_path, "PDF path")
+        PrinterService._validate_name(printer_name, "printer name")
 
-            subprocess.Popen(
-                [
-                    "powershell",
-                    "-Command",
-                    f'Start-Process -FilePath "{pdf_path}" -Verb Print -WindowStyle Hidden',
-                ],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            logger.info("[PrinterService] Sent PDF to printer: %s", printer_name)
-        except ValueError as e:
-            logger.error("[PrinterService] Validation error: %s", e)
-        except Exception as e:
-            logger.error("[PrinterService] Error sending PDF to printer: %s", e)
+        subprocess.Popen(
+            [
+                "powershell",
+                "-Command",
+                f'Start-Process -FilePath "{pdf_path}" -Verb Print -WindowStyle Hidden',
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        logger.info("[PrinterService] Sent PDF to printer: %s", printer_name)

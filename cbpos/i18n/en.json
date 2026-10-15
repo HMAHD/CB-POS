@@ -158,7 +158,8 @@
       "usb_not_found": "No USB printer found with ID {usb_id}. Check the cable and power.",
       "usb_access_denied": "Another program or the Windows driver is using the printer. Try \"Windows printer\" instead.",
       "failed": "The printer didn't respond. Check the cable, power and settings."
-    }
+    },
+    "a4_invoice_failed": "The tax invoice for {document} didn't print: {error}"
   },
   "sales": {
     "search_placeholder_all": "Scan or type product... (Enter)",

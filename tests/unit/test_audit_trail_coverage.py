@@ -113,8 +113,7 @@ class TestVoidSaleAuditLog:
 
 class TestRefundAuditLog:
     def test_refund_writes_an_audit_log(self, db_session, test_user, completed_sale):
-        with patch("cbpos.core.services.transaction_service.TransactionService._print_receipt_async"):
-            TransactionService.process_refund(completed_sale.id, "Defective item", test_user.id)
+        TransactionService.process_refund(completed_sale.id, "Defective item", test_user.id)
 
         logs = _logs_for(db_session, "REFUND")
         assert len(logs) == 1

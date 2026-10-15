@@ -340,20 +340,6 @@ class TransactionService:
                 logger.warning("%s number %s already taken, retrying", doc_type, sale.document_number)
 
     @staticmethod
-    def _print_receipt_async(sale: Sale) -> None:
-        """Auto-print the sale receipt on the print worker thread.
-
-        Goes through `PrinterService.print_transaction`, so the receipt is
-        built by `ReceiptBuilder` (honours every receipt setting, the
-        receipt language, auto-print and copies). A failure is logged,
-        never raised -- the sale is already committed.
-        """
-        try:
-            PrinterService.print_transaction(sale)
-        except Exception as e:
-            logger.error("Auto-print of %s failed: %s", sale.document_number, e)
-
-    @staticmethod
     def _new_sale(
         totals: dict[str, Any], payments: list[dict[str, Any]], cashier_id: int, customer_id: int | None
     ) -> Sale:

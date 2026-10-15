@@ -75,9 +75,9 @@ class SalesView(QWidget):
 
         # Listen for print/drawer failures for the rest of the app's
         # lifetime. Covers open_cash_drawer() below, and also the
-        # automatic post-sale receipt print (TransactionService's
-        # _print_receipt_async(), used when show_receipt_dialog is off
-        # for a frictionless checkout) -- that path has no dialog of its
+        # automatic post-sale receipt print (PrintWorkerPeripherals, used
+        # when show_receipt_dialog is off for a frictionless checkout)
+        # -- that path has no dialog of its
         # own to report a failure through, so without this the cashier
         # had no way to know a receipt silently failed to print.
         from cbpos.infrastructure.hardware.escpos_driver import PrintWorker

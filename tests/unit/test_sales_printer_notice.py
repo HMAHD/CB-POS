@@ -115,7 +115,7 @@ class TestCashSaleWithNoPrinter:
         view.printer_notice_close.click()
         worker = PrintWorker.instance()
         with patch("cbpos.ui.views.sales_view.QMessageBox") as mock_box:
-            worker.add_job("kick_drawer", ["CASH"])  # what _execute_sale() queues
+            worker.add_job("kick_drawer", ["CASH"])  # what PrintWorkerPeripherals queues after a sale
             qtbot.waitUntil(worker._queue.empty, timeout=5000)
             qtbot.wait(300)  # let any (wrong) signal reach the UI thread
             mock_box.warning.assert_not_called()

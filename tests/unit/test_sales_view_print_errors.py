@@ -3,8 +3,8 @@ Tests that SalesView surfaces a print failure to the cashier for the
 "frictionless" auto-print path (show_receipt_dialog off), not just for
 the cash drawer.
 
-TransactionService._print_receipt_async() (called from _execute_sale()
-only when show_receipt_dialog is off) queues the receipt print job via
+PrintWorkerPeripherals.sale_completed() (called after a sale commits;
+prints only when show_receipt_dialog is off) queues the receipt print job via
 PrintWorker.instance().add_job(...) and returns -- there's no dialog open
 at that point to react synchronously (that's the point of "frictionless"),
 so before this fix there was no connection to error_occurred anywhere in
@@ -38,7 +38,7 @@ def view(qapp, db_session):
 
 class TestAutoPrintErrorsReachTheCashier:
     def test_error_from_any_queued_job_shows_a_warning(self, view):
-        """Simulates TransactionService._print_receipt_async() failing --
+        """Simulates the post-sale auto-print (PrintWorkerPeripherals) failing --
         no dialog is open, just SalesView's own permanent connection."""
         with patch("cbpos.ui.views.sales_view.QMessageBox") as mock_box:
             PrintWorker.instance().error_occurred.emit("Printer not available.")

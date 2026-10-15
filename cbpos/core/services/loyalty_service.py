@@ -140,26 +140,62 @@ class LoyaltyService:
 
         final_bill = Decimal(str(sale.total_amount or 0))
         points = LoyaltyService.calculate_points_earned(final_bill)
-        if points <= 0:
-            return None
 
         customer = session.get(Customer, sale.customer_id, with_for_update=True)
         if not customer:
             logger.warning("record_sale_points: Customer %d not found", sale.customer_id)
             return None
 
-        customer.loyalty_points = (customer.loyalty_points or 0) + points
+        sale.loyalty_points_earned = points
 
-        entry = LoyaltyLedgerEntry(
-            customer_id=customer.id,
-            entry_type="EARN",
-            points=points,
-            balance_after=customer.loyalty_points,
-            reference_id=sale.id,
-            note=f"Earned on sale {sale.document_number}",
-        )
-        session.add(entry)
-        return entry
+        if points > 0:
+            customer.loyalty_points = (customer.loyalty_points or 0) + points
+
+            entry = LoyaltyLedgerEntry(
+                customer_id=customer.id,
+                entry_type="EARN",
+                points=points,
+                balance_after=customer.loyalty_points,
+                reference_id=sale.id,
+                note=f"Earned on sale {sale.document_number}",
+            )
+            session.add(entry)
+            sale.loyalty_points_balance = customer.loyalty_points
+            return entry
+        else:
+            sale.loyalty_points_balance = customer.loyalty_points or 0
+            return None
+
+    @staticmethod
+    def get_sale_loyalty_figures(sale: Sale) -> dict[str, int] | None:
+        """Return {'earned': int, 'redeemed': int, 'balance': int} for a sale.
+
+        Returns None if no customer was attached or loyalty was disabled.
+        """
+        if not getattr(sale, "customer_id", None) and not getattr(sale, "customer", None):
+            return None
+
+        # 1. Sale has its own recorded balance snapshot
+        if getattr(sale, "loyalty_points_balance", None) is not None:
+            return {
+                "earned": getattr(sale, "loyalty_points_earned", 0) or 0,
+                "redeemed": getattr(sale, "loyalty_points_redeemed", 0) or 0,
+                "balance": sale.loyalty_points_balance,
+            }
+
+        # 2. Attached customer has loyalty_points loaded (fallback for detached/legacy sales)
+        customer = getattr(sale, "customer", None)
+        if customer is not None and hasattr(customer, "loyalty_points"):
+            try:
+                return {
+                    "earned": getattr(sale, "loyalty_points_earned", 0) or 0,
+                    "redeemed": getattr(sale, "loyalty_points_redeemed", 0) or 0,
+                    "balance": customer.loyalty_points or 0,
+                }
+            except Exception:
+                pass
+
+        return None
 
     @staticmethod
     def reverse_sale_points(session: Session, sale: Sale, reason: str = "VOID") -> LoyaltyLedgerEntry | None:

@@ -193,6 +193,8 @@ class Sale(Document):
     additional_discount_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     loyalty_points_redeemed: Mapped[int] = mapped_column(Integer, default=0)
     loyalty_points_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    loyalty_points_earned: Mapped[int] = mapped_column(Integer, default=0)
+    loyalty_points_balance: Mapped[int | None] = mapped_column(Integer, nullable=True)
     payment_method: Mapped[str] = mapped_column(String(20), nullable=False)  # Primary method
     refund_of_sale_id: Mapped[int | None] = mapped_column(ForeignKey("sales.id"), nullable=True)
 

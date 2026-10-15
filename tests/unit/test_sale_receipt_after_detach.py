@@ -164,6 +164,8 @@ class TestDetachedSalePrints:
         lines = _printed_lines(print_queue, event)
         assert _mentions(lines, "Samba Rice 5kg")
         assert _mentions(lines, cashier.username)
+        assert not _mentions(lines, "Points Earned:")
+        assert not _mentions(lines, "Points Balance:")
 
     def test_customer_sale_split_cash_and_credit(self, db_session, cashier, print_queue):
         dhal = _product(db_session, "Mysore Dhal 1kg", "400.00", "20")
@@ -180,6 +182,8 @@ class TestDetachedSalePrints:
         assert _mentions(lines, customer.name)
         assert _mentions(lines, "Mysore Dhal 1kg")
         assert _mentions(lines, cashier.username)
+        assert _mentions(lines, "Points Earned:")
+        assert _mentions(lines, "Points Balance:")
 
     def test_vat_registered_customer_sale_receipt(self, db_session, cashier, print_queue):
         cement = _product(db_session, "Cement 50kg", "2360.00", "40")

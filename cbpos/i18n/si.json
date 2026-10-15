@@ -1936,7 +1936,10 @@
     "void_value": "අවලංගු කළ වටිනාකම",
     "end_of_report": "*** වාර්තාව අවසානයි ***",
     "refund_given_back": "ආපහු දුන්නා: {amount}",
-    "refund_off_credit": "ණයෙන් අඩු කළා: {amount}"
+    "refund_off_credit": "ණයෙන් අඩු කළා: {amount}",
+    "loyalty_earned": "ලබාගත් ලකුණු:",
+    "loyalty_redeemed": "භාවිත කළ ලකුණු:",
+    "loyalty_balance": "ලකුණු ශේෂය:"
   },
   "cash_movement": {
     "record_title_out": "ලාච්චුවෙන් මුදල් ගන්න",

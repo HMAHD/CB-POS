@@ -1685,7 +1685,7 @@
       "lock_on_idle": "Lock screen when idle",
       "inactivity_timeout": "Inactivity Timeout:",
       "timeout_disabled": "Disabled (no auto-lock)",
-      "tooltip_timeout": "Auto-logout after inactivity. 0 = disabled.",
+      "tooltip_timeout": "Log out automatically after this many minutes with no activity (1–60). To turn this off, untick \"Lock screen when idle\".",
       "require_void_reason": "Require Void Reason:",
       "tooltip_void_reason": "Require a reason when voiding a transaction",
       "max_login_attempts": "Max Login Attempts:",

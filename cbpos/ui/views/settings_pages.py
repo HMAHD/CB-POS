@@ -55,6 +55,9 @@ from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
 
+# Dynamic property holding a section header's i18n key (see _make_section_header).
+_SECTION_TITLE_KEY = "i18n_key"
+
 
 class SettingsPage(QWidget):
     """Base class for settings pages with standardized tab-based layout."""
@@ -226,9 +229,12 @@ class SettingsPage(QWidget):
         QMessageBox.information(self, _t("common.success"), _t("settings.reset_defaults_done"))
 
     @staticmethod
-    def _make_section_header(title: str) -> QWidget:
+    def _make_section_header(title_key: str) -> QWidget:
         """Create a styled section header: the title with a full-width divider under it.
 
+        Takes the i18n key, not translated text: the key is kept on the title
+        label so ``_retranslate_section_headers`` can follow a live language
+        switch (#739).
         The line sits below the title, not beside it -- on the same row it ran
         through the text's mid-height and read as a strike-through (#617).
         Use with ``form.addRow(header)`` (single-arg overload so it spans
@@ -239,8 +245,9 @@ class SettingsPage(QWidget):
         col.setContentsMargins(0, 10, 0, 2)
         col.setSpacing(4)
 
-        lbl = QLabel(title)
+        lbl = QLabel(_t(title_key))
         lbl.setObjectName("SettingsSectionTitle")
+        lbl.setProperty(_SECTION_TITLE_KEY, title_key)
         col.addWidget(lbl)
 
         line = QFrame()
@@ -249,6 +256,13 @@ class SettingsPage(QWidget):
         col.addWidget(line)
 
         return container
+
+    def _retranslate_section_headers(self) -> None:
+        """Re-apply the current language to every section header on this page (#739)."""
+        for lbl in self.findChildren(QLabel, "SettingsSectionTitle"):
+            key = lbl.property(_SECTION_TITLE_KEY)
+            if key:
+                lbl.setText(_t(key))
 
     def equalize_form_labels(self, container: QWidget | None = None) -> None:
         """Ensure all QFormLayout label widgets in container (or this page) have identical width.
@@ -993,7 +1007,7 @@ class HardwarePage(SettingsPage):
         available_printers = system_printers or [_t("settings.hardware.no_printers")]
 
         # Section: Printer Selection
-        self._header_printer_sel = self._make_section_header(_t("settings.hardware.section_printer_selection"))
+        self._header_printer_sel = self._make_section_header("settings.hardware.section_printer_selection")
         vbox_printer.addWidget(self._header_printer_sel)
 
         sel_form = QFormLayout()
@@ -1052,7 +1066,7 @@ class HardwarePage(SettingsPage):
         vbox_printer.addLayout(sel_form)
 
         # Section: Print Behavior
-        self._header_print_beh = self._make_section_header(_t("settings.hardware.section_print_behavior"))
+        self._header_print_beh = self._make_section_header("settings.hardware.section_print_behavior")
         vbox_printer.addWidget(self._header_print_beh)
 
         beh_form = QFormLayout()
@@ -1071,7 +1085,7 @@ class HardwarePage(SettingsPage):
         vbox_printer.addLayout(beh_form)
 
         # Test Buttons
-        self._header_test_hw = self._make_section_header(_t("settings.hardware.section_test_hardware"))
+        self._header_test_hw = self._make_section_header("settings.hardware.section_test_hardware")
         vbox_printer.addWidget(self._header_test_hw)
         test_row = QHBoxLayout()
         self.btn_test_print = QPushButton()
@@ -1104,7 +1118,7 @@ class HardwarePage(SettingsPage):
         tab_cut, vbox_cut = self._build_vbox_tab()
 
         # Section: Paper Cut
-        self._header_paper_cut = self._make_section_header(_t("settings.hardware.section_paper_cut"))
+        self._header_paper_cut = self._make_section_header("settings.hardware.section_paper_cut")
         vbox_cut.addWidget(self._header_paper_cut)
 
         cut_form = QFormLayout()
@@ -1132,7 +1146,7 @@ class HardwarePage(SettingsPage):
         vbox_cut.addLayout(cut_form)
 
         # Section: Cash Drawer
-        self._header_cash_drawer = self._make_section_header(_t("settings.hardware.section_cash_drawer"))
+        self._header_cash_drawer = self._make_section_header("settings.hardware.section_cash_drawer")
         vbox_cut.addWidget(self._header_cash_drawer)
 
         drawer_form = QFormLayout()
@@ -1149,7 +1163,7 @@ class HardwarePage(SettingsPage):
         # --- Tab: Scale ---
         tab_scale, vbox_scale = self._build_vbox_tab()
 
-        self._header_scale = self._make_section_header(_t("settings.hardware.section_weighing_scale"))
+        self._header_scale = self._make_section_header("settings.hardware.section_weighing_scale")
         vbox_scale.addWidget(self._header_scale)
 
         scale_form = QFormLayout()
@@ -1182,6 +1196,7 @@ class HardwarePage(SettingsPage):
         self._page_title.setText(_t("settings.hardware.title"))
         self.btn_reset_defaults.setText(_t("settings.btn_reset_defaults"))
         self._page_subtitle.setText(_t("settings.hardware.subtitle"))
+        self._retranslate_section_headers()
 
         self.tabs.setTabText(0, _t("settings.hardware.tab_printers"))
         self.tabs.setTabText(1, _t("settings.hardware.tab_cut_drawer"))
@@ -1540,7 +1555,7 @@ class ReceiptPage(SettingsPage):
         tab_content, vbox_content = self._build_vbox_tab()
 
         # Section: Logo
-        self._header_logo = self._make_section_header(_t("settings.receipt.section_logo"))
+        self._header_logo = self._make_section_header("settings.receipt.section_logo")
         vbox_content.addWidget(self._header_logo)
 
         logo_form = QFormLayout()
@@ -1572,7 +1587,7 @@ class ReceiptPage(SettingsPage):
         vbox_content.addLayout(logo_form)
 
         # Section: Header & Footer
-        self._header_hf = self._make_section_header(_t("settings.receipt.section_header_footer"))
+        self._header_hf = self._make_section_header("settings.receipt.section_header_footer")
         vbox_content.addWidget(self._header_hf)
 
         hf_form = QFormLayout()
@@ -1611,7 +1626,7 @@ class ReceiptPage(SettingsPage):
         vbox_content.addLayout(hf_form)
 
         # Section: Receipt Language
-        self._header_receipt_lang = self._make_section_header(_t("settings.receipt.section_receipt_language"))
+        self._header_receipt_lang = self._make_section_header("settings.receipt.section_receipt_language")
         vbox_content.addWidget(self._header_receipt_lang)
 
         lang_form = QFormLayout()
@@ -1648,7 +1663,7 @@ class ReceiptPage(SettingsPage):
         tab_display, vbox_display = self._build_vbox_tab()
 
         # Section: Receipt Elements
-        self._header_elements = self._make_section_header(_t("settings.receipt.section_receipt_elements"))
+        self._header_elements = self._make_section_header("settings.receipt.section_receipt_elements")
         vbox_display.addWidget(self._header_elements)
 
         elem_form = QFormLayout()
@@ -1673,7 +1688,7 @@ class ReceiptPage(SettingsPage):
         # (show_qr_on_receipt/receipt_qr_content) already existed, just
         # never wired to a toggle, a builder emission, or a printer
         # command (#328).
-        self._header_qr = self._make_section_header(_t("settings.receipt.section_qr"))
+        self._header_qr = self._make_section_header("settings.receipt.section_qr")
         vbox_display.addWidget(self._header_qr)
 
         qr_form = QFormLayout()
@@ -1692,7 +1707,7 @@ class ReceiptPage(SettingsPage):
         vbox_display.addLayout(qr_form)
 
         # Section: Staff & Terminal
-        self._header_staff = self._make_section_header(_t("settings.receipt.section_staff_terminal"))
+        self._header_staff = self._make_section_header("settings.receipt.section_staff_terminal")
         vbox_display.addWidget(self._header_staff)
 
         staff_form = QFormLayout()
@@ -1737,6 +1752,7 @@ class ReceiptPage(SettingsPage):
         self._page_title.setText(_t("settings.receipt.title"))
         self.btn_reset_defaults.setText(_t("settings.btn_reset_defaults"))
         self._page_subtitle.setText(_t("settings.receipt.subtitle"))
+        self._retranslate_section_headers()
         self._lbl_receipt_cross_ref.setText(_t("settings.receipt.cross_ref_hint"))
 
         self.tabs.setTabText(0, _t("settings.receipt.tab_content"))

@@ -407,13 +407,15 @@ class TransactionService:
         """Load what the receipt needs while the session is still open (prevents DetachedInstanceError).
 
         Customer, cashier (also for a later print from ReceiptOptionsDialog,
-        #681) and each line's product.
+        #681) and each line's product. The customer is loaded even for a
+        walk-in sale: reading an unloaded ``sale.customer`` on the detached
+        sale raises even when ``customer_id`` is None (#733). Payments are
+        loaded where the sale event is built.
 
         Args:
             sale: The sale, still attached to its session.
         """
-        if sale.customer_id:
-            _ = sale.customer
+        _ = sale.customer
         _ = sale.user
         for item in sale.items:
             _ = item.product

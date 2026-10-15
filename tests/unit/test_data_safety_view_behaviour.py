@@ -335,4 +335,4 @@ def test_switching_language_retranslates_every_tab(view, lang):
     assert view.btn_create_backup.text() == _t("data_safety.btn_create_backup")
     assert view.btn_verify.text() == _t("data_safety.btn_verify")
     assert view.btn_vacuum.text() == _t("data_safety.maintenance_btn_optimize")
-    assert view.btn_do_export.text() == _t("data_safety.export_btn")
+    assert view.export_tab.btn_do_export.text() == _t("data_safety.export_btn")

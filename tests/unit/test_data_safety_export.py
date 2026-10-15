@@ -83,13 +83,13 @@ def view(qapp, db_session, tmp_path, monkeypatch):
 
 
 def _choose(view: DataSafetyView, data_key: str, fmt_key: str) -> None:
-    view.cmb_export_data.setCurrentText(_t(TYPES[data_key]))
-    view.cmb_export_format.setCurrentText(_t(FORMATS[fmt_key][0]))
+    view.export_tab.cmb_export_data.setCurrentText(_t(TYPES[data_key]))
+    view.export_tab.cmb_export_format.setCurrentText(_t(FORMATS[fmt_key][0]))
 
 
 def _export(view: DataSafetyView, qtbot) -> None:
-    view.btn_do_export.click()
-    qtbot.waitUntil(lambda: view.btn_do_export.isEnabled(), timeout=10_000)
+    view.export_tab.btn_do_export.click()
+    qtbot.waitUntil(lambda: view.export_tab.btn_do_export.isEnabled(), timeout=10_000)
 
 
 @pytest.mark.parametrize("lang", ["en", "si", "ta"])
@@ -110,9 +110,9 @@ def test_each_type_and_format_writes_its_file(
         assert files[0].name.startswith(f"{data_key}_")
         assert files[0].suffix == FORMATS[fmt_key][1]
         assert [c[0] for c in fetched] == [data_key]
-        assert view.lbl_export_status.property("class") == "credit"
-        assert str(files[0]) in view.lbl_export_status.text()
-        assert view.btn_do_export.text() == _t("data_safety.export_btn")
+        assert view.export_tab.lbl_export_status.property("class") == "credit"
+        assert str(files[0]) in view.export_tab.lbl_export_status.text()
+        assert view.export_tab.btn_do_export.text() == _t("data_safety.export_btn")
     finally:
         view.deleteLater()
 
@@ -122,15 +122,15 @@ def test_success_status_names_the_row_count_and_type(view, fetched, out_dir, qtb
 
     _export(view, qtbot)
 
-    text = view.lbl_export_status.text()
+    text = view.export_tab.lbl_export_status.text()
     assert "2" in text
     assert _t("data_safety.export_type_customers").lower() in text
 
 
 def test_sales_export_uses_the_whole_chosen_days(view, fetched, out_dir, qtbot):
     _choose(view, "sales", "csv")
-    view.date_export_from.setDate(QDate(2026, 3, 1))
-    view.date_export_to.setDate(QDate(2026, 3, 31))
+    view.export_tab.date_export_from.setDate(QDate(2026, 3, 1))
+    view.export_tab.date_export_to.setDate(QDate(2026, 3, 31))
 
     _export(view, qtbot)
 
@@ -143,10 +143,10 @@ def test_sales_with_from_after_to_warns_and_exports_nothing(view, fetched, monke
     asked = []
     monkeypatch.setattr(QFileDialog, "getExistingDirectory", staticmethod(lambda *a, **k: asked.append(a) or ""))
     _choose(view, "sales", "csv")
-    view.date_export_from.setDate(QDate(2026, 4, 1))
-    view.date_export_to.setDate(QDate(2026, 3, 1))
+    view.export_tab.date_export_from.setDate(QDate(2026, 4, 1))
+    view.export_tab.date_export_to.setDate(QDate(2026, 3, 1))
 
-    view.btn_do_export.click()
+    view.export_tab.btn_do_export.click()
 
     assert len(warnings) == 1
     assert asked == []
@@ -157,10 +157,10 @@ def test_cancelling_the_folder_choice_exports_nothing(view, fetched, monkeypatch
     monkeypatch.setattr(QFileDialog, "getExistingDirectory", staticmethod(lambda *a, **k: ""))
     _choose(view, "products", "excel")
 
-    view.btn_do_export.click()
+    view.export_tab.btn_do_export.click()
 
     assert fetched == []
-    assert view.btn_do_export.isEnabled()
+    assert view.export_tab.btn_do_export.isEnabled()
 
 
 def test_a_failing_fetch_shows_the_error_and_reenables_export(view, out_dir, monkeypatch):
@@ -170,11 +170,11 @@ def test_a_failing_fetch_shows_the_error_and_reenables_export(view, out_dir, mon
     monkeypatch.setattr(DataExportService, "get_products_dataframe", staticmethod(boom))
     _choose(view, "products", "excel")
 
-    view.btn_do_export.click()
+    view.export_tab.btn_do_export.click()
 
-    assert view.btn_do_export.isEnabled()
-    assert view.lbl_export_status.property("class") == "debit"
-    assert "db locked" in view.lbl_export_status.text()
+    assert view.export_tab.btn_do_export.isEnabled()
+    assert view.export_tab.lbl_export_status.property("class") == "debit"
+    assert "db locked" in view.export_tab.lbl_export_status.text()
 
 
 def test_a_failing_write_shows_the_error(view, fetched, out_dir, monkeypatch, qtbot):
@@ -188,8 +188,8 @@ def test_a_failing_write_shows_the_error(view, fetched, out_dir, monkeypatch, qt
 
     _export(view, qtbot)
 
-    assert view.lbl_export_status.property("class") == "debit"
-    assert "disk full" in view.lbl_export_status.text()
+    assert view.export_tab.lbl_export_status.property("class") == "debit"
+    assert "disk full" in view.export_tab.lbl_export_status.text()
     assert list(Path(out_dir).iterdir()) == []
 
 
@@ -197,8 +197,8 @@ def test_a_failing_write_shows_the_error(view, fetched, out_dir, monkeypatch, qt
 
 
 def test_each_choice_carries_an_opaque_key(view):
-    data = [view.cmb_export_data.itemData(i) for i in range(view.cmb_export_data.count())]
-    fmts = [view.cmb_export_format.itemData(i) for i in range(view.cmb_export_format.count())]
+    data = [view.export_tab.cmb_export_data.itemData(i) for i in range(view.export_tab.cmb_export_data.count())]
+    fmts = [view.export_tab.cmb_export_format.itemData(i) for i in range(view.export_tab.cmb_export_format.count())]
 
     assert data == ["products", "customers", "sales"]
     assert fmts == ["excel", "csv"]
@@ -210,9 +210,9 @@ def test_choice_survives_switching_to_sinhala(view):
 
     set_language("si")
 
-    assert view.cmb_export_data.currentText() == _t("data_safety.export_type_sales")
-    assert view.cmb_export_format.currentText() == _t("data_safety.export_format_csv")
-    assert view.export_form.isRowVisible(view.date_export_from) is True
+    assert view.export_tab.cmb_export_data.currentText() == _t("data_safety.export_type_sales")
+    assert view.export_tab.cmb_export_format.currentText() == _t("data_safety.export_format_csv")
+    assert view.export_tab.export_form.isRowVisible(view.export_tab.date_export_from) is True
 
 
 def test_sales_export_after_switching_to_sinhala(view, fetched, out_dir, qtbot):
@@ -229,8 +229,8 @@ def test_sales_export_after_switching_to_sinhala(view, fetched, out_dir, qtbot):
 def test_a_relabelled_choice_still_exports_its_type(view, fetched, out_dir, qtbot):
     """A translator's trailing space (or a missing key) must not reroute the export."""
     _choose(view, "products", "csv")
-    products = view.cmb_export_data.currentIndex()
-    view.cmb_export_data.setItemText(products, _t("data_safety.export_type_products") + " ")
+    products = view.export_tab.cmb_export_data.currentIndex()
+    view.export_tab.cmb_export_data.setItemText(products, _t("data_safety.export_type_products") + " ")
 
     _export(view, qtbot)
 

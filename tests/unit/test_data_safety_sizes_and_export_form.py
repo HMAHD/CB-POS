@@ -56,12 +56,12 @@ def test_database_size_label_uses_format_bytes(tmp_path):
 
 
 def test_export_date_rows_only_for_sales(view):
-    view.cmb_export_data.setCurrentText(_t("data_safety.export_type_products"))
-    assert view.export_form.isRowVisible(view.date_export_from) is False
+    view.export_tab.cmb_export_data.setCurrentText(_t("data_safety.export_type_products"))
+    assert view.export_tab.export_form.isRowVisible(view.export_tab.date_export_from) is False
 
-    view.cmb_export_data.setCurrentText(_t("data_safety.export_type_sales"))
-    assert view.export_form.isRowVisible(view.date_export_from) is True
-    assert view.export_form.isRowVisible(view.date_export_to) is True
+    view.export_tab.cmb_export_data.setCurrentText(_t("data_safety.export_type_sales"))
+    assert view.export_tab.export_form.isRowVisible(view.export_tab.date_export_from) is True
+    assert view.export_tab.export_form.isRowVisible(view.export_tab.date_export_to) is True
 
 
 def test_restore_warning_wraps(view):

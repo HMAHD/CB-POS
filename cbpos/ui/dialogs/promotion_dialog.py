@@ -21,6 +21,7 @@ from cbpos.core.services.promotion_service import PromotionService
 from cbpos.i18n import _t
 from cbpos.ui.widgets.decimal_line_edit import DecimalLineEdit
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 _DAY_KEYS = [
     "promotion.day_mon",
@@ -43,6 +44,7 @@ class PromotionDialog(QDialog):
         self.setWindowTitle(_t("promotion.edit_promotion") if promotion else _t("promotion.new_promotion"))
         self.setMinimumWidth(480)
         self.init_ui()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
         if promotion:
             self.name_input.setText(promotion.name)

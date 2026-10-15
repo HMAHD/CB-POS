@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.i18n import _t
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
 class PriceListDialog(QDialog):
@@ -27,6 +28,7 @@ class PriceListDialog(QDialog):
         self.price_list = price_list
         self.init_ui()
         self.retranslate_ui()
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
         if price_list:
             self.name_input.setText(price_list.name)

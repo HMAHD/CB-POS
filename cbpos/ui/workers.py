@@ -380,6 +380,7 @@ class ExportWorker(QThread):
     """Exports report data to Excel or PDF in a background thread."""
 
     result = pyqtSignal(str)  # success message
+    exported = pyqtSignal(object)  # the caller's ``context``, on success only
     error = pyqtSignal(str)
 
     def __init__(
@@ -389,8 +390,15 @@ class ExportWorker(QThread):
         filepath: str,
         report_name: str,
         fmt: str = "excel",
+        context: object = None,
     ) -> None:
-        """Set up the export job with the data, destination path, report name, and format."""
+        """Set up the export job with the data, destination path, report name, and format.
+
+        Args:
+            context: Anything the caller needs back when the export succeeds;
+                emitted unchanged through ``exported`` so the caller keeps no
+                per-export state of its own.
+        """
         super().__init__()
         self.finished.connect(self.deleteLater)
         self.export_service = export_service
@@ -398,6 +406,7 @@ class ExportWorker(QThread):
         self.filepath = filepath
         self.report_name = report_name
         self.fmt = fmt
+        self.context = context
 
     def run(self) -> None:
         """Export the DataFrame to the requested format (excel/pdf/csv), emitting success or error."""
@@ -409,6 +418,7 @@ class ExportWorker(QThread):
             elif self.fmt == "csv":
                 self.export_service.export_to_csv(self.df, self.filepath)
             self.result.emit("Export successful!")
+            self.exported.emit(self.context)
         except Exception as e:
             logger.error("Export failed: %s", e)
             self.error.emit(str(e))

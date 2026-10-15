@@ -235,3 +235,37 @@ def test_a_relabelled_choice_still_exports_its_type(view, fetched, out_dir, qtbo
     _export(view, qtbot)
 
     assert [c[0] for c in fetched] == ["products"]
+
+
+# ── #695: the export's context travels with its worker ────────────────────
+
+
+def test_export_worker_hands_back_the_callers_context(tmp_path):
+    from unittest.mock import MagicMock
+
+    from cbpos.ui.workers import ExportWorker
+
+    context = object()
+    worker = ExportWorker(MagicMock(), pd.DataFrame(), str(tmp_path / "x.csv"), "X", "csv", context=context)
+    received = []
+    worker.exported.connect(received.append)
+
+    worker.run()
+
+    assert received == [context]
+
+
+def test_a_failed_export_hands_back_no_context(tmp_path):
+    from unittest.mock import MagicMock
+
+    from cbpos.ui.workers import ExportWorker
+
+    service = MagicMock()
+    service.export_to_csv.side_effect = OSError("disk full")
+    worker = ExportWorker(service, pd.DataFrame(), str(tmp_path / "x.csv"), "X", "csv", context=object())
+    received = []
+    worker.exported.connect(received.append)
+
+    worker.run()
+
+    assert received == []

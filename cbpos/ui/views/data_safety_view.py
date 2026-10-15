@@ -12,6 +12,7 @@ No hardcoded colors — works with both dark and light themes.
 """
 
 import logging
+from dataclasses import dataclass
 
 from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtWidgets import (
@@ -55,6 +56,15 @@ _EXPORT_FORMAT_CHOICES = (
     ("excel", "data_safety.export_format_excel"),
     ("csv", "data_safety.export_format_csv"),
 )
+
+
+@dataclass(frozen=True)
+class ExportContext:
+    """What one running export needs to report its outcome (#695)."""
+
+    filepath: str
+    data_key: str
+    row_count: int
 
 
 def _fill_choices(combo: QComboBox, choices: tuple[tuple[str, str], ...]) -> None:
@@ -936,7 +946,6 @@ class DataSafetyView(QWidget):
         self.btn_do_export.setText(_t("data_safety.export_exporting"))
         self.lbl_export_status.setText("")
 
-        data_type = _t(dict(_EXPORT_DATA_CHOICES)[data_key])
         fmt = self.cmb_export_format.currentData()
         ext = ".xlsx" if fmt == "excel" else ".csv"
 
@@ -966,29 +975,24 @@ class DataSafetyView(QWidget):
             self._set_export_status("debit", _t("data_safety.export_failed", error=e))
             return
 
-        self._export_filepath = filepath
-        self._export_data_type = data_type
-        self._export_row_count = len(df)
+        context = ExportContext(filepath=filepath, data_key=data_key, row_count=len(df))
+        worker = ExportWorker(ExportService(), df, filepath, title, fmt, context=context)
+        worker.exported.connect(self._on_export_finished)
+        worker.error.connect(self._on_export_error)
+        start_background_job(worker)  # outlives the view if it closes mid-export
 
-        self._export_worker = ExportWorker(ExportService(), df, filepath, title, fmt)
-        self._export_worker.result.connect(self._on_export_finished)
-        self._export_worker.error.connect(self._on_export_error)
-        start_background_job(self._export_worker)  # outlives the view if it closes mid-export
-
-    def _on_export_finished(self, _msg: str) -> None:
+    def _on_export_finished(self, context: ExportContext) -> None:
         """Handle successful export from background thread."""
         self.btn_do_export.setEnabled(True)
         self.btn_do_export.setText(_t("data_safety.export_btn"))
-        data_type = getattr(self, "_export_data_type", "")
-        row_count = getattr(self, "_export_row_count", 0)
-        filepath = getattr(self, "_export_filepath", "")
+        label = _t(dict(_EXPORT_DATA_CHOICES)[context.data_key])
         self._set_export_status(
             "credit",
             _t(
                 "data_safety.export_success",
-                count=row_count,
-                type=data_type.lower(),
-                path=filepath,
+                count=context.row_count,
+                type=label.lower(),
+                path=context.filepath,
             ),
         )
 

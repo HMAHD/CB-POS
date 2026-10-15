@@ -89,13 +89,16 @@ def test_run_report_sits_right_after_the_filters(reports_screen, lang):
 
 
 @pytest.mark.parametrize("lang", ["en", "si", "ta"])
-def test_run_report_stays_on_screen_in_a_1024_window(reports_screen, lang):
+def test_filters_and_run_report_fit_a_1024_window_unsqueezed(reports_screen, lang):
     viewer = reports_screen(1024, 768, lang)
     _open_report(viewer, "daily_sales_summary")
 
-    run_right = viewer.btn_run.mapTo(viewer.window(), QPoint(viewer.btn_run.width(), 0)).x()
-
-    assert run_right <= 1024
+    misfits = [
+        w.objectName()
+        for w in (viewer.filter_widget, viewer.btn_run)
+        if w.width() < w.sizeHint().width() or w.mapTo(viewer.window(), QPoint(w.width(), 0)).x() > 1024
+    ]
+    assert misfits == []
 
 
 def _run_report_with_rows(viewer: ReportViewer, qtbot, monkeypatch) -> None:

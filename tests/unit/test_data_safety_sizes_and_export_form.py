@@ -27,7 +27,7 @@ def view(qapp, db_session, tmp_path, monkeypatch):
 
 
 def test_backup_row_shows_size_and_original_size(view):
-    view._on_backup_list_loaded(
+    view.backup_tab._on_backup_list_loaded(
         [
             {
                 "path": "/b/cbpos_backup_20260101_000000.zip",
@@ -40,7 +40,7 @@ def test_backup_row_shows_size_and_original_size(view):
         ]
     )
 
-    text = view.backup_table.item(0, 2).text()
+    text = view.backup_tab.backup_table.item(0, 2).text()
     assert "44 KB" in text
     assert "540 KB" in text
 

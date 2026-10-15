@@ -96,58 +96,58 @@ def view(qapp, db_session, config, started, boxes):
 
 class TestBackupTab:
     def test_shows_the_configured_backup_folder(self, view, config):
-        assert view.lbl_backup_dir.text() == config["backup_dir"]
+        assert view.backup_tab.lbl_backup_dir.text() == config["backup_dir"]
 
     def test_change_folder_saves_it_and_rescans(self, view, config, started, monkeypatch, tmp_path):
         chosen = str(tmp_path / "elsewhere")
         monkeypatch.setattr(QFileDialog, "getExistingDirectory", staticmethod(lambda *a, **k: chosen))
 
-        view.btn_change_dir.click()
+        view.backup_tab.btn_change_dir.click()
 
         assert config["backup_dir"] == chosen
-        assert view.lbl_backup_dir.text() == chosen
+        assert view.backup_tab.lbl_backup_dir.text() == chosen
         assert _last(started, workers.BackupListWorker).backup_dir == chosen
 
     def test_cancelled_folder_choice_changes_nothing(self, view, config, started, monkeypatch):
         before = config["backup_dir"]
         monkeypatch.setattr(QFileDialog, "getExistingDirectory", staticmethod(lambda *a, **k: ""))
 
-        view.btn_change_dir.click()
+        view.backup_tab.btn_change_dir.click()
 
         assert config["backup_dir"] == before
         assert started == []
 
     def test_refresh_button_rescans_the_folder(self, view, config, started):
-        view.btn_backup_refresh.click()
+        view.backup_tab.btn_backup_refresh.click()
 
         assert _last(started, workers.BackupListWorker).backup_dir == config["backup_dir"]
 
     def test_create_backup_runs_and_reports_where_it_went(self, view, allowed, boxes, started, config):
         ConfigService.set_backup_password("shop-pass-1")
 
-        view.btn_create_backup.click()
+        view.backup_tab.btn_create_backup.click()
         worker = _last(started, workers.BackupWorker)
         assert (worker.destination_dir, worker.password) == (config["backup_dir"], "shop-pass-1")
-        assert view.btn_create_backup.isEnabled() is False
+        assert view.backup_tab.btn_create_backup.isEnabled() is False
 
         worker.result.emit("/b/cbpos_backup_x.zip")
 
-        assert view.btn_create_backup.isEnabled() is True
+        assert view.backup_tab.btn_create_backup.isEnabled() is True
         assert "/b/cbpos_backup_x.zip" in boxes["information"][-1][2]
 
     def test_create_backup_failure_says_so(self, view, allowed, boxes, started):
         ConfigService.set_backup_password("shop-pass-1")
-        view.btn_create_backup.click()
+        view.backup_tab.btn_create_backup.click()
 
         _last(started, workers.BackupWorker).error.emit("disk full")
 
-        assert view.btn_create_backup.isEnabled() is True
+        assert view.backup_tab.btn_create_backup.isEnabled() is True
         assert "disk full" in boxes["critical"][-1][2]
 
     def test_create_backup_without_permission_does_nothing(self, view, started, monkeypatch):
         monkeypatch.setattr("cbpos.core.utils.permission_helper.check_permission_with_override", lambda *a, **k: False)
 
-        view.btn_create_backup.click()
+        view.backup_tab.btn_create_backup.click()
 
         assert started == []
 
@@ -155,7 +155,7 @@ class TestBackupTab:
         cleanup = MagicMock(return_value=2)
         monkeypatch.setattr("cbpos.core.services.backup_service.BackupService.cleanup_old_backups", cleanup)
 
-        view.btn_clean_old.click()
+        view.backup_tab.btn_clean_old.click()
 
         cleanup.assert_called_once_with(config["backup_dir"], 3)
         assert len(boxes["information"]) == 1
@@ -165,17 +165,17 @@ class TestBackupTab:
         cleanup = MagicMock(return_value=0)
         monkeypatch.setattr("cbpos.core.services.backup_service.BackupService.cleanup_old_backups", cleanup)
 
-        view.btn_clean_old.click()
+        view.backup_tab.btn_clean_old.click()
 
         cleanup.assert_not_called()
 
     def test_setting_the_password_shows_on_both_tabs(self, view, allowed, monkeypatch):
-        assert view.btn_backup_password.text() == _t("data_safety.btn_set_password")
+        assert view.backup_tab.btn_backup_password.text() == _t("data_safety.btn_set_password")
         monkeypatch.setattr(BackupPasswordDialog, "exec", _accept_setting("shop-pass-1"))
 
-        view.btn_backup_password.click()
+        view.backup_tab.btn_backup_password.click()
 
-        assert view.btn_backup_password.text() == _t("data_safety.btn_change_password")
+        assert view.backup_tab.btn_backup_password.text() == _t("data_safety.btn_change_password")
         assert view.restore_tab.input_restore_password.placeholderText() == _t(
             "data_safety.restore_pwd_placeholder_shop"
         )
@@ -252,7 +252,7 @@ class TestRestoreTab:
 
         view.restore_tab.btn_restore.click()
 
-        assert view.btn_backup_password.text() == _t("data_safety.btn_change_password")
+        assert view.backup_tab.btn_backup_password.text() == _t("data_safety.btn_change_password")
 
     def test_restore_declined_does_nothing(self, view, allowed, boxes, started):
         ConfigService.set_backup_password("shop-pass-1")
@@ -360,7 +360,7 @@ def test_switching_language_retranslates_every_tab(view, lang):
         _t("data_safety.tab_maintenance"),
         _t("data_safety.tab_export"),
     ]
-    assert view.btn_create_backup.text() == _t("data_safety.btn_create_backup")
+    assert view.backup_tab.btn_create_backup.text() == _t("data_safety.btn_create_backup")
     assert view.restore_tab.btn_verify.text() == _t("data_safety.btn_verify")
     assert view.maintenance_tab.btn_vacuum.text() == _t("data_safety.maintenance_btn_optimize")
     assert view.export_tab.btn_do_export.text() == _t("data_safety.export_btn")

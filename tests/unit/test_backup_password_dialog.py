@@ -73,18 +73,18 @@ class TestManualBackupUsesShopPassword:
     def test_no_password_and_user_cancels_means_no_backup(self, view, monkeypatch):
         monkeypatch.setattr(BackupPasswordDialog, "exec", lambda self: QDialog.DialogCode.Rejected)
         worker_cls = MagicMock()
-        monkeypatch.setattr("cbpos.ui.views.data_safety_view.BackupWorker", worker_cls)
+        monkeypatch.setattr("cbpos.ui.views.data_safety.backup_tab.BackupWorker", worker_cls)
 
-        view._create_backup()
+        view.backup_tab._create_backup()
 
         worker_cls.assert_not_called()
 
     def test_backup_runs_with_the_shop_password(self, view, tmp_path, monkeypatch):
         ConfigService.set_backup_password("shop-pass-1")
         worker_cls = MagicMock()
-        monkeypatch.setattr("cbpos.ui.views.data_safety_view.BackupWorker", worker_cls)
+        monkeypatch.setattr("cbpos.ui.views.data_safety.backup_tab.BackupWorker", worker_cls)
 
-        view._create_backup()
+        view.backup_tab._create_backup()
 
         worker_cls.assert_called_once_with(str(tmp_path / "backups"), "shop-pass-1")
         worker_cls.return_value.start.assert_called_once()
@@ -93,19 +93,19 @@ class TestManualBackupUsesShopPassword:
         ConfigService.set_backup_password("shop-pass-1")
         info = MagicMock()
         monkeypatch.setattr(QMessageBox, "information", staticmethod(info))
-        monkeypatch.setattr(view, "_refresh_backup_list", MagicMock())
+        monkeypatch.setattr(view.backup_tab, "_refresh_backup_list", MagicMock())
 
-        view._on_backup_finished("/some/cbpos_backup_20260101_000000.zip")
+        view.backup_tab._on_backup_finished("/some/cbpos_backup_20260101_000000.zip")
 
         text = info.call_args.args[2]
         assert "shop-pass-1" not in text
         assert "/some/cbpos_backup_20260101_000000.zip" in text
 
     def test_password_status_reflects_whether_one_is_set(self, view):
-        view._update_password_status()
-        not_set_text = view.lbl_pwd_status.text()
+        view.backup_tab.refresh_password_status()
+        not_set_text = view.backup_tab.lbl_pwd_status.text()
         ConfigService.set_backup_password("shop-pass-1")
-        view._update_password_status()
+        view.backup_tab.refresh_password_status()
 
-        assert view.lbl_pwd_status.text() != not_set_text
-        assert "shop-pass-1" not in view.lbl_pwd_status.text()
+        assert view.backup_tab.lbl_pwd_status.text() != not_set_text
+        assert "shop-pass-1" not in view.backup_tab.lbl_pwd_status.text()

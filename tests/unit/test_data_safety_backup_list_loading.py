@@ -83,38 +83,38 @@ class TestBackupListWorkerStatus:
 
 class TestLastBackupStatusLabel:
     def test_restorable_backup_shows_its_date(self, view):
-        view._on_backup_status({"date": "2026-01-01 10:00:00", "restorable": True})
+        view.backup_tab._on_backup_status({"date": "2026-01-01 10:00:00", "restorable": True})
 
-        assert "2026-01-01 10:00:00" in view.lbl_last_backup.text()
-        assert view.lbl_last_backup.property("class") == "credit"
+        assert "2026-01-01 10:00:00" in view.backup_tab.lbl_last_backup.text()
+        assert view.backup_tab.lbl_last_backup.property("class") == "credit"
 
     def test_unrestorable_backup_is_flagged(self, view):
-        view._on_backup_status({"date": "2026-01-01 10:00:00", "restorable": False})
+        view.backup_tab._on_backup_status({"date": "2026-01-01 10:00:00", "restorable": False})
 
-        assert view.lbl_last_backup.property("class") == "debit"
+        assert view.backup_tab.lbl_last_backup.property("class") == "debit"
 
     def test_no_backups(self, view):
-        view._on_backup_status({"date": None, "restorable": False})
+        view.backup_tab._on_backup_status({"date": None, "restorable": False})
 
-        assert view.lbl_last_backup.text()
-        assert view.lbl_last_backup.property("class") == "muted"
+        assert view.backup_tab.lbl_last_backup.text()
+        assert view.backup_tab.lbl_last_backup.property("class") == "muted"
 
 
 class TestRefreshBackupListShowsLoadingOverlay:
     def test_refresh_shows_the_loading_overlay_immediately(self, view):
         view._overlay.hide_loading()
 
-        with patch("cbpos.ui.views.data_safety_view.BackupListWorker") as mock_worker_cls:
+        with patch("cbpos.ui.views.data_safety.backup_tab.BackupListWorker") as mock_worker_cls:
             mock_worker_cls.return_value = MagicMock()
-            view._refresh_backup_list()
+            view.backup_tab._refresh_backup_list()
 
         assert view._overlay.isVisibleTo(view) is True
 
     def test_refresh_starts_a_worker_with_the_configured_backup_dir(self, view, tmp_path):
-        with patch("cbpos.ui.views.data_safety_view.BackupListWorker") as mock_worker_cls:
+        with patch("cbpos.ui.views.data_safety.backup_tab.BackupListWorker") as mock_worker_cls:
             fake_worker = MagicMock()
             mock_worker_cls.return_value = fake_worker
-            view._refresh_backup_list()
+            view.backup_tab._refresh_backup_list()
 
         mock_worker_cls.assert_called_once_with(str(tmp_path))
         fake_worker.start.assert_called_once()
@@ -127,10 +127,10 @@ class TestBackupListLoadedCallback:
             {"filename": "cbpos_backup_20260101_000000.zip", "date": "2026-01-01", "size": "1 MB"},
         ]
 
-        view._on_backup_list_loaded(backups)
+        view.backup_tab._on_backup_list_loaded(backups)
 
-        assert view.backup_table.rowCount() == 1
-        assert view.backup_table.item(0, 0).text() == "cbpos_backup_20260101_000000.zip"
+        assert view.backup_tab.backup_table.rowCount() == 1
+        assert view.backup_tab.backup_table.item(0, 0).text() == "cbpos_backup_20260101_000000.zip"
         assert view._overlay.isVisibleTo(view) is False
 
 
@@ -138,6 +138,6 @@ class TestBackupListErrorCallback:
     def test_hides_the_overlay_without_crashing(self, view):
         view._overlay.show_loading("Loading...")
 
-        view._on_backup_list_error("disk unplugged")
+        view.backup_tab._on_backup_list_error("disk unplugged")
 
         assert view._overlay.isVisibleTo(view) is False

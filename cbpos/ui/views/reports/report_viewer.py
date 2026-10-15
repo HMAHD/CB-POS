@@ -139,7 +139,9 @@ class ReportViewer(QWidget):
         # Filter Bar (hidden until report selected)
         self.filter_bar = QWidget()
         self.filter_bar.setObjectName("ReportFilterBar")
-        filter_layout = QHBoxLayout(self.filter_bar)
+        # Run Report follows the filters directly, wrapping below them
+        # rather than widening the screen on a narrow window (#611).
+        filter_layout = FlowLayout(self.filter_bar)
         filter_layout.setContentsMargins(24, 10, 24, 10)
 
         self.filter_widget = FilterWidget()
@@ -151,8 +153,6 @@ class ReportViewer(QWidget):
         self.btn_run.setEnabled(False)
         self.btn_run.setCursor(Qt.CursorShape.PointingHandCursor)
         filter_layout.addWidget(self.btn_run)
-        # Spare width goes after Run Report, keeping it next to the filters (#611)
-        filter_layout.addStretch()
 
         self.filter_bar.setVisible(False)
         content_layout.addWidget(self.filter_bar)
@@ -211,7 +211,7 @@ class ReportViewer(QWidget):
         # container takes the spare width and keeps them right-aligned.
         export_buttons = QWidget()
         export_buttons.setObjectName("ReportExportButtons")
-        export_layout = FlowLayout(export_buttons)
+        export_layout = FlowLayout(export_buttons, align_right=True)
         export_layout.setContentsMargins(0, 0, 0, 0)
         action_layout.addWidget(export_buttons, 1)
 

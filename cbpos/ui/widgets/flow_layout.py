@@ -5,18 +5,20 @@ from PyQt6.QtWidgets import QLayout, QLayoutItem, QWidget
 
 
 class FlowLayout(QLayout):
-    """Right-aligned row of widgets that wraps instead of squeezing them.
+    """Row of widgets that wraps onto more rows instead of squeezing them.
 
     Each widget always gets its full size hint, so a button never shrinks
     below its label. When the row doesn't fit, the remaining widgets move
     to a new row, and the layout reports the taller height via
-    ``heightForWidth`` so the parent makes room (#611).
+    ``heightForWidth`` so the parent makes room (#611). Rows hug the left
+    edge by default, or the right edge with ``align_right=True``.
     """
 
-    def __init__(self, parent: QWidget | None = None, spacing: int = 8) -> None:
+    def __init__(self, parent: QWidget | None = None, spacing: int = 8, align_right: bool = False) -> None:
         """Create the layout with the given gap between widgets and between rows."""
         super().__init__(parent)
         self._items: list[QLayoutItem] = []
+        self._align_right = align_right
         self.setSpacing(spacing)
 
     # -- QLayout item bookkeeping ------------------------------------
@@ -80,7 +82,7 @@ class FlowLayout(QLayout):
         return QSize(size.width() + m.left() + m.right(), size.height() + m.top() + m.bottom())
 
     def _do_layout(self, rect: QRect, apply: bool) -> int:
-        """Split the widgets into rows that fit rect's width; place them right-aligned if apply.
+        """Split the widgets into rows that fit rect's width, and place them if apply.
 
         Returns the total height used, margins included.
         """
@@ -105,7 +107,7 @@ class FlowLayout(QLayout):
                 y += gap
             row_height = max(i.sizeHint().height() for i in row)
             width = sum(i.sizeHint().width() for i in row) + gap * (len(row) - 1)
-            x = area.x() + max(area.width() - width, 0)
+            x = area.x() + (max(area.width() - width, 0) if self._align_right else 0)
             for item in row:
                 hint = item.sizeHint()
                 if apply:

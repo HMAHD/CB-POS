@@ -10,7 +10,10 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from cbpos.core.utils.formatters import format_currency, format_date, format_discount, format_promotion_type
-from cbpos.i18n import _t
+from cbpos.i18n import _t, t_or
+
+# Backwards-compatibility alias (#698)
+_t_or = t_or
 
 # Keys a {"key": {"old": x, "new": y}} detail can hold -> i18n template key (percent values)
 _PERCENT_DETAIL_KEYS = {
@@ -20,16 +23,11 @@ _PERCENT_DETAIL_KEYS = {
 }
 
 
-def _t_or(key: str, fallback: str) -> str:
-    text = _t(key)
-    return fallback if text == key else text
-
-
 def format_audit_action(action: str | None) -> str:
     """Translated action label ("TAX_RATE_CHANGE", "User Login", ...); unknown actions as stored."""
     if not action:
         return ""
-    return _t_or(f"audit.action.{action.strip().lower().replace(' ', '_')}", action)
+    return t_or(f"audit.action.{action.strip().lower().replace(' ', '_')}", action)
 
 
 def _number(value: Any) -> str:
@@ -115,7 +113,7 @@ def _field_change_text(action: str, field: str, old: Any, new: Any, data: dict) 
         return _t("audit.detail.turned_on" if new else "audit.detail.turned_off")
     if field == "item_count":
         return _t("audit.detail.item_prices_removed", count=old) if old else None
-    label = _t_or(_FIELD_KEYS[field], field) if field in _FIELD_KEYS else field
+    label = t_or(_FIELD_KEYS[field], field) if field in _FIELD_KEYS else field
     if created or deleted:
         # A new or deleted record: list what it held, "Type: Percentage"
         return _t("audit.detail.field_value", field=label, value=_field_value(field, old if deleted else new, data))

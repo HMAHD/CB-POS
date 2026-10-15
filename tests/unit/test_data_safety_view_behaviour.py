@@ -8,11 +8,12 @@ test holds the instance and plays its signals back, as the thread would.
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt6.QtWidgets import QFileDialog, QLineEdit, QMessageBox
+from PyQt6.QtWidgets import QDialog, QFileDialog, QLineEdit, QMessageBox
 
 from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import _t, get_language, set_language
 from cbpos.ui import workers
+from cbpos.ui.dialogs.backup_password_dialog import BackupPasswordDialog
 from cbpos.ui.views.data_safety_view import DataSafetyView
 from tests.unit.backup_helpers import isolate_config_service
 
@@ -168,17 +169,26 @@ class TestBackupTab:
 
         cleanup.assert_not_called()
 
-    def test_password_button_reads_set_once_a_password_exists(self, view):
-        view._update_password_status()
+    def test_setting_the_password_shows_on_both_tabs(self, view, allowed, monkeypatch):
         assert view.btn_backup_password.text() == _t("data_safety.btn_set_password")
+        monkeypatch.setattr(BackupPasswordDialog, "exec", _accept_setting("shop-pass-1"))
 
-        ConfigService.set_backup_password("shop-pass-1")
-        view._update_password_status()
+        view.btn_backup_password.click()
 
         assert view.btn_backup_password.text() == _t("data_safety.btn_change_password")
         assert view.restore_tab.input_restore_password.placeholderText() == _t(
             "data_safety.restore_pwd_placeholder_shop"
         )
+
+
+def _accept_setting(password: str):
+    """A BackupPasswordDialog.exec that stores *password* and accepts."""
+
+    def exec_(dialog) -> QDialog.DialogCode:
+        ConfigService.set_backup_password(password)
+        return QDialog.DialogCode.Accepted
+
+    return exec_
 
 
 # ── Restore tab ───────────────────────────────────────────────────────────
@@ -233,6 +243,16 @@ class TestRestoreTab:
 
         assert view.restore_tab.btn_restore.isEnabled() is True
         assert len(boxes["information"]) == 1
+
+    def test_password_set_while_restoring_shows_on_the_backup_tab(self, view, allowed, boxes, monkeypatch):
+        boxes["answer"]["value"] = QMessageBox.StandardButton.No
+        monkeypatch.setattr(BackupPasswordDialog, "exec", _accept_setting("shop-pass-1"))
+        view.restore_tab.input_restore_path.setText("/b/x.zip")
+        view.restore_tab.input_restore_password.setText("typed")
+
+        view.restore_tab.btn_restore.click()
+
+        assert view.btn_backup_password.text() == _t("data_safety.btn_change_password")
 
     def test_restore_declined_does_nothing(self, view, allowed, boxes, started):
         ConfigService.set_backup_password("shop-pass-1")

@@ -444,6 +444,7 @@ class DataSafetyView(QWidget):
         self.btn_clean_old.setText(_t("data_safety.btn_clean_old"))
         self.btn_backup_refresh.setText(_t("data_safety.btn_refresh"))
         self.lbl_pwd_label.setText(_t("data_safety.pwd_label"))
+        self._update_password_status()
         self._fill_backup_table()
         if self._last_status is not None:
             self._on_backup_status(self._last_status)

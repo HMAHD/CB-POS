@@ -12,8 +12,12 @@ No hardcoded colors — works with both dark and light themes.
 """
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date, datetime, time
+from pathlib import Path
 
+import pandas as pd
 from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtWidgets import (
     QComboBox,
@@ -38,24 +42,85 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.backup_service import BackupService
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.data_export_service import DataExportService
+from cbpos.core.services.export_service import ExportService
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.backup_password_dialog import BackupPasswordDialog, ensure_backup_password
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
-from cbpos.ui.workers import BackupListWorker, BackupWorker, RestoreWorker, VerifyBackupWorker
+from cbpos.ui.workers import (
+    BackupListWorker,
+    BackupWorker,
+    ExportWorker,
+    RestoreWorker,
+    VerifyBackupWorker,
+    start_background_job,
+)
 
 logger = logging.getLogger(__name__)
 
-# Export choices: (opaque key, label i18n key). Logic branches on the key,
-# never on the translated label (#696).
-_EXPORT_DATA_CHOICES = (
-    ("products", "data_safety.export_type_products"),
-    ("customers", "data_safety.export_type_customers"),
-    ("sales", "data_safety.export_type_sales"),
-)
-_EXPORT_FORMAT_CHOICES = (
-    ("excel", "data_safety.export_format_excel"),
-    ("csv", "data_safety.export_format_csv"),
-)
+
+@dataclass(frozen=True)
+class ExportType:
+    """One kind of data the Export tab can write out (#697).
+
+    Each combo item carries ``key``; logic branches on it, never on the
+    translated label (#696). ``fetch`` gets the chosen From/To days and
+    may ignore them when ``needs_dates`` is False.
+    """
+
+    key: str
+    label_key: str
+    title: str
+    stem: str
+    fetch: Callable[[date, date], pd.DataFrame]
+    needs_dates: bool = False
+
+
+@dataclass(frozen=True)
+class ExportFormat:
+    """A file format the Export tab offers."""
+
+    key: str
+    label_key: str
+    ext: str
+
+
+def _fetch_sales(start: date, end: date) -> pd.DataFrame:
+    """Sales from the start of *start* to the last second of *end*."""
+    return DataExportService.get_sales_dataframe(
+        datetime.combine(start, time.min), datetime.combine(end, time(23, 59, 59))
+    )
+
+
+# Display order is the dict order. Fetchers look DataExportService up at
+# call time so the class stays the single place to change (or stub) them.
+EXPORT_TYPES: dict[str, ExportType] = {
+    t.key: t
+    for t in (
+        ExportType(
+            "products",
+            "data_safety.export_type_products",
+            "Products",
+            "products",
+            lambda _s, _e: DataExportService.get_products_dataframe(),
+        ),
+        ExportType(
+            "customers",
+            "data_safety.export_type_customers",
+            "Customers",
+            "customers",
+            lambda _s, _e: DataExportService.get_customers_dataframe(),
+        ),
+        ExportType("sales", "data_safety.export_type_sales", "Sales", "sales", _fetch_sales, needs_dates=True),
+    )
+}
+EXPORT_FORMATS: dict[str, ExportFormat] = {
+    f.key: f
+    for f in (
+        ExportFormat("excel", "data_safety.export_format_excel", ".xlsx"),
+        ExportFormat("csv", "data_safety.export_format_csv", ".csv"),
+    )
+}
 
 
 @dataclass(frozen=True)
@@ -67,13 +132,13 @@ class ExportContext:
     row_count: int
 
 
-def _fill_choices(combo: QComboBox, choices: tuple[tuple[str, str], ...]) -> None:
+def _fill_choices(combo: QComboBox, choices: dict[str, ExportType] | dict[str, ExportFormat]) -> None:
     """(Re)label *combo* in the current language, keeping the chosen key."""
     current = combo.currentData()
     combo.blockSignals(True)
     combo.clear()
-    for key, label_key in choices:
-        combo.addItem(_t(label_key), key)
+    for choice in choices.values():
+        combo.addItem(_t(choice.label_key), choice.key)
     combo.setCurrentIndex(max(combo.findData(current), 0))
     combo.blockSignals(False)
 
@@ -907,34 +972,30 @@ class DataSafetyView(QWidget):
 
     def _on_export_data_changed(self, _index: int = 0) -> None:
         """Show/hide date range based on selected data type."""
-        self._set_export_dates_visible(self.cmb_export_data.currentData() == "sales")
+        self._set_export_dates_visible(self._export_type().needs_dates)
 
     def _set_export_dates_visible(self, visible: bool) -> None:
         """Show the From/To rows only when exporting Sales."""
         self.export_form.setRowVisible(self.date_export_from, visible)
         self.export_form.setRowVisible(self.date_export_to, visible)
 
+    def _export_type(self) -> ExportType:
+        return EXPORT_TYPES[self.cmb_export_data.currentData()]
+
     def _do_inline_export(self) -> None:
         """Export selected data type in the chosen format using a background thread."""
-        from datetime import datetime
-        from pathlib import Path
+        export_type = self._export_type()
+        export_format = EXPORT_FORMATS[self.cmb_export_format.currentData()]
+        start = self.date_export_from.date().toPyDate()
+        end = self.date_export_to.date().toPyDate()
 
-        from cbpos.core.services.data_export_service import DataExportService
-        from cbpos.core.services.export_service import ExportService
-        from cbpos.ui.workers import ExportWorker, start_background_job
-
-        # Validate date range for Sales export
-        data_key = self.cmb_export_data.currentData()
-        if data_key == "sales":
-            start = self.date_export_from.date()
-            end = self.date_export_to.date()
-            if start > end:
-                QMessageBox.warning(
-                    self,
-                    _t("data_safety.export_invalid_date_title"),
-                    _t("data_safety.export_invalid_date_msg"),
-                )
-                return
+        if export_type.needs_dates and start > end:
+            QMessageBox.warning(
+                self,
+                _t("data_safety.export_invalid_date_title"),
+                _t("data_safety.export_invalid_date_msg"),
+            )
+            return
 
         # Ask for output directory
         default_dir = str(Path.home() / "Documents")
@@ -946,28 +1007,10 @@ class DataSafetyView(QWidget):
         self.btn_do_export.setText(_t("data_safety.export_exporting"))
         self.lbl_export_status.setText("")
 
-        fmt = self.cmb_export_format.currentData()
-        ext = ".xlsx" if fmt == "excel" else ".csv"
-
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
+        filepath = f"{output_dir}/{export_type.stem}_{timestamp}{export_format.ext}"
         try:
-            if data_key == "products":
-                df = DataExportService.get_products_dataframe()
-                filepath = f"{output_dir}/products_{timestamp}{ext}"
-                title = "Products"
-            elif data_key == "customers":
-                df = DataExportService.get_customers_dataframe()
-                filepath = f"{output_dir}/customers_{timestamp}{ext}"
-                title = "Customers"
-            else:
-                start = self.date_export_from.date().toPyDate()
-                end = self.date_export_to.date().toPyDate()
-                start_dt = datetime(start.year, start.month, start.day, 0, 0, 0)
-                end_dt = datetime(end.year, end.month, end.day, 23, 59, 59)
-                df = DataExportService.get_sales_dataframe(start_dt, end_dt)
-                filepath = f"{output_dir}/sales_{timestamp}{ext}"
-                title = "Sales"
+            df = export_type.fetch(start, end)
         except Exception as e:
             logger.exception("Export data fetch failed: %s", e)
             self.btn_do_export.setEnabled(True)
@@ -975,8 +1018,8 @@ class DataSafetyView(QWidget):
             self._set_export_status("debit", _t("data_safety.export_failed", error=e))
             return
 
-        context = ExportContext(filepath=filepath, data_key=data_key, row_count=len(df))
-        worker = ExportWorker(ExportService(), df, filepath, title, fmt, context=context)
+        context = ExportContext(filepath=filepath, data_key=export_type.key, row_count=len(df))
+        worker = ExportWorker(ExportService(), df, filepath, export_type.title, export_format.key, context=context)
         worker.exported.connect(self._on_export_finished)
         worker.error.connect(self._on_export_error)
         start_background_job(worker)  # outlives the view if it closes mid-export
@@ -985,7 +1028,7 @@ class DataSafetyView(QWidget):
         """Handle successful export from background thread."""
         self.btn_do_export.setEnabled(True)
         self.btn_do_export.setText(_t("data_safety.export_btn"))
-        label = _t(dict(_EXPORT_DATA_CHOICES)[context.data_key])
+        label = _t(EXPORT_TYPES[context.data_key].label_key)
         self._set_export_status(
             "credit",
             _t(
@@ -1068,10 +1111,10 @@ class DataSafetyView(QWidget):
         self.lbl_export_desc.setText(_t("data_safety.export_desc"))
         self.lbl_export_section.setText(_t("data_safety.export_section"))
         self.lbl_export_label.setText(_t("data_safety.export_label"))
-        _fill_choices(self.cmb_export_data, _EXPORT_DATA_CHOICES)
+        _fill_choices(self.cmb_export_data, EXPORT_TYPES)
         self._on_export_data_changed()
         self.lbl_fmt_label.setText(_t("data_safety.export_format_label"))
-        _fill_choices(self.cmb_export_format, _EXPORT_FORMAT_CHOICES)
+        _fill_choices(self.cmb_export_format, EXPORT_FORMATS)
         self.lbl_export_from.setText(_t("data_safety.export_from"))
         self.lbl_export_to.setText(_t("data_safety.export_to"))
         self.btn_do_export.setText(_t("data_safety.export_btn"))

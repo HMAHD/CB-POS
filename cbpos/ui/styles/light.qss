@@ -3678,6 +3678,24 @@ QPushButton#DocDetailCloseBtn {
     border-radius: 4px;
     padding: 4px 12px;
     font-size: 12px;
+    border: 1px solid #ADB5BD;
+}
+
+/* Detail panel beside the list (#612): header bar, scrolling body, splitter */
+QFrame#DocDetailHeader {
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid #DEE2E6;
+}
+
+QScrollArea#DocDetailScroll, QWidget#DocDetailContent {
+    background-color: transparent;
+    border: none;
+}
+
+QSplitter#DocBodySplitter::handle {
+    background-color: #DEE2E6;
+    width: 6px;
 }
 
 QLabel#DocInfoLabel, QLabel#DocPaymentLabel, QLabel#DocItemsTitle {

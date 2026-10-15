@@ -220,6 +220,86 @@ class TestTillCreatedCustomer:
         assert _names(shop, TILL_A) == _names(shop, "main")
 
 
+class TestTillCreatedCustomerContacts:
+    """#717: a till-created customer's contacts go to the Main PC with it."""
+
+    CONTACTS = [
+        {"name": "Kamal Silva", "role": "Accounts", "phone": "0112345678", "email": "accounts@example.lk"},
+        {"name": "Sunil Fernando", "role": "Buyer", "phone": "0119876543", "email": None},
+    ]
+
+    def _new_company(self, shop, till: str, phone: str | None = "0770000009") -> int:
+        with shop.on(till):
+            return (
+                CustomerService()
+                .create_customer(
+                    {
+                        "name": "Lanka Traders",
+                        "company_name": "Lanka Traders (Pvt) Ltd",
+                        "is_company": True,
+                        "phone": phone,
+                        "contacts": [dict(c) for c in self.CONTACTS],
+                    }
+                )
+                .id
+            )
+
+    @staticmethod
+    def _contacts(shop, machine: str, customer_id: int) -> list[tuple]:
+        with shop.on(machine):
+            customer = CustomerService().get_customer(customer_id)
+        return sorted((c.name, c.role, c.phone, c.email) for c in customer.contacts)
+
+    @staticmethod
+    def _main_id(shop, phone: str) -> int:
+        with shop.session("main") as s:
+            return s.query(Customer).filter_by(phone=phone).one().id
+
+    def _expected(self) -> list[tuple]:
+        return sorted((c["name"], c["role"], c["phone"], c["email"]) for c in self.CONTACTS)
+
+    def test_contacts_reach_main_pc_under_its_customer_id(self, shop, catalog):
+        _main_only_customer(shop, "Main Customer")  # the till's local id is taken on the Main PC
+        local_id = self._new_company(shop, TILL_A)
+
+        shop.cycle(TILL_A)
+
+        main_id = self._main_id(shop, "0770000009")
+        assert main_id != local_id
+        assert self._contacts(shop, "main", main_id) == self._expected()
+        # The till renumbered the customer; its contacts moved with it.
+        assert self._contacts(shop, TILL_A, main_id) == self._expected()
+
+    def test_lost_acknowledgement_does_not_duplicate_contacts(self, shop, catalog):
+        self._new_company(shop, TILL_A)
+        shop.drop_responses = True
+        shop.push(TILL_A)
+        shop.drop_responses = False
+
+        shop.cycle(TILL_A)
+        shop.cycle(TILL_A)
+
+        assert self._contacts(shop, "main", self._main_id(shop, "0770000009")) == self._expected()
+
+    def test_customer_the_main_pc_already_has_keeps_its_own_contacts(self, shop, catalog):
+        existing = _main_only_customer(shop, "Lanka Traders", "0770000009")
+
+        self._new_company(shop, TILL_A, phone="0770000009")
+        shop.cycle(TILL_A)
+
+        assert self._contacts(shop, "main", existing) == []
+
+    def test_contact_edits_to_a_pulled_customer_stay_on_the_till(self, shop, catalog):
+        with shop.session(TILL_A) as s:
+            pulled_id = s.query(Customer).filter_by(phone="0710000001").one().id
+        with shop.on(TILL_A):
+            CustomerService().update_customer(pulled_id, {"contacts": [dict(self.CONTACTS[0])]})
+
+        shop.cycle(TILL_A)
+
+        assert self._contacts(shop, "main", pulled_id) == []
+
+
 # ---------------------------------------------------------------------------
 # Migration
 # ---------------------------------------------------------------------------

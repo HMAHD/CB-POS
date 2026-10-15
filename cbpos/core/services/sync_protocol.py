@@ -71,6 +71,7 @@ REJECTED_TABLE_ERROR = "Table not allowed for push: "
 # ---------------------------------------------------------------------------
 TRANSACTION_TABLES = [
     "customers",  # Only those created on the till (#680); first, as sales point at them
+    "customer_contacts",  # Only those of the customers above, pushed with them (#717)
     "documents",  # Base (polymorphic: sale, purchase, proforma, stock_count)
     "sales",
     "sale_items",

@@ -514,6 +514,11 @@ class SyncClient(QThread):
             new_customers = session.query(Customer).filter_by(synced=False).all()
             if new_customers:
                 payload["customers"] = [self._new_customer_row(session, c) for c in new_customers]
+                # Their contacts go with them (#717); the Main PC stores them
+                # under its own id for the customer.
+                contacts = [model_to_dict(contact) for c in new_customers for contact in c.contacts]
+                if contacts:
+                    payload["customer_contacts"] = contacts
 
             # Find unsynced sales (with items and payments)
             unsynced_sales = session.query(Sale).filter_by(synced=False).all()

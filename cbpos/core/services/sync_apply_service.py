@@ -28,6 +28,7 @@ Ownership of the tables a push touches:
   the same batch that names such a customer is translated; the push
   acknowledgement returns the new ids and the till renumbers its copy
   (sync_customer_renumber), after which its ids agree with the Main PC's.
+  Its contacts come in the same batch and are stored with it (#717).
 
 Balances (#678): ``Customer.current_debt`` and ``Supplier.current_payable``
 are Main-owned columns that till activity moves. Each pushed ledger row
@@ -45,7 +46,7 @@ from typing import Any
 
 from sqlalchemy import inspect as sa_inspect
 
-from cbpos.core.models import Customer, Document, Product, Supplier, SyncIdMap
+from cbpos.core.models import Customer, CustomerContact, Document, Product, Supplier, SyncIdMap
 from cbpos.core.services.sync_change_tracking import SKIP_CHANGE_TRACKING
 from cbpos.core.services.sync_protocol import (
     REJECTED_TABLE_ERROR,
@@ -68,6 +69,7 @@ _DOCUMENT_TABLES = frozenset({"documents", "sales", "purchases"})
 # server row first and the documents row then just updates it.
 APPLY_ORDER: tuple[str, ...] = (
     "customers",
+    "customer_contacts",
     "shifts",
     "sales",
     "purchases",
@@ -191,6 +193,8 @@ class SyncApplyService:
         self._touched_balances: dict[str, set[int]] = {b.reply_key: set() for b in _LEDGER_BALANCES.values()}
         # Till ids of the customers this batch creates (#680).
         self._batch_customers: set[int] = set()
+        # ...and of those among them the Main PC didn't have yet (stored new).
+        self._inserted_customers: set[int] = set()
 
     # --- Public API ---
 
@@ -278,6 +282,9 @@ class SyncApplyService:
         values.pop("id", None)
         if table_name == "customers":
             self._apply_customer(local_id, values)
+            return
+        if table_name == "customer_contacts":
+            self._apply_customer_contact(local_id, values)
             return
         self._remap_references(table_name, model_class, local_id, values)
         balance = _LEDGER_BALANCES.get(table_name)
@@ -396,6 +403,27 @@ class SyncApplyService:
         self._session.add(customer)
         self._session.flush()
         self._remember("customers", local_id, customer.id)
+        self._inserted_customers.add(local_id)
+
+    def _apply_customer_contact(self, local_id: int, values: dict[str, Any]) -> None:
+        """Store a contact of a customer this batch has just stored new (#717).
+
+        Contacts are part of the customer's details, so they follow the same
+        rule: they arrive with the customer and are stored when the Main PC
+        stores it. A re-sent customer (lost acknowledgement) or one matched to
+        a customer the Main PC already had keeps the Main PC's contacts --
+        which also keeps a re-send from adding them twice.
+        """
+        customer_ref = values.get("customer_id")
+        if customer_ref is None or int(customer_ref) not in self._inserted_customers:
+            logger.debug(
+                "Sync: contact %s from %s is for a customer the Main PC already has; kept the Main PC's",
+                local_id,
+                self._terminal_id,
+            )
+            return
+        values["customer_id"] = self._lookup("customers", int(customer_ref))
+        self._session.add(CustomerContact(**values))
 
     # --- References to other till rows ---
 

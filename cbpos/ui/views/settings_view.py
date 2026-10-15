@@ -33,7 +33,6 @@ from cbpos.ui.app_restart import restart_application
 from cbpos.ui.views.settings_pages import (
     DocumentPage,
     HardwarePage,
-    LoyaltyPage,
     NetworkPage,
     ReceiptPage,
     SalesTaxPage,
@@ -91,12 +90,11 @@ class SettingsView(QWidget):
         self.btn_receipt = self.sidebar.add_nav_button("", "fa5s.receipt", 4)
         self.btn_system = self.sidebar.add_nav_button("", "fa5s.cogs", 5)
         self.btn_network = self.sidebar.add_nav_button("", "fa5s.network-wired", 6)
-        self.btn_loyalty = self.sidebar.add_nav_button("", "fa5s.star", 7)
-        self.btn_payment_methods = self.sidebar.add_nav_button("", "fa5s.credit-card", 8)
+        self.btn_payment_methods = self.sidebar.add_nav_button("", "fa5s.credit-card", 7)
 
         # Operational buttons
-        self.btn_data_safety = self.sidebar.add_nav_button("", "fa5s.shield-alt", 9)
-        self.btn_admin_tools = self.sidebar.add_nav_button("", "fa5s.toolbox", 10)
+        self.btn_data_safety = self.sidebar.add_nav_button("", "fa5s.shield-alt", 8)
+        self.btn_admin_tools = self.sidebar.add_nav_button("", "fa5s.toolbox", 9)
 
         self.sidebar.finalize()
         self.sidebar.highlight(0)
@@ -110,7 +108,6 @@ class SettingsView(QWidget):
             "receipt": self.btn_receipt,
             "system": self.btn_system,
             "network": self.btn_network,
-            "loyalty": self.btn_loyalty,
             "payment_methods": self.btn_payment_methods,
             "data_safety": self.btn_data_safety,
             "admin_tools": self.btn_admin_tools,
@@ -131,7 +128,6 @@ class SettingsView(QWidget):
             ReceiptPage(),
             SystemPage(),
             NetworkPage(),
-            LoyaltyPage(),
         ]
 
         for page in self.pages:
@@ -139,7 +135,6 @@ class SettingsView(QWidget):
 
         # Money spin boxes follow the currency symbol as it is typed (#555).
         self.pages[0].input_currency.textChanged.connect(self.pages[1].set_currency_symbol)
-        self.pages[0].input_currency.textChanged.connect(self.pages[7].set_currency_symbol)
 
         # Operational views (self-contained, no load/save)
         from cbpos.ui.views.admin_tools_view import AdminToolsView
@@ -215,7 +210,6 @@ class SettingsView(QWidget):
         self.btn_receipt.setText(_t("settings.sidebar_receipt"))
         self.btn_system.setText(_t("settings.sidebar_system"))
         self.btn_network.setText(_t("settings.sidebar_network"))
-        self.btn_loyalty.setText(_t("settings.sidebar_loyalty"))
         self.btn_payment_methods.setText(_t("settings.sidebar_payments"))
         self.btn_data_safety.setText(_t("settings.sidebar_data_safety"))
         self.btn_admin_tools.setText(_t("settings.sidebar_admin_tools"))

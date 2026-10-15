@@ -15,7 +15,6 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.ui.views.settings_pages import (
     DocumentPage,
     HardwarePage,
-    LoyaltyPage,
     NetworkPage,
     ReceiptPage,
     SalesTaxPage,
@@ -25,7 +24,7 @@ from cbpos.ui.views.settings_pages import (
 
 pytestmark = pytest.mark.usefixtures("qapp")
 
-ALL_PAGES = [ShopInfoPage, SalesTaxPage, DocumentPage, HardwarePage, ReceiptPage, SystemPage, NetworkPage, LoyaltyPage]
+ALL_PAGES = [ShopInfoPage, SalesTaxPage, DocumentPage, HardwarePage, ReceiptPage, SystemPage, NetworkPage]
 
 
 @pytest.mark.parametrize("page_cls", ALL_PAGES, ids=lambda c: c.__name__)

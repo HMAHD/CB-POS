@@ -67,7 +67,7 @@ def view(qapp, db_session, config_store, monkeypatch):
     v.deleteLater()
 
 
-TOOL_PAGE = 8  # Payment Methods -- first page after the 8 config pages
+TOOL_PAGE = 7  # Payment Methods -- first page after the 7 config pages
 
 
 class TestActionBarPlacement:

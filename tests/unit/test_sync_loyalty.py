@@ -210,6 +210,47 @@ class TestLoyaltyPoints:
             assert entry.points == 25
             assert entry.note == "Manual goodwill bonus"
 
+    def test_points_redeemed_on_till_reach_main_pc_and_other_tills(self, shop, catalog):
+        # Initial points on catalog["customer"] is 10.
+        # Till A sells with 5 points redeemed.
+        with shop.on(TILL_A):
+            with shop.session(TILL_A) as s:
+                user = s.get(User, catalog["user"])
+                product = s.get(Product, catalog["product"])
+                with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=user):
+                    cart = CartService()
+                    # 5 units of product at 100 = 500
+                    cart.add_item(product, qty=Decimal("5.0"))
+                    # Redeem 5 points (= Rs 5 discount, net bill = 495, earns 4 points)
+                    sale = TransactionService.process_sale(
+                        cart,
+                        [{"method": "CASH", "amount": Decimal("495")}],
+                        customer_id=catalog["customer"],
+                        loyalty_points_redeemed=5,
+                    )
+                    assert sale is not None
+
+        # On Till A: 10 - 5 (redeemed) + 4 (earned on 495) = 9
+        assert _points(shop, TILL_A, catalog["customer"]) == 9
+
+        # Sync Till A and Till B
+        shop.cycle(TILL_A)
+        shop.cycle(TILL_B)
+
+        assert _points(shop, "main", catalog["customer"]) == 9
+        assert _points(shop, TILL_A, catalog["customer"]) == 9
+        assert _points(shop, TILL_B, catalog["customer"]) == 9
+
+        # Verify REDEEM entry reached Main PC and its reference_id points to Main's sale document
+        with shop.session("main") as s:
+            redeem_entry = (
+                s.query(LoyaltyLedgerEntry).filter_by(customer_id=catalog["customer"], entry_type="REDEEM").one()
+            )
+            assert redeem_entry.points == -5
+            main_sale = s.query(Sale).filter_by(origin_terminal_id=TILL_A).first()
+            assert main_sale is not None
+            assert redeem_entry.reference_id == main_sale.id
+
 
 class TestOlderMainPc:
     """A till upgraded before the Main PC: the Main PC turns loyalty rows away."""

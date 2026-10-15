@@ -251,7 +251,21 @@
     "invalid_amount_title": "Invalid Amount",
     "invalid_amount_message": "Please enter a valid amount.",
     "credit_no_customer": "Please select a customer for Credit sale.",
-    "credit_customer_not_found": "Customer '{name}' not found."
+    "credit_customer_not_found": "Customer '{name}' not found.",
+    "loyalty_section": "LOYALTY REDEMPTION",
+    "loyalty_points_available": "{points} points (Rs. {value})",
+    "loyalty_no_customer": "No customer attached (Points unavailable)",
+    "loyalty_redeem_btn": "Redeem Points",
+    "loyalty_redeemed_label": "Redeemed: {points} pts (-Rs. {value})",
+    "loyalty_cancel_redeem": "Cancel",
+    "loyalty_dialog_title": "Redeem Loyalty Points",
+    "loyalty_dialog_prompt": "Points to redeem (Max: {max}, Rs. {max_val}):",
+    "loyalty_err_disabled": "Loyalty program is disabled.",
+    "loyalty_err_no_customer": "Please select a customer to redeem points.",
+    "loyalty_err_invalid": "Please enter a valid whole number of points.",
+    "loyalty_err_insufficient": "Customer only has {available} points.",
+    "loyalty_err_min_redeem": "Minimum redemption is {min} points.",
+    "loyalty_err_exceeds_bill": "Redemption value (Rs. {value}) exceeds the bill total (Rs. {total})."
   },
   "discount": {
     "title": "Apply Discount",

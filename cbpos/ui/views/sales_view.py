@@ -985,14 +985,20 @@ class SalesView(QWidget):
         if self.side_menu.isVisible():
             self.toggle_side_menu()
 
-        dialog = PaymentDialog(totals["final_total"], self)
+        dialog = PaymentDialog(totals["final_total"], self, customer=self.customer)
         if dialog.exec():
-            payments, _ = dialog.payment_data
-            customer_id = self.customer.id if self.customer else None
+            payments, dialog_customer_id = dialog.payment_data
+            customer_id = dialog_customer_id or (self.customer.id if self.customer else None)
+            redeemed_points = dialog.loyalty_points_redeemed
 
             self._processing = True
             try:
-                sale = TransactionService.process_sale(self.cart_service, payments, customer_id)
+                sale = TransactionService.process_sale(
+                    self.cart_service,
+                    payments,
+                    customer_id,
+                    loyalty_points_redeemed=redeemed_points,
+                )
                 if sale:
                     # Mark proforma as converted if this was a proforma-to-sale conversion
                     proforma_id = getattr(self, "_pending_proforma_id", None)

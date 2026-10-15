@@ -36,13 +36,16 @@ class PaymentDialog(QDialog):
     """Dialog for splitting checkout payment across one or more methods (cash, card, credit, etc.) and confirming
     the sale."""
 
-    def __init__(self, total_amount: Decimal, parent=None):
+    def __init__(self, total_amount: Decimal, parent=None, customer=None):
         """Initialize the dialog for the given total, load payment methods, and disable the parent's Enter
         shortcuts while this dialog is open."""
         super().__init__(parent)
         self.total_amount = total_amount
+        self.customer = customer
+        self.customer_id = customer.id if customer else None
+        self._loyalty_points_redeemed = 0
+        self._loyalty_discount_value = Decimal("0.00")
         self.payments = []  # List of {'method': str, 'amount': Decimal}
-        self.customer_id = None
         self.payment_methods = []
 
         self.setWindowTitle(_t("payment.title"))
@@ -162,6 +165,49 @@ class PaymentDialog(QDialog):
         self.cmb_customer.setVisible(False)
         left_layout.addWidget(self.lbl_customer)
         left_layout.addWidget(self.cmb_customer)
+
+        # Loyalty Redemption Panel (ADR-0002)
+
+        self.loyalty_frame = QFrame()
+        self.loyalty_frame.setObjectName("PaymentLoyaltyFrame")
+        loyalty_layout = QVBoxLayout(self.loyalty_frame)
+        loyalty_layout.setContentsMargins(10, 8, 10, 8)
+        loyalty_layout.setSpacing(6)
+
+        self.lbl_loyalty_header = QLabel(_t("payment.loyalty_section"))
+        self.lbl_loyalty_header.setObjectName("PaymentMethodsHeader")
+        loyalty_layout.addWidget(self.lbl_loyalty_header)
+
+        loyalty_row = QHBoxLayout()
+        loyalty_row.setSpacing(8)
+
+        self.lbl_loyalty_info = QLabel("")
+        self.lbl_loyalty_info.setObjectName("PaymentLoyaltyInfo")
+        loyalty_row.addWidget(self.lbl_loyalty_info, stretch=1)
+
+        self.lbl_redeemed = QLabel("")
+        self.lbl_redeemed.setObjectName("PaymentLoyaltyRedeemed")
+        self.lbl_redeemed.setVisible(False)
+        loyalty_row.addWidget(self.lbl_redeemed)
+
+        self.btn_redeem = QPushButton(_t("payment.loyalty_redeem_btn"))
+        self.btn_redeem.setObjectName("BtnRedeemLoyalty")
+        self.btn_redeem.setFixedHeight(34)
+        self.btn_redeem.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_redeem.clicked.connect(self._on_redeem_clicked)
+        loyalty_row.addWidget(self.btn_redeem)
+
+        self.btn_cancel_redeem = QPushButton(_t("payment.loyalty_cancel_redeem"))
+        self.btn_cancel_redeem.setObjectName("BtnCancelLoyalty")
+        self.btn_cancel_redeem.setFixedHeight(34)
+        self.btn_cancel_redeem.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_cancel_redeem.setVisible(False)
+        self.btn_cancel_redeem.clicked.connect(self.cancel_loyalty_redemption)
+        loyalty_row.addWidget(self.btn_cancel_redeem)
+
+        loyalty_layout.addLayout(loyalty_row)
+        left_layout.addWidget(self.loyalty_frame)
+        self._update_loyalty_display()
 
         # Section Header: Applied Payments
         self.lbl_applied = QLabel("")
@@ -425,10 +471,129 @@ class PaymentDialog(QDialog):
                 if self.get_remaining_amount() <= 0:
                     self.accept()
 
+    def _update_loyalty_display(self):
+        """Update loyalty card display based on attached customer and points."""
+        from cbpos.core.services.config_service import ConfigService
+        from cbpos.core.services.loyalty_service import LoyaltyService
+
+        if not ConfigService.get("enable_loyalty"):
+            self.loyalty_frame.setVisible(False)
+            return
+
+        self.loyalty_frame.setVisible(True)
+        if self.customer:
+            pts = self.customer.loyalty_points or 0
+            val = LoyaltyService.calculate_redeem_value(pts)
+            self.lbl_loyalty_info.setText(
+                f"{self.customer.name} • {_t('payment.loyalty_points_available', points=pts, value=format_currency(val))}"
+            )
+            self.btn_redeem.setEnabled(pts > 0)
+        else:
+            self.lbl_loyalty_info.setText(_t("payment.loyalty_no_customer"))
+            self.btn_redeem.setEnabled(False)
+
+    def apply_loyalty_redemption(self, points: int) -> bool:
+        """Apply points redemption as a rupee discount."""
+        from cbpos.core.services.loyalty_service import LoyaltyService
+
+        can_redeem, reason = LoyaltyService.can_redeem_points(self.customer, points, self.total_amount)
+        if not can_redeem:
+            self._show_loyalty_error(reason, points)
+            return False
+
+        self._loyalty_points_redeemed = points
+        self._loyalty_discount_value = LoyaltyService.calculate_redeem_value(points)
+
+        self.lbl_redeemed.setText(
+            _t("payment.loyalty_redeemed_label", points=points, value=format_currency(self._loyalty_discount_value))
+        )
+        self.lbl_redeemed.setVisible(True)
+        self.btn_cancel_redeem.setVisible(True)
+        self.btn_redeem.setVisible(False)
+
+        self.update_balance()
+        return True
+
+    def cancel_loyalty_redemption(self):
+        """Cancel previously applied loyalty points redemption."""
+        self._loyalty_points_redeemed = 0
+        self._loyalty_discount_value = Decimal("0.00")
+        self.lbl_redeemed.setVisible(False)
+        self.btn_cancel_redeem.setVisible(False)
+        self.btn_redeem.setVisible(True)
+        self.update_balance()
+
+    def _on_redeem_clicked(self):
+        """Prompt cashier for loyalty points to redeem."""
+        from PyQt6.QtWidgets import QInputDialog
+
+        from cbpos.core.services.config_service import ConfigService
+
+        if not self.customer:
+            QMessageBox.warning(self, _t("common.error"), _t("payment.loyalty_err_no_customer"))
+            return
+
+        pts = self.customer.loyalty_points or 0
+        if pts <= 0:
+            QMessageBox.warning(self, _t("common.error"), _t("payment.loyalty_err_insufficient", available=0))
+            return
+
+        val_cfg = ConfigService.get("loyalty_point_value")
+        point_val = Decimal(str(val_cfg or "1.00"))
+        max_from_bill = int(self.total_amount // point_val)
+        max_points = min(pts, max_from_bill)
+        if max_points <= 0:
+            QMessageBox.warning(
+                self,
+                _t("common.error"),
+                _t(
+                    "payment.loyalty_err_exceeds_bill",
+                    value=format_currency(point_val),
+                    total=format_currency(self.total_amount),
+                ),
+            )
+            return
+
+        min_redeem = int(ConfigService.get("loyalty_minimum_redeem") or 0)
+        max_val_str = format_currency(Decimal(max_points) * point_val)
+        points, ok = QInputDialog.getInt(
+            self,
+            _t("payment.loyalty_dialog_title"),
+            _t("payment.loyalty_dialog_prompt", max=max_points, max_val=max_val_str),
+            max_points,
+            max(1, min_redeem),
+            pts,
+            1,
+        )
+        if ok:
+            self.apply_loyalty_redemption(points)
+
+    def _show_loyalty_error(self, reason: str, points: int):
+        from cbpos.core.services.config_service import ConfigService
+        from cbpos.core.services.loyalty_service import LoyaltyService
+
+        min_redeem = int(ConfigService.get("loyalty_minimum_redeem") or 0)
+        available = (self.customer.loyalty_points or 0) if self.customer else 0
+        val_str = format_currency(LoyaltyService.calculate_redeem_value(points))
+        tot_str = format_currency(self.total_amount)
+
+        msgs = {
+            "loyalty_disabled": _t("payment.loyalty_err_disabled"),
+            "no_customer": _t("payment.loyalty_err_no_customer"),
+            "customer_not_found": _t("payment.loyalty_err_no_customer"),
+            "invalid_points": _t("payment.loyalty_err_invalid"),
+            "insufficient_points": _t("payment.loyalty_err_insufficient", available=available),
+            "below_minimum": _t("payment.loyalty_err_min_redeem", min=min_redeem),
+            "exceeds_bill": _t("payment.loyalty_err_exceeds_bill", value=val_str, total=tot_str),
+        }
+        msg = msgs.get(reason, str(reason))
+        QMessageBox.warning(self, _t("common.error"), msg)
+
     def get_remaining_amount(self) -> Decimal:
-        """Return the amount still owed after payments already applied."""
+        """Return the amount still owed after payments already applied and loyalty discount."""
         paid = sum(p["amount"] for p in self.payments)
-        return self.total_amount - paid
+        effective_total = self.total_amount - self._loyalty_discount_value
+        return effective_total - paid
 
     def add_payment(self):
         """Validate the entered amount and append it as a payment for the current method, requiring a
@@ -548,21 +713,26 @@ class PaymentDialog(QDialog):
 
         # Reset to initial state if no payments left
         if not self.payments:
-            self.lbl_remaining.setText(f"{_t('payment.remaining')} {format_currency(self.total_amount)}")
+            rem = self.get_remaining_amount()
+            self.lbl_remaining.setText(f"{_t('payment.remaining')} {format_currency(rem)}")
             self.lbl_remaining.setProperty("state", "remaining")
             self.lbl_remaining.style().unpolish(self.lbl_remaining)
             self.lbl_remaining.style().polish(self.lbl_remaining)
             self.btn_finish.setEnabled(False)
-            self.btn_finish.setToolTip(
-                _t("payment.finish_tooltip_remaining", amount=format_currency(self.total_amount))
-            )
+            self.btn_finish.setToolTip(_t("payment.finish_tooltip_remaining", amount=format_currency(rem)))
 
     def update_balance(self):
         """Refresh the remaining/change label and enable Finish once the total is fully covered."""
         remaining = self.get_remaining_amount()
 
         if remaining > 0:
-            self.lbl_remaining.setText(f"{_t('payment.remaining')} {format_currency(remaining)}")
+            if self._loyalty_points_redeemed > 0:
+                self.lbl_remaining.setText(
+                    f"{_t('payment.remaining')} {format_currency(remaining)} "
+                    f"(-{format_currency(self._loyalty_discount_value)})"
+                )
+            else:
+                self.lbl_remaining.setText(f"{_t('payment.remaining')} {format_currency(remaining)}")
             self.lbl_remaining.setProperty("state", "remaining")
             self.lbl_remaining.style().unpolish(self.lbl_remaining)
             self.lbl_remaining.style().polish(self.lbl_remaining)
@@ -607,6 +777,11 @@ class PaymentDialog(QDialog):
         """Disable finish button to prevent double-click, then accept."""
         self.btn_finish.setEnabled(False)
         self.accept()
+
+    @property
+    def loyalty_points_redeemed(self) -> int:
+        """Return whole number of loyalty points redeemed as discount."""
+        return self._loyalty_points_redeemed
 
     @property
     def payment_data(self):

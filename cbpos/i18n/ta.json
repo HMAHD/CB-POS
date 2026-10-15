@@ -251,7 +251,21 @@
     "invalid_amount_title": "தவறான தொகை",
     "invalid_amount_message": "சரியான தொகையை உள்ளிடுக.",
     "credit_no_customer": "கடன் விற்பனைக்கு வாடிக்கையாளரைத் தேர்வு செய்யுங்கள்.",
-    "credit_customer_not_found": "'{name}' வாடிக்கையாளர் கிடைக்கல."
+    "credit_customer_not_found": "'{name}' வாடிக்கையாளர் கிடைக்கல.",
+    "loyalty_section": "விசுவாச புள்ளிகள் கழிவு",
+    "loyalty_points_available": "{points} புள்ளிகள் (ரூ. {value})",
+    "loyalty_no_customer": "வாடிக்கையாளர் தேர்ந்தெடுக்கப்படவில்லை (புள்ளிகள் இல்லை)",
+    "loyalty_redeem_btn": "புள்ளிகளைப் பயன்படுத்து",
+    "loyalty_redeemed_label": "பயன்படுத்திய புள்ளிகள்: {points} (-ரூ. {value})",
+    "loyalty_cancel_redeem": "ரத்துசெய்",
+    "loyalty_dialog_title": "விசுவாச புள்ளிகள் கழிவு",
+    "loyalty_dialog_prompt": "பயன்படுத்த வேண்டிய புள்ளிகள் (அதிகபட்சம்: {max}, ரூ. {max_val}):",
+    "loyalty_err_disabled": "விசுவாச திட்டம் முடக்கப்பட்டுள்ளது.",
+    "loyalty_err_no_customer": "புள்ளிகளைப் பயன்படுத்த வாடிக்கையாளரைத் தேர்ந்தெடுக்கவும்.",
+    "loyalty_err_invalid": "சரியான புள்ளிகளை உள்ளிடவும்.",
+    "loyalty_err_insufficient": "வாடிக்கையாளரிடம் {available} புள்ளிகள் மட்டுமே உள்ளன.",
+    "loyalty_err_min_redeem": "குறைந்தபட்சம் {min} புள்ளிகளைப் பயன்படுத்த வேண்டும்.",
+    "loyalty_err_exceeds_bill": "புள்ளிகளின் மதிப்பு (ரூ. {value}) பில் தொகையைவிட (ரூ. {total}) அதிகமாக இருக்க முடியாது."
   },
   "discount": {
     "title": "தள்ளுபடி",

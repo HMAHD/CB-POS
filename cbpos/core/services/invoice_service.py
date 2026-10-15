@@ -55,6 +55,23 @@ class InvoiceLine:
     amount: Decimal
 
 
+@dataclass(frozen=True)
+class InvoiceTotals:
+    """The invoice's totals block.
+
+    Attributes:
+        subtotal: Sum of the Amount column (line discounts already off).
+        bill_discount: The bill-level discount; zero when none.
+        total: What the sale charged (subtotal - bill_discount), taxes included.
+        saved: Line discounts plus the bill discount.
+    """
+
+    subtotal: Decimal
+    bill_discount: Decimal
+    total: Decimal
+    saved: Decimal
+
+
 def _dec(value: Any) -> Decimal:
     """``value`` as a Decimal; None (an unsaved column default) is zero."""
     if isinstance(value, Decimal):
@@ -82,6 +99,7 @@ def _styles() -> dict[str, ParagraphStyle]:
         ),
         "th": ParagraphStyle("InvTh", parent=bold, alignment=TA_CENTER, textColor=colors.whitesmoke),
         "muted": ParagraphStyle("InvMuted", parent=base, textColor=_GREY),
+        "muted_right": ParagraphStyle("InvMutedRight", parent=base, textColor=_GREY, alignment=TA_RIGHT),
     }
 
 
@@ -203,6 +221,27 @@ class InvoiceService:
                 )
             )
         return lines
+
+    @staticmethod
+    def invoice_totals(sale: Sale, lines: list[InvoiceLine]) -> InvoiceTotals:
+        """The totals block, reconciling with the Amount column.
+
+        Line discounts are already inside each line's amount (and shown in
+        its Discount column), so the sub total is the Amount column's sum
+        and only the bill discount comes off it: sub total - bill discount
+        = total.
+
+        Args:
+            sale: The sale.
+            lines: ``invoice_lines(sale, ...)``.
+        """
+        subtotal = sum((line.amount for line in lines), Decimal("0"))
+        total = _dec(sale.total_amount)
+        bill_discount = max(subtotal - total, Decimal("0"))
+        line_discounts = sum((line.discount for line in lines), Decimal("0"))
+        return InvoiceTotals(
+            subtotal=subtotal, bill_discount=bill_discount, total=total, saved=line_discounts + bill_discount
+        )
 
     @staticmethod
     def _shows_vat(sale: Sale) -> bool:
@@ -381,22 +420,22 @@ class InvoiceService:
         still matches what was charged: net + VAT + SSCL = total.
         """
         label_w, value_w = 130 * mm, 50 * mm
-        total = _dec(sale.total_amount)
-        item_discounts = sum((line.discount for line in lines), Decimal("0"))
-        lines_total = sum((line.amount for line in lines), Decimal("0"))
-        bill_discount = lines_total - total
+        totals = InvoiceService.invoice_totals(sale, lines)
+        total = totals.total
 
-        rows: list[tuple[str, str]] = [(t("subtotal"), format_currency(lines_total + item_discounts))]
-        if item_discounts > 0:
-            rows.append((t("item_discounts"), f"-{format_currency(item_discounts)}"))
-        if bill_discount > 0:
+        rows: list[tuple[str, str]] = [(t("subtotal"), format_currency(totals.subtotal))]
+        if totals.bill_discount > 0:
             if (sale.additional_discount_type or "NONE") == "PERCENTAGE":
                 label = t("bill_discount_pct", pct=_pct(sale.additional_discount_value, "0"))
             else:
                 label = t("bill_discount")
-            rows.append((label, f"-{format_currency(bill_discount)}"))
+            rows.append((label, f"-{format_currency(totals.bill_discount)}"))
         total_row = len(rows)
         rows.append((t("total"), format_currency(total)))
+        saved_row = None
+        if totals.saved > 0:
+            saved_row = len(rows)
+            rows.append((t("you_saved", amount=format_currency(totals.saved)), ""))
 
         if show_vat:
             rows.append((t("taxes_included"), ""))
@@ -412,22 +451,25 @@ class InvoiceService:
 
         data = []
         for i, (label, value) in enumerate(rows):
+            if i == saved_row:  # one muted line across both columns, under the total
+                data.append([_text(label, st["muted_right"], label_w + value_w - 6 * mm), ""])
+                continue
             style = st["right_bold"] if i == total_row else st["right"]
             data.append([_text(label, style, label_w - 6 * mm), _text(value, style)])
+        tax_row = (saved_row if saved_row is not None else total_row) + 1
+        commands = [
+            ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 2),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+            ("LINEABOVE", (1, total_row), (1, total_row), 1, colors.black),
+            ("BACKGROUND", (1, total_row), (1, total_row), _SHADE),
+            ("TOPPADDING", (0, tax_row), (-1, tax_row), 3 * mm),
+        ]
+        if saved_row is not None:
+            commands.append(("SPAN", (0, saved_row), (1, saved_row)))
         table = Table(data, colWidths=[label_w, value_w])
-        table.setStyle(
-            TableStyle(
-                [
-                    ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("TOPPADDING", (0, 0), (-1, -1), 2),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                    ("LINEABOVE", (1, total_row), (1, total_row), 1, colors.black),
-                    ("BACKGROUND", (1, total_row), (1, total_row), _SHADE),
-                    ("TOPPADDING", (0, total_row + 1), (-1, total_row + 1), 3 * mm),
-                ]
-            )
-        )
+        table.setStyle(TableStyle(commands))
         return table
 
     @staticmethod

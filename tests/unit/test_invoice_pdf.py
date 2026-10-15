@@ -114,6 +114,36 @@ class TestInvoiceLines:
         assert sugar.description == "Sugar (loose)"
 
 
+@pytest.mark.usefixtures("settings")
+class TestInvoiceTotals:
+    def test_totals_reconcile_with_the_amount_column(self):
+        """Line discounts are already in the Amount column; only the bill discount comes off the sub total."""
+        sale = _vat_sale()  # a line discount (Rs. 200) and a bill discount (Rs. 140)
+        lines = InvoiceService.invoice_lines(sale, "en")
+
+        totals = InvoiceService.invoice_totals(sale, lines)
+
+        assert totals.subtotal == sum(line.amount for line in lines) == Decimal("2500.00")
+        assert totals.bill_discount == Decimal("140.00")
+        assert totals.subtotal - totals.bill_discount == totals.total == sale.total_amount
+        assert totals.saved == Decimal("340.00")  # 200 off the cement + 140 off the bill
+
+    def test_no_discounts_nothing_saved(self):
+        sale = _vat_sale()
+        sale.items = sale.items[1:]  # the undiscounted sugar only
+        sale.additional_discount_type, sale.additional_discount_value = "NONE", Decimal("0")
+        sale.total_amount = Decimal("300.00")
+
+        totals = InvoiceService.invoice_totals(sale, InvoiceService.invoice_lines(sale, "en"))
+
+        assert (totals.subtotal, totals.bill_discount, totals.total, totals.saved) == (
+            Decimal("300.00"),
+            Decimal("0"),
+            Decimal("300.00"),
+            Decimal("0"),
+        )
+
+
 class TestVatInvoicePdf:
     def test_lines_totals_and_vat_breakdown(self, settings, tmp_path):
         text = _pdf_text(_vat_sale(), tmp_path)
@@ -123,9 +153,12 @@ class TestVatInvoicePdf:
         assert "2026-10-15" in text
         for expected in ("Cement 50kg", "Sugar (loose)", "1.250", "1,200.00", "200.00", "2,200.00"):
             assert expected in text, expected
-        # Sub total 2,700 - item discounts 200 - bill discount 140 = 2,360 incl. taxes
-        for expected in ("2,700.00", "140.00", "2,360.00"):
+        # Sub total = the Amount column (2,500); minus bill discount 140 = 2,360 incl. taxes
+        for expected in ("Sub Total", "2,500.00", "Bill Discount", "-Rs. 140.00", "2,360.00"):
             assert expected in text, expected
+        assert "2,700.00" not in text  # no gross-of-line-discount sub total
+        assert "Item Discounts" not in text  # line discounts show per line only
+        assert "You saved Rs. 340.00" in text
         # Backward from MRP: 2,360 = net 1,975 + VAT 360 + SSCL 25
         assert "VAT (18%)" in text
         assert "360.00" in text

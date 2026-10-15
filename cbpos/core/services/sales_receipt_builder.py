@@ -216,6 +216,11 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
 
         commands.append(_sep())
 
+        # Loyalty points block
+        if cls._should_show_loyalty(sale, config_override):
+            cls._append_loyalty_block(commands, sale, line_chars)
+            commands.append(_sep())
+
         # Barcode (encodes invoice number for return scanning)
         show_barcode = gc("show_barcode", True, config_override)
         if show_barcode:
@@ -278,3 +283,39 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
                     original_price=getattr(item, "original_price", None),
                 )
         return list(merged.values())
+
+    @classmethod
+    def _should_show_loyalty(cls, sale: Sale, config_override: dict[str, Any] | None = None) -> bool:
+        """Check if loyalty information should appear on the receipt."""
+        if not cls._get_conf("enable_loyalty", True, config_override):
+            return False
+        if not cls._get_conf("show_loyalty_on_receipt", True, config_override):
+            return False
+        customer = getattr(sale, "customer", None)
+        customer_id = getattr(sale, "customer_id", None)
+        return bool(customer or customer_id)
+
+    @classmethod
+    def _append_loyalty_block(
+        cls,
+        commands: list[dict[str, Any]],
+        sale: Sale,
+        line_chars: int,
+    ) -> None:
+        """Append points earned, points redeemed (when any), and new balance to the receipt."""
+        from cbpos.core.services.loyalty_service import LoyaltyService
+
+        figures = LoyaltyService.get_sale_loyalty_figures(sale)
+        if not figures:
+            return
+
+        earned = figures["earned"]
+        redeemed = figures["redeemed"]
+        balance = figures["balance"]
+
+        commands.append(cls._split_row(cls._rt("loyalty_earned"), str(earned), line_chars))
+
+        if redeemed > 0:
+            commands.append(cls._split_row(cls._rt("loyalty_redeemed"), str(redeemed), line_chars))
+
+        commands.append(cls._split_row(cls._rt("loyalty_balance"), str(balance), line_chars))

@@ -1936,7 +1936,10 @@
     "void_value": "ரத்து செய்த மதிப்பு",
     "end_of_report": "*** அறிக்கை முடிந்தது ***",
     "refund_given_back": "திருப்பிக் கொடுத்தது: {amount}",
-    "refund_off_credit": "கடன்ல குறைச்சது: {amount}"
+    "refund_off_credit": "கடன்ல குறைச்சது: {amount}",
+    "loyalty_earned": "பெற்ற புள்ளிகள்:",
+    "loyalty_redeemed": "பயன்படுத்திய புள்ளிகள்:",
+    "loyalty_balance": "புள்ளி நிலுவை:"
   },
   "cash_movement": {
     "record_title_out": "பணப்பெட்டியிலிருந்து காசு எடுங்க",

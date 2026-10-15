@@ -1966,7 +1966,10 @@
     "void_value": "Void Value",
     "end_of_report": "*** END OF REPORT ***",
     "refund_given_back": "Given back: {amount}",
-    "refund_off_credit": "Off credit: {amount}"
+    "refund_off_credit": "Off credit: {amount}",
+    "loyalty_earned": "Points Earned:",
+    "loyalty_redeemed": "Points Redeemed:",
+    "loyalty_balance": "Points Balance:"
   },
   "cash_movement": {
     "record_title_out": "Take money out of the drawer",

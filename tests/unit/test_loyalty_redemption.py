@@ -290,6 +290,8 @@ class TestTransactionServiceLoyaltyRedemption:
             assert sale.total_amount == Decimal("900.00")
             assert sale.loyalty_points_redeemed == 100
             assert sale.loyalty_points_value == Decimal("100.00")
+            assert sale.loyalty_points_earned == 9
+            assert sale.loyalty_points_balance == 209
 
             # Check customer balance: started 300, redeemed -100, earned on 900.00 (+9 pts) -> 209
             db_session.refresh(loyalty_customer)

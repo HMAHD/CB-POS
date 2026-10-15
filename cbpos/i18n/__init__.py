@@ -38,6 +38,15 @@ def _t(key: str, **kwargs) -> str:
     return _service.translate(key, **kwargs)
 
 
+def t_or(key: str, fallback: str, **kwargs) -> str:
+    """Translate key; if no translation exists, return fallback instead (#698)."""
+    text = _t(key, **kwargs)
+    return fallback if text == key else text
+
+
+_t_or = t_or
+
+
 def set_language(lang_code: str) -> None:
     """Switch the active language and notify all registered UI components."""
     _service.set_language(lang_code)

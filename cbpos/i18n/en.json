@@ -2185,7 +2185,8 @@
       "cash": "Cash",
       "admin": "Admin",
       "other": "Other",
-      "screens": "Screens"
+      "screens": "Screens",
+      "loyalty": "Loyalty"
     },
     "code": {
       "sales.view": "Use the sales screen",
@@ -2224,7 +2225,8 @@
       "admin.settings": "Change settings",
       "admin.tools": "Use admin tools",
       "management.view": "Open the Management screen",
-      "settings.view": "Open the Settings screen"
+      "settings.view": "Open the Settings screen",
+      "loyalty.adjust_points": "Adjust customer loyalty points"
     }
   },
   "roles": {

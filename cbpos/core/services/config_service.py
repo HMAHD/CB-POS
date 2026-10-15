@@ -106,7 +106,11 @@ class ConfigService:
         "lockout_duration_seconds": 300,  # Lockout duration in seconds (5 min default)
         # Customer Defaults
         "default_credit_limit": 0,  # Default credit limit for new customers (0 = no credit)
+        # Loyalty Program
         "loyalty_points_ratio": 100,
+        "loyalty_point_value": 1.0,
+        "loyalty_min_redeem_points": 100,
+        "show_loyalty_on_receipt": True,
         # Terminal Identification
         "terminal_id": "TERM-01",
         # Multi-Terminal LAN Sync

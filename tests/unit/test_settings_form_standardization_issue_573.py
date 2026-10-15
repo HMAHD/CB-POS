@@ -16,6 +16,7 @@ from cbpos.i18n import set_language, unregister_language_callback
 from cbpos.ui.views.settings_pages import (
     DocumentPage,
     HardwarePage,
+    LoyaltyPage,
     NetworkPage,
     ReceiptPage,
     SalesTaxPage,
@@ -125,6 +126,7 @@ class TestLabelColumnAlignmentAcrossSections:
             DocumentPage,
             SystemPage,
             NetworkPage,
+            LoyaltyPage,
         ],
     )
     def test_all_labels_equalized_on_page(self, page_cls):

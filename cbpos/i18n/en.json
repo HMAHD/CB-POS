@@ -1426,6 +1426,7 @@
     "sidebar_receipt": "Receipt",
     "sidebar_system": "System",
     "sidebar_network": "Network",
+    "sidebar_loyalty": "Loyalty",
     "sidebar_payments": "Payments",
     "sidebar_data_safety": "Data Safety",
     "sidebar_admin_tools": "Admin Tools",
@@ -1836,6 +1837,26 @@
       "sync_error_title": "Connection Error",
       "sync_forget_main_confirm_message": "This Terminal will trust whichever Main PC answers at the configured address the next time it connects.\n\nOnly do this if you intentionally replaced the Main PC.",
       "sync_forget_main_done_message": "Done. This Terminal will re-pin on next connection."
+    },
+    "loyalty": {
+      "title": "Loyalty",
+      "subtitle": "Customer loyalty program, points accrual, and redemption settings.",
+      "tab_loyalty": "Loyalty",
+      "section_loyalty": "Loyalty Program",
+      "enable_loyalty": "Enable Loyalty Points",
+      "tooltip_enable_loyalty": "Customers earn loyalty points on purchases. When turned off, points accrual and redemption are disabled.",
+      "points_ratio": "Spend per Point:",
+      "tooltip_points_ratio": "Spend this amount to earn 1 loyalty point (e.g., 100 means 1 point for every Rs. 100 spent)",
+      "point_value": "Point Value:",
+      "tooltip_point_value": "Value in rupees of each point when redeemed against a purchase",
+      "min_redeem_points": "Minimum Points to Redeem:",
+      "tooltip_min_redeem_points": "Minimum number of points a customer must accumulate before redeeming them",
+      "suffix_points": " points",
+      "show_on_receipt": "Show loyalty points on receipt",
+      "tooltip_show_on_receipt": "Print customer's earned and total loyalty points balance on receipts",
+      "error_points_ratio_positive": "Spend per Point ratio must be 1 or greater.",
+      "error_point_value_positive": "Point Value must be greater than zero.",
+      "error_min_redeem_positive": "Minimum Points to Redeem must be greater than zero."
     }
   },
   "receipt_strings": {

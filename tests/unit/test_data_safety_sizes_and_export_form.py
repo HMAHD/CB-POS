@@ -27,7 +27,7 @@ def view(qapp, db_session, tmp_path, monkeypatch):
 
 
 def test_backup_row_shows_size_and_original_size(view):
-    view._on_backup_list_loaded(
+    view.backup_tab._on_backup_list_loaded(
         [
             {
                 "path": "/b/cbpos_backup_20260101_000000.zip",
@@ -40,7 +40,7 @@ def test_backup_row_shows_size_and_original_size(view):
         ]
     )
 
-    text = view.backup_table.item(0, 2).text()
+    text = view.backup_tab.backup_table.item(0, 2).text()
     assert "44 KB" in text
     assert "540 KB" in text
 
@@ -56,13 +56,13 @@ def test_database_size_label_uses_format_bytes(tmp_path):
 
 
 def test_export_date_rows_only_for_sales(view):
-    view.cmb_export_data.setCurrentText(_t("data_safety.export_type_products"))
-    assert view.export_form.isRowVisible(view.date_export_from) is False
+    view.export_tab.cmb_export_data.setCurrentText(_t("data_safety.export_type_products"))
+    assert view.export_tab.export_form.isRowVisible(view.export_tab.date_export_from) is False
 
-    view.cmb_export_data.setCurrentText(_t("data_safety.export_type_sales"))
-    assert view.export_form.isRowVisible(view.date_export_from) is True
-    assert view.export_form.isRowVisible(view.date_export_to) is True
+    view.export_tab.cmb_export_data.setCurrentText(_t("data_safety.export_type_sales"))
+    assert view.export_tab.export_form.isRowVisible(view.export_tab.date_export_from) is True
+    assert view.export_tab.export_form.isRowVisible(view.export_tab.date_export_to) is True
 
 
 def test_restore_warning_wraps(view):
-    assert view.lbl_restore_warning.wordWrap() is True
+    assert view.restore_tab.lbl_restore_warning.wordWrap() is True

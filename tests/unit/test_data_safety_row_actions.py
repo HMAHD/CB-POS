@@ -45,18 +45,18 @@ def view(qapp, db_session, tmp_path, monkeypatch):
         lambda key: str(tmp_path) if key == "backup_dir" else None,
     )
     v = DataSafetyView()
-    v._on_backup_list_loaded(BACKUPS)
+    v.backup_tab._on_backup_list_loaded(BACKUPS)
     yield v
     v.deleteLater()
 
 
 def _row_button(view, row: int, name: str) -> QPushButton:
-    cell = view.backup_table.cellWidget(row, view.COL_ACTIONS)
+    cell = view.backup_tab.backup_table.cellWidget(row, view.backup_tab.COL_ACTIONS)
     return cell.findChild(QPushButton, name)
 
 
 def test_type_column_labels_each_kind(view):
-    labels = [view.backup_table.item(r, view.COL_TYPE).text() for r in range(3)]
+    labels = [view.backup_tab.backup_table.item(r, view.backup_tab.COL_TYPE).text() for r in range(3)]
     assert labels == [
         _t("data_safety.backup_type_auto"),
         _t("data_safety.backup_type_snapshot"),
@@ -66,22 +66,22 @@ def test_type_column_labels_each_kind(view):
 
 
 def test_row_restore_prefills_the_restore_tab(view):
-    view.input_restore_password.setText("left over")
-    view.lbl_verify_result.setText("old result")
+    view.restore_tab.input_restore_password.setText("left over")
+    view.restore_tab.lbl_verify_result.setText("old result")
 
     _row_button(view, 1, "BackupRowRestore").click()
 
     assert view.tabs.currentIndex() == 1
-    assert view.input_restore_path.text() == BACKUPS[1]["path"]
-    assert view.input_restore_password.text() == ""
-    assert view.lbl_verify_result.text() == ""
+    assert view.restore_tab.input_restore_path.text() == BACKUPS[1]["path"]
+    assert view.restore_tab.input_restore_password.text() == ""
+    assert view.restore_tab.lbl_verify_result.text() == ""
 
 
 def test_row_delete_asks_first(view, monkeypatch):
     warning = MagicMock(return_value=QMessageBox.StandardButton.No)
     monkeypatch.setattr(QMessageBox, "warning", staticmethod(warning))
     delete = MagicMock()
-    monkeypatch.setattr("cbpos.ui.views.data_safety_view.BackupService.delete_backup", delete)
+    monkeypatch.setattr("cbpos.ui.views.data_safety.backup_tab.BackupService.delete_backup", delete)
 
     _row_button(view, 2, "BackupRowDelete").click()
 
@@ -92,8 +92,8 @@ def test_row_delete_asks_first(view, monkeypatch):
 def test_row_delete_confirmed_deletes_that_file(view, monkeypatch):
     monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda *a, **k: QMessageBox.StandardButton.Yes))
     delete = MagicMock(return_value=True)
-    monkeypatch.setattr("cbpos.ui.views.data_safety_view.BackupService.delete_backup", delete)
-    monkeypatch.setattr(view, "_refresh_backup_list", MagicMock())
+    monkeypatch.setattr("cbpos.ui.views.data_safety.backup_tab.BackupService.delete_backup", delete)
+    monkeypatch.setattr(view.backup_tab, "_refresh_backup_list", MagicMock())
 
     _row_button(view, 2, "BackupRowDelete").click()
 

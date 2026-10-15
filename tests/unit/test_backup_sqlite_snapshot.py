@@ -123,13 +123,13 @@ class TestVerifyRunsInAWorker:
 
     def test_verify_starts_a_worker_and_shows_the_overlay(self, view, monkeypatch):
         worker_cls = MagicMock()
-        monkeypatch.setattr("cbpos.ui.views.data_safety_view.VerifyBackupWorker", worker_cls)
+        monkeypatch.setattr("cbpos.ui.views.data_safety.restore_tab.VerifyBackupWorker", worker_cls)
         sync_verify = MagicMock()
-        monkeypatch.setattr("cbpos.ui.views.data_safety_view.BackupService.verify_backup", sync_verify)
-        view.input_restore_path.setText("/backups/cbpos_backup_20260101_000000.zip")
-        view.input_restore_password.setText(PASSWORD)
+        monkeypatch.setattr("cbpos.ui.views.data_safety.restore_tab.BackupService.verify_backup", sync_verify)
+        view.restore_tab.input_restore_path.setText("/backups/cbpos_backup_20260101_000000.zip")
+        view.restore_tab.input_restore_password.setText(PASSWORD)
 
-        view._verify_backup()
+        view.restore_tab._verify_backup()
 
         sync_verify.assert_not_called()
         worker_cls.assert_called_once_with("/backups/cbpos_backup_20260101_000000.zip", PASSWORD)
@@ -139,8 +139,10 @@ class TestVerifyRunsInAWorker:
     def test_verify_result_hides_the_overlay_and_shows_the_outcome(self, view):
         view._overlay.show_loading("...")
 
-        view._on_verify_finished({"valid": False, "files": [], "size": "1 MB", "error": "x", "error_code": "corrupt"})
+        view.restore_tab._on_verify_finished(
+            {"valid": False, "files": [], "size": "1 MB", "error": "x", "error_code": "corrupt"}
+        )
 
         assert view._overlay.isVisibleTo(view) is False
-        assert view.lbl_verify_result.text()
-        assert view.btn_verify.isEnabled()
+        assert view.restore_tab.lbl_verify_result.text()
+        assert view.restore_tab.btn_verify.isEnabled()

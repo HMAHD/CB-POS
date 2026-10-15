@@ -44,6 +44,29 @@ from cbpos.ui.workers import BackupListWorker, BackupWorker, RestoreWorker, Veri
 
 logger = logging.getLogger(__name__)
 
+# Export choices: (opaque key, label i18n key). Logic branches on the key,
+# never on the translated label (#696).
+_EXPORT_DATA_CHOICES = (
+    ("products", "data_safety.export_type_products"),
+    ("customers", "data_safety.export_type_customers"),
+    ("sales", "data_safety.export_type_sales"),
+)
+_EXPORT_FORMAT_CHOICES = (
+    ("excel", "data_safety.export_format_excel"),
+    ("csv", "data_safety.export_format_csv"),
+)
+
+
+def _fill_choices(combo: QComboBox, choices: tuple[tuple[str, str], ...]) -> None:
+    """(Re)label *combo* in the current language, keeping the chosen key."""
+    current = combo.currentData()
+    combo.blockSignals(True)
+    combo.clear()
+    for key, label_key in choices:
+        combo.addItem(_t(label_key), key)
+    combo.setCurrentIndex(max(combo.findData(current), 0))
+    combo.blockSignals(False)
+
 
 class DataSafetyView(QWidget):
     """Tabbed view for backup, restore, maintenance, and export operations."""
@@ -826,7 +849,7 @@ class DataSafetyView(QWidget):
         self.lbl_export_label = QLabel()
         self.cmb_export_data = QComboBox()
         self.cmb_export_data.setFixedWidth(200)
-        self.cmb_export_data.currentTextChanged.connect(self._on_export_data_changed)
+        self.cmb_export_data.currentIndexChanged.connect(self._on_export_data_changed)
         self.export_form.addRow(self.lbl_export_label, self.cmb_export_data)
 
         self.lbl_fmt_label = QLabel()
@@ -872,9 +895,9 @@ class DataSafetyView(QWidget):
 
         return tab
 
-    def _on_export_data_changed(self, text: str) -> None:
+    def _on_export_data_changed(self, _index: int = 0) -> None:
         """Show/hide date range based on selected data type."""
-        self._set_export_dates_visible(text == _t("data_safety.export_type_sales"))
+        self._set_export_dates_visible(self.cmb_export_data.currentData() == "sales")
 
     def _set_export_dates_visible(self, visible: bool) -> None:
         """Show the From/To rows only when exporting Sales."""
@@ -891,8 +914,8 @@ class DataSafetyView(QWidget):
         from cbpos.ui.workers import ExportWorker, start_background_job
 
         # Validate date range for Sales export
-        data_type = self.cmb_export_data.currentText()
-        if data_type == _t("data_safety.export_type_sales"):
+        data_key = self.cmb_export_data.currentData()
+        if data_key == "sales":
             start = self.date_export_from.date()
             end = self.date_export_to.date()
             if start > end:
@@ -913,24 +936,18 @@ class DataSafetyView(QWidget):
         self.btn_do_export.setText(_t("data_safety.export_exporting"))
         self.lbl_export_status.setText("")
 
-        data_type = self.cmb_export_data.currentText()
-        fmt_text = self.cmb_export_format.currentText()
-
-        if fmt_text == _t("data_safety.export_format_excel"):
-            ext = ".xlsx"
-            fmt = "excel"
-        else:
-            ext = ".csv"
-            fmt = "csv"
+        data_type = _t(dict(_EXPORT_DATA_CHOICES)[data_key])
+        fmt = self.cmb_export_format.currentData()
+        ext = ".xlsx" if fmt == "excel" else ".csv"
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         try:
-            if data_type == _t("data_safety.export_type_products"):
+            if data_key == "products":
                 df = DataExportService.get_products_dataframe()
                 filepath = f"{output_dir}/products_{timestamp}{ext}"
                 title = "Products"
-            elif data_type == _t("data_safety.export_type_customers"):
+            elif data_key == "customers":
                 df = DataExportService.get_customers_dataframe()
                 filepath = f"{output_dir}/customers_{timestamp}{ext}"
                 title = "Customers"
@@ -1047,22 +1064,10 @@ class DataSafetyView(QWidget):
         self.lbl_export_desc.setText(_t("data_safety.export_desc"))
         self.lbl_export_section.setText(_t("data_safety.export_section"))
         self.lbl_export_label.setText(_t("data_safety.export_label"))
-        self.cmb_export_data.clear()
-        self.cmb_export_data.addItems(
-            [
-                _t("data_safety.export_type_products"),
-                _t("data_safety.export_type_customers"),
-                _t("data_safety.export_type_sales"),
-            ]
-        )
+        _fill_choices(self.cmb_export_data, _EXPORT_DATA_CHOICES)
+        self._on_export_data_changed()
         self.lbl_fmt_label.setText(_t("data_safety.export_format_label"))
-        self.cmb_export_format.clear()
-        self.cmb_export_format.addItems(
-            [
-                _t("data_safety.export_format_excel"),
-                _t("data_safety.export_format_csv"),
-            ]
-        )
+        _fill_choices(self.cmb_export_format, _EXPORT_FORMAT_CHOICES)
         self.lbl_export_from.setText(_t("data_safety.export_from"))
         self.lbl_export_to.setText(_t("data_safety.export_to"))
         self.btn_do_export.setText(_t("data_safety.export_btn"))

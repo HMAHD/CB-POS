@@ -1,281 +1,453 @@
+"""A4 (Tax) Invoice PDF for a completed sale.
+
+Printed automatically for VAT-registered customers (``PrinterService``) and
+saved from Receipt Options -> Save PDF. Built after the sale's session has
+closed, so it reads only what the receipt reads: the sale, its lines and
+their products (with unit), its payments and its customer (#733, #740).
+"""
+
+from dataclasses import dataclass
 from decimal import Decimal
+from io import BytesIO
 from pathlib import Path
+from typing import Any
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
-from reportlab.platypus import (
-    Image,
-    Paragraph,
-    SimpleDocTemplate,
-    Spacer,
-    Table,
-    TableStyle,
-)
+from reportlab.platypus import Flowable, Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from cbpos.core.constants.status import Precision
 from cbpos.core.models import Sale
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.tax_service import TaxService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.formatters import format_currency, format_quantity, quantity_decimals
+from cbpos.i18n import get_language, translate_in
+from cbpos.infrastructure.hardware.text_raster import needs_raster, render_text_png
+
+_NAVY = colors.HexColor("#003366")
+_GREY = colors.HexColor("#666666")
+_SHADE = colors.HexColor("#F0F0F0")
+_MARGIN = 15 * mm
+_WIDTH = A4[0] - 2 * _MARGIN  # 180 mm of usable width
+_BRANDING = "Powered by CB POS — ceybyte.com"
+
+
+@dataclass(frozen=True)
+class InvoiceLine:
+    """One line of the invoice, as printed.
+
+    Attributes:
+        description: Product name in the invoice language.
+        qty: Quantity with the unit's decimals ("2", "1.250").
+        unit_price: Price per unit before the line discount (the MRP).
+        discount: The line's total discount; zero when none.
+        amount: What the line charged.
+    """
+
+    description: str
+    qty: str
+    unit_price: Decimal
+    discount: Decimal
+    amount: Decimal
+
+
+def _dec(value: Any) -> Decimal:
+    """``value`` as a Decimal; None (an unsaved column default) is zero."""
+    if isinstance(value, Decimal):
+        return value
+    return Decimal(str(value)) if value is not None else Decimal("0")
+
+
+def _pct(value: Any, default: str) -> str:
+    """A rate for a label: 18.0 -> "18", 2.5 -> "2.5"."""
+    rate = _dec(value if value not in (None, "") else default).normalize()
+    return f"{rate:f}"
+
+
+def _styles() -> dict[str, ParagraphStyle]:
+    base = ParagraphStyle("InvBase", fontName="Helvetica", fontSize=9, leading=12)
+    bold = ParagraphStyle("InvBold", parent=base, fontName="Helvetica-Bold")
+    return {
+        "base": base,
+        "bold": bold,
+        "right": ParagraphStyle("InvRight", parent=base, alignment=TA_RIGHT),
+        "right_bold": ParagraphStyle("InvRightBold", parent=bold, alignment=TA_RIGHT, fontSize=10.5, leading=14),
+        "shop": ParagraphStyle("InvShop", parent=bold, fontSize=15, leading=19),
+        "title": ParagraphStyle(
+            "InvTitle", parent=bold, fontSize=18, leading=22, alignment=TA_RIGHT, textColor=colors.HexColor("#001F3F")
+        ),
+        "th": ParagraphStyle("InvTh", parent=bold, alignment=TA_CENTER, textColor=colors.whitesmoke),
+        "muted": ParagraphStyle("InvMuted", parent=base, textColor=_GREY),
+    }
+
+
+def _text(text: Any, style: ParagraphStyle, width: float | None = None) -> Flowable:
+    """A paragraph of *text*; Sinhala/Tamil is drawn by Qt so it is shaped correctly.
+
+    Args:
+        text: What to show.
+        style: Font, size, colour and alignment.
+        width: Wrap width in points for Sinhala/Tamil text.
+    """
+    text = str(text or "")
+    if not needs_raster(text):
+        return Paragraph(escape(text), style)
+    align = {TA_CENTER: "center", TA_RIGHT: "right"}.get(style.alignment, "left")
+    png, w, h = render_text_png(
+        text,
+        style.fontSize,
+        bold=style.fontName.endswith("Bold"),
+        color="#" + style.textColor.hexval()[2:],
+        max_width_pt=width,
+        align=align,
+    )
+    image = Image(BytesIO(png), width=w, height=h)
+    image.hAlign = align.upper()
+    return image
+
+
+def _pairs(rows: list[tuple[str, str]], st: dict[str, ParagraphStyle], widths: tuple[float, float]) -> Table:
+    """A borderless label/value block (label and value kept apart so values stay selectable text)."""
+    table = Table(
+        [[_text(label, st["muted"], widths[0] - 3 * mm), _text(value, st["bold"], widths[1])] for label, value in rows],
+        colWidths=list(widths),
+        hAlign="LEFT",
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 1),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+            ]
+        )
+    )
+    return table
+
+
+def _draw_branding(canvas: Any, _doc: Any) -> None:
+    """CB POS branding at the foot of every page."""
+    canvas.saveState()
+    canvas.setFont("Helvetica", 8)
+    canvas.setFillColor(_GREY)
+    canvas.drawCentredString(A4[0] / 2, 10 * mm, _BRANDING)
+    canvas.restoreState()
 
 
 class InvoiceService:
-    """
-    Service for generating professional A4 Tax Invoices for B2B customers.
-    Uses ReportLab for PDF generation with Sri Lankan tax compliance.
-    """
+    """Builds the A4 Tax Invoice PDF for a sale (Sri Lankan MRP pricing: taxes are inside the price)."""
 
     @staticmethod
-    def bank_detail_lines() -> list[str]:
+    def invoice_language() -> str:
+        """The invoice's language: the receipt language, else the UI language."""
+        return ConfigService.get("receipt_language") or get_language() or "en"
+
+    @staticmethod
+    def bank_detail_lines(lang: str | None = None) -> list[str]:
         """Return the invoice's bank-detail lines from Settings -> Shop Info.
 
         Reads the keys the Shop Info page saves (it used to read bank_name /
         bank_account / bank_branch, which nothing wrote, so it never printed).
         Empty when neither a bank name nor an account number is set.
+
+        Args:
+            lang: Language of the labels; defaults to the invoice language.
         """
         bank_name = ConfigService.get("company_bank_name") or ""
         bank_account = ConfigService.get("company_account_number") or ""
         bank_branch = ConfigService.get("company_bank_branch") or ""
         if not (bank_name or bank_account):
             return []
+        lang = lang or InvoiceService.invoice_language()
         lines = []
         if bank_name:
-            lines.append(f"Bank: {bank_name}")
+            lines.append(translate_in(lang, "invoice.bank_name", name=bank_name))
         if bank_account:
-            lines.append(f"Account No: {bank_account}")
+            lines.append(translate_in(lang, "invoice.bank_account", number=bank_account))
         if bank_branch:
-            lines.append(f"Branch: {bank_branch}")
+            lines.append(translate_in(lang, "invoice.bank_branch", name=bank_branch))
         return lines
 
     @staticmethod
-    def generate_pdf(sale: Sale, filepath: str) -> str:
-        """
-        Generate a professional A4 Tax Invoice PDF.
+    def invoice_lines(sale: Sale, lang: str) -> list[InvoiceLine]:
+        """The sale's lines as the invoice prints them.
+
+        The discount is what the line came down from its MRP (the same rule
+        the receipt uses); a manual price above the MRP is not a discount.
 
         Args:
-            sale (Sale): The sale transaction to invoice
-            filepath (str): Absolute path where PDF should be saved
+            sale: The sale (lines and their products loaded).
+            lang: Language for the product names.
+        """
+        lines = []
+        for item in sale.items:
+            qty = _dec(item.qty)
+            charged = _dec(item.unit_price)
+            listed = max(_dec(item.original_price) if item.original_price is not None else charged, charged)
+            unit = item.product.unit
+            lines.append(
+                InvoiceLine(
+                    description=item.product.get_display_name(lang),
+                    qty=format_quantity(qty, quantity_decimals(unit) if unit is not None else 0),
+                    unit_price=listed,
+                    discount=((listed - charged) * qty).quantize(Precision.MONEY),
+                    amount=_dec(item.subtotal),
+                )
+            )
+        return lines
+
+    @staticmethod
+    def _shows_vat(sale: Sale) -> bool:
+        """A tax invoice (VAT rows, VAT numbers) when the shop is VAT registered or the sale carried tax."""
+        return TaxService.is_vat_active() or _dec(sale.tax_vat) > 0 or _dec(sale.tax_sscl) > 0
+
+    @staticmethod
+    def generate_pdf(sale: Sale, filepath: str) -> str:
+        """Write the A4 (Tax) Invoice PDF for *sale*.
+
+        In the receipt language. A VAT-registered shop (or a sale that
+        carried tax) gets a TAX INVOICE with both VAT numbers and the VAT /
+        SSCL inside the MRP total, as stored on the sale; otherwise a plain
+        INVOICE. Every page carries the CB POS branding.
+
+        Args:
+            sale: The sale; may be detached (lines with products, payments and customer loaded).
+            filepath: Where to write the PDF; missing folders are created.
 
         Returns:
-            str: Path to the generated PDF file
-        """
-        # Ensure directory exists
-        Path(filepath).parent.mkdir(parents=True, exist_ok=True)
+            The path written.
 
-        # Create PDF document
+        Raises:
+            Exception: If the PDF can't be built or written; callers tell the cashier.
+        """
+        lang = InvoiceService.invoice_language()
+
+        def t(key: str, **kwargs: Any) -> str:
+            return translate_in(lang, f"invoice.{key}", **kwargs)
+
+        st = _styles()
+        show_vat = InvoiceService._shows_vat(sale)
+        lines = InvoiceService.invoice_lines(sale, lang)
+        title = t("title_tax") if show_vat else t("title")
+
+        elements: list[Flowable] = [
+            InvoiceService._header(sale, title, show_vat, t, st),
+            Spacer(1, 6 * mm),
+            InvoiceService._bill_to(sale, t, st),
+            Spacer(1, 6 * mm),
+            InvoiceService._items_table(lines, t, st),
+            Spacer(1, 3 * mm),
+            InvoiceService._totals(sale, lines, show_vat, t, st),
+        ]
+        bank_lines = InvoiceService.bank_detail_lines(lang)
+        if bank_lines:
+            elements.append(Spacer(1, 6 * mm))
+            elements.append(_text(t("bank_details"), st["bold"], _WIDTH))
+            elements.extend(_text(line, st["base"], _WIDTH) for line in bank_lines)
+        elements.append(Spacer(1, 18 * mm))
+        elements.append(InvoiceService._signatures(t, st))
+
+        Path(filepath).parent.mkdir(parents=True, exist_ok=True)
         doc = SimpleDocTemplate(
             filepath,
             pagesize=A4,
-            rightMargin=20 * mm,
-            leftMargin=20 * mm,
-            topMargin=15 * mm,
-            bottomMargin=15 * mm,
+            leftMargin=_MARGIN,
+            rightMargin=_MARGIN,
+            topMargin=_MARGIN,
+            bottomMargin=20 * mm,
+            title=f"{title} {sale.document_number or ''}".strip(),
+            author=ConfigService.get("shop_name") or "",
+            creator="CB POS (ceybyte.com)",
         )
-
-        # Container for flowables
-        elements = []
-        styles = getSampleStyleSheet()
-
-        # Custom styles
-        title_style = ParagraphStyle(
-            "CustomTitle",
-            parent=styles["Heading1"],
-            fontSize=24,
-            textColor=colors.HexColor("#001F3F"),
-            alignment=TA_CENTER,
-            spaceAfter=12,
-        )
-
-        header_style = ParagraphStyle("Header", parent=styles["Normal"], fontSize=10, alignment=TA_CENTER)
-
-        # === HEADER SECTION ===
-        # Logo (if exists)
-        logo_path = Path(__file__).resolve().parent.parent.parent / "assets" / "logo" / "cover_black.png"
-        if logo_path.exists():
-            logo = Image(str(logo_path), width=60 * mm, height=20 * mm)
-            logo.hAlign = "CENTER"
-            elements.append(logo)
-            elements.append(Spacer(1, 5 * mm))
-
-        # Company Details (from ConfigService)
-        shop_name = ConfigService.get("shop_name") or "Ceylon Byte POS"
-        shop_address = ConfigService.get("shop_address") or ""
-        shop_phone = ConfigService.get("shop_phone") or ""
-        shop_email = ConfigService.get("shop_email") or ""
-        vat_number = ConfigService.get("vat_number") or ""
-        company_tax_id = ConfigService.get("company_tax_id") or ""
-
-        elements.append(Paragraph(shop_name, header_style))
-        if shop_address:
-            elements.append(Paragraph(shop_address, header_style))
-        contact_parts = []
-        if shop_phone:
-            contact_parts.append(f"Tel: {shop_phone}")
-        if shop_email:
-            contact_parts.append(f"Email: {shop_email}")
-        if contact_parts:
-            elements.append(Paragraph(" | ".join(contact_parts), header_style))
-        reg_parts = []
-        if vat_number and TaxService.is_vat_active():
-            reg_parts.append(f"VAT Reg: {vat_number}")
-        if company_tax_id:
-            reg_parts.append(f"Tax ID: {company_tax_id}")
-        if reg_parts:
-            elements.append(Paragraph(" | ".join(reg_parts), header_style))
-        elements.append(Spacer(1, 10 * mm))
-
-        # Invoice Title
-        elements.append(Paragraph("TAX INVOICE", title_style))
-        elements.append(Spacer(1, 5 * mm))
-
-        # === INVOICE INFO & CUSTOMER SECTION ===
-        invoice_data = [
-            [
-                "Invoice No:",
-                f"INV-{sale.id: 06d}",
-                "Date:",
-                sale.date.strftime("%Y-%m-%d"),
-            ],
-            [
-                "Customer:",
-                sale.customer.name if sale.customer else "Walk-in Customer",
-                "VAT No:",
-                (sale.customer.vat_number if sale.customer and sale.customer.vat_number else "N/A"),
-            ],
-        ]
-
-        invoice_table = Table(invoice_data, colWidths=[30 * mm, 60 * mm, 30 * mm, 60 * mm])
-        invoice_table.setStyle(
-            TableStyle(
-                [
-                    ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 10),
-                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-                    ("FONTNAME", (2, 0), (2, -1), "Helvetica-Bold"),
-                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                ]
-            )
-        )
-        elements.append(invoice_table)
-        elements.append(Spacer(1, 10 * mm))
-
-        # === ITEMS TABLE ===
-        items_data = [["Item", "Qty", "Unit Price", "Discount", "Net Amount"]]
-
-        for item in sale.items:
-            item_name = item.product.name if item.product else "Unknown Item"
-            qty = f"{item.quantity: .3f}" if item.quantity % 1 != 0 else f"{int(item.quantity)}"
-            unit_price = format_currency(item.unit_price)
-            discount = format_currency(item.discount) if item.discount else format_currency(Decimal("0.00"))
-            net_amount = format_currency(item.unit_price * item.quantity - item.discount)
-
-            items_data.append([item_name, qty, unit_price, discount, net_amount])
-
-        items_table = Table(items_data, colWidths=[80 * mm, 20 * mm, 30 * mm, 25 * mm, 30 * mm])
-        items_table.setStyle(
-            TableStyle(
-                [
-                    # Header row
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#003366")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, 0), 11),
-                    ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                    # Data rows
-                    ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                    ("FONTSIZE", (0, 1), (-1, -1), 10),
-                    ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
-                    ("ALIGN", (0, 1), (0, -1), "LEFT"),
-                    # Grid
-                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ]
-            )
-        )
-        elements.append(items_table)
-        elements.append(Spacer(1, 5 * mm))
-
-        # === TOTALS SECTION ===
-        subtotal = sum(item.unit_price * item.quantity for item in sale.items)
-        total_discount = sum(item.discount for item in sale.items)
-        vat_amount = sale.tax_vat or Decimal("0.00")
-        sscl_amount = sale.tax_sscl or Decimal("0.00")
-        grand_total = sale.total_amount
-
-        totals_data = [
-            ["Subtotal:", format_currency(subtotal)],
-            ["Total Discount:", format_currency(total_discount)],
-        ]
-        # Only show tax rows if VAT is active or the sale actually has tax values
-        if TaxService.is_vat_active() or vat_amount > 0:
-            totals_data.append(
-                [
-                    "VAT ({}%):".format(ConfigService.get("tax_vat_rate") or 18),
-                    format_currency(vat_amount),
-                ]
-            )
-            totals_data.append(
-                [
-                    "SSCL ({}%):".format(ConfigService.get("tax_sscl_rate") or 2.5),
-                    format_currency(sscl_amount),
-                ]
-            )
-        totals_data.append(["Grand Total:", format_currency(grand_total)])
-
-        totals_table = Table(totals_data, colWidths=[140 * mm, 45 * mm])
-        totals_table.setStyle(
-            TableStyle(
-                [
-                    ("FONTNAME", (0, 0), (-1, -2), "Helvetica"),
-                    ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 11),
-                    ("ALIGN", (0, 0), (0, -1), "RIGHT"),
-                    ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-                    ("LINEABOVE", (0, -1), (-1, -1), 1, colors.black),
-                    ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#F0F0F0")),
-                ]
-            )
-        )
-        elements.append(totals_table)
-        elements.append(Spacer(1, 10 * mm))
-
-        # === FOOTER SECTION ===
-        footer_style = ParagraphStyle("Footer", parent=styles["Normal"], fontSize=9, alignment=TA_LEFT)
-
-        # Banking details (Settings -> Shop Info)
-        bank_lines = InvoiceService.bank_detail_lines()
-        if bank_lines:
-            elements.append(Paragraph("<b>Banking Details:</b>", footer_style))
-            for line in bank_lines:
-                elements.append(Paragraph(line, footer_style))
-            elements.append(Spacer(1, 10 * mm))
-
-        signature_data = [["Authorized Signature:", "_" * 30, "Company Stamp:", "[STAMP]"]]
-        signature_table = Table(signature_data, colWidths=[40 * mm, 50 * mm, 40 * mm, 55 * mm])
-        signature_table.setStyle(
-            TableStyle(
-                [
-                    ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 9),
-                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                ]
-            )
-        )
-        elements.append(signature_table)
-
-        # Branding footer
-        elements.append(Spacer(1, 5 * mm))
-        branding_style = ParagraphStyle(
-            "Branding",
-            parent=styles["Normal"],
-            fontSize=8,
-            alignment=TA_CENTER,
-            textColor=colors.grey,
-        )
-        elements.append(Paragraph("Powered by CB POS — ceybyte.com", branding_style))
-
-        # Build PDF
-        doc.build(elements)
+        doc.build(elements, onFirstPage=_draw_branding, onLaterPages=_draw_branding)
         return filepath
+
+    @staticmethod
+    def _header(sale: Sale, title: str, show_vat: bool, t: Any, st: dict[str, ParagraphStyle]) -> Table:
+        """Shop identity (left) and the title with invoice number, date and payment (right)."""
+        shop: list[Flowable] = [_text(ConfigService.get("shop_name") or "", st["shop"], 100 * mm)]
+        for line in (ConfigService.get("shop_address"), ConfigService.get("shop_phone")):
+            if line:
+                shop.append(_text(line, st["base"], 100 * mm))
+        ids = []
+        if ConfigService.get("company_tax_id"):
+            ids.append((t("tin"), ConfigService.get("company_tax_id")))
+        if show_vat and ConfigService.get("vat_number"):
+            ids.append((t("vat_no"), ConfigService.get("vat_number")))
+        if ids:
+            shop.append(Spacer(1, 2 * mm))
+            shop.append(_pairs(ids, st, (35 * mm, 60 * mm)))
+
+        methods = [p.payment_method for p in (sale.payments or [])] or [sale.payment_method or ""]
+        meta = [
+            (t("invoice_no"), sale.document_number or ""),
+            (t("date"), sale.date.strftime("%Y-%m-%d %H:%M") if sale.date else ""),
+            (t("payment"), ", ".join(dict.fromkeys(m.upper() for m in methods if m))),
+        ]
+        right: list[Flowable] = [_text(title, st["title"], 80 * mm), Spacer(1, 3 * mm)]
+        meta_table = _pairs(meta, st, (38 * mm, 42 * mm))
+        meta_table.hAlign = "RIGHT"
+        right.append(meta_table)
+
+        header = Table([[shop, right]], colWidths=[100 * mm, 80 * mm])
+        header.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                    ("LINEBELOW", (0, 0), (-1, 0), 1, _NAVY),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 4 * mm),
+                ]
+            )
+        )
+        return header
+
+    @staticmethod
+    def _bill_to(sale: Sale, t: Any, st: dict[str, ParagraphStyle]) -> Table:
+        """The buyer: name, company, address, phone, TIN and VAT number."""
+        width = 100 * mm
+        block: list[Flowable] = [_text(t("bill_to"), st["muted"], width)]
+        customer = sale.customer
+        if customer is None:
+            block.append(_text(t("walk_in"), st["bold"], width))
+        else:
+            block.append(_text(customer.name, st["bold"], width))
+            for line in (customer.company_name, customer.address, customer.phone):
+                if line and line != customer.name:
+                    block.append(_text(line, st["base"], width))
+            ids = []
+            if customer.tax_id:
+                ids.append((t("tin"), customer.tax_id))
+            if customer.vat_number:
+                ids.append((t("vat_no"), customer.vat_number))
+            if ids:
+                block.append(_pairs(ids, st, (35 * mm, 60 * mm)))
+        table = Table([[block]], colWidths=[width], hAlign="LEFT")
+        table.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0)]))
+        return table
+
+    @staticmethod
+    def _items_table(lines: list[InvoiceLine], t: Any, st: dict[str, ParagraphStyle]) -> Table:
+        """# | Description | Qty | Unit Price | Discount | Amount."""
+        widths = [8 * mm, 72 * mm, 18 * mm, 28 * mm, 26 * mm, 28 * mm]
+        header = ["#", "col_description", "col_qty", "col_unit_price", "col_discount", "col_amount"]
+        data: list[list[Any]] = [
+            [_text(key if key == "#" else t(key), st["th"], w - 4 * mm) for key, w in zip(header, widths, strict=True)]
+        ]
+        for idx, line in enumerate(lines, start=1):
+            data.append(
+                [
+                    str(idx),
+                    _text(line.description, st["base"], widths[1] - 4 * mm),
+                    line.qty,
+                    format_currency(line.unit_price),
+                    format_currency(line.discount) if line.discount else "-",
+                    format_currency(line.amount),
+                ]
+            )
+        table = Table(data, colWidths=widths, repeatRows=1)
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), _NAVY),
+                    ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                    ("FONTSIZE", (0, 1), (-1, -1), 9),
+                    ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                    ("ALIGN", (0, 1), (0, -1), "CENTER"),
+                    ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F7F9FC")]),
+                ]
+            )
+        )
+        return table
+
+    @staticmethod
+    def _totals(sale: Sale, lines: list[InvoiceLine], show_vat: bool, t: Any, st: dict[str, ParagraphStyle]) -> Table:
+        """Sub total, discounts and the total; then the VAT / SSCL already inside it (MRP back-calculation).
+
+        The tax figures are the ones stored on the sale when it was rung up
+        (``TaxService.calculate_taxes``), so a reprint after a rate change
+        still matches what was charged: net + VAT + SSCL = total.
+        """
+        label_w, value_w = 130 * mm, 50 * mm
+        total = _dec(sale.total_amount)
+        item_discounts = sum((line.discount for line in lines), Decimal("0"))
+        lines_total = sum((line.amount for line in lines), Decimal("0"))
+        bill_discount = lines_total - total
+
+        rows: list[tuple[str, str]] = [(t("subtotal"), format_currency(lines_total + item_discounts))]
+        if item_discounts > 0:
+            rows.append((t("item_discounts"), f"-{format_currency(item_discounts)}"))
+        if bill_discount > 0:
+            if (sale.additional_discount_type or "NONE") == "PERCENTAGE":
+                label = t("bill_discount_pct", pct=_pct(sale.additional_discount_value, "0"))
+            else:
+                label = t("bill_discount")
+            rows.append((label, f"-{format_currency(bill_discount)}"))
+        total_row = len(rows)
+        rows.append((t("total"), format_currency(total)))
+
+        if show_vat:
+            rows.append((t("taxes_included"), ""))
+            exempt = _dec(getattr(sale, "_exempt_amount", None))
+            if exempt > 0:
+                rows.append((t("taxable"), format_currency(total - exempt)))
+                rows.append((t("exempt"), format_currency(exempt)))
+            rows.append((t("net_value"), format_currency(_dec(sale.net_revenue))))
+            rows.append((t("vat", rate=_pct(ConfigService.get("tax_vat_rate"), "18")), format_currency(sale.tax_vat)))
+            if _dec(sale.tax_sscl) > 0:
+                sscl_rate = _pct(ConfigService.get("tax_sscl_rate"), "2.5")
+                rows.append((t("sscl", rate=sscl_rate), format_currency(sale.tax_sscl)))
+
+        data = []
+        for i, (label, value) in enumerate(rows):
+            style = st["right_bold"] if i == total_row else st["right"]
+            data.append([_text(label, style, label_w - 6 * mm), _text(value, style)])
+        table = Table(data, colWidths=[label_w, value_w])
+        table.setStyle(
+            TableStyle(
+                [
+                    ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                    ("LINEABOVE", (1, total_row), (1, total_row), 1, colors.black),
+                    ("BACKGROUND", (1, total_row), (1, total_row), _SHADE),
+                    ("TOPPADDING", (0, total_row + 1), (-1, total_row + 1), 3 * mm),
+                ]
+            )
+        )
+        return table
+
+    @staticmethod
+    def _signatures(t: Any, st: dict[str, ParagraphStyle]) -> Table:
+        """Signature lines: the shop's authorized signature and the buyer's."""
+        table = Table(
+            [
+                ["", "", ""],
+                [
+                    _text(t("authorized_signature"), st["muted"], 65 * mm),
+                    "",
+                    _text(t("received_by"), st["muted"], 65 * mm),
+                ],
+            ],
+            colWidths=[70 * mm, 40 * mm, 70 * mm],
+        )
+        table.setStyle(
+            TableStyle(
+                [
+                    ("LINEABOVE", (0, 1), (0, 1), 0.5, colors.black),
+                    ("LINEABOVE", (2, 1), (2, 1), 0.5, colors.black),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ]
+            )
+        )
+        return table

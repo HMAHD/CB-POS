@@ -20,6 +20,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pypdf import PdfReader
 from sqlalchemy.orm import Session
 
 from cbpos.core.interfaces.transaction_peripherals import SaleCompleted
@@ -193,12 +194,6 @@ class TestDetachedSalePrints:
         assert _mentions(lines, customer.name)
         assert _mentions(lines, "Cement 50kg")
 
-    @pytest.mark.xfail(
-        raises=AttributeError,
-        strict=True,
-        reason="InvoiceService.generate_pdf reads item.product.name / item.quantity / item.discount, which "
-        "Product and SaleItem don't have -- the A4 invoice never builds, attached or not (not a detach issue).",
-    )
     def test_vat_registered_customer_sale_a4_invoice(self, db_session, cashier, tmp_path):
         cement = _product(db_session, "Cement 50kg", "2360.00", "40")
         customer = Customer(name=f"Lanka Builders {_next()}", vat_number="114567890-7000", address="Galle Road")
@@ -209,7 +204,10 @@ class TestDetachedSalePrints:
 
         pdf = tmp_path / "invoice.pdf"
         InvoiceService.generate_pdf(event.sale, str(pdf))
-        assert pdf.stat().st_size > 0
+        text = "".join(page.extract_text() for page in PdfReader(pdf).pages)
+        assert "Cement 50kg" in text
+        assert customer.name in text
+        assert "114567890-7000" in text
 
     def test_weighted_item_keeps_its_unit_decimals(self, db_session, cashier, print_queue):
         kg = Unit(name=f"Kilogram {_next()}", abbreviation="kg", decimal_places=3)

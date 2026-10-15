@@ -124,3 +124,20 @@ class TestSaveAsPdf:
             dialog.save_as_pdf()
 
         mock_warning.assert_called_once()
+
+    def test_real_invoice_is_written_for_the_sale(self, dialog, tmp_path):
+        """#740: the real generator used to raise AttributeError, so Save PDF only ever warned."""
+        target = tmp_path / "receipt.pdf"
+        with (
+            patch(
+                "cbpos.ui.dialogs.receipt_options_dialog.QFileDialog.getSaveFileName",
+                return_value=(str(target), "PDF Files (*.pdf)"),
+            ),
+            patch("cbpos.ui.dialogs.receipt_options_dialog.QMessageBox.information") as mock_info,
+            patch("cbpos.ui.dialogs.receipt_options_dialog.QMessageBox.warning") as mock_warning,
+        ):
+            dialog.save_as_pdf()
+
+        mock_warning.assert_not_called()
+        mock_info.assert_called_once()
+        assert target.read_bytes().startswith(b"%PDF-")

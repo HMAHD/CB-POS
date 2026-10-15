@@ -414,6 +414,7 @@
     "name_si_placeholder": "Optional",
     "name_ta_placeholder": "Optional",
     "barcode_placeholder": "Scan or type barcode (required)",
+    "barcode_placeholder_auto": "Scan or type barcode, or leave blank to create one",
     "select_category": "-- Select Category --",
     "group_stock": "Stock",
     "group_supplier": "Default Supplier",

@@ -2962,7 +2962,7 @@ QLabel#SettingsSectionTitle {
     background: transparent;
 }
 QFrame#SettingsSectionLine {
-    background-color: #CCCCCC;
+    background-color: #E9ECEF;
     max-height: 1px;
     min-height: 1px;
 }

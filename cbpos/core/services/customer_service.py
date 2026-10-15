@@ -17,13 +17,21 @@ class CustomerService:
         """Bind this service instance to the database singleton."""
         self.db = Database()
 
+    @staticmethod
+    def default_credit_limit() -> Decimal:
+        """Return the credit limit a new customer starts with (Settings -> Sales & Tax)."""
+        return Decimal(str(ConfigService.get("default_credit_limit") or 0)).quantize(Decimal("0.01"))
+
     def create_customer(self, data: dict[str, Any]) -> Customer:
         """Create a customer, along with any nested contacts, from a data dict.
 
         `data` is mutated: the "contacts" key (a list of contact dicts) is popped
         off before the remaining keys are passed to the Customer constructor.
+        With no "credit_limit" key the customer gets the default credit limit.
         """
         contacts_data = data.pop("contacts", [])
+        if "credit_limit" not in data:
+            data["credit_limit"] = self.default_credit_limit()
         with self.db.get_session() as session:
             customer = Customer(**data)
             if ConfigService.get("terminal_mode") == "terminal":

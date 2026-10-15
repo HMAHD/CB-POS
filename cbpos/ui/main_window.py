@@ -117,6 +117,7 @@ class MainWindow(QMainWindow):
         self.settings_view = SettingsView()
         self.settings_view.close_requested.connect(self.go_back)
         self.settings_view.logout_requested.connect(self.logout)
+        self.settings_view.settings_saved.connect(self._apply_session_timeout)
         self.settings_view.request_pos_view.connect(self._navigate_to_pos)
         self.stack.addWidget(self.settings_view)
 
@@ -143,6 +144,11 @@ class MainWindow(QMainWindow):
     def _navigate_to_pos(self) -> None:
         """Switch to the POS/Sales view."""
         self.stack.setCurrentWidget(self.sales_view)
+
+    def _apply_session_timeout(self) -> None:
+        """Hand the saved idle-lock minutes to the running watchdog, so a change applies without a restart (#641)."""
+        timeout = int(ConfigService.get("session_timeout_minutes") or 0)
+        self.watchdog.set_timeout(max(timeout, 0))
 
     def on_login_success(self, user):
         """Start the session watchdog, propagate the logged-in user to views, and show Sales."""

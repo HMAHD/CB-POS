@@ -30,6 +30,7 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.services.logging_service import LoggingService
 from cbpos.core.services.product_service import ProductService
+from cbpos.core.services.scale_service import ScaleService
 from cbpos.core.services.sound_service import SoundService
 from cbpos.core.services.suspended_transaction_service import SuspendedTransactionService
 from cbpos.core.services.transaction_service import TransactionService
@@ -662,8 +663,20 @@ class SalesView(QWidget):
             self.barcode_input.clear()
             return
 
+        if self._add_scale_item(query):
+            return
+
         # Use product_service with current search mode
         products = self.product_service.search_products(query, mode=self.current_search_mode)
+
+        # ALL mode matches barcodes with LIKE, so a full scan can also hit a
+        # longer barcode that contains it. "Auto-Select on Barcode Match"
+        # (Settings -> System) picks the exact barcode instead of opening
+        # the multi-result search (#641).
+        if len(products) > 1 and ConfigService.get("auto_select_barcode_match"):
+            exact = [p for p in products if p.barcode == query]
+            if len(exact) == 1:
+                products = exact
 
         if len(products) == 1:
             SoundService.play("scan_success")
@@ -687,6 +700,37 @@ class SalesView(QWidget):
             SoundService.play("scan_error")
             QMessageBox.warning(self, _t("sales.not_found_title"), _t("sales.not_found_message"))
             self.barcode_input.setFocus()
+
+    def _add_scale_item(self, code: str) -> bool:
+        """Add a weighing-scale label's item at its printed weight (#641).
+
+        Reads the label with Settings -> Hardware -> Weighing Scale (prefix,
+        decimal places); the 5-digit item code is the product's Item Code.
+        A product whose own barcode is exactly ``code`` always wins.
+
+        Returns:
+            bool: True if ``code`` was a scale label for a known product (and was handled).
+        """
+        places = ConfigService.get("scale_decimal_places")
+        parsed = ScaleService.parse_barcode(
+            code,
+            prefix=str(ConfigService.get("scale_barcode_prefix") or ""),
+            decimal_places=None if places is None else int(places),
+        )
+        if not parsed or parsed["qty"] <= 0 or ProductService.get_by_barcode(code):
+            return False
+        matches = self.product_service.search_products(str(parsed["product_id"]), mode=ProductService.SEARCH_MODE_CODE)
+        if not matches:
+            return False
+
+        product = matches[0]
+        SoundService.play("scan_success")
+        if self._confirm_age_restriction(product):
+            self.cart_service.add_item(product, qty=parsed["qty"])
+            self.update_cart_display()
+        self.barcode_input.clear()
+        self.barcode_input.setFocus()
+        return True
 
     def update_cart_display(self):
         """Update cart display with visual indicators (Phase 6)."""

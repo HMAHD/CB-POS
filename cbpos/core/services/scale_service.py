@@ -47,7 +47,9 @@ class ScaleService:
         """
         # Use defaults if not provided
         prefix = prefix or ScaleService.DEFAULT_PREFIX
-        decimal_places = decimal_places or ScaleService.DEFAULT_DECIMAL_PLACES
+        # 0 is a real setting (whole units), so only None falls back
+        if decimal_places is None:
+            decimal_places = ScaleService.DEFAULT_DECIMAL_PLACES
 
         # Validate barcode length
         if not barcode or len(barcode) != 13:

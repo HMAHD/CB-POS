@@ -227,25 +227,26 @@ class SettingsPage(QWidget):
 
     @staticmethod
     def _make_section_header(title: str) -> QWidget:
-        """Create a styled section header with title and horizontal divider.
+        """Create a styled section header: the title with a full-width divider under it.
 
-        Returns a single widget containing: [title] -- [line] that spans the
-        full width of the form.  Use with ``form.addRow(header)`` (single-arg
-        overload so it spans both columns).
+        The line sits below the title, not beside it -- on the same row it ran
+        through the text's mid-height and read as a strike-through (#617).
+        Use with ``form.addRow(header)`` (single-arg overload so it spans
+        both columns).
         """
         container = QWidget()
-        row = QHBoxLayout(container)
-        row.setContentsMargins(0, 10, 0, 2)
-        row.setSpacing(10)
+        col = QVBoxLayout(container)
+        col.setContentsMargins(0, 10, 0, 2)
+        col.setSpacing(4)
 
         lbl = QLabel(title)
         lbl.setObjectName("SettingsSectionTitle")
-        row.addWidget(lbl)
+        col.addWidget(lbl)
 
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
         line.setObjectName("SettingsSectionLine")
-        row.addWidget(line, 1)
+        col.addWidget(line)
 
         return container
 

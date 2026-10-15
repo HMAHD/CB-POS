@@ -66,10 +66,10 @@ class ConfigService:
         # Scale Barcode Configuration
         "scale_barcode_prefix": "20",  # Prefix for scale barcodes
         "scale_decimal_places": 3,  # Decimal places for weight
-        # Banking Details (for invoices)
-        "company_bank_name": "Commercial Bank of Ceylon",
-        "company_account_number": "1234567890",
-        "company_bank_branch": "Colombo Fort",
+        # Banking Details (printed on A4 invoices -- blank until the shop sets them)
+        "company_bank_name": "",
+        "company_account_number": "",
+        "company_bank_branch": "",
         # Inventory Control
         "allow_negative_stock": False,  # Allow overselling
         "auto_generate_barcodes": True,
@@ -306,7 +306,9 @@ class ConfigService:
                 for key in cls._SENSITIVE_KEYS:
                     if cls._settings.get(key):
                         cls._settings[key] = cls._decode_sensitive(cls._settings[key])
-                if cls._migrate_receipt_printer(cls._settings):
+                changed = cls._migrate_receipt_printer(cls._settings)
+                changed = cls._clear_demo_bank_details(cls._settings) or changed
+                if changed:
                     cls.save()
             except Exception as e:
                 logger.error("Error loading settings: %s. Using defaults.", e)
@@ -314,6 +316,34 @@ class ConfigService:
         else:
             cls._settings = cls.DEFAULTS.copy()
             cls.save()
+
+    # Demo bank details the old defaults wrote into every new settings.json.
+    _DEMO_BANK_DETAILS = {
+        "company_bank_name": "Commercial Bank of Ceylon",
+        "company_account_number": "1234567890",
+        "company_bank_branch": "Colombo Fort",
+    }
+
+    @classmethod
+    def _clear_demo_bank_details(cls, settings: dict[str, Any]) -> bool:
+        """Blank the old demo bank details, so they never print on an invoice (#641).
+
+        Shop Info's bank fields used to be ignored by the invoice, and their
+        defaults were demo values saved into every settings.json on first run.
+        Now that the invoice prints them, only that exact trio is cleared --
+        any value the shop typed is kept.
+
+        Args:
+            settings: The loaded settings dict; updated in place.
+
+        Returns:
+            True if anything changed (the caller saves the file).
+        """
+        if any(settings.get(k) != v for k, v in cls._DEMO_BANK_DETAILS.items()):
+            return False
+        for key in cls._DEMO_BANK_DETAILS:
+            settings[key] = ""
+        return True
 
     # Virtual printers Windows installs by default. The old Hardware page
     # saved whatever its printer combo showed first -- often one of these --

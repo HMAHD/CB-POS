@@ -6,6 +6,7 @@ data fetchers are stubbed to small frames), and the status line says
 what happened.
 """
 
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -163,14 +164,14 @@ def test_cancelling_the_folder_choice_exports_nothing(view, fetched, monkeypatch
     assert view.export_tab.btn_do_export.isEnabled()
 
 
-def test_a_failing_fetch_shows_the_error_and_reenables_export(view, out_dir, monkeypatch):
+def test_a_failing_fetch_shows_the_error_and_reenables_export(view, out_dir, monkeypatch, qtbot):
     def boom():
         raise RuntimeError("db locked")
 
     monkeypatch.setattr(DataExportService, "get_products_dataframe", staticmethod(boom))
     _choose(view, "products", "excel")
 
-    view.export_tab.btn_do_export.click()
+    _export(view, qtbot)
 
     assert view.export_tab.btn_do_export.isEnabled()
     assert view.export_tab.lbl_export_status.property("class") == "debit"
@@ -269,3 +270,86 @@ def test_a_failed_export_hands_back_no_context(tmp_path):
     worker.run()
 
     assert received == []
+
+
+# ── #748: export data fetch runs off the UI thread ────────────────────────
+
+
+def test_fetch_runs_in_background_worker_thread(view, out_dir, monkeypatch, qtbot):
+    fetch_threads = []
+
+    def tracking_fetch():
+        fetch_threads.append(threading.current_thread())
+        return pd.DataFrame({"name": ["p1", "p2"]})
+
+    monkeypatch.setattr(DataExportService, "get_products_dataframe", staticmethod(tracking_fetch))
+    _choose(view, "products", "excel")
+
+    _export(view, qtbot)
+
+    assert len(fetch_threads) == 1
+    assert fetch_threads[0] != threading.main_thread()
+
+
+def test_export_worker_fetches_with_data_key_and_updates_context(tmp_path, monkeypatch):
+    from unittest.mock import MagicMock
+
+    from cbpos.ui.views.data_safety.export_tab import ExportContext
+    from cbpos.ui.workers import ExportWorker
+
+    monkeypatch.setattr(
+        DataExportService,
+        "get_products_dataframe",
+        staticmethod(lambda: pd.DataFrame({"name": ["p1", "p2", "p3"]})),
+    )
+
+    service = MagicMock()
+    context = ExportContext(filepath=str(tmp_path / "x.csv"), data_key="products", row_count=0)
+    worker = ExportWorker(
+        service,
+        df=None,
+        filepath=str(tmp_path / "x.csv"),
+        report_name="Products",
+        fmt="csv",
+        context=context,
+        data_key="products",
+    )
+    received = []
+    worker.exported.connect(received.append)
+
+    worker.run()
+
+    service.export_to_csv.assert_called_once()
+    assert len(received) == 1
+    assert received[0].row_count == 3
+
+
+def test_export_worker_emits_error_when_fetch_fails(tmp_path, monkeypatch):
+    from unittest.mock import MagicMock
+
+    from cbpos.ui.views.data_safety.export_tab import ExportContext
+    from cbpos.ui.workers import ExportWorker
+
+    def boom():
+        raise RuntimeError("fetch fail")
+
+    monkeypatch.setattr(DataExportService, "get_products_dataframe", staticmethod(boom))
+
+    service = MagicMock()
+    context = ExportContext(filepath=str(tmp_path / "x.csv"), data_key="products", row_count=0)
+    worker = ExportWorker(
+        service,
+        df=None,
+        filepath=str(tmp_path / "x.csv"),
+        report_name="Products",
+        fmt="csv",
+        context=context,
+        data_key="products",
+    )
+    errors = []
+    worker.error.connect(errors.append)
+
+    worker.run()
+
+    assert len(errors) == 1
+    assert "fetch fail" in errors[0]

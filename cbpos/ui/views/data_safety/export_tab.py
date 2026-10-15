@@ -33,7 +33,7 @@ class ExportContext:
 
     filepath: str
     data_key: str
-    row_count: int
+    row_count: int = 0
 
 
 def _fill_choices(combo: QComboBox, choices: dict[str, ExportType] | dict[str, ExportFormat]) -> None:
@@ -163,17 +163,17 @@ class ExportTabWidget(QWidget):
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filepath = f"{output_dir}/{export_type.stem}_{timestamp}{export_format.ext}"
-        try:
-            df = export_type.fetch(start, end)
-        except Exception as e:
-            logger.exception("Export data fetch failed: %s", e)
-            self.btn_do_export.setEnabled(True)
-            self.btn_do_export.setText(_t("data_safety.export_btn"))
-            self._set_export_status("debit", _t("data_safety.export_failed", error=e))
-            return
-
-        context = ExportContext(filepath=filepath, data_key=export_type.key, row_count=len(df))
-        worker = ExportWorker(ExportService(), df, filepath, export_type.title, export_format.key, context=context)
+        context = ExportContext(filepath=filepath, data_key=export_type.key, row_count=0)
+        worker = ExportWorker(
+            ExportService(),
+            df=None,
+            filepath=filepath,
+            report_name=export_type.title,
+            fmt=export_format.key,
+            context=context,
+            data_key=export_type.key,
+            date_range=(start, end),
+        )
         worker.exported.connect(self._on_export_finished)
         worker.error.connect(self._on_export_error)
         start_background_job(worker)  # outlives the view if it closes mid-export

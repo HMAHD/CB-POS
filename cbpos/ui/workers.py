@@ -6,6 +6,7 @@ and report exports. All workers emit signals on completion or error
 so the UI can react safely from the main thread.
 """
 
+import dataclasses
 import html
 import logging
 import os
@@ -386,11 +387,13 @@ class ExportWorker(QThread):
     def __init__(
         self,
         export_service: "ExportService",
-        df: pd.DataFrame,
-        filepath: str,
-        report_name: str,
+        df: pd.DataFrame | None = None,
+        filepath: str = "",
+        report_name: str = "",
         fmt: str = "excel",
         context: object = None,
+        data_key: str | None = None,
+        date_range: tuple | None = None,
     ) -> None:
         """Set up the export job with the data, destination path, report name, and format.
 
@@ -398,6 +401,10 @@ class ExportWorker(QThread):
             context: Anything the caller needs back when the export succeeds;
                 emitted unchanged through ``exported`` so the caller keeps no
                 per-export state of its own.
+            data_key: Optional export type key (e.g. 'products', 'customers', 'sales').
+                When `df` is None, `ExportWorker` loads the data off the UI thread
+                using `EXPORT_TYPES[data_key].fetch(*date_range)` (#748).
+            date_range: Optional `(start, end)` tuple passed to `fetch` when `data_key` is used.
         """
         super().__init__()
         self.finished.connect(self.deleteLater)
@@ -407,18 +414,36 @@ class ExportWorker(QThread):
         self.report_name = report_name
         self.fmt = fmt
         self.context = context
+        self.data_key = data_key
+        self.date_range = date_range
 
     def run(self) -> None:
         """Export the DataFrame to the requested format (excel/pdf/csv), emitting success or error."""
         try:
+            if self.df is not None:
+                df = self.df
+            elif self.data_key:
+                from cbpos.ui.views.data_safety.export_types import EXPORT_TYPES
+
+                export_type = EXPORT_TYPES[self.data_key]
+                start, end = self.date_range if self.date_range else (None, None)
+                df = export_type.fetch(start, end)
+            else:
+                raise ValueError("ExportWorker requires either df or data_key")
+
             if self.fmt == "excel":
-                self.export_service.export_to_excel(self.df, self.filepath, self.report_name)
+                self.export_service.export_to_excel(df, self.filepath, self.report_name)
             elif self.fmt == "pdf":
-                self.export_service.export_to_pdf(self.df, self.filepath, self.report_name)
+                self.export_service.export_to_pdf(df, self.filepath, self.report_name)
             elif self.fmt == "csv":
-                self.export_service.export_to_csv(self.df, self.filepath)
+                self.export_service.export_to_csv(df, self.filepath)
+
+            context = self.context
+            if dataclasses.is_dataclass(context) and hasattr(context, "row_count"):
+                context = dataclasses.replace(context, row_count=len(df))
+
             self.result.emit("Export successful!")
-            self.exported.emit(self.context)
+            self.exported.emit(context)
         except Exception as e:
             logger.error("Export failed: %s", e)
             self.error.emit(str(e))

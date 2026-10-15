@@ -16,7 +16,7 @@ pytestmark = pytest.mark.usefixtures("qapp")
 
 @pytest.fixture
 def header(qapp):
-    w = SettingsPage._make_section_header("Printer Selection")
+    w = SettingsPage._make_section_header("settings.hardware.section_printer_selection")
     w.resize(600, w.sizeHint().height())
     w.show()
     qapp.processEvents()

@@ -80,6 +80,8 @@ class ConfigService:
         # Appearance
         "theme": "Dark",
         "font_size": 12,
+        # Reports
+        "favorite_reports": [],
         # Document Numbering
         "doc_format_sale": "INV-{Y}-{seq:05d}",
         "doc_format_purchase": "GRN-{Y}-{seq:05d}",

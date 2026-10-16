@@ -1,13 +1,14 @@
 """Report viewer view for browsing, running, and exporting reports."""
 
 import pandas as pd
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtCore import QSize, Qt, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QFileDialog,
     QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QMenu,
     QMessageBox,
     QPushButton,
     QScrollArea,
@@ -19,8 +20,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from cbpos.core.reports.base_report import category_label
+from cbpos.core.reports.base_report import CATEGORY_FAVORITES, category_label
 from cbpos.core.reports.registry import ReportRegistry
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.export_service import ExportService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.i18n import _t, register_language_callback
@@ -127,7 +129,21 @@ class ReportViewer(QWidget):
 
         self.report_title = QLabel()
         self.report_title.setObjectName("ReportTitle")
-        header_layout.addWidget(self.report_title)
+
+        self.btn_favorite = QPushButton()
+        self.btn_favorite.setObjectName("ReportFavoriteBtn")
+        self.btn_favorite.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_favorite.setFixedSize(28, 28)
+        self.btn_favorite.setIconSize(QSize(18, 18))
+        self.btn_favorite.clicked.connect(self._on_favorite_clicked)
+
+        title_row = QHBoxLayout()
+        title_row.setContentsMargins(0, 0, 0, 0)
+        title_row.setSpacing(10)
+        title_row.addWidget(self.report_title)
+        title_row.addWidget(self.btn_favorite)
+        title_row.addStretch()
+        header_layout.addLayout(title_row)
 
         self.report_description = QLabel()
         self.report_description.setObjectName("ReportDescription")
@@ -279,6 +295,7 @@ class ReportViewer(QWidget):
         if self.current_report is not None:
             self.report_title.setText(self.current_report.name)
             self.report_description.setText(category_label(self.current_report.category))
+            self._update_favorite_button()
         # Category and report names are drawn in the current language (#541)
         self._rebuild_sidebar()
 
@@ -299,6 +316,75 @@ class ReportViewer(QWidget):
     # ------------------------------------------------------------------
     # Sidebar construction
     # ------------------------------------------------------------------
+
+    def _get_favorite_ids(self) -> list[str]:
+        """Return the list of favorited report IDs from ConfigService (#542)."""
+        val = ConfigService.get("favorite_reports")
+        if isinstance(val, list):
+            return [str(x) for x in val]
+        return []
+
+    def _create_nav_button(self, report, is_starred: bool = False) -> QPushButton:
+        """Create a report item button for the sidebar navigation."""
+        btn = QPushButton(report.name)
+        btn.setObjectName("ReportNavItem")
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Fixed,
+        )
+        btn.setProperty("report_id", report.id)
+        btn.setCheckable(True)
+        btn.setAutoExclusive(True)
+        if is_starred:
+            btn.setIcon(Icons.get(Icons.STAR_FILLED, "#F59E0B"))
+            btn.setIconSize(QSize(14, 14))
+        btn.clicked.connect(lambda checked, r=report.id: self._on_nav_clicked(r))
+        btn.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        btn.customContextMenuRequested.connect(
+            lambda pos, r_id=report.id, b=btn: self._show_nav_context_menu(r_id, pos, b)
+        )
+        return btn
+
+    def _update_favorite_button(self) -> None:
+        """Update header favorite button icon and tooltip for current report (#542)."""
+        if self.current_report is None:
+            return
+        is_fav = self.current_report.id in self._get_favorite_ids()
+        if is_fav:
+            self.btn_favorite.setIcon(Icons.get(Icons.STAR_FILLED, "#F59E0B"))
+            self.btn_favorite.setToolTip(_t("reports.favorite_remove"))
+        else:
+            self.btn_favorite.setIcon(Icons.get(Icons.STAR_OUTLINE, "#888888"))
+            self.btn_favorite.setToolTip(_t("reports.favorite_add"))
+
+    def _on_favorite_clicked(self) -> None:
+        """Toggle favorite status of the currently open report."""
+        if self.current_report is not None:
+            self._toggle_favorite_by_id(self.current_report.id)
+
+    def _toggle_favorite_by_id(self, report_id: str) -> None:
+        """Add or remove report_id from favorites, persist to ConfigService, and refresh UI (#542)."""
+        fav_ids = self._get_favorite_ids()
+        if report_id in fav_ids:
+            fav_ids.remove(report_id)
+        else:
+            fav_ids.append(report_id)
+        ConfigService.set("favorite_reports", fav_ids)
+        if self.current_report and self.current_report.id == report_id:
+            self._update_favorite_button()
+        self._rebuild_sidebar()
+
+    def _show_nav_context_menu(self, report_id: str, pos, button: QPushButton) -> None:
+        """Show context menu on a sidebar report button to toggle its favorite status (#542)."""
+        fav_ids = self._get_favorite_ids()
+        is_fav = report_id in fav_ids
+        menu = QMenu(self)
+        action_text = _t("reports.favorite_remove") if is_fav else _t("reports.favorite_add")
+        action_icon = Icons.get(Icons.STAR_OUTLINE if is_fav else Icons.STAR_FILLED, "#F59E0B")
+        action = menu.addAction(action_icon, action_text)
+        action.triggered.connect(lambda: self._toggle_favorite_by_id(report_id))
+        menu.exec(button.mapToGlobal(pos))
 
     def _rebuild_sidebar(self) -> None:
         """Replace the report list with a fresh one in the current language.
@@ -341,12 +427,44 @@ class ReportViewer(QWidget):
         self.pagination.setVisible(False)
 
     def _populate_sidebar(self) -> None:
-        """Build category sections with report buttons, in the fixed category order."""
-        categories = self.registry.get_all_categories()
-
+        """Build category sections with report buttons, with Favorites at the top (#542)."""
         vat_active = self._sidebar_vat_active = TaxService.is_vat_active()
         rendered_any = False
 
+        fav_ids = set(self._get_favorite_ids())
+        fav_reports = []
+        for r_id in self._get_favorite_ids():
+            r = self.registry.get_report_by_id(r_id)
+            if r and (not getattr(r, "requires_vat", False) or vat_active):
+                fav_reports.append(r)
+
+        # ── 1. Favorites Group (top of sidebar, #542) ──
+        if fav_reports:
+            cat_row = QHBoxLayout()
+            cat_row.setContentsMargins(6, 8, 6, 4)
+
+            cat_label = QLabel(category_label(CATEGORY_FAVORITES))
+            cat_label.setObjectName("ReportCategoryLabel")
+            cat_row.addWidget(cat_label)
+
+            cat_row.addStretch()
+
+            count_badge = QLabel(str(len(fav_reports)))
+            count_badge.setObjectName("ReportCategoryCount")
+            count_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            count_badge.setFixedWidth(24)
+            cat_row.addWidget(count_badge)
+
+            self._nav_layout.addLayout(cat_row)
+
+            for report in fav_reports:
+                btn = self._create_nav_button(report, is_starred=True)
+                self._nav_layout.addWidget(btn)
+
+            rendered_any = True
+
+        # ── 2. Standard Business Categories ──
+        categories = self.registry.get_all_categories()
         for category in categories:
             all_reports = self.registry.get_reports_by_category(category)
             # Filter out VAT-only reports when VAT is not active
@@ -378,17 +496,7 @@ class ReportViewer(QWidget):
 
             # Report item buttons
             for report in reports:
-                btn = QPushButton(report.name)
-                btn.setObjectName("ReportNavItem")
-                btn.setCursor(Qt.CursorShape.PointingHandCursor)
-                btn.setSizePolicy(
-                    QSizePolicy.Policy.Expanding,
-                    QSizePolicy.Policy.Fixed,
-                )
-                btn.setProperty("report_id", report.id)
-                btn.setCheckable(True)
-                btn.setAutoExclusive(True)
-                btn.clicked.connect(lambda checked, r=report.id: self._on_nav_clicked(r))
+                btn = self._create_nav_button(report, is_starred=(report.id in fav_ids))
                 self._nav_layout.addWidget(btn)
 
     def _on_nav_clicked(self, report_id: str) -> None:
@@ -400,6 +508,7 @@ class ReportViewer(QWidget):
         # Show header
         self.report_title.setText(self.current_report.name)
         self.report_description.setText(category_label(self.current_report.category))
+        self._update_favorite_button()
         self.report_header.setVisible(True)
 
         # Show filter bar

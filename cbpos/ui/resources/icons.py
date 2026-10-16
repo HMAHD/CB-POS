@@ -26,6 +26,8 @@ class Icons:
     ADMIN_TOOLS = "fa5s.toolbox"
     CUSTOMER = "fa5s.user-circle"
     POINTS = "fa5s.star"
+    STAR_FILLED = "fa5s.star"
+    STAR_OUTLINE = "fa5.star"
     REORDER = "fa5s.dolly"
 
     # Actions

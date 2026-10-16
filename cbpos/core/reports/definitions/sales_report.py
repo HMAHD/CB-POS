@@ -52,6 +52,78 @@ class DailySalesSummaryReport(BaseReport):
             )
         }
 
+    def get_summary(self, df: pd.DataFrame) -> list[dict[str, Any]]:
+        """Compute KPI summary cards for daily sales: Total Sales, Invoices, Avg Ticket (#543)."""
+        from cbpos.core.services.config_service import ConfigService
+        from cbpos.ui.resources.icons import Icons
+
+        currency = ConfigService.get("currency_symbol") or "Rs."
+
+        if df is None or df.empty:
+            return [
+                {
+                    "key": "total_sales",
+                    "title": _t("reports.summary_total_sales"),
+                    "value": f"{currency} 0.00",
+                    "icon": Icons.SALES,
+                    "color": "#10B981",
+                },
+                {
+                    "key": "invoices",
+                    "title": _t("reports.summary_invoices"),
+                    "value": "0",
+                    "icon": Icons.REPORTS,
+                    "color": "#00BCEB",
+                },
+                {
+                    "key": "avg_ticket",
+                    "title": _t("reports.summary_avg_ticket"),
+                    "value": f"{currency} 0.00",
+                    "icon": Icons.PAY,
+                    "color": "#F59E0B",
+                },
+            ]
+
+        # Total Sales
+        total_sales = 0.0
+        if "Total Sales" in df.columns:
+            total_sales = float(pd.to_numeric(df["Total Sales"], errors="coerce").fillna(0.0).sum())
+
+        # Invoices / Transactions count
+        invoices = 0
+        if "Transactions" in df.columns:
+            invoices = int(pd.to_numeric(df["Transactions"], errors="coerce").fillna(0).sum())
+        elif "Total Invoices" in df.columns:
+            invoices = int(pd.to_numeric(df["Total Invoices"], errors="coerce").fillna(0).sum())
+        else:
+            invoices = len(df)
+
+        avg_ticket = (total_sales / invoices) if invoices > 0 else 0.0
+
+        return [
+            {
+                "key": "total_sales",
+                "title": _t("reports.summary_total_sales"),
+                "value": f"{currency} {total_sales:,.2f}",
+                "icon": Icons.SALES,
+                "color": "#10B981",
+            },
+            {
+                "key": "invoices",
+                "title": _t("reports.summary_invoices"),
+                "value": f"{invoices:,}",
+                "icon": Icons.REPORTS,
+                "color": "#00BCEB",
+            },
+            {
+                "key": "avg_ticket",
+                "title": _t("reports.summary_avg_ticket"),
+                "value": f"{currency} {avg_ticket:,.2f}",
+                "icon": Icons.PAY,
+                "color": "#F59E0B",
+            },
+        ]
+
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """Group sales by calendar date within the range, summing count and total.
 

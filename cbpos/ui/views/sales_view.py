@@ -358,11 +358,23 @@ class SalesView(QWidget):
         total_layout.addStretch()
 
         # Grand Total (Right)
+        grand_total_layout = QVBoxLayout()
+        grand_total_layout.setSpacing(2)
+        grand_total_layout.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+
+        self.lbl_grand_total_title = QLabel(_t("cart.header_total").upper())
+        self.lbl_grand_total_title.setObjectName("GrandTotalCaption")
+        self.lbl_grand_total_title.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+
         self.total_label = QLabel("0.00")
         self.total_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.total_label.setObjectName("TotalLabel")
-        total_layout.addWidget(self.total_label)
 
+        grand_total_layout.addWidget(self.lbl_grand_total_title)
+        grand_total_layout.addWidget(self.total_label)
+        total_layout.addLayout(grand_total_layout)
+
+        self.total_widget = total_widget
         left_layout.addWidget(total_widget)
 
         # ==========================
@@ -451,6 +463,7 @@ class SalesView(QWidget):
         self.empty_cart_label.set_title(_t("sales.empty_cart"))
 
         # Totals — refresh display with current values
+        self.lbl_grand_total_title.setText(_t("cart.header_total").upper())
         self.update_cart_display()
 
     def _update_search_placeholder(self) -> None:

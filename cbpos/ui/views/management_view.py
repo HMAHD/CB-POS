@@ -1,15 +1,20 @@
 import logging
 
-from PyQt6.QtCore import QEvent, pyqtSignal
+from PyQt6.QtCore import QDateTime, QEvent, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
+    QFrame,
     QHBoxLayout,
+    QLabel,
     QSizePolicy,
     QStackedWidget,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
 from cbpos.core.services.permission_service import PermissionService
+from cbpos.core.services.theme_service import ThemeService
+from cbpos.core.utils.destroy_hooks import call_on_destroyed
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.views.credit_book_view import CreditBookView
@@ -42,7 +47,18 @@ class ManagementView(QWidget):
         """Build the sidebar and content stack, then show the Dashboard tab."""
         super().__init__()
         self.user = None
+        self._current_tab_index = 0
         self.init_ui()
+
+        self._update_clock()
+        self._clock_timer = QTimer(self)
+        self._clock_timer.setInterval(1000)
+        self._clock_timer.timeout.connect(self._update_clock)
+        self._clock_timer.start()
+
+        self._update_header_icons()
+        ThemeService.register_theme_callback(self._update_header_icons)
+        call_on_destroyed(self, ThemeService.unregister_theme_callback, self._update_header_icons)
 
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui, owner=self)
@@ -102,15 +118,64 @@ class ManagementView(QWidget):
             "reorder": self.btn_reorder,
         }
 
+        # Tab index -> i18n title key for header breadcrumb
+        self._tab_title_keys = {
+            0: "management.sidebar_dashboard",
+            1: "management.sidebar_inventory",
+            2: "management.sidebar_purchasing",
+            3: "management.sidebar_credit_book",
+            4: "management.sidebar_reports",
+            5: "management.sidebar_documents",
+            6: "management.sidebar_users",
+            7: "management.sidebar_price_lists",
+            8: "management.sidebar_promotions",
+            9: "management.sidebar_stock_take",
+            10: "management.sidebar_reorder",
+        }
+
         # --- Content Area ---
         content_area = QWidget()
         content_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         content_layout = QVBoxLayout(content_area)
         content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+
+        # Persistent Management Header bar (#537)
+        self.management_header = QFrame()
+        self.management_header.setObjectName("ManagementHeader")
+        header_layout = QHBoxLayout(self.management_header)
+        header_layout.setContentsMargins(20, 8, 20, 8)
+        header_layout.setSpacing(14)
+
+        self.lbl_header_title = QLabel()
+        self.lbl_header_title.setObjectName("ManagementHeaderTitle")
+        header_layout.addWidget(self.lbl_header_title)
+
+        header_layout.addStretch(1)
+
+        self.lbl_header_clock = QLabel()
+        self.lbl_header_clock.setObjectName("ManagementHeaderClock")
+        header_layout.addWidget(self.lbl_header_clock)
+
+        self.btn_header_pos = QToolButton()
+        self.btn_header_pos.setObjectName("ManagementHeaderPosBtn")
+        self.btn_header_pos.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_header_pos.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.btn_header_pos.clicked.connect(self.request_pos_view.emit)
+        header_layout.addWidget(self.btn_header_pos)
+
+        self.btn_header_logout = QToolButton()
+        self.btn_header_logout.setObjectName("ManagementHeaderLogoutBtn")
+        self.btn_header_logout.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_header_logout.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.btn_header_logout.clicked.connect(self.logout_requested.emit)
+        header_layout.addWidget(self.btn_header_logout)
+
+        content_layout.addWidget(self.management_header)
 
         self.stack = QStackedWidget()
         self.stack.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        content_layout.addWidget(self.stack)
+        content_layout.addWidget(self.stack, 1)
 
         main_layout.addWidget(content_area, 1)
 
@@ -153,14 +218,42 @@ class ManagementView(QWidget):
         self.btn_stock_take.setText(_t("management.sidebar_stock_take"))
         self.btn_reorder.setText(_t("management.sidebar_reorder"))
 
+        # Header actions & title (#537)
+        self._update_header_title()
+        self.btn_header_pos.setText(_t("management.sidebar_pos"))
+        self.btn_header_pos.setToolTip(_t("management.sidebar_pos"))
+        self.btn_header_logout.setText(_t("management.sidebar_logout"))
+        self.btn_header_logout.setToolTip(_t("management.sidebar_logout"))
+
         # Bottom buttons
         self.sidebar.retranslate_pos_logout()
 
     def switch_tab(self, index: int) -> None:
         """Show the view at the given sidebar nav index, creating it on first use."""
+        self._current_tab_index = index
+        self._update_header_title()
         widget = self._get_or_create_view(index)
         self.stack.setCurrentWidget(widget)
         self.sidebar.highlight(index)
+
+    def _update_clock(self) -> None:
+        """Update live clock text in the management header (#537)."""
+        now = QDateTime.currentDateTime()
+        self.lbl_header_clock.setText(now.toString("ddd, dd MMM yyyy  hh:mm:ss"))
+
+    def _update_header_icons(self) -> None:
+        """Refresh header icons with theme-appropriate colors (#537)."""
+        is_dark = ThemeService.current_theme.lower() != "light"
+        logout_color = "#EF4444" if is_dark else "#DC2626"
+        self.btn_header_pos.setIcon(Icons.get(Icons.DRAWER, "white"))
+        self.btn_header_logout.setIcon(Icons.get(Icons.LOGOUT, logout_color))
+
+    def _update_header_title(self) -> None:
+        """Update breadcrumb / section title in the header (#537)."""
+        key = self._tab_title_keys.get(self._current_tab_index, "management.sidebar_dashboard")
+        tab_name = _t(key)
+        section = _t("management.sidebar_section_management")
+        self.lbl_header_title.setText(f"{section} / {tab_name}")
 
     def process_barcode_external(self, barcode: str) -> None:
         """Forward a global scan to the current tab if it handles scans (#547)."""

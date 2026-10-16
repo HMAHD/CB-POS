@@ -403,50 +403,46 @@ class DashboardView(QWidget):
         panel = QFrame()
         panel.setObjectName("QuickStatsPanel")
         vbox = QVBoxLayout(panel)
-        vbox.setContentsMargins(20, 16, 20, 16)
-        vbox.setSpacing(4)
+        vbox.setContentsMargins(12, 12, 12, 12)
+        vbox.setSpacing(8)
+
+        def _make_stat_card(title_lbl: QLabel, value_lbl: QLabel) -> QFrame:
+            card = QFrame()
+            card.setObjectName("StatCard")
+            card_layout = QVBoxLayout(card)
+            card_layout.setContentsMargins(12, 8, 12, 8)
+            card_layout.setSpacing(2)
+            card_layout.addWidget(title_lbl)
+            card_layout.addWidget(value_lbl)
+            return card
 
         # Avg Order
         self.lbl_avg_order_title = QLabel()
         self.lbl_avg_order_title.setObjectName("StatLabel")
-        vbox.addWidget(self.lbl_avg_order_title)
-
         self.lbl_avg_order = QLabel(f"{get_currency_symbol()} 0")
         self.lbl_avg_order.setObjectName("StatBigValue")
-        vbox.addWidget(self.lbl_avg_order)
-
-        vbox.addSpacing(14)
+        vbox.addWidget(_make_stat_card(self.lbl_avg_order_title, self.lbl_avg_order))
 
         # Items Sold
         self.lbl_items_sold_title = QLabel()
         self.lbl_items_sold_title.setObjectName("StatLabel")
-        vbox.addWidget(self.lbl_items_sold_title)
-
         self.lbl_items_sold = QLabel("0")
         self.lbl_items_sold.setObjectName("StatValue")
-        vbox.addWidget(self.lbl_items_sold)
-
-        vbox.addSpacing(14)
+        vbox.addWidget(_make_stat_card(self.lbl_items_sold_title, self.lbl_items_sold))
 
         # Unique Customers
         self.lbl_unique_customers_title = QLabel()
         self.lbl_unique_customers_title.setObjectName("StatLabel")
-        vbox.addWidget(self.lbl_unique_customers_title)
-
         self.lbl_unique_customers = QLabel("0")
         self.lbl_unique_customers.setObjectName("StatValue")
-        vbox.addWidget(self.lbl_unique_customers)
-
-        vbox.addSpacing(14)
+        vbox.addWidget(_make_stat_card(self.lbl_unique_customers_title, self.lbl_unique_customers))
 
         # Transactions
         self.lbl_txn_title = QLabel()
         self.lbl_txn_title.setObjectName("StatLabel")
-        vbox.addWidget(self.lbl_txn_title)
-
         self.lbl_txn_count = QLabel("0")
         self.lbl_txn_count.setObjectName("StatValue")
-        vbox.addWidget(self.lbl_txn_count)
+        vbox.addWidget(_make_stat_card(self.lbl_txn_title, self.lbl_txn_count))
 
         vbox.addStretch()
         panel.setMinimumWidth(200)  # keep charts legible when the row wraps (#203, #609)
@@ -457,39 +453,39 @@ class DashboardView(QWidget):
         panel = QFrame()
         panel.setObjectName("TaxTodayPanel")
         vbox = QVBoxLayout(panel)
-        vbox.setContentsMargins(20, 16, 20, 16)
-        vbox.setSpacing(4)
+        vbox.setContentsMargins(12, 12, 12, 12)
+        vbox.setSpacing(8)
+
+        def _make_stat_card(title_lbl: QLabel, value_lbl: QLabel) -> QFrame:
+            card = QFrame()
+            card.setObjectName("StatCard")
+            card_layout = QVBoxLayout(card)
+            card_layout.setContentsMargins(12, 8, 12, 8)
+            card_layout.setSpacing(2)
+            card_layout.addWidget(title_lbl)
+            card_layout.addWidget(value_lbl)
+            return card
 
         # VAT
         self.lbl_vat_title = QLabel()
         self.lbl_vat_title.setObjectName("StatLabel")
-        vbox.addWidget(self.lbl_vat_title)
-
         self.lbl_tax_vat = QLabel(f"{get_currency_symbol()} 0")
         self.lbl_tax_vat.setObjectName("StatBigValue")
-        vbox.addWidget(self.lbl_tax_vat)
-
-        vbox.addSpacing(14)
+        vbox.addWidget(_make_stat_card(self.lbl_vat_title, self.lbl_tax_vat))
 
         # SSCL
         self.lbl_sscl_title = QLabel()
         self.lbl_sscl_title.setObjectName("StatLabel")
-        vbox.addWidget(self.lbl_sscl_title)
-
         self.lbl_tax_sscl = QLabel(f"{get_currency_symbol()} 0")
         self.lbl_tax_sscl.setObjectName("StatValue")
-        vbox.addWidget(self.lbl_tax_sscl)
-
-        vbox.addSpacing(14)
+        vbox.addWidget(_make_stat_card(self.lbl_sscl_title, self.lbl_tax_sscl))
 
         # Net Revenue
         self.lbl_net_revenue_title = QLabel()
         self.lbl_net_revenue_title.setObjectName("StatLabel")
-        vbox.addWidget(self.lbl_net_revenue_title)
-
         self.lbl_net_revenue = QLabel(f"{get_currency_symbol()} 0")
         self.lbl_net_revenue.setObjectName("StatValue")
-        vbox.addWidget(self.lbl_net_revenue)
+        vbox.addWidget(_make_stat_card(self.lbl_net_revenue_title, self.lbl_net_revenue))
 
         vbox.addStretch()
         self.tax_today_panel = panel

@@ -1,8 +1,6 @@
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QFrame,
-    QGraphicsDropShadowEffect,
     QHBoxLayout,
     QLabel,
     QSizePolicy,
@@ -10,112 +8,77 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.ui.resources.icons import Icons
-from cbpos.ui.utils.style_helpers import refresh_style
 
 
 class InfoCard(QFrame):
-    """Dashboard stat card: icon and title on top, a big value, and an
-    optional trend indicator below, with a drop-shadow.
+    """Clean, flat KPI stat card for reports and dashboards.
+
+    Displays an icon, small uppercase category title, and prominent value.
+    Flat design with no QGraphicsDropShadowEffect to maintain snappy paint
+    performance and prevent side-menu lag (#524, #543).
     """
 
     def __init__(
         self,
-        title,
-        value,
-        icon_name,
-        trend_text=None,
-        trend_positive=True,
+        title: str,
+        value: str,
+        icon_name: str,
+        color: str | None = None,
         parent=None,
     ):
-        """Build the icon+title row, value label, and trend label.
-
-        Args:
-            title: Card title text.
-            value: Big value text.
-            icon_name: qtawesome icon name.
-            trend_text: Optional trend text (e.g. "+12%"); the trend row is
-                blank when omitted.
-            trend_positive: Whether the trend is styled as positive or negative.
-            parent: Optional parent widget.
-        """
         super().__init__(parent)
-        self.setObjectName("InfoCard")  # For QSS styling
-        self.setMinimumSize(250, 140)
-        self.setMaximumHeight(160)
+        self.setObjectName("InfoCard")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setMinimumSize(150, 64)
+        self.setMaximumHeight(80)
 
-        # Store icon name for theme updates
-        self.icon_name = icon_name
-        self.icon_label = None
+        self._icon_name = icon_name
+        self._color = color or "#00BCEB"
 
-        # Shadow Effect
-        shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(20)
-        shadow.setColor(QColor(0, 0, 0, 100))
-        shadow.setOffset(0, 5)
-        self.setGraphicsEffect(shadow)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(5)
-
-        # Top Row: Icon + Title
-        top_layout = QHBoxLayout()
-        top_layout.setSpacing(10)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(14, 10, 14, 10)
+        layout.setSpacing(12)
 
         # Icon
-        self.icon_label = QLabel()
-        self.icon_label.setObjectName("CardIcon")
-        self.update_icon()
-        top_layout.addWidget(self.icon_label)
+        self.icon_lbl = QLabel()
+        self.icon_lbl.setObjectName("InfoCardIcon")
+        self.icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.icon_lbl.setFixedWidth(36)
+        self._update_icon()
+        layout.addWidget(self.icon_lbl)
 
-        top_layout.addStretch()
+        # Text Container (Title + Value)
+        text_layout = QVBoxLayout()
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(2)
 
-        # Title
-        title_label = QLabel(title)
-        title_label.setObjectName("CardTitle")
-        top_layout.addWidget(title_label)
+        self.title_lbl = QLabel(title.upper())
+        self.title_lbl.setObjectName("InfoCardTitle")
+        text_layout.addWidget(self.title_lbl)
 
-        layout.addLayout(top_layout)
+        self.val_lbl = QLabel(value)
+        self.val_lbl.setObjectName("InfoCardValue")
+        text_layout.addWidget(self.val_lbl)
 
-        layout.addSpacing(10)
+        layout.addLayout(text_layout, 1)
 
-        # Value (Center)
-        self.value_label = QLabel(value)
-        self.value_label.setObjectName("CardValue")
-        self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.value_label)
+    def _update_icon(self) -> None:
+        """Render the icon pixmap using current icon name and color."""
+        pix = Icons.get(self._icon_name, self._color).pixmap(28, 28)
+        self.icon_lbl.setPixmap(pix)
 
-        layout.addSpacing(5)
+    def set_value(self, value: str) -> None:
+        """Update the displayed metric value."""
+        self.val_lbl.setText(str(value))
 
-        # Trend (Bottom)
-        self.trend_text = trend_text
-        self.trend_positive = trend_positive
-        self.trend_label = QLabel(trend_text if trend_text else "")
-        self.trend_label.setObjectName("CardTrend")
-        self.trend_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+    def set_title(self, title: str) -> None:
+        """Update the card title caption (upper-cased)."""
+        self.title_lbl.setText(str(title).upper())
 
-        # Set property for CSS targeting
-        if trend_text:
-            self.trend_label.setProperty("trendType", "positive" if trend_positive else "negative")
-
-        layout.addWidget(self.trend_label)
-
-    def update_icon(self):
-        """Update icon color based on current theme."""
-        if self.icon_label is None:
-            return
-        # Use white icon with 40% opacity
-        icon = Icons.get(self.icon_name, "white")
-        self.icon_label.setPixmap(icon.pixmap(40, 40))
-
-    def set_value(self, text: str):
-        """Update the main value label."""
-        self.value_label.setText(text)
-
-    def set_trend(self, text: str, positive: bool = True):
-        """Update the trend label and property."""
-        self.trend_label.setText(text)
-        self.trend_label.setProperty("trendType", "positive" if positive else "negative")
-        # Force style refresh
-        refresh_style(self.trend_label)
+    def set_icon(self, icon_name: str, color: str | None = None) -> None:
+        """Update the icon and accent color."""
+        self._icon_name = icon_name
+        if color:
+            self._color = color
+        self._update_icon()

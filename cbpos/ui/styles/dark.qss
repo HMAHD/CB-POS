@@ -2471,36 +2471,34 @@ QPushButton#NumpadBtn[btnType="enter"]:hover {
    DASHBOARD / MANAGEMENT VIEW STYLES - Dark Theme
    ================================================================ */
 
-/* === INFO CARDS === */
+/* === INFO CARDS (#543) === */
 QFrame#InfoCard {
-    background-color: #1A1A1A;  /* Flat dark gray - no gradient */
-    border: 1px solid #2A2A2A;
+    background-color: #252526;
+    border: 1px solid #3E3E42;
     border-radius: 8px;
 }
 
-QLabel#CardIcon {
+QFrame#InfoCard:hover {
+    border-color: #4E4E52;
+}
+
+QLabel#InfoCardIcon {
     background-color: transparent;
 }
 
-QLabel#CardTitle {
+QLabel#InfoCardTitle {
     background-color: transparent;
-    color: #888888;  /* Muted gray for labels */
+    color: #9E9E9E;
     font-size: 11px;
-    font-weight: normal;
+    font-weight: 600;
     letter-spacing: 0.5px;
 }
 
-QLabel#CardValue {
+QLabel#InfoCardValue {
     background-color: transparent;
     color: #FFFFFF;
-    font-size: 32px;
+    font-size: 18px;
     font-weight: bold;
-}
-
-QLabel#CardTrend {
-    background-color: transparent;
-    font-size: 10px;
-    font-weight: normal;
 }
 
 QLabel#CardTrend[trendType="positive"] {

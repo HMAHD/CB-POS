@@ -1,61 +1,8 @@
 from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QColor, QIcon, QPainter, QPixmap
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QToolButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QToolButton
 
 from cbpos.ui.resources.icons import Icons
-
-
-class InfoCard(QWidget):
-    """
-    Dashboard Info Card.
-    Displays an Icon, a Value (Big), and a Label (Small).
-    """
-
-    def __init__(self, title: str, value: str, icon_name: str, color: str = "#00BCEB"):
-        """Build the icon + value + title layout.
-
-        Args:
-            title: Small caption shown under the value (upper-cased for display).
-            value: Big value text (e.g. a formatted count or currency amount).
-            icon_name: qtawesome icon name.
-            color: Accent color used for the icon and value text.
-        """
-        super().__init__()
-        self.setFixedSize(220, 120)
-        self.setObjectName("InfoCard")
-
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(15, 15, 15, 15)
-
-        # Icon
-        icon_lbl = QLabel()
-        icon_lbl.setPixmap(Icons.get(icon_name, color).pixmap(40, 40))
-        icon_lbl.setFixedWidth(50)
-        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-
-        # Text Container
-        text_layout = QVBoxLayout()
-        text_layout.setSpacing(5)
-
-        self.val_lbl = QLabel(value)
-        style = f"font-size: 28px; font-weight: bold; color: {color}; "
-        self.val_lbl.setStyleSheet(style)
-        self.val_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
-
-        self.title_lbl = QLabel(title.upper())
-        self.title_lbl.setObjectName("InfoCardTitle")
-        self.title_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
-
-        text_layout.addWidget(self.val_lbl)
-        text_layout.addWidget(self.title_lbl)
-        text_layout.addStretch()
-
-        layout.addWidget(icon_lbl)
-        layout.addLayout(text_layout)
-
-    def set_value(self, value: str):
-        """Update the displayed value text."""
-        self.val_lbl.setText(value)
 
 
 class SidebarButton(QToolButton):

@@ -3395,6 +3395,18 @@ QPushButton#ReportNavItem:checked {
     background: transparent;
 }
 
+QPushButton#ReportFavoriteBtn {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px;
+}
+
+QPushButton#ReportFavoriteBtn:hover {
+    background-color: #E9ECEF;
+    border-color: #CED4DA;
+}
+
 /* ── Filter Bar ── */
 #ReportFilterBar {
     background-color: #FFFFFF;

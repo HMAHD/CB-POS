@@ -21,6 +21,7 @@ NUMERIC_COLUMN_TYPES = frozenset({MONEY, INT, QTY, PERCENT})
 # these, never a translated name: the registry keys and orders categories
 # by ID, and the sidebar translates the label only when it is drawn, so
 # the order is the same in every language and follows a language switch.
+CATEGORY_FAVORITES = "favorites"
 CATEGORY_SALES = "sales"
 CATEGORY_INVENTORY = "inventory"
 CATEGORY_FINANCIAL = "financial"

@@ -452,10 +452,22 @@ QTreeWidget::indicator:checked, QTableWidget::indicator:checked {
     image: url(cbpos/assets/icons/check-white.svg);
 }
 
+QTreeWidget::indicator:indeterminate, QTableWidget::indicator:indeterminate {
+    background-color: #0D6EFD;
+    border-color: #0D6EFD;
+    image: url(cbpos/assets/icons/minus-white.svg);
+}
+
 /* Locked cells (e.g. Admin's critical permissions, #614) */
 QTreeWidget::indicator:checked:disabled, QTableWidget::indicator:checked:disabled {
     background-color: #ADB5BD;
     border-color: #ADB5BD;
+}
+
+QTreeWidget::indicator:indeterminate:disabled, QTableWidget::indicator:indeterminate:disabled {
+    background-color: #ADB5BD;
+    border-color: #ADB5BD;
+    image: url(cbpos/assets/icons/minus-white.svg);
 }
 
 /* Buttons */

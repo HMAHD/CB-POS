@@ -33,7 +33,9 @@ class TestTreeCheckboxesAreThemed:
     def test_dark_theme_styles_tree_widget_indicators(self):
         qss = (STYLE_DIR / "dark.qss").read_text()
         assert "QTreeWidget::indicator" in qss
+        assert "QTreeWidget::indicator:indeterminate" in qss
 
     def test_light_theme_styles_tree_widget_indicators(self):
         qss = (STYLE_DIR / "light.qss").read_text()
         assert "QTreeWidget::indicator" in qss
+        assert "QTreeWidget::indicator:indeterminate" in qss

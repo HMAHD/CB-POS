@@ -660,7 +660,7 @@
     "sidebar_dashboard": "උපකරණ පුවරුව",
     "sidebar_inventory": "තොග කළමනාකරණය",
     "sidebar_purchasing": "මිලදී ගැනීම්",
-    "sidebar_credit_book": "ණය පොත",
+    "sidebar_credit_book": "පාරිභෝගිකයන්",
     "sidebar_section_management": "කළමනාකරණය",
     "sidebar_reports": "වාර්තා",
     "sidebar_documents": "ලේඛන",
@@ -715,7 +715,7 @@
     "context_stock_history": "තොග ඉතිහාසය බලන්න"
   },
   "credit_book": {
-    "title": "ණය පොත",
+    "title": "පාරිභෝගිකයන්",
     "btn_add_customer": "+ පාරිභෝගිකයෙක් එකතු කරන්න",
     "btn_open_customer_ledger": "ලෙජරය අරින්න",
     "row_open_hint": "ලෙජරය අරින්න නමට දෙපාරක් ක්ලික් කරන්න, නැත්නම් Enter ඔබන්න. තව දේවල් දකුණු ක්ලික් කරලා බලන්න.",

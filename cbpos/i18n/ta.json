@@ -660,7 +660,7 @@
     "sidebar_dashboard": "முகப்பு பலகை",
     "sidebar_inventory": "சரக்கு மேலாண்மை",
     "sidebar_purchasing": "கொள்முதல்",
-    "sidebar_credit_book": "கடன் புத்தகம்",
+    "sidebar_credit_book": "வாடிக்கையாளர்கள்",
     "sidebar_section_management": "மேலாண்மை",
     "sidebar_reports": "அறிக்கைகள்",
     "sidebar_documents": "ஆவணங்கள்",
@@ -715,7 +715,7 @@
     "context_stock_history": "சரக்கு வரலாற்றைப் பாருங்க"
   },
   "credit_book": {
-    "title": "கடன் புத்தகம்",
+    "title": "வாடிக்கையாளர்கள்",
     "btn_add_customer": "+ வாடிக்கையாளரைச் சேருங்க",
     "btn_open_customer_ledger": "லெட்ஜரைத் திற",
     "row_open_hint": "லெட்ஜரைத் திறக்க பேரை ரெண்டு தடவை கிளிக் பண்ணுங்க, இல்லன்னா Enter அழுத்துங்க. இன்னும் வசதிகளுக்கு வலது கிளிக் பண்ணுங்க.",

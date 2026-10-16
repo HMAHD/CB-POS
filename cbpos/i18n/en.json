@@ -660,7 +660,7 @@
     "sidebar_dashboard": "Dashboard",
     "sidebar_inventory": "Inventory",
     "sidebar_purchasing": "Purchasing",
-    "sidebar_credit_book": "Credit Book",
+    "sidebar_credit_book": "Customers",
     "sidebar_section_management": "Management",
     "sidebar_reports": "Reports",
     "sidebar_documents": "Documents",
@@ -745,7 +745,7 @@
     "context_stock_history": "View Stock History"
   },
   "credit_book": {
-    "title": "Credit Book",
+    "title": "Customers",
     "btn_add_customer": "+ Add Customer",
     "btn_open_customer_ledger": "Open Ledger",
     "row_open_hint": "Double-click a customer or press Enter to open their ledger. Right-click for more.",

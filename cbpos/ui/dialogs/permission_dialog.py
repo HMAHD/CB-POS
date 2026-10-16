@@ -62,9 +62,16 @@ class _RoleCheckDelegate(QStyledItemDelegate):
             return
 
         opt.rect = check_rect
-        opt.state &= ~(QStyle.StateFlag.State_On | QStyle.StateFlag.State_Off | QStyle.StateFlag.State_HasFocus)
+        opt.state &= ~(
+            QStyle.StateFlag.State_On
+            | QStyle.StateFlag.State_Off
+            | QStyle.StateFlag.State_NoChange
+            | QStyle.StateFlag.State_HasFocus
+        )
         if opt.checkState == Qt.CheckState.Checked:
             opt.state |= QStyle.StateFlag.State_On
+        elif opt.checkState == Qt.CheckState.PartiallyChecked:
+            opt.state |= QStyle.StateFlag.State_NoChange
         else:
             opt.state |= QStyle.StateFlag.State_Off
         if index.data(LOCKED_CELL_ROLE):
@@ -100,7 +107,30 @@ class _RoleCheckDelegate(QStyledItemDelegate):
 
         checked = Qt.CheckState(index.data(Qt.ItemDataRole.CheckStateRole)) == Qt.CheckState.Checked
         new_state = Qt.CheckState.Unchecked if checked else Qt.CheckState.Checked
-        return model.setData(index, new_state, Qt.ItemDataRole.CheckStateRole)
+        res = model.setData(index, new_state, Qt.ItemDataRole.CheckStateRole)
+
+        # If a parent/group item was toggled, ensure locked child cells stay checked (#552)
+        tree = (
+            option.widget
+            if isinstance(option.widget, QTreeWidget)
+            else (self.parent() if isinstance(self.parent(), QTreeWidget) else None)
+        )
+        if tree is not None:
+            item = tree.itemFromIndex(index)
+            if item is not None and item.childCount() > 0:
+                self._restore_locked_descendants(item, index.column())
+
+        return res
+
+    @classmethod
+    def _restore_locked_descendants(cls, item: QTreeWidgetItem, column: int) -> None:
+        """Re-assert Qt.CheckState.Checked on any descendant flagged with LOCKED_CELL_ROLE."""
+        for i in range(item.childCount()):
+            child = item.child(i)
+            if child.data(column, LOCKED_CELL_ROLE):
+                child.setCheckState(column, Qt.CheckState.Checked)
+            if child.childCount() > 0:
+                cls._restore_locked_descendants(child, column)
 
 
 class PermissionDialog(QDialog):
@@ -168,8 +198,12 @@ class PermissionDialog(QDialog):
             group_item = QTreeWidgetItem(self.tree)
             group_item.setText(0, permission_group_label(group_name))
             group_item.setExpanded(True)
-            # Make group item unselectable/gray?
-            group_item.setFlags(group_item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+            # Group rows act as parent toggles for each role column (#552)
+            group_item.setFlags(
+                (group_item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+                | Qt.ItemFlag.ItemIsAutoTristate
+                | Qt.ItemFlag.ItemIsUserCheckable
+            )
 
             for perm in perms:
                 perm_item = QTreeWidgetItem(group_item)

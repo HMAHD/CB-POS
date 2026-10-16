@@ -1066,6 +1066,8 @@
     "logs_search_placeholder": "பதிவுகளைத் தேடு...",
     "logs_btn_apply": "பயன்படுத்து",
     "logs_details_title": "பதிவு விவரங்கள்",
+    "logs_detail_dialog_title": "பதிவு நுழைவு விவரங்கள்",
+    "logs_btn_view_details": "விவரங்களைப் பார்க்க",
     "logs_btn_copy_details": "பிழை விவரங்களை நகலெடு",
     "logs_btn_export": "பதிவுகளை ஏற்றுமதி செய்",
     "logs_btn_clear": "பதிவுகளை அழி",

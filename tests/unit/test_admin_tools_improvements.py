@@ -1,11 +1,13 @@
-"""Tests for issue #621 (UI-051): Admin Tools full log entries, live filtering, and copyable database path."""
+"""Tests for issue #621 (UI-051): Admin Tools full log entries, modal detail dialog, live filtering, and copyable database path."""
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from PyQt6.QtWidgets import QApplication
 
 from cbpos.core.services.error_log_service import ErrorLogService
+from cbpos.ui.dialogs.log_detail_dialog import LogDetailDialog
 from cbpos.ui.views.admin_tools_view import AdminToolsView
 
 pytestmark = pytest.mark.usefixtures("qapp")
@@ -104,9 +106,10 @@ def test_admin_tools_live_filtering_and_scanner_box_hidden(tmp_path, monkeypatch
     assert not view.lbl_scanner_status.isVisible()
     assert not view.lbl_scanner_detection.isVisible()
 
-    # Log details pane and copy button
-    assert hasattr(view, "btn_copy_log_details")
-    assert hasattr(view, "txt_log_details")
+    # View Details button replaces the old cramped bottom inline panel
+    assert hasattr(view, "btn_view_details")
+    assert not hasattr(view, "txt_log_details")
+    assert not view.btn_view_details.isEnabled()
 
     # Set up mock entries with a multi-line message
     view._current_log_entries = [
@@ -125,21 +128,60 @@ def test_admin_tools_live_filtering_and_scanner_box_hidden(tmp_path, monkeypatch
     assert msg_item.text() == "Crash occurred"
     assert "Traceback" in msg_item.toolTip()
 
-    # Selecting the row should populate txt_log_details and enable copy button
+    # Selecting the row enables btn_view_details
     view.log_table.selectRow(0)
-    assert view.btn_copy_log_details.isEnabled()
-    details_text = view.txt_log_details.toPlainText()
-    assert "Crash occurred" in details_text
-    assert "Traceback" in details_text
+    assert view.btn_view_details.isEnabled()
 
-    # Copy log details puts text onto clipboard
-    view._copy_log_details()
-    assert QApplication.clipboard().text() == details_text
+    # Triggering detail dialog via button click or double-click opens LogDetailDialog
+    with patch.object(LogDetailDialog, "exec") as mock_exec:
+        view.btn_view_details.click()
+        assert mock_exec.called
 
-    # Clearing selection disables copy button and clears text
+    with patch.object(LogDetailDialog, "exec") as mock_exec:
+        view.log_table.doubleClicked.emit(view.log_table.model().index(0, 0))
+        assert mock_exec.called
+
+    # Clearing selection disables btn_view_details
     view.log_table.clearSelection()
-    assert not view.btn_copy_log_details.isEnabled()
-    assert view.txt_log_details.toPlainText() == ""
+    assert not view.btn_view_details.isEnabled()
+
+    # When nothing selected, _open_log_detail_dialog does nothing
+    with patch.object(LogDetailDialog, "exec") as mock_exec:
+        view._open_log_detail_dialog()
+        assert not mock_exec.called
 
     view.close()
     view.deleteLater()
+
+
+def test_log_detail_dialog():
+    """LogDetailDialog should display full message, status pill, and copy details to clipboard."""
+    entry = {
+        "timestamp": "2026-10-15 12:00:00",
+        "level": "CRITICAL",
+        "source": "cbpos.crash",
+        "message": (
+            "Unhandled exception\n"
+            "Traceback (most recent call last):\n"
+            '  File "main.py", line 10, in <module>\n'
+            "ZeroDivisionError: division by zero"
+        ),
+    }
+
+    dialog = LogDetailDialog(entry)
+    assert dialog.windowTitle() != ""
+    assert dialog.lbl_level.text() == "CRITICAL"
+    assert dialog.txt_message.isReadOnly()
+    assert "ZeroDivisionError: division by zero" in dialog.txt_message.toPlainText()
+
+    # Copy details puts formatted string to clipboard
+    dialog._copy_details()
+    copied = QApplication.clipboard().text()
+    assert "Timestamp: 2026-10-15 12:00:00" in copied
+    assert "Level:     CRITICAL" in copied
+    assert "Source:    cbpos.crash" in copied
+    assert "ZeroDivisionError: division by zero" in copied
+
+    dialog.btn_close.click()
+    dialog.close()
+    dialog.deleteLater()

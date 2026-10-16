@@ -295,3 +295,64 @@ def format_payment_method(method: str | None) -> str:
         except Exception:
             pass
     return clean
+
+
+def format_relative_time(
+    dt_or_str: datetime | date | str | None,
+    now: datetime | None = None,
+) -> str:
+    """Format a timestamp into a human-friendly relative time string.
+
+    Examples: "Just now", "5 minutes ago", "2 hours ago", "1 day ago", "2 weeks ago".
+    """
+    if not dt_or_str:
+        return ""
+
+    dt: datetime
+    if isinstance(dt_or_str, datetime):
+        dt = dt_or_str
+    elif isinstance(dt_or_str, date):
+        dt = datetime.combine(dt_or_str, datetime.min.time())
+    elif isinstance(dt_or_str, str):
+        clean = dt_or_str.strip().replace(",", ".")
+        try:
+            dt = datetime.fromisoformat(clean)
+        except ValueError:
+            try:
+                dt = datetime.strptime(clean.split(".")[0], "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                return dt_or_str
+    else:
+        return str(dt_or_str)
+
+    if now is None:
+        now = datetime.now()
+
+    diff = now - dt
+    s = round(diff.total_seconds())
+
+    try:
+        from cbpos.i18n import _t
+    except Exception:
+        _t = lambda key, **kwargs: key  # noqa: E731
+
+    if s < 60:
+        return _t("time.just_now")
+    if s < 3600:
+        m = max(1, (s + 30) // 60)
+        return _t("time.one_minute_ago") if m == 1 else _t("time.minutes_ago", count=m)
+    if s < 86400:
+        h = max(1, (s + 1800) // 3600)
+        return _t("time.one_hour_ago") if h == 1 else _t("time.hours_ago", count=h)
+
+    d = max(1, (s + 43200) // 86400)
+    if d < 7:
+        return _t("time.one_day_ago") if d == 1 else _t("time.days_ago", count=d)
+    if d < 30:
+        w = max(1, (d + 3) // 7)
+        return _t("time.one_week_ago") if w == 1 else _t("time.weeks_ago", count=w)
+    if d < 365:
+        mo = max(1, (d + 15) // 30)
+        return _t("time.one_month_ago") if mo == 1 else _t("time.months_ago", count=mo)
+    y = max(1, (d + 182) // 365)
+    return _t("time.one_year_ago") if y == 1 else _t("time.years_ago", count=y)

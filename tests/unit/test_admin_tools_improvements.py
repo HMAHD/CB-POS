@@ -154,10 +154,41 @@ def test_admin_tools_live_filtering_and_scanner_box_hidden(tmp_path, monkeypatch
     view.deleteLater()
 
 
+@pytest.mark.parametrize(
+    ("delta_args", "expected"),
+    [
+        ({"seconds": 15}, "Just now"),
+        ({"minutes": 1}, "1 minute ago"),
+        ({"minutes": 25}, "25 minutes ago"),
+        ({"hours": 1}, "1 hour ago"),
+        ({"hours": 5}, "5 hours ago"),
+        ({"days": 1}, "1 day ago"),
+        ({"days": 4}, "4 days ago"),
+        ({"days": 7}, "1 week ago"),
+        ({"days": 14}, "2 weeks ago"),
+        ({"days": 60}, "2 months ago"),
+        ({"days": 400}, "1 year ago"),
+    ],
+)
+def test_format_relative_time(delta_args, expected):
+    from datetime import datetime, timedelta
+
+    from cbpos.core.utils.formatters import format_relative_time
+
+    base = datetime(2026, 10, 16, 15, 0, 0)
+    target = base - timedelta(**delta_args)
+    assert format_relative_time(target, now=base) == expected
+    # Also test formatted string parsing with and without milliseconds
+    str_target = target.strftime("%Y-%m-%d %H:%M:%S")
+    assert format_relative_time(str_target, now=base) == expected
+    str_target_ms = target.strftime("%Y-%m-%d %H:%M:%S,123")
+    assert format_relative_time(str_target_ms, now=base) == expected
+
+
 def test_log_detail_dialog():
-    """LogDetailDialog should display full message, status pill, and copy details to clipboard."""
+    """LogDetailDialog should display full message, status pill, relative time, and copy details to clipboard."""
     entry = {
-        "timestamp": "2026-10-15 12:00:00",
+        "timestamp": "2026-10-15 12:00:00,123",
         "level": "CRITICAL",
         "source": "cbpos.crash",
         "message": (
@@ -171,13 +202,18 @@ def test_log_detail_dialog():
     dialog = LogDetailDialog(entry)
     assert dialog.windowTitle() != ""
     assert dialog.lbl_level.text() == "CRITICAL"
+    assert dialog.lbl_level.property("level") == "CRITICAL"
+    assert hasattr(dialog, "lbl_relative_time")
+    assert hasattr(dialog, "lbl_exact_time")
+    assert "(2026-10-15 12:00:00)" in dialog.lbl_exact_time.text()
+    assert dialog.lbl_source.text() == "cbpos.crash"
     assert dialog.txt_message.isReadOnly()
     assert "ZeroDivisionError: division by zero" in dialog.txt_message.toPlainText()
 
     # Copy details puts formatted string to clipboard
     dialog._copy_details()
     copied = QApplication.clipboard().text()
-    assert "Timestamp: 2026-10-15 12:00:00" in copied
+    assert "Timestamp: 2026-10-15 12:00:00,123" in copied
     assert "Level:     CRITICAL" in copied
     assert "Source:    cbpos.crash" in copied
     assert "ZeroDivisionError: division by zero" in copied

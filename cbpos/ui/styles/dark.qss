@@ -616,6 +616,49 @@ QLabel[class="transparent"] {
     background: transparent;
 }
 
+/* Log Detail Dialog Metadata Card */
+QFrame#LogMetaCard {
+    background-color: #2D2D30;
+    border: 1px solid #3E3E42;
+    border-radius: 8px;
+}
+
+QFrame#LogMetaCard QLabel {
+    background: transparent;
+}
+
+QLabel#LogLevelBadge {
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-weight: bold;
+    font-size: 11px;
+}
+
+QLabel#LogLevelBadge[level="CRITICAL"] {
+    background-color: rgba(255, 65, 54, 0.28);
+    color: #FF4136;
+    border: 1px solid #FF4136;
+}
+
+QLabel#LogLevelBadge[level="ERROR"] {
+    background-color: rgba(255, 65, 54, 0.18);
+    color: #FF6B6B;
+    border: 1px solid rgba(255, 107, 107, 0.5);
+}
+
+QLabel#LogLevelBadge[level="WARNING"] {
+    background-color: rgba(255, 193, 7, 0.18);
+    color: #FFD43B;
+    border: 1px solid rgba(255, 212, 59, 0.5);
+}
+
+QLabel#LogLevelBadge[level="INFO"] {
+    background-color: rgba(0, 188, 235, 0.15);
+    color: #00BCEB;
+    border: 1px solid rgba(0, 188, 235, 0.4);
+}
+
+
 /* Lists, Tables & Trees -- QTreeWidget/QTreeView used to be missing
    here, so a tree with alternating rows fell back to the native
    (white) alternate base under the theme's text color (#567). */

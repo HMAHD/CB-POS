@@ -7,6 +7,8 @@ from PyQt6.QtGui import QFontDatabase, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
+    QFormLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QPlainTextEdit,
@@ -15,8 +17,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from cbpos.core.utils.formatters import format_relative_time
 from cbpos.i18n import _t
-from cbpos.ui.utils.style_helpers import set_status_class
+from cbpos.ui.utils.style_helpers import refresh_style
 
 
 class LogDetailDialog(QDialog):
@@ -41,37 +44,75 @@ class LogDetailDialog(QDialog):
         title_lbl.setProperty("class", "dialog-title")
         layout.addWidget(title_lbl)
 
-        # Metadata info row
-        info_layout = QHBoxLayout()
-        info_layout.setSpacing(16)
+        # Metadata Card (structured, not inline)
+        meta_card = QFrame()
+        meta_card.setObjectName("LogMetaCard")
+        meta_layout = QFormLayout(meta_card)
+        meta_layout.setContentsMargins(14, 10, 14, 10)
+        meta_layout.setVerticalSpacing(8)
+        meta_layout.setHorizontalSpacing(16)
+        meta_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        meta_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
-        time_text = self.entry.get("timestamp", "--")
-        lbl_time = QLabel(f"<b>{_t('admin_tools.logs_header_time')}:</b> {time_text}")
-        lbl_time.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        info_layout.addWidget(lbl_time)
+        # Row 1: Level badge
+        lbl_level_key = QLabel(_t("admin_tools.logs_header_level"))
+        lbl_level_key.setProperty("class", "bold")
 
-        level_text = self.entry.get("level", "--")
-        lbl_level_prefix = QLabel(f"<b>{_t('admin_tools.logs_header_level')}:</b>")
-        info_layout.addWidget(lbl_level_prefix)
-
+        level_text = (self.entry.get("level") or "INFO").strip()
         self.lbl_level = QLabel(level_text)
-        if level_text in ("CRITICAL", "ERROR"):
-            set_status_class(self.lbl_level, "debit")
-        elif level_text == "WARNING":
-            set_status_class(self.lbl_level, "warning-hint")
-        else:
-            set_status_class(self.lbl_level, "bold")
-        info_layout.addWidget(self.lbl_level)
+        self.lbl_level.setObjectName("LogLevelBadge")
+        self.lbl_level.setProperty("level", level_text.upper())
+        refresh_style(self.lbl_level)
 
-        source_text = self.entry.get("source", "--")
-        lbl_source = QLabel(f"<b>{_t('admin_tools.logs_header_source')}:</b> {source_text}")
-        lbl_source.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        info_layout.addWidget(lbl_source)
+        level_row = QHBoxLayout()
+        level_row.setContentsMargins(0, 0, 0, 0)
+        level_row.addWidget(self.lbl_level)
+        level_row.addStretch()
+        meta_layout.addRow(lbl_level_key, level_row)
 
-        info_layout.addStretch()
-        layout.addLayout(info_layout)
+        # Row 2: Time (Relative time as primary, exact timestamp as secondary)
+        lbl_time_key = QLabel(_t("admin_tools.logs_header_time"))
+        lbl_time_key.setProperty("class", "bold")
 
-        # Message & Traceback label
+        raw_timestamp = self.entry.get("timestamp", "").strip()
+        relative_str = format_relative_time(raw_timestamp) or raw_timestamp
+
+        time_row = QHBoxLayout()
+        time_row.setContentsMargins(0, 0, 0, 0)
+        time_row.setSpacing(8)
+
+        self.lbl_relative_time = QLabel(relative_str)
+        self.lbl_relative_time.setProperty("class", "bold")
+        self.lbl_relative_time.setToolTip(raw_timestamp)
+        time_row.addWidget(self.lbl_relative_time)
+
+        if raw_timestamp:
+            clean_display_time = raw_timestamp.split(",")[0].split(".")[0]
+            self.lbl_exact_time = QLabel(f"({clean_display_time})")
+            self.lbl_exact_time.setProperty("class", "muted")
+            self.lbl_exact_time.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            self.lbl_exact_time.setToolTip(raw_timestamp)
+            time_row.addWidget(self.lbl_exact_time)
+
+        time_row.addStretch()
+        meta_layout.addRow(lbl_time_key, time_row)
+
+        # Row 3: Source component
+        lbl_source_key = QLabel(_t("admin_tools.logs_header_source"))
+        lbl_source_key.setProperty("class", "bold")
+
+        source_text = self.entry.get("source", "--").strip()
+        self.lbl_source = QLabel(source_text)
+        self.lbl_source.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.lbl_source.setToolTip(source_text)
+        mono_font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+        mono_font.setPointSize(11)
+        self.lbl_source.setFont(mono_font)
+        meta_layout.addRow(lbl_source_key, self.lbl_source)
+
+        layout.addWidget(meta_card)
+
+        # Message & Traceback section
         lbl_msg_title = QLabel(_t("admin_tools.logs_header_message"))
         lbl_msg_title.setProperty("class", "bold")
         layout.addWidget(lbl_msg_title)
@@ -80,9 +121,7 @@ class LogDetailDialog(QDialog):
         self.txt_message = QPlainTextEdit()
         self.txt_message.setReadOnly(True)
         self.txt_message.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
-        font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
-        font.setPointSize(11)
-        self.txt_message.setFont(font)
+        self.txt_message.setFont(mono_font)
         self.txt_message.setPlainText(self.entry.get("message", ""))
         layout.addWidget(self.txt_message, 1)
 
@@ -107,9 +146,12 @@ class LogDetailDialog(QDialog):
         QShortcut(QKeySequence(Qt.Key.Key_Escape), self).activated.connect(self.reject)
 
     def _copy_details(self) -> None:
-        """Copy formatted log details (timestamp, level, source, message) to clipboard."""
+        """Copy formatted log details (timestamp, relative time, level, source, message) to clipboard."""
+        raw_timestamp = self.entry.get("timestamp", "").strip()
+        relative_str = format_relative_time(raw_timestamp)
         details = (
-            f"Timestamp: {self.entry.get('timestamp', '')}\n"
+            f"Timestamp: {raw_timestamp}\n"
+            f"Time:      {relative_str}\n"
             f"Level:     {self.entry.get('level', '')}\n"
             f"Source:    {self.entry.get('source', '')}\n"
             f"Message:\n{self.entry.get('message', '')}"

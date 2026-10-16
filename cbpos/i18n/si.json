@@ -2835,5 +2835,21 @@
     "bank_branch": "ශාඛාව: {name}",
     "authorized_signature": "බලයලත් අත්සන",
     "received_by": "භාර ගත්තේ"
+  },
+  "time": {
+    "just_now": "දැන්",
+    "one_minute_ago": "මිනිත්තුවකට පෙර",
+    "minutes_ago": "මිනිත්තු {count}කට පෙර",
+    "one_hour_ago": "පැයකට පෙර",
+    "hours_ago": "පැය {count}කට පෙර",
+    "one_day_ago": "දිනකට පෙර",
+    "days_ago": "දින {count}කට පෙර",
+    "one_week_ago": "සතියකට පෙර",
+    "weeks_ago": "සති {count}කට පෙර",
+    "one_month_ago": "මසකට පෙර",
+    "months_ago": "මාස {count}කට පෙර",
+    "one_year_ago": "වසරකට පෙර",
+    "years_ago": "වසර {count}කට පෙර"
   }
 }
+

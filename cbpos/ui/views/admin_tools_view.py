@@ -10,10 +10,13 @@ Provides a tabbed interface for admin diagnostic tools:
 import logging
 import time
 from datetime import datetime
+from pathlib import Path
 
 from PyQt6 import sip
-from PyQt6.QtCore import QDate, Qt, QTimer
+from PyQt6.QtCore import QDate, Qt, QTimer, QUrl
+from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import (
+    QApplication,
     QComboBox,
     QDateEdit,
     QFileDialog,
@@ -25,6 +28,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMessageBox,
+    QPlainTextEdit,
     QPushButton,
     QScrollArea,
     QTableWidget,
@@ -149,16 +153,31 @@ class AdminToolsView(QWidget):
         file_layout.setVerticalSpacing(10)
         file_layout.setHorizontalSpacing(20)
 
+        path_layout = QHBoxLayout()
+        path_layout.setSpacing(8)
+
         self.lbl_db_path = QLabel("--")
         self.lbl_db_path.setWordWrap(True)
         # QFormLayout can't compute a wrapped QLabel's sizeHint correctly
         # at layout time (chicken/egg: the wrap depends on the width it
         # hasn't been given yet), so without an explicit minimum only the
         # first fragment of a real path ever painted.
-        self.lbl_db_path.setMinimumWidth(400)
+        self.lbl_db_path.setMinimumWidth(350)
         self.lbl_db_path.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        path_layout.addWidget(self.lbl_db_path, 1)
+
+        self.btn_copy_db_path = QPushButton()
+        self.btn_copy_db_path.setMinimumWidth(100)
+        self.btn_copy_db_path.clicked.connect(self._copy_db_path)
+        path_layout.addWidget(self.btn_copy_db_path)
+
+        self.btn_open_db_folder = QPushButton()
+        self.btn_open_db_folder.setMinimumWidth(110)
+        self.btn_open_db_folder.clicked.connect(self._open_db_folder)
+        path_layout.addWidget(self.btn_open_db_folder)
+
         self.lbl_db_path_label = QLabel()
-        file_layout.addRow(self.lbl_db_path_label, self.lbl_db_path)
+        file_layout.addRow(self.lbl_db_path_label, path_layout)
 
         self.lbl_db_size = QLabel("--")
         self.lbl_db_size.setProperty("class", "bold")
@@ -267,6 +286,24 @@ class AdminToolsView(QWidget):
                 _t("admin_tools.db_integrity_failed", message=message),
             )
 
+    def _copy_db_path(self) -> None:
+        """Copy the database file path to clipboard."""
+        path = self.lbl_db_path.text().strip()
+        if path and path != "--":
+            clipboard = QApplication.clipboard()
+            if clipboard is not None:
+                clipboard.setText(path)
+
+    def _open_db_folder(self) -> None:
+        """Open the directory containing the database in the file explorer."""
+        text = self.lbl_db_path.text().strip()
+        if not text or text == "--":
+            return
+        path = Path(text)
+        folder = path.parent if path.is_file() or not path.is_dir() else path
+        if folder.exists():
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
+
     # ── Error Logs Tab ───────────────────────────────────────────────────
 
     def _build_logs_tab(self) -> QWidget:
@@ -288,6 +325,7 @@ class AdminToolsView(QWidget):
         for level in ("WARNING", "ERROR", "CRITICAL"):
             self.combo_log_level.addItem(level, level)
         self.combo_log_level.setMinimumWidth(120)
+        self.combo_log_level.currentIndexChanged.connect(self._load_logs)
         filter_layout.addWidget(self.combo_log_level)
 
         self.lbl_from = QLabel()
@@ -298,6 +336,7 @@ class AdminToolsView(QWidget):
         self.date_log_from.setCalendarPopup(True)
         self.date_log_from.setDate(QDate.currentDate().addDays(-30))
         self.date_log_from.setMinimumWidth(130)
+        self.date_log_from.dateChanged.connect(self._load_logs)
         filter_layout.addWidget(self.date_log_from)
 
         self.lbl_to = QLabel()
@@ -308,11 +347,17 @@ class AdminToolsView(QWidget):
         self.date_log_to.setCalendarPopup(True)
         self.date_log_to.setDate(QDate.currentDate())
         self.date_log_to.setMinimumWidth(130)
+        self.date_log_to.dateChanged.connect(self._load_logs)
         filter_layout.addWidget(self.date_log_to)
 
         self.input_log_search = QLineEdit()
         self.input_log_search.setMinimumWidth(160)
         self.input_log_search.returnPressed.connect(self._load_logs)
+        self._search_timer = QTimer(self)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.setInterval(250)
+        self._search_timer.timeout.connect(self._load_logs)
+        self.input_log_search.textChanged.connect(self._search_timer.start)
         filter_layout.addWidget(self.input_log_search)
 
         self.btn_apply = QPushButton()
@@ -338,6 +383,7 @@ class AdminToolsView(QWidget):
         self.log_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.log_table.setAlternatingRowColors(True)
         self.log_table.verticalHeader().setVisible(False)
+        self.log_table.itemSelectionChanged.connect(self._on_log_selection_changed)
 
         log_header = self.log_table.horizontalHeader()
         log_header.setSectionResizeMode(0, QHeaderView.ResizeMode.Interactive)
@@ -354,6 +400,24 @@ class AdminToolsView(QWidget):
         self.log_pagination = PaginationWidget()
         self.log_pagination.page_changed.connect(self._on_log_page_changed)
         layout.addWidget(self.log_pagination)
+
+        # Details pane for multi-line log / traceback view
+        details_header = QHBoxLayout()
+        self.lbl_log_details_title = QLabel()
+        self.lbl_log_details_title.setProperty("class", "bold")
+        details_header.addWidget(self.lbl_log_details_title)
+        details_header.addStretch()
+
+        self.btn_copy_log_details = QPushButton()
+        self.btn_copy_log_details.setEnabled(False)
+        self.btn_copy_log_details.clicked.connect(self._copy_log_details)
+        details_header.addWidget(self.btn_copy_log_details)
+        layout.addLayout(details_header)
+
+        self.txt_log_details = QPlainTextEdit()
+        self.txt_log_details.setReadOnly(True)
+        self.txt_log_details.setMaximumHeight(120)
+        layout.addWidget(self.txt_log_details)
 
         # Bottom buttons
         btn_layout = QHBoxLayout()
@@ -434,7 +498,11 @@ class AdminToolsView(QWidget):
             time_item = QTableWidgetItem(entry["timestamp"])
             level_item = QTableWidgetItem(entry["level"])
             source_item = QTableWidgetItem(entry["source"])
-            msg_item = QTableWidgetItem(entry["message"])
+
+            raw_message = entry.get("message", "")
+            first_line = raw_message.split("\n", 1)[0]
+            msg_item = QTableWidgetItem(first_line)
+            msg_item.setToolTip(raw_message)
 
             meaning = _LEVEL_MEANINGS.get(entry["level"])
             if meaning:
@@ -449,6 +517,41 @@ class AdminToolsView(QWidget):
             self.log_table.setItem(row, 1, level_item)
             self.log_table.setItem(row, 2, source_item)
             self.log_table.setItem(row, 3, msg_item)
+
+        self.txt_log_details.clear()
+        self.btn_copy_log_details.setEnabled(False)
+
+    def _on_log_selection_changed(self) -> None:
+        """Display full log entry and traceback in details pane when selected."""
+        selected_rows = self.log_table.selectionModel().selectedRows()
+        if not selected_rows:
+            self.txt_log_details.clear()
+            self.btn_copy_log_details.setEnabled(False)
+            return
+
+        row = selected_rows[0].row()
+        page_entries = self.log_pagination.get_page_slice(self._current_log_entries)
+        if 0 <= row < len(page_entries):
+            entry = page_entries[row]
+            details = (
+                f"Timestamp: {entry.get('timestamp', '')}\n"
+                f"Level:     {entry.get('level', '')}\n"
+                f"Source:    {entry.get('source', '')}\n"
+                f"Message:\n{entry.get('message', '')}"
+            )
+            self.txt_log_details.setPlainText(details)
+            self.btn_copy_log_details.setEnabled(True)
+        else:
+            self.txt_log_details.clear()
+            self.btn_copy_log_details.setEnabled(False)
+
+    def _copy_log_details(self) -> None:
+        """Copy current log details to clipboard."""
+        text = self.txt_log_details.toPlainText().strip()
+        if text:
+            clipboard = QApplication.clipboard()
+            if clipboard is not None:
+                clipboard.setText(text)
 
     def _on_log_page_changed(self, _page: int) -> None:
         self._populate_log_page()
@@ -639,11 +742,13 @@ class AdminToolsView(QWidget):
 
         self.lbl_scanner_status = QLabel("")
         self.lbl_scanner_status.setWordWrap(True)
+        self.lbl_scanner_status.setVisible(False)
         scanner_layout.addWidget(self.lbl_scanner_status)
 
         self.lbl_scanner_detection = QLabel("")
         self.lbl_scanner_detection.setWordWrap(True)
         self.lbl_scanner_detection.setProperty("class", "muted")
+        self.lbl_scanner_detection.setVisible(False)
         scanner_layout.addWidget(self.lbl_scanner_detection)
 
         # Timing tracking for scanner detection
@@ -732,15 +837,18 @@ class AdminToolsView(QWidget):
         self._scanner_keystroke_times.append(time.monotonic())
 
         if text.strip():
+            self.lbl_scanner_status.setVisible(True)
             set_status_class(
                 self.lbl_scanner_status,
                 "credit",
                 _t("admin_tools.hw_scanner_barcode_received", barcode=text.strip()),
             )
         else:
+            self.lbl_scanner_status.setVisible(False)
             set_status_class(self.lbl_scanner_status, "", "")
             self._scanner_keystroke_times.clear()
             self.lbl_scanner_detection.setText("")
+            self.lbl_scanner_detection.setVisible(False)
 
     def _on_scanner_enter(self) -> None:
         """Evaluate keystroke timing when Enter is pressed to detect scanner vs manual input."""
@@ -751,11 +859,13 @@ class AdminToolsView(QWidget):
         times = self._scanner_keystroke_times
         if len(times) < 2:
             self.lbl_scanner_detection.setText("")
+            self.lbl_scanner_detection.setVisible(False)
             return
 
         intervals = [times[i] - times[i - 1] for i in range(1, len(times))]
         avg_ms = (sum(intervals) / len(intervals)) * 1000
 
+        self.lbl_scanner_detection.setVisible(True)
         if avg_ms < 50:
             set_status_class(
                 self.lbl_scanner_detection,
@@ -773,7 +883,9 @@ class AdminToolsView(QWidget):
         """Clear the scanner test input."""
         self.input_scanner_test.clear()
         self.lbl_scanner_status.setText("")
+        self.lbl_scanner_status.setVisible(False)
         self.lbl_scanner_detection.setText("")
+        self.lbl_scanner_detection.setVisible(False)
         self._scanner_keystroke_times.clear()
         self.input_scanner_test.setFocus()
 
@@ -791,6 +903,8 @@ class AdminToolsView(QWidget):
         # Database tab
         self.grp_file.setTitle(_t("admin_tools.db_group_file"))
         self.lbl_db_path_label.setText(_t("admin_tools.db_path"))
+        self.btn_copy_db_path.setText(_t("admin_tools.db_btn_copy_path"))
+        self.btn_open_db_folder.setText(_t("admin_tools.db_btn_open_folder"))
         self.lbl_db_size_label.setText(_t("admin_tools.db_size"))
         self.lbl_db_modified_label.setText(_t("admin_tools.db_last_modified"))
         self.lbl_sqlite_version_label.setText(_t("admin_tools.db_sqlite_version"))
@@ -817,6 +931,8 @@ class AdminToolsView(QWidget):
                 _t("admin_tools.logs_header_message"),
             ]
         )
+        self.lbl_log_details_title.setText(_t("admin_tools.logs_details_title"))
+        self.btn_copy_log_details.setText(_t("admin_tools.logs_btn_copy_details"))
         self.btn_export.setText(_t("admin_tools.logs_btn_export"))
         self.btn_clear.setText(_t("admin_tools.logs_btn_clear"))
         self.btn_refresh_logs.setText(_t("admin_tools.logs_btn_refresh"))

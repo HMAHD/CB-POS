@@ -493,6 +493,7 @@ class AdminToolsView(QWidget):
         entries = self._current_log_entries
         page_entries = self.log_pagination.get_page_slice(entries)
 
+        self.log_table.blockSignals(True)
         self.log_table.setRowCount(len(page_entries))
         for row, entry in enumerate(page_entries):
             time_item = QTableWidgetItem(entry["timestamp"])
@@ -517,19 +518,25 @@ class AdminToolsView(QWidget):
             self.log_table.setItem(row, 1, level_item)
             self.log_table.setItem(row, 2, source_item)
             self.log_table.setItem(row, 3, msg_item)
+        self.log_table.blockSignals(False)
 
-        self.txt_log_details.clear()
-        self.btn_copy_log_details.setEnabled(False)
+        if hasattr(self, "txt_log_details"):
+            self.txt_log_details.clear()
+        if hasattr(self, "btn_copy_log_details"):
+            self.btn_copy_log_details.setEnabled(False)
 
     def _on_log_selection_changed(self) -> None:
         """Display full log entry and traceback in details pane when selected."""
-        selected_rows = self.log_table.selectionModel().selectedRows()
-        if not selected_rows:
+        if not hasattr(self, "txt_log_details") or not hasattr(self, "btn_copy_log_details"):
+            return
+        selection_model = self.log_table.selectionModel()
+        selected_rows = selection_model.selectedRows() if selection_model is not None else []
+        row = selected_rows[0].row() if selected_rows else -1
+        if row < 0:
             self.txt_log_details.clear()
             self.btn_copy_log_details.setEnabled(False)
             return
 
-        row = selected_rows[0].row()
         page_entries = self.log_pagination.get_page_slice(self._current_log_entries)
         if 0 <= row < len(page_entries):
             entry = page_entries[row]

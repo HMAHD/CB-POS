@@ -1184,6 +1184,67 @@ QToolButton#BtnLogout[compact="true"] {
     margin-bottom: 2px;
 }
 
+/* --- Management Header (#537) --- */
+QFrame#ManagementHeader {
+    background-color: #FFFFFF;
+    border-bottom: 1px solid #E2E8F0;
+    min-height: 44px;
+    max-height: 48px;
+}
+
+QLabel#ManagementHeaderTitle {
+    color: #334155;
+    font-size: 13px;
+    font-weight: 600;
+    background: transparent;
+}
+
+QLabel#ManagementHeaderClock {
+    color: #64748B;
+    font-size: 12px;
+    font-weight: 600;
+    background: transparent;
+}
+
+QToolButton#ManagementHeaderPosBtn {
+    background-color: #16A34A;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+QToolButton#ManagementHeaderPosBtn:hover {
+    background-color: #22C55E;
+}
+
+QToolButton#ManagementHeaderPosBtn:pressed {
+    background-color: #15803D;
+}
+
+QToolButton#ManagementHeaderLogoutBtn {
+    background-color: transparent;
+    color: #DC2626;
+    border: 1px solid #FECACA;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+QToolButton#ManagementHeaderLogoutBtn:hover {
+    background-color: #DC2626;
+    color: #FFFFFF;
+    border-color: #DC2626;
+}
+
+QToolButton#ManagementHeaderLogoutBtn:pressed {
+    background-color: #B91C1C;
+    color: #FFFFFF;
+}
+
 /* --- Sales View Specifics --- */
 
 /* ===== 1. TOP HEADER BAR (Brand Anchor - Dark Navy in Light Mode) ===== */
@@ -1357,14 +1418,21 @@ QToolButton#PrinterNoticeCloseBtn:hover {
     color: #212529;
 }
 
-/* Total Widget */
+/* Total Widget (#536: distinct enclosed card panel) */
 QWidget#TotalWidget {
-    background-color: #F1F3F5;
-    border-top: 1px solid #DEE2E6;
-    border-radius: 0px;
+    background-color: #F8FAFC;
+    border: 1px solid #CBD5E1;
+    border-radius: 8px;
 }
 
 QWidget#TotalWidget QLabel {
+    background: transparent;
+}
+
+QLabel#GrandTotalCaption {
+    color: #64748B;
+    font-size: 11px;
+    font-weight: bold;
     background: transparent;
 }
 
@@ -2470,6 +2538,17 @@ QFrame#PeriodHeader {
     background-color: #FFFFFF;
     border: 1px solid #E5E7EB;
     border-radius: 8px;
+}
+
+/* Compact KPI Stat Cards (#537) */
+QFrame#StatCard {
+    background-color: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+}
+
+QFrame#StatCard:hover {
+    border-color: #CBD5E1;
 }
 
 QScrollArea#DashboardScroll {

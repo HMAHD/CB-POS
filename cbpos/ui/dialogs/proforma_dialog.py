@@ -126,6 +126,7 @@ class ProformaDialog(QDialog):
         self.items_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.items_table.verticalHeader().setVisible(False)
         self.items_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.items_table.setAlternatingRowColors(True)
         self.items_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.items_table.customContextMenuRequested.connect(self.show_context_menu)
         layout.addWidget(self.items_table)

@@ -78,6 +78,7 @@ class ValuationDialog(QDialog):
         )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.setAlternatingRowColors(True)
         self.table.setObjectName("ValuationTable")
         layout.addWidget(self.table)
 

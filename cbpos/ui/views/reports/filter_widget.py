@@ -3,7 +3,7 @@
 from datetime import date
 from typing import Any
 
-from PyQt6.QtWidgets import QComboBox, QDateEdit, QHBoxLayout, QLabel, QWidget
+from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QWidget
 
 
 class FilterWidget(QWidget):
@@ -51,34 +51,41 @@ class FilterWidget(QWidget):
         # these filters and stretches *after* it (#611).
 
     def _add_date_range(self, name: str, label: str, definition: dict):
+        from cbpos.ui.widgets.date_range_picker import DateRangePicker
+
         container = QWidget()
         layout = QHBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
 
         lbl = QLabel(f"{label}:")
         lbl.setObjectName("ReportFilterLabel")
-        start_edit = QDateEdit()
-        start_edit.setObjectName("ReportDateEdit")
-        start_edit.setCalendarPopup(True)
-        start_edit.setDisplayFormat("yyyy-MM-dd")
-        end_edit = QDateEdit()
-        end_edit.setObjectName("ReportDateEdit")
-        end_edit.setCalendarPopup(True)
-        end_edit.setDisplayFormat("yyyy-MM-dd")
 
         default_start = definition.get("default_start", date.today())
         default_end = definition.get("default_end", date.today())
+        default_preset = definition.get("default_preset")
 
-        start_edit.setDate(default_start)
-        end_edit.setDate(default_end)
+        picker = DateRangePicker(
+            parent=container,
+            default_start=default_start,
+            default_end=default_end,
+            default_preset=default_preset,
+        )
+        picker.setObjectName("ReportDateRangePicker")
+        picker.preset_combo.setObjectName("ReportFilterCombo")
+        picker.start_date_edit.setObjectName("ReportDateEdit")
+        picker.end_date_edit.setObjectName("ReportDateEdit")
 
         layout.addWidget(lbl)
-        layout.addWidget(start_edit)
-        layout.addWidget(QLabel("-"))
-        layout.addWidget(end_edit)
+        layout.addWidget(picker)
 
         self.layout.addWidget(container)
-        self.inputs[name] = {"type": "date_range", "start": start_edit, "end": end_edit}
+        self.inputs[name] = {
+            "type": "date_range",
+            "start": picker.start_date_edit,
+            "end": picker.end_date_edit,
+            "picker": picker,
+        }
 
     def _add_combo(self, name: str, label: str, definition: dict):
         container = QWidget()

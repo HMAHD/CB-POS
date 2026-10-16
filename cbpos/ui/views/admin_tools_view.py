@@ -13,12 +13,11 @@ from datetime import datetime
 from pathlib import Path
 
 from PyQt6 import sip
-from PyQt6.QtCore import QDate, Qt, QTimer, QUrl
+from PyQt6.QtCore import Qt, QTimer, QUrl
 from PyQt6.QtGui import QDesktopServices, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
-    QDateEdit,
     QFileDialog,
     QFormLayout,
     QFrame,
@@ -328,27 +327,19 @@ class AdminToolsView(QWidget):
         self.combo_log_level.currentIndexChanged.connect(self._load_logs)
         filter_layout.addWidget(self.combo_log_level)
 
+        from cbpos.ui.widgets.date_range_picker import DateRangePicker
+
         self.lbl_from = QLabel()
-        self.lbl_from.setProperty("class", "muted")
-        filter_layout.addWidget(self.lbl_from)
-
-        self.date_log_from = QDateEdit()
-        self.date_log_from.setCalendarPopup(True)
-        self.date_log_from.setDate(QDate.currentDate().addDays(-30))
-        self.date_log_from.setMinimumWidth(130)
-        self.date_log_from.dateChanged.connect(self._load_logs)
-        filter_layout.addWidget(self.date_log_from)
-
         self.lbl_to = QLabel()
-        self.lbl_to.setProperty("class", "muted")
-        filter_layout.addWidget(self.lbl_to)
 
-        self.date_log_to = QDateEdit()
-        self.date_log_to.setCalendarPopup(True)
-        self.date_log_to.setDate(QDate.currentDate())
-        self.date_log_to.setMinimumWidth(130)
-        self.date_log_to.dateChanged.connect(self._load_logs)
-        filter_layout.addWidget(self.date_log_to)
+        self.log_date_picker = DateRangePicker(
+            self,
+            default_preset="last_30_days",
+        )
+        self.date_log_from = self.log_date_picker.start_date_edit
+        self.date_log_to = self.log_date_picker.end_date_edit
+        self.log_date_picker.range_changed.connect(lambda *_: self._load_logs())
+        filter_layout.addWidget(self.log_date_picker)
 
         self.input_log_search = QLineEdit()
         self.input_log_search.setMinimumWidth(160)

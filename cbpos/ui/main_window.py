@@ -40,6 +40,11 @@ class MainWindow(QMainWindow):
         self.scanner = BarcodeScanner(QApplication.instance())
         self.scanner.barcode_scanned.connect(self.on_barcode_scanned)
 
+        # Modal Dimming Overlay Filter (#538)
+        from cbpos.ui.widgets.modal_dimmer import install_modal_dimmer_filter
+
+        install_modal_dimmer_filter()
+
         # Session Watchdog (0 = disabled)
         timeout = int(ConfigService.get("session_timeout_minutes") or 0)
         self.watchdog = SessionWatchdog(timeout_minutes=max(timeout, 0), parent=self)

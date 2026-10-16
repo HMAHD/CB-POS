@@ -278,6 +278,7 @@ class LabelPrintDialog(QDialog):
         tbl.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         tbl.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        tbl.setAlternatingRowColors(True)
 
         for p in products:
             row = tbl.rowCount()

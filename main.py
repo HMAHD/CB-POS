@@ -384,11 +384,13 @@ def main():
     migration_error = run_migrations(status=set_startup_status)
     _flush_early_log()
 
-    # Install Global Input Manager
+    # Install Global Input Manager & Modal Dimmer Filter
     from cbpos.infrastructure.input_manager import InputManager
+    from cbpos.ui.widgets.modal_dimmer import install_modal_dimmer_filter
 
     input_manager = InputManager()
     app.installEventFilter(input_manager)
+    install_modal_dimmer_filter(app)
 
     # Initialize Theme (Load from settings or default to Dark)
     set_startup_status("startup.preparing_screen")

@@ -2850,6 +2850,17 @@
     "months_ago": "{count} மாதங்களுக்கு முன்",
     "one_year_ago": "1 வருடத்திற்கு முன்",
     "years_ago": "{count} வருடங்களுக்கு முன்"
+  },
+  "date_presets": {
+    "today": "இன்று",
+    "yesterday": "நேற்று",
+    "this_week": "இந்த வாரம்",
+    "last_week": "கடந்த வாரம்",
+    "this_month": "இந்த மாதம்",
+    "last_month": "கடந்த மாதம்",
+    "last_7_days": "கடந்த 7 நாட்கள்",
+    "last_30_days": "கடந்த 30 நாட்கள்",
+    "custom": "தனிப்பயன்"
   }
 }
 

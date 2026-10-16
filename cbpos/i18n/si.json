@@ -2850,6 +2850,17 @@
     "months_ago": "මාස {count}කට පෙර",
     "one_year_ago": "වසරකට පෙර",
     "years_ago": "වසර {count}කට පෙර"
+  },
+  "date_presets": {
+    "today": "අද",
+    "yesterday": "ඊයේ",
+    "this_week": "මේ සතියේ",
+    "last_week": "ගිය සතියේ",
+    "this_month": "මේ මාසේ",
+    "last_month": "ගිය මාසේ",
+    "last_7_days": "පසුගිය දින 7",
+    "last_30_days": "පසුගිය දින 30",
+    "custom": "අභිරුචි"
   }
 }
 

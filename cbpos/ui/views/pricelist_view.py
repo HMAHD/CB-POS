@@ -208,7 +208,17 @@ class PriceListView(QWidget):
         self.btn_set_item_price.setObjectName("BtnSetItemPrice")
         self.btn_set_item_price.clicked.connect(self.edit_selected_item_price)
         set_price_row.addWidget(self.btn_set_item_price)
+
+        self.btn_remove_override = QPushButton()
+        self.btn_remove_override.setObjectName("BtnRemoveItemOverride")
+        self.btn_remove_override.setProperty("class", "danger")
+        self.btn_remove_override.clicked.connect(self.remove_selected_item_override)
+        self.btn_remove_override.setEnabled(False)
+        set_price_row.addWidget(self.btn_remove_override)
+
         data_layout.addLayout(set_price_row)
+
+        self.table.itemSelectionChanged.connect(self._on_table_selection_changed)
 
         QShortcut(QKeySequence(Qt.Key.Key_Return), self.table).activated.connect(self.edit_selected_item_price)
         QShortcut(QKeySequence(Qt.Key.Key_Enter), self.table).activated.connect(self.edit_selected_item_price)
@@ -262,6 +272,7 @@ class PriceListView(QWidget):
         align_numeric_headers(self.table, (2, 3))  # Base Price, List Price
         self.hint_label.setText(_t("pricelist.footer_hint"))
         self.btn_set_item_price.setText(_t("pricelist.btn_set_item_price"))
+        self.btn_remove_override.setText(_t("pricelist.btn_remove_override"))
 
     # ------------------------------------------------------------------
     # Status helpers
@@ -369,6 +380,7 @@ class PriceListView(QWidget):
             self.table.setItem(row, 3, price_item)
 
         self.lbl_product_count.setText(_t("pricelist.product_count", count=len(products)))
+        self._on_table_selection_changed()
 
     def add_price_list(self):
         """Open the create dialog and persist a new price list on accept."""
@@ -447,6 +459,17 @@ class PriceListView(QWidget):
     def edit_selected_item_price(self) -> None:
         """Open the price editor for the currently selected row (button/Enter key)."""
         self._edit_item_price_row(self.table.currentRow())
+
+    def remove_selected_item_override(self) -> None:
+        """Remove the list price for the currently selected row via button."""
+        row = self.table.currentRow()
+        if row >= 0 and self._list_price(row) is not None:
+            self._remove_item_override(row)
+
+    def _on_table_selection_changed(self) -> None:
+        row = self.table.currentRow()
+        has_override = (row >= 0) and (self._list_price(row) is not None)
+        self.btn_remove_override.setEnabled(has_override)
 
     def _show_item_context_menu(self, position) -> None:
         item = self.table.itemAt(position)

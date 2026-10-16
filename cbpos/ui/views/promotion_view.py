@@ -44,6 +44,7 @@ class PromotionView(QWidget):
         """Initialize the promotion service, build the UI, and load existing promotions."""
         super().__init__()
         self.promotion_service = PromotionService()
+        self._loading_promotions = False
         self.init_ui()
         self.load_promotions()
 
@@ -71,7 +72,7 @@ class PromotionView(QWidget):
 
         # Table
         self.table = QTableWidget()
-        self.table.setColumnCount(7)
+        self.table.setColumnCount(8)
         configure_table_columns(
             self.table.horizontalHeader(),
             {
@@ -82,12 +83,14 @@ class PromotionView(QWidget):
                 4: QHeaderView.ResizeMode.ResizeToContents,  # End
                 5: QHeaderView.ResizeMode.ResizeToContents,  # Scope
                 6: QHeaderView.ResizeMode.ResizeToContents,  # Status
+                7: QHeaderView.ResizeMode.ResizeToContents,  # On/Off (#595)
             },
         )
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setItemDelegateForColumn(6, StatusPillDelegate(self.table))  # Status (#560)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.doubleClicked.connect(self.edit_promotion)
+        self.table.itemChanged.connect(self._on_table_item_changed)
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self.table)
@@ -105,6 +108,7 @@ class PromotionView(QWidget):
                 _t("promotion.end"),
                 _t("promotion.scope"),
                 _t("common.status"),
+                _t("promotion.col_on_off"),
             ]
         )
         align_numeric_headers(self.table, (2,))  # Value
@@ -132,25 +136,35 @@ class PromotionView(QWidget):
 
     def load_promotions(self):
         """Reload promotions from the service and repopulate the table."""
-        self.promotions = self.promotion_service.get_all_promotions()
-        self.table.setRowCount(0)
-        for p in self.promotions:
-            row = self.table.rowCount()
-            self.table.insertRow(row)
+        self._loading_promotions = True
+        try:
+            self.promotions = self.promotion_service.get_all_promotions()
+            self.table.setRowCount(0)
+            for p in self.promotions:
+                row = self.table.rowCount()
+                self.table.insertRow(row)
 
-            self.table.setItem(row, 0, QTableWidgetItem(p.name))
-            self.table.setItem(row, 1, QTableWidgetItem(format_promotion_type(p.type)))
-            value_item = QTableWidgetItem(format_discount(p.type, p.value))
-            value_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.table.setItem(row, 2, value_item)
-            self.table.setItem(row, 3, QTableWidgetItem(p.start_time.strftime("%Y-%m-%d %H:%M")))
-            self.table.setItem(row, 4, QTableWidgetItem(p.end_time.strftime("%Y-%m-%d %H:%M")))
+                self.table.setItem(row, 0, QTableWidgetItem(p.name))
+                self.table.setItem(row, 1, QTableWidgetItem(format_promotion_type(p.type)))
+                value_item = QTableWidgetItem(format_discount(p.type, p.value))
+                value_item.setTextAlignment(NUMERIC_ALIGNMENT)
+                self.table.setItem(row, 2, value_item)
+                self.table.setItem(row, 3, QTableWidgetItem(p.start_time.strftime("%Y-%m-%d %H:%M")))
+                self.table.setItem(row, 4, QTableWidgetItem(p.end_time.strftime("%Y-%m-%d %H:%M")))
 
-            scope_text = p.category.name if p.category_id and p.category else _t("promotion.scope_all_products")
-            self.table.setItem(row, 5, QTableWidgetItem(scope_text))
+                scope_text = p.category.name if p.category_id and p.category else _t("promotion.scope_all_products")
+                self.table.setItem(row, 5, QTableWidgetItem(scope_text))
 
-            status_text, meaning = self._get_promotion_status(p)
-            self.table.setItem(row, 6, set_status_pill(QTableWidgetItem(), status_text, meaning))
+                status_text, meaning = self._get_promotion_status(p)
+                self.table.setItem(row, 6, set_status_pill(QTableWidgetItem(), status_text, meaning))
+
+                on_off_item = QTableWidgetItem()
+                on_off_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable)
+                on_off_item.setCheckState(Qt.CheckState.Checked if p.is_active else Qt.CheckState.Unchecked)
+                on_off_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.table.setItem(row, 7, on_off_item)
+        finally:
+            self._loading_promotions = False
 
     def add_promotion(self):
         """Open the create dialog and persist a new promotion on accept."""
@@ -186,7 +200,25 @@ class PromotionView(QWidget):
 
     def edit_promotion(self, index) -> None:
         """Open the edit dialog for the double-clicked table row."""
+        if index.column() == 7:
+            return
         self._edit_promotion_row(index.row())
+
+    def _on_table_item_changed(self, item: QTableWidgetItem) -> None:
+        if getattr(self, "_loading_promotions", False):
+            return
+        if item.column() == 7:
+            row = item.row()
+            if 0 <= row < len(self.promotions):
+                p = self.promotions[row]
+                new_state = item.checkState() == Qt.CheckState.Checked
+                if new_state != p.is_active:
+                    try:
+                        self.promotion_service.update_promotion(p.id, is_active=new_state)
+                        self.load_promotions()
+                    except Exception as e:
+                        QMessageBox.critical(self, _t("common.error"), str(e))
+                        self.load_promotions()
 
     def _edit_promotion_row(self, row: int) -> None:
         if row < 0 or row >= len(self.promotions):

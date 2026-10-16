@@ -1068,6 +1068,7 @@
     "name_required": "Price list name is required.",
     "start_before_end": "Start date must be on or before the end date.",
     "context_remove_override": "Remove Override",
+    "btn_remove_override": "Remove Special Price",
     "confirm_remove_override_title": "Remove Override",
     "confirm_remove_override_msg": "Remove the list price for \"{name}\"? It will fall back to the product's base price."
   },
@@ -2560,6 +2561,7 @@
   "promotion": {
     "title": "Promotions & Campaigns",
     "create_promotion": "Create Promotion",
+    "col_on_off": "On/Off",
     "new_promotion": "New Promotion",
     "edit_promotion": "Edit Promotion",
     "type": "Type",

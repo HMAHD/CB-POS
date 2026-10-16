@@ -1038,6 +1038,7 @@
     "name_required": "விலைப் பட்டியலின் பெயர் தேவை.",
     "start_before_end": "தொடக்க தேதி முடிவு தேதிக்கு முன்ன அல்லது அதே நாளா இருக்கணும்.",
     "context_remove_override": "தனி விலையை நீக்குங்க",
+    "btn_remove_override": "தனி விலையை நீக்குங்க",
     "confirm_remove_override_title": "தனி விலையை நீக்குங்க",
     "confirm_remove_override_msg": "'{name}'-க்கான பட்டியல் விலையை நீக்கவா? அப்போ அடிப்படை விலைக்கு மாறும்."
   },
@@ -2560,6 +2561,7 @@
   "promotion": {
     "title": "சலுகை மேலாண்மை",
     "create_promotion": "சலுகை உருவாக்குங்க",
+    "col_on_off": "இயக்கு/முடக்கு",
     "new_promotion": "புது சலுகை",
     "edit_promotion": "சலுகையைத் திருத்து",
     "type": "வகை",

@@ -1038,6 +1038,7 @@
     "name_required": "මිල ලැයිස්තුවේ නම අවශ්‍යයි.",
     "start_before_end": "පටන් ගන්න දිනය අවසන් දිනයට කලින් හෝ ඒ දිනයම වෙන්න ඕන.",
     "context_remove_override": "විශේෂ මිල අයින් කරන්න",
+    "btn_remove_override": "විශේෂ මිල අයින් කරන්න",
     "confirm_remove_override_title": "විශේෂ මිල අයින් කරන්න",
     "confirm_remove_override_msg": "'{name}' සඳහා ලැයිස්තු මිල අයින් කරන්නද? එතකොට මූලික මිලට හැරෙනවා."
   },
@@ -2560,6 +2561,7 @@
   "promotion": {
     "title": "ප්‍රවර්ධන කළමනාකරණය",
     "create_promotion": "ප්‍රවර්ධනයක් හදන්න",
+    "col_on_off": "ක්‍රියාත්මක/අක්‍රිය",
     "new_promotion": "අලුත් ප්‍රවර්ධනයක්",
     "edit_promotion": "ප්‍රවර්ධනය සංස්කරණය",
     "type": "වර්ගය",

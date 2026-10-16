@@ -173,6 +173,15 @@ class ReportViewer(QWidget):
         self.filter_bar.setVisible(False)
         content_layout.addWidget(self.filter_bar)
 
+        # Summary Row (hidden until data loaded with summary cards, #543)
+        self.summary_container = QWidget()
+        self.summary_container.setObjectName("ReportSummaryContainer")
+        self.summary_layout = QHBoxLayout(self.summary_container)
+        self.summary_layout.setContentsMargins(24, 6, 24, 10)
+        self.summary_layout.setSpacing(16)
+        self.summary_container.setVisible(False)
+        content_layout.addWidget(self.summary_container)
+
         # Content Stack (empty state / data table)
         self.content_stack = QStackedWidget()
         self.content_stack.setObjectName("ReportContentStack")
@@ -296,6 +305,8 @@ class ReportViewer(QWidget):
             self.report_title.setText(self.current_report.name)
             self.report_description.setText(category_label(self.current_report.category))
             self._update_favorite_button()
+            if self.summary_container.isVisible():
+                self._update_summary_cards()
         # Category and report names are drawn in the current language (#541)
         self._rebuild_sidebar()
 
@@ -522,6 +533,50 @@ class ReportViewer(QWidget):
         self.content_stack.setCurrentIndex(0)
         self.action_bar.setVisible(False)
         self.pagination.setVisible(False)
+        self._clear_summary_cards()
+
+    # ------------------------------------------------------------------
+    # Summary cards (#543)
+    # ------------------------------------------------------------------
+
+    def _clear_summary_cards(self) -> None:
+        """Clear all cards from the summary row and hide the container (#543)."""
+        while self.summary_layout.count():
+            item = self.summary_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+        self.summary_container.setVisible(False)
+
+    def _update_summary_cards(self) -> None:
+        """Render KPI summary cards computed from self._full_df (#543)."""
+        while self.summary_layout.count():
+            item = self.summary_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
+        if self.current_report is None or self._full_df is None or self._full_df.empty:
+            self.summary_container.setVisible(False)
+            return
+
+        cards_data = self.current_report.get_summary(self._full_df)
+        if not cards_data:
+            self.summary_container.setVisible(False)
+            return
+
+        from cbpos.ui.widgets.info_card import InfoCard
+
+        for card_info in cards_data:
+            card = InfoCard(
+                title=card_info.get("title", ""),
+                value=card_info.get("value", ""),
+                icon_name=card_info.get("icon", Icons.REPORTS),
+                color=card_info.get("color"),
+            )
+            self.summary_layout.addWidget(card)
+
+        self.summary_container.setVisible(True)
 
     # ------------------------------------------------------------------
     # Report execution
@@ -555,11 +610,13 @@ class ReportViewer(QWidget):
             row_count = len(df)
             self.row_count_label.setText(_t("common.row_count", count=row_count))
             self.action_bar.setVisible(True)
+            self._update_summary_cards()
         else:
             self.table_model.set_data(df)
             self.content_stack.setCurrentIndex(0)
             self.action_bar.setVisible(False)
             self.pagination.setVisible(False)
+            self._clear_summary_cards()
             QMessageBox.information(
                 self,
                 _t("report_viewer.report_title"),

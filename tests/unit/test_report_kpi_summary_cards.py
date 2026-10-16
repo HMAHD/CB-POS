@@ -2,6 +2,7 @@
 
 import pandas as pd
 import pytest
+from PyQt6.QtWidgets import QLabel
 
 from cbpos.core.reports.base_report import BaseReport
 from cbpos.core.reports.definitions.inventory_reports import InventoryValuationReport
@@ -136,3 +137,79 @@ def test_summary_card_i18n_keys_exist(language, lang):
     for key in keys:
         translated = translate_in(lang, key)
         assert translated != key, f"Missing translation for {key} in {lang}"
+
+
+@pytest.mark.usefixtures("qapp", "db_session")
+def test_report_viewer_displays_summary_cards_from_full_df(language):
+    from PyQt6.QtWidgets import QPushButton
+
+    from cbpos.core.reports import register_all_reports
+    from cbpos.ui.views.reports.report_viewer import ReportViewer
+    from cbpos.ui.widgets.info_card import InfoCard
+
+    language("en")
+    register_all_reports()
+
+    viewer = ReportViewer()
+    viewer.show()
+
+    # Open daily sales summary
+    nav_btn = next(
+        b for b in viewer.findChildren(QPushButton, "ReportNavItem") if b.property("report_id") == "daily_sales_summary"
+    )
+    nav_btn.click()
+
+    assert not viewer.summary_container.isVisible()
+
+    # Mock report generate with 100 rows (more than page size 25)
+    rows = pd.DataFrame(
+        {
+            "Date": [f"2026-10-{(i % 28) + 1:02d}" for i in range(100)],
+            "Transactions": [1] * 100,
+            "Total Sales": [500.0] * 100,  # Total = 50,000.00
+        }
+    )
+    viewer._on_report_finished(rows)
+
+    assert viewer.summary_container.isVisible()
+    cards = viewer.summary_container.findChildren(InfoCard)
+    assert len(cards) == 3
+
+    # Check that summary values represent ALL 100 rows, not just the first page (25 rows = 12,500)
+    sales_card = cards[0]
+    assert "50,000.00" in sales_card.findChild(QLabel, "InfoCardValue").text()
+
+    invoices_card = cards[1]
+    assert invoices_card.findChild(QLabel, "InfoCardValue").text() == "100"
+
+
+@pytest.mark.usefixtures("qapp", "db_session")
+def test_report_viewer_hides_summary_when_switching_reports(language):
+    from PyQt6.QtWidgets import QPushButton
+
+    from cbpos.core.reports import register_all_reports
+    from cbpos.ui.views.reports.report_viewer import ReportViewer
+
+    language("en")
+    register_all_reports()
+
+    viewer = ReportViewer()
+    viewer.show()
+
+    # Open daily sales summary and finish report
+    nav_btn = next(
+        b for b in viewer.findChildren(QPushButton, "ReportNavItem") if b.property("report_id") == "daily_sales_summary"
+    )
+    nav_btn.click()
+
+    rows = pd.DataFrame({"Date": ["2026-10-01"], "Transactions": [1], "Total Sales": [500.0]})
+    viewer._on_report_finished(rows)
+    assert viewer.summary_container.isVisible()
+
+    # Switch to low stock report (which has no summary)
+    nav_btn2 = next(
+        b for b in viewer.findChildren(QPushButton, "ReportNavItem") if b.property("report_id") == "low_stock"
+    )
+    nav_btn2.click()
+
+    assert not viewer.summary_container.isVisible()

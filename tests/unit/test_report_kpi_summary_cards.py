@@ -151,7 +151,6 @@ def test_report_viewer_displays_summary_cards_from_full_df(language):
     register_all_reports()
 
     viewer = ReportViewer()
-    viewer.show()
 
     # Open daily sales summary
     nav_btn = next(
@@ -159,7 +158,7 @@ def test_report_viewer_displays_summary_cards_from_full_df(language):
     )
     nav_btn.click()
 
-    assert not viewer.summary_container.isVisible()
+    assert viewer.summary_container.isHidden()
 
     # Mock report generate with 100 rows (more than page size 25)
     rows = pd.DataFrame(
@@ -171,7 +170,7 @@ def test_report_viewer_displays_summary_cards_from_full_df(language):
     )
     viewer._on_report_finished(rows)
 
-    assert viewer.summary_container.isVisible()
+    assert not viewer.summary_container.isHidden()
     cards = viewer.summary_container.findChildren(InfoCard)
     assert len(cards) == 3
 
@@ -194,7 +193,6 @@ def test_report_viewer_hides_summary_when_switching_reports(language):
     register_all_reports()
 
     viewer = ReportViewer()
-    viewer.show()
 
     # Open daily sales summary and finish report
     nav_btn = next(
@@ -204,7 +202,7 @@ def test_report_viewer_hides_summary_when_switching_reports(language):
 
     rows = pd.DataFrame({"Date": ["2026-10-01"], "Transactions": [1], "Total Sales": [500.0]})
     viewer._on_report_finished(rows)
-    assert viewer.summary_container.isVisible()
+    assert not viewer.summary_container.isHidden()
 
     # Switch to low stock report (which has no summary)
     nav_btn2 = next(
@@ -212,4 +210,118 @@ def test_report_viewer_hides_summary_when_switching_reports(language):
     )
     nav_btn2.click()
 
-    assert not viewer.summary_container.isVisible()
+    assert viewer.summary_container.isHidden()
+
+
+def test_daily_sales_summary_with_nans_and_none():
+    report = DailySalesSummaryReport()
+    df = pd.DataFrame(
+        {
+            "Date": ["2026-10-01", "2026-10-02", "2026-10-03"],
+            "Transactions": [5, None, 15],
+            "Total Sales": [1000.0, float("nan"), 4000.0],
+        }
+    )
+    summary = report.get_summary(df)
+    assert len(summary) == 3
+    # Total sales sum: 1000 + 4000 = 5000
+    assert "5,000.00" in summary[0]["value"]
+    # Invoices sum: 5 + 0 + 15 = 20
+    assert summary[1]["value"] == "20"
+    # Avg ticket: 5000 / 20 = 250.00
+    assert "250.00" in summary[2]["value"]
+
+
+def test_inventory_valuation_with_nans_and_none():
+    report = InventoryValuationReport()
+    df = pd.DataFrame(
+        {
+            "Barcode": ["A", "B"],
+            "Name": ["Item A", "Item B"],
+            "Category": ["General", "General"],
+            "Qty": [10, 5],
+            "Cost": [50.0, None],
+            "Retail Price": [100.0, 50.0],
+            "Total Cost Value": [500.0, float("nan")],
+            "Total Retail Value": [1000.0, 250.0],
+        }
+    )
+    summary = report.get_summary(df)
+    assert len(summary) == 3
+    assert summary[0]["value"] == "2"
+    assert "500.00" in summary[1]["value"]
+    assert "1,250.00" in summary[2]["value"]
+
+
+@pytest.mark.usefixtures("qapp", "db_session")
+def test_report_viewer_pagination_change_preserves_summary_cards(language):
+    from PyQt6.QtWidgets import QPushButton
+
+    from cbpos.core.reports import register_all_reports
+    from cbpos.ui.views.reports.report_viewer import ReportViewer
+    from cbpos.ui.widgets.info_card import InfoCard
+
+    language("en")
+    register_all_reports()
+
+    viewer = ReportViewer()
+
+    nav_btn = next(
+        b for b in viewer.findChildren(QPushButton, "ReportNavItem") if b.property("report_id") == "daily_sales_summary"
+    )
+    nav_btn.click()
+
+    rows = pd.DataFrame(
+        {
+            "Date": [f"2026-10-{(i % 28) + 1:02d}" for i in range(60)],
+            "Transactions": [2] * 60,
+            "Total Sales": [100.0] * 60,  # 6,000.00 total
+        }
+    )
+    viewer._on_report_finished(rows)
+
+    cards = viewer.summary_container.findChildren(InfoCard)
+    sales_val = cards[0].findChild(QLabel, "InfoCardValue").text()
+    assert "6,000.00" in sales_val
+
+    # Navigate to page 2
+    viewer.pagination._btn_next.click()
+    assert viewer.pagination.current_page == 1
+
+    # Cards must still be visible with the exact same full-df values
+    assert not viewer.summary_container.isHidden()
+    cards_p2 = viewer.summary_container.findChildren(InfoCard)
+    assert len(cards_p2) == 3
+    assert cards_p2[0].findChild(QLabel, "InfoCardValue").text() == sales_val
+
+
+@pytest.mark.usefixtures("qapp", "db_session")
+def test_report_viewer_language_switch_updates_summary_cards(language):
+    from PyQt6.QtWidgets import QPushButton
+
+    from cbpos.core.reports import register_all_reports
+    from cbpos.ui.views.reports.report_viewer import ReportViewer
+    from cbpos.ui.widgets.info_card import InfoCard
+
+    language("en")
+    register_all_reports()
+
+    viewer = ReportViewer()
+
+    nav_btn = next(
+        b for b in viewer.findChildren(QPushButton, "ReportNavItem") if b.property("report_id") == "daily_sales_summary"
+    )
+    nav_btn.click()
+
+    rows = pd.DataFrame({"Date": ["2026-10-01"], "Transactions": [5], "Total Sales": [1000.0]})
+    viewer._on_report_finished(rows)
+
+    cards_en = viewer.summary_container.findChildren(InfoCard)
+    assert cards_en[0].findChild(QLabel, "InfoCardTitle").text() == "TOTAL SALES"
+
+    # Switch to Sinhala
+    language("si")
+    viewer.retranslate_ui()
+
+    cards_si = viewer._summary_cards
+    assert cards_si[0].findChild(QLabel, "InfoCardTitle").text() == "මුළු විකුණුම්"

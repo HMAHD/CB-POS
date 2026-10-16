@@ -180,6 +180,7 @@ class ReportViewer(QWidget):
         self.summary_layout.setContentsMargins(24, 6, 24, 10)
         self.summary_layout.setSpacing(16)
         self.summary_container.setVisible(False)
+        self._summary_cards: list[QWidget] = []
         content_layout.addWidget(self.summary_container)
 
         # Content Stack (empty state / data table)
@@ -305,7 +306,7 @@ class ReportViewer(QWidget):
             self.report_title.setText(self.current_report.name)
             self.report_description.setText(category_label(self.current_report.category))
             self._update_favorite_button()
-            if self.summary_container.isVisible():
+            if not self.summary_container.isHidden():
                 self._update_summary_cards()
         # Category and report names are drawn in the current language (#541)
         self._rebuild_sidebar()
@@ -541,28 +542,21 @@ class ReportViewer(QWidget):
 
     def _clear_summary_cards(self) -> None:
         """Clear all cards from the summary row and hide the container (#543)."""
-        while self.summary_layout.count():
-            item = self.summary_layout.takeAt(0)
-            widget = item.widget()
-            if widget:
-                widget.deleteLater()
+        for card in self._summary_cards:
+            self.summary_layout.removeWidget(card)
+            card.deleteLater()
+        self._summary_cards.clear()
         self.summary_container.setVisible(False)
 
     def _update_summary_cards(self) -> None:
         """Render KPI summary cards computed from self._full_df (#543)."""
-        while self.summary_layout.count():
-            item = self.summary_layout.takeAt(0)
-            widget = item.widget()
-            if widget:
-                widget.deleteLater()
+        self._clear_summary_cards()
 
         if self.current_report is None or self._full_df is None or self._full_df.empty:
-            self.summary_container.setVisible(False)
             return
 
         cards_data = self.current_report.get_summary(self._full_df)
         if not cards_data:
-            self.summary_container.setVisible(False)
             return
 
         from cbpos.ui.widgets.info_card import InfoCard
@@ -575,6 +569,7 @@ class ReportViewer(QWidget):
                 color=card_info.get("color"),
             )
             self.summary_layout.addWidget(card)
+            self._summary_cards.append(card)
 
         self.summary_container.setVisible(True)
 

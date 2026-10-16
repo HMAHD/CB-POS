@@ -23,10 +23,11 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.transaction_service import TransactionService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.formatters import format_currency, format_relative_time
 from cbpos.i18n import _t
 from cbpos.ui.refund_messages import refund_confirm_text, refund_done_text
 from cbpos.ui.resources.status_colors import DANGER, SUCCESS, WARNING, status_color
+from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem
 
 logger = logging.getLogger(__name__)
 
@@ -367,8 +368,7 @@ class SaleHistoryDialog(QDialog):
             self.sales_table.setItem(row, 0, receipt_item)
 
             # Date/Time
-            date_str = sale.date.strftime("%Y-%m-%d %H:%M") if sale.date else "N/A"
-            self.sales_table.setItem(row, 1, QTableWidgetItem(date_str))
+            self.sales_table.setItem(row, 1, RelativeTimeTableWidgetItem(sale.date))
 
             # Customer
             customer_name = sale.customer.name if sale.customer else _t("sale_history.walk_in")
@@ -427,14 +427,22 @@ class SaleHistoryDialog(QDialog):
         self._show_detail_state(True)
 
         # Populate info labels
-        date_str = sale.date.strftime("%Y-%m-%d %H:%M") if sale.date else "N/A"
+        if sale.date:
+            date_str = sale.date.strftime("%Y-%m-%d %H:%M")
+            rel_date = format_relative_time(sale.date)
+            date_display = f"{rel_date} ({date_str})"
+            self.lbl_info_date.setToolTip(date_str)
+        else:
+            date_display = "N/A"
+            self.lbl_info_date.setToolTip("")
         customer_name = sale.customer.name if sale.customer else _t("sale_history.walk_in")
         cashier_name = sale.user.username if sale.user else "N/A"
         payment_method = sale.payment_method or "N/A"
         status = sale.status or "COMPLETED"
 
         self.lbl_info_receipt.setText(f"{_t('sale_history.detail_receipt')} {sale.document_number}")
-        self.lbl_info_date.setText(f"{_t('sale_history.detail_date')} {date_str}")
+        self.lbl_info_date.setText(f"{_t('sale_history.detail_date')} {date_display}")
+
         self.lbl_info_cashier.setText(f"{_t('sale_history.detail_cashier')} {cashier_name}")
         self.lbl_info_customer.setText(f"{_t('sale_history.detail_customer')} {customer_name}")
         self.lbl_info_payment.setText(f"{_t('sale_history.detail_payment')} {payment_method}")

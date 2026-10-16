@@ -40,6 +40,7 @@ from cbpos.core.utils.formatters import (
     format_document_status,
     format_payment_method,
     format_quantity,
+    format_relative_time,
 )
 from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
@@ -47,7 +48,11 @@ from cbpos.ui.dialogs.void_reason_dialog import VoidReasonDialog
 from cbpos.ui.refund_messages import refund_confirm_html, refund_done_text
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING, pill_colors
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
-from cbpos.ui.widgets.table_helpers import align_numeric_headers, configure_table_columns
+from cbpos.ui.widgets.table_helpers import (
+    RelativeTimeTableWidgetItem,
+    align_numeric_headers,
+    configure_table_columns,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -539,7 +544,7 @@ class DocumentBrowserView(QWidget):
         for row, doc in enumerate(documents):
             self.doc_table.insertRow(row)
 
-            dt_item = QTableWidgetItem(doc["date"].strftime("%Y-%m-%d %H:%M") if doc["date"] else "")
+            dt_item = RelativeTimeTableWidgetItem(doc["date"])
             dt_item.setData(Qt.ItemDataRole.UserRole, doc["id"])
             dt_item.setData(Qt.ItemDataRole.UserRole + 1, doc["type"])
             self.doc_table.setItem(row, 0, dt_item)
@@ -611,14 +616,19 @@ class DocumentBrowserView(QWidget):
                 f'<td{align} style="padding:2px 0;">{value}</td></tr>'
             )
 
+        if doc.get("date"):
+            exact_d = doc["date"].strftime("%Y-%m-%d %H:%M:%S")
+            rel_d = format_relative_time(doc["date"])
+            date_display = f"{rel_d} ({exact_d})"
+        else:
+            date_display = _t("common.na")
+
         meta = [
-            row(
-                _t("document_browser.detail_date"),
-                doc["date"].strftime("%Y-%m-%d %H:%M:%S") if doc["date"] else _t("common.na"),
-            ),
+            row(_t("document_browser.detail_date"), date_display),
             row(_t("document_browser.detail_status"), self._status_badge_html(doc["status"])),
             row(_t("document_browser.detail_user"), html.escape(doc.get("username") or "")),
         ]
+
         entity = doc.get("entity_name", "")
         if entity:
             label = (

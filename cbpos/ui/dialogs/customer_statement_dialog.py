@@ -27,6 +27,7 @@ from cbpos.core.services.statement_service import StatementService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
@@ -192,8 +193,8 @@ class CustomerStatementDialog(QDialog):
             row = self.table.rowCount()
             self.table.insertRow(row)
 
-            date_str = entry["date"].strftime("%Y-%m-%d") if entry["date"] else ""
-            self.table.setItem(row, 0, QTableWidgetItem(date_str))
+            self.table.setItem(row, 0, RelativeTimeTableWidgetItem(entry["date"], fmt="%Y-%m-%d"))
+
             self.table.setItem(row, 1, QTableWidgetItem(entry["type"]))
             self.table.setItem(row, 2, QTableWidgetItem(entry["description"]))
 

@@ -12,6 +12,7 @@ from cbpos.core.models import Product
 from cbpos.core.services.stock_service import StockService
 from cbpos.i18n import _t
 from cbpos.ui.resources.status_colors import DANGER, SUCCESS, status_color
+from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem
 
 
 class StockHistoryDialog(QDialog):
@@ -76,7 +77,8 @@ class StockHistoryDialog(QDialog):
             row = self.table.rowCount()
             self.table.insertRow(row)
 
-            self.table.setItem(row, 0, QTableWidgetItem(move.timestamp.strftime("%Y-%m-%d %H:%M")))
+            self.table.setItem(row, 0, RelativeTimeTableWidgetItem(move.timestamp))
+
             self.table.setItem(row, 1, QTableWidgetItem(type_labels.get(move.type, move.type)))
             self.table.setItem(row, 2, QTableWidgetItem(move.document.document_number if move.document else ""))
 

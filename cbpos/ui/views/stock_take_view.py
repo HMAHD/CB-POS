@@ -60,7 +60,12 @@ from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, status_color, status_hex
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
-from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    RelativeTimeTableWidgetItem,
+    align_numeric_headers,
+    configure_table_columns,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1028,7 +1033,7 @@ class StockTakeView(QWidget):
             self._history_ids.append(sc.id)
 
             self.history_table.setItem(row, 0, QTableWidgetItem(sc.document_number))
-            self.history_table.setItem(row, 1, QTableWidgetItem(sc.date.strftime("%Y-%m-%d %H:%M") if sc.date else ""))
+            self.history_table.setItem(row, 1, RelativeTimeTableWidgetItem(sc.date))
             self.history_table.setItem(row, 2, QTableWidgetItem(sc.user.username if sc.user else ""))
 
             items_item = QTableWidgetItem(format_number(len(sc.items or []), 0))

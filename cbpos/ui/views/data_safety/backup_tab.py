@@ -19,10 +19,12 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.backup_service import BackupService
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.utils.formatters import format_relative_time
 from cbpos.i18n import _t
 from cbpos.ui.dialogs.backup_password_dialog import BackupPasswordDialog, ensure_backup_password
 from cbpos.ui.utils.style_helpers import set_status_class
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
+from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem
 from cbpos.ui.workers import BackupListWorker, BackupWorker
 
 logger = logging.getLogger(__name__)
@@ -175,10 +177,16 @@ class BackupTabWidget(QWidget):
         self._last_status = status
         if not status.get("date"):
             text, css = _t("data_safety.last_backup_none"), "muted"
-        elif status.get("restorable"):
-            text, css = _t("data_safety.last_backup_ok", date=status["date"]), "credit"
+            self.lbl_last_backup.setToolTip("")
         else:
-            text, css = _t("data_safety.last_backup_unverified", date=status["date"]), "debit"
+            raw_date = status["date"]
+            rel_date = format_relative_time(raw_date)
+            date_display = f"{rel_date} ({raw_date})" if rel_date and rel_date != raw_date else str(raw_date)
+            if status.get("restorable"):
+                text, css = _t("data_safety.last_backup_ok", date=date_display), "credit"
+            else:
+                text, css = _t("data_safety.last_backup_unverified", date=date_display), "debit"
+            self.lbl_last_backup.setToolTip(str(raw_date))
         set_status_class(self.lbl_last_backup, css, text)
 
     def _on_backup_list_loaded(self, backups: list) -> None:
@@ -193,8 +201,11 @@ class BackupTabWidget(QWidget):
         actions_width = self.backup_table.horizontalHeader().sectionSizeHint(self.COL_ACTIONS)
         for row, b in enumerate(self._backup_data):
             self.backup_table.setItem(row, self.COL_FILENAME, QTableWidgetItem(b["filename"]))
-            self.backup_table.setItem(row, self.COL_DATE, QTableWidgetItem(b["date"]))
+            self.backup_table.setItem(
+                row, self.COL_DATE, RelativeTimeTableWidgetItem(b["date"], fmt="%Y-%m-%d %H:%M:%S")
+            )
             size_text = b["size"]
+
             if b.get("original_size"):
                 size_text = _t("data_safety.size_compressed_from", size=b["size"], original=b["original_size"])
             self.backup_table.setItem(row, self.COL_SIZE, QTableWidgetItem(size_text))

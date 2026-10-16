@@ -18,9 +18,12 @@ for -- the easy, obvious thing to reach for instead.
 """
 
 from collections.abc import Iterable
+from datetime import date, datetime
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem
+
+from cbpos.core.utils.formatters import format_relative_time
 
 # Cells and headers of number columns share this, so a header sits over
 # the right edge of its digits instead of centered above them (#554).
@@ -72,3 +75,64 @@ def align_numeric_headers(table: QTableWidget, columns: Iterable[int]) -> None:
             item = QTableWidgetItem()
             table.setHorizontalHeaderItem(column, item)
         item.setTextAlignment(NUMERIC_ALIGNMENT)
+
+
+class RelativeTimeTableWidgetItem(QTableWidgetItem):
+    """QTableWidgetItem displaying humanized relative time while preserving exact datetime sorting and tooltip (#774).
+
+    Displays relative time (e.g. "Just now", "5 minutes ago", "2 days ago") as the cell text,
+    stores the exact timestamp as a tooltip, and enables chronological sorting via __lt__ on
+    the underlying parsed datetime.
+    """
+
+    def __init__(
+        self,
+        dt_or_str: datetime | date | str | None,
+        fmt: str = "%Y-%m-%d %H:%M",
+        now: datetime | None = None,
+    ) -> None:
+        self._raw_dt = self._parse_dt(dt_or_str)
+        rel_text = format_relative_time(dt_or_str, now=now) if dt_or_str else ""
+        super().__init__(rel_text)
+        if self._raw_dt:
+            exact_str = self._raw_dt.strftime(fmt)
+            self.setToolTip(exact_str)
+            self.setData(Qt.ItemDataRole.UserRole, self._raw_dt.timestamp())
+
+    @staticmethod
+    def _parse_dt(dt_or_str: datetime | date | str | None) -> datetime | None:
+        if not dt_or_str:
+            return None
+        if isinstance(dt_or_str, datetime):
+            return dt_or_str
+        if isinstance(dt_or_str, date):
+            return datetime.combine(dt_or_str, datetime.min.time())
+        if isinstance(dt_or_str, str):
+            clean = dt_or_str.strip().replace(",", ".")
+            try:
+                return datetime.fromisoformat(clean)
+            except ValueError:
+                for f in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+                    try:
+                        return datetime.strptime(clean.split(".")[0], f)
+                    except ValueError:
+                        pass
+        return None
+
+    def __lt__(self, other: object) -> bool:
+        if isinstance(other, RelativeTimeTableWidgetItem):
+            if self._raw_dt is not None and other._raw_dt is not None:
+                return self._raw_dt < other._raw_dt
+            if self._raw_dt is not None:
+                return False
+            if other._raw_dt is not None:
+                return True
+        if isinstance(other, QTableWidgetItem):
+            val1 = self.data(Qt.ItemDataRole.UserRole)
+            val2 = other.data(Qt.ItemDataRole.UserRole)
+            if val1 is not None and val2 is not None:
+                try:
+                    return val1 < val2
+                except TypeError:
+                    pass
+        return super().__lt__(other)

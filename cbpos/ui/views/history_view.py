@@ -22,11 +22,12 @@ from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.transaction_service import TransactionService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.formatters import format_currency, format_relative_time
 from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.refund_messages import refund_confirm_html, refund_done_text
 from cbpos.ui.resources.status_colors import DANGER, WARNING, status_color
+from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +220,7 @@ class HistoryView(QWidget):
             self.transaction_table.insertRow(row)
 
             # Date/Time
-            dt_item = QTableWidgetItem(sale.date.strftime("%Y-%m-%d %H:%M"))
+            dt_item = RelativeTimeTableWidgetItem(sale.date)
             dt_item.setData(Qt.ItemDataRole.UserRole, sale.id)
             self.transaction_table.setItem(row, 0, dt_item)
 
@@ -271,10 +272,13 @@ class HistoryView(QWidget):
     def display_details(self, sale):
         """Display sale details in details panel"""
         cashier = sale.user.username if sale.user else _t("history.unknown")
+        exact_date = sale.date.strftime("%Y-%m-%d %H:%M:%S")
+        rel_date = format_relative_time(sale.date)
         details_text = f"""
         <b>{_t("history.detail_receipt")}:</b> {sale.document_number}<br>
-        <b>{_t("common.date")}:</b> {sale.date.strftime("%Y-%m-%d %H:%M:%S")}<br>
+        <b>{_t("common.date")}:</b> {rel_date} ({exact_date})<br>
         <b>{_t("history.col_cashier")}:</b> {cashier}<br>
+
         <b>{_t("common.total")}:</b> {format_currency(sale.total_amount)}<br>
         <b>{_t("history.detail_payment")}:</b> {sale.payment_method}<br>
         <b>{_t("common.status")}:</b> {sale.status}

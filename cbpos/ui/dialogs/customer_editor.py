@@ -29,6 +29,7 @@ from cbpos.core.services.price_list_service import (
 from cbpos.core.services.tax_service import TaxService
 from cbpos.i18n import _t
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
+from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 COMMERCIAL_FIELD_MIN_WIDTH = 220
@@ -396,7 +397,8 @@ class CustomerEditor(QDialog):
             row = self.history_table.rowCount()
             self.history_table.insertRow(row)
 
-            self.history_table.setItem(row, 0, QTableWidgetItem(sale.date.strftime("%Y-%m-%d %H:%M")))
+            self.history_table.setItem(row, 0, RelativeTimeTableWidgetItem(sale.date))
+
             self.history_table.setItem(row, 1, QTableWidgetItem(str(sale.id)))
             self.history_table.setItem(row, 2, QTableWidgetItem(f"{sale.total_amount:.2f}"))
 

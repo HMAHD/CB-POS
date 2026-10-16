@@ -35,7 +35,7 @@ from cbpos.core.services.purchase_order_service import PurchaseOrderService
 from cbpos.core.services.purchase_service import PurchaseService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.supplier_service import SupplierService
-from cbpos.core.utils.formatters import format_currency, format_quantity
+from cbpos.core.utils.formatters import format_currency, format_quantity, format_relative_time
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.constants import BAR_GROUP_SPACING, BAR_ITEM_SPACING, BAR_MARGIN_V
 from cbpos.ui.dialogs.grn_detail_dialog import GRNDetailDialog
@@ -43,6 +43,7 @@ from cbpos.ui.dialogs.supplier_dialog import SupplierDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, SUCCESS, WARNING, status_color
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
+from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +148,7 @@ class PurchaseHistoryModel(QAbstractTableModel):
             if col == 0:
                 return purchase.document_number
             if col == 1:
-                return purchase.date.strftime("%Y-%m-%d %H:%M") if purchase.date else ""
+                return format_relative_time(purchase.date) if purchase.date else ""
             if col == 2:
                 return purchase.supplier.company_name if purchase.supplier else ""
             if col == 3:
@@ -158,9 +159,13 @@ class PurchaseHistoryModel(QAbstractTableModel):
                 return format_currency(purchase.total_cost)
             if col == 6:
                 return purchase.status
+        elif role == Qt.ItemDataRole.ToolTipRole:
+            if col == 1 and purchase.date:
+                return purchase.date.strftime("%Y-%m-%d %H:%M")
         elif role == Qt.ItemDataRole.TextAlignmentRole:
             if col in (4, 5):
                 return Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+
         return None
 
     def headerData(self, section, orientation, role):
@@ -1202,11 +1207,14 @@ class PurchaseView(QWidget):
                 _t("purchase.payable_label") + " " + format_currency(summary["current_payable"])
             )
             if summary["last_payment_date"]:
-                self.lbl_pay_last.setText(
-                    _t("purchase.last_payment_label") + " " + summary["last_payment_date"].strftime("%Y-%m-%d")
-                )
+                rel_pay = format_relative_time(summary["last_payment_date"])
+                exact_pay = summary["last_payment_date"].strftime("%Y-%m-%d")
+                self.lbl_pay_last.setText(_t("purchase.last_payment_label") + " " + rel_pay)
+                self.lbl_pay_last.setToolTip(exact_pay)
             else:
                 self.lbl_pay_last.setText(_t("purchase.last_payment_label") + " " + _t("purchase.none"))
+                self.lbl_pay_last.setToolTip("")
+
         else:
             self.lbl_pay_balance.setText(_t("purchase.payable_label") + " ---")
             self.lbl_pay_last.setText(_t("purchase.last_payment_label") + " ---")
@@ -1256,8 +1264,8 @@ class PurchaseView(QWidget):
             row = self.payable_ledger_table.rowCount()
             self.payable_ledger_table.insertRow(row)
 
-            date_str = entry.timestamp.strftime("%Y-%m-%d %H:%M") if entry.timestamp else ""
-            self.payable_ledger_table.setItem(row, 0, QTableWidgetItem(date_str))
+            self.payable_ledger_table.setItem(row, 0, RelativeTimeTableWidgetItem(entry.timestamp))
+
             self.payable_ledger_table.setItem(row, 1, QTableWidgetItem(entry.entry_type))
             self.payable_ledger_table.setItem(row, 2, QTableWidgetItem(entry.reference_doc or entry.note or ""))
 

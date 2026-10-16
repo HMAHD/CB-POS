@@ -41,7 +41,7 @@ from cbpos.core.constants.hardware import DRAWER_PINS, PrinterType
 from cbpos.core.services.error_log_service import ErrorLogService
 from cbpos.core.services.hardware_test_service import HardwareTestResult, HardwareTestService
 from cbpos.core.services.maintenance_service import MaintenanceService
-from cbpos.core.utils.formatters import format_number
+from cbpos.core.utils.formatters import format_number, format_relative_time
 from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import drawer_pin_setting
 from cbpos.ui.constants import SPACING_SM
@@ -243,7 +243,14 @@ class AdminToolsView(QWidget):
             info = MaintenanceService.get_full_database_info()
             self.lbl_db_path.setText(info.get("path", "--"))
             self.lbl_db_size.setText(info.get("size", "--"))
-            self.lbl_db_modified.setText(info.get("last_modified", "--"))
+            last_mod = info.get("last_modified")
+            if last_mod and last_mod != "--":
+                rel_mod = format_relative_time(last_mod)
+                self.lbl_db_modified.setText(f"{rel_mod} ({last_mod})")
+                self.lbl_db_modified.setToolTip(str(last_mod))
+            else:
+                self.lbl_db_modified.setText(info.get("last_modified", "--"))
+                self.lbl_db_modified.setToolTip("")
             self.lbl_sqlite_version.setText(info.get("sqlite_version", "--"))
 
             tables = info.get("tables", [])

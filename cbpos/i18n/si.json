@@ -1066,6 +1066,8 @@
     "logs_search_placeholder": "ලොග් සොයන්න...",
     "logs_btn_apply": "යොදන්න",
     "logs_details_title": "ලොග් විස්තර",
+    "logs_detail_dialog_title": "ලොග් සටහන් විස්තර",
+    "logs_btn_view_details": "විස්තර බලන්න",
     "logs_btn_copy_details": "දෝෂ විස්තර පිටපත් කරන්න",
     "logs_btn_export": "ලොග් අපනයනය කරන්න",
     "logs_btn_clear": "ලොග් හිස් කරන්න",

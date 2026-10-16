@@ -14,7 +14,7 @@ from pathlib import Path
 
 from PyQt6 import sip
 from PyQt6.QtCore import QDate, Qt, QTimer, QUrl
-from PyQt6.QtGui import QDesktopServices
+from PyQt6.QtGui import QDesktopServices, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -28,7 +28,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMessageBox,
-    QPlainTextEdit,
     QPushButton,
     QScrollArea,
     QTableWidget,
@@ -47,6 +46,7 @@ from cbpos.core.utils.formatters import format_number
 from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import drawer_pin_setting
 from cbpos.ui.constants import SPACING_SM
+from cbpos.ui.dialogs.log_detail_dialog import LogDetailDialog
 from cbpos.ui.hardware_test_feedback import set_hardware_test_status, show_hardware_test_result
 from cbpos.ui.resources.status_colors import DANGER, WARNING, status_color
 from cbpos.ui.utils.style_helpers import set_status_class
@@ -384,6 +384,9 @@ class AdminToolsView(QWidget):
         self.log_table.setAlternatingRowColors(True)
         self.log_table.verticalHeader().setVisible(False)
         self.log_table.itemSelectionChanged.connect(self._on_log_selection_changed)
+        self.log_table.doubleClicked.connect(self._open_log_detail_dialog)
+        QShortcut(QKeySequence(Qt.Key.Key_Return), self.log_table).activated.connect(self._open_log_detail_dialog)
+        QShortcut(QKeySequence(Qt.Key.Key_Enter), self.log_table).activated.connect(self._open_log_detail_dialog)
 
         log_header = self.log_table.horizontalHeader()
         log_header.setSectionResizeMode(0, QHeaderView.ResizeMode.Interactive)
@@ -401,27 +404,14 @@ class AdminToolsView(QWidget):
         self.log_pagination.page_changed.connect(self._on_log_page_changed)
         layout.addWidget(self.log_pagination)
 
-        # Details pane for multi-line log / traceback view
-        details_header = QHBoxLayout()
-        self.lbl_log_details_title = QLabel()
-        self.lbl_log_details_title.setProperty("class", "bold")
-        details_header.addWidget(self.lbl_log_details_title)
-        details_header.addStretch()
-
-        self.btn_copy_log_details = QPushButton()
-        self.btn_copy_log_details.setEnabled(False)
-        self.btn_copy_log_details.clicked.connect(self._copy_log_details)
-        details_header.addWidget(self.btn_copy_log_details)
-        layout.addLayout(details_header)
-
-        self.txt_log_details = QPlainTextEdit()
-        self.txt_log_details.setReadOnly(True)
-        self.txt_log_details.setMaximumHeight(120)
-        layout.addWidget(self.txt_log_details)
-
         # Bottom buttons
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(10)
+
+        self.btn_view_details = QPushButton()
+        self.btn_view_details.setEnabled(False)
+        self.btn_view_details.clicked.connect(self._open_log_detail_dialog)
+        btn_layout.addWidget(self.btn_view_details)
 
         self.btn_export = QPushButton()
         self.btn_export.clicked.connect(self._export_logs)
@@ -520,45 +510,29 @@ class AdminToolsView(QWidget):
             self.log_table.setItem(row, 3, msg_item)
         self.log_table.blockSignals(False)
 
-        if hasattr(self, "txt_log_details"):
-            self.txt_log_details.clear()
-        if hasattr(self, "btn_copy_log_details"):
-            self.btn_copy_log_details.setEnabled(False)
+        if hasattr(self, "btn_view_details"):
+            self.btn_view_details.setEnabled(False)
 
     def _on_log_selection_changed(self) -> None:
-        """Display full log entry and traceback in details pane when selected."""
-        if not hasattr(self, "txt_log_details") or not hasattr(self, "btn_copy_log_details"):
-            return
+        """Enable or disable View Details button based on selection."""
         selection_model = self.log_table.selectionModel()
         selected_rows = selection_model.selectedRows() if selection_model is not None else []
-        row = selected_rows[0].row() if selected_rows else -1
-        if row < 0:
-            self.txt_log_details.clear()
-            self.btn_copy_log_details.setEnabled(False)
-            return
+        has_selection = bool(selected_rows and selected_rows[0].row() >= 0)
+        if hasattr(self, "btn_view_details"):
+            self.btn_view_details.setEnabled(has_selection)
 
+    def _open_log_detail_dialog(self) -> None:
+        """Open modal dialog showing full details and traceback for selected log entry."""
+        selection_model = self.log_table.selectionModel()
+        selected_rows = selection_model.selectedRows() if selection_model is not None else []
+        if not selected_rows:
+            return
+        row = selected_rows[0].row()
         page_entries = self.log_pagination.get_page_slice(self._current_log_entries)
         if 0 <= row < len(page_entries):
             entry = page_entries[row]
-            details = (
-                f"Timestamp: {entry.get('timestamp', '')}\n"
-                f"Level:     {entry.get('level', '')}\n"
-                f"Source:    {entry.get('source', '')}\n"
-                f"Message:\n{entry.get('message', '')}"
-            )
-            self.txt_log_details.setPlainText(details)
-            self.btn_copy_log_details.setEnabled(True)
-        else:
-            self.txt_log_details.clear()
-            self.btn_copy_log_details.setEnabled(False)
-
-    def _copy_log_details(self) -> None:
-        """Copy current log details to clipboard."""
-        text = self.txt_log_details.toPlainText().strip()
-        if text:
-            clipboard = QApplication.clipboard()
-            if clipboard is not None:
-                clipboard.setText(text)
+            dialog = LogDetailDialog(entry, parent=self)
+            dialog.exec()
 
     def _on_log_page_changed(self, _page: int) -> None:
         self._populate_log_page()
@@ -938,8 +912,7 @@ class AdminToolsView(QWidget):
                 _t("admin_tools.logs_header_message"),
             ]
         )
-        self.lbl_log_details_title.setText(_t("admin_tools.logs_details_title"))
-        self.btn_copy_log_details.setText(_t("admin_tools.logs_btn_copy_details"))
+        self.btn_view_details.setText(_t("admin_tools.logs_btn_view_details"))
         self.btn_export.setText(_t("admin_tools.logs_btn_export"))
         self.btn_clear.setText(_t("admin_tools.logs_btn_clear"))
         self.btn_refresh_logs.setText(_t("admin_tools.logs_btn_refresh"))

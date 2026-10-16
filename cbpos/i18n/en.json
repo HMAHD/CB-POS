@@ -1096,6 +1096,8 @@
     "logs_search_placeholder": "Search logs...",
     "logs_btn_apply": "Apply",
     "logs_details_title": "Log Details",
+    "logs_detail_dialog_title": "Log Entry Details",
+    "logs_btn_view_details": "View Details",
     "logs_btn_copy_details": "Copy Error Details",
     "logs_btn_export": "Export Logs",
     "logs_btn_clear": "Clear Logs",

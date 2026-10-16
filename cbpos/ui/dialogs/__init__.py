@@ -1,6 +1,7 @@
 """Dialog widgets package."""
 
 from cbpos.ui.dialogs.grn_detail_dialog import GRNDetailDialog
+from cbpos.ui.dialogs.log_detail_dialog import LogDetailDialog
 from cbpos.ui.dialogs.payment_method_dialog import PaymentMethodDialog
 from cbpos.ui.dialogs.price_list_dialog import PriceListDialog
 from cbpos.ui.dialogs.promotion_dialog import PromotionDialog
@@ -10,6 +11,7 @@ from cbpos.ui.dialogs.user_dialog import UserDialog
 
 __all__ = [
     "GRNDetailDialog",
+    "LogDetailDialog",
     "PaymentMethodDialog",
     "PriceListDialog",
     "PromotionDialog",

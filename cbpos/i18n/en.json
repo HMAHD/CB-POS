@@ -415,7 +415,9 @@
     "points_type_earn": "Earned",
     "points_type_reversal": "Reversal",
     "points_type_adjustment": "Adjustment",
-    "no_points_history": "No points history for this customer"
+    "no_points_history": "No points history for this customer",
+    "confirm_drop_contacts_title": "Remove Contacts?",
+    "confirm_drop_contacts_message": "This customer has contacts saved. Switching to an individual customer will remove all contacts. Do you want to proceed?"
   },
   "customer_quick_add": {
     "title": "Quick Add Customer",

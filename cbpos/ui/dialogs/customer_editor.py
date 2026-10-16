@@ -68,9 +68,12 @@ class CustomerEditor(QDialog):
 
         # Tabs
         self.tabs = QTabWidget()
-        self.tabs.addTab(self.create_general_tab(), _t("customer_editor.tab_general"))
-        self.tabs.addTab(self.create_commercial_tab(), _t("customer_editor.tab_commercial"))
-        self.tabs.addTab(self.create_contacts_tab(), _t("customer_editor.tab_contacts"))
+        self.tab_general = self.create_general_tab()
+        self.tab_commercial = self.create_commercial_tab()
+        self.tab_contacts = self.create_contacts_tab()
+        self.tabs.addTab(self.tab_general, _t("customer_editor.tab_general"))
+        self.tabs.addTab(self.tab_commercial, _t("customer_editor.tab_commercial"))
+        self.tabs.addTab(self.tab_contacts, _t("customer_editor.tab_contacts"))
 
         if ConfigService.get("enable_loyalty"):
             self.tabs.addTab(self.create_loyalty_tab(), _t("customer_editor.tab_loyalty"))
@@ -80,6 +83,9 @@ class CustomerEditor(QDialog):
             self.tabs.currentChanged.connect(self.on_tab_changed)
 
         layout.addWidget(self.tabs)
+
+        self._update_contacts_tab_visibility()
+        self._update_tax_fields_visibility()
 
         # Buttons
         footer_layout, self.btn_save, self.btn_cancel = make_dialog_footer(
@@ -105,8 +111,8 @@ class CustomerEditor(QDialog):
         self.is_company_chk = QCheckBox(_t("customer_editor.is_company"))
         self.company_name_input = QLineEdit()
 
-        # Toggle company name based on checkbox
-        self.is_company_chk.toggled.connect(self.company_name_input.setEnabled)
+        # Toggle company name, contacts tab, and tax fields based on checkbox (#539)
+        self.is_company_chk.toggled.connect(self._on_is_company_toggled)
         self.company_name_input.setEnabled(False)
 
         form.addRow(_t("customer_editor.name_label"), self.name_input)
@@ -134,6 +140,7 @@ class CustomerEditor(QDialog):
         self.tax_id_input = QLineEdit()
         self.tax_id_input.setMinimumWidth(COMMERCIAL_FIELD_MIN_WIDTH)
         self.tax_id_input.setPlaceholderText(_t("customer_editor.tin_placeholder"))
+        self._lbl_tin = QLabel(_t("customer_editor.tin"))
 
         # QLineEdit + validator instead of QDoubleSpinBox/QSpinBox -- native
         # +/- steppers break under QSS (see product_editor.py's Stock group).
@@ -153,11 +160,7 @@ class CustomerEditor(QDialog):
         # Price list loading deferred until PriceList management UI is complete
 
         form.addRow(self._lbl_vat, self.vat_input)
-        # Hide VAT number field when VAT is not active
-        if not TaxService.is_vat_active():
-            self.vat_input.setVisible(False)
-            self._lbl_vat.setVisible(False)
-        form.addRow(_t("customer_editor.tin"), self.tax_id_input)
+        form.addRow(self._lbl_tin, self.tax_id_input)
         form.addRow(_t("customer_editor.credit_limit"), self.limit_input)
         form.addRow(_t("customer_editor.payment_terms"), self.payment_terms_input)
         form.addRow(_t("customer_editor.price_list"), self.price_list_combo)
@@ -420,6 +423,62 @@ class CustomerEditor(QDialog):
         row = self.contact_table.currentRow()
         if row >= 0:
             self.contact_table.removeRow(row)
+            self._update_contacts_tab_visibility()
+
+    def _has_contacts(self) -> bool:
+        """Return True if any contact entries exist in the contacts table (#539)."""
+        if not hasattr(self, "contact_table"):
+            return False
+        return self.contact_table.rowCount() > 0
+
+    def _update_contacts_tab_visibility(self) -> None:
+        """Show Contacts tab for company customers or if contacts already exist (#539)."""
+        if not hasattr(self, "tabs") or not hasattr(self, "tab_contacts"):
+            return
+        contacts_idx = self.tabs.indexOf(self.tab_contacts)
+        if contacts_idx >= 0:
+            should_show = self.is_company_chk.isChecked() or self._has_contacts()
+            self.tabs.setTabVisible(contacts_idx, should_show)
+            if not should_show and self.tabs.currentIndex() == contacts_idx:
+                self.tabs.setCurrentIndex(0)
+
+    def _update_tax_fields_visibility(self) -> None:
+        """Show VAT and TIN fields only for business/company customers (#539)."""
+        if not hasattr(self, "is_company_chk"):
+            return
+        is_company = self.is_company_chk.isChecked()
+        vat_active = TaxService.is_vat_active()
+
+        show_vat = is_company and vat_active
+        if hasattr(self, "_lbl_vat") and hasattr(self, "vat_input"):
+            self._lbl_vat.setVisible(show_vat)
+            self.vat_input.setVisible(show_vat)
+
+        if hasattr(self, "_lbl_tin") and hasattr(self, "tax_id_input"):
+            self._lbl_tin.setVisible(is_company)
+            self.tax_id_input.setVisible(is_company)
+
+    def _on_is_company_toggled(self, checked: bool) -> None:
+        """Handle toggling between Individual and Business/Company customer (#539)."""
+        if not checked and self._has_contacts():
+            reply = QMessageBox.question(
+                self,
+                _t("customer_editor.confirm_drop_contacts_title"),
+                _t("customer_editor.confirm_drop_contacts_message"),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                self.is_company_chk.blockSignals(True)
+                self.is_company_chk.setChecked(True)
+                self.is_company_chk.blockSignals(False)
+                return
+
+            self.contact_table.setRowCount(0)
+
+        self.company_name_input.setEnabled(checked)
+        self._update_contacts_tab_visibility()
+        self._update_tax_fields_visibility()
 
     def load_data(self):
         """Populate all tabs' fields from the customer being edited."""
@@ -452,6 +511,9 @@ class CustomerEditor(QDialog):
                 self.contact_table.setItem(row, 1, QTableWidgetItem(contact.role or ""))
                 self.contact_table.setItem(row, 2, QTableWidgetItem(contact.phone or ""))
                 self.contact_table.setItem(row, 3, QTableWidgetItem(contact.email or ""))
+
+        self._update_contacts_tab_visibility()
+        self._update_tax_fields_visibility()
 
     @staticmethod
     def _parse_credit_limit(text: str) -> Decimal:
@@ -499,15 +561,16 @@ class CustomerEditor(QDialog):
                 }
             )
 
+        is_company = self.is_company_chk.isChecked()
         data = {
             "name": self.name_input.text().strip(),
             "phone": self.phone_input.text().strip() or None,
             "email": self.email_input.text().strip() or None,
             "address": self.address_input.text().strip() or None,
-            "is_company": self.is_company_chk.isChecked(),
-            "company_name": self.company_name_input.text().strip() or None,
-            "vat_number": self.vat_input.text().strip() or None,
-            "tax_id": self.tax_id_input.text().strip() or None,
+            "is_company": is_company,
+            "company_name": (self.company_name_input.text().strip() or None) if is_company else None,
+            "vat_number": (self.vat_input.text().strip() or None) if is_company else None,
+            "tax_id": (self.tax_id_input.text().strip() or None) if is_company else None,
             "credit_limit": self._parse_credit_limit(self.limit_input.text()),
             "payment_terms": self._parse_payment_terms(self.payment_terms_input.text()),
             "loyalty_card_code": self.loyalty_code_input.text().strip() or None,

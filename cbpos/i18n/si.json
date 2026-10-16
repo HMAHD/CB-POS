@@ -415,7 +415,9 @@
     "points_type_earn": "ලැබුණු",
     "points_type_reversal": "ආපසු හැරවීම",
     "points_type_adjustment": "වෙනස් කිරීම",
-    "no_points_history": "මෙම පාරිභෝගිකයා සඳහා ලකුණු ඉතිහාසයක් නොමැත"
+    "no_points_history": "මෙම පාරිභෝගිකයා සඳහා ලකුණු ඉතිහාසයක් නොමැත",
+    "confirm_drop_contacts_title": "සම්බන්ධතා ඉවත් කරන්නද?",
+    "confirm_drop_contacts_message": "මෙම පාරිභෝගිකයා සඳහා සම්බන්ධතා සුරකින ලදි. තනි පාරිභෝගිකයෙකුට මාරුවීමෙන් සියලු සම්බන්ධතා ඉවත් කරනු ඇත. ඉදිරියට යාමට අවශ්‍යද?"
   },
   "customer_quick_add": {
     "title": "ඉක්මන් පාරිභෝගික එකතු කිරීම",

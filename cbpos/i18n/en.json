@@ -2835,5 +2835,21 @@
     "bank_branch": "Branch: {name}",
     "authorized_signature": "Authorized Signature",
     "received_by": "Received By"
+  },
+  "time": {
+    "just_now": "Just now",
+    "one_minute_ago": "1 minute ago",
+    "minutes_ago": "{count} minutes ago",
+    "one_hour_ago": "1 hour ago",
+    "hours_ago": "{count} hours ago",
+    "one_day_ago": "1 day ago",
+    "days_ago": "{count} days ago",
+    "one_week_ago": "1 week ago",
+    "weeks_ago": "{count} weeks ago",
+    "one_month_ago": "1 month ago",
+    "months_ago": "{count} months ago",
+    "one_year_ago": "1 year ago",
+    "years_ago": "{count} years ago"
   }
 }
+

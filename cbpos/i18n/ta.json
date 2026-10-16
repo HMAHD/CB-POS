@@ -2835,5 +2835,21 @@
     "bank_branch": "கிளை: {name}",
     "authorized_signature": "அங்கீகரிக்கப்பட்ட கையொப்பம்",
     "received_by": "பெற்றுக்கொண்டவர்"
+  },
+  "time": {
+    "just_now": "இப்போது",
+    "one_minute_ago": "1 நிமிடத்திற்கு முன்",
+    "minutes_ago": "{count} நிமிடங்களுக்கு முன்",
+    "one_hour_ago": "1 மணிநேரத்திற்கு முன்",
+    "hours_ago": "{count} மணிநேரத்திற்கு முன்",
+    "one_day_ago": "1 நாளுக்கு முன்",
+    "days_ago": "{count} நாட்களுக்கு முன்",
+    "one_week_ago": "1 வாரத்திற்கு முன்",
+    "weeks_ago": "{count} வாரங்களுக்கு முன்",
+    "one_month_ago": "1 மாதத்திற்கு முன்",
+    "months_ago": "{count} மாதங்களுக்கு முன்",
+    "one_year_ago": "1 வருடத்திற்கு முன்",
+    "years_ago": "{count} வருடங்களுக்கு முன்"
   }
 }
+

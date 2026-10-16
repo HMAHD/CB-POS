@@ -58,6 +58,71 @@ class InventoryValuationReport(BaseReport):
             )
         }
 
+    def get_summary(self, df: pd.DataFrame) -> list[dict[str, Any]]:
+        """Compute KPI summary cards for inventory valuation: Total Items, Asset Cost, Retail Value (#543)."""
+        from cbpos.core.services.config_service import ConfigService
+        from cbpos.ui.resources.icons import Icons
+
+        currency = ConfigService.get("currency_symbol") or "Rs."
+
+        if df is None or df.empty:
+            return [
+                {
+                    "key": "total_items",
+                    "title": _t("reports.summary_total_items"),
+                    "value": "0",
+                    "icon": Icons.INVENTORY,
+                    "color": "#00BCEB",
+                },
+                {
+                    "key": "cost_value",
+                    "title": _t("reports.summary_cost_value"),
+                    "value": f"{currency} 0.00",
+                    "icon": Icons.PURCHASE,
+                    "color": "#F59E0B",
+                },
+                {
+                    "key": "retail_value",
+                    "title": _t("reports.summary_retail_value"),
+                    "value": f"{currency} 0.00",
+                    "icon": Icons.PRICE_LIST,
+                    "color": "#10B981",
+                },
+            ]
+
+        total_items = len(df)
+        cost_value = 0.0
+        if "Total Cost Value" in df.columns:
+            cost_value = float(pd.to_numeric(df["Total Cost Value"], errors="coerce").fillna(0.0).sum())
+
+        retail_value = 0.0
+        if "Total Retail Value" in df.columns:
+            retail_value = float(pd.to_numeric(df["Total Retail Value"], errors="coerce").fillna(0.0).sum())
+
+        return [
+            {
+                "key": "total_items",
+                "title": _t("reports.summary_total_items"),
+                "value": f"{total_items:,}",
+                "icon": Icons.INVENTORY,
+                "color": "#00BCEB",
+            },
+            {
+                "key": "cost_value",
+                "title": _t("reports.summary_cost_value"),
+                "value": f"{currency} {cost_value:,.2f}",
+                "icon": Icons.PURCHASE,
+                "color": "#F59E0B",
+            },
+            {
+                "key": "retail_value",
+                "title": _t("reports.summary_retail_value"),
+                "value": f"{currency} {retail_value:,.2f}",
+                "icon": Icons.PRICE_LIST,
+                "color": "#10B981",
+            },
+        ]
+
     def generate(self, filters: dict[str, Any]) -> pd.DataFrame:
         """List active products with on-hand qty, cost, retail price, and their totals.
 

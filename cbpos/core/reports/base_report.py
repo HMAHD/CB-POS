@@ -119,3 +119,22 @@ class BaseReport(ABC):
                 "warning", "info", "neutral" -- theme-aware) or a hex color.
         """
         return {}
+
+    def get_summary(self, df: pd.DataFrame) -> list[dict[str, Any]]:
+        """Optional summary KPI cards to display above the report table (#543).
+
+        Computed from the complete DataFrame (all rows, not just the active page).
+        Returns a list of dicts:
+            [
+                {
+                    "key": "total_sales",
+                    "title": _t("reports.summary_total_sales"),
+                    "value": "Rs. 50,000.00",
+                    "icon": Icons.SALES,
+                    "color": "#00BCEB",
+                },
+                ...
+            ]
+        Default returns [] (no summary cards).
+        """
+        return []

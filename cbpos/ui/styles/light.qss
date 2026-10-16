@@ -999,6 +999,7 @@ QLabel#SidebarLogo {
 QToolButton#SidebarToggle {
     border: none;
     background: transparent;
+    padding: 4px;
 }
 
 /* Sidebar section break -- a resting point between groups of nav items
@@ -1087,6 +1088,7 @@ QToolButton#BtnPos:hover {
 QToolButton#BtnPos[collapsed="true"] {
     text-align: center;
     padding-left: 0px;
+    padding-right: 0px;
     margin: 4px 10px;
 }
 
@@ -1109,6 +1111,7 @@ QToolButton#BtnLogout:hover {
 QToolButton#BtnLogout[collapsed="true"] {
     text-align: center;
     padding-left: 0px;
+    padding-right: 0px;
     margin: 4px 10px 8px 10px;
 }
 

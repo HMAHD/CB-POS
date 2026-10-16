@@ -660,7 +660,7 @@
     "sidebar_dashboard": "முகப்பு பலகை",
     "sidebar_inventory": "சரக்கு மேலாண்மை",
     "sidebar_purchasing": "கொள்முதல்",
-    "sidebar_credit_book": "கடன் புத்தகம்",
+    "sidebar_credit_book": "வாடிக்கையாளர்கள்",
     "sidebar_section_management": "மேலாண்மை",
     "sidebar_reports": "அறிக்கைகள்",
     "sidebar_documents": "ஆவணங்கள்",
@@ -715,7 +715,7 @@
     "context_stock_history": "சரக்கு வரலாற்றைப் பாருங்க"
   },
   "credit_book": {
-    "title": "கடன் புத்தகம்",
+    "title": "வாடிக்கையாளர்கள்",
     "btn_add_customer": "+ வாடிக்கையாளரைச் சேருங்க",
     "btn_open_customer_ledger": "லெட்ஜரைத் திற",
     "row_open_hint": "லெட்ஜரைத் திறக்க பேரை ரெண்டு தடவை கிளிக் பண்ணுங்க, இல்லன்னா Enter அழுத்துங்க. இன்னும் வசதிகளுக்கு வலது கிளிக் பண்ணுங்க.",
@@ -1038,6 +1038,7 @@
     "name_required": "விலைப் பட்டியலின் பெயர் தேவை.",
     "start_before_end": "தொடக்க தேதி முடிவு தேதிக்கு முன்ன அல்லது அதே நாளா இருக்கணும்.",
     "context_remove_override": "தனி விலையை நீக்குங்க",
+    "btn_remove_override": "தனி விலையை நீக்குங்க",
     "confirm_remove_override_title": "தனி விலையை நீக்குங்க",
     "confirm_remove_override_msg": "'{name}'-க்கான பட்டியல் விலையை நீக்கவா? அப்போ அடிப்படை விலைக்கு மாறும்."
   },
@@ -1050,6 +1051,8 @@
     "tab_hardware": "வன்பொருள்",
     "db_group_file": "டேட்டாபேஸ் ஃபைல்",
     "db_path": "பாதை:",
+    "db_btn_copy_path": "நகலெடு",
+    "db_btn_open_folder": "கோப்புறையைத் திற",
     "db_size": "அளவு:",
     "db_last_modified": "கடைசியா மாத்தியது:",
     "db_sqlite_version": "SQLite வெர்ஷன்:",
@@ -1062,6 +1065,8 @@
     "logs_to": "முடிவு:",
     "logs_search_placeholder": "பதிவுகளைத் தேடு...",
     "logs_btn_apply": "பயன்படுத்து",
+    "logs_details_title": "பதிவு விவரங்கள்",
+    "logs_btn_copy_details": "பிழை விவரங்களை நகலெடு",
     "logs_btn_export": "பதிவுகளை ஏற்றுமதி செய்",
     "logs_btn_clear": "பதிவுகளை அழி",
     "logs_btn_refresh": "புதுப்பி",
@@ -2560,6 +2565,7 @@
   "promotion": {
     "title": "சலுகை மேலாண்மை",
     "create_promotion": "சலுகை உருவாக்குங்க",
+    "col_on_off": "இயக்கு/முடக்கு",
     "new_promotion": "புது சலுகை",
     "edit_promotion": "சலுகையைத் திருத்து",
     "type": "வகை",

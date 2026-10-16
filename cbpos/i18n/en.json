@@ -660,7 +660,7 @@
     "sidebar_dashboard": "Dashboard",
     "sidebar_inventory": "Inventory",
     "sidebar_purchasing": "Purchasing",
-    "sidebar_credit_book": "Credit Book",
+    "sidebar_credit_book": "Customers",
     "sidebar_section_management": "Management",
     "sidebar_reports": "Reports",
     "sidebar_documents": "Documents",
@@ -745,7 +745,7 @@
     "context_stock_history": "View Stock History"
   },
   "credit_book": {
-    "title": "Credit Book",
+    "title": "Customers",
     "btn_add_customer": "+ Add Customer",
     "btn_open_customer_ledger": "Open Ledger",
     "row_open_hint": "Double-click a customer or press Enter to open their ledger. Right-click for more.",
@@ -1068,6 +1068,7 @@
     "name_required": "Price list name is required.",
     "start_before_end": "Start date must be on or before the end date.",
     "context_remove_override": "Remove Override",
+    "btn_remove_override": "Remove Special Price",
     "confirm_remove_override_title": "Remove Override",
     "confirm_remove_override_msg": "Remove the list price for \"{name}\"? It will fall back to the product's base price."
   },
@@ -1080,6 +1081,8 @@
     "tab_hardware": "Hardware",
     "db_group_file": "Database File",
     "db_path": "Path:",
+    "db_btn_copy_path": "Copy Path",
+    "db_btn_open_folder": "Open Folder",
     "db_size": "Size:",
     "db_last_modified": "Last Modified:",
     "db_sqlite_version": "SQLite Version:",
@@ -1092,6 +1095,8 @@
     "logs_to": "To:",
     "logs_search_placeholder": "Search logs...",
     "logs_btn_apply": "Apply",
+    "logs_details_title": "Log Details",
+    "logs_btn_copy_details": "Copy Error Details",
     "logs_btn_export": "Export Logs",
     "logs_btn_clear": "Clear Logs",
     "logs_btn_refresh": "Refresh",
@@ -2560,6 +2565,7 @@
   "promotion": {
     "title": "Promotions & Campaigns",
     "create_promotion": "Create Promotion",
+    "col_on_off": "On/Off",
     "new_promotion": "New Promotion",
     "edit_promotion": "Edit Promotion",
     "type": "Type",

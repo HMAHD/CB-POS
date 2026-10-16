@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from cbpos.i18n import _t
+from cbpos.ui.dialogs import promotion_dialog as promotion_dialog_module
 from cbpos.ui.views import promotion_view as promotion_view_module
 from cbpos.ui.views.promotion_view import PromotionDialog, PromotionView
 
@@ -268,7 +269,7 @@ class TestPromotionDialogEditMode:
         dialog.value_input.setValue(value)
         dialog.accept = MagicMock()
 
-        with patch.object(promotion_view_module, "QMessageBox") as mock_box:
+        with patch.object(promotion_dialog_module, "QMessageBox") as mock_box:
             dialog.validate_and_accept()
 
         mock_box.warning.assert_called_once()
@@ -282,7 +283,7 @@ class TestPromotionDialogEditMode:
             cb.setChecked(False)
         dialog.accept = MagicMock()
 
-        with patch.object(promotion_view_module, "QMessageBox") as mock_box:
+        with patch.object(promotion_dialog_module, "QMessageBox") as mock_box:
             dialog.validate_and_accept()
 
         assert mock_box.warning.call_args[0][2] == _t("promotion.days_required")
@@ -306,7 +307,7 @@ class TestPromotionDialogEditMode:
         dialog.end_dt.setDateTime(QDateTime.currentDateTime())
         dialog.name_input.setText("Whatever")
 
-        with patch.object(promotion_view_module, "QMessageBox") as mock_box:
+        with patch.object(promotion_dialog_module, "QMessageBox") as mock_box:
             dialog.validate_and_accept()
 
         mock_box.warning.assert_called_once()

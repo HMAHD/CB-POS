@@ -660,7 +660,7 @@
     "sidebar_dashboard": "උපකරණ පුවරුව",
     "sidebar_inventory": "තොග කළමනාකරණය",
     "sidebar_purchasing": "මිලදී ගැනීම්",
-    "sidebar_credit_book": "ණය පොත",
+    "sidebar_credit_book": "පාරිභෝගිකයන්",
     "sidebar_section_management": "කළමනාකරණය",
     "sidebar_reports": "වාර්තා",
     "sidebar_documents": "ලේඛන",
@@ -715,7 +715,7 @@
     "context_stock_history": "තොග ඉතිහාසය බලන්න"
   },
   "credit_book": {
-    "title": "ණය පොත",
+    "title": "පාරිභෝගිකයන්",
     "btn_add_customer": "+ පාරිභෝගිකයෙක් එකතු කරන්න",
     "btn_open_customer_ledger": "ලෙජරය අරින්න",
     "row_open_hint": "ලෙජරය අරින්න නමට දෙපාරක් ක්ලික් කරන්න, නැත්නම් Enter ඔබන්න. තව දේවල් දකුණු ක්ලික් කරලා බලන්න.",
@@ -1038,6 +1038,7 @@
     "name_required": "මිල ලැයිස්තුවේ නම අවශ්‍යයි.",
     "start_before_end": "පටන් ගන්න දිනය අවසන් දිනයට කලින් හෝ ඒ දිනයම වෙන්න ඕන.",
     "context_remove_override": "විශේෂ මිල අයින් කරන්න",
+    "btn_remove_override": "විශේෂ මිල අයින් කරන්න",
     "confirm_remove_override_title": "විශේෂ මිල අයින් කරන්න",
     "confirm_remove_override_msg": "'{name}' සඳහා ලැයිස්තු මිල අයින් කරන්නද? එතකොට මූලික මිලට හැරෙනවා."
   },
@@ -1050,6 +1051,8 @@
     "tab_hardware": "හාඩ්වෙයාර්",
     "db_group_file": "දත්ත සමුදාය ගොනුව",
     "db_path": "පාර:",
+    "db_btn_copy_path": "පිටපත් කරන්න",
+    "db_btn_open_folder": "ෆෝල්ඩරය අරින්න",
     "db_size": "ප්‍රමාණය:",
     "db_last_modified": "අන්තිමට වෙනස් කළේ:",
     "db_sqlite_version": "SQLite වර්ෂන්:",
@@ -1062,6 +1065,8 @@
     "logs_to": "දක්වා:",
     "logs_search_placeholder": "ලොග් සොයන්න...",
     "logs_btn_apply": "යොදන්න",
+    "logs_details_title": "ලොග් විස්තර",
+    "logs_btn_copy_details": "දෝෂ විස්තර පිටපත් කරන්න",
     "logs_btn_export": "ලොග් අපනයනය කරන්න",
     "logs_btn_clear": "ලොග් හිස් කරන්න",
     "logs_btn_refresh": "නැවුම් කරන්න",
@@ -2560,6 +2565,7 @@
   "promotion": {
     "title": "ප්‍රවර්ධන කළමනාකරණය",
     "create_promotion": "ප්‍රවර්ධනයක් හදන්න",
+    "col_on_off": "ක්‍රියාත්මක/අක්‍රිය",
     "new_promotion": "අලුත් ප්‍රවර්ධනයක්",
     "edit_promotion": "ප්‍රවර්ධනය සංස්කරණය",
     "type": "වර්ගය",

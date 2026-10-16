@@ -71,8 +71,9 @@ class CollapsibleSidebar(QFrame):
         # --- Header (Logo + Toggle) ---
         header = QWidget()
         header.setFixedHeight(60)
-        header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(10, 10, 10, 10)
+        self._header_layout = QHBoxLayout(header)
+        # 18px horizontal margin per #608 (16-20px)
+        self._header_layout.setContentsMargins(18, 10, 18, 10)
 
         self.lbl_logo = QLabel()
         self._load_logo()
@@ -84,9 +85,12 @@ class CollapsibleSidebar(QFrame):
         self.btn_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_toggle.clicked.connect(self.toggle)
 
-        header_layout.addWidget(self.lbl_logo)
-        header_layout.addStretch()
-        header_layout.addWidget(self.btn_toggle)
+        # Stretches allowing centering in collapsed state and right-alignment in expanded state
+        self._header_layout.addStretch(0)  # index 0
+        self._header_layout.addWidget(self.lbl_logo, 0, Qt.AlignmentFlag.AlignVCenter)  # index 1
+        self._header_layout.addStretch(1)  # index 2
+        self._header_layout.addWidget(self.btn_toggle, 0, Qt.AlignmentFlag.AlignVCenter)  # index 3
+        self._header_layout.addStretch(0)  # index 4
 
         self._layout.addWidget(header)
         self._layout.addSpacing(10)
@@ -277,10 +281,20 @@ class CollapsibleSidebar(QFrame):
         if collapsed:
             end = COLLAPSED_WIDTH
             self.lbl_logo.setVisible(False)
+            self._header_layout.setContentsMargins(0, 10, 0, 10)
+            self._header_layout.setStretch(0, 1)
+            self._header_layout.setStretch(2, 0)
+            self._header_layout.setStretch(4, 1)
+            self._header_layout.invalidate()
             style = Qt.ToolButtonStyle.ToolButtonIconOnly
         else:
             end = EXPANDED_WIDTH
             self.lbl_logo.setVisible(True)
+            self._header_layout.setContentsMargins(18, 10, 18, 10)
+            self._header_layout.setStretch(0, 0)
+            self._header_layout.setStretch(2, 1)
+            self._header_layout.setStretch(4, 0)
+            self._header_layout.invalidate()
             style = Qt.ToolButtonStyle.ToolButtonTextBesideIcon
 
         self.is_collapsed = collapsed
@@ -343,7 +357,23 @@ class CollapsibleSidebar(QFrame):
         """Set sidebar to collapsed mode without animation (used at init)."""
         self.setFixedWidth(COLLAPSED_WIDTH)
         self.lbl_logo.setVisible(False)
+        self._header_layout.setContentsMargins(0, 10, 0, 10)
+        self._header_layout.setStretch(0, 1)
+        self._header_layout.setStretch(2, 0)
+        self._header_layout.setStretch(4, 1)
+        self._header_layout.invalidate()
         self._apply_button_style(Qt.ToolButtonStyle.ToolButtonIconOnly)
+
+    def _is_toggle_centered_when_collapsed(self) -> bool:
+        """Return True if toggle is centered when collapsed."""
+        if not self.is_collapsed:
+            return False
+        margins = self._header_layout.contentsMargins()
+        return (
+            margins.left() == margins.right()
+            and self._header_layout.stretch(0) == self._header_layout.stretch(4)
+            and self._header_layout.stretch(0) > 0
+        )
 
     def _apply_button_style(self, style: Qt.ToolButtonStyle) -> None:
         """Set the tool-button style on all buttons.

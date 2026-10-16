@@ -60,11 +60,22 @@ class ErrorLogService:
         for log_file in cls.get_log_files():
             try:
                 with open(log_file, encoding="utf-8", errors="replace") as f:
+                    file_entries: list[dict[str, str]] = []
+                    current_entry: dict[str, str] | None = None
                     for line in f:
                         parsed = cls._parse_line(line)
-                        if parsed is None:
-                            continue
+                        if parsed is not None:
+                            if current_entry is not None:
+                                file_entries.append(current_entry)
+                            current_entry = parsed
+                        elif current_entry is not None:
+                            stripped_line = line.rstrip("\r\n")
+                            if stripped_line:
+                                current_entry["message"] += "\n" + stripped_line
+                    if current_entry is not None:
+                        file_entries.append(current_entry)
 
+                    for parsed in file_entries:
                         # Level filter
                         if level and parsed["level"] != level:
                             continue

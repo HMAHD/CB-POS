@@ -2850,6 +2850,17 @@
     "months_ago": "{count} months ago",
     "one_year_ago": "1 year ago",
     "years_ago": "{count} years ago"
+  },
+  "date_presets": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "this_week": "This Week",
+    "last_week": "Last Week",
+    "this_month": "This Month",
+    "last_month": "Last Month",
+    "last_7_days": "Last 7 Days",
+    "last_30_days": "Last 30 Days",
+    "custom": "Custom"
   }
 }
 

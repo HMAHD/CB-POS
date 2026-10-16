@@ -126,6 +126,7 @@ class PermissionDialog(QDialog):
         # Tree Widget
         self.tree = QTreeWidget()
         self.tree.setHeaderHidden(False)
+        self.tree.setAlternatingRowColors(True)
         layout.addWidget(self.tree)
 
         # Load Data

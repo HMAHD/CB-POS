@@ -49,6 +49,7 @@ class CategoryTreeDialog(QDialog):
         self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self.show_context_menu)
         self.tree.itemChanged.connect(self.on_item_dropped)
+        self.tree.setAlternatingRowColors(True)
         layout.addWidget(self.tree)
 
         # Buttons

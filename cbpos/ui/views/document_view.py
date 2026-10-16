@@ -1,12 +1,11 @@
 import contextlib
 import html
 import logging
-from datetime import datetime
+from datetime import date, datetime
 
-from PyQt6.QtCore import QDate, Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QComboBox,
-    QDateEdit,
     QDialog,
     QFrame,
     QGridLayout,
@@ -147,23 +146,25 @@ class DocumentBrowserView(QWidget):
         self.status_combo.setMinimumWidth(110)
         filter_layout.addWidget(self.status_combo)
 
+        from cbpos.ui.widgets.date_range_picker import DateRangePicker
+
         self.lbl_from = QLabel()
         self.lbl_from.setObjectName("DocFilterLabel")
-        filter_layout.addWidget(self.lbl_from)
-        self.from_date = QDateEdit()
-        self.from_date.setObjectName("DocDateEdit")
-        self.from_date.setCalendarPopup(True)
-        self.from_date.setDate(QDate.currentDate().addMonths(-1))
-        filter_layout.addWidget(self.from_date)
-
         self.lbl_to = QLabel()
         self.lbl_to.setObjectName("DocFilterLabel")
-        filter_layout.addWidget(self.lbl_to)
-        self.to_date = QDateEdit()
+
+        self.date_picker = DateRangePicker(
+            self,
+            default_start=date.today().replace(day=1),
+            default_end=date.today(),
+            default_preset="this_month",
+        )
+        self.from_date = self.date_picker.start_date_edit
+        self.from_date.setObjectName("DocDateEdit")
+        self.to_date = self.date_picker.end_date_edit
         self.to_date.setObjectName("DocDateEdit")
-        self.to_date.setCalendarPopup(True)
-        self.to_date.setDate(QDate.currentDate())
-        filter_layout.addWidget(self.to_date)
+        self.date_picker.preset_combo.setObjectName("DocFilterCombo")
+        filter_layout.addWidget(self.date_picker)
 
         self.search_input = QLineEdit()
         self.search_input.setObjectName("DocSearchInput")
@@ -484,8 +485,7 @@ class DocumentBrowserView(QWidget):
         """Reset all filters to defaults."""
         self.type_combo.setCurrentIndex(0)
         self.status_combo.setCurrentIndex(0)
-        self.from_date.setDate(QDate.currentDate().addMonths(-1))
-        self.to_date.setDate(QDate.currentDate())
+        self.date_picker.set_preset("this_month")
         self.search_input.clear()
         self.current_page = 1
         self.load_documents()

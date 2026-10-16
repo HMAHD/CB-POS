@@ -52,6 +52,7 @@ class StockHistoryDialog(QDialog):
             ]
         )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.setAlternatingRowColors(True)
         layout.addWidget(self.table)
 
         # Close Button

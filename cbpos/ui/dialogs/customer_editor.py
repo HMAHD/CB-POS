@@ -181,6 +181,7 @@ class CustomerEditor(QDialog):
             ]
         )
         self.contact_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.contact_table.setAlternatingRowColors(True)
         layout.addWidget(self.contact_table)
 
         # Buttons
@@ -367,6 +368,7 @@ class CustomerEditor(QDialog):
         self.history_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.history_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.history_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.history_table.setAlternatingRowColors(True)
         layout.addWidget(self.history_table)
 
         return widget

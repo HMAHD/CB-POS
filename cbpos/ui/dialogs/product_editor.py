@@ -291,6 +291,7 @@ class ProductEditor(QDialog):
             ]
         )
         self.comp_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.comp_table.setAlternatingRowColors(True)
         self.comp_table.hideColumn(0)  # Hide ID
         layout.addWidget(self.comp_table)
 

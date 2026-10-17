@@ -56,8 +56,6 @@ def _promotion_fields(session: Session, promotion: Promotion) -> dict:
         "value": promotion.value,
         "start_time": promotion.start_time,
         "end_time": promotion.end_time,
-        "daily_start": promotion.daily_start.isoformat(timespec="minutes") if promotion.daily_start else None,
-        "daily_end": promotion.daily_end.isoformat(timespec="minutes") if promotion.daily_end else None,
         "days_of_week": promotion.days_of_week,
         "category": category.name if category else None,
         "is_active": promotion.is_active,

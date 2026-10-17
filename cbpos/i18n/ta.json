@@ -1072,7 +1072,10 @@
     "header_category": "பிரிவு",
     "header_cost": "செலவு",
     "header_new_price": "புதிய விலை",
-    "header_margin": "விளிம்பு"
+    "header_margin": "விளிம்பு",
+    "search_placeholder": "பெயர் அல்லது பார்கோடு மூலம் தயாரிப்புகளைத் தேடுங்கள்...",
+    "showing_count": "{total} இல் {count} தயாரிப்புகள் காட்டப்படுகின்றன",
+    "total_products_count": "மொத்தம்: {count} தயாரிப்புகள்"
   },
   "admin_tools": {
     "title": "நிர்வாக கருவிகள்",

@@ -1102,7 +1102,10 @@
     "header_category": "Category",
     "header_cost": "Cost",
     "header_new_price": "New Price",
-    "header_margin": "Margin"
+    "header_margin": "Margin",
+    "search_placeholder": "Search products by name or barcode...",
+    "showing_count": "Showing {count} of {total} products",
+    "total_products_count": "Total: {count} products"
   },
   "admin_tools": {
     "title": "Admin Tools",

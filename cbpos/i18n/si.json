@@ -1072,7 +1072,10 @@
     "header_category": "ප්‍රවර්ගය",
     "header_cost": "පිරිවැය",
     "header_new_price": "නව මිල",
-    "header_margin": "ආන්තිකය"
+    "header_margin": "ආන්තිකය",
+    "search_placeholder": "නම හෝ බාර්කෝඩය මගින් නිෂ්පාදන සොයන්න...",
+    "showing_count": "නිෂ්පාදන {total} න් {count} ක් පෙන්වයි",
+    "total_products_count": "මුළු: නිෂ්පාදන {count}"
   },
   "admin_tools": {
     "title": "පරිපාලක මෙවලම්",

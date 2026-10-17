@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QLineEdit,
     QMenu,
     QMessageBox,
     QPushButton,
@@ -35,6 +36,7 @@ from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_head
 
 # Price cells keep their raw Decimal here; the text is display-only (#557).
 PRICE_ROLE = Qt.ItemDataRole.UserRole
+BATCH_SIZE = 50
 
 
 class PriceListView(QWidget):
@@ -48,6 +50,11 @@ class PriceListView(QWidget):
         self.product_service = ProductService()
         self.current_list = None
         self._nav_buttons: dict[int, QPushButton] = {}
+        self._all_products: list = []
+        self._price_map: dict[int, Decimal] = {}
+        self._displayed_products: list = []
+        self._loaded_count: int = 0
+        self._search_query: str = ""
         self.init_ui()
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui, owner=self)
@@ -185,6 +192,18 @@ class PriceListView(QWidget):
 
         data_layout.addWidget(header)
 
+        # Search bar
+        search_row = QHBoxLayout()
+        search_row.setContentsMargins(0, 0, 0, 0)
+        self.search_input = QLineEdit()
+        self.search_input.setObjectName("PriceListSearchInput")
+        self.search_input.setPlaceholderText(_t("pricelist.search_placeholder"))
+        self.search_input.setClearButtonEnabled(True)
+        self.search_input.addAction(Icons.get(Icons.SEARCH, "#888888"), QLineEdit.ActionPosition.LeadingPosition)
+        self.search_input.textChanged.connect(self._on_search_changed)
+        search_row.addWidget(self.search_input)
+        data_layout.addLayout(search_row)
+
         # Product table
         self.table = QTableWidget()
         self.table.setObjectName("PriceListDataTable")
@@ -201,6 +220,7 @@ class PriceListView(QWidget):
         self.table.doubleClicked.connect(self.edit_item_price)
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._show_item_context_menu)
+        self.table.verticalScrollBar().valueChanged.connect(self._on_table_scroll)
         data_layout.addWidget(self.table)
 
         set_price_row = QHBoxLayout()
@@ -236,6 +256,7 @@ class PriceListView(QWidget):
         footer_layout.setContentsMargins(8, 6, 8, 6)
         self.lbl_product_count = QLabel()
         self.lbl_product_count.setObjectName("PriceListFooterLabel")
+        self.lbl_count = self.lbl_product_count
         footer_layout.addWidget(self.lbl_product_count)
         footer_layout.addStretch()
 
@@ -280,6 +301,8 @@ class PriceListView(QWidget):
         self.btn_bulk_adjust.setText(_t("pricelist.btn_bulk_adjust"))
         self.btn_set_item_price.setText(_t("pricelist.btn_set_item_price"))
         self.btn_remove_override.setText(_t("pricelist.btn_remove_override"))
+        self.search_input.setPlaceholderText(_t("pricelist.search_placeholder"))
+        self._update_product_count_label()
 
     # ------------------------------------------------------------------
     # Status helpers
@@ -346,6 +369,11 @@ class PriceListView(QWidget):
         colour_name = status_colour.name()
         self.lbl_status.setStyleSheet(f"color: {colour_name}; font-weight: bold; padding: 2px 8px; border-radius: 4px;")
 
+        self.search_input.blockSignals(True)
+        self.search_input.clear()
+        self.search_input.blockSignals(False)
+        self._search_query = ""
+
         self.load_items()
         self.content_stack.setCurrentIndex(1)
 
@@ -358,12 +386,41 @@ class PriceListView(QWidget):
         if not self.current_list:
             return
 
-        products = self.product_service.get_all_products()
+        self._all_products = self.product_service.get_all_products()
         list_items = self.price_list_service.get_items(self.current_list.id)
-        price_map = {item.product_id: item.price for item in list_items}
+        self._price_map = {item.product_id: item.price for item in list_items}
+
+        self._apply_filter_and_reset_table()
+
+    def _on_search_changed(self, text: str) -> None:
+        self._search_query = text.strip()
+        self._apply_filter_and_reset_table()
+
+    def _apply_filter_and_reset_table(self) -> None:
+        query = self._search_query.lower()
+        if not query:
+            self._displayed_products = list(self._all_products)
+        else:
+            self._displayed_products = [
+                p
+                for p in self._all_products
+                if query in (p.display_name or "").lower()
+                or query in (p.name_en or "").lower()
+                or (p.barcode and query in p.barcode.lower())
+            ]
 
         self.table.setRowCount(0)
-        for p in products:
+        self._loaded_count = 0
+        self._load_more_items()
+        self._update_product_count_label()
+        self.table.verticalScrollBar().setValue(0)
+
+    def _load_more_items(self) -> None:
+        if self._loaded_count >= len(self._displayed_products):
+            return
+
+        next_batch = self._displayed_products[self._loaded_count : self._loaded_count + BATCH_SIZE]
+        for p in next_batch:
             row = self.table.rowCount()
             self.table.insertRow(row)
 
@@ -375,7 +432,7 @@ class PriceListView(QWidget):
             base_item.setData(PRICE_ROLE, p.price)
             self.table.setItem(row, 2, base_item)
 
-            list_price = price_map.get(p.id)
+            list_price = self._price_map.get(p.id)
             price_display = format_number(list_price, 2) if list_price is not None else NO_VALUE
 
             price_item = QTableWidgetItem(price_display)
@@ -386,8 +443,26 @@ class PriceListView(QWidget):
 
             self.table.setItem(row, 3, price_item)
 
-        self.lbl_product_count.setText(_t("pricelist.product_count", count=len(products)))
+        self._loaded_count += len(next_batch)
+        self._update_product_count_label()
         self._on_table_selection_changed()
+
+    def _on_table_scroll(self, value: int) -> None:
+        scrollbar = self.table.verticalScrollBar()
+        if scrollbar.maximum() > 0 and value >= scrollbar.maximum() - 5:
+            self._load_more_items()
+
+    def _update_product_count_label(self) -> None:
+        total_all = len(self._all_products)
+        total_filtered = len(self._displayed_products)
+        if self._search_query:
+            text = _t("pricelist.showing_count", count=self._loaded_count, total=total_filtered)
+        else:
+            if self._loaded_count < total_all:
+                text = _t("pricelist.showing_count", count=self._loaded_count, total=total_all)
+            else:
+                text = _t("pricelist.product_count", count=total_all)
+        self.lbl_product_count.setText(text)
 
     def add_price_list(self):
         """Open the create dialog and persist a new price list on accept."""

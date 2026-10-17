@@ -185,7 +185,8 @@
     "printer_notice_setup": "Set Up Printer",
     "printer_notice_dismiss": "Dismiss",
     "validation_error": "Validation Error",
-    "transaction_failed": "Transaction failed: {error}"
+    "transaction_failed": "Transaction failed: {error}",
+    "calculator_tooltip": "Calculator (Ctrl+Alt+C)"
   },
   "cart": {
     "price_change_not_allowed": "This product's price cannot be changed.",

@@ -1268,6 +1268,32 @@ QWidget#HeaderWidget QToolButton:hover {
     background-color: rgba(255, 255, 255, 0.1);
 }
 
+QLabel#SalesHeaderClock {
+    color: #94A3B8;
+    font-size: 13px;
+    font-weight: 600;
+    background: transparent;
+    padding-right: 14px;
+}
+
+QToolButton#HeaderCalculatorBtn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    padding: 6px;
+    margin-right: 8px;
+    color: white;
+}
+
+QToolButton#HeaderCalculatorBtn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: #00BCEB;
+}
+
+QToolButton#HeaderCalculatorBtn:pressed {
+    background-color: rgba(0, 188, 235, 0.3);
+}
+
 QLabel#LogoLabel {
     color: #00BCEB;
     font-weight: bold;

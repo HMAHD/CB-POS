@@ -185,7 +185,8 @@
     "printer_notice_setup": "பிரிண்டரை செட் பண்ணுங்க",
     "printer_notice_dismiss": "மூடு",
     "validation_error": "தப்பான உள்ளீடு",
-    "transaction_failed": "பரிவர்த்தனை தோல்வி: {error}"
+    "transaction_failed": "பரிவர்த்தனை தோல்வி: {error}",
+    "calculator_tooltip": "கணிப்பான் (Ctrl+Alt+C)"
   },
   "cart": {
     "price_change_not_allowed": "இந்தப் பொருளின் விலையை மாற்ற முடியாது.",

@@ -1,7 +1,7 @@
 import logging
 from decimal import Decimal
 
-from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QSize, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QDateTime, QEasingCurve, QPoint, QPropertyAnimation, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QBrush, QColor, QKeySequence, QPixmap, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
@@ -34,10 +34,12 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.scale_service import ScaleService
 from cbpos.core.services.sound_service import SoundService
 from cbpos.core.services.suspended_transaction_service import SuspendedTransactionService
+from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import printer_not_configured_message, receipt_printer_configured
+from cbpos.infrastructure.system_tools import open_native_calculator
 from cbpos.ui.constants import CART_TABLE_ROW_HEIGHT, SEARCH_BAR_HEIGHT
 from cbpos.ui.dialogs.advanced_search_dialog import AdvancedSearchDialog
 from cbpos.ui.dialogs.customer_quick_add import CustomerQuickAddDialog
@@ -135,6 +137,33 @@ class SalesView(QWidget):
         ThemeService.register_theme_callback(self.update_logo)
 
         header_layout.addStretch()
+
+        # Live Clock
+        self.lbl_header_clock = QLabel()
+        self.lbl_header_clock.setObjectName("SalesHeaderClock")
+        self._update_clock()
+        header_layout.addWidget(self.lbl_header_clock)
+
+        self._clock_timer = QTimer(self)
+        self._clock_timer.setInterval(1000)
+        self._clock_timer.timeout.connect(self._update_clock)
+        self._clock_timer.start()
+
+        # Native Calculator Button
+        self.btn_calculator = QToolButton()
+        self.btn_calculator.setObjectName("HeaderCalculatorBtn")
+        self.btn_calculator.setFixedSize(42, 42)
+        self.btn_calculator.setIconSize(QSize(20, 20))
+        self.btn_calculator.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_calculator.setToolTip(_t("sales.calculator_tooltip"))
+        self.btn_calculator.clicked.connect(self._open_calculator)
+        self._update_calculator_icon()
+        ThemeService.register_theme_callback(self._update_calculator_icon)
+        header_layout.addWidget(self.btn_calculator)
+
+        # Calculator Shortcut (Ctrl+Alt+C)
+        self._calc_shortcut = QShortcut(QKeySequence("Ctrl+Alt+C"), self)
+        self._calc_shortcut.activated.connect(self._open_calculator)
 
         # Menu Button (Hamburger)
         self.menu_button = QToolButton()
@@ -426,6 +455,9 @@ class SalesView(QWidget):
         self.printer_notice_setup.setText(_t("sales.printer_notice_setup"))
         self.printer_notice_close.setToolTip(_t("sales.printer_notice_dismiss"))
 
+        if hasattr(self, "btn_calculator"):
+            self.btn_calculator.setToolTip(_t("sales.calculator_tooltip"))
+
         # Search mode tooltips
         mode_tooltip_keys = {
             "ALL": "sales.search_mode_all",
@@ -499,6 +531,22 @@ class SalesView(QWidget):
         # Update side menu icons (if it exists)
         if hasattr(self, "side_menu"):
             self.side_menu.update_all_icons()
+
+    def _update_clock(self) -> None:
+        """Update live date and time display."""
+        if hasattr(self, "lbl_header_clock"):
+            now = QDateTime.currentDateTime()
+            self.lbl_header_clock.setText(now.toString("ddd, d MMM yyyy  hh:mm:ss"))
+
+    def _open_calculator(self) -> None:
+        """Launch the OS native calculator."""
+        open_native_calculator()
+
+    def _update_calculator_icon(self) -> None:
+        """Update calculator button icon for the active theme."""
+        if hasattr(self, "btn_calculator"):
+            icon_color = ThemeService.get_icon_color()
+            self.btn_calculator.setIcon(Icons.get("fa5s.calculator", icon_color))
 
     def update_cart_ui(self):
         """Initial cart update (delegates to update_cart_display)."""

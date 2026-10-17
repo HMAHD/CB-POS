@@ -6,7 +6,7 @@ from types import EllipsisType
 from sqlalchemy import ColumnElement, and_, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from cbpos.core.constants.audit import PRICING_EVENT
+from cbpos.core.constants.audit import PRICE_LIST_BULK_ADJUST, PRICING_EVENT
 from cbpos.core.database import Database
 from cbpos.core.models import PriceList, PriceListItem, Product
 from cbpos.core.services.logging_service import LoggingService, diff_changes, snapshot_changes
@@ -403,3 +403,71 @@ class PriceListService:
                 )
 
             return preview_items
+
+    def apply_bulk_adjust(self, list_id: int, items: list[BulkPreviewItem], rule_summary: str) -> int:
+        """Apply candidate bulk-adjusted prices in a single atomic transaction (#544).
+
+        Updates existing overrides or creates new ones. Writes exactly one
+        consolidated entry to the Activity Log and updates the list's last_modified.
+
+        Args:
+            list_id: Target price list ID.
+            items: The candidate items to save (as returned by calculate_preview).
+            rule_summary: Human-readable summary of the rule applied (for audit details).
+
+        Returns:
+            The number of items updated.
+
+        Raises:
+            ValueError: If the price list is not found.
+        """
+        if not items:
+            return 0
+
+        with self.db.get_session() as session:
+            price_list = session.get(PriceList, list_id)
+            if not price_list:
+                raise ValueError(f"Price list with ID {list_id} not found.")
+
+            # Load all existing PriceListItem rows for this list
+            existing_items_map = {
+                item.product_id: item
+                for item in session.scalars(select(PriceListItem).where(PriceListItem.price_list_id == list_id)).all()
+            }
+
+            below_cost_count = 0
+            for preview_item in items:
+                if preview_item.is_below_cost:
+                    below_cost_count += 1
+
+                existing = existing_items_map.get(preview_item.product_id)
+                if existing:
+                    existing.price = preview_item.new_list_price
+                else:
+                    new_item = PriceListItem(
+                        price_list_id=list_id,
+                        product_id=preview_item.product_id,
+                        price=preview_item.new_list_price,
+                    )
+                    session.add(new_item)
+
+            price_list.last_modified = datetime.now()
+
+            # Record single consolidated Activity Log entry (#544)
+            log_details = snapshot_changes(
+                {
+                    "items_updated": len(items),
+                    "rule": rule_summary,
+                    "below_cost_count": below_cost_count,
+                }
+            )
+            LoggingService.add_change(
+                session,
+                PRICE_LIST_BULK_ADJUST,
+                PRICING_EVENT,
+                price_list.name,
+                log_details,
+            )
+
+            session.commit()
+            return len(items)

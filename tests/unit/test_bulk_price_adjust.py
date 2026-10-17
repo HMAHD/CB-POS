@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 from sqlalchemy.orm import Session
 
-from cbpos.core.models import Category, PriceList, PriceListItem, Product
+from cbpos.core.models import Category, PriceList, PriceListItem, Product, User
 from cbpos.core.services.price_list_service import (
     BulkAdjustmentRule,
     PriceListService,
@@ -49,7 +49,8 @@ def sample_catalog(db_session: Session):
         price=Decimal("100.00"),
         is_active=True,
     )
-    db_session.add_all([p1, p2, p3, p4])
+    user = User(username="admin_user", pin_hash="dummy")
+    db_session.add_all([p1, p2, p3, p4, user])
     db_session.flush()
 
     pl = PriceList(name="New Year Promo", is_active=True)
@@ -61,7 +62,12 @@ def sample_catalog(db_session: Session):
     db_session.add(item1)
     db_session.commit()
 
-    return {"price_list": pl, "categories": [cat_bev, cat_snack], "products": [p1, p2, p3, p4]}
+    return {
+        "price_list": pl,
+        "categories": [cat_bev, cat_snack],
+        "products": [p1, p2, p3, p4],
+        "user": user,
+    }
 
 
 def test_percentage_discount_calculation(sample_catalog):
@@ -239,3 +245,79 @@ def test_scope_filtering(sample_catalog):
     preview_sel = service.calculate_preview(pl.id, rule_sel)
     assert len(preview_sel) == 1
     assert preview_sel[0].product_id == p1.id
+
+
+def test_atomic_bulk_apply_and_single_audit_entry(sample_catalog, db_session, monkeypatch):
+    from cbpos.core.constants.audit import PRICE_LIST_BULK_ADJUST, PRICING_EVENT
+    from cbpos.core.models import AuditLog
+    from cbpos.core.services.auth_service import AuthService
+
+    monkeypatch.setattr(AuthService, "get_current_user", lambda: sample_catalog["user"])
+
+    service = PriceListService()
+    pl = sample_catalog["price_list"]
+    rule = BulkAdjustmentRule(
+        rule_type="PERCENTAGE_OFF",
+        value=Decimal("15.0"),
+        rounding="NEAREST_1",
+        scope="ALL",
+    )
+    preview = service.calculate_preview(pl.id, rule)
+    count = service.apply_bulk_adjust(pl.id, preview, rule_summary="15% off base price, nearest rupee")
+    assert count == 4
+
+    # Check that database items have new prices
+    items = service.get_items(pl.id)
+    assert len(items) == 4
+    # p1 (Coffee Beans: base 1000 - 15% = 850)
+    p1_item = next(it for it in items if it.product_id == sample_catalog["products"][0].id)
+    assert p1_item.price == Decimal("850.00")
+
+    # Master product base price and cost must remain completely untouched!
+    for p in sample_catalog["products"]:
+        db_p = db_session.get(Product, p.id)
+        assert db_p.price == p.price
+        assert db_p.cost == p.cost
+
+    # Check exactly 1 audit entry for PRICE_LIST_BULK_ADJUST
+    audit_entries = (
+        db_session.query(AuditLog)
+        .filter(
+            AuditLog.event_type == PRICING_EVENT,
+            AuditLog.action == PRICE_LIST_BULK_ADJUST,
+        )
+        .all()
+    )
+    assert len(audit_entries) == 1
+    entry = audit_entries[0]
+    import json
+
+    data = json.loads(entry.details)
+    assert data["subject"] == pl.name
+    assert "15%" in entry.details or "items_updated" in entry.details
+
+
+def test_apply_bulk_adjust_rollback_on_error(sample_catalog, monkeypatch):
+    service = PriceListService()
+    pl = sample_catalog["price_list"]
+    rule = BulkAdjustmentRule(
+        rule_type="PERCENTAGE_OFF",
+        value=Decimal("20.0"),
+        rounding="EXACT",
+        scope="ALL",
+    )
+    preview = service.calculate_preview(pl.id, rule)
+
+    # Force an error during commit to verify rollback
+    from unittest.mock import patch
+
+    with patch(
+        "cbpos.core.services.logging_service.LoggingService.add_change", side_effect=RuntimeError("DB Disk Failure")
+    ):
+        with pytest.raises(RuntimeError, match="DB Disk Failure"):
+            service.apply_bulk_adjust(pl.id, preview, rule_summary="20% off")
+
+    # Verify original override price on p1 is unchanged (950.00)
+    items = service.get_items(pl.id)
+    p1_item = next(it for it in items if it.product_id == sample_catalog["products"][0].id)
+    assert p1_item.price == Decimal("950.00")

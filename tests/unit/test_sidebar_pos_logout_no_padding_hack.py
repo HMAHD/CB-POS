@@ -19,13 +19,16 @@ from cbpos.ui.widgets.collapsible_sidebar import CollapsibleSidebar
 pytestmark = pytest.mark.usefixtures("qapp")
 
 
-class TestPosAndLogoutHaveNoStringPaddingHack:
-    def test_pos_button_text_has_no_leading_spaces(self):
+class TestPosAndLogoutRemovedFromSidebar:
+    def test_sidebar_has_no_bottom_exit_buttons(self):
         sidebar = CollapsibleSidebar()
-        sidebar.retranslate_pos_logout()
-        assert not sidebar.btn_pos.text().startswith(" ")
+        sidebar.finalize()
+        assert not hasattr(sidebar, "btn_pos")
+        assert not hasattr(sidebar, "btn_logout")
+        assert not hasattr(sidebar, "_bottom_widget")
 
-    def test_logout_button_text_has_no_leading_spaces(self):
+    def test_nav_buttons_have_no_leading_spaces(self):
         sidebar = CollapsibleSidebar()
-        sidebar.retranslate_pos_logout()
-        assert not sidebar.btn_logout.text().startswith(" ")
+        btn = sidebar.add_nav_button("Inventory", "fa5s.boxes", 1)
+        sidebar.finalize()
+        assert not btn.text().startswith(" ")

@@ -79,8 +79,6 @@ class ManagementView(QWidget):
         # --- Sidebar ---
         self.sidebar = CollapsibleSidebar()
         self.sidebar.nav_clicked.connect(self.switch_tab)
-        self.sidebar.pos_clicked.connect(self.request_pos_view.emit)
-        self.sidebar.logout_clicked.connect(self.logout_requested.emit)
 
         self.btn_dashboard = self.sidebar.add_nav_button("", Icons.DASHBOARD, 0)
         self.btn_inventory = self.sidebar.add_nav_button("", Icons.INVENTORY, 1)
@@ -224,9 +222,6 @@ class ManagementView(QWidget):
         self.btn_header_pos.setToolTip(_t("management.sidebar_pos"))
         self.btn_header_logout.setText(_t("management.sidebar_logout"))
         self.btn_header_logout.setToolTip(_t("management.sidebar_logout"))
-
-        # Bottom buttons
-        self.sidebar.retranslate_pos_logout()
 
     def switch_tab(self, index: int) -> None:
         """Show the view at the given sidebar nav index, creating it on first use."""

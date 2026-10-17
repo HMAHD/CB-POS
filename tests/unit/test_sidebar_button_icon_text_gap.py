@@ -87,12 +87,13 @@ class TestSidebarCollapseKeepsIconPaddingInSync:
             assert btn.iconSize().width() > btn._ICON_SIZE
 
 
-class TestPosLogoutTextHasNoStringPaddingHack:
-    def test_retranslate_sets_pos_and_logout_text_without_leading_spaces(self):
+class TestNavButtonsHaveNoStringPaddingHack:
+    def test_sidebar_has_no_bottom_exit_buttons_and_nav_buttons_have_no_padding_hack(self):
         sidebar = CollapsibleSidebar()
+        sidebar.add_nav_button("Dashboard", "fa5s.tachometer-alt", 0)
         sidebar.finalize()
 
-        sidebar.retranslate_pos_logout()
-
-        assert not sidebar.btn_pos.text().startswith(" ")
-        assert not sidebar.btn_logout.text().startswith(" ")
+        assert not hasattr(sidebar, "btn_pos")
+        assert not hasattr(sidebar, "btn_logout")
+        for btn in sidebar.nav_buttons:
+            assert not btn.text().startswith(" ")

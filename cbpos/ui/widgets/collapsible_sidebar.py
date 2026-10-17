@@ -13,7 +13,6 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.theme_service import ThemeService
-from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.utils.style_helpers import refresh_style
 from cbpos.ui.widgets.custom_widgets import SidebarButton
@@ -33,23 +32,19 @@ COMPACT_NAV_SPACING = 4
 
 
 class CollapsibleSidebar(QFrame):
-    """Reusable collapsible sidebar with logo, nav buttons, and POS/Logout bottom section.
+    """Reusable collapsible sidebar with logo, collapse toggle, and navigation buttons.
 
-    Used by ManagementView and SettingsView to avoid duplicating ~120 lines of
-    identical sidebar construction, animation, and theme-update code.
+    Used by ManagementView and SettingsView to avoid duplicating sidebar
+    construction, animation, and theme-update code.
 
     Signals:
         nav_clicked(int): Emitted when a navigation button is clicked, with its index.
-        pos_clicked(): Emitted when the POS/Sales button is clicked.
-        logout_clicked(): Emitted when the Logout button is clicked.
     """
 
     nav_clicked = pyqtSignal(int)
-    pos_clicked = pyqtSignal()
-    logout_clicked = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
-        """Build the header, bottom POS/Logout section, and collapse animation.
+        """Build the header and collapse animation.
 
         Restores the last-persisted collapsed state via ``ConfigService``.
         Call ``add_nav_button()``/``add_section_label()`` to populate the nav
@@ -112,39 +107,7 @@ class CollapsibleSidebar(QFrame):
         self.nav_scroll.setWidget(nav_inner)
         self._layout.addWidget(self.nav_scroll, 1)
 
-        # --- Bottom Section (POS + Logout) ---
-        self._bottom_widget = QWidget()
-        self._bottom_widget.setObjectName("UserProfileContainer")
-        bottom_layout = QVBoxLayout(self._bottom_widget)
-        bottom_layout.setContentsMargins(0, 0, 0, 0)
-        bottom_layout.setSpacing(0)
-
-        # Pulls POS/Logout visually away from the nav list above, so they
-        # read as a distinct "exit cluster" rather than two more rows in
-        # the same list (#315).
-        self._bottom_divider = QFrame()
-        self._bottom_divider.setObjectName("SidebarBottomDivider")
-        self._bottom_divider.setFixedHeight(1)
-        bottom_layout.addWidget(self._bottom_divider)
-        bottom_layout.addSpacing(8)
-
-        self.btn_pos = SidebarButton("", "fa5s.cash-register")
-        self.btn_pos.setObjectName("BtnPos")
-        self.btn_pos.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.btn_pos.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.btn_pos.clicked.connect(self.pos_clicked.emit)
-        bottom_layout.addWidget(self.btn_pos)
-
-        self.btn_logout = SidebarButton("", Icons.LOGOUT)
-        self.btn_logout.setObjectName("BtnLogout")
-        self.btn_logout.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.btn_logout.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.btn_logout.clicked.connect(self.logout_clicked.emit)
-        bottom_layout.addWidget(self.btn_logout)
-
-        bottom_layout.addSpacing(10)
-
-        # Stretch + bottom are added after nav buttons in finalize()
+        # Stretch is added after nav buttons in finalize()
         self._stretch_added = False
 
         # --- Animation ---
@@ -224,12 +187,11 @@ class CollapsibleSidebar(QFrame):
     def finalize(self) -> None:
         """Call after all nav buttons have been added.
 
-        Inserts the stretch and bottom section, applies initial collapsed
-        state if needed, and refreshes styles.
+        Inserts the stretch, applies initial collapsed state if needed,
+        and refreshes styles.
         """
         if not self._stretch_added:
             self.nav_layout.addStretch()
-            self._layout.addWidget(self._bottom_widget)
             self._stretch_added = True
 
         if self.is_collapsed:
@@ -244,14 +206,6 @@ class CollapsibleSidebar(QFrame):
             btn.set_active(is_active)
             btn.setProperty("active", is_active)
             refresh_style(btn)
-
-    def retranslate_pos_logout(self) -> None:
-        """Update POS and Logout button text from i18n.
-
-        Called by the owning view's ``retranslate_ui`` method.
-        """
-        self.btn_pos.setText(_t("management.sidebar_pos"))
-        self.btn_logout.setText(_t("management.sidebar_logout"))
 
     # ------------------------------------------------------------------
     # Collapse / Expand
@@ -329,7 +283,7 @@ class CollapsibleSidebar(QFrame):
         self.is_compact = compact
         self.nav_layout.setSpacing(COMPACT_NAV_SPACING if compact else NAV_SPACING)
         height = COMPACT_BUTTON_HEIGHT if compact else BUTTON_HEIGHT
-        for btn in [*self.nav_buttons, self.btn_pos, self.btn_logout]:
+        for btn in self.nav_buttons:
             btn.setFixedHeight(height)
             btn.setProperty("compact", compact)
             refresh_style(btn)
@@ -382,15 +336,13 @@ class CollapsibleSidebar(QFrame):
         icon pixmap differently depending on whether it's showing text
         beside the icon or collapsed to icon-only (#314).
         """
-        buttons = [self.btn_pos, self.btn_logout, *self.nav_buttons]
-        for btn in buttons:
+        for btn in self.nav_buttons:
             btn.setToolButtonStyle(style)
             btn.update_icon()
 
     def _update_all_styles(self) -> None:
         """Refresh the ``collapsed`` QSS property on every button."""
-        buttons = [*self.nav_buttons, self.btn_pos, self.btn_logout]
-        for btn in buttons:
+        for btn in self.nav_buttons:
             btn.setProperty("collapsed", self.is_collapsed)
             refresh_style(btn)
 
@@ -411,8 +363,7 @@ class CollapsibleSidebar(QFrame):
 
     def _on_theme_changed(self) -> None:
         """Refresh all icons and the logo when the theme changes."""
-        buttons = [*self.nav_buttons, self.btn_pos, self.btn_logout]
-        for btn in buttons:
+        for btn in self.nav_buttons:
             if hasattr(btn, "update_icon"):
                 btn.update_icon()
 

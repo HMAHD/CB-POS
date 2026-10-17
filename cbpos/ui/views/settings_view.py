@@ -80,8 +80,6 @@ class SettingsView(QWidget):
         # --- Sidebar ---
         self.sidebar = CollapsibleSidebar()
         self.sidebar.nav_clicked.connect(self.switch_page)
-        self.sidebar.pos_clicked.connect(self._on_pos_clicked)
-        self.sidebar.logout_clicked.connect(self._on_logout_clicked)
 
         # Navigation buttons — config pages
         self.btn_shop_info = self.sidebar.add_nav_button("", "fa5s.store", 0)
@@ -214,9 +212,6 @@ class SettingsView(QWidget):
         self.btn_payment_methods.setText(_t("settings.sidebar_payments"))
         self.btn_data_safety.setText(_t("settings.sidebar_data_safety"))
         self.btn_admin_tools.setText(_t("settings.sidebar_admin_tools"))
-
-        # Bottom sidebar buttons
-        self.sidebar.retranslate_pos_logout()
 
         # Action bar
         self.btn_save.setText(_t("settings.btn_save_all"))

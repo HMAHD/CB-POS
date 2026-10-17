@@ -321,3 +321,162 @@ def test_apply_bulk_adjust_rollback_on_error(sample_catalog, monkeypatch):
     items = service.get_items(pl.id)
     p1_item = next(it for it in items if it.product_id == sample_catalog["products"][0].id)
     assert p1_item.price == Decimal("950.00")
+
+
+@pytest.mark.parametrize("lang", ["en", "si", "ta"])
+def test_bulk_adjust_i18n_keys_exist(lang):
+    from cbpos.i18n import translate_in
+
+    keys = [
+        "pricelist.btn_bulk_adjust",
+        "pricelist.bulk_title",
+        "pricelist.bulk_target_scope",
+        "pricelist.scope_selected",
+        "pricelist.scope_category",
+        "pricelist.scope_all",
+        "pricelist.bulk_pricing_rule",
+        "pricelist.rule_percent_off",
+        "pricelist.rule_fixed_off",
+        "pricelist.rule_fixed_markup",
+        "pricelist.rule_margin_cost",
+        "pricelist.bulk_adjustment_value",
+        "pricelist.bulk_rounding_options",
+        "pricelist.rounding_exact",
+        "pricelist.rounding_nearest_1",
+        "pricelist.rounding_nearest_5",
+        "pricelist.rounding_charm_99",
+        "pricelist.below_cost_warning_title",
+        "pricelist.below_cost_warning_msg",
+        "pricelist.below_cost_confirm_title",
+        "pricelist.below_cost_confirm_msg",
+        "pricelist.margin_badge_safe",
+        "pricelist.margin_badge_below_cost",
+        "pricelist.cost_not_set",
+        "pricelist.preview_title",
+        "pricelist.btn_apply_adjustments",
+    ]
+    for key in keys:
+        val = translate_in(lang, key)
+        assert val != key, f"Missing translation for key '{key}' in '{lang}'"
+
+
+class TestBulkPriceAdjustDialogUI:
+    """Test suite for BulkPriceAdjustDialog widget interaction (#544)."""
+
+    def test_dialog_init_with_no_selection(self, db_session, qapp):
+        cat = Category(name="Snacks")
+        db_session.add(cat)
+        db_session.flush()
+
+        p1 = Product(
+            barcode="UI-B1", name_en="Chips", price=Decimal("100.00"), cost=Decimal("60.00"), category_id=cat.id
+        )
+        db_session.add(p1)
+        db_session.commit()
+
+        service = PriceListService()
+        pl = service.create_price_list("Holiday Deals")
+
+        from cbpos.ui.dialogs.bulk_price_adjust_dialog import BulkPriceAdjustDialog
+
+        dialog = BulkPriceAdjustDialog(
+            price_list_id=pl.id,
+            price_list_name=pl.name,
+            selected_product_ids=[],
+        )
+
+        assert not dialog.radio_selected.isEnabled()
+        assert dialog.radio_all.isChecked()
+        assert dialog.table_preview.rowCount() >= 1
+
+    def test_dialog_init_with_selected_products(self, db_session, qapp):
+        p1 = Product(barcode="UI-B2", name_en="Juice", price=Decimal("150.00"), cost=Decimal("90.00"))
+        p2 = Product(barcode="UI-B3", name_en="Water", price=Decimal("50.00"), cost=Decimal("30.00"))
+        db_session.add_all([p1, p2])
+        db_session.commit()
+
+        service = PriceListService()
+        pl = service.create_price_list("Beverage Promo")
+
+        from cbpos.ui.dialogs.bulk_price_adjust_dialog import BulkPriceAdjustDialog
+
+        dialog = BulkPriceAdjustDialog(
+            price_list_id=pl.id,
+            price_list_name=pl.name,
+            selected_product_ids=[p1.id],
+        )
+
+        assert dialog.radio_selected.isEnabled()
+        assert dialog.radio_selected.isChecked()
+        # Preview must contain only the 1 selected item
+        assert dialog.table_preview.rowCount() == 1
+        assert dialog.table_preview.item(0, 0).text() == "Juice"
+
+    def test_dialog_below_cost_banner_and_apply(self, db_session, qapp):
+        from unittest.mock import patch
+
+        from PyQt6.QtWidgets import QMessageBox
+
+        p1 = Product(barcode="UI-B4", name_en="Expensive Tea", price=Decimal("200.00"), cost=Decimal("120.00"))
+        db_session.add(p1)
+        db_session.commit()
+
+        service = PriceListService()
+        pl = service.create_price_list("Clearance")
+
+        from cbpos.ui.dialogs.bulk_price_adjust_dialog import (
+            RULE_FIXED_OFF,
+            BulkPriceAdjustDialog,
+        )
+
+        dialog = BulkPriceAdjustDialog(
+            price_list_id=pl.id,
+            price_list_name=pl.name,
+            selected_product_ids=[p1.id],
+        )
+
+        # Set rule: 150 Rs off (New price: 200 - 150 = 50, cost is 120 -> below cost!)
+        idx = dialog.combo_rule_type.findData(RULE_FIXED_OFF)
+        dialog.combo_rule_type.setCurrentIndex(idx)
+        dialog.spin_value.setValue(150.00)
+
+        assert dialog.below_cost_count == 1
+        assert not dialog.banner_below_cost.isHidden()
+        assert "below purchase cost" in dialog.banner_below_cost.text()
+
+        # Test apply: if user cancels prompt, should not accept
+        with patch.object(QMessageBox, "warning", return_value=QMessageBox.StandardButton.No):
+            with patch.object(dialog, "accept") as mock_accept:
+                dialog.apply_and_accept()
+                mock_accept.assert_not_called()
+
+        # Test apply: if user confirms prompt, should persist and accept
+        with patch.object(QMessageBox, "warning", return_value=QMessageBox.StandardButton.Yes):
+            with patch.object(dialog, "accept") as mock_accept:
+                dialog.apply_and_accept()
+                mock_accept.assert_called_once()
+
+        # Verify saved in DB
+        items = service.get_items(pl.id)
+        saved = next(it for it in items if it.product_id == p1.id)
+        assert saved.price == Decimal("50.00")
+
+    def test_pricelist_view_bulk_adjust_button(self, db_session, qapp):
+        from unittest.mock import patch
+
+        from cbpos.ui.views.pricelist_view import PriceListView
+
+        view = PriceListView()
+        assert hasattr(view, "btn_bulk_adjust")
+        assert view.btn_bulk_adjust.text() != ""
+
+        # Test open dialog callback
+        service = PriceListService()
+        pl = service.create_price_list("Button Test List")
+        view.current_list = pl
+
+        with patch("cbpos.ui.views.pricelist_view.BulkPriceAdjustDialog") as mock_dlg_cls:
+            mock_dlg = mock_dlg_cls.return_value
+            mock_dlg.exec.return_value = False
+            view.open_bulk_adjust_dialog()
+            mock_dlg_cls.assert_called_once()

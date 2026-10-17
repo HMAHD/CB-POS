@@ -26,6 +26,7 @@ from cbpos.core.services.price_list_service import PriceListService
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.utils.formatters import NO_VALUE, format_number, money_header
 from cbpos.i18n import _t, register_language_callback
+from cbpos.ui.dialogs.bulk_price_adjust_dialog import BulkPriceAdjustDialog
 from cbpos.ui.dialogs.price_list_dialog import PriceListDialog
 from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
 from cbpos.ui.resources.icons import Icons
@@ -204,6 +205,11 @@ class PriceListView(QWidget):
 
         set_price_row = QHBoxLayout()
         set_price_row.addStretch()
+        self.btn_bulk_adjust = QPushButton()
+        self.btn_bulk_adjust.setObjectName("BtnBulkAdjust")
+        self.btn_bulk_adjust.clicked.connect(self.open_bulk_adjust_dialog)
+        set_price_row.addWidget(self.btn_bulk_adjust)
+
         self.btn_set_item_price = QPushButton()
         self.btn_set_item_price.setObjectName("BtnSetItemPrice")
         self.btn_set_item_price.clicked.connect(self.edit_selected_item_price)
@@ -271,6 +277,7 @@ class PriceListView(QWidget):
         )
         align_numeric_headers(self.table, (2, 3))  # Base Price, List Price
         self.hint_label.setText(_t("pricelist.footer_hint"))
+        self.btn_bulk_adjust.setText(_t("pricelist.btn_bulk_adjust"))
         self.btn_set_item_price.setText(_t("pricelist.btn_set_item_price"))
         self.btn_remove_override.setText(_t("pricelist.btn_remove_override"))
 
@@ -470,6 +477,30 @@ class PriceListView(QWidget):
         row = self.table.currentRow()
         has_override = (row >= 0) and (self._list_price(row) is not None)
         self.btn_remove_override.setEnabled(has_override)
+
+    def open_bulk_adjust_dialog(self) -> None:
+        """Open the bulk price adjust dialog for the current price list (#544)."""
+        if not self.current_list:
+            return
+
+        selected_product_ids = []
+        selected_indexes = self.table.selectionModel().selectedRows()
+        for idx in selected_indexes:
+            row = idx.row()
+            try:
+                pid = int(self.table.item(row, 0).text())
+                selected_product_ids.append(pid)
+            except (ValueError, AttributeError):
+                continue
+
+        dialog = BulkPriceAdjustDialog(
+            price_list_id=self.current_list.id,
+            price_list_name=self.current_list.name,
+            selected_product_ids=selected_product_ids,
+            parent=self,
+        )
+        if dialog.exec():
+            self.load_items()
 
     def _show_item_context_menu(self, position) -> None:
         item = self.table.itemAt(position)

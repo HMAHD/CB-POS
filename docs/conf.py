@@ -72,10 +72,9 @@ versionwarning_body_text = (
 
 # Several models (Sale, Purchase, Document, ...) each have their own `type`
 # column; Sphinx's Python-domain autodoc tries to cross-reference the shared
-# attribute name and can't disambiguate. Not a content problem -- suppress
-# just this warning category rather than renaming a well-established column
-# across 8 SQLAlchemy models to appease a docs tool.
-suppress_warnings = ["ref.python"]
+# attribute name and can't disambiguate. Also suppress duplicate object descriptions
+# caused by re-exporting submodules at package level.
+suppress_warnings = ["ref.python", "duplicate_object_description"]
 
 
 _FOREIGN_INSTANCE_ATTR_TYPES = {

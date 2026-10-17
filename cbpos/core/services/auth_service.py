@@ -37,6 +37,7 @@ class AuthService:
     """Service to handle user authentication and session management.
 
     Security features:
+
     - bcrypt PIN hashing with automatic migration from legacy SHA-256
     - Database-backed brute-force protection: configurable lockout
       (default 5 min after 5 failed attempts), persists across restarts

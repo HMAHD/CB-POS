@@ -1,3 +1,9 @@
+"""Price list management service.
+
+Handles price list entities, custom item prices, bulk price adjustment calculations,
+rounding rules, and price modification auditing (#544, #642).
+"""
+
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal

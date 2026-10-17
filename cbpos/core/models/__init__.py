@@ -1,3 +1,9 @@
+"""CB-POS domain and persistence models.
+
+Contains SQLAlchemy declarative ORM models spanning users, authentication, products,
+inventory, suppliers, price lists, promotions, sales, documents, and audit logging.
+"""
+
 from datetime import datetime, time
 from decimal import Decimal
 from typing import Optional

@@ -1,14 +1,58 @@
+from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from types import EllipsisType
 
 from sqlalchemy import ColumnElement, and_, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
-from cbpos.core.constants.audit import PRICING_EVENT
+from cbpos.core.constants.audit import PRICE_LIST_BULK_ADJUST, PRICING_EVENT
 from cbpos.core.database import Database
 from cbpos.core.models import PriceList, PriceListItem, Product
 from cbpos.core.services.logging_service import LoggingService, diff_changes, snapshot_changes
+
+
+@dataclass
+class BulkAdjustmentRule:
+    """Parameters for a bulk price adjustment operation (#544)."""
+
+    rule_type: str  # "PERCENTAGE_OFF", "FIXED_OFF", "FIXED_MARKUP", "MARGIN_OVER_COST"
+    value: Decimal  # Discount/markup percentage or rupee amount
+    rounding: str = "EXACT"  # "EXACT", "NEAREST_1", "NEAREST_5", "CHARM_99"
+    scope: str = "ALL"  # "SELECTED", "CATEGORY", "ALL"
+    category_id: int | None = None
+    product_ids: list[int] | None = None
+
+
+@dataclass
+class BulkPreviewItem:
+    """One candidate product row in the bulk adjustment preview table (#544)."""
+
+    product_id: int
+    product_name: str
+    category_name: str
+    cost: Decimal
+    base_price: Decimal
+    old_list_price: Decimal | None
+    new_list_price: Decimal
+    margin_percent: Decimal | None
+    is_below_cost: bool
+    loss_amount: Decimal
+
+
+def round_price(val: Decimal, mode: str) -> Decimal:
+    """Round a calculated price according to the specified rounding rule (#544)."""
+    val = max(Decimal("0.00"), val)
+    if mode == "NEAREST_1":
+        return val.quantize(Decimal("1"), rounding=ROUND_HALF_UP).quantize(Decimal("0.01"))
+    elif mode == "NEAREST_5":
+        divided = (val / Decimal("5")).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        return (divided * Decimal("5")).quantize(Decimal("0.01"))
+    elif mode == "CHARM_99":
+        int_part = int(val)
+        return (Decimal(int_part) + Decimal("0.99")).quantize(Decimal("0.01"))
+    else:  # "EXACT"
+        return val.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def live_price_list_condition(now: datetime) -> ColumnElement[bool]:
@@ -276,3 +320,154 @@ class PriceListService:
             for item in items:
                 session.expunge(item)
             return items
+
+    def calculate_preview(self, list_id: int, rule: BulkAdjustmentRule) -> list[BulkPreviewItem]:
+        """Compute candidate bulk-adjusted prices without modifying database records (#544).
+
+        Args:
+            list_id: Target price list ID.
+            rule: Parameters specifying rule type, value, rounding, and scope.
+
+        Returns:
+            A list of BulkPreviewItem detailing old vs new prices, margins, and below-cost flags.
+        """
+        with self.db.get_session() as session:
+            # 1. Fetch existing list items for this list
+            existing_overrides = {
+                item.product_id: item.price
+                for item in session.scalars(select(PriceListItem).where(PriceListItem.price_list_id == list_id)).all()
+            }
+
+            # 2. Select target products based on scope
+            stmt = select(Product).where(Product.is_active.is_(True))
+            if rule.scope == "SELECTED" and rule.product_ids:
+                stmt = stmt.where(Product.id.in_(rule.product_ids))
+            elif rule.scope == "CATEGORY" and rule.category_id:
+                stmt = stmt.where(Product.category_id == rule.category_id)
+
+            stmt = stmt.options(selectinload(Product.category)).order_by(Product.name_en)
+            products = session.scalars(stmt).all()
+
+            preview_items: list[BulkPreviewItem] = []
+            for product in products:
+                base_price = Decimal(str(product.price or 0))
+                cost = Decimal(str(product.cost or 0))
+
+                # Compute unrounded new price
+                if rule.rule_type == "PERCENTAGE_OFF":
+                    discount_factor = Decimal("1") - (rule.value / Decimal("100"))
+                    raw_new_price = base_price * discount_factor
+                elif rule.rule_type == "FIXED_OFF":
+                    raw_new_price = base_price - rule.value
+                elif rule.rule_type == "FIXED_MARKUP":
+                    raw_new_price = base_price + rule.value
+                elif rule.rule_type == "MARGIN_OVER_COST":
+                    if cost > Decimal("0.00"):
+                        raw_new_price = cost * (Decimal("1") + (rule.value / Decimal("100")))
+                    else:
+                        raw_new_price = base_price
+                else:
+                    raw_new_price = base_price
+
+                # Round and clamp
+                new_price = round_price(raw_new_price, rule.rounding)
+
+                # Margin and below-cost calculations
+                if cost > Decimal("0.00"):
+                    margin_pct = ((new_price - cost) / cost * Decimal("100")).quantize(
+                        Decimal("0.1"), rounding=ROUND_HALF_UP
+                    )
+                    is_below_cost = new_price < cost
+                    loss_amount = max(Decimal("0.00"), cost - new_price) if is_below_cost else Decimal("0.00")
+                else:
+                    margin_pct = None
+                    is_below_cost = False
+                    loss_amount = Decimal("0.00")
+
+                cat_name = product.category.name if product.category else ""
+                old_override = existing_overrides.get(product.id)
+
+                preview_items.append(
+                    BulkPreviewItem(
+                        product_id=product.id,
+                        product_name=product.name_en,
+                        category_name=cat_name,
+                        cost=cost,
+                        base_price=base_price,
+                        old_list_price=old_override,
+                        new_list_price=new_price,
+                        margin_percent=margin_pct,
+                        is_below_cost=is_below_cost,
+                        loss_amount=loss_amount,
+                    )
+                )
+
+            return preview_items
+
+    def apply_bulk_adjust(self, list_id: int, items: list[BulkPreviewItem], rule_summary: str) -> int:
+        """Apply candidate bulk-adjusted prices in a single atomic transaction (#544).
+
+        Updates existing overrides or creates new ones. Writes exactly one
+        consolidated entry to the Activity Log and updates the list's last_modified.
+
+        Args:
+            list_id: Target price list ID.
+            items: The candidate items to save (as returned by calculate_preview).
+            rule_summary: Human-readable summary of the rule applied (for audit details).
+
+        Returns:
+            The number of items updated.
+
+        Raises:
+            ValueError: If the price list is not found.
+        """
+        if not items:
+            return 0
+
+        with self.db.get_session() as session:
+            price_list = session.get(PriceList, list_id)
+            if not price_list:
+                raise ValueError(f"Price list with ID {list_id} not found.")
+
+            # Load all existing PriceListItem rows for this list
+            existing_items_map = {
+                item.product_id: item
+                for item in session.scalars(select(PriceListItem).where(PriceListItem.price_list_id == list_id)).all()
+            }
+
+            below_cost_count = 0
+            for preview_item in items:
+                if preview_item.is_below_cost:
+                    below_cost_count += 1
+
+                existing = existing_items_map.get(preview_item.product_id)
+                if existing:
+                    existing.price = preview_item.new_list_price
+                else:
+                    new_item = PriceListItem(
+                        price_list_id=list_id,
+                        product_id=preview_item.product_id,
+                        price=preview_item.new_list_price,
+                    )
+                    session.add(new_item)
+
+            price_list.last_modified = datetime.now()
+
+            # Record single consolidated Activity Log entry (#544)
+            log_details = snapshot_changes(
+                {
+                    "items_updated": len(items),
+                    "rule": rule_summary,
+                    "below_cost_count": below_cost_count,
+                }
+            )
+            LoggingService.add_change(
+                session,
+                PRICE_LIST_BULK_ADJUST,
+                PRICING_EVENT,
+                price_list.name,
+                log_details,
+            )
+
+            session.commit()
+            return len(items)

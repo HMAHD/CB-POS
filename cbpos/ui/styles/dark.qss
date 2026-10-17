@@ -4504,3 +4504,41 @@ QLabel#StockTakeScanFeedback {
     color: #39FF14;
     font-weight: bold;
 }
+
+/* ── Bulk Price Adjust Dialog (#544) ── */
+QDialog#BulkPriceAdjustDialog QFrame#BulkRuleCard {
+    background-color: #2D2D30;
+    border: 1px solid #3E3E42;
+    border-radius: 6px;
+    padding: 12px;
+}
+
+QDialog#BulkPriceAdjustDialog QLabel#BulkBelowCostBanner {
+    background-color: rgba(239, 68, 68, 0.18);
+    color: #F87171;
+    border: 1px solid #EF4444;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-weight: bold;
+}
+
+QLabel#BulkMarginBadgeSafe {
+    background-color: rgba(16, 185, 129, 0.18);
+    color: #34D399;
+    border: 1px solid #10B981;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+QLabel#BulkMarginBadgeWarning {
+    background-color: rgba(239, 68, 68, 0.22);
+    color: #F87171;
+    border: 1px solid #EF4444;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: bold;
+}
+

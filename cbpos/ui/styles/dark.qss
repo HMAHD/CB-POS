@@ -4219,6 +4219,20 @@ QLabel#PriceListDates {
     background-color: transparent;
 }
 
+/* Search input */
+QLineEdit#PriceListSearchInput {
+    padding: 6px 10px;
+    font-size: 13px;
+    border: 1px solid #333333;
+    border-radius: 4px;
+    background-color: #252526;
+    color: #E0E0E0;
+}
+
+QLineEdit#PriceListSearchInput:focus {
+    border-color: #00BCEB;
+}
+
 /* Data table */
 QTableWidget#PriceListDataTable {
     background-color: #252526;

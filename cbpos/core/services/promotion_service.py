@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 from decimal import Decimal
 
 from sqlalchemy import func, select
@@ -15,6 +15,38 @@ from cbpos.i18n import _t
 SUPPORTED_TYPES = ("PERCENTAGE", "FIXED_AMOUNT")
 
 
+def _daily_intervals(s: time, e: time) -> list[tuple[time, time]]:
+    """Split a daily time window into 1 or 2 intra-day intervals."""
+    if s <= e:
+        return [(s, e)]
+    return [(s, time.max), (time.min, e)]
+
+
+def _daily_windows_overlap(s1: time, e1: time, s2: time, e2: time) -> bool:
+    """True if two daily windows intersect for at least 1 minute."""
+    for a_start, a_end in _daily_intervals(s1, e1):
+        for b_start, b_end in _daily_intervals(s2, e2):
+            if a_start < b_end and b_start < a_end:
+                return True
+    return False
+
+
+def _days_overlap(days1: str | None, days2: str | None) -> bool:
+    """True if two days-of-week specifications have at least one common active day."""
+    if not days1 or not days2:
+        return True
+    set1 = set(days1.split(","))
+    set2 = set(days2.split(","))
+    return bool(set1 & set2)
+
+
+def _categories_overlap(cat1: int | None, cat2: int | None) -> bool:
+    """True if scopes overlap (store-wide overlaps everything, or categories match)."""
+    if cat1 is None or cat2 is None:
+        return True
+    return cat1 == cat2
+
+
 def _promotion_fields(session: Session, promotion: Promotion) -> dict:
     """The audited fields of a promotion; the category is kept by name so the log stays readable."""
     category = session.get(Category, promotion.category_id) if promotion.category_id is not None else None
@@ -24,6 +56,8 @@ def _promotion_fields(session: Session, promotion: Promotion) -> dict:
         "value": promotion.value,
         "start_time": promotion.start_time,
         "end_time": promotion.end_time,
+        "daily_start": promotion.daily_start.isoformat(timespec="minutes") if promotion.daily_start else None,
+        "daily_end": promotion.daily_end.isoformat(timespec="minutes") if promotion.daily_end else None,
         "days_of_week": promotion.days_of_week,
         "category": category.name if category else None,
         "is_active": promotion.is_active,
@@ -48,7 +82,13 @@ class PromotionService:
 
     @staticmethod
     def _check_rules(
-        session: Session, type: str, value: Decimal, days_of_week: str | None, category_id: int | None
+        session: Session,
+        type: str,
+        value: Decimal,
+        days_of_week: str | None,
+        category_id: int | None,
+        daily_start: time | None = None,
+        daily_end: time | None = None,
     ) -> None:
         """Reject values/schedules that would give goods away at checkout (#634).
 
@@ -58,6 +98,8 @@ class PromotionService:
             value: Percentage or fixed amount.
             days_of_week: Comma-separated weekday indices, or None for every day.
             category_id: Category scope, or None for store-wide.
+            daily_start: Optional daily window start time.
+            daily_end: Optional daily window end time.
 
         Raises:
             ValueError: With a translated message describing the broken rule.
@@ -75,17 +117,27 @@ class PromotionService:
                 raise ValueError(_t("promotion.amount_exceeds_prices", price=f"{top_price:,.2f}"))
         if days_of_week is not None and not days_of_week.strip():
             raise ValueError(_t("promotion.days_required"))
+        if (daily_start is None) != (daily_end is None):
+            raise ValueError(_t("promotion.both_daily_times_required"))
+        if daily_start is not None and daily_end is not None and daily_start == daily_end:
+            raise ValueError(_t("promotion.daily_times_same"))
 
     def validate_promotion(
-        self, type: str, value: Decimal, days_of_week: str | None = None, category_id: int | None = None
+        self,
+        type: str,
+        value: Decimal,
+        days_of_week: str | None = None,
+        category_id: int | None = None,
+        daily_start: time | None = None,
+        daily_end: time | None = None,
     ) -> None:
-        """Check a promotion's type, value and days without saving it.
+        """Check a promotion's type, value, days and daily time window without saving it.
 
         Raises:
             ValueError: With a translated message describing the broken rule.
         """
         with self.db.get_session() as session:
-            self._check_rules(session, type, value, days_of_week, category_id)
+            self._check_rules(session, type, value, days_of_week, category_id, daily_start, daily_end)
 
     def create_promotion(
         self,
@@ -96,6 +148,8 @@ class PromotionService:
         end_time: datetime,
         days_of_week: str | None = None,
         category_id: int | None = None,
+        daily_start: time | None = None,
+        daily_end: time | None = None,
     ) -> Promotion:
         """Create a new active promotion, scoped to a category if given, else store-wide.
 
@@ -107,7 +161,7 @@ class PromotionService:
         if type not in SUPPORTED_TYPES:
             raise ValueError(_t("promotion.type_not_supported"))
         with self.db.get_session() as session:
-            self._check_rules(session, type, value, days_of_week, category_id)
+            self._check_rules(session, type, value, days_of_week, category_id, daily_start, daily_end)
             promotion = Promotion(
                 name=name,
                 type=type,
@@ -116,6 +170,8 @@ class PromotionService:
                 end_time=end_time,
                 days_of_week=days_of_week,
                 category_id=category_id,
+                daily_start=daily_start,
+                daily_end=daily_end,
                 is_active=True,
             )
             session.add(promotion)
@@ -141,6 +197,8 @@ class PromotionService:
         days_of_week: object = ...,
         is_active: bool | None = None,
         category_id: object = ...,
+        daily_start: object = ...,
+        daily_end: object = ...,
     ) -> Promotion:
         """Update a promotion's fields.
 
@@ -155,6 +213,8 @@ class PromotionService:
             is_active: New active flag (if provided) -- a manual on/off switch,
                 independent of whether the promotion's dates currently apply.
             category_id: New category scope, or None for store-wide. Omit (``...``) to leave unchanged.
+            daily_start: New daily start time, or None to clear. Omit (``...``) to leave unchanged.
+            daily_end: New daily end time, or None to clear. Omit (``...``) to leave unchanged.
 
         Returns:
             The updated Promotion.
@@ -163,7 +223,7 @@ class PromotionService:
             ValueError: If the promotion isn't found, the name is empty,
                 the resulting date range has the end at or before the start,
                 the type is switched to an unsupported one, or a changed
-                type/value/days/scope breaks a rule in ``_check_rules``.
+                type/value/days/scope/daily window breaks a rule in ``_check_rules``.
         """
         with self.db.get_session() as session:
             promotion = session.get(Promotion, promotion_id)
@@ -201,11 +261,29 @@ class PromotionService:
             if category_id is not ...:
                 promotion.category_id = category_id
 
+            if daily_start is not ...:
+                promotion.daily_start = daily_start
+            if daily_end is not ...:
+                promotion.daily_end = daily_end
+
             # Only re-check when a rule field changed, so a legacy bad promotion can still be switched off.
-            if type is not None or value is not None or days_of_week is not ... or category_id is not ...:
+            if (
+                type is not None
+                or value is not None
+                or days_of_week is not ...
+                or category_id is not ...
+                or daily_start is not ...
+                or daily_end is not ...
+            ):
                 with session.no_autoflush:
                     self._check_rules(
-                        session, promotion.type, promotion.value, promotion.days_of_week, promotion.category_id
+                        session,
+                        promotion.type,
+                        promotion.value,
+                        promotion.days_of_week,
+                        promotion.category_id,
+                        promotion.daily_start,
+                        promotion.daily_end,
                     )
 
             with session.no_autoflush:
@@ -268,3 +346,45 @@ class PromotionService:
             for promo in promos:
                 session.expunge(promo)
             return promos
+
+    def find_overlapping(
+        self,
+        start_time: datetime,
+        end_time: datetime,
+        days_of_week: str | None = None,
+        daily_start: time | None = None,
+        daily_end: time | None = None,
+        category_id: int | None = None,
+        exclude_id: int | None = None,
+    ) -> list[Promotion]:
+        """Find active promotions that overlap in date range, days of week, daily time window, and category scope.
+
+        Used to warn store managers before creating or updating promotions that might compete.
+        """
+        with self.db.get_session() as session:
+            stmt = select(Promotion).where(
+                Promotion.is_active.is_(True),
+                Promotion.start_time < end_time,
+                Promotion.end_time > start_time,
+            )
+            if exclude_id is not None:
+                stmt = stmt.where(Promotion.id != exclude_id)
+
+            candidates = list(session.scalars(stmt).all())
+            overlapping: list[Promotion] = []
+            for p in candidates:
+                if not _categories_overlap(category_id, p.category_id):
+                    continue
+                if not _days_overlap(days_of_week, p.days_of_week):
+                    continue
+                if (
+                    daily_start is not None
+                    and daily_end is not None
+                    and p.daily_start is not None
+                    and p.daily_end is not None
+                ):
+                    if not _daily_windows_overlap(daily_start, daily_end, p.daily_start, p.daily_end):
+                        continue
+                session.expunge(p)
+                overlapping.append(p)
+            return overlapping

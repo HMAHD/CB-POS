@@ -52,6 +52,7 @@ class ConfigService:
         "quick_pay_enabled": True,
         "require_void_reason": True,
         "max_discount_percent": 15.0,
+        "promotion_stack_with_price_lists": False,  # False: best-of (cheapest), True: stack on price list
         # Hardware Configuration
         "receipt_printer_name": "",  # System printer name for thermal receipts
         "a4_printer_name": "",  # System printer name for A4 invoices

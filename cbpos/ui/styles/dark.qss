@@ -4536,6 +4536,16 @@ QDialog#BulkPriceAdjustDialog QLabel#BulkBelowCostBanner {
     font-weight: bold;
 }
 
+QLabel#PromotionOverlapBanner {
+    background-color: rgba(245, 158, 11, 0.18);
+    color: #FCD34D;
+    border: 1px solid #F59E0B;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-weight: 500;
+}
+
+
 QLabel#BulkMarginBadgeSafe {
     background-color: rgba(16, 185, 129, 0.18);
     color: #34D399;

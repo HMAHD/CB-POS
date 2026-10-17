@@ -47,10 +47,10 @@ This project upgrades the documentation system to the modern **Shibuya** theme, 
   - `sphinx_contributors` registered in `extensions`.
 - Add a dedicated contributors page `docs/contributors.rst` and include it in `docs/index.rst`.
 - Clean up `exclude_patterns` in `docs/conf.py` to prevent orphaned toctree warnings for internal agent/superpowers notes.
+- Audit and enrich existing API docstrings across core modules, services, and models to ensure complete and readable Sphinx API reference pages.
 - Ensure `uv run sphinx-build -b html docs docs/_build/html` builds cleanly with 0 errors.
 
 ### Non-Goals
-- Rewriting existing API docstrings or creating new docstrings for unchanged codebase modules.
 - Replacing MyST Markdown parser (MyST parser stays enabled for markdown docs).
 - Altering application runtime dependencies (docs dependencies belong strictly in `[dependency-groups] dev`).
 

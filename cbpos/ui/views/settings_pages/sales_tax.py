@@ -56,6 +56,13 @@ class SalesTaxPage(SettingsPage):
         self._lbl_default_credit = QLabel()
         self._form_sales.addRow(self._lbl_default_credit, self.spin_default_credit)
 
+        self.chk_promo_stacking = QCheckBox()
+        self._lbl_promo_stacking_hint = QLabel()
+        self._lbl_promo_stacking_hint.setProperty("class", "muted")
+        self._lbl_promo_stacking_hint.setWordWrap(True)
+        self._form_sales.addRow(self.chk_promo_stacking)
+        self._form_sales.addRow(self._lbl_promo_stacking_hint)
+
         self.tabs.addTab(self._tab_sales, "")
 
         # --- Tab 2: Tax ---
@@ -228,6 +235,9 @@ class SalesTaxPage(SettingsPage):
         self.spin_loyalty_ratio.setToolTip(_t("settings.sales_tax.tooltip_loyalty_ratio"))
         self._lbl_default_credit.setText(_t("settings.sales_tax.default_credit_limit"))
         self.spin_default_credit.setToolTip(_t("settings.sales_tax.tooltip_default_credit"))
+        self.chk_promo_stacking.setText(_t("settings.sales_tax.promo_stack_with_price_lists"))
+        self.chk_promo_stacking.setToolTip(_t("settings.sales_tax.tooltip_promo_stack_with_price_lists"))
+        self._lbl_promo_stacking_hint.setText(_t("settings.sales_tax.hint_promo_stack_with_price_lists"))
 
         # Tax tab
         self.chk_vat_registered.setText(_t("settings.sales_tax.vat_registered"))
@@ -307,6 +317,7 @@ class SalesTaxPage(SettingsPage):
         self.spin_max_discount.setValue(float(settings.get("max_discount_percent", 15.0)))
         self.spin_loyalty_ratio.setValue(int(settings.get("loyalty_points_ratio", 100)))
         self.spin_default_credit.setValue(int(settings.get("default_credit_limit", 0)))
+        self.chk_promo_stacking.setChecked(bool(settings.get("promotion_stack_with_price_lists", False)))
         self.chk_vat_registered.setChecked(settings.get("vat_registered", False))
         self.spin_vat.setValue(int(settings.get("tax_vat_rate", 18)))
         self.spin_sscl.setValue(float(settings.get("tax_sscl_rate", 2.5)))
@@ -349,6 +360,7 @@ class SalesTaxPage(SettingsPage):
             "default_search_mode": self.combo_search_mode.currentData() or "ALL",
             "max_discount_percent": self.spin_max_discount.value(),
             "default_credit_limit": self.spin_default_credit.value(),
+            "promotion_stack_with_price_lists": self.chk_promo_stacking.isChecked(),
             "vat_registered": self.chk_vat_registered.isChecked(),
             "tax_vat_rate": self.spin_vat.value(),
             "tax_sscl_rate": self.spin_sscl.value(),

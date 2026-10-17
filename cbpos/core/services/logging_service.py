@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Any
 
@@ -19,11 +19,13 @@ def audit_value(value: Any) -> Any:
         value: Any field value being audited.
 
     Returns:
-        A string for Decimal, datetime and date values; anything else unchanged.
+        A string for Decimal, datetime, date and time values; anything else unchanged.
     """
     if isinstance(value, Decimal):
         return str(value)
     if isinstance(value, datetime):
+        return value.isoformat(timespec="minutes")
+    if isinstance(value, time):
         return value.isoformat(timespec="minutes")
     if isinstance(value, date):
         return value.isoformat()

@@ -57,11 +57,7 @@ class PromotionView(QWidget):
 
         # Header
         header = QHBoxLayout()
-        from cbpos.ui.resources.icons import Icons
-        from cbpos.ui.widgets.page_header import PageHeader
-
-        self._page_header = PageHeader(icon_name=Icons.PROMOTION)
-        header.addWidget(self._page_header, 1)
+        header.addStretch(1)
 
         self.btn_add = QPushButton()
         self.btn_add.setProperty("class", "accent")
@@ -97,7 +93,6 @@ class PromotionView(QWidget):
 
     def retranslate_ui(self):
         """Update all translatable strings."""
-        self._page_header.set_title(_t("promotion.title"))
         self.btn_add.setText(_t("promotion.create_promotion"))
         self.table.setHorizontalHeaderLabels(
             [

@@ -110,12 +110,6 @@ class InventoryView(QWidget):
         """Build the toolbar, product table, empty-state placeholder, and pagination."""
         layout = QVBoxLayout(self)
 
-        from cbpos.ui.resources.icons import Icons
-        from cbpos.ui.widgets.page_header import PageHeader
-
-        self._page_header = PageHeader(icon_name=Icons.INVENTORY)
-        layout.addWidget(self._page_header)
-
         # Top Bar
         top_bar = QHBoxLayout()
 
@@ -187,7 +181,6 @@ class InventoryView(QWidget):
 
     def retranslate_ui(self) -> None:
         """Update all widget text from the translation system."""
-        self._page_header.set_title(_t("management.sidebar_inventory"))
         self.search_input.setPlaceholderText(_t("inventory.search_placeholder"))
         self.add_btn.setText(_t("inventory.btn_add_product"))
         self.import_btn.setText(_t("inventory.btn_import_csv"))

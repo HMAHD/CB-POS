@@ -32,6 +32,7 @@ class ModalDimmer(QWidget):
     """Semi-transparent scrim widget that covers a parent window behind an active modal dialog.
 
     Features:
+
     - Automatically resizes with the parent window via an event filter.
     - Uses theme-aware backdrop colors (dark mode: subtle deep veil; light mode: clean slate veil).
     - Uses WA_TransparentForMouseEvents so mouse clicks are not swallowed and Qt's modal loop

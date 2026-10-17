@@ -1,3 +1,10 @@
+"""Promotion management service.
+
+Handles lifecycle, scheduling, rule validation, overlap detection, and audit logging
+for time-boxed discounts (percentage and fixed-amount promotions) across products and
+categories (#634, #636, #642).
+"""
+
 from datetime import datetime, time
 from decimal import Decimal
 

@@ -380,6 +380,7 @@ class PrintWorker(QThread):
     """Background thread for asynchronous print job processing.
 
     Resolves the printer once per run cycle from application settings:
+
     - printer_type == "WIN32" / "NETWORK" / "USB" → ESCPOSDriver (real hardware)
     - anything else → no printer: the job is skipped and error_occurred
       carries ``printer_not_configured_message()``. Never job_completed --

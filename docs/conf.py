@@ -21,7 +21,13 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.todo",
+    "sphinx.ext.duration",
+    "sphinx.ext.githubpages",
     "myst_parser",
+    "versionwarning.extension",
+    "sphinx_contributors",
 ]
 
 # Auto-generate GitHub-style heading anchors so PROJECT_OVERVIEW.md's own
@@ -29,16 +35,46 @@ extensions = [
 myst_heading_anchors = 3
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "superpowers/**",
+    "agents/**",
+    "archive/**",
+    "adr/**",
+]
 
-html_theme = "alabaster"
+html_theme = "shibuya"
+
+html_theme_options = {
+    "color_mode": "auto",
+    "github_url": "https://github.com/HMAHD/CB-POS",
+    "nav_links": [
+        {"title": "Onboarding", "url": "onboarding"},
+        {"title": "Architecture", "url": "PROJECT_OVERVIEW"},
+        {"title": "Roadmap", "url": "Roadmap"},
+        {"title": "API Reference", "url": "api/modules"},
+    ],
+}
+
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+}
+
+todo_include_todos = True
+
+versionwarning_banner_position = "top"
+versionwarning_body_text = (
+    "You are viewing documentation for a previous or development version ({version}). "
+    "Check the latest release for up-to-date guidance."
+)
 
 # Several models (Sale, Purchase, Document, ...) each have their own `type`
 # column; Sphinx's Python-domain autodoc tries to cross-reference the shared
-# attribute name and can't disambiguate. Not a content problem -- suppress
-# just this warning category rather than renaming a well-established column
-# across 8 SQLAlchemy models to appease a docs tool.
-suppress_warnings = ["ref.python"]
+# attribute name and can't disambiguate. Also suppress duplicate object descriptions
+# caused by re-exporting submodules at package level.
+suppress_warnings = ["ref.python", "duplicate_object_description"]
 
 
 _FOREIGN_INSTANCE_ATTR_TYPES = {

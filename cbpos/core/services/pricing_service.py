@@ -1,3 +1,10 @@
+"""Checkout pricing calculation service.
+
+Evaluates base product retail prices against active customer price lists and
+promotions (with date ranges, daily recurring time windows, and weekday rules),
+supporting both best-price evaluation and price-list stacking modes (#636).
+"""
+
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -9,9 +16,11 @@ from cbpos.core.services.price_list_service import live_price_list_condition
 
 
 class PricingService:
-    """Service to calculate the actual selling price of a product
+    """Calculates checkout selling prices considering price lists and promotions.
 
-    based on Price Lists and Promotions.
+    Evaluates customer-specific price lists, date-bound promotions, daily recurring
+    time windows (including overnight windows), and category scopes. Supports both
+    best-price (cheapest) selection and stacking based on store configuration.
     """
 
     @staticmethod
@@ -20,18 +29,23 @@ class PricingService:
         customer: Customer | None = None,
         now: datetime | None = None,
     ) -> dict[str, Any]:
-        """Calculate the final price for a product.
+        """Calculate the final selling price for a product.
+
+        Evaluates active price lists for the customer, compares against active
+        promotions matching the current time and category scope, and applies either
+        stacking or best-price rules according to `promotion_stack_with_price_lists`.
 
         Args:
-            product: The product to price.
-            customer: The customer (optional) for price list lookup.
-            now: The current datetime (optional, defaults to datetime.now()).
+            product: The product entity being purchased.
+            customer: Optional customer entity with an associated price list.
+            now: Point in time for evaluating date ranges and daily windows (defaults to datetime.now()).
 
         Returns:
-            Dict containing:
-                - final_price: Decimal
-                - original_price: Decimal
-                - applied_rule: str (Description of why price changed)
+            dict[str, Any]: Dictionary containing:
+                - `final_price` (Decimal): The calculated selling price (never below 0.00).
+                - `original_price` (Decimal): The base product retail price.
+                - `applied_rule` (str): Descriptive label of the rule(s) applied (e.g. "Standard Price",
+                  "Price List: Wholesale", "Promo: Happy Hour", or combined stacking label).
         """
         if now is None:
             now = datetime.now()

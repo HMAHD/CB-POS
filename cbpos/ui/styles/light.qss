@@ -1197,28 +1197,32 @@ QToolButton#BtnLogout[compact="true"] {
 }
 
 /* --- Management Header (#537) --- */
-QFrame#ManagementHeader {
+QFrame#ManagementHeader,
+QFrame#SettingsHeader {
     background-color: #FFFFFF;
     border-bottom: 1px solid #E2E8F0;
     min-height: 44px;
     max-height: 48px;
 }
 
-QLabel#ManagementHeaderTitle {
+QLabel#ManagementHeaderTitle,
+QLabel#SettingsHeaderTitle {
     color: #334155;
     font-size: 13px;
     font-weight: 600;
     background: transparent;
 }
 
-QLabel#ManagementHeaderClock {
+QLabel#ManagementHeaderClock,
+QLabel#SettingsHeaderClock {
     color: #64748B;
     font-size: 12px;
     font-weight: 600;
     background: transparent;
 }
 
-QToolButton#ManagementHeaderPosBtn {
+QToolButton#ManagementHeaderPosBtn,
+QToolButton#SettingsHeaderPosBtn {
     background-color: #16A34A;
     color: #FFFFFF;
     border: none;
@@ -1228,15 +1232,18 @@ QToolButton#ManagementHeaderPosBtn {
     font-weight: 600;
 }
 
-QToolButton#ManagementHeaderPosBtn:hover {
+QToolButton#ManagementHeaderPosBtn:hover,
+QToolButton#SettingsHeaderPosBtn:hover {
     background-color: #22C55E;
 }
 
-QToolButton#ManagementHeaderPosBtn:pressed {
+QToolButton#ManagementHeaderPosBtn:pressed,
+QToolButton#SettingsHeaderPosBtn:pressed {
     background-color: #15803D;
 }
 
-QToolButton#ManagementHeaderLogoutBtn {
+QToolButton#ManagementHeaderLogoutBtn,
+QToolButton#SettingsHeaderLogoutBtn {
     background-color: transparent;
     color: #DC2626;
     border: 1px solid #FECACA;
@@ -1246,13 +1253,15 @@ QToolButton#ManagementHeaderLogoutBtn {
     font-weight: 600;
 }
 
-QToolButton#ManagementHeaderLogoutBtn:hover {
+QToolButton#ManagementHeaderLogoutBtn:hover,
+QToolButton#SettingsHeaderLogoutBtn:hover {
     background-color: #DC2626;
     color: #FFFFFF;
     border-color: #DC2626;
 }
 
-QToolButton#ManagementHeaderLogoutBtn:pressed {
+QToolButton#ManagementHeaderLogoutBtn:pressed,
+QToolButton#SettingsHeaderLogoutBtn:pressed {
     background-color: #B91C1C;
     color: #FFFFFF;
 }

@@ -35,11 +35,11 @@ QWidget {
 QLineEdit {
     background-color: #252526;
     border: 1px solid #555555;
-    border-radius: 4px;
+    border-radius: 6px;
     padding: 8px 12px;
     font-size: 14px;
     color: #FFFFFF;
-    min-height: 32px;
+    min-height: 36px;
     selection-background-color: #00BCEB;
     selection-color: #000000;
 }
@@ -70,12 +70,12 @@ QLineEdit[error="true"] {
 QDateEdit, QTimeEdit, QDateTimeEdit {
     background-color: #252526;
     border: 1px solid #555555;
-    border-radius: 4px;
+    border-radius: 6px;
     padding: 8px 12px;
     padding-right: 28px;
     font-size: 14px;
     color: #FFFFFF;
-    min-height: 32px;
+    min-height: 36px;
 }
 
 QDateEdit:hover, QTimeEdit:hover, QDateTimeEdit:hover {
@@ -103,8 +103,8 @@ QDateEdit::drop-down {
     width: 24px;
     border-left: 1px solid #555555;
     background-color: #2D2D30;
-    border-top-right-radius: 4px;
-    border-bottom-right-radius: 4px;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
 }
 
 QDateEdit::drop-down:hover {
@@ -215,24 +215,24 @@ QCalendarWidget QHeaderView::section {
 
 /* ComboBox - Dropdown Selector */
 QComboBox {
-    background-color: #2D2D30;
+    background-color: #252526;
     border: 1px solid #555555;
-    border-radius: 4px;
+    border-radius: 6px;
     padding: 8px 12px;
     padding-right: 35px;  /* Space for arrow */
     font-size: 14px;
     color: #FFFFFF;
-    min-height: 32px;
+    min-height: 36px;
 }
 
 QComboBox:hover {
     border: 1px solid #00BCEB;
-    background-color: #333337;
+    background-color: #2D2D30;
 }
 
 QComboBox:focus {
     border: 1px solid #00BCEB;
-    background-color: #333337;
+    background-color: #2D2D30;
 }
 
 QComboBox:disabled {
@@ -251,8 +251,8 @@ QComboBox::drop-down {
     width: 30px;
     border-left: 1px solid #555555;  /* Separator line */
     background: #3E3E42;
-    border-top-right-radius: 4px;
-    border-bottom-right-radius: 4px;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
 }
 
 QComboBox::drop-down:hover {
@@ -293,24 +293,24 @@ QComboBox QAbstractItemView::item:selected {
 
 /* SpinBox - Number Input (Modern Touch-Friendly Design) */
 QSpinBox, QDoubleSpinBox {
-    background-color: #2D2D30;
+    background-color: #252526;
     border: 1px solid #555555;
-    border-radius: 4px;
+    border-radius: 6px;
     padding: 8px 12px;
     padding-right: 35px;  /* Space for wider buttons */
     font-size: 14px;
     color: #FFFFFF;
-    min-height: 32px;  /* Unified input height */
+    min-height: 36px;  /* Unified input height */
 }
 
 QSpinBox:hover, QDoubleSpinBox:hover {
     border: 1px solid #00BCEB;
-    background-color: #333337;
+    background-color: #2D2D30;
 }
 
 QSpinBox:focus, QDoubleSpinBox:focus {
     border: 1px solid #00BCEB;
-    background-color: #333337;
+    background-color: #2D2D30;
 }
 
 QSpinBox:disabled, QDoubleSpinBox:disabled {
@@ -332,7 +332,7 @@ QSpinBox::up-button, QDoubleSpinBox::up-button {
     border-left: 1px solid #555555;
     border-bottom: 1px solid #555555;
     background-color: #3E3E42;
-    border-top-right-radius: 4px;
+    border-top-right-radius: 6px;
 }
 
 QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover {
@@ -358,7 +358,7 @@ QSpinBox::down-button, QDoubleSpinBox::down-button {
     border-left: 1px solid #555555;
     border-top: 1px solid #555555;
     background-color: #3E3E42;
-    border-bottom-right-radius: 4px;
+    border-bottom-right-radius: 6px;
 }
 
 QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
@@ -537,13 +537,13 @@ QPushButton#BtnSave:hover, QPushButton#PayBtn:hover, QPushButton[class="primary"
 }
 
 /* Danger Button (Red) */
-QPushButton#BtnCancel, QPushButton#VoidBtn, QPushButton[class="danger"] {
+QPushButton#VoidBtn, QPushButton[class="danger"] {
     background-color: #FF4136;
     color: #FFFFFF;
     border: none;
 }
 
-QPushButton#BtnCancel:hover, QPushButton#VoidBtn:hover, QPushButton[class="danger"]:hover {
+QPushButton#VoidBtn:hover, QPushButton[class="danger"]:hover {
     background-color: #E0362C;
 }
 
@@ -559,29 +559,27 @@ QPushButton[class="accent"]:hover {
     background-color: #00A5D0;
 }
 
-/* Secondary Button (neutral -- dismiss/close/utility actions). Was
-   transparent with a border close to the surface colour, so it read as
-   plain text or as disabled (#561). A visible fill + border keeps it
-   recognisable as a button without hovering. */
-QPushButton[class="secondary"] {
-    background-color: #3E3E42;
-    color: #E0E0E0;
-    border: 1px solid #555555;
+/* Secondary Button (neutral -- dismiss/close/utility actions). */
+QPushButton#BtnCancel, QPushButton#ReceiptBtnClose, QPushButton[class="secondary"] {
+    background-color: #282A30;
+    color: #D1D5DB;
+    border: 1px solid #383A42;
 }
 
-QPushButton[class="secondary"]:hover {
-    background-color: #4A4A4F;
-    border: 1px solid #6A6A6A;
+QPushButton#BtnCancel:hover, QPushButton#ReceiptBtnClose:hover, QPushButton[class="secondary"]:hover {
+    background-color: #32353D;
+    color: #FFFFFF;
+    border-color: #4A4D57;
 }
 
-QPushButton[class="secondary"]:pressed {
-    background-color: #2D2D30;
+QPushButton#BtnCancel:pressed, QPushButton#ReceiptBtnClose:pressed, QPushButton[class="secondary"]:pressed {
+    background-color: #1E2025;
 }
 
-QPushButton[class="secondary"]:disabled {
-    background-color: #2A2A2A;
+QPushButton#BtnCancel:disabled, QPushButton#ReceiptBtnClose:disabled, QPushButton[class="secondary"]:disabled {
+    background-color: #222328;
     color: #666666;
-    border: 1px solid #3E3E42;
+    border: 1px solid #2E3036;
 }
 
 /* Warning Button (Yellow) */
@@ -626,6 +624,99 @@ QLabel[class="bold"] {
 
 QLabel[class="transparent"] {
     background: transparent;
+}
+
+QLabel#GrnTotalLabel {
+    font-size: 16px;
+    font-weight: bold;
+    background: transparent;
+}
+
+QLabel[status="danger"], QLabel[class="status-err"] {
+    color: #FF4136;
+    font-weight: bold;
+}
+
+QLabel[status="success"], QLabel[class="status-ok"] {
+    color: #39FF14;
+    font-weight: bold;
+}
+
+QLabel[status="neutral"] {
+    color: #E0E0E0;
+    font-weight: bold;
+}
+
+QLabel#PriceListStatusBadge {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+QLabel#PriceListStatusBadge[status="success"] {
+    color: #39FF14;
+}
+
+QLabel#PriceListStatusBadge[status="neutral"] {
+    color: #888888;
+}
+
+QLabel#PriceListStatusBadge[status="accent"] {
+    color: #00BCEB;
+}
+
+QLabel#BulkPriceBadge {
+    font-weight: bold;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background-color: rgba(0, 188, 235, 0.15);
+    color: #00BCEB;
+}
+
+QLabel#ColorSwatch {
+    border: 1px solid #3E3E42;
+    border-radius: 4px;
+    background-color: transparent;
+}
+
+QLabel#SetupCardIcon {
+    font-size: 36px;
+    background: transparent;
+}
+
+QLabel#HistoryDetailsBanner {
+    padding: 10px;
+    background-color: #1E2025;
+    border: 1px solid #383A42;
+    border-radius: 6px;
+    color: #E5E7EB;
+}
+
+QLabel#EmptyStateLabel {
+    color: #888888;
+    font-size: 14px;
+}
+
+QPushButton#ActiveOrderTab {
+    font-weight: bold;
+    border-bottom: 3px solid #00BCEB;
+}
+
+QLabel#SyncDot {
+    font-size: 12px;
+    color: #607D8B;
+}
+QLabel#SyncDot[status="connected"] { color: #4CAF50; }
+QLabel#SyncDot[status="syncing"] { color: #FFC107; }
+QLabel#SyncDot[status="disconnected"] { color: #F44336; }
+QLabel#SyncDot[status="main"] { color: #9C27B0; }
+QLabel#SyncDot[status="standalone"] { color: #607D8B; }
+QLabel#SyncDot[status="error"] { color: #FF5722; }
+
+QLabel#SyncLabel {
+    font-size: 11px;
+    color: #888888;
+    padding: 0 4px;
 }
 
 /* Log Detail Dialog Metadata Card */
@@ -674,7 +765,7 @@ QLabel#LogLevelBadge[level="INFO"] {
 /* Lists, Tables & Trees -- QTreeWidget/QTreeView used to be missing
    here, so a tree with alternating rows fell back to the native
    (white) alternate base under the theme's text color (#567). */
-QListWidget, QTableWidget, QTreeWidget, QTreeView {
+QListWidget, QTableView, QTableWidget, QTreeWidget, QTreeView {
     background-color: #252526;
     border: 1px solid #3E3E42;
 
@@ -682,14 +773,18 @@ QListWidget, QTableWidget, QTreeWidget, QTreeView {
     alternate-background-color: #2D2D30;
 }
 
-QListWidget::item, QTableWidget::item {
-    padding: 12px;
+QListWidget::item, QTableView::item, QTableWidget::item {
+    padding: 10px 12px;
     border-bottom: 1px solid #3E3E42;
 }
 
-QListWidget::item:selected, QTableWidget::item:selected {
+QListWidget::item:selected, QTableView::item:selected, QTableWidget::item:selected {
     background-color: #007ACC;
     color: #FFFFFF;
+}
+
+QListWidget::item:hover, QTableView::item:hover, QTableWidget::item:hover {
+    background-color: #333337;
 }
 
 /* Trees: compact items (the 12px list/table padding is too tall for a
@@ -879,9 +974,9 @@ QTabBar::tab:selected {
 
 /* Group Box */
 QGroupBox {
-    border: 1px solid #3E3E42;
-    border-radius: 4px;
-    margin-top: 20px;
+    border: 1px solid #363942;
+    border-radius: 8px;
+    margin-top: 12px;
     padding-top: 16px;
     font-weight: bold;
     background-color: #252526;
@@ -890,7 +985,7 @@ QGroupBox {
 QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
-    padding: 0 5px;
+    padding: 0 8px;
     color: #00BCEB;
 }
 
@@ -972,9 +1067,19 @@ QPushButton#NavTile[active="true"] {
     background-color: rgba(0, 188, 235, 0.15);
 }
 
+QLabel#NavTileIcon {
+    background: transparent;
+}
+
 /* pt scales with DPI (px doesn't) — #207 */
 QLabel#NavTileText {
     font-size: 9pt;
+    background: transparent;
+    color: #CCCCCC;
+}
+
+QLabel#NavTileText[active="true"] {
+    color: #00BCEB;
 }
 
 /* User Profile Row */
@@ -1417,6 +1522,10 @@ QLabel[class="StrikethroughPrice"] {
     color: white;
 }
 
+QLabel[class="StrikethroughPrice"][discounted="true"] {
+    background-color: #003200;
+}
+
 QLabel#UndoToast {
     background-color: rgba(0, 31, 63, 0.92);
     color: #00BCEB;
@@ -1618,6 +1727,10 @@ QFrame#CustomerPanel QLabel#PointsLabel {
     background: transparent;
 }
 
+QLabel#PointsIcon {
+    background: transparent;
+}
+
 QPushButton#BtnCustomerClear {
     background-color: transparent;
     border: 1px solid transparent;
@@ -1657,27 +1770,6 @@ QDialog#CustomerSelectionDialog QPushButton#BtnDialogCustomerSelect:pressed {
     background-color: #0088AA;
 }
 
-QDialog#CustomerSelectionDialog QPushButton#BtnCancel {
-    background-color: #2D2D32;
-    color: #E2E2E8;
-    border: 1px solid #38383E;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 13px;
-    min-height: 38px;
-    min-width: 105px;
-    padding: 0 16px;
-}
-
-QDialog#CustomerSelectionDialog QPushButton#BtnCancel:hover {
-    background-color: #383840;
-    color: #FFFFFF;
-    border-color: #4A4A52;
-}
-
-QDialog#CustomerSelectionDialog QPushButton#BtnCancel:pressed {
-    background-color: #242428;
-}
 
 /* Action Grid Button */
 QPushButton#ActionGridBtn {
@@ -1696,6 +1788,10 @@ QPushButton#ActionGridBtn:hover {
 QPushButton#ActionGridBtn:pressed {
     background-color: #00BCEB;
     color: #000000;
+}
+
+QPushButton#ActionGridBtn QLabel#lblIcon {
+    background: transparent;
 }
 
 /* pt scales with DPI (px doesn't) — #207: these were inline px in Python,
@@ -2335,24 +2431,6 @@ QPushButton[class="PresetBtn"]:disabled {
     border-color: #333;
 }
 
-/* Scoped to DiscountDialog specifically -- #BtnCancel is a shared object name
-   used by several other dialogs, which already get the solid "Danger" style
-   above. An unscoped rule here would collide with those (and, before the
-   :not() selector elsewhere in this file was fixed to be valid CSS, a stray
-   parse failure happened to mask this collision by accident). */
-QDialog#DiscountDialog QPushButton#BtnCancel {
-    background-color: transparent;
-    color: #FF4136;
-    font-weight: bold;
-    font-size: 15px;
-    border: 2px solid #FF4136;
-    border-radius: 6px;
-}
-
-QDialog#DiscountDialog QPushButton#BtnCancel:hover {
-    background-color: #FF4136;
-    color: white;
-}
 
 QPushButton#BtnApplyDiscount {
     background-color: #39FF14;
@@ -2480,19 +2558,6 @@ QPushButton#ReceiptBtnSavePdf:pressed {
     background-color: #333336;
 }
 
-QPushButton#ReceiptBtnClose {
-    background-color: transparent;
-    color: #888888;
-    border: 1px solid #3E3E42;
-    border-radius: 6px;
-    font-size: 13px;
-}
-
-QPushButton#ReceiptBtnClose:hover {
-    color: #CCCCCC;
-    border-color: #555555;
-    background-color: #2D2D30;
-}
 
 /* ===================================================================
    LOGIN VIEW STYLES - Dark Theme
@@ -2841,25 +2906,6 @@ QTableWidget#DashboardTable::item:hover {
    UNIFIED COMPONENTS - Dark Theme
    ================================================================ */
 
-/* === GENERIC TABLE VIEWS === */
-QTableView {
-    background-color: #1A1A1A;
-    alternate-background-color: #202020;
-    border: 1px solid #2A2A2A;
-    border-radius: 8px;
-    gridline-color: #2A2A2A;
-    selection-background-color: #2A2A2A;
-    selection-color: white;
-}
-
-QTableView::item {
-    padding: 8px;
-    border: none;
-}
-
-QTableView::item:hover {
-    background-color: #252525;
-}
 
 /* === BUTTONS ===
    A second generic QPushButton rule used to live here, meant to exclude
@@ -2912,6 +2958,14 @@ QAbstractItemView QDateEdit:focus {
     margin: 0px;
     font-size: 13px;
     min-height: 0px;
+}
+
+QLineEdit#TableQtyEditor {
+    color: #FFFFFF;
+    background-color: #252526;
+    font-size: 15px;
+    font-weight: bold;
+    padding: 2px 4px;
 }
 
 QAbstractItemView QSpinBox,
@@ -3246,28 +3300,6 @@ QDialog#UnitManagerDialog {
     background-color: #1E1E1E;
 }
 
-QDialog#CategoryManagerDialog QGroupBox,
-QDialog#UnitManagerDialog QGroupBox {
-    background-color: #252526;
-    border: 1px solid #2A2A2A;
-    border-radius: 6px;
-    margin-top: 16px;
-    padding: 12px;
-    padding-top: 24px;
-}
-
-QDialog#CategoryManagerDialog QGroupBox::title,
-QDialog#UnitManagerDialog QGroupBox::title {
-    color: #00BCEB;
-    font-weight: bold;
-    font-size: 13px;
-}
-
-QDialog#CategoryManagerDialog QGroupBox QLabel,
-QDialog#UnitManagerDialog QGroupBox QLabel {
-    background-color: transparent;
-    color: #CCCCCC;
-}
 
 /* Tree widget in category manager */
 QDialog#CategoryManagerDialog QTreeWidget {

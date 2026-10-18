@@ -117,6 +117,7 @@ class InventoryView(QWidget):
         self.search_input.textChanged.connect(self.filter_data)
 
         self.add_btn = QPushButton()
+        self.add_btn.setProperty("class", "primary")
         self.add_btn.clicked.connect(self.open_add_dialog)
 
         self.import_btn = QPushButton()
@@ -166,7 +167,8 @@ class InventoryView(QWidget):
         # Empty state placeholder
         self.empty_label = QLabel()
         self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.empty_label.setStyleSheet("color: gray; font-size: 14px;")
+        self.empty_label.setProperty("class", "muted")
+        self.empty_label.setObjectName("EmptyStateLabel")
 
         self.table_stack = QStackedWidget()
         self.table_stack.addWidget(self.table)  # index 0

@@ -340,6 +340,7 @@ class DocumentBrowserView(QWidget):
 
         self.void_btn = QPushButton()
         self.void_btn.setObjectName("DocVoidBtn")
+        self.void_btn.setProperty("class", "danger")
         self.void_btn.clicked.connect(self.void_document)
 
         self.transfer_btn = QPushButton()

@@ -32,6 +32,7 @@ from cbpos.ui.dialogs.price_list_dialog import PriceListDialog
 from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import INFO, NEUTRAL, SUCCESS, status_color
+from cbpos.ui.styles.style_helpers import refresh_style
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers
 
 # Price cells keep their raw Decimal here; the text is display-only (#557).
@@ -110,6 +111,7 @@ class PriceListView(QWidget):
 
         self.btn_add = QPushButton()
         self.btn_add.setObjectName("PriceListAddBtn")
+        self.btn_add.setProperty("class", "primary")
         self.btn_add.clicked.connect(self.add_price_list)
         sidebar_btn_row.addWidget(self.btn_add)
 
@@ -120,6 +122,7 @@ class PriceListView(QWidget):
 
         self.btn_delete = QPushButton()
         self.btn_delete.setObjectName("PriceListDeleteBtn")
+        self.btn_delete.setProperty("class", "danger")
         self.btn_delete.clicked.connect(self.delete_price_list)
         sidebar_btn_row.addWidget(self.btn_delete)
 
@@ -355,10 +358,11 @@ class PriceListView(QWidget):
         self.lbl_dates.setText(_t("pricelist.valid_range", start=start, end=end))
 
         # Update status badge
-        status_text, status_colour = self._get_price_list_status(price_list)
-        self.lbl_status.setText(status_text)
-        colour_name = status_colour.name()
-        self.lbl_status.setStyleSheet(f"color: {colour_name}; font-weight: bold; padding: 2px 8px; border-radius: 4px;")
+        status = PriceListService.get_status(price_list)
+        status_meaning = {"disabled": "neutral", "expired": "neutral", "upcoming": "accent"}.get(status, "success")
+        self.lbl_status.setText(_t(f"pricelist.status_{status}"))
+        self.lbl_status.setProperty("status", status_meaning)
+        refresh_style(self.lbl_status)
 
         self.search_input.blockSignals(True)
         self.search_input.clear()

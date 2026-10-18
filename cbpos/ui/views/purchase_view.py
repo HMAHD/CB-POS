@@ -236,10 +236,12 @@ class PurchaseView(QWidget):
         # Toolbar
         toolbar = QHBoxLayout()
         self.btn_add_supplier = QPushButton()
+        self.btn_add_supplier.setProperty("class", "primary")
         self.btn_add_supplier.clicked.connect(self.add_supplier)
         self.btn_edit_supplier = QPushButton()
         self.btn_edit_supplier.clicked.connect(self.edit_supplier)
         self.btn_deactivate_supplier = QPushButton()
+        self.btn_deactivate_supplier.setProperty("class", "danger")
         self.btn_deactivate_supplier.clicked.connect(self.deactivate_supplier)
         self.btn_refresh_suppliers = QPushButton()
         self.btn_refresh_suppliers.clicked.connect(self.refresh_suppliers)

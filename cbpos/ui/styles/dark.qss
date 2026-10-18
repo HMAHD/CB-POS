@@ -3918,8 +3918,10 @@ QFrame#CreditHeaderCard {
     border-radius: 10px;
 }
 
+QFrame#CreditHeaderCard QWidget#MetaContainer,
 QFrame#CreditHeaderCard QLabel {
     background-color: transparent;
+    border: none;
 }
 
 QLabel#CreditAvatarIcon {

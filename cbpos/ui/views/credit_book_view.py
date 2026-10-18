@@ -236,6 +236,7 @@ class CreditBookView(QWidget):
 
         # Phone
         self.item_phone = QWidget()
+        self.item_phone.setObjectName("MetaContainer")
         phone_layout = QHBoxLayout(self.item_phone)
         phone_layout.setContentsMargins(0, 0, 0, 0)
         phone_layout.setSpacing(6)
@@ -249,6 +250,7 @@ class CreditBookView(QWidget):
 
         # Address
         self.item_address = QWidget()
+        self.item_address.setObjectName("MetaContainer")
         addr_layout = QHBoxLayout(self.item_address)
         addr_layout.setContentsMargins(0, 0, 0, 0)
         addr_layout.setSpacing(6)
@@ -262,6 +264,7 @@ class CreditBookView(QWidget):
 
         # Company / Tier
         self.item_company = QWidget()
+        self.item_company.setObjectName("MetaContainer")
         comp_layout = QHBoxLayout(self.item_company)
         comp_layout.setContentsMargins(0, 0, 0, 0)
         comp_layout.setSpacing(6)

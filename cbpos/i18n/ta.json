@@ -676,6 +676,8 @@
     "sidebar_reorder": "மறு ஆர்டர்",
     "sidebar_pos": "POS / விற்பனை",
     "sidebar_logout": "லாக் அவுட்",
+    "sidebar_collapse": "பக்கப் பட்டையைச் சுருக்கு",
+    "sidebar_expand": "பக்கப் பட்டையை விரி",
     "logo_fallback": "CB POS"
   },
   "dashboard": {

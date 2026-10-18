@@ -907,10 +907,11 @@ QGroupBox QCheckBox {
 
 /* --- Sidebar --- */
 /* Sidebar Container - Dark Mode */
-QFrame#SidebarContainer,
-QFrame#Sidebar {
-    background-color: #252526;  /* Documented Surface tone -- distinct from the #1E1E1E canvas */
-    border-right: 1px solid #333333;
+QWidget#Sidebar,
+QFrame#Sidebar,
+QFrame#SidebarContainer {
+    background-color: #242428;
+    border-right: 1px solid #2E2E34;
 }
 
 /* User Profile Section - Dark Mode (KILL THE LINES) */
@@ -1184,13 +1185,47 @@ QToolButton#BtnLogout[compact="true"] {
     margin-bottom: 2px;
 }
 
-/* --- Management Header (#537) --- */
+/* --- Management Header & Top Bar Surface Unification --- */
+QWidget#SidebarHeader,
+QFrame#SidebarHeader {
+    background-color: #242428;
+    border-right: 1px solid #2E2E34;
+    border-bottom: 1px solid #2E2E34;
+}
+
+QWidget#TopBar,
+QFrame#TopBar,
 QFrame#ManagementHeader,
 QFrame#SettingsHeader {
-    background-color: #1E1E22;
-    border-bottom: 1px solid #2D2D32;
-    min-height: 44px;
-    max-height: 48px;
+    background-color: #242428;
+    border-bottom: 1px solid #2E2E34;
+}
+
+/* Dark Mode Paper-Cut Sidebar Edge Toggle */
+QPushButton#SidebarEdgeToggle {
+    background-color: #1A1A1E;
+    color: #8E8E98;
+    border-top: 1px solid #32323A;
+    border-bottom: 1px solid #32323A;
+    border-left: 1px solid #32323A;
+    border-right: none;
+    border-top-left-radius: 9px;
+    border-bottom-left-radius: 9px;
+    border-top-right-radius: 0px;
+    border-bottom-right-radius: 0px;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 0px;
+}
+
+QPushButton#SidebarEdgeToggle:hover {
+    background-color: #202A30;
+    color: #00B4D8;
+    border-color: #00B4D8;
+}
+
+QPushButton#SidebarEdgeToggle:pressed {
+    background-color: #151E24;
 }
 
 QLabel#ManagementHeaderTitle,

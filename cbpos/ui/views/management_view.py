@@ -141,33 +141,34 @@ class ManagementView(QWidget):
         # Persistent Management Header bar (#537)
         self.management_header = QFrame()
         self.management_header.setObjectName("ManagementHeader")
+        self.management_header.setFixedHeight(56)
         header_layout = QHBoxLayout(self.management_header)
-        header_layout.setContentsMargins(20, 8, 20, 8)
+        header_layout.setContentsMargins(16, 0, 16, 0)
         header_layout.setSpacing(14)
 
         self.lbl_header_title = QLabel()
         self.lbl_header_title.setObjectName("ManagementHeaderTitle")
-        header_layout.addWidget(self.lbl_header_title)
+        header_layout.addWidget(self.lbl_header_title, 0, Qt.AlignmentFlag.AlignVCenter)
 
         header_layout.addStretch(1)
 
         self.lbl_header_clock = QLabel()
         self.lbl_header_clock.setObjectName("ManagementHeaderClock")
-        header_layout.addWidget(self.lbl_header_clock)
+        header_layout.addWidget(self.lbl_header_clock, 0, Qt.AlignmentFlag.AlignVCenter)
 
         self.btn_header_pos = QToolButton()
         self.btn_header_pos.setObjectName("ManagementHeaderPosBtn")
         self.btn_header_pos.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_header_pos.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.btn_header_pos.clicked.connect(self.request_pos_view.emit)
-        header_layout.addWidget(self.btn_header_pos)
+        header_layout.addWidget(self.btn_header_pos, 0, Qt.AlignmentFlag.AlignVCenter)
 
         self.btn_header_logout = QToolButton()
         self.btn_header_logout.setObjectName("ManagementHeaderLogoutBtn")
         self.btn_header_logout.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_header_logout.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.btn_header_logout.clicked.connect(self.logout_requested.emit)
-        header_layout.addWidget(self.btn_header_logout)
+        header_layout.addWidget(self.btn_header_logout, 0, Qt.AlignmentFlag.AlignVCenter)
 
         content_layout.addWidget(self.management_header)
 

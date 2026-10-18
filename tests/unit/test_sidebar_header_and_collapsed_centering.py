@@ -33,24 +33,28 @@ def config_store(monkeypatch):
 
 
 def test_sidebar_header_spacing_and_vertical_alignment(config_store):
-    """Header should have 16-20px horizontal margins and vertically centered logo/toggle."""
+    """Header should have 16-20px horizontal margins and vertically centered logo."""
     sidebar = CollapsibleSidebar()
     margins = sidebar._header_layout.contentsMargins()
     assert 16 <= margins.left() <= 20
     assert 16 <= margins.right() <= 20
 
-    # Verify vertical alignment of logo and toggle
-    logo_align = sidebar._header_layout.itemAt(1).alignment()
-    toggle_align = sidebar._header_layout.itemAt(3).alignment()
+    # Verify vertical alignment of logo (item 0 in header layout)
+    logo_align = sidebar._header_layout.itemAt(0).alignment()
     assert bool(logo_align & Qt.AlignmentFlag.AlignVCenter)
-    assert bool(toggle_align & Qt.AlignmentFlag.AlignVCenter)
+
+    # Verify hamburger toggle is removed from the header layout
+    for i in range(sidebar._header_layout.count()):
+        widget = sidebar._header_layout.itemAt(i).widget()
+        if widget is not None:
+            assert widget.objectName() != "SidebarToggle"
 
     sidebar.close()
     sidebar.deleteLater()
 
 
 def test_sidebar_collapsed_toggle_is_centered(config_store):
-    """When collapsed, toggle button should be horizontally centered in the 70px rail."""
+    """When collapsed, C3 logo mark should be horizontally centered in the 70px rail."""
     sidebar = CollapsibleSidebar()
     sidebar.finalize()
     sidebar.set_collapsed(True)
@@ -59,9 +63,8 @@ def test_sidebar_collapsed_toggle_is_centered(config_store):
     sidebar.setFixedWidth(70)
 
     # In collapsed state, header layout margins should be symmetric or 0
-    # and toggle should be centered
+    # and logo mark should be centered
     assert sidebar.is_collapsed
-    assert not sidebar.lbl_logo.isVisible()
     assert sidebar._is_toggle_centered_when_collapsed()
 
     sidebar.close()

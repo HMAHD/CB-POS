@@ -676,6 +676,8 @@
     "sidebar_reorder": "Reorder",
     "sidebar_pos": "POS / Sales",
     "sidebar_logout": "Logout",
+    "sidebar_collapse": "Collapse Sidebar",
+    "sidebar_expand": "Expand Sidebar",
     "logo_fallback": "CB POS"
   },
   "dashboard": {

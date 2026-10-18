@@ -190,33 +190,34 @@ class SettingsView(QWidget):
         # Persistent Settings Header bar
         self.settings_header = QFrame()
         self.settings_header.setObjectName("SettingsHeader")
+        self.settings_header.setFixedHeight(56)
         header_layout = QHBoxLayout(self.settings_header)
-        header_layout.setContentsMargins(20, 8, 20, 8)
+        header_layout.setContentsMargins(16, 0, 16, 0)
         header_layout.setSpacing(14)
 
         self.lbl_header_title = QLabel()
         self.lbl_header_title.setObjectName("SettingsHeaderTitle")
-        header_layout.addWidget(self.lbl_header_title)
+        header_layout.addWidget(self.lbl_header_title, 0, Qt.AlignmentFlag.AlignVCenter)
 
         header_layout.addStretch(1)
 
         self.lbl_header_clock = QLabel()
         self.lbl_header_clock.setObjectName("SettingsHeaderClock")
-        header_layout.addWidget(self.lbl_header_clock)
+        header_layout.addWidget(self.lbl_header_clock, 0, Qt.AlignmentFlag.AlignVCenter)
 
         self.btn_header_pos = QToolButton()
         self.btn_header_pos.setObjectName("SettingsHeaderPosBtn")
         self.btn_header_pos.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_header_pos.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.btn_header_pos.clicked.connect(self._on_pos_clicked)
-        header_layout.addWidget(self.btn_header_pos)
+        header_layout.addWidget(self.btn_header_pos, 0, Qt.AlignmentFlag.AlignVCenter)
 
         self.btn_header_logout = QToolButton()
         self.btn_header_logout.setObjectName("SettingsHeaderLogoutBtn")
         self.btn_header_logout.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_header_logout.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.btn_header_logout.clicked.connect(self._on_logout_clicked)
-        header_layout.addWidget(self.btn_header_logout)
+        header_layout.addWidget(self.btn_header_logout, 0, Qt.AlignmentFlag.AlignVCenter)
 
         content_layout.addWidget(self.settings_header)
         content_layout.addWidget(self.stack, 1)

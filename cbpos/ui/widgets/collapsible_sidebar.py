@@ -4,16 +4,17 @@ from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QPushButton,
     QScrollArea,
     QSizePolicy,
-    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
+from cbpos.config import Config
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.theme_service import ThemeService
-from cbpos.ui.resources.icons import Icons
+from cbpos.i18n import _t
 from cbpos.ui.utils.style_helpers import refresh_style
 from cbpos.ui.widgets.custom_widgets import SidebarButton
 
@@ -21,6 +22,9 @@ EXPANDED_WIDTH = 250
 COLLAPSED_WIDTH = 70
 ANIMATION_DURATION = 300
 RESPONSIVE_BREAKPOINT = 1024
+
+CHEVRON_EXPANDED = "‹"  # noqa: RUF001
+CHEVRON_COLLAPSED = "›"  # noqa: RUF001
 
 # Below this height (1366x768 and 1024x768 screens) nav buttons shrink so
 # more fit before the list has to scroll (#591).
@@ -61,34 +65,35 @@ class CollapsibleSidebar(QFrame):
 
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setSpacing(10)
+        self._layout.setSpacing(0)
 
-        # --- Header (Logo + Toggle) ---
-        header = QWidget()
-        header.setFixedHeight(60)
-        self._header_layout = QHBoxLayout(header)
-        # 18px horizontal margin per #608 (16-20px)
-        self._header_layout.setContentsMargins(18, 10, 18, 10)
+        # --- Header (Logo) ---
+        self.sidebar_header = QWidget()
+        self.sidebar_header.setObjectName("SidebarHeader")
+        self.sidebar_header.setFixedHeight(56)
+        self._header_layout = QHBoxLayout(self.sidebar_header)
+        self._header_layout.setContentsMargins(16, 0, 16, 0)
+        self._header_layout.setSpacing(0)
 
         self.lbl_logo = QLabel()
+        self.lbl_logo.setObjectName("SidebarLogo")
+        self._header_layout.addWidget(self.lbl_logo, 0, Qt.AlignmentFlag.AlignVCenter)
         self._load_logo()
 
-        self.btn_toggle = QToolButton()
-        icon_color = ThemeService.get_icon_color()
-        self.btn_toggle.setIcon(Icons.get("fa5s.bars", icon_color))
-        self.btn_toggle.setObjectName("SidebarToggle")
-        self.btn_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_toggle.clicked.connect(self.toggle)
+        self._layout.addWidget(self.sidebar_header)
+        self._layout.addSpacing(6)
 
-        # Stretches allowing centering in collapsed state and right-alignment in expanded state
-        self._header_layout.addStretch(0)  # index 0
-        self._header_layout.addWidget(self.lbl_logo, 0, Qt.AlignmentFlag.AlignVCenter)  # index 1
-        self._header_layout.addStretch(1)  # index 2
-        self._header_layout.addWidget(self.btn_toggle, 0, Qt.AlignmentFlag.AlignVCenter)  # index 3
-        self._header_layout.addStretch(0)  # index 4
-
-        self._layout.addWidget(header)
-        self._layout.addSpacing(10)
+        # --- Mid-Edge "Paper-Cut" Collapse Tab ---
+        self.edge_toggle_btn = QPushButton(self)
+        self.edge_toggle_btn.setObjectName("SidebarEdgeToggle")
+        self.edge_toggle_btn.setFixedSize(16, 56)
+        self.edge_toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.edge_toggle_btn.setText(CHEVRON_COLLAPSED if self.is_collapsed else CHEVRON_EXPANDED)
+        self.edge_toggle_btn.setToolTip(
+            _t("management.sidebar_expand") if self.is_collapsed else _t("management.sidebar_collapse")
+        )
+        self.edge_toggle_btn.clicked.connect(self.toggle)
+        self.btn_toggle = self.edge_toggle_btn  # Compatibility alias
 
         # --- Nav list (scrollable) ---
         # add_nav_button()/add_section_label() fill this. It scrolls, while
@@ -234,24 +239,17 @@ class CollapsibleSidebar(QFrame):
 
         if collapsed:
             end = COLLAPSED_WIDTH
-            self.lbl_logo.setVisible(False)
-            self._header_layout.setContentsMargins(0, 10, 0, 10)
-            self._header_layout.setStretch(0, 1)
-            self._header_layout.setStretch(2, 0)
-            self._header_layout.setStretch(4, 1)
-            self._header_layout.invalidate()
+            self.edge_toggle_btn.setText(CHEVRON_COLLAPSED)
+            self.edge_toggle_btn.setToolTip(_t("management.sidebar_expand"))
             style = Qt.ToolButtonStyle.ToolButtonIconOnly
         else:
             end = EXPANDED_WIDTH
-            self.lbl_logo.setVisible(True)
-            self._header_layout.setContentsMargins(18, 10, 18, 10)
-            self._header_layout.setStretch(0, 0)
-            self._header_layout.setStretch(2, 1)
-            self._header_layout.setStretch(4, 0)
-            self._header_layout.invalidate()
+            self.edge_toggle_btn.setText(CHEVRON_EXPANDED)
+            self.edge_toggle_btn.setToolTip(_t("management.sidebar_collapse"))
             style = Qt.ToolButtonStyle.ToolButtonTextBesideIcon
 
         self.is_collapsed = collapsed
+        self._load_logo()
 
         if persist:
             ConfigService.set("sidebar_collapsed", self.is_collapsed)
@@ -268,9 +266,12 @@ class CollapsibleSidebar(QFrame):
         self._update_all_styles()
 
     def resizeEvent(self, event) -> None:
-        """Switch to compact buttons on short screens, normal ones on tall screens."""
+        """Switch to compact buttons on short screens and keep edge toggle centered."""
         super().resizeEvent(event)
         self.set_compact(event.size().height() < COMPACT_HEIGHT)
+        btn_w, btn_h = self.edge_toggle_btn.width(), self.edge_toggle_btn.height()
+        self.edge_toggle_btn.move(self.width() - btn_w, (self.height() - btn_h) // 2)
+        self.edge_toggle_btn.raise_()
 
     def set_compact(self, compact: bool) -> None:
         """Shrink nav and POS/Logout buttons and their spacing on a short screen.
@@ -310,24 +311,15 @@ class CollapsibleSidebar(QFrame):
     def _apply_collapsed_state(self) -> None:
         """Set sidebar to collapsed mode without animation (used at init)."""
         self.setFixedWidth(COLLAPSED_WIDTH)
-        self.lbl_logo.setVisible(False)
-        self._header_layout.setContentsMargins(0, 10, 0, 10)
-        self._header_layout.setStretch(0, 1)
-        self._header_layout.setStretch(2, 0)
-        self._header_layout.setStretch(4, 1)
-        self._header_layout.invalidate()
+        self.is_collapsed = True
+        self.edge_toggle_btn.setText(CHEVRON_COLLAPSED)
+        self.edge_toggle_btn.setToolTip(_t("management.sidebar_expand"))
+        self._load_logo()
         self._apply_button_style(Qt.ToolButtonStyle.ToolButtonIconOnly)
 
     def _is_toggle_centered_when_collapsed(self) -> bool:
-        """Return True if toggle is centered when collapsed."""
-        if not self.is_collapsed:
-            return False
-        margins = self._header_layout.contentsMargins()
-        return (
-            margins.left() == margins.right()
-            and self._header_layout.stretch(0) == self._header_layout.stretch(4)
-            and self._header_layout.stretch(0) > 0
-        )
+        """Return True if logo/mark is centered in header when collapsed."""
+        return self.is_collapsed and self._header_layout.contentsMargins().left() == 0
 
     def _apply_button_style(self, style: Qt.ToolButtonStyle) -> None:
         """Set the tool-button style on all buttons.
@@ -352,14 +344,34 @@ class CollapsibleSidebar(QFrame):
             label.setVisible(not self.is_collapsed)
 
     def _load_logo(self) -> None:
-        """Load the logo image from the current theme."""
-        logo_path = ThemeService.get_logo_path()
-        logo_pixmap = QPixmap(logo_path)
-        if not logo_pixmap.isNull():
-            self.lbl_logo.setPixmap(logo_pixmap.scaledToHeight(40, Qt.TransformationMode.SmoothTransformation))
+        """Load full brand banner when expanded or C3 icon mark when collapsed."""
+        if self.is_collapsed:
+            icon_path = Config.BASE_DIR / "cbpos" / "assets" / "ico" / "cbpos.png"
+            if icon_path.exists():
+                pix = QPixmap(str(icon_path))
+                self.lbl_logo.setPixmap(
+                    pix.scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                )
+                self.lbl_logo.setText("")
+            else:
+                self.lbl_logo.setPixmap(QPixmap())
+                self.lbl_logo.setText("C3")
+            self._header_layout.setContentsMargins(0, 0, 0, 0)
+            self._header_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.lbl_logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         else:
-            self.lbl_logo.setText("")
-            self.lbl_logo.setObjectName("SidebarLogo")
+            logo_path = ThemeService.get_logo_path()
+            pix = QPixmap(logo_path)
+            if not pix.isNull():
+                self.lbl_logo.setPixmap(pix.scaledToHeight(32, Qt.TransformationMode.SmoothTransformation))
+                self.lbl_logo.setText("")
+            else:
+                self.lbl_logo.setPixmap(QPixmap())
+                self.lbl_logo.setText(_t("management.logo_fallback"))
+            self._header_layout.setContentsMargins(16, 0, 16, 0)
+            self._header_layout.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            self.lbl_logo.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.lbl_logo.setVisible(True)
 
     def _on_theme_changed(self) -> None:
         """Refresh all icons and the logo when the theme changes."""
@@ -367,6 +379,5 @@ class CollapsibleSidebar(QFrame):
             if hasattr(btn, "update_icon"):
                 btn.update_icon()
 
-        icon_color = ThemeService.get_icon_color()
-        self.btn_toggle.setIcon(Icons.get("fa5s.bars", icon_color))
         self._load_logo()
+        self._update_all_styles()

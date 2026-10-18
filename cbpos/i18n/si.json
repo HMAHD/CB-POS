@@ -676,6 +676,8 @@
     "sidebar_reorder": "නැවත ඇණවුම්",
     "sidebar_pos": "POS / විකුණුම්",
     "sidebar_logout": "ලොග් අවුට්",
+    "sidebar_collapse": "පැති තීරුව හකුලන්න",
+    "sidebar_expand": "පැති තීරුව දිගහරින්න",
     "logo_fallback": "CB POS"
   },
   "dashboard": {

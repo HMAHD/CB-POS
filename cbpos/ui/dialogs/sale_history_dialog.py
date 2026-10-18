@@ -199,6 +199,8 @@ class SaleHistoryDialog(QDialog):
         action_layout.addWidget(self.btn_refund)
 
         self.btn_close = QPushButton()
+        self.btn_close.setObjectName("BtnCancel")
+        self.btn_close.setProperty("class", "secondary")
         self.btn_close.clicked.connect(self.reject)
         action_layout.addWidget(self.btn_close)
 
@@ -227,6 +229,8 @@ class SaleHistoryDialog(QDialog):
         refund_btn_layout.addStretch()
 
         self.btn_cancel_refund = QPushButton()
+        self.btn_cancel_refund.setObjectName("BtnCancel")
+        self.btn_cancel_refund.setProperty("class", "secondary")
         self.btn_cancel_refund.clicked.connect(self._cancel_refund)
         refund_btn_layout.addWidget(self.btn_cancel_refund)
 

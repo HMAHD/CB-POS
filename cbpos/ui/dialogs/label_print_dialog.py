@@ -47,24 +47,7 @@ class _QtyDelegate(QStyledItemDelegate):
         editor.setFrame(False)
 
         # Delegate editors inside a globally-styled QTableWidget cannot
-        # be reached by QSS selectors or QPalette (Qt ignores palette
-        # when a stylesheet is active on any ancestor).  setStyleSheet
-        # on the editor itself is the only reliable override — this is
-        # the standard Qt pattern for delegate editors.
-        from cbpos.core.services.theme_service import ThemeService
-
-        if ThemeService.current_theme.lower() == "light":
-            editor.setStyleSheet(
-                "QLineEdit { color: #212529; background: #FFFFFF;"
-                " font-size: 15px; font-weight: bold;"
-                " padding: 2px 4px; }"
-            )
-        else:
-            editor.setStyleSheet(
-                "QLineEdit { color: #FFFFFF; background: #252526;"
-                " font-size: 15px; font-weight: bold;"
-                " padding: 2px 4px; }"
-            )
+        editor.setObjectName("TableQtyEditor")
         return editor
 
     def setEditorData(self, editor: QLineEdit, index) -> None:
@@ -175,7 +158,7 @@ class LabelPrintDialog(QDialog):
         btn_layout.addWidget(btn_remove)
 
         btn_clear = QPushButton(_t("label_print.clear_all"))
-        btn_clear.setProperty("class", "danger")
+        btn_clear.setProperty("class", "secondary")
         btn_clear.clicked.connect(self._clear_all)
         btn_layout.addWidget(btn_clear)
 
@@ -295,6 +278,8 @@ class LabelPrintDialog(QDialog):
         btn_select.setProperty("class", "primary")
         btn_select.clicked.connect(dlg.accept)
         btn_cancel = QPushButton(_t("common.cancel"))
+        btn_cancel.setObjectName("BtnCancel")
+        btn_cancel.setProperty("class", "secondary")
         btn_cancel.clicked.connect(dlg.reject)
         btn_lay.addStretch()
         btn_lay.addWidget(btn_select)

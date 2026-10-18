@@ -165,8 +165,12 @@ class PermissionDialog(QDialog):
         # Buttons
         btn_layout = QHBoxLayout()
         btn_save = QPushButton(_t("permission.save_changes"))
+        btn_save.setObjectName("BtnSave")
+        btn_save.setProperty("class", "primary")
         btn_save.clicked.connect(self.save_changes)
         btn_close = QPushButton(_t("common.close"))
+        btn_close.setObjectName("BtnCancel")
+        btn_close.setProperty("class", "secondary")
         btn_close.clicked.connect(self.reject)
 
         btn_layout.addStretch()

@@ -130,12 +130,15 @@ class LogDetailDialog(QDialog):
         btn_layout.setSpacing(10)
 
         self.btn_copy = QPushButton(_t("admin_tools.logs_btn_copy_details"))
+        self.btn_copy.setProperty("class", "secondary")
         self.btn_copy.clicked.connect(self._copy_details)
         btn_layout.addWidget(self.btn_copy)
 
         btn_layout.addStretch()
 
         self.btn_close = QPushButton(_t("common.close"))
+        self.btn_close.setObjectName("BtnCancel")
+        self.btn_close.setProperty("class", "secondary")
         self.btn_close.setDefault(True)
         self.btn_close.clicked.connect(self.accept)
         btn_layout.addWidget(self.btn_close)

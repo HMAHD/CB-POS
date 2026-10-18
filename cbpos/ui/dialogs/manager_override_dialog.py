@@ -44,7 +44,7 @@ class ManagerOverrideDialog(QDialog):
         layout.addWidget(btn_verify)
 
         btn_cancel = QPushButton(_t("common.cancel"))
-        btn_cancel.setProperty("class", "danger")
+        btn_cancel.setProperty("class", "secondary")
         btn_cancel.clicked.connect(self.reject)
         layout.addWidget(btn_cancel)
 

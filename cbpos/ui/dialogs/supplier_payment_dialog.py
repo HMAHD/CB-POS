@@ -140,6 +140,8 @@ class SupplierPaymentDialog(QDialog):
         btn_layout.addWidget(self.btn_record)
 
         self.btn_cancel = QPushButton(_t("common.cancel"))
+        self.btn_cancel.setObjectName("BtnCancel")
+        self.btn_cancel.setProperty("class", "secondary")
         self.btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(self.btn_cancel)
         layout.addLayout(btn_layout)

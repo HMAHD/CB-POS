@@ -90,6 +90,8 @@ class CsvImportDialog(QDialog):
         btn_layout.addStretch()
 
         self.btn_cancel = QPushButton("")
+        self.btn_cancel.setObjectName("BtnCancel")
+        self.btn_cancel.setProperty("class", "secondary")
         self.btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(self.btn_cancel)
 

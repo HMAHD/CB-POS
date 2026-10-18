@@ -62,3 +62,6 @@ docs/_build/
 
 # Sphinx autodoc stubs — regenerated fresh each build (see docs.yml / README).
 docs/api/
+
+# Prototypes & UI Previews
+customer_ui_redesign_preview.html

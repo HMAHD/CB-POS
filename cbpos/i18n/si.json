@@ -657,7 +657,9 @@
     "customer_title": "පාරිභෝගික",
     "walk_in_customer": "සාමාන්‍ය පාරිභෝගික",
     "points": "{points} ලකුණු",
-    "clear_customer": "පාරිභෝගිකයා ඉවත් කරන්න (සාමාන්‍ය පාරිභෝගිකයාට මාරු වෙනවා)"
+    "clear_customer": "පාරිභෝගිකයා ඉවත් කරන්න (සාමාන්‍ය පාරිභෝගිකයාට මාරු වෙනවා)",
+    "change_customer": "වෙනස් කරන්න",
+    "btn_select_customer": "+ තෝරන්න"
   },
   "management": {
     "sidebar_dashboard": "උපකරණ පුවරුව",

@@ -1478,81 +1478,170 @@ QLabel#ActionSectionLabel {
 }
 
 QLabel#CustTitle {
-    color: #FFFFFF;
-    font-size: 13px;
-    font-weight: bold;
+    color: #888892;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
     background: transparent;
 }
 
 QFrame#CustomerPanel {
     background-color: #252528;
-    border: 1px solid #3E3E42;
-    border-radius: 8px;
+    border: 1px solid #3E3E46;
+    border-radius: 10px;
+}
+
+QFrame#CustomerPanel[hasCustomer="true"] {
+    background-color: #26262B;
+    border: 1px solid #484854;
+}
+
+QFrame#CustomerPanel[hasCustomer="false"]:hover {
+    border-color: #00BCEB;
+    background-color: #2B2B30;
 }
 
 QFrame#CustomerPanel QLabel {
     background: transparent;
 }
 
+QLabel#CustAvatar {
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 13px;
+    background: rgba(0, 188, 235, 0.12);
+    border: 1px solid rgba(0, 188, 235, 0.35);
+    color: #00BCEB;
+}
+
+QLabel#CustAvatar[hasCustomer="false"] {
+    background: #2D2D32;
+    border: 1px solid #3E3E46;
+    color: #888888;
+}
+
 QLabel#CustomerLabel {
     font-weight: bold;
-    font-size: 14px;
-    color: white;
+    font-size: 15px;
+    color: #FFFFFF;
+    background: transparent;
+}
+
+QLabel#CustomerPhoneLabel {
+    font-size: 12px;
+    color: #9E9EA8;
     background: transparent;
 }
 
 QPushButton#BtnCustomerSelect {
-    background-color: #007ACC;
-    color: white;
+    background-color: #00BCEB;
+    color: #001F3F;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     font-weight: bold;
-    padding: 5px 10px;
+    font-size: 12px;
+    padding: 4px 10px;
+    min-height: 24px;
 }
 
 QPushButton#BtnCustomerSelect:hover {
-    background-color: #0098E6;
+    background-color: #00A3CC;
 }
 
-QPushButton#BtnCustomerSelect:pressed {
-    background-color: #005F99;
+QPushButton#BtnCustomerSelect[mode="change"] {
+    background-color: #2E2E34;
+    border: 1px solid #40404A;
+    border-radius: 6px;
+    color: #D4D4DE;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    min-height: 22px;
+}
+
+QPushButton#BtnCustomerSelect[mode="change"]:hover {
+    background-color: #3A3A42;
+    border-color: #00BCEB;
+    color: #FFFFFF;
 }
 
 QFrame#PointsDivider {
-    background-color: #3E3E42;
+    background-color: #35353C;
     border: none;
 }
 
-/* Without this, the row paints Qt's global QWidget background
-   (#1E1E1E) instead of letting CustomerPanel's own #252528 surface
-   show through, showing up as a separate darker block under the
-   points row. */
 QWidget#PointsRow {
-    background: transparent;
+    background: rgba(255, 220, 0, 0.12);
+    border: 1px solid rgba(255, 220, 0, 0.3);
+    border-radius: 10px;
 }
 
-/* No fill/border at all -- a badge/chip here read as a separate
-   highlighted box floating on the card instead of plain card content,
-   whatever tint it used. Plain colored text on the card's own theme
-   background (transparent, so it shows the card's #252528) matches how
-   every other label in this panel is styled. */
 QFrame#CustomerPanel QLabel#PointsLabel {
     color: #FFDC00;
     font-weight: bold;
-    font-size: 12px;
+    font-size: 11px;
     background: transparent;
 }
 
 QPushButton#BtnCustomerClear {
     background-color: transparent;
-    border: none;
-    border-radius: 4px;
-    color: #888888;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: #6E6E78;
+    min-width: 24px;
+    max-width: 24px;
+    min-height: 24px;
+    max-height: 24px;
+    padding: 0;
 }
 
 QPushButton#BtnCustomerClear:hover {
-    background-color: #3A3A3D;
+    background-color: rgba(255, 65, 54, 0.15);
     color: #FF4136;
+    border-color: rgba(255, 65, 54, 0.3);
+}
+
+/* Select Customer Dialog Footers */
+QDialog#CustomerSelectionDialog QPushButton#BtnDialogCustomerSelect {
+    background-color: #00BCEB;
+    color: #001F3F;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 13px;
+    min-height: 38px;
+    min-width: 105px;
+    padding: 0 16px;
+}
+
+QDialog#CustomerSelectionDialog QPushButton#BtnDialogCustomerSelect:hover {
+    background-color: #00A3CC;
+}
+
+QDialog#CustomerSelectionDialog QPushButton#BtnDialogCustomerSelect:pressed {
+    background-color: #0088AA;
+}
+
+QDialog#CustomerSelectionDialog QPushButton#BtnCancel {
+    background-color: #2D2D32;
+    color: #E2E2E8;
+    border: 1px solid #38383E;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 13px;
+    min-height: 38px;
+    min-width: 105px;
+    padding: 0 16px;
+}
+
+QDialog#CustomerSelectionDialog QPushButton#BtnCancel:hover {
+    background-color: #383840;
+    color: #FFFFFF;
+    border-color: #4A4A52;
+}
+
+QDialog#CustomerSelectionDialog QPushButton#BtnCancel:pressed {
+    background-color: #242428;
 }
 
 /* Action Grid Button */

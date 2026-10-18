@@ -657,7 +657,9 @@
     "customer_title": "Customer",
     "walk_in_customer": "Walk-in Customer",
     "points": "{points} pts",
-    "clear_customer": "Clear customer (reset to Walk-in)"
+    "clear_customer": "Clear customer (reset to Walk-in)",
+    "change_customer": "Change",
+    "btn_select_customer": "+ Select"
   },
   "management": {
     "sidebar_dashboard": "Dashboard",

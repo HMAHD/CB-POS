@@ -21,6 +21,7 @@ class CustomerSelectionDialog(QDialog):
     def __init__(self, parent=None):
         """Initialize the dialog and load the customer list."""
         super().__init__(parent)
+        self.setObjectName("CustomerSelectionDialog")
         self.setWindowTitle(_t("customer_selection.title"))
         self.setMinimumWidth(500)
         self.setMinimumHeight(400)
@@ -71,13 +72,17 @@ class CustomerSelectionDialog(QDialog):
         self.table.doubleClicked.connect(self.select_customer)
         layout.addWidget(self.table)
 
-        # Buttons
+        # Buttons - symmetric 38px height and 105px min width
         footer_layout, self.btn_select, self.btn_cancel = make_dialog_footer(
             primary_key="customer_selection.btn_select",
             on_primary=self.select_customer,
             on_cancel=self.reject,
-            primary_object_name="BtnCustomerSelect",
+            primary_object_name="BtnDialogCustomerSelect",
         )
+        self.btn_select.setMinimumHeight(38)
+        self.btn_select.setMinimumWidth(105)
+        self.btn_cancel.setMinimumHeight(38)
+        self.btn_cancel.setMinimumWidth(105)
         layout.addLayout(footer_layout)
 
         QShortcut(QKeySequence(Qt.Key.Key_Return), self).activated.connect(self.select_customer)

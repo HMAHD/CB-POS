@@ -3417,10 +3417,10 @@ QDialog#SupplierDialog QLabel {
 /* ── Toggle Hint — compact inline description below checkboxes ── */
 /* Reusable: set objectName("ToggleHint") on any QLabel used as a toggle hint */
 QLabel#ToggleHint {
-    color: #6E6E6E;
+    color: #94A3B8;
     font-size: 11px;
     background: transparent;
-    padding: 0px;
+    padding-left: 2px;
 }
 
 /* ── Product Image Preview placeholder ── */

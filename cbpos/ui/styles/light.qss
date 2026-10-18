@@ -3318,7 +3318,7 @@ QLabel#ToggleHint {
     color: #8C959F;
     font-size: 11px;
     background: transparent;
-    padding: 0px;
+    padding-left: 2px;
 }
 
 /* ── Product Image Preview placeholder ── */

@@ -32,15 +32,33 @@ def test_inventory_tab_inputs_and_checkboxes_size_policies(db_session):
             assert combo.sizePolicy().verticalPolicy() == QSizePolicy.Policy.Fixed
             assert combo.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Expanding
 
-        # Checkboxes must have Maximum horizontal and Minimum vertical policy to prevent indicator clipping
+        # Checkboxes must have Fixed vertical policy to prevent indicator clipping, and Preferred horizontal policy
         for chk in [
             dlg.weighted_check,
             dlg.service_check,
             dlg.price_change_allowed_check,
             dlg.age_restricted_check,
         ]:
-            assert chk.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Maximum
-            assert chk.sizePolicy().verticalPolicy() == QSizePolicy.Policy.Minimum
+            assert chk.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Preferred
+            assert chk.sizePolicy().verticalPolicy() == QSizePolicy.Policy.Fixed
+    finally:
+        dlg.deleteLater()
+
+
+def test_inventory_item_type_checkbox_and_hint_have_positive_gap(db_session):
+    dlg = ProductEditor()
+    try:
+        dlg.tabs.setCurrentIndex(1)
+        dlg.show()
+        for chk, hint in [
+            (dlg.weighted_check, dlg.weighted_hint),
+            (dlg.service_check, dlg.service_hint),
+            (dlg.price_change_allowed_check, dlg.price_change_hint),
+            (dlg.age_restricted_check, dlg.age_restricted_hint),
+        ]:
+            chk_right = chk.x() + chk.width()
+            gap = hint.x() - chk_right
+            assert gap >= 8, f"{chk.text()} and hint gap is {gap} < 8px"
     finally:
         dlg.deleteLater()
 
@@ -78,7 +96,10 @@ def test_inventory_item_type_hints_word_wrap(db_session):
         for hint in hints:
             assert hint.wordWrap()
             assert hint.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Expanding
-            assert hint.sizePolicy().verticalPolicy() == QSizePolicy.Policy.Minimum
+            assert hint.sizePolicy().verticalPolicy() in (
+                QSizePolicy.Policy.Preferred,
+                QSizePolicy.Policy.Minimum,
+            )
     finally:
         dlg.deleteLater()
 

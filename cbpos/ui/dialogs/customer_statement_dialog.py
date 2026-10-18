@@ -6,10 +6,12 @@ import contextlib
 import logging
 from datetime import datetime
 
-from PyQt6.QtCore import QDate
+from PyQt6.QtCore import QDate, QSize, Qt
+from PyQt6.QtGui import QIcon, QPainter, QPixmap
 from PyQt6.QtWidgets import (
     QDateEdit,
     QDialog,
+    QFrame,
     QGridLayout,
     QHBoxLayout,
     QHeaderView,
@@ -27,10 +29,23 @@ from cbpos.core.services.statement_service import StatementService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
-from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem
+from cbpos.ui.resources.icons import Icons
+from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem, align_numeric_headers
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
+
+
+def _set_button_icon(btn: QPushButton, icon_name: str, color: str, pad_right: int = 8, size: int = 14) -> None:
+    """Set button icon with transparent trailing padding to ensure clear spacing before label text."""
+    base_pixmap = Icons.get(icon_name, color).pixmap(size, size)
+    padded = QPixmap(size + pad_right, size)
+    padded.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(padded)
+    painter.drawPixmap(0, 0, base_pixmap)
+    painter.end()
+    btn.setIconSize(QSize(size + pad_right, size))
+    btn.setIcon(QIcon(padded))
 
 
 class CustomerStatementDialog(QDialog):
@@ -43,7 +58,7 @@ class CustomerStatementDialog(QDialog):
         self.statement_data = None
 
         self.setWindowTitle(_t("customer_statement.title", name=customer.name))
-        self.setMinimumSize(750, 550)
+        self.setMinimumSize(840, 620)
         self.setObjectName("CustomerStatementDialog")
         self._init_ui()
         self._load_statement()
@@ -51,31 +66,65 @@ class CustomerStatementDialog(QDialog):
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setSpacing(10)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(14)
 
-        # Customer header
-        header_layout = QHBoxLayout()
+        # 1. Customer Hero Card
+        header_card = QFrame()
+        header_card.setObjectName("StatementHeaderCard")
+        card_layout = QHBoxLayout(header_card)
+        card_layout.setContentsMargins(16, 12, 16, 12)
+        card_layout.setSpacing(12)
+
+        # Avatar Icon
+        lbl_avatar = QLabel()
+        lbl_avatar.setPixmap(Icons.get("fa5s.user-circle", "#00BCEB").pixmap(36, 36))
+        card_layout.addWidget(lbl_avatar)
+
+        # Name and metadata
+        meta_layout = QVBoxLayout()
+        meta_layout.setSpacing(4)
+
+        top_line = QHBoxLayout()
+        top_line.setSpacing(10)
         self.lbl_customer = QLabel(f"{self.customer.name}")
-        self.lbl_customer.setProperty("class", "dialog-title")
-        header_layout.addWidget(self.lbl_customer)
+        self.lbl_customer.setObjectName("StatementCustName")
+        top_line.addWidget(self.lbl_customer)
 
-        if self.customer.phone:
-            lbl_phone = QLabel(_t("customer_statement.phone", phone=self.customer.phone))
-            lbl_phone.setProperty("class", "muted")
-            header_layout.addWidget(lbl_phone)
+        lbl_id = QLabel(f"#CUST-{self.customer.id:04d}")
+        lbl_id.setObjectName("StatementCustId")
+        top_line.addWidget(lbl_id)
+        top_line.addStretch()
+        meta_layout.addLayout(top_line)
 
-        header_layout.addStretch()
-        layout.addLayout(header_layout)
+        # Phone line
+        phone_line = QHBoxLayout()
+        phone_line.setSpacing(6)
+        lbl_phone_icon = QLabel()
+        lbl_phone_icon.setPixmap(Icons.get("fa5s.phone-alt", "#94A3B8").pixmap(12, 12))
+        phone_line.addWidget(lbl_phone_icon)
 
-        # Date filter -- given its own tuned spacing instead of just
-        # inheriting the dialog's blanket layout.setSpacing(10), which
-        # wasn't tuned for this row's content at all (#285).
+        phone_text = self.customer.phone or "---"
+        self.lbl_phone = QLabel(_t("customer_statement.phone", phone=phone_text))
+        self.lbl_phone.setObjectName("StatementCustPhone")
+        phone_line.addWidget(self.lbl_phone)
+        phone_line.addStretch()
+        meta_layout.addLayout(phone_line)
+
+        card_layout.addLayout(meta_layout)
+        card_layout.addStretch()
+
+        layout.addWidget(header_card)
+
+        # 2. Date filter row with tuned spacing and presets
         self.filter_layout = filter_layout = QHBoxLayout()
-        filter_layout.setContentsMargins(0, 8, 0, 8)
+        filter_layout.setContentsMargins(0, 6, 0, 6)
         filter_layout.setSpacing(10)
+
         lbl_from = QLabel(_t("common.from"))
         lbl_from.setProperty("class", "transparent")
         filter_layout.addWidget(lbl_from)
+
         self.date_from = QDateEdit()
         self.date_from.setCalendarPopup(True)
         self.date_from.setDate(QDate.currentDate().addMonths(-1))
@@ -84,45 +133,78 @@ class CustomerStatementDialog(QDialog):
         lbl_to = QLabel(_t("common.to"))
         lbl_to.setProperty("class", "transparent")
         filter_layout.addWidget(lbl_to)
+
         self.date_to = QDateEdit()
         self.date_to.setCalendarPopup(True)
         self.date_to.setDate(QDate.currentDate())
         filter_layout.addWidget(self.date_to)
 
+        # Preset buttons
+        self.btn_preset_month = QPushButton(_t("customer_statement.preset_month"))
+        self.btn_preset_month.setProperty("class", "secondary")
+        self.btn_preset_month.clicked.connect(self._set_preset_this_month)
+        filter_layout.addWidget(self.btn_preset_month)
+
+        self.btn_preset_30d = QPushButton(_t("customer_statement.preset_30d"))
+        self.btn_preset_30d.setProperty("class", "secondary")
+        self.btn_preset_30d.clicked.connect(self._set_preset_last_30d)
+        filter_layout.addWidget(self.btn_preset_30d)
+
+        self.btn_preset_all = QPushButton(_t("customer_statement.preset_all"))
+        self.btn_preset_all.setProperty("class", "secondary")
+        self.btn_preset_all.clicked.connect(self._set_preset_all_time)
+        filter_layout.addWidget(self.btn_preset_all)
+
         btn_refresh = QPushButton(_t("common.refresh"))
         btn_refresh.setProperty("class", "accent")
+        _set_button_icon(btn_refresh, "fa5s.sync-alt", "#FFFFFF", pad_right=8, size=12)
         btn_refresh.clicked.connect(self._load_statement)
         filter_layout.addWidget(btn_refresh)
 
         filter_layout.addStretch()
         layout.addLayout(filter_layout)
 
-        # Summary labels -- a grid instead of one packed row with a
-        # stretch, so the two "starting point" figures (Opening, Sales)
-        # and the two "ending point" figures (Payments, Closing) each
-        # line up into their own column rather than reading as four
-        # differently-styled labels with no predictable rhythm (#285).
-        # Reading order still follows a real statement: Opening + Sales
-        # (debit) - Payments (credit) = Closing.
+        # 3. 5-Way Reconciled Summary Grid
         self.summary_layout = summary_layout = QGridLayout()
-        summary_layout.setHorizontalSpacing(24)
-        summary_layout.setVerticalSpacing(6)
+        summary_layout.setHorizontalSpacing(16)
+        summary_layout.setVerticalSpacing(10)
+
+        # Labels for test compatibility and clean styling
         self.lbl_opening = QLabel(_t("customer_statement.opening", value="---"))
-        self.lbl_opening.setProperty("class", "transparent")
+        self.lbl_opening.setProperty("class", "statement-stat")
+        self.lbl_opening.setObjectName("StatOpening")
+
         self.lbl_total_debit = QLabel(_t("customer_statement.sales", value="---"))
-        self.lbl_total_debit.setProperty("class", "debit")
+        self.lbl_total_debit.setProperty("class", "statement-stat debit")
+        self.lbl_total_debit.setObjectName("StatSales")
+
+        self.lbl_adjustments = QLabel(_t("customer_statement.adjustments", value="---"))
+        self.lbl_adjustments.setProperty("class", "statement-stat")
+        self.lbl_adjustments.setObjectName("StatAdjustments")
+
         self.lbl_total_credit = QLabel(_t("customer_statement.payments", value="---"))
-        self.lbl_total_credit.setProperty("class", "credit")
+        self.lbl_total_credit.setProperty("class", "statement-stat credit")
+        self.lbl_total_credit.setObjectName("StatPayments")
+
         self.lbl_closing = QLabel(_t("customer_statement.closing", value="---"))
-        self.lbl_closing.setProperty("class", "bold")
+        self.lbl_closing.setProperty("class", "statement-stat bold")
+        self.lbl_closing.setObjectName("StatClosing")
+
+        # Row 0: Opening (0, 0), Sales (0, 1), Adjustments (0, 2)
         summary_layout.addWidget(self.lbl_opening, 0, 0)
         summary_layout.addWidget(self.lbl_total_debit, 0, 1)
+        summary_layout.addWidget(self.lbl_adjustments, 0, 2)
+
+        # Row 1: Payments (1, 0), Empty/Spacer (1, 1), Closing (1, 2)
         summary_layout.addWidget(self.lbl_total_credit, 1, 0)
-        summary_layout.addWidget(self.lbl_closing, 1, 1)
+        summary_layout.addWidget(self.lbl_closing, 1, 2)
+
+        summary_layout.setColumnStretch(0, 1)
+        summary_layout.setColumnStretch(1, 1)
         summary_layout.setColumnStretch(2, 1)
         layout.addLayout(summary_layout)
 
-        # Entries table
+        # 4. Entries table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels(
@@ -139,14 +221,17 @@ class CustomerStatementDialog(QDialog):
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
+        align_numeric_headers(self.table, [3, 4, 5])
         layout.addWidget(self.table)
 
-        # Action buttons
+        # 5. Action buttons
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)
         btn_layout.addStretch()
 
         btn_print = QPushButton(_t("customer_statement.print_statement"))
         btn_print.setProperty("class", "accent")
+        _set_button_icon(btn_print, "fa5s.print", "#FFFFFF", pad_right=8, size=13)
         btn_print.clicked.connect(self._print_thermal)
         btn_layout.addWidget(btn_print)
 
@@ -155,6 +240,24 @@ class CustomerStatementDialog(QDialog):
         btn_layout.addWidget(btn_close)
 
         layout.addLayout(btn_layout)
+
+    def _set_preset_this_month(self) -> None:
+        today = QDate.currentDate()
+        self.date_from.setDate(QDate(today.year(), today.month(), 1))
+        self.date_to.setDate(today)
+        self._load_statement()
+
+    def _set_preset_last_30d(self) -> None:
+        today = QDate.currentDate()
+        self.date_from.setDate(today.addDays(-30))
+        self.date_to.setDate(today)
+        self._load_statement()
+
+    def _set_preset_all_time(self) -> None:
+        today = QDate.currentDate()
+        self.date_from.setDate(today.addYears(-5))
+        self.date_to.setDate(today)
+        self._load_statement()
 
     def _get_date_range(self) -> tuple:
         d_from = self.date_from.date()
@@ -181,28 +284,52 @@ class CustomerStatementDialog(QDialog):
 
         data = self.statement_data
 
-        # Update summaries
+        # Update 5-way summaries
         self.lbl_opening.setText(_t("customer_statement.opening", value=format_currency(data["opening_balance"])))
-        self.lbl_total_debit.setText(_t("customer_statement.sales", value=format_currency(data["total_debit"])))
-        self.lbl_total_credit.setText(_t("customer_statement.payments", value=format_currency(data["total_credit"])))
+        self.lbl_total_debit.setText(
+            _t("customer_statement.sales", value=format_currency(data.get("total_sales", data["total_debit"])))
+        )
+        self.lbl_total_credit.setText(
+            _t("customer_statement.payments", value=format_currency(data.get("total_payments", data["total_credit"])))
+        )
+        self.lbl_adjustments.setText(
+            _t("customer_statement.adjustments", value=format_currency(data.get("net_adjustments", 0)))
+        )
         self.lbl_closing.setText(_t("customer_statement.closing", value=format_currency(data["closing_balance"])))
 
         # Populate table
         self.table.setRowCount(0)
-        for entry in data["entries"]:
+        entries = data["entries"]
+        if not entries:
+            # Show empty state in table
+            self.table.setRowCount(1)
+            item = QTableWidgetItem(_t("customer_statement.no_transactions"))
+            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.table.setItem(0, 2, item)
+            return
+
+        for entry in entries:
             row = self.table.rowCount()
             self.table.insertRow(row)
 
             self.table.setItem(row, 0, RelativeTimeTableWidgetItem(entry["date"], fmt="%Y-%m-%d"))
-
             self.table.setItem(row, 1, QTableWidgetItem(entry["type"]))
             self.table.setItem(row, 2, QTableWidgetItem(entry["description"]))
 
             debit_str = format_currency(entry["debit"]) if entry["debit"] > 0 else ""
             credit_str = format_currency(entry["credit"]) if entry["credit"] > 0 else ""
-            self.table.setItem(row, 3, QTableWidgetItem(debit_str))
-            self.table.setItem(row, 4, QTableWidgetItem(credit_str))
-            self.table.setItem(row, 5, QTableWidgetItem(format_currency(entry["balance"])))
+
+            item_debit = QTableWidgetItem(debit_str)
+            item_debit.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self.table.setItem(row, 3, item_debit)
+
+            item_credit = QTableWidgetItem(credit_str)
+            item_credit.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self.table.setItem(row, 4, item_credit)
+
+            item_balance = QTableWidgetItem(format_currency(entry["balance"]))
+            item_balance.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self.table.setItem(row, 5, item_balance)
 
     def _print_thermal(self) -> None:
         """Print statement on thermal printer."""
@@ -222,13 +349,6 @@ class CustomerStatementDialog(QDialog):
         )
 
         worker = PrintWorker.instance()
-        # PrintWorker.add_job() only queues the job -- the print itself
-        # happens later, asynchronously, on the worker thread. Showing
-        # "success" right after add_job() (the old behavior) meant the
-        # user was told the print worked even when the printer wasn't
-        # configured at all. Wait for the real outcome instead. Guard
-        # against reconnecting on every call the same way
-        # ReceiptOptionsDialog.print_thermal() does.
         try:
             worker.error_occurred.disconnect(self._on_print_error)
         except TypeError:

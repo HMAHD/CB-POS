@@ -59,6 +59,9 @@ class StatementService:
         # Calculate totals
         total_debit = Decimal("0")
         total_credit = Decimal("0")
+        total_sales = Decimal("0")
+        total_payments = Decimal("0")
+        net_adjustments = Decimal("0")
 
         if entries:
             opening_balance = entries[0].balance_after - entries[0].amount
@@ -74,6 +77,15 @@ class StatementService:
                 total_debit += entry.amount
             else:
                 total_credit += abs(entry.amount)
+
+            # Categorize by entry_type for clean 5-way reconciliation
+            if entry.entry_type in ("SALE", "OPENING"):
+                total_sales += entry.amount
+            elif entry.entry_type == "PAYMENT":
+                total_payments += abs(entry.amount)
+            else:
+                # ADJUSTMENT, VOID, REFUND, etc.
+                net_adjustments += entry.amount
 
             rows.append(
                 {
@@ -94,6 +106,9 @@ class StatementService:
             "entries": rows,
             "total_debit": total_debit,
             "total_credit": total_credit,
+            "total_sales": total_sales,
+            "total_payments": total_payments,
+            "net_adjustments": net_adjustments,
             "closing_balance": closing_balance,
             "shop_name": ConfigService.get("shop_name") or "CB POS",
         }

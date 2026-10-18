@@ -4807,3 +4807,57 @@ QLabel#BulkMarginBadgeWarning {
     font-weight: bold;
 }
 
+/* Customer Statement Dialog */
+QDialog#CustomerStatementDialog {
+    background-color: #1E1E1E;
+}
+
+QFrame#StatementHeaderCard {
+    background-color: #252528;
+    border: 1px solid #33333A;
+    border-radius: 8px;
+}
+
+QLabel#StatementCustName {
+    font-size: 16px;
+    font-weight: bold;
+    color: #F1F5F9;
+}
+
+QLabel#StatementCustId {
+    background-color: rgba(0, 188, 235, 0.15);
+    color: #00BCEB;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+QLabel#StatementCustPhone {
+    color: #94A3B8;
+    font-size: 13px;
+}
+
+QLabel.statement-stat {
+    background-color: #252528;
+    border: 1px solid #33333A;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #E2E8F0;
+}
+
+QLabel.statement-stat.debit {
+    border-left: 3px solid #EF4444;
+}
+
+QLabel.statement-stat.credit {
+    border-left: 3px solid #10B981;
+}
+
+QLabel.statement-stat.bold {
+    font-weight: bold;
+    border-left: 3px solid #00BCEB;
+}
+
+

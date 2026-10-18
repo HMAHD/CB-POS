@@ -57,6 +57,10 @@ class CustomerEditor(QDialog):
         super().__init__(parent)
         self.customer = customer
         self.customer_service = CustomerService()
+        if customer and getattr(customer, "id", None):
+            refreshed = self.customer_service.get_customer(customer.id)
+            if refreshed:
+                self.customer = refreshed
         self.price_list_service = (
             PriceListService() if hasattr(self, "price_list_service") else None
         )  # Mock if not exists
@@ -244,21 +248,17 @@ class CustomerEditor(QDialog):
 
         # Row 2: Points Stat Strip
         points_row = QHBoxLayout()
-        points_row.setSpacing(12)
+        points_row.setSpacing(8)
 
         lbl_star = QLabel()
         lbl_star.setPixmap(Icons.get("fa5s.star", "#F59E0B").pixmap(24, 24))
+        lbl_star.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         points_row.addWidget(lbl_star)
 
-        points_text_layout = QVBoxLayout()
-        points_text_layout.setSpacing(2)
-        lbl_title = QLabel(_t("customer_editor.current_points"))
-        lbl_title.setProperty("class", "muted")
         self.points_label = QLabel("0")
         self.points_label.setObjectName("LoyaltyPointsValue")
-        points_text_layout.addWidget(lbl_title)
-        points_text_layout.addWidget(self.points_label)
-        points_row.addLayout(points_text_layout)
+        self.points_label.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        points_row.addWidget(self.points_label)
 
         points_row.addStretch()
 
@@ -319,8 +319,13 @@ class CustomerEditor(QDialog):
 
         dlg = AdjustPointsDialog(self.customer, self)
         if dlg.exec():
+            if self.customer and getattr(self.customer, "id", None):
+                refreshed = self.customer_service.get_customer(self.customer.id)
+                if refreshed:
+                    self.customer = refreshed
             pts = getattr(self.customer, "loyalty_points", 0) or 0
-            self.points_label.setText(str(pts))
+            if hasattr(self, "points_label"):
+                self.points_label.setText(str(pts))
             self.load_points_history()
 
     def load_points_history(self):
@@ -518,6 +523,9 @@ class CustomerEditor(QDialog):
         self.payment_terms_input.setText(str(self.customer.payment_terms))
 
         self.loyalty_code_input.setText(self.customer.loyalty_card_code or "")
+        pts = getattr(self.customer, "loyalty_points", 0) or 0
+        if hasattr(self, "points_label"):
+            self.points_label.setText(str(pts))
         if hasattr(self, "btn_adjust_points"):
             has_id = bool(self.customer and getattr(self.customer, "id", None))
             self.btn_adjust_points.setEnabled(has_id)

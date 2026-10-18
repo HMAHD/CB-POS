@@ -28,5 +28,10 @@ def test_existing_customer_loyalty_tab_enables_adjust_points(db_session):
     editor = CustomerEditor(cust)
     try:
         assert editor.btn_adjust_points.isEnabled()
+        assert editor.points_label.text() == "250"
+
+        # Verify redundant "Current Points" label is removed
+        labels = [lbl.text() for lbl in editor.findChildren(editor.points_label.__class__)]
+        assert not any("Current Points" in t for t in labels)
     finally:
         editor.deleteLater()

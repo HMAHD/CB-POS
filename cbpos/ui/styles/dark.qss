@@ -12,7 +12,7 @@
 
 /* Global Font Enforcement */
 * {
-    font-family: "{{FONT_FAMILY}}", "Noto Sans Sinhala", "Noto Sans Tamil", "Noto Sans", sans-serif;
+    font-family: "{{FONT_FAMILY}}", "Noto Sans Sinhala", "Noto Sans Tamil", "Noto Sans";
 }
 
 QLabel.PlaceholderLabel {

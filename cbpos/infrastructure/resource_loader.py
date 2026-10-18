@@ -142,7 +142,6 @@ class ResourceLoader:
         """Return a CSS font-family string including the localized fallback chain."""
         families = cls.get_font_families(lang)
         quoted = [f'"{f}"' for f in families]
-        quoted.append("sans-serif")
         return ", ".join(quoted)
 
     @classmethod

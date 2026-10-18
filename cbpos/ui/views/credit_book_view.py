@@ -94,21 +94,23 @@ class CreditBookView(QWidget):
         page_layout.setContentsMargins(16, 16, 16, 16)
         page_layout.setSpacing(12)
 
-        # Header row
-        header_row = QHBoxLayout()
-        header_row.addStretch(1)
+        # Search & Action toolbar
+        toolbar_row = QHBoxLayout()
+        toolbar_row.setSpacing(10)
+
+        self.search_input = QLineEdit()
+        self.search_input.setObjectName("CreditSearchInput")
+        self.search_input.setClearButtonEnabled(True)
+        self.search_input.textChanged.connect(self.filter_customers)
+        toolbar_row.addWidget(self.search_input, 1)
 
         self.btn_add_customer = QPushButton()
         self.btn_add_customer.setObjectName("CreditAddBtn")
+        self.btn_add_customer.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_add_customer.clicked.connect(self.open_add_customer)
-        header_row.addWidget(self.btn_add_customer)
-        page_layout.addLayout(header_row)
+        toolbar_row.addWidget(self.btn_add_customer)
 
-        # Search bar
-        self.search_input = QLineEdit()
-        self.search_input.setObjectName("CreditSearchInput")
-        self.search_input.textChanged.connect(self.filter_customers)
-        page_layout.addWidget(self.search_input)
+        page_layout.addLayout(toolbar_row)
 
         # Customer table (full width)
         self.customer_table = QTableWidget()

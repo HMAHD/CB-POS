@@ -133,3 +133,16 @@ def test_qss_has_scoped_meta_container_rules():
     assert "QFrame#CreditHeaderCard QWidget#MetaContainer" in light_qss
     assert "QFrame#CreditHeaderCard QWidget {" not in dark_qss
     assert "QFrame#CreditHeaderCard QWidget {" not in light_qss
+
+
+def test_search_and_add_button_in_same_toolbar(db_session):
+    from PyQt6.QtCore import Qt
+
+    view = CreditBookView()
+    try:
+        # Search input and Add Customer button should be in the same horizontal layout
+        assert view.btn_add_customer.parentWidget() == view.search_input.parentWidget()
+        assert view.search_input.isClearButtonEnabled()
+        assert view.btn_add_customer.cursor().shape() == Qt.CursorShape.PointingHandCursor
+    finally:
+        view.deleteLater()

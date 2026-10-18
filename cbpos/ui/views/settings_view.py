@@ -3,7 +3,7 @@
 import contextlib
 import logging
 
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import QDateTime, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QAbstractButton,
     QComboBox,
@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
     QSpinBox,
     QStackedWidget,
     QTextEdit,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -28,8 +29,11 @@ from PyQt6.QtWidgets import (
 from cbpos.core.constants.permissions import Permissions
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.permission_service import PermissionService
+from cbpos.core.services.theme_service import ThemeService
+from cbpos.core.utils.destroy_hooks import call_on_destroyed
 from cbpos.i18n import _t, get_language, register_language_callback, translate_in
 from cbpos.ui.app_restart import restart_application
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.utils.style_helpers import refresh_style
 from cbpos.ui.views.settings_pages import (
     DocumentPage,
@@ -71,6 +75,16 @@ class SettingsView(QWidget):
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui, owner=self)
 
+        self._update_clock()
+        self._clock_timer = QTimer(self)
+        self._clock_timer.setInterval(1000)
+        self._clock_timer.timeout.connect(self._update_clock)
+        self._clock_timer.start()
+
+        self._update_header_icons()
+        ThemeService.register_theme_callback(self._update_header_icons)
+        call_on_destroyed(self, ThemeService.unregister_theme_callback, self._update_header_icons)
+
     def init_ui(self):
         """Build the sidebar and, beside it, the stacked pages over one action bar."""
         main_layout = QHBoxLayout(self)
@@ -80,8 +94,6 @@ class SettingsView(QWidget):
         # --- Sidebar ---
         self.sidebar = CollapsibleSidebar()
         self.sidebar.nav_clicked.connect(self.switch_page)
-        self.sidebar.pos_clicked.connect(self._on_pos_clicked)
-        self.sidebar.logout_clicked.connect(self._on_logout_clicked)
 
         # Navigation buttons — config pages
         self.btn_shop_info = self.sidebar.add_nav_button("", "fa5s.store", 0)
@@ -153,7 +165,20 @@ class SettingsView(QWidget):
         self.admin_tools_view = AdminToolsView()
         self.stack.addWidget(self._scrollable(self.admin_tools_view))
 
-        # --- Content column: pages over one Settings-wide action bar ---
+        self._page_title_keys = {
+            0: "settings.sidebar_shop_info",
+            1: "settings.sidebar_sales_tax",
+            2: "settings.sidebar_documents",
+            3: "settings.sidebar_hardware",
+            4: "settings.sidebar_receipt",
+            5: "settings.sidebar_system",
+            6: "settings.sidebar_network",
+            7: "settings.sidebar_payments",
+            8: "settings.sidebar_data_safety",
+            9: "settings.sidebar_admin_tools",
+        }
+
+        # --- Content column: header + pages over one Settings-wide action bar ---
         # The bar sits under the content only, never under the sidebar, so
         # the sidebar keeps its full height (#616, #591). It stays visible on
         # every page so no page's content area jumps in height (#317).
@@ -161,6 +186,40 @@ class SettingsView(QWidget):
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
+
+        # Persistent Settings Header bar
+        self.settings_header = QFrame()
+        self.settings_header.setObjectName("SettingsHeader")
+        self.settings_header.setFixedHeight(56)
+        header_layout = QHBoxLayout(self.settings_header)
+        header_layout.setContentsMargins(16, 0, 16, 0)
+        header_layout.setSpacing(14)
+
+        self.lbl_header_title = QLabel()
+        self.lbl_header_title.setObjectName("SettingsHeaderTitle")
+        header_layout.addWidget(self.lbl_header_title, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        header_layout.addStretch(1)
+
+        self.lbl_header_clock = QLabel()
+        self.lbl_header_clock.setObjectName("SettingsHeaderClock")
+        header_layout.addWidget(self.lbl_header_clock, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        self.btn_header_pos = QToolButton()
+        self.btn_header_pos.setObjectName("SettingsHeaderPosBtn")
+        self.btn_header_pos.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_header_pos.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.btn_header_pos.clicked.connect(self._on_pos_clicked)
+        header_layout.addWidget(self.btn_header_pos, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        self.btn_header_logout = QToolButton()
+        self.btn_header_logout.setObjectName("SettingsHeaderLogoutBtn")
+        self.btn_header_logout.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_header_logout.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.btn_header_logout.clicked.connect(self._on_logout_clicked)
+        header_layout.addWidget(self.btn_header_logout, 0, Qt.AlignmentFlag.AlignVCenter)
+
+        content_layout.addWidget(self.settings_header)
         content_layout.addWidget(self.stack, 1)
 
         self.action_bar = QFrame()
@@ -188,6 +247,7 @@ class SettingsView(QWidget):
         main_layout.addWidget(content, 1)
 
         self.stack.currentChanged.connect(self._update_status_text)
+        self.stack.currentChanged.connect(self._update_header_title)
 
     @staticmethod
     def _scrollable(page: QWidget) -> QScrollArea:
@@ -198,6 +258,33 @@ class SettingsView(QWidget):
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setWidget(page)
         return scroll
+
+    def _update_clock(self) -> None:
+        """Update header clock label with current date and time."""
+        if hasattr(self, "lbl_header_clock"):
+            now = QDateTime.currentDateTime()
+            self.lbl_header_clock.setText(now.toString("ddd, d MMM yyyy  hh:mm:ss"))
+
+    def _update_header_icons(self) -> None:
+        """Refresh header icons with theme-appropriate colors."""
+        if not hasattr(self, "btn_header_pos") or not hasattr(self, "btn_header_logout"):
+            return
+        is_dark = ThemeService.current_theme.lower() != "light"
+        logout_color = "#EF4444" if is_dark else "#DC2626"
+        self.btn_header_pos.setIcon(Icons.get(Icons.DRAWER, "white"))
+        self.btn_header_logout.setIcon(Icons.get(Icons.LOGOUT, logout_color))
+
+    def _update_header_title(self) -> None:
+        """Update breadcrumb / section title in the header."""
+        if not hasattr(self, "lbl_header_title") or not hasattr(self, "stack"):
+            return
+        current_idx = self.stack.currentIndex()
+        title_key = self._page_title_keys.get(current_idx)
+        sub_title = _t(title_key).replace("&&", "&") if title_key else ""
+        if sub_title:
+            self.lbl_header_title.setText(f"{_t('settings.title')} / {sub_title}")
+        else:
+            self.lbl_header_title.setText(_t("settings.title"))
 
     def retranslate_ui(self) -> None:
         """Update all translatable text in the view."""
@@ -215,8 +302,12 @@ class SettingsView(QWidget):
         self.btn_data_safety.setText(_t("settings.sidebar_data_safety"))
         self.btn_admin_tools.setText(_t("settings.sidebar_admin_tools"))
 
-        # Bottom sidebar buttons
-        self.sidebar.retranslate_pos_logout()
+        # Header actions & title
+        self._update_header_title()
+        self.btn_header_pos.setText(_t("management.sidebar_pos"))
+        self.btn_header_pos.setToolTip(_t("management.sidebar_pos"))
+        self.btn_header_logout.setText(_t("management.sidebar_logout"))
+        self.btn_header_logout.setToolTip(_t("management.sidebar_logout"))
 
         # Action bar
         self.btn_save.setText(_t("settings.btn_save_all"))
@@ -241,6 +332,7 @@ class SettingsView(QWidget):
         marker), so several pages can be edited and saved together.
         """
         self.stack.setCurrentIndex(index)
+        self._update_header_title()
 
     # ------------------------------------------------------------------
     # Unsaved-changes markers

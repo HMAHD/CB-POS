@@ -1,7 +1,7 @@
 import logging
 from decimal import Decimal
 
-from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QSize, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QDateTime, QEasingCurve, QPoint, QPropertyAnimation, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QBrush, QColor, QKeySequence, QPixmap, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
@@ -25,7 +25,6 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from cbpos.config import Config
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_service import CustomerService
@@ -34,11 +33,13 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.scale_service import ScaleService
 from cbpos.core.services.sound_service import SoundService
 from cbpos.core.services.suspended_transaction_service import SuspendedTransactionService
+from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import printer_not_configured_message, receipt_printer_configured
-from cbpos.ui.constants import CART_TABLE_ROW_HEIGHT, SEARCH_BAR_HEIGHT
+from cbpos.infrastructure.system_tools import open_native_calculator
+from cbpos.ui.constants import CART_TABLE_ROW_HEIGHT
 from cbpos.ui.dialogs.advanced_search_dialog import AdvancedSearchDialog
 from cbpos.ui.dialogs.customer_quick_add import CustomerQuickAddDialog
 from cbpos.ui.dialogs.customer_selection_dialog import CustomerSelectionDialog
@@ -116,7 +117,7 @@ class SalesView(QWidget):
 
         # 2. Header (Top)
         self.header_widget = QWidget()
-        self.header_widget.setFixedHeight(SEARCH_BAR_HEIGHT)
+        self.header_widget.setFixedHeight(56)
         self.header_widget.setObjectName("HeaderWidget")
         header_layout = QHBoxLayout(self.header_widget)
         header_layout.setContentsMargins(20, 0, 20, 0)
@@ -136,10 +137,37 @@ class SalesView(QWidget):
 
         header_layout.addStretch()
 
+        # Live Clock
+        self.lbl_header_clock = QLabel()
+        self.lbl_header_clock.setObjectName("SalesHeaderClock")
+        self._update_clock()
+        header_layout.addWidget(self.lbl_header_clock)
+
+        self._clock_timer = QTimer(self)
+        self._clock_timer.setInterval(1000)
+        self._clock_timer.timeout.connect(self._update_clock)
+        self._clock_timer.start()
+
+        # Native Calculator Button
+        self.btn_calculator = QToolButton()
+        self.btn_calculator.setObjectName("HeaderCalculatorBtn")
+        self.btn_calculator.setFixedSize(42, 42)
+        self.btn_calculator.setIconSize(QSize(20, 20))
+        self.btn_calculator.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_calculator.setToolTip(_t("sales.calculator_tooltip"))
+        self.btn_calculator.clicked.connect(self._open_calculator)
+        self._update_calculator_icon()
+        ThemeService.register_theme_callback(self._update_calculator_icon)
+        header_layout.addWidget(self.btn_calculator)
+
+        # Calculator Shortcut (Ctrl+Alt+C)
+        self._calc_shortcut = QShortcut(QKeySequence("Ctrl+Alt+C"), self)
+        self._calc_shortcut.activated.connect(self._open_calculator)
+
         # Menu Button (Hamburger)
         self.menu_button = QToolButton()
         self.menu_button.setObjectName("menu_button")
-        self.menu_button.setIcon(Icons.get("fa5s.bars", "white"))
+        self.menu_button.setIcon(Icons.get("fa5s.bars", ThemeService.get_icon_color()))
         self.menu_button.setIconSize(QSize(24, 24))
         self.menu_button.setFixedSize(42, 42)
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -426,6 +454,9 @@ class SalesView(QWidget):
         self.printer_notice_setup.setText(_t("sales.printer_notice_setup"))
         self.printer_notice_close.setToolTip(_t("sales.printer_notice_dismiss"))
 
+        if hasattr(self, "btn_calculator"):
+            self.btn_calculator.setToolTip(_t("sales.calculator_tooltip"))
+
         # Search mode tooltips
         mode_tooltip_keys = {
             "ALL": "sales.search_mode_all",
@@ -479,26 +510,37 @@ class SalesView(QWidget):
 
     def update_logo(self):
         """Set the header logo and icons (also called on theme change)."""
-        # The header is navy in *both* themes (#HeaderWidget in dark.qss and
-        # light.qss), so it always needs the white-text logo -- the
-        # theme-dependent ThemeService.get_logo_path() handed Light mode the
-        # black-text one, nearly invisible on navy (#603).
-        logo_path = Config.BASE_DIR / "cbpos" / "assets" / "logo" / "cover_white.png"
-
-        if logo_path.exists():
-            logo_pixmap = QPixmap(str(logo_path))
-            self.lbl_logo.setPixmap(logo_pixmap.scaledToHeight(35, Qt.TransformationMode.SmoothTransformation))
+        logo_path = ThemeService.get_logo_path()
+        pixmap = QPixmap(logo_path)
+        if not pixmap.isNull():
+            self.lbl_logo.setPixmap(pixmap.scaledToHeight(35, Qt.TransformationMode.SmoothTransformation))
         else:
             self.lbl_logo.setText(_t("sales.logo_fallback"))  # Fallback
             self.lbl_logo.setObjectName("LogoLabel")
 
-        # Update hamburger menu icon (if it exists) - always white
+        # Update hamburger menu icon (if it exists)
         if hasattr(self, "menu_button"):
-            self.menu_button.setIcon(Icons.get("fa5s.bars", "white"))
+            self.menu_button.setIcon(Icons.get("fa5s.bars", ThemeService.get_icon_color()))
 
         # Update side menu icons (if it exists)
         if hasattr(self, "side_menu"):
             self.side_menu.update_all_icons()
+
+    def _update_clock(self) -> None:
+        """Update live date and time display."""
+        if hasattr(self, "lbl_header_clock"):
+            now = QDateTime.currentDateTime()
+            self.lbl_header_clock.setText(now.toString("ddd, d MMM yyyy  hh:mm:ss"))
+
+    def _open_calculator(self) -> None:
+        """Launch the OS native calculator."""
+        open_native_calculator()
+
+    def _update_calculator_icon(self) -> None:
+        """Update calculator button icon for the active theme."""
+        if hasattr(self, "btn_calculator"):
+            icon_color = ThemeService.get_icon_color()
+            self.btn_calculator.setIcon(Icons.get("fa5s.calculator", icon_color))
 
     def update_cart_ui(self):
         """Initial cart update (delegates to update_cart_display)."""

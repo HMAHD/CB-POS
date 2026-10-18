@@ -467,3 +467,44 @@ class LoyaltyService:
                 .order_by(LoyaltyLedgerEntry.timestamp.desc(), LoyaltyLedgerEntry.id.desc())
                 .all()
             )
+
+    @staticmethod
+    def backfill_missing_loyalty_entries(session: Session | None = None) -> int:
+        """Find any customer with loyalty_points > 0 and no loyalty ledger entries, and insert an OPENING entry.
+
+        Runs idempotently on startup or migration. Returns the count of backfilled entries.
+        """
+
+        def _do_backfill(sess: Session) -> int:
+            from datetime import datetime, timedelta
+
+            customers_with_points = sess.query(Customer).filter(Customer.loyalty_points > 0).all()
+            count = 0
+            default_timestamp = datetime.now() - timedelta(days=30)
+            for cust in customers_with_points:
+                existing_count = (
+                    sess.query(LoyaltyLedgerEntry).filter(LoyaltyLedgerEntry.customer_id == cust.id).count()
+                )
+                if existing_count == 0:
+                    entry = LoyaltyLedgerEntry(
+                        customer_id=cust.id,
+                        entry_type="OPENING",
+                        points=cust.loyalty_points,
+                        balance_after=cust.loyalty_points,
+                        note="Opening Points",
+                        timestamp=cust.last_modified or default_timestamp,
+                    )
+                    sess.add(entry)
+                    count += 1
+            if count > 0:
+                sess.flush()
+                logger.info("Backfilled %d missing customer opening loyalty entries.", count)
+            return count
+
+        if session is not None:
+            return _do_backfill(session)
+
+        with Database().get_session() as sess:
+            res = _do_backfill(sess)
+            sess.commit()
+            return res

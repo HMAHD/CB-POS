@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from cbpos.core.constants.status import PaymentMethodType, Precision
 from cbpos.core.database import Database
-from cbpos.core.models import AuditLog, Customer, CustomerLedgerEntry, CustomerPayment, Sale, SalePayment
+from cbpos.core.models import AuditLog, Customer, CustomerLedgerEntry, CustomerPayment, Sale, SalePayment, User
 
 logger = logging.getLogger(__name__)
 
@@ -546,3 +546,55 @@ class CustomerCreditService:
                 "total_payments": Decimal(str(total_payments)),
                 "payment_terms": customer.payment_terms,
             }
+
+    @staticmethod
+    def backfill_missing_ledger_entries(session: Session | None = None) -> int:
+        """Find any customer with current_debt > 0 and no ledger entries, and insert an OPENING entry.
+
+        Runs idempotently on startup or migration. Returns the count of backfilled entries.
+        """
+
+        def _do_backfill(sess: Session) -> int:
+            from datetime import timedelta
+
+            customers_with_debt = sess.query(Customer).filter(Customer.current_debt > Decimal("0.00")).all()
+            count = 0
+            default_timestamp = datetime.now() - timedelta(days=30)
+            target_user_id = None
+            if customers_with_debt:
+                user = sess.query(User).order_by(User.id).first()
+                if not user:
+                    user = User(username="system", pin_hash="system")
+                    sess.add(user)
+                    sess.flush()
+                target_user_id = user.id
+
+            for cust in customers_with_debt:
+                existing_count = (
+                    sess.query(CustomerLedgerEntry).filter(CustomerLedgerEntry.customer_id == cust.id).count()
+                )
+                if existing_count == 0:
+                    entry = CustomerLedgerEntry(
+                        customer_id=cust.id,
+                        entry_type="OPENING",
+                        amount=cust.current_debt,
+                        balance_after=cust.current_debt,
+                        reference_doc="INIT-BAL",
+                        note="Opening Balance",
+                        user_id=target_user_id,
+                        timestamp=cust.last_modified or default_timestamp,
+                    )
+                    sess.add(entry)
+                    count += 1
+            if count > 0:
+                sess.flush()
+                logger.info("Backfilled %d missing customer opening ledger entries.", count)
+            return count
+
+        if session is not None:
+            return _do_backfill(session)
+
+        with Database().get_session() as sess:
+            res = _do_backfill(sess)
+            sess.commit()
+            return res

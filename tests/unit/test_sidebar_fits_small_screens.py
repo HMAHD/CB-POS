@@ -60,9 +60,14 @@ def sidebars():
 
 
 def _show_at_height(sidebar: CollapsibleSidebar, height: int) -> None:
+    from PyQt6.QtCore import QSize
+    from PyQt6.QtGui import QResizeEvent
+
     sidebar.resize(sidebar.width(), height)
     sidebar.show()
     QApplication.processEvents()
+    if sidebar.height() != height:
+        sidebar.resizeEvent(QResizeEvent(QSize(sidebar.width(), height), sidebar.size()))
 
 
 def _fully_inside(parent, child) -> bool:
@@ -71,16 +76,13 @@ def _fully_inside(parent, child) -> bool:
     return parent.rect().contains(top_left) and parent.rect().contains(bottom_right)
 
 
-@pytest.mark.parametrize("collapsed", [False, True])
-@pytest.mark.parametrize("height", [500, 690, 728])
-def test_pos_and_logout_are_always_fully_visible(config_store, sidebars, height, collapsed):
-    sidebar = _build(collapsed)
+def test_pos_and_logout_removed_from_sidebar(config_store, sidebars):
+    """POS and Logout buttons were moved to the persistent top headers, freeing sidebar space."""
+    sidebar = _build()
     sidebars.append(sidebar)
-    _show_at_height(sidebar, height)
-
-    for btn in (sidebar.btn_pos, sidebar.btn_logout):
-        assert btn.isVisible()
-        assert _fully_inside(sidebar, btn)
+    assert not hasattr(sidebar, "btn_pos")
+    assert not hasattr(sidebar, "btn_logout")
+    assert not hasattr(sidebar, "_bottom_widget")
 
 
 @pytest.mark.parametrize("collapsed", [False, True])
@@ -97,13 +99,6 @@ def test_every_nav_button_is_reachable_by_scrolling(config_store, sidebars, coll
         scroll.ensureWidgetVisible(btn)
         QApplication.processEvents()
         assert _fully_inside(scroll.viewport(), btn)
-
-
-def test_pos_and_logout_sit_outside_the_scroll_area(config_store, sidebars):
-    sidebar = _build()
-    sidebars.append(sidebar)
-    assert not sidebar.nav_scroll.isAncestorOf(sidebar.btn_pos)
-    assert not sidebar.nav_scroll.isAncestorOf(sidebar.btn_logout)
 
 
 def test_compact_mode_below_800px(config_store, sidebars):

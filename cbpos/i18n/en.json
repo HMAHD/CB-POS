@@ -185,7 +185,8 @@
     "printer_notice_setup": "Set Up Printer",
     "printer_notice_dismiss": "Dismiss",
     "validation_error": "Validation Error",
-    "transaction_failed": "Transaction failed: {error}"
+    "transaction_failed": "Transaction failed: {error}",
+    "calculator_tooltip": "Calculator (Ctrl+Alt+C)"
   },
   "cart": {
     "price_change_not_allowed": "This product's price cannot be changed.",
@@ -656,7 +657,9 @@
     "customer_title": "Customer",
     "walk_in_customer": "Walk-in Customer",
     "points": "{points} pts",
-    "clear_customer": "Clear customer (reset to Walk-in)"
+    "clear_customer": "Clear customer (reset to Walk-in)",
+    "change_customer": "Change",
+    "btn_select_customer": "+ Select"
   },
   "management": {
     "sidebar_dashboard": "Dashboard",
@@ -673,6 +676,8 @@
     "sidebar_reorder": "Reorder",
     "sidebar_pos": "POS / Sales",
     "sidebar_logout": "Logout",
+    "sidebar_collapse": "Collapse Sidebar",
+    "sidebar_expand": "Expand Sidebar",
     "logo_fallback": "CB POS"
   },
   "dashboard": {
@@ -751,7 +756,7 @@
     "btn_add_customer": "+ Add Customer",
     "btn_open_customer_ledger": "Open Ledger",
     "row_open_hint": "Double-click a customer or press Enter to open their ledger. Right-click for more.",
-    "btn_back": "< Back to Customers",
+    "btn_back": "Back to Customers",
     "btn_receive_payment": "Receive Payment",
     "btn_print_statement": "Print Statement",
     "btn_adjust_balance": "Adjust Balance",
@@ -802,7 +807,16 @@
     "done_title": "Done",
     "balance_adjusted_msg": "Balance adjusted successfully.",
     "ledger_empty_range": "No entries in this date range — click 'All' to view complete history",
-    "ledger_no_history": "No transaction history for this customer"
+    "ledger_no_history": "No transaction history for this customer",
+    "view_badge": "CUSTOMER CREDIT LEDGER",
+    "preset_30d": "Last 30 Days",
+    "preset_month": "This Month",
+    "kpi_debt": "OUTSTANDING DEBT",
+    "kpi_available": "AVAILABLE CREDIT",
+    "kpi_limit": "CREDIT LIMIT",
+    "kpi_points": "LOYALTY POINTS",
+    "kpi_last_payment": "LAST PAYMENT",
+    "btn_view_all": "View All Time"
   },
   "purchase": {
     "tab_suppliers": "Suppliers",
@@ -2110,11 +2124,21 @@
   },
   "customer_statement": {
     "title": "Customer Statement",
-    "phone": "Phone:",
+    "phone": "Phone: {phone}",
     "opening": "Opening Balance: {value}",
     "closing": "Closing Balance: {value}",
-    "sales": "Total Sales: {value}",
+    "sales": "Credit Sales: {value}",
     "payments": "Total Payments: {value}",
+    "adjustments": "Adjustments: {value}",
+    "stat_opening": "Opening Balance",
+    "stat_sales": "Credit Sales (+)",
+    "stat_payments": "Payments (-)",
+    "stat_adjustments": "Adjustments (±)",
+    "stat_closing": "Closing Balance",
+    "no_transactions": "No transactions in this period",
+    "preset_month": "This Month",
+    "preset_30d": "Last 30 Days",
+    "preset_all": "All Time",
     "col_date": "Date",
     "col_type": "Type",
     "col_description": "Description",
@@ -2125,6 +2149,35 @@
     "print_sent": "Statement sent to printer.",
     "print_failed": "Failed to print statement. Check the printer connection in Settings > Hardware.",
     "load_failed": "Failed to load statement: {error}"
+  },
+  "adjust_balance": {
+    "title": "Adjust Customer Balance",
+    "current_debt": "Current Outstanding Debt:",
+    "mode_add": "+ Add Debt",
+    "mode_deduct": "- Deduct Debt",
+    "mode_set": "= Set Exact Balance",
+    "amount": "Adjustment Amount",
+    "reason": "Reason / Note (Required)",
+    "reason_placeholder": "e.g. Audit correction, goodwill concession",
+    "preview": "New Debt Balance: {value}",
+    "confirm": "Save Adjustment",
+    "invalid_amount": "Please enter a valid amount greater than zero.",
+    "reason_required": "Please provide a reason for the balance adjustment."
+  },
+  "adjust_points": {
+    "title": "Adjust Loyalty Points",
+    "current_points": "Current Points:",
+    "mode_add": "+ Add Points",
+    "mode_deduct": "- Deduct Points",
+    "mode_set": "= Set Exact Points",
+    "points": "Adjustment Points",
+    "reason": "Reason / Note (Required)",
+    "reason_placeholder": "e.g. Promotional bonus, manual correction",
+    "preview": "New Loyalty Balance: {value} pts",
+    "confirm": "Save Points",
+    "invalid_points": "Please enter a valid points value greater than zero.",
+    "reason_required": "Please provide a reason for the points adjustment.",
+    "below_zero": "Loyalty points cannot be negative."
   },
   "data_export": {
     "title": "Data Export",

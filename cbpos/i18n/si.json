@@ -185,7 +185,8 @@
     "printer_notice_setup": "ප්‍රින්ටරය සකසන්න",
     "printer_notice_dismiss": "වසන්න",
     "validation_error": "වැරදි ඇතුළත් කිරීමක්",
-    "transaction_failed": "ගනුදෙනුව අසාර්ථකයි: {error}"
+    "transaction_failed": "ගනුදෙනුව අසාර්ථකයි: {error}",
+    "calculator_tooltip": "ගණක යන්ත්‍රය (Ctrl+Alt+C)"
   },
   "cart": {
     "price_change_not_allowed": "මේ අයිතමයේ මිල වෙනස් කරන්න බැහැ.",
@@ -656,7 +657,9 @@
     "customer_title": "පාරිභෝගික",
     "walk_in_customer": "සාමාන්‍ය පාරිභෝගික",
     "points": "{points} ලකුණු",
-    "clear_customer": "පාරිභෝගිකයා ඉවත් කරන්න (සාමාන්‍ය පාරිභෝගිකයාට මාරු වෙනවා)"
+    "clear_customer": "පාරිභෝගිකයා ඉවත් කරන්න (සාමාන්‍ය පාරිභෝගිකයාට මාරු වෙනවා)",
+    "change_customer": "වෙනස් කරන්න",
+    "btn_select_customer": "+ තෝරන්න"
   },
   "management": {
     "sidebar_dashboard": "උපකරණ පුවරුව",
@@ -673,6 +676,8 @@
     "sidebar_reorder": "නැවත ඇණවුම්",
     "sidebar_pos": "POS / විකුණුම්",
     "sidebar_logout": "ලොග් අවුට්",
+    "sidebar_collapse": "පැති තීරුව හකුලන්න",
+    "sidebar_expand": "පැති තීරුව දිගහරින්න",
     "logo_fallback": "CB POS"
   },
   "dashboard": {
@@ -721,7 +726,7 @@
     "btn_add_customer": "+ පාරිභෝගිකයෙක් එකතු කරන්න",
     "btn_open_customer_ledger": "ලෙජරය අරින්න",
     "row_open_hint": "ලෙජරය අරින්න නමට දෙපාරක් ක්ලික් කරන්න, නැත්නම් Enter ඔබන්න. තව දේවල් දකුණු ක්ලික් කරලා බලන්න.",
-    "btn_back": "< පාරිභෝගිකයන්ට ආපහු",
+    "btn_back": "පාරිභෝගිකයන්ට ආපහු",
     "btn_receive_payment": "ගෙවීම ලබාගන්න",
     "btn_print_statement": "ස්ටේට්මන්ට් එක ප්‍රින්ට් කරන්න",
     "btn_adjust_balance": "ශේෂය සකස් කරන්න",
@@ -772,7 +777,16 @@
     "done_title": "හරි",
     "balance_adjusted_msg": "ශේෂය සකස් කළා.",
     "ledger_empty_range": "මෙම දින පරාසයේ කිසිදු සටහනක් නැත — සම්පූර්ණ ඉතිහාසය බැලීමට 'සියල්ල' ඔබන්න",
-    "ledger_no_history": "මෙම පාරිභෝගිකයා සඳහා ගනුදෙනු ඉතිහාසයක් නැත"
+    "ledger_no_history": "මෙම පාරිභෝගිකයා සඳහා ගනුදෙනු ඉතිහාසයක් නැත",
+    "view_badge": "පාරිභෝගික ණය ලෙජරය",
+    "preset_30d": "පසුගිය දින 30",
+    "preset_month": "මෙම මාසය",
+    "kpi_debt": "හිඟ ණය",
+    "kpi_available": "ලබාගත හැකි ණය",
+    "kpi_limit": "ණය සීමාව",
+    "kpi_points": "ලකුණු (LOYALTY)",
+    "kpi_last_payment": "අන්තිම ගෙවීම",
+    "btn_view_all": "සියල්ල බලන්න"
   },
   "purchase": {
     "tab_suppliers": "සැපයුම්කරුවෝ",
@@ -2080,11 +2094,21 @@
   },
   "customer_statement": {
     "title": "පාරිභෝගික ප්‍රකාශනය",
-    "phone": "දුරකථනය:",
+    "phone": "දුරකථනය: {phone}",
     "opening": "ආරම්භක ශේෂය: {value}",
     "closing": "අවසාන ශේෂය: {value}",
-    "sales": "මුළු විකුණුම්: {value}",
+    "sales": "ණය විකුණුම්: {value}",
     "payments": "මුළු ගෙවීම්: {value}",
+    "adjustments": "ගැලපීම්: {value}",
+    "stat_opening": "ආරම්භක ශේෂය",
+    "stat_sales": "ණය විකුණුම් (+)",
+    "stat_payments": "ගෙවීම් (-)",
+    "stat_adjustments": "ගැලපීම් (±)",
+    "stat_closing": "අවසාන ශේෂය",
+    "no_transactions": "මෙම කාලසීමාව තුළ කිසිදු ගනුදෙනුවක් නොමැත",
+    "preset_month": "මෙම මාසය",
+    "preset_30d": "පසුගිය දින 30",
+    "preset_all": "සම්පූර්ණ කාලය",
     "col_date": "දිනය",
     "col_type": "වර්ගය",
     "col_description": "විස්තරය",
@@ -2095,6 +2119,35 @@
     "print_sent": "ස්ටේට්මන්ට් එක ප්‍රින්ටරයට එවුවා.",
     "print_failed": "ස්ටේට්මන්ට් එක ප්‍රින්ට් කරන්න බැරි උනා. සැකසුම් > හාඩ්වෙයාර් යටතේ ප්‍රින්ටරයේ කනෙක්ෂන් එක බලන්න.",
     "load_failed": "ස්ටේට්මන්ට් එක පේන්නේ නැහැ: {error}"
+  },
+  "adjust_balance": {
+    "title": "පාරිභෝගික ශේෂය සකස් කරන්න",
+    "current_debt": "වත්මන් හිඟ ණය:",
+    "mode_add": "+ ණය එකතු කරන්න",
+    "mode_deduct": "- ණය අඩු කරන්න",
+    "mode_set": "= නියමිත ශේෂය සකසන්න",
+    "amount": "ගැලපුම් මුදල",
+    "reason": "හේතුව / සටහන (අනිවාර්යයි)",
+    "reason_placeholder": "උදා: විගණන නිවැරදි කිරීම, විශේෂ වට්ටම්",
+    "preview": "නව ණය ශේෂය: {value}",
+    "confirm": "ගැලපීම සුරකින්න",
+    "invalid_amount": "කරුණාකර ශුන්‍යයට වඩා වැඩි වලංගු මුදලක් ඇතුළත් කරන්න.",
+    "reason_required": "ශේෂ ගැලපීම සඳහා කරුණාකර හේතුවක් ඇතුළත් කරන්න."
+  },
+  "adjust_points": {
+    "title": "ලෝයල්ටි ලකුණු සකස් කරන්න",
+    "current_points": "වත්මන් ලකුණු:",
+    "mode_add": "+ ලකුණු එකතු කරන්න",
+    "mode_deduct": "- ලකුණු අඩු කරන්න",
+    "mode_set": "= නියමිත ලකුණු සකසන්න",
+    "points": "ගැලපුම් ලකුණු",
+    "reason": "හේතුව / සටහන (අනිවාර්යයි)",
+    "reason_placeholder": "උදා: ප්‍රවර්ධන බෝනස්, අතින් නිවැරදි කිරීම",
+    "preview": "නව ලකුණු ශේෂය: {value} pts",
+    "confirm": "ලකුණු සුරකින්න",
+    "invalid_points": "කරුණාකර ශුන්‍යයට වඩා වැඩි වලංගු ලකුණු ප්‍රමාණයක් ඇතුළත් කරන්න.",
+    "reason_required": "ලකුණු ගැලපීම සඳහා කරුණාකර හේතුවක් ඇතුළත් කරන්න.",
+    "below_zero": "ලෝයල්ටි ලකුණු ඍණ අගයක් විය නොහැක."
   },
   "data_export": {
     "title": "දත්ත අපනයනය",

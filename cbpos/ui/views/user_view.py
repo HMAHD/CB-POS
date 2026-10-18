@@ -46,11 +46,6 @@ class UserView(QWidget):
         """Build the page header and the Users/Activity Log tabs, then load their initial data."""
         layout = QVBoxLayout(self)
 
-        from cbpos.ui.widgets.page_header import PageHeader
-
-        self._page_header = PageHeader(icon_name=Icons.USERS)
-        layout.addWidget(self._page_header)
-
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs)
 
@@ -193,7 +188,6 @@ class UserView(QWidget):
 
     def retranslate_ui(self):
         """Update all widget text, table headers, and event-type filter options from the translation system."""
-        self._page_header.set_title(_t("management.sidebar_users"))
         self.tabs.setTabText(0, _t("user.tab_users"))
         self.tabs.setTabText(1, _t("user.tab_activity_log"))
         self.btn_add.setText(_t("user.add_user"))

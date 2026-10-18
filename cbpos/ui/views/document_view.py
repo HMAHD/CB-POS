@@ -108,11 +108,7 @@ class DocumentBrowserView(QWidget):
 
         # Title row
         title_row = QHBoxLayout()
-        from cbpos.ui.resources.icons import Icons
-        from cbpos.ui.widgets.page_header import PageHeader
-
-        self._page_header = PageHeader(icon_name=Icons.DOCUMENTS)
-        title_row.addWidget(self._page_header, 1)
+        title_row.addStretch(1)
 
         self.new_proforma_btn = QPushButton()
         self.new_proforma_btn.setObjectName("DocNewQuotationBtn")
@@ -363,7 +359,6 @@ class DocumentBrowserView(QWidget):
 
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
-        self._page_header.set_title(_t("document_browser.title"))
         self.lbl_subtitle.setText(_t("document_browser.subtitle"))
         self.new_proforma_btn.setText(_t("document_browser.btn_new_proforma"))
 

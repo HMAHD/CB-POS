@@ -1,4 +1,4 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QEvent, Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QDialog,
@@ -21,14 +21,60 @@ class CustomerSelectionDialog(QDialog):
     def __init__(self, parent=None):
         """Initialize the dialog and load the customer list."""
         super().__init__(parent)
+        self.setObjectName("CustomerSelectionDialog")
         self.setWindowTitle(_t("customer_selection.title"))
         self.setMinimumWidth(500)
         self.setMinimumHeight(400)
         self.customer_service = CustomerService()
         self.selected_customer = None
 
+        # Disable parent Enter shortcuts while this dialog is open so they do not collide
+        self._disabled_shortcuts: list[QShortcut] = []
+        if parent is not None:
+            for attr_name in ("shortcut_enter", "shortcut_num_enter"):
+                shortcut = getattr(parent, attr_name, None)
+                if shortcut and shortcut.isEnabled():
+                    shortcut.setEnabled(False)
+                    self._disabled_shortcuts.append(shortcut)
+
         self.setup_ui()
         self.load_customers()
+
+    def done(self, result: int) -> None:
+        """Re-enable parent shortcuts before closing."""
+        for shortcut in self._disabled_shortcuts:
+            shortcut.setEnabled(True)
+        self._disabled_shortcuts.clear()
+        super().done(result)
+
+    def showEvent(self, event) -> None:
+        """Ensure search input is focused and ready for immediate typing."""
+        super().showEvent(event)
+        self.search_input.setFocus()
+        self.search_input.selectAll()
+
+    def eventFilter(self, watched, event):
+        """Allow arrow key navigation and Enter confirmation directly from search input."""
+        if watched is self.search_input and event.type() == QEvent.Type.KeyPress:
+            key = event.key()
+            if key == Qt.Key.Key_Down:
+                row_count = self.table.rowCount()
+                if row_count > 0:
+                    current = self.table.currentRow()
+                    next_row = min(current + 1, row_count - 1) if current >= 0 else 0
+                    self.table.selectRow(next_row)
+                return True
+            elif key == Qt.Key.Key_Up:
+                row_count = self.table.rowCount()
+                if row_count > 0:
+                    current = self.table.currentRow()
+                    prev_row = max(current - 1, 0) if current >= 0 else 0
+                    self.table.selectRow(prev_row)
+                return True
+            elif key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self.select_customer()
+                return True
+        return super().eventFilter(watched, event)
 
     def setup_ui(self):
         """Build the search box, results table, and select/cancel buttons."""
@@ -38,6 +84,8 @@ class CustomerSelectionDialog(QDialog):
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText(_t("customer_selection.search_placeholder"))
         self.search_input.textChanged.connect(self.filter_customers)
+        self.search_input.returnPressed.connect(self.select_customer)
+        self.search_input.installEventFilter(self)
         layout.addWidget(self.search_input)
 
         # Table
@@ -71,13 +119,17 @@ class CustomerSelectionDialog(QDialog):
         self.table.doubleClicked.connect(self.select_customer)
         layout.addWidget(self.table)
 
-        # Buttons
+        # Buttons - symmetric 38px height and 105px min width
         footer_layout, self.btn_select, self.btn_cancel = make_dialog_footer(
             primary_key="customer_selection.btn_select",
             on_primary=self.select_customer,
             on_cancel=self.reject,
-            primary_object_name="BtnCustomerSelect",
+            primary_object_name="BtnDialogCustomerSelect",
         )
+        self.btn_select.setMinimumHeight(38)
+        self.btn_select.setMinimumWidth(105)
+        self.btn_cancel.setMinimumHeight(38)
+        self.btn_cancel.setMinimumWidth(105)
         layout.addLayout(footer_layout)
 
         QShortcut(QKeySequence(Qt.Key.Key_Return), self).activated.connect(self.select_customer)
@@ -113,10 +165,17 @@ class CustomerSelectionDialog(QDialog):
             phone_item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             self.table.setItem(row, 2, phone_item)
 
+        if self.table.rowCount() > 0:
+            self.table.selectRow(0)
+
     def select_customer(self):
         """Set the selected customer from the current row and accept the dialog."""
         row = self.table.currentRow()
+        if row < 0 and self.table.rowCount() > 0:
+            row = 0
         if row >= 0:
-            customer_id = self.table.item(row, 1).data(Qt.ItemDataRole.UserRole)
-            self.selected_customer = self.customer_service.get_customer(customer_id)
-            self.accept()
+            item = self.table.item(row, 1)
+            if item is not None:
+                customer_id = item.data(Qt.ItemDataRole.UserRole)
+                self.selected_customer = self.customer_service.get_customer(customer_id)
+                self.accept()

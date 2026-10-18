@@ -1,6 +1,7 @@
 import weakref
 
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -14,12 +15,21 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.utils.destroy_hooks import call_on_destroyed
-from cbpos.core.utils.formatters import format_short_name
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.elided_label import ElidedLabel
 
 _BTN_H = 70
+
+
+def _get_initials(name: str) -> str:
+    """Extract up to 2 uppercase initials from a customer name."""
+    parts = [p.strip() for p in name.split() if p.strip()]
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return parts[0][:2].upper()
+    return (parts[0][0] + parts[-1][0]).upper()
 
 
 class ActionBtn(QPushButton):
@@ -176,105 +186,83 @@ class ActionPanel(QWidget):
         layout.setSpacing(0)
 
         # ── 1. Customer Card ─────────────────────────────────────
-        # Three internal rows: row 1 is icon + name/phone (full card
-        # width, so a long name/translated phone gets real room instead
-        # of being squeezed against a fixed-width button); row 2 is the
-        # Select/Clear controls; row 3 (#255) is the loyalty-points
-        # badge -- all inside the same frame/border instead of floating
-        # below it as unrelated sibling widgets.
         customer_frame = QFrame()
         customer_frame.setObjectName("CustomerPanel")
+        self.customer_frame = customer_frame
+        customer_frame.setProperty("hasCustomer", False)
         customer_frame_layout = QVBoxLayout(customer_frame)
-        customer_frame_layout.setContentsMargins(10, 10, 10, 10)
-        customer_frame_layout.setSpacing(8)
+        customer_frame_layout.setContentsMargins(12, 10, 12, 10)
+        customer_frame_layout.setSpacing(6)
 
-        cust_layout = QHBoxLayout()
-        cust_layout.setContentsMargins(0, 0, 0, 0)
-        cust_layout.setSpacing(10)
+        # Top Header Row: Category tag on left, contextual action buttons on right
+        top_row = QHBoxLayout()
+        top_row.setContentsMargins(0, 0, 0, 0)
+        top_row.setSpacing(6)
 
-        # Customer icon
-        self.lbl_cust_icon = QLabel()
-        self.lbl_cust_icon.setFixedSize(32, 32)
-        self.lbl_cust_icon.setPixmap(Icons.get(Icons.CUSTOMER, "#00BCEB").pixmap(28, 28))
-        self.lbl_cust_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_cust_icon.setStyleSheet("background: transparent;")
-        cust_layout.addWidget(self.lbl_cust_icon)
-
-        # Customer info (name + subtitle). ElidedLabel keeps a long name
-        # from silently overflowing past the card's edge with no visual
-        # indication or way to read the rest -- the full string stays
-        # available as a tooltip and via .text(). Now the only other
-        # thing sharing this row is the icon, so it gets the full card
-        # width instead of being cut down to a handful of characters by
-        # a same-row Select button (worse still with long translated
-        # button labels, e.g. Sinhala/Tamil).
-        cust_info = QVBoxLayout()
-        cust_info.setSpacing(0)
         self.lbl_cust_title = QLabel()
         self.lbl_cust_title.setObjectName("CustTitle")
-        cust_info.addWidget(self.lbl_cust_title)
-        self.lbl_customer = ElidedLabel()
-        self.lbl_customer.setObjectName("CustomerLabel")
-        cust_info.addWidget(self.lbl_customer)
-        cust_layout.addLayout(cust_info, 1)
-
-        customer_frame_layout.addLayout(cust_layout)
-
-        # Row 2: Select (grows to fill) + Clear (fixed, only once a real
-        # customer is selected) -- its own full-width row instead of
-        # squeezed into row 1, and a bigger touch target to match the
-        # rest of the panel's touch-friendly controls.
-        cust_btn_row = QHBoxLayout()
-        cust_btn_row.setContentsMargins(0, 0, 0, 0)
-        cust_btn_row.setSpacing(8)
+        top_row.addWidget(self.lbl_cust_title)
+        top_row.addStretch()
 
         self.btn_cust_select = QPushButton()
         self.btn_cust_select.setObjectName("BtnCustomerSelect")
         self.btn_cust_select.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_cust_select.setMinimumHeight(32)
+        self.btn_cust_select.setProperty("mode", "select")
         self.btn_cust_select.clicked.connect(self.customer_clicked.emit)
-        cust_btn_row.addWidget(self.btn_cust_select, 1)
+        top_row.addWidget(self.btn_cust_select)
 
-        # Manual reset to Walk-in Customer -- previously only reachable
-        # through a right-click context menu on the name, easy to miss.
-        # Only visible once a real customer is actually selected.
         self.btn_cust_clear = QPushButton()
         self.btn_cust_clear.setObjectName("BtnCustomerClear")
-        self.btn_cust_clear.setIcon(Icons.get("fa5s.user-slash", "#888888"))
+        self.btn_cust_clear.setIcon(Icons.get("fa5s.times", "#888888"))
         self.btn_cust_clear.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_cust_clear.setFixedSize(32, 32)
+        self.btn_cust_clear.setFixedSize(24, 24)
         self.btn_cust_clear.setToolTip(_t("action_panel.clear_customer"))
         self.btn_cust_clear.clicked.connect(self.customer_cleared.emit)
         self.btn_cust_clear.setVisible(False)
-        cust_btn_row.addWidget(self.btn_cust_clear)
+        top_row.addWidget(self.btn_cust_clear)
 
-        customer_frame_layout.addLayout(cust_btn_row)
+        customer_frame_layout.addLayout(top_row)
 
-        # Row 2: divider + points badge, hidden entirely for Walk-in
-        # Customer (no loyalty points) instead of just clearing the text,
-        # so the default state doesn't reserve a blank strip of space.
+        # Hairline divider
         self.points_divider = QFrame()
         self.points_divider.setObjectName("PointsDivider")
         self.points_divider.setFixedHeight(1)
         self.points_divider.setVisible(False)
         customer_frame_layout.addWidget(self.points_divider)
 
+        # Main Info Row: Avatar + Details
+        main_info_row = QHBoxLayout()
+        main_info_row.setContentsMargins(0, 2, 0, 0)
+        main_info_row.setSpacing(10)
+
+        self.lbl_cust_icon = QLabel()
+        self.lbl_cust_icon.setObjectName("CustAvatar")
+        self.lbl_cust_icon.setFixedSize(38, 38)
+        self.lbl_cust_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_cust_icon.setPixmap(Icons.get(Icons.CUSTOMER, "#888888").pixmap(20, 20))
+        self.lbl_cust_icon.setProperty("hasCustomer", False)
+        main_info_row.addWidget(self.lbl_cust_icon)
+
+        details_col = QVBoxLayout()
+        details_col.setContentsMargins(0, 0, 0, 0)
+        details_col.setSpacing(3)
+
+        self.lbl_customer = ElidedLabel()
+        self.lbl_customer.setObjectName("CustomerLabel")
+        details_col.addWidget(self.lbl_customer)
+
+        meta_row = QHBoxLayout()
+        meta_row.setContentsMargins(0, 0, 0, 0)
+        meta_row.setSpacing(6)
+
         self.points_row = QWidget()
-        # A plain QWidget paints the app's global background color (Qt's
-        # global "QWidget { background-color: ... }" rule) instead of
-        # letting the parent CustomerPanel's surface color show through --
-        # it needs its own objectName to opt out of that with a targeted
-        # "background: transparent" rule.
         self.points_row.setObjectName("PointsRow")
         points_row_layout = QHBoxLayout(self.points_row)
-        points_row_layout.setContentsMargins(0, 6, 0, 0)
-        points_row_layout.setSpacing(6)
-        # Indent to line up under the name, not under the icon above it
-        # (icon width 32px + the row's own 10px spacing).
-        points_row_layout.addSpacing(42)
+        points_row_layout.setContentsMargins(6, 2, 8, 2)
+        points_row_layout.setSpacing(4)
 
         self.lbl_points_icon = QLabel()
-        self.lbl_points_icon.setPixmap(Icons.get(Icons.POINTS, "#FFDC00").pixmap(12, 12))
+        self.lbl_points_icon.setPixmap(Icons.get(Icons.POINTS, "#FFDC00").pixmap(11, 11))
         self.lbl_points_icon.setStyleSheet("background: transparent;")
         points_row_layout.addWidget(self.lbl_points_icon)
 
@@ -282,10 +270,19 @@ class ActionPanel(QWidget):
         self.lbl_points.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self.lbl_points.setObjectName("PointsLabel")
         points_row_layout.addWidget(self.lbl_points)
-        points_row_layout.addStretch()
         self.points_row.setVisible(False)
-        customer_frame_layout.addWidget(self.points_row)
+        meta_row.addWidget(self.points_row)
 
+        self.lbl_phone = QLabel("")
+        self.lbl_phone.setObjectName("CustomerPhoneLabel")
+        self.lbl_phone.setVisible(False)
+        meta_row.addWidget(self.lbl_phone)
+        meta_row.addStretch()
+
+        details_col.addLayout(meta_row)
+        main_info_row.addLayout(details_col, 1)
+
+        customer_frame_layout.addLayout(main_info_row)
         layout.addWidget(customer_frame)
 
         # ── 2. Orders Section ────────────────────────────────────
@@ -381,14 +378,12 @@ class ActionPanel(QWidget):
 
     def retranslate_ui(self) -> None:
         """Update all translatable widget text (called on language change)."""
-        self.lbl_cust_title.setText(_t("action_panel.customer_title"))
-        # A language switch used to always overwrite the name field with
-        # "Walk-in Customer," even while a real customer was selected --
-        # only re-apply the placeholder text when there's genuinely no
-        # customer selected right now.
+        self.lbl_cust_title.setText(_t("action_panel.customer_title").upper())
         if not self._has_customer:
             self.lbl_customer.setText(_t("action_panel.walk_in_customer"))
-        self.btn_cust_select.setText(_t("action_panel.select_customer"))
+            self.btn_cust_select.setText(_t("action_panel.btn_select_customer"))
+        else:
+            self.btn_cust_select.setText(_t("action_panel.change_customer"))
         self.btn_cust_clear.setToolTip(_t("action_panel.clear_customer"))
         self.btn_pay.setText(_t("action_panel.btn_pay"))
 
@@ -399,7 +394,7 @@ class ActionPanel(QWidget):
             btn.retranslate()
 
     def set_customer_info(self, name, phone, points):
-        """Show the selected customer's short name, points, and clear button.
+        """Show the selected customer's profile, points, and action controls.
 
         Args:
             name: Customer's full name (shown elided; full name + phone as tooltip).
@@ -407,12 +402,38 @@ class ActionPanel(QWidget):
             points: Loyalty points balance shown in the points row.
         """
         self._has_customer = True
-        # The full name + phone is still there on hover -- the card only
-        # has room for a short label, and a phone number adds little at
-        # a glance once a customer is already selected.
-        self.lbl_customer.setText(format_short_name(name))
+        self.lbl_customer.setText(name or "")
         self.lbl_customer.setToolTip(f"{name} ({phone})" if phone else name)
         self.lbl_points.setText(_t("action_panel.points", points=points))
+        if phone:
+            self.lbl_phone.setText(str(phone))
+            self.lbl_phone.setVisible(True)
+        else:
+            self.lbl_phone.setText("")
+            self.lbl_phone.setVisible(False)
+
+        # Update avatar initials or fallback icon
+        initials = _get_initials(name)
+        if initials:
+            self.lbl_cust_icon.setPixmap(QPixmap())
+            self.lbl_cust_icon.setText(initials)
+        else:
+            self.lbl_cust_icon.setText("")
+            self.lbl_cust_icon.setPixmap(Icons.get(Icons.CUSTOMER, "#00BCEB").pixmap(20, 20))
+
+        self.btn_cust_select.setText(_t("action_panel.change_customer"))
+        self.btn_cust_select.setProperty("mode", "change")
+        self.btn_cust_select.style().unpolish(self.btn_cust_select)
+        self.btn_cust_select.style().polish(self.btn_cust_select)
+
+        self.customer_frame.setProperty("hasCustomer", True)
+        self.customer_frame.style().unpolish(self.customer_frame)
+        self.customer_frame.style().polish(self.customer_frame)
+
+        self.lbl_cust_icon.setProperty("hasCustomer", True)
+        self.lbl_cust_icon.style().unpolish(self.lbl_cust_icon)
+        self.lbl_cust_icon.style().polish(self.lbl_cust_icon)
+
         self.points_divider.setVisible(True)
         self.points_row.setVisible(True)
         self.btn_cust_clear.setVisible(True)
@@ -421,7 +442,27 @@ class ActionPanel(QWidget):
         """Reset the customer card back to the Walk-in Customer placeholder."""
         self._has_customer = False
         self.lbl_customer.setText(_t("action_panel.walk_in_customer"))
+        self.lbl_customer.setToolTip("")
         self.lbl_points.setText("")
+        self.lbl_phone.setText("")
+        self.lbl_phone.setVisible(False)
+
+        self.lbl_cust_icon.setText("")
+        self.lbl_cust_icon.setPixmap(Icons.get(Icons.CUSTOMER, "#888888").pixmap(20, 20))
+
+        self.btn_cust_select.setText(_t("action_panel.btn_select_customer"))
+        self.btn_cust_select.setProperty("mode", "select")
+        self.btn_cust_select.style().unpolish(self.btn_cust_select)
+        self.btn_cust_select.style().polish(self.btn_cust_select)
+
+        self.customer_frame.setProperty("hasCustomer", False)
+        self.customer_frame.style().unpolish(self.customer_frame)
+        self.customer_frame.style().polish(self.customer_frame)
+
+        self.lbl_cust_icon.setProperty("hasCustomer", False)
+        self.lbl_cust_icon.style().unpolish(self.lbl_cust_icon)
+        self.lbl_cust_icon.style().polish(self.lbl_cust_icon)
+
         self.points_divider.setVisible(False)
         self.points_row.setVisible(False)
         self.btn_cust_clear.setVisible(False)

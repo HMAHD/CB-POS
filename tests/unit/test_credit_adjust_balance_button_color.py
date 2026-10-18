@@ -12,37 +12,34 @@ from pathlib import Path
 STYLE_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
 
 
-def _rule_block(qss: str, selector: str) -> str:
-    start = qss.index(selector)
-    end = qss.index("}", start)
-    return qss[start:end]
+def _rule_block_containing(qss: str, target: str) -> str:
+    for block in qss.split("}"):
+        if target in block:
+            return block
+    raise ValueError(f"Block containing {target} not found")
 
 
 class TestDarkThemeAdjustBalanceButton:
     def test_adjust_button_no_longer_uses_the_warning_color(self):
         qss = (STYLE_DIR / "dark.qss").read_text()
-        block = _rule_block(qss, "QPushButton#CreditAdjustBtn, QPushButton#PayableAdjustBtn {")
+        block = _rule_block_containing(qss, "QPushButton#CreditAdjustBtn")
         assert "#FFDC00" not in block
         assert "#332800" not in block
 
     def test_adjust_button_matches_the_neutral_edit_button_colors(self):
         qss = (STYLE_DIR / "dark.qss").read_text()
-        adjust_block = _rule_block(qss, "QPushButton#CreditAdjustBtn, QPushButton#PayableAdjustBtn {")
-        edit_block = _rule_block(qss, "QPushButton#CreditEditBtn {")
-        assert "#003366" in adjust_block
-        assert "#003366" in edit_block
+        adjust_block = _rule_block_containing(qss, "QPushButton#CreditAdjustBtn")
+        assert "QPushButton#CreditEditBtn" in adjust_block
 
 
 class TestLightThemeAdjustBalanceButton:
     def test_adjust_button_no_longer_uses_the_warning_color(self):
         qss = (STYLE_DIR / "light.qss").read_text()
-        block = _rule_block(qss, "QPushButton#CreditAdjustBtn, QPushButton#PayableAdjustBtn {")
+        block = _rule_block_containing(qss, "QPushButton#CreditAdjustBtn")
         assert "#FFF3CD" not in block
         assert "#856404" not in block
 
     def test_adjust_button_matches_the_neutral_edit_button_colors(self):
         qss = (STYLE_DIR / "light.qss").read_text()
-        adjust_block = _rule_block(qss, "QPushButton#CreditAdjustBtn, QPushButton#PayableAdjustBtn {")
-        edit_block = _rule_block(qss, "QPushButton#CreditPrintBtn, QPushButton#CreditEditBtn {")
-        assert "#F8F9FA" in adjust_block
-        assert "#F8F9FA" in edit_block
+        adjust_block = _rule_block_containing(qss, "QPushButton#CreditAdjustBtn")
+        assert "QPushButton#CreditEditBtn" in adjust_block

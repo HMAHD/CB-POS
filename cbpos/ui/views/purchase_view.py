@@ -206,12 +206,6 @@ class PurchaseView(QWidget):
         """Build the page header and the four purchase tabs."""
         layout = QVBoxLayout(self)
 
-        from cbpos.ui.resources.icons import Icons
-        from cbpos.ui.widgets.page_header import PageHeader
-
-        self._page_header = PageHeader(icon_name=Icons.PURCHASE)
-        layout.addWidget(self._page_header)
-
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs)
 
@@ -448,7 +442,6 @@ class PurchaseView(QWidget):
 
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
-        self._page_header.set_title(_t("management.sidebar_purchasing"))
         # Tabs
         self.tabs.setTabText(0, _t("purchase.tab_suppliers"))
         self.tabs.setTabText(1, _t("purchase.tab_new_grn"))

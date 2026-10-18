@@ -458,6 +458,18 @@ def main():
             DatabaseSetupService.create_empty_database()
             print("[BOOTSTRAP] Empty database ready.")
 
+    # Enforce data continuity for legacy customer records
+    try:
+        from cbpos.core.services.customer_credit_service import CustomerCreditService
+        from cbpos.core.services.loyalty_service import LoyaltyService
+
+        n_ledger = CustomerCreditService.backfill_missing_ledger_entries()
+        n_loyalty = LoyaltyService.backfill_missing_loyalty_entries()
+        if n_ledger or n_loyalty:
+            print(f"[BOOTSTRAP] Backfilled {n_ledger} opening ledger entries and {n_loyalty} opening loyalty entries.")
+    except Exception as e:
+        print(f"[BOOTSTRAP] Ledger/Loyalty backfill failed: {e}")
+
     # Start scheduler timer for auto-report. Settings' save handler also
     # starts/stops this live when the checkbox changes (#320) -- this call
     # only covers the case where it was already enabled at launch.

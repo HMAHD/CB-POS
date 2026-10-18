@@ -3167,12 +3167,14 @@ QPushButton#BtnInfoIcon:hover {
     border-radius: 14px;
 }
 
-/* Settings scroll area transparency */
-QScrollArea#SettingsScrollArea {
+/* Settings & Inventory scroll area transparency */
+QScrollArea#SettingsScrollArea,
+QScrollArea#InventoryScrollArea {
     background: transparent;
     border: none;
 }
-QWidget#SettingsScrollInner {
+QWidget#SettingsScrollInner,
+QWidget#InventoryScrollInner {
     background: transparent;
 }
 QWidget#SettingsScrollInner QCheckBox {

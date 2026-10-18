@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
     QFormLayout,
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
@@ -14,6 +15,8 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
     QTabWidget,
@@ -153,15 +156,26 @@ class ProductEditor(QDialog):
 
     def setup_inventory_tab(self):
         """Build the Inventory tab: stock levels, supplier/unit selection, and weighted/service item toggles."""
-        layout = QVBoxLayout(self.tab_inventory)
+        tab_layout = QVBoxLayout(self.tab_inventory)
+        tab_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.inventory_scroll = QScrollArea()
+        self.inventory_scroll.setObjectName("InventoryScrollArea")
+        self.inventory_scroll.setWidgetResizable(True)
+        self.inventory_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.inventory_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        scroll_content = QWidget()
+        scroll_content.setObjectName("InventoryScrollInner")
+        layout = QVBoxLayout(scroll_content)
+        layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(10)
 
-        # Stock group — QLineEdit instead of QDoubleSpinBox for clean
-        # rendering (QDoubleSpinBox +/- buttons break under QSS)
+        # Stock group — 3-column row to save vertical height and prevent vertical compression
         grp_stock = QGroupBox(_t("product_editor.group_stock"))
-        form_stock = QFormLayout(grp_stock)
-        form_stock.setVerticalSpacing(10)
-        form_stock.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        stock_layout = QHBoxLayout(grp_stock)
+        stock_layout.setContentsMargins(12, 12, 12, 12)
+        stock_layout.setSpacing(12)
 
         stock_validator = QDoubleValidator(-10000.0, 1000000.0, 3)
         reorder_validator = QDoubleValidator(0.0, 10000.0, 3)
@@ -169,18 +183,44 @@ class ProductEditor(QDialog):
         self.stock_input = QLineEdit()
         self.stock_input.setPlaceholderText("0.000")
         self.stock_input.setValidator(stock_validator)
+        self.stock_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self.reorder_input = QLineEdit()
         self.reorder_input.setPlaceholderText("0.000")
         self.reorder_input.setValidator(reorder_validator)
+        self.reorder_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self.preferred_qty_input = QLineEdit()
         self.preferred_qty_input.setPlaceholderText("0.000")
         self.preferred_qty_input.setValidator(reorder_validator)
+        self.preferred_qty_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-        form_stock.addRow(_t("product_editor.stock_qty"), self.stock_input)
-        form_stock.addRow(_t("product_editor.reorder_point"), self.reorder_input)
-        form_stock.addRow(_t("product_editor.preferred_qty"), self.preferred_qty_input)
+        # Column 1: Stock Qty
+        col_stock = QVBoxLayout()
+        col_stock.setSpacing(4)
+        lbl_stock = QLabel(_t("product_editor.stock_qty"))
+        lbl_stock.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        col_stock.addWidget(lbl_stock)
+        col_stock.addWidget(self.stock_input)
+        stock_layout.addLayout(col_stock, 1)
+
+        # Column 2: Reorder Point
+        col_reorder = QVBoxLayout()
+        col_reorder.setSpacing(4)
+        lbl_reorder = QLabel(_t("product_editor.reorder_point"))
+        lbl_reorder.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        col_reorder.addWidget(lbl_reorder)
+        col_reorder.addWidget(self.reorder_input)
+        stock_layout.addLayout(col_reorder, 1)
+
+        # Column 3: Preferred Qty
+        col_preferred = QVBoxLayout()
+        col_preferred.setSpacing(4)
+        lbl_preferred = QLabel(_t("product_editor.preferred_qty"))
+        lbl_preferred.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        col_preferred.addWidget(lbl_preferred)
+        col_preferred.addWidget(self.preferred_qty_input)
+        stock_layout.addLayout(col_preferred, 1)
 
         layout.addWidget(grp_stock)
 
@@ -190,7 +230,9 @@ class ProductEditor(QDialog):
 
         grp_supplier = QGroupBox(_t("product_editor.group_supplier"))
         supplier_layout = QVBoxLayout(grp_supplier)
+        supplier_layout.setContentsMargins(12, 12, 12, 12)
         self.supplier_combo = QComboBox()
+        self.supplier_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.supplier_combo.addItem(_t("product_editor.no_default_supplier"), None)
         for supplier in self.suppliers:
             self.supplier_combo.addItem(supplier.company_name, supplier.id)
@@ -199,7 +241,9 @@ class ProductEditor(QDialog):
 
         grp_unit = QGroupBox(_t("product_editor.group_uom"))
         unit_inner = QVBoxLayout(grp_unit)
+        unit_inner.setContentsMargins(12, 12, 12, 12)
         self.unit_combo = QComboBox()
+        self.unit_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.unit_combo.addItem(_t("product_editor.no_unit"), None)
         from cbpos.core.services.unit_service import UnitService
 
@@ -213,52 +257,67 @@ class ProductEditor(QDialog):
         # Item type group — checkbox + inline hint on same row
         grp_type = QGroupBox(_t("product_editor.group_item_type"))
         type_layout = QVBoxLayout(grp_type)
-        type_layout.setContentsMargins(12, 12, 12, 8)
-        type_layout.setSpacing(6)
+        type_layout.setContentsMargins(12, 12, 12, 12)
+        type_layout.setSpacing(8)
 
+        # 1. Weighted
         row_weighted = QHBoxLayout()
-        row_weighted.setSpacing(6)
+        row_weighted.setSpacing(8)
         self.weighted_check = QCheckBox(_t("product_editor.weighted_item"))
+        self.weighted_check.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Minimum)
         row_weighted.addWidget(self.weighted_check)
         self.weighted_hint = QLabel(_t("product_editor.weighted_hint"))
         self.weighted_hint.setObjectName("ToggleHint")
-        row_weighted.addWidget(self.weighted_hint)
-        row_weighted.addStretch()
+        self.weighted_hint.setWordWrap(True)
+        self.weighted_hint.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        row_weighted.addWidget(self.weighted_hint, 1)
         type_layout.addLayout(row_weighted)
 
+        # 2. Service
         row_service = QHBoxLayout()
-        row_service.setSpacing(6)
+        row_service.setSpacing(8)
         self.service_check = QCheckBox(_t("product_editor.service_item"))
+        self.service_check.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Minimum)
         row_service.addWidget(self.service_check)
         self.service_hint = QLabel(_t("product_editor.service_hint"))
         self.service_hint.setObjectName("ToggleHint")
-        row_service.addWidget(self.service_hint)
-        row_service.addStretch()
+        self.service_hint.setWordWrap(True)
+        self.service_hint.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        row_service.addWidget(self.service_hint, 1)
         type_layout.addLayout(row_service)
 
+        # 3. Price change
         row_price_change = QHBoxLayout()
-        row_price_change.setSpacing(6)
+        row_price_change.setSpacing(8)
         self.price_change_allowed_check = QCheckBox(_t("product_editor.price_change_allowed"))
+        self.price_change_allowed_check.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Minimum)
         self.price_change_allowed_check.setChecked(True)
         row_price_change.addWidget(self.price_change_allowed_check)
         self.price_change_hint = QLabel(_t("product_editor.price_change_hint"))
         self.price_change_hint.setObjectName("ToggleHint")
-        row_price_change.addWidget(self.price_change_hint)
-        row_price_change.addStretch()
+        self.price_change_hint.setWordWrap(True)
+        self.price_change_hint.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        row_price_change.addWidget(self.price_change_hint, 1)
         type_layout.addLayout(row_price_change)
 
+        # 4. Age restricted
         row_age_restricted = QHBoxLayout()
-        row_age_restricted.setSpacing(6)
+        row_age_restricted.setSpacing(8)
         self.age_restricted_check = QCheckBox(_t("product_editor.age_restricted"))
+        self.age_restricted_check.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Minimum)
         row_age_restricted.addWidget(self.age_restricted_check)
         self.age_restricted_hint = QLabel(_t("product_editor.age_restricted_hint"))
         self.age_restricted_hint.setObjectName("ToggleHint")
-        row_age_restricted.addWidget(self.age_restricted_hint)
-        row_age_restricted.addStretch()
+        self.age_restricted_hint.setWordWrap(True)
+        self.age_restricted_hint.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        row_age_restricted.addWidget(self.age_restricted_hint, 1)
         type_layout.addLayout(row_age_restricted)
 
         layout.addWidget(grp_type)
-        layout.addStretch()
+        layout.addStretch(1)
+
+        self.inventory_scroll.setWidget(scroll_content)
+        tab_layout.addWidget(self.inventory_scroll)
 
     def setup_composition_tab(self):
         """Build the Composition tab: add-by-barcode row and the table of bundled component products."""

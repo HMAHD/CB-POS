@@ -22,7 +22,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.formatters import format_currency, get_currency_symbol
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
@@ -140,7 +140,7 @@ class AdjustBalanceDialog(QDialog):
         self.amount_spin = QDoubleSpinBox()
         self.amount_spin.setRange(0.01, 9999999.99)
         self.amount_spin.setDecimals(2)
-        self.amount_spin.setPrefix("Rs. ")
+        self.amount_spin.setPrefix(f"{get_currency_symbol()} ")
         self.amount_spin.setValue(0.00)
         self.amount_spin.setObjectName("AdjustAmountSpin")
         self.amount_spin.valueChanged.connect(self._recalculate)
@@ -196,17 +196,17 @@ class AdjustBalanceDialog(QDialog):
         btn_box.setSpacing(10)
         btn_box.addStretch()
 
-        btn_cancel = QPushButton(_t("common.cancel"))
-        btn_cancel.setObjectName("BtnCancel")
-        btn_cancel.setProperty("class", "secondary")
-        btn_cancel.clicked.connect(self.reject)
-        btn_box.addWidget(btn_cancel)
-
         self.btn_save = QPushButton(_t("adjust_balance.confirm"))
         self.btn_save.setProperty("class", "accent")
         _set_button_icon(self.btn_save, "fa5s.check", "#FFFFFF", pad_right=8, size=13)
         self.btn_save.clicked.connect(self.save)
         btn_box.addWidget(self.btn_save)
+
+        btn_cancel = QPushButton(_t("common.cancel"))
+        btn_cancel.setObjectName("BtnCancel")
+        btn_cancel.setProperty("class", "secondary")
+        btn_cancel.clicked.connect(self.reject)
+        btn_box.addWidget(btn_cancel)
 
         layout.addLayout(btn_box)
 

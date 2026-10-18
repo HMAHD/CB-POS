@@ -29,7 +29,8 @@ class StockAdjustmentDialog(QDialog):
         self.product = product
 
         self.setWindowTitle(_t("stock_adjustment.title", product_name=product.name_en))
-        self.setFixedSize(400, 300)
+        self.setMinimumSize(400, 300)
+        self.resize(400, 300)
         self.init_ui()
         install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
 
@@ -64,17 +65,20 @@ class StockAdjustmentDialog(QDialog):
         layout.addLayout(form_layout)
 
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(10)
+
+        self.btn_save = QPushButton(_t("stock_adjustment.btn_save"))
+        self.btn_save.setObjectName("BtnSave")
+        self.btn_save.setProperty("class", "primary")
+        self.btn_save.clicked.connect(self.save_adjustment)
 
         self.btn_cancel = QPushButton(_t("stock_adjustment.btn_cancel"))
+        self.btn_cancel.setObjectName("BtnCancel")
         self.btn_cancel.setProperty("class", "secondary")
         self.btn_cancel.clicked.connect(self.reject)
 
-        self.btn_save = QPushButton(_t("stock_adjustment.btn_save"))
-        self.btn_save.setProperty("class", "accent")
-        self.btn_save.clicked.connect(self.save_adjustment)
-
-        btn_layout.addWidget(self.btn_cancel)
         btn_layout.addWidget(self.btn_save)
+        btn_layout.addWidget(self.btn_cancel)
 
         layout.addLayout(btn_layout)
 

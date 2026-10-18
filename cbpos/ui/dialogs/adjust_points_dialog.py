@@ -206,17 +206,17 @@ class AdjustPointsDialog(QDialog):
         btn_box.setSpacing(10)
         btn_box.addStretch()
 
-        btn_cancel = QPushButton(_t("common.cancel"))
-        btn_cancel.setObjectName("BtnCancel")
-        btn_cancel.setProperty("class", "secondary")
-        btn_cancel.clicked.connect(self.reject)
-        btn_box.addWidget(btn_cancel)
-
         self.btn_save = QPushButton(_t("adjust_points.confirm"))
         self.btn_save.setProperty("class", "accent")
         _set_button_icon(self.btn_save, "fa5s.check", "#FFFFFF", pad_right=8, size=13)
         self.btn_save.clicked.connect(self.save)
         btn_box.addWidget(self.btn_save)
+
+        btn_cancel = QPushButton(_t("common.cancel"))
+        btn_cancel.setObjectName("BtnCancel")
+        btn_cancel.setProperty("class", "secondary")
+        btn_cancel.clicked.connect(self.reject)
+        btn_box.addWidget(btn_cancel)
 
         layout.addLayout(btn_box)
 

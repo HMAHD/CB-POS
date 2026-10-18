@@ -334,18 +334,20 @@ class PaymentDialog(QDialog):
 
         self.btn_cancel = QPushButton("")
         self.btn_cancel.setObjectName("BtnCancel")
+        self.btn_cancel.setProperty("class", "secondary")
         self.btn_cancel.setFixedHeight(48)
         self.btn_cancel.clicked.connect(self.reject)
 
         self.btn_finish = QPushButton("")
         self.btn_finish.setObjectName("BtnFinishSale")
+        self.btn_finish.setProperty("class", "primary")
         self.btn_finish.setFixedHeight(48)
         self.btn_finish.setEnabled(False)
         self.btn_finish.setToolTip(_t("payment.finish_tooltip_remaining", amount=format_currency(self.total_amount)))
         self.btn_finish.clicked.connect(self._finish_sale)
 
-        action_layout.addWidget(self.btn_cancel, stretch=1)
         action_layout.addWidget(self.btn_finish, stretch=2)
+        action_layout.addWidget(self.btn_cancel, stretch=1)
         main_layout.addLayout(action_layout)
 
         # Auto-select first method

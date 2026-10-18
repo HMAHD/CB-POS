@@ -149,15 +149,17 @@ class DiscountDialog(QDialog):
         self.btn_cancel = QPushButton("")
         self.btn_cancel.setFixedHeight(48)
         self.btn_cancel.setObjectName("BtnCancel")
+        self.btn_cancel.setProperty("class", "secondary")
         self.btn_cancel.clicked.connect(self.reject)
 
         self.btn_apply = QPushButton("")
         self.btn_apply.setFixedHeight(48)
         self.btn_apply.setObjectName("BtnApplyDiscount")
+        self.btn_apply.setProperty("class", "primary")
         self.btn_apply.clicked.connect(self.accept)
 
-        btn_layout.addWidget(self.btn_cancel)
         btn_layout.addWidget(self.btn_apply)
+        btn_layout.addWidget(self.btn_cancel)
         layout.addLayout(btn_layout)
 
         # Apply translations

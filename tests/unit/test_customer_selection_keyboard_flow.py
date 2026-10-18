@@ -4,7 +4,7 @@ import pytest
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtTest import QTest
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from cbpos.core.models import Customer
 from cbpos.ui.dialogs.customer_selection_dialog import CustomerSelectionDialog
@@ -27,7 +27,10 @@ class TestCustomerSelectionKeyboardWorkflow:
         _seed_customers(db_session)
         dialog = CustomerSelectionDialog()
         dialog.show()
+        dialog.activateWindow()
+        QApplication.setActiveWindow(dialog)
         QTest.qWaitForWindowExposed(dialog)
+        QApplication.processEvents()
 
         assert dialog.search_input.hasFocus()
         dialog.close()

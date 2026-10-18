@@ -25,7 +25,6 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from cbpos.config import Config
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_service import CustomerService
@@ -40,7 +39,7 @@ from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import printer_not_configured_message, receipt_printer_configured
 from cbpos.infrastructure.system_tools import open_native_calculator
-from cbpos.ui.constants import CART_TABLE_ROW_HEIGHT, SEARCH_BAR_HEIGHT
+from cbpos.ui.constants import CART_TABLE_ROW_HEIGHT
 from cbpos.ui.dialogs.advanced_search_dialog import AdvancedSearchDialog
 from cbpos.ui.dialogs.customer_quick_add import CustomerQuickAddDialog
 from cbpos.ui.dialogs.customer_selection_dialog import CustomerSelectionDialog
@@ -118,7 +117,7 @@ class SalesView(QWidget):
 
         # 2. Header (Top)
         self.header_widget = QWidget()
-        self.header_widget.setFixedHeight(SEARCH_BAR_HEIGHT)
+        self.header_widget.setFixedHeight(56)
         self.header_widget.setObjectName("HeaderWidget")
         header_layout = QHBoxLayout(self.header_widget)
         header_layout.setContentsMargins(20, 0, 20, 0)
@@ -168,7 +167,7 @@ class SalesView(QWidget):
         # Menu Button (Hamburger)
         self.menu_button = QToolButton()
         self.menu_button.setObjectName("menu_button")
-        self.menu_button.setIcon(Icons.get("fa5s.bars", "white"))
+        self.menu_button.setIcon(Icons.get("fa5s.bars", ThemeService.get_icon_color()))
         self.menu_button.setIconSize(QSize(24, 24))
         self.menu_button.setFixedSize(42, 42)
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -511,22 +510,17 @@ class SalesView(QWidget):
 
     def update_logo(self):
         """Set the header logo and icons (also called on theme change)."""
-        # The header is navy in *both* themes (#HeaderWidget in dark.qss and
-        # light.qss), so it always needs the white-text logo -- the
-        # theme-dependent ThemeService.get_logo_path() handed Light mode the
-        # black-text one, nearly invisible on navy (#603).
-        logo_path = Config.BASE_DIR / "cbpos" / "assets" / "logo" / "cover_white.png"
-
-        if logo_path.exists():
-            logo_pixmap = QPixmap(str(logo_path))
-            self.lbl_logo.setPixmap(logo_pixmap.scaledToHeight(35, Qt.TransformationMode.SmoothTransformation))
+        logo_path = ThemeService.get_logo_path()
+        pixmap = QPixmap(logo_path)
+        if not pixmap.isNull():
+            self.lbl_logo.setPixmap(pixmap.scaledToHeight(35, Qt.TransformationMode.SmoothTransformation))
         else:
             self.lbl_logo.setText(_t("sales.logo_fallback"))  # Fallback
             self.lbl_logo.setObjectName("LogoLabel")
 
-        # Update hamburger menu icon (if it exists) - always white
+        # Update hamburger menu icon (if it exists)
         if hasattr(self, "menu_button"):
-            self.menu_button.setIcon(Icons.get("fa5s.bars", "white"))
+            self.menu_button.setIcon(Icons.get("fa5s.bars", ThemeService.get_icon_color()))
 
         # Update side menu icons (if it exists)
         if hasattr(self, "side_menu"):

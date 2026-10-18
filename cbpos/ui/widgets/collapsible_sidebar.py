@@ -11,7 +11,6 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from cbpos.config import Config
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.i18n import _t
@@ -344,13 +343,18 @@ class CollapsibleSidebar(QFrame):
             label.setVisible(not self.is_collapsed)
 
     def _load_logo(self) -> None:
-        """Load full brand banner when expanded or C3 icon mark when collapsed."""
+        """Load full brand banner when expanded or theme-specific mark (01.png / 02.png) when collapsed."""
         if self.is_collapsed:
-            icon_path = Config.BASE_DIR / "cbpos" / "assets" / "ico" / "cbpos.png"
-            if icon_path.exists():
-                pix = QPixmap(str(icon_path))
+            icon_path = ThemeService.get_collapsed_logo_path()
+            pix = QPixmap(icon_path)
+            if not pix.isNull():
                 self.lbl_logo.setPixmap(
-                    pix.scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                    pix.scaled(
+                        44,
+                        32,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
                 )
                 self.lbl_logo.setText("")
             else:

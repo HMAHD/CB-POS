@@ -184,6 +184,23 @@ class ThemeService:
         return str(Config.BASE_DIR / "cbpos" / "assets" / "logo" / logo_file)
 
     @staticmethod
+    def get_collapsed_logo_path() -> str:
+        """Returns the correct collapsed icon logo file path based on the current theme.
+
+        - Light Theme → 01.png
+        - Dark Theme → 02.png
+
+        Returns:
+            str: Absolute path to the appropriate collapsed logo file
+        """
+        if ThemeService.current_theme.lower() == "light":
+            logo_file = "01.png"
+        else:
+            logo_file = "02.png"
+
+        return str(Config.BASE_DIR / "cbpos" / "assets" / "logo" / logo_file)
+
+    @staticmethod
     def get_icon_color() -> str:
         """
         Returns the hex color string for icons based on the current theme.

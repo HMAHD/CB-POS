@@ -15,7 +15,6 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.utils.destroy_hooks import call_on_destroyed
-from cbpos.core.utils.formatters import format_short_name
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.elided_label import ElidedLabel
@@ -403,7 +402,7 @@ class ActionPanel(QWidget):
             points: Loyalty points balance shown in the points row.
         """
         self._has_customer = True
-        self.lbl_customer.setText(format_short_name(name))
+        self.lbl_customer.setText(name or "")
         self.lbl_customer.setToolTip(f"{name} ({phone})" if phone else name)
         self.lbl_points.setText(_t("action_panel.points", points=points))
         if phone:

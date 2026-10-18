@@ -46,7 +46,7 @@ class TestActionPanelCustomerProfileCard:
         panel.set_customer_info("Dilini Rathnayake", "0721234567", 200)
 
         assert panel._has_customer is True
-        assert panel.lbl_customer.text() == "Dilini R"
+        assert panel.lbl_customer.text() == "Dilini Rathnayake"
         assert panel.lbl_cust_icon.text() == "DR"
         assert panel.btn_cust_clear.isVisibleTo(panel) is True
         assert panel.points_row.isVisibleTo(panel) is True

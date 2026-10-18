@@ -722,7 +722,7 @@
     "btn_add_customer": "+ පාරිභෝගිකයෙක් එකතු කරන්න",
     "btn_open_customer_ledger": "ලෙජරය අරින්න",
     "row_open_hint": "ලෙජරය අරින්න නමට දෙපාරක් ක්ලික් කරන්න, නැත්නම් Enter ඔබන්න. තව දේවල් දකුණු ක්ලික් කරලා බලන්න.",
-    "btn_back": "< පාරිභෝගිකයන්ට ආපහු",
+    "btn_back": "පාරිභෝගිකයන්ට ආපහු",
     "btn_receive_payment": "ගෙවීම ලබාගන්න",
     "btn_print_statement": "ස්ටේට්මන්ට් එක ප්‍රින්ට් කරන්න",
     "btn_adjust_balance": "ශේෂය සකස් කරන්න",
@@ -773,7 +773,16 @@
     "done_title": "හරි",
     "balance_adjusted_msg": "ශේෂය සකස් කළා.",
     "ledger_empty_range": "මෙම දින පරාසයේ කිසිදු සටහනක් නැත — සම්පූර්ණ ඉතිහාසය බැලීමට 'සියල්ල' ඔබන්න",
-    "ledger_no_history": "මෙම පාරිභෝගිකයා සඳහා ගනුදෙනු ඉතිහාසයක් නැත"
+    "ledger_no_history": "මෙම පාරිභෝගිකයා සඳහා ගනුදෙනු ඉතිහාසයක් නැත",
+    "view_badge": "පාරිභෝගික ණය ලෙජරය",
+    "preset_30d": "පසුගිය දින 30",
+    "preset_month": "මෙම මාසය",
+    "kpi_debt": "හිඟ ණය",
+    "kpi_available": "ලබාගත හැකි ණය",
+    "kpi_limit": "ණය සීමාව",
+    "kpi_points": "ලකුණු (LOYALTY)",
+    "kpi_last_payment": "අන්තිම ගෙවීම",
+    "btn_view_all": "සියල්ල බලන්න"
   },
   "purchase": {
     "tab_suppliers": "සැපයුම්කරුවෝ",

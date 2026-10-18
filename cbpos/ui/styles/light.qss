@@ -3664,20 +3664,20 @@ QPushButton#CreditBackBtn:hover, QPushButton#PayableBackBtn:hover {
     color: #0B5ED7;
 }
 
-/* Payable/Credit date-range mismatch hint (#282/#284) */
-QFrame#PayableRangeHint, QFrame#CreditRangeHint {
+/* Payable date-range mismatch hint (#282) */
+QFrame#PayableRangeHint {
     background-color: rgba(255, 193, 7, 0.12);
     border: 1px solid #FFC107;
     border-radius: 6px;
 }
 
-QLabel#PayableRangeHintLabel, QLabel#CreditRangeHintLabel {
+QLabel#PayableRangeHintLabel {
     background-color: transparent;
     color: #856404;
     font-size: 12px;
 }
 
-QPushButton#PayableRangeHintBtn, QPushButton#CreditRangeHintBtn {
+QPushButton#PayableRangeHintBtn {
     background-color: #FFC107;
     color: #212529;
     font-weight: bold;
@@ -3686,49 +3686,44 @@ QPushButton#PayableRangeHintBtn, QPushButton#CreditRangeHintBtn {
     padding: 4px 12px;
 }
 
-QPushButton#PayableRangeHintBtn:hover, QPushButton#CreditRangeHintBtn:hover {
+QPushButton#PayableRangeHintBtn:hover {
     background-color: #E0A800;
 }
 
-QFrame#CreditHeaderCard, QFrame#PayableHeaderCard {
+/* Payable Header Card */
+QFrame#PayableHeaderCard {
     background-color: #F8F9FA;
     border: 1px solid #DEE2E6;
     border-radius: 8px;
 }
 
-QFrame#CreditHeaderCard QLabel, QFrame#PayableHeaderCard QLabel {
+QFrame#PayableHeaderCard QLabel {
     background-color: transparent;
 }
 
-QLabel#CreditCustName, QLabel#PayableCustName {
+QLabel#PayableCustName {
     font-size: 18px;
     font-weight: bold;
     color: #212529;
 }
 
-QLabel#CreditCustPhone, QLabel#PayableCustPhone {
+QLabel#PayableCustPhone {
     font-size: 13px;
     color: #6C757D;
 }
 
-QLabel#CreditMetricDebt, QLabel#PayableMetricDebt {
+QLabel#PayableMetricDebt {
     font-size: 14px;
     font-weight: bold;
     color: #DC3545;
 }
 
-QLabel#CreditMetricAvail {
-    font-size: 14px;
-    font-weight: bold;
-    color: #198754;
-}
-
-QLabel#CreditMetricLast, QLabel#PayableMetricLast {
+QLabel#PayableMetricLast {
     font-size: 13px;
     color: #6C757D;
 }
 
-QPushButton#CreditPayBtn, QPushButton#PayablePayBtn {
+QPushButton#PayablePayBtn {
     background-color: #0D6EFD;
     color: #FFFFFF;
     font-weight: bold;
@@ -3738,11 +3733,11 @@ QPushButton#CreditPayBtn, QPushButton#PayablePayBtn {
     font-size: 13px;
 }
 
-QPushButton#CreditPayBtn:hover, QPushButton#PayablePayBtn:hover {
+QPushButton#PayablePayBtn:hover {
     background-color: #0B5ED7;
 }
 
-QPushButton#CreditPrintBtn, QPushButton#CreditEditBtn {
+QPushButton#PayableAdjustBtn {
     background-color: #F8F9FA;
     color: #495057;
     padding: 8px 16px;
@@ -3751,21 +3746,7 @@ QPushButton#CreditPrintBtn, QPushButton#CreditEditBtn {
     font-size: 13px;
 }
 
-QPushButton#CreditPrintBtn:hover, QPushButton#CreditEditBtn:hover {
-    border-color: #0D6EFD;
-    color: #0D6EFD;
-}
-
-QPushButton#CreditAdjustBtn, QPushButton#PayableAdjustBtn {
-    background-color: #F8F9FA;
-    color: #495057;
-    padding: 8px 16px;
-    border-radius: 6px;
-    border: 1px solid #CED4DA;
-    font-size: 13px;
-}
-
-QPushButton#CreditAdjustBtn:hover, QPushButton#PayableAdjustBtn:hover {
+QPushButton#PayableAdjustBtn:hover {
     border-color: #0D6EFD;
     color: #0D6EFD;
 }
@@ -3776,13 +3757,13 @@ QLabel#CreditOpenHint {
     font-size: 13px;
 }
 
-QLabel#CreditFilterLabel, QLabel#PayableFilterLabel {
+QLabel#PayableFilterLabel {
     background-color: transparent;
     color: #6C757D;
     font-size: 13px;
 }
 
-QPushButton#CreditAllDatesBtn, QPushButton#PayableAllDatesBtn {
+QPushButton#PayableAllDatesBtn {
     background-color: #F8F9FA;
     color: #495057;
     padding: 6px 12px;
@@ -3791,8 +3772,248 @@ QPushButton#CreditAllDatesBtn, QPushButton#PayableAllDatesBtn {
     font-size: 12px;
 }
 
-QPushButton#CreditAllDatesBtn:hover, QPushButton#PayableAllDatesBtn:hover {
+QPushButton#PayableAllDatesBtn:hover {
     border-color: #0D6EFD;
+}
+
+/* ===================================================================
+   CREDIT BOOK (Customer Ledger & Drilldown)
+   ================================================================ */
+
+/* Navigation Strip */
+QPushButton#CreditBackBtn {
+    background-color: #FFFFFF;
+    color: #475569;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #CBD5E1;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+QPushButton#CreditBackBtn:hover {
+    background-color: #F8FAFC;
+    border-color: #0284C7;
+    color: #0284C7;
+}
+
+QLabel#CreditViewBadge {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748B;
+    letter-spacing: 0.6px;
+}
+
+/* Customer Header / Hero Card */
+QFrame#CreditHeaderCard {
+    background-color: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+}
+
+QFrame#CreditHeaderCard QLabel {
+    background-color: transparent;
+}
+
+QLabel#CreditAvatarIcon {
+    background-color: rgba(2, 132, 199, 0.1);
+    border: 1px solid rgba(2, 132, 199, 0.25);
+    border-radius: 20px;
+}
+
+QLabel#CreditCustName {
+    font-size: 17px;
+    font-weight: bold;
+    color: #0F172A;
+}
+
+QLabel#CreditCustId {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748B;
+    background-color: #F1F5F9;
+    border: 1px solid #E2E8F0;
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
+QLabel#CreditCustPhone, QLabel#CreditCustAddress, QLabel#CreditCustTier {
+    font-size: 12px;
+    color: #64748B;
+}
+
+/* KPI Chips */
+QFrame#CreditKpiDebt, QFrame#CreditKpiAvail, QFrame#CreditKpiLimit, QFrame#CreditKpiPoints, QFrame#CreditKpiLast {
+    background-color: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+}
+
+QFrame#CreditKpiDebt {
+    background-color: rgba(220, 38, 38, 0.05);
+    border-color: rgba(220, 38, 38, 0.2);
+}
+
+QFrame#CreditKpiAvail {
+    background-color: rgba(22, 163, 74, 0.05);
+    border-color: rgba(22, 163, 74, 0.2);
+}
+
+QLabel#CreditKpiTitle {
+    font-size: 10px;
+    font-weight: 700;
+    color: #64748B;
+    letter-spacing: 0.5px;
+}
+
+QLabel#CreditMetricDebt {
+    font-size: 15px;
+    font-weight: bold;
+    color: #DC2626;
+}
+
+QLabel#CreditMetricAvail {
+    font-size: 15px;
+    font-weight: bold;
+    color: #16A34A;
+}
+
+QLabel#CreditMetricLimit {
+    font-size: 15px;
+    font-weight: bold;
+    color: #0F172A;
+}
+
+QLabel#CreditMetricPoints {
+    font-size: 15px;
+    font-weight: bold;
+    color: #D97706;
+}
+
+QLabel#CreditMetricLast {
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748B;
+}
+
+/* Action Buttons */
+QPushButton#CreditPayBtn {
+    background-color: #16A34A;
+    color: #FFFFFF;
+    font-weight: bold;
+    padding: 8px 18px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+}
+
+QPushButton#CreditPayBtn:hover {
+    background-color: #15803D;
+}
+
+QPushButton#CreditPrintBtn, QPushButton#CreditAdjustBtn, QPushButton#CreditAdjustPointsBtn, QPushButton#CreditEditBtn {
+    background-color: #FFFFFF;
+    color: #0F172A;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid #CBD5E1;
+    font-size: 12.5px;
+}
+
+QPushButton#CreditPrintBtn:hover, QPushButton#CreditAdjustBtn:hover, QPushButton#CreditAdjustPointsBtn:hover, QPushButton#CreditEditBtn:hover {
+    background-color: #F8FAFC;
+    border-color: #0284C7;
+    color: #0284C7;
+}
+
+/* Filter bar & Presets */
+QFrame#CreditFilterBar {
+    background-color: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+}
+
+QLabel#CreditFilterLabel {
+    background-color: transparent;
+    color: #64748B;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+QPushButton#CreditPresetBtn30d, QPushButton#CreditPresetBtnMonth, QPushButton#CreditAllDatesBtn {
+    background-color: #F8FAFC;
+    color: #64748B;
+    padding: 5px 12px;
+    border-radius: 4px;
+    border: 1px solid #CBD5E1;
+    font-size: 11.5px;
+    font-weight: 600;
+}
+
+QPushButton#CreditPresetBtn30d:hover, QPushButton#CreditPresetBtnMonth:hover, QPushButton#CreditAllDatesBtn:hover {
+    color: #0F172A;
+    border-color: #94A3B8;
+}
+
+QPushButton#CreditPresetBtn30d[presetActive="true"],
+QPushButton#CreditPresetBtnMonth[presetActive="true"],
+QPushButton#CreditAllDatesBtn[presetActive="true"] {
+    background-color: #0284C7;
+    color: #FFFFFF;
+    border-color: #0284C7;
+    font-weight: bold;
+}
+
+/* Date-range mismatch hint (#284) */
+QFrame#CreditRangeHint {
+    background-color: rgba(217, 119, 6, 0.08);
+    border: 1px solid rgba(217, 119, 6, 0.35);
+    border-left: 4px solid #D97706;
+    border-radius: 6px;
+}
+
+QLabel#CreditRangeHintLabel {
+    background-color: transparent;
+    color: #0F172A;
+    font-size: 12px;
+}
+
+QPushButton#CreditRangeHintBtn {
+    background-color: #D97706;
+    color: #FFFFFF;
+    font-weight: bold;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+}
+
+QPushButton#CreditRangeHintBtn:hover {
+    background-color: #B45309;
+}
+
+/* Ledger Footer */
+QFrame#CreditLedgerFooter {
+    background-color: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+}
+
+QLabel#CreditLedgerDebit {
+    font-size: 13px;
+    font-weight: bold;
+    color: #DC2626;
+}
+
+QLabel#CreditLedgerCredit {
+    font-size: 13px;
+    font-weight: bold;
+    color: #16A34A;
+}
+
+QLabel#CreditLedgerClosing {
+    font-size: 14px;
+    font-weight: bold;
+    color: #0F172A;
 }
 
 /* ===================================================================

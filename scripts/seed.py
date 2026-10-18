@@ -27,6 +27,7 @@ from cbpos.core.models import (  # noqa: E402
     Category,
     CompositeItem,
     Customer,
+    CustomerLedgerEntry,
     InventoryLog,
     PaymentMethod,
     Permission,
@@ -1570,6 +1571,28 @@ def seed_data():
         ]
         session.add_all(customers)
         session.flush()
+
+        # Seed initial opening ledger entries for customers with outstanding debt (#284)
+        admin_user = session.query(User).filter_by(username="admin").first()
+        admin_id = admin_user.id if admin_user else 1
+        ledger_entries = []
+        for cust in customers:
+            if cust.current_debt and cust.current_debt > Decimal("0.00"):
+                ledger_entries.append(
+                    CustomerLedgerEntry(
+                        customer_id=cust.id,
+                        entry_type="OPENING",
+                        amount=cust.current_debt,
+                        balance_after=cust.current_debt,
+                        reference_doc="INIT-BAL",
+                        note="Opening Balance",
+                        user_id=admin_id,
+                        timestamp=datetime.now() - timedelta(days=45),
+                    )
+                )
+        if ledger_entries:
+            session.add_all(ledger_entries)
+            session.flush()
 
         # =============================================================
         # 12. PRICE LIST ITEMS (wholesale prices for popular products)

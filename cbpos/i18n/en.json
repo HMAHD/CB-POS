@@ -752,7 +752,7 @@
     "btn_add_customer": "+ Add Customer",
     "btn_open_customer_ledger": "Open Ledger",
     "row_open_hint": "Double-click a customer or press Enter to open their ledger. Right-click for more.",
-    "btn_back": "< Back to Customers",
+    "btn_back": "Back to Customers",
     "btn_receive_payment": "Receive Payment",
     "btn_print_statement": "Print Statement",
     "btn_adjust_balance": "Adjust Balance",
@@ -803,7 +803,16 @@
     "done_title": "Done",
     "balance_adjusted_msg": "Balance adjusted successfully.",
     "ledger_empty_range": "No entries in this date range — click 'All' to view complete history",
-    "ledger_no_history": "No transaction history for this customer"
+    "ledger_no_history": "No transaction history for this customer",
+    "view_badge": "CUSTOMER CREDIT LEDGER",
+    "preset_30d": "Last 30 Days",
+    "preset_month": "This Month",
+    "kpi_debt": "OUTSTANDING DEBT",
+    "kpi_available": "AVAILABLE CREDIT",
+    "kpi_limit": "CREDIT LIMIT",
+    "kpi_points": "LOYALTY POINTS",
+    "kpi_last_payment": "LAST PAYMENT",
+    "btn_view_all": "View All Time"
   },
   "purchase": {
     "tab_suppliers": "Suppliers",

@@ -5,7 +5,7 @@ from sqlalchemy import desc, or_, select
 from sqlalchemy.orm import selectinload
 
 from cbpos.core.database import Database
-from cbpos.core.models import Customer, CustomerContact, LoyaltyLedgerEntry, Sale
+from cbpos.core.models import Customer, CustomerContact, CustomerLedgerEntry, LoyaltyLedgerEntry, Sale, User
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.loyalty_service import LoyaltyService
 from cbpos.core.utils.formatters import escape_like
@@ -45,6 +45,46 @@ class CustomerService:
                 customer.contacts.append(contact)
 
             session.add(customer)
+            session.flush()
+
+            # Enforce data continuity: write OPENING ledger entry if initial debt > 0
+            debt = getattr(customer, "current_debt", Decimal("0.00")) or Decimal("0.00")
+            if debt > Decimal("0.00"):
+                from cbpos.core.services.auth_service import AuthService
+
+                current_user = AuthService.get_current_user()
+                user_id = current_user.id if current_user else None
+                if not user_id:
+                    user = session.query(User).order_by(User.id).first()
+                    if not user:
+                        user = User(username="system", pin_hash="system")
+                        session.add(user)
+                        session.flush()
+                    user_id = user.id
+
+                entry = CustomerLedgerEntry(
+                    customer_id=customer.id,
+                    entry_type="OPENING",
+                    amount=debt,
+                    balance_after=debt,
+                    reference_doc="INIT-BAL",
+                    note="Opening Balance",
+                    user_id=user_id,
+                )
+                session.add(entry)
+
+            # Enforce data continuity: write OPENING loyalty entry if initial points > 0
+            points = getattr(customer, "loyalty_points", 0) or 0
+            if points > 0:
+                p_entry = LoyaltyLedgerEntry(
+                    customer_id=customer.id,
+                    entry_type="OPENING",
+                    points=points,
+                    balance_after=points,
+                    note="Opening Points",
+                )
+                session.add(p_entry)
+
             session.commit()
             session.refresh(customer)
             # Eager load contacts to prevent detach errors

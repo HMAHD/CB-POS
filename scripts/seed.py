@@ -29,6 +29,7 @@ from cbpos.core.models import (  # noqa: E402
     Customer,
     CustomerLedgerEntry,
     InventoryLog,
+    LoyaltyLedgerEntry,
     PaymentMethod,
     Permission,
     PriceList,
@@ -1592,6 +1593,24 @@ def seed_data():
                 )
         if ledger_entries:
             session.add_all(ledger_entries)
+            session.flush()
+
+        # Seed initial opening loyalty ledger entries for customers with loyalty points
+        loyalty_entries = []
+        for cust in customers:
+            if cust.loyalty_points and cust.loyalty_points > 0:
+                loyalty_entries.append(
+                    LoyaltyLedgerEntry(
+                        customer_id=cust.id,
+                        entry_type="OPENING",
+                        points=cust.loyalty_points,
+                        balance_after=cust.loyalty_points,
+                        note="Opening Points",
+                        timestamp=datetime.now() - timedelta(days=45),
+                    )
+                )
+        if loyalty_entries:
+            session.add_all(loyalty_entries)
             session.flush()
 
         # =============================================================

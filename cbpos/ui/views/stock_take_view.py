@@ -57,7 +57,8 @@ from cbpos.ui.constants import (
 )
 from cbpos.ui.dialogs.stock_count_report_dialog import StockCountReportDialog
 from cbpos.ui.resources.icons import Icons
-from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, status_color, status_hex
+from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, status_color
+from cbpos.ui.utils.style_helpers import refresh_style
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import (
@@ -876,7 +877,8 @@ class StockTakeView(QWidget):
 
     def _paint_net_variance(self) -> None:
         """Colour the net variance for its sign in the current theme (#559 palette)."""
-        self.lbl_net_variance.setStyleSheet(f"color: {status_hex(self._net_meaning)};")
+        self.lbl_net_variance.setProperty("status", self._net_meaning)
+        refresh_style(self.lbl_net_variance)
 
     def save_draft(self) -> None:
         """Save current state (items are already persisted via update_count)."""

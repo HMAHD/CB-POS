@@ -97,9 +97,12 @@ class ShiftClosingDialog(QDialog):
         # Footer buttons
         btn_layout = QHBoxLayout()
         self.btn_cancel = QPushButton(_t("common.cancel"))
+        self.btn_cancel.setObjectName("BtnCancel")
+        self.btn_cancel.setProperty("class", "secondary")
         self.btn_cancel.clicked.connect(self.reject)
 
         self.btn_back = QPushButton(_t("common.back"))
+        self.btn_back.setProperty("class", "secondary")
         self.btn_back.setEnabled(False)
         self.btn_back.clicked.connect(self._prev_step)
 

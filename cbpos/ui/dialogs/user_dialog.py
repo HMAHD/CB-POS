@@ -70,8 +70,12 @@ class UserDialog(QDialog):
         # Buttons
         btn_layout = QHBoxLayout()
         btn_save = QPushButton(_t("common.save"))
+        btn_save.setObjectName("BtnSave")
+        btn_save.setProperty("class", "primary")
         btn_save.clicked.connect(self.save)
         btn_cancel = QPushButton(_t("common.cancel"))
+        btn_cancel.setObjectName("BtnCancel")
+        btn_cancel.setProperty("class", "secondary")
         btn_cancel.clicked.connect(self.reject)
 
         btn_layout.addWidget(btn_save)

@@ -110,7 +110,7 @@ class UpdateDialog(QDialog):
         if date:
             date_lbl = QLabel(_t("update.released", date=date))
             date_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            date_lbl.setStyleSheet("color: #888;")
+            date_lbl.setProperty("class", "muted")
             layout.addWidget(date_lbl)
 
         # Changelog
@@ -134,11 +134,14 @@ class UpdateDialog(QDialog):
         btn_layout = QHBoxLayout()
 
         self._btn_update = QPushButton(_t("update.download_install"))
+        self._btn_update.setProperty("class", "primary")
         self._btn_update.setDefault(True)
         self._btn_update.clicked.connect(self._start_download)
         btn_layout.addWidget(self._btn_update)
 
         self._btn_skip = QPushButton(_t("update.remind_later"))
+        self._btn_skip.setObjectName("BtnCancel")
+        self._btn_skip.setProperty("class", "secondary")
         self._btn_skip.clicked.connect(self.reject)
         btn_layout.addWidget(self._btn_skip)
 

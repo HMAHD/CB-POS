@@ -17,6 +17,7 @@ from cbpos.core.models import Category
 from cbpos.core.services.category_service import CategoryService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
+from cbpos.ui.styles.style_helpers import set_color_swatch
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
@@ -60,8 +61,8 @@ class CategoryDialog(QDialog):
         color_layout = QHBoxLayout()
         self.lbl_color = QLabel()
         self.lbl_color.setFixedSize(30, 30)
-        style = f"background-color: {self.selected_color}; border: 1px solid gray;"
-        self.lbl_color.setStyleSheet(style)
+        self.lbl_color.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        set_color_swatch(self.lbl_color, self.selected_color)
 
         btn_color = QPushButton(_t("category_dialog.pick_color"))
         btn_color.clicked.connect(self.pick_color)
@@ -97,7 +98,7 @@ class CategoryDialog(QDialog):
         color = QColorDialog.getColor(QColor(self.selected_color), self, _t("category_dialog.select_color"))
         if color.isValid():
             self.selected_color = color.name()
-            self.lbl_color.setStyleSheet(f"background-color: {self.selected_color}; border: 1px solid gray;")
+            set_color_swatch(self.lbl_color, self.selected_color)
 
     def load_data(self):
         """Populate the form fields from the category being edited."""

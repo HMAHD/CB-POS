@@ -17,6 +17,7 @@ from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.utils.destroy_hooks import call_on_destroyed
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.utils.style_helpers import refresh_style
 from cbpos.ui.widgets.elided_label import ElidedLabel
 
 _BTN_H = 70
@@ -94,7 +95,6 @@ class ActionBtn(QPushButton):
         re-tinted here (#603).
         """
         self.lbl_icon.setObjectName("lblIcon")
-        self.lbl_icon.setStyleSheet("background: transparent;")
         self.set_icon(icon_name)
 
     def set_icon(self, icon_name: str | None) -> None:
@@ -262,8 +262,8 @@ class ActionPanel(QWidget):
         points_row_layout.setSpacing(4)
 
         self.lbl_points_icon = QLabel()
+        self.lbl_points_icon.setObjectName("PointsIcon")
         self.lbl_points_icon.setPixmap(Icons.get(Icons.POINTS, "#FFDC00").pixmap(11, 11))
-        self.lbl_points_icon.setStyleSheet("background: transparent;")
         points_row_layout.addWidget(self.lbl_points_icon)
 
         self.lbl_points = QLabel("")
@@ -423,16 +423,13 @@ class ActionPanel(QWidget):
 
         self.btn_cust_select.setText(_t("action_panel.change_customer"))
         self.btn_cust_select.setProperty("mode", "change")
-        self.btn_cust_select.style().unpolish(self.btn_cust_select)
-        self.btn_cust_select.style().polish(self.btn_cust_select)
+        refresh_style(self.btn_cust_select)
 
         self.customer_frame.setProperty("hasCustomer", True)
-        self.customer_frame.style().unpolish(self.customer_frame)
-        self.customer_frame.style().polish(self.customer_frame)
+        refresh_style(self.customer_frame)
 
         self.lbl_cust_icon.setProperty("hasCustomer", True)
-        self.lbl_cust_icon.style().unpolish(self.lbl_cust_icon)
-        self.lbl_cust_icon.style().polish(self.lbl_cust_icon)
+        refresh_style(self.lbl_cust_icon)
 
         self.points_divider.setVisible(True)
         self.points_row.setVisible(True)
@@ -452,16 +449,13 @@ class ActionPanel(QWidget):
 
         self.btn_cust_select.setText(_t("action_panel.btn_select_customer"))
         self.btn_cust_select.setProperty("mode", "select")
-        self.btn_cust_select.style().unpolish(self.btn_cust_select)
-        self.btn_cust_select.style().polish(self.btn_cust_select)
+        refresh_style(self.btn_cust_select)
 
         self.customer_frame.setProperty("hasCustomer", False)
-        self.customer_frame.style().unpolish(self.customer_frame)
-        self.customer_frame.style().polish(self.customer_frame)
+        refresh_style(self.customer_frame)
 
         self.lbl_cust_icon.setProperty("hasCustomer", False)
-        self.lbl_cust_icon.style().unpolish(self.lbl_cust_icon)
-        self.lbl_cust_icon.style().polish(self.lbl_cust_icon)
+        refresh_style(self.lbl_cust_icon)
 
         self.points_divider.setVisible(False)
         self.points_row.setVisible(False)

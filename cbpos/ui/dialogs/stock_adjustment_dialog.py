@@ -66,7 +66,7 @@ class StockAdjustmentDialog(QDialog):
         btn_layout = QHBoxLayout()
 
         self.btn_cancel = QPushButton(_t("stock_adjustment.btn_cancel"))
-        self.btn_cancel.setProperty("class", "danger")
+        self.btn_cancel.setProperty("class", "secondary")
         self.btn_cancel.clicked.connect(self.reject)
 
         self.btn_save = QPushButton(_t("stock_adjustment.btn_save"))

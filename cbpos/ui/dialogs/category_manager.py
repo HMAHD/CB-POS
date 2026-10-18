@@ -28,6 +28,7 @@ from cbpos.core.models import Category
 from cbpos.core.services.category_service import CategoryService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
+from cbpos.ui.styles.style_helpers import set_color_swatch
 from cbpos.ui.widgets.table_helpers import configure_table_columns
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
@@ -310,9 +311,7 @@ class CategoryManagerDialog(QDialog):
 
     def _update_color_preview(self) -> None:
         """Update the color swatch label."""
-        self.lbl_color.setStyleSheet(
-            f"background-color: {self.selected_color}; border: 1px solid #3E3E42; border-radius: 4px;"
-        )
+        set_color_swatch(self.lbl_color, self.selected_color)
 
     def _clear_form(self) -> None:
         """Clear form and reset to 'add new' mode."""

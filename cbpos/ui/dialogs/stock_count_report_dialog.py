@@ -25,7 +25,7 @@ from cbpos.core.utils.formatters import (
 )
 from cbpos.i18n import _t
 from cbpos.ui.constants import SPACING_XL, SPACING_XS
-from cbpos.ui.resources.status_colors import DANGER, NEUTRAL, SUCCESS, status_color, status_hex
+from cbpos.ui.resources.status_colors import DANGER, NEUTRAL, SUCCESS, status_color
 from cbpos.ui.widgets.table_helpers import align_numeric_headers, configure_table_columns
 
 # Expected, Counted, Variance, Value -- cells and headers right-align.
@@ -103,18 +103,18 @@ class StockCountReportDialog(QDialog):
         lbl_status_key = QLabel(_t("common.status"))
         lbl_status_key.setProperty("class", "muted")
         lbl_status_val = QLabel(format_document_status(stock_count.status) if stock_count.status else _t("common.na"))
-        lbl_status_val.setStyleSheet("font-weight: bold;")
+        lbl_status_val.setProperty("class", "bold")
 
         lbl_date_key = QLabel(_t("common.date"))
         lbl_date_key.setProperty("class", "muted")
         date_str = stock_count.date.strftime("%Y-%m-%d %H:%M") if stock_count.date else _t("common.na")
         lbl_date_val = QLabel(date_str)
-        lbl_date_val.setStyleSheet("font-weight: bold;")
+        lbl_date_val.setProperty("class", "bold")
 
         lbl_note_key = QLabel(_t("common.notes"))
         lbl_note_key.setProperty("class", "muted")
         lbl_note_val = QLabel(stock_count.note or _t("common.na"))
-        lbl_note_val.setStyleSheet("font-weight: bold;")
+        lbl_note_val.setProperty("class", "bold")
 
         # Net variance and total discrepancy, same labels as the stats bar (#644)
         totals = StockCountService.variance_totals(stock_count.items)
@@ -122,14 +122,13 @@ class StockCountReportDialog(QDialog):
         self.lbl_net_variance_key.setProperty("class", "muted")
         self.lbl_net_variance_key.setToolTip(_t("stock_take.net_variance_hint"))
         self.lbl_net_variance_val = QLabel(_format_net(totals.net))
-        self.lbl_net_variance_val.setStyleSheet(
-            f"font-weight: bold; color: {status_hex(_variance_meaning(totals.net))};"
-        )
+        self.lbl_net_variance_val.setProperty("status", _variance_meaning(totals.net))
+        self.lbl_net_variance_val.setProperty("class", "bold")
         self.lbl_discrepancy_key = QLabel(_t("stock_take.total_discrepancy"))
         self.lbl_discrepancy_key.setProperty("class", "muted")
         self.lbl_discrepancy_key.setToolTip(_t("stock_take.total_discrepancy_hint"))
         self.lbl_discrepancy_val = QLabel(format_currency(totals.discrepancy))
-        self.lbl_discrepancy_val.setStyleSheet("font-weight: bold;")
+        self.lbl_discrepancy_val.setProperty("class", "bold")
 
         info_grid.addWidget(lbl_status_key, 0, 0)
         info_grid.addWidget(lbl_status_val, 1, 0)
@@ -207,6 +206,8 @@ class StockCountReportDialog(QDialog):
         layout.addWidget(table, 1)
 
         close_btn = QPushButton(_t("common.close"))
+        close_btn.setObjectName("BtnCancel")
+        close_btn.setProperty("class", "secondary")
         close_btn.setAutoDefault(False)
         close_btn.clicked.connect(self.accept)
         close_layout = QHBoxLayout()

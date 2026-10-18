@@ -67,6 +67,8 @@ class CategoryTreeDialog(QDialog):
         btn_layout.addWidget(btn_refresh)
 
         btn_close = QPushButton(_t("common.close"))
+        btn_close.setObjectName("BtnCancel")
+        btn_close.setProperty("class", "secondary")
         btn_close.clicked.connect(self.close)
         btn_layout.addWidget(btn_close)
 

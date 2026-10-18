@@ -31,6 +31,7 @@ from cbpos.ui.constants import BAR_MARGIN_H, BAR_MARGIN_V
 from cbpos.ui.dialogs.customer_editor import CustomerEditor
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, NEUTRAL, SUCCESS, WARNING, status_color
+from cbpos.ui.utils.style_helpers import refresh_style
 from cbpos.ui.widgets.table_helpers import align_numeric_headers, configure_table_columns
 
 logger = logging.getLogger(__name__)
@@ -845,8 +846,7 @@ class CreditBookView(QWidget):
         for name, btn in buttons:
             is_active = name == active_preset
             btn.setProperty("presetActive", is_active)
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
+            refresh_style(btn)
 
     def reload_ledger(self) -> None:
         """Reload ledger entries based on selected customer and date filters."""

@@ -51,6 +51,7 @@ def make_dialog_footer(
 
     btn_cancel = QPushButton(_t(cancel_key))
     btn_cancel.setObjectName(cancel_object_name)
+    btn_cancel.setProperty("class", "secondary")
     btn_cancel.setAutoDefault(False)
     if on_cancel is not None:
         btn_cancel.clicked.connect(on_cancel)

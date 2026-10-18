@@ -63,8 +63,8 @@ class DatabaseSetupDialog(QDialog):
         empty_layout.setSpacing(8)
 
         lbl_empty_icon = QLabel(_t("db_setup.empty_icon"))
+        lbl_empty_icon.setObjectName("SetupCardIcon")
         lbl_empty_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_empty_icon.setStyleSheet("font-size: 36px;")
         empty_layout.addWidget(lbl_empty_icon)
 
         lbl_empty_title = QLabel(_t("db_setup.empty_title"))
@@ -96,8 +96,8 @@ class DatabaseSetupDialog(QDialog):
         demo_layout.setSpacing(8)
 
         lbl_demo_icon = QLabel(_t("db_setup.demo_icon"))
+        lbl_demo_icon.setObjectName("SetupCardIcon")
         lbl_demo_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_demo_icon.setStyleSheet("font-size: 36px;")
         demo_layout.addWidget(lbl_demo_icon)
 
         lbl_demo_title = QLabel(_t("db_setup.demo_title"))

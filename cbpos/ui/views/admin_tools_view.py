@@ -416,7 +416,7 @@ class AdminToolsView(QWidget):
         btn_layout.addWidget(self.btn_export)
 
         self.btn_clear = QPushButton()
-        self.btn_clear.setProperty("class", "danger")
+        self.btn_clear.setProperty("class", "secondary")
         self.btn_clear.clicked.connect(self._clear_logs)
         btn_layout.addWidget(self.btn_clear)
 
@@ -713,6 +713,7 @@ class AdminToolsView(QWidget):
         scanner_row.addWidget(self.input_scanner_test, 1)
 
         self.btn_clear_scan = QPushButton()
+        self.btn_clear_scan.setProperty("class", "secondary")
         self.btn_clear_scan.setMinimumWidth(90)
         self.btn_clear_scan.clicked.connect(self._clear_scanner)
         scanner_row.addWidget(self.btn_clear_scan)

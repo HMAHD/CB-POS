@@ -334,6 +334,7 @@ class ProductEditor(QDialog):
         self.comp_qty_input = QLineEdit("1.00")
         self.comp_qty_input.setValidator(QDoubleValidator(0.001, 1000.0, 2, self))
         self.btn_add_component = QPushButton(_t("product_editor.btn_add_component"))
+        self.btn_add_component.setProperty("class", "primary")
         self.btn_add_component.clicked.connect(self.add_component)
         self.comp_barcode_input.returnPressed.connect(self.add_component)
 
@@ -393,6 +394,7 @@ class ProductEditor(QDialog):
         self.comp_table.setItem(row, 2, QTableWidgetItem(str(qty)))
 
         remove_btn = QPushButton(_t("product_editor.btn_remove_component"))
+        remove_btn.setProperty("class", "danger")
         target_row = row
         remove_btn.clicked.connect(lambda checked, r=target_row: self._remove_component(r))
         self.comp_table.setCellWidget(row, 3, remove_btn)
@@ -434,6 +436,7 @@ class ProductEditor(QDialog):
         btn_row.addWidget(self.btn_upload)
 
         self.btn_clear_img = QPushButton(_t("product_editor.btn_clear_image"))
+        self.btn_clear_img.setProperty("class", "secondary")
         self.btn_clear_img.clicked.connect(self.clear_image)
         btn_row.addWidget(self.btn_clear_img)
 
@@ -542,6 +545,7 @@ class ProductEditor(QDialog):
             self.comp_table.setItem(row, 2, QTableWidgetItem(str(comp["qty"])))
 
             remove_btn = QPushButton(_t("product_editor.btn_remove_component"))
+            remove_btn.setProperty("class", "danger")
             target_row = row
             remove_btn.clicked.connect(lambda checked, r=target_row: self._remove_component(r))
             self.comp_table.setCellWidget(row, 3, remove_btn)

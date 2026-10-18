@@ -111,7 +111,7 @@ class HistoryView(QWidget):
 
         self.details_label = QLabel(_t("history.select_transaction"))
         self.details_label.setWordWrap(True)
-        self.details_label.setStyleSheet("padding: 10px; background: #002244;")
+        self.details_label.setObjectName("HistoryDetailsBanner")
         details_layout.addWidget(self.details_label)
 
         # Line Items Table
@@ -141,7 +141,7 @@ class HistoryView(QWidget):
         self.refund_btn = QPushButton(_t("history.process_refund"))
         self.refund_btn.clicked.connect(self.process_refund)
         self.refund_btn.setEnabled(False)
-        self.refund_btn.setStyleSheet("background-color: #FF4136; color: white;")
+        self.refund_btn.setProperty("class", "danger")
         action_layout.addWidget(self.refund_btn)
 
         details_layout.addLayout(action_layout)

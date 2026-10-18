@@ -114,12 +114,15 @@ class RoleManagerDialog(QDialog):
         btn_layout.addWidget(sep)
 
         self.btn_clear = QPushButton(_t("role_manager.clear_new"))
+        self.btn_clear.setProperty("class", "secondary")
         self.btn_clear.clicked.connect(self._clear_form)
         btn_layout.addWidget(self.btn_clear)
 
         btn_layout.addStretch()
 
         btn_close = QPushButton(_t("common.close"))
+        btn_close.setObjectName("BtnCancel")
+        btn_close.setProperty("class", "secondary")
         btn_close.clicked.connect(self.accept)
         btn_layout.addWidget(btn_close)
 

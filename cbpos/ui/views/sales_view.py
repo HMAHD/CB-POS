@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from cbpos.config import Config
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_service import CustomerService
@@ -510,9 +511,9 @@ class SalesView(QWidget):
 
     def update_logo(self):
         """Set the header logo and icons (also called on theme change)."""
-        logo_path = ThemeService.get_logo_path()
-        pixmap = QPixmap(logo_path)
-        if not pixmap.isNull():
+        logo_path = Config.BASE_DIR / "cbpos" / "assets" / "logo" / "cover_white.png"
+        if logo_path.exists():
+            pixmap = QPixmap(str(logo_path))
             self.lbl_logo.setPixmap(pixmap.scaledToHeight(35, Qt.TransformationMode.SmoothTransformation))
         else:
             self.lbl_logo.setText(_t("sales.logo_fallback"))  # Fallback
@@ -847,7 +848,7 @@ class SalesView(QWidget):
                 lbl_price.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 lbl_price.setProperty("class", "StrikethroughPrice")
                 if row_bg_brush is not None:
-                    lbl_price.setStyleSheet(f"background-color: {bg_color.name()};")
+                    lbl_price.setProperty("discounted", "true")
                 self.cart_table.setCellWidget(row, 1, lbl_price)
             else:
                 price_item = QTableWidgetItem(format_currency(item["unit_price"]))

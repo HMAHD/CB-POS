@@ -208,7 +208,9 @@ class CustomerEditor(QDialog):
         # Buttons
         btn_layout = QHBoxLayout()
         btn_add = QPushButton(_t("customer_editor.btn_add_contact"))
+        btn_add.setProperty("class", "primary")
         btn_remove = QPushButton(_t("customer_editor.btn_remove_contact"))
+        btn_remove.setProperty("class", "danger")
 
         btn_add.clicked.connect(self.add_contact_row)
         btn_remove.clicked.connect(self.remove_contact_row)

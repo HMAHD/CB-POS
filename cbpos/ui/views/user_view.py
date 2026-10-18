@@ -74,6 +74,7 @@ class UserView(QWidget):
         toolbar = QHBoxLayout()
 
         self.btn_add = QPushButton()
+        self.btn_add.setProperty("class", "primary")
         self.btn_add.setIcon(Icons.get("fa5s.plus"))
         self.btn_add.clicked.connect(self.add_user)
 

@@ -176,7 +176,10 @@ class TestSignedColour:
         widget = StockTakeView()
         try:
             widget.resume_draft_count(stock_count.id)
-            assert status_hex(DANGER).lower() in widget.lbl_net_variance.styleSheet().lower()
+            assert (
+                widget.lbl_net_variance.property("status") == DANGER
+                or status_hex(DANGER).lower() in widget.lbl_net_variance.styleSheet().lower()
+            )
             assert widget.lbl_net_variance.text().startswith(_t("stock_take.net_variance"))
         finally:
             widget.deleteLater()

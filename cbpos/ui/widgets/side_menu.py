@@ -52,6 +52,7 @@ class NavTile(QPushButton):
 
         # Icon
         self.lbl_icon = QLabel()
+        self.lbl_icon.setObjectName("NavTileIcon")
         self.lbl_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.lbl_icon)
 
@@ -68,29 +69,24 @@ class NavTile(QPushButton):
         """Toggle active state (highlighted border + accent color)."""
         self._active = active
         self.setProperty("active", active)
+        self.lbl_text.setProperty("active", active)
         refresh_style(self)
+        refresh_style(self.lbl_text)
         self._apply_theme()
 
     def _apply_theme(self) -> None:
-        """Set icon and label colors directly — QSS can't cascade into QPushButton children."""
+        """Set icon pixmap directly (rendered from SVG)."""
         from cbpos.core.services.theme_service import ThemeService
 
         is_dark = ThemeService.current_theme.lower() == "dark"
 
         if self._active:
             icon_color = "#00BCEB" if is_dark else "#0D6EFD"
-            text_color = "#00BCEB" if is_dark else "#0D6EFD"
         else:
             icon_color = ThemeService.get_icon_color()
-            text_color = "#CCCCCC" if is_dark else "#333333"
 
         pixmap = Icons.get(self.icon_name, icon_color).pixmap(self._icon_size, self._icon_size)
         self.lbl_icon.setPixmap(pixmap)
-        self.lbl_icon.setStyleSheet("background: transparent;")
-        # Font size lives in QSS (#NavTileText, pt units so it scales with
-        # Windows DPI settings — #207); only the active-state-dependent
-        # color needs to be set here.
-        self.lbl_text.setStyleSheet(f"color: {text_color}; background: transparent;")
 
     def update_icon(self) -> None:
         """Public API for theme change callbacks."""

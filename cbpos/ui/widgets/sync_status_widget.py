@@ -24,6 +24,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.i18n import _t, register_language_callback
+from cbpos.ui.utils.style_helpers import refresh_style
 
 logger = logging.getLogger(__name__)
 
@@ -70,12 +71,13 @@ class SyncStatusWidget(QWidget):
 
         # Status dot (●)
         self._dot = QLabel("●")
-        self._dot.setStyleSheet(f"color: {self.COLORS['standalone']}; font-size: 12px;")
+        self._dot.setObjectName("SyncDot")
+        self._dot.setProperty("status", "standalone")
         layout.addWidget(self._dot)
 
         # Status label
         self._label = QLabel("")
-        self._label.setStyleSheet("font-size: 11px; color: #aaa; padding: 0 4px;")
+        self._label.setObjectName("SyncLabel")
         layout.addWidget(self._label)
 
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
@@ -192,13 +194,13 @@ class SyncStatusWidget(QWidget):
     def _update_display(self) -> None:
         """Refresh the dot color and label text based on current state."""
         if self._config_error:
-            color = self.COLORS["error"]
+            status = "error"
             text = _t("sync_status.disabled")
         elif self._mode == "main":
-            color = self.COLORS["main"]
+            status = "main"
             text = _t("sync_status.main_label", count=self._connected_terminals)
         elif self._mode == "terminal":
-            color = self.COLORS.get(self._state, self.COLORS["disconnected"])
+            status = self._state if self._state in self.COLORS else "disconnected"
             if self._state == "connected":
                 if self._pending > 0:
                     text = _t("sync_status.synced_pending", pending=self._pending)
@@ -211,8 +213,9 @@ class SyncStatusWidget(QWidget):
             else:
                 text = _t("sync_status.disconnected")
         else:
-            color = self.COLORS["standalone"]
+            status = "standalone"
             text = ""
 
-        self._dot.setStyleSheet(f"color: {color}; font-size: 12px;")
+        self._dot.setProperty("status", status)
+        refresh_style(self._dot)
         self._label.setText(text)

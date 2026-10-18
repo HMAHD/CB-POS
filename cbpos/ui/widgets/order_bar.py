@@ -105,7 +105,7 @@ class OrderBar(QWidget):
         btn_current.setCheckable(True)
         btn_current.setChecked(True)
         btn_current.setProperty("class", "accent")
-        btn_current.setStyleSheet("font-weight: bold; border-bottom: 3px solid #00BCEB;")
+        btn_current.setObjectName("ActiveOrderTab")
         btn_current.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.tabs_layout.addWidget(btn_current)
 

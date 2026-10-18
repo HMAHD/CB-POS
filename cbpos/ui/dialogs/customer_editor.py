@@ -1,15 +1,15 @@
 from decimal import Decimal, InvalidOperation
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QDoubleValidator, QIntValidator
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QDoubleValidator, QIcon, QIntValidator, QPainter, QPixmap
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
     QFormLayout,
+    QFrame,
     QHBoxLayout,
     QHeaderView,
-    QInputDialog,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -28,11 +28,24 @@ from cbpos.core.services.price_list_service import (
 )  # Assuming this exists or will be needed
 from cbpos.core.services.tax_service import TaxService
 from cbpos.i18n import _t
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
-from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem
+from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem, align_numeric_headers
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 COMMERCIAL_FIELD_MIN_WIDTH = 220
+
+
+def _set_button_icon(btn: QPushButton, icon_name: str, color: str, pad_right: int = 8, size: int = 14) -> None:
+    """Set button icon with transparent trailing padding to ensure clear spacing before label text."""
+    base_pixmap = Icons.get(icon_name, color).pixmap(size, size)
+    padded = QPixmap(size + pad_right, size)
+    padded.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(padded)
+    painter.drawPixmap(0, 0, base_pixmap)
+    painter.end()
+    btn.setIconSize(QSize(size + pad_right, size))
+    btn.setIcon(QIcon(padded))
 
 
 class CustomerEditor(QDialog):
@@ -207,36 +220,65 @@ class CustomerEditor(QDialog):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setSpacing(14)
 
-        form = QFormLayout()
-        form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-        form.setContentsMargins(0, 0, 0, 0)
-        form.setSpacing(12)
+        # Overview Card
+        overview_card = QFrame()
+        overview_card.setObjectName("LoyaltyOverviewCard")
+        overview_layout = QVBoxLayout(overview_card)
+        overview_layout.setContentsMargins(16, 14, 16, 14)
+        overview_layout.setSpacing(14)
+
+        # Row 1: Loyalty Card Code input
+        code_row = QHBoxLayout()
+        code_row.setSpacing(10)
+        lbl_code = QLabel(_t("customer_editor.loyalty_card_code"))
+        lbl_code.setProperty("class", "muted")
+        code_row.addWidget(lbl_code)
 
         self.loyalty_code_input = QLineEdit()
         self.loyalty_code_input.setPlaceholderText(_t("customer_editor.loyalty_card_placeholder"))
+        self.loyalty_code_input.setObjectName("LoyaltyCodeInput")
+        code_row.addWidget(self.loyalty_code_input, stretch=1)
+        overview_layout.addLayout(code_row)
 
-        points_layout = QHBoxLayout()
+        # Row 2: Points Stat Strip
+        points_row = QHBoxLayout()
+        points_row.setSpacing(12)
+
+        lbl_star = QLabel()
+        lbl_star.setPixmap(Icons.get("fa5s.star", "#F59E0B").pixmap(24, 24))
+        points_row.addWidget(lbl_star)
+
+        points_text_layout = QVBoxLayout()
+        points_text_layout.setSpacing(2)
+        lbl_title = QLabel(_t("customer_editor.current_points"))
+        lbl_title.setProperty("class", "muted")
         self.points_label = QLabel("0")
-        self.points_label.setStyleSheet("font-weight: bold;")
-        points_layout.addWidget(self.points_label)
+        self.points_label.setObjectName("LoyaltyPointsValue")
+        points_text_layout.addWidget(lbl_title)
+        points_text_layout.addWidget(self.points_label)
+        points_row.addLayout(points_text_layout)
+
+        points_row.addStretch()
 
         self.btn_adjust_points = QPushButton(_t("customer_editor.btn_adjust_points"))
-        self.btn_adjust_points.setEnabled(bool(self.customer and getattr(self.customer, "id", None)))
+        self.btn_adjust_points.setProperty("class", "secondary")
+        self.btn_adjust_points.setObjectName("BtnAdjustPoints")
+        _set_button_icon(self.btn_adjust_points, "fa5s.sliders-h", "#00BCEB", pad_right=8, size=13)
+        has_id = bool(self.customer and getattr(self.customer, "id", None))
+        self.btn_adjust_points.setEnabled(has_id)
+        if not has_id:
+            self.btn_adjust_points.setToolTip("Save the customer first to adjust or view loyalty history.")
         self.btn_adjust_points.clicked.connect(self.adjust_points)
-        points_layout.addSpacing(16)
-        points_layout.addWidget(self.btn_adjust_points)
-        points_layout.addStretch()
+        points_row.addWidget(self.btn_adjust_points)
 
-        form.addRow(_t("customer_editor.loyalty_card_code"), self.loyalty_code_input)
-        form.addRow(_t("customer_editor.current_points"), points_layout)
-        layout.addLayout(form)
+        overview_layout.addLayout(points_row)
+        layout.addWidget(overview_card)
 
         # Points History Header & Table
         history_header = QLabel(_t("customer_editor.points_history_title"))
-        history_header.setStyleSheet("font-weight: bold; margin-top: 8px;")
+        history_header.setObjectName("PointsHistoryHeader")
         layout.addWidget(history_header)
 
         self.points_history_table = QTableWidget()
@@ -258,16 +300,16 @@ class CustomerEditor(QDialog):
         self.points_history_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.points_history_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         self.points_history_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        align_numeric_headers(self.points_history_table, [2, 3])
         layout.addWidget(self.points_history_table)
 
         return widget
 
     def adjust_points(self):
-        """Prompt to adjust the customer's loyalty points with permission check and required reason."""
+        """Prompt to adjust the customer's loyalty points with dedicated signed-mode dialog."""
         from cbpos.core.constants.permissions import Permissions
-        from cbpos.core.services.auth_service import AuthService
-        from cbpos.core.services.loyalty_service import LoyaltyService
         from cbpos.core.utils.permission_helper import check_permission_with_override
+        from cbpos.ui.dialogs.adjust_points_dialog import AdjustPointsDialog
 
         if not check_permission_with_override(Permissions.LOYALTY_ADJUST_POINTS, self):
             return
@@ -275,47 +317,11 @@ class CustomerEditor(QDialog):
         if not self.customer or not getattr(self.customer, "id", None):
             return
 
-        current_pts = getattr(self.customer, "loyalty_points", 0) or 0
-        pts_delta, ok = QInputDialog.getInt(
-            self,
-            _t("customer_editor.adjust_points_title"),
-            _t("customer_editor.adjust_points_prompt"),
-            0,
-            -current_pts,
-            999999,
-            1,
-        )
-        if not ok or pts_delta == 0:
-            return
-
-        reason, ok = QInputDialog.getText(
-            self,
-            _t("customer_editor.adjust_reason_title"),
-            _t("customer_editor.adjust_reason_prompt"),
-        )
-        if not ok or not reason.strip():
-            QMessageBox.warning(
-                self,
-                _t("common.error"),
-                _t("customer_editor.reason_required"),
-            )
-            return
-
-        current_user = AuthService.get_current_user()
-        user_id = current_user.id if current_user else None
-
-        try:
-            entry = LoyaltyService.adjust_points(
-                customer_id=self.customer.id,
-                points_delta=pts_delta,
-                reason=reason.strip(),
-                user_id=user_id,
-            )
-            self.customer.loyalty_points = entry.balance_after
-            self.points_label.setText(str(entry.balance_after))
+        dlg = AdjustPointsDialog(self.customer, self)
+        if dlg.exec():
+            pts = getattr(self.customer, "loyalty_points", 0) or 0
+            self.points_label.setText(str(pts))
             self.load_points_history()
-        except ValueError as e:
-            QMessageBox.warning(self, _t("common.error"), str(e))
 
     def load_points_history(self):
         """Load points history for this customer into the points history table."""
@@ -326,6 +332,13 @@ class CustomerEditor(QDialog):
 
         history = LoyaltyService.get_points_history(self.customer.id)
         self.points_history_table.setRowCount(0)
+
+        if not history:
+            self.points_history_table.setRowCount(1)
+            item = QTableWidgetItem(_t("customer_editor.no_points_history"))
+            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.points_history_table.setItem(0, 4, item)
+            return
 
         for entry in history:
             row = self.points_history_table.rowCount()
@@ -341,12 +354,19 @@ class CustomerEditor(QDialog):
                 type_label = _t("customer_editor.points_type_reversal")
             elif type_label == "ADJUSTMENT":
                 type_label = _t("customer_editor.points_type_adjustment")
+            elif type_label == "OPENING":
+                type_label = "Opening Points"
 
             self.points_history_table.setItem(row, 1, QTableWidgetItem(type_label))
 
             pts_str = f"+{entry.points}" if entry.points > 0 else str(entry.points)
-            self.points_history_table.setItem(row, 2, QTableWidgetItem(pts_str))
-            self.points_history_table.setItem(row, 3, QTableWidgetItem(str(entry.balance_after)))
+            item_pts = QTableWidgetItem(pts_str)
+            item_pts.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self.points_history_table.setItem(row, 2, item_pts)
+
+            item_bal = QTableWidgetItem(str(entry.balance_after))
+            item_bal.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self.points_history_table.setItem(row, 3, item_bal)
 
             reason_str = entry.note or ""
             if entry.reference_id:
@@ -498,9 +518,13 @@ class CustomerEditor(QDialog):
         self.payment_terms_input.setText(str(self.customer.payment_terms))
 
         self.loyalty_code_input.setText(self.customer.loyalty_card_code or "")
-        self.points_label.setText(str(self.customer.loyalty_points))
         if hasattr(self, "btn_adjust_points"):
-            self.btn_adjust_points.setEnabled(bool(self.customer and getattr(self.customer, "id", None)))
+            has_id = bool(self.customer and getattr(self.customer, "id", None))
+            self.btn_adjust_points.setEnabled(has_id)
+            if not has_id:
+                self.btn_adjust_points.setToolTip("Save the customer first to adjust or view loyalty history.")
+            else:
+                self.btn_adjust_points.setToolTip("")
         if hasattr(self, "points_history_table"):
             self.load_points_history()
 

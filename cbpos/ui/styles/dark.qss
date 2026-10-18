@@ -4860,4 +4860,102 @@ QLabel.statement-stat.bold {
     border-left: 3px solid #00BCEB;
 }
 
+/* Adjustment Dialogs & Loyalty Overview Card */
+QDialog#AdjustBalanceDialog,
+QDialog#AdjustPointsDialog {
+    background-color: #1E1E1E;
+}
+
+QFrame#AdjustHeaderCard,
+QFrame#LoyaltyOverviewCard {
+    background-color: #252528;
+    border: 1px solid #33333A;
+    border-radius: 8px;
+}
+
+QLabel#AdjustCustName {
+    font-size: 15px;
+    font-weight: bold;
+    color: #F1F5F9;
+}
+
+QLabel#AdjustCustDebt,
+QLabel#AdjustCustPoints {
+    font-size: 13px;
+    color: #94A3B8;
+}
+
+QFrame#AdjustPreviewCard {
+    background-color: #18181B;
+    border: 1px dashed #3F3F46;
+    border-radius: 6px;
+}
+
+QLabel#AdjustFormulaLabel {
+    font-size: 12px;
+    color: #94A3B8;
+}
+
+QLabel#AdjustPreviewLabel {
+    font-size: 14px;
+    font-weight: bold;
+    color: #00BCEB;
+}
+
+QLabel#LoyaltyPointsValue {
+    font-size: 18px;
+    font-weight: bold;
+    color: #F59E0B;
+}
+
+QLabel#PointsHistoryHeader {
+    font-size: 14px;
+    font-weight: bold;
+    color: #F1F5F9;
+    margin-top: 6px;
+}
+
+QPushButton#ModeReduceBtn:checked {
+    background-color: rgba(239, 68, 68, 0.2);
+    border: 1px solid #EF4444;
+    color: #F87171;
+    font-weight: bold;
+}
+
+QPushButton#ModeAddBtn:checked {
+    background-color: rgba(16, 185, 129, 0.2);
+    border: 1px solid #10B981;
+    color: #34D399;
+    font-weight: bold;
+}
+
+QPushButton#ModeSetBtn:checked {
+    background-color: rgba(0, 188, 235, 0.2);
+    border: 1px solid #00BCEB;
+    color: #38BDF8;
+    font-weight: bold;
+}
+
+QPushButton#ModeDeductPtsBtn:checked {
+    background-color: rgba(239, 68, 68, 0.2);
+    border: 1px solid #EF4444;
+    color: #F87171;
+    font-weight: bold;
+}
+
+QPushButton#ModeAddPtsBtn:checked {
+    background-color: rgba(245, 158, 11, 0.2);
+    border: 1px solid #F59E0B;
+    color: #FBBF24;
+    font-weight: bold;
+}
+
+QPushButton#ModeSetPtsBtn:checked {
+    background-color: rgba(0, 188, 235, 0.2);
+    border: 1px solid #00BCEB;
+    color: #38BDF8;
+    font-weight: bold;
+}
+
+
 

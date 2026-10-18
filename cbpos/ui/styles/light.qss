@@ -4859,4 +4859,102 @@ QLabel.statement-stat.bold {
     border-left: 3px solid #0284C7;
 }
 
+/* Adjustment Dialogs & Loyalty Overview Card */
+QDialog#AdjustBalanceDialog,
+QDialog#AdjustPointsDialog {
+    background-color: #F8FAFC;
+}
+
+QFrame#AdjustHeaderCard,
+QFrame#LoyaltyOverviewCard {
+    background-color: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+}
+
+QLabel#AdjustCustName {
+    font-size: 15px;
+    font-weight: bold;
+    color: #0F172A;
+}
+
+QLabel#AdjustCustDebt,
+QLabel#AdjustCustPoints {
+    font-size: 13px;
+    color: #64748B;
+}
+
+QFrame#AdjustPreviewCard {
+    background-color: #F1F5F9;
+    border: 1px dashed #CBD5E1;
+    border-radius: 6px;
+}
+
+QLabel#AdjustFormulaLabel {
+    font-size: 12px;
+    color: #64748B;
+}
+
+QLabel#AdjustPreviewLabel {
+    font-size: 14px;
+    font-weight: bold;
+    color: #0284C7;
+}
+
+QLabel#LoyaltyPointsValue {
+    font-size: 18px;
+    font-weight: bold;
+    color: #D97706;
+}
+
+QLabel#PointsHistoryHeader {
+    font-size: 14px;
+    font-weight: bold;
+    color: #0F172A;
+    margin-top: 6px;
+}
+
+QPushButton#ModeReduceBtn:checked {
+    background-color: #FEE2E2;
+    border: 1px solid #EF4444;
+    color: #B91C1C;
+    font-weight: bold;
+}
+
+QPushButton#ModeAddBtn:checked {
+    background-color: #DCFCE7;
+    border: 1px solid #10B981;
+    color: #15803D;
+    font-weight: bold;
+}
+
+QPushButton#ModeSetBtn:checked {
+    background-color: #E0F2FE;
+    border: 1px solid #0284C7;
+    color: #0369A1;
+    font-weight: bold;
+}
+
+QPushButton#ModeDeductPtsBtn:checked {
+    background-color: #FEE2E2;
+    border: 1px solid #EF4444;
+    color: #B91C1C;
+    font-weight: bold;
+}
+
+QPushButton#ModeAddPtsBtn:checked {
+    background-color: #FEF3C7;
+    border: 1px solid #F59E0B;
+    color: #B45309;
+    font-weight: bold;
+}
+
+QPushButton#ModeSetPtsBtn:checked {
+    background-color: #E0F2FE;
+    border: 1px solid #0284C7;
+    color: #0369A1;
+    font-weight: bold;
+}
+
+
 

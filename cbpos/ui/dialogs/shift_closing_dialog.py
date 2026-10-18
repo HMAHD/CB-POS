@@ -45,7 +45,8 @@ class ShiftClosingDialog(QDialog):
         self._final_summary: dict | None = None  # set once the shift is closed
 
         self.setWindowTitle(_t("shift_closing.title"))
-        self.setFixedSize(800, 600)
+        self.setMinimumSize(800, 600)
+        self.resize(800, 600)
         self._init_ui()
         self._load_data()
         install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)

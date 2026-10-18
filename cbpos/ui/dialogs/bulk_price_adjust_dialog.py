@@ -27,10 +27,11 @@ from cbpos.core.services.price_list_service import (
     PriceListService,
 )
 from cbpos.core.services.product_service import ProductService
-from cbpos.core.utils.formatters import NO_VALUE, format_number, money_header
+from cbpos.core.utils.formatters import NO_VALUE, format_number, get_currency_symbol, money_header
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, SUCCESS, status_color
+from cbpos.ui.utils.layout_helpers import protect_vertical_sizing
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
@@ -246,6 +247,7 @@ class BulkPriceAdjustDialog(QDialog):
             left_widget=self.lbl_summary_stats,
         )
         main_layout.addLayout(footer_layout)
+        protect_vertical_sizing(self)
 
     def load_categories(self) -> None:
         """Fetch categories to populate the category selector."""
@@ -323,7 +325,7 @@ class BulkPriceAdjustDialog(QDialog):
             self.spin_value.setSuffix(" %")
             self.spin_value.setRange(0.01, 1000.00)
         else:
-            self.spin_value.setPrefix("Rs. ")
+            self.spin_value.setPrefix(f"{get_currency_symbol()} ")
             self.spin_value.setSuffix("")
             self.spin_value.setRange(0.01, 999999.00)
         self.refresh_preview()

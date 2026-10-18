@@ -25,7 +25,8 @@ class StartShiftDialog(QDialog):
         self.shift_service = ShiftService()
 
         self.setWindowTitle(_t("start_shift.title"))
-        self.setFixedSize(600, 550)
+        self.setMinimumSize(600, 550)
+        self.resize(600, 550)
         # No close button -- starting a shift is mandatory, not optional.
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.CustomizeWindowHint | Qt.WindowType.WindowTitleHint)
         self._init_ui()

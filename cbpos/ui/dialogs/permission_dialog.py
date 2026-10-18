@@ -3,10 +3,8 @@ from PyQt6.QtGui import QPainter
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
-    QHBoxLayout,
     QHeaderView,
     QMessageBox,
-    QPushButton,
     QStyle,
     QStyledItemDelegate,
     QStyleOptionViewItem,
@@ -20,6 +18,8 @@ from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.user_service import UserService
 from cbpos.core.utils.display_labels import display_role_name, permission_group_label, permission_label
 from cbpos.i18n import _t
+from cbpos.ui.utils.layout_helpers import protect_vertical_sizing
+from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.table_helpers import configure_table_columns
 
 # Per-cell flag for a role-column cell that must stay ticked. Item flags are per-row in a
@@ -163,20 +163,16 @@ class PermissionDialog(QDialog):
         self.load_data()
 
         # Buttons
-        btn_layout = QHBoxLayout()
-        btn_save = QPushButton(_t("permission.save_changes"))
-        btn_save.setObjectName("BtnSave")
-        btn_save.setProperty("class", "primary")
-        btn_save.clicked.connect(self.save_changes)
-        btn_close = QPushButton(_t("common.close"))
-        btn_close.setObjectName("BtnCancel")
-        btn_close.setProperty("class", "secondary")
-        btn_close.clicked.connect(self.reject)
-
-        btn_layout.addStretch()
-        btn_layout.addWidget(btn_save)
-        btn_layout.addWidget(btn_close)
-        layout.addLayout(btn_layout)
+        footer, self.btn_save, self.btn_close = make_dialog_footer(
+            primary_key="permission.save_changes",
+            on_primary=self.save_changes,
+            cancel_key="common.close",
+            on_cancel=self.reject,
+            primary_object_name="BtnSave",
+            cancel_object_name="BtnCancel",
+        )
+        layout.addLayout(footer)
+        protect_vertical_sizing(self)
 
     def load_data(self):
         """Load roles and permissions, and populate the tree with one checkbox column per role."""

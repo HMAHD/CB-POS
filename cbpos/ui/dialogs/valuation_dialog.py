@@ -5,7 +5,6 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -15,6 +14,8 @@ from cbpos.core.services.report_service import ReportService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 from cbpos.ui.resources.status_colors import DANGER, SUCCESS, status_color
+from cbpos.ui.utils.layout_helpers import protect_vertical_sizing
+from cbpos.ui.widgets.dialog_footer import make_close_footer
 
 
 class ValuationDialog(QDialog):
@@ -83,10 +84,13 @@ class ValuationDialog(QDialog):
         layout.addWidget(self.table)
 
         # Close Button
-        btn_close = QPushButton(_t("common.close"))
-        btn_close.setProperty("class", "secondary")
-        btn_close.clicked.connect(self.close)
-        layout.addWidget(btn_close, alignment=Qt.AlignmentFlag.AlignRight)
+        footer, self.btn_close = make_close_footer(
+            close_key="common.close",
+            on_close=self.close,
+            close_object_name="BtnCancel",
+        )
+        layout.addLayout(footer)
+        protect_vertical_sizing(self)
 
     def create_value_card(self, title: str, value: str, bg_color: str) -> QFrame:
         """Create a value display card."""

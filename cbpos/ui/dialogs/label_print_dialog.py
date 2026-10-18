@@ -31,6 +31,7 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.ui.utils.layout_helpers import protect_vertical_sizing
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +159,7 @@ class LabelPrintDialog(QDialog):
         btn_layout.addWidget(btn_remove)
 
         btn_clear = QPushButton(_t("label_print.clear_all"))
-        btn_clear.setProperty("class", "secondary")
+        btn_clear.setProperty("class", "danger")
         btn_clear.clicked.connect(self._clear_all)
         btn_layout.addWidget(btn_clear)
 
@@ -173,6 +174,7 @@ class LabelPrintDialog(QDialog):
         btn_layout.addWidget(btn_print)
 
         layout.addLayout(btn_layout)
+        protect_vertical_sizing(self)
 
     # ── Product loading & autocomplete ──
 

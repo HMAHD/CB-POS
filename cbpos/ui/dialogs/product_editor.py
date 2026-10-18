@@ -33,7 +33,9 @@ from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import get_currency_symbol
 from cbpos.i18n import _t
+from cbpos.ui.utils.layout_helpers import protect_vertical_sizing
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
+from cbpos.ui.widgets.form_card import FormCard
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
@@ -109,6 +111,7 @@ class ProductEditor(QDialog):
             on_cancel=self.reject,
         )
         layout.addLayout(footer_layout)
+        protect_vertical_sizing(self)
 
     def setup_general_tab(self):
         """Build the General tab: names (EN/SI/TA), barcode, category, selling price, and cost price."""
@@ -224,24 +227,29 @@ class ProductEditor(QDialog):
 
         layout.addWidget(grp_stock)
 
-        # Supplier + Unit row — side by side to save vertical space
+        # Supplier + Unit row — clean 2-column FormCard with top field labels
+        card_supplier_unit = FormCard()
         sup_unit_layout = QHBoxLayout()
-        sup_unit_layout.setSpacing(10)
+        sup_unit_layout.setContentsMargins(0, 0, 0, 0)
+        sup_unit_layout.setSpacing(12)
 
-        grp_supplier = QGroupBox(_t("product_editor.group_supplier"))
-        supplier_layout = QVBoxLayout(grp_supplier)
-        supplier_layout.setContentsMargins(12, 12, 12, 12)
+        col_supplier = QVBoxLayout()
+        col_supplier.setSpacing(4)
+        lbl_supplier = QLabel(_t("product_editor.group_supplier"))
+        lbl_supplier.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         self.supplier_combo = QComboBox()
         self.supplier_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.supplier_combo.addItem(_t("product_editor.no_default_supplier"), None)
         for supplier in self.suppliers:
             self.supplier_combo.addItem(supplier.company_name, supplier.id)
-        supplier_layout.addWidget(self.supplier_combo)
-        sup_unit_layout.addWidget(grp_supplier)
+        col_supplier.addWidget(lbl_supplier)
+        col_supplier.addWidget(self.supplier_combo)
+        sup_unit_layout.addLayout(col_supplier, 1)
 
-        grp_unit = QGroupBox(_t("product_editor.group_uom"))
-        unit_inner = QVBoxLayout(grp_unit)
-        unit_inner.setContentsMargins(12, 12, 12, 12)
+        col_unit = QVBoxLayout()
+        col_unit.setSpacing(4)
+        lbl_unit = QLabel(_t("product_editor.group_uom"))
+        lbl_unit.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         self.unit_combo = QComboBox()
         self.unit_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.unit_combo.addItem(_t("product_editor.no_unit"), None)
@@ -249,10 +257,12 @@ class ProductEditor(QDialog):
 
         for unit in UnitService.get_all():
             self.unit_combo.addItem(f"{unit.name} ({unit.abbreviation})", unit.id)
-        unit_inner.addWidget(self.unit_combo)
-        sup_unit_layout.addWidget(grp_unit)
+        col_unit.addWidget(lbl_unit)
+        col_unit.addWidget(self.unit_combo)
+        sup_unit_layout.addLayout(col_unit, 1)
 
-        layout.addLayout(sup_unit_layout)
+        card_supplier_unit.add_layout(sup_unit_layout)
+        layout.addWidget(card_supplier_unit)
 
         # Item type group — checkbox + inline hint with clear separation
         grp_type = QGroupBox(_t("product_editor.group_item_type"))

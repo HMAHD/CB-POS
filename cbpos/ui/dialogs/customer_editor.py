@@ -29,6 +29,7 @@ from cbpos.core.services.price_list_service import (
 from cbpos.core.services.tax_service import TaxService
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.utils.layout_helpers import make_scrollable_container, protect_vertical_sizing
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem, align_numeric_headers
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
@@ -93,8 +94,11 @@ class CustomerEditor(QDialog):
         self.tabs.addTab(self.tab_commercial, _t("customer_editor.tab_commercial"))
         self.tabs.addTab(self.tab_contacts, _t("customer_editor.tab_contacts"))
 
-        if ConfigService.get("enable_loyalty"):
-            self.tabs.addTab(self.create_loyalty_tab(), _t("customer_editor.tab_loyalty"))
+        self.tab_loyalty = self.create_loyalty_tab()
+        self.tabs.addTab(self.tab_loyalty, _t("customer_editor.tab_loyalty"))
+        loyalty_idx = self.tabs.indexOf(self.tab_loyalty)
+        if loyalty_idx >= 0:
+            self.tabs.setTabVisible(loyalty_idx, bool(ConfigService.get("enable_loyalty")))
 
         if self.customer:
             self.tabs.addTab(self.create_history_tab(), _t("customer_editor.tab_history"))
@@ -112,14 +116,15 @@ class CustomerEditor(QDialog):
             on_cancel=self.reject,
         )
         layout.addLayout(footer_layout)
+        protect_vertical_sizing(self)
 
     def create_general_tab(self):
         """Build the General tab: name, phone, email, address, and company toggle."""
-        widget = QWidget()
-        form = QFormLayout(widget)
+        scroll, _widget, container_layout = make_scrollable_container(margins=(16, 16, 16, 16), spacing=12)
+        form = QFormLayout()
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-        form.setContentsMargins(16, 16, 16, 16)
+        form.setContentsMargins(0, 0, 0, 0)
         form.setSpacing(12)
 
         self.name_input = QLineEdit()
@@ -140,15 +145,17 @@ class CustomerEditor(QDialog):
         form.addRow("", self.is_company_chk)
         form.addRow(_t("customer_editor.company_name"), self.company_name_input)
 
-        return widget
+        container_layout.addLayout(form)
+        container_layout.addStretch(1)
+        return scroll
 
     def create_commercial_tab(self):
         """Build the Commercial tab: VAT/TIN numbers, credit limit, payment terms, and price list."""
-        widget = QWidget()
-        form = QFormLayout(widget)
+        scroll, _widget, container_layout = make_scrollable_container(margins=(16, 16, 16, 16), spacing=12)
+        form = QFormLayout()
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-        form.setContentsMargins(16, 16, 16, 16)
+        form.setContentsMargins(0, 0, 0, 0)
         form.setSpacing(12)
 
         self.vat_input = QLineEdit()
@@ -183,7 +190,9 @@ class CustomerEditor(QDialog):
         form.addRow(_t("customer_editor.payment_terms"), self.payment_terms_input)
         form.addRow(_t("customer_editor.price_list"), self.price_list_combo)
 
-        return widget
+        container_layout.addLayout(form)
+        container_layout.addStretch(1)
+        return scroll
 
     def create_contacts_tab(self):
         """Build the Contacts tab: an editable table of additional contact people."""
@@ -524,7 +533,8 @@ class CustomerEditor(QDialog):
         self.limit_input.setText(format(Decimal(self.customer.credit_limit).quantize(Decimal("0.01")), "f"))
         self.payment_terms_input.setText(str(self.customer.payment_terms))
 
-        self.loyalty_code_input.setText(self.customer.loyalty_card_code or "")
+        if hasattr(self, "loyalty_code_input"):
+            self.loyalty_code_input.setText(self.customer.loyalty_card_code or "")
         pts = getattr(self.customer, "loyalty_points", 0) or 0
         if hasattr(self, "points_label"):
             self.points_label.setText(str(pts))
@@ -609,7 +619,11 @@ class CustomerEditor(QDialog):
             "tax_id": (self.tax_id_input.text().strip() or None) if is_company else None,
             "credit_limit": self._parse_credit_limit(self.limit_input.text()),
             "payment_terms": self._parse_payment_terms(self.payment_terms_input.text()),
-            "loyalty_card_code": self.loyalty_code_input.text().strip() or None,
+            "loyalty_card_code": (
+                self.loyalty_code_input.text().strip() or None
+                if hasattr(self, "loyalty_code_input")
+                else (getattr(self.customer, "loyalty_card_code", None) if self.customer else None)
+            ),
             "is_active": True,
             "contacts": contacts_data,
         }

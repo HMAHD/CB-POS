@@ -26,7 +26,8 @@ class SetupWizard(QDialog):
         """Build the wizard, starting on step 1 (shop information)."""
         super().__init__(parent)
         self.setWindowTitle(_t("setup_wizard.title"))
-        self.setFixedSize(600, 500)
+        self.setMinimumSize(600, 500)
+        self.resize(600, 500)
         self.setObjectName("SetupWizard")
         self.init_ui()
         install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)

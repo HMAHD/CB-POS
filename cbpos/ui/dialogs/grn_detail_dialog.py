@@ -105,11 +105,13 @@ class GRNDetailDialog(QDialog):
         footer = QHBoxLayout()
         footer.addStretch()
         total_label = QLabel(f"{_t('purchase.total_cost_label')}: {format_currency(purchase.total_cost)}")
-        total_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        total_label.setObjectName("GrnTotalLabel")
         footer.addWidget(total_label)
         layout.addLayout(footer)
 
         # Close button
         close_btn = QPushButton(_t("common.close"))
+        close_btn.setObjectName("BtnCancel")
+        close_btn.setProperty("class", "secondary")
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)

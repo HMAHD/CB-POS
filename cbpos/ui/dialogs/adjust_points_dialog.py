@@ -23,6 +23,7 @@ from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.loyalty_service import LoyaltyService
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.styles.style_helpers import set_status_class
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
@@ -206,6 +207,8 @@ class AdjustPointsDialog(QDialog):
         btn_box.addStretch()
 
         btn_cancel = QPushButton(_t("common.cancel"))
+        btn_cancel.setObjectName("BtnCancel")
+        btn_cancel.setProperty("class", "secondary")
         btn_cancel.clicked.connect(self.reject)
         btn_box.addWidget(btn_cancel)
 
@@ -264,9 +267,9 @@ class AdjustPointsDialog(QDialog):
         self.lbl_preview.setText(_t("adjust_points.preview", value=new_pts))
 
         if new_pts < 0:
-            self.lbl_preview.setStyleSheet("color: #EF4444; font-weight: bold;")
+            set_status_class(self.lbl_preview, "status-err")
         else:
-            self.lbl_preview.setStyleSheet("")
+            set_status_class(self.lbl_preview, "")
 
     def validate(self) -> bool:
         """Validate input values."""

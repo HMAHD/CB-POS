@@ -104,16 +104,13 @@ class BulkPriceAdjustDialog(QDialog):
         header_layout.addWidget(icon_label)
 
         self.lbl_title = QLabel()
-        self.lbl_title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.lbl_title.setProperty("class", "dialog-title")
         header_layout.addWidget(self.lbl_title)
 
         header_layout.addStretch()
 
         self.lbl_list_badge = QLabel(self.price_list_name)
-        self.lbl_list_badge.setStyleSheet(
-            "font-weight: bold; padding: 4px 10px; border-radius: 4px; "
-            "background-color: rgba(0, 188, 235, 0.15); color: #00BCEB;"
-        )
+        self.lbl_list_badge.setObjectName("BulkPriceBadge")
         header_layout.addWidget(self.lbl_list_badge)
         main_layout.addWidget(header_frame)
 
@@ -210,7 +207,7 @@ class BulkPriceAdjustDialog(QDialog):
 
         # ── Preview Table ──
         self.lbl_preview_header = QLabel()
-        self.lbl_preview_header.setStyleSheet("font-weight: bold; margin-top: 4px;")
+        self.lbl_preview_header.setProperty("class", "bold")
         main_layout.addWidget(self.lbl_preview_header)
 
         self.table_preview = QTableWidget()
@@ -238,7 +235,7 @@ class BulkPriceAdjustDialog(QDialog):
 
         # ── Footer ──
         self.lbl_summary_stats = QLabel()
-        self.lbl_summary_stats.setStyleSheet("font-size: 12px; color: #888888;")
+        self.lbl_summary_stats.setProperty("class", "muted")
 
         footer_layout, self.btn_apply, self.btn_cancel = make_dialog_footer(
             primary_key="pricelist.btn_apply_adjustments",

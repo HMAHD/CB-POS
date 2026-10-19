@@ -1,7 +1,7 @@
 import csv
 import logging
 from collections.abc import Callable
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 
 from cbpos.core.services.inventory_service import InventoryService
@@ -107,10 +107,22 @@ class ImportService:
                             continue
 
                         try:
-                            price = Decimal(price_str) if price_str else Decimal(0)
-                            cost = Decimal(cost_str) if cost_str else Decimal(0)
-                            stock = Decimal(stock_str) if stock_str else Decimal(0)
-                        except InvalidOperation:
+                            price = (
+                                Decimal(str(price_str).strip()).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                                if price_str
+                                else Decimal("0.00")
+                            )
+                            cost = (
+                                Decimal(str(cost_str).strip()).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                                if cost_str
+                                else Decimal("0.00")
+                            )
+                            stock = (
+                                Decimal(str(stock_str).strip()).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
+                                if stock_str
+                                else Decimal("0.000")
+                            )
+                        except (InvalidOperation, ValueError):
                             results["failed"] += 1
                             continue
 

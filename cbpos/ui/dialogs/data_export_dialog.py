@@ -123,20 +123,21 @@ class DataExportDialog(QDialog):
         # Action buttons
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(10)
-
-        btn_cancel = QPushButton(_t("common.cancel"))
-        btn_cancel.setObjectName("BtnCancel")
-        btn_cancel.setFixedWidth(100)
-        btn_cancel.clicked.connect(self.reject)
-        btn_layout.addWidget(btn_cancel)
-
         btn_layout.addStretch()
 
         self.btn_export = QPushButton(_t("common.export"))
+        self.btn_export.setObjectName("BtnExport")
         self.btn_export.setProperty("class", "accent")
         self.btn_export.setFixedWidth(140)
         self.btn_export.clicked.connect(self._do_export)
         btn_layout.addWidget(self.btn_export)
+
+        btn_cancel = QPushButton(_t("common.cancel"))
+        btn_cancel.setObjectName("BtnCancel")
+        btn_cancel.setProperty("class", "secondary")
+        btn_cancel.setFixedWidth(100)
+        btn_cancel.clicked.connect(self.reject)
+        btn_layout.addWidget(btn_cancel)
 
         layout.addLayout(btn_layout)
 

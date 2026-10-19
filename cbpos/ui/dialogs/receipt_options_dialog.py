@@ -37,7 +37,8 @@ class ReceiptOptionsDialog(QDialog):
         super().__init__(parent)
         self.sale = sale
         self.setWindowTitle(_t("receipt_options.title"))
-        self.setFixedSize(440, 528)
+        self.setMinimumSize(440, 528)
+        self.resize(440, 528)
         self.setObjectName("ReceiptOptionsDialog")
         self.init_ui()
 

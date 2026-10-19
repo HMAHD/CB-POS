@@ -226,18 +226,20 @@ class SaleHistoryDialog(QDialog):
         refund_layout.addWidget(self.txt_refund_reason)
 
         refund_btn_layout = QHBoxLayout()
+        refund_btn_layout.setSpacing(10)
         refund_btn_layout.addStretch()
+
+        self.btn_confirm_refund = QPushButton()
+        self.btn_confirm_refund.setObjectName("BtnConfirmRefund")
+        self.btn_confirm_refund.setProperty("class", "danger")
+        self.btn_confirm_refund.clicked.connect(self._confirm_refund)
+        refund_btn_layout.addWidget(self.btn_confirm_refund)
 
         self.btn_cancel_refund = QPushButton()
         self.btn_cancel_refund.setObjectName("BtnCancel")
         self.btn_cancel_refund.setProperty("class", "secondary")
         self.btn_cancel_refund.clicked.connect(self._cancel_refund)
         refund_btn_layout.addWidget(self.btn_cancel_refund)
-
-        self.btn_confirm_refund = QPushButton()
-        self.btn_confirm_refund.setProperty("class", "danger")
-        self.btn_confirm_refund.clicked.connect(self._confirm_refund)
-        refund_btn_layout.addWidget(self.btn_confirm_refund)
 
         refund_layout.addLayout(refund_btn_layout)
         layout.addWidget(self.refund_panel)

@@ -7,10 +7,8 @@ from PyQt6.QtWidgets import (
     QAbstractItemView,
     QDialog,
     QGridLayout,
-    QHBoxLayout,
     QHeaderView,
     QLabel,
-    QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -26,6 +24,8 @@ from cbpos.core.utils.formatters import (
 from cbpos.i18n import _t
 from cbpos.ui.constants import SPACING_XL, SPACING_XS
 from cbpos.ui.resources.status_colors import DANGER, NEUTRAL, SUCCESS, status_color
+from cbpos.ui.utils.layout_helpers import protect_vertical_sizing
+from cbpos.ui.widgets.dialog_footer import make_close_footer
 from cbpos.ui.widgets.table_helpers import align_numeric_headers, configure_table_columns
 
 # Expected, Counted, Variance, Value -- cells and headers right-align.
@@ -205,12 +205,11 @@ class StockCountReportDialog(QDialog):
 
         layout.addWidget(table, 1)
 
-        close_btn = QPushButton(_t("common.close"))
-        close_btn.setObjectName("BtnCancel")
-        close_btn.setProperty("class", "secondary")
-        close_btn.setAutoDefault(False)
-        close_btn.clicked.connect(self.accept)
-        close_layout = QHBoxLayout()
-        close_layout.addStretch()
-        close_layout.addWidget(close_btn)
+        close_layout, self.close_btn = make_close_footer(
+            close_key="common.close",
+            on_close=self.accept,
+            close_object_name="BtnCancel",
+        )
+        self.close_btn.setAutoDefault(False)
         layout.addLayout(close_layout)
+        protect_vertical_sizing(self)

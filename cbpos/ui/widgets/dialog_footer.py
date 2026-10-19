@@ -36,6 +36,7 @@ def make_dialog_footer(
         tuple of (QHBoxLayout, btn_primary, btn_cancel)
     """
     layout = QHBoxLayout()
+    layout.setSpacing(10)
     if left_widget is not None:
         layout.addWidget(left_widget)
 
@@ -58,3 +59,38 @@ def make_dialog_footer(
     layout.addWidget(btn_cancel)
 
     return layout, btn_primary, btn_cancel
+
+
+def make_close_footer(
+    close_key: str = "common.close",
+    on_close: Callable[[], None] | None = None,
+    close_object_name: str = "BtnCancel",
+    left_widget: QWidget | None = None,
+) -> tuple[QHBoxLayout, QPushButton]:
+    """Create a standardized single-button dismiss footer layout with [Stretch] [Secondary Close].
+
+    Args:
+        close_key: i18n translation key for close action (default: 'common.close').
+        on_close: Callback invoked when close button is clicked.
+        close_object_name: Object name for QSS targeting (default: 'BtnCancel').
+        left_widget: Optional widget pinned to the left of the footer.
+
+    Returns:
+        tuple of (QHBoxLayout, btn_close)
+    """
+    layout = QHBoxLayout()
+    layout.setSpacing(10)
+    if left_widget is not None:
+        layout.addWidget(left_widget)
+
+    layout.addStretch()
+
+    btn_close = QPushButton(_t(close_key))
+    btn_close.setObjectName(close_object_name)
+    btn_close.setProperty("class", "secondary")
+    btn_close.setAutoDefault(False)
+    if on_close is not None:
+        btn_close.clicked.connect(on_close)
+    layout.addWidget(btn_close)
+
+    return layout, btn_close

@@ -24,7 +24,8 @@ class ManagerOverrideDialog(QDialog):
         self.authorized_user = None
 
         self.setWindowTitle(_t("manager_override.title"))
-        self.setFixedSize(300, 200)
+        self.setMinimumSize(300, 200)
+        self.resize(300, 200)
         self.setWindowModality(Qt.WindowModality.ApplicationModal)
         self.init_ui()
 

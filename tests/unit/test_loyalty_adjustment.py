@@ -273,8 +273,6 @@ def test_upgrade_grants_loyalty_adjust_points_to_admin_and_manager(tmp_path, mon
 
 def test_customer_editor_loyalty_tab_and_points_history(qapp, db_session, test_user, customer, monkeypatch):
     """CustomerEditor shows points, history table, and allows manual adjustment with permission."""
-    from PyQt6.QtWidgets import QInputDialog
-
     from cbpos.core.services.config_service import ConfigService
     from cbpos.ui.dialogs.customer_editor import CustomerEditor
 
@@ -302,8 +300,10 @@ def test_customer_editor_loyalty_tab_and_points_history(qapp, db_session, test_u
 
     # Simulate adjusting points through dialog
     monkeypatch.setattr("cbpos.core.utils.permission_helper.check_permission_with_override", lambda *a, **k: True)
-    monkeypatch.setattr(QInputDialog, "getInt", lambda *a, **k: (10, True))
-    monkeypatch.setattr(QInputDialog, "getText", lambda *a, **k: ("Compensation", True))
+    monkeypatch.setattr(
+        "cbpos.ui.dialogs.adjust_points_dialog.AdjustPointsDialog.exec",
+        lambda self: LoyaltyService.adjust_points(self.customer.id, 10, "Compensation", test_user.id) or 1,
+    )
 
     editor.adjust_points()
 
@@ -315,8 +315,6 @@ def test_customer_editor_loyalty_tab_and_points_history(qapp, db_session, test_u
 
 def test_credit_book_view_loyalty_points_display_and_adjustment(qapp, db_session, test_user, customer, monkeypatch):
     """CreditBookView displays customer loyalty points in header and provides adjust action."""
-    from PyQt6.QtWidgets import QInputDialog
-
     from cbpos.core.services.config_service import ConfigService
     from cbpos.ui.views.credit_book_view import CreditBookView
 
@@ -333,8 +331,10 @@ def test_credit_book_view_loyalty_points_display_and_adjustment(qapp, db_session
     # Simulate adjust loyalty points on selected customer
     view.selected_customer = customer
     monkeypatch.setattr("cbpos.core.utils.permission_helper.check_permission_with_override", lambda *a, **k: True)
-    monkeypatch.setattr(QInputDialog, "getInt", lambda *a, **k: (15, True))
-    monkeypatch.setattr(QInputDialog, "getText", lambda *a, **k: ("Promotional bonus", True))
+    monkeypatch.setattr(
+        "cbpos.ui.dialogs.adjust_points_dialog.AdjustPointsDialog.exec",
+        lambda self: LoyaltyService.adjust_points(self.customer.id, 15, "Promotional bonus", test_user.id) or 1,
+    )
 
     view.adjust_loyalty_points()
 

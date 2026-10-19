@@ -21,7 +21,8 @@ class ProfileDialog(QDialog):
         """Initialize the dialog and load the current user's profile."""
         super().__init__(parent)
         self.setWindowTitle(_t("profile.title"))
-        self.setFixedSize(400, 300)
+        self.setMinimumSize(400, 300)
+        self.resize(400, 300)
         self.setObjectName("ProfileDialog")
         self.init_ui()
         self.load_user()

@@ -26,6 +26,7 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.proforma_service import ProformaService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
+from cbpos.ui.utils.layout_helpers import protect_vertical_sizing
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
@@ -145,6 +146,7 @@ class ProformaDialog(QDialog):
         self.create_btn.setAutoDefault(False)
         self.create_btn.setDefault(False)
         layout.addLayout(footer)
+        protect_vertical_sizing(self)
 
     def load_products(self) -> None:
         """Load products for the completer."""

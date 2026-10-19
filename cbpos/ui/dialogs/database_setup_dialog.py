@@ -26,7 +26,8 @@ class DatabaseSetupDialog(QDialog):
         """Initialize the dialog with the empty-database and demo-database option cards."""
         super().__init__(parent)
         self.setWindowTitle(_t("db_setup.title"))
-        self.setFixedSize(520, 380)
+        self.setMinimumSize(520, 380)
+        self.resize(520, 380)
         self.setObjectName("DatabaseSetupDialog")
         self.choice = None
         self._init_ui()

@@ -87,19 +87,21 @@ class CsvImportDialog(QDialog):
 
         # Bottom buttons
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(10)
         btn_layout.addStretch()
+
+        self.btn_import = QPushButton("")
+        self.btn_import.setObjectName("BtnImport")
+        self.btn_import.setProperty("class", "primary")
+        self.btn_import.setEnabled(False)
+        self.btn_import.clicked.connect(self._start_import)
+        btn_layout.addWidget(self.btn_import)
 
         self.btn_cancel = QPushButton("")
         self.btn_cancel.setObjectName("BtnCancel")
         self.btn_cancel.setProperty("class", "secondary")
         self.btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(self.btn_cancel)
-
-        self.btn_import = QPushButton("")
-        self.btn_import.setProperty("class", "primary")
-        self.btn_import.setEnabled(False)
-        self.btn_import.clicked.connect(self._start_import)
-        btn_layout.addWidget(self.btn_import)
 
         layout.addLayout(btn_layout)
 

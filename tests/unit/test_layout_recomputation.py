@@ -57,9 +57,8 @@ class TestLayoutRecomputation:
         current_view = mgmt.stack.currentWidget()
         assert current_view is not None
         assert current_view.isVisible()
-        assert hasattr(current_view, "_page_header")
-        assert current_view._page_header.isVisible()
-        assert current_view._page_header.height() > 0
+        assert mgmt.lbl_header_title.isVisible()
+        assert mgmt.lbl_header_title.height() > 0
 
     def test_reports_view_switching_preserves_sidebar_scroll_and_header(self, qapp, db_session, monkeypatch):
         """Switching Reports -> Sales -> Reports 5 times keeps header, sidebar scroll and splitter intact."""
@@ -96,8 +95,8 @@ class TestLayoutRecomputation:
 
         # Verify ReportViewer state
         assert reports.isVisible()
-        assert reports._page_header.isVisible()
-        assert reports._page_header.height() > 0
+        assert mgmt.lbl_header_title.isVisible()
+        assert mgmt.lbl_header_title.height() > 0
 
         # Splitter and sidebar scroll area
         sizes = reports.splitter.sizes()

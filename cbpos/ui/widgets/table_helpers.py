@@ -46,7 +46,6 @@ def batch_table_update(table: QTableWidget | QTableView):
     repaints and redundant sorting, restoring prior states on exit.
     Refreshes attached EmptyStateWidget if present.
     """
-    was_updates = table.updatesEnabled()
     was_sorting = table.isSortingEnabled() if hasattr(table, "isSortingEnabled") else False
     table.setUpdatesEnabled(False)
     if hasattr(table, "setSortingEnabled") and was_sorting:
@@ -56,7 +55,9 @@ def batch_table_update(table: QTableWidget | QTableView):
     finally:
         if hasattr(table, "setSortingEnabled") and was_sorting:
             table.setSortingEnabled(True)
-        table.setUpdatesEnabled(was_updates)
+        # Always re-enable updates on exit; was_updates could be False if an
+        # ancestor (e.g. QStackedLayout) was in transition, latching False locally (#891).
+        table.setUpdatesEnabled(True)
         if hasattr(table, "update_empty_state") and callable(table.update_empty_state):
             try:
                 table.update_empty_state()

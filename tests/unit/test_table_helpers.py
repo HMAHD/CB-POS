@@ -114,6 +114,23 @@ class TestBatchTableUpdate:
 
         mock_refresh.assert_called_once()
 
+    def test_batch_table_update_reenables_updates_even_when_parent_has_updates_disabled(self):
+        from PyQt6.QtWidgets import QWidget
+
+        from cbpos.ui.widgets.table_helpers import batch_table_update
+
+        parent = QWidget()
+        table = QTableWidget(parent)
+        parent.setUpdatesEnabled(False)
+        assert table.updatesEnabled() is False
+
+        with batch_table_update(table):
+            pass
+
+        # When parent updates are restored, table must not be latched False (#891)
+        parent.setUpdatesEnabled(True)
+        assert table.updatesEnabled() is True
+
 
 class TestSlottedDTOs:
     def test_core_dtos_do_not_have_dict(self):

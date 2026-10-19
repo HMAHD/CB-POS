@@ -424,23 +424,25 @@ class ProductEditor(QDialog):
 
         remove_btn = QPushButton(_t("product_editor.btn_remove_component"))
         remove_btn.setProperty("class", "danger")
-        target_row = row
-        remove_btn.clicked.connect(lambda checked, r=target_row: self._remove_component(r))
+        remove_btn.clicked.connect(self._on_remove_component_clicked)
         self.comp_table.setCellWidget(row, 3, remove_btn)
 
         self.comp_barcode_input.clear()
         self.comp_barcode_input.setFocus()
 
+    def _on_remove_component_clicked(self) -> None:
+        """Handle component removal from sender button click without lambda closure."""
+        sender = self.sender()
+        if sender:
+            for r in range(self.comp_table.rowCount()):
+                if self.comp_table.cellWidget(r, 3) is sender:
+                    self.comp_table.removeRow(r)
+                    break
+
     def _remove_component(self, row: int) -> None:
-        """Remove a component row. Re-wire buttons after removal."""
+        """Remove a component row by index."""
         if row < self.comp_table.rowCount():
             self.comp_table.removeRow(row)
-            # Re-wire remove buttons with correct row indices
-            for r in range(self.comp_table.rowCount()):
-                btn = self.comp_table.cellWidget(r, 3)
-                if btn:
-                    btn.clicked.disconnect()
-                    btn.clicked.connect(lambda checked, idx=r: self._remove_component(idx))
 
     def setup_image_tab(self):
         """Build the Image tab: preview label and upload/clear buttons."""
@@ -581,8 +583,7 @@ class ProductEditor(QDialog):
 
             remove_btn = QPushButton(_t("product_editor.btn_remove_component"))
             remove_btn.setProperty("class", "danger")
-            target_row = row
-            remove_btn.clicked.connect(lambda checked, r=target_row: self._remove_component(r))
+            remove_btn.clicked.connect(self._on_remove_component_clicked)
             self.comp_table.setCellWidget(row, 3, remove_btn)
 
     def _parse_decimal(self, text: str, fallback: str = "0") -> Decimal:

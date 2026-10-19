@@ -133,6 +133,12 @@ class ValuationDialog(QDialog):
 
         return card
 
+    def closeEvent(self, event):
+        """Release table items on dialog close to prevent heap retention."""
+        self.table.clearContents()
+        self.table.setRowCount(0)
+        super().closeEvent(event)
+
     def load_data(self):
         """Load stock valuation data."""
         data = self.report_service.get_stock_valuation()
@@ -152,6 +158,8 @@ class ValuationDialog(QDialog):
 
         # Update breakdown table
         breakdown = data["category_breakdown"]
+        self.table.clearContents()
+        self.table.setRowCount(0)
         self.table.setRowCount(len(breakdown))
 
         for row, item in enumerate(breakdown):

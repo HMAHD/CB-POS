@@ -34,8 +34,10 @@ from cbpos.core.services.proforma_service import ProformaService
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.services.transaction_service import TransactionService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import (
     format_currency,
+    format_datetime,
     format_discount,
     format_document_status,
     format_payment_method,
@@ -617,7 +619,7 @@ class DocumentBrowserView(QWidget):
             )
 
         if doc.get("date"):
-            exact_d = doc["date"].strftime("%Y-%m-%d %H:%M:%S")
+            exact_d = format_datetime(doc["date"])
             rel_d = format_relative_time(doc["date"])
             date_display = f"{rel_d} ({exact_d})"
         else:
@@ -830,8 +832,8 @@ class DocumentBrowserView(QWidget):
         worker = PrintWorker.instance()
         try:
             worker.error_occurred.disconnect(self._on_reprint_error)
-        except TypeError:
-            pass  # not connected yet
+        except TypeError as e:
+            logger.debug("Signal not connected yet: %s", e)
         with contextlib.suppress(TypeError):
             worker.job_completed.disconnect(self._on_reprint_finished)
         worker.error_occurred.connect(self._on_reprint_error)
@@ -900,10 +902,11 @@ class DocumentBrowserView(QWidget):
                         _t("document_browser.refund_failed"),
                     )
             except Exception as e:
+                logger.exception("Refund failed: %s", e)
                 QMessageBox.critical(
                     self,
                     _t("common.error"),
-                    _t("document_browser.refund_error", error=str(e)),
+                    _t("document_browser.refund_error", error=translate_error(str(e))),
                 )
 
     def convert_proforma(self) -> None:
@@ -989,10 +992,11 @@ class DocumentBrowserView(QWidget):
                     _t("document_browser.void_failed"),
                 )
         except Exception as e:
+            logger.exception("Void failed: %s", e)
             QMessageBox.critical(
                 self,
                 _t("common.error"),
-                _t("document_browser.void_error", error=str(e)),
+                _t("document_browser.void_error", error=translate_error(str(e))),
             )
 
     def transfer_order(self) -> None:

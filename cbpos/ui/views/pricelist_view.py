@@ -1,5 +1,6 @@
 """Price list view for managing named price lists and per-item price overrides."""
 
+import logging
 from decimal import Decimal
 
 from PyQt6.QtCore import QSize, Qt
@@ -25,7 +26,8 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.price_list_service import PriceListService
 from cbpos.core.services.product_service import ProductService
-from cbpos.core.utils.formatters import NO_VALUE, format_number, money_header
+from cbpos.core.utils.error_messages import translate_error
+from cbpos.core.utils.formatters import NO_VALUE, format_date, format_number, money_header
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.bulk_price_adjust_dialog import BulkPriceAdjustDialog
 from cbpos.ui.dialogs.price_list_dialog import PriceListDialog
@@ -39,6 +41,8 @@ from cbpos.ui.widgets.table_helpers import (
     attach_table_empty_state,
     configure_table_columns,
 )
+
+logger = logging.getLogger(__name__)
 
 # Price cells keep their raw Decimal here; the text is display-only (#557).
 PRICE_ROLE = Qt.ItemDataRole.UserRole
@@ -364,8 +368,8 @@ class PriceListView(QWidget):
         self.current_list = price_list
         self.lbl_list_name.setText(price_list.name)
 
-        start = price_list.start_date.strftime("%Y-%m-%d") if price_list.start_date else _t("common.na")
-        end = price_list.end_date.strftime("%Y-%m-%d") if price_list.end_date else _t("common.na")
+        start = format_date(price_list.start_date) if price_list.start_date else _t("common.na")
+        end = format_date(price_list.end_date) if price_list.end_date else _t("common.na")
         self.lbl_dates.setText(_t("pricelist.valid_range", start=start, end=end))
 
         # Update status badge
@@ -479,7 +483,8 @@ class PriceListView(QWidget):
                 self.price_list_service.create_price_list(name, start, end, is_active=is_active)
                 self.load_lists()
             except Exception as e:
-                QMessageBox.critical(self, _t("common.error"), str(e))
+                logger.exception("Failed to create price list: %s", e)
+                QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
 
     def edit_price_list(self) -> None:
         """Rename the currently selected price list and/or edit its dates."""
@@ -502,7 +507,8 @@ class PriceListView(QWidget):
                 list_id, name=name, start_date=start, end_date=end, is_active=is_active
             )
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            logger.exception("Failed to update price list: %s", e)
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
             return
 
         self.load_lists()
@@ -538,7 +544,8 @@ class PriceListView(QWidget):
                 self.content_stack.setCurrentIndex(0)
                 self.load_lists()
             except Exception as e:
-                QMessageBox.critical(self, _t("common.error"), str(e))
+                logger.exception("Failed to delete price list: %s", e)
+                QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
 
     def edit_item_price(self, index):
         """Open the price editor for the double-clicked table row."""
@@ -619,7 +626,8 @@ class PriceListView(QWidget):
             self.price_list_service.delete_item_price(self.current_list.id, product_id)
             self.load_items()
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            logger.exception("Failed to delete item price: %s", e)
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
 
     def _list_price(self, row: int) -> Decimal | None:
         """The row's price-list override as a Decimal, or None if it has none."""
@@ -642,4 +650,5 @@ class PriceListView(QWidget):
                 self.price_list_service.set_item_price(self.current_list.id, product_id, new_price)
                 self.load_items()
             except Exception as e:
-                QMessageBox.critical(self, _t("common.error"), str(e))
+                logger.exception("Failed to set item price: %s", e)
+                QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))

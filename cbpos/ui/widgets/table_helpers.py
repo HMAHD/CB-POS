@@ -23,7 +23,7 @@ from datetime import date, datetime
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QHeaderView, QTableView, QTableWidgetItem
 
-from cbpos.core.utils.formatters import format_relative_time
+from cbpos.core.utils.formatters import format_datetime, format_relative_time
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 from cbpos.ui.widgets.status_pill_delegate import (
@@ -210,7 +210,7 @@ class RelativeTimeTableWidgetItem(QTableWidgetItem):
         rel_text = format_relative_time(dt_or_str, now=now) if dt_or_str else ""
         super().__init__(rel_text)
         if self._raw_dt:
-            exact_str = self._raw_dt.strftime(fmt)
+            exact_str = format_datetime(self._raw_dt) if fmt == "%Y-%m-%d %H:%M" else self._raw_dt.strftime(fmt)
             self.setToolTip(exact_str)
             self.setData(Qt.ItemDataRole.UserRole, self._raw_dt.timestamp())
 

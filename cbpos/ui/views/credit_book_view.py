@@ -25,7 +25,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.customer_service import CustomerService
-from cbpos.core.utils.formatters import format_currency, format_number, money_header
+from cbpos.core.utils.formatters import format_currency, format_date, format_datetime, format_number, money_header
 from cbpos.i18n import _t, register_language_callback, t_or
 from cbpos.ui.constants import BAR_MARGIN_H, BAR_MARGIN_V
 from cbpos.ui.dialogs.customer_editor import CustomerEditor
@@ -797,7 +797,7 @@ class CreditBookView(QWidget):
             self.lbl_available.setText(format_currency(summary["available"]))
             self.lbl_limit.setText(format_currency(summary["credit_limit"]))
             if summary.get("last_payment_date"):
-                self.lbl_last_payment.setText(summary["last_payment_date"].strftime("%Y-%m-%d"))
+                self.lbl_last_payment.setText(format_date(summary["last_payment_date"]))
             else:
                 self.lbl_last_payment.setText(_t("credit_book.none"))
         else:
@@ -950,7 +950,7 @@ class CreditBookView(QWidget):
             self.ledger_table.insertRow(row)
 
             # Date
-            date_str = entry.timestamp.strftime("%Y-%m-%d %H:%M") if entry.timestamp else ""
+            date_str = format_datetime(entry.timestamp) if entry.timestamp else ""
             self.ledger_table.setItem(row, 0, QTableWidgetItem(date_str))
 
             # Type

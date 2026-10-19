@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.payment_service import PaymentMethodInUseError, PaymentService, ShortcutConflictError
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.payment_method_dialog import PaymentMethodDialog
 
@@ -251,10 +252,11 @@ class PaymentMethodsView(QWidget):
                 )
                 self._load_methods()
             except Exception as e:
+                logger.exception("Failed to create payment method: %s", e)
                 QMessageBox.critical(
                     self,
                     _t("common.error"),
-                    _t("payment_methods.error_create", error=str(e)),
+                    _t("payment_methods.error_create", error=translate_error(str(e))),
                 )
 
     def _edit_method(self, method, has_history: bool = False) -> None:
@@ -278,10 +280,11 @@ class PaymentMethodsView(QWidget):
                 )
                 self._load_methods()
             except Exception as e:
+                logger.exception("Failed to update payment method: %s", e)
                 QMessageBox.critical(
                     self,
                     _t("common.error"),
-                    _t("payment_methods.error_update", error=str(e)),
+                    _t("payment_methods.error_update", error=translate_error(str(e))),
                 )
 
     def _toggle_method(self, method) -> None:
@@ -295,10 +298,11 @@ class PaymentMethodsView(QWidget):
         except ShortcutConflictError as e:
             QMessageBox.warning(self, _t("payment_methods.validation_title"), _shortcut_error_text(e))
         except Exception as e:
+            logger.exception("Failed to %s payment method: %s", action, e)
             QMessageBox.critical(
                 self,
                 _t("common.error"),
-                _t("payment_methods.error_toggle", action=action, error=str(e)),
+                _t("payment_methods.error_toggle", action=action, error=translate_error(str(e))),
             )
 
     def _delete_method(self, method) -> None:
@@ -330,8 +334,9 @@ class PaymentMethodsView(QWidget):
                         _t("payment_methods.deactivated_instead_message", name=method.name),
                     )
             except Exception as e:
+                logger.exception("Failed to delete payment method: %s", e)
                 QMessageBox.critical(
                     self,
                     _t("common.error"),
-                    _t("payment_methods.error_delete", error=str(e)),
+                    _t("payment_methods.error_delete", error=translate_error(str(e))),
                 )

@@ -22,7 +22,7 @@ from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.transaction_service import TransactionService
-from cbpos.core.utils.formatters import format_currency, format_relative_time
+from cbpos.core.utils.formatters import format_currency, format_datetime, format_relative_time
 from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.refund_messages import refund_confirm_html, refund_done_text
@@ -301,7 +301,7 @@ class HistoryView(QWidget):
     def display_details(self, sale):
         """Display sale details in details panel"""
         cashier = sale.user.username if sale.user else _t("history.unknown")
-        exact_date = sale.date.strftime("%Y-%m-%d %H:%M:%S")
+        exact_date = format_datetime(sale.date)
         rel_date = format_relative_time(sale.date)
         details_text = f"""
         <b>{_t("history.detail_receipt")}:</b> {sale.document_number}<br>
@@ -363,8 +363,8 @@ class HistoryView(QWidget):
             # ReceiptOptionsDialog.print_thermal() does.
             try:
                 worker.error_occurred.disconnect(self._on_reprint_error)
-            except TypeError:
-                pass  # not connected yet
+            except TypeError as e:
+                logger.debug("Signal not connected yet: %s", e)
             with contextlib.suppress(TypeError):
                 worker.job_completed.disconnect(self._on_reprint_finished)
             worker.error_occurred.connect(self._on_reprint_error)

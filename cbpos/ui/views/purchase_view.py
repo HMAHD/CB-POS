@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from PyQt6.QtCore import QAbstractTableModel, QDate, QStringListModel, Qt
 from PyQt6.QtGui import QColor, QKeySequence, QShortcut, QStandardItem, QStandardItemModel
@@ -35,7 +35,14 @@ from cbpos.core.services.purchase_order_service import PurchaseOrderService
 from cbpos.core.services.purchase_service import PurchaseService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.supplier_service import SupplierService
-from cbpos.core.utils.formatters import format_currency, format_quantity, format_relative_time
+from cbpos.core.utils.error_messages import translate_error
+from cbpos.core.utils.formatters import (
+    format_currency,
+    format_date,
+    format_datetime,
+    format_quantity,
+    format_relative_time,
+)
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.constants import BAR_GROUP_SPACING, BAR_ITEM_SPACING, BAR_MARGIN_V
 from cbpos.ui.dialogs.grn_detail_dialog import GRNDetailDialog
@@ -174,7 +181,7 @@ class PurchaseHistoryModel(QAbstractTableModel):
                 return purchase.status
         elif role == Qt.ItemDataRole.ToolTipRole:
             if col == 1 and purchase.date:
-                return purchase.date.strftime("%Y-%m-%d %H:%M")
+                return format_datetime(purchase.date)
         elif role == Qt.ItemDataRole.TextAlignmentRole:
             if col in (4, 5):
                 return NUMERIC_ALIGNMENT
@@ -676,7 +683,8 @@ class PurchaseView(QWidget):
             try:
                 SupplierService.create_supplier(**data)
             except ValueError as e:
-                QMessageBox.warning(self, _t("common.validation_error"), str(e))
+                logger.warning("Failed to create supplier: %s", e)
+                QMessageBox.warning(self, _t("common.validation_error"), translate_error(str(e)))
                 return
             self.refresh_suppliers()
 
@@ -699,7 +707,8 @@ class PurchaseView(QWidget):
             try:
                 SupplierService.update_supplier(supplier.id, **data)
             except ValueError as e:
-                QMessageBox.warning(self, _t("common.validation_error"), str(e))
+                logger.warning("Failed to update supplier %s: %s", supplier.id, e)
+                QMessageBox.warning(self, _t("common.validation_error"), translate_error(str(e)))
                 return
             self.refresh_suppliers()
 
@@ -930,7 +939,8 @@ class PurchaseView(QWidget):
             self.refresh_open_orders()
 
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            logger.exception("Failed to save GRN: %s", e)
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
 
     # ========== Payables Tab ==========
 
@@ -1278,7 +1288,7 @@ class PurchaseView(QWidget):
             )
             if summary["last_payment_date"]:
                 rel_pay = format_relative_time(summary["last_payment_date"])
-                exact_pay = summary["last_payment_date"].strftime("%Y-%m-%d")
+                exact_pay = format_date(summary["last_payment_date"])
                 self.lbl_pay_last.setText(_t("purchase.last_payment_label") + " " + rel_pay)
                 self.lbl_pay_last.setToolTip(exact_pay)
             else:
@@ -1456,7 +1466,7 @@ class PurchaseView(QWidget):
             return
 
         try:
-            amount = Decimal(amount_str)
+            amount = Decimal(str(amount_str).strip()).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         except (ValueError, InvalidOperation):
             QMessageBox.warning(
                 self,
@@ -1500,4 +1510,5 @@ class PurchaseView(QWidget):
             self.reload_payable_ledger()
             self.load_payable_suppliers()
         except ValueError as e:
-            QMessageBox.warning(self, _t("common.error"), str(e))
+            logger.warning("Failed to record supplier balance adjustment: %s", e)
+            QMessageBox.warning(self, _t("common.error"), translate_error(str(e)))

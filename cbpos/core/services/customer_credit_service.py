@@ -420,9 +420,10 @@ class CustomerCreditService:
             if date_to:
                 query = query.filter(CustomerLedgerEntry.timestamp <= date_to)
 
-            entries = query.order_by(CustomerLedgerEntry.timestamp.asc()).all()
-            for entry in entries:
+            entries = []
+            for entry in query.order_by(CustomerLedgerEntry.timestamp.asc()).yield_per(500):
                 session.expunge(entry)
+                entries.append(entry)
             return entries
 
     @staticmethod
@@ -439,7 +440,7 @@ class CustomerCreditService:
             customers = (
                 session.query(Customer)
                 .filter(Customer.current_debt > 0, Customer.payment_terms > 0, Customer.is_active.is_(True))
-                .all()
+                .yield_per(500)
             )
 
             results = []
@@ -557,19 +558,20 @@ class CustomerCreditService:
         def _do_backfill(sess: Session) -> int:
             from datetime import timedelta
 
-            customers_with_debt = sess.query(Customer).filter(Customer.current_debt > Decimal("0.00")).all()
+            customers_with_debt = sess.query(Customer).filter(Customer.current_debt > Decimal("0.00")).yield_per(500)
             count = 0
             default_timestamp = datetime.now() - timedelta(days=30)
             target_user_id = None
-            if customers_with_debt:
-                user = sess.query(User).order_by(User.id).first()
-                if not user:
-                    user = User(username="system", pin_hash="system")
-                    sess.add(user)
-                    sess.flush()
-                target_user_id = user.id
 
             for cust in customers_with_debt:
+                if target_user_id is None:
+                    user = sess.query(User).order_by(User.id).first()
+                    if not user:
+                        user = User(username="system", pin_hash="system")
+                        sess.add(user)
+                        sess.flush()
+                    target_user_id = user.id
+
                 existing_count = (
                     sess.query(CustomerLedgerEntry).filter(CustomerLedgerEntry.customer_id == cust.id).count()
                 )

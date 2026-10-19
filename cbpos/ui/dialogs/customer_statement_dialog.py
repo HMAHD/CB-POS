@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.statement_service import StatementService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
@@ -300,8 +301,10 @@ class CustomerStatementDialog(QDialog):
                 date_to=to_dt,
             )
         except Exception as e:
-            logger.error(f"Failed to load statement: {e}")
-            QMessageBox.critical(self, _t("common.error"), _t("customer_statement.load_failed", error=str(e)))
+            logger.error("Failed to load statement: %s", e)
+            QMessageBox.critical(
+                self, _t("common.error"), _t("customer_statement.load_failed", error=translate_error(str(e)))
+            )
             return
 
         data = self.statement_data
@@ -380,8 +383,8 @@ class CustomerStatementDialog(QDialog):
         worker = PrintWorker.instance()
         try:
             worker.error_occurred.disconnect(self._on_print_error)
-        except TypeError:
-            pass  # not connected yet
+        except TypeError as e:
+            logger.debug("Signal not connected yet: %s", e)
         with contextlib.suppress(TypeError):
             worker.job_completed.disconnect(self._on_print_finished)
         worker.error_occurred.connect(self._on_print_error)

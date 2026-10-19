@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.customer_service import CustomerService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 
@@ -69,4 +70,4 @@ class CustomerQuickAddDialog(QDialog):
             self.created_customer = self.customer_service.create_customer(data)
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))

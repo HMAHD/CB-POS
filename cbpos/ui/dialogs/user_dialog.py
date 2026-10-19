@@ -1,5 +1,7 @@
 """Modal dialog to create or edit a user's username, PIN, role, and active status."""
 
+import logging
+
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -14,8 +16,11 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.user_service import UserService
 from cbpos.core.utils.display_labels import display_role_name
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
+
+logger = logging.getLogger(__name__)
 
 
 class UserDialog(QDialog):
@@ -108,8 +113,9 @@ class UserDialog(QDialog):
                 UserService.create_user(username, pin, role_id)
             self.accept()
         except Exception as e:
+            logger.exception("Failed to save user: %s", e)
             QMessageBox.critical(
                 self,
                 _t("common.error"),
-                _t("user.save_failed", error=str(e)),
+                _t("user.save_failed", error=translate_error(str(e))),
             )

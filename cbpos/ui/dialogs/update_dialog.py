@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.config import Config
 from cbpos.core.services.update_service import UpdateService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 
 logger = logging.getLogger(__name__)
@@ -205,7 +206,7 @@ class UpdateDialog(QDialog):
             QMessageBox.warning(
                 self,
                 _t("common.error"),
-                _t("update.launch_failed", error=str(e), path=path),
+                _t("update.launch_failed", error=translate_error(str(e)), path=path),
             )
             self._btn_skip.setEnabled(True)
             self._btn_skip.setText(_t("common.close"))

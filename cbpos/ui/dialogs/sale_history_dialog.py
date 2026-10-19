@@ -23,7 +23,8 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.transaction_service import TransactionService
-from cbpos.core.utils.formatters import format_currency, format_relative_time
+from cbpos.core.utils.error_messages import translate_error
+from cbpos.core.utils.formatters import format_currency, format_datetime, format_relative_time
 from cbpos.i18n import _t
 from cbpos.ui.refund_messages import refund_confirm_text, refund_done_text
 from cbpos.ui.resources.icons import Icons
@@ -466,7 +467,7 @@ class SaleHistoryDialog(QDialog):
 
         # Populate info labels
         if sale.date:
-            date_str = sale.date.strftime("%Y-%m-%d %H:%M")
+            date_str = format_datetime(sale.date)
             rel_date = format_relative_time(sale.date)
             date_display = f"{rel_date} ({date_str})"
             self.lbl_info_date.setToolTip(date_str)
@@ -540,8 +541,8 @@ class SaleHistoryDialog(QDialog):
             # ReceiptOptionsDialog.print_thermal() does.
             try:
                 worker.error_occurred.disconnect(self._on_reprint_error)
-            except TypeError:
-                pass  # not connected yet
+            except TypeError as e:
+                logger.debug("Signal not connected yet: %s", e)
             with contextlib.suppress(TypeError):
                 worker.job_completed.disconnect(self._on_reprint_finished)
             worker.error_occurred.connect(self._on_reprint_error)
@@ -652,9 +653,10 @@ class SaleHistoryDialog(QDialog):
                     _t("common.unknown_error"),
                 )
         except ValueError as e:
-            QMessageBox.warning(self, _t("common.warning"), str(e))
+            logger.warning("Refund validation failed: %s", e)
+            QMessageBox.warning(self, _t("common.warning"), translate_error(str(e)))
         except Exception as e:
-            logger.error("Refund failed: %s", e)
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            logger.exception("Refund failed: %s", e)
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
         finally:
             self.btn_confirm_refund.setEnabled(True)

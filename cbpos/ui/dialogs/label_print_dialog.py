@@ -423,8 +423,8 @@ class LabelPrintDialog(QDialog):
             # ReceiptOptionsDialog.print_thermal() does.
             try:
                 worker.error_occurred.disconnect(self._on_print_error)
-            except TypeError:
-                pass  # not connected yet
+            except TypeError as e:
+                logger.debug("Signal not connected yet: %s", e)
             with contextlib.suppress(TypeError):
                 worker.job_completed.disconnect(self._on_print_finished)
             worker.error_occurred.connect(self._on_print_error)

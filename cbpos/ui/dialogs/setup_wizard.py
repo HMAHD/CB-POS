@@ -1,3 +1,5 @@
+import logging
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtPrintSupport import QPrinterInfo
 from PyQt6.QtWidgets import (
@@ -15,8 +17,11 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.constants.hardware import PrinterType
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
+
+logger = logging.getLogger(__name__)
 
 
 class SetupWizard(QDialog):
@@ -330,9 +335,9 @@ class SetupWizard(QDialog):
 
             UserService.update_admin_pin(self.input_pin.text())
         except Exception as e:
-            import logging
-
-            logging.getLogger(__name__).error("Failed to update admin PIN: %s", e)
-            QMessageBox.warning(self, _t("common.warning"), _t("setup_wizard.pin_update_failed", error=str(e)))
+            logger.error("Failed to update admin PIN: %s", e)
+            QMessageBox.warning(
+                self, _t("common.warning"), _t("setup_wizard.pin_update_failed", error=translate_error(str(e)))
+            )
 
         self.accept()

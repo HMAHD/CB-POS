@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal, InvalidOperation
 
 from PyQt6.QtCore import QSize, Qt
@@ -27,6 +28,8 @@ from cbpos.core.services.price_list_service import (
     PriceListService,
 )  # Assuming this exists or will be needed
 from cbpos.core.services.tax_service import TaxService
+from cbpos.core.utils.error_messages import translate_error
+from cbpos.core.utils.formatters import format_datetime
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING
@@ -41,6 +44,8 @@ from cbpos.ui.widgets.table_helpers import (
     configure_table_columns,
 )
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
+
+logger = logging.getLogger(__name__)
 
 COMMERCIAL_FIELD_MIN_WIDTH = 220
 
@@ -380,7 +385,7 @@ class CustomerEditor(QDialog):
             row = self.points_history_table.rowCount()
             self.points_history_table.insertRow(row)
 
-            date_str = entry.timestamp.strftime("%Y-%m-%d %H:%M") if entry.timestamp else ""
+            date_str = format_datetime(entry.timestamp) if entry.timestamp else ""
             self.points_history_table.setItem(row, 0, QTableWidgetItem(date_str))
 
             type_label = entry.entry_type or ""
@@ -703,4 +708,5 @@ class CustomerEditor(QDialog):
                 self.customer_service.create_customer(data)
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            logger.exception("Failed to save customer: %s", e)
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))

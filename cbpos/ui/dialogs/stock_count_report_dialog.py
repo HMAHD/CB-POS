@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.stock_count_service import StockCountService
 from cbpos.core.utils.formatters import (
     format_currency,
+    format_datetime,
     format_document_status,
     format_quantity,
     format_signed,
@@ -112,7 +113,7 @@ class StockCountReportDialog(QDialog):
 
         lbl_date_key = QLabel(_t("common.date"))
         lbl_date_key.setProperty("class", "muted")
-        date_str = stock_count.date.strftime("%Y-%m-%d %H:%M") if stock_count.date else _t("common.na")
+        date_str = format_datetime(stock_count.date) if stock_count.date else _t("common.na")
         lbl_date_val = QLabel(date_str)
         lbl_date_val.setProperty("class", "bold")
 

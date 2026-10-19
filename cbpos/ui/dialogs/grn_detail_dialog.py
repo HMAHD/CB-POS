@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.purchase_service import PurchaseService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.formatters import format_currency, format_datetime
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.table_helpers import (
@@ -57,7 +57,7 @@ class GRNDetailDialog(QDialog):
         supplier_name = purchase.supplier.company_name if purchase.supplier else "N/A"
         info_layout.addWidget(QLabel(f"{_t('purchase.form_supplier')} {supplier_name}"))
         info_layout.addWidget(QLabel(f"{_t('purchase.form_ref')} {purchase.reference_external or 'N/A'}"))
-        date_str = purchase.date.strftime("%Y-%m-%d %H:%M") if purchase.date else "N/A"
+        date_str = format_datetime(purchase.date) if purchase.date else "N/A"
         info_layout.addWidget(QLabel(f"{_t('purchase.form_date')} {date_str}"))
         info_layout.addWidget(QLabel(f"{_t('purchase.detail_status')}: {purchase.status}"))
         info_layout.addStretch()

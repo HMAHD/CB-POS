@@ -1,3 +1,5 @@
+import logging
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QBrush, QColor
 from PyQt6.QtWidgets import (
@@ -15,7 +17,10 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.category_service import CategoryService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
+
+logger = logging.getLogger(__name__)
 
 
 class CategoryTreeDialog(QDialog):
@@ -153,7 +158,8 @@ class CategoryTreeDialog(QDialog):
             try:
                 CategoryService.create(name=name)
             except ValueError as e:
-                QMessageBox.warning(self, _t("common.error"), str(e))
+                logger.warning("Failed to create root category %s: %s", name, e)
+                QMessageBox.warning(self, _t("common.error"), translate_error(str(e)))
                 return
             self.load_categories()
 
@@ -168,7 +174,8 @@ class CategoryTreeDialog(QDialog):
             try:
                 CategoryService.create(name=name, parent_id=parent_id)
             except ValueError as e:
-                QMessageBox.warning(self, _t("common.error"), str(e))
+                logger.warning("Failed to create subcategory %s under %s: %s", name, parent_id, e)
+                QMessageBox.warning(self, _t("common.error"), translate_error(str(e)))
                 return
             self.load_categories()
 
@@ -184,7 +191,8 @@ class CategoryTreeDialog(QDialog):
             try:
                 CategoryService.update(category_id, name=name)
             except ValueError as e:
-                QMessageBox.warning(self, _t("common.error"), str(e))
+                logger.warning("Failed to update category %s: %s", category_id, e)
+                QMessageBox.warning(self, _t("common.error"), translate_error(str(e)))
                 return
             self.load_categories()
 
@@ -197,7 +205,8 @@ class CategoryTreeDialog(QDialog):
             try:
                 CategoryService.update(category_id, color=color.name())
             except ValueError as e:
-                QMessageBox.warning(self, _t("common.error"), str(e))
+                logger.warning("Failed to update category color %s: %s", category_id, e)
+                QMessageBox.warning(self, _t("common.error"), translate_error(str(e)))
                 return
             self.load_categories()
 
@@ -217,7 +226,8 @@ class CategoryTreeDialog(QDialog):
             try:
                 CategoryService.delete(category_id)
             except ValueError as e:
-                QMessageBox.warning(self, _t("common.error"), str(e))
+                logger.warning("Failed to delete category %s: %s", category_id, e)
+                QMessageBox.warning(self, _t("common.error"), translate_error(str(e)))
                 return
             self.load_categories()
 

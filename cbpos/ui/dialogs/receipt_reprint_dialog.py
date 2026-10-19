@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.sale_query_service import SaleQueryService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.formatters import format_currency, format_datetime
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.resources.icons import Icons
@@ -161,7 +161,7 @@ class ReceiptReprintDialog(QDialog):
             self.results_table.setItem(row, 0, QTableWidgetItem(str(sale.id)))
             self.results_table.setItem(row, 1, QTableWidgetItem(sale.document_number or f"#{sale.id}"))
 
-            date_str = sale.date.strftime("%Y-%m-%d %H:%M") if sale.date else "N/A"
+            date_str = format_datetime(sale.date) if sale.date else "N/A"
             self.results_table.setItem(row, 2, QTableWidgetItem(date_str))
 
             customer_name = sale.customer.name if sale.customer else _t("receipt_reprint.walk_in")
@@ -192,8 +192,8 @@ class ReceiptReprintDialog(QDialog):
             # ReceiptOptionsDialog.print_thermal() does.
             try:
                 worker.error_occurred.disconnect(self._on_reprint_error)
-            except TypeError:
-                pass  # not connected yet
+            except TypeError as e:
+                logger.debug("Signal not connected yet: %s", e)
             with contextlib.suppress(TypeError):
                 worker.job_completed.disconnect(self._on_reprint_finished)
             worker.error_occurred.connect(self._on_reprint_error)

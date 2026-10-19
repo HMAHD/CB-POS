@@ -16,7 +16,7 @@ from cbpos.core.services.config_service import ConfigService
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class HardwareTestResult:
     """Outcome of a hardware test.
 

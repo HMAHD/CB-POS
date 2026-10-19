@@ -36,7 +36,7 @@ _WIDTH = A4[0] - 2 * _MARGIN  # 180 mm of usable width
 _BRANDING = "Powered by CB POS — ceybyte.com"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class InvoiceLine:
     """One line of the invoice, as printed.
 
@@ -55,7 +55,7 @@ class InvoiceLine:
     amount: Decimal
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class InvoiceTotals:
     """The invoice's totals block.
 

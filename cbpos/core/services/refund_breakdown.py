@@ -25,7 +25,7 @@ def refund_cash_back(total: Decimal, credit_reversed: Decimal) -> Decimal:
     return max(total - credit_reversed, ZERO_MONEY)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RefundBreakdown:
     """The split the refund screens show before and after a full refund.
 

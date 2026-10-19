@@ -25,7 +25,7 @@ from cbpos.core.models import Sale
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SaleCompleted:
     """A sale was committed.
 
@@ -41,7 +41,7 @@ class SaleCompleted:
     payment_methods: tuple[str, ...]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RefundCompleted:
     """A refund was committed.
 

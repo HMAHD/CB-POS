@@ -18,7 +18,7 @@ from cbpos.core.services.stock_service import StockService
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class VarianceTotals:
     """A stock count's two value-variance figures (#644).
 

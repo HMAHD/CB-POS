@@ -145,7 +145,7 @@ _ORIGIN_COLUMNS: dict[str, tuple[str, tuple[str, ...]]] = {
 }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _LedgerBalance:
     """A Main-owned figure that a till's ledger rows move (#678, #716)."""
 

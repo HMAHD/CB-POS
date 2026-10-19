@@ -13,7 +13,7 @@ import pandas as pd
 from cbpos.core.services.data_export_service import DataExportService
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ExportType:
     """One kind of data the Export tab can write out (#697).
 
@@ -30,7 +30,7 @@ class ExportType:
     needs_dates: bool = False
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ExportFormat:
     """A file format the Export tab offers."""
 

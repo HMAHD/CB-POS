@@ -790,11 +790,16 @@ class DocumentBrowserView(QWidget):
         doc_type = self.current_doc.get("type", "")
 
         try:
+            if hasattr(self, "reprint_btn"):
+                self.reprint_btn.setEnabled(False)
             if doc_type == "sale":
                 sale = SaleQueryService.get_sale_details(self.current_doc["id"])
                 if sale:
                     self._connect_print_signals()
                     PrinterService.print_receipt(sale, is_reprint=True)
+                else:
+                    if hasattr(self, "reprint_btn"):
+                        self.reprint_btn.setEnabled(True)
             elif doc_type == "proforma":
                 from cbpos.core.services.receipt_builder import ReceiptBuilder
 
@@ -803,7 +808,12 @@ class DocumentBrowserView(QWidget):
                     commands = ReceiptBuilder.build_proforma(proforma)
                     worker = self._connect_print_signals()
                     worker.add_job("print_commands", commands)
+                else:
+                    if hasattr(self, "reprint_btn"):
+                        self.reprint_btn.setEnabled(True)
             else:
+                if hasattr(self, "reprint_btn"):
+                    self.reprint_btn.setEnabled(True)
                 QMessageBox.information(
                     self,
                     _t("document_browser.info_title"),
@@ -811,6 +821,8 @@ class DocumentBrowserView(QWidget):
                 )
 
         except Exception as e:
+            if hasattr(self, "reprint_btn"):
+                self.reprint_btn.setEnabled(True)
             QMessageBox.critical(
                 self,
                 _t("common.error"),
@@ -830,6 +842,7 @@ class DocumentBrowserView(QWidget):
         same way ReceiptOptionsDialog.print_thermal() does.
         """
         worker = PrintWorker.instance()
+        self._print_worker = worker
         try:
             worker.error_occurred.disconnect(self._on_reprint_error)
         except TypeError as e:
@@ -842,16 +855,21 @@ class DocumentBrowserView(QWidget):
 
     def _on_reprint_finished(self) -> None:
         """Called once the queued print job actually completes."""
-        doc_type = self.current_doc.get("type", "")
+        if hasattr(self, "reprint_btn"):
+            self.reprint_btn.setEnabled(True)
+        doc_type = self.current_doc.get("type", "") if self.current_doc else ""
         key = "receipt_sent_to_printer" if doc_type == "sale" else "quotation_sent_to_printer"
+        doc_num = self.current_doc.get("document_number", "") if self.current_doc else ""
         QMessageBox.information(
             self,
             _t("common.success"),
-            _t(f"document_browser.{key}", doc_number=self.current_doc["document_number"]),
+            _t(f"document_browser.{key}", doc_number=doc_num),
         )
 
     def _on_reprint_error(self, message: str) -> None:
         """Called if the queued print job actually fails (e.g. no printer configured)."""
+        if hasattr(self, "reprint_btn"):
+            self.reprint_btn.setEnabled(True)
         logger.error("Reprint failed: %s", message)
         QMessageBox.critical(self, _t("common.error"), _t("document_browser.reprint_failed"))
 

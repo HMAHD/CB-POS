@@ -354,6 +354,7 @@ class HistoryView(QWidget):
 
         try:
             worker = PrintWorker.instance()
+            self._print_worker = worker
             # PrintWorker.add_job() only queues the job -- the print itself
             # happens later, asynchronously, on the worker thread. Showing
             # "success" right after add_job() (the old behavior) meant the
@@ -370,13 +371,19 @@ class HistoryView(QWidget):
             worker.error_occurred.connect(self._on_reprint_error)
             worker.job_completed.connect(self._on_reprint_finished)
 
+            if hasattr(self, "reprint_btn"):
+                self.reprint_btn.setEnabled(False)
             PrinterService.print_receipt(self.current_sale, is_reprint=True)
         except Exception as e:
+            if hasattr(self, "reprint_btn"):
+                self.reprint_btn.setEnabled(True)
             logger.error("Reprint failed: %s", e)
             QMessageBox.critical(self, _t("common.error"), _t("history.reprint_failed"))
 
     def _on_reprint_finished(self) -> None:
         """Called once the queued print job actually completes."""
+        if hasattr(self, "reprint_btn"):
+            self.reprint_btn.setEnabled(True)
         QMessageBox.information(
             self,
             _t("common.success"),
@@ -385,6 +392,8 @@ class HistoryView(QWidget):
 
     def _on_reprint_error(self, message: str) -> None:
         """Called if the queued print job actually fails (e.g. no printer configured)."""
+        if hasattr(self, "reprint_btn"):
+            self.reprint_btn.setEnabled(True)
         logger.error("Reprint failed: %s", message)
         QMessageBox.critical(self, _t("common.error"), _t("history.reprint_failed"))
 

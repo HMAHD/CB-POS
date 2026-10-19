@@ -175,6 +175,7 @@ class ReceiptOptionsDialog(QDialog):
         """Print receipt via thermal printer. Auto-closes on success, shows retry on failure."""
         try:
             worker = PrintWorker.instance()
+            self._print_worker = worker
 
             # PrintWorker.instance() is one shared, persistent object for
             # the app's lifetime, and the Retry button on _on_print_error
@@ -193,10 +194,12 @@ class ReceiptOptionsDialog(QDialog):
             worker.error_occurred.connect(self._on_print_error)
             worker.job_completed.connect(self._on_print_finished)
 
+            self.btn_print.setEnabled(False)
             # Same ReceiptBuilder commands the Preview shows, with the
             # configured number of copies, as one job.
             PrinterService.print_receipt(self.sale)
         except Exception as e:
+            self.btn_print.setEnabled(True)
             logger.error("Receipt print failed: %s", e)
             QMessageBox.warning(
                 self,
@@ -206,15 +209,17 @@ class ReceiptOptionsDialog(QDialog):
 
     def _on_print_finished(self) -> None:
         """Auto-close the dialog when the print job completes successfully."""
+        self.btn_print.setEnabled(True)
         self.accept()
 
     def _on_print_error(self, message: str) -> None:
         """Show print error with Retry/Skip options."""
+        self.btn_print.setEnabled(True)
         logger.error("Receipt print failed: %s", message)
         msg_box = QMessageBox(self)
         msg_box.setWindowTitle(_t("receipt_options.print_error_title"))
         msg_box.setIcon(QMessageBox.Icon.Warning)
-        msg_box.setText(_t("receipt_options.print_error_message", error=message))
+        msg_box.setText(_t("receipt_options.print_error_message", error=translate_error(message)))
         retry_btn = msg_box.addButton(_t("receipt_options.print_error_retry"), QMessageBox.ButtonRole.AcceptRole)
         msg_box.addButton(_t("receipt_options.print_error_skip"), QMessageBox.ButtonRole.RejectRole)
         msg_box.exec()

@@ -26,6 +26,13 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.formatters import format_currency, get_currency_symbol
 from cbpos.i18n import _t
+from cbpos.ui.resources.icons import Icons
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
@@ -118,7 +125,17 @@ class AdvancedSearchDialog(QDialog):
         self.table.setObjectName("SearchResultsTable")
         self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels(["", "", "", "", ""])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        attach_table_empty_state(self.table, Icons.SEARCH, "common.no_items")
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
@@ -172,6 +189,7 @@ class AdvancedSearchDialog(QDialog):
                 _t("advanced_search.header_category"),
             ]
         )
+        align_numeric_headers(self.table, (2, 3))
         self.lbl_count.setText(_t("advanced_search.result_count", count=0))
         self.btn_select.setText(_t("advanced_search.btn_select"))
         self.btn_cancel.setText(_t("advanced_search.btn_cancel"))
@@ -230,12 +248,12 @@ class AdvancedSearchDialog(QDialog):
             self.table.setItem(row, 1, barcode_item)
 
             stock_item = QTableWidgetItem(f"{float(product.stock_qty):.2f}")
-            stock_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            stock_item.setTextAlignment(NUMERIC_ALIGNMENT)
             stock_item.setForeground(text_brush)
             self.table.setItem(row, 2, stock_item)
 
             price_item = QTableWidgetItem(format_currency(product.price))
-            price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            price_item.setTextAlignment(NUMERIC_ALIGNMENT)
             price_item.setForeground(text_brush)
             self.table.setItem(row, 3, price_item)
 

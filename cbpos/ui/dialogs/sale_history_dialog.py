@@ -26,8 +26,17 @@ from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.formatters import format_currency, format_relative_time
 from cbpos.i18n import _t
 from cbpos.ui.refund_messages import refund_confirm_text, refund_done_text
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, SUCCESS, WARNING, status_color
-from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    RelativeTimeTableWidgetItem,
+    StatusPillDelegate,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+    set_status_pill,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -101,11 +110,19 @@ class SaleHistoryDialog(QDialog):
         self.sales_table.setAlternatingRowColors(True)
         self.sales_table.verticalHeader().setVisible(False)
         self.sales_table.horizontalHeader().setStretchLastSection(False)
-        self.sales_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.sales_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.sales_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.sales_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.sales_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        configure_table_columns(
+            self.sales_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.Stretch,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        align_numeric_headers(self.sales_table.horizontalHeader(), (3,))
+        self.sales_table.setItemDelegateForColumn(4, StatusPillDelegate(self.sales_table))
+        attach_table_empty_state(self.sales_table, Icons.SALES, "sale_history.no_sales_found")
         self.sales_table.currentItemChanged.connect(self._on_sale_selected)
         self.splitter.addWidget(self.sales_table)
 
@@ -168,10 +185,17 @@ class SaleHistoryDialog(QDialog):
         self.items_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.items_table.setAlternatingRowColors(True)
         self.items_table.verticalHeader().setVisible(False)
-        self.items_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.items_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.items_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.items_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        configure_table_columns(
+            self.items_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        align_numeric_headers(self.items_table.horizontalHeader(), (1, 2, 3))
+        attach_table_empty_state(self.items_table, Icons.SALES, "common.no_items")
         details_layout.addWidget(self.items_table)
 
         self.splitter.addWidget(self.details_widget)
@@ -274,6 +298,7 @@ class SaleHistoryDialog(QDialog):
                 _t("sale_history.col_status"),
             ]
         )
+        align_numeric_headers(self.sales_table.horizontalHeader(), (3,))
 
         self.lbl_details_title.setText(_t("sale_history.sale_details"))
         self.lbl_select_prompt.setText(_t("sale_history.select_sale_prompt"))
@@ -286,6 +311,7 @@ class SaleHistoryDialog(QDialog):
                 _t("sale_history.col_subtotal"),
             ]
         )
+        align_numeric_headers(self.items_table.horizontalHeader(), (1, 2, 3))
 
         self.btn_reprint.setText(_t("sale_history.btn_reprint"))
         self.btn_refund.setText(_t("sale_history.btn_refund"))
@@ -382,19 +408,25 @@ class SaleHistoryDialog(QDialog):
 
             # Total (right-aligned)
             total_item = QTableWidgetItem(format_currency(sale.total_amount))
-            total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            total_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.sales_table.setItem(row, 3, total_item)
 
             # Status (colored)
             status = sale.status or "COMPLETED"
-            status_item = QTableWidgetItem(self._get_status_display(status))
+            status_text = self._get_status_display(status)
+            status_item = QTableWidgetItem(status_text)
 
             if status == "COMPLETED":
                 status_item.setForeground(status_color(SUCCESS))
+                set_status_pill(status_item, status_text, "success")
             elif status == "VOID":
                 status_item.setForeground(status_color(DANGER))
+                set_status_pill(status_item, status_text, "danger")
             elif sale.payment_method == "REFUND":
                 status_item.setForeground(status_color(WARNING))
+                set_status_pill(status_item, status_text, "warning")
+            else:
+                set_status_pill(status_item, status_text, "neutral")
 
             status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.sales_table.setItem(row, 4, status_item)
@@ -462,14 +494,17 @@ class SaleHistoryDialog(QDialog):
 
             product_name = item.product.name_en if item.product else "?"
             self.items_table.setItem(r, 0, QTableWidgetItem(product_name))
-            self.items_table.setItem(r, 1, QTableWidgetItem(str(item.qty)))
+
+            qty_item = QTableWidgetItem(str(item.qty))
+            qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.items_table.setItem(r, 1, qty_item)
 
             price_item = QTableWidgetItem(format_currency(item.unit_price))
-            price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            price_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.items_table.setItem(r, 2, price_item)
 
             sub_item = QTableWidgetItem(format_currency(item.subtotal))
-            sub_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            sub_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.items_table.setItem(r, 3, sub_item)
 
         # Enable/disable action buttons

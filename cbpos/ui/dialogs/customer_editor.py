@@ -29,9 +29,17 @@ from cbpos.core.services.price_list_service import (
 from cbpos.core.services.tax_service import TaxService
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING
 from cbpos.ui.utils.layout_helpers import make_scrollable_container, protect_vertical_sizing
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
-from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem, align_numeric_headers
+from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    RelativeTimeTableWidgetItem,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 COMMERCIAL_FIELD_MIN_WIDTH = 220
@@ -210,7 +218,16 @@ class CustomerEditor(QDialog):
                 _t("customer_editor.contacts_header_email"),
             ]
         )
-        self.contact_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.contact_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        attach_table_empty_state(self.contact_table, Icons.CUSTOMERS, "common.no_items")
         self.contact_table.setAlternatingRowColors(True)
         layout.addWidget(self.contact_table)
 
@@ -306,12 +323,19 @@ class CustomerEditor(QDialog):
         self.points_history_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.points_history_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.points_history_table.setAlternatingRowColors(True)
-        self.points_history_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.points_history_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.points_history_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.points_history_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.points_history_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.points_history_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.Stretch,
+            },
+        )
         align_numeric_headers(self.points_history_table, [2, 3])
+        self.points_history_table.setItemDelegateForColumn(1, StatusPillDelegate(self.points_history_table))
+        attach_table_empty_state(self.points_history_table, Icons.POINTS, "common.no_items")
         layout.addWidget(self.points_history_table)
 
         return widget
@@ -350,10 +374,6 @@ class CustomerEditor(QDialog):
         self.points_history_table.setRowCount(0)
 
         if not history:
-            self.points_history_table.setRowCount(1)
-            item = QTableWidgetItem(_t("customer_editor.no_points_history"))
-            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.points_history_table.setItem(0, 4, item)
             return
 
         for entry in history:
@@ -364,24 +384,33 @@ class CustomerEditor(QDialog):
             self.points_history_table.setItem(row, 0, QTableWidgetItem(date_str))
 
             type_label = entry.entry_type or ""
-            if type_label == "EARN":
+            raw_type = (entry.entry_type or "").upper()
+            if raw_type == "EARN":
                 type_label = _t("customer_editor.points_type_earn")
-            elif type_label == "REVERSAL":
+                meaning = SUCCESS
+            elif raw_type in ("REVERSAL", "REDEEM"):
                 type_label = _t("customer_editor.points_type_reversal")
-            elif type_label == "ADJUSTMENT":
+                meaning = WARNING
+            elif raw_type == "ADJUSTMENT":
                 type_label = _t("customer_editor.points_type_adjustment")
-            elif type_label == "OPENING":
+                meaning = INFO
+            elif raw_type == "OPENING":
                 type_label = "Opening Points"
+                meaning = NEUTRAL
+            else:
+                meaning = NEUTRAL
 
-            self.points_history_table.setItem(row, 1, QTableWidgetItem(type_label))
+            type_item = QTableWidgetItem(type_label)
+            set_status_pill(type_item, type_label, meaning)
+            self.points_history_table.setItem(row, 1, type_item)
 
             pts_str = f"+{entry.points}" if entry.points > 0 else str(entry.points)
             item_pts = QTableWidgetItem(pts_str)
-            item_pts.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            item_pts.setTextAlignment(NUMERIC_ALIGNMENT)
             self.points_history_table.setItem(row, 2, item_pts)
 
             item_bal = QTableWidgetItem(str(entry.balance_after))
-            item_bal.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            item_bal.setTextAlignment(NUMERIC_ALIGNMENT)
             self.points_history_table.setItem(row, 3, item_bal)
 
             reason_str = entry.note or ""
@@ -405,7 +434,19 @@ class CustomerEditor(QDialog):
                 _t("customer_editor.history_header_payment"),
             ]
         )
-        self.history_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.history_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.Stretch,
+            },
+        )
+        align_numeric_headers(self.history_table, [2])
+        self.history_table.setItemDelegateForColumn(3, StatusPillDelegate(self.history_table))
+        attach_table_empty_state(self.history_table, Icons.HISTORY, "common.no_items")
         self.history_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.history_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.history_table.setAlternatingRowColors(True)
@@ -436,9 +477,15 @@ class CustomerEditor(QDialog):
             self.history_table.setItem(row, 0, RelativeTimeTableWidgetItem(sale.date))
 
             self.history_table.setItem(row, 1, QTableWidgetItem(str(sale.id)))
-            self.history_table.setItem(row, 2, QTableWidgetItem(f"{sale.total_amount:.2f}"))
+            total_item = QTableWidgetItem(f"{sale.total_amount:.2f}")
+            total_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.history_table.setItem(row, 2, total_item)
 
             status_item = QTableWidgetItem(sale.status)
+            meaning = (
+                SUCCESS if sale.status in ("COMPLETED", "PAID") else (DANGER if sale.status == "VOID" else NEUTRAL)
+            )
+            set_status_pill(status_item, sale.status, meaning)
             if sale.status == "VOID":
                 status_item.setData(Qt.ItemDataRole.UserRole, "VOID")
             elif sale.status == "COMPLETED":  # Assuming COMPLETED is PAID equivalent

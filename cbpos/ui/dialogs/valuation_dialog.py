@@ -13,9 +13,16 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.report_service import ReportService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, SUCCESS, status_color
 from cbpos.ui.utils.layout_helpers import protect_vertical_sizing
 from cbpos.ui.widgets.dialog_footer import make_close_footer
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 
 
 class ValuationDialog(QDialog):
@@ -77,10 +84,21 @@ class ValuationDialog(QDialog):
                 _t("valuation.col_profit"),
             ]
         )
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        align_numeric_headers(self.table.horizontalHeader(), (1, 2, 3, 4))
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.setObjectName("ValuationTable")
+        attach_table_empty_state(self.table, Icons.INVENTORY, "common.no_items")
         layout.addWidget(self.table)
 
         # Close Button
@@ -142,22 +160,22 @@ class ValuationDialog(QDialog):
 
             # Product Count
             count_item = QTableWidgetItem(str(item["product_count"]))
-            count_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            count_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.table.setItem(row, 1, count_item)
 
             # Cost Value
             cost_item = QTableWidgetItem(format_currency(item["cost_value"]))
-            cost_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            cost_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.table.setItem(row, 2, cost_item)
 
             # Retail Value
             retail_item = QTableWidgetItem(format_currency(item["retail_value"]))
-            retail_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            retail_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.table.setItem(row, 3, retail_item)
 
             # Profit
             profit_item = QTableWidgetItem(format_currency(item["profit"]))
-            profit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            profit_item.setTextAlignment(NUMERIC_ALIGNMENT)
 
             # Color based on profit
             if item["profit"] >= 0:

@@ -11,8 +11,17 @@ from PyQt6.QtWidgets import (
 from cbpos.core.models import Product
 from cbpos.core.services.stock_service import StockService
 from cbpos.i18n import _t
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, SUCCESS, status_color
-from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    RelativeTimeTableWidgetItem,
+    StatusPillDelegate,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+    set_status_pill,
+)
 
 
 class StockHistoryDialog(QDialog):
@@ -52,8 +61,21 @@ class StockHistoryDialog(QDialog):
                 _t("stock_history.balance"),
             ]
         )
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.Stretch,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.ResizeToContents,
+                5: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        align_numeric_headers(self.table.horizontalHeader(), (4, 5))
+        self.table.setItemDelegateForColumn(1, StatusPillDelegate(self.table))
         self.table.setAlternatingRowColors(True)
+        attach_table_empty_state(self.table, Icons.INVENTORY, "common.no_items")
         layout.addWidget(self.table)
 
         # Close Button
@@ -74,6 +96,13 @@ class StockHistoryDialog(QDialog):
             "RETURN": _t("stock_history.type_return"),
             "VOID": _t("stock_history.type_void"),
         }
+        type_meanings = {
+            "SALE": "neutral",
+            "PURCHASE": "success",
+            "ADJUSTMENT": "info",
+            "RETURN": "warning",
+            "VOID": "danger",
+        }
 
         for move in history:
             row = self.table.rowCount()
@@ -81,18 +110,25 @@ class StockHistoryDialog(QDialog):
 
             self.table.setItem(row, 0, RelativeTimeTableWidgetItem(move.timestamp))
 
-            self.table.setItem(row, 1, QTableWidgetItem(type_labels.get(move.type, move.type)))
+            type_text = type_labels.get(move.type, move.type)
+            type_item = QTableWidgetItem(type_text)
+            set_status_pill(type_item, type_text, type_meanings.get(move.type, "neutral"))
+            self.table.setItem(row, 1, type_item)
+
             self.table.setItem(row, 2, QTableWidgetItem(move.document.document_number if move.document else ""))
 
             user_name = move.user.username if move.user else _t("stock_history.system")
             self.table.setItem(row, 3, QTableWidgetItem(user_name))
 
-            # Change Column (Color Coded)
+            # Change Column (Color Coded & Numeric Alignment)
             change_item = QTableWidgetItem(f"{move.qty_change:+.3f}")
             if move.qty_change > 0:
                 change_item.setForeground(status_color(SUCCESS))
             elif move.qty_change < 0:
                 change_item.setForeground(status_color(DANGER))
+            change_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.table.setItem(row, 4, change_item)
 
-            self.table.setItem(row, 5, QTableWidgetItem(f"{move.balance_after:.3f}"))
+            bal_item = QTableWidgetItem(f"{move.balance_after:.3f}")
+            bal_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.table.setItem(row, 5, bal_item)

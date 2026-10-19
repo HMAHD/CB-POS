@@ -36,6 +36,7 @@ from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
+    attach_table_empty_state,
     configure_table_columns,
 )
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
@@ -232,6 +233,7 @@ class BulkPriceAdjustDialog(QDialog):
         self.table_preview.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table_preview.setAlternatingRowColors(True)
         self.table_preview.verticalHeader().setVisible(False)
+        attach_table_empty_state(self.table_preview, Icons.PRICE_LIST, "common.no_items")
         main_layout.addWidget(self.table_preview, 1)
 
         # ── Footer ──

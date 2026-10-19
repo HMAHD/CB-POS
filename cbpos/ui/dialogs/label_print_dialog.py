@@ -31,7 +31,14 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.utils.layout_helpers import protect_vertical_sizing
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -128,12 +135,18 @@ class LabelPrintDialog(QDialog):
                 _t("label_print.col_qty"),
             ]
         )
-        header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        configure_table_columns(
+            self.table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.Fixed,
+            },
+        )
         self.table.setColumnWidth(3, 100)
+        align_numeric_headers(self.table, (2,))
+        attach_table_empty_state(self.table, Icons.PRINT, "common.no_items")
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setAlternatingRowColors(True)
 
@@ -260,7 +273,16 @@ class LabelPrintDialog(QDialog):
                 _t("label_print.col_price"),
             ]
         )
-        tbl.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            tbl.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        align_numeric_headers(tbl, (2,))
+        attach_table_empty_state(tbl, Icons.SEARCH, "common.no_items")
         tbl.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         tbl.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         tbl.setAlternatingRowColors(True)
@@ -270,7 +292,9 @@ class LabelPrintDialog(QDialog):
             tbl.insertRow(row)
             tbl.setItem(row, 0, QTableWidgetItem(p.name_en))
             tbl.setItem(row, 1, QTableWidgetItem(p.barcode))
-            tbl.setItem(row, 2, QTableWidgetItem(format_currency(p.price)))
+            price_item = QTableWidgetItem(format_currency(p.price))
+            price_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            tbl.setItem(row, 2, price_item)
 
         tbl.doubleClicked.connect(dlg.accept)
         lay.addWidget(tbl)
@@ -311,6 +335,8 @@ class LabelPrintDialog(QDialog):
                 (2, format_currency(item["product"].price)),
             ):
                 cell = QTableWidgetItem(text)
+                if col == 2:
+                    cell.setTextAlignment(NUMERIC_ALIGNMENT)
                 cell.setFlags(cell.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 self.table.setItem(row, col, cell)
 

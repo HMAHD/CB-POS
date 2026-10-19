@@ -30,7 +30,15 @@ from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.resources.icons import Icons
-from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem, align_numeric_headers
+from cbpos.ui.resources.status_colors import INFO, NEUTRAL, SUCCESS, WARNING
+from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    RelativeTimeTableWidgetItem,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
@@ -217,7 +225,19 @@ class CustomerStatementDialog(QDialog):
                 _t("customer_statement.col_balance"),
             ]
         )
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.Stretch,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.ResizeToContents,
+                5: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        self.table.setItemDelegateForColumn(1, StatusPillDelegate(self.table))
+        attach_table_empty_state(self.table, Icons.DOCUMENTS, "customer_statement.no_transactions")
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
@@ -303,11 +323,6 @@ class CustomerStatementDialog(QDialog):
         self.table.setRowCount(0)
         entries = data["entries"]
         if not entries:
-            # Show empty state in table
-            self.table.setRowCount(1)
-            item = QTableWidgetItem(_t("customer_statement.no_transactions"))
-            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(0, 2, item)
             return
 
         for entry in entries:
@@ -315,22 +330,34 @@ class CustomerStatementDialog(QDialog):
             self.table.insertRow(row)
 
             self.table.setItem(row, 0, RelativeTimeTableWidgetItem(entry["date"], fmt="%Y-%m-%d"))
-            self.table.setItem(row, 1, QTableWidgetItem(entry["type"]))
+            type_str = entry["type"]
+            meaning = (
+                SUCCESS
+                if type_str in ("PAYMENT", "CREDIT")
+                else (
+                    WARNING
+                    if type_str in ("SALE", "INVOICE", "DEBIT")
+                    else (INFO if type_str in ("ADJUSTMENT", "REFUND") else NEUTRAL)
+                )
+            )
+            type_item = QTableWidgetItem(type_str)
+            set_status_pill(type_item, type_str, meaning)
+            self.table.setItem(row, 1, type_item)
             self.table.setItem(row, 2, QTableWidgetItem(entry["description"]))
 
             debit_str = format_currency(entry["debit"]) if entry["debit"] > 0 else ""
             credit_str = format_currency(entry["credit"]) if entry["credit"] > 0 else ""
 
             item_debit = QTableWidgetItem(debit_str)
-            item_debit.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            item_debit.setTextAlignment(NUMERIC_ALIGNMENT)
             self.table.setItem(row, 3, item_debit)
 
             item_credit = QTableWidgetItem(credit_str)
-            item_credit.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            item_credit.setTextAlignment(NUMERIC_ALIGNMENT)
             self.table.setItem(row, 4, item_credit)
 
             item_balance = QTableWidgetItem(format_currency(entry["balance"]))
-            item_balance.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            item_balance.setTextAlignment(NUMERIC_ALIGNMENT)
             self.table.setItem(row, 5, item_balance)
 
     def _print_thermal(self) -> None:

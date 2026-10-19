@@ -22,6 +22,13 @@ from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.ui.resources.icons import Icons
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
@@ -88,10 +95,18 @@ class ReceiptReprintDialog(QDialog):
             ]
         )
         self.results_table.setColumnHidden(0, True)
-        self.results_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.results_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.results_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        self.results_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        configure_table_columns(
+            self.results_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,
+                1: QHeaderView.ResizeMode.Stretch,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.Stretch,
+                4: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        align_numeric_headers(self.results_table, (4,))
+        attach_table_empty_state(self.results_table, Icons.PRINT, "common.no_items")
         self.results_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.results_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.results_table.setAlternatingRowColors(True)
@@ -152,7 +167,9 @@ class ReceiptReprintDialog(QDialog):
             customer_name = sale.customer.name if sale.customer else _t("receipt_reprint.walk_in")
             self.results_table.setItem(row, 3, QTableWidgetItem(customer_name))
 
-            self.results_table.setItem(row, 4, QTableWidgetItem(format_currency(sale.total_amount)))
+            total_item = QTableWidgetItem(format_currency(sale.total_amount))
+            total_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.results_table.setItem(row, 4, total_item)
 
     def reprint_selected(self) -> None:
         """Reprint receipt for the selected sale."""

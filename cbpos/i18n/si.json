@@ -2850,6 +2850,7 @@
     "btn_confirm_refund": "ආපසු ගෙවීම තහවුරු කරන්න",
     "btn_cancel_refund": "අවලංගු",
     "no_sales_found": "මේ කාලය තුළ විකුණුම් හම්බ වුනේ නැහැ.",
+    "sales_found": "විකුණුම් {count}ක් හමු විය",
     "walk_in": "සාමාන්‍ය පාරිභෝගික",
     "status_completed": "සම්පූර්ණ",
     "status_void": "අවලංගු",

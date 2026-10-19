@@ -4831,9 +4831,20 @@ QTableWidget#SaleHistoryTable {
     selection-color: #FFFFFF;
 }
 
-/* Details Panel */
-QWidget#SaleHistoryDetails {
-    background-color: #1E1E1E;
+/* Details Panel & Receipt Inspector */
+QFrame#SaleHistoryDetails {
+    background-color: #252526;
+    border: 1px solid #3E3E42;
+    border-radius: 6px;
+}
+
+QScrollArea#SaleReceiptScroll {
+    background: transparent;
+    border: none;
+}
+
+QScrollArea#SaleReceiptScroll > QWidget > QWidget {
+    background: transparent;
 }
 
 QFrame#SaleInfoFrame {

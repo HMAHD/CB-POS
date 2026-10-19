@@ -2850,6 +2850,7 @@
     "btn_confirm_refund": "Confirm Refund",
     "btn_cancel_refund": "Cancel",
     "no_sales_found": "No sales found for this period.",
+    "sales_found": "{count} sales found",
     "walk_in": "Walk-in",
     "status_completed": "Completed",
     "status_void": "Void",

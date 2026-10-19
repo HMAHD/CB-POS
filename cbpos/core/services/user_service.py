@@ -48,7 +48,6 @@ class UserService:
                     details=f"User {user_id} updated profile. PIN Changed: {bool(new_pin)}",
                 )
                 session.add(log)
-                session.commit()
                 return True
 
         except Exception as e:
@@ -64,7 +63,6 @@ class UserService:
                 if not admin:
                     return False
                 admin.pin_hash = AuthService.hash_pin(new_pin)
-                session.commit()
                 return True
         except Exception as e:
             logging.error("Update Admin PIN Failed: %s", e)
@@ -149,7 +147,7 @@ class UserService:
 
                 user = User(username=username, pin_hash=pin_hash, role_id=role_id, is_active=True)
                 session.add(user)
-                session.commit()
+                session.flush()
 
                 # Log
                 current_user = AuthService.get_current_user()
@@ -162,7 +160,6 @@ class UserService:
                     details=f"Created user {username}",
                 )
                 session.add(log)
-                session.commit()
                 return True
         except Exception as e:
             logging.error("Create User Failed: %s", e)
@@ -195,7 +192,6 @@ class UserService:
                     details=f"Updated user {username} (ID: {user_id})",
                 )
                 session.add(log)
-                session.commit()
                 return True
         except Exception as e:
             logging.error("Update User Failed: %s", e)

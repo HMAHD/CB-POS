@@ -437,7 +437,6 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
                     records_applied, errors = applier.apply_batch(payload)
                     balances = applier.balances()
                     id_map = {"customers": applier.customer_id_map()}
-                    session.commit()
                 break  # success — exit retry loop
 
             except StaleDataError as e:
@@ -508,7 +507,6 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             # audit entries and other tills'.
             with _push_apply_lock, db.get_session() as session:
                 records_applied, _ = SyncApplyService(session, terminal_id).apply_batch({"audit_logs": audit_records})
-                session.commit()
 
         except Exception as e:
             logger.error("Audit push failed: %s", e)
@@ -547,7 +545,6 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
                     completed_at=datetime.now(),
                 )
                 session.add(log)
-                session.commit()
         except Exception as e:
             logger.error("Failed to write SyncLog: %s", e)
 

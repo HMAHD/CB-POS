@@ -18,10 +18,11 @@ for -- the easy, obvious thing to reach for instead.
 """
 
 from collections.abc import Iterable
+from contextlib import contextmanager
 from datetime import date, datetime
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QHeaderView, QTableView, QTableWidgetItem
+from PyQt6.QtWidgets import QHeaderView, QTableView, QTableWidget, QTableWidgetItem
 
 from cbpos.core.utils.formatters import format_datetime, format_relative_time
 from cbpos.i18n import _t, register_language_callback, unregister_language_callback
@@ -35,6 +36,32 @@ from cbpos.ui.widgets.status_pill_delegate import (
 # Cells and headers of number columns share this, so a header sits over
 # the right edge of its digits instead of centered above them (#554).
 NUMERIC_ALIGNMENT = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+
+
+@contextmanager
+def batch_table_update(table: QTableWidget | QTableView):
+    """Context manager for batch row updates on QTableWidget or QTableView.
+
+    Disables updates and sorting during bulk insertions to avoid intermediate
+    repaints and redundant sorting, restoring prior states on exit.
+    Refreshes attached EmptyStateWidget if present.
+    """
+    was_updates = table.updatesEnabled()
+    was_sorting = table.isSortingEnabled() if hasattr(table, "isSortingEnabled") else False
+    table.setUpdatesEnabled(False)
+    if hasattr(table, "setSortingEnabled") and was_sorting:
+        table.setSortingEnabled(False)
+    try:
+        yield table
+    finally:
+        if hasattr(table, "setSortingEnabled") and was_sorting:
+            table.setSortingEnabled(True)
+        table.setUpdatesEnabled(was_updates)
+        if hasattr(table, "update_empty_state") and callable(table.update_empty_state):
+            try:
+                table.update_empty_state()
+            except Exception:
+                pass
 
 
 def attach_table_empty_state(
@@ -260,6 +287,7 @@ __all__ = [
     "StatusPillDelegate",
     "align_numeric_headers",
     "attach_table_empty_state",
+    "batch_table_update",
     "configure_table_columns",
     "set_status_pill",
 ]

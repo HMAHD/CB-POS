@@ -7,6 +7,7 @@ from cbpos.ui.widgets.table_helpers import (
     StatusPillDelegate,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
     set_status_pill,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "StatusPillDelegate",
     "align_numeric_headers",
     "attach_table_empty_state",
+    "batch_table_update",
     "configure_table_columns",
     "set_status_pill",
 ]

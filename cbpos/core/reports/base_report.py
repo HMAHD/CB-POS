@@ -28,6 +28,7 @@ CATEGORY_FINANCIAL = "financial"
 CATEGORY_AUDIT = "audit"
 # Fixed business order for the Reports sidebar, Sales first.
 CATEGORY_ORDER = (CATEGORY_SALES, CATEGORY_INVENTORY, CATEGORY_FINANCIAL, CATEGORY_AUDIT)
+_COL_KEY_RE = re.compile(r"[^a-z0-9]+")
 
 
 def category_label(category_id: str) -> str:
@@ -46,7 +47,7 @@ def report_columns(types: dict[str, str]) -> dict[str, dict[str, str]]:
     ``{"Total Sales": {"type": "money", "label_key": "reports.col_total_sales"}}``.
     """
     return {
-        name: {"type": col_type, "label_key": "reports.col_" + re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")}
+        name: {"type": col_type, "label_key": "reports.col_" + _COL_KEY_RE.sub("_", name.lower()).strip("_")}
         for name, col_type in types.items()
     }
 

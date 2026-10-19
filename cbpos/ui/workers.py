@@ -30,6 +30,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_RE_SAFE_FILENAME = re.compile(r"[^\w\-]+")
+
 
 class _BackgroundJobs(QObject):
     """Holds running report workers so no view's lifetime decides theirs.
@@ -613,7 +615,7 @@ class ReportEmailWorker(QThread):
 
         temp_dir = tempfile.mkdtemp(prefix="cbpos_report_")
         try:
-            safe_name = re.sub(r"[^\w\-]+", "_", self.report_name).strip("_") or "report"
+            safe_name = _RE_SAFE_FILENAME.sub("_", self.report_name).strip("_") or "report"
             filepath = os.path.join(temp_dir, f"{safe_name}.pdf")
             try:
                 self.export_service.export_to_pdf(self.df, filepath, self.report_name)

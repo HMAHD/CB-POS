@@ -20,9 +20,15 @@ from cbpos.core.services.promotion_service import SUPPORTED_TYPES, PromotionServ
 from cbpos.core.utils.formatters import format_discount, format_promotion_type
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.promotion_dialog import PromotionDialog
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
-from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 
 __all__ = ["CategoryService", "PromotionDialog", "PromotionView"]
 
@@ -84,6 +90,7 @@ class PromotionView(QWidget):
         )
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setItemDelegateForColumn(6, StatusPillDelegate(self.table))  # Status (#560)
+        self.empty_promotion_state = attach_table_empty_state(self.table, Icons.PROMOTION, "common.no_items")
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.doubleClicked.connect(self.edit_promotion)
         self.table.itemChanged.connect(self._on_table_item_changed)

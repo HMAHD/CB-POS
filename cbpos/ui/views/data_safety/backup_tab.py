@@ -22,9 +22,16 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.core.utils.formatters import format_relative_time
 from cbpos.i18n import _t
 from cbpos.ui.dialogs.backup_password_dialog import BackupPasswordDialog, ensure_backup_password
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.utils.style_helpers import set_status_class
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
-from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    RelativeTimeTableWidgetItem,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 from cbpos.ui.workers import BackupListWorker, BackupWorker
 
 logger = logging.getLogger(__name__)
@@ -128,10 +135,17 @@ class BackupTabWidget(QWidget):
         self.backup_table.verticalHeader().setDefaultSectionSize(48)
         self.backup_table.setAlternatingRowColors(True)
 
-        header = self.backup_table.horizontalHeader()
-        header.setSectionResizeMode(self.COL_FILENAME, QHeaderView.ResizeMode.Stretch)
-        for col in (self.COL_DATE, self.COL_SIZE, self.COL_TYPE):
-            header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+        configure_table_columns(
+            self.backup_table.horizontalHeader(),
+            {
+                self.COL_FILENAME: QHeaderView.ResizeMode.Stretch,
+                self.COL_DATE: QHeaderView.ResizeMode.ResizeToContents,
+                self.COL_SIZE: QHeaderView.ResizeMode.ResizeToContents,
+                self.COL_TYPE: QHeaderView.ResizeMode.ResizeToContents,
+                self.COL_ACTIONS: QHeaderView.ResizeMode.Interactive,
+            },
+        )
+        self.empty_table_state = attach_table_empty_state(self.backup_table, Icons.DOCUMENTS, "common.no_items")
         self.backup_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.backup_table.customContextMenuRequested.connect(self._show_backup_context_menu)
         layout.addWidget(self.backup_table, 1)
@@ -208,7 +222,9 @@ class BackupTabWidget(QWidget):
 
             if b.get("original_size"):
                 size_text = _t("data_safety.size_compressed_from", size=b["size"], original=b["original_size"])
-            self.backup_table.setItem(row, self.COL_SIZE, QTableWidgetItem(size_text))
+            size_item = QTableWidgetItem(size_text)
+            size_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.backup_table.setItem(row, self.COL_SIZE, size_item)
             kind = b.get("type") or ("snapshot" if b.get("is_pre_restore") else "manual")
             self.backup_table.setItem(row, self.COL_TYPE, QTableWidgetItem(_t(self._TYPE_KEYS[kind])))
             actions = self._make_row_actions(row)
@@ -398,6 +414,7 @@ class BackupTabWidget(QWidget):
                 _t("data_safety.backup_header_actions"),
             ]
         )
+        align_numeric_headers(self.backup_table, [self.COL_SIZE])
         self.btn_create_backup.setText(_t("data_safety.btn_create_backup"))
         self.btn_clean_old.setText(_t("data_safety.btn_clean_old"))
         self.btn_backup_refresh.setText(_t("data_safety.btn_refresh"))

@@ -19,7 +19,14 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.purchase_order_service import PurchaseOrderService
 from cbpos.core.services.stock_service import StockService
 from cbpos.i18n import _t, register_language_callback
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, status_color
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 
 
 class ReorderView(QWidget):
@@ -59,9 +66,20 @@ class ReorderView(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.ResizeToContents,
+                5: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.empty_state_widget = attach_table_empty_state(self.table, Icons.REORDER, "common.no_items")
         layout.addWidget(self.table)
 
         # Action Buttons
@@ -96,6 +114,7 @@ class ReorderView(QWidget):
                 _t("reorder.supplier"),
             ]
         )
+        align_numeric_headers(self.table, [2, 3, 4])
 
     def set_user(self, user):
         """Store the logged-in user for use when persisting a Purchase Order."""
@@ -123,19 +142,19 @@ class ReorderView(QWidget):
 
             # Current Stock
             stock_item = QTableWidgetItem(f"{product.stock_qty:.3f}")
-            stock_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            stock_item.setTextAlignment(NUMERIC_ALIGNMENT)
             if product.stock_qty <= 0:
                 stock_item.setForeground(status_color(DANGER))
             self.table.setItem(row, 2, stock_item)
 
             # Reorder Point
             reorder_item = QTableWidgetItem(f"{product.reorder_point:.3f}")
-            reorder_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            reorder_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.table.setItem(row, 3, reorder_item)
 
             # Preferred Qty
             preferred_item = QTableWidgetItem(f"{product.preferred_qty:.3f}")
-            preferred_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            preferred_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.table.setItem(row, 4, preferred_item)
 
             # Supplier (first one if exists) — store its id in UserRole+1

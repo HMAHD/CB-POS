@@ -33,7 +33,12 @@ from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import INFO, NEUTRAL, SUCCESS, status_color
 from cbpos.ui.styles.style_helpers import refresh_style
-from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 
 # Price cells keep their raw Decimal here; the text is display-only (#557).
 PRICE_ROLE = Qt.ItemDataRole.UserRole
@@ -203,15 +208,21 @@ class PriceListView(QWidget):
         self.table = QTableWidget()
         self.table.setObjectName("PriceListDataTable")
         self.table.setColumnCount(4)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        # Prices fit their header, which now carries the currency symbol (#557)
-        for col in (2, 3):
-            self.table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+        configure_table_columns(
+            self.table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,
+                1: QHeaderView.ResizeMode.Stretch,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
         self.table.setColumnHidden(0, True)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
+        self.empty_table_state = attach_table_empty_state(self.table, Icons.PRICE_LIST, "common.no_items")
         self.table.doubleClicked.connect(self.edit_item_price)
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._show_item_context_menu)

@@ -46,11 +46,13 @@ from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.dialogs.void_reason_dialog import VoidReasonDialog
 from cbpos.ui.refund_messages import refund_confirm_html, refund_done_text
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING, pill_colors
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import (
     RelativeTimeTableWidgetItem,
     align_numeric_headers,
+    attach_table_empty_state,
     configure_table_columns,
 )
 
@@ -210,6 +212,7 @@ class DocumentBrowserView(QWidget):
         self.doc_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.doc_table.itemSelectionChanged.connect(self.on_selection_changed)
         self.doc_table.setItemDelegateForColumn(5, StatusPillDelegate(self.doc_table))  # Status (#560)
+        self.empty_doc_state = attach_table_empty_state(self.doc_table, Icons.DOCUMENTS, "common.no_items")
 
         # List and details side by side (#612): the list keeps every row of
         # height, the panel takes the right-hand side only while it's open.
@@ -321,6 +324,7 @@ class DocumentBrowserView(QWidget):
         self.items_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.items_table.setMinimumHeight(self.ITEMS_MIN_HEIGHT)
         self.items_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.empty_items_state = attach_table_empty_state(self.items_table, Icons.INVENTORY, "common.no_items")
         content_layout.addWidget(self.items_table, 1)
         scroll.setWidget(content)
         detail_layout.addWidget(scroll, 1)

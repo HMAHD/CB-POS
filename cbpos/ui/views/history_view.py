@@ -26,8 +26,14 @@ from cbpos.core.utils.formatters import format_currency, format_relative_time
 from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.refund_messages import refund_confirm_html, refund_done_text
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, WARNING, status_color
-from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem
+from cbpos.ui.widgets.table_helpers import (
+    RelativeTimeTableWidgetItem,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -94,12 +100,23 @@ class HistoryView(QWidget):
                 _t("common.status"),
             ]
         )
-        self.transaction_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.transaction_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.transaction_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,
+                1: QHeaderView.ResizeMode.Stretch,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.ResizeToContents,
+                5: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        align_numeric_headers(self.transaction_table, [3])
         self.transaction_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.transaction_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.transaction_table.itemSelectionChanged.connect(self.on_selection_changed)
         self.transaction_table.doubleClicked.connect(self.on_double_click)
+        attach_table_empty_state(self.transaction_table, Icons.SALES, "common.no_items")
         splitter.addWidget(self.transaction_table)
 
         # Details Panel
@@ -127,8 +144,18 @@ class HistoryView(QWidget):
                 _t("history.col_subtotal"),
             ]
         )
-        self.items_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.items_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        align_numeric_headers(self.items_table, [1, 2, 3])
         self.items_table.verticalHeader().setVisible(False)
+        attach_table_empty_state(self.items_table, Icons.INVENTORY, "common.no_items")
         details_layout.addWidget(self.items_table)
 
         # Action Buttons
@@ -171,6 +198,7 @@ class HistoryView(QWidget):
                 _t("common.status"),
             ]
         )
+        align_numeric_headers(self.transaction_table, [3])
 
         # Details panel
         self.details_title_label.setText(f"<b>{_t('history.transaction_details')}</b>")
@@ -189,6 +217,7 @@ class HistoryView(QWidget):
                 _t("history.col_subtotal"),
             ]
         )
+        align_numeric_headers(self.items_table, [1, 2, 3])
 
         # Action buttons
         self.reprint_btn.setText(_t("history.reprint_receipt"))

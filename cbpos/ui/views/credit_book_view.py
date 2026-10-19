@@ -30,9 +30,15 @@ from cbpos.i18n import _t, register_language_callback, t_or
 from cbpos.ui.constants import BAR_MARGIN_H, BAR_MARGIN_V
 from cbpos.ui.dialogs.customer_editor import CustomerEditor
 from cbpos.ui.resources.icons import Icons
-from cbpos.ui.resources.status_colors import DANGER, NEUTRAL, SUCCESS, WARNING, status_color
+from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING, status_color
 from cbpos.ui.utils.style_helpers import refresh_style
-from cbpos.ui.widgets.table_helpers import align_numeric_headers, configure_table_columns
+from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +141,7 @@ class CreditBookView(QWidget):
         self.customer_table.verticalHeader().setVisible(False)
         self.customer_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.customer_table.doubleClicked.connect(self._on_customer_double_click)
+        self.empty_customer_state = attach_table_empty_state(self.customer_table, Icons.CUSTOMERS, "common.no_items")
         # Rows open on double-click / Enter / right-click (#593): say so with the cursor.
         self.customer_table.viewport().setCursor(Qt.CursorShape.PointingHandCursor)
         self.customer_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -486,12 +493,19 @@ class CreditBookView(QWidget):
         self.ledger_table = QTableWidget()
         self.ledger_table.setObjectName("CreditLedgerTable")
         self.ledger_table.setColumnCount(6)
-        self.ledger_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.ledger_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.ledger_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.ledger_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.ledger_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        self.ledger_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        configure_table_columns(
+            self.ledger_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.Stretch,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.ResizeToContents,
+                5: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        self.ledger_table.setItemDelegateForColumn(1, StatusPillDelegate(self.ledger_table))
+        self.empty_ledger_state = attach_table_empty_state(self.ledger_table, Icons.CREDIT_BOOK, "common.no_items")
         self.ledger_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.ledger_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.ledger_table.setAlternatingRowColors(True)
@@ -941,13 +955,18 @@ class CreditBookView(QWidget):
 
             # Type
             type_item = QTableWidgetItem(entry.entry_type)
-            type_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            if entry.entry_type == "SALE":
-                type_item.setForeground(status_color(WARNING))
-            elif entry.entry_type == "PAYMENT":
-                type_item.setForeground(status_color(SUCCESS))
+            type_upper = (entry.entry_type or "").upper()
+            if type_upper == "PAYMENT":
+                meaning = SUCCESS
+            elif type_upper == "SALE":
+                meaning = WARNING
+            elif type_upper == "ADJUSTMENT":
+                meaning = INFO
+            elif type_upper == "OPENING":
+                meaning = NEUTRAL
             else:
-                type_item.setForeground(status_color(NEUTRAL))
+                meaning = NEUTRAL
+            set_status_pill(type_item, entry.entry_type, meaning)
             self.ledger_table.setItem(row, 1, type_item)
 
             # Doc #
@@ -957,7 +976,7 @@ class CreditBookView(QWidget):
             if entry.amount > 0:
                 debit_item = QTableWidgetItem(format_number(entry.amount, 2))
                 debit_item.setForeground(status_color(DANGER))
-                debit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                debit_item.setTextAlignment(NUMERIC_ALIGNMENT)
                 self.ledger_table.setItem(row, 3, debit_item)
                 self.ledger_table.setItem(row, 4, QTableWidgetItem(""))
                 total_debit += entry.amount
@@ -965,13 +984,13 @@ class CreditBookView(QWidget):
                 self.ledger_table.setItem(row, 3, QTableWidgetItem(""))
                 credit_item = QTableWidgetItem(format_number(abs(entry.amount), 2))
                 credit_item.setForeground(status_color(SUCCESS))
-                credit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                credit_item.setTextAlignment(NUMERIC_ALIGNMENT)
                 self.ledger_table.setItem(row, 4, credit_item)
                 total_credit += abs(entry.amount)
 
             # Balance
             balance_item = QTableWidgetItem(format_number(entry.balance_after, 2))
-            balance_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            balance_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.ledger_table.setItem(row, 5, balance_item)
 
             closing_balance = entry.balance_after

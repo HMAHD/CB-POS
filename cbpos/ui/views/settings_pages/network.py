@@ -821,67 +821,54 @@ class NetworkPage(SettingsPage):
             )
             return
 
-        if address.startswith("http://"):
-            address = "https://" + address[len("http://") :]
-        elif not address.startswith("https://"):
-            address = f"https://{address}"
-
         self.lbl_sync_test_status.setText(_t("settings.network.sync_test_testing"))
         self.btn_test_sync.setEnabled(False)
         QApplication.processEvents()
 
-        try:
-            import json
-            import urllib.error
-            import urllib.request
+        from cbpos.ui.workers import SyncTestWorker
 
-            from cbpos.infrastructure.sync_tls import build_client_ssl_context
+        worker = SyncTestWorker(address, self.input_sync_secret.text())
+        self._sync_test_worker = worker
+        worker.finished_result.connect(self._on_sync_test_finished)
+        worker.start()
 
-            url = f"{address}/sync/heartbeat"
-            req = urllib.request.Request(url, method="GET", headers={"X-Sync-Token": self.input_sync_secret.text()})
-            with urllib.request.urlopen(req, timeout=5, context=build_client_ssl_context()) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-
-            if data.get("status") == "ok":
-                version = data.get("protocol_version", "?")
-                terminals = data.get("terminals_connected", 0)
-                self.lbl_sync_test_status.setText(_t("settings.network.sync_test_connected"))
-                QMessageBox.information(
-                    self,
-                    _t("settings.network.sync_success_title"),
-                    _t("settings.network.sync_success_message", version=version, terminals=terminals),
-                )
-            else:
-                self.lbl_sync_test_status.setText(_t("settings.network.sync_test_unexpected"))
-
-        except urllib.error.HTTPError as e:
-            if e.code == 401:
-                self.lbl_sync_test_status.setText(_t("settings.network.sync_test_unauthorized"))
-                QMessageBox.critical(
-                    self,
-                    _t("settings.network.sync_failed_title"),
-                    _t("settings.network.sync_failed_secret_message"),
-                )
-            else:
-                self.lbl_sync_test_status.setText(_t("settings.network.sync_test_failed"))
-                QMessageBox.critical(
-                    self,
-                    _t("settings.network.sync_failed_title"),
-                    _t("settings.network.sync_failed_message", address=address, error=e),
-                )
-        except urllib.error.URLError as e:
+    def _on_sync_test_finished(self, success: bool, outcome: str, info: dict) -> None:
+        """Handle outcome of the background sync server test."""
+        self.btn_test_sync.setEnabled(True)
+        if outcome == "ok":
+            version = info.get("version", "?")
+            terminals = info.get("terminals", 0)
+            self.lbl_sync_test_status.setText(_t("settings.network.sync_test_connected"))
+            QMessageBox.information(
+                self,
+                _t("settings.network.sync_success_title"),
+                _t("settings.network.sync_success_message", version=version, terminals=terminals),
+            )
+        elif outcome == "unauthorized":
+            self.lbl_sync_test_status.setText(_t("settings.network.sync_test_unauthorized"))
+            QMessageBox.critical(
+                self,
+                _t("settings.network.sync_failed_title"),
+                _t("settings.network.sync_failed_secret_message"),
+            )
+        elif outcome == "failed":
             self.lbl_sync_test_status.setText(_t("settings.network.sync_test_failed"))
             QMessageBox.critical(
                 self,
                 _t("settings.network.sync_failed_title"),
-                _t("settings.network.sync_failed_message", address=address, error=e),
+                _t(
+                    "settings.network.sync_failed_message", address=info.get("address", ""), error=info.get("error", "")
+                ),
             )
-        except Exception as e:
-            logger.exception("Sync test error: %s", e)
+        elif outcome == "error":
             self.lbl_sync_test_status.setText(_t("settings.network.sync_test_error"))
-            QMessageBox.critical(self, _t("settings.network.sync_error_title"), translate_error(str(e)))
-        finally:
-            self.btn_test_sync.setEnabled(True)
+            QMessageBox.critical(
+                self,
+                _t("settings.network.sync_error_title"),
+                translate_error(str(info.get("error", ""))),
+            )
+        else:
+            self.lbl_sync_test_status.setText(_t("settings.network.sync_test_unexpected"))
 
     def _forget_trusted_main_pc(self) -> None:
         """Clear the pinned Main PC identity so this Terminal will trust

@@ -10,6 +10,7 @@ import logging
 import threading
 import weakref
 from collections.abc import Callable
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -31,8 +32,33 @@ class TranslationService:
         self._i18n_dir = Path(__file__).parent
         self._lock = threading.Lock()
 
+        # Instance-bound LRU cache for O(1) translation lookup without lock contention
+        self._lookup_key = lru_cache(maxsize=2048)(self._raw_lookup_key)
+
         # Always load English as the fallback language
         self._load_language("en")
+
+    def clear_cache(self) -> None:
+        """Clear cached key lookups."""
+        self._lookup_key.cache_clear()
+
+    def _raw_lookup_key(self, lang: str, key: str) -> str:
+        """Raw dictionary traversal and fallback chain. Called on LRU cache miss."""
+        with self._lock:
+            # Try requested language
+            text = self._translations.get(lang, {}).get(key)
+
+            # Fallback to English
+            if text is None and lang != "en":
+                text = self._translations.get("en", {}).get(key)
+
+        # Fallback to key itself (makes missing translations obvious in UI)
+        if text is None:
+            if lang != "en":
+                logger.debug("Missing translation: %s [%s]", key, lang)
+            return key
+
+        return text
 
     def _load_language(self, lang_code: str) -> None:
         """Load a language JSON file into memory. Thread-safe."""
@@ -47,6 +73,7 @@ class TranslationService:
             flattened = self._flatten(data)
             with self._lock:
                 self._translations[lang_code] = flattened
+                self.clear_cache()
             logger.debug(
                 "Loaded %d translation keys for '%s'",
                 len(flattened),
@@ -66,6 +93,7 @@ class TranslationService:
 
         with self._lock:
             self.current_language = lang_code
+            self.clear_cache()
 
         # Notify all live callbacks, pruning dead weak references
         live: list[weakref.ref] = []
@@ -91,29 +119,16 @@ class TranslationService:
         Returns:
             Translated string with parameters substituted.
         """
-        with self._lock:
-            lang = self.current_language
-            # Try current language
-            text = self._translations.get(lang, {}).get(key)
-
-            # Fallback to English
-            if text is None and lang != "en":
-                text = self._translations.get("en", {}).get(key)
-
-        # Fallback to key itself (makes missing translations obvious in UI)
-        if text is None:
-            if lang != "en":
-                logger.debug("Missing translation: %s [%s]", key, lang)
-            return key
+        template = self._lookup_key(self.current_language, key)
 
         # Parameter substitution
         if kwargs:
             try:
-                text = text.format(**kwargs)
+                return template.format(**kwargs)
             except (KeyError, IndexError, ValueError) as e:
                 logger.warning("Translation format error for '%s': %s", key, e)
 
-        return text
+        return template
 
     def register_change_callback(self, callback: Callable[[], None]) -> None:
         """Register a callable to be invoked when language changes.
@@ -137,24 +152,15 @@ class TranslationService:
         if lang_code not in self._translations:
             self._load_language(lang_code)
 
-        with self._lock:
-            # Try requested language
-            text = self._translations.get(lang_code, {}).get(key)
-
-            # Fallback to English
-            if text is None and lang_code != "en":
-                text = self._translations.get("en", {}).get(key)
-
-        if text is None:
-            return key
+        template = self._lookup_key(lang_code, key)
 
         if kwargs:
             try:
-                text = text.format(**kwargs)
+                return template.format(**kwargs)
             except (KeyError, IndexError, ValueError) as e:
                 logger.warning("Translation format error for '%s': %s", key, e)
 
-        return text
+        return template
 
     def get_missing_keys(self, lang_code: str) -> list[str]:
         """Return keys present in English but missing in the given language."""
@@ -170,6 +176,7 @@ class TranslationService:
         """Reload all cached translation files from disk."""
         for lang_code in list(self._translations.keys()):
             self._load_language(lang_code)
+        self.clear_cache()
 
     @staticmethod
     def _make_ref(callback: Callable) -> "weakref.ref | None":

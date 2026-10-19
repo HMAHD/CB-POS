@@ -157,92 +157,97 @@ class AuthService:
                 .all()
             )
 
+            matched_user = None
             for user in users:
                 # Check database-backed lockout
                 if AuthService._is_locked_out_db(user):
                     continue
 
                 if AuthService._verify_against_hash(pin, user.pin_hash):
-                    # --- Successful match ---
+                    matched_user = user
+                    break
 
-                    # Migrate legacy SHA-256 hash to bcrypt transparently
-                    if AuthService._is_legacy_hash(user.pin_hash):
-                        user.pin_hash = AuthService.hash_pin(pin)
-                        logger.info("Migrated PIN hash to bcrypt for user '%s'", user.username)
+            if not matched_user:
+                # No match — log warning
+                logger.warning("Failed login attempt with PIN")
+                return None
 
-                    # Reset brute-force counter
-                    AuthService._reset_failed_attempts_db(session, user)
+            user = matched_user
+            # --- Successful match ---
 
-                    # Detach user and role to keep available after session close
-                    if user.role:
-                        _ = user.role.name  # Force load
-                        _ = list(user.role.permissions)
-                        for perm in user.role.permissions:
-                            _ = perm.code
-                            session.expunge(perm)
-                        session.expunge(user.role)
-                    session.expunge(user)
+            # Migrate legacy SHA-256 hash to bcrypt transparently
+            if AuthService._is_legacy_hash(user.pin_hash):
+                user.pin_hash = AuthService.hash_pin(pin)
+                logger.info("Migrated PIN hash to bcrypt for user '%s'", user.username)
 
-                    AuthService._current_user = user
+            # Reset brute-force counter
+            AuthService._reset_failed_attempts_db(session, user)
 
-                    # Log login and check for concurrent sessions
-                    try:
-                        from cbpos.core.models import AuditLog
-                        from cbpos.core.services.config_service import ConfigService
+            # Detach user and role to keep available after session close
+            if user.role:
+                _ = user.role.name  # Force load
+                _ = list(user.role.permissions)
+                for perm in user.role.permissions:
+                    _ = perm.code
+                    session.expunge(perm)
+                session.expunge(user.role)
+            session.expunge(user)
 
-                        terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+            AuthService._current_user = user
 
-                        # Warn if user is already logged in on another terminal
-                        # (check audit log for LOGIN without matching LOGOUT)
-                        last_login = (
-                            session.query(AuditLog)
-                            .filter(
-                                AuditLog.user_id == user.id,
-                                AuditLog.event_type == "LOGIN",
-                                AuditLog.terminal_id != terminal_id,
-                            )
-                            .order_by(AuditLog.timestamp.desc())
-                            .first()
+            # Log login and check for concurrent sessions
+            try:
+                from cbpos.core.models import AuditLog
+                from cbpos.core.services.config_service import ConfigService
+
+                terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+
+                # Warn if user is already logged in on another terminal
+                # (check audit log for LOGIN without matching LOGOUT)
+                last_login = (
+                    session.query(AuditLog)
+                    .filter(
+                        AuditLog.user_id == user.id,
+                        AuditLog.event_type == "LOGIN",
+                        AuditLog.terminal_id != terminal_id,
+                    )
+                    .order_by(AuditLog.timestamp.desc())
+                    .first()
+                )
+                if last_login:
+                    # Check if there's a logout after it
+                    last_logout = (
+                        session.query(AuditLog)
+                        .filter(
+                            AuditLog.user_id == user.id,
+                            AuditLog.event_type == "LOGOUT",
+                            AuditLog.terminal_id == last_login.terminal_id,
+                            AuditLog.timestamp > last_login.timestamp,
                         )
-                        if last_login:
-                            # Check if there's a logout after it
-                            last_logout = (
-                                session.query(AuditLog)
-                                .filter(
-                                    AuditLog.user_id == user.id,
-                                    AuditLog.event_type == "LOGOUT",
-                                    AuditLog.terminal_id == last_login.terminal_id,
-                                    AuditLog.timestamp > last_login.timestamp,
-                                )
-                                .first()
-                            )
-                            if not last_logout:
-                                logger.warning(
-                                    "User '%s' may be logged in on terminal '%s' "
-                                    "(no logout recorded). Concurrent session detected.",
-                                    user.username,
-                                    last_login.terminal_id,
-                                )
-
-                        log = AuditLog(
-                            user_id=user.id,
-                            action="User Login",
-                            event_type="LOGIN",
-                            terminal_id=terminal_id,
-                            details="Successful login via PIN",
+                        .first()
+                    )
+                    if not last_logout:
+                        logger.warning(
+                            "User '%s' may be logged in on terminal '%s' "
+                            "(no logout recorded). Concurrent session detected.",
+                            user.username,
+                            last_login.terminal_id,
                         )
-                        session.add(log)
-                        session.commit()
-                    except Exception as e:
-                        session.rollback()
-                        logger.error("Failed to write login audit log: %s", e)
 
-                    return user
+                log = AuditLog(
+                    user_id=user.id,
+                    action="User Login",
+                    event_type="LOGIN",
+                    terminal_id=terminal_id,
+                    details="Successful login via PIN",
+                )
+                session.add(log)
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                logger.error("Failed to write login audit log: %s", e)
 
-            # No match — log warning
-            logger.warning("Failed login attempt with PIN")
-
-        return None
+            return user
 
     @staticmethod
     def verify_pin_for_user(username: str, pin: str) -> User | None:

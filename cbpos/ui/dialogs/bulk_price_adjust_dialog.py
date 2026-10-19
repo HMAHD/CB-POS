@@ -27,6 +27,7 @@ from cbpos.core.services.price_list_service import (
     PriceListService,
 )
 from cbpos.core.services.product_service import ProductService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import NO_VALUE, format_number, get_currency_symbol, money_header
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.resources.icons import Icons
@@ -465,4 +466,4 @@ class BulkPriceAdjustDialog(QDialog):
             self.price_list_service.apply_bulk_adjust(self.price_list_id, self.current_preview_items, summary)
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))

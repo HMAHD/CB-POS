@@ -24,7 +24,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.category_service import CategoryService
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.supplier_service import SupplierService
-from cbpos.core.utils.formatters import format_currency, get_currency_symbol
+from cbpos.core.utils.formatters import format_currency, format_number, get_currency_symbol
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.table_helpers import (
@@ -247,7 +247,7 @@ class AdvancedSearchDialog(QDialog):
             barcode_item.setForeground(text_brush)
             self.table.setItem(row, 1, barcode_item)
 
-            stock_item = QTableWidgetItem(f"{float(product.stock_qty):.2f}")
+            stock_item = QTableWidgetItem(format_number(product.stock_qty, 2))
             stock_item.setTextAlignment(NUMERIC_ALIGNMENT)
             stock_item.setForeground(text_brush)
             self.table.setItem(row, 2, stock_item)

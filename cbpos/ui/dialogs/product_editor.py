@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QDoubleValidator, QIcon, QPixmap
@@ -529,8 +529,12 @@ class ProductEditor(QDialog):
         if index >= 0:
             self.category_combo.setCurrentIndex(index)
 
-        self.price_input.setText(format(Decimal(self.product.price).quantize(Decimal("0.01")), "f"))
-        self.cost_input.setText(format(Decimal(self.product.cost).quantize(Decimal("0.01")), "f"))
+        self.price_input.setText(
+            format(Decimal(str(self.product.price)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), "f")
+        )
+        self.cost_input.setText(
+            format(Decimal(str(self.product.cost)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), "f")
+        )
 
         _q = Decimal("0.001")
         self.stock_input.setText(

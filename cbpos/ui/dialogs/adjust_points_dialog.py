@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.loyalty_service import LoyaltyService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.styles.style_helpers import set_status_class
@@ -307,4 +308,4 @@ class AdjustPointsDialog(QDialog):
             self.accept()
         except Exception as e:
             logger.error("Failed to record points adjustment: %s", e)
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))

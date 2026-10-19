@@ -1,6 +1,5 @@
-"""Dialog to record a payment to a supplier against their outstanding payable."""
-
-from decimal import Decimal, InvalidOperation
+import logging
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -20,9 +19,12 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.supplier_service import SupplierService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
+
+logger = logging.getLogger(__name__)
 
 
 class SupplierPaymentDialog(QDialog):
@@ -159,7 +161,7 @@ class SupplierPaymentDialog(QDialog):
             return
 
         try:
-            amount = Decimal(amount_text)
+            amount = Decimal(str(amount_text).strip()).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             if amount <= 0:
                 raise ValueError
         except (InvalidOperation, ValueError):
@@ -192,6 +194,10 @@ class SupplierPaymentDialog(QDialog):
             )
             self.accept()
         except ValueError as e:
-            QMessageBox.warning(self, _t("common.warning"), str(e))
+            logger.warning("Supplier payment validation error: %s", e)
+            QMessageBox.warning(self, _t("common.warning"), translate_error(str(e)))
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), _t("supplier_payment.record_failed", error=str(e)))
+            logger.exception("Supplier payment record failed: %s", e)
+            QMessageBox.critical(
+                self, _t("common.error"), _t("supplier_payment.record_failed", error=translate_error(str(e)))
+            )

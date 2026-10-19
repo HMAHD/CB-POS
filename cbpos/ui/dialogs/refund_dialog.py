@@ -17,7 +17,8 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.transaction_service import TransactionService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.error_messages import translate_error
+from cbpos.core.utils.formatters import format_currency, format_datetime
 from cbpos.core.utils.permission_helper import check_permission_with_override
 from cbpos.i18n import _t
 from cbpos.ui.refund_messages import refund_confirm_text, refund_done_text
@@ -177,7 +178,7 @@ class RefundDialog(QDialog):
 
         # Display sale info
         customer_name = sale.customer.name if sale.customer else _t("refund.walk_in")
-        date_str = sale.date.strftime("%Y-%m-%d %H:%M") if sale.date else "N/A"
+        date_str = format_datetime(sale.date) if sale.date else "N/A"
         self.lbl_sale_info.setText(
             f"{_t('refund.receipt_label')} {sale.document_number} | "
             f"{_t('common.date')}: {date_str} | "
@@ -273,11 +274,11 @@ class RefundDialog(QDialog):
                 self.btn_refund.setText(_t("refund.btn_process"))
                 self.btn_refund.setEnabled(True)
         except ValueError as e:
-            QMessageBox.warning(self, _t("common.validation_error"), str(e))
+            QMessageBox.warning(self, _t("common.validation_error"), translate_error(str(e)))
             self.btn_refund.setText(_t("refund.btn_process"))
             self.btn_refund.setEnabled(True)
         except Exception as e:
             logger.error("Refund failed: %s", e)
-            QMessageBox.critical(self, _t("common.error"), _t("refund.error_message", error=str(e)))
+            QMessageBox.critical(self, _t("common.error"), _t("refund.error_message", error=translate_error(str(e))))
             self.btn_refund.setText(_t("refund.btn_process"))
             self.btn_refund.setEnabled(True)

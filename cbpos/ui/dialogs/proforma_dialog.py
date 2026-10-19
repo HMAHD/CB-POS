@@ -1,5 +1,5 @@
 import logging
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from PyQt6.QtCore import QStringListModel, Qt
 from PyQt6.QtGui import QColor, QIntValidator
@@ -326,7 +326,7 @@ class ProformaDialog(QDialog):
             self, _t("proforma.change_qty"), _t("proforma.new_qty"), current, 0.001, 99999.0, 3
         )
         if ok:
-            self.items[row]["quantity"] = Decimal(str(qty))
+            self.items[row]["quantity"] = Decimal(str(qty)).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
             self.items[row]["line_total"] = self.items[row]["quantity"] * self.items[row]["unit_price"]
             self.refresh_table()
 

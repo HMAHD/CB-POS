@@ -1,4 +1,4 @@
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -85,7 +85,7 @@ class CashMovementDialog(QDialog):
             return
 
         try:
-            amount = Decimal(amount_text)
+            amount = Decimal(str(amount_text).strip()).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             if amount <= 0:
                 raise ValueError
         except (InvalidOperation, ValueError):

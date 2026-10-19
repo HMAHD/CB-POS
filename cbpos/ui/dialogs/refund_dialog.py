@@ -17,10 +17,18 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.transaction_service import TransactionService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.error_messages import translate_error
+from cbpos.core.utils.formatters import format_currency, format_datetime
 from cbpos.core.utils.permission_helper import check_permission_with_override
 from cbpos.i18n import _t
 from cbpos.ui.refund_messages import refund_confirm_text, refund_done_text
+from cbpos.ui.resources.icons import Icons
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +78,16 @@ class RefundDialog(QDialog):
         self.items_table = QTableWidget()
         self.items_table.setColumnCount(4)
         self.items_table.setHorizontalHeaderLabels(["", "", "", ""])
-        self.items_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.items_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        attach_table_empty_state(self.items_table, Icons.SALES, "common.no_items")
         self.items_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.items_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.items_table.setAlternatingRowColors(True)
@@ -125,6 +142,7 @@ class RefundDialog(QDialog):
                 _t("refund.header_subtotal"),
             ]
         )
+        align_numeric_headers(self.items_table, (1, 2, 3))
         self.lbl_reason.setText(_t("refund.reason_label"))
         self.txt_reason.setPlaceholderText(_t("refund.reason_placeholder"))
         self.btn_refund.setText(_t("refund.btn_process"))
@@ -160,7 +178,7 @@ class RefundDialog(QDialog):
 
         # Display sale info
         customer_name = sale.customer.name if sale.customer else _t("refund.walk_in")
-        date_str = sale.date.strftime("%Y-%m-%d %H:%M") if sale.date else "N/A"
+        date_str = format_datetime(sale.date) if sale.date else "N/A"
         self.lbl_sale_info.setText(
             f"{_t('refund.receipt_label')} {sale.document_number} | "
             f"{_t('common.date')}: {date_str} | "
@@ -177,9 +195,18 @@ class RefundDialog(QDialog):
 
             product_name = item.product.name_en if item.product else _t("refund.unknown_product")
             self.items_table.setItem(row, 0, QTableWidgetItem(product_name))
-            self.items_table.setItem(row, 1, QTableWidgetItem(str(item.qty)))
-            self.items_table.setItem(row, 2, QTableWidgetItem(format_currency(item.unit_price)))
-            self.items_table.setItem(row, 3, QTableWidgetItem(format_currency(item.subtotal)))
+
+            qty_item = QTableWidgetItem(str(item.qty))
+            qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.items_table.setItem(row, 1, qty_item)
+
+            price_item = QTableWidgetItem(format_currency(item.unit_price))
+            price_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.items_table.setItem(row, 2, price_item)
+
+            subtotal_item = QTableWidgetItem(format_currency(item.subtotal))
+            subtotal_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.items_table.setItem(row, 3, subtotal_item)
 
         # Enable refund button only for valid sales
         can_refund = sale.status not in ("VOID", "REFUNDED") and sale.payment_method != "REFUND"
@@ -247,11 +274,11 @@ class RefundDialog(QDialog):
                 self.btn_refund.setText(_t("refund.btn_process"))
                 self.btn_refund.setEnabled(True)
         except ValueError as e:
-            QMessageBox.warning(self, _t("common.validation_error"), str(e))
+            QMessageBox.warning(self, _t("common.validation_error"), translate_error(str(e)))
             self.btn_refund.setText(_t("refund.btn_process"))
             self.btn_refund.setEnabled(True)
         except Exception as e:
             logger.error("Refund failed: %s", e)
-            QMessageBox.critical(self, _t("common.error"), _t("refund.error_message", error=str(e)))
+            QMessageBox.critical(self, _t("common.error"), _t("refund.error_message", error=translate_error(str(e))))
             self.btn_refund.setText(_t("refund.btn_process"))
             self.btn_refund.setEnabled(True)

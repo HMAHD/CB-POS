@@ -17,6 +17,7 @@ from cbpos.core.constants.permissions import ADMIN_ROLE_NAME, CRITICAL_ADMIN_PER
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.user_service import UserService
 from cbpos.core.utils.display_labels import display_role_name, permission_group_label, permission_label
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 from cbpos.ui.utils.layout_helpers import protect_vertical_sizing
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
@@ -263,4 +264,4 @@ class PermissionDialog(QDialog):
             QMessageBox.information(self, _t("common.success"), _t("permission.save_success"))
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), _t("permission.save_failed", error=str(e)))
+            QMessageBox.critical(self, _t("common.error"), _t("permission.save_failed", error=translate_error(str(e))))

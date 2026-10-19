@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.shift_service import ShiftService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.utils.style_helpers import refresh_style
@@ -121,7 +122,8 @@ class ShiftClosingDialog(QDialog):
         try:
             self.summary = self.shift_service.get_shift_summary(self.shift_id)
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            logger.exception("Failed to load shift summary: %s", e)
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
             self.reject()
 
     def _update_counted_cash(self, total: Decimal):
@@ -176,7 +178,10 @@ class ShiftClosingDialog(QDialog):
         try:
             final_summary = self.shift_service.close_shift(self.shift_id, self.counted_cash, reason, reason_category)
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), _t("shift_closing.close_failed", error=str(e)))
+            logger.exception("Failed to close shift: %s", e)
+            QMessageBox.critical(
+                self, _t("common.error"), _t("shift_closing.close_failed", error=translate_error(str(e)))
+            )
             return
 
         # The shift is closed from here on: no going back, no cancelling.

@@ -21,7 +21,8 @@ class ReceiptPreviewDialog(QDialog):
         """Build the dialog and render the given ESC/POS `commands` in the preview widget."""
         super().__init__(parent)
         self.setWindowTitle(_t("receipt_preview.title"))
-        self.setFixedSize(400, 600)
+        self.setMinimumSize(400, 600)
+        self.resize(400, 600)
         self._init_ui()
         self._preview.set_commands(commands)
 

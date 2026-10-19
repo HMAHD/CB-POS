@@ -174,7 +174,8 @@ class LabelPreviewDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(_t("label_preview.title"))
         self.setObjectName("LabelPreviewDialog")
-        self.setFixedSize(360, 310)
+        self.setMinimumSize(360, 310)
+        self.resize(360, 310)
 
         layout = QVBoxLayout(self)
         layout.setSpacing(12)

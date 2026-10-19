@@ -21,6 +21,8 @@ from PyQt6 import sip
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 from PyQt6.QtGui import QTextDocument
 
+from cbpos.core.utils.formatters import format_datetime
+
 if TYPE_CHECKING:
     from PyQt6.QtPrintSupport import QPrinter
 
@@ -525,7 +527,7 @@ def report_print_html(df: pd.DataFrame, title: str, generated_on_label: str) -> 
     return _REPORT_PRINT_HTML.format(
         print_title=html.escape(title),
         generated_on_label=html.escape(generated_on_label),
-        generated_on=pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
+        generated_on=format_datetime(pd.Timestamp.now().to_pydatetime()),
         table_html=df.to_html(classes="table", index=False, border=0),
     )
 

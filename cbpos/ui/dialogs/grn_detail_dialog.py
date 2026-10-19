@@ -14,8 +14,15 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.purchase_service import PurchaseService
-from cbpos.core.utils.formatters import format_currency
+from cbpos.core.utils.formatters import format_currency, format_datetime
 from cbpos.i18n import _t
+from cbpos.ui.resources.icons import Icons
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 
 
 class GRNDetailDialog(QDialog):
@@ -50,7 +57,7 @@ class GRNDetailDialog(QDialog):
         supplier_name = purchase.supplier.company_name if purchase.supplier else "N/A"
         info_layout.addWidget(QLabel(f"{_t('purchase.form_supplier')} {supplier_name}"))
         info_layout.addWidget(QLabel(f"{_t('purchase.form_ref')} {purchase.reference_external or 'N/A'}"))
-        date_str = purchase.date.strftime("%Y-%m-%d %H:%M") if purchase.date else "N/A"
+        date_str = format_datetime(purchase.date) if purchase.date else "N/A"
         info_layout.addWidget(QLabel(f"{_t('purchase.form_date')} {date_str}"))
         info_layout.addWidget(QLabel(f"{_t('purchase.detail_status')}: {purchase.status}"))
         info_layout.addStretch()
@@ -58,6 +65,7 @@ class GRNDetailDialog(QDialog):
 
         # Items table
         table = QTableWidget()
+        self.table = table
         table.setColumnCount(5)
         table.setHorizontalHeaderLabels(
             [
@@ -68,11 +76,18 @@ class GRNDetailDialog(QDialog):
                 _t("purchase.detail_line_total"),
             ]
         )
-        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        configure_table_columns(
+            table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        align_numeric_headers(table, (2, 3, 4))
+        attach_table_empty_state(table, Icons.PURCHASE, "common.no_items")
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setAlternatingRowColors(True)
@@ -88,15 +103,15 @@ class GRNDetailDialog(QDialog):
             table.setItem(row, 1, QTableWidgetItem(barcode))
 
             qty_item = QTableWidgetItem(f"{item.qty_received:.3f}")
-            qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
             table.setItem(row, 2, qty_item)
 
             cost_item = QTableWidgetItem(format_currency(item.unit_cost))
-            cost_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            cost_item.setTextAlignment(NUMERIC_ALIGNMENT)
             table.setItem(row, 3, cost_item)
 
             total_item = QTableWidgetItem(format_currency(line_total))
-            total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            total_item.setTextAlignment(NUMERIC_ALIGNMENT)
             table.setItem(row, 4, total_item)
 
         layout.addWidget(table, 1)

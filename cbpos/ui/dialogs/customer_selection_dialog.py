@@ -11,8 +11,9 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.i18n import _t
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
-from cbpos.ui.widgets.table_helpers import configure_table_columns
+from cbpos.ui.widgets.table_helpers import attach_table_empty_state, configure_table_columns
 
 
 class CustomerSelectionDialog(QDialog):
@@ -116,6 +117,7 @@ class CustomerSelectionDialog(QDialog):
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
+        attach_table_empty_state(self.table, Icons.CUSTOMERS, "common.no_items")
         self.table.doubleClicked.connect(self.select_customer)
         layout.addWidget(self.table)
 

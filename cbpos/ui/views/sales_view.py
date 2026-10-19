@@ -36,6 +36,7 @@ from cbpos.core.services.sound_service import SoundService
 from cbpos.core.services.suspended_transaction_service import SuspendedTransactionService
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.services.transaction_service import TransactionService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import printer_not_configured_message, receipt_printer_configured
@@ -973,8 +974,8 @@ class SalesView(QWidget):
             self._highlight_timer.stop()
             try:
                 self._highlight_timer.timeout.disconnect()
-            except TypeError:
-                pass  # nothing connected yet
+            except TypeError as e:
+                logger.debug("Highlight timer not connected yet: %s", e)
             self._highlight_timer.timeout.connect(_clear_highlight)
             self._highlight_timer.start(600)
 
@@ -1068,9 +1069,13 @@ class SalesView(QWidget):
 
                     self._finalize_sale(sale)
             except ValueError as e:
-                QMessageBox.warning(self, _t("sales.validation_error"), str(e))
+                logger.warning("Payment validation failed: %s", e)
+                QMessageBox.warning(self, _t("sales.validation_error"), translate_error(str(e)))
             except Exception as e:
-                QMessageBox.critical(self, _t("common.error"), _t("sales.transaction_failed", error=str(e)))
+                logger.exception("Transaction processing failed: %s", e)
+                QMessageBox.critical(
+                    self, _t("common.error"), _t("sales.transaction_failed", error=translate_error(str(e)))
+                )
             finally:
                 self._processing = False
         self._focus_search()
@@ -1626,9 +1631,13 @@ class SalesView(QWidget):
             if sale:
                 self._finalize_sale(sale)
         except ValueError as e:
-            QMessageBox.warning(self, _t("sales.validation_error"), str(e))
+            logger.warning("Quick cash validation failed: %s", e)
+            QMessageBox.warning(self, _t("sales.validation_error"), translate_error(str(e)))
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), _t("sales.transaction_failed", error=str(e)))
+            logger.exception("Quick cash transaction failed: %s", e)
+            QMessageBox.critical(
+                self, _t("common.error"), _t("sales.transaction_failed", error=translate_error(str(e)))
+            )
         finally:
             self._processing = False
         self._focus_search()

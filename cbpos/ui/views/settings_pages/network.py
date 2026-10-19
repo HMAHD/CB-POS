@@ -22,6 +22,7 @@ from sqlalchemy.engine import URL
 
 from cbpos.config import Config
 from cbpos.core.services.theme_service import ThemeService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.guide_dialog import GuideDialog
 from cbpos.ui.resources.icons import Icons
@@ -876,8 +877,9 @@ class NetworkPage(SettingsPage):
                 _t("settings.network.sync_failed_message", address=address, error=e),
             )
         except Exception as e:
+            logger.exception("Sync test error: %s", e)
             self.lbl_sync_test_status.setText(_t("settings.network.sync_test_error"))
-            QMessageBox.critical(self, _t("settings.network.sync_error_title"), str(e))
+            QMessageBox.critical(self, _t("settings.network.sync_error_title"), translate_error(str(e)))
         finally:
             self.btn_test_sync.setEnabled(True)
 

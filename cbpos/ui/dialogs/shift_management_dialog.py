@@ -19,7 +19,8 @@ from PyQt6.QtWidgets import (
 from cbpos.core.constants.permissions import Permissions
 from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.shift_service import ShiftService
-from cbpos.core.utils.formatters import format_currency, format_relative_time
+from cbpos.core.utils.error_messages import translate_error
+from cbpos.core.utils.formatters import format_currency, format_datetime, format_relative_time
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.dialogs.cash_movement_dialog import CashMovementDialog
@@ -185,7 +186,7 @@ class ShiftManagementDialog(QDialog):
         start = summary.get("start_time")
         if start:
             rel_time = format_relative_time(start)
-            exact_time = start.strftime("%Y-%m-%d %H:%M")
+            exact_time = format_datetime(start)
             self.lbl_started.setText(_t("shift_management.started", time=rel_time, user=summary.get("user_name", "")))
             self.lbl_started.setToolTip(exact_time)
         else:
@@ -245,7 +246,9 @@ class ShiftManagementDialog(QDialog):
             )
         except Exception as e:
             logger.error("Cash movement failed: %s", e)
-            QMessageBox.critical(self, _t("common.error"), _t("shift_management.movement_failed", error=str(e)))
+            QMessageBox.critical(
+                self, _t("common.error"), _t("shift_management.movement_failed", error=translate_error(str(e)))
+            )
             return
         self.refresh()
 

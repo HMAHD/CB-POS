@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
 from PyQt6.QtCore import QAbstractTableModel, QDate, QStringListModel, Qt
 from PyQt6.QtGui import QColor, QKeySequence, QShortcut, QStandardItem, QStandardItemModel
@@ -35,15 +35,29 @@ from cbpos.core.services.purchase_order_service import PurchaseOrderService
 from cbpos.core.services.purchase_service import PurchaseService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.supplier_service import SupplierService
-from cbpos.core.utils.formatters import format_currency, format_quantity, format_relative_time
+from cbpos.core.utils.error_messages import translate_error
+from cbpos.core.utils.formatters import (
+    format_currency,
+    format_date,
+    format_datetime,
+    format_quantity,
+    format_relative_time,
+)
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.constants import BAR_GROUP_SPACING, BAR_ITEM_SPACING, BAR_MARGIN_V
 from cbpos.ui.dialogs.grn_detail_dialog import GRNDetailDialog
 from cbpos.ui.dialogs.supplier_dialog import SupplierDialog
 from cbpos.ui.resources.icons import Icons
-from cbpos.ui.resources.status_colors import DANGER, SUCCESS, WARNING, status_color
+from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING, status_color
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
-from cbpos.ui.widgets.table_helpers import RelativeTimeTableWidgetItem
+from cbpos.ui.widgets.status_pill_delegate import STATUS_MEANING_ROLE, StatusPillDelegate, set_status_pill
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    RelativeTimeTableWidgetItem,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +119,9 @@ class SupplierTableModel(QAbstractTableModel):
                 return supplier.phone
             if index.column() == 4:
                 return supplier.tax_number
+        elif role == Qt.ItemDataRole.TextAlignmentRole:
+            if index.column() == 0:
+                return NUMERIC_ALIGNMENT
         return None
 
     def headerData(self, section, orientation, role):
@@ -118,6 +135,9 @@ class SupplierTableModel(QAbstractTableModel):
                 _t("purchase.supplier_header_tax"),
             ]
             return headers[section]
+        if role == Qt.ItemDataRole.TextAlignmentRole and orientation == Qt.Orientation.Horizontal:
+            if section == 0:
+                return NUMERIC_ALIGNMENT
         return None
 
 
@@ -161,10 +181,19 @@ class PurchaseHistoryModel(QAbstractTableModel):
                 return purchase.status
         elif role == Qt.ItemDataRole.ToolTipRole:
             if col == 1 and purchase.date:
-                return purchase.date.strftime("%Y-%m-%d %H:%M")
+                return format_datetime(purchase.date)
         elif role == Qt.ItemDataRole.TextAlignmentRole:
             if col in (4, 5):
-                return Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+                return NUMERIC_ALIGNMENT
+        elif role == STATUS_MEANING_ROLE and col == 6:
+            st = (purchase.status or "").upper()
+            if st in ("COMPLETED", "APPROVED"):
+                return SUCCESS
+            if st in ("VOID", "CANCELLED", "REJECTED"):
+                return DANGER
+            if st in ("DRAFT", "PENDING"):
+                return WARNING
+            return NEUTRAL
 
         return None
 
@@ -181,6 +210,9 @@ class PurchaseHistoryModel(QAbstractTableModel):
                 _t("purchase.history_header_status"),
             ]
             return headers[section]
+        if role == Qt.ItemDataRole.TextAlignmentRole and orientation == Qt.Orientation.Horizontal:
+            if section in (4, 5):
+                return NUMERIC_ALIGNMENT
         return None
 
     def get_purchase(self, row: int):
@@ -255,7 +287,16 @@ class PurchaseView(QWidget):
         # Table
         self.supplier_table = QTableView()
         self.supplier_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.supplier_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.supplier_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,
+                1: QHeaderView.ResizeMode.Stretch,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
         self.supplier_table.doubleClicked.connect(self.edit_supplier)
         layout.addWidget(self.supplier_table)
 
@@ -326,7 +367,16 @@ class PurchaseView(QWidget):
 
         self.grn_table = QTableView()
         self.grn_table.setModel(self.grn_model)
-        self.grn_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.grn_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,
+                1: QHeaderView.ResizeMode.Stretch,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
         layout.addWidget(self.grn_table)
 
         self.empty_grn_label = EmptyStateWidget(Icons.INVENTORY, self.grn_table.viewport())
@@ -424,13 +474,19 @@ class PurchaseView(QWidget):
         self.history_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.history_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.history_table.setAlternatingRowColors(True)
-        self.history_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.history_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.history_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.history_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.history_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        self.history_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
-        self.history_table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
+        configure_table_columns(
+            self.history_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.Stretch,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.ResizeToContents,
+                5: QHeaderView.ResizeMode.ResizeToContents,
+                6: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        self.history_table.setItemDelegateForColumn(6, StatusPillDelegate(self.history_table))
         self.history_table.doubleClicked.connect(self.on_history_double_click)
         layout.addWidget(self.history_table, 1)
 
@@ -483,6 +539,7 @@ class PurchaseView(QWidget):
                 _t("purchase.grn_header_total"),
             ]
         )
+        align_numeric_headers(self.grn_table, [2, 3, 4])
         self.btn_commit.setText(_t("purchase.btn_commit_stock"))
         self.total_label.setText(f"{_t('purchase.total_cost_label')}: 0.00")
 
@@ -528,6 +585,7 @@ class PurchaseView(QWidget):
                 _t("purchase.payable_header_terms"),
             ]
         )
+        align_numeric_headers(self.payable_supplier_table, [3])
         self.payable_ledger_table.setHorizontalHeaderLabels(
             [
                 _t("purchase.ledger_header_date"),
@@ -538,6 +596,7 @@ class PurchaseView(QWidget):
                 _t("purchase.ledger_header_balance"),
             ]
         )
+        align_numeric_headers(self.payable_ledger_table, [3, 4, 5])
 
     def refresh_history(self) -> None:
         """Refresh the GRN history table with current filters."""
@@ -624,7 +683,8 @@ class PurchaseView(QWidget):
             try:
                 SupplierService.create_supplier(**data)
             except ValueError as e:
-                QMessageBox.warning(self, _t("common.validation_error"), str(e))
+                logger.warning("Failed to create supplier: %s", e)
+                QMessageBox.warning(self, _t("common.validation_error"), translate_error(str(e)))
                 return
             self.refresh_suppliers()
 
@@ -647,7 +707,8 @@ class PurchaseView(QWidget):
             try:
                 SupplierService.update_supplier(supplier.id, **data)
             except ValueError as e:
-                QMessageBox.warning(self, _t("common.validation_error"), str(e))
+                logger.warning("Failed to update supplier %s: %s", supplier.id, e)
+                QMessageBox.warning(self, _t("common.validation_error"), translate_error(str(e)))
                 return
             self.refresh_suppliers()
 
@@ -713,9 +774,15 @@ class PurchaseView(QWidget):
         self.grn_model.insertRow(row)
         self.grn_model.setItem(row, 0, QStandardItem(str(product.id)))
         self.grn_model.setItem(row, 1, QStandardItem(product.name_en))
-        self.grn_model.setItem(row, 2, QStandardItem(str(qty)))
-        self.grn_model.setItem(row, 3, QStandardItem(str(cost)))
-        self.grn_model.setItem(row, 4, QStandardItem(str(qty * cost)))
+        qty_item = QStandardItem(str(qty))
+        qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
+        self.grn_model.setItem(row, 2, qty_item)
+        cost_item = QStandardItem(str(cost))
+        cost_item.setTextAlignment(NUMERIC_ALIGNMENT)
+        self.grn_model.setItem(row, 3, cost_item)
+        tot_item = QStandardItem(str(qty * cost))
+        tot_item.setTextAlignment(NUMERIC_ALIGNMENT)
+        self.grn_model.setItem(row, 4, tot_item)
 
     def prefill_grn_items(self, items: list[dict], purchase_order_id: int | None = None) -> None:
         """Switch to the New GRN tab and pre-fill it from Reorder's selected items.
@@ -872,7 +939,8 @@ class PurchaseView(QWidget):
             self.refresh_open_orders()
 
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            logger.exception("Failed to save GRN: %s", e)
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
 
     # ========== Payables Tab ==========
 
@@ -920,8 +988,16 @@ class PurchaseView(QWidget):
         self.payable_supplier_table = QTableWidget()
         self.payable_supplier_table.setObjectName("PayableSupplierTable")
         self.payable_supplier_table.setColumnCount(5)
-        self.payable_supplier_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.payable_supplier_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.payable_supplier_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,
+                1: QHeaderView.ResizeMode.Stretch,
+                2: QHeaderView.ResizeMode.Stretch,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
         self.payable_supplier_table.setColumnHidden(0, True)
         self.payable_supplier_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.payable_supplier_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -1073,12 +1149,21 @@ class PurchaseView(QWidget):
         self.payable_ledger_table = QTableWidget()
         self.payable_ledger_table.setObjectName("PayableLedgerTable")
         self.payable_ledger_table.setColumnCount(6)
-        self.payable_ledger_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.payable_ledger_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.payable_ledger_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.payable_ledger_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.payable_ledger_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        self.payable_ledger_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        configure_table_columns(
+            self.payable_ledger_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.Stretch,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.ResizeToContents,
+                5: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        self.payable_ledger_table.setItemDelegateForColumn(1, StatusPillDelegate(self.payable_ledger_table))
+        self.empty_payable_ledger_label = attach_table_empty_state(
+            self.payable_ledger_table, Icons.PAY, "common.no_items"
+        )
         self.payable_ledger_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.payable_ledger_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.payable_ledger_table.setAlternatingRowColors(True)
@@ -1203,7 +1288,7 @@ class PurchaseView(QWidget):
             )
             if summary["last_payment_date"]:
                 rel_pay = format_relative_time(summary["last_payment_date"])
-                exact_pay = summary["last_payment_date"].strftime("%Y-%m-%d")
+                exact_pay = format_date(summary["last_payment_date"])
                 self.lbl_pay_last.setText(_t("purchase.last_payment_label") + " " + rel_pay)
                 self.lbl_pay_last.setToolTip(exact_pay)
             else:
@@ -1261,14 +1346,25 @@ class PurchaseView(QWidget):
 
             self.payable_ledger_table.setItem(row, 0, RelativeTimeTableWidgetItem(entry.timestamp))
 
-            self.payable_ledger_table.setItem(row, 1, QTableWidgetItem(entry.entry_type))
+            type_item = QTableWidgetItem(entry.entry_type)
+            type_upper = (entry.entry_type or "").upper()
+            if "PAY" in type_upper or "SETTLE" in type_upper:
+                meaning = SUCCESS
+            elif "PURCHASE" in type_upper or "GRN" in type_upper:
+                meaning = INFO
+            elif "ADJUST" in type_upper:
+                meaning = WARNING
+            else:
+                meaning = NEUTRAL
+            set_status_pill(type_item, entry.entry_type, meaning)
+            self.payable_ledger_table.setItem(row, 1, type_item)
             self.payable_ledger_table.setItem(row, 2, QTableWidgetItem(entry.reference_doc or entry.note or ""))
 
             if entry.amount > 0:
                 # Debit (purchase increases payable)
                 debit_item = QTableWidgetItem(f"{entry.amount:.2f}")
                 debit_item.setForeground(status_color(DANGER))
-                debit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                debit_item.setTextAlignment(NUMERIC_ALIGNMENT)
                 self.payable_ledger_table.setItem(row, 3, debit_item)
                 self.payable_ledger_table.setItem(row, 4, QTableWidgetItem(""))
                 total_debit += entry.amount
@@ -1277,12 +1373,12 @@ class PurchaseView(QWidget):
                 self.payable_ledger_table.setItem(row, 3, QTableWidgetItem(""))
                 credit_item = QTableWidgetItem(f"{abs(entry.amount):.2f}")
                 credit_item.setForeground(status_color(SUCCESS))
-                credit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                credit_item.setTextAlignment(NUMERIC_ALIGNMENT)
                 self.payable_ledger_table.setItem(row, 4, credit_item)
                 total_credit += abs(entry.amount)
 
             balance_item = QTableWidgetItem(f"{entry.balance_after:.2f}")
-            balance_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            balance_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.payable_ledger_table.setItem(row, 5, balance_item)
 
             closing_balance = entry.balance_after
@@ -1370,7 +1466,7 @@ class PurchaseView(QWidget):
             return
 
         try:
-            amount = Decimal(amount_str)
+            amount = Decimal(str(amount_str).strip()).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         except (ValueError, InvalidOperation):
             QMessageBox.warning(
                 self,
@@ -1414,4 +1510,5 @@ class PurchaseView(QWidget):
             self.reload_payable_ledger()
             self.load_payable_suppliers()
         except ValueError as e:
-            QMessageBox.warning(self, _t("common.error"), str(e))
+            logger.warning("Failed to record supplier balance adjustment: %s", e)
+            QMessageBox.warning(self, _t("common.error"), translate_error(str(e)))

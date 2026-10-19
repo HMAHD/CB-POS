@@ -193,6 +193,33 @@ def format_date(date_obj: Union[datetime, date, str]) -> str:
         return str(date_obj)
 
 
+def format_datetime(date_obj: Union[datetime, date, str, None], include_seconds: bool = False) -> str:
+    """Format a datetime object using the configured date format and standard time."""
+    if not date_obj:
+        return ""
+
+    if isinstance(date_obj, str):
+        try:
+            date_obj = datetime.fromisoformat(date_obj)
+        except ValueError:
+            return date_obj
+
+    fmt = ConfigService.get("date_format") or "YYYY-MM-DD"
+    strftime_date = "%Y-%m-%d"
+    if fmt == "DD/MM/YYYY":
+        strftime_date = "%d/%m/%Y"
+    elif fmt == "MM/DD/YYYY":
+        strftime_date = "%m/%d/%Y"
+
+    time_fmt = "%H:%M:%S" if include_seconds else "%H:%M"
+    strftime_fmt = f"{strftime_date} {time_fmt}"
+
+    try:
+        return date_obj.strftime(strftime_fmt)
+    except Exception:
+        return str(date_obj)
+
+
 def escape_like(value: str) -> str:
     """
     Escape special characters (%, _, \\) in a value for use in SQL LIKE patterns.

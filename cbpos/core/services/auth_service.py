@@ -111,7 +111,7 @@ class AuthService:
         if user.failed_login_attempts or user.locked_until:
             user.failed_login_attempts = 0
             user.locked_until = None
-            session.commit()
+            session.flush()
 
     @staticmethod
     def get_remaining_lockout_seconds(username: str) -> int:
@@ -168,7 +168,6 @@ class AuthService:
                     # Migrate legacy SHA-256 hash to bcrypt transparently
                     if AuthService._is_legacy_hash(user.pin_hash):
                         user.pin_hash = AuthService.hash_pin(pin)
-                        session.commit()
                         logger.info("Migrated PIN hash to bcrypt for user '%s'", user.username)
 
                     # Reset brute-force counter
@@ -177,6 +176,10 @@ class AuthService:
                     # Detach user and role to keep available after session close
                     if user.role:
                         _ = user.role.name  # Force load
+                        _ = list(user.role.permissions)
+                        for perm in user.role.permissions:
+                            _ = perm.code
+                            session.expunge(perm)
                         session.expunge(user.role)
                     session.expunge(user)
 
@@ -231,6 +234,7 @@ class AuthService:
                         session.add(log)
                         session.commit()
                     except Exception as e:
+                        session.rollback()
                         logger.error("Failed to write login audit log: %s", e)
 
                     return user
@@ -284,13 +288,17 @@ class AuthService:
             # Migrate legacy hash
             if AuthService._is_legacy_hash(user.pin_hash):
                 user.pin_hash = AuthService.hash_pin(pin)
-                session.commit()
                 logger.info("Migrated PIN hash to bcrypt for user '%s'", username)
 
             AuthService._reset_failed_attempts_db(session, user)
+            session.commit()
 
             if user.role:
                 _ = user.role.name
+                _ = list(user.role.permissions)
+                for perm in user.role.permissions:
+                    _ = perm.code
+                    session.expunge(perm)
                 session.expunge(user.role)
             session.expunge(user)
 
@@ -321,7 +329,6 @@ class AuthService:
                         details="Manual logout",
                     )
                     session.add(log)
-                    session.commit()
             except Exception as e:
                 logger.error("Failed to write logout audit log: %s", e)
 

@@ -21,13 +21,110 @@ from collections.abc import Iterable
 from datetime import date, datetime
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QHeaderView, QTableWidget, QTableWidgetItem
+from PyQt6.QtWidgets import QHeaderView, QTableView, QTableWidgetItem
 
-from cbpos.core.utils.formatters import format_relative_time
+from cbpos.core.utils.formatters import format_datetime, format_relative_time
+from cbpos.i18n import _t, register_language_callback, unregister_language_callback
+from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
+from cbpos.ui.widgets.status_pill_delegate import (
+    STATUS_MEANING_ROLE,
+    StatusPillDelegate,
+    set_status_pill,
+)
 
 # Cells and headers of number columns share this, so a header sits over
 # the right edge of its digits instead of centered above them (#554).
 NUMERIC_ALIGNMENT = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+
+
+def attach_table_empty_state(
+    table: QTableView,
+    icon_name: str,
+    title_key: str | None = None,
+    subtitle_key: str | None = None,
+) -> EmptyStateWidget:
+    """Attach an EmptyStateWidget overlay to a table's viewport.
+
+    The overlay resizes automatically with the viewport and updates visibility
+    when rows are added or cleared in the table's model, keeping horizontal
+    headers visible.
+
+    Args:
+        table: QTableView or QTableWidget to attach the empty state to.
+        icon_name: qtawesome icon name (e.g. Icons.INVENTORY).
+        title_key: Optional translation key (or plain text) for the headline.
+        subtitle_key: Optional translation key (or plain text) for subtitle.
+
+    Returns:
+        The created EmptyStateWidget instance.
+    """
+    empty_widget = EmptyStateWidget(icon_name, parent=table.viewport())
+
+    def _retranslate() -> None:
+        try:
+            if title_key:
+                empty_widget.set_title(_t(title_key))
+            if subtitle_key:
+                empty_widget.set_subtitle(_t(subtitle_key))
+        except (RuntimeError, AttributeError):
+            pass
+
+    _retranslate()
+    register_language_callback(_retranslate, owner=empty_widget)
+
+    def _cleanup() -> None:
+        try:
+            unregister_language_callback(_retranslate)
+        except Exception:
+            pass
+
+    try:
+        table.destroyed.connect(_cleanup)
+    except (RuntimeError, AttributeError):
+        pass
+
+    def update_visibility(*_args) -> None:
+        try:
+            model = table.model()
+            is_empty = (model.rowCount() == 0) if model is not None else True
+            empty_widget.setVisible(is_empty)
+        except (RuntimeError, AttributeError):
+            pass
+
+    def _connect_model(model) -> None:
+        if model is None:
+            return
+        try:
+            model.rowsInserted.connect(update_visibility)
+            model.rowsRemoved.connect(update_visibility)
+            model.modelReset.connect(update_visibility)
+            model.layoutChanged.connect(update_visibility)
+        except (AttributeError, RuntimeError):
+            pass
+
+    try:
+        _connect_model(table.model())
+    except (RuntimeError, AttributeError):
+        pass
+
+    try:
+        orig_set_model = table.setModel
+
+        def _wrapped_set_model(m):
+            orig_set_model(m)
+            _connect_model(m)
+            update_visibility()
+
+        table.setModel = _wrapped_set_model
+    except (RuntimeError, AttributeError):
+        pass
+
+    table._empty_state = empty_widget
+    table.empty_state_widget = empty_widget
+    table.update_empty_state = update_visibility
+
+    update_visibility()
+    return empty_widget
 
 
 def configure_table_columns(
@@ -58,7 +155,7 @@ def configure_table_columns(
         header.setSectionResizeMode(column, mode)
 
 
-def align_numeric_headers(table: QTableWidget, columns: Iterable[int]) -> None:
+def align_numeric_headers(table: QTableView, columns: Iterable[int]) -> None:
     """Right-align the horizontal header of each numeric column.
 
     QSS cannot target one header section, so alignment goes on the header
@@ -66,15 +163,33 @@ def align_numeric_headers(table: QTableWidget, columns: Iterable[int]) -> None:
     later relabels, so retranslation keeps the alignment.
 
     Args:
-        table: the table whose header to align.
+        table: the table whose header to align (QTableWidget or QTableView).
         columns: indexes of columns whose cells are right-aligned numbers.
     """
     for column in columns:
-        item = table.horizontalHeaderItem(column)
-        if item is None:
-            item = QTableWidgetItem()
-            table.setHorizontalHeaderItem(column, item)
-        item.setTextAlignment(NUMERIC_ALIGNMENT)
+        if hasattr(table, "horizontalHeaderItem"):
+            item = table.horizontalHeaderItem(column)
+            if item is None:
+                item = QTableWidgetItem()
+                table.setHorizontalHeaderItem(column, item)
+            item.setTextAlignment(NUMERIC_ALIGNMENT)
+        elif hasattr(table, "model"):
+            try:
+                model = table.model()
+                if model is not None:
+                    if hasattr(model, "horizontalHeaderItem"):
+                        item = model.horizontalHeaderItem(column)
+                        if item is not None:
+                            item.setTextAlignment(NUMERIC_ALIGNMENT)
+                    elif hasattr(model, "setHeaderData"):
+                        model.setHeaderData(
+                            column,
+                            Qt.Orientation.Horizontal,
+                            NUMERIC_ALIGNMENT,
+                            Qt.ItemDataRole.TextAlignmentRole,
+                        )
+            except (RuntimeError, AttributeError):
+                pass
 
 
 class RelativeTimeTableWidgetItem(QTableWidgetItem):
@@ -95,7 +210,7 @@ class RelativeTimeTableWidgetItem(QTableWidgetItem):
         rel_text = format_relative_time(dt_or_str, now=now) if dt_or_str else ""
         super().__init__(rel_text)
         if self._raw_dt:
-            exact_str = self._raw_dt.strftime(fmt)
+            exact_str = format_datetime(self._raw_dt) if fmt == "%Y-%m-%d %H:%M" else self._raw_dt.strftime(fmt)
             self.setToolTip(exact_str)
             self.setData(Qt.ItemDataRole.UserRole, self._raw_dt.timestamp())
 
@@ -136,3 +251,15 @@ class RelativeTimeTableWidgetItem(QTableWidgetItem):
                 except TypeError:
                     pass
         return super().__lt__(other)
+
+
+__all__ = [
+    "NUMERIC_ALIGNMENT",
+    "STATUS_MEANING_ROLE",
+    "RelativeTimeTableWidgetItem",
+    "StatusPillDelegate",
+    "align_numeric_headers",
+    "attach_table_empty_state",
+    "configure_table_columns",
+    "set_status_pill",
+]

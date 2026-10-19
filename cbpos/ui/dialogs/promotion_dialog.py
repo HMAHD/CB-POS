@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.category_service import CategoryService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.promotion_service import PromotionService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 from cbpos.ui.widgets.decimal_line_edit import DecimalLineEdit
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
@@ -303,7 +304,7 @@ class PromotionDialog(QDialog):
                 daily_end=data["daily_end"],
             )
         except ValueError as e:
-            QMessageBox.warning(self, _t("common.validation_error"), str(e))
+            QMessageBox.warning(self, _t("common.validation_error"), translate_error(str(e)))
             return
 
         self.check_overlap()

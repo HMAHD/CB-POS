@@ -618,8 +618,6 @@ class SyncClient(QThread):
                         obj.synced = True
                     else:
                         logger.info("Sync: %s[%s] changed during push; will re-send", table_name, record_id)
-
-                session.commit()
         except Exception as e:
             logger.error("Error marking records as synced: %s", e)
 
@@ -631,7 +629,6 @@ class SyncClient(QThread):
         try:
             with db.get_session() as session:
                 renumber_customers(session, {int(local): int(server) for local, server in id_map.items()})
-                session.commit()
         except Exception as e:
             # They stay unsynced and are re-sent; the Main PC answers with
             # the same ids, so the next push tries again.
@@ -654,7 +651,6 @@ class SyncClient(QThread):
                         continue
                     for owner_id, main_value in rows.items():
                         _set_local_balance(session, balance, int(owner_id), main_value)
-                session.commit()
         except Exception as e:
             logger.error("Error applying Main PC balances: %s", e)
 
@@ -731,8 +727,6 @@ class SyncClient(QThread):
                 for balance, owner_id, main_value in pulled_balances:
                     _set_local_balance(session, balance, owner_id, main_value)
 
-                session.commit()
-
         except Exception as e:
             logger.error("Error applying catalog update: %s", e)
             return -1
@@ -794,8 +788,6 @@ class SyncClient(QThread):
                         product.stock_qty = Decimal(str(stock_qty))
                         updated += 1
 
-                session.commit()
-
         except Exception as e:
             logger.error("Error applying stock update: %s", e)
             return -1
@@ -845,7 +837,6 @@ class SyncClient(QThread):
                             obj = session.get(AuditLog, record_id)
                             if obj:
                                 obj.synced = True
-                    session.commit()
             except Exception as e:
                 logger.error("Error marking audit logs as synced: %s", e)
 

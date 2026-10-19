@@ -34,8 +34,10 @@ from cbpos.core.services.proforma_service import ProformaService
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.services.transaction_service import TransactionService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import (
     format_currency,
+    format_datetime,
     format_discount,
     format_document_status,
     format_payment_method,
@@ -46,11 +48,13 @@ from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.dialogs.void_reason_dialog import VoidReasonDialog
 from cbpos.ui.refund_messages import refund_confirm_html, refund_done_text
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING, pill_colors
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import (
     RelativeTimeTableWidgetItem,
     align_numeric_headers,
+    attach_table_empty_state,
     configure_table_columns,
 )
 
@@ -210,6 +214,7 @@ class DocumentBrowserView(QWidget):
         self.doc_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.doc_table.itemSelectionChanged.connect(self.on_selection_changed)
         self.doc_table.setItemDelegateForColumn(5, StatusPillDelegate(self.doc_table))  # Status (#560)
+        self.empty_doc_state = attach_table_empty_state(self.doc_table, Icons.DOCUMENTS, "common.no_items")
 
         # List and details side by side (#612): the list keeps every row of
         # height, the panel takes the right-hand side only while it's open.
@@ -321,6 +326,7 @@ class DocumentBrowserView(QWidget):
         self.items_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.items_table.setMinimumHeight(self.ITEMS_MIN_HEIGHT)
         self.items_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.empty_items_state = attach_table_empty_state(self.items_table, Icons.INVENTORY, "common.no_items")
         content_layout.addWidget(self.items_table, 1)
         scroll.setWidget(content)
         detail_layout.addWidget(scroll, 1)
@@ -613,7 +619,7 @@ class DocumentBrowserView(QWidget):
             )
 
         if doc.get("date"):
-            exact_d = doc["date"].strftime("%Y-%m-%d %H:%M:%S")
+            exact_d = format_datetime(doc["date"])
             rel_d = format_relative_time(doc["date"])
             date_display = f"{rel_d} ({exact_d})"
         else:
@@ -826,8 +832,8 @@ class DocumentBrowserView(QWidget):
         worker = PrintWorker.instance()
         try:
             worker.error_occurred.disconnect(self._on_reprint_error)
-        except TypeError:
-            pass  # not connected yet
+        except TypeError as e:
+            logger.debug("Signal not connected yet: %s", e)
         with contextlib.suppress(TypeError):
             worker.job_completed.disconnect(self._on_reprint_finished)
         worker.error_occurred.connect(self._on_reprint_error)
@@ -896,10 +902,11 @@ class DocumentBrowserView(QWidget):
                         _t("document_browser.refund_failed"),
                     )
             except Exception as e:
+                logger.exception("Refund failed: %s", e)
                 QMessageBox.critical(
                     self,
                     _t("common.error"),
-                    _t("document_browser.refund_error", error=str(e)),
+                    _t("document_browser.refund_error", error=translate_error(str(e))),
                 )
 
     def convert_proforma(self) -> None:
@@ -985,10 +992,11 @@ class DocumentBrowserView(QWidget):
                     _t("document_browser.void_failed"),
                 )
         except Exception as e:
+            logger.exception("Void failed: %s", e)
             QMessageBox.critical(
                 self,
                 _t("common.error"),
-                _t("document_browser.void_error", error=str(e)),
+                _t("document_browser.void_error", error=translate_error(str(e))),
             )
 
     def transfer_order(self) -> None:

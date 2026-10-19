@@ -2,7 +2,6 @@
 
 from decimal import Decimal
 
-from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QDialog,
@@ -17,16 +16,23 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.stock_count_service import StockCountService
 from cbpos.core.utils.formatters import (
     format_currency,
+    format_datetime,
     format_document_status,
     format_quantity,
     format_signed,
 )
 from cbpos.i18n import _t
 from cbpos.ui.constants import SPACING_XL, SPACING_XS
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, NEUTRAL, SUCCESS, status_color
 from cbpos.ui.utils.layout_helpers import protect_vertical_sizing
 from cbpos.ui.widgets.dialog_footer import make_close_footer
-from cbpos.ui.widgets.table_helpers import align_numeric_headers, configure_table_columns
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 
 # Expected, Counted, Variance, Value -- cells and headers right-align.
 FIRST_NUMERIC_COL = 2
@@ -107,7 +113,7 @@ class StockCountReportDialog(QDialog):
 
         lbl_date_key = QLabel(_t("common.date"))
         lbl_date_key.setProperty("class", "muted")
-        date_str = stock_count.date.strftime("%Y-%m-%d %H:%M") if stock_count.date else _t("common.na")
+        date_str = format_datetime(stock_count.date) if stock_count.date else _t("common.na")
         lbl_date_val = QLabel(date_str)
         lbl_date_val.setProperty("class", "bold")
 
@@ -173,6 +179,7 @@ class StockCountReportDialog(QDialog):
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.setAlternatingRowColors(True)
+        attach_table_empty_state(table, Icons.STOCK_TAKE, "common.no_items")
 
         for item in stock_count.items:
             row = table.rowCount()
@@ -191,14 +198,14 @@ class StockCountReportDialog(QDialog):
             ]:
                 text = _format_variance(val, item.product) if col == 4 else _format_count(val, item.product)
                 cell = QTableWidgetItem(text)
-                cell.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                cell.setTextAlignment(NUMERIC_ALIGNMENT)
                 if col == 4 and val is not None:
                     cell.setForeground(status_color(_variance_meaning(val)))
                 table.setItem(row, col, cell)
 
             val_text = format_signed(item.variance_value, format_currency) if item.variance_value is not None else ""
             val_cell = QTableWidgetItem(val_text)
-            val_cell.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            val_cell.setTextAlignment(NUMERIC_ALIGNMENT)
             if item.variance_value is not None:
                 val_cell.setForeground(status_color(_variance_meaning(item.variance_value)))
             table.setItem(row, 5, val_cell)

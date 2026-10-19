@@ -20,6 +20,7 @@ from cbpos.core.services.invoice_service import InvoiceService
 from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.theme_service import ThemeService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
@@ -165,7 +166,9 @@ class ReceiptOptionsDialog(QDialog):
         except Exception as e:
             logger.error("Receipt preview failed: %s", e)
             QMessageBox.warning(
-                self, _t("receipt_options.print_error_title"), _t("receipt_options.print_error_message", error=str(e))
+                self,
+                _t("receipt_options.print_error_title"),
+                _t("receipt_options.print_error_message", error=translate_error(str(e))),
             )
 
     def print_thermal(self) -> None:
@@ -183,8 +186,8 @@ class ReceiptOptionsDialog(QDialog):
             # that finishes fast can't emit before we're listening.
             try:
                 worker.error_occurred.disconnect(self._on_print_error)
-            except TypeError:
-                pass  # not connected yet
+            except TypeError as e:
+                logger.debug("Signal not connected yet: %s", e)
             with contextlib.suppress(TypeError):
                 worker.job_completed.disconnect(self._on_print_finished)
             worker.error_occurred.connect(self._on_print_error)
@@ -196,7 +199,9 @@ class ReceiptOptionsDialog(QDialog):
         except Exception as e:
             logger.error("Receipt print failed: %s", e)
             QMessageBox.warning(
-                self, _t("receipt_options.print_error_title"), _t("receipt_options.print_error_message", error=str(e))
+                self,
+                _t("receipt_options.print_error_title"),
+                _t("receipt_options.print_error_message", error=translate_error(str(e))),
             )
 
     def _on_print_finished(self) -> None:
@@ -225,8 +230,8 @@ class ReceiptOptionsDialog(QDialog):
         try:
             if self.sale.customer and self.sale.customer.email:
                 default_email = self.sale.customer.email
-        except Exception:
-            pass  # Sale may be detached; skip customer email pre-fill
+        except Exception as e:
+            logger.debug("Sale may be detached; skip customer email pre-fill: %s", e)
 
         email, ok = QInputDialog.getText(
             self, _t("receipt_options.email_title"), _t("receipt_options.email_prompt"), text=default_email
@@ -263,5 +268,7 @@ class ReceiptOptionsDialog(QDialog):
         except Exception as e:
             logger.error("Receipt PDF save failed: %s", e)
             QMessageBox.warning(
-                self, _t("receipt_options.pdf_error_title"), _t("receipt_options.pdf_error_message", error=str(e))
+                self,
+                _t("receipt_options.pdf_error_title"),
+                _t("receipt_options.pdf_error_message", error=translate_error(str(e))),
             )

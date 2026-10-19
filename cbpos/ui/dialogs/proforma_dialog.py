@@ -1,5 +1,5 @@
 import logging
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from PyQt6.QtCore import QStringListModel, Qt
 from PyQt6.QtGui import QColor, QIntValidator
@@ -26,8 +26,15 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.proforma_service import ProformaService
 from cbpos.core.utils.formatters import format_currency
 from cbpos.i18n import _t
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.utils.layout_helpers import protect_vertical_sizing
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
@@ -124,7 +131,19 @@ class ProformaDialog(QDialog):
                 _t("common.total"),
             ]
         )
-        self.items_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.items_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Stretch,
+                1: QHeaderView.ResizeMode.ResizeToContents,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+                4: QHeaderView.ResizeMode.ResizeToContents,
+                5: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        align_numeric_headers(self.items_table, (1, 2, 4, 5))
+        attach_table_empty_state(self.items_table, Icons.DOCUMENTS, "proforma.items_empty_state")
         self.items_table.verticalHeader().setVisible(False)
         self.items_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.items_table.setAlternatingRowColors(True)
@@ -254,22 +273,22 @@ class ProformaDialog(QDialog):
             self.items_table.setItem(row, 0, QTableWidgetItem(item["product_name"]))
 
             qty_item = QTableWidgetItem(f"{item['quantity']:.3f}")
-            qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.items_table.setItem(row, 1, qty_item)
 
             price_item = QTableWidgetItem(f"{item['unit_price']:.2f}")
-            price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            price_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.items_table.setItem(row, 2, price_item)
 
             self.items_table.setItem(row, 3, QTableWidgetItem(item["discount_type"]))
 
             disc_item = QTableWidgetItem(f"{item['discount_value']:.2f}")
-            disc_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            disc_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.items_table.setItem(row, 4, disc_item)
 
             line_total = item["line_total"]
             total_item = QTableWidgetItem(format_currency(line_total))
-            total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            total_item.setTextAlignment(NUMERIC_ALIGNMENT)
             self.items_table.setItem(row, 5, total_item)
 
             total += line_total
@@ -307,7 +326,7 @@ class ProformaDialog(QDialog):
             self, _t("proforma.change_qty"), _t("proforma.new_qty"), current, 0.001, 99999.0, 3
         )
         if ok:
-            self.items[row]["quantity"] = Decimal(str(qty))
+            self.items[row]["quantity"] = Decimal(str(qty)).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
             self.items[row]["line_total"] = self.items[row]["quantity"] * self.items[row]["unit_price"]
             self.refresh_table()
 

@@ -28,7 +28,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.tax_service import TaxService
-from cbpos.core.utils.formatters import format_currency, get_currency_symbol
+from cbpos.core.utils.formatters import format_currency, format_date, get_currency_symbol
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.widgets.charts import (
     HOURLY_COLORS,
@@ -597,8 +597,8 @@ class DashboardView(QWidget):
         self.lbl_period.setText(
             _t(
                 "dashboard.periodic_reports_range",
-                start=sd.strftime("%d.%m.%Y"),
-                end=ed.strftime("%d.%m.%Y"),
+                start=format_date(sd),
+                end=format_date(ed),
             )
         )
         self.btn_refresh.setEnabled(False)

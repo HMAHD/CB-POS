@@ -28,7 +28,13 @@ from cbpos.ui.dialogs.role_manager import RoleManagerDialog
 from cbpos.ui.dialogs.user_dialog import UserDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, INFO, SUCCESS, WARNING, is_light_theme, status_color
-from cbpos.ui.widgets.table_helpers import configure_table_columns
+from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 
 
 class UserView(QWidget):
@@ -108,6 +114,8 @@ class UserView(QWidget):
         )
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.setItemDelegateForColumn(3, StatusPillDelegate(self.table))
+        self.empty_users_state = attach_table_empty_state(self.table, Icons.USERS, "common.no_items")
         # Qt's default row-number gutter and the real "ID" column both show
         # the same number (users are created sequentially, so the PK
         # almost always equals the row number) -- keep the genuinely
@@ -184,6 +192,7 @@ class UserView(QWidget):
         )
         self.log_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.log_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.empty_logs_state = attach_table_empty_state(self.log_table, Icons.HISTORY, "common.no_items")
 
         layout.addWidget(self.log_table)
 
@@ -202,6 +211,7 @@ class UserView(QWidget):
                 _t("common.status"),
             ]
         )
+        align_numeric_headers(self.table, [0])
         self.log_table.setHorizontalHeaderLabels(
             [
                 _t("user.col_time"),
@@ -240,7 +250,9 @@ class UserView(QWidget):
         self.table.setRowCount(len(self.users))
 
         for row, user in enumerate(self.users):
-            self.table.setItem(row, 0, QTableWidgetItem(str(user.id)))
+            id_item = QTableWidgetItem(str(user.id))
+            id_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.table.setItem(row, 0, id_item)
             self.table.setItem(row, 1, QTableWidgetItem(user.username))
             self.table.setItem(
                 row,
@@ -250,8 +262,8 @@ class UserView(QWidget):
 
             status = _t("common.active") if user.is_active else _t("common.inactive")
             item_status = QTableWidgetItem(status)
-            if not user.is_active:
-                item_status.setForeground(status_color(DANGER))
+            meaning = SUCCESS if user.is_active else DANGER
+            set_status_pill(item_status, status, meaning)
             self.table.setItem(row, 3, item_status)
 
     # Destructive actions get flagged red even though their event_type

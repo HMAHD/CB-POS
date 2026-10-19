@@ -1,6 +1,6 @@
 import json
 import logging
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from cbpos.core.database import Database
 from cbpos.core.models import SuspendedTransaction
@@ -87,7 +87,9 @@ class SuspendedTransactionService:
                 for item in items_data:
                     product = ProductService.get_by_barcode(item["barcode"])
                     if product:
-                        cart_service.add_item(product, Decimal(item["qty"]))
+                        cart_service.add_item(
+                            product, Decimal(str(item["qty"])).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
+                        )
 
                 session.delete(suspended)
             return True

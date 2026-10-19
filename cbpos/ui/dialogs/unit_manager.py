@@ -24,6 +24,13 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.unit_service import UnitService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
+from cbpos.ui.resources.icons import Icons
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
@@ -58,12 +65,20 @@ class UnitManagerDialog(QDialog):
             [_t("common.id"), _t("common.name"), _t("unit_manager.col_abbr"), _t("unit_manager.col_decimals")]
         )
         self.table.setColumnHidden(0, True)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        configure_table_columns(
+            self.table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,
+                1: QHeaderView.ResizeMode.Stretch,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        align_numeric_headers(self.table.horizontalHeader(), (3,))
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
+        attach_table_empty_state(self.table, Icons.INVENTORY, "common.no_items")
         self.table.currentItemChanged.connect(self._on_selection_changed)
         left.addWidget(self.table)
 
@@ -144,7 +159,9 @@ class UnitManagerDialog(QDialog):
             self.table.setItem(row, 0, QTableWidgetItem(str(unit.id)))
             self.table.setItem(row, 1, QTableWidgetItem(unit.name))
             self.table.setItem(row, 2, QTableWidgetItem(unit.abbreviation))
-            self.table.setItem(row, 3, QTableWidgetItem(str(unit.decimal_places)))
+            dec_item = QTableWidgetItem(str(unit.decimal_places))
+            dec_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.table.setItem(row, 3, dec_item)
 
             if not unit.is_active:
                 for col in range(4):

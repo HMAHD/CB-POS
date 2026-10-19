@@ -106,7 +106,6 @@ class SessionWatchdog(QObject):
                         details="Auto-logout due to inactivity",
                     )
                     session.add(log)
-                    session.commit()
         except Exception as e:
             import logging
 

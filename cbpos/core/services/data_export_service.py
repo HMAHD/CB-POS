@@ -7,6 +7,7 @@ to CSV, Excel, or PDF via ExportService.
 
 import logging
 from datetime import datetime
+from decimal import Decimal
 
 import pandas as pd
 from sqlalchemy.orm import joinedload
@@ -47,9 +48,9 @@ class DataExportService:
                     {
                         "Barcode": p.barcode,
                         "Name": p.name_en,
-                        "Price": float(p.price),
-                        "Cost": float(p.cost),
-                        "Stock": float(p.stock_qty),
+                        "Price": p.price if p.price is not None else Decimal("0.00"),
+                        "Cost": p.cost if p.cost is not None else Decimal("0.00"),
+                        "Stock": p.stock_qty if p.stock_qty is not None else Decimal("0.000"),
                         "Category": p.category.name if p.category else "",
                         "Unit": p.unit.name if p.unit else "pcs",
                     }
@@ -77,8 +78,8 @@ class DataExportService:
                         "Company": c.company_name or "",
                         "Phone": c.phone or "",
                         "Email": c.email or "",
-                        "Credit Limit": float(c.credit_limit),
-                        "Current Debt": float(c.current_debt),
+                        "Credit Limit": c.credit_limit if c.credit_limit is not None else Decimal("0.00"),
+                        "Current Debt": c.current_debt if c.current_debt is not None else Decimal("0.00"),
                     }
                 )
 
@@ -117,8 +118,8 @@ class DataExportService:
                         "Invoice": s.document_number,
                         "Date": s.date.strftime("%Y-%m-%d %H:%M") if s.date else "",
                         "Customer": s.customer.name if s.customer else "Walk-in",
-                        "Total": float(s.total_amount),
-                        "VAT": float(s.tax_vat),
+                        "Total": s.total_amount if s.total_amount is not None else Decimal("0.00"),
+                        "VAT": s.tax_vat if s.tax_vat is not None else Decimal("0.00"),
                         "Payment": s.payment_method,
                         "Status": s.status,
                     }

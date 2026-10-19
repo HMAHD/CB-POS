@@ -47,10 +47,17 @@ from cbpos.infrastructure.hardware.escpos_driver import drawer_pin_setting
 from cbpos.ui.constants import SPACING_SM
 from cbpos.ui.dialogs.log_detail_dialog import LogDetailDialog
 from cbpos.ui.hardware_test_feedback import set_hardware_test_status, show_hardware_test_result
-from cbpos.ui.resources.status_colors import DANGER, WARNING, status_color
+from cbpos.ui.resources.icons import Icons
+from cbpos.ui.resources.status_colors import DANGER, NEUTRAL, WARNING, status_color
 from cbpos.ui.utils.style_helpers import set_status_class
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
-from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers
+from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -210,6 +217,7 @@ class AdminToolsView(QWidget):
         header = self.table_counts.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        attach_table_empty_state(self.table_counts, Icons.ADMIN_TOOLS, "common.no_items")
         tables_layout.addWidget(self.table_counts)
 
         layout.addWidget(self.grp_tables, 1)
@@ -386,14 +394,20 @@ class AdminToolsView(QWidget):
         QShortcut(QKeySequence(Qt.Key.Key_Return), self.log_table).activated.connect(self._open_log_detail_dialog)
         QShortcut(QKeySequence(Qt.Key.Key_Enter), self.log_table).activated.connect(self._open_log_detail_dialog)
 
-        log_header = self.log_table.horizontalHeader()
-        log_header.setSectionResizeMode(0, QHeaderView.ResizeMode.Interactive)
-        log_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)
-        log_header.setSectionResizeMode(2, QHeaderView.ResizeMode.Interactive)
-        log_header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.log_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.Interactive,
+                1: QHeaderView.ResizeMode.Interactive,
+                2: QHeaderView.ResizeMode.Interactive,
+                3: QHeaderView.ResizeMode.Stretch,
+            },
+        )
         self.log_table.setColumnWidth(0, 160)
         self.log_table.setColumnWidth(1, 80)
         self.log_table.setColumnWidth(2, 200)
+        self.log_table.setItemDelegateForColumn(1, StatusPillDelegate(self.log_table))
+        self.empty_logs_state = attach_table_empty_state(self.log_table, Icons.ADMIN_TOOLS, "common.no_items")
 
         layout.addWidget(self.log_table, 1)
 
@@ -493,7 +507,8 @@ class AdminToolsView(QWidget):
             msg_item = QTableWidgetItem(first_line)
             msg_item.setToolTip(raw_message)
 
-            meaning = _LEVEL_MEANINGS.get(entry["level"])
+            meaning = _LEVEL_MEANINGS.get(entry["level"], NEUTRAL)
+            set_status_pill(level_item, entry["level"], meaning)
             if meaning:
                 level_item.setForeground(status_color(meaning))
 

@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.import_service import ImportService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 from cbpos.ui.workers import CsvImportWorker
 
@@ -138,7 +139,9 @@ class CsvImportDialog(QDialog):
             QMessageBox.information(self, _t("common.saved"), _t("csv_import.template_saved", path=str(file_path)))
         except Exception as e:
             logger.error("Failed to save template: %s", e)
-            QMessageBox.critical(self, _t("common.error"), _t("csv_import.template_save_error", error=str(e)))
+            QMessageBox.critical(
+                self, _t("common.error"), _t("csv_import.template_save_error", error=translate_error(str(e)))
+            )
 
     def _choose_file(self) -> None:
         """Open file picker for the filled CSV."""

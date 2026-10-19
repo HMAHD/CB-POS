@@ -27,6 +27,7 @@ from cbpos.core.services.price_list_service import (
     PriceListService,
 )
 from cbpos.core.services.product_service import ProductService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import NO_VALUE, format_number, get_currency_symbol, money_header
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.resources.icons import Icons
@@ -36,6 +37,7 @@ from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
+    attach_table_empty_state,
     configure_table_columns,
 )
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
@@ -232,6 +234,7 @@ class BulkPriceAdjustDialog(QDialog):
         self.table_preview.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table_preview.setAlternatingRowColors(True)
         self.table_preview.verticalHeader().setVisible(False)
+        attach_table_empty_state(self.table_preview, Icons.PRICE_LIST, "common.no_items")
         main_layout.addWidget(self.table_preview, 1)
 
         # ── Footer ──
@@ -463,4 +466,4 @@ class BulkPriceAdjustDialog(QDialog):
             self.price_list_service.apply_bulk_adjust(self.price_list_id, self.current_preview_items, summary)
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))

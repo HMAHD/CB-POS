@@ -31,6 +31,7 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.utils.destroy_hooks import call_on_destroyed
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t, get_language, register_language_callback, translate_in
 from cbpos.ui.app_restart import restart_application
 from cbpos.ui.resources.icons import Icons
@@ -476,9 +477,10 @@ class SettingsView(QWidget):
                 page.validate()
                 all_settings.update(page.save())
         except ValueError as e:
+            logger.warning("Settings validation error on %s: %s", getattr(page, "__class__", type(page)).__name__, e)
             # Show the page holding the bad field so its inline error is visible
             self.stack.setCurrentWidget(page)
-            QMessageBox.warning(self, _t("common.validation_error"), str(e))
+            QMessageBox.warning(self, _t("common.validation_error"), translate_error(str(e)))
             return
 
         warnings = [w for page in self.pages for w in getattr(page, "save_warnings", list)()]

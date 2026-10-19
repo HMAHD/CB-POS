@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.customer_credit_service import CustomerCreditService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import format_currency, get_currency_symbol
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
@@ -284,4 +285,4 @@ class AdjustBalanceDialog(QDialog):
             self.accept()
         except Exception as e:
             logger.error("Failed to record balance adjustment: %s", e)
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))

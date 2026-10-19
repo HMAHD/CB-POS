@@ -1,11 +1,15 @@
+import logging
 from decimal import Decimal
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QDialog, QLabel, QMessageBox, QPushButton, QVBoxLayout
 
 from cbpos.core.services.shift_service import ShiftService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 from cbpos.ui.widgets.denomination_widget import DenominationWidget
+
+logger = logging.getLogger(__name__)
 
 
 class StartShiftDialog(QDialog):
@@ -59,7 +63,8 @@ class StartShiftDialog(QDialog):
             self.shift_service.start_shift(self.user_id, self.starting_cash)
             self.accept()
         except ValueError as e:
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            logger.warning("Failed to start shift: %s", e, exc_info=True)
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
             self.accept()
 
     def closeEvent(self, event):

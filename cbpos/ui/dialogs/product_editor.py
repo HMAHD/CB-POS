@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QDoubleValidator, QIcon, QPixmap
@@ -33,9 +33,16 @@ from cbpos.core.services.supplier_service import SupplierService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import get_currency_symbol
 from cbpos.i18n import _t
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.utils.layout_helpers import protect_vertical_sizing
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
 from cbpos.ui.widgets.form_card import FormCard
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 
@@ -364,7 +371,17 @@ class ProductEditor(QDialog):
                 _t("product_editor.comp_header_action"),
             ]
         )
-        self.comp_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        configure_table_columns(
+            self.comp_table.horizontalHeader(),
+            {
+                0: QHeaderView.ResizeMode.ResizeToContents,
+                1: QHeaderView.ResizeMode.Stretch,
+                2: QHeaderView.ResizeMode.ResizeToContents,
+                3: QHeaderView.ResizeMode.ResizeToContents,
+            },
+        )
+        align_numeric_headers(self.comp_table, (2,))
+        attach_table_empty_state(self.comp_table, Icons.INVENTORY, "common.no_items")
         self.comp_table.setAlternatingRowColors(True)
         self.comp_table.hideColumn(0)  # Hide ID
         layout.addWidget(self.comp_table)
@@ -401,7 +418,9 @@ class ProductEditor(QDialog):
         self.comp_table.insertRow(row)
         self.comp_table.setItem(row, 0, QTableWidgetItem(str(product.id)))
         self.comp_table.setItem(row, 1, QTableWidgetItem(product.name_en))
-        self.comp_table.setItem(row, 2, QTableWidgetItem(str(qty)))
+        qty_item = QTableWidgetItem(str(qty))
+        qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
+        self.comp_table.setItem(row, 2, qty_item)
 
         remove_btn = QPushButton(_t("product_editor.btn_remove_component"))
         remove_btn.setProperty("class", "danger")
@@ -510,8 +529,12 @@ class ProductEditor(QDialog):
         if index >= 0:
             self.category_combo.setCurrentIndex(index)
 
-        self.price_input.setText(format(Decimal(self.product.price).quantize(Decimal("0.01")), "f"))
-        self.cost_input.setText(format(Decimal(self.product.cost).quantize(Decimal("0.01")), "f"))
+        self.price_input.setText(
+            format(Decimal(str(self.product.price)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), "f")
+        )
+        self.cost_input.setText(
+            format(Decimal(str(self.product.cost)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP), "f")
+        )
 
         _q = Decimal("0.001")
         self.stock_input.setText(
@@ -552,7 +575,9 @@ class ProductEditor(QDialog):
             self.comp_table.insertRow(row)
             self.comp_table.setItem(row, 0, QTableWidgetItem(str(comp["child_product_id"])))
             self.comp_table.setItem(row, 1, QTableWidgetItem(comp["child_name"]))
-            self.comp_table.setItem(row, 2, QTableWidgetItem(str(comp["qty"])))
+            qty_item = QTableWidgetItem(str(comp["qty"]))
+            qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.comp_table.setItem(row, 2, qty_item)
 
             remove_btn = QPushButton(_t("product_editor.btn_remove_component"))
             remove_btn.setProperty("class", "danger")

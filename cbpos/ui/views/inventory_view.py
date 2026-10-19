@@ -3,7 +3,6 @@ from PyQt6.QtGui import QBrush, QColor
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
-    QLabel,
     QLineEdit,
     QPushButton,
     QStackedWidget,
@@ -16,8 +15,10 @@ from cbpos.core.services.import_service import ImportService
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.product_editor import ProductEditor
+from cbpos.ui.resources.icons import Icons
+from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
-from cbpos.ui.widgets.table_helpers import configure_table_columns
+from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, configure_table_columns
 
 
 class InventoryModel(QAbstractTableModel):
@@ -61,6 +62,10 @@ class InventoryModel(QAbstractTableModel):
                     return product.unit.abbreviation
                 return "kg" if product.is_weighted else "pcs"
 
+        elif role == Qt.ItemDataRole.TextAlignmentRole:
+            if col in (3, 4):  # Price, Stock
+                return NUMERIC_ALIGNMENT
+
         elif role == Qt.ItemDataRole.BackgroundRole:
             # Low stock warning - theme-aware colors via QSS alternate rows
             if product.stock_qty <= product.reorder_point:
@@ -75,8 +80,11 @@ class InventoryModel(QAbstractTableModel):
 
     def headerData(self, section, orientation, role):
         """Return the translated column header text."""
-        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
-            return self.headers[section]
+        if orientation == Qt.Orientation.Horizontal:
+            if role == Qt.ItemDataRole.DisplayRole:
+                return self.headers[section]
+            if role == Qt.ItemDataRole.TextAlignmentRole and section in (3, 4):
+                return NUMERIC_ALIGNMENT
         return None
 
     def update_data(self, products):
@@ -165,9 +173,7 @@ class InventoryView(QWidget):
         self.table.customContextMenuRequested.connect(self.open_context_menu)
 
         # Empty state placeholder
-        self.empty_label = QLabel()
-        self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.empty_label.setProperty("class", "muted")
+        self.empty_label = EmptyStateWidget(Icons.INVENTORY)
         self.empty_label.setObjectName("EmptyStateLabel")
 
         self.table_stack = QStackedWidget()

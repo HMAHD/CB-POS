@@ -1,5 +1,6 @@
 """Promotion view for listing, creating, and managing discount promotions."""
 
+import logging
 from datetime import datetime
 
 from PyQt6.QtCore import Qt
@@ -17,12 +18,21 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.category_service import CategoryService
 from cbpos.core.services.promotion_service import SUPPORTED_TYPES, PromotionService
-from cbpos.core.utils.formatters import format_discount, format_promotion_type
+from cbpos.core.utils.error_messages import translate_error
+from cbpos.core.utils.formatters import format_datetime, format_discount, format_promotion_type
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.promotion_dialog import PromotionDialog
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
-from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, align_numeric_headers, configure_table_columns
+from cbpos.ui.widgets.table_helpers import (
+    NUMERIC_ALIGNMENT,
+    align_numeric_headers,
+    attach_table_empty_state,
+    configure_table_columns,
+)
+
+logger = logging.getLogger(__name__)
 
 __all__ = ["CategoryService", "PromotionDialog", "PromotionView"]
 
@@ -84,6 +94,7 @@ class PromotionView(QWidget):
         )
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setItemDelegateForColumn(6, StatusPillDelegate(self.table))  # Status (#560)
+        self.empty_promotion_state = attach_table_empty_state(self.table, Icons.PROMOTION, "common.no_items")
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.doubleClicked.connect(self.edit_promotion)
         self.table.itemChanged.connect(self._on_table_item_changed)
@@ -144,8 +155,8 @@ class PromotionView(QWidget):
                 value_item = QTableWidgetItem(format_discount(p.type, p.value))
                 value_item.setTextAlignment(NUMERIC_ALIGNMENT)
                 self.table.setItem(row, 2, value_item)
-                self.table.setItem(row, 3, QTableWidgetItem(p.start_time.strftime("%Y-%m-%d %H:%M")))
-                self.table.setItem(row, 4, QTableWidgetItem(p.end_time.strftime("%Y-%m-%d %H:%M")))
+                self.table.setItem(row, 3, QTableWidgetItem(format_datetime(p.start_time)))
+                self.table.setItem(row, 4, QTableWidgetItem(format_datetime(p.end_time)))
 
                 scope_text = p.category.name if p.category_id and p.category else _t("promotion.scope_all_products")
                 self.table.setItem(row, 5, QTableWidgetItem(scope_text))
@@ -170,7 +181,8 @@ class PromotionView(QWidget):
                 self.promotion_service.create_promotion(**data)
                 self.load_promotions()
             except Exception as e:
-                QMessageBox.critical(self, _t("common.error"), str(e))
+                logger.exception("Failed to create promotion: %s", e)
+                QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
 
     def _show_context_menu(self, position) -> None:
         item = self.table.itemAt(position)
@@ -212,7 +224,8 @@ class PromotionView(QWidget):
                         self.promotion_service.update_promotion(p.id, is_active=new_state)
                         self.load_promotions()
                     except Exception as e:
-                        QMessageBox.critical(self, _t("common.error"), str(e))
+                        logger.exception("Failed to toggle promotion active: %s", e)
+                        QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
                         self.load_promotions()
 
     def _edit_promotion_row(self, row: int) -> None:
@@ -227,7 +240,8 @@ class PromotionView(QWidget):
                 self.promotion_service.update_promotion(promotion.id, **data)
                 self.load_promotions()
             except Exception as e:
-                QMessageBox.critical(self, _t("common.error"), str(e))
+                logger.exception("Failed to update promotion: %s", e)
+                QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
 
     def _toggle_promotion_active(self, row: int) -> None:
         if row < 0 or row >= len(self.promotions):
@@ -238,7 +252,8 @@ class PromotionView(QWidget):
             self.promotion_service.update_promotion(promotion.id, is_active=not promotion.is_active)
             self.load_promotions()
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            logger.exception("Failed to toggle promotion active: %s", e)
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
 
     def _delete_promotion_row(self, row: int) -> None:
         if row < 0 or row >= len(self.promotions):
@@ -259,4 +274,5 @@ class PromotionView(QWidget):
             self.promotion_service.delete_promotion(promotion.id)
             self.load_promotions()
         except Exception as e:
-            QMessageBox.critical(self, _t("common.error"), str(e))
+            logger.exception("Failed to delete promotion: %s", e)
+            QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))

@@ -13,7 +13,11 @@ from cbpos.core.services.customer_service import CustomerService
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
-from cbpos.ui.widgets.table_helpers import attach_table_empty_state, configure_table_columns
+from cbpos.ui.widgets.table_helpers import (
+    attach_table_empty_state,
+    batch_table_update,
+    configure_table_columns,
+)
 
 
 class CustomerSelectionDialog(QDialog):
@@ -152,20 +156,27 @@ class CustomerSelectionDialog(QDialog):
 
     def populate_table(self, customers):
         """Fill the results table with the given list of customers."""
-        self.table.setRowCount(0)
-        for customer in customers:
-            row = self.table.rowCount()
-            self.table.insertRow(row)
-            self.table.setItem(row, 0, QTableWidgetItem(str(customer.id)))
+        with batch_table_update(self.table):
+            self.table.setRowCount(0)
+            TableItem = QTableWidgetItem
+            align_left = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+            user_role = Qt.ItemDataRole.UserRole
+            set_item = self.table.setItem
+            insert_row = self.table.insertRow
 
-            name_item = QTableWidgetItem(customer.name)
-            name_item.setData(Qt.ItemDataRole.UserRole, customer.id)
-            name_item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-            self.table.setItem(row, 1, name_item)
+            for customer in customers:
+                row = self.table.rowCount()
+                insert_row(row)
+                set_item(row, 0, TableItem(str(customer.id)))
 
-            phone_item = QTableWidgetItem(customer.phone or "")
-            phone_item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-            self.table.setItem(row, 2, phone_item)
+                name_item = TableItem(customer.name)
+                name_item.setData(user_role, customer.id)
+                name_item.setTextAlignment(align_left)
+                set_item(row, 1, name_item)
+
+                phone_item = TableItem(customer.phone or "")
+                phone_item.setTextAlignment(align_left)
+                set_item(row, 2, phone_item)
 
         if self.table.rowCount() > 0:
             self.table.selectRow(0)

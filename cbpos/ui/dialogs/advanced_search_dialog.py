@@ -31,6 +31,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
@@ -237,33 +238,41 @@ class AdvancedSearchDialog(QDialog):
         text_brush = QBrush(self._get_text_color())
 
         # Populate table
-        self.table.setRowCount(len(filtered))
-        for row, product in enumerate(filtered):
-            name_item = QTableWidgetItem(product.name_en)
-            name_item.setForeground(text_brush)
-            self.table.setItem(row, 0, name_item)
+        with batch_table_update(self.table):
+            self.table.setRowCount(len(filtered))
+            TableItem = QTableWidgetItem
+            fmt_curr = format_currency
+            fmt_num = format_number
+            num_align = NUMERIC_ALIGNMENT
+            user_role = Qt.ItemDataRole.UserRole
+            set_item = self.table.setItem
 
-            barcode_item = QTableWidgetItem(product.barcode)
-            barcode_item.setForeground(text_brush)
-            self.table.setItem(row, 1, barcode_item)
+            for row, product in enumerate(filtered):
+                name_item = TableItem(product.name_en)
+                name_item.setForeground(text_brush)
+                set_item(row, 0, name_item)
 
-            stock_item = QTableWidgetItem(format_number(product.stock_qty, 2))
-            stock_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            stock_item.setForeground(text_brush)
-            self.table.setItem(row, 2, stock_item)
+                barcode_item = TableItem(product.barcode)
+                barcode_item.setForeground(text_brush)
+                set_item(row, 1, barcode_item)
 
-            price_item = QTableWidgetItem(format_currency(product.price))
-            price_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            price_item.setForeground(text_brush)
-            self.table.setItem(row, 3, price_item)
+                stock_item = TableItem(fmt_num(product.stock_qty, 2))
+                stock_item.setTextAlignment(num_align)
+                stock_item.setForeground(text_brush)
+                set_item(row, 2, stock_item)
 
-            cat_name = product.category.name if product.category else "-"
-            cat_item = QTableWidgetItem(cat_name)
-            cat_item.setForeground(text_brush)
-            self.table.setItem(row, 4, cat_item)
+                price_item = TableItem(fmt_curr(product.price))
+                price_item.setTextAlignment(num_align)
+                price_item.setForeground(text_brush)
+                set_item(row, 3, price_item)
 
-            # Store product object
-            self.table.item(row, 0).setData(Qt.ItemDataRole.UserRole, product)
+                cat_name = product.category.name if product.category else "-"
+                cat_item = TableItem(cat_name)
+                cat_item.setForeground(text_brush)
+                set_item(row, 4, cat_item)
+
+                # Store product object
+                name_item.setData(user_role, product)
 
         # Update result count
         self.lbl_count.setText(_t("advanced_search.result_count", count=len(filtered)))

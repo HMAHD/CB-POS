@@ -29,6 +29,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
@@ -152,22 +153,28 @@ class UnitManagerDialog(QDialog):
     def _load_units(self) -> None:
         """Load all units into the table."""
         units = UnitService.get_all(active_only=False)
-        self.table.setRowCount(0)
-        for unit in units:
-            row = self.table.rowCount()
-            self.table.insertRow(row)
-            self.table.setItem(row, 0, QTableWidgetItem(str(unit.id)))
-            self.table.setItem(row, 1, QTableWidgetItem(unit.name))
-            self.table.setItem(row, 2, QTableWidgetItem(unit.abbreviation))
-            dec_item = QTableWidgetItem(str(unit.decimal_places))
-            dec_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.table.setItem(row, 3, dec_item)
+        with batch_table_update(self.table):
+            self.table.setRowCount(0)
+            TableItem = QTableWidgetItem
+            num_align = NUMERIC_ALIGNMENT
+            set_item = self.table.setItem
+            insert_row = self.table.insertRow
+            mid_color = self.table.palette().color(self.table.palette().ColorRole.Mid)
+            for unit in units:
+                row = self.table.rowCount()
+                insert_row(row)
+                set_item(row, 0, TableItem(str(unit.id)))
+                set_item(row, 1, TableItem(unit.name))
+                set_item(row, 2, TableItem(unit.abbreviation))
+                dec_item = TableItem(str(unit.decimal_places))
+                dec_item.setTextAlignment(num_align)
+                set_item(row, 3, dec_item)
 
-            if not unit.is_active:
-                for col in range(4):
-                    item = self.table.item(row, col)
-                    if item:
-                        item.setForeground(self.table.palette().color(self.table.palette().ColorRole.Mid))
+                if not unit.is_active:
+                    for col in range(4):
+                        item = self.table.item(row, col)
+                        if item:
+                            item.setForeground(mid_color)
 
     def _on_selection_changed(self) -> None:
         """Populate form when a unit is selected."""

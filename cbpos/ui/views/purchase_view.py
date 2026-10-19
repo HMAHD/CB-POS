@@ -56,6 +56,7 @@ from cbpos.ui.widgets.table_helpers import (
     RelativeTimeTableWidgetItem,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 
@@ -1209,43 +1210,54 @@ class PurchaseView(QWidget):
 
     def _populate_payable_table(self, suppliers: list) -> None:
         """Populate the payable supplier table with color-coded status."""
-        self.payable_supplier_table.setRowCount(0)
+        with batch_table_update(self.payable_supplier_table):
+            self.payable_supplier_table.setRowCount(0)
 
-        if not suppliers:
-            self.payable_supplier_table.insertRow(0)
-            empty_item = QTableWidgetItem(_t("purchase.payables_empty_state"))
-            empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty_item.setForeground(QColor("gray"))
-            empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
-            self.payable_supplier_table.setItem(0, 0, empty_item)
-            self.payable_supplier_table.setSpan(0, 0, 1, self.payable_supplier_table.columnCount())
-            return
+            if not suppliers:
+                self.payable_supplier_table.insertRow(0)
+                empty_item = QTableWidgetItem(_t("purchase.payables_empty_state"))
+                empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                empty_item.setForeground(QColor("gray"))
+                empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
+                self.payable_supplier_table.setItem(0, 0, empty_item)
+                self.payable_supplier_table.setSpan(0, 0, 1, self.payable_supplier_table.columnCount())
+                return
 
-        for supplier in suppliers:
-            row = self.payable_supplier_table.rowCount()
-            self.payable_supplier_table.insertRow(row)
+            table = self.payable_supplier_table
+            insert_row = table.insertRow
+            set_item = table.setItem
+            TableItem = QTableWidgetItem
+            align_right_vc = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            align_center = Qt.AlignmentFlag.AlignCenter
+            status_success = status_color(SUCCESS)
+            status_warning = status_color(WARNING)
+            status_danger = status_color(DANGER)
 
-            self.payable_supplier_table.setItem(row, 0, QTableWidgetItem(str(supplier.id)))
-            self.payable_supplier_table.setItem(row, 1, QTableWidgetItem(supplier.company_name))
-            self.payable_supplier_table.setItem(row, 2, QTableWidgetItem(supplier.phone or ""))
+            for supplier in suppliers:
+                row = table.rowCount()
+                insert_row(row)
 
-            payable = getattr(supplier, "current_payable", Decimal("0.00"))
-            payable_item = QTableWidgetItem(f"{payable:.2f}")
-            payable_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                set_item(row, 0, TableItem(str(supplier.id)))
+                set_item(row, 1, TableItem(supplier.company_name))
+                set_item(row, 2, TableItem(supplier.phone or ""))
 
-            terms = getattr(supplier, "payment_terms", 0) or 0
-            if payable == 0:
-                payable_item.setForeground(status_color(SUCCESS))
-            elif terms > 0:
-                payable_item.setForeground(status_color(WARNING))
-            else:
-                payable_item.setForeground(status_color(DANGER))
+                payable = getattr(supplier, "current_payable", Decimal("0.00"))
+                payable_item = TableItem(f"{payable:.2f}")
+                payable_item.setTextAlignment(align_right_vc)
 
-            self.payable_supplier_table.setItem(row, 3, payable_item)
+                terms = getattr(supplier, "payment_terms", 0) or 0
+                if payable == 0:
+                    payable_item.setForeground(status_success)
+                elif terms > 0:
+                    payable_item.setForeground(status_warning)
+                else:
+                    payable_item.setForeground(status_danger)
 
-            terms_item = QTableWidgetItem(f"{terms}d" if terms > 0 else "N/A")
-            terms_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.payable_supplier_table.setItem(row, 4, terms_item)
+                set_item(row, 3, payable_item)
+
+                terms_item = TableItem(f"{terms}d" if terms > 0 else "N/A")
+                terms_item.setTextAlignment(align_center)
+                set_item(row, 4, terms_item)
 
     def _on_payable_supplier_double_click(self, index) -> None:
         """Drill into the selected supplier's payable ledger."""
@@ -1334,54 +1346,65 @@ class PurchaseView(QWidget):
 
     def _populate_payable_ledger(self, entries: list) -> None:
         """Populate the payable ledger table."""
-        self.payable_ledger_table.setRowCount(0)
+        with batch_table_update(self.payable_ledger_table):
+            self.payable_ledger_table.setRowCount(0)
 
-        total_debit = Decimal("0.00")
-        total_credit = Decimal("0.00")
-        closing_balance = Decimal("0.00")
+            total_debit = Decimal("0.00")
+            total_credit = Decimal("0.00")
+            closing_balance = Decimal("0.00")
 
-        for entry in entries:
-            row = self.payable_ledger_table.rowCount()
-            self.payable_ledger_table.insertRow(row)
+            table = self.payable_ledger_table
+            insert_row = table.insertRow
+            set_item = table.setItem
+            TableItem = QTableWidgetItem
+            RelTimeItem = RelativeTimeTableWidgetItem
+            num_align = NUMERIC_ALIGNMENT
+            status_danger = status_color(DANGER)
+            status_success = status_color(SUCCESS)
+            pill_setter = set_status_pill
 
-            self.payable_ledger_table.setItem(row, 0, RelativeTimeTableWidgetItem(entry.timestamp))
+            for entry in entries:
+                row = table.rowCount()
+                insert_row(row)
 
-            type_item = QTableWidgetItem(entry.entry_type)
-            type_upper = (entry.entry_type or "").upper()
-            if "PAY" in type_upper or "SETTLE" in type_upper:
-                meaning = SUCCESS
-            elif "PURCHASE" in type_upper or "GRN" in type_upper:
-                meaning = INFO
-            elif "ADJUST" in type_upper:
-                meaning = WARNING
-            else:
-                meaning = NEUTRAL
-            set_status_pill(type_item, entry.entry_type, meaning)
-            self.payable_ledger_table.setItem(row, 1, type_item)
-            self.payable_ledger_table.setItem(row, 2, QTableWidgetItem(entry.reference_doc or entry.note or ""))
+                set_item(row, 0, RelTimeItem(entry.timestamp))
 
-            if entry.amount > 0:
-                # Debit (purchase increases payable)
-                debit_item = QTableWidgetItem(f"{entry.amount:.2f}")
-                debit_item.setForeground(status_color(DANGER))
-                debit_item.setTextAlignment(NUMERIC_ALIGNMENT)
-                self.payable_ledger_table.setItem(row, 3, debit_item)
-                self.payable_ledger_table.setItem(row, 4, QTableWidgetItem(""))
-                total_debit += entry.amount
-            else:
-                # Credit (payment reduces payable)
-                self.payable_ledger_table.setItem(row, 3, QTableWidgetItem(""))
-                credit_item = QTableWidgetItem(f"{abs(entry.amount):.2f}")
-                credit_item.setForeground(status_color(SUCCESS))
-                credit_item.setTextAlignment(NUMERIC_ALIGNMENT)
-                self.payable_ledger_table.setItem(row, 4, credit_item)
-                total_credit += abs(entry.amount)
+                type_item = TableItem(entry.entry_type)
+                type_upper = (entry.entry_type or "").upper()
+                if "PAY" in type_upper or "SETTLE" in type_upper:
+                    meaning = SUCCESS
+                elif "PURCHASE" in type_upper or "GRN" in type_upper:
+                    meaning = INFO
+                elif "ADJUST" in type_upper:
+                    meaning = WARNING
+                else:
+                    meaning = NEUTRAL
+                pill_setter(type_item, entry.entry_type, meaning)
+                set_item(row, 1, type_item)
+                set_item(row, 2, TableItem(entry.reference_doc or entry.note or ""))
 
-            balance_item = QTableWidgetItem(f"{entry.balance_after:.2f}")
-            balance_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.payable_ledger_table.setItem(row, 5, balance_item)
+                if entry.amount > 0:
+                    # Debit (purchase increases payable)
+                    debit_item = TableItem(f"{entry.amount:.2f}")
+                    debit_item.setForeground(status_danger)
+                    debit_item.setTextAlignment(num_align)
+                    set_item(row, 3, debit_item)
+                    set_item(row, 4, TableItem(""))
+                    total_debit += entry.amount
+                else:
+                    # Credit (payment reduces payable)
+                    set_item(row, 3, TableItem(""))
+                    credit_item = TableItem(f"{abs(entry.amount):.2f}")
+                    credit_item.setForeground(status_success)
+                    credit_item.setTextAlignment(num_align)
+                    set_item(row, 4, credit_item)
+                    total_credit += abs(entry.amount)
 
-            closing_balance = entry.balance_after
+                balance_item = TableItem(f"{entry.balance_after:.2f}")
+                balance_item.setTextAlignment(num_align)
+                set_item(row, 5, balance_item)
+
+                closing_balance = entry.balance_after
 
         self.lbl_total_purchases.setText(_t("purchase.purchases_label") + " " + format_currency(total_debit))
         self.lbl_total_payments.setText(_t("purchase.payments_label") + " " + format_currency(total_credit))

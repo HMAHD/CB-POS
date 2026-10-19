@@ -19,6 +19,7 @@ from cbpos.ui.widgets.table_helpers import (
     StatusPillDelegate,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
     set_status_pill,
 )
@@ -88,47 +89,58 @@ class StockHistoryDialog(QDialog):
     def load_data(self):
         """Fetch the product's stock movement history and populate the table, color-coding the change column."""
         history = self.stock_service.get_history(self.product.id)
-        self.table.setRowCount(0)
-        type_labels = {
-            "SALE": _t("stock_history.type_sale"),
-            "PURCHASE": _t("stock_history.type_purchase"),
-            "ADJUSTMENT": _t("stock_history.type_adjustment"),
-            "RETURN": _t("stock_history.type_return"),
-            "VOID": _t("stock_history.type_void"),
-        }
-        type_meanings = {
-            "SALE": "neutral",
-            "PURCHASE": "success",
-            "ADJUSTMENT": "info",
-            "RETURN": "warning",
-            "VOID": "danger",
-        }
+        with batch_table_update(self.table):
+            self.table.setRowCount(0)
+            type_labels = {
+                "SALE": _t("stock_history.type_sale"),
+                "PURCHASE": _t("stock_history.type_purchase"),
+                "ADJUSTMENT": _t("stock_history.type_adjustment"),
+                "RETURN": _t("stock_history.type_return"),
+                "VOID": _t("stock_history.type_void"),
+            }
+            type_meanings = {
+                "SALE": "neutral",
+                "PURCHASE": "success",
+                "ADJUSTMENT": "info",
+                "RETURN": "warning",
+                "VOID": "danger",
+            }
 
-        for move in history:
-            row = self.table.rowCount()
-            self.table.insertRow(row)
+            TableItem = QTableWidgetItem
+            RelTimeItem = RelativeTimeTableWidgetItem
+            num_align = NUMERIC_ALIGNMENT
+            set_pill = set_status_pill
+            succ_color = status_color(SUCCESS)
+            dang_color = status_color(DANGER)
+            set_item = self.table.setItem
+            insert_row = self.table.insertRow
+            system_user = _t("stock_history.system")
 
-            self.table.setItem(row, 0, RelativeTimeTableWidgetItem(move.timestamp))
+            for move in history:
+                row = self.table.rowCount()
+                insert_row(row)
 
-            type_text = type_labels.get(move.type, move.type)
-            type_item = QTableWidgetItem(type_text)
-            set_status_pill(type_item, type_text, type_meanings.get(move.type, "neutral"))
-            self.table.setItem(row, 1, type_item)
+                set_item(row, 0, RelTimeItem(move.timestamp))
 
-            self.table.setItem(row, 2, QTableWidgetItem(move.document.document_number if move.document else ""))
+                type_text = type_labels.get(move.type, move.type)
+                type_item = TableItem(type_text)
+                set_pill(type_item, type_text, type_meanings.get(move.type, "neutral"))
+                set_item(row, 1, type_item)
 
-            user_name = move.user.username if move.user else _t("stock_history.system")
-            self.table.setItem(row, 3, QTableWidgetItem(user_name))
+                set_item(row, 2, TableItem(move.document.document_number if move.document else ""))
 
-            # Change Column (Color Coded & Numeric Alignment)
-            change_item = QTableWidgetItem(f"{move.qty_change:+.3f}")
-            if move.qty_change > 0:
-                change_item.setForeground(status_color(SUCCESS))
-            elif move.qty_change < 0:
-                change_item.setForeground(status_color(DANGER))
-            change_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.table.setItem(row, 4, change_item)
+                user_name = move.user.username if move.user else system_user
+                set_item(row, 3, TableItem(user_name))
 
-            bal_item = QTableWidgetItem(f"{move.balance_after:.3f}")
-            bal_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.table.setItem(row, 5, bal_item)
+                # Change Column (Color Coded & Numeric Alignment)
+                change_item = TableItem(f"{move.qty_change:+.3f}")
+                if move.qty_change > 0:
+                    change_item.setForeground(succ_color)
+                elif move.qty_change < 0:
+                    change_item.setForeground(dang_color)
+                change_item.setTextAlignment(num_align)
+                set_item(row, 4, change_item)
+
+                bal_item = TableItem(f"{move.balance_after:.3f}")
+                bal_item.setTextAlignment(num_align)
+                set_item(row, 5, bal_item)

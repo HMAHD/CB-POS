@@ -37,7 +37,7 @@ from cbpos.ui.widgets.charts import (
     HorizontalBarChart,
     VerticalBarChart,
 )
-from cbpos.ui.widgets.table_helpers import align_numeric_headers, configure_table_columns
+from cbpos.ui.widgets.table_helpers import align_numeric_headers, batch_table_update, configure_table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -654,12 +654,18 @@ class DashboardView(QWidget):
         self.date_from.setEnabled(True)
         self.date_to.setEnabled(True)
         # Top Products table
-        self.products_table.setRowCount(len(products))
-        for row, p in enumerate(products):
-            self.products_table.setItem(row, 0, QTableWidgetItem(p["name"]))
-            item = QTableWidgetItem(format_currency(p["total"]))
-            item.setTextAlignment(int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter))
-            self.products_table.setItem(row, 1, item)
+        with batch_table_update(self.products_table):
+            self.products_table.setRowCount(len(products))
+            set_item = self.products_table.setItem
+            TableItem = QTableWidgetItem
+            fmt_curr = format_currency
+            align_right_vc = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+
+            for row, p in enumerate(products):
+                set_item(row, 0, TableItem(p["name"]))
+                item = TableItem(fmt_curr(p["total"]))
+                item.setTextAlignment(align_right_vc)
+                set_item(row, 1, item)
 
         # Hourly Sales chart
         hourly_with_data = [h for h in hourly if h["total"] > 0]

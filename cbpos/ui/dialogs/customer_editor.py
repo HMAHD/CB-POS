@@ -42,6 +42,7 @@ from cbpos.ui.widgets.table_helpers import (
     RelativeTimeTableWidgetItem,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
@@ -379,52 +380,64 @@ class CustomerEditor(QDialog):
         from cbpos.core.services.loyalty_service import LoyaltyService
 
         history = LoyaltyService.get_points_history(self.customer.id)
-        self.points_history_table.setRowCount(0)
+        with batch_table_update(self.points_history_table):
+            self.points_history_table.setRowCount(0)
 
-        if not history:
-            return
+            if not history:
+                return
 
-        for entry in history:
-            row = self.points_history_table.rowCount()
-            self.points_history_table.insertRow(row)
+            table = self.points_history_table
+            insert_row = table.insertRow
+            set_item = table.setItem
+            TableItem = QTableWidgetItem
+            num_align = NUMERIC_ALIGNMENT
+            pill_setter = set_status_pill
+            fmt_dt = format_datetime
+            earn_str = _t("customer_editor.points_type_earn")
+            reversal_str = _t("customer_editor.points_type_reversal")
+            adj_str = _t("customer_editor.points_type_adjustment")
 
-            date_str = format_datetime(entry.timestamp) if entry.timestamp else ""
-            self.points_history_table.setItem(row, 0, QTableWidgetItem(date_str))
+            for entry in history:
+                row = table.rowCount()
+                insert_row(row)
 
-            type_label = entry.entry_type or ""
-            raw_type = (entry.entry_type or "").upper()
-            if raw_type == "EARN":
-                type_label = _t("customer_editor.points_type_earn")
-                meaning = SUCCESS
-            elif raw_type in ("REVERSAL", "REDEEM"):
-                type_label = _t("customer_editor.points_type_reversal")
-                meaning = WARNING
-            elif raw_type == "ADJUSTMENT":
-                type_label = _t("customer_editor.points_type_adjustment")
-                meaning = INFO
-            elif raw_type == "OPENING":
-                type_label = "Opening Points"
-                meaning = NEUTRAL
-            else:
-                meaning = NEUTRAL
+                date_str = fmt_dt(entry.timestamp) if entry.timestamp else ""
+                set_item(row, 0, TableItem(date_str))
 
-            type_item = QTableWidgetItem(type_label)
-            set_status_pill(type_item, type_label, meaning)
-            self.points_history_table.setItem(row, 1, type_item)
+                type_label = entry.entry_type or ""
+                raw_type = (entry.entry_type or "").upper()
+                if raw_type == "EARN":
+                    type_label = earn_str
+                    meaning = SUCCESS
+                elif raw_type in ("REVERSAL", "REDEEM"):
+                    type_label = reversal_str
+                    meaning = WARNING
+                elif raw_type == "ADJUSTMENT":
+                    type_label = adj_str
+                    meaning = INFO
+                elif raw_type == "OPENING":
+                    type_label = "Opening Points"
+                    meaning = NEUTRAL
+                else:
+                    meaning = NEUTRAL
 
-            pts_str = f"+{entry.points}" if entry.points > 0 else str(entry.points)
-            item_pts = QTableWidgetItem(pts_str)
-            item_pts.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.points_history_table.setItem(row, 2, item_pts)
+                type_item = TableItem(type_label)
+                pill_setter(type_item, type_label, meaning)
+                set_item(row, 1, type_item)
 
-            item_bal = QTableWidgetItem(str(entry.balance_after))
-            item_bal.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.points_history_table.setItem(row, 3, item_bal)
+                pts_str = f"+{entry.points}" if entry.points > 0 else str(entry.points)
+                item_pts = TableItem(pts_str)
+                item_pts.setTextAlignment(num_align)
+                set_item(row, 2, item_pts)
 
-            reason_str = entry.note or ""
-            if entry.reference_id:
-                reason_str = f"Sale #{entry.reference_id}" + (f" - {entry.note}" if entry.note else "")
-            self.points_history_table.setItem(row, 4, QTableWidgetItem(reason_str))
+                item_bal = TableItem(str(entry.balance_after))
+                item_bal.setTextAlignment(num_align)
+                set_item(row, 3, item_bal)
+
+                reason_str = entry.note or ""
+                if entry.reference_id:
+                    reason_str = f"Sale #{entry.reference_id}" + (f" - {entry.note}" if entry.note else "")
+                set_item(row, 4, TableItem(reason_str))
 
     def create_history_tab(self):
         """Build the History tab: a read-only table of the customer's past sales."""
@@ -476,31 +489,41 @@ class CustomerEditor(QDialog):
             return
 
         history = self.customer_service.get_purchase_history(self.customer.id)
-        self.history_table.setRowCount(0)
+        with batch_table_update(self.history_table):
+            self.history_table.setRowCount(0)
 
-        for sale in history:
-            row = self.history_table.rowCount()
-            self.history_table.insertRow(row)
+            table = self.history_table
+            insert_row = table.insertRow
+            set_item = table.setItem
+            TableItem = QTableWidgetItem
+            RelTimeItem = RelativeTimeTableWidgetItem
+            num_align = NUMERIC_ALIGNMENT
+            user_role = Qt.ItemDataRole.UserRole
+            pill_setter = set_status_pill
 
-            self.history_table.setItem(row, 0, RelativeTimeTableWidgetItem(sale.date))
+            for sale in history:
+                row = table.rowCount()
+                insert_row(row)
 
-            self.history_table.setItem(row, 1, QTableWidgetItem(str(sale.id)))
-            total_item = QTableWidgetItem(f"{sale.total_amount:.2f}")
-            total_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.history_table.setItem(row, 2, total_item)
+                set_item(row, 0, RelTimeItem(sale.date))
 
-            status_item = QTableWidgetItem(sale.status)
-            meaning = (
-                SUCCESS if sale.status in ("COMPLETED", "PAID") else (DANGER if sale.status == "VOID" else NEUTRAL)
-            )
-            set_status_pill(status_item, sale.status, meaning)
-            if sale.status == "VOID":
-                status_item.setData(Qt.ItemDataRole.UserRole, "VOID")
-            elif sale.status == "COMPLETED":  # Assuming COMPLETED is PAID equivalent
-                status_item.setData(Qt.ItemDataRole.UserRole, "COMPLETED")
-            self.history_table.setItem(row, 3, status_item)
+                set_item(row, 1, TableItem(str(sale.id)))
+                total_item = TableItem(f"{sale.total_amount:.2f}")
+                total_item.setTextAlignment(num_align)
+                set_item(row, 2, total_item)
 
-            self.history_table.setItem(row, 4, QTableWidgetItem(sale.payment_method))
+                status_item = TableItem(sale.status)
+                meaning = (
+                    SUCCESS if sale.status in ("COMPLETED", "PAID") else (DANGER if sale.status == "VOID" else NEUTRAL)
+                )
+                pill_setter(status_item, sale.status, meaning)
+                if sale.status == "VOID":
+                    status_item.setData(user_role, "VOID")
+                elif sale.status == "COMPLETED":  # Assuming COMPLETED is PAID equivalent
+                    status_item.setData(user_role, "COMPLETED")
+                set_item(row, 3, status_item)
+
+                set_item(row, 4, TableItem(sale.payment_method))
 
     def add_contact_row(self):
         """Append a blank editable row to the contacts table."""
@@ -605,13 +628,18 @@ class CustomerEditor(QDialog):
 
         # Load Contacts
         if hasattr(self.customer, "contacts"):
-            for contact in self.customer.contacts:
-                row = self.contact_table.rowCount()
-                self.contact_table.insertRow(row)
-                self.contact_table.setItem(row, 0, QTableWidgetItem(contact.name))
-                self.contact_table.setItem(row, 1, QTableWidgetItem(contact.role or ""))
-                self.contact_table.setItem(row, 2, QTableWidgetItem(contact.phone or ""))
-                self.contact_table.setItem(row, 3, QTableWidgetItem(contact.email or ""))
+            with batch_table_update(self.contact_table):
+                table = self.contact_table
+                insert_row = table.insertRow
+                set_item = table.setItem
+                TableItem = QTableWidgetItem
+                for contact in self.customer.contacts:
+                    row = table.rowCount()
+                    insert_row(row)
+                    set_item(row, 0, TableItem(contact.name))
+                    set_item(row, 1, TableItem(contact.role or ""))
+                    set_item(row, 2, TableItem(contact.phone or ""))
+                    set_item(row, 3, TableItem(contact.email or ""))
 
         self._update_contacts_tab_visibility()
         self._update_tax_fields_visibility()

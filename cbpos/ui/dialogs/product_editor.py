@@ -41,6 +41,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
@@ -414,18 +415,19 @@ class ProductEditor(QDialog):
                 )
                 return
 
-        row = self.comp_table.rowCount()
-        self.comp_table.insertRow(row)
-        self.comp_table.setItem(row, 0, QTableWidgetItem(str(product.id)))
-        self.comp_table.setItem(row, 1, QTableWidgetItem(product.name_en))
-        qty_item = QTableWidgetItem(str(qty))
-        qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
-        self.comp_table.setItem(row, 2, qty_item)
+        with batch_table_update(self.comp_table):
+            row = self.comp_table.rowCount()
+            self.comp_table.insertRow(row)
+            self.comp_table.setItem(row, 0, QTableWidgetItem(str(product.id)))
+            self.comp_table.setItem(row, 1, QTableWidgetItem(product.name_en))
+            qty_item = QTableWidgetItem(str(qty))
+            qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
+            self.comp_table.setItem(row, 2, qty_item)
 
-        remove_btn = QPushButton(_t("product_editor.btn_remove_component"))
-        remove_btn.setProperty("class", "danger")
-        remove_btn.clicked.connect(self._on_remove_component_clicked)
-        self.comp_table.setCellWidget(row, 3, remove_btn)
+            remove_btn = QPushButton(_t("product_editor.btn_remove_component"))
+            remove_btn.setProperty("class", "danger")
+            remove_btn.clicked.connect(self._on_remove_component_clicked)
+            self.comp_table.setCellWidget(row, 3, remove_btn)
 
         self.comp_barcode_input.clear()
         self.comp_barcode_input.setFocus()
@@ -572,19 +574,28 @@ class ProductEditor(QDialog):
 
         # Load components
         components = self.inventory_service.get_composite_items(self.product.id)
-        for comp in components:
-            row = self.comp_table.rowCount()
-            self.comp_table.insertRow(row)
-            self.comp_table.setItem(row, 0, QTableWidgetItem(str(comp["child_product_id"])))
-            self.comp_table.setItem(row, 1, QTableWidgetItem(comp["child_name"]))
-            qty_item = QTableWidgetItem(str(comp["qty"]))
-            qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.comp_table.setItem(row, 2, qty_item)
+        with batch_table_update(self.comp_table):
+            TableItem = QTableWidgetItem
+            num_align = NUMERIC_ALIGNMENT
+            set_item = self.comp_table.setItem
+            insert_row = self.comp_table.insertRow
+            set_cell_widget = self.comp_table.setCellWidget
+            btn_remove_text = _t("product_editor.btn_remove_component")
+            on_remove = self._on_remove_component_clicked
 
-            remove_btn = QPushButton(_t("product_editor.btn_remove_component"))
-            remove_btn.setProperty("class", "danger")
-            remove_btn.clicked.connect(self._on_remove_component_clicked)
-            self.comp_table.setCellWidget(row, 3, remove_btn)
+            for comp in components:
+                row = self.comp_table.rowCount()
+                insert_row(row)
+                set_item(row, 0, TableItem(str(comp["child_product_id"])))
+                set_item(row, 1, TableItem(comp["child_name"]))
+                qty_item = TableItem(str(comp["qty"]))
+                qty_item.setTextAlignment(num_align)
+                set_item(row, 2, qty_item)
+
+                remove_btn = QPushButton(btn_remove_text)
+                remove_btn.setProperty("class", "danger")
+                remove_btn.clicked.connect(on_remove)
+                set_cell_widget(row, 3, remove_btn)
 
     def _parse_decimal(self, text: str, fallback: str = "0") -> Decimal:
         """Safely parse a QLineEdit value to Decimal."""

@@ -35,6 +35,7 @@ from cbpos.ui.widgets.table_helpers import (
     StatusPillDelegate,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
     set_status_pill,
 )
@@ -380,57 +381,72 @@ class SaleHistoryDialog(QDialog):
 
     def _populate_sales_table(self) -> None:
         """Fill the sales table with loaded data."""
-        self.sales_table.setRowCount(0)
+        with batch_table_update(self.sales_table):
+            self.sales_table.setRowCount(0)
 
-        if not self._sales:
-            # Show empty state
-            self.sales_table.setRowCount(1)
-            item = QTableWidgetItem(_t("sale_history.no_sales_found"))
-            item.setFlags(Qt.ItemFlag.NoItemFlags)
-            self.sales_table.setItem(0, 0, item)
-            self.sales_table.setSpan(0, 0, 1, 5)
-            return
+            if not self._sales:
+                # Show empty state
+                self.sales_table.setRowCount(1)
+                item = QTableWidgetItem(_t("sale_history.no_sales_found"))
+                item.setFlags(Qt.ItemFlag.NoItemFlags)
+                self.sales_table.setItem(0, 0, item)
+                self.sales_table.setSpan(0, 0, 1, 5)
+                return
 
-        for idx, sale in enumerate(self._sales):
-            row = self.sales_table.rowCount()
-            self.sales_table.insertRow(row)
+            TableItem = QTableWidgetItem
+            RelTimeItem = RelativeTimeTableWidgetItem
+            fmt_curr = format_currency
+            num_align = NUMERIC_ALIGNMENT
+            user_role = Qt.ItemDataRole.UserRole
+            align_center = Qt.AlignmentFlag.AlignCenter
+            set_pill = set_status_pill
+            succ_color = status_color(SUCCESS)
+            dang_color = status_color(DANGER)
+            warn_color = status_color(WARNING)
+            walk_in_text = _t("sale_history.walk_in")
+            set_item = self.sales_table.setItem
+            insert_row = self.sales_table.insertRow
 
-            # Receipt #
-            receipt_item = QTableWidgetItem(sale.document_number or f"#{sale.id}")
-            receipt_item.setData(Qt.ItemDataRole.UserRole, idx)
-            self.sales_table.setItem(row, 0, receipt_item)
+            for idx, sale in enumerate(self._sales):
+                row = self.sales_table.rowCount()
+                insert_row(row)
 
-            # Date/Time
-            self.sales_table.setItem(row, 1, RelativeTimeTableWidgetItem(sale.date))
+                # Receipt #
+                receipt_item = TableItem(sale.document_number or f"#{sale.id}")
+                receipt_item.setData(user_role, idx)
+                set_item(row, 0, receipt_item)
 
-            # Customer
-            customer_name = sale.customer.name if sale.customer else _t("sale_history.walk_in")
-            self.sales_table.setItem(row, 2, QTableWidgetItem(customer_name))
+                # Date/Time
+                set_item(row, 1, RelTimeItem(sale.date))
 
-            # Total (right-aligned)
-            total_item = QTableWidgetItem(format_currency(sale.total_amount))
-            total_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.sales_table.setItem(row, 3, total_item)
+                # Customer
+                customer_name = sale.customer.name if sale.customer else walk_in_text
+                set_item(row, 2, TableItem(customer_name))
 
-            # Status (colored)
-            status = sale.status or "COMPLETED"
-            status_text = self._get_status_display(status)
-            status_item = QTableWidgetItem(status_text)
+                # Total (right-aligned)
+                total_item = TableItem(fmt_curr(sale.total_amount))
+                total_item.setTextAlignment(num_align)
+                set_item(row, 3, total_item)
 
-            if status == "COMPLETED":
-                status_item.setForeground(status_color(SUCCESS))
-                set_status_pill(status_item, status_text, "success")
-            elif status == "VOID":
-                status_item.setForeground(status_color(DANGER))
-                set_status_pill(status_item, status_text, "danger")
-            elif sale.payment_method == "REFUND":
-                status_item.setForeground(status_color(WARNING))
-                set_status_pill(status_item, status_text, "warning")
-            else:
-                set_status_pill(status_item, status_text, "neutral")
+                # Status (colored)
+                status = sale.status or "COMPLETED"
+                status_text = self._get_status_display(status)
+                status_item = TableItem(status_text)
 
-            status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.sales_table.setItem(row, 4, status_item)
+                if status == "COMPLETED":
+                    status_item.setForeground(succ_color)
+                    set_pill(status_item, status_text, "success")
+                elif status == "VOID":
+                    status_item.setForeground(dang_color)
+                    set_pill(status_item, status_text, "danger")
+                elif sale.payment_method == "REFUND":
+                    status_item.setForeground(warn_color)
+                    set_pill(status_item, status_text, "warning")
+                else:
+                    set_pill(status_item, status_text, "neutral")
+
+                status_item.setTextAlignment(align_center)
+                set_item(row, 4, status_item)
 
     def _get_status_display(self, status: str) -> str:
         """Return translated status text."""
@@ -488,25 +504,32 @@ class SaleHistoryDialog(QDialog):
         self.lbl_info_status.setText(f"{_t('sale_history.detail_status')} {status}")
 
         # Populate line items
-        self.items_table.setRowCount(0)
-        for item in sale.items:
-            r = self.items_table.rowCount()
-            self.items_table.insertRow(r)
+        with batch_table_update(self.items_table):
+            self.items_table.setRowCount(0)
+            TableItem = QTableWidgetItem
+            fmt_curr = format_currency
+            num_align = NUMERIC_ALIGNMENT
+            set_item = self.items_table.setItem
+            insert_row = self.items_table.insertRow
 
-            product_name = item.product.name_en if item.product else "?"
-            self.items_table.setItem(r, 0, QTableWidgetItem(product_name))
+            for item in sale.items:
+                r = self.items_table.rowCount()
+                insert_row(r)
 
-            qty_item = QTableWidgetItem(str(item.qty))
-            qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.items_table.setItem(r, 1, qty_item)
+                product_name = item.product.name_en if item.product else "?"
+                set_item(r, 0, TableItem(product_name))
 
-            price_item = QTableWidgetItem(format_currency(item.unit_price))
-            price_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.items_table.setItem(r, 2, price_item)
+                qty_item = TableItem(str(item.qty))
+                qty_item.setTextAlignment(num_align)
+                set_item(r, 1, qty_item)
 
-            sub_item = QTableWidgetItem(format_currency(item.subtotal))
-            sub_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.items_table.setItem(r, 3, sub_item)
+                price_item = TableItem(fmt_curr(item.unit_price))
+                price_item.setTextAlignment(num_align)
+                set_item(r, 2, price_item)
+
+                sub_item = TableItem(fmt_curr(item.subtotal))
+                sub_item.setTextAlignment(num_align)
+                set_item(r, 3, sub_item)
 
         # Enable/disable action buttons
         self.btn_reprint.setEnabled(True)

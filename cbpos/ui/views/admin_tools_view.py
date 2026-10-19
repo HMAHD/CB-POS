@@ -56,6 +56,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 
@@ -262,12 +263,17 @@ class AdminToolsView(QWidget):
             self.lbl_sqlite_version.setText(info.get("sqlite_version", "--"))
 
             tables = info.get("tables", [])
-            self.table_counts.setRowCount(len(tables))
-            for row, t in enumerate(tables):
-                self.table_counts.setItem(row, 0, QTableWidgetItem(t["name"]))
-                rows_item = QTableWidgetItem(format_number(t["rows"], 0))
-                rows_item.setTextAlignment(NUMERIC_ALIGNMENT)
-                self.table_counts.setItem(row, 1, rows_item)
+            with batch_table_update(self.table_counts):
+                self.table_counts.setRowCount(len(tables))
+                set_item = self.table_counts.setItem
+                TableItem = QTableWidgetItem
+                num_align = NUMERIC_ALIGNMENT
+                fmt_num = format_number
+                for row, t in enumerate(tables):
+                    set_item(row, 0, TableItem(t["name"]))
+                    rows_item = TableItem(fmt_num(t["rows"], 0))
+                    rows_item.setTextAlignment(num_align)
+                    set_item(row, 1, rows_item)
         except Exception as e:
             logger.warning("Could not load full DB info: %s", e)
 
@@ -495,33 +501,41 @@ class AdminToolsView(QWidget):
         entries = self._current_log_entries
         page_entries = self.log_pagination.get_page_slice(entries)
 
-        self.log_table.blockSignals(True)
-        self.log_table.setRowCount(len(page_entries))
-        for row, entry in enumerate(page_entries):
-            time_item = QTableWidgetItem(entry["timestamp"])
-            level_item = QTableWidgetItem(entry["level"])
-            source_item = QTableWidgetItem(entry["source"])
+        with batch_table_update(self.log_table):
+            self.log_table.setRowCount(len(page_entries))
 
-            raw_message = entry.get("message", "")
-            first_line = raw_message.split("\n", 1)[0]
-            msg_item = QTableWidgetItem(first_line)
-            msg_item.setToolTip(raw_message)
+            set_item = self.log_table.setItem
+            TableItem = QTableWidgetItem
+            level_meanings = _LEVEL_MEANINGS
+            neutral_meaning = NEUTRAL
+            pill_setter = set_status_pill
+            get_color = status_color
 
-            meaning = _LEVEL_MEANINGS.get(entry["level"], NEUTRAL)
-            set_status_pill(level_item, entry["level"], meaning)
-            if meaning:
-                level_item.setForeground(status_color(meaning))
+            for row, entry in enumerate(page_entries):
+                time_item = TableItem(entry["timestamp"])
+                level_str = entry["level"]
+                level_item = TableItem(level_str)
+                source_item = TableItem(entry["source"])
 
-            if entry["level"] == "CRITICAL":
-                font = level_item.font()
-                font.setBold(True)
-                level_item.setFont(font)
+                raw_message = entry.get("message", "")
+                first_line = raw_message.split("\n", 1)[0]
+                msg_item = TableItem(first_line)
+                msg_item.setToolTip(raw_message)
 
-            self.log_table.setItem(row, 0, time_item)
-            self.log_table.setItem(row, 1, level_item)
-            self.log_table.setItem(row, 2, source_item)
-            self.log_table.setItem(row, 3, msg_item)
-        self.log_table.blockSignals(False)
+                meaning = level_meanings.get(level_str, neutral_meaning)
+                pill_setter(level_item, level_str, meaning)
+                if meaning:
+                    level_item.setForeground(get_color(meaning))
+
+                if level_str == "CRITICAL":
+                    font = level_item.font()
+                    font.setBold(True)
+                    level_item.setFont(font)
+
+                set_item(row, 0, time_item)
+                set_item(row, 1, level_item)
+                set_item(row, 2, source_item)
+                set_item(row, 3, msg_item)
 
         if hasattr(self, "btn_view_details"):
             self.btn_view_details.setEnabled(False)

@@ -27,6 +27,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
@@ -153,23 +154,32 @@ class ReceiptReprintDialog(QDialog):
 
     def _populate_table(self) -> None:
         """Fill results table with sales data."""
-        self.results_table.setRowCount(0)
-        for sale in self.results:
-            row = self.results_table.rowCount()
-            self.results_table.insertRow(row)
+        with batch_table_update(self.results_table):
+            self.results_table.setRowCount(0)
+            TableItem = QTableWidgetItem
+            fmt_curr = format_currency
+            fmt_dt = format_datetime
+            num_align = NUMERIC_ALIGNMENT
+            set_item = self.results_table.setItem
+            insert_row = self.results_table.insertRow
+            walk_in_text = _t("receipt_reprint.walk_in")
 
-            self.results_table.setItem(row, 0, QTableWidgetItem(str(sale.id)))
-            self.results_table.setItem(row, 1, QTableWidgetItem(sale.document_number or f"#{sale.id}"))
+            for sale in self.results:
+                row = self.results_table.rowCount()
+                insert_row(row)
 
-            date_str = format_datetime(sale.date) if sale.date else "N/A"
-            self.results_table.setItem(row, 2, QTableWidgetItem(date_str))
+                set_item(row, 0, TableItem(str(sale.id)))
+                set_item(row, 1, TableItem(sale.document_number or f"#{sale.id}"))
 
-            customer_name = sale.customer.name if sale.customer else _t("receipt_reprint.walk_in")
-            self.results_table.setItem(row, 3, QTableWidgetItem(customer_name))
+                date_str = fmt_dt(sale.date) if sale.date else "N/A"
+                set_item(row, 2, TableItem(date_str))
 
-            total_item = QTableWidgetItem(format_currency(sale.total_amount))
-            total_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.results_table.setItem(row, 4, total_item)
+                customer_name = sale.customer.name if sale.customer else walk_in_text
+                set_item(row, 3, TableItem(customer_name))
+
+                total_item = TableItem(fmt_curr(sale.total_amount))
+                total_item.setTextAlignment(num_align)
+                set_item(row, 4, total_item)
 
     def reprint_selected(self) -> None:
         """Reprint receipt for the selected sale."""

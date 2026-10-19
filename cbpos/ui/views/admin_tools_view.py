@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QFormLayout,
     QFrame,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
@@ -627,45 +628,117 @@ class AdminToolsView(QWidget):
 
         # Printer Configuration group
         self.grp_config = QGroupBox()
-        config_layout = QFormLayout(self.grp_config)
-        config_layout.setVerticalSpacing(10)
-        config_layout.setHorizontalSpacing(20)
+        config_box_layout = QVBoxLayout(self.grp_config)
+        config_box_layout.setContentsMargins(14, 18, 14, 14)
+        config_box_layout.setSpacing(12)
 
-        self.lbl_hw_type = QLabel("--")
-        self.lbl_hw_type.setMinimumHeight(self.fontMetrics().height() + 8)
-        self.lbl_hw_type_label = QLabel()
-        config_layout.addRow(self.lbl_hw_type_label, self.lbl_hw_type)
+        # Device Overview Cards (Receipt Printer & A4 / Reports Printer)
+        devices_row = QHBoxLayout()
+        devices_row.setSpacing(12)
 
-        self.lbl_hw_path = QLabel("--")
-        self.lbl_hw_path.setMinimumHeight(self.fontMetrics().height() + 8)
-        self.lbl_hw_path_label = QLabel()
-        config_layout.addRow(self.lbl_hw_path_label, self.lbl_hw_path)
+        # Card 1: Receipt Printer Card
+        card_receipt = QFrame()
+        card_receipt.setObjectName("StatCard")
+        receipt_layout = QVBoxLayout(card_receipt)
+        receipt_layout.setContentsMargins(14, 12, 14, 12)
+        receipt_layout.setSpacing(8)
+
+        rcpt_hdr = QHBoxLayout()
+        rcpt_hdr.setSpacing(8)
+        rcpt_icon = QLabel()
+        rcpt_icon.setPixmap(Icons.get(Icons.PRINT, "#00BCEB").pixmap(20, 20))
+        rcpt_hdr.addWidget(rcpt_icon)
+        self.lbl_hw_receipt_label = QLabel()
+        self.lbl_hw_receipt_label.setObjectName("StatLabel")
+        rcpt_hdr.addWidget(self.lbl_hw_receipt_label, 1)
+        receipt_layout.addLayout(rcpt_hdr)
 
         self.lbl_hw_receipt = QLabel("--")
+        self.lbl_hw_receipt.setObjectName("StatBigValue")
+        self.lbl_hw_receipt.setStyleSheet("font-size: 15px; font-weight: bold; color: #00BCEB;")
         self.lbl_hw_receipt.setMinimumHeight(self.fontMetrics().height() + 8)
-        self.lbl_hw_receipt_label = QLabel()
-        config_layout.addRow(self.lbl_hw_receipt_label, self.lbl_hw_receipt)
+        receipt_layout.addWidget(self.lbl_hw_receipt)
 
-        self.lbl_hw_a4 = QLabel("--")
-        self.lbl_hw_a4.setMinimumHeight(self.fontMetrics().height() + 8)
-        self.lbl_hw_a4_label = QLabel()
-        config_layout.addRow(self.lbl_hw_a4_label, self.lbl_hw_a4)
+        rcpt_grid = QGridLayout()
+        rcpt_grid.setHorizontalSpacing(10)
+        rcpt_grid.setVerticalSpacing(4)
 
+        self.lbl_hw_type_label = QLabel()
+        self.lbl_hw_type_label.setProperty("class", "muted")
+        self.lbl_hw_type = QLabel("--")
+        self.lbl_hw_type.setMinimumHeight(self.fontMetrics().height() + 8)
+        rcpt_grid.addWidget(self.lbl_hw_type_label, 0, 0)
+        rcpt_grid.addWidget(self.lbl_hw_type, 0, 1)
+
+        self.lbl_hw_path_label = QLabel()
+        self.lbl_hw_path_label.setProperty("class", "muted")
+        self.lbl_hw_path = QLabel("--")
+        self.lbl_hw_path.setMinimumHeight(self.fontMetrics().height() + 8)
+        rcpt_grid.addWidget(self.lbl_hw_path_label, 1, 0)
+        rcpt_grid.addWidget(self.lbl_hw_path, 1, 1)
+
+        self.lbl_hw_paper_label = QLabel()
+        self.lbl_hw_paper_label.setProperty("class", "muted")
         self.lbl_hw_paper = QLabel("--")
         self.lbl_hw_paper.setMinimumHeight(self.fontMetrics().height() + 8)
-        self.lbl_hw_paper_label = QLabel()
-        config_layout.addRow(self.lbl_hw_paper_label, self.lbl_hw_paper)
+        rcpt_grid.addWidget(self.lbl_hw_paper_label, 2, 0)
+        rcpt_grid.addWidget(self.lbl_hw_paper, 2, 1)
 
-        layout.addWidget(self.grp_config)
+        receipt_layout.addLayout(rcpt_grid)
+        devices_row.addWidget(card_receipt, 1)
 
-        # This tab only ever displays and tests hardware -- printer
-        # selection and paper width can only actually be changed on the
-        # main Hardware settings page, which isn't obvious from this
-        # screen alone (#343).
+        # Card 2: A4 / Documents Printer Card
+        card_a4 = QFrame()
+        card_a4.setObjectName("StatCard")
+        a4_layout = QVBoxLayout(card_a4)
+        a4_layout.setContentsMargins(14, 12, 14, 12)
+        a4_layout.setSpacing(8)
+
+        a4_hdr = QHBoxLayout()
+        a4_hdr.setSpacing(8)
+        a4_icon = QLabel()
+        a4_icon.setPixmap(Icons.get(Icons.DOCUMENTS, "#00BCEB").pixmap(20, 20))
+        a4_hdr.addWidget(a4_icon)
+        self.lbl_hw_a4_label = QLabel()
+        self.lbl_hw_a4_label.setObjectName("StatLabel")
+        a4_hdr.addWidget(self.lbl_hw_a4_label, 1)
+        a4_layout.addLayout(a4_hdr)
+
+        self.lbl_hw_a4 = QLabel("--")
+        self.lbl_hw_a4.setObjectName("StatBigValue")
+        self.lbl_hw_a4.setStyleSheet("font-size: 15px; font-weight: bold; color: #00BCEB;")
+        self.lbl_hw_a4.setMinimumHeight(self.fontMetrics().height() + 8)
+        a4_layout.addWidget(self.lbl_hw_a4)
+
+        a4_sub = QVBoxLayout()
+        a4_sub.setSpacing(4)
+        lbl_a4_hint = QLabel("System Default Print Spooler")
+        lbl_a4_hint.setProperty("class", "muted")
+        a4_sub.addWidget(lbl_a4_hint)
+        a4_layout.addLayout(a4_sub)
+        a4_layout.addStretch(1)
+
+        devices_row.addWidget(card_a4, 1)
+        config_box_layout.addLayout(devices_row)
+
+        # Notice callout clarifying read-only nature with Settings -> Hardware hint
+        hint_frame = QFrame()
+        hint_frame.setObjectName("PrinterNotice")
+        hint_layout = QHBoxLayout(hint_frame)
+        hint_layout.setContentsMargins(12, 8, 12, 8)
+        hint_layout.setSpacing(10)
+
+        hint_icon = QLabel()
+        hint_icon.setPixmap(Icons.get(Icons.INFO, "#00BCEB").pixmap(18, 18))
+        hint_layout.addWidget(hint_icon)
+
         self.lbl_hw_config_hint = QLabel()
         self.lbl_hw_config_hint.setProperty("class", "muted")
         self.lbl_hw_config_hint.setWordWrap(True)
-        layout.addWidget(self.lbl_hw_config_hint)
+        hint_layout.addWidget(self.lbl_hw_config_hint, 1)
+
+        config_box_layout.addWidget(hint_frame)
+        layout.addWidget(self.grp_config)
 
         # Receipt Printer Test group
         self.grp_printer = QGroupBox()

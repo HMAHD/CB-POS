@@ -528,7 +528,7 @@ QPushButton#SaleHistoryReprint:focus {
 /* Primary Action Button (Green) */
 QPushButton#BtnSave, QPushButton#PayBtn, QPushButton[class="primary"] {
     background-color: #2ECC40;
-    color: #001F3F;
+    color: #FFFFFF;
     border: none;
 }
 
@@ -1313,9 +1313,8 @@ QToolButton#BtnLogout[compact="true"] {
 /* --- Management Header & Top Bar Surface Unification --- */
 QWidget#SidebarHeader,
 QFrame#SidebarHeader {
-    background-color: #242428;
-    border-right: 1px solid #2E2E34;
-    border-bottom: 1px solid #2E2E34;
+    background: transparent;
+    border: none;
 }
 
 QWidget#TopBar,

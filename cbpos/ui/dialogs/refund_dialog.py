@@ -175,11 +175,19 @@ class RefundDialog(QDialog):
             return
 
         sale = results[0]
+        self.load_sale(sale)
+
+    def load_sale(self, sale) -> None:
+        """Load a sale instance directly into the dialog and populate details."""
+        if not sale:
+            return
         self.found_sale = sale
+        if getattr(sale, "document_number", None):
+            self.search_input.setText(str(sale.document_number))
 
         # Display sale info
-        customer_name = sale.customer.name if sale.customer else _t("refund.walk_in")
-        date_str = format_datetime(sale.date) if sale.date else "N/A"
+        customer_name = sale.customer.name if getattr(sale, "customer", None) else _t("refund.walk_in")
+        date_str = format_datetime(sale.date) if getattr(sale, "date", None) else "N/A"
         self.lbl_sale_info.setText(
             f"{_t('refund.receipt_label')} {sale.document_number} | "
             f"{_t('common.date')}: {date_str} | "
@@ -198,11 +206,11 @@ class RefundDialog(QDialog):
             insert_row = self.items_table.insertRow
             unknown_prod = _t("refund.unknown_product")
 
-            for item in sale.items:
+            for item in sale.items or []:
                 row = self.items_table.rowCount()
                 insert_row(row)
 
-                product_name = item.product.name_en if item.product else unknown_prod
+                product_name = item.product.name_en if getattr(item, "product", None) else unknown_prod
                 set_item(row, 0, TableItem(product_name))
 
                 qty_item = TableItem(str(item.qty))
@@ -227,6 +235,8 @@ class RefundDialog(QDialog):
                 _t("refund.cannot_refund_title"),
                 _t("refund.cannot_refund_message", reason=sale.status),
             )
+        else:
+            self.txt_reason.setFocus()
 
     def process_refund(self) -> None:
         """Process the refund after permission check."""

@@ -4838,6 +4838,43 @@ QFrame#SaleHistoryDetails {
     border-radius: 6px;
 }
 
+QPushButton#InvoiceBadge {
+    background-color: rgba(0, 188, 235, 0.12);
+    border: 1px solid rgba(0, 188, 235, 0.35);
+    border-radius: 4px;
+    color: #00BCEB;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 3px 8px;
+    text-align: left;
+}
+
+QPushButton#InvoiceBadge:hover {
+    background-color: rgba(0, 188, 235, 0.22);
+    border: 1px solid #00BCEB;
+}
+
+QFrame#SaleMetadataCard {
+    background-color: #2D2D30;
+    border: 1px solid #3E3E42;
+    border-radius: 6px;
+    padding: 4px;
+}
+
+QFrame#SaleSummaryCard {
+    background-color: #2D2D30;
+    border: 1px solid #3E3E42;
+    border-radius: 6px;
+    padding: 6px;
+}
+
+QFrame#ReceiptReprintPreviewContainer {
+    background-color: #252526;
+    border: 1px solid #3E3E42;
+    border-radius: 6px;
+}
+
 QScrollArea#SaleReceiptScroll {
     background: transparent;
     border: none;

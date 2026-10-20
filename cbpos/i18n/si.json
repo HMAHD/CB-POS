@@ -2428,7 +2428,9 @@
     "reprint_failed": "රිසිට් එක යළි මුද්‍රණය කරන්න බැරි උනා.",
     "search_failed": "සෙවීම අසාර්ථකයි.",
     "sending": "යවමින්...",
-    "walk_in": "සාමාන්‍ය පාරිභෝගිකයා"
+    "walk_in": "සාමාන්‍ය පාරිභෝගිකයා",
+    "preview_title": "රිසිට් පෙරදසුන",
+    "select_to_preview": "පෙරදසුන බලන්න විකුණුමක් තෝරන්න"
   },
   "shift_closing": {
     "title": "මුරය වසීම",
@@ -2864,7 +2866,16 @@
     "detail_cashier": "කැෂියර්:",
     "detail_customer": "පාරිභෝගිකයා:",
     "detail_payment": "ගෙවීම:",
-    "detail_status": "තත්ත්වය:"
+    "detail_status": "තත්ත්වය:",
+    "copy_invoice_tooltip": "ඉන්වොයිස් අංකය කොපි කරන්න",
+    "copied_to_clipboard": "ඉන්වොයිස් #{invoice} කොපි කරගන්නා ලදී!",
+    "copied": "කොපි කළා!",
+    "subtotal": "උප එකතුව",
+    "discount": "වට්ටම්",
+    "tax": "බදු",
+    "grand_total": "මුළු එකතුව",
+    "tendered": "ගෙවූ මුදල",
+    "change": "ඉතිරි"
   },
   "db_setup": {
     "title": "දත්ත සමුදාය සකසන්න",

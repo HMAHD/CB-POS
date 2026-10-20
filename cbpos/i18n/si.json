@@ -2417,7 +2417,11 @@
   },
   "receipt_reprint": {
     "title": "රිසිට්පත නැවත මුද්‍රණය",
-    "search_placeholder": "ඉන්වොයිස# සොයන්න...",
+    "search_placeholder": "රිසිට් #, පාරිභෝගිකයා, හෝ දුරකථන අංකය සොයන්න...",
+    "filter_today": "අද",
+    "filter_yesterday": "ඊයේ",
+    "filter_this_week": "මේ සතිය",
+    "filter_this_month": "මේ මාසය",
     "col_receipt": "රිසිට් #",
     "col_customer": "පාරිභෝගිකයා",
     "btn_reprint": "යළි මුද්‍රණය",

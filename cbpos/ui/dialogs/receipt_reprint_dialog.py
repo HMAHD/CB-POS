@@ -1,8 +1,8 @@
 import contextlib
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from PyQt6.QtCore import QDate, Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QDateEdit,
     QDialog,
@@ -45,15 +45,17 @@ class ReceiptReprintDialog(QDialog):
     """Dialog to search past sales and reprint receipts with live thermal preview."""
 
     def __init__(self, parent=None):
-        """Build the dialog with an empty search bar, results table, and receipt preview."""
+        """Build the dialog with quick filter chips, results table, and live receipt preview."""
         super().__init__(parent)
         self.setWindowTitle(_t("receipt_reprint.title"))
         self.setMinimumSize(1050, 600)
         self.setObjectName("ReceiptReprintDialog")
         self.results = []
         self._selected_sale = None
+        self._active_filter = "today"
         self._init_ui()
         install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
+        self.perform_search()
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -68,36 +70,50 @@ class ReceiptReprintDialog(QDialog):
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(8)
 
+        # Filter buttons and Search bar
+        top_filter_layout = QHBoxLayout()
+        top_filter_layout.setSpacing(8)
+
+        # Quick date filters
+        self._filter_buttons = {}
+        for key, i18n_key in (
+            ("today", "receipt_reprint.filter_today"),
+            ("yesterday", "receipt_reprint.filter_yesterday"),
+            ("this_week", "receipt_reprint.filter_this_week"),
+            ("this_month", "receipt_reprint.filter_this_month"),
+        ):
+            btn = QPushButton(_t(i18n_key))
+            btn.setObjectName("FilterChip")
+            btn.setCheckable(True)
+            btn.clicked.connect(lambda checked, k=key: self._on_filter_clicked(k))
+            top_filter_layout.addWidget(btn)
+            self._filter_buttons[key] = btn
+
+        self._filter_buttons["today"].setChecked(True)
+        top_filter_layout.addStretch()
+
         # Search bar
-        search_layout = QHBoxLayout()
-
         self.search_input = QLineEdit()
+        self.search_input.setObjectName("SaleSearchInput")
         self.search_input.setPlaceholderText(_t("receipt_reprint.search_placeholder"))
+        self.search_input.setClearButtonEnabled(True)
+        self.search_input.textChanged.connect(self._on_search_changed)
         self.search_input.returnPressed.connect(self.perform_search)
-        search_layout.addWidget(self.search_input, 2)
+        top_filter_layout.addWidget(self.search_input, 1)
 
-        lbl_from = QLabel(_t("common.from"))
-        lbl_from.setProperty("class", "transparent")
-        search_layout.addWidget(lbl_from)
+        # Search debounce timer
+        self._search_timer = QTimer(self)
+        self._search_timer.setInterval(300)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.timeout.connect(self.perform_search)
+
+        left_layout.addLayout(top_filter_layout)
+
+        # Retained compatibility widgets for external tests
         self.date_from = QDateEdit()
-        self.date_from.setCalendarPopup(True)
-        self.date_from.setDate(QDate.currentDate().addDays(-7))
-        search_layout.addWidget(self.date_from)
-
-        lbl_to = QLabel(_t("common.to"))
-        lbl_to.setProperty("class", "transparent")
-        search_layout.addWidget(lbl_to)
+        self.date_from.setVisible(False)
         self.date_to = QDateEdit()
-        self.date_to.setCalendarPopup(True)
-        self.date_to.setDate(QDate.currentDate())
-        search_layout.addWidget(self.date_to)
-
-        btn_search = QPushButton(_t("common.search"))
-        btn_search.setProperty("class", "accent")
-        btn_search.clicked.connect(self.perform_search)
-        search_layout.addWidget(btn_search)
-
-        left_layout.addLayout(search_layout)
+        self.date_to.setVisible(False)
 
         # Results table
         self.results_table = QTableWidget()
@@ -221,19 +237,47 @@ class ReceiptReprintDialog(QDialog):
             self.preview_scroll.setVisible(False)
             self.btn_reprint.setEnabled(False)
 
-    def perform_search(self) -> None:
-        """Search for past sales by doc number or date range."""
-        search_term = self.search_input.text().strip() or None
-        d_from = self.date_from.date()
-        d_to = self.date_to.date()
+    def _on_filter_clicked(self, key: str) -> None:
+        """Handle quick filter button click."""
+        self._active_filter = key
+        for k, btn in self._filter_buttons.items():
+            btn.setChecked(k == key)
+        self.perform_search()
 
-        from_dt = datetime(d_from.year(), d_from.month(), d_from.day())
-        to_dt = datetime(d_to.year(), d_to.month(), d_to.day(), 23, 59, 59)
+    def _on_search_changed(self, text: str) -> None:
+        """Restart debounce timer on search text change."""
+        self._search_timer.start()
+
+    def _get_date_range(self) -> tuple[datetime, datetime]:
+        """Return (from_date, to_date) based on active filter."""
+        now = datetime.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        if self._active_filter == "today":
+            return today_start, now
+        elif self._active_filter == "yesterday":
+            yesterday = today_start - timedelta(days=1)
+            return yesterday, today_start - timedelta(seconds=1)
+        elif self._active_filter == "this_week":
+            week_start = today_start - timedelta(days=today_start.weekday())
+            return week_start, now
+        elif self._active_filter == "this_month":
+            month_start = today_start.replace(day=1)
+            return month_start, now
+        return today_start, now
+
+    def perform_search(self) -> None:
+        """Search for past sales by receipt number, customer, phone, or active date filter."""
+        search_term = self.search_input.text().strip() or None
+        from_dt, to_dt = self._get_date_range()
+
+        query_from = None if search_term else from_dt
+        query_to = None if search_term else to_dt
 
         try:
             self.results = SaleQueryService.get_sales_history(
-                from_date=from_dt,
-                to_date=to_dt,
+                from_date=query_from,
+                to_date=query_to,
                 search_term=search_term,
                 limit=100,
             )

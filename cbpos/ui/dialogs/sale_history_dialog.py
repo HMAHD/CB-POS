@@ -241,15 +241,21 @@ class SaleHistoryDialog(QDialog):
         sum_layout.setVerticalSpacing(4)
 
         self.lbl_sum_subtotal_hdr = QLabel()
+        self.lbl_sum_subtotal_hdr.setProperty("class", "transparent")
         self.lbl_sum_subtotal_val = QLabel()
+        self.lbl_sum_subtotal_val.setProperty("class", "transparent")
         self.lbl_sum_subtotal_val.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         self.lbl_sum_discount_hdr = QLabel()
+        self.lbl_sum_discount_hdr.setProperty("class", "transparent")
         self.lbl_sum_discount_val = QLabel()
+        self.lbl_sum_discount_val.setProperty("class", "transparent")
         self.lbl_sum_discount_val.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         self.lbl_sum_tax_hdr = QLabel()
+        self.lbl_sum_tax_hdr.setProperty("class", "transparent")
         self.lbl_sum_tax_val = QLabel()
+        self.lbl_sum_tax_val.setProperty("class", "transparent")
         self.lbl_sum_tax_val.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         self.lbl_sum_total_hdr = QLabel()
@@ -443,10 +449,13 @@ class SaleHistoryDialog(QDialog):
         from_date, to_date = self._get_date_range()
         search_term = self.search_input.text().strip() or None
 
+        query_from = None if search_term else from_date
+        query_to = None if search_term else to_date
+
         try:
             self._sales = SaleQueryService.get_sales_history(
-                from_date=from_date,
-                to_date=to_date,
+                from_date=query_from,
+                to_date=query_to,
                 search_term=search_term,
                 limit=500,
             )

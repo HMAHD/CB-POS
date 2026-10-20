@@ -126,3 +126,63 @@ def test_receipt_reprint_dialog_thermal_preview(qtbot):
     assert dialog.preview_scroll.isHidden() is False
     assert len(dialog.receipt_preview._commands) > 0
     assert dialog.btn_reprint.isEnabled() is True
+
+
+def test_receipt_reprint_quick_filters_and_search(qtbot):
+    """Verify ReceiptReprintDialog has quick filter chips and searches across dates when term entered."""
+    with patch("cbpos.ui.dialogs.receipt_reprint_dialog.SaleQueryService.get_sales_history") as mock_get:
+        mock_get.return_value = []
+        dialog = ReceiptReprintDialog()
+        qtbot.addWidget(dialog)
+
+        # Has filter chips
+        assert "today" in dialog._filter_buttons
+        assert "yesterday" in dialog._filter_buttons
+        assert "this_week" in dialog._filter_buttons
+        assert "this_month" in dialog._filter_buttons
+        assert dialog._filter_buttons["today"].isChecked() is True
+
+        # Click yesterday chip
+        dialog._filter_buttons["yesterday"].click()
+        assert dialog._active_filter == "yesterday"
+        assert mock_get.call_count >= 2
+
+        # Search term removes date bounds
+        mock_get.reset_mock()
+        dialog.search_input.setText("Saman")
+        dialog.perform_search()
+        mock_get.assert_called_with(
+            from_date=None,
+            to_date=None,
+            search_term="Saman",
+            limit=100,
+        )
+
+
+def test_side_menu_documents_removed(qtbot):
+    """Verify POS SideMenu does not include documents tile in quick nav buttons."""
+    from cbpos.ui.widgets.side_menu import SideMenu
+
+    menu = SideMenu()
+    qtbot.addWidget(menu)
+
+    # documents tile is None and not in _nav_buttons
+    assert menu.btn_documents is None
+    assert hasattr(menu, "documents_clicked")
+    for btn in menu._nav_buttons:
+        assert getattr(btn, "_label_key", None) != "side_menu.documents"
+
+
+def test_sale_summary_labels_transparent(qtbot):
+    """Verify financial summary labels have transparent property to avoid patchy dark background."""
+    with patch("cbpos.ui.dialogs.sale_history_dialog.SaleQueryService.get_sales_history", return_value=[]):
+        dialog = SaleHistoryDialog()
+    qtbot.addWidget(dialog)
+
+    assert dialog.lbl_sum_subtotal_hdr.property("class") == "transparent"
+    assert dialog.lbl_sum_subtotal_val.property("class") == "transparent"
+    assert dialog.lbl_sum_discount_hdr.property("class") == "transparent"
+    assert dialog.lbl_sum_discount_val.property("class") == "transparent"
+    assert dialog.lbl_sum_tax_hdr.property("class") == "transparent"
+    assert dialog.lbl_sum_tax_val.property("class") == "transparent"
+    assert dialog.lbl_sum_total_hdr.property("class") == "bold"

@@ -4769,10 +4769,19 @@ QFrame#SaleMetadataCard {
 }
 
 QFrame#SaleSummaryCard {
-    background-color: #F8F9FA;
-    border: 1px solid #E5E7EB;
-    border-radius: 6px;
-    padding: 6px;
+    background-color: transparent;
+    border: none;
+    border-top: 1px solid #E5E7EB;
+    border-radius: 0px;
+    padding: 6px 2px 2px 2px;
+}
+
+QFrame#SaleSummaryCard QLabel {
+    background: transparent;
+}
+
+QFrame#SaleMetadataCard QLabel {
+    background: transparent;
 }
 
 QFrame#ReceiptReprintPreviewContainer {

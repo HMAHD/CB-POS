@@ -117,3 +117,40 @@ class TestPaymentsAreEagerLoaded:
         assert sale is not None
         amounts = sorted(p.amount for p in sale.payments)
         assert amounts == [Decimal("50.00"), Decimal("150.00")]
+
+
+class TestSearchFilter:
+    def test_search_by_customer_name_case_insensitive_and_phone(self, db_session, test_user, test_product):
+        from cbpos.core.models import Customer
+
+        cust = Customer(name="Sunil Perera", phone="0779876543")
+        db_session.add(cust)
+        db_session.flush()
+
+        sale = Sale(
+            document_number="REC-CUST-SEARCH-1",
+            date=datetime.now(),
+            user_id=test_user.id,
+            customer_id=cust.id,
+            total_amount=Decimal("200.00"),
+            payment_method="CASH",
+            status="COMPLETED",
+        )
+        db_session.add(sale)
+        db_session.commit()
+
+        now = datetime.now()
+        start = now - timedelta(days=1)
+        end = now + timedelta(days=1)
+
+        # Search by partial lowercase customer name
+        res_name = SaleQueryService.get_sales_history(start, end, search_term="sunil")
+        assert any(s.id == sale.id for s in res_name)
+
+        # Search by customer phone
+        res_phone = SaleQueryService.get_sales_history(start, end, search_term="077987")
+        assert any(s.id == sale.id for s in res_phone)
+
+        # Search by receipt number
+        res_rec = SaleQueryService.get_sales_history(start, end, search_term="CUST-SEARCH-1")
+        assert any(s.id == sale.id for s in res_rec)

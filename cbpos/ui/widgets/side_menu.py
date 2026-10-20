@@ -240,10 +240,7 @@ class SideMenu(QWidget):
         nav_layout.addWidget(self.btn_history)
         self._nav_buttons.append(self.btn_history)
 
-        self.btn_documents = NavTile("side_menu.documents", "fa5s.file-invoice")
-        self.btn_documents.clicked.connect(self._on_documents)
-        nav_layout.addWidget(self.btn_documents)
-        self._nav_buttons.append(self.btn_documents)
+        self.btn_documents = None
 
         self.btn_receive_payment = NavTile("side_menu.receive_payment", "fa5s.hand-holding-usd")
         self.btn_receive_payment.clicked.connect(self._on_receive_payment)
@@ -405,7 +402,8 @@ class SideMenu(QWidget):
         self.history_clicked.emit()
 
     def _on_documents(self) -> None:
-        self._set_active(self.btn_documents)
+        if self.btn_documents:
+            self._set_active(self.btn_documents)
         self.documents_clicked.emit()
 
     def _on_receive_payment(self) -> None:

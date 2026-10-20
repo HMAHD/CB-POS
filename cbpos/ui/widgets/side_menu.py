@@ -357,6 +357,16 @@ class SideMenu(QWidget):
 
     # ── Compact mode ──────────────────────────────────────────────
 
+    def showEvent(self, event) -> None:
+        """Reset active highlights whenever the side menu is shown."""
+        super().showEvent(event)
+        self.clear_active()
+
+    def hideEvent(self, event) -> None:
+        """Reset active highlights whenever the side menu is hidden."""
+        super().hideEvent(event)
+        self.clear_active()
+
     def resizeEvent(self, event) -> None:
         """Switch to compact tiles on short screens, roomy tiles on tall ones."""
         super().resizeEvent(event)

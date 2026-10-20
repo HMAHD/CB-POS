@@ -186,3 +186,30 @@ def test_sale_summary_labels_transparent(qtbot):
     assert dialog.lbl_sum_tax_hdr.property("class") == "transparent"
     assert dialog.lbl_sum_tax_val.property("class") == "transparent"
     assert dialog.lbl_sum_total_hdr.property("class") == "bold"
+
+
+def test_side_menu_clears_active_on_show_hide(qtbot):
+    """Verify side menu clears active button highlight on show, hide, and clear_active."""
+    from cbpos.ui.widgets.side_menu import SideMenu
+
+    menu = SideMenu()
+    qtbot.addWidget(menu)
+
+    # Click shift tile -> active becomes True
+    menu.btn_shift.click()
+    assert menu.btn_shift.property("active") is True
+
+    # Calling clear_active resets it
+    menu.clear_active()
+    assert menu.btn_shift.property("active") is False
+
+    # Simulate show/hide events
+    menu.btn_shift.set_active(True)
+    assert menu.btn_shift.property("active") is True
+    menu.show()
+    assert menu.btn_shift.property("active") is False
+
+    menu.btn_shift.set_active(True)
+    assert menu.btn_shift.property("active") is True
+    menu.hide()
+    assert menu.btn_shift.property("active") is False

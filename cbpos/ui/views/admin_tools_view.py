@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QFormLayout,
     QFrame,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QHeaderView,
@@ -56,6 +57,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 
@@ -262,12 +264,17 @@ class AdminToolsView(QWidget):
             self.lbl_sqlite_version.setText(info.get("sqlite_version", "--"))
 
             tables = info.get("tables", [])
-            self.table_counts.setRowCount(len(tables))
-            for row, t in enumerate(tables):
-                self.table_counts.setItem(row, 0, QTableWidgetItem(t["name"]))
-                rows_item = QTableWidgetItem(format_number(t["rows"], 0))
-                rows_item.setTextAlignment(NUMERIC_ALIGNMENT)
-                self.table_counts.setItem(row, 1, rows_item)
+            with batch_table_update(self.table_counts):
+                self.table_counts.setRowCount(len(tables))
+                set_item = self.table_counts.setItem
+                TableItem = QTableWidgetItem
+                num_align = NUMERIC_ALIGNMENT
+                fmt_num = format_number
+                for row, t in enumerate(tables):
+                    set_item(row, 0, TableItem(t["name"]))
+                    rows_item = TableItem(fmt_num(t["rows"], 0))
+                    rows_item.setTextAlignment(num_align)
+                    set_item(row, 1, rows_item)
         except Exception as e:
             logger.warning("Could not load full DB info: %s", e)
 
@@ -495,33 +502,41 @@ class AdminToolsView(QWidget):
         entries = self._current_log_entries
         page_entries = self.log_pagination.get_page_slice(entries)
 
-        self.log_table.blockSignals(True)
-        self.log_table.setRowCount(len(page_entries))
-        for row, entry in enumerate(page_entries):
-            time_item = QTableWidgetItem(entry["timestamp"])
-            level_item = QTableWidgetItem(entry["level"])
-            source_item = QTableWidgetItem(entry["source"])
+        with batch_table_update(self.log_table):
+            self.log_table.setRowCount(len(page_entries))
 
-            raw_message = entry.get("message", "")
-            first_line = raw_message.split("\n", 1)[0]
-            msg_item = QTableWidgetItem(first_line)
-            msg_item.setToolTip(raw_message)
+            set_item = self.log_table.setItem
+            TableItem = QTableWidgetItem
+            level_meanings = _LEVEL_MEANINGS
+            neutral_meaning = NEUTRAL
+            pill_setter = set_status_pill
+            get_color = status_color
 
-            meaning = _LEVEL_MEANINGS.get(entry["level"], NEUTRAL)
-            set_status_pill(level_item, entry["level"], meaning)
-            if meaning:
-                level_item.setForeground(status_color(meaning))
+            for row, entry in enumerate(page_entries):
+                time_item = TableItem(entry["timestamp"])
+                level_str = entry["level"]
+                level_item = TableItem(level_str)
+                source_item = TableItem(entry["source"])
 
-            if entry["level"] == "CRITICAL":
-                font = level_item.font()
-                font.setBold(True)
-                level_item.setFont(font)
+                raw_message = entry.get("message", "")
+                first_line = raw_message.split("\n", 1)[0]
+                msg_item = TableItem(first_line)
+                msg_item.setToolTip(raw_message)
 
-            self.log_table.setItem(row, 0, time_item)
-            self.log_table.setItem(row, 1, level_item)
-            self.log_table.setItem(row, 2, source_item)
-            self.log_table.setItem(row, 3, msg_item)
-        self.log_table.blockSignals(False)
+                meaning = level_meanings.get(level_str, neutral_meaning)
+                pill_setter(level_item, level_str, meaning)
+                if meaning:
+                    level_item.setForeground(get_color(meaning))
+
+                if level_str == "CRITICAL":
+                    font = level_item.font()
+                    font.setBold(True)
+                    level_item.setFont(font)
+
+                set_item(row, 0, time_item)
+                set_item(row, 1, level_item)
+                set_item(row, 2, source_item)
+                set_item(row, 3, msg_item)
 
         if hasattr(self, "btn_view_details"):
             self.btn_view_details.setEnabled(False)
@@ -613,45 +628,117 @@ class AdminToolsView(QWidget):
 
         # Printer Configuration group
         self.grp_config = QGroupBox()
-        config_layout = QFormLayout(self.grp_config)
-        config_layout.setVerticalSpacing(10)
-        config_layout.setHorizontalSpacing(20)
+        config_box_layout = QVBoxLayout(self.grp_config)
+        config_box_layout.setContentsMargins(14, 18, 14, 14)
+        config_box_layout.setSpacing(12)
 
-        self.lbl_hw_type = QLabel("--")
-        self.lbl_hw_type.setMinimumHeight(self.fontMetrics().height() + 8)
-        self.lbl_hw_type_label = QLabel()
-        config_layout.addRow(self.lbl_hw_type_label, self.lbl_hw_type)
+        # Device Overview Cards (Receipt Printer & A4 / Reports Printer)
+        devices_row = QHBoxLayout()
+        devices_row.setSpacing(12)
 
-        self.lbl_hw_path = QLabel("--")
-        self.lbl_hw_path.setMinimumHeight(self.fontMetrics().height() + 8)
-        self.lbl_hw_path_label = QLabel()
-        config_layout.addRow(self.lbl_hw_path_label, self.lbl_hw_path)
+        # Card 1: Receipt Printer Card
+        card_receipt = QFrame()
+        card_receipt.setObjectName("StatCard")
+        receipt_layout = QVBoxLayout(card_receipt)
+        receipt_layout.setContentsMargins(14, 12, 14, 12)
+        receipt_layout.setSpacing(8)
+
+        rcpt_hdr = QHBoxLayout()
+        rcpt_hdr.setSpacing(8)
+        rcpt_icon = QLabel()
+        rcpt_icon.setPixmap(Icons.get(Icons.PRINT, "#00BCEB").pixmap(20, 20))
+        rcpt_hdr.addWidget(rcpt_icon)
+        self.lbl_hw_receipt_label = QLabel()
+        self.lbl_hw_receipt_label.setObjectName("StatLabel")
+        rcpt_hdr.addWidget(self.lbl_hw_receipt_label, 1)
+        receipt_layout.addLayout(rcpt_hdr)
 
         self.lbl_hw_receipt = QLabel("--")
+        self.lbl_hw_receipt.setObjectName("StatBigValue")
+        self.lbl_hw_receipt.setStyleSheet("font-size: 15px; font-weight: bold; color: #00BCEB;")
         self.lbl_hw_receipt.setMinimumHeight(self.fontMetrics().height() + 8)
-        self.lbl_hw_receipt_label = QLabel()
-        config_layout.addRow(self.lbl_hw_receipt_label, self.lbl_hw_receipt)
+        receipt_layout.addWidget(self.lbl_hw_receipt)
 
-        self.lbl_hw_a4 = QLabel("--")
-        self.lbl_hw_a4.setMinimumHeight(self.fontMetrics().height() + 8)
-        self.lbl_hw_a4_label = QLabel()
-        config_layout.addRow(self.lbl_hw_a4_label, self.lbl_hw_a4)
+        rcpt_grid = QGridLayout()
+        rcpt_grid.setHorizontalSpacing(10)
+        rcpt_grid.setVerticalSpacing(4)
 
+        self.lbl_hw_type_label = QLabel()
+        self.lbl_hw_type_label.setProperty("class", "muted")
+        self.lbl_hw_type = QLabel("--")
+        self.lbl_hw_type.setMinimumHeight(self.fontMetrics().height() + 8)
+        rcpt_grid.addWidget(self.lbl_hw_type_label, 0, 0)
+        rcpt_grid.addWidget(self.lbl_hw_type, 0, 1)
+
+        self.lbl_hw_path_label = QLabel()
+        self.lbl_hw_path_label.setProperty("class", "muted")
+        self.lbl_hw_path = QLabel("--")
+        self.lbl_hw_path.setMinimumHeight(self.fontMetrics().height() + 8)
+        rcpt_grid.addWidget(self.lbl_hw_path_label, 1, 0)
+        rcpt_grid.addWidget(self.lbl_hw_path, 1, 1)
+
+        self.lbl_hw_paper_label = QLabel()
+        self.lbl_hw_paper_label.setProperty("class", "muted")
         self.lbl_hw_paper = QLabel("--")
         self.lbl_hw_paper.setMinimumHeight(self.fontMetrics().height() + 8)
-        self.lbl_hw_paper_label = QLabel()
-        config_layout.addRow(self.lbl_hw_paper_label, self.lbl_hw_paper)
+        rcpt_grid.addWidget(self.lbl_hw_paper_label, 2, 0)
+        rcpt_grid.addWidget(self.lbl_hw_paper, 2, 1)
 
-        layout.addWidget(self.grp_config)
+        receipt_layout.addLayout(rcpt_grid)
+        devices_row.addWidget(card_receipt, 1)
 
-        # This tab only ever displays and tests hardware -- printer
-        # selection and paper width can only actually be changed on the
-        # main Hardware settings page, which isn't obvious from this
-        # screen alone (#343).
+        # Card 2: A4 / Documents Printer Card
+        card_a4 = QFrame()
+        card_a4.setObjectName("StatCard")
+        a4_layout = QVBoxLayout(card_a4)
+        a4_layout.setContentsMargins(14, 12, 14, 12)
+        a4_layout.setSpacing(8)
+
+        a4_hdr = QHBoxLayout()
+        a4_hdr.setSpacing(8)
+        a4_icon = QLabel()
+        a4_icon.setPixmap(Icons.get(Icons.DOCUMENTS, "#00BCEB").pixmap(20, 20))
+        a4_hdr.addWidget(a4_icon)
+        self.lbl_hw_a4_label = QLabel()
+        self.lbl_hw_a4_label.setObjectName("StatLabel")
+        a4_hdr.addWidget(self.lbl_hw_a4_label, 1)
+        a4_layout.addLayout(a4_hdr)
+
+        self.lbl_hw_a4 = QLabel("--")
+        self.lbl_hw_a4.setObjectName("StatBigValue")
+        self.lbl_hw_a4.setStyleSheet("font-size: 15px; font-weight: bold; color: #00BCEB;")
+        self.lbl_hw_a4.setMinimumHeight(self.fontMetrics().height() + 8)
+        a4_layout.addWidget(self.lbl_hw_a4)
+
+        a4_sub = QVBoxLayout()
+        a4_sub.setSpacing(4)
+        lbl_a4_hint = QLabel("System Default Print Spooler")
+        lbl_a4_hint.setProperty("class", "muted")
+        a4_sub.addWidget(lbl_a4_hint)
+        a4_layout.addLayout(a4_sub)
+        a4_layout.addStretch(1)
+
+        devices_row.addWidget(card_a4, 1)
+        config_box_layout.addLayout(devices_row)
+
+        # Notice callout clarifying read-only nature with Settings -> Hardware hint
+        hint_frame = QFrame()
+        hint_frame.setObjectName("PrinterNotice")
+        hint_layout = QHBoxLayout(hint_frame)
+        hint_layout.setContentsMargins(12, 8, 12, 8)
+        hint_layout.setSpacing(10)
+
+        hint_icon = QLabel()
+        hint_icon.setPixmap(Icons.get(Icons.INFO, "#00BCEB").pixmap(18, 18))
+        hint_layout.addWidget(hint_icon)
+
         self.lbl_hw_config_hint = QLabel()
         self.lbl_hw_config_hint.setProperty("class", "muted")
         self.lbl_hw_config_hint.setWordWrap(True)
-        layout.addWidget(self.lbl_hw_config_hint)
+        hint_layout.addWidget(self.lbl_hw_config_hint, 1)
+
+        config_box_layout.addWidget(hint_frame)
+        layout.addWidget(self.grp_config)
 
         # Receipt Printer Test group
         self.grp_printer = QGroupBox()

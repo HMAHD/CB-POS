@@ -37,6 +37,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 
@@ -697,60 +698,72 @@ class CreditBookView(QWidget):
 
     def populate_customer_table(self, customers: list) -> None:
         """Populate the customer table with color-coded debt status."""
-        self.customer_table.setRowCount(0)
+        with batch_table_update(self.customer_table):
+            self.customer_table.setRowCount(0)
 
-        if not customers:
-            self.customer_table.insertRow(0)
-            empty_item = QTableWidgetItem(_t("credit_book.no_customers_found"))
-            empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty_item.setForeground(status_color(NEUTRAL))
-            empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
-            self.customer_table.setItem(0, 0, empty_item)
-            self.customer_table.setSpan(0, 0, 1, self.customer_table.columnCount())
-            self.lbl_total_customers.setText(_t("credit_book.customer_count", count=0))
-            self.lbl_total_outstanding.setText(
-                _t("credit_book.total_outstanding", amount=format_currency(Decimal("0.00")))
-            )
-            return
+            if not customers:
+                self.customer_table.insertRow(0)
+                empty_item = QTableWidgetItem(_t("credit_book.no_customers_found"))
+                empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                empty_item.setForeground(status_color(NEUTRAL))
+                empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
+                self.customer_table.setItem(0, 0, empty_item)
+                self.customer_table.setSpan(0, 0, 1, self.customer_table.columnCount())
+                self.lbl_total_customers.setText(_t("credit_book.customer_count", count=0))
+                self.lbl_total_outstanding.setText(
+                    _t("credit_book.total_outstanding", amount=format_currency(Decimal("0.00")))
+                )
+                return
 
-        total_outstanding = Decimal("0.00")
+            total_outstanding = Decimal("0.00")
+            TableItem = QTableWidgetItem
+            fmt_num = format_number
+            align_right = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            set_item = self.customer_table.setItem
+            insert_row = self.customer_table.insertRow
+            dang_color = status_color(DANGER)
+            warn_color = status_color(WARNING)
+            succ_color = status_color(SUCCESS)
+            hint_text = _t("credit_book.row_open_hint")
+            ratio_90 = Decimal("0.9")
+            ratio_50 = Decimal("0.5")
 
-        for customer in customers:
-            row = self.customer_table.rowCount()
-            self.customer_table.insertRow(row)
+            for customer in customers:
+                row = self.customer_table.rowCount()
+                insert_row(row)
 
-            self.customer_table.setItem(row, 0, QTableWidgetItem(str(customer.id)))
-            name_item = QTableWidgetItem(customer.name)
-            name_item.setToolTip(_t("credit_book.row_open_hint"))
-            self.customer_table.setItem(row, 1, name_item)
-            self.customer_table.setItem(row, 2, QTableWidgetItem(customer.phone or ""))
+                set_item(row, 0, TableItem(str(customer.id)))
+                name_item = TableItem(customer.name)
+                name_item.setToolTip(hint_text)
+                set_item(row, 1, name_item)
+                set_item(row, 2, TableItem(customer.phone or ""))
 
-            # Debt with color coding
-            debt_item = QTableWidgetItem(format_number(customer.current_debt, 2))
-            debt_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                # Debt with color coding
+                debt_item = TableItem(fmt_num(customer.current_debt, 2))
+                debt_item.setTextAlignment(align_right)
 
-            limit_item = QTableWidgetItem(format_number(customer.credit_limit, 2))
-            limit_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                limit_item = TableItem(fmt_num(customer.credit_limit, 2))
+                limit_item.setTextAlignment(align_right)
 
-            if customer.credit_limit > 0:
-                ratio = customer.current_debt / customer.credit_limit
-                if ratio >= Decimal("0.9"):
-                    debt_item.setForeground(status_color(DANGER))
-                elif ratio >= Decimal("0.5"):
-                    debt_item.setForeground(status_color(WARNING))
-                elif customer.current_debt == 0:
-                    debt_item.setForeground(status_color(SUCCESS))
-            elif customer.current_debt > 0:
-                debt_item.setForeground(status_color(DANGER))
+                if customer.credit_limit > 0:
+                    ratio = customer.current_debt / customer.credit_limit
+                    if ratio >= ratio_90:
+                        debt_item.setForeground(dang_color)
+                    elif ratio >= ratio_50:
+                        debt_item.setForeground(warn_color)
+                    elif customer.current_debt == 0:
+                        debt_item.setForeground(succ_color)
+                elif customer.current_debt > 0:
+                    debt_item.setForeground(dang_color)
 
-            points_item = QTableWidgetItem(format_number(customer.loyalty_points or 0, 0))
-            points_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+                points_item = TableItem(fmt_num(customer.loyalty_points or 0, 0))
+                points_item.setTextAlignment(align_right)
 
-            self.customer_table.setItem(row, 3, debt_item)
-            self.customer_table.setItem(row, 4, limit_item)
-            self.customer_table.setItem(row, 5, points_item)
+                set_item(row, 3, debt_item)
+                set_item(row, 4, limit_item)
+                set_item(row, 5, points_item)
 
-            total_outstanding += customer.current_debt
+                total_outstanding += customer.current_debt
 
         # Update footer
         count = len(customers)
@@ -945,55 +958,67 @@ class CreditBookView(QWidget):
             self._update_credit_range_hint(closing_balance)
             return
 
-        for entry in entries:
-            row = self.ledger_table.rowCount()
-            self.ledger_table.insertRow(row)
+        # Populate table
+        with batch_table_update(self.ledger_table):
+            TableItem = QTableWidgetItem
+            fmt_num = format_number
+            fmt_dt = format_datetime
+            num_align = NUMERIC_ALIGNMENT
+            set_pill = set_status_pill
+            dang_color = status_color(DANGER)
+            succ_color = status_color(SUCCESS)
+            set_item = self.ledger_table.setItem
+            insert_row = self.ledger_table.insertRow
 
-            # Date
-            date_str = format_datetime(entry.timestamp) if entry.timestamp else ""
-            self.ledger_table.setItem(row, 0, QTableWidgetItem(date_str))
+            for entry in entries:
+                row = self.ledger_table.rowCount()
+                insert_row(row)
 
-            # Type
-            type_item = QTableWidgetItem(entry.entry_type)
-            type_upper = (entry.entry_type or "").upper()
-            if type_upper == "PAYMENT":
-                meaning = SUCCESS
-            elif type_upper == "SALE":
-                meaning = WARNING
-            elif type_upper == "ADJUSTMENT":
-                meaning = INFO
-            elif type_upper == "OPENING":
-                meaning = NEUTRAL
-            else:
-                meaning = NEUTRAL
-            set_status_pill(type_item, entry.entry_type, meaning)
-            self.ledger_table.setItem(row, 1, type_item)
+                # Date
+                date_str = fmt_dt(entry.timestamp) if entry.timestamp else ""
+                set_item(row, 0, TableItem(date_str))
 
-            # Doc #
-            self.ledger_table.setItem(row, 2, QTableWidgetItem(entry.reference_doc or entry.note or ""))
+                # Type
+                type_item = TableItem(entry.entry_type)
+                type_upper = (entry.entry_type or "").upper()
+                if type_upper == "PAYMENT":
+                    meaning = SUCCESS
+                elif type_upper == "SALE":
+                    meaning = WARNING
+                elif type_upper == "ADJUSTMENT":
+                    meaning = INFO
+                elif type_upper == "OPENING":
+                    meaning = NEUTRAL
+                else:
+                    meaning = NEUTRAL
+                set_pill(type_item, entry.entry_type, meaning)
+                set_item(row, 1, type_item)
 
-            # Debit / Credit
-            if entry.amount > 0:
-                debit_item = QTableWidgetItem(format_number(entry.amount, 2))
-                debit_item.setForeground(status_color(DANGER))
-                debit_item.setTextAlignment(NUMERIC_ALIGNMENT)
-                self.ledger_table.setItem(row, 3, debit_item)
-                self.ledger_table.setItem(row, 4, QTableWidgetItem(""))
-                total_debit += entry.amount
-            else:
-                self.ledger_table.setItem(row, 3, QTableWidgetItem(""))
-                credit_item = QTableWidgetItem(format_number(abs(entry.amount), 2))
-                credit_item.setForeground(status_color(SUCCESS))
-                credit_item.setTextAlignment(NUMERIC_ALIGNMENT)
-                self.ledger_table.setItem(row, 4, credit_item)
-                total_credit += abs(entry.amount)
+                # Doc #
+                set_item(row, 2, TableItem(entry.reference_doc or entry.note or ""))
 
-            # Balance
-            balance_item = QTableWidgetItem(format_number(entry.balance_after, 2))
-            balance_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.ledger_table.setItem(row, 5, balance_item)
+                # Debit / Credit
+                if entry.amount > 0:
+                    debit_item = TableItem(fmt_num(entry.amount, 2))
+                    debit_item.setForeground(dang_color)
+                    debit_item.setTextAlignment(num_align)
+                    set_item(row, 3, debit_item)
+                    set_item(row, 4, TableItem(""))
+                    total_debit += entry.amount
+                else:
+                    set_item(row, 3, TableItem(""))
+                    credit_item = TableItem(fmt_num(abs(entry.amount), 2))
+                    credit_item.setForeground(succ_color)
+                    credit_item.setTextAlignment(num_align)
+                    set_item(row, 4, credit_item)
+                    total_credit += abs(entry.amount)
 
-            closing_balance = entry.balance_after
+                # Balance
+                balance_item = TableItem(fmt_num(entry.balance_after, 2))
+                balance_item.setTextAlignment(num_align)
+                set_item(row, 5, balance_item)
+
+                closing_balance = entry.balance_after
 
         # Update footer
         self.lbl_total_sales.setText(_t("credit_book.sales_label") + " " + format_currency(total_debit))

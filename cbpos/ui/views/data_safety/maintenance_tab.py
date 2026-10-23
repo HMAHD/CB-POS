@@ -2,9 +2,10 @@
 
 import logging
 
-from PyQt6.QtWidgets import QFormLayout, QFrame, QGroupBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QFrame, QGroupBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from cbpos.i18n import _t
+from cbpos.ui.resources.icons import Icons
 from cbpos.ui.utils.style_helpers import set_status_class
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 
@@ -31,44 +32,84 @@ class MaintenanceTabWidget(QWidget):
         layout.setContentsMargins(8, 16, 8, 8)
         layout.setSpacing(16)
 
-        # Database info card
+        # Database info card — Executive 4-card KPI metric grid
         self.grp_info = QGroupBox()
-        info_layout = QFormLayout(self.grp_info)
-        info_layout.setVerticalSpacing(10)
-        info_layout.setHorizontalSpacing(20)
+        info_box_layout = QVBoxLayout(self.grp_info)
+        info_box_layout.setContentsMargins(14, 18, 14, 14)
+        info_box_layout.setSpacing(12)
+
+        cards_row = QHBoxLayout()
+        cards_row.setSpacing(12)
+
+        def _make_kpi_card(icon_name: str, title_lbl: QLabel, val_lbl: QLabel, subtitle_text: str) -> QFrame:
+            card = QFrame()
+            card.setObjectName("StatCard")
+            card_layout = QVBoxLayout(card)
+            card_layout.setContentsMargins(14, 12, 14, 12)
+            card_layout.setSpacing(6)
+
+            hdr = QHBoxLayout()
+            hdr.setSpacing(8)
+            icon_lbl = QLabel()
+            icon_lbl.setPixmap(Icons.get(icon_name, "#00BCEB").pixmap(20, 20))
+            hdr.addWidget(icon_lbl)
+            title_lbl.setObjectName("StatLabel")
+            title_lbl.setStyleSheet("font-size: 12px; font-weight: bold; color: #94A3B8;")
+            hdr.addWidget(title_lbl, 1)
+            card_layout.addLayout(hdr)
+
+            val_lbl.setObjectName("StatBigValue")
+            val_lbl.setStyleSheet("font-size: 22px; font-weight: bold; color: #00BCEB;")
+            card_layout.addWidget(val_lbl)
+
+            sub = QLabel(subtitle_text)
+            sub.setProperty("class", "muted")
+            sub.setStyleSheet("font-size: 11px;")
+            card_layout.addWidget(sub)
+
+            return card
 
         self.lbl_db_size = QLabel("--")
-        self.lbl_db_size.setProperty("class", "bold")
         self.lbl_db_size_label = QLabel()
-        info_layout.addRow(self.lbl_db_size_label, self.lbl_db_size)
+        cards_row.addWidget(
+            _make_kpi_card("fa5s.database", self.lbl_db_size_label, self.lbl_db_size, "SQLite Storage"), 1
+        )
 
         self.lbl_products_count = QLabel("--")
-        self.lbl_products_count.setProperty("class", "bold")
         self.lbl_products_label = QLabel()
-        info_layout.addRow(self.lbl_products_label, self.lbl_products_count)
+        cards_row.addWidget(
+            _make_kpi_card(Icons.INVENTORY, self.lbl_products_label, self.lbl_products_count, "Catalog Items"), 1
+        )
 
         self.lbl_customers_count = QLabel("--")
-        self.lbl_customers_count.setProperty("class", "bold")
         self.lbl_customers_label = QLabel()
-        info_layout.addRow(self.lbl_customers_label, self.lbl_customers_count)
+        cards_row.addWidget(
+            _make_kpi_card(Icons.CUSTOMERS, self.lbl_customers_label, self.lbl_customers_count, "Active Accounts"), 1
+        )
 
         self.lbl_sales_count = QLabel("--")
-        self.lbl_sales_count.setProperty("class", "bold")
         self.lbl_sales_label = QLabel()
-        info_layout.addRow(self.lbl_sales_label, self.lbl_sales_count)
+        cards_row.addWidget(
+            _make_kpi_card(Icons.SALES, self.lbl_sales_label, self.lbl_sales_count, "Completed Orders"), 1
+        )
 
+        info_box_layout.addLayout(cards_row)
         layout.addWidget(self.grp_info)
 
         # Actions card
         self.grp_actions = QGroupBox()
         actions_layout = QVBoxLayout(self.grp_actions)
+        actions_layout.setContentsMargins(14, 18, 14, 14)
         actions_layout.setSpacing(12)
 
         # Optimize row
         optimize_row = QHBoxLayout()
+        optimize_row.setSpacing(14)
         optimize_info = QVBoxLayout()
+        optimize_info.setSpacing(2)
         self.lbl_opt_title = QLabel()
         self.lbl_opt_title.setProperty("class", "bold")
+        self.lbl_opt_title.setStyleSheet("font-size: 13px; font-weight: bold;")
         optimize_info.addWidget(self.lbl_opt_title)
         self.lbl_opt_desc = QLabel()
         self.lbl_opt_desc.setProperty("class", "muted")
@@ -77,10 +118,9 @@ class MaintenanceTabWidget(QWidget):
         optimize_row.addLayout(optimize_info, 1)
 
         self.btn_vacuum = QPushButton()
-        # Optimize and Check are equivalent maintenance actions -> same
-        # (secondary) emphasis, neither is the screen's primary action.
         self.btn_vacuum.setProperty("class", "secondary")
-        self.btn_vacuum.setFixedWidth(140)
+        self.btn_vacuum.setIcon(Icons.get("fa5s.sync", "white"))
+        self.btn_vacuum.setMinimumWidth(150)
         self.btn_vacuum.clicked.connect(self._run_vacuum)
         optimize_row.addWidget(self.btn_vacuum)
         actions_layout.addLayout(optimize_row)
@@ -93,9 +133,12 @@ class MaintenanceTabWidget(QWidget):
 
         # Integrity check row
         integrity_row = QHBoxLayout()
+        integrity_row.setSpacing(14)
         integrity_info = QVBoxLayout()
+        integrity_info.setSpacing(2)
         self.lbl_int_title = QLabel()
         self.lbl_int_title.setProperty("class", "bold")
+        self.lbl_int_title.setStyleSheet("font-size: 13px; font-weight: bold;")
         integrity_info.addWidget(self.lbl_int_title)
         self.lbl_int_desc = QLabel()
         self.lbl_int_desc.setProperty("class", "muted")
@@ -105,7 +148,8 @@ class MaintenanceTabWidget(QWidget):
 
         self.btn_integrity = QPushButton()
         self.btn_integrity.setProperty("class", "secondary")
-        self.btn_integrity.setFixedWidth(140)
+        self.btn_integrity.setIcon(Icons.get("fa5s.shield-alt", "white"))
+        self.btn_integrity.setMinimumWidth(150)
         self.btn_integrity.clicked.connect(self._run_integrity_check)
         integrity_row.addWidget(self.btn_integrity)
         actions_layout.addLayout(integrity_row)

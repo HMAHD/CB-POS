@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 BASE_FONT_SIZE = 12  # the size every fixed px font-size in the QSS was designed at
 MIN_FONT_SIZE = 8
 _PX_FONT_SIZE_RE = re.compile(r"(font-size\s*:\s*)(\d+(?:\.\d+)?)px")
+_RE_PLACEHOLDER = re.compile(r"\{\{[^}]*\}\}")
 
 
 class ThemeService:
@@ -86,12 +87,19 @@ class ThemeService:
                     "injection — forcing safe fallback font-size.",
                     theme_file,
                 )
-                style_content = re.sub(r"\{\{[^}]*\}\}", "14px", style_content)
+                style_content = _RE_PLACEHOLDER.sub("14px", style_content)
 
             if ThemeService._set_stylesheet:
                 ThemeService._set_stylesheet(style_content)
             else:
                 logger.warning("No stylesheet handler registered; theme not applied to UI")
+
+            try:
+                from cbpos.ui.resources.icons import Icons
+
+                Icons.clear_cache()
+            except Exception as e:
+                logger.debug("Failed to clear icon cache on theme change: %s", e)
 
             # Notify all registered callbacks that theme has changed
             for callback in ThemeService.theme_change_callbacks:

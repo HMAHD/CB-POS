@@ -65,6 +65,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     RelativeTimeTableWidgetItem,
     align_numeric_headers,
+    batch_table_update,
     configure_table_columns,
 )
 
@@ -1004,49 +1005,73 @@ class StockTakeView(QWidget):
 
         counts = StockCountService.get_all_stock_counts(status=status, date_from=date_from, date_to=date_to)
 
-        self.history_table.setRowCount(0)
-        self.history_table.clearSpans()
-        self._history_ids = []
-        self._update_history_actions()
+        with batch_table_update(self.history_table):
+            self.history_table.setRowCount(0)
+            self.history_table.clearSpans()
+            self._history_ids = []
+            self._update_history_actions()
 
-        if not counts:
-            self.history_table.setRowCount(1)
-            empty_item = QTableWidgetItem(_t("stock_take.no_history_found"))
-            empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty_item.setForeground(status_color(NEUTRAL))
-            empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
-            self.history_table.setItem(0, 0, empty_item)
-            self.history_table.setSpan(0, 0, 1, self.history_table.columnCount())
-            return
+            if not counts:
+                self.history_table.setRowCount(1)
+                empty_item = QTableWidgetItem(_t("stock_take.no_history_found"))
+                empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                empty_item.setForeground(status_color(NEUTRAL))
+                empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
+                self.history_table.setItem(0, 0, empty_item)
+                self.history_table.setSpan(0, 0, 1, self.history_table.columnCount())
+                return
 
-        for sc in counts:
-            row = self.history_table.rowCount()
-            self.history_table.insertRow(row)
-            self._history_ids.append(sc.id)
+            # Hoist LEGB locals
+            table = self.history_table
+            insert_row = table.insertRow
+            set_item = table.setItem
+            TableItem = QTableWidgetItem
+            RelTimeItem = RelativeTimeTableWidgetItem
+            num_align = NUMERIC_ALIGNMENT
+            col_items = self.HIST_COL_ITEMS
+            col_net = self.HIST_COL_NET
+            col_disc = self.HIST_COL_DISCREPANCY
+            col_status = self.HIST_COL_STATUS
+            user_role = Qt.ItemDataRole.UserRole
+            fmt_num = format_number
+            fmt_curr = format_currency
+            fmt_status = format_document_status
+            fmt_net = _format_net
+            var_meaning = _variance_meaning
+            hist_meanings = _HISTORY_STATUS_MEANINGS
+            calc_totals = StockCountService.variance_totals
+            pill_setter = set_status_pill
+            get_color = status_color
+            history_ids = self._history_ids
 
-            self.history_table.setItem(row, 0, QTableWidgetItem(sc.document_number))
-            self.history_table.setItem(row, 1, RelativeTimeTableWidgetItem(sc.date))
-            self.history_table.setItem(row, 2, QTableWidgetItem(sc.user.username if sc.user else ""))
+            for sc in counts:
+                row = table.rowCount()
+                insert_row(row)
+                history_ids.append(sc.id)
 
-            items_item = QTableWidgetItem(format_number(len(sc.items or []), 0))
-            items_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.history_table.setItem(row, self.HIST_COL_ITEMS, items_item)
+                set_item(row, 0, TableItem(sc.document_number))
+                set_item(row, 1, RelTimeItem(sc.date))
+                set_item(row, 2, TableItem(sc.user.username if sc.user else ""))
 
-            totals = StockCountService.variance_totals(sc.items or [])
-            net_item = QTableWidgetItem(_format_net(totals.net))
-            net_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            net_item.setForeground(status_color(_variance_meaning(totals.net)))
-            self.history_table.setItem(row, self.HIST_COL_NET, net_item)
+                items_item = TableItem(fmt_num(len(sc.items or []), 0))
+                items_item.setTextAlignment(num_align)
+                set_item(row, col_items, items_item)
 
-            discrepancy_item = QTableWidgetItem(format_currency(totals.discrepancy))
-            discrepancy_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.history_table.setItem(row, self.HIST_COL_DISCREPANCY, discrepancy_item)
+                totals = calc_totals(sc.items or [])
+                net_item = TableItem(fmt_net(totals.net))
+                net_item.setTextAlignment(num_align)
+                net_item.setForeground(get_color(var_meaning(totals.net)))
+                set_item(row, col_net, net_item)
 
-            meaning = _HISTORY_STATUS_MEANINGS.get(sc.status)
-            item = QTableWidgetItem()
-            item.setData(Qt.ItemDataRole.UserRole, sc.status)
-            status_text = format_document_status(sc.status)
-            self.history_table.setItem(row, self.HIST_COL_STATUS, set_status_pill(item, status_text, meaning))
+                discrepancy_item = TableItem(fmt_curr(totals.discrepancy))
+                discrepancy_item.setTextAlignment(num_align)
+                set_item(row, col_disc, discrepancy_item)
+
+                meaning = hist_meanings.get(sc.status)
+                item = TableItem()
+                item.setData(user_role, sc.status)
+                status_text = fmt_status(sc.status)
+                set_item(row, col_status, pill_setter(item, status_text, meaning))
 
     def _selected_history_row(self) -> int | None:
         """Row of the selected history count, or None (no selection / placeholder row)."""

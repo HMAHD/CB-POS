@@ -198,8 +198,10 @@ class CategoryService:
                 queue.extend(children_map.get(current, []))
 
             # Delete deepest first
+            cats = list(session.scalars(select(Category).where(Category.id.in_(all_ids))).all())
+            cats_by_id = {c.id: c for c in cats}
             for cid in sorted(all_ids, reverse=True):
-                cat = session.get(Category, cid)
+                cat = cats_by_id.get(cid)
                 if cat:
                     session.delete(cat)
 

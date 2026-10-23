@@ -88,7 +88,7 @@ def _points(value: Any) -> int:
     return int(Decimal(str(value or 0)))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _Balance:
     """A Main-owned figure that this till's ledger rows move (#678, #716)."""
 

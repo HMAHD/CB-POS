@@ -39,6 +39,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 
@@ -430,28 +431,40 @@ class PriceListView(QWidget):
             return
 
         next_batch = self._displayed_products[self._loaded_count : self._loaded_count + BATCH_SIZE]
-        for p in next_batch:
-            row = self.table.rowCount()
-            self.table.insertRow(row)
+        with batch_table_update(self.table):
+            table = self.table
+            insert_row = table.insertRow
+            set_item = table.setItem
+            TableItem = QTableWidgetItem
+            num_align = NUMERIC_ALIGNMENT
+            price_role = PRICE_ROLE
+            fmt_num = format_number
+            no_val = NO_VALUE
+            color_success = status_color(SUCCESS)
+            price_map = self._price_map
 
-            self.table.setItem(row, 0, QTableWidgetItem(str(p.id)))
-            self.table.setItem(row, 1, QTableWidgetItem(p.display_name))
-            base_item = QTableWidgetItem(format_number(p.price, 2))
-            base_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            # Edit/context-menu read the raw Decimal, never the display text (#557)
-            base_item.setData(PRICE_ROLE, p.price)
-            self.table.setItem(row, 2, base_item)
+            for p in next_batch:
+                row = table.rowCount()
+                insert_row(row)
 
-            list_price = self._price_map.get(p.id)
-            price_display = format_number(list_price, 2) if list_price is not None else NO_VALUE
+                set_item(row, 0, TableItem(str(p.id)))
+                set_item(row, 1, TableItem(p.display_name))
+                base_item = TableItem(fmt_num(p.price, 2))
+                base_item.setTextAlignment(num_align)
+                # Edit/context-menu read the raw Decimal, never the display text (#557)
+                base_item.setData(price_role, p.price)
+                set_item(row, 2, base_item)
 
-            price_item = QTableWidgetItem(price_display)
-            price_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            price_item.setData(PRICE_ROLE, list_price)  # None = no override
-            if list_price is not None:
-                price_item.setForeground(status_color(SUCCESS))
+                list_price = price_map.get(p.id)
+                price_display = fmt_num(list_price, 2) if list_price is not None else no_val
 
-            self.table.setItem(row, 3, price_item)
+                price_item = TableItem(price_display)
+                price_item.setTextAlignment(num_align)
+                price_item.setData(price_role, list_price)  # None = no override
+                if list_price is not None:
+                    price_item.setForeground(color_success)
+
+                set_item(row, 3, price_item)
 
         self._loaded_count += len(next_batch)
         self._update_product_count_label()

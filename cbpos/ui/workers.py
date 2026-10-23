@@ -30,6 +30,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_RE_SAFE_FILENAME = re.compile(r"[^\w\-]+")
+
 
 class _BackgroundJobs(QObject):
     """Holds running report workers so no view's lifetime decides theirs.
@@ -613,7 +615,7 @@ class ReportEmailWorker(QThread):
 
         temp_dir = tempfile.mkdtemp(prefix="cbpos_report_")
         try:
-            safe_name = re.sub(r"[^\w\-]+", "_", self.report_name).strip("_") or "report"
+            safe_name = _RE_SAFE_FILENAME.sub("_", self.report_name).strip("_") or "report"
             filepath = os.path.join(temp_dir, f"{safe_name}.pdf")
             try:
                 self.export_service.export_to_pdf(self.df, filepath, self.report_name)
@@ -635,3 +637,62 @@ class ReportEmailWorker(QThread):
             self.result.emit(self.to_email)
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+class SyncTestWorker(QThread):
+    """Tests connection to sync server in a background thread."""
+
+    # success: bool, outcome: str, info: dict
+    finished_result = pyqtSignal(bool, str, dict)
+
+    def __init__(self, address: str, secret: str) -> None:
+        super().__init__()
+        self.finished.connect(self.deleteLater)
+        self.address = address
+        self.secret = secret
+
+    def run(self) -> None:
+        """Test the heartbeat endpoint of the sync server and emit result signals."""
+        import json
+        import urllib.error
+        import urllib.request
+
+        from cbpos.infrastructure.sync_tls import build_client_ssl_context
+
+        address = self.address
+        if address.startswith("http://"):
+            address = "https://" + address[len("http://") :]
+        elif not address.startswith("https://"):
+            address = f"https://{address}"
+
+        url = f"{address}/sync/heartbeat"
+        try:
+            req = urllib.request.Request(url, method="GET", headers={"X-Sync-Token": self.secret})
+            with urllib.request.urlopen(req, timeout=5, context=build_client_ssl_context()) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+
+            if data.get("status") == "ok":
+                version = data.get("protocol_version", "?")
+                terminals = data.get("terminals_connected", 0)
+                self.finished_result.emit(True, "ok", {"version": version, "terminals": terminals})
+            else:
+                self.finished_result.emit(False, "unexpected", {})
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                self.finished_result.emit(False, "unauthorized", {})
+            else:
+                self.finished_result.emit(False, "failed", {"error": str(e), "address": address})
+        except urllib.error.URLError as e:
+            self.finished_result.emit(False, "failed", {"error": str(e), "address": address})
+        except Exception as e:
+            logger.exception("Sync test error: %s", e)
+            self.finished_result.emit(False, "error", {"error": str(e)})
+
+
+# Alias PrintWorker as ReceiptWorker for backwards/audit naming compatibility
+def __getattr__(name: str):
+    if name == "ReceiptWorker":
+        from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+
+        return PrintWorker
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

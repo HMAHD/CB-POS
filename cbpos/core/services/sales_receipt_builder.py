@@ -11,6 +11,8 @@ from cbpos.core.utils.formatters import format_currency, format_quantity
 class ItemDisplay:
     """Helper class for merged items display."""
 
+    __slots__ = ("name", "original_price", "product", "qty", "subtotal", "unit_price")
+
     def __init__(
         self,
         product: Any,

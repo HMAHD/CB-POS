@@ -650,17 +650,20 @@ class SalesView(QWidget):
 
         if self.side_menu.isVisible():
             # Slide Out (Hide)
+            self.side_menu.clear_active()
             end_pos = QPoint(self.width(), 0)
             self.menu_animation.setStartValue(start_pos)
             self.menu_animation.setEndValue(end_pos)
 
             def _on_hidden():
                 self.side_menu.setVisible(False)
+                self.side_menu.clear_active()
                 self.menu_animation.finished.disconnect(_on_hidden)
 
             self.menu_animation.finished.connect(_on_hidden)
             self.menu_animation.start()
         else:
+            self.side_menu.clear_active()
             self.side_menu.setVisible(True)
             self.side_menu.raise_()
             start_pos = QPoint(self.width(), 0)
@@ -1511,24 +1514,33 @@ class SalesView(QWidget):
         """Open Receive Payment dialog from POS (quick payment without sale)."""
         from cbpos.ui.dialogs.receive_payment_dialog import ReceivePaymentDialog
 
+        if self.side_menu.isVisible():
+            self.toggle_side_menu()
         dialog = ReceivePaymentDialog(parent=self)
         dialog.exec()
+        self.side_menu.clear_active()
         self._focus_search()
 
     def open_reprint_receipt(self) -> None:
         """Open Receipt Reprint dialog to search and reprint past receipts."""
         from cbpos.ui.dialogs.receipt_reprint_dialog import ReceiptReprintDialog
 
+        if self.side_menu.isVisible():
+            self.toggle_side_menu()
         dialog = ReceiptReprintDialog(parent=self)
         dialog.exec()
+        self.side_menu.clear_active()
         self._focus_search()
 
     def open_refund(self) -> None:
         """Open Refund dialog to process returns."""
         from cbpos.ui.dialogs.refund_dialog import RefundDialog
 
+        if self.side_menu.isVisible():
+            self.toggle_side_menu()
         dialog = RefundDialog(parent=self)
         dialog.exec()
+        self.side_menu.clear_active()
         self._focus_search()
 
     def open_sale_history(self) -> None:
@@ -1539,6 +1551,7 @@ class SalesView(QWidget):
             self.toggle_side_menu()
         dialog = SaleHistoryDialog(parent=self)
         dialog.exec()
+        self.side_menu.clear_active()
         self._focus_search()
 
     def open_shift_management(self) -> None:
@@ -1562,6 +1575,7 @@ class SalesView(QWidget):
             self.toggle_side_menu()
         dialog = ShiftManagementDialog(shift.id, user.id, parent=self)
         dialog.exec()
+        self.side_menu.clear_active()
         if dialog.shift_ended:
             self.shift_closed.emit()
         else:

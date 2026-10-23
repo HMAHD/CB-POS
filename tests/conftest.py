@@ -87,9 +87,9 @@ def _autocomplete_preload_runs_inline():
     test_dashboard_periodic_date_bounds.py.
     """
     from cbpos.ui.views.dashboard_view import _PeriodicWorker, _YearlyWorker
-    from cbpos.ui.workers import AutocompleteLoadWorker
+    from cbpos.ui.workers import AutocompleteLoadWorker, SyncTestWorker
 
-    inline_workers = (AutocompleteLoadWorker, _YearlyWorker, _PeriodicWorker)
+    inline_workers = (AutocompleteLoadWorker, _YearlyWorker, _PeriodicWorker, SyncTestWorker)
     for worker_cls in inline_workers:
         worker_cls.start = worker_cls.run
     try:

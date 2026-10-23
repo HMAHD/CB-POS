@@ -18,7 +18,7 @@ from cbpos.core.models import PriceList, PriceListItem, Product
 from cbpos.core.services.logging_service import LoggingService, diff_changes, snapshot_changes
 
 
-@dataclass
+@dataclass(slots=True)
 class BulkAdjustmentRule:
     """Parameters for a bulk price adjustment operation (#544)."""
 
@@ -30,7 +30,7 @@ class BulkAdjustmentRule:
     product_ids: list[int] | None = None
 
 
-@dataclass
+@dataclass(slots=True)
 class BulkPreviewItem:
     """One candidate product row in the bulk adjustment preview table (#544)."""
 

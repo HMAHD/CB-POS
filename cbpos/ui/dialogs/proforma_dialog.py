@@ -33,6 +33,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
@@ -253,47 +254,54 @@ class ProformaDialog(QDialog):
 
     def refresh_table(self) -> None:
         """Refresh items table and total."""
-        self.items_table.setRowCount(0)
-        total = Decimal("0.00")
+        with batch_table_update(self.items_table):
+            self.items_table.setRowCount(0)
+            total = Decimal("0.00")
 
-        if not self.items:
-            self.items_table.insertRow(0)
-            empty_item = QTableWidgetItem(_t("proforma.items_empty_state"))
-            empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty_item.setForeground(QColor("gray"))
-            empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
-            self.items_table.setItem(0, 0, empty_item)
-            self.items_table.setSpan(0, 0, 1, self.items_table.columnCount())
-            self.total_label.setText(f"<b>{_t('common.total')}: {format_currency(total)}</b>")
-            return
+            if not self.items:
+                self.items_table.insertRow(0)
+                empty_item = QTableWidgetItem(_t("proforma.items_empty_state"))
+                empty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                empty_item.setForeground(QColor("gray"))
+                empty_item.setFlags(Qt.ItemFlag.NoItemFlags)
+                self.items_table.setItem(0, 0, empty_item)
+                self.items_table.setSpan(0, 0, 1, self.items_table.columnCount())
+                self.total_label.setText(f"<b>{_t('common.total')}: {format_currency(total)}</b>")
+                return
 
-        for row, item in enumerate(self.items):
-            self.items_table.insertRow(row)
+            TableItem = QTableWidgetItem
+            num_align = NUMERIC_ALIGNMENT
+            set_item = self.items_table.setItem
+            insert_row = self.items_table.insertRow
+            fmt_curr = format_currency
 
-            self.items_table.setItem(row, 0, QTableWidgetItem(item["product_name"]))
+            for row, item in enumerate(self.items):
+                insert_row(row)
 
-            qty_item = QTableWidgetItem(f"{item['quantity']:.3f}")
-            qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.items_table.setItem(row, 1, qty_item)
+                set_item(row, 0, TableItem(item["product_name"]))
 
-            price_item = QTableWidgetItem(f"{item['unit_price']:.2f}")
-            price_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.items_table.setItem(row, 2, price_item)
+                qty_item = TableItem(f"{item['quantity']:.3f}")
+                qty_item.setTextAlignment(num_align)
+                set_item(row, 1, qty_item)
 
-            self.items_table.setItem(row, 3, QTableWidgetItem(item["discount_type"]))
+                price_item = TableItem(f"{item['unit_price']:.2f}")
+                price_item.setTextAlignment(num_align)
+                set_item(row, 2, price_item)
 
-            disc_item = QTableWidgetItem(f"{item['discount_value']:.2f}")
-            disc_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.items_table.setItem(row, 4, disc_item)
+                set_item(row, 3, TableItem(item["discount_type"]))
 
-            line_total = item["line_total"]
-            total_item = QTableWidgetItem(format_currency(line_total))
-            total_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.items_table.setItem(row, 5, total_item)
+                disc_item = TableItem(f"{item['discount_value']:.2f}")
+                disc_item.setTextAlignment(num_align)
+                set_item(row, 4, disc_item)
 
-            total += line_total
+                line_total = item["line_total"]
+                total_item = TableItem(fmt_curr(line_total))
+                total_item.setTextAlignment(num_align)
+                set_item(row, 5, total_item)
 
-        self.total_label.setText(f"<b>{_t('common.total')}: {format_currency(total)}</b>")
+                total += line_total
+
+            self.total_label.setText(f"<b>{_t('common.total')}: {fmt_curr(total)}</b>")
 
     def show_context_menu(self, position) -> None:
         """Show context menu for editing/removing items."""

@@ -55,6 +55,7 @@ from cbpos.ui.widgets.table_helpers import (
     RelativeTimeTableWidgetItem,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 
@@ -538,42 +539,57 @@ class DocumentBrowserView(QWidget):
 
     def populate_table(self, documents: list) -> None:
         """Populate the document table."""
-        self.doc_table.setRowCount(0)
-        self.current_doc = None
-        self.reset_action_buttons()
-        self._hide_detail_panel()
+        with batch_table_update(self.doc_table):
+            self.doc_table.setRowCount(0)
+            self.current_doc = None
+            self.reset_action_buttons()
+            self._hide_detail_panel()
 
-        for row, doc in enumerate(documents):
-            self.doc_table.insertRow(row)
-
-            dt_item = RelativeTimeTableWidgetItem(doc["date"])
-            dt_item.setData(Qt.ItemDataRole.UserRole, doc["id"])
-            dt_item.setData(Qt.ItemDataRole.UserRole + 1, doc["type"])
-            self.doc_table.setItem(row, 0, dt_item)
-
-            self.doc_table.setItem(row, 1, QTableWidgetItem(doc["document_number"]))
-
+            # Hoist LEGB locals
+            table = self.doc_table
+            insert_row = table.insertRow
+            set_item = table.setItem
+            TableItem = QTableWidgetItem
+            RelTimeItem = RelativeTimeTableWidgetItem
+            user_role = Qt.ItemDataRole.UserRole
+            user_role_plus_1 = Qt.ItemDataRole.UserRole + 1
+            align_right_vc = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
             type_display = {
                 "SALE": _t("document_browser.type_sale_display"),
                 "PURCHASE": _t("document_browser.type_purchase_display"),
                 "PROFORMA": _t("document_browser.type_quotation_display"),
             }
-            self.doc_table.setItem(row, 2, QTableWidgetItem(type_display.get(doc["type"], doc["type"])))
+            fmt_curr = format_currency
+            fmt_status = format_document_status
+            meanings = self.STATUS_MEANINGS
+            pill_setter = set_status_pill
 
-            self.doc_table.setItem(row, 3, QTableWidgetItem(doc.get("entity_name", "")))
+            for row, doc in enumerate(documents):
+                insert_row(row)
 
-            total = doc.get("total_amount")
-            total_text = format_currency(total) if total is not None else ""
-            total_item = QTableWidgetItem(total_text)
-            total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.doc_table.setItem(row, 4, total_item)
+                dt_item = RelTimeItem(doc["date"])
+                dt_item.setData(user_role, doc["id"])
+                dt_item.setData(user_role_plus_1, doc["type"])
+                set_item(row, 0, dt_item)
 
-            status_item = QTableWidgetItem()
-            status_item.setData(Qt.ItemDataRole.UserRole, doc["status"])
-            set_status_pill(status_item, format_document_status(doc["status"]), self.STATUS_MEANINGS.get(doc["status"]))
-            self.doc_table.setItem(row, 5, status_item)
+                set_item(row, 1, TableItem(doc["document_number"]))
 
-            self.doc_table.setItem(row, 6, QTableWidgetItem(doc.get("username", "")))
+                set_item(row, 2, TableItem(type_display.get(doc["type"], doc["type"])))
+
+                set_item(row, 3, TableItem(doc.get("entity_name", "")))
+
+                total = doc.get("total_amount")
+                total_text = fmt_curr(total) if total is not None else ""
+                total_item = TableItem(total_text)
+                total_item.setTextAlignment(align_right_vc)
+                set_item(row, 4, total_item)
+
+                status_item = TableItem()
+                status_item.setData(user_role, doc["status"])
+                pill_setter(status_item, fmt_status(doc["status"]), meanings.get(doc["status"]))
+                set_item(row, 5, status_item)
+
+                set_item(row, 6, TableItem(doc.get("username", "")))
 
     def on_selection_changed(self) -> None:
         """Handle row selection — load full details in the panel below."""
@@ -695,32 +711,44 @@ class DocumentBrowserView(QWidget):
 
         # Populate line items
         items = doc.get("items", [])
-        self.items_table.setRowCount(0)
-        for idx, item in enumerate(items):
-            self.items_table.insertRow(idx)
-            product_name = item.get("product_name", "")
-            note = item.get("notes")
-            name_item = QTableWidgetItem(f"\U0001f4dd {product_name}" if note else product_name)
-            if note:
-                name_item.setToolTip(note)
-            self.items_table.setItem(idx, 0, name_item)
+        with batch_table_update(self.items_table):
+            self.items_table.setRowCount(0)
 
-            qty_item = QTableWidgetItem(format_quantity(item["quantity"]))
-            qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.items_table.setItem(idx, 1, qty_item)
+            # Hoist LEGB locals
+            table = self.items_table
+            insert_row = table.insertRow
+            set_item = table.setItem
+            TableItem = QTableWidgetItem
+            align_right_vc = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            fmt_qty = format_quantity
+            fmt_curr = format_currency
+            fmt_disc = format_discount
 
-            price_item = QTableWidgetItem(format_currency(item["unit_price"]))
-            price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.items_table.setItem(idx, 2, price_item)
+            for idx, item in enumerate(items):
+                insert_row(idx)
+                product_name = item.get("product_name", "")
+                note = item.get("notes")
+                name_item = TableItem(f"\U0001f4dd {product_name}" if note else product_name)
+                if note:
+                    name_item.setToolTip(note)
+                set_item(idx, 0, name_item)
 
-            disc_text = format_discount(item.get("discount_type"), item.get("discount_value"))
-            disc_item = QTableWidgetItem(disc_text)
-            disc_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.items_table.setItem(idx, 3, disc_item)
+                qty_item = TableItem(fmt_qty(item["quantity"]))
+                qty_item.setTextAlignment(align_right_vc)
+                set_item(idx, 1, qty_item)
 
-            total_item = QTableWidgetItem(format_currency(item["line_total"]))
-            total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.items_table.setItem(idx, 4, total_item)
+                price_item = TableItem(fmt_curr(item["unit_price"]))
+                price_item.setTextAlignment(align_right_vc)
+                set_item(idx, 2, price_item)
+
+                disc_text = fmt_disc(item.get("discount_type"), item.get("discount_value"))
+                disc_item = TableItem(disc_text)
+                disc_item.setTextAlignment(align_right_vc)
+                set_item(idx, 3, disc_item)
+
+                total_item = TableItem(fmt_curr(item["line_total"]))
+                total_item.setTextAlignment(align_right_vc)
+                set_item(idx, 4, total_item)
 
         # Most documents have no line discounts: drop the empty column so the
         # amounts fit the side panel without scrolling sideways.
@@ -790,11 +818,16 @@ class DocumentBrowserView(QWidget):
         doc_type = self.current_doc.get("type", "")
 
         try:
+            if hasattr(self, "reprint_btn"):
+                self.reprint_btn.setEnabled(False)
             if doc_type == "sale":
                 sale = SaleQueryService.get_sale_details(self.current_doc["id"])
                 if sale:
                     self._connect_print_signals()
                     PrinterService.print_receipt(sale, is_reprint=True)
+                else:
+                    if hasattr(self, "reprint_btn"):
+                        self.reprint_btn.setEnabled(True)
             elif doc_type == "proforma":
                 from cbpos.core.services.receipt_builder import ReceiptBuilder
 
@@ -803,7 +836,12 @@ class DocumentBrowserView(QWidget):
                     commands = ReceiptBuilder.build_proforma(proforma)
                     worker = self._connect_print_signals()
                     worker.add_job("print_commands", commands)
+                else:
+                    if hasattr(self, "reprint_btn"):
+                        self.reprint_btn.setEnabled(True)
             else:
+                if hasattr(self, "reprint_btn"):
+                    self.reprint_btn.setEnabled(True)
                 QMessageBox.information(
                     self,
                     _t("document_browser.info_title"),
@@ -811,6 +849,8 @@ class DocumentBrowserView(QWidget):
                 )
 
         except Exception as e:
+            if hasattr(self, "reprint_btn"):
+                self.reprint_btn.setEnabled(True)
             QMessageBox.critical(
                 self,
                 _t("common.error"),
@@ -830,6 +870,7 @@ class DocumentBrowserView(QWidget):
         same way ReceiptOptionsDialog.print_thermal() does.
         """
         worker = PrintWorker.instance()
+        self._print_worker = worker
         try:
             worker.error_occurred.disconnect(self._on_reprint_error)
         except TypeError as e:
@@ -842,16 +883,21 @@ class DocumentBrowserView(QWidget):
 
     def _on_reprint_finished(self) -> None:
         """Called once the queued print job actually completes."""
-        doc_type = self.current_doc.get("type", "")
+        if hasattr(self, "reprint_btn"):
+            self.reprint_btn.setEnabled(True)
+        doc_type = self.current_doc.get("type", "") if self.current_doc else ""
         key = "receipt_sent_to_printer" if doc_type == "sale" else "quotation_sent_to_printer"
+        doc_num = self.current_doc.get("document_number", "") if self.current_doc else ""
         QMessageBox.information(
             self,
             _t("common.success"),
-            _t(f"document_browser.{key}", doc_number=self.current_doc["document_number"]),
+            _t(f"document_browser.{key}", doc_number=doc_num),
         )
 
     def _on_reprint_error(self, message: str) -> None:
         """Called if the queued print job actually fails (e.g. no printer configured)."""
+        if hasattr(self, "reprint_btn"):
+            self.reprint_btn.setEnabled(True)
         logger.error("Reprint failed: %s", message)
         QMessageBox.critical(self, _t("common.error"), _t("document_browser.reprint_failed"))
 

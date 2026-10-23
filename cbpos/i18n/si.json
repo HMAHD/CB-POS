@@ -2417,7 +2417,11 @@
   },
   "receipt_reprint": {
     "title": "රිසිට්පත නැවත මුද්‍රණය",
-    "search_placeholder": "ඉන්වොයිස# සොයන්න...",
+    "search_placeholder": "රිසිට් #, පාරිභෝගිකයා, හෝ දුරකථන අංකය සොයන්න...",
+    "filter_today": "අද",
+    "filter_yesterday": "ඊයේ",
+    "filter_this_week": "මේ සතිය",
+    "filter_this_month": "මේ මාසය",
     "col_receipt": "රිසිට් #",
     "col_customer": "පාරිභෝගිකයා",
     "btn_reprint": "යළි මුද්‍රණය",
@@ -2428,7 +2432,9 @@
     "reprint_failed": "රිසිට් එක යළි මුද්‍රණය කරන්න බැරි උනා.",
     "search_failed": "සෙවීම අසාර්ථකයි.",
     "sending": "යවමින්...",
-    "walk_in": "සාමාන්‍ය පාරිභෝගිකයා"
+    "walk_in": "සාමාන්‍ය පාරිභෝගිකයා",
+    "preview_title": "රිසිට් පෙරදසුන",
+    "select_to_preview": "පෙරදසුන බලන්න විකුණුමක් තෝරන්න"
   },
   "shift_closing": {
     "title": "මුරය වසීම",
@@ -2850,6 +2856,7 @@
     "btn_confirm_refund": "ආපසු ගෙවීම තහවුරු කරන්න",
     "btn_cancel_refund": "අවලංගු",
     "no_sales_found": "මේ කාලය තුළ විකුණුම් හම්බ වුනේ නැහැ.",
+    "sales_found": "විකුණුම් {count}ක් හමු විය",
     "walk_in": "සාමාන්‍ය පාරිභෝගික",
     "status_completed": "සම්පූර්ණ",
     "status_void": "අවලංගු",
@@ -2863,7 +2870,16 @@
     "detail_cashier": "කැෂියර්:",
     "detail_customer": "පාරිභෝගිකයා:",
     "detail_payment": "ගෙවීම:",
-    "detail_status": "තත්ත්වය:"
+    "detail_status": "තත්ත්වය:",
+    "copy_invoice_tooltip": "ඉන්වොයිස් අංකය කොපි කරන්න",
+    "copied_to_clipboard": "ඉන්වොයිස් #{invoice} කොපි කරගන්නා ලදී!",
+    "copied": "කොපි කළා!",
+    "subtotal": "උප එකතුව",
+    "discount": "වට්ටම්",
+    "tax": "බදු",
+    "grand_total": "මුළු එකතුව",
+    "tendered": "ගෙවූ මුදල",
+    "change": "ඉතිරි"
   },
   "db_setup": {
     "title": "දත්ත සමුදාය සකසන්න",

@@ -69,13 +69,26 @@ class MaintenanceService:
         db = Database()
         try:
             with db.get_session() as session:
-                # Use raw SQL for speed — these tables always exist
-                for key, tbl_name in [("products", "products"), ("customers", "customers"), ("sales", "sales")]:
-                    try:
-                        row = session.execute(text(f"SELECT COUNT(*) FROM {tbl_name}")).scalar()
-                        info[key] = row or 0
-                    except Exception as e:
-                        logger.warning("Could not count records for table '%s': %s", tbl_name, e)
+                try:
+                    row = session.execute(
+                        text(
+                            "SELECT (SELECT COUNT(*) FROM products), "
+                            "(SELECT COUNT(*) FROM customers), "
+                            "(SELECT COUNT(*) FROM sales)"
+                        )
+                    ).fetchone()
+                    if row:
+                        info["products"] = row[0] or 0
+                        info["customers"] = row[1] or 0
+                        info["sales"] = row[2] or 0
+                except Exception as batch_e:
+                    logger.debug("Batch count query failed, falling back to individual queries: %s", batch_e)
+                    for key, tbl_name in [("products", "products"), ("customers", "customers"), ("sales", "sales")]:
+                        try:
+                            val = session.execute(text(f"SELECT COUNT(*) FROM {tbl_name}")).scalar()
+                            info[key] = val or 0
+                        except Exception as e:
+                            logger.warning("Could not count records for table '%s': %s", tbl_name, e)
         except Exception as e:
             logger.warning("Could not query database info: %s", e)
 
@@ -109,14 +122,28 @@ class MaintenanceService:
                 rows = session.execute(
                     text("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
                 ).fetchall()
-                for (table_name,) in rows:
+                non_system_tables = [r[0] for r in rows if r[0] and not r[0].startswith("sqlite_")]
+                counts_by_table: dict[str, int | str] = {}
+                if non_system_tables:
                     try:
-                        tbl = table(table_name)
-                        count = session.execute(select(func.count()).select_from(tbl)).scalar()
-                        tables.append({"name": table_name, "rows": count or 0})
-                    except Exception as e:
-                        logger.debug("Could not count rows for table '%s': %s", table_name, e)
-                        tables.append({"name": table_name, "rows": "?"})
+                        union_sql = " UNION ALL ".join(
+                            f"SELECT '{t}' AS tbl, COUNT(*) AS cnt FROM \"{t}\"" for t in non_system_tables
+                        )
+                        counts_by_table = dict(session.execute(text(union_sql)).fetchall())
+                    except Exception as batch_e:
+                        logger.debug("Batch table count failed, falling back: %s", batch_e)
+
+                for (table_name,) in rows:
+                    if table_name in counts_by_table:
+                        tables.append({"name": table_name, "rows": counts_by_table[table_name] or 0})
+                    else:
+                        try:
+                            tbl = table(table_name)
+                            count = session.execute(select(func.count()).select_from(tbl)).scalar()
+                            tables.append({"name": table_name, "rows": count or 0})
+                        except Exception as e:
+                            logger.debug("Could not count rows for table '%s': %s", table_name, e)
+                            tables.append({"name": table_name, "rows": "?"})
         except Exception as e:
             logger.warning("Could not query table info: %s", e)
 

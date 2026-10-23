@@ -1,0 +1,57 @@
+name: UI/UX finding (from real testing)
+description: Something confusing, ugly, slow or broken you noticed while using the app.
+title: "[UI] <screen>: <what's wrong>"
+labels: ["ux", "needs-triage"]
+body:
+  - type: dropdown
+    id: screen
+    attributes:
+      label: Screen
+      options:
+        - Login
+        - Sales / checkout
+        - Payment dialog
+        - Sale history / refunds
+        - Management - Dashboard
+        - Management - Inventory
+        - Management - Purchase / GRN
+        - Management - Customers / Credit book
+        - Management - Reports
+        - Management - Stock take
+        - Settings
+        - Data safety / Backup
+        - Receipt / printout
+        - Installer / first run
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: language
+    attributes:
+      label: UI language when you saw it
+      options: [English, Sinhala, Tamil]
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened / what's wrong
+      description: One finding per issue. Paste or drag screenshots here.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead (optional)
+  - type: dropdown
+    id: impact
+    attributes:
+      label: How bad is it?
+      options:
+        - Blocks the task
+        - Slows the cashier / owner down
+        - Confusing but workable
+        - Cosmetic
+  - type: input
+    id: build
+    attributes:
+      label: Build / version
+      placeholder: "e.g. 1.3.0 or commit 88a7858"

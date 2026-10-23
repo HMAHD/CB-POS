@@ -29,6 +29,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 
@@ -145,30 +146,49 @@ class PromotionView(QWidget):
         self._loading_promotions = True
         try:
             self.promotions = self.promotion_service.get_all_promotions()
-            self.table.setRowCount(0)
-            for p in self.promotions:
-                row = self.table.rowCount()
-                self.table.insertRow(row)
+            with batch_table_update(self.table):
+                self.table.setRowCount(0)
 
-                self.table.setItem(row, 0, QTableWidgetItem(p.name))
-                self.table.setItem(row, 1, QTableWidgetItem(format_promotion_type(p.type)))
-                value_item = QTableWidgetItem(format_discount(p.type, p.value))
-                value_item.setTextAlignment(NUMERIC_ALIGNMENT)
-                self.table.setItem(row, 2, value_item)
-                self.table.setItem(row, 3, QTableWidgetItem(format_datetime(p.start_time)))
-                self.table.setItem(row, 4, QTableWidgetItem(format_datetime(p.end_time)))
+                # Hoist LEGB locals
+                table = self.table
+                insert_row = table.insertRow
+                set_item = table.setItem
+                TableItem = QTableWidgetItem
+                num_align = NUMERIC_ALIGNMENT
+                align_center = Qt.AlignmentFlag.AlignCenter
+                item_flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable
+                checked_state = Qt.CheckState.Checked
+                unchecked_state = Qt.CheckState.Unchecked
+                fmt_type = format_promotion_type
+                fmt_disc = format_discount
+                fmt_dt = format_datetime
+                all_prod_str = _t("promotion.scope_all_products")
+                get_status = self._get_promotion_status
+                pill_setter = set_status_pill
 
-                scope_text = p.category.name if p.category_id and p.category else _t("promotion.scope_all_products")
-                self.table.setItem(row, 5, QTableWidgetItem(scope_text))
+                for p in self.promotions:
+                    row = table.rowCount()
+                    insert_row(row)
 
-                status_text, meaning = self._get_promotion_status(p)
-                self.table.setItem(row, 6, set_status_pill(QTableWidgetItem(), status_text, meaning))
+                    set_item(row, 0, TableItem(p.name))
+                    set_item(row, 1, TableItem(fmt_type(p.type)))
+                    value_item = TableItem(fmt_disc(p.type, p.value))
+                    value_item.setTextAlignment(num_align)
+                    set_item(row, 2, value_item)
+                    set_item(row, 3, TableItem(fmt_dt(p.start_time)))
+                    set_item(row, 4, TableItem(fmt_dt(p.end_time)))
 
-                on_off_item = QTableWidgetItem()
-                on_off_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable)
-                on_off_item.setCheckState(Qt.CheckState.Checked if p.is_active else Qt.CheckState.Unchecked)
-                on_off_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                self.table.setItem(row, 7, on_off_item)
+                    scope_text = p.category.name if p.category_id and p.category else all_prod_str
+                    set_item(row, 5, TableItem(scope_text))
+
+                    status_text, meaning = get_status(p)
+                    set_item(row, 6, pill_setter(TableItem(), status_text, meaning))
+
+                    on_off_item = TableItem()
+                    on_off_item.setFlags(item_flags)
+                    on_off_item.setCheckState(checked_state if p.is_active else unchecked_state)
+                    on_off_item.setTextAlignment(align_center)
+                    set_item(row, 7, on_off_item)
         finally:
             self._loading_promotions = False
 

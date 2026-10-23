@@ -25,6 +25,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 
@@ -124,51 +125,58 @@ class ReorderView(QWidget):
         """Load products where stock_qty <= reorder_point."""
         products = StockService.get_reorder_list()
 
-        self.table.setRowCount(len(products))
+        with batch_table_update(self.table):
+            self.table.setRowCount(len(products))
 
-        for row, product in enumerate(products):
-            # Product Name
-            name_item = QTableWidgetItem(product.name_en)
-            if product.stock_qty <= 0:
-                # Out of stock - Bold Red
-                font = QFont()
-                font.setBold(True)
-                name_item.setFont(font)
-                name_item.setForeground(status_color(DANGER))
-            self.table.setItem(row, 0, name_item)
+            # Hoist LEGB locals
+            table = self.table
+            set_item = table.setItem
+            TableItem = QTableWidgetItem
+            num_align = NUMERIC_ALIGNMENT
+            user_role = Qt.ItemDataRole.UserRole
+            user_role_plus_1 = Qt.ItemDataRole.UserRole + 1
+            color_danger = status_color(DANGER)
+            no_supplier_str = _t("reorder.no_supplier")
 
-            # Barcode
-            self.table.setItem(row, 1, QTableWidgetItem(product.barcode))
+            bold_font = QFont()
+            bold_font.setBold(True)
 
-            # Current Stock
-            stock_item = QTableWidgetItem(f"{product.stock_qty:.3f}")
-            stock_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            if product.stock_qty <= 0:
-                stock_item.setForeground(status_color(DANGER))
-            self.table.setItem(row, 2, stock_item)
+            for row, product in enumerate(products):
+                # Product Name
+                name_item = TableItem(product.name_en)
+                if product.stock_qty <= 0:
+                    # Out of stock - Bold Red
+                    name_item.setFont(bold_font)
+                    name_item.setForeground(color_danger)
+                name_item.setData(user_role, product.id)
+                set_item(row, 0, name_item)
 
-            # Reorder Point
-            reorder_item = QTableWidgetItem(f"{product.reorder_point:.3f}")
-            reorder_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.table.setItem(row, 3, reorder_item)
+                # Barcode
+                set_item(row, 1, TableItem(product.barcode))
 
-            # Preferred Qty
-            preferred_item = QTableWidgetItem(f"{product.preferred_qty:.3f}")
-            preferred_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.table.setItem(row, 4, preferred_item)
+                # Current Stock
+                stock_item = TableItem(f"{product.stock_qty:.3f}")
+                stock_item.setTextAlignment(num_align)
+                if product.stock_qty <= 0:
+                    stock_item.setForeground(color_danger)
+                set_item(row, 2, stock_item)
 
-            # Supplier (first one if exists) — store its id in UserRole+1
-            # (None sentinel if the product has no supplier assigned) so
-            # create_purchase_order() can persist a real Purchase Order
-            # against it (#486).
-            has_supplier = bool(product.suppliers)
-            supplier_name = product.suppliers[0].company_name if has_supplier else _t("reorder.no_supplier")
-            supplier_item = QTableWidgetItem(supplier_name)
-            supplier_item.setData(Qt.ItemDataRole.UserRole + 1, product.suppliers[0].id if has_supplier else None)
-            self.table.setItem(row, 5, supplier_item)
+                # Reorder Point
+                reorder_item = TableItem(f"{product.reorder_point:.3f}")
+                reorder_item.setTextAlignment(num_align)
+                set_item(row, 3, reorder_item)
 
-            # Store product ID in row data
-            self.table.item(row, 0).setData(Qt.ItemDataRole.UserRole, product.id)
+                # Preferred Qty
+                preferred_item = TableItem(f"{product.preferred_qty:.3f}")
+                preferred_item.setTextAlignment(num_align)
+                set_item(row, 4, preferred_item)
+
+                # Supplier (first one if exists)
+                has_supplier = bool(product.suppliers)
+                supplier_name = product.suppliers[0].company_name if has_supplier else no_supplier_str
+                supplier_item = TableItem(supplier_name)
+                supplier_item.setData(user_role_plus_1, product.suppliers[0].id if has_supplier else None)
+                set_item(row, 5, supplier_item)
 
     def create_purchase_order(self):
         """

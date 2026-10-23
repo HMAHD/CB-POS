@@ -38,6 +38,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
@@ -385,61 +386,72 @@ class BulkPriceAdjustDialog(QDialog):
             self.banner_below_cost.setVisible(False)
 
         # Populate table
-        self.table_preview.setRowCount(0)
-        for item in self.current_preview_items:
-            row = self.table_preview.rowCount()
-            self.table_preview.insertRow(row)
+        with batch_table_update(self.table_preview):
+            self.table_preview.setRowCount(0)
+            TableItem = QTableWidgetItem
+            fmt_num = format_number
+            num_align = NUMERIC_ALIGNMENT
+            set_item = self.table_preview.setItem
+            insert_row = self.table_preview.insertRow
+            dang_color = status_color(DANGER)
+            succ_color = status_color(SUCCESS)
+            gray_color = Qt.GlobalColor.gray
+            cost_not_set_msg = _t("pricelist.cost_not_set")
 
-            # 0: Product Name
-            self.table_preview.setItem(row, 0, QTableWidgetItem(item.product_name))
+            for item in self.current_preview_items:
+                row = self.table_preview.rowCount()
+                insert_row(row)
 
-            # 1: Category Name
-            cat_item = QTableWidgetItem(item.category_name or NO_VALUE)
-            self.table_preview.setItem(row, 1, cat_item)
+                # 0: Product Name
+                set_item(row, 0, TableItem(item.product_name))
 
-            # 2: Base Price
-            base_item = QTableWidgetItem(format_number(item.base_price, 2))
-            base_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.table_preview.setItem(row, 2, base_item)
+                # 1: Category Name
+                cat_item = TableItem(item.category_name or NO_VALUE)
+                set_item(row, 1, cat_item)
 
-            # 3: Old List Price
-            old_str = format_number(item.old_list_price, 2) if item.old_list_price is not None else NO_VALUE
-            old_item = QTableWidgetItem(old_str)
-            old_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.table_preview.setItem(row, 3, old_item)
+                # 2: Base Price
+                base_item = TableItem(fmt_num(item.base_price, 2))
+                base_item.setTextAlignment(num_align)
+                set_item(row, 2, base_item)
 
-            # 4: Cost
-            cost_str = format_number(item.cost, 2) if item.cost > 0 else NO_VALUE
-            cost_item = QTableWidgetItem(cost_str)
-            cost_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.table_preview.setItem(row, 4, cost_item)
+                # 3: Old List Price
+                old_str = fmt_num(item.old_list_price, 2) if item.old_list_price is not None else NO_VALUE
+                old_item = TableItem(old_str)
+                old_item.setTextAlignment(num_align)
+                set_item(row, 3, old_item)
 
-            # 5: New Price
-            new_item = QTableWidgetItem(format_number(item.new_list_price, 2))
-            new_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            if item.is_below_cost:
-                new_item.setForeground(status_color(DANGER))
-            else:
-                new_item.setForeground(status_color(SUCCESS))
-            self.table_preview.setItem(row, 5, new_item)
+                # 4: Cost
+                cost_str = fmt_num(item.cost, 2) if item.cost > 0 else NO_VALUE
+                cost_item = TableItem(cost_str)
+                cost_item.setTextAlignment(num_align)
+                set_item(row, 4, cost_item)
 
-            # 6: Margin / Status
-            if item.cost > 0:
+                # 5: New Price
+                new_item = TableItem(fmt_num(item.new_list_price, 2))
+                new_item.setTextAlignment(num_align)
                 if item.is_below_cost:
-                    loss_display = format_number(item.loss_amount, 2)
-                    badge_text = _t("pricelist.margin_badge_below_cost", loss=loss_display)
-                    margin_item = QTableWidgetItem(badge_text)
-                    margin_item.setForeground(status_color(DANGER))
+                    new_item.setForeground(dang_color)
                 else:
-                    margin_str = format_number(item.margin_percent or Decimal("0.0"), 1)
-                    badge_text = _t("pricelist.margin_badge_safe", margin=margin_str)
-                    margin_item = QTableWidgetItem(badge_text)
-                    margin_item.setForeground(status_color(SUCCESS))
-            else:
-                margin_item = QTableWidgetItem(_t("pricelist.cost_not_set"))
-                margin_item.setForeground(Qt.GlobalColor.gray)
+                    new_item.setForeground(succ_color)
+                set_item(row, 5, new_item)
 
-            self.table_preview.setItem(row, 6, margin_item)
+                # 6: Margin / Status
+                if item.cost > 0:
+                    if item.is_below_cost:
+                        loss_display = fmt_num(item.loss_amount, 2)
+                        badge_text = _t("pricelist.margin_badge_below_cost", loss=loss_display)
+                        margin_item = TableItem(badge_text)
+                        margin_item.setForeground(dang_color)
+                    else:
+                        margin_str = fmt_num(item.margin_percent or Decimal("0.0"), 1)
+                        badge_text = _t("pricelist.margin_badge_safe", margin=margin_str)
+                        margin_item = TableItem(badge_text)
+                        margin_item.setForeground(succ_color)
+                else:
+                    margin_item = TableItem(cost_not_set_msg)
+                    margin_item.setForeground(gray_color)
+
+                set_item(row, 6, margin_item)
 
         self.lbl_preview_header.setText(_t("pricelist.preview_title", count=len(self.current_preview_items)))
         self.btn_apply.setEnabled(len(self.current_preview_items) > 0)

@@ -2447,7 +2447,11 @@
   },
   "receipt_reprint": {
     "title": "Reprint Receipt",
-    "search_placeholder": "Search by receipt number or customer...",
+    "search_placeholder": "Search receipt #, customer, or phone...",
+    "filter_today": "Today",
+    "filter_yesterday": "Yesterday",
+    "filter_this_week": "This Week",
+    "filter_this_month": "This Month",
     "col_receipt": "Receipt #",
     "col_customer": "Customer",
     "btn_reprint": "Reprint",
@@ -2458,7 +2462,9 @@
     "reprint_failed": "Failed to reprint receipt.",
     "search_failed": "Search failed.",
     "sending": "Sending...",
-    "walk_in": "Walk-in"
+    "walk_in": "Walk-in",
+    "preview_title": "Receipt Preview",
+    "select_to_preview": "Select a transaction to preview receipt"
   },
   "shift_closing": {
     "title": "Close Shift",
@@ -2850,6 +2856,7 @@
     "btn_confirm_refund": "Confirm Refund",
     "btn_cancel_refund": "Cancel",
     "no_sales_found": "No sales found for this period.",
+    "sales_found": "{count} sales found",
     "walk_in": "Walk-in",
     "status_completed": "Completed",
     "status_void": "Void",
@@ -2863,7 +2870,16 @@
     "detail_cashier": "Cashier:",
     "detail_customer": "Customer:",
     "detail_payment": "Payment:",
-    "detail_status": "Status:"
+    "detail_status": "Status:",
+    "copy_invoice_tooltip": "Click to copy invoice number",
+    "copied_to_clipboard": "Invoice #{invoice} copied to clipboard!",
+    "copied": "Copied!",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "tax": "Tax",
+    "grand_total": "Grand Total",
+    "tendered": "Tendered",
+    "change": "Change"
   },
   "db_setup": {
     "title": "Database Setup",

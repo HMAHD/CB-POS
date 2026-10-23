@@ -33,6 +33,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 
@@ -247,24 +248,37 @@ class UserView(QWidget):
     def load_users(self):
         """Refresh the user table from UserService, highlighting inactive users in red."""
         self.users = UserService.get_all_users()
-        self.table.setRowCount(len(self.users))
+        with batch_table_update(self.table):
+            self.table.setRowCount(len(self.users))
 
-        for row, user in enumerate(self.users):
-            id_item = QTableWidgetItem(str(user.id))
-            id_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.table.setItem(row, 0, id_item)
-            self.table.setItem(row, 1, QTableWidgetItem(user.username))
-            self.table.setItem(
-                row,
-                2,
-                QTableWidgetItem(display_role_name(user.role) if user.role else _t("user.no_role")),
-            )
+            # Hoist LEGB locals
+            set_item = self.table.setItem
+            TableItem = QTableWidgetItem
+            num_align = NUMERIC_ALIGNMENT
+            pill_setter = set_status_pill
+            role_formatter = display_role_name
+            no_role_str = _t("user.no_role")
+            active_str = _t("common.active")
+            inactive_str = _t("common.inactive")
+            status_success = SUCCESS
+            status_danger = DANGER
 
-            status = _t("common.active") if user.is_active else _t("common.inactive")
-            item_status = QTableWidgetItem(status)
-            meaning = SUCCESS if user.is_active else DANGER
-            set_status_pill(item_status, status, meaning)
-            self.table.setItem(row, 3, item_status)
+            for row, user in enumerate(self.users):
+                id_item = TableItem(str(user.id))
+                id_item.setTextAlignment(num_align)
+                set_item(row, 0, id_item)
+                set_item(row, 1, TableItem(user.username))
+                set_item(
+                    row,
+                    2,
+                    TableItem(role_formatter(user.role) if user.role else no_role_str),
+                )
+
+                status = active_str if user.is_active else inactive_str
+                item_status = TableItem(status)
+                meaning = status_success if user.is_active else status_danger
+                pill_setter(item_status, status, meaning)
+                set_item(row, 3, item_status)
 
     # Destructive actions get flagged red even though their event_type
     # (TRANSACTION) is shared with routine actions like TRANSFER_ORDER.
@@ -315,24 +329,35 @@ class UserView(QWidget):
             date_from=date_from,
             date_to=date_to,
         )
-        self.log_table.setRowCount(len(logs))
+        with batch_table_update(self.log_table):
+            self.log_table.setRowCount(len(logs))
 
-        for row, log in enumerate(logs):
-            self.log_table.setItem(row, 0, QTableWidgetItem(format_log_time(log.timestamp)))
-            self.log_table.setItem(
-                row,
-                1,
-                QTableWidgetItem(log.user.username if log.user else _t("user.unknown_user")),
-            )
-            event_item = QTableWidgetItem(event_type_label(log.event_type))
-            color = self._log_event_color(log)
-            if color is not None:
-                event_item.setForeground(color)
-            self.log_table.setItem(row, 2, event_item)
-            self.log_table.setItem(row, 3, QTableWidgetItem(format_audit_action(log.action)))
-            self.log_table.setItem(row, 4, QTableWidgetItem(log.terminal_id or "-"))
-            # Raw JSON stays in the DB; it is made readable only for display (#613)
-            self.log_table.setItem(row, 5, QTableWidgetItem(format_audit_details(log.action, log.details)))
+            # Hoist LEGB locals
+            set_item = self.log_table.setItem
+            TableItem = QTableWidgetItem
+            fmt_time = format_log_time
+            lbl_event = event_type_label
+            fmt_action = format_audit_action
+            fmt_details = format_audit_details
+            get_color = self._log_event_color
+            unknown_user_str = _t("user.unknown_user")
+
+            for row, log in enumerate(logs):
+                set_item(row, 0, TableItem(fmt_time(log.timestamp)))
+                set_item(
+                    row,
+                    1,
+                    TableItem(log.user.username if log.user else unknown_user_str),
+                )
+                event_item = TableItem(lbl_event(log.event_type))
+                color = get_color(log)
+                if color is not None:
+                    event_item.setForeground(color)
+                set_item(row, 2, event_item)
+                set_item(row, 3, TableItem(fmt_action(log.action)))
+                set_item(row, 4, TableItem(log.terminal_id or "-"))
+                # Raw JSON stays in the DB; it is made readable only for display (#613)
+                set_item(row, 5, TableItem(fmt_details(log.action, log.details)))
 
     def on_tab_changed(self, index):
         """Refresh the users table or the activity log when the active tab changes."""

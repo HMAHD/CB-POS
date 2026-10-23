@@ -1,32 +1,39 @@
 import contextlib
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from PyQt6.QtCore import QDate
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QDateEdit,
     QDialog,
+    QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QScrollArea,
+    QSplitter,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
+    QWidget,
 )
 
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.receipt_builder import ReceiptBuilder
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.utils.formatters import format_currency, format_datetime
 from cbpos.i18n import _t
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.resources.icons import Icons
+from cbpos.ui.widgets.receipt_preview_widget import ReceiptPreviewWidget
 from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
@@ -35,52 +42,78 @@ logger = logging.getLogger(__name__)
 
 
 class ReceiptReprintDialog(QDialog):
-    """Dialog to search past sales and reprint receipts."""
+    """Dialog to search past sales and reprint receipts with live thermal preview."""
 
     def __init__(self, parent=None):
-        """Build the dialog with an empty search bar and results table."""
+        """Build the dialog with quick filter chips, results table, and live receipt preview."""
         super().__init__(parent)
         self.setWindowTitle(_t("receipt_reprint.title"))
-        self.setMinimumSize(700, 500)
+        self.setMinimumSize(1050, 600)
         self.setObjectName("ReceiptReprintDialog")
         self.results = []
+        self._selected_sale = None
+        self._active_filter = "today"
         self._init_ui()
         install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
+        self.perform_search()
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
 
+        # Horizontal splitter between table and live preview
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        # ── Left Pane: Search & Results Table ───────────────────────
+        left_pane = QWidget()
+        left_layout = QVBoxLayout(left_pane)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(8)
+
+        # Filter buttons and Search bar
+        top_filter_layout = QHBoxLayout()
+        top_filter_layout.setSpacing(8)
+
+        # Quick date filters
+        self._filter_buttons = {}
+        for key, i18n_key in (
+            ("today", "receipt_reprint.filter_today"),
+            ("yesterday", "receipt_reprint.filter_yesterday"),
+            ("this_week", "receipt_reprint.filter_this_week"),
+            ("this_month", "receipt_reprint.filter_this_month"),
+        ):
+            btn = QPushButton(_t(i18n_key))
+            btn.setObjectName("FilterChip")
+            btn.setCheckable(True)
+            btn.clicked.connect(lambda checked, k=key: self._on_filter_clicked(k))
+            top_filter_layout.addWidget(btn)
+            self._filter_buttons[key] = btn
+
+        self._filter_buttons["today"].setChecked(True)
+        top_filter_layout.addStretch()
+
         # Search bar
-        search_layout = QHBoxLayout()
-
         self.search_input = QLineEdit()
+        self.search_input.setObjectName("SaleSearchInput")
         self.search_input.setPlaceholderText(_t("receipt_reprint.search_placeholder"))
+        self.search_input.setClearButtonEnabled(True)
+        self.search_input.textChanged.connect(self._on_search_changed)
         self.search_input.returnPressed.connect(self.perform_search)
-        search_layout.addWidget(self.search_input, 2)
+        top_filter_layout.addWidget(self.search_input, 1)
 
-        lbl_from = QLabel(_t("common.from"))
-        lbl_from.setProperty("class", "transparent")
-        search_layout.addWidget(lbl_from)
+        # Search debounce timer
+        self._search_timer = QTimer(self)
+        self._search_timer.setInterval(300)
+        self._search_timer.setSingleShot(True)
+        self._search_timer.timeout.connect(self.perform_search)
+
+        left_layout.addLayout(top_filter_layout)
+
+        # Retained compatibility widgets for external tests
         self.date_from = QDateEdit()
-        self.date_from.setCalendarPopup(True)
-        self.date_from.setDate(QDate.currentDate().addDays(-7))
-        search_layout.addWidget(self.date_from)
-
-        lbl_to = QLabel(_t("common.to"))
-        lbl_to.setProperty("class", "transparent")
-        search_layout.addWidget(lbl_to)
+        self.date_from.setVisible(False)
         self.date_to = QDateEdit()
-        self.date_to.setCalendarPopup(True)
-        self.date_to.setDate(QDate.currentDate())
-        search_layout.addWidget(self.date_to)
-
-        btn_search = QPushButton(_t("common.search"))
-        btn_search.setProperty("class", "accent")
-        btn_search.clicked.connect(self.perform_search)
-        search_layout.addWidget(btn_search)
-
-        layout.addLayout(search_layout)
+        self.date_to.setVisible(False)
 
         # Results table
         self.results_table = QTableWidget()
@@ -99,50 +132,152 @@ class ReceiptReprintDialog(QDialog):
             self.results_table.horizontalHeader(),
             {
                 0: QHeaderView.ResizeMode.ResizeToContents,
-                1: QHeaderView.ResizeMode.Stretch,
+                1: QHeaderView.ResizeMode.Interactive,
                 2: QHeaderView.ResizeMode.ResizeToContents,
                 3: QHeaderView.ResizeMode.Stretch,
                 4: QHeaderView.ResizeMode.ResizeToContents,
             },
         )
+        self.results_table.setColumnWidth(1, 140)
         align_numeric_headers(self.results_table, (4,))
         attach_table_empty_state(self.results_table, Icons.PRINT, "common.no_items")
         self.results_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.results_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.results_table.setAlternatingRowColors(True)
         self.results_table.doubleClicked.connect(self.reprint_selected)
-        layout.addWidget(self.results_table)
+        self.results_table.currentItemChanged.connect(self._on_selection_changed)
+        left_layout.addWidget(self.results_table)
 
-        # Action buttons
+        self.splitter.addWidget(left_pane)
+
+        # ── Right Pane: Authentic Thermal Receipt Preview ────────────
+        self.preview_container = QFrame()
+        self.preview_container.setObjectName("ReceiptReprintPreviewContainer")
+        preview_layout = QVBoxLayout(self.preview_container)
+        preview_layout.setContentsMargins(10, 10, 10, 10)
+        preview_layout.setSpacing(6)
+
+        self.lbl_preview_title = QLabel(_t("receipt_reprint.preview_title"))
+        self.lbl_preview_title.setProperty("class", "bold")
+        preview_layout.addWidget(self.lbl_preview_title)
+
+        self.lbl_preview_prompt = QLabel(_t("receipt_reprint.select_to_preview"))
+        self.lbl_preview_prompt.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_preview_prompt.setProperty("class", "transparent")
+        preview_layout.addWidget(self.lbl_preview_prompt, 1)
+
+        self.preview_scroll = QScrollArea()
+        self.preview_scroll.setObjectName("SaleReceiptScroll")
+        self.preview_scroll.setWidgetResizable(True)
+        self.preview_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.preview_scroll.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
+
+        self.receipt_preview = ReceiptPreviewWidget()
+        self.preview_scroll.setWidget(self.receipt_preview)
+        preview_layout.addWidget(self.preview_scroll, 1)
+
+        self.splitter.addWidget(self.preview_container)
+        self.splitter.setSizes([600, 400])
+        self.splitter.setCollapsible(0, False)
+        self.splitter.setCollapsible(1, False)
+        layout.addWidget(self.splitter, 1)
+
+        # ── Action Bar ──────────────────────────────────────────────
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
 
-        btn_reprint = QPushButton(_t("receipt_reprint.btn_reprint"))
-        btn_reprint.setProperty("class", "primary")
-        btn_reprint.clicked.connect(self.reprint_selected)
-        btn_layout.addWidget(btn_reprint)
+        self.btn_reprint = QPushButton(_t("receipt_reprint.btn_reprint"))
+        self.btn_reprint.setProperty("class", "primary")
+        self.btn_reprint.setEnabled(False)
+        self.btn_reprint.clicked.connect(self.reprint_selected)
+        btn_layout.addWidget(self.btn_reprint)
 
-        btn_close = QPushButton(_t("common.close"))
-        btn_close.setObjectName("BtnCancel")
-        btn_close.setProperty("class", "secondary")
-        btn_close.clicked.connect(self.reject)
-        btn_layout.addWidget(btn_close)
+        self.btn_close = QPushButton(_t("common.close"))
+        self.btn_close.setObjectName("BtnCancel")
+        self.btn_close.setProperty("class", "secondary")
+        self.btn_close.clicked.connect(self.reject)
+        btn_layout.addWidget(self.btn_close)
 
         layout.addLayout(btn_layout)
 
-    def perform_search(self) -> None:
-        """Search for past sales by doc number or date range."""
-        search_term = self.search_input.text().strip() or None
-        d_from = self.date_from.date()
-        d_to = self.date_to.date()
+        # Initial state
+        self.lbl_preview_prompt.setVisible(True)
+        self.preview_scroll.setVisible(False)
 
-        from_dt = datetime(d_from.year(), d_from.month(), d_from.day())
-        to_dt = datetime(d_to.year(), d_to.month(), d_to.day(), 23, 59, 59)
+    def _on_selection_changed(
+        self,
+        current: QTableWidgetItem | None = None,
+        previous: QTableWidgetItem | None = None,
+    ) -> None:
+        """Update thermal receipt preview when a transaction row is selected."""
+        if not current:
+            self._selected_sale = None
+            self.lbl_preview_prompt.setVisible(True)
+            self.preview_scroll.setVisible(False)
+            self.btn_reprint.setEnabled(False)
+            return
+
+        row = current.row()
+        if row < 0 or row >= len(self.results):
+            return
+
+        sale = self.results[row]
+        self._selected_sale = sale
+        try:
+            paper_width = ConfigService.get("paper_width") or "80mm"
+            self.receipt_preview.set_paper_width(paper_width)
+            commands = ReceiptBuilder.build_receipt(sale, is_reprint=True)
+            self.receipt_preview.set_commands(commands)
+            self.lbl_preview_prompt.setVisible(False)
+            self.preview_scroll.setVisible(True)
+            self.btn_reprint.setEnabled(True)
+        except Exception as e:
+            logger.error("Failed to build reprint preview for sale %s: %s", getattr(sale, "id", None), e)
+            self.lbl_preview_prompt.setVisible(True)
+            self.preview_scroll.setVisible(False)
+            self.btn_reprint.setEnabled(False)
+
+    def _on_filter_clicked(self, key: str) -> None:
+        """Handle quick filter button click."""
+        self._active_filter = key
+        for k, btn in self._filter_buttons.items():
+            btn.setChecked(k == key)
+        self.perform_search()
+
+    def _on_search_changed(self, text: str) -> None:
+        """Restart debounce timer on search text change."""
+        self._search_timer.start()
+
+    def _get_date_range(self) -> tuple[datetime, datetime]:
+        """Return (from_date, to_date) based on active filter."""
+        now = datetime.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        if self._active_filter == "today":
+            return today_start, now
+        elif self._active_filter == "yesterday":
+            yesterday = today_start - timedelta(days=1)
+            return yesterday, today_start - timedelta(seconds=1)
+        elif self._active_filter == "this_week":
+            week_start = today_start - timedelta(days=today_start.weekday())
+            return week_start, now
+        elif self._active_filter == "this_month":
+            month_start = today_start.replace(day=1)
+            return month_start, now
+        return today_start, now
+
+    def perform_search(self) -> None:
+        """Search for past sales by receipt number, customer, phone, or active date filter."""
+        search_term = self.search_input.text().strip() or None
+        from_dt, to_dt = self._get_date_range()
+
+        query_from = None if search_term else from_dt
+        query_to = None if search_term else to_dt
 
         try:
             self.results = SaleQueryService.get_sales_history(
-                from_date=from_dt,
-                to_date=to_dt,
+                from_date=query_from,
+                to_date=query_to,
                 search_term=search_term,
                 limit=100,
             )
@@ -153,23 +288,32 @@ class ReceiptReprintDialog(QDialog):
 
     def _populate_table(self) -> None:
         """Fill results table with sales data."""
-        self.results_table.setRowCount(0)
-        for sale in self.results:
-            row = self.results_table.rowCount()
-            self.results_table.insertRow(row)
+        with batch_table_update(self.results_table):
+            self.results_table.setRowCount(0)
+            TableItem = QTableWidgetItem
+            fmt_curr = format_currency
+            fmt_dt = format_datetime
+            num_align = NUMERIC_ALIGNMENT
+            set_item = self.results_table.setItem
+            insert_row = self.results_table.insertRow
+            walk_in_text = _t("receipt_reprint.walk_in")
 
-            self.results_table.setItem(row, 0, QTableWidgetItem(str(sale.id)))
-            self.results_table.setItem(row, 1, QTableWidgetItem(sale.document_number or f"#{sale.id}"))
+            for sale in self.results:
+                row = self.results_table.rowCount()
+                insert_row(row)
 
-            date_str = format_datetime(sale.date) if sale.date else "N/A"
-            self.results_table.setItem(row, 2, QTableWidgetItem(date_str))
+                set_item(row, 0, TableItem(str(sale.id)))
+                set_item(row, 1, TableItem(sale.document_number or f"#{sale.id}"))
 
-            customer_name = sale.customer.name if sale.customer else _t("receipt_reprint.walk_in")
-            self.results_table.setItem(row, 3, QTableWidgetItem(customer_name))
+                date_str = fmt_dt(sale.date) if sale.date else "N/A"
+                set_item(row, 2, TableItem(date_str))
 
-            total_item = QTableWidgetItem(format_currency(sale.total_amount))
-            total_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.results_table.setItem(row, 4, total_item)
+                customer_name = sale.customer.name if sale.customer else walk_in_text
+                set_item(row, 3, TableItem(customer_name))
+
+                total_item = TableItem(fmt_curr(sale.total_amount))
+                total_item.setTextAlignment(num_align)
+                set_item(row, 4, total_item)
 
     def reprint_selected(self) -> None:
         """Reprint receipt for the selected sale."""

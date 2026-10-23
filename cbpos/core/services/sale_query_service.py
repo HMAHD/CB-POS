@@ -5,6 +5,7 @@ from sqlalchemy.orm import joinedload
 
 from cbpos.core.database import Database
 from cbpos.core.models import (
+    Customer,
     Sale,
     SaleItem,
 )
@@ -41,8 +42,8 @@ class SaleQueryService:
 
     @staticmethod
     def get_sales_history(
-        from_date: datetime,
-        to_date: datetime,
+        from_date: datetime | None = None,
+        to_date: datetime | None = None,
         search_term: str = None,
         limit: int = 500,
     ) -> list:
@@ -50,9 +51,9 @@ class SaleQueryService:
         Fetch sales within a date range with optional search filter.
 
         Args:
-            from_date: Start datetime
-            to_date: End datetime
-            search_term: Optional receipt# or customer name filter
+            from_date: Optional start datetime
+            to_date: Optional end datetime
+            search_term: Optional receipt# or customer name/phone filter
             limit: Maximum number of results (default 500)
 
         Returns:
@@ -60,14 +61,18 @@ class SaleQueryService:
         """
         db = Database()
         with db.get_session() as session:
-            query = session.query(Sale).filter(
-                Sale.date >= from_date,
-                Sale.date <= to_date,
-            )
+            query = session.query(Sale)
+            if from_date is not None:
+                query = query.filter(Sale.date >= from_date)
+            if to_date is not None:
+                query = query.filter(Sale.date <= to_date)
 
             if search_term:
+                term = f"%{escape_like(search_term)}%"
                 query = query.filter(
-                    (Sale.document_number.like(f"%{escape_like(search_term)}%")) | (Sale.customer.has(name=search_term))
+                    (Sale.document_number.like(term))
+                    | (Sale.customer.has(Customer.name.ilike(term)))
+                    | (Sale.customer.has(Customer.phone.like(term)))
                 )
 
             sales = (

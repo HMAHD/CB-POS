@@ -38,6 +38,7 @@ from cbpos.ui.widgets.table_helpers import (
     RelativeTimeTableWidgetItem,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
@@ -323,45 +324,54 @@ class CustomerStatementDialog(QDialog):
         self.lbl_closing.setText(_t("customer_statement.closing", value=format_currency(data["closing_balance"])))
 
         # Populate table
-        self.table.setRowCount(0)
-        entries = data["entries"]
-        if not entries:
-            return
+        with batch_table_update(self.table):
+            self.table.setRowCount(0)
+            entries = data["entries"]
+            if not entries:
+                return
 
-        for entry in entries:
-            row = self.table.rowCount()
-            self.table.insertRow(row)
+            TableItem = QTableWidgetItem
+            RelTimeItem = RelativeTimeTableWidgetItem
+            fmt_curr = format_currency
+            num_align = NUMERIC_ALIGNMENT
+            set_pill = set_status_pill
+            set_item = self.table.setItem
+            insert_row = self.table.insertRow
 
-            self.table.setItem(row, 0, RelativeTimeTableWidgetItem(entry["date"], fmt="%Y-%m-%d"))
-            type_str = entry["type"]
-            meaning = (
-                SUCCESS
-                if type_str in ("PAYMENT", "CREDIT")
-                else (
-                    WARNING
-                    if type_str in ("SALE", "INVOICE", "DEBIT")
-                    else (INFO if type_str in ("ADJUSTMENT", "REFUND") else NEUTRAL)
+            for entry in entries:
+                row = self.table.rowCount()
+                insert_row(row)
+
+                set_item(row, 0, RelTimeItem(entry["date"], fmt="%Y-%m-%d"))
+                type_str = entry["type"]
+                meaning = (
+                    SUCCESS
+                    if type_str in ("PAYMENT", "CREDIT")
+                    else (
+                        WARNING
+                        if type_str in ("SALE", "INVOICE", "DEBIT")
+                        else (INFO if type_str in ("ADJUSTMENT", "REFUND") else NEUTRAL)
+                    )
                 )
-            )
-            type_item = QTableWidgetItem(type_str)
-            set_status_pill(type_item, type_str, meaning)
-            self.table.setItem(row, 1, type_item)
-            self.table.setItem(row, 2, QTableWidgetItem(entry["description"]))
+                type_item = TableItem(type_str)
+                set_pill(type_item, type_str, meaning)
+                set_item(row, 1, type_item)
+                set_item(row, 2, TableItem(entry["description"]))
 
-            debit_str = format_currency(entry["debit"]) if entry["debit"] > 0 else ""
-            credit_str = format_currency(entry["credit"]) if entry["credit"] > 0 else ""
+                debit_str = fmt_curr(entry["debit"]) if entry["debit"] > 0 else ""
+                credit_str = fmt_curr(entry["credit"]) if entry["credit"] > 0 else ""
 
-            item_debit = QTableWidgetItem(debit_str)
-            item_debit.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.table.setItem(row, 3, item_debit)
+                item_debit = TableItem(debit_str)
+                item_debit.setTextAlignment(num_align)
+                set_item(row, 3, item_debit)
 
-            item_credit = QTableWidgetItem(credit_str)
-            item_credit.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.table.setItem(row, 4, item_credit)
+                item_credit = TableItem(credit_str)
+                item_credit.setTextAlignment(num_align)
+                set_item(row, 4, item_credit)
 
-            item_balance = QTableWidgetItem(format_currency(entry["balance"]))
-            item_balance.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.table.setItem(row, 5, item_balance)
+                item_balance = TableItem(fmt_curr(entry["balance"]))
+                item_balance.setTextAlignment(num_align)
+                set_item(row, 5, item_balance)
 
     def _print_thermal(self) -> None:
         """Print statement on thermal printer."""

@@ -32,6 +32,7 @@ from cbpos.ui.widgets.table_helpers import (
     RelativeTimeTableWidgetItem,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 
@@ -243,39 +244,53 @@ class HistoryView(QWidget):
 
     def populate_table(self, sales):
         """Populate transaction table with sales data"""
-        self.transaction_table.setRowCount(0)
+        with batch_table_update(self.transaction_table):
+            self.transaction_table.setRowCount(0)
 
-        for row, sale in enumerate(sales):
-            self.transaction_table.insertRow(row)
+            # Hoist LEGB locals
+            insert_row = self.transaction_table.insertRow
+            set_item = self.transaction_table.setItem
+            TableItem = QTableWidgetItem
+            RelTimeItem = RelativeTimeTableWidgetItem
+            user_role = Qt.ItemDataRole.UserRole
+            align_right_vc = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            fmt_curr = format_currency
+            status_danger = status_color(DANGER)
+            status_warning = status_color(WARNING)
+            unknown_str = _t("history.unknown")
+            refund_str = _t("history.status_refund")
 
-            # Date/Time
-            dt_item = RelativeTimeTableWidgetItem(sale.date)
-            dt_item.setData(Qt.ItemDataRole.UserRole, sale.id)
-            self.transaction_table.setItem(row, 0, dt_item)
+            for row, sale in enumerate(sales):
+                insert_row(row)
 
-            # Receipt#
-            self.transaction_table.setItem(row, 1, QTableWidgetItem(sale.document_number))
+                # Date/Time
+                dt_item = RelTimeItem(sale.date)
+                dt_item.setData(user_role, sale.id)
+                set_item(row, 0, dt_item)
 
-            # Cashier
-            cashier_name = sale.user.username if sale.user else _t("history.unknown")
-            self.transaction_table.setItem(row, 2, QTableWidgetItem(cashier_name))
+                # Receipt#
+                set_item(row, 1, TableItem(sale.document_number))
 
-            # Total
-            total_item = QTableWidgetItem(format_currency(sale.total_amount))
-            total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.transaction_table.setItem(row, 3, total_item)
+                # Cashier
+                cashier_name = sale.user.username if sale.user else unknown_str
+                set_item(row, 2, TableItem(cashier_name))
 
-            # Method
-            self.transaction_table.setItem(row, 4, QTableWidgetItem(sale.payment_method))
+                # Total
+                total_item = TableItem(fmt_curr(sale.total_amount))
+                total_item.setTextAlignment(align_right_vc)
+                set_item(row, 3, total_item)
 
-            # Status
-            status_item = QTableWidgetItem(sale.status)
-            if sale.status == "VOID":
-                status_item.setForeground(status_color(DANGER))
-            elif sale.payment_method == "REFUND":
-                status_item.setForeground(status_color(WARNING))
-                status_item.setText(_t("history.status_refund"))
-            self.transaction_table.setItem(row, 5, status_item)
+                # Method
+                set_item(row, 4, TableItem(sale.payment_method))
+
+                # Status
+                status_item = TableItem(sale.status)
+                if sale.status == "VOID":
+                    status_item.setForeground(status_danger)
+                elif sale.payment_method == "REFUND":
+                    status_item.setForeground(status_warning)
+                    status_item.setText(refund_str)
+                set_item(row, 5, status_item)
 
     def on_selection_changed(self):
         """Handle selection change in transaction table"""
@@ -319,28 +334,35 @@ class HistoryView(QWidget):
         self.details_label.setText(details_text)
 
         # Populate line items
-        self.items_table.setRowCount(0)
-        for row_idx, item in enumerate(sale.items):
-            self.items_table.insertRow(row_idx)
+        with batch_table_update(self.items_table):
+            self.items_table.setRowCount(0)
+            insert_row = self.items_table.insertRow
+            set_item = self.items_table.setItem
+            TableItem = QTableWidgetItem
+            align_right_vc = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            unknown_str = _t("history.unknown")
 
-            # Product name
-            product_name = item.product.name_en if item.product else _t("history.unknown")
-            self.items_table.setItem(row_idx, 0, QTableWidgetItem(product_name))
+            for row_idx, item in enumerate(sale.items):
+                insert_row(row_idx)
 
-            # Quantity
-            qty_item = QTableWidgetItem(f"{item.qty:.3f}")
-            qty_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.items_table.setItem(row_idx, 1, qty_item)
+                # Product name
+                product_name = item.product.name_en if item.product else unknown_str
+                set_item(row_idx, 0, TableItem(product_name))
 
-            # Unit Price
-            price_item = QTableWidgetItem(f"{item.unit_price:.2f}")
-            price_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.items_table.setItem(row_idx, 2, price_item)
+                # Quantity
+                qty_item = TableItem(f"{item.qty:.3f}")
+                qty_item.setTextAlignment(align_right_vc)
+                set_item(row_idx, 1, qty_item)
 
-            # Subtotal
-            subtotal_item = QTableWidgetItem(f"{item.subtotal:.2f}")
-            subtotal_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.items_table.setItem(row_idx, 3, subtotal_item)
+                # Unit Price
+                price_item = TableItem(f"{item.unit_price:.2f}")
+                price_item.setTextAlignment(align_right_vc)
+                set_item(row_idx, 2, price_item)
+
+                # Subtotal
+                subtotal_item = TableItem(f"{item.subtotal:.2f}")
+                subtotal_item.setTextAlignment(align_right_vc)
+                set_item(row_idx, 3, subtotal_item)
 
     def on_double_click(self):
         """Handle double-click to show full details"""
@@ -354,6 +376,7 @@ class HistoryView(QWidget):
 
         try:
             worker = PrintWorker.instance()
+            self._print_worker = worker
             # PrintWorker.add_job() only queues the job -- the print itself
             # happens later, asynchronously, on the worker thread. Showing
             # "success" right after add_job() (the old behavior) meant the
@@ -370,13 +393,19 @@ class HistoryView(QWidget):
             worker.error_occurred.connect(self._on_reprint_error)
             worker.job_completed.connect(self._on_reprint_finished)
 
+            if hasattr(self, "reprint_btn"):
+                self.reprint_btn.setEnabled(False)
             PrinterService.print_receipt(self.current_sale, is_reprint=True)
         except Exception as e:
+            if hasattr(self, "reprint_btn"):
+                self.reprint_btn.setEnabled(True)
             logger.error("Reprint failed: %s", e)
             QMessageBox.critical(self, _t("common.error"), _t("history.reprint_failed"))
 
     def _on_reprint_finished(self) -> None:
         """Called once the queued print job actually completes."""
+        if hasattr(self, "reprint_btn"):
+            self.reprint_btn.setEnabled(True)
         QMessageBox.information(
             self,
             _t("common.success"),
@@ -385,6 +414,8 @@ class HistoryView(QWidget):
 
     def _on_reprint_error(self, message: str) -> None:
         """Called if the queued print job actually fails (e.g. no printer configured)."""
+        if hasattr(self, "reprint_btn"):
+            self.reprint_btn.setEnabled(True)
         logger.error("Reprint failed: %s", message)
         QMessageBox.critical(self, _t("common.error"), _t("history.reprint_failed"))
 

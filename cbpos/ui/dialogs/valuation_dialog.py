@@ -21,6 +21,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 
@@ -133,6 +134,12 @@ class ValuationDialog(QDialog):
 
         return card
 
+    def closeEvent(self, event):
+        """Release table items on dialog close to prevent heap retention."""
+        self.table.clearContents()
+        self.table.setRowCount(0)
+        super().closeEvent(event)
+
     def load_data(self):
         """Load stock valuation data."""
         data = self.report_service.get_stock_valuation()
@@ -152,35 +159,45 @@ class ValuationDialog(QDialog):
 
         # Update breakdown table
         breakdown = data["category_breakdown"]
-        self.table.setRowCount(len(breakdown))
+        with batch_table_update(self.table):
+            self.table.clearContents()
+            self.table.setRowCount(0)
+            self.table.setRowCount(len(breakdown))
 
-        for row, item in enumerate(breakdown):
-            # Category
-            self.table.setItem(row, 0, QTableWidgetItem(item["category"]))
+            TableItem = QTableWidgetItem
+            fmt_curr = format_currency
+            num_align = NUMERIC_ALIGNMENT
+            succ_color = status_color(SUCCESS)
+            dang_color = status_color(DANGER)
+            set_item = self.table.setItem
 
-            # Product Count
-            count_item = QTableWidgetItem(str(item["product_count"]))
-            count_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.table.setItem(row, 1, count_item)
+            for row, item in enumerate(breakdown):
+                # Category
+                set_item(row, 0, TableItem(item["category"]))
 
-            # Cost Value
-            cost_item = QTableWidgetItem(format_currency(item["cost_value"]))
-            cost_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.table.setItem(row, 2, cost_item)
+                # Product Count
+                count_item = TableItem(str(item["product_count"]))
+                count_item.setTextAlignment(num_align)
+                set_item(row, 1, count_item)
 
-            # Retail Value
-            retail_item = QTableWidgetItem(format_currency(item["retail_value"]))
-            retail_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.table.setItem(row, 3, retail_item)
+                # Cost Value
+                cost_item = TableItem(fmt_curr(item["cost_value"]))
+                cost_item.setTextAlignment(num_align)
+                set_item(row, 2, cost_item)
 
-            # Profit
-            profit_item = QTableWidgetItem(format_currency(item["profit"]))
-            profit_item.setTextAlignment(NUMERIC_ALIGNMENT)
+                # Retail Value
+                retail_item = TableItem(fmt_curr(item["retail_value"]))
+                retail_item.setTextAlignment(num_align)
+                set_item(row, 3, retail_item)
 
-            # Color based on profit
-            if item["profit"] >= 0:
-                profit_item.setForeground(status_color(SUCCESS))
-            else:
-                profit_item.setForeground(status_color(DANGER))
+                # Profit
+                profit_item = TableItem(fmt_curr(item["profit"]))
+                profit_item.setTextAlignment(num_align)
 
-            self.table.setItem(row, 4, profit_item)
+                # Color based on profit
+                if item["profit"] >= 0:
+                    profit_item.setForeground(succ_color)
+                else:
+                    profit_item.setForeground(dang_color)
+
+                set_item(row, 4, profit_item)

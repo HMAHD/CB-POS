@@ -27,6 +27,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 
@@ -174,11 +175,19 @@ class RefundDialog(QDialog):
             return
 
         sale = results[0]
+        self.load_sale(sale)
+
+    def load_sale(self, sale) -> None:
+        """Load a sale instance directly into the dialog and populate details."""
+        if not sale:
+            return
         self.found_sale = sale
+        if getattr(sale, "document_number", None):
+            self.search_input.setText(str(sale.document_number))
 
         # Display sale info
-        customer_name = sale.customer.name if sale.customer else _t("refund.walk_in")
-        date_str = format_datetime(sale.date) if sale.date else "N/A"
+        customer_name = sale.customer.name if getattr(sale, "customer", None) else _t("refund.walk_in")
+        date_str = format_datetime(sale.date) if getattr(sale, "date", None) else "N/A"
         self.lbl_sale_info.setText(
             f"{_t('refund.receipt_label')} {sale.document_number} | "
             f"{_t('common.date')}: {date_str} | "
@@ -188,25 +197,33 @@ class RefundDialog(QDialog):
         )
 
         # Populate items table
-        self.items_table.setRowCount(0)
-        for item in sale.items:
-            row = self.items_table.rowCount()
-            self.items_table.insertRow(row)
+        with batch_table_update(self.items_table):
+            self.items_table.setRowCount(0)
+            TableItem = QTableWidgetItem
+            fmt_curr = format_currency
+            num_align = NUMERIC_ALIGNMENT
+            set_item = self.items_table.setItem
+            insert_row = self.items_table.insertRow
+            unknown_prod = _t("refund.unknown_product")
 
-            product_name = item.product.name_en if item.product else _t("refund.unknown_product")
-            self.items_table.setItem(row, 0, QTableWidgetItem(product_name))
+            for item in sale.items or []:
+                row = self.items_table.rowCount()
+                insert_row(row)
 
-            qty_item = QTableWidgetItem(str(item.qty))
-            qty_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.items_table.setItem(row, 1, qty_item)
+                product_name = item.product.name_en if getattr(item, "product", None) else unknown_prod
+                set_item(row, 0, TableItem(product_name))
 
-            price_item = QTableWidgetItem(format_currency(item.unit_price))
-            price_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.items_table.setItem(row, 2, price_item)
+                qty_item = TableItem(str(item.qty))
+                qty_item.setTextAlignment(num_align)
+                set_item(row, 1, qty_item)
 
-            subtotal_item = QTableWidgetItem(format_currency(item.subtotal))
-            subtotal_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.items_table.setItem(row, 3, subtotal_item)
+                price_item = TableItem(fmt_curr(item.unit_price))
+                price_item.setTextAlignment(num_align)
+                set_item(row, 2, price_item)
+
+                subtotal_item = TableItem(fmt_curr(item.subtotal))
+                subtotal_item.setTextAlignment(num_align)
+                set_item(row, 3, subtotal_item)
 
         # Enable refund button only for valid sales
         can_refund = sale.status not in ("VOID", "REFUNDED") and sale.payment_method != "REFUND"
@@ -218,6 +235,8 @@ class RefundDialog(QDialog):
                 _t("refund.cannot_refund_title"),
                 _t("refund.cannot_refund_message", reason=sale.status),
             )
+        else:
+            self.txt_reason.setFocus()
 
     def process_refund(self) -> None:
         """Process the refund after permission check."""

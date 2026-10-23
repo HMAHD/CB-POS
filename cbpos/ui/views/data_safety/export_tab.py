@@ -28,7 +28,7 @@ from cbpos.ui.workers import ExportWorker, start_background_job
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ExportContext:
     """What one running export needs to report its outcome (#695)."""
 

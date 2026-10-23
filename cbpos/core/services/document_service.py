@@ -17,6 +17,7 @@ _SEQ_RE = re.compile(r"\{seq(:.*?)?\}")
 _TOKEN_RE = re.compile(r"\{[^{}]*\}|[{}]")
 # The only accepted sequence forms: {seq} or {seq:0Nd} with N 1-9
 _VALID_SEQ_RE = re.compile(r"\{seq(?::0[1-9]d)?\}")
+_TRAILING_DIGITS_RE = re.compile(r"(\d+)$")
 _STATIC_PLACEHOLDERS = ("{Y}", "{M}", "{D}", "{T}", "{terminal}")
 DOC_NUMBER_MAX_LENGTH: int = Document.__table__.c.document_number.type.length
 
@@ -170,7 +171,7 @@ def _next_seq(session, search_prefix: str) -> int:
     if last_doc:
         # {seq} is always last (validate_doc_pattern), so the trailing
         # digits are the sequence.
-        match = re.search(r"(\d+)$", last_doc.document_number)
+        match = _TRAILING_DIGITS_RE.search(last_doc.document_number)
         if match:
             return int(match.group(1)) + 1
     return 1

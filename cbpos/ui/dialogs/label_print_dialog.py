@@ -37,6 +37,7 @@ from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 
@@ -320,33 +321,43 @@ class LabelPrintDialog(QDialog):
 
     def _refresh_table(self) -> None:
         """Rebuild table from label_items."""
-        self.table.blockSignals(True)
-        self.table.setRowCount(0)
+        with batch_table_update(self.table):
+            self.table.setRowCount(0)
 
-        for item in self.label_items:
-            row = self.table.rowCount()
-            self.table.insertRow(row)
-            self.table.setRowHeight(row, 44)
+            # Hoist LEGB locals
+            table = self.table
+            insert_row = table.insertRow
+            set_row_height = table.setRowHeight
+            set_item = table.setItem
+            TableItem = QTableWidgetItem
+            num_align = NUMERIC_ALIGNMENT
+            align_center_vc = Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter
+            no_editable = ~Qt.ItemFlag.ItemIsEditable
+            fmt_curr = format_currency
 
-            # Read-only columns
-            for col, text in (
-                (0, item["product"].name_en),
-                (1, item["product"].barcode),
-                (2, format_currency(item["product"].price)),
-            ):
-                cell = QTableWidgetItem(text)
-                if col == 2:
-                    cell.setTextAlignment(NUMERIC_ALIGNMENT)
-                cell.setFlags(cell.flags() & ~Qt.ItemFlag.ItemIsEditable)
-                self.table.setItem(row, col, cell)
+            for item in self.label_items:
+                row = table.rowCount()
+                insert_row(row)
+                set_row_height(row, 44)
 
-            # Editable Qty column — plain QTableWidgetItem,
-            # rendered and edited via _QtyDelegate
-            qty_item = QTableWidgetItem(str(item["quantity"]))
-            qty_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
-            self.table.setItem(row, 3, qty_item)
+                prod = item["product"]
+                c0 = TableItem(prod.name_en)
+                c0.setFlags(c0.flags() & no_editable)
+                set_item(row, 0, c0)
 
-        self.table.blockSignals(False)
+                c1 = TableItem(prod.barcode)
+                c1.setFlags(c1.flags() & no_editable)
+                set_item(row, 1, c1)
+
+                c2 = TableItem(fmt_curr(prod.price))
+                c2.setTextAlignment(num_align)
+                c2.setFlags(c2.flags() & no_editable)
+                set_item(row, 2, c2)
+
+                qty_item = TableItem(str(item["quantity"]))
+                qty_item.setTextAlignment(align_center_vc)
+                set_item(row, 3, qty_item)
+
         self._update_total()
 
     def _on_cell_changed(self, row: int, col: int) -> None:

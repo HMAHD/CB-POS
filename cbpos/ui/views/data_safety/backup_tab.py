@@ -30,6 +30,7 @@ from cbpos.ui.widgets.table_helpers import (
     RelativeTimeTableWidgetItem,
     align_numeric_headers,
     attach_table_empty_state,
+    batch_table_update,
     configure_table_columns,
 )
 from cbpos.ui.workers import BackupListWorker, BackupWorker
@@ -211,27 +212,42 @@ class BackupTabWidget(QWidget):
 
     def _fill_backup_table(self) -> None:
         """(Re)build the backup rows from ``self._backup_data``."""
-        self.backup_table.setRowCount(len(self._backup_data))
-        actions_width = self.backup_table.horizontalHeader().sectionSizeHint(self.COL_ACTIONS)
-        for row, b in enumerate(self._backup_data):
-            self.backup_table.setItem(row, self.COL_FILENAME, QTableWidgetItem(b["filename"]))
-            self.backup_table.setItem(
-                row, self.COL_DATE, RelativeTimeTableWidgetItem(b["date"], fmt="%Y-%m-%d %H:%M:%S")
-            )
-            size_text = b["size"]
+        with batch_table_update(self.backup_table):
+            self.backup_table.setRowCount(len(self._backup_data))
+            actions_width = self.backup_table.horizontalHeader().sectionSizeHint(self.COL_ACTIONS)
 
-            if b.get("original_size"):
-                size_text = _t("data_safety.size_compressed_from", size=b["size"], original=b["original_size"])
-            size_item = QTableWidgetItem(size_text)
-            size_item.setTextAlignment(NUMERIC_ALIGNMENT)
-            self.backup_table.setItem(row, self.COL_SIZE, size_item)
-            kind = b.get("type") or ("snapshot" if b.get("is_pre_restore") else "manual")
-            self.backup_table.setItem(row, self.COL_TYPE, QTableWidgetItem(_t(self._TYPE_KEYS[kind])))
-            actions = self._make_row_actions(row)
-            self.backup_table.setCellWidget(row, self.COL_ACTIONS, actions)
-            actions_width = max(actions_width, actions.minimumWidth())
-        # ResizeToContents ignores cell widgets, so size the column to the buttons
-        self.backup_table.setColumnWidth(self.COL_ACTIONS, actions_width + 8)
+            # Hoist LEGB locals
+            table = self.backup_table
+            set_item = table.setItem
+            set_cell_widget = table.setCellWidget
+            TableItem = QTableWidgetItem
+            RelTimeItem = RelativeTimeTableWidgetItem
+            num_align = NUMERIC_ALIGNMENT
+            col_filename = self.COL_FILENAME
+            col_date = self.COL_DATE
+            col_size = self.COL_SIZE
+            col_type = self.COL_TYPE
+            col_actions = self.COL_ACTIONS
+            type_keys = self._TYPE_KEYS
+            make_actions = self._make_row_actions
+
+            for row, b in enumerate(self._backup_data):
+                set_item(row, col_filename, TableItem(b["filename"]))
+                set_item(row, col_date, RelTimeItem(b["date"], fmt="%Y-%m-%d %H:%M:%S"))
+                size_text = b["size"]
+
+                if b.get("original_size"):
+                    size_text = _t("data_safety.size_compressed_from", size=b["size"], original=b["original_size"])
+                size_item = TableItem(size_text)
+                size_item.setTextAlignment(num_align)
+                set_item(row, col_size, size_item)
+                kind = b.get("type") or ("snapshot" if b.get("is_pre_restore") else "manual")
+                set_item(row, col_type, TableItem(_t(type_keys[kind])))
+                actions = make_actions(row)
+                set_cell_widget(row, col_actions, actions)
+                actions_width = max(actions_width, actions.minimumWidth())
+            # ResizeToContents ignores cell widgets, so size the column to the buttons
+            table.setColumnWidth(col_actions, actions_width + 8)
 
     def _make_row_actions(self, row: int) -> QWidget:
         """Restore and Delete buttons for one backup row (#620)."""

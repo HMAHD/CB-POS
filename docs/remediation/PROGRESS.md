@@ -14,7 +14,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | 3B | written |
 | 4 | written |
 | 5 | written |
-| 6 | not yet written |
+| 6 | written |
 | 7 | not yet written |
 | 8 | not yet written |
 | 9 | not yet written |

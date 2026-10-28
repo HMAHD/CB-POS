@@ -18,7 +18,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | 7 | written |
 | 8 | written |
 | 9 | written |
-| 10A | not yet written |
+| 10A | written |
 | 10B | not yet written |
 | 10C | not yet written |
 
@@ -220,6 +220,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
+| #942 | Shop-type presets at first run (Grocery, Pharmacy, Hardware, Clothing, Phone,… | — | 10B.0 | todo | | |
 | #926 | Expiry dates and batches, with per-batch MRP (pharmacy, grocery, bakery) | — | 10B.? | todo | | |
 | #930 | Supplier returns with debit note (pairs with expiry/batch) | — | 10B.? | todo | | |
 | #931 | Price board: fast daily price editing for items flagged "price changes often" | — | 10B.? | todo | | |
@@ -241,7 +242,6 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #938 | Backup to a Google Drive / OneDrive synced folder of the user's choice | — | 10C.? | todo | | |
 | #939 | Customer display on a second monitor (items, total, the shop's LankaQR image) | — | 10C.? | todo | | |
 | #940 | Owner-only anomaly report: voids, deletions after print, no-sale drawer opens… | — | 10C.? | todo | | |
-| #942 | Shop-type presets at first run (Grocery, Pharmacy, Hardware, Clothing, Phone,… | — | 10C.? | todo | | |
 | #943 | Parked ideas and do-not-build list (market research reference) | — | 10C.? | todo | | |
 
 ### Tracking epics

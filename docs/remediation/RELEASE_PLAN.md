@@ -346,8 +346,8 @@ The ordering principle: **data loss and money first, then security, then cross-t
 | — | **Public release gate** (§1.3) | — | — | — |
 | 9 | Warranty and repairs (epic #820) | 10 (+ epic #820) | Owner's call | [phase-09](phases/phase-09-warranty.md) |
 | 10A | Packaging and printing improvements | 4 | No | [phase-10a](phases/phase-10a-packaging-printing.md) |
-| 10B | Shop workflow features (stock, catalog, POS) | 8 | No | [phase-10b](phases/phase-10b-shop-workflows.md) |
-| 10C | Communication, finance, onboarding features | 10 (+ epic #944) | No | [phase-10c](phases/phase-10c-comms-finance-onboarding.md) |
+| 10B | Shop workflow features (stock, catalog, POS) + feature-flag foundation | 9 | No | [phase-10b](phases/phase-10b-shop-workflows.md) |
+| 10C | Communication, finance, onboarding features | 9 (+ epic #944) | No | [phase-10c](phases/phase-10c-comms-finance-onboarding.md) |
 
 The tracking epics #832, #922 (pre-release) and #944 (feature backlog) close when all their children close.
 

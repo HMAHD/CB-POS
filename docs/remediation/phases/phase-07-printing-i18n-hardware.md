@@ -416,7 +416,7 @@ Use Inventory Valuation (large) and the Tax Filing Summary. If any row fails wit
 
 **Fix design.**
 1. **Font module** `cbpos/infrastructure/pdf_fonts.py`: registers `NotoSans`, `NotoSansSinhala` and `NotoSansTamil` from `cbpos/assets/fonts` as `TTFont`s, plus a font-fallback helper `font_for(text) -> str` that picks by Unicode block (Sinhala U+0D80–0DFF, Tamil U+0B80–0BFF, else NotoSans).
-2. **Shaping:**
+2. **Shaping** (already verified in #924's benchmark: the locked `reportlab` 5.0.1 shapes Sinhala and Tamil when `uharfbuzz` is importable; `TTFont.shapable` is set in `reportlab/pdfbase/ttfonts.py:~67`, and Platypus shapes when `ParagraphStyle(shaping=1)`. So: `uv add uharfbuzz`, add it to `cbpos.spec`'s collect list, and use `shaping=1` for si/ta paragraphs; the PNG fallback is only for when the import fails):
    - If the locked ReportLab version supports HarfBuzz shaping (ReportLab ≥ 4.x with `uharfbuzz` installed and `rl_config.shapedFonts` or the equivalent), enable it, and add `uharfbuzz` with `uv add` if missing. **Verify by rendering a Sinhala conjunct** (e.g. "ශ්‍රී") and visually checking the output PDF. Attach a screenshot to the PR.
    - If shaping isn't available in the locked version, use option 3 (the PNG raster workaround the A4 invoice uses) **per text cell with non-Latin text**. Record the decision as D18, and Stop & Ask before upgrading ReportLab.
 3. **Report PDF builder** `cbpos/core/services/report_pdf_builder.py`:

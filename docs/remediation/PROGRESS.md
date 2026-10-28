@@ -257,6 +257,8 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | Q# | Issue | Question | Asked | Answer → D# |
 |---|---|---|---|---|
+| Q1 | #914 | D11's unique index on `refund_of_sale_id` would block partial refunds (D5). Replace it with row locks plus a CHECK on `sale_items.refunded_qty`? (Recommended: yes, as D16) | 2026-10-28 (plan) | |
+| Q2 | #812 | Partial-refund VAT proportional to value now, switching to line-level once #797 stores the per-line taxable flag? (Recommended: yes) | 2026-10-28 (plan) | |
 
 ## Discovered during remediation (§0.9)
 

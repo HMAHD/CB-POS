@@ -9,7 +9,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | Phase | Spec |
 |---|---|
 | 1 | written |
-| 2 | not yet written |
+| 2 | written |
 | 3A | written |
 | 3B | not yet written |
 | 4 | not yet written |

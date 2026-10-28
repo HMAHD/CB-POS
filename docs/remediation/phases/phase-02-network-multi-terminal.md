@@ -570,3 +570,319 @@ Recommendation: yes. It's unambiguous and prevents collisions. Proceed unless th
 **Acceptance.**
 - [ ] Product, User, Supplier, Category and the other catalog services raise on create, update or delete in terminal mode.
 - [ ] The management UI shows those screens read-only on a till, with the banner.
+
+---
+
+## Batch 2.4 — Catalog, deletion and permission sync
+
+**Branch:** `fix/p2-b4-catalog-deletion-permission-sync` · **Issues:** #836, #871, #872, #903 · **Protocol:** bump to `"1.2"`
+
+### #836 — Product edits on the Main PC never reach a till
+
+**Severity:** critical · **Size:** S · **Gate:** agent · **Skills:** systematic-debugging → tdd → ponytail
+
+**Problem.** The owner changes a price, name, barcode or VAT flag on the Main PC, and every till keeps selling at the old values forever. The sync error is logged and skipped, and the watermark moves on, so it is never retried.
+
+**Evidence and root cause.**
+- `Product.version_id` is an optimistic-lock column (`models/__init__.py:~372`). Both PCs bump it independently: on sales, on stock pulls, on edits.
+- `sync_client.py:~709-725` (`_pull_catalog`) calls `session.merge(Product(..., version_id=<Main's>))`. SQLAlchemy refuses a merge whose version differs.
+- The client logs it and advances `self._last_catalog_sync` anyway.
+
+**Fix.**
+1. Before `dict_to_model`, drop every column that is the model's `version_id_col`. Do it generically: `mapper = class_mapper(model); if mapper.version_id_col is not None: data.pop(mapper.version_id_col.key, None)`. That covers any future versioned model.
+2. The watermark advances only when **every** record in the pull applied. On any failure, keep the previous `since`, log, and set the client's error state (#906).
+3. A till must never push `version_id` back to the Main PC for catalog rows. It doesn't push catalog rows, except customers; confirm customers aren't versioned.
+
+**Tests.**
+- Two-machine: `test_issue_836_main_price_edit_reaches_till_after_both_sold`.
+- `test_issue_836_failed_record_keeps_watermark`: inject one bad record and assert `since` is unchanged.
+
+**Do NOT.**
+- Do not disable optimistic locking on the model; it protects local edits (#862 in Phase 4).
+- Do not set the till's `version_id` to the Main PC's value.
+
+**Acceptance.**
+- [ ] After a price edit on the Main PC, with both PCs having sold the product, one cycle shows the new price on the till.
+- [ ] A record that fails to apply keeps the previous watermark.
+
+### #871 — Deletions on the Main PC never reach the tills
+
+**Severity:** high · **Size:** L · **Gate:** agent · **Skills:** codebase-design → write a design note → `/egm-review` → tdd → migration rules → ponytail
+
+**Problem.** Deleted promotions, price-list overrides, payment methods and categories stay on every till forever. Tills keep giving a removed 10% discount or a special price, so the owner loses money and receipts don't match. Re-creating a row with the same name breaks the merge on a unique constraint.
+
+**Evidence and root cause.**
+- The pull (`sync_server.py:~337-351`) sends only existing rows changed since `since`. There are no tombstones.
+- The hard deletes: `promotion_service.py:~329`, `price_list_service.py:~254,277`, `payment_service.py:~361`, `category_service.py:~305`.
+
+**Fix design.**
+- *Recommended:* tombstones, recorded **automatically**.
+  1. A new table `sync_deletions` (`id` PK, `table_name String(50)`, `row_id Integer`, `deleted_at DateTime` indexed, plus `natural_key String(200)` nullable for association rows), created by migration.
+  2. A SQLAlchemy `before_flush` session event, registered once in `cbpos/core/services/sync_change_tracking.py` (which already tracks changes; check how it hooks in), adds a `SyncDeletion` row for every deleted instance whose table is in `CATALOG_TABLES`. It fires only on the Main PC or in standalone mode, never on a till applying a pull.
+
+     Association-only tables without ids or `last_modified` (`price_list_items` if it has no id; `composite_items`; `role_permissions`, see #872) are handled by **parent-scoped replacement**: when the parent changes, the pull sends the parent's complete child set, and the till replaces its children for that parent. Touch `last_modified` on the parent whenever children change, in the service methods that edit children.
+  3. Pull response: add `"deletions": [{"table", "row_id"}…]` since the watermark. The till deletes those rows locally, in FK-safe order (children first), inside the same transaction as the upserts.
+  4. Full pull: deletions since the beginning, capped by a prune policy. The Main PC prunes `sync_deletions` older than 180 days. A till that has been offline longer must run a **full catalog replace**: add `full_replace=true`, which wipes and reloads catalog tables except customers. Add it as an admin action on the till ("Reload catalog from Main PC"), and trigger it automatically when the till's `since` is older than the prune horizon.
+  5. Deleting a row the till still references (e.g. a payment method used by past sales): the till must not hard-delete rows referenced by transactions. For PaymentMethod and Category, prefer soft delete (`is_active=False`) **on the Main PC** too: change those services' delete to deactivate when referenced. Check each service's current delete semantics and keep hard delete only for rows with no transactional references (promotions, price-list overrides).
+- *Rejected alternatives:* "Soft delete everything" means a schema change to every catalog table plus filtering everywhere, which is too broad.
+- *Data/schema:* `sync_deletions` (migration).
+
+**Tests.**
+- Unit: deleting a Promotion via the service creates one `SyncDeletion` row. No row is created when the session is in "applying pull" mode (use the flag the change-tracking module uses, or add one).
+- Two-machine: `test_issue_871_deleted_promotion_and_override_gone_on_till`.
+- Two-machine: `test_issue_871_recreate_same_name_after_delete_syncs`.
+- `test_issue_871_stale_till_triggers_full_replace`.
+
+**UI/UX.** On the till, Admin Tools gets the action **Reload catalog from Main PC**, with the confirm text `sync.reload_catalog_confirm` → "Replace this till's products, prices and settings with the Main PC's copy? Sales and customers on this till are kept." Run the §0.7 UI gate.
+
+**Do NOT.**
+- Do not delete transactional rows on tills.
+- Do not record tombstones for customers. Customers keep the #680 flow.
+
+**Acceptance.**
+- [ ] After deleting a promotion and a price-list override on the Main PC, one cycle later neither exists nor applies on the till.
+
+### #872 — Role permissions never sync
+
+**Severity:** high · **Size:** M · **Gate:** agent · **Skills:** tdd → ponytail
+
+**Problem.** Removing "Void sale" from the Cashier role on the Main PC has no effect on the tills, where cashiers can still void. Custom roles arrive on tills with no permissions.
+
+**Evidence and root cause.**
+- `role_permissions` is not in `CATALOG_TABLES` (`sync_protocol.py:46-61`).
+- `model_to_dict` skips relationships (`:160-165`).
+- Editing permissions doesn't bump `roles.last_modified`.
+
+**Fix.**
+1. In the pull, serialize roles with `permission_codes: [codes…]`, using a role-specific hook in the server's catalog serializer.
+2. On the till, after merging the role, replace its permissions with the `Permission` rows whose `code` is in the list. Permission rows are seeded identically everywhere; if a code is missing locally, create it from the Main PC's permission row. Make sure `permissions` is in `CATALOG_TABLES`, or add it.
+3. Bump `Role.last_modified = now` in every service method that changes a role's permissions (`RoleService`, `PermissionService`; `graft grep "role.permissions"`).
+4. **Take effect immediately:** permissions are cached on the logged-in user object (`AuthService.verify_pin` expunges `user.role.permissions` at login, `auth_service.py:~186-194`). After a pull that changed roles, the client emits `roles_changed`. `AuthService.refresh_current_user()` reloads the current user's role and permissions. Connect it in `main.py` where the client's signals are wired.
+
+**Tests.**
+- Two-machine: `test_issue_872_revoked_permission_denied_on_till_after_one_cycle`, which checks `check_permission` on the till for the logged-in cashier.
+- `test_issue_872_custom_role_arrives_with_permissions`.
+
+**Do NOT.**
+- Do not sync permission ids blindly. Ids can differ per DB, so use codes.
+
+**Acceptance.**
+- [ ] After revoking a permission on the Main PC, one cycle later `check_permission` on the till denies it, without re-login.
+
+### #903 — Till audit logs and inventory logs never reach the Main PC
+
+**Severity:** medium · **Size:** M · **Gate:** agent · **Skills:** tdd → migration rules → ponytail
+
+**Root cause.**
+- `_FLAT_PUSH_TABLES` (`sync_client.py:65-74`) lacks `audit_logs` and `inventory_logs`.
+- `push_audit_logs()` (`:801-844`) has no caller.
+- `InventoryLog` has no `synced` column.
+
+**Fix.**
+1. Add `("audit_logs", AuditLog)` to `_FLAT_PUSH_TABLES` and delete `push_audit_logs` (dead).
+2. Migration: add `inventory_logs.synced Boolean NOT NULL default False` (and `last_modified` if the change-tracking needs it; mirror how `audit_logs` does it). Add `("inventory_logs", InventoryLog)`.
+3. Batch size: reuse the existing per-table batching. Audit logs can be many, so cap them per cycle (e.g. 500) and continue on the next cycle.
+4. On the Main PC, audit rows keep `terminal_id`. The Activity Log view (`graft grep "get_recent_activity"`) must show a **Terminal** column and a filter.
+
+**Tests.**
+- Two-machine: `test_issue_903_till_login_audit_reaches_main`.
+- `test_issue_903_inventory_log_pushed_once`.
+
+**UI/UX.** Activity Log: add a Terminal column and a filter combo (`activity.terminal` "Till", `activity.all_terminals` "All tills"). Run the §0.7 UI gate.
+
+**Acceptance.**
+- [ ] A till login audit row appears on the Main PC after one cycle. Inventory logs too.
+
+---
+
+## Batch 2.5 — Server resilience, numbering, honest status
+
+**Branch:** `fix/p2-b5-sync-server-resilience` · **Issues:** #870, #905, #906
+
+### #870 — One idle TCP connection stalls the whole sync server
+
+**Severity:** high · **Size:** S · **Gate:** agent · **Skills:** tdd → ponytail-review (security)
+
+**Root cause.**
+- `sync_server.py:~633-638` wraps the listening socket with the default `do_handshake_on_connect=True`.
+- The handshake runs inside `accept()` on the single `serve_forever` thread, with no timeout.
+
+**Fix.**
+- Wrap with `do_handshake_on_connect=False`.
+- Override `_ThreadedHTTPServer.finish_request` (or `process_request_thread`) to call `request.settimeout(10); request.do_handshake()` inside the per-request thread. On `ssl.SSLError`/`OSError`/`socket.timeout`: log at debug level and close.
+- Also set `timeout = 30` on the request handler class, so slow clients can't hold threads forever.
+- Cap concurrent request threads: a semaphore of 16. Excess connections are closed immediately with a log line.
+
+**Test.** `test_sync_server.py::test_issue_870_idle_tcp_does_not_block_heartbeat`: open a raw `socket.create_connection` to the port and send nothing. A TLS heartbeat (using the pinned context from 2.2) answers within 1 s.
+
+**Acceptance.**
+- [ ] With an idle raw TCP connection open, a heartbeat over TLS still answers within 1 s.
+
+### #905 — The document sequence is found by string sort
+
+**Severity:** medium · **Size:** S · **Gate:** agent · **Skills:** tdd → ponytail
+
+**Root cause.**
+- `document_service.py:163-177` (`_next_seq`): `ORDER BY document_number DESC` then parses the trailing digits. "INV-9" sorts above "INV-10".
+- The retry loop `:275-288` recomputes the same number.
+
+**Fix.**
+- `_next_seq`: select every `document_number` with `LIKE prefix || '%'`, parse the trailing integer with `re.fullmatch(re.escape(prefix) + r"(\d+)", n)`, and take the `max`. Ignore non-matching rows.
+- For performance on large shops: the prefix includes the year in default patterns, and the column is indexed, so the `LIKE prefix%` scan is bounded.
+- **Recommended later:** a per-prefix counter table. Not now.
+- Retry loop: on `IntegrityError` for the number, use `seq + 1` (increment locally) instead of recomputing the same max.
+
+**Tests.**
+- `test_issue_905_next_after_inv9_inv10_is_inv11`.
+- `test_issue_905_rollover_99999_to_100000_to_100001`.
+- `test_issue_905_retry_increments_on_collision`.
+
+**Acceptance.**
+- [ ] With INV-9 and INV-10 existing, the next number is INV-11.
+- [ ] 99999 is followed by 100000, then 100001.
+
+### #906 — A push that fails every cycle is invisible
+
+**Severity:** medium · **Size:** M · **Gate:** agent · **Skills:** tdd (pytest-qt) → ponytail; impeccable (harden) for the status widget
+
+**Root cause.**
+- `set_pending_count` and `SyncClient.pending_count` have no callers.
+- A failed push goes syncing, then disconnected, then re-register, then CONNECTED ("Synced"), and repeats.
+- Neither `error_signal` is connected (`main.py:~535-539, 553-556`).
+- `on_terminal_connected` counts register events, not terminals.
+
+**Fix.**
+1. After each cycle, the client emits `pending_changed(int)` (unsynced row count), connected to `set_pending_count`.
+2. A push failure sets the state to `STATE_ERROR` with a code (HTTP status or `PushApplyError` code). It is **not** reset to CONNECTED by a successful register. It only clears after a successful push.
+3. Connect `SyncClient.error_signal` and `SyncServer.error_signal` to the widget's error state. A Main PC that fails to bind shows an error badge.
+4. Count distinct terminal IDs seen in the last 5 minutes (from `sync_terminals.last_seen`, #866).
+5. Per-document rejections (#866) are listed: the widget's details popup shows the last 10 errors with document numbers.
+
+**Tests.**
+- `test_issue_906_push_500_shows_error_with_pending`: mock the server returning 500. The widget state is error and pending is > 0.
+- `test_issue_906_server_bind_failure_shows_error`.
+- `test_issue_906_connected_terminals_counts_distinct`.
+
+**UI/UX spec.**
+- Status widget states:
+  - **Synced** (green), with nothing pending;
+  - **Sending N…** (cyan);
+  - **Not sending: {reason}** (red), with a click-to-open details popup listing errors and a **Retry now** button;
+  - **Main PC: N tills** (purple);
+  - **Main PC error: {reason}** (red).
+- Reasons are translated from codes (`sync.reason_*`). For example `sync.reason_protocol_too_old` → "update CB POS on this till", `sync.reason_cert_mismatch` → "Main PC security code changed".
+- Run the §0.7 UI gate.
+
+**Acceptance.**
+- [ ] A client whose push returns 500 shows the error state with pending > 0.
+- [ ] A Main PC whose server fails to bind shows an error.
+
+---
+
+## Batch 2.6 — Network-aware shifts, dashboards and transaction locking
+
+**Branch:** `fix/p2-b6-network-shifts-dashboards-locking` · **Issues:** #886, #884, #914 · **Needs:** Phase 3A merged (`method_kind`, `RefundService`, `refunded_qty`)
+
+### #886 — Dashboard charts fail on PostgreSQL
+
+**Severity:** medium · **Size:** S · **Gate:** agent · **Skills:** tdd → ponytail
+
+**Root cause.** `dashboard_service.py:162,165,226` use `func.strftime`, which is SQLite-only.
+
+**Fix.**
+- Replace it with `extract("month", Sale.date)` and `extract("hour", Sale.date)` (SQLAlchemy emits `strftime` on SQLite and `EXTRACT` on PostgreSQL).
+- Replace the year filter with a half-open range: `Sale.date >= datetime(year,1,1)` and `Sale.date < datetime(year+1,1,1)`. That is index-friendly and consistent with #912's half-open rule.
+- Grep for any other `func.strftime` in `cbpos/core` (`graft grep "func.strftime"`) and fix them the same way. List them in the PR.
+
+**Tests.**
+- `test_issue_886_compiled_pg_sql_has_no_strftime`: compile each dashboard query with `postgresql.dialect()` and assert `"strftime" not in str(compiled)`.
+- `@pytest.mark.postgres` run of the dashboard methods.
+
+**Acceptance.**
+- [ ] The compiled PostgreSQL SQL contains no `strftime`, and the postgres test passes.
+
+### #884 — Same cashier on two terminals: shifts count each other's sales
+
+**Severity:** medium · **Size:** M · **Gate:** agent · **Skills:** tdd → ponytail; impeccable for the force-close UI
+
+**Root cause.**
+- `shift_service.py:29-39, 113-117, 148-178` filter by `user_id` and time only. `Shift.terminal_id` exists (`models/__init__.py:642`) but is unused in the summary.
+- An orphaned OPEN shift (after a terminal ID change) can't be closed.
+
+**Fix design.**
+- *Recommended:* stamp `shift_id` on each Sale.
+  - Migration adds `sales.shift_id` (nullable FK `shifts.id`, indexed). `TransactionService` sets it from the open shift for this user **and** terminal when a sale is written.
+  - The summary filters `Sale.shift_id == shift.id`.
+  - Legacy rows (`shift_id` null) use the old filter plus `Sale.terminal_id == shift.terminal_id`.
+- `CashMovement` already has `shift_id`.
+- `get_open_shift(user_id)` becomes `get_open_shift(user_id, terminal_id)`. Starting a shift on terminal B while one is open on A is allowed; they are independent.
+- **Force-close:** a user with `shift.force_close` (new permission, seeded to Admin and Manager) can close a stale shift from the Shifts screen, entering the counted cash or "unknown". This writes AuditLog `SHIFT_FORCE_CLOSED`.
+- Refunds (#850 / 3A): refund documents also get `shift_id` (the refunding user's open shift).
+- *Sync:* `shift_id` is a local FK, and shifts sync as transaction rows. Check how `Shift` is pushed and add `shift_id` to the id-space mapping in `sync_apply_service.py:94-115`, so it maps to the Main PC's shift id.
+
+**Tests.**
+- `test_issue_884_term02_sale_not_in_term01_summary`.
+- `test_issue_884_two_open_shifts_same_user`.
+- `test_issue_884_force_close_requires_permission_and_audits`.
+
+**UI/UX.** Shifts management: stale shifts (open more than 24 h, or on a terminal ID that isn't this one) show a warning tag and a **Force close…** button (permission-aware). The dialog asks for the counted cash with a "Don't know" checkbox and a required reason. Run the §0.7 UI gate.
+
+**Acceptance.**
+- [ ] A TERM-02 sale is not in the TERM-01 summary. Two open shifts for one user are tested.
+- [ ] A manager can force-close a stale shift, and it is audited.
+
+### #914 — Two tills can refund or void the same sale concurrently (network mode)
+
+**Severity:** low · **Size:** M · **Gate:** **human**. D11 says "row locking plus a partial unique index on `refund_of_sale_id`", but D5/#812 (partial refunds) allow **several** refunds per sale, so that index would block valid partial refunds. Ask the question below before implementing the index part. The row locking can be built now.
+**Skills:** tdd (postgres) → ponytail-review
+
+**Problem.** In network mode two tills can confirm a refund of the same receipt in the same second. Both succeed: two credit notes, cash paid out twice, stock and debt restored twice.
+
+**Evidence and root cause.**
+- `transaction_service.py:540-549` (void) and `:677-694` (refund) read the sale without `with_for_update`.
+- There is no DB constraint preventing over-refund.
+- PostgreSQL defaults to READ COMMITTED.
+
+**Fix design.**
+1. **Row lock (build now, matches D11):** `RefundService.refund` (3A) and `void_sale` load the original sale with `session.get(Sale, id, with_for_update=True)`. The second till waits, then sees the first one's committed refund or void and fails validation. It is a no-op on SQLite.
+2. **DB-enforced cap (recommended instead of the unique index):**
+   - Phase 3A's `sale_items.refunded_qty` has the CHECK `ck_sale_items_refunded_qty` (`refunded_qty <= qty`).
+   - Each refund increments the original lines' `refunded_qty` with an `UPDATE` in the same transaction.
+   - Even without the row lock, PostgreSQL row-level write locks serialise the two updates, and the CHECK rejects the over-return of the second.
+   - Void sets `sales.status = 'VOID'` under the lock, and refund validation re-reads the status under the lock.
+
+**Tests** (`@pytest.mark.postgres`, two real connections via two `Session`s on `pg_engine`, threads plus a barrier):
+- `test_issue_914_concurrent_full_refunds_one_wins`: exactly one refund document, and stock is restored once.
+- `test_issue_914_concurrent_void_and_refund_one_wins`.
+- `test_issue_914_check_constraint_blocks_over_return`: a direct UPDATE beyond qty raises `IntegrityError`.
+
+**Stop & Ask (before merging):**
+
+QUESTION (#914): D11 asked for a partial unique index on `sales.refund_of_sale_id`, but partial refunds (D5, #812) create several refunds per sale, and that index would block them. Replace the index with the CHECK constraint on `sale_items.refunded_qty` (already in Phase 3A) plus `SELECT … FOR UPDATE` row locks?
+Options:
+  A) Replace: row lock plus refunded_qty CHECK. Database-enforced, and compatible with partial refunds.
+  B) Keep the unique index and drop partial refunds. Contradicts D5.
+Recommendation: A. Record it as D16 amending D11.
+
+**Acceptance.**
+- [ ] Both methods lock the sale row.
+- [ ] A DB constraint prevents over-refund: the CHECK under option A, or the index under option B.
+- [ ] The concurrency tests pass on PostgreSQL in CI.
+
+---
+
+## Phase exit gate
+- [ ] All 17 issues merged and **verified closed** with closing comments (§0.10). #832 and #922 checklists updated.
+- [ ] The CI PostgreSQL job is green, and every `@pytest.mark.postgres` test passes.
+- [ ] Migrations (`shop_meta`, `local_identity`, `sync_terminals` if added, `sync_id_map.origin_db_instance_id`, `sync_deletions`, `inventory_logs.synced`, `sales.shift_id`) upgrade-tested on SQLite **and** PostgreSQL.
+- [ ] Two-machine harness tests pass for #836, #866, #867, #868, #869, #871, #872 and #903.
+- [ ] Real two-PC smoke test, recorded in the PR (or "⚠️ Verify on Windows, two PCs" in PROGRESS.md):
+  - pair;
+  - sell on both;
+  - edit a price, delete a promotion, revoke a permission;
+  - refund on the till;
+  - reinstall the till DB;
+  - confirm everything converges.
+- [ ] Release notes: "update every PC together", "re-pair every till once", "receipt prefixes on tills now show the full till name".
+- [ ] UI gate screenshots: Network Setup stepper, schema gate dialogs, pairing (both PCs, all states), registered tills table, read-only banner, sync status states, force-close shift.
+- [ ] PROGRESS.md updated. The D16 answer recorded.

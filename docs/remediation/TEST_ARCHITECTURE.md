@@ -1,6 +1,25 @@
 # Test Architecture Plan
 
-**Status:** proposal, 2026-10-28. It needs the owner's OK before any test is deleted.
+**Status:** layers implemented on 2026-10-29 (branch `chore/test-architecture`). Triage and deletion (step 2 below) are still pending owner review.
+
+## Results after the restructure (2026-10-29, 4-core Mac, `-n auto`)
+
+| Run | Tests | Time | Notes |
+|---|---|---|---|
+| Before: all of `tests/unit` | 2,821 | 6 min 32 s (24.8 min summed) | 29 failed / 83 errors on `main` |
+| `-m "domain or guardrails"` (fast loop) | 679 | **15 s** | 1 pre-existing guardrail failure |
+| `-m "ui or integration"` | 2,144 | 6 min 11 s | 14 pre-existing failures |
+
+- **Most of the "29 failed / 83 errors" was one app bug:** `SideMenu` read `_nav_buttons` before creating it. Fixed in PR #951.
+- **Remaining pre-existing failures:**
+  - #950 (report-viewer layout, 10);
+  - `test_zero_inline_stylesheets_in_ui`;
+  - `test_display_scaling`;
+  - `test_font_metrics_and_registration`;
+  - `test_shift_management_dialog` (2).
+- **Domain and guardrail tests skip the per-test `gc.collect()` and heap scan for QThreads**, which only widget tests need (`tests/conftest.py`).
+- **Every test is marked from its folder**, and a test outside `tests/<layer>/` fails collection.
+- **1,814 log lines** read "theme change callback: wrapped C/C++ object … has been deleted". Theme callbacks are registered without an owner, the same bug class as #918. Fix them with that issue.
 
 ## What we measured (2026-10-28)
 
@@ -32,7 +51,9 @@ Every fix added a new test file shaped like that one fix. Nothing retires old te
 4. Every test belongs to exactly one layer (folder or marker). Default local run: `pytest tests/domain tests/guardrails` in under 3 minutes.
 5. Writing a new test that duplicates an old one means deleting or merging the old one.
 
-## Migration plan (one batch, after Phase 1 and #948 CI exist)
+## Migration plan
+
+Step 3 (move and mark) is **done**. Steps 1, 2 and 4 remain.
 
 1. **Measure:** run `pytest tests/unit -n auto --durations=50` once and save the output. Run with `--cov=cbpos --cov-context=test` to find tests that add no unique coverage.
 2. **Triage each file** into: Keep → domain/ui/integration; Convert → guardrail (the 17 source-text files); Delete (pure cosmetics, or superseded by an invariant suite). List the decisions in a table in the PR so the owner can review them. **Delete nothing without that review.**

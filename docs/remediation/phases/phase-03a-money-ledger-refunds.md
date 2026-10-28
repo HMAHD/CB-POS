@@ -534,8 +534,9 @@ RefundService.refund_states(sale_ids) -> dict[int, str]   # one query, for histo
 - `sale_items.refund_of_item_id`: nullable FK to `sale_items.id`, indexed. Set on refund lines, pointing at the original line.
 - `sale_items.refund_reason`: `String(200)`, nullable.
 - `sales.refund_tender_override`: `String(20)`, nullable. Set when a manager overrode the tender.
+- `sale_items.refunded_qty`: `Numeric(10,3)`, NOT NULL, default 0, kept on the **original** lines and incremented by every refund. Add the DB constraint `CHECK (refunded_qty >= 0 AND (qty < 0 OR refunded_qty <= qty))` (named `ck_sale_items_refunded_qty`; SQLite batch mode recreates the table). The database itself then refuses an over-return, even when two tills race (this is how #914 in Phase 2.6 is enforced; see the question there). Backfill: for each original line of a sale that has a legacy full refund, set `refunded_qty = qty`; otherwise 0.
 
-There's no backfill for historical full refunds (`refund_of_item_id` null): `refundable_lines` treats a sale that has a legacy refund (a refund doc with null `refund_of_item_id` rows) as fully refunded.
+Historical full refunds have `refund_of_item_id` null; the `refunded_qty` backfill above marks their original lines fully refunded, so `refundable_lines` just reads `qty - refunded_qty`.
 
 *Value of a refunded line.*
 - Bill-level discount and loyalty redemption (ADR 0002: redemption is a discount) are spread over lines in proportion to line subtotals:

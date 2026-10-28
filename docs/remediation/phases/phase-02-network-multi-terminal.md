@@ -104,7 +104,7 @@ The rest of LAN Sync:
 - `generate_number` `:231-300`.
 
 **Tests to copy from:**
-- `tests/unit/sync_two_machines.py` (the two-machine harness);
+- `tests/sync_two_machines.py` (the two-machine harness);
 - `test_sync_client.py`, `test_sync_server.py`, `test_sync_protocol.py`, `test_sync_tls.py`, `test_sync_id_collision.py`.
 
 **Use the two-machine harness for every "two-machine test" acceptance item.**
@@ -164,7 +164,7 @@ The rest of LAN Sync:
 2. Delete `_MAX_RETRIES` and the retry helpers if they become unused (`graft grep "_MAX_RETRIES"`).
 3. Add the translation key and map `OperationalError` in `cbpos/core/utils/error_messages.py`.
 
-**Tests.** `tests/unit/test_database_session.py::test_issue_904_operational_error_reaches_caller`:
+**Tests.** `tests/domain/test_database_session.py::test_issue_904_operational_error_reaches_caller`:
 - Monkeypatch `Database()._db_mode = "network"` and use a SQLite engine.
 - In the body raise `OperationalError("x", {}, Exception())`.
 - Assert `pytest.raises(OperationalError)`, and that the body ran exactly once.
@@ -340,7 +340,7 @@ The rest of LAN Sync:
 - remove the module docstring line that says pinning is "left for later" (`sync_tls.py:3-16`);
 - add the new settings to the backup exclusion review (#875 handles undecryptable secrets: a restored till on a new PC must re-pair. Confirm `sync_pinned_cert_pem` behaves that way: undecryptable means empty means unpaired).
 
-**Tests** (`tests/unit/test_sync_tls.py`, extending it; there's an existing server/client setup):
+**Tests** (`tests/domain/test_sync_tls.py`, extending it; there's an existing server/client setup):
 - `test_issue_800_pinned_context_accepts_pinned_cert`: start the test server with cert A; client pinned to A, heartbeat ok.
 - `test_issue_800_pinned_context_rejects_other_cert_before_request`: server with cert B, client pinned to A. Raises `SSLCertVerificationError`, and the server's request handler saw **no** request (assert the handler counter is 0).
 - `test_issue_800_unpaired_client_does_not_sync`.

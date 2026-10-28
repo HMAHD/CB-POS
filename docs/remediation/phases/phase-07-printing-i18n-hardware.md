@@ -334,7 +334,7 @@ Use Inventory Valuation (large) and the Tax Filing Summary. If any row fails wit
 
 **Fix.** Buffer only when `obj is QApplication.focusWidget()`. If `focusWidget()` is None, buffer when `obj` is the active window. Keep the timing logic. Add a de-dup guard as well: ignore an event whose `(event.timestamp(), event.key())` equals the last one buffered.
 
-**Tests** (`tests/unit/test_barcode_scanner.py`):
+**Tests** (`tests/ui/test_barcode_scanner.py`):
 - `test_issue_841_focus_on_nested_button_emits_exact_code`: a button two layouts deep has focus, then `QTest.keyClicks` + Return gives exactly `"4791234567890"`.
 - The existing #546/#547/#548 tests still pass.
 

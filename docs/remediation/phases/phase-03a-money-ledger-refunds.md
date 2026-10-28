@@ -163,7 +163,7 @@ Quick Pay: `SalesView.quick_pay` `~:1639` (F12).
 - **Readers:** every reader in the list above switches from `payment_method` to `method_kind` for classification. For display, group by `method_kind` and show the translated kind name, or the method name for custom OTHER methods. In Phase 3A, change **only** `shift_service`, `customer_credit_service` and `payment_service`. Reports (financial, void_refund, dashboard, report_service) are Phase 6 (#843–#845). Leave them working on names, and add `# TODO(#844): use method_kind` markers so Phase 6 finds them.
 - *Sync impact:* `SalePayment` rows sync from tills to the Main PC, and `PaymentMethod` syncs to tills. Find the serializers (`graft grep "SalePayment" --in cbpos/core/services/sync`, and the same for `PaymentMethod`) and add the new fields. An older peer that doesn't send `method_kind` must be handled: on apply, compute the kind from the name with the migration's mapping function, which lives in `payment_service.py` as `classify_method_name(name) -> str` and is reused by the migration through a copied constant table. **Migrations must not import app code**, so duplicate the small mapping inside the migration file.
 
-**Tests (write first).** `tests/unit/test_payment_method_kind.py`.
+**Tests (write first).** `tests/domain/test_payment_method_kind.py`.
 - `test_classify_method_name_mapping`: table-driven test of the mapping.
 - `test_sale_payment_snapshots_kind`: a sale paid with the method "Bank Transfer" has `method_kind == "TRANSFER"`.
 - `test_unknown_method_name_rejected`: `process_sale` with method "Bitcoin" raises `ValueError`.
@@ -197,7 +197,7 @@ Quick Pay: `SalesView.quick_pay` `~:1639` (F12).
 
 **Fix.** `get_shift_summary` groups by `SalePayment.method_kind`: `transfer_sales = by_kind.get("TRANSFER", 0)`, and likewise CARD, CREDIT, QR and CHEQUE. Keep `sales_by_method` (names) for display, because the closing screen shows it.
 
-**Test.** `tests/unit/test_shift_service.py::test_issue_802_bank_transfer_counted_in_transfer_total`, on the **empty-DB seed** (`create_empty_database`) rather than the demo seed.
+**Test.** `tests/domain/test_shift_service.py::test_issue_802_bank_transfer_counted_in_transfer_total`, on the **empty-DB seed** (`create_empty_database`) rather than the demo seed.
 
 **Acceptance.**
 - [ ] Payment methods identified by kind, not name.
@@ -267,7 +267,7 @@ Quick Pay: `SalesView.quick_pay` `~:1639` (F12).
 2. Write `SalePayment(payment_method=name, method_kind=kind, amount=applied, tendered_amount=tendered or None)`.
 3. Update the receipt "Tendered / Change" lines to use the stored values. Check thermal (`escpos` receipt builder) **and** A4 invoice.
 
-**Tests (write first).** `tests/unit/test_transaction_service.py`:
+**Tests (write first).** `tests/domain/test_transaction_service.py`:
 - `test_issue_834_cash_overtender_stores_applied_amount`:
   - Given a bill of 100.00, paid `[Cash 1000.00]`.
   - Then the stored `amount == Decimal("100.00")` and `tendered_amount == Decimal("1000.00")`.
@@ -305,7 +305,7 @@ Quick Pay: `SalesView.quick_pay` `~:1639` (F12).
 - Until 3A.3 lands, this batch only adds the failing test, marked `@pytest.mark.xfail(reason="fixed by 3A.3 refund engine (#812)", strict=True)`. 3A.3 removes the marker. **This is the one place an xfail is allowed**, because the fix is deliberately scheduled; record it in PROGRESS.md.
 - Legacy "REFUND" rows (REFUND_LEGACY kind) from before the upgrade: `get_shift_summary` subtracts their cash-back share for refunds of sales that were paid in cash, using `refund_cash_back` from `refund_breakdown.py`. This handles shifts open across the upgrade. **Recommended:** don't bother. A shift spanning an upgrade is an edge case; note it in the release notes instead. → Apply the recommendation.
 
-**Test.** `tests/unit/test_shift_service.py::test_issue_850_cash_refund_reduces_expected_cash`: start a shift with 0, sell 2000 cash, refund in full, and `expected_cash == 0`.
+**Test.** `tests/domain/test_shift_service.py::test_issue_850_cash_refund_reduces_expected_cash`: start a shift with 0, sell 2000 cash, refund in full, and `expected_cash == 0`.
 
 **Acceptance.**
 - [ ] Sell 2000 cash, refund it, and `expected_cash` returns to the starting float (passes once 3A.3 is merged).
@@ -338,8 +338,8 @@ Quick Pay: `SalesView.quick_pay` `~:1639` (F12).
 - The **Finish** button stays disabled while non-cash total > due. That can't happen after the clamp, but guard it anyway.
 
 **Tests.**
-- `tests/unit/test_transaction_service.py::test_issue_851_credit_overpay_rejected_by_service`: bill 200, `[Credit 1000]` → `ValueError`, customer debt unchanged, no Sale row.
-- `tests/unit/test_payment_dialog.py::test_issue_851_non_cash_amount_clamped_to_remaining` (pytest-qt; build the dialog the way existing payment dialog tests do: `graft grep "PaymentDialog(" --in tests`).
+- `tests/domain/test_transaction_service.py::test_issue_851_credit_overpay_rejected_by_service`: bill 200, `[Credit 1000]` → `ValueError`, customer debt unchanged, no Sale row.
+- `tests/ui/test_payment_dialog.py::test_issue_851_non_cash_amount_clamped_to_remaining` (pytest-qt; build the dialog the way existing payment dialog tests do: `graft grep "PaymentDialog(" --in tests`).
 
 **UI/UX spec.**
 - `payment.non_cash_capped` → "Card and credit payments can't be more than the bill, so {amount} was used."
@@ -372,7 +372,7 @@ Quick Pay: `SalesView.quick_pay` `~:1639` (F12).
 - No attached customer, with Credit chosen: the combo is editable and searchable; read the id with `currentData()`. If `currentData()` is None (typed text not matching an item), show the existing `payment.credit_customer_not_found`.
 - After a successful Credit add, tell `SalesView` which customer was chosen so the cart shows it. The dialog already exposes `customer_id` in `payment_data`; verify that `SalesView` (`~:1052-1062`) applies it to the cart **before** `process_sale`.
 
-**Tests.** `tests/unit/test_payment_dialog.py`:
+**Tests.** `tests/ui/test_payment_dialog.py`:
 - `test_issue_852_attached_customer_preselected_for_credit`: attach id 2, with id 1 first alphabetically. Choose Credit, add, and `payment_data["customer_id"] == 2`.
 - `test_issue_852_same_name_customers_charged_by_id`: two "Nimal" customers. Select the second by data, and its id is used.
 
@@ -593,7 +593,7 @@ Historical full refunds have `refund_of_item_id` null; the `refunded_qty` backfi
 6. Receipt builder for refunds.
 7. Remove the `xfail` from #850's test.
 
-**Tests (write first).** `tests/unit/test_refund_service.py`.
+**Tests (write first).** `tests/domain/test_refund_service.py`.
 - `test_issue_812_partial_refund_one_line`: sale of A×2 (100 each) and B×1 (50), total 250. Refund A×1. Value 100.00, stock A +1, VAT proportional, `refund_state == "PARTIAL"`.
 - `test_issue_812_cannot_refund_more_than_sold`: refund A×2, then A×1 → `qty_exceeds_remaining`.
 - `test_issue_812_series_of_partials_reverses_sale_exactly`: a sale with a bill discount and a loyalty redemption giving an awkward total (e.g. 333.33); refund line by line. `Σ refund totals == total_amount`, and the same for VAT, SSCL and net, to the cent.
@@ -724,7 +724,7 @@ Recommendation: A, with a follow-up issue linked to #797 so Phase 6.1 updates `R
 ## Phase exit gate
 - [ ] All 14 issues merged and **verified closed** with closing comments (§0.10). #832 and #922 checklists updated.
 - [ ] Migrations (`payment_method_kind`, `refund_lines`) upgrade-tested on a seeded SQLite copy **and** a v1.3.0 DB. If PostgreSQL is available, run them there too; otherwise add "⚠️ PG verify" to PROGRESS.md.
-- [ ] Invariant tests pass. Add one integration test, `tests/unit/test_money_invariants.py`, that runs a day: sales with change, a credit sale, a split payment, F12, a partial refund, a full refund, an adjustment. It then asserts invariants 1–7 from the phase brief.
+- [ ] Invariant tests pass. Add one integration test, `tests/domain/test_money_invariants.py`, that runs a day: sales with change, a credit sale, a split payment, F12, a partial refund, a full refund, an adjustment. It then asserts invariants 1–7 from the phase brief.
 - [ ] Full suite green once per batch, and `pre-commit` clean.
 - [ ] Sync serializers carry `method_kind`, `tendered_amount`, `refund_of_item_id` and `refund_reason`, or a PROGRESS note hands this to Phase 2.4 explicitly.
 - [ ] UI gate screenshots: Payment Methods type column, payment dialog credit section (attached and unattached), non-cash clamp note, Refund dialog (partial, full, already refunded, override), and history pills.

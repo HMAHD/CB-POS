@@ -136,7 +136,7 @@
 **Fix.** Rewrite `ci.yml`:
 - triggers: `on: push: branches [main]` and `pull_request`;
 - job `lint`: `astral-sh/setup-uv` (exact pinned version, matching `release.yml`), `uv sync --locked`, `uv run pre-commit run --all-files`;
-- job `unit` (ubuntu-latest): install the Qt libraries listed in the old commented block (`libegl1`, `libxkbcommon-x11-0`, the `libxcb-*` set), then `uv sync --locked`, then `QT_QPA_PLATFORM=offscreen uv run python -m pytest tests/unit/ -q -n auto`. **No `|| true`.**
+- job `unit` (ubuntu-latest): install the Qt libraries listed in the old commented block (`libegl1`, `libxkbcommon-x11-0`, the `libxcb-*` set), then `uv sync --locked`, then `QT_QPA_PLATFORM=offscreen uv run python -m pytest -q -n auto`. **No `|| true`.**
 - Cache the uv dir. Delete the commented-out legacy block (git history keeps it).
 - Phase 2 #799 later adds a `postgres` job next to these.
 
@@ -217,7 +217,7 @@ Paste both run links in the PR.
    Batch 1.1 #791 restructures this block further, so do #833 first and then #791 builds on it.
 4. Grep for other `needs_setup()` callers (`graft callers needs_setup`) and make sure each one handles the raise.
 
-**Tests (write first).** File `tests/unit/test_database_setup_service.py`. Create it if missing, copying the fixture style from `tests/unit/test_backup_restore_safety.py`, which builds throwaway SQLite files in `tmp_path` and points `Config.DATA_DIR` at them via `monkeypatch`.
+**Tests (write first).** File `tests/domain/test_database_setup_service.py`. Create it if missing, copying the fixture style from `tests/ui/test_backup_restore_safety.py`, which builds throwaway SQLite files in `tmp_path` and points `Config.DATA_DIR` at them via `monkeypatch`.
 - `test_issue_833_populated_db_with_missing_column_is_not_setup`:
   - Given a seeded throwaway DB where `ALTER TABLE` removed or renamed a column used by the `User` ORM model. In SQLite, rebuild `users` without `locked_until`.
   - When `check_setup_state()` runs.
@@ -258,7 +258,7 @@ Paste both run links in the PR.
 - [ ] Startup shows the translated "Can't open the shop database" dialog and exits on an unreadable DB.
 
 **Verify.**
-- Run `uv run python -m pytest tests/unit/test_database_setup_service.py -v`.
+- Run `uv run python -m pytest tests/domain/test_database_setup_service.py -v`.
 - Manual check:
   1. Copy a seeded `cbpos.db`.
   2. In the copy, run `sqlite3 cbpos.db "ALTER TABLE users RENAME TO users_x"`.
@@ -325,10 +325,10 @@ Paste both run links in the PR.
 7. Update CLAUDE.md's "Seed Data" line only if it claims something no longer true. `scripts/seed.py` itself is unchanged.
 
 **Tests (write first).**
-- `tests/unit/test_database_setup_service.py::test_issue_791_empty_db_uses_given_admin_pin`: `create_empty_database(admin_pin="482913")`. Then `AuthService.verify_pin("482913").username == "admin"` and `verify_pin("1234") is None`. (After #835, use `authenticate_pin`.)
+- `tests/domain/test_database_setup_service.py::test_issue_791_empty_db_uses_given_admin_pin`: `create_empty_database(admin_pin="482913")`. Then `AuthService.verify_pin("482913").username == "admin"` and `verify_pin("1234") is None`. (After #835, use `authenticate_pin`.)
 - `::test_issue_791_demo_db_uses_given_admin_pin`: the same, with `create_demo_database`.
-- `tests/unit/test_config_service.py::test_issue_791_new_settings_file_is_not_setup_completed` and `::test_issue_791_legacy_settings_file_is_setup_completed`. Point `SETTINGS_FILE` at `tmp_path`. A legacy file is written without the key.
-- `tests/unit/test_setup_wizard.py::test_issue_791_wizard_without_pin_page_never_sets_pin` (pytest-qt): `SetupWizard(ask_admin_pin=False)` has no security page, and `admin_pin is None` after finish.
+- `tests/domain/test_config_service.py::test_issue_791_new_settings_file_is_not_setup_completed` and `::test_issue_791_legacy_settings_file_is_setup_completed`. Point `SETTINGS_FILE` at `tmp_path`. A legacy file is written without the key.
+- `tests/domain/test_setup_wizard.py::test_issue_791_wizard_without_pin_page_never_sets_pin` (pytest-qt): `SetupWizard(ask_admin_pin=False)` has no security page, and `admin_pin is None` after finish.
 
 **UI/UX spec.**
 - Setup Wizard: unchanged pages when creating a new DB.
@@ -425,13 +425,13 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
 4. `login_view.py:375`: call `AuthService.login(pin)`.
 5. Run `graft callers verify_pin` and confirm that only tests call the alias. Update tests in a separate commit only if their intent was "log in".
 
-**Tests (write first).** Use `tests/unit/test_auth_service_permissions.py` for its existing seeded-roles setup, or a new `tests/unit/test_auth_override.py` modelled on it.
+**Tests (write first).** Use `tests/domain/test_auth_service_permissions.py` for its existing seeded-roles setup, or a new `tests/domain/test_auth_override.py` modelled on it.
 - `test_issue_835_override_does_not_change_current_user`:
   - Given: log in as cashier (PIN `0000`).
   - When: `authenticate_pin("5678")` (manager).
   - Then: `get_current_user().username == "cashier"`.
   - Also: no `AuditLog` row with `event_type="LOGIN"` and `user_id=manager.id`, and exactly one `OVERRIDE_AUTH` row.
-- `test_issue_835_sale_after_override_is_cashier_sale`: after the override, complete a sale with `TransactionService` the way an existing sale test does (copy from `tests/unit/test_transaction_service.py`). Assert `sale.cashier_id == cashier.id`.
+- `test_issue_835_sale_after_override_is_cashier_sale`: after the override, complete a sale with `TransactionService` the way an existing sale test does (copy from `tests/domain/test_transaction_service.py`). Assert `sale.cashier_id == cashier.id`.
 - `test_issue_835_profile_wrong_users_pin_does_not_switch_session`: logged in as cashier, `check_own_pin(cashier.id, "5678")` is False and the current user is unchanged.
 
 **UI/UX spec.** No visible change, except that the override dialog now prompts again on the next protected action, which is the correct behaviour. Keep the existing dialog. Run the §0.7 UI gate with a quick keyboard walkthrough: line void → override PIN → Enter, then a second void prompts again.
@@ -486,7 +486,7 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
    - on `ValueError`, show `QMessageBox.warning` with `_t("users.pin_in_use")` or `_t("users.pin_required_on_reactivate")`;
    - focus the PIN field.
 
-**Tests (write first).** `tests/unit/test_user_service.py` (create it if missing; use the `db_session` fixture and seed roles the way `test_auth_service_permissions.py` does).
+**Tests (write first).** `tests/domain/test_user_service.py` (create it if missing; use the `db_session` fixture and seed roles the way `test_auth_service_permissions.py` does).
 - `test_issue_857_create_user_with_existing_pin_raises`.
 - `test_issue_857_update_user_to_existing_pin_raises`.
 - `test_issue_857_profile_pin_change_to_existing_pin_raises`.
@@ -542,7 +542,7 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
     2. On a miss, increment `consecutive_failures`. When it reaches `_get_max_attempts()`, set `locked_until = now + _get_lockout_duration()`, write `AuditLog(event_type="LOCKOUT", user_id=None, terminal_id=…, details="<n> wrong PINs")`, and reset the counter to 0.
     3. On a hit, reset the counter.
   - Add `AuthService.get_terminal_lockout_seconds() -> int` for the UI.
-  - Remove the unused `verify_pin_for_user` and `get_remaining_lockout_seconds(username)`. The one test that calls it (`tests/unit/test_auth_service_permissions.py:54`) moves to `login()`. Do that in its own commit with the message "test: drop verify_pin_for_user, which no app code used (#856)".
+  - Remove the unused `verify_pin_for_user` and `get_remaining_lockout_seconds(username)`. The one test that calls it (`tests/domain/test_auth_service_permissions.py:54`) moves to `login()`. Do that in its own commit with the message "test: drop verify_pin_for_user, which no app code used (#856)".
   - Stop skipping per-user `locked_until` in the match loop. Those columns stay in the schema, unused (no destructive migration).
   - Make `AuditLog.user_id` accept None. Check whether it is nullable: `graft grep "class AuditLog" --in cbpos/core/models`. If it isn't nullable, put the LOCKOUT row under `user_id` of no one... **Stop & Ask** (pre-written below).
 - *Rejected alternatives:*
@@ -561,7 +561,7 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
 4. In `manager_override_dialog.py` and `profile_dialog.py`, show the same `login.locked` message when locked.
 5. Fix the `AuthService` class docstring so it describes the real behaviour.
 
-**Tests (write first).** `tests/unit/test_auth_lockout.py`.
+**Tests (write first).** `tests/domain/test_auth_lockout.py`.
 - `test_issue_856_correct_pin_refused_after_max_failures`: set `max_login_attempts=3` via monkeypatched `ConfigService.get`, make 3 wrong `login()` calls, then the correct PIN returns None.
 - `test_issue_856_lockout_expires`: freeze time with monkeypatched `datetime` in auth_service, or set `locked_until` in the past directly. The correct PIN then works.
 - `test_issue_856_lockout_persists_across_restart`: after lockout, reset `AuthService` class state (simulating a restart). The row is still there and the correct PIN is still refused.
@@ -627,7 +627,7 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
    - map `ValueError("last_admin")` to `_t("users.last_admin")`;
    - also proactively disable the Active checkbox and role combo when editing the only active Admin, with a tooltip explaining why. That needs `UserService.is_last_active_admin(user_id) -> bool`.
 
-**Tests (write first).** `tests/unit/test_user_service.py`.
+**Tests (write first).** `tests/domain/test_user_service.py`.
 - `test_issue_859_sole_admin_cannot_be_deactivated`.
 - `test_issue_859_sole_admin_cannot_be_demoted`.
 - `test_issue_859_one_of_two_admins_can_be_deactivated`.
@@ -690,7 +690,7 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
 3. `sales_view.py`: add `end_session(self) -> None`. If `self.cart_service.items` is non-empty, call `SuspendedTransactionService.hold_bill(self.cart_service)`; on success clear the cart, customer and display (reuse the body of `hold_bill()` at `:1086-1104` minus the info box). On failure log an error and still clear, because session security wins. The bill can't be saved, so tell the next login by writing a warning to the log; that's acceptable.
 4. `main_window.py`: implement the sequence and wire `watchdog.session_expired` to it with reason TIMEOUT. Find where logout is triggered from shift close and the logout button (`graft callers logout --in cbpos/ui`). Each one passes the right reason.
 
-**Tests (write first).** `tests/unit/test_session_end.py` (pytest-qt; copy the `MainWindow` construction from an existing main-window test such as `tests/unit/test_app_restart.py`, or the nearest test that builds `MainWindow`).
+**Tests (write first).** `tests/domain/test_session_end.py` (pytest-qt; copy the `MainWindow` construction from an existing main-window test such as `tests/ui/test_app_restart.py`, or the nearest test that builds `MainWindow`).
 - `test_issue_860_logout_clears_auth_and_writes_audit`: after `main_window.logout()`, `AuthService.get_current_user() is None`, and a `LOGOUT` row exists with the configured `terminal_id` (set it to `"TILL-7"` in the test).
 - `test_issue_860_timeout_closes_open_modal`: open a `QDialog` with `.open()` (modal), trigger `watchdog.on_timeout()`, then `qtbot.waitUntil(lambda: not dlg.isVisible())`, and check a `TIMEOUT` audit row with the right terminal.
 - `test_issue_860_next_user_starts_with_empty_cart`: add an item, logout, and assert `cart_service.items == []` and that one suspended transaction exists.
@@ -779,8 +779,8 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
    Check how that box builds its text today, and keep the existing key for the generic case.
 4. Add `SchemaMigrationService` to the graph (`graphify update .`) and update CLAUDE.md's startup flow line only if needed.
 
-**Tests (write first).** `tests/unit/test_schema_migration_service.py`.
-- `test_issue_837_unstamped_v122_db_upgrades_to_head`: build a v1.2.2 DB. The most faithful way is to `git show v1.2.2:cbpos/core/models/__init__.py` into a fixture module under `tests/unit/fixtures/models_v122.py` and `create_all` with it into a `tmp_path` SQLite file. After `migrate_to_head`, `compare_metadata(...) == []` and `current_revision == head`.
+**Tests (write first).** `tests/domain/test_schema_migration_service.py`.
+- `test_issue_837_unstamped_v122_db_upgrades_to_head`: build a v1.2.2 DB. The most faithful way is to `git show v1.2.2:cbpos/core/models/__init__.py` into a fixture module under `tests/fixtures/models_v122.py` and `create_all` with it into a `tmp_path` SQLite file. After `migrate_to_head`, `compare_metadata(...) == []` and `current_revision == head`.
 - `test_issue_837_empty_db_is_stamped_head`.
 - `test_issue_837_unstamped_current_schema_is_stamped_head`: `Base.metadata.create_all` then migrate gives head, with no error.
 - `test_issue_837_unknown_schema_raises`: drop a table from an otherwise current DB, remove `alembic_version`, and assert `MigrationError("unknown_schema")`.
@@ -838,7 +838,7 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
 2. Add `recovery_notice`, and call it in `MainWindow` after the first login. Find where `MainWindow` handles `login_successful`, and show the notice once with `QMessageBox.warning`.
 3. Make sure the `.bak` and `.corrupt-*` files are **not** treated as settings anywhere else (`graft grep "settings.json"`). Backup (`backup_service.py`) should include only `settings.json`.
 
-**Tests (write first).** `tests/unit/test_config_service.py`; point `SETTINGS_FILE` at `tmp_path` via monkeypatch, and reset `ConfigService._settings` between tests.
+**Tests (write first).** `tests/domain/test_config_service.py`; point `SETTINGS_FILE` at `tmp_path` via monkeypatch, and reset `ConfigService._settings` between tests.
 - `test_issue_838_zero_byte_settings_quarantined_and_bak_used`.
 - `test_issue_838_garbage_settings_without_bak_keeps_corrupt_copy`: after load, then `set("sidebar_collapsed", True)`, the `.corrupt-*` file still contains the original garbage.
 - `test_issue_838_write_fsyncs_before_replace`: monkeypatch `os.fsync` and `os.replace` to record their call order. Assert `fsync` comes before `replace`.
@@ -937,7 +937,7 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
 1. Change `_validate_database`.
 2. Add the i18n key for code `newer_version`, using the existing `BackupError` → message mapping in the data_safety UI. Find it with `graft grep "error_not_a_backup"`, and follow the same pattern for `data_safety.error_newer_version`.
 
-**Tests (write first).** In `tests/unit/test_backup_restore_safety.py` (existing; reuse its helpers in `tests/unit/backup_helpers.py`):
+**Tests (write first).** In `tests/ui/test_backup_restore_safety.py` (existing; reuse its helpers in `tests/backup_helpers.py`):
 - `test_issue_874_restore_refuses_unknown_revision`: make a backup whose DB has `alembic_version` set to `'f9e8d7c6b5a4'`. `restore_backup` raises `BackupError` with code `newer_version`, and the live DB file's bytes are unchanged.
 - `test_issue_874_verify_backup_reports_newer_version`.
 
@@ -985,11 +985,11 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
 2. In `cbpos/ui/views/data_safety/*` tabs, check `DatabaseSetupService`/`ConfigService` mode through a small service query, `BackupService.is_supported() -> bool` (the UI must not read `db_mode` itself, so keep the rule in the service). Show the notice card instead of the actions when it is False.
 3. `main_window.py` auto-backup on close: `if not BackupService.is_supported(): return`.
 
-**Tests (write first).** `tests/unit/test_backup_service.py`:
+**Tests (write first).** `tests/domain/test_backup_service.py`:
 - `test_issue_839_network_mode_create_backup_refused`: monkeypatch `db_mode` to `network`. `create_backup` raises code `network_mode`, and the destination dir is empty.
 - `test_issue_839_network_mode_restore_refused`: the local `cbpos.db` bytes are unchanged.
 - `test_issue_839_network_mode_auto_backup_refused`.
-- `tests/unit/test_maintenance_service.py::test_issue_839_network_mode_vacuum_refused`.
+- `tests/domain/test_maintenance_service.py::test_issue_839_network_mode_vacuum_refused`.
 
 **UI/UX spec.**
 - Notice card on each Data Safety tab in network mode, using the icon `icons.info` or the closest existing one in `cbpos/ui/resources/icons.py`.
@@ -1048,11 +1048,11 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
 2. `backup_service.py`: implement the post-replace sequence and the migration-failure rollback. Reuse `_replace_database` for the rollback, with the snapshot path from earlier in the same method; keep it in a local variable.
 3. `restore_tab.py:245-256`: replace "recommend restart" with the forced restart.
 
-**Tests (write first).** `tests/unit/test_backup_restore_safety.py`:
+**Tests (write first).** `tests/ui/test_backup_restore_safety.py`:
 - `test_issue_873_settings_reloaded_after_restore`: the backup's settings have `shop_name="RESTORED SHOP"`. After `restore_backup`, `ConfigService.get("shop_name") == "RESTORED SHOP"`. A later `set("sidebar_collapsed", True)` doesn't change the on-disk `shop_name`, because writes are frozen.
 - `test_issue_873_older_backup_migrated_to_head`: a backup DB stamped at the v1.3.0 head (`b4d6fbce9cf4`, as the issue cites; confirm that revision exists in `alembic/versions`) ends at head after `restore_backup`.
 - `test_issue_873_migration_failure_rolls_back_to_snapshot`: monkeypatch `SchemaMigrationService.migrate_to_head` to raise. Then `BackupError("migration_failed")` is raised and the live DB bytes equal the pre-restore bytes.
-- `tests/unit/test_app_restart.py`-style test: `restore_tab` calls `restart_application` after a successful restore (mock the service).
+- `tests/ui/test_app_restart.py`-style test: `restore_tab` calls `restart_application` after a successful restore (mock the service).
 
 **UI/UX spec.**
 - Success: `data_safety.restore_done_restarting` → "Restore complete. CB POS will now restart to load the restored data." [OK]

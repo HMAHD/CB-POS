@@ -268,7 +268,7 @@ Use Inventory Valuation (large) and the Tax Filing Summary. If any row fails wit
 **Fix.**
 - Use CODE128 via `choose_barcode` (#840). For document numbers (alphanumeric) this is `{B`.
 - Compute the module width: `modules = 11 × (len(data) + 3) + 2` (start, check, stop, plus the 2-module terminator); `width = max(1, min(3, PAPER_DOT_WIDTH[paper] // modules))`.
-- If even width 1 doesn't fit the longest allowed number (`DOC_NUMBER_MAX_LENGTH` from `document_service.py`), print the number as text only and log it once. Also: on 58 mm, reduce `DOC_NUMBER_MAX_LENGTH`'s effect by printing the barcode of the **document id**? No: refund-by-scan reads the number. Keep the number, and rely on the width calculation. The test proves the fit.
+- If even width 1 doesn't fit the longest allowed number (`DOC_NUMBER_MAX_LENGTH` from `document_service.py`), print the number as text only and log it once. Always encode the document **number**, never the id: refund-by-scan reads the number. The unit test proves the fit.
 - Pass `width` and a `height` of about 60 dots to `barcode()`.
 - Check the refund-by-scan path parses CODE128-scanned numbers. Scanners emit the same text, so it should be unchanged; confirm with `graft grep "refund" --in cbpos/infrastructure/hardware/scanner.py` or the refund search.
 

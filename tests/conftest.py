@@ -24,6 +24,23 @@ DBConfig.DB_URI = "sqlite:///:memory:"
 Config.DB_URI = "sqlite:///:memory:"  # Patch global config too just in case
 
 
+_LAYERS = ("domain", "guardrails", "ui", "integration")
+
+
+def pytest_collection_modifyitems(config, items):
+    """Mark each test with its layer, taken from its folder (tests/<layer>/...).
+
+    A test outside a layer folder fails collection, so every new test has to
+    pick a layer (see docs/remediation/TEST_ARCHITECTURE.md).
+    """
+    for item in items:
+        parts = item.path.relative_to(config.rootpath).parts
+        layer = parts[1] if len(parts) > 2 and parts[0] == "tests" else None
+        if layer not in _LAYERS:
+            raise pytest.UsageError(f"{item.nodeid}: put tests under tests/<{'|'.join(_LAYERS)}>/")
+        item.add_marker(getattr(pytest.mark, layer))
+
+
 @pytest.fixture(scope="session")
 def app_fixture(qapp):
     """
@@ -136,7 +153,7 @@ def _signed_out_after_each_test():
 
 
 @pytest.fixture(autouse=True)
-def _collect_garbage_after_each_test():
+def _collect_garbage_after_each_test(request):
     """Force a GC pass after every test, then wait out any background thread left running.
 
     Views/dialogs following the register_language_callback pattern used to
@@ -184,6 +201,17 @@ def _collect_garbage_after_each_test():
     mid-rollback.
     """
     yield
+    # Domain and guardrail tests build no widgets, so the widget-cycle sweep
+    # and the heap scan for QThreads are skipped there; plain threads are
+    # still drained below.
+    is_qt_layer = request.node.get_closest_marker("ui") or request.node.get_closest_marker("integration")
+    if is_qt_layer:
+        _drain_qt_after_test()
+    _join_stray_threads()
+
+
+def _drain_qt_after_test() -> None:
+    """Break widget reference cycles, stop PrintWorker, and wait out running QThreads."""
     gc.collect()
 
     from PyQt6.QtCore import QThread
@@ -202,11 +230,13 @@ def _collect_garbage_after_each_test():
             # nothing to wait on.
             continue
 
-    # EmailService uses a plain threading.Thread, not QThread (see its own
-    # docstring: "no PyQt dependency") -- invisible to the QThread sweep
-    # above but the same hazard: it can still be running when a later
-    # test's db_session takes over. threading.enumerate() is the one
-    # registry that covers every live thread regardless of kind.
+
+def _join_stray_threads() -> None:
+    """Wait for plain threads (EmailService uses threading.Thread, not QThread).
+
+    threading.enumerate() is the one registry covering every live thread,
+    so a send still running can't touch the next test's db_session.
+    """
     for thread in threading.enumerate():
         if thread is threading.main_thread() or not thread.is_alive():
             continue

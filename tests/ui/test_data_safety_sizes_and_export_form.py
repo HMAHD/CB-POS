@@ -10,7 +10,7 @@ import pytest
 from cbpos.core.services.maintenance_service import MaintenanceService
 from cbpos.i18n import _t
 from cbpos.ui.views.data_safety_view import DataSafetyView
-from tests.unit.backup_helpers import make_pos_db
+from tests.helpers.backup_helpers import make_pos_db
 
 pytestmark = pytest.mark.usefixtures("qapp")
 

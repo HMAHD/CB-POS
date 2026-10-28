@@ -6,7 +6,7 @@ import pytest
 
 from cbpos.core.services.backup_service import BackupService
 from cbpos.core.utils.formatters import format_bytes
-from tests.unit.backup_helpers import data_dir, make_pos_db
+from tests.helpers.backup_helpers import data_dir, make_pos_db
 
 
 @pytest.mark.parametrize(

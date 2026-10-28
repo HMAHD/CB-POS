@@ -13,7 +13,7 @@ from unittest.mock import patch
 import pyzipper
 
 from cbpos.core.services.backup_service import BackupService
-from tests.unit.backup_helpers import make_pos_db, read_marker
+from tests.helpers.backup_helpers import make_pos_db, read_marker
 
 
 def _marker_in(zip_path: str, password: bytes, out_dir) -> str:

@@ -13,7 +13,7 @@ import pyzipper
 from cbpos.core.services.backup_service import BackupService
 from cbpos.ui.views.data_safety_view import DataSafetyView
 from cbpos.ui.workers import VerifyBackupWorker
-from tests.unit.backup_helpers import data_dir, make_pos_db
+from tests.helpers.backup_helpers import data_dir, make_pos_db
 
 PASSWORD = "shop-secret-42"
 

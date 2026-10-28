@@ -136,3 +136,15 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[tool.pytest.ini_options]
+# Layers: docs/remediation/TEST_ARCHITECTURE.md. tests/conftest.py marks each
+# test from its folder. Fast loop: pytest -m "domain or guardrails" -n auto
+testpaths = ["tests"]
+addopts = "--strict-markers"
+markers = [
+    "domain: service behaviour through public interfaces on an in-memory DB (fast, every commit)",
+    "guardrails: codebase-wide static rules (fast, every commit)",
+    "ui: pytest-qt flows: wiring, keyboard, enabled state, permission gating",
+    "integration: two-machine sync, PostgreSQL, real threads, migrations (slow)",
+]

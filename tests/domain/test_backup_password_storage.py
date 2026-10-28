@@ -10,7 +10,7 @@ import pytest
 from cryptography.fernet import Fernet
 
 from cbpos.core.services.config_service import ConfigService
-from tests.unit.backup_helpers import isolate_config_service
+from tests.helpers.backup_helpers import isolate_config_service
 
 SHOP_PASSWORD = "shop-secret-42"
 

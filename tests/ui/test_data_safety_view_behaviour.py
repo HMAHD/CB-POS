@@ -15,7 +15,7 @@ from cbpos.i18n import _t, get_language, set_language
 from cbpos.ui import workers
 from cbpos.ui.dialogs.backup_password_dialog import BackupPasswordDialog
 from cbpos.ui.views.data_safety_view import DataSafetyView
-from tests.unit.backup_helpers import isolate_config_service
+from tests.helpers.backup_helpers import isolate_config_service
 
 pytestmark = pytest.mark.usefixtures("qapp")
 

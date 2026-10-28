@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import QDialog, QMessageBox
 from cbpos.core.services.config_service import ConfigService
 from cbpos.ui.dialogs.backup_password_dialog import BackupPasswordDialog
 from cbpos.ui.views.data_safety_view import DataSafetyView
-from tests.unit.backup_helpers import isolate_config_service
+from tests.helpers.backup_helpers import isolate_config_service
 
 pytestmark = pytest.mark.usefixtures("qapp")
 

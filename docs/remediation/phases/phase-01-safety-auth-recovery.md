@@ -694,8 +694,8 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
 4. #839: network-mode refusal.
 5. #873: the post-restore sequence, which ties it all together.
 
-**Shared refactor (do it inside #837).** Move `run_migrations()` from `main.py:110-183` into a new `cbpos/core/services/migration_service.py`:
-- `class MigrationService` with `migrate_to_head(db_uri: str, status=None) -> None`, which raises `MigrationError(code, detail)` instead of returning a string.
+**Shared refactor (do it inside #837).** Move `run_migrations()` from `main.py:110-183` into a new `cbpos/core/services/schema_migration_service.py`:
+- `class SchemaMigrationService` (**not** the existing `cbpos/core/services/migration_service.py` / `MigrationService`, which copies data from SQLite to PostgreSQL for the Network Settings page; leave that file alone and don't reuse its name) with `migrate_to_head(db_uri: str, status=None) -> None`, which raises `MigrationError(code, detail)` instead of returning a string.
 - `current_revision(db_uri) -> str | None`.
 - `known_revisions() -> set[str]`.
 
@@ -716,7 +716,7 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
 - Root cause: "no version table" is treated as "current schema".
 
 **Fix design.**
-- *Recommended:* evidence-based baseline detection in `MigrationService.migrate_to_head`:
+- *Recommended:* evidence-based baseline detection in `SchemaMigrationService.migrate_to_head`:
   1. **No tables at all**: `create_all` happens elsewhere, so stamp head. That's today's behaviour for a brand-new DB.
   2. **Tables, no `alembic_version`**: fingerprint the schema.
      - **v1.2.2 fingerprint:** `users` exists **and** lacks the column `failed_login_attempts` **and** `sales` lacks `loyalty_points_earned`. Verify these two columns were added after `b41b19d9b69a`: `git log --diff-filter=A -- alembic/versions` plus a grep for the column names in `alembic/versions/*.py`, and pick 2–3 columns that all come from post-v1.2.2 migrations. On a match, stamp `b41b19d9b69a`, then `upgrade head`.
@@ -731,16 +731,16 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
 - *Sync/network impact:* none in this batch. PostgreSQL migration is #799.
 
 **Implementation steps.**
-1. Create `migration_service.py` (move the code; keep the Alembic config setup lines `main.py:147-151` identical, including `configure_logger=False`).
+1. Create `schema_migration_service.py` (move the code; keep the Alembic config setup lines `main.py:147-151` identical, including `configure_logger=False`).
 2. Implement the fingerprint branch and the unknown-revision check.
 3. Make `main.py:run_migrations()` a wrapper that translates `MigrationError` into the existing string return. For `newer_version` and `unknown_schema`, the startup box at `main.py:~407-419` must show a translated message:
    - `startup.migration_newer_version` → "This shop's data was saved by a newer version of CB POS. Install the latest CB POS to open it. Your data has not been changed."
    - `startup.migration_unknown_schema` → "CB POS doesn't recognise this database's layout, so it has stopped to keep your data safe. Restore a backup or contact support."
 
    Check how that box builds its text today, and keep the existing key for the generic case.
-4. Add `MigrationService` to the graph (`graphify update .`) and update CLAUDE.md's startup flow line only if needed.
+4. Add `SchemaMigrationService` to the graph (`graphify update .`) and update CLAUDE.md's startup flow line only if needed.
 
-**Tests (write first).** `tests/unit/test_migration_service.py`.
+**Tests (write first).** `tests/unit/test_schema_migration_service.py`.
 - `test_issue_837_unstamped_v122_db_upgrades_to_head`: build a v1.2.2 DB. The most faithful way is to `git show v1.2.2:cbpos/core/models/__init__.py` into a fixture module under `tests/unit/fixtures/models_v122.py` and `create_all` with it into a `tmp_path` SQLite file. After `migrate_to_head`, `compare_metadata(...) == []` and `current_revision == head`.
 - `test_issue_837_empty_db_is_stamped_head`.
 - `test_issue_837_unstamped_current_schema_is_stamped_head`: `Base.metadata.create_all` then migrate gives head, with no error.
@@ -888,7 +888,7 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
 
 **Fix design.**
 - *Recommended:* in `_validate_database`, after the table check, read `SELECT version_num FROM alembic_version` (if the table exists).
-  - If a revision is **not** in `MigrationService.known_revisions()` (from #837), raise `BackupError("newer_version", <rev>)`.
+  - If a revision is **not** in `SchemaMigrationService.known_revisions()` (from #837), raise `BackupError("newer_version", <rev>)`.
   - If the table is missing, accept it: #837 handles unstamped v1.2.2 DBs on the next start.
   - The restore aborts before the snapshot or any file is touched, because `_validate_database` already runs first (`:254`).
 - *Rejected alternatives:* "Downgrade on restore" isn't possible safely.
@@ -996,7 +996,7 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
   1. In `restore_backup`, after the files are replaced:
      - `ConfigService.reload()` (new: clear `_settings` and `_fernet`, re-run `load()`, which also runs #875's decode handling for the restored file);
      - then `ConfigService.freeze_writes()` (new: a class flag that makes `save()` log and return without writing until the process exits);
-     - then `MigrationService.migrate_to_head(Config.DB_URI)` (from #837) on the restored DB. If migration raises, put the safety snapshot back: restore it with the same `_replace_database` path, and raise `BackupError("migration_failed")`.
+     - then `SchemaMigrationService.migrate_to_head(Config.DB_URI)` (from #837) on the restored DB. If migration raises, put the safety snapshot back: restore it with the same `_replace_database` path, and raise `BackupError("migration_failed")`.
   2. `restore_backup` returns normally. The UI (`restore_tab.py`) must then **force** a restart:
      - show one information box: "Restore complete. CB POS will now restart.", with only an OK button;
      - then call `restart_application(self.window())` from `cbpos/ui/app_restart.py:29`;
@@ -1012,7 +1012,7 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
 **Tests (write first).** `tests/unit/test_backup_restore_safety.py`:
 - `test_issue_873_settings_reloaded_after_restore`: the backup's settings have `shop_name="RESTORED SHOP"`. After `restore_backup`, `ConfigService.get("shop_name") == "RESTORED SHOP"`. A later `set("sidebar_collapsed", True)` doesn't change the on-disk `shop_name`, because writes are frozen.
 - `test_issue_873_older_backup_migrated_to_head`: a backup DB stamped at the v1.3.0 head (`b4d6fbce9cf4`, as the issue cites; confirm that revision exists in `alembic/versions`) ends at head after `restore_backup`.
-- `test_issue_873_migration_failure_rolls_back_to_snapshot`: monkeypatch `MigrationService.migrate_to_head` to raise. Then `BackupError("migration_failed")` is raised and the live DB bytes equal the pre-restore bytes.
+- `test_issue_873_migration_failure_rolls_back_to_snapshot`: monkeypatch `SchemaMigrationService.migrate_to_head` to raise. Then `BackupError("migration_failed")` is raised and the live DB bytes equal the pre-restore bytes.
 - `tests/unit/test_app_restart.py`-style test: `restore_tab` calls `restart_application` after a successful restore (mock the service).
 
 **UI/UX spec.**

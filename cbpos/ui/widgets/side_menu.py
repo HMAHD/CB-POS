@@ -177,6 +177,8 @@ class SideMenu(QWidget):
     def __init__(self, parent=None):
         """Build the menu (hidden until shown) and register for live language updates."""
         super().__init__(parent)
+        # Before setVisible(False): hiding fires hideEvent -> clear_active(), which reads this list.
+        self._nav_buttons: list[NavTile] = []
         self.setFixedWidth(SIDEBAR_WIDTH)
         self.setVisible(False)
         self.setObjectName("POSSideMenu")
@@ -194,7 +196,6 @@ class SideMenu(QWidget):
         # a visible edge without that cost.
 
         self.raise_()
-        self._nav_buttons: list[NavTile] = []
         self.is_compact = False
         self.init_ui()
 

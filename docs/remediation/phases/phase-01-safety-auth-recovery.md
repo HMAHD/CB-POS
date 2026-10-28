@@ -19,6 +19,7 @@
 
 | # | Title | Sev | Size | Batch | Gate |
 |---|---|---|---|---|---|
+| #948 | CI runs no tests or lint (ci.yml fully commented out) | high | S | 1.0 | agent (branch protection: owner) |
 | #833 | "Is setup needed?" says yes on any DB error, so demo load can wipe a live DB | critical | M | 1.1 | agent |
 | #791 | Setup wizard never appears; wizard admin PIN never applied | critical | M | 1.1 | agent |
 | #835 | Manager override permanently logs the manager in | critical | M | 1.2 | agent |
@@ -110,9 +111,47 @@
 
 | Batch | Branch | Issues (in order) | Why grouped |
 |---|---|---|---|
+| 1.0 | `fix/p1-b0-restore-ci` | #948 | Every later merge rule ("merge when CI is green") depends on CI existing |
 | 1.1 | `fix/p1-b1-setup-safety` | #833, #791 | Both live in the first-run path (`main.py` + `DatabaseSetupService`). #833 changes `needs_setup()`, which #791's new order depends on |
 | 1.2 | `fix/p1-b2-auth-session` | #835, #857, #856, #859, #860 | All in AuthService/UserService and session lifecycle. #835 creates `authenticate_pin`, which #856 builds its throttle into |
 | 1.3 | `fix/p1-b3-migration-backup-restore` | #837, #838, #875, #874, #839, #873 | Startup migration, settings durability and the restore pipeline. #873 needs #837 (migrate after restore) and #838/#875 (settings reload) |
+
+---
+
+## Batch 1.0 — Restore CI (do this first)
+
+**Branch:** `fix/p1-b0-restore-ci` · **Issues:** #948
+
+### #948 — CI runs no tests or lint: every job in ci.yml is commented out
+
+**Severity:** high · **Size:** S · **Gate:** agent. Branch protection is a repo setting the owner switches on.
+**Skills:** ponytail → verification-before-completion
+
+**Problem.** No GitHub Actions job checks pushes or PRs, so every merge to `main` goes in unverified. The release gate and §0.10's "merge once CI is green" rule both depend on CI.
+
+**Evidence.**
+- `.github/workflows/ci.yml` is entirely commented out. Last edits: f17daa6 and af741ba.
+- The commented block runs the old path `cbpos/tests` and ends in `|| true`, which hides failures.
+
+**Fix.** Rewrite `ci.yml`:
+- triggers: `on: push: branches [main]` and `pull_request`;
+- job `lint`: `astral-sh/setup-uv` (exact pinned version, matching `release.yml`), `uv sync --locked`, `uv run pre-commit run --all-files`;
+- job `unit` (ubuntu-latest): install the Qt libraries listed in the old commented block (`libegl1`, `libxkbcommon-x11-0`, the `libxcb-*` set), then `uv sync --locked`, then `QT_QPA_PLATFORM=offscreen uv run python -m pytest tests/unit/ -q -n auto`. **No `|| true`.**
+- Cache the uv dir. Delete the commented-out legacy block (git history keeps it).
+- Phase 2 #799 later adds a `postgres` job next to these.
+
+**Tests.** The workflow is the test:
+1. Open the PR. CI must be green.
+2. Push a throwaway commit to the branch with `assert False` in a new test. CI must go red.
+3. Revert it.
+
+Paste both run links in the PR.
+
+**Acceptance.**
+- [ ] A clean PR is green for lint and the unit suite. A failing test turns CI red.
+- [ ] The owner enables branch protection on `main`, requiring the `lint` and `unit` checks (ask them; it's a repo setting).
+
+**Stop & Ask if.** The unit suite fails on Linux CI for reasons unrelated to any code change (missing system libs, fonts). Report the failing tests, and don't skip them.
 
 ---
 
@@ -1041,7 +1080,7 @@ The screen still shows the cashier, so nobody notices. The profile dialog has th
 ---
 
 ## Phase exit gate
-- [ ] All 13 issues merged and **verified closed** on GitHub with closing comments (§0.10). #832 and #922 checklists updated.
+- [ ] All 14 issues (#948 + 13) merged and **verified closed** on GitHub with closing comments (§0.10). #832 and #922 checklists updated.
 - [ ] Full suite green once per batch (`-n auto`) and `pre-commit` clean.
 - [ ] Migration for `login_throttle` (#856) upgrade-tested on a seeded SQLite copy and an empty DB. If a PostgreSQL instance is available, run `alembic upgrade head` against it too, otherwise note "⚠️ PG verify in Phase 2".
 - [ ] Manual first-run test on a **clean Windows VM or user profile** with the built exe: wizard → PIN → Start Fresh → log in with the chosen PIN, and `1234` fails. Mark "⚠️ Verify on Windows" until done.

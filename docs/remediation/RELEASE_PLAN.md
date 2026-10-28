@@ -231,6 +231,7 @@ graphify update .                                                     # after co
 ```
 
 - **Test once per batch (owner policy).** While fixing an issue, run only the focused test files for your change, plus ruff and translation checks. Run the full suite **once per batch**, in parallel (`-n auto`, about 5 minutes on the 4-core Mac), after merging fresh `origin/main` into the batch branch. If it fails, fix it on the branch and rerun once. A parallel run reshuffles test order, so it exposes leaked global state (logged-in user, config, registries). Fix those leaks; never dismiss them as flaky.
+- Test files named in a phase spec may not exist yet. Create them, copying the fixture setup of the nearest existing test file for the same service.
 - Every issue gets at least one regression test named `test_issue_<number>_<behaviour>`, in the test file of the service it touches. The test must fail on `main` and pass on the branch. Record both runs.
 - Test behaviour through the public service API, not private helpers. Assert on stored DB facts (rows, ledger, movements), not only return values.
 - Money tests assert exact `Decimal` values and reconciliation.
@@ -334,7 +335,7 @@ The ordering principle: **data loss and money first, then security, then cross-t
 
 | Phase | Theme | Issues | Release-blocking | Spec |
 |---|---|---|---|---|
-| 1 | Destructive safety, authentication, recovery | 13 | Yes | [phase-01](phases/phase-01-safety-auth-recovery.md) |
+| 1 | CI restore, destructive safety, authentication, recovery | 14 | Yes | [phase-01](phases/phase-01-safety-auth-recovery.md) |
 | 2 | PostgreSQL network mode and LAN multi-terminal sync | 17 | Yes | [phase-02](phases/phase-02-network-multi-terminal.md) |
 | 3A | Money: shift cash, payment-method identity, credit ledger, refunds and voids | 14 | Yes | [phase-03a](phases/phase-03a-money-ledger-refunds.md) |
 | 3B | Cart and checkout behaviour and operator controls | 12 | Yes | [phase-03b](phases/phase-03b-cart-checkout-controls.md) |

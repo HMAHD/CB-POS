@@ -24,7 +24,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 1 · Batch: 1.1 · Branch: — · Last session: —
+- Phase: 1 · Batch: 1.0 · Branch: — · Last session: —
 
 ## Issues
 
@@ -32,6 +32,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
+| #948 | CI runs no tests or lint: every job in ci.yml is commented out | high | 1.0 | todo | | found 2026-10-28 while planning |
 | #833 | "Is setup needed?" answers yes on any DB error, so "Load Demo Data" can wipe … | critical | 1.1 | todo | | |
 | #791 | First-run setup wizard never appears; admin PIN from wizard is never applied … | critical | 1.1 | todo | | |
 | #835 | A manager override permanently logs the manager in, so the cashier keeps all … | critical | 1.2 | todo | | |
@@ -258,14 +259,15 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | Q# | Issue | Question | Asked | Answer → D# |
 |---|---|---|---|---|
 | Q1 | #914 | D11's unique index on `refund_of_sale_id` would block partial refunds (D5). Replace it with row locks plus a CHECK on `sale_items.refunded_qty`? (Recommended: yes, as D16) | 2026-10-28 (plan) | |
+| Q2 | #812 | Partial-refund VAT proportional to value now, switching to line-level once #797 stores the per-line taxable flag? (Recommended: yes) | 2026-10-28 (plan) | |
 | Q3 | #817 | D8 says GPLv3 (publish source) but product notes say free + closed code. Choose GPLv3 / PyQt6 commercial licence / PySide6 migration (lawyer review) | 2026-10-28 (plan) | |
 | Q4 | #831 | VAT-exempt items: SSCL on full MRP unless the category is also SSCL-exempt? (Recommended: yes, independent flags; accountant to confirm) | 2026-10-28 (plan) | |
-| Q2 | #812 | Partial-refund VAT proportional to value now, switching to line-level once #797 stores the per-line taxable flag? (Recommended: yes) | 2026-10-28 (plan) | |
 
 ## Discovered during remediation (§0.9)
 
 | Issue | Title | Sev | Found while | Phase/Batch |
 |---|---|---|---|---|
+| #948 | CI runs no tests or lint (ci.yml fully commented out) | high | writing the remediation plan (2026-10-28) | 1 / 1.0 |
 
 ## i18n review list (keys with English fallback in si/ta, §0.2)
 

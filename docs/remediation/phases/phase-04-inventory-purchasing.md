@@ -418,7 +418,7 @@ Run the full §0.7 UI gate.
 **Root cause.** `import_service.py:109-136` doesn't validate values. The editor rejects price ≤ 0 (`product_editor.py:652`).
 
 **Fix.**
-- Put the validation rules in one place, `ProductValidator` (`cbpos/core/utils/validators.py`, existing module; extend it): price > 0, cost ≥ 0, opening stock ≥ 0 (or any value if `allow_negative_stock`).
+- Put the validation rules in one place, `ProductValidator` in a new module `cbpos/core/utils/validators.py` (it doesn't exist yet, although CLAUDE.md mentions validators; first check `graft grep "def validate" --in cbpos/core/utils` for an existing home and use that if one fits): price > 0, cost ≥ 0, opening stock ≥ 0 (or any value if `allow_negative_stock`).
 - The editor and the importer both use it, and the editor's inline check is replaced by the shared one.
 - A failing row is counted as failed, with the reason and row number collected and shown in the import result ("Row 14: selling price must be more than 0").
 - Opening stock from import is written as `OPENING` movements via `record_movement`. Check that import doesn't set `stock_qty` directly; if it does, fix that too (same root rule as #794).

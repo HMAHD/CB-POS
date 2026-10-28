@@ -217,7 +217,7 @@ The rest of LAN Sync:
      - Add a `postgres` job to `.github/workflows/ci.yml` with a `services: postgres:16` container. It sets `CBPOS_TEST_PG_URL` and runs `uv run python -m pytest tests/unit -m postgres -q`.
      - Add a `postgres` marker to `pyproject.toml` `[tool.pytest.ini_options] markers`.
      - Add a `pg_engine` fixture in `tests/conftest.py` that skips without the env var.
-     - The existing CI unit-test job appears commented out (`ci.yml:120-160`): check which job actually runs tests today and add the PG job alongside it. If no test job runs in CI at all, **Stop & Ask** (pre-written below).
+     - Phase 1 #948 restored the `lint` and `unit` CI jobs. Add the `postgres` job alongside them.
 - *Rejected alternatives:*
   - Every PC migrates at startup: races and partial migrations.
   - Hide network mode: rejected by D2.
@@ -288,10 +288,6 @@ The rest of LAN Sync:
 
   QUESTION (#799): Migration <rev> fails on PostgreSQL (<error>). Editing it changes history. Options: A) add a new corrective migration that brings PostgreSQL to the intended state, and skip the broken op on PG with a dialect check inside the old migration (minimal edit); B) require fresh PG installs to use the copy-and-stamp flow only.
   Recommendation: A, with the minimal dialect guard reviewed by the human.
-- No CI job runs unit tests today:
-
-  QUESTION (#799): CI doesn't run the unit suite. Should this PR enable the full unit job as well as the PG job?
-  Recommendation: yes. The release gate needs CI evidence.
 
 ---
 

@@ -65,3 +65,6 @@ docs/api/
 
 # Prototypes & UI Previews
 customer_ui_redesign_preview.html
+
+# Local git worktrees
+/.worktrees/

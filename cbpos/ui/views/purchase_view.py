@@ -290,6 +290,7 @@ class PurchaseView(QWidget, Activatable):
         # Table
         self.supplier_table = QTableView()
         self.supplier_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.supplier_table.verticalHeader().setVisible(False)
         configure_table_columns(
             self.supplier_table.horizontalHeader(),
             {
@@ -641,6 +642,7 @@ class PurchaseView(QWidget, Activatable):
         """Reload suppliers and refresh the supplier table, GRN combo, history filter combo, and payables list."""
         self.suppliers = SupplierService.get_all_suppliers()
         self.supplier_table.setModel(SupplierTableModel(self.suppliers))
+        self.supplier_table.setColumnHidden(0, True)  # internal id; reset by every setModel
         if hasattr(self, "empty_supplier_label"):
             self.empty_supplier_label.setVisible(not self.suppliers)
         names = [s.company_name for s in self.suppliers]

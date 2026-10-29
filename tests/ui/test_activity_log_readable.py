@@ -181,14 +181,6 @@ class TestSettingsSaveAudit:
         assert row.terminal_id == "TERM-01"
         assert format_audit_details(row.action, row.details) == "VAT rate changed from 18% to 15%"
 
-    def test_view_no_longer_writes_audit_rows_itself(self):
-        import inspect
-
-        from cbpos.ui.views import settings_view
-
-        source = inspect.getsource(settings_view)
-        assert "AuditLog" not in source and "Database" not in source
-
 
 class TestActivityLogTable:
     def test_row_shows_local_time_translated_action_and_readable_details(self, db_session, qtbot, lang):

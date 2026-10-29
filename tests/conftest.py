@@ -60,6 +60,38 @@ def app_fixture(qapp):
     return qapp
 
 
+@pytest.fixture(autouse=True)
+def _restore_app_wide_qt_state(request):
+    """Undo app-wide font, stylesheet and theme changes a UI test makes.
+
+    The QApplication is shared by every test on a worker. A test that applied a
+    theme or set the app font left that behind, so later widgets were measured
+    with another test's QSS and font (e.g. sidebar buttons no longer 50 px).
+    """
+    if not (request.node.get_closest_marker("ui") or request.node.get_closest_marker("integration")):
+        yield
+        return
+    from PyQt6.QtWidgets import QApplication
+
+    from cbpos.core.services.theme_service import ThemeService
+
+    app = QApplication.instance()
+    saved = (
+        (app.font(), app.styleSheet()) if app else None,
+        ThemeService._set_stylesheet,
+        ThemeService.current_theme,
+    )
+    yield
+    (app_state, handler, theme) = saved
+    app = QApplication.instance()
+    if app is not None and app_state is not None:
+        app.setFont(app_state[0])
+        if app.styleSheet() != app_state[1]:
+            app.setStyleSheet(app_state[1])
+    ThemeService._set_stylesheet = handler
+    ThemeService.current_theme = theme
+
+
 @pytest.fixture(scope="session")
 def test_engine():
     """

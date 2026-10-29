@@ -258,7 +258,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | Q# | Issue | Question | Asked | Answer → D# |
 |---|---|---|---|---|
-| Q1 | #914 | D11's unique index on `refund_of_sale_id` would block partial refunds (D5). Replace it with row locks plus a CHECK on `sale_items.refunded_qty`? (Recommended: yes, as D16) | 2026-10-28 (plan) | |
+| Q1 | #914 | D11's unique index on `refund_of_sale_id` would block partial refunds (D5). Replace it with row locks plus a CHECK on `sale_items.refunded_qty`? (Recommended: yes; record as the next free D-number) | 2026-10-28 (plan) | |
 | Q2 | #812 | Partial-refund VAT proportional to value now, switching to line-level once #797 stores the per-line taxable flag? (Recommended: yes) | 2026-10-28 (plan) | |
 | Q3 | #817 | D8 says GPLv3 (publish source) but product notes say free + closed code. Choose GPLv3 / PyQt6 commercial licence / PySide6 migration (lawyer review) | 2026-10-28 (plan) | |
 | Q4 | #831 | VAT-exempt items: SSCL on full MRP unless the category is also SSCL-exempt? (Recommended: yes, independent flags; accountant to confirm) | 2026-10-28 (plan) | |

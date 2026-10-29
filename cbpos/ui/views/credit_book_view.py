@@ -27,6 +27,7 @@ from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.utils.formatters import format_currency, format_date, format_datetime, format_number, money_header
 from cbpos.i18n import _t, register_language_callback, t_or
+from cbpos.ui.components.activation import Activatable
 from cbpos.ui.constants import BAR_MARGIN_H, BAR_MARGIN_V
 from cbpos.ui.dialogs.customer_editor import CustomerEditor
 from cbpos.ui.resources.icons import Icons
@@ -56,7 +57,7 @@ def _set_button_icon(btn: QPushButton, icon_name: str, color: str, pad_right: in
     btn.setIcon(QIcon(padded))
 
 
-class CreditBookView(QWidget):
+class CreditBookView(QWidget, Activatable):
     """
     Drill-down Credit Book view.
     Page 0: Full-width customer list with search and debt indicators.
@@ -1178,3 +1179,7 @@ class CreditBookView(QWidget):
         dialog = CustomerEditor(parent=self)
         if dialog.exec():
             self.load_customers()
+
+    def on_activated(self) -> None:
+        """Reload when this view is shown again, so the user never sees stale data."""
+        self.load_customers()

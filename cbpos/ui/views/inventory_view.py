@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.import_service import ImportService
 from cbpos.core.services.inventory_service import InventoryService
 from cbpos.i18n import _t, register_language_callback
+from cbpos.ui.components.activation import Activatable
 from cbpos.ui.dialogs.product_editor import ProductEditor
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
@@ -99,7 +100,7 @@ class InventoryModel(QAbstractTableModel):
         self.headerDataChanged.emit(Qt.Orientation.Horizontal, 0, len(headers) - 1)
 
 
-class InventoryView(QWidget):
+class InventoryView(QWidget, Activatable):
     """Paginated, searchable product table with add/import/category/unit/label actions."""
 
     def __init__(self):
@@ -316,3 +317,7 @@ class InventoryView(QWidget):
         dialog = CsvImportDialog(self.import_service, parent=self)
         if dialog.exec():
             self.load_data()
+
+    def on_activated(self) -> None:
+        """Reload when this view is shown again, so the user never sees stale data."""
+        self.load_data()

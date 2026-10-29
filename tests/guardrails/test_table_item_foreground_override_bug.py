@@ -12,6 +12,8 @@ plain white/black regardless of setForeground().
 
 from pathlib import Path
 
+from tests.helpers.qss import rendered_qss
+
 STYLE_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
 
 
@@ -23,13 +25,13 @@ def _base_item_rule(qss: str) -> str:
 
 class TestDarkTheme:
     def test_base_item_rule_does_not_hardcode_a_text_color(self):
-        qss = (STYLE_DIR / "dark.qss").read_text()
+        qss = rendered_qss("dark.qss")
         block = _base_item_rule(qss)
         assert "color:" not in block
 
 
 class TestLightTheme:
     def test_base_item_rule_does_not_hardcode_a_text_color(self):
-        qss = (STYLE_DIR / "light.qss").read_text()
+        qss = rendered_qss("light.qss")
         block = _base_item_rule(qss)
         assert "color:" not in block

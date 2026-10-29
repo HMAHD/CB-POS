@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.helpers.qss import rendered_qss
+
 STYLES_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
 THEMES = ("dark.qss", "light.qss")
 COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
@@ -23,7 +25,7 @@ EXCEPTIONS = {"QCalendarWidget QHeaderView::section", "QHeaderView::section:vert
 
 
 def _rules(theme_file: str) -> list[tuple[list[str], str]]:
-    css = COMMENT_RE.sub("", (STYLES_DIR / theme_file).read_text(encoding="utf-8"))
+    css = COMMENT_RE.sub("", rendered_qss(theme_file))
     return [([" ".join(s.split()) for s in sel_list.split(",")], body) for sel_list, body in RULE_RE.findall(css)]
 
 
@@ -67,5 +69,5 @@ def test_generic_header_is_readable(theme_file):
 @pytest.mark.parametrize("theme_file", THEMES)
 def test_no_dead_text_transform(theme_file):
     """Qt stylesheets ignore text-transform; it only misleads readers."""
-    css = COMMENT_RE.sub("", (STYLES_DIR / theme_file).read_text(encoding="utf-8"))
+    css = COMMENT_RE.sub("", rendered_qss(theme_file))
     assert "text-transform" not in css

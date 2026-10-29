@@ -6,6 +6,7 @@ import weakref
 from cbpos.config import Config
 from cbpos.core.services.config_service import ConfigService
 from cbpos.infrastructure.resource_loader import ResourceLoader
+from cbpos.ui.styles.tokens import apply_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,58 @@ class ThemeService:
         cls._set_stylesheet = handler
 
     @staticmethod
+    def render_stylesheet(theme_name: str) -> str:
+        """Return the theme's QSS with colour tokens, fonts, sizes and asset paths filled in.
+
+        The same rendering ``apply_theme`` uses; tests parse this, never the raw file.
+
+        Raises:
+            FileNotFoundError: If the theme's QSS file is missing.
+        """
+        theme_file = "dark.qss" if theme_name.lower() == "dark" else "light.qss"
+        style_path = os.path.join(str(Config.BASE_DIR), "cbpos", "ui", "styles", theme_file)
+        with open(style_path, encoding="utf-8") as f:
+            style_content = f.read()
+
+        # Variable Injection
+        font_family = ResourceLoader.get_primary_font()
+        raw_size = ConfigService.get("font_size")
+
+        # Security: Validate font_size to prevent CSS injection
+        try:
+            font_size_int = int(str(raw_size))
+            if not (8 <= font_size_int <= 36):
+                raise ValueError("Font size out of bounds")
+            font_size = f"{font_size_int}px"
+        except (ValueError, TypeError):
+            font_size_int = BASE_FONT_SIZE
+            font_size = "12px"  # Safe fallback
+
+        # Scale every fixed px font-size by the setting (#572) *before*
+        # {{FONT_SIZE}} is substituted, so the base size isn't scaled twice.
+        style_content = ThemeService.scale_font_sizes(style_content, font_size_int)
+
+        # Resolve asset paths for icons (works in dev and packaged exe)
+        assets_path = os.path.join(str(Config.BASE_DIR), "cbpos", "assets").replace("\\", "/")
+        style_content = style_content.replace("url(cbpos/assets/", f"url({assets_path}/")
+
+        style_content = style_content.replace("{{FONT_FAMILY}}", font_family)
+        style_content = apply_tokens(style_content, "Dark" if theme_name.lower() == "dark" else "Light")
+        style_content = style_content.replace("{{FONT_SIZE}}", font_size)
+
+        # A leftover "{{...}}" placeholder (a typo'd token, an unhandled
+        # variable) is invalid CSS that Qt silently ignores, falling back to the
+        # system default font for the *entire app*, so none may reach Qt.
+        if "{{" in style_content:
+            logger.error(
+                "Unsubstituted template placeholder remained in %s after variable "
+                "injection — forcing safe fallback font-size.",
+                theme_file,
+            )
+            style_content = _RE_PLACEHOLDER.sub("14px", style_content)
+        return style_content
+
+    @staticmethod
     def apply_theme(theme_name: str):
         """
         Applies the specified theme to the application.
@@ -41,54 +94,8 @@ class ThemeService:
             theme_name (str): The name of the theme ('Dark' or 'Light').
         """
         ThemeService.current_theme = theme_name
-        theme_file = "dark.qss" if theme_name.lower() == "dark" else "light.qss"
-
-        style_path = os.path.join(str(Config.BASE_DIR), "cbpos", "ui", "styles", theme_file)
-
         try:
-            with open(style_path, encoding="utf-8") as f:
-                style_content = f.read()
-
-            # Variable Injection
-            font_family = ResourceLoader.get_primary_font()
-            raw_size = ConfigService.get("font_size")
-
-            # Security: Validate font_size to prevent CSS injection
-            try:
-                font_size_int = int(str(raw_size))
-                if not (8 <= font_size_int <= 36):
-                    raise ValueError("Font size out of bounds")
-                font_size = f"{font_size_int}px"
-            except (ValueError, TypeError):
-                font_size_int = BASE_FONT_SIZE
-                font_size = "12px"  # Safe fallback
-
-            # Scale every fixed px font-size by the setting (#572) *before*
-            # {{FONT_SIZE}} is substituted, so the base size isn't scaled twice.
-            style_content = ThemeService.scale_font_sizes(style_content, font_size_int)
-
-            # Resolve asset paths for icons (works in dev and packaged exe)
-            assets_path = os.path.join(str(Config.BASE_DIR), "cbpos", "assets").replace("\\", "/")
-            style_content = style_content.replace("url(cbpos/assets/", f"url({assets_path}/")
-
-            style_content = style_content.replace("{{FONT_FAMILY}}", font_family)
-            style_content = style_content.replace("{{FONT_SIZE}}", font_size)
-
-            # A leftover "{{...}}" placeholder (a typo'd token, an unhandled
-            # variable, anything the two replace() calls above didn't match)
-            # is invalid CSS that Qt silently ignores, falling back to the
-            # system default font for the *entire app*. A regex catch-all
-            # guarantees no such token ever reaches the stylesheet, whatever
-            # its exact contents — re-running the same two replace() calls
-            # again would not help, since if they didn't match the first
-            # time they won't match the second.
-            if "{{" in style_content:
-                logger.error(
-                    "Unsubstituted template placeholder remained in %s after variable "
-                    "injection — forcing safe fallback font-size.",
-                    theme_file,
-                )
-                style_content = _RE_PLACEHOLDER.sub("14px", style_content)
+            style_content = ThemeService.render_stylesheet(theme_name)
 
             if ThemeService._set_stylesheet:
                 ThemeService._set_stylesheet(style_content)
@@ -109,8 +116,8 @@ class ThemeService:
                 except Exception as e:
                     logger.error("Error in theme change callback: %s", e)
 
-        except FileNotFoundError:
-            logger.error("Theme file not found at %s", style_path)
+        except FileNotFoundError as e:
+            logger.error("Theme file not found: %s", e)
         except Exception as e:
             logger.error("Error applying theme: %s", e)
 

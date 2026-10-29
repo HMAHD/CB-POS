@@ -11,6 +11,8 @@ themes every menu in the app at once, the same way the QDateEdit/QLineEdit
 
 from pathlib import Path
 
+from cbpos.core.services.theme_service import ThemeService
+
 STYLE_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
 
 
@@ -30,23 +32,23 @@ def _generic_qmenu_block(qss: str) -> str:
 
 class TestDarkThemeQMenu:
     def test_a_generic_qmenu_rule_exists(self):
-        qss = (STYLE_DIR / "dark.qss").read_text()
+        qss = ThemeService.render_stylesheet("Dark")
         block = _generic_qmenu_block(qss)
         assert "background-color" in block
         assert "border" in block
 
     def test_qmenu_item_selected_uses_the_accent_color(self):
-        qss = (STYLE_DIR / "dark.qss").read_text()
+        qss = ThemeService.render_stylesheet("Dark")
         assert "QMenu::item:selected" in qss
 
 
 class TestLightThemeQMenu:
     def test_a_generic_qmenu_rule_exists(self):
-        qss = (STYLE_DIR / "light.qss").read_text()
+        qss = ThemeService.render_stylesheet("Light")
         block = _generic_qmenu_block(qss)
         assert "background-color" in block
         assert "border" in block
 
     def test_qmenu_item_selected_uses_the_accent_color(self):
-        qss = (STYLE_DIR / "light.qss").read_text()
+        qss = ThemeService.render_stylesheet("Light")
         assert "QMenu::item:selected" in qss

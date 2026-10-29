@@ -46,6 +46,7 @@ from cbpos.core.utils.formatters import (
 )
 from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
+from cbpos.ui.components.activation import Activatable
 from cbpos.ui.dialogs.void_reason_dialog import VoidReasonDialog
 from cbpos.ui.refund_messages import refund_confirm_html, refund_done_text
 from cbpos.ui.resources.icons import Icons
@@ -62,7 +63,7 @@ from cbpos.ui.widgets.table_helpers import (
 logger = logging.getLogger(__name__)
 
 
-class DocumentBrowserView(QWidget):
+class DocumentBrowserView(QWidget, Activatable):
     """
     Unified document browser: the document list keeps the full height, and
     the selected document's details open in a panel beside it (#612), so the
@@ -1134,3 +1135,7 @@ class DocumentBrowserView(QWidget):
         if self.current_page < total_pages:
             self.current_page += 1
             self.load_documents()
+
+    def on_activated(self) -> None:
+        """Reload when this view is shown again, so the user never sees stale data."""
+        self.load_documents()

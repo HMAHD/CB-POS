@@ -51,6 +51,7 @@ from cbpos.core.utils.formatters import (
 )
 from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.scanner import BarcodeScanner
+from cbpos.ui.components.activation import Activatable
 from cbpos.ui.constants import (
     BAR_GROUP_SPACING,
     BAR_MARGIN_V,
@@ -293,7 +294,7 @@ class CountedDelegate(QStyledItemDelegate):
         return super().eventFilter(editor, event)
 
 
-class StockTakeView(QWidget):
+class StockTakeView(QWidget, Activatable):
     """Stock take view with New Count and History tabs."""
 
     # How long the "<product> counted: N" note stays after a scan
@@ -1184,3 +1185,7 @@ class StockTakeView(QWidget):
     def set_user(self, user) -> None:
         """Store the logged-in user for permission checks and count creation."""
         self.user = user
+
+    def on_activated(self) -> None:
+        """Reload when this view is shown again, so the user never sees stale data."""
+        self.refresh_history()

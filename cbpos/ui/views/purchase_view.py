@@ -44,6 +44,7 @@ from cbpos.core.utils.formatters import (
     format_relative_time,
 )
 from cbpos.i18n import _t, register_language_callback
+from cbpos.ui.components.activation import Activatable
 from cbpos.ui.constants import BAR_GROUP_SPACING, BAR_ITEM_SPACING, BAR_MARGIN_V
 from cbpos.ui.dialogs.grn_detail_dialog import GRNDetailDialog
 from cbpos.ui.dialogs.supplier_dialog import SupplierDialog
@@ -223,7 +224,7 @@ class PurchaseHistoryModel(QAbstractTableModel):
         return None
 
 
-class PurchaseView(QWidget):
+class PurchaseView(QWidget, Activatable):
     """Purchases view with Suppliers, New GRN, GRN History, and Payables tabs."""
 
     def __init__(self):
@@ -261,6 +262,7 @@ class PurchaseView(QWidget):
         self.payables_tab = QWidget()
         self.setup_payables_tab()
         self.tabs.addTab(self.payables_tab, "")
+        self.tabs.currentChanged.connect(self._on_tab_changed)
 
     def setup_supplier_tab(self):
         """Build the Suppliers tab: toolbar and supplier table."""
@@ -1535,3 +1537,18 @@ class PurchaseView(QWidget):
         except ValueError as e:
             logger.warning("Failed to record supplier balance adjustment: %s", e)
             QMessageBox.warning(self, _t("common.error"), translate_error(str(e)))
+
+    def _on_tab_changed(self, _index: int) -> None:
+        self.on_activated()
+
+    def on_activated(self) -> None:
+        """Reload the visible tab when Purchasing is shown or the user switches tabs."""
+        index = self.tabs.currentIndex()
+        if index == 0:
+            self.refresh_suppliers()
+        elif index == 1:
+            self.refresh_open_orders()
+        elif index == 2:
+            self.refresh_history()
+        elif index == 3:
+            self.load_payable_suppliers()

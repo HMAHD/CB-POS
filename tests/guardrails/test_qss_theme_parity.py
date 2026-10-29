@@ -33,7 +33,7 @@ _KNOWN_LIGHT_ONLY = {
 def _selectors(name: str) -> set[str]:
     text = (STYLES / name).read_text(encoding="utf-8")
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    text = re.sub(r"\{\{[A-Z_]+\}\}", "X", text)  # template placeholders
+    text = re.sub(r"\{\{[A-Z0-9_]+\}\}", "X", text)  # template placeholders
     found = set()
     for block in re.finditer(r"([^{}]+)\{", text):
         for selector in block.group(1).split(","):

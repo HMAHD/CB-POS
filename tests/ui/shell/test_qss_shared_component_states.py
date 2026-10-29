@@ -10,6 +10,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.helpers.qss import rendered_qss
+
 STYLES_DIR = Path(__file__).resolve().parents[3] / "cbpos" / "ui" / "styles"
 THEMES = ("dark.qss", "light.qss")
 COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
@@ -17,7 +19,7 @@ RULE_RE = re.compile(r"([^{}]+)\{([^{}]*)\}")
 
 
 def _css(theme_file: str) -> str:
-    return COMMENT_RE.sub("", (STYLES_DIR / theme_file).read_text(encoding="utf-8"))
+    return COMMENT_RE.sub("", rendered_qss(theme_file))
 
 
 def _rules_for(theme_file: str, selector: str) -> list[str]:
@@ -41,7 +43,7 @@ def test_generic_selected_item_rule_has_no_border(theme_file):
 
 
 def _load_for_app(theme_file: str) -> str:
-    content = (STYLES_DIR / theme_file).read_text(encoding="utf-8")
+    content = rendered_qss(theme_file)
     return content.replace("{{FONT_FAMILY}}", "Sans Serif").replace("{{FONT_SIZE}}", "12px")
 
 

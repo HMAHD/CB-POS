@@ -10,10 +10,12 @@ though this feature's own code is what triggers the selection.
 
 from pathlib import Path
 
+from tests.helpers.qss import rendered_qss
+
 STYLE_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
 
 
 class TestDarkThemeCartTableSelection:
     def test_cart_table_has_a_themed_selected_item_rule(self):
-        qss = (STYLE_DIR / "dark.qss").read_text()
+        qss = rendered_qss("dark.qss")
         assert "QTableWidget#CartTable::item:selected" in qss

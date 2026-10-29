@@ -29,6 +29,7 @@ from cbpos.core.services.product_service import ProductService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import NO_VALUE, format_date, format_number, money_header
 from cbpos.i18n import _t, register_language_callback
+from cbpos.ui.components.activation import Activatable
 from cbpos.ui.dialogs.bulk_price_adjust_dialog import BulkPriceAdjustDialog
 from cbpos.ui.dialogs.price_list_dialog import PriceListDialog
 from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
@@ -50,7 +51,7 @@ PRICE_ROLE = Qt.ItemDataRole.UserRole
 BATCH_SIZE = 50
 
 
-class PriceListView(QWidget):
+class PriceListView(QWidget, Activatable):
     """Price list management view with a sidebar of lists and a per-product price table."""
 
     def __init__(self):
@@ -665,3 +666,7 @@ class PriceListView(QWidget):
             except Exception as e:
                 logger.exception("Failed to set item price: %s", e)
                 QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
+
+    def on_activated(self) -> None:
+        """Reload when this view is shown again, so the user never sees stale data."""
+        self.load_lists()

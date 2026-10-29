@@ -16,6 +16,7 @@ from cbpos.core.models import PaymentMethod
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.ui.resources.status_colors import SUCCESS, pill_colors
 from cbpos.ui.widgets.status_pill_delegate import STATUS_MEANING_ROLE, StatusPillDelegate, set_status_pill
+from tests.helpers.qss import rendered_qss
 
 pytestmark = pytest.mark.usefixtures("qapp")
 
@@ -146,6 +147,6 @@ def test_payment_method_status_pill_sits_next_to_the_name():
 
 @pytest.mark.parametrize("qss", ["dark.qss", "light.qss"])
 def test_payment_method_pill_is_borderless(qss):
-    text = (STYLES / qss).read_text(encoding="utf-8")
+    text = rendered_qss(qss)
     for block in re.findall(r"QLabel#PMCardStatus[^{]*\{([^}]*)\}", text):
         assert re.search(r"\bborder\s*:", block) is None

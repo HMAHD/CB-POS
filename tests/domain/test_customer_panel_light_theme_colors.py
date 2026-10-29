@@ -10,11 +10,13 @@ navy-retirement pass (#260) -- found while fixing #255 (#387).
 
 from pathlib import Path
 
+from tests.helpers.qss import rendered_qss
+
 STYLES_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
 
 
 def _load(theme_file: str) -> str:
-    return (STYLES_DIR / theme_file).read_text(encoding="utf-8")
+    return rendered_qss(theme_file)
 
 
 def _block(css: str, selector: str) -> str:
@@ -33,7 +35,8 @@ class TestCustomerPanelLightTheme:
         css = _load("light.qss")
         block = _block(css, "QFrame#CustomerPanel {")
         assert "background-color: #FFFFFF" in block
-        assert "border: 1px solid #D0D5DB" in block
+        # The strong border token (D20: #D0D5DB snapped to #CED4DA), visibly darker than the white fill.
+        assert "border: 1px solid #CED4DA" in block
 
     def test_cust_title_is_readable_on_the_new_light_surface(self):
         css = _load("light.qss")

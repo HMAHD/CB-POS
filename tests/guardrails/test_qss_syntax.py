@@ -34,11 +34,10 @@ def _strip_comments(css: str) -> str:
 
 
 def _load(theme_file: str) -> str:
-    content = (STYLES_DIR / theme_file).read_text(encoding="utf-8")
-    # Strip the {{...}} template placeholders ThemeService normally
-    # substitutes -- not relevant to CSS syntax validity or cascade
-    # resolution, which is what these tests check.
-    return content.replace("{{FONT_FAMILY}}", "Sans Serif").replace("{{FONT_SIZE}}", "12px")
+    """The stylesheet exactly as the app applies it (tokens, fonts and sizes filled in)."""
+    from cbpos.core.services.theme_service import ThemeService
+
+    return ThemeService.render_stylesheet("Dark" if theme_file == "dark.qss" else "Light")
 
 
 class TestNoUnsupportedNotSelector:

@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import QLabel
 
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.infrastructure.resource_loader import ResourceLoader
+from tests.helpers.qss import rendered_qss
 
 STYLES_DIR = Path(__file__).resolve().parents[3] / "cbpos" / "ui" / "styles"
 
@@ -20,7 +21,7 @@ STYLES_DIR = Path(__file__).resolve().parents[3] / "cbpos" / "ui" / "styles"
 @pytest.mark.parametrize("theme_file", ["dark.qss", "light.qss"])
 def test_qss_font_family_does_not_contain_generic_sans_serif(theme_file: str):
     """Ensure QSS stylesheets do not include 'sans-serif' which triggers Qt alias population."""
-    content = (STYLES_DIR / theme_file).read_text(encoding="utf-8")
+    content = rendered_qss(theme_file)
     for line in content.splitlines():
         if "font-family:" in line:
             assert "sans-serif" not in line.lower(), (

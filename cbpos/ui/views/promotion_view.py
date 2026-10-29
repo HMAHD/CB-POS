@@ -21,6 +21,7 @@ from cbpos.core.services.promotion_service import SUPPORTED_TYPES, PromotionServ
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import format_datetime, format_discount, format_promotion_type
 from cbpos.i18n import _t, register_language_callback
+from cbpos.ui.components.activation import Activatable
 from cbpos.ui.dialogs.promotion_dialog import PromotionDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS
@@ -48,7 +49,7 @@ _DAY_KEYS = [
 ]
 
 
-class PromotionView(QWidget):
+class PromotionView(QWidget, Activatable):
     """Promotion list view with add, edit, activate/deactivate, and delete actions."""
 
     def __init__(self):
@@ -296,3 +297,7 @@ class PromotionView(QWidget):
         except Exception as e:
             logger.exception("Failed to delete promotion: %s", e)
             QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
+
+    def on_activated(self) -> None:
+        """Reload when this view is shown again, so the user never sees stale data."""
+        self.load_promotions()

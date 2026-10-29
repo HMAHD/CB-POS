@@ -16,6 +16,7 @@ from cbpos.core.services.permission_service import PermissionService
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.core.utils.destroy_hooks import call_on_destroyed
 from cbpos.i18n import _t, register_language_callback
+from cbpos.ui.components.activation import activate
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.views.credit_book_view import CreditBookView
 from cbpos.ui.views.dashboard_view import DashboardView
@@ -231,6 +232,7 @@ class ManagementView(QWidget):
         widget = self._get_or_create_view(index)
         self.stack.setCurrentWidget(widget)
         self.sidebar.highlight(index)
+        activate(widget)
 
     def _update_clock(self) -> None:
         """Update live clock text in the management header (#537)."""
@@ -352,8 +354,9 @@ class ManagementView(QWidget):
                     current.layout().activate()
 
     def showEvent(self, event) -> None:
-        """Recompute layout when switching back to this view."""
+        """Recompute layout and refresh the visible page when switching back to this view."""
         super().showEvent(event)
+        activate(self.stack.currentWidget())
         w = self.width()
         if w > 0:
             self.sidebar.handle_resize(w)

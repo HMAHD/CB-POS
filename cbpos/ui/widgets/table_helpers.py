@@ -21,7 +21,7 @@ from collections.abc import Iterable
 from contextlib import contextmanager
 from datetime import date, datetime
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QObject, Qt
 from PyQt6.QtWidgets import QHeaderView, QTableView, QTableWidget, QTableWidgetItem
 
 from cbpos.core.utils.formatters import format_datetime, format_relative_time
@@ -179,8 +179,29 @@ def configure_table_columns(
     header.setStretchLastSection(stretch_last_section)
     if minimum_section_size is not None:
         header.setMinimumSectionSize(minimum_section_size)
-    for column, mode in column_modes.items():
-        header.setSectionResizeMode(column, mode)
+
+    # setModel() rebuilds the sections and resets their modes; the keeper
+    # re-applies them each time and, as the header's child, lives as long as it.
+    _ColumnModeKeeper(header, column_modes).apply()
+
+
+class _ColumnModeKeeper(QObject):
+    """Re-applies column resize modes whenever the header's sections are rebuilt."""
+
+    def __init__(self, header: QHeaderView, column_modes: dict[int, QHeaderView.ResizeMode]) -> None:
+        super().__init__(header)
+        # The header's Python wrapper is short-lived, and PyQt drops a Python child with
+        # it; anchor on the table, which every view keeps as an attribute.
+        anchor = header.parent() or header
+        anchor._column_mode_keepers = [*getattr(anchor, "_column_mode_keepers", []), self]
+        self._header = header
+        self._modes = dict(column_modes)
+        header.sectionCountChanged.connect(self.apply)
+
+    def apply(self, *_args) -> None:
+        for column, mode in self._modes.items():
+            if column < self._header.count():
+                self._header.setSectionResizeMode(column, mode)
 
 
 def align_numeric_headers(table: QTableView, columns: Iterable[int]) -> None:

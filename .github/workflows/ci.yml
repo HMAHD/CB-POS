@@ -1,294 +1,68 @@
-# name: CB-POS CI/CD Pipeline
-# 
-# on:
-#   push:
-#     branches: [ "main", "develop" ]
-#   pull_request:
-#     branches: [ "main", "develop" ]
-# 
-# permissions:
-#   contents: read
-#   pull-requests: write
-# 
-# jobs:
-#   # Job 1: Code Quality Checks
-#   lint:
-#     name: Code Quality & Linting
-#     runs-on: ubuntu-latest
-#     
-#     steps:
-#     - name: Checkout code
-#       uses: actions/checkout@v6
-#       
-#     - name: Install uv
-#       uses: astral-sh/setup-uv@v10.2.0
-#       with:
-#         python-version: "3.12"
-#         enable-cache: true
-#         
-#     - name: Cache pre-commit hooks
-#       uses: actions/cache@v5
-#       with:
-#         path: ~/.cache/pre-commit
-#         key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
-#         
-#     - name: Install dependencies
-#       run: |
-#         uv add --dev pre-commit ruff
-#         
-#     - name: Run pre-commit hooks
-#       run: |
-#         pre-commit run --all-files --show-diff-on-failure
-#         
-#     - name: Lint with ruff
-#       if: always()
-#       run: |
-#         # Stop build on syntax errors or undefined names
-#         ruff check cbpos --select=E9,F63,F7,F82 --statistics
-#         # Full lint check
-#         ruff check cbpos --statistics
-#         # Format check
-#         ruff format --check cbpos
-# 
-#   # Job 2: Security Scanning
-#   security:
-#     name: Security Scanning
-#     runs-on: ubuntu-latest
-#     
-#     steps:
-#     - name: Checkout code
-#       uses: actions/checkout@v6
-#       
-#     - name: Install uv
-#       uses: astral-sh/setup-uv@v10.2.0
-#       with:
-#         python-version: "3.12"
-#         enable-cache: true
-#
-#     - name: Install dependencies
-#       run: |
-#         uv add --dev safety bandit
-#         
-#     - name: Check dependencies for vulnerabilities
-#       run: |
-#         uv sync --locked
-#         uv run safety check --json || true
-#         
-#     - name: Run Bandit security linter
-#       run: |
-#         uv run bandit -r cbpos -f json -o bandit-report.json || true
-#         uv run bandit -r cbpos -ll
-#         
-#     - name: Upload security reports
-#       if: always()
-#       uses: actions/upload-artifact@v6
-#       with:
-#         name: security-reports
-#         path: |
-#           bandit-report.json
-# 
-#   # Job 3: Unit Tests
-#   test:
-#     name: Unit Tests (Python ${{ matrix.python-version }})
-#     runs-on: ${{ matrix.os }}
-#     needs: lint
-#     
-#     strategy:
-#       fail-fast: false
-#       matrix:
-#         os: [ubuntu-latest, windows-latest]
-#         python-version: ["3.11", "3.12"]
-#         
-#     steps:
-#     - name: Checkout code
-#       uses: actions/checkout@v6
-#       
-#     - name: Install uv
-#       uses: astral-sh/setup-uv@v10.2.0
-#       with:
-#         python-version: ${{ matrix.python-version }}
-#         enable-cache: true
-#         
-#     - name: Install system dependencies (Ubuntu)
-#       if: runner.os == 'Linux'
-#       run: |
-#         sudo apt-get update
-#         sudo apt-get install -y \
-#           libgl1-mesa-glx \
-#           libegl1-mesa \
-#           libxkbcommon-x11-0 \
-#           libxcb-icccm4 \
-#           libxcb-image0 \
-#           libxcb-keysyms1 \
-#           libxcb-randr0 \
-#           libxcb-render-util0 \
-#           libxcb-xinerama0 \
-#           libxcb-xfixes0 \
-#           x11-utils
-#           
-#     - name: Install dependencies
-#       run: uv sync --locked
-#         
-#     - name: Create test database
-#       run: |
-#         uv run python -c "from cbpos.core.database import Database; db = Database(); db.engine"
-#         
-#     - name: Run tests with coverage
-#       env:
-#         QT_QPA_PLATFORM: offscreen
-#       run: |
-#         uv run pytest cbpos/tests \
-#           --cov=cbpos \
-#           --cov-report=xml \
-#           --cov-report=html \
-#           --cov-report=term \
-#           --junit-xml=junit-${{ matrix.os }}-${{ matrix.python-version }}.xml \
-#           -v \
-#           --tb=short \
-#           || true
-#           
-#     - name: Upload coverage to Codecov
-#       if: matrix.python-version == '3.12' && matrix.os == 'ubuntu-latest'
-#       uses: codecov/codecov-action@v5
-#       with:
-#         files: ./coverage.xml
-#         flags: unittests
-#         name: codecov-umbrella
-#         fail_ci_if_error: false
-#         
-#     - name: Upload test results
-#       if: always()
-#       uses: actions/upload-artifact@v6
-#       with:
-#         name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
-#         path: |
-#           junit-*.xml
-#           htmlcov/
-#           coverage.xml
-# 
-#   # Job 4: Database Migrations
-#   migrations:
-#     name: Database Migration Tests
-#     runs-on: ubuntu-latest
-#     needs: lint
-#     
-#     steps:
-#     - name: Checkout code
-#       uses: actions/checkout@v6
-#       
-#     - name: Install uv
-#       uses: astral-sh/setup-uv@v10.2.0
-#       with:
-#         python-version: "3.12"
-#         enable-cache: true
-#         
-#     - name: Install dependencies
-#       run: |
-#         uv add --dev alembic sqlalchemy
-#         uv sync --locked
-#         
-#     - name: Check migration consistency
-#       run: |
-#         # Initialize database
-#         uv run python scripts/seed.py || true
-#         
-#         # Check if migrations are up to date
-#         # alembic check || echo "Migration check completed"
-#         
-#     - name: Test migration up
-#       run: |
-#         # Test forward migration
-#         # alembic upgrade head || echo "Migration test completed"
-#         
-#     - name: Test migration down
-#       run: |
-#         # Test rollback
-#         # alembic downgrade -1 || echo "Rollback test completed"
-# 
-#   # Job 5: Build Verification
-#   build:
-#     name: Build Verification
-#     runs-on: ${{ matrix.os }}
-#     needs: [lint, test]
-#     
-#     strategy:
-#       matrix:
-#         os: [ubuntu-latest, windows-latest]
-#         
-#     steps:
-#     - name: Checkout code
-#       uses: actions/checkout@v6
-#       
-#     - name: Install uv
-#       uses: astral-sh/setup-uv@v10.2.0
-#       with:
-#         python-version: "3.12"
-#         enable-cache: true
-#         
-#     - name: Install dependencies
-#       run: |
-#         uv sync --locked
-#         uv add --dev pyinstaller
-#         
-#     - name: Verify application imports
-#       run: |
-#         uv run python -c "from cbpos.core.database import Database; print('✓ Database module OK')"
-#         uv run python -c "from cbpos.core.services.inventory_service import InventoryService; print('✓ Inventory service OK')"
-#         uv run python -c "from cbpos.core.services.stock_service import StockService; print('✓ Stock service OK')"
-#         
-#     - name: Check application startup
-#       env:
-#         QT_QPA_PLATFORM: offscreen
-#       run: |
-#         uv run python -m py_compile main.py
-#         echo "✓ Application code compiles successfully"
-# 
-#   # Job 6: Type Checking (Optional but recommended)
-#   typecheck:
-#     name: Type Checking
-#     runs-on: ubuntu-latest
-#     continue-on-error: true
-#     
-#     steps:
-#     - name: Checkout code
-#       uses: actions/checkout@v6
-#       
-#     - name: Install uv
-#       uses: astral-sh/setup-uv@v10.2.0
-#       with:
-#         python-version: "3.12"
-#         enable-cache: true
-#         
-#     - name: Install dependencies
-#       run: |
-#         uv add --dev mypy types-PyQt6
-#         uv sync --locked
-#         
-#     - name: Run mypy
-#       run: |
-#         uv run mypy cbpos --ignore-missing-imports --no-strict-optional || true
-# 
-#   # Summary Job - Reports overall status
-#   ci-success:
-#     name: CI Pipeline Success
-#     runs-on: ubuntu-latest
-#     needs: [lint, security, test, migrations, build]
-#     if: always()
-#     
-#     steps:
-#     - name: Check CI status
-#       run: |
-#         if [[ "${{ needs.lint.result }}" == "success" ]] && \
-#            [[ "${{ needs.test.result }}" == "success" ]] && \
-#            [[ "${{ needs.build.result }}" == "success" ]]; then
-#           echo "✅ CI Pipeline completed successfully!"
-#           exit 0
-#         else
-#           echo "❌ CI Pipeline failed!"
-#           echo "Lint: ${{ needs.lint.result }}"
-#           echo "Security: ${{ needs.security.result }}"
-#           echo "Test: ${{ needs.test.result }}"
-#           echo "Migrations: ${{ needs.migrations.result }}"
-#           echo "Build: ${{ needs.build.result }}"
-#           exit 1
-#         fi
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Code Quality & Linting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run pre-commit hooks
+        run: uv run pre-commit run --all-files
+
+  unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install Qt system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1 \
+            libegl1 \
+            libxkbcommon-x11-0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-xinerama0 \
+            libxcb-xfixes0 \
+            x11-utils
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run unit test suite
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: uv run python -m pytest -q -n auto

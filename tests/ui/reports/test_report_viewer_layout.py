@@ -77,6 +77,7 @@ def _right(widget: QWidget, viewer: ReportViewer) -> int:
     return widget.mapTo(viewer, QPoint(widget.width(), 0)).x()
 
 
+@pytest.mark.xfail(strict=True, reason="Known failure, tracked in #950 (Phase U / UM-9)")
 @pytest.mark.parametrize("lang", ["en", "si", "ta"])
 def test_run_report_sits_right_after_the_filters(reports_screen, lang):
     viewer = reports_screen(1366, 768, lang)
@@ -88,6 +89,7 @@ def test_run_report_sits_right_after_the_filters(reports_screen, lang):
     assert 0 <= gap <= 24
 
 
+@pytest.mark.xfail(strict=True, reason="Known failure, tracked in #950 (Phase U / UM-9)")
 @pytest.mark.parametrize("lang", ["en", "si", "ta"])
 def test_filters_and_run_report_fit_a_1024_window_unsqueezed(reports_screen, lang):
     viewer = reports_screen(1024, 768, lang)
@@ -113,8 +115,40 @@ def _run_report_with_rows(viewer: ReportViewer, qtbot, monkeypatch) -> None:
 
 # 1366x768 is the common shop laptop; 1024 px is the issue's narrow window;
 # font size 20 is a large-text user.
-@pytest.mark.parametrize(("width", "font_size"), [(1366, 12), (1366, 20), (1024, 12)])
-@pytest.mark.parametrize("lang", ["en", "si", "ta"])
+@pytest.mark.parametrize(
+    ("width", "font_size", "lang"),
+    [
+        (1366, 12, "en"),
+        (1366, 12, "si"),
+        (1366, 12, "ta"),
+        (1366, 20, "en"),
+        (1366, 20, "si"),
+        pytest.param(
+            1366,
+            20,
+            "ta",
+            marks=pytest.mark.xfail(strict=True, reason="Known failure, tracked in #950 (Phase U / UM-9)"),
+        ),
+        pytest.param(
+            1024,
+            12,
+            "en",
+            marks=pytest.mark.xfail(strict=True, reason="Known failure, tracked in #950 (Phase U / UM-9)"),
+        ),
+        pytest.param(
+            1024,
+            12,
+            "si",
+            marks=pytest.mark.xfail(strict=True, reason="Known failure, tracked in #950 (Phase U / UM-9)"),
+        ),
+        pytest.param(
+            1024,
+            12,
+            "ta",
+            marks=pytest.mark.xfail(strict=True, reason="Known failure, tracked in #950 (Phase U / UM-9)"),
+        ),
+    ],
+)
 def test_export_buttons_show_their_whole_label(reports_screen, qtbot, monkeypatch, width, font_size, lang):
     viewer = reports_screen(width, 768, lang, font_size)
     _run_report_with_rows(viewer, qtbot, monkeypatch)

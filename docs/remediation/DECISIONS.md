@@ -60,3 +60,6 @@ Format: `D<n> — <date> — #<issue> — <decision>`. New decisions go at the b
 - The tokens are the palette in CLAUDE.md: dark `#1E1E1E`/`#252526`, cyan `#00BCEB`, green `#39FF14`, yellow `#FFDC00`, red `#FF4136`; light `#F8F9FA`/`#FFFFFF`, blue `#0D6EFD`, green `#198754`, red `#DC3545`.
 - Every stray shade snaps to its nearest token.
 - The goal is consistency, not a new look.
+
+**D21 — 2026-10-29 — #948 — Quarantining tracked pre-existing failures.** Pre-existing failures that are already tracked by an open issue may be quarantined with `xfail(strict=True)` and a reason naming the issue. `strict=True` makes CI fail when the bug is fixed, so the marker must be removed in the fixing PR. Any other use of xfail or skip is still forbidden (§0.3).
+

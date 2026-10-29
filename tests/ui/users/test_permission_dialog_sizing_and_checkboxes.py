@@ -16,7 +16,7 @@ from cbpos.ui.dialogs.permission_dialog import PermissionDialog
 
 pytestmark = pytest.mark.usefixtures("qapp")
 
-STYLE_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
+STYLE_DIR = Path(__file__).resolve().parents[3] / "cbpos" / "ui" / "styles"
 
 
 class TestDialogShowsMoreContentByDefault:

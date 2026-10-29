@@ -36,7 +36,7 @@ class TestTooltipLengthConstraints:
 
     @pytest.mark.parametrize("lang", ["en", "si", "ta"])
     def test_all_tooltips_under_140_chars(self, lang):
-        locale_path = Path(__file__).resolve().parents[2] / "cbpos" / "i18n" / f"{lang}.json"
+        locale_path = Path(__file__).resolve().parents[3] / "cbpos" / "i18n" / f"{lang}.json"
         assert locale_path.exists(), f"Locale file {locale_path} missing"
 
         with open(locale_path, encoding="utf-8") as f:

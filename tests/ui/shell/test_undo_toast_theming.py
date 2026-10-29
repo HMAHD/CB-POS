@@ -16,7 +16,7 @@ import pytest
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.views.sales_view import SalesView
 
-STYLE_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
+STYLE_DIR = Path(__file__).resolve().parents[3] / "cbpos" / "ui" / "styles"
 
 pytestmark = pytest.mark.usefixtures("qapp")
 

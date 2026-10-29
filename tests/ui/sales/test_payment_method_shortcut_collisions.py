@@ -200,7 +200,7 @@ class TestDefaultDataHasNoReservedShortcut:
 
     @pytest.mark.parametrize("path", ["scripts/seed.py", "cbpos/core/services/database_setup_service.py"])
     def test_no_seeded_method_uses_a_reserved_key(self, path):
-        tree = ast.parse((Path(__file__).resolve().parents[2] / path).read_text(encoding="utf-8"))
+        tree = ast.parse((Path(__file__).resolve().parents[3] / path).read_text(encoding="utf-8"))
         keys = [
             kw.value.value
             for node in ast.walk(tree)

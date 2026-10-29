@@ -137,7 +137,7 @@ class TestDialogs:
         assert spin.focusPolicy() == Qt.FocusPolicy.NoFocus
 
     def test_every_dialog_with_spin_boxes_or_combos_installs_the_guard(self):
-        dialogs = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "dialogs"
+        dialogs = Path(__file__).resolve().parents[3] / "cbpos" / "ui" / "dialogs"
         missing = []
         for path in sorted(dialogs.glob("*.py")):
             source = path.read_text(encoding="utf-8")

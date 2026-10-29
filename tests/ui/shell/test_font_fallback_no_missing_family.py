@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import QLabel
 from cbpos.core.services.theme_service import ThemeService
 from cbpos.infrastructure.resource_loader import ResourceLoader
 
-STYLES_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
+STYLES_DIR = Path(__file__).resolve().parents[3] / "cbpos" / "ui" / "styles"
 
 
 @pytest.mark.parametrize("theme_file", ["dark.qss", "light.qss"])

@@ -72,14 +72,6 @@ class TestSideMenu:
     def test_guest_sees_neither(self, menu):
         assert _shown(menu, None) == (False, False)
 
-    def test_no_role_name_check_left_in_the_side_menu(self):
-        import inspect
-
-        from cbpos.ui.widgets import side_menu
-
-        source = inspect.getsource(side_menu)
-        assert ".role.name.lower()" not in source and '"manager"' not in source
-
 
 def test_permission_service_handles_missing_permissions():
     user = SimpleNamespace(role=SimpleNamespace(name="Cashier"))

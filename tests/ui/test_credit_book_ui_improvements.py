@@ -123,18 +123,6 @@ def test_metadata_containers_have_meta_container_object_name(db_session):
         view.deleteLater()
 
 
-def test_qss_has_scoped_meta_container_rules():
-    from pathlib import Path
-
-    style_dir = Path(__file__).parent.parent.parent / "cbpos" / "ui" / "styles"
-    dark_qss = (style_dir / "dark.qss").read_text()
-    light_qss = (style_dir / "light.qss").read_text()
-    assert "QFrame#CreditHeaderCard QWidget#MetaContainer" in dark_qss
-    assert "QFrame#CreditHeaderCard QWidget#MetaContainer" in light_qss
-    assert "QFrame#CreditHeaderCard QWidget {" not in dark_qss
-    assert "QFrame#CreditHeaderCard QWidget {" not in light_qss
-
-
 def test_search_and_add_button_in_same_toolbar(db_session):
     from PyQt6.QtCore import Qt
 

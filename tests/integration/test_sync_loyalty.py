@@ -19,7 +19,7 @@ from cbpos.core.services import sync_apply_service
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.services.transaction_service import TransactionService
-from tests.unit.sync_two_machines import Shop, isolated_settings
+from tests.helpers.sync_two_machines import Shop, isolated_settings
 
 TILL_A = "TERM-02"
 TILL_B = "TERM-03"

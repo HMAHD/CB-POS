@@ -23,7 +23,7 @@ from cbpos.config import Config
 from cbpos.core.models import Base, Customer, CustomerLedgerEntry, Sale
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.customer_service import CustomerService
-from tests.unit.sync_two_machines import Shop, isolated_settings
+from tests.helpers.sync_two_machines import Shop, isolated_settings
 
 TILL_A = "TERM-02"
 TILL_B = "TERM-03"

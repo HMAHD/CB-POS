@@ -72,7 +72,7 @@ These are absolute. Breaking one is a failed fix even if tests pass.
 - Add every new key to `cbpos/i18n/en.json`, `si.json` and `ta.json`. Validate with `uv run python scripts/validate_translations.py`.
 - Sinhala and Tamil must be natural, casual shop language. Read the whole sentence, not word by word. Allow at most 1–2 English loanwords per sentence. Use native words where a common one exists: "export" is අපනයනය / ஏற்றுமதி. Look up existing vocabulary in the JSON files before inventing a term.
 - If you are not confident in a Sinhala or Tamil translation, use the English text as the value, add the key to the **i18n review** list in PROGRESS.md, and move on. A wrong translation is worse than an English fallback.
-- Any key containing `&` must pass `tests/unit/test_ampersand_mnemonic_escaping.py`.
+- Any key containing `&` must pass `tests/domain/test_ampersand_mnemonic_escaping.py`.
 
 **Security**
 - Fail closed. On an ambiguous state (DB error, missing key, unknown schema version, certificate mismatch), stop and tell the user. Never fall back to "fresh install", "defaults" or "allow".
@@ -222,8 +222,9 @@ Users are non-technical shop owners and cashiers. Many are not fluent in English
 
 ```bash
 export QT_QPA_PLATFORM=offscreen
-uv run python -m pytest tests/unit/test_<file>.py -v                  # focused, while iterating
-uv run python -m pytest tests/unit/ -q -n auto                        # full suite, ONCE per batch before PR
+uv run python -m pytest tests/<layer>/test_<file>.py -v                # focused, while iterating
+uv run python -m pytest -m "domain or guardrails" -q -n auto         # fast loop (~15 s), after each issue
+uv run python -m pytest -q -n auto                                    # full suite (~6 min), ONCE per batch before PR
 uv run pre-commit run --all-files                                     # ruff lint + format
 uv run python scripts/validate_translations.py                        # if any i18n key changed
 uv run alembic upgrade head                                           # on a COPY of a seeded DB, if schema changed
@@ -231,6 +232,18 @@ graphify update .                                                     # after co
 ```
 
 - **Test once per batch (owner policy).** While fixing an issue, run only the focused test files for your change, plus ruff and translation checks. Run the full suite **once per batch**, in parallel (`-n auto`, about 5 minutes on the 4-core Mac), after merging fresh `origin/main` into the batch branch. If it fails, fix it on the branch and rerun once. A parallel run reshuffles test order, so it exposes leaked global state (logged-in user, config, registries). Fix those leaks; never dismiss them as flaky.
+- **Test layers** (`docs/remediation/TEST_ARCHITECTURE.md`):
+  - `tests/domain/` covers service behaviour.
+  - `tests/guardrails/` covers static rules.
+  - `tests/ui/` covers pytest-qt flows.
+  - `tests/integration/` covers two-machine, PostgreSQL and real threads.
+
+  Rules:
+  1. A spec path like `tests/domain/test_x.py` is a default. If the test must build widgets, it goes in `tests/ui/`.
+  2. Put a regression test in the **existing** file for that service or screen, not in a new file named after the issue.
+  3. Never assert colours, QSS strings or pixel sizes. That's the §0.7 screenshot gate.
+  4. Never read source code as text in a normal test. A code rule belongs in `tests/guardrails/`, as one parametrised AST check.
+  5. When a new test makes an old one redundant, delete or merge the old one in the same commit.
 - Test files named in a phase spec may not exist yet. Create them, copying the fixture setup of the nearest existing test file for the same service.
 - Every issue gets at least one regression test named `test_issue_<number>_<behaviour>`, in the test file of the service it touches. The test must fail on `main` and pass on the branch. Record both runs.
 - Test behaviour through the public service API, not private helpers. Assert on stored DB facts (rows, ledger, movements), not only return values.
@@ -271,7 +284,7 @@ When you find a bug that is not part of the current issue:
 4. **Merge** with `gh pr merge <n> --merge` once CI is green and the human approves. If the human has said "merge when green" for this phase, merging without asking again is allowed.
 5. **Close the issues and verify.** After merging, run `gh issue view <n> --json state` for every issue in the batch. Any issue not auto-closed gets closed explicitly:
    ```bash
-   gh issue close <n> --comment "Fixed in #<PR> (<merge sha>). Root cause: <one line>. Fix: <one line>. Regression test: tests/unit/<file>::<test>. Manual checks: <done / ⚠️ Verify on Windows>."
+   gh issue close <n> --comment "Fixed in #<PR> (<merge sha>). Root cause: <one line>. Fix: <one line>. Regression test: tests/<layer>/<file>::<test>. Manual checks: <done / ⚠️ Verify on Windows>."
    ```
    An issue with a pending "⚠️ Verify on Windows" item stays **open** with the label `ready-for-human` and a comment listing exactly what to verify. Don't close it.
 6. **Update the epics.** Tick the child in #832 / #922 / #820 / #944 if they carry checklists. When an epic's last child closes, close the epic with a summary comment.

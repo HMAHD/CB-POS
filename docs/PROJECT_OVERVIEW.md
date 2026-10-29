@@ -738,9 +738,9 @@ alembic revision --autogenerate -m "msg"       # Generate new
 
 ```bash
 export QT_QPA_PLATFORM=offscreen
-python -m pytest tests/unit/ -v
-python -m pytest tests/unit/test_transaction_service.py -v
-python -m pytest tests/unit/test_transaction_service.py::TestTransactionService::test_create_sale -v
+python -m pytest -v
+python -m pytest tests/domain/test_transaction_service.py -v
+python -m pytest tests/domain/test_transaction_service.py::TestTransactionService::test_create_sale -v
 ```
 
 ---

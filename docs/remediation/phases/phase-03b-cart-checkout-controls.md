@@ -321,7 +321,7 @@ The customer then pays a different amount than agreed.
 - Also guard in `MainWindow.on_barcode_scanned`: `if QApplication.activeModalWidget() is not None: return` (defence in depth).
 - Exception: dialogs that **want** scans (e.g. a product-search or customer dialog that accepts a barcode) receive the scan as normal typing into their focused line edit. That's what happens when the filter doesn't swallow it. Check the existing tests for dialogs relying on `barcode_scanned` while modal (`graft grep "barcode_scanned" --in cbpos/ui/dialogs`). If any exist, keep them working by routing to the active modal when it exposes `accepts_scans = True`.
 
-**Test.** `tests/unit/test_barcode_scanner.py::test_issue_890_scan_with_modal_open_not_emitted`: with a modal `QDialog` open and a focused `QPushButton`, simulate a burst plus Enter (copy the burst helper in that file). Nothing is emitted.
+**Test.** `tests/ui/test_barcode_scanner.py::test_issue_890_scan_with_modal_open_not_emitted`: with a modal `QDialog` open and a focused `QPushButton`, simulate a burst plus Enter (copy the burst helper in that file). Nothing is emitted.
 
 **Acceptance.**
 - [ ] With a modal open, a scan burst plus Enter emits nothing and reaches the dialog as a normal Enter.

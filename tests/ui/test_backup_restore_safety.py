@@ -18,7 +18,7 @@ from cbpos.core.services.backup_service import BackupError, BackupService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import translate_in
 from cbpos.ui.workers import RestoreWorker
-from tests.unit.backup_helpers import data_dir, isolate_config_service, make_pos_db, read_marker
+from tests.helpers.backup_helpers import data_dir, isolate_config_service, make_pos_db, read_marker
 
 SHOP_PASSWORD = "shop-secret-42"
 

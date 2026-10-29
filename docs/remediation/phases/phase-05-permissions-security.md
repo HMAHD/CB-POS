@@ -77,7 +77,7 @@ Seeds:
 - `table_helpers.py:103-110`;
 - `date_range_picker.py:151-152`.
 
-The guardrail test file is `tests/unit/test_design_system_guardrails.py`, and the crash-shape test is `test_destroy_hooks_gc_safety.py`.
+The guardrail test file is `tests/guardrails/test_design_system_guardrails.py`, and the crash-shape test is `test_destroy_hooks_gc_safety.py`.
 
 ### Domain invariants
 
@@ -178,7 +178,7 @@ The guardrail test file is `tests/unit/test_design_system_guardrails.py`, and th
 | `stock_take.view` / `create` | #858 |
 | `admin.tools` | Gate the Admin Tools page/actions (it's in `_EVERYONE_IN_SETTINGS`; check every Admin Tools action requires it) |
 
-**Guardrail test:** `tests/unit/test_permission_guardrails.py::test_every_permission_code_is_enforced`:
+**Guardrail test:** `tests/domain/test_permission_guardrails.py::test_every_permission_code_is_enforced`:
 - AST-scan `cbpos/` (excluding `cbpos/core/constants/permissions.py`) for attribute access `Permissions.<NAME>`;
 - assert every name in `Permissions` is referenced at least once, or is in `_ALLOW_UNREFERENCED = {...}` with a comment saying why;
 - also assert every code in the DB seed exists in `Permissions`.
@@ -455,7 +455,7 @@ Implementation:
    - read `destroy_hooks.py`'s docstring and follow its exact contract.
 2. `table_helpers.py`: delete `_cleanup` and its connection.
 3. `date_range_picker.py`: `register_language_callback(self.retranslate_ui, owner=self)`; delete `_on_destroyed` and its connection.
-4. **Guardrail tests**, added to `tests/unit/test_design_system_guardrails.py` or a new `test_qt_lifecycle_guardrails.py`:
+4. **Guardrail tests**, added to `tests/guardrails/test_design_system_guardrails.py` or a new `test_qt_lifecycle_guardrails.py`:
    - `test_no_destroyed_connect_outside_destroy_hooks`: **AST-based**, finding `Call` nodes whose func is `Attribute(attr="connect")` on `Attribute(attr="destroyed")`. A text grep would flag comments: `stock_take_view.py:329` and `action_panel.py:174` mention `destroyed.connect(` inside comments.
    - `test_every_register_language_callback_in_ui_passes_owner`: AST scan of `cbpos/ui` for calls to `register_language_callback` without an `owner` keyword.
 

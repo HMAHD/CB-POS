@@ -175,7 +175,7 @@ Write in the migration docstring and the release notes: "historical cost and rat
 3. Replace every `.quantize(Precision.MONEY)` / `.quantize(Decimal("0.01"))` in services with `round_money`. List the sites with `graft grep "quantize(" --in cbpos/core`. UI input parsing may keep its `ROUND_HALF_UP` quantize. Add the guardrail test `test_no_quantize_without_rounding_mode_in_core`: AST-scan `cbpos/core` for `.quantize(` calls without a `rounding=` keyword, excluding `money.py`.
 4. VAT rate setting: `QDoubleSpinBox`, 2 decimals, range 0–100, step 0.5. Stored as a string (`"18.00"`) and read as `Decimal(str(...))`. Check `_get_rates()` converts safely from the old int values too.
 
-**Tests** (`tests/unit/test_tax_service.py`):
+**Tests** (`tests/domain/test_tax_service.py`):
 - `test_issue_810_half_up_boundaries`: inputs where the exact VAT has .xx5. Assert the half-up results.
 - `test_issue_810_components_sum_to_total`: property-style loop over 1,000 totals from 0.01 to 99,999.99 (deterministic stepping). `vat + sscl + net == total`.
 - `test_issue_810_vat_rate_two_decimals` (e.g. 15.50).
@@ -581,7 +581,7 @@ Days overdue = `today − that date − payment_terms`. A customer with no unpai
 - [ ] All 16 issues merged and **verified closed** with closing comments (§0.10). Epic checklists updated.
 - [ ] Guardrails green: no `quantize` without a rounding mode in core; no `float(` in reports.
 - [ ] `sale_tax_snapshot` migration tested on a v1.3.0 DB copy and a current seeded DB, on SQLite and PostgreSQL.
-- [ ] A reconciliation test, `tests/unit/test_report_reconciliation.py`, builds one day with:
+- [ ] A reconciliation test, `tests/domain/test_report_reconciliation.py`, builds one day with:
   - sales across VAT/SSCL combinations;
   - a void;
   - a partial and a full refund;

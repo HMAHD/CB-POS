@@ -18,7 +18,7 @@ from cbpos.core.models import Customer, CustomerLedgerEntry, Sale, SalePayment, 
 from cbpos.core.services.customer_credit_service import CustomerCreditService
 from cbpos.core.services.supplier_payable_service import SupplierPayableService
 from cbpos.core.services.transaction_service import TransactionService
-from tests.unit.sync_two_machines import Shop, isolated_settings
+from tests.helpers.sync_two_machines import Shop, isolated_settings
 
 TILL_A = "TERM-02"
 TILL_B = "TERM-03"

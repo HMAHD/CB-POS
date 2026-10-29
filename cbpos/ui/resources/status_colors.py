@@ -7,7 +7,7 @@ comes from here, picked by *meaning*, with one value per theme.
 
 Each value is at least 4.5:1 (WCAG AA, normal text) against its theme's
 table background, alternate row, light-theme selected row and the pill
-fill below (verified in tests/unit/test_status_colors.py). Dark-theme
+fill below (verified in tests/ui/test_status_colors.py). Dark-theme
 selected rows don't need it: dark.qss paints selected text white.
 """
 

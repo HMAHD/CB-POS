@@ -18,7 +18,7 @@ from cbpos.core.models import Purchase, PurchaseItem, Sale, SaleItem, SalePaymen
 from cbpos.core.services.shift_service import ShiftService
 from cbpos.core.services.sync_apply_service import SyncApplyService
 from cbpos.core.services.transaction_service import TransactionService
-from tests.unit.sync_two_machines import Shop, isolated_settings
+from tests.helpers.sync_two_machines import Shop, isolated_settings
 
 TILL = "TERM-02"
 

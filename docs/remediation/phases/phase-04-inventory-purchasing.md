@@ -145,10 +145,10 @@ UI: `cbpos/ui/views/purchase_view.py`:
    - the product editor's stock field links to it (#862).
 
 **Tests.**
-- `tests/unit/test_inventory_service.py::test_issue_794_adjust_stock_writes_movement_and_audit`: one `StockMovement(type=ADJUSTMENT, qty_change=-2)`, one AuditLog, and stock decreased.
+- `tests/domain/test_inventory_service.py::test_issue_794_adjust_stock_writes_movement_and_audit`: one `StockMovement(type=ADJUSTMENT, qty_change=-2)`, one AuditLog, and stock decreased.
 - `test_issue_794_adjust_requires_permission`.
 - `test_issue_794_adjust_rejects_zero_and_service`.
-- pytest-qt `test_issue_794_dialog_calls_service_with_user` (extend the existing `tests/unit/test_adjustment_dialogs.py`).
+- pytest-qt `test_issue_794_dialog_calls_service_with_user` (extend the existing `tests/ui/test_adjustment_dialogs.py`).
 
 **UI/UX spec.**
 
@@ -584,7 +584,7 @@ Apply it per line in `receive_goods`. Several lines for the same product within 
 
 ## Phase exit gate
 - [ ] All 14 issues merged and **verified closed** with closing comments (§0.10). Epic checklists updated.
-- [ ] Invariant test `tests/unit/test_stock_invariants.py`:
+- [ ] Invariant test `tests/domain/test_stock_invariants.py`:
   - run sales, refunds, an adjustment, a stock take during trading, a GRN onto negative stock, a CSV import with opening stock;
   - assert invariant 1 (`stock_qty == Σ movements`) for every product, and invariant 2 for the GRN.
 - [ ] `graft grep "stock_qty ="` shows no assignments outside `StockService` (and the migration/seed). Paste the result in the PR.

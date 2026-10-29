@@ -9,7 +9,7 @@ import pyzipper
 
 from cbpos.core.services.backup_service import BackupService
 from cbpos.core.services.config_service import ConfigService
-from tests.unit.backup_helpers import isolate_config_service, make_pos_db, read_marker
+from tests.helpers.backup_helpers import isolate_config_service, make_pos_db, read_marker
 
 
 class TestBackupService:

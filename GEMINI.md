@@ -66,10 +66,11 @@ Read RELEASE_PLAN.md §0.12 (P1–P13). They cover:
 - Use `graphify query "<q>"` / `graft ask "<q>" --source` to find code.
 - Run `graft callers <symbol> --depth all` before changing a shared symbol.
 - Run `graphify update .` after code changes.
+- Fast loop after each issue: `uv run python -m pytest -m "domain or guardrails" -q -n auto` (~15 s). Tests live in `tests/{domain,guardrails,ui,integration}/` (RELEASE_PLAN.md §0.8).
 - Run the full test suite once per batch:
 
   ```bash
-  QT_QPA_PLATFORM=offscreen uv run python -m pytest tests/unit/ -q -n auto
+  QT_QPA_PLATFORM=offscreen uv run python -m pytest -q -n auto
   ```
 
 - Lint with `uv run pre-commit run --all-files`.

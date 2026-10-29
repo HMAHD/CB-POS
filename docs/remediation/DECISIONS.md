@@ -55,3 +55,8 @@ Format: `D<n> — <date> — #<issue> — <decision>`. New decisions go at the b
 **D19 — 2026-10-29 — Who builds.**
 - Claude builds the foundation (tokens, components, view lifecycle, guardrails).
 - Gemini migrates screens onto it, following specs in the remediation plan.
+
+**D20 — 2026-10-29 — UI — Colour tokens keep the documented palette.**
+- The tokens are the palette in CLAUDE.md: dark `#1E1E1E`/`#252526`, cyan `#00BCEB`, green `#39FF14`, yellow `#FFDC00`, red `#FF4136`; light `#F8F9FA`/`#FFFFFF`, blue `#0D6EFD`, green `#198754`, red `#DC3545`.
+- Every stray shade snaps to its nearest token.
+- The goal is consistency, not a new look.

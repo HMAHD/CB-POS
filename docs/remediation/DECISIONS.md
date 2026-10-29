@@ -37,3 +37,21 @@ Format: `D<n> — <date> — #<issue> — <decision>`. New decisions go at the b
 **D14 — 2026-10-28 — priority — Phase order approved.** Data loss and money first, then security, cross-till correctness, report truth, hardware and language output, release paperwork, and finally features (RELEASE_PLAN.md §1.1).
 
 **D15 — 2026-10-28 — process — Defects discovered during remediation** are filed as GitHub issues and added to PROGRESS.md and the relevant phase (RELEASE_PLAN.md §0.9).
+
+## 2026-10-29 — UI system (from docs/remediation/UI_SYSTEM_AUDIT.md)
+
+**D16 — 2026-10-29 — UI — Foundation first.**
+1. Build the design system layer: tokens, shared components (PageHeader, ActionBar, DataTable, FilterBar/DateRangeFilter, KpiStrip, FormDialog, EntityPicker, StatusPill, ContextMenu builder), the view lifecycle contract (`on_activated`), and guardrails.
+2. Then migrate screens one by one.
+3. No screen gets one-off styling.
+
+**D17 — 2026-10-29 — Purchasing IA.**
+- Tabs: Suppliers | Purchase Orders (new screen) | Goods Received | Payables.
+- "New PO" and "New GRN" are actions that open focused forms. A GRN can be started from a PO ("Receive this order").
+
+**D18 — 2026-10-29 — Stock Control.**
+- One sidebar section, **Stock Control**, with tabs Reorder | Stock Count (renamed from Stock Take) | Adjustments (Phase 4 #794).
+
+**D19 — 2026-10-29 — Who builds.**
+- Claude builds the foundation (tokens, components, view lifecycle, guardrails).
+- Gemini migrates screens onto it, following specs in the remediation plan.

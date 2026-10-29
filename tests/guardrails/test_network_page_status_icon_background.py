@@ -10,6 +10,8 @@ mismatched box behind the icon.
 
 from pathlib import Path
 
+from tests.helpers.qss import rendered_qss
+
 STYLE_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
 
 
@@ -21,11 +23,11 @@ def _rule_block(qss: str, selector: str) -> str:
 
 class TestStatusIconHasATransparentBackground:
     def test_dark_theme(self):
-        qss = (STYLE_DIR / "dark.qss").read_text()
+        qss = rendered_qss("dark.qss")
         block = _rule_block(qss, "QLabel#StatusIcon {")
         assert "background" in block and "transparent" in block
 
     def test_light_theme(self):
-        qss = (STYLE_DIR / "light.qss").read_text()
+        qss = rendered_qss("light.qss")
         block = _rule_block(qss, "QLabel#StatusIcon {")
         assert "background" in block and "transparent" in block

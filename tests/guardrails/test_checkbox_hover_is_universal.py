@@ -14,17 +14,19 @@ so a future checkbox doesn't quietly get scoped away from the rule.
 import re
 from pathlib import Path
 
+from tests.helpers.qss import rendered_qss
+
 STYLE_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
 
 
 class TestCheckboxHoverRuleIsUnqualified:
     def test_dark_theme_hover_rules_have_no_qualifier(self):
-        qss = (STYLE_DIR / "dark.qss").read_text()
+        qss = rendered_qss("dark.qss")
         assert re.search(r"(?m)^QCheckBox::indicator:unchecked:hover\s*\{", qss)
         assert re.search(r"(?m)^QCheckBox::indicator:checked:hover\s*\{", qss)
 
     def test_light_theme_hover_rules_have_no_qualifier(self):
-        qss = (STYLE_DIR / "light.qss").read_text()
+        qss = rendered_qss("light.qss")
         assert re.search(r"(?m)^QCheckBox::indicator:unchecked:hover\s*\{", qss)
         assert re.search(r"(?m)^QCheckBox::indicator:checked:hover\s*\{", qss)
 

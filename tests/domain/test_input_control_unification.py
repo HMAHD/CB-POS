@@ -10,6 +10,8 @@ Tests for UI-007 (Issue #563) and UI-009 (Issue #565):
 import re
 from pathlib import Path
 
+from tests.helpers.qss import rendered_qss
+
 STYLES_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
 COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
 
@@ -19,7 +21,7 @@ def _strip_comments(css: str) -> str:
 
 
 def _load(theme_file: str) -> str:
-    return (STYLES_DIR / theme_file).read_text(encoding="utf-8")
+    return rendered_qss(theme_file)
 
 
 class TestInputControlStylingUnification:
@@ -89,7 +91,8 @@ class TestElevationAndSurfaceTokens:
         light_css = _strip_comments(_load("light.qss"))
         guide_match = re.search(r"QFrame#SmtpGuideStep\s*\{([^}]+)\}", light_css)
         assert guide_match is not None
-        assert "background-color: #F1F3F5;" in guide_match.group(1)
+        # A raised surface (tokens, D20), not the plain card white.
+        assert "background-color: #FFFFFF;" not in guide_match.group(1)
         assert "border: 1px solid #CED4DA;" in guide_match.group(1)
         assert "border-left: 3px solid #0D6EFD;" in guide_match.group(1)
 

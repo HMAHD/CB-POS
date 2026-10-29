@@ -32,6 +32,7 @@ from cbpos.ui.dialogs.proforma_dialog import ProformaDialog
 from cbpos.ui.views.admin_tools_view import AdminToolsView
 from cbpos.ui.views.document_view import DocumentBrowserView
 from cbpos.ui.views.stock_take_view import StockCountItemModel, StockCountReportDialog, StockTakeView
+from tests.helpers.qss import rendered_qss
 
 pytestmark = pytest.mark.usefixtures("qapp")
 
@@ -346,5 +347,5 @@ def test_admin_tools_tabs_are_scrollable(db_session):
 def test_qgroupbox_padding_top_in_qss():
     """Both dark.qss and light.qss have padding-top on QGroupBox to prevent title clipping."""
     for theme_file in ("dark.qss", "light.qss"):
-        content = (STYLE_DIR / theme_file).read_text(encoding="utf-8")
+        content = rendered_qss(theme_file)
         assert "padding-top: 16px;" in content, f"padding-top missing in {theme_file}"

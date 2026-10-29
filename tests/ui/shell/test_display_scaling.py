@@ -20,10 +20,10 @@ class TestDisplayScalingAndActiveTiles:
         """NavTile styling in both dark and light QSS uses 2px border and 15% tint to prevent clipping."""
         import re
 
-        from cbpos.config import Config
+        from tests.helpers.qss import rendered_qss
 
-        dark_qss = (Config.BASE_DIR / "cbpos" / "ui" / "styles" / "dark.qss").read_text(encoding="utf-8")
-        light_qss = (Config.BASE_DIR / "cbpos" / "ui" / "styles" / "light.qss").read_text(encoding="utf-8")
+        dark_qss = rendered_qss("dark.qss")
+        light_qss = rendered_qss("light.qss")
 
         # Dark theme active tile
         assert re.search(

@@ -1,7 +1,5 @@
 """Unit tests for unified header heights/colors and mid-sidebar paper-cut collapse toggle."""
 
-from pathlib import Path
-
 import pytest
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QPushButton
@@ -13,6 +11,7 @@ from cbpos.ui.widgets.collapsible_sidebar import (
     CHEVRON_EXPANDED,
     CollapsibleSidebar,
 )
+from tests.helpers.qss import rendered_qss
 
 pytestmark = pytest.mark.usefixtures("qapp")
 
@@ -133,10 +132,9 @@ class TestMidSidebarEdgeToggleTab:
 
 class TestHeaderAndToggleStylesheetRules:
     def test_qss_contains_unified_colors_and_paper_cut_edge_toggle(self):
-        styles_dir = Path("cbpos/ui/styles")
 
-        dark_css = (styles_dir / "dark.qss").read_text(encoding="utf-8")
-        light_css = (styles_dir / "light.qss").read_text(encoding="utf-8")
+        dark_css = rendered_qss("dark.qss")
+        light_css = rendered_qss("light.qss")
 
         for css in (dark_css, light_css):
             assert "SidebarHeader" in css
@@ -144,5 +142,5 @@ class TestHeaderAndToggleStylesheetRules:
             assert "border-top-left-radius" in css
 
         # Dark mode color tokens
-        assert "#242428" in dark_css
-        assert "#2E2E34" in dark_css
+        assert "#252526" in dark_css  # SURFACE_1 (D20: #242428 snapped)
+        assert "#2D2D30" in dark_css  # SURFACE_2 (D20: #2E2E34 snapped)

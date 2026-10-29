@@ -357,6 +357,7 @@ The ordering principle: **data loss and money first, then security, then cross-t
 | 6 | Tax calculation and report truth | 16 | Yes | [phase-06](phases/phase-06-tax-reports.md) |
 | 7 | Printing, scanning, PDF, multilingual output, UI concurrency | 14 | Yes | [phase-07](phases/phase-07-printing-i18n-hardware.md) |
 | 8 | Release, legal, update checks, documentation | 8 | Yes | [phase-08](phases/phase-08-release-legal-docs.md) |
+| U | UI system: shared components (Claude) + screen migration (Gemini) | 13 | Yes (UI is release-critical, §0.7) | [phase-U](phases/phase-U-ui-system.md) |
 | — | **Public release gate** (§1.3) | — | — | — |
 | 9 | Warranty and repairs (epic #820) | 10 (+ epic #820) | Owner's call | [phase-09](phases/phase-09-warranty.md) |
 | 10A | Packaging and printing improvements | 4 | No | [phase-10a](phases/phase-10a-packaging-printing.md) |

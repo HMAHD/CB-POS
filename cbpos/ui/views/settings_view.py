@@ -83,7 +83,7 @@ class SettingsView(QWidget):
         self._clock_timer.start()
 
         self._update_header_icons()
-        ThemeService.register_theme_callback(self._update_header_icons)
+        ThemeService.register_theme_callback(self._update_header_icons, owner=self)
         call_on_destroyed(self, ThemeService.unregister_theme_callback, self._update_header_icons)
 
     def init_ui(self):

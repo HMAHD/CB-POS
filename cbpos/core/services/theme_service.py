@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import weakref
 
 from cbpos.config import Config
 from cbpos.core.services.config_service import ConfigService
@@ -138,15 +139,22 @@ class ThemeService:
         return _PX_FONT_SIZE_RE.sub(_scale, style_content)
 
     @staticmethod
-    def register_theme_callback(callback):
+    def register_theme_callback(callback, owner=None):
         """
         Register a callback to be called when theme changes.
 
         Args:
             callback: A callable that takes no arguments
+            owner: Optional QObject the callback belongs to (usually ``self``).
+                When it is destroyed the callback is unregistered, so a deleted
+                widget is never called again. Widgets must pass it.
         """
         if callback not in ThemeService.theme_change_callbacks:
             ThemeService.theme_change_callbacks.append(callback)
+        if owner is not None:
+            from cbpos.core.utils.destroy_hooks import call_on_destroyed
+
+            call_on_destroyed(owner, _unregister_if_alive, _weak_ref(callback))
 
     @staticmethod
     def unregister_theme_callback(callback):
@@ -245,3 +253,18 @@ class ThemeService:
             return "#0D6EFD"
         else:
             return "#00BCEB"
+
+
+def _weak_ref(callback):
+    """WeakMethod for bound methods, plain ref for functions, so the hook never keeps the owner alive."""
+    try:
+        return weakref.WeakMethod(callback)
+    except TypeError:
+        return weakref.ref(callback)
+
+
+def _unregister_if_alive(callback_ref) -> None:
+    """Remove the callback behind *callback_ref* if it still exists (runs when its owner is destroyed)."""
+    callback = callback_ref()
+    if callback is not None:
+        ThemeService.unregister_theme_callback(callback)

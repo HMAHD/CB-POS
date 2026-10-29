@@ -124,7 +124,7 @@ class CollapsibleSidebar(QFrame):
         self._anim_max.setEasingCurve(QEasingCurve.Type.InOutQuart)
 
         # Register theme callback
-        ThemeService.register_theme_callback(self._on_theme_changed)
+        ThemeService.register_theme_callback(self._on_theme_changed, owner=self)
 
     # ------------------------------------------------------------------
     # Public API

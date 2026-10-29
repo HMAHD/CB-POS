@@ -135,7 +135,7 @@ class SalesView(QWidget):
         header_layout.addWidget(self.lbl_logo)
 
         # Register callback to update logo when theme changes
-        ThemeService.register_theme_callback(self.update_logo)
+        ThemeService.register_theme_callback(self.update_logo, owner=self)
 
         header_layout.addStretch()
 
@@ -159,7 +159,7 @@ class SalesView(QWidget):
         self.btn_calculator.setToolTip(_t("sales.calculator_tooltip"))
         self.btn_calculator.clicked.connect(self._open_calculator)
         self._update_calculator_icon()
-        ThemeService.register_theme_callback(self._update_calculator_icon)
+        ThemeService.register_theme_callback(self._update_calculator_icon, owner=self)
         header_layout.addWidget(self.btn_calculator)
 
         # Calculator Shortcut (Ctrl+Alt+C)
@@ -272,7 +272,7 @@ class SalesView(QWidget):
         self._refresh_search_mode_icons()
         from cbpos.core.services.theme_service import ThemeService
 
-        ThemeService.register_theme_callback(self._refresh_search_mode_icons)
+        ThemeService.register_theme_callback(self._refresh_search_mode_icons, owner=self)
 
         search_layout.addSpacing(10)
 

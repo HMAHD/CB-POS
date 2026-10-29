@@ -53,7 +53,7 @@ class EmptyStateWidget(QWidget):
         layout.addWidget(self._subtitle_label)
 
         self._refresh_icon()
-        ThemeService.register_theme_callback(self._refresh_icon)
+        ThemeService.register_theme_callback(self._refresh_icon, owner=self)
 
         if parent is not None:
             parent.installEventFilter(self)

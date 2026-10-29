@@ -70,11 +70,12 @@ class TestDisplayScalingAndActiveTiles:
     def test_side_menu_active_tile_within_bounds_at_various_scales(self, qapp):
         """Side menu active tiles remain within scroll bounds across scaled heights."""
         menu = SideMenu()
-        menu.btn_management.set_active(True)
 
         for h in (768, 614, 512):
             menu.resize(200, h)
             menu.show()
+            # showEvent clears active tiles (d661622), so mark one active after showing.
+            menu.btn_management.set_active(True)
             qapp.processEvents()
 
             viewport_w = menu.nav_scroll.viewport().width()

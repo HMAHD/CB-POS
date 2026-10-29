@@ -90,8 +90,8 @@ def test_side_menu_structure_identical_across_languages():
             menu.resize(260, 700)
             menu.show()
 
-            # All 7 nav tiles exist and have expected minimum height
-            assert len(menu._nav_buttons) == 7
+            # All 6 nav tiles exist (Documents left the side menu in 908641a) and have expected minimum height
+            assert len(menu._nav_buttons) == 6
             for tile in menu._nav_buttons:
                 assert isinstance(tile, NavTile)
                 assert tile.minimumHeight() in (NavTile.HEIGHT, NavTile.COMPACT_HEIGHT)

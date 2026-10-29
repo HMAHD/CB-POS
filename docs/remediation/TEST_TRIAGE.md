@@ -1,5 +1,10 @@
 # Test Triage (owner review)
 
+**Applied 2026-10-29** (owner approved):
+- **Delete:** 4 files removed.
+- **Convert:** source-reading and QSS-presence tests became `tests/guardrails/test_architecture_rules.py` and `test_qss_theme_parity.py`; `test_qss_syntax` moved to guardrails. The 5 seed checks that read source stay as a follow-up.
+- **Merge:** replaced by **screen folders** (`tests/ui/<screen>/`). Several "merge" files had no matching screen file, and concatenating test modules risks fixture and name collisions for no gain. Grouping all 261 UI files by screen gives the same "one place per screen" with zero code changes.
+
 **Generated:** 2026-10-29 from a full run with per-test coverage contexts (`pytest --cov=cbpos --cov-context=test`). **"Unique lines"** = lines of `cbpos/` that no other test file executes.
 
 **Nothing is deleted until the owner approves this list.** Tick a row to override it.

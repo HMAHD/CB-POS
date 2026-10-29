@@ -17,7 +17,7 @@ from cbpos.ui.views.pricelist_view import PriceListView
 
 pytestmark = pytest.mark.usefixtures("qapp")
 
-STYLE_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
+STYLE_DIR = Path(__file__).resolve().parents[3] / "cbpos" / "ui" / "styles"
 
 _counter = 0
 

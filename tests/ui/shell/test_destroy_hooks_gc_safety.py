@@ -24,7 +24,7 @@ from cbpos.i18n import _service, register_language_callback
 
 pytestmark = pytest.mark.usefixtures("qapp")
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 # A child widget inside a view that is cyclic garbage when deleteLater()
 # runs: the exact shape that used to segfault. Run in a subprocess so a

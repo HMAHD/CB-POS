@@ -235,12 +235,12 @@ graphify update .                                                     # after co
 - **Test layers** (`docs/remediation/TEST_ARCHITECTURE.md`):
   - `tests/domain/` covers service behaviour.
   - `tests/guardrails/` covers static rules.
-  - `tests/ui/` covers pytest-qt flows.
+  - `tests/ui/<screen>/` covers pytest-qt flows, one folder per screen: sales, customers, inventory, purchasing, documents, reports, settings, users, printing and shell.
   - `tests/integration/` covers two-machine, PostgreSQL and real threads.
 
   Rules:
   1. A spec path like `tests/domain/test_x.py` is a default. If the test must build widgets, it goes in `tests/ui/`.
-  2. Put a regression test in the **existing** file for that service or screen, not in a new file named after the issue.
+  2. Put a regression test in the **existing** file for that service, or in that screen's folder (`tests/ui/<screen>/`), not in a new top-level file named after the issue.
   3. Never assert colours, QSS strings or pixel sizes. That's the §0.7 screenshot gate.
   4. Never read source code as text in a normal test. A code rule belongs in `tests/guardrails/`, as one parametrised AST check.
   5. When a new test makes an old one redundant, delete or merge the old one in the same commit.

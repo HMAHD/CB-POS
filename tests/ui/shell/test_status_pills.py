@@ -19,7 +19,7 @@ from cbpos.ui.widgets.status_pill_delegate import STATUS_MEANING_ROLE, StatusPil
 
 pytestmark = pytest.mark.usefixtures("qapp")
 
-STYLES = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
+STYLES = Path(__file__).resolve().parents[3] / "cbpos" / "ui" / "styles"
 
 
 @pytest.fixture(params=["Dark", "Light"])

@@ -17,7 +17,7 @@ from cbpos.core.services.theme_service import ThemeService
 from cbpos.ui.resources import status_colors
 from cbpos.ui.resources.status_colors import PALETTE, SURFACE, pill_colors, status_color
 
-UI_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui"
+UI_DIR = Path(__file__).resolve().parents[3] / "cbpos" / "ui"
 
 # Backgrounds a status colour is drawn on (dark.qss / light.qss tables).
 # Dark selected rows are not listed: dark.qss paints selected text white.

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-STYLES_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
+STYLES_DIR = Path(__file__).resolve().parents[3] / "cbpos" / "ui" / "styles"
 THEMES = ("dark.qss", "light.qss")
 COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
 RULE_RE = re.compile(r"([^{}]+)\{([^{}]*)\}")

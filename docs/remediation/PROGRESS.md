@@ -33,7 +33,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #948 | CI runs no tests or lint: every job in ci.yml is commented out | high | 1.0 | in-progress | | D21 quarantine applied; ci.yml rewritten |
+| #948 | CI runs no tests or lint: every job in ci.yml is commented out | high | 1.0 | pr-open | #977 | D21 quarantine applied; clean pass, failure injection tested |
 | #833 | "Is setup needed?" answers yes on any DB error, so "Load Demo Data" can wipe … | critical | 1.1 | todo | | |
 | #791 | First-run setup wizard never appears; admin PIN from wizard is never applied … | critical | 1.1 | todo | | |
 | #835 | A manager override permanently logs the manager in, so the cashier keeps all … | critical | 1.2 | todo | | |

@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 1 · Batch: 1.1 · Branch: — · Last session: 2026-10-29
+- Phase: 1 · Batch: 1.1 · Branch: fix/p1-b1-setup-safety · Last session: 2026-10-29
 
 ## Issues
 
@@ -34,7 +34,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
 | #948 | CI runs no tests or lint: every job in ci.yml is commented out | high | 1.0 | done | #977 | 972c7a4 · restored CI workflow and quarantined 11 baseline failures under D21 |
-| #833 | "Is setup needed?" answers yes on any DB error, so "Load Demo Data" can wipe … | critical | 1.1 | todo | | |
+| #833 | "Is setup needed?" answers yes on any DB error, so "Load Demo Data" can wipe … | critical | 1.1 | in-progress | | fail closed on DB errors and guard demo data against wiping live DB |
 | #791 | First-run setup wizard never appears; admin PIN from wizard is never applied … | critical | 1.1 | todo | | |
 | #835 | A manager override permanently logs the manager in, so the cashier keeps all … | critical | 1.2 | todo | | |
 | #857 | Duplicate PINs are accepted, so a user can log in as a different, higher-priv… | high | 1.2 | todo | | |

@@ -2893,7 +2893,9 @@
     "demo_title": "Demo Data",
     "demo_desc": "Pre-loaded with 80+ products, customers, sample sales, and suppliers. Great for exploring the system.",
     "btn_demo": "Load Demo Data",
-    "loading": "Setting up database..."
+    "loading": "Setting up database...",
+    "unavailable_title": "Can't open the shop database",
+    "unavailable_body": "CB POS couldn't read your shop's data, so it has stopped to keep it safe. Nothing has been changed or deleted.\n\nIf this computer uses a Main PC, check that the Main PC is on and connected, then open CB POS again. If the problem continues, restore your latest backup from another computer or contact support."
   },
   "errors": {
     "already_exists": "An item with that name already exists.",

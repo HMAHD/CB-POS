@@ -7,8 +7,11 @@ Provides two modes:
 """
 
 import logging
+from enum import Enum
+from pathlib import Path
 
 import bcrypt
+from sqlalchemy import inspect, text
 
 from cbpos.core.constants.permissions import Permissions
 from cbpos.core.database import Base, Database
@@ -22,6 +25,26 @@ from cbpos.core.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class SetupState(Enum):
+    """Represents the readiness state of the database schema."""
+
+    NEEDS_SETUP = "needs_setup"
+    READY = "ready"
+
+
+class DatabaseUnavailableError(Exception):
+    """Raised when database availability or schema state cannot be determined safely."""
+
+    def __init__(self, code: str, detail: str = ""):
+        super().__init__(f"Database unavailable [{code}]: {detail}" if detail else f"Database unavailable [{code}]")
+        self.code = code
+        self.detail = detail
+
+
+class DatabaseNotEmptyError(Exception):
+    """Raised when a destructive setup or demo load is attempted on a populated database."""
 
 
 def _hash_pin(pin: str) -> str:
@@ -51,23 +74,90 @@ class DatabaseSetupService:
         except Exception as e:
             logger.warning("Could not stamp alembic version: %s", e)
 
-    @staticmethod
-    def needs_setup() -> bool:
-        """Check if the database needs initial setup (no tables or no users)."""
-        from cbpos.config import Config
+    @classmethod
+    def check_setup_state(cls) -> SetupState:
+        """Determine whether the database needs initial setup or is ready.
 
-        db_path = Config.DATA_DIR / "cbpos.db"
-        if not db_path.exists():
-            return True
+        Fails closed by raising DatabaseUnavailableError on any inspection or query error.
+        """
+        db = Database()
+        engine = db.engine
 
-        # DB file exists but might be empty — check for users table
+        # 1. If SQLite and the DB file does not exist (or has 0 bytes), setup is needed
+        if engine.dialect.name == "sqlite":
+            db_file = engine.url.database
+            if db_file and db_file != ":memory:":
+                path = Path(db_file)
+                if not path.exists() or path.stat().st_size == 0:
+                    return SetupState.NEEDS_SETUP
+
+        # 2. Inspect tables
         try:
-            db = Database()
-            with db.get_session() as session:
-                count = session.query(User).count()
-                return count == 0
-        except Exception:
-            return True
+            inspector = inspect(engine)
+            tables = set(inspector.get_table_names())
+        except Exception as e:
+            raise DatabaseUnavailableError("unreachable", str(e)) from e
+
+        # Filter out internal/system tables
+        app_tables = {t for t in tables if t != "alembic_version" and not t.startswith("sqlite_")}
+
+        if not app_tables:
+            return SetupState.NEEDS_SETUP
+
+        if "users" not in app_tables:
+            raise DatabaseUnavailableError(
+                "partial_schema",
+                f"Database contains tables {sorted(app_tables)} but 'users' table is missing",
+            )
+
+        # 3. Query user count using Core text() query (avoids ORM column selection issues)
+        try:
+            with engine.connect() as conn:
+                count = conn.execute(text("SELECT COUNT(*) FROM users")).scalar()
+                if count == 0:
+                    return SetupState.NEEDS_SETUP
+                return SetupState.READY
+        except Exception as e:
+            raise DatabaseUnavailableError("unreadable", str(e)) from e
+
+    @classmethod
+    def needs_setup(cls) -> bool:
+        """Check if the database needs initial setup (no tables or no users).
+
+        Wrapper around check_setup_state() that returns True if SetupState.NEEDS_SETUP.
+        Raises DatabaseUnavailableError if the database is in an error or partial state.
+        """
+        return cls.check_setup_state() is SetupState.NEEDS_SETUP
+
+    @classmethod
+    def _assert_database_empty(cls) -> None:
+        """Verify that the database has zero rows in core business tables.
+
+        Raises:
+            DatabaseNotEmptyError: If users, documents, products, or customers have rows.
+            DatabaseUnavailableError: If database cannot be inspected or queried.
+        """
+        engine = Database().engine
+        try:
+            inspector = inspect(engine)
+            existing_tables = set(inspector.get_table_names())
+        except Exception as e:
+            raise DatabaseUnavailableError("unreachable", str(e)) from e
+
+        tables_to_check = ["users", "documents", "products", "customers"]
+        with engine.connect() as conn:
+            for table in tables_to_check:
+                if table in existing_tables:
+                    try:
+                        count = conn.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
+                        if count and count > 0:
+                            raise DatabaseNotEmptyError(
+                                f"Cannot run destructive database initialization: table '{table}' contains {count} record(s)."
+                            )
+                    except DatabaseNotEmptyError:
+                        raise
+                    except Exception as e:
+                        raise DatabaseUnavailableError("unreadable", str(e)) from e
 
     @classmethod
     def create_empty_database(cls) -> None:
@@ -80,6 +170,7 @@ class DatabaseSetupService:
 
         db = Database()
         Base.metadata.create_all(db.engine)
+        cls._assert_database_empty()
 
         with db.get_session() as session:
             # Check if already seeded (idempotent)
@@ -182,6 +273,7 @@ class DatabaseSetupService:
 
         Runs the same seed logic as scripts/seed.py.
         """
+        cls._assert_database_empty()
         import sys
         from pathlib import Path
 

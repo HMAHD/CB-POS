@@ -437,9 +437,26 @@ def main():
             sys.exit(0)
 
     # First-Run Database Setup (empty vs demo)
-    from cbpos.core.services.database_setup_service import DatabaseSetupService
+    from cbpos.core.services.database_setup_service import (
+        DatabaseSetupService,
+        DatabaseUnavailableError,
+    )
 
-    if DatabaseSetupService.needs_setup():
+    try:
+        needs_db_setup = DatabaseSetupService.needs_setup()
+    except DatabaseUnavailableError as e:
+        import logging
+
+        from PyQt6.QtWidgets import QMessageBox
+
+        from cbpos.i18n import _t
+
+        logging.getLogger("cbpos.bootstrap").error("Database unavailable during startup check: %s", e)
+        _close_splash()
+        QMessageBox.critical(None, _t("db_setup.unavailable_title"), _t("db_setup.unavailable_body"))
+        sys.exit(1)
+
+    if needs_db_setup:
         from cbpos.ui.dialogs.database_setup_dialog import DatabaseSetupDialog
 
         print("[BOOTSTRAP] No database found - showing database setup dialog...")

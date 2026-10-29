@@ -21,6 +21,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | 10A | written |
 | 10B | written |
 | 10C | written |
+| U | written |
 
 ## Current position
 
@@ -245,6 +246,24 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #940 | Owner-only anomaly report: voids, deletions after print, no-sale drawer opens… | — | 10C.? | todo | | |
 | #943 | Parked ideas and do-not-build list (market research reference) | — | 10C.? | todo | | |
 
+### Phase U — [spec](phases/phase-U-ui-system.md)
+
+| # | Title | Owner | Item | Status | PR | Notes |
+|---|---|---|---|---|---|---|
+| #963 | DataTable + ContextMenu builder | Claude | UF-1 | todo | | needs — |
+| #964 | PageHeader + DetailHeader | Claude | UF-2 | todo | | needs — |
+| #965 | FormDialog | Claude | UF-3 | todo | | needs — |
+| #966 | FilterBar + DateRangeFilter | Claude | UF-4 | todo | | needs — |
+| #967 | Purchase Orders screen + Purchasing tabs | Gemini | UM-1 | todo | | needs UF-1, UF-3 |
+| #968 | New GRN focused form | Gemini | UM-2 | todo | | needs UF-3 |
+| #969 | Supplier payment dialog | Gemini | UM-3 | todo | | needs UF-3 |
+| #970 | Payables list + ledger | Gemini | UM-4 | todo | | needs UF-1, UF-2 |
+| #971 | Stock Control section | Gemini | UM-5 | todo | | needs UF-1 |
+| #972 | Management header bar | Gemini | UM-6 | todo | | needs — |
+| #973 | Dashboard date filter | Gemini | UM-7 | todo | | needs UF-4 |
+| #974 | Colours out of Python UI code (+#956) | Gemini | UM-8 | todo | | needs — |
+| #975 | Reports rebuild (supersedes #950) | Gemini | UM-9 | todo | | needs UF-1, UF-4 |
+
 ### Tracking epics
 
 | # | Title | Closes when |
@@ -267,6 +286,11 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | Issue | Title | Sev | Found while | Phase/Batch |
 |---|---|---|---|---|
+| #950 | Reports: Run Report wraps below filters; export labels clipped | medium | measuring the suite (2026-10-28) | U / UM-9 (superseded by the rebuild) |
+| #953 | Theme callbacks never unregistered (deleted widgets called) | medium | diagnosing log noise | **done** (PR #954) |
+| #956 | 8 inline setStyleSheet calls (guardrail failing on main) | low | test restructure | U / UM-8 |
+| #959 | Management screens show stale data until Refresh | medium | UI review | **done** (PR #960) |
+| #961 | Table column layouts lost on setModel (Suppliers squeezed) | medium | UI review | pr-open (#962) |
 | #948 | CI runs no tests or lint (ci.yml fully commented out) | high | writing the remediation plan (2026-10-28) | 1 / 1.0 |
 
 ## i18n review list (keys with English fallback in si/ta, §0.2)

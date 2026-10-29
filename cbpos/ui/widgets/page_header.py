@@ -47,7 +47,7 @@ class PageHeader(QWidget):
         if title:
             self.set_title(title)
 
-        ThemeService.register_theme_callback(self._on_theme_changed)
+        ThemeService.register_theme_callback(self._on_theme_changed, owner=self)
 
     def set_icon(self, icon_name: str) -> None:
         """Set the header's icon (an ``Icons.*`` FontAwesome name)."""

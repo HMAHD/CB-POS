@@ -170,7 +170,7 @@ class ActionPanel(QWidget):
             if widget is not None:
                 widget.refresh_theme()
 
-        ThemeService.register_theme_callback(_on_theme_changed)
+        ThemeService.register_theme_callback(_on_theme_changed, owner=self)
         # Not destroyed.connect(<nested function>): that can segfault (see destroy_hooks).
         call_on_destroyed(self, ThemeService.unregister_theme_callback, _on_theme_changed)
 

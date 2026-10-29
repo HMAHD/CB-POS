@@ -66,7 +66,7 @@ class LoginView(QWidget):
         # Register theme callback to update logo
         from cbpos.core.services.theme_service import ThemeService
 
-        ThemeService.register_theme_callback(self.update_logo)
+        ThemeService.register_theme_callback(self.update_logo, owner=self)
 
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui, owner=self)

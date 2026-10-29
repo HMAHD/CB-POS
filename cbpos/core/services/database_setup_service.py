@@ -10,7 +10,6 @@ import logging
 from enum import Enum
 from pathlib import Path
 
-import bcrypt
 from sqlalchemy import inspect, text
 
 from cbpos.core.constants.permissions import Permissions
@@ -23,6 +22,7 @@ from cbpos.core.models import (
     User,
     VoidReason,
 )
+from cbpos.core.services.auth_service import AuthService
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +45,6 @@ class DatabaseUnavailableError(Exception):
 
 class DatabaseNotEmptyError(Exception):
     """Raised when a destructive setup or demo load is attempted on a populated database."""
-
-
-def _hash_pin(pin: str) -> str:
-    return bcrypt.hashpw(pin.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 class DatabaseSetupService:
@@ -160,11 +156,11 @@ class DatabaseSetupService:
                         raise DatabaseUnavailableError("unreadable", str(e)) from e
 
     @classmethod
-    def create_empty_database(cls) -> None:
+    def create_empty_database(cls, admin_pin: str | None = None) -> None:
         """Create tables with only the minimum data needed to log in.
 
         Creates: permissions, roles (Admin/Manager/Cashier), default admin
-        user (admin/1234), void reasons, payment methods, and units.
+        user (with admin_pin or 1234), void reasons, payment methods, and units.
         """
         import cbpos.core.models  # noqa: F401 — ensure all models are imported
 
@@ -224,7 +220,8 @@ class DatabaseSetupService:
             session.flush()
 
             # 3. Default admin user
-            admin = User(username="admin", pin_hash=_hash_pin("1234"), role_id=admin_role.id)
+            effective_pin = admin_pin or "1234"
+            admin = User(username="admin", pin_hash=AuthService.hash_pin(effective_pin), role_id=admin_role.id)
             session.add(admin)
 
             # 4. Void reasons
@@ -268,7 +265,7 @@ class DatabaseSetupService:
         logger.info("Empty database initialized with default admin (admin/1234).")
 
     @classmethod
-    def create_demo_database(cls) -> None:
+    def create_demo_database(cls, admin_pin: str | None = None) -> None:
         """Create tables and populate with full demo/sample data.
 
         Runs the same seed logic as scripts/seed.py.
@@ -285,6 +282,14 @@ class DatabaseSetupService:
         from scripts.seed import seed_data
 
         seed_data()
+        if admin_pin is not None:
+            db = Database()
+            with db.get_session() as session:
+                admin = session.query(User).filter(User.username == "admin").first()
+                if not admin:
+                    raise RuntimeError("Failed to set admin PIN: admin user not found in demo database")
+                admin.pin_hash = AuthService.hash_pin(admin_pin)
+
         # Stamp the alembic version so future migrations apply correctly
         cls.stamp_alembic_head()
         logger.info("Demo database created with sample data.")

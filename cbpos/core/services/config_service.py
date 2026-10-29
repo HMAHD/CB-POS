@@ -138,6 +138,8 @@ class ConfigService:
         "backup_dir": "",
         # UI Preferences
         "sidebar_collapsed": False,
+        # Setup / First Run
+        "setup_completed": False,
     }
 
     _settings: dict[str, Any] = {}
@@ -315,6 +317,9 @@ class ConfigService:
                         cls._settings[key] = cls._decode_sensitive(cls._settings[key])
                 changed = cls._migrate_receipt_printer(cls._settings)
                 changed = cls._clear_demo_bank_details(cls._settings) or changed
+                if "setup_completed" not in cls._settings:
+                    cls._settings["setup_completed"] = True
+                    changed = True
                 if changed:
                     cls.save()
             except Exception as e:

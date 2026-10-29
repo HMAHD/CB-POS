@@ -17,19 +17,21 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.constants.hardware import PrinterType
-from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
+from cbpos.ui.dialogs.admin_pin_dialog import validate_pin
 from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
 
 
 class SetupWizard(QDialog):
-    """First-run 3-step setup wizard for new CB-POS installations."""
+    """First-run setup wizard for new CB-POS installations."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, ask_admin_pin: bool = True):
         """Build the wizard, starting on step 1 (shop information)."""
         super().__init__(parent)
+        self.ask_admin_pin = ask_admin_pin
+        self.admin_pin: str | None = None
         self.setWindowTitle(_t("setup_wizard.title"))
         self.setMinimumSize(600, 500)
         self.resize(600, 500)
@@ -171,7 +173,8 @@ class SetupWizard(QDialog):
 
         sec_layout.addLayout(self.sec_form)
         sec_layout.addStretch()
-        self.stack.addWidget(self.page_security)
+        if self.ask_admin_pin:
+            self.stack.addWidget(self.page_security)
 
         # Navigation buttons
         nav_layout = QHBoxLayout()
@@ -208,7 +211,7 @@ class SetupWizard(QDialog):
         """Set all translatable text using _t()."""
         self.setWindowTitle(_t("setup_wizard.title"))
         self.lbl_title.setText(_t("setup_wizard.welcome"))
-        self.lbl_step.setText(_t("setup_wizard.step1"))
+        self.lbl_step.setText(_t("setup_wizard.step1") if self.ask_admin_pin else _t("setup_wizard.step1_of_2"))
         self.lbl_sec_info.setText(_t("setup_wizard.security_info"))
         self.btn_back.setText(_t("setup_wizard.btn_back"))
         self.btn_next.setText(_t("setup_wizard.btn_next"))
@@ -225,13 +228,18 @@ class SetupWizard(QDialog):
                 self.input_shop_name.setFocus()
                 return
             self.stack.setCurrentIndex(1)
-            self.lbl_step.setText(_t("setup_wizard.step2"))
+            self.lbl_step.setText(_t("setup_wizard.step2") if self.ask_admin_pin else _t("setup_wizard.step2_of_2"))
             self.btn_back.setVisible(True)
+            if not self.ask_admin_pin:
+                self.btn_next.setText(_t("setup_wizard.btn_finish"))
 
         elif current == 1:
             error = self._printer_error()
             if error:
                 QMessageBox.warning(self, _t("setup_wizard.invalid_title"), error)
+                return
+            if not self.ask_admin_pin:
+                self.finish_wizard()
                 return
             self.stack.setCurrentIndex(2)
             self.lbl_step.setText(_t("setup_wizard.step3"))
@@ -242,21 +250,17 @@ class SetupWizard(QDialog):
             pin = self.input_pin.text()
             pin_confirm = self.input_pin_confirm.text()
 
-            if not pin or len(pin) < 4:
-                QMessageBox.warning(self, _t("setup_wizard.required_title"), _t("setup_wizard.pin_min_length"))
-                self.input_pin.setFocus()
+            err = validate_pin(pin, pin_confirm)
+            if err is not None:
+                title_key, msg_key = err
+                QMessageBox.warning(self, _t(title_key), _t(msg_key))
+                if title_key == "setup_wizard.mismatch_title":
+                    self.input_pin_confirm.setFocus()
+                else:
+                    self.input_pin.setFocus()
                 return
 
-            if not pin.isdigit():
-                QMessageBox.warning(self, _t("setup_wizard.invalid_title"), _t("setup_wizard.pin_digits_only"))
-                self.input_pin.setFocus()
-                return
-
-            if pin != pin_confirm:
-                QMessageBox.warning(self, _t("setup_wizard.mismatch_title"), _t("setup_wizard.pin_mismatch"))
-                self.input_pin_confirm.setFocus()
-                return
-
+            self.admin_pin = pin
             self.finish_wizard()
 
     def _update_connection_fields(self) -> None:
@@ -299,13 +303,17 @@ class SetupWizard(QDialog):
             self.stack.setCurrentIndex(current - 1)
             if current - 1 == 0:
                 self.btn_back.setVisible(False)
-                self.lbl_step.setText(_t("setup_wizard.step1"))
+                self.lbl_step.setText(_t("setup_wizard.step1") if self.ask_admin_pin else _t("setup_wizard.step1_of_2"))
             elif current - 1 == 1:
-                self.lbl_step.setText(_t("setup_wizard.step2"))
-            self.btn_next.setText(_t("setup_wizard.btn_next"))
+                self.lbl_step.setText(_t("setup_wizard.step2") if self.ask_admin_pin else _t("setup_wizard.step2_of_2"))
+            self.btn_next.setText(
+                _t("setup_wizard.btn_finish")
+                if (current - 1 == 1 and not self.ask_admin_pin)
+                else _t("setup_wizard.btn_next")
+            )
 
     def finish_wizard(self):
-        """Save all wizard settings and update admin PIN."""
+        """Save all wizard settings."""
         from cbpos.core.services.config_service import ConfigService
 
         # Save config
@@ -328,16 +336,4 @@ class SetupWizard(QDialog):
             settings["a4_printer_name"] = a4_printer
 
         ConfigService.update_all(settings)
-
-        # Update admin PIN
-        try:
-            from cbpos.core.services.user_service import UserService
-
-            UserService.update_admin_pin(self.input_pin.text())
-        except Exception as e:
-            logger.error("Failed to update admin PIN: %s", e)
-            QMessageBox.warning(
-                self, _t("common.warning"), _t("setup_wizard.pin_update_failed", error=translate_error(str(e)))
-            )
-
         self.accept()

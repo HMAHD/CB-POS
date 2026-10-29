@@ -425,18 +425,7 @@ def main():
     register_all_reports()
     print("[BOOTSTRAP] Reports registered.")
 
-    # First-Run Setup Wizard
-    if not os.path.exists(ConfigService.SETTINGS_FILE):
-        from cbpos.ui.dialogs.setup_wizard import SetupWizard
-
-        print("[BOOTSTRAP] First run detected - launching setup wizard...")
-        wizard = SetupWizard()
-        _close_splash()
-        if not wizard.exec():
-            print("[BOOTSTRAP] Setup wizard cancelled. Exiting.")
-            sys.exit(0)
-
-    # First-Run Database Setup (empty vs demo)
+    # First-Run Setup & Database Check (#833, #791)
     from cbpos.core.services.database_setup_service import (
         DatabaseSetupService,
         DatabaseUnavailableError,
@@ -456,24 +445,66 @@ def main():
         QMessageBox.critical(None, _t("db_setup.unavailable_title"), _t("db_setup.unavailable_body"))
         sys.exit(1)
 
+    first_run = not ConfigService.get("setup_completed")
+    admin_pin: str | None = None
+
+    if first_run:
+        from cbpos.ui.dialogs.setup_wizard import SetupWizard
+
+        print("[BOOTSTRAP] First run detected - launching setup wizard...")
+        _close_splash()
+        wizard = SetupWizard(ask_admin_pin=needs_db_setup)
+        if not wizard.exec():
+            print("[BOOTSTRAP] Setup wizard cancelled. Exiting.")
+            sys.exit(0)
+        admin_pin = wizard.admin_pin
+
     if needs_db_setup:
         from cbpos.ui.dialogs.database_setup_dialog import DatabaseSetupDialog
 
         print("[BOOTSTRAP] No database found - showing database setup dialog...")
-        db_dialog = DatabaseSetupDialog()
         _close_splash()
+        db_dialog = DatabaseSetupDialog()
         if not db_dialog.exec():
             print("[BOOTSTRAP] Database setup cancelled. Exiting.")
             sys.exit(0)
 
-        if db_dialog.choice == DatabaseSetupDialog.CHOICE_DEMO:
-            print("[BOOTSTRAP] Creating demo database...")
-            DatabaseSetupService.create_demo_database()
-            print("[BOOTSTRAP] Demo database ready.")
-        else:
-            print("[BOOTSTRAP] Creating empty database...")
-            DatabaseSetupService.create_empty_database()
-            print("[BOOTSTRAP] Empty database ready.")
+        # When settings existed but DB is new, prompt for admin PIN via AdminPinDialog
+        if admin_pin is None:
+            from cbpos.ui.dialogs.admin_pin_dialog import AdminPinDialog
+
+            pin_dialog = AdminPinDialog()
+            if not pin_dialog.exec():
+                print("[BOOTSTRAP] Admin PIN setup cancelled. Exiting.")
+                sys.exit(0)
+            admin_pin = pin_dialog.pin()
+
+        from PyQt6.QtWidgets import QMessageBox
+
+        from cbpos.core.utils.error_messages import translate_error
+        from cbpos.i18n import _t
+
+        try:
+            if db_dialog.choice == DatabaseSetupDialog.CHOICE_DEMO:
+                print("[BOOTSTRAP] Creating demo database...")
+                DatabaseSetupService.create_demo_database(admin_pin=admin_pin)
+                print("[BOOTSTRAP] Demo database ready.")
+            else:
+                print("[BOOTSTRAP] Creating empty database...")
+                DatabaseSetupService.create_empty_database(admin_pin=admin_pin)
+                print("[BOOTSTRAP] Empty database ready.")
+        except Exception as e:
+            logging.getLogger("cbpos.bootstrap").error("Failed to initialize database: %s", e)
+            _close_splash()
+            QMessageBox.critical(
+                None,
+                _t("common.error"),
+                _t("db_setup.create_failed", error=translate_error(str(e))),
+            )
+            sys.exit(1)
+
+    if first_run:
+        ConfigService.set("setup_completed", True)
 
     # Enforce data continuity for legacy customer records
     try:

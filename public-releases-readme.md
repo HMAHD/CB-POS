@@ -138,11 +138,11 @@ No special software needed. No Python, no databases, no command line — just do
 
 ### First Launch
 
-1. **Login** with the default admin account:
-   - Username: `admin`
-   - PIN: `1234`
+1. **Complete the Setup Wizard** on first launch to configure your shop details, receipt printer, and choose your admin PIN.
 
-2. **Change your PIN** immediately — go to Settings and update the default passwords
+2. **Login** with your admin account:
+   - Username: `admin`
+   - PIN: Use the admin PIN you chose in the Setup Wizard. The demo data also has Manager (5678) and Cashier (0000) users for trying things out. Change or deactivate them before real use.
 
 3. **Set up your shop** — go to Settings > Shop Info and enter your:
    - Shop name

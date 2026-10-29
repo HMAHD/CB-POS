@@ -6,13 +6,16 @@ Ensures that DatabaseSetupService:
 3. Checks the actual active engine in network mode, not the local SQLite file.
 """
 
+from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Session
 
 from cbpos.core.database import Database
+from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.database_setup_service import (
     DatabaseNotEmptyError,
@@ -131,3 +134,68 @@ def test_issue_833_empty_file_and_missing_file_need_setup(tmp_path, monkeypatch)
 
     assert DatabaseSetupService.check_setup_state() == SetupState.NEEDS_SETUP
     assert DatabaseSetupService.needs_setup() is True
+
+
+def test_issue_791_empty_db_uses_given_admin_pin(tmp_path, monkeypatch):
+    """create_empty_database applies the provided admin_pin rather than fallback 1234."""
+    db_file = tmp_path / "empty_test.db"
+    real_engine = create_engine(f"sqlite:///{db_file}")
+
+    class RealDB:
+        engine = real_engine
+
+        @contextmanager
+        def get_session(self):
+            session = Session(bind=real_engine)
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+            finally:
+                session.close()
+
+    mock_db = RealDB()
+    monkeypatch.setattr("cbpos.core.services.database_setup_service.Database", lambda: mock_db)
+    monkeypatch.setattr("cbpos.core.services.auth_service.Database", lambda: mock_db)
+    monkeypatch.setattr("cbpos.config.Config.DATA_DIR", tmp_path)
+    monkeypatch.setattr(DatabaseSetupService, "stamp_alembic_head", lambda: None)
+
+    DatabaseSetupService.create_empty_database(admin_pin="482913")
+    assert AuthService.verify_pin("482913") is not None
+    assert AuthService.verify_pin("482913").username == "admin"
+    assert AuthService.verify_pin("1234") is None
+
+
+def test_issue_791_demo_db_uses_given_admin_pin(tmp_path, monkeypatch):
+    """create_demo_database applies the provided admin_pin to the seeded admin user."""
+    db_file = tmp_path / "demo_test.db"
+    real_engine = create_engine(f"sqlite:///{db_file}")
+
+    class RealDB:
+        engine = real_engine
+
+        @contextmanager
+        def get_session(self):
+            session = Session(bind=real_engine)
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+            finally:
+                session.close()
+
+    mock_db = RealDB()
+    monkeypatch.setattr("cbpos.core.services.database_setup_service.Database", lambda: mock_db)
+    monkeypatch.setattr("cbpos.core.services.auth_service.Database", lambda: mock_db)
+    monkeypatch.setattr("scripts.seed.Database", lambda: mock_db)
+    monkeypatch.setattr("cbpos.config.Config.DATA_DIR", tmp_path)
+    monkeypatch.setattr(DatabaseSetupService, "stamp_alembic_head", lambda: None)
+
+    DatabaseSetupService.create_demo_database(admin_pin="482913")
+    assert AuthService.verify_pin("482913") is not None
+    assert AuthService.verify_pin("482913").username == "admin"
+    assert AuthService.verify_pin("1234") is None

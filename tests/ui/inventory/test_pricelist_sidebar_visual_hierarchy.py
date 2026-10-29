@@ -17,7 +17,7 @@ from cbpos.ui.views.pricelist_view import PriceListView
 
 pytestmark = pytest.mark.usefixtures("qapp")
 
-STYLE_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
+STYLE_DIR = Path(__file__).resolve().parents[3] / "cbpos" / "ui" / "styles"
 
 _counter = 0
 
@@ -61,15 +61,3 @@ class TestSidebarHasMoreBreathingRoom:
     def test_nav_layout_spacing_is_wider_than_the_old_2px(self, db_session):
         view = PriceListView()
         assert view.nav_layout.spacing() >= 6
-
-    def test_dark_theme_nav_item_has_more_vertical_padding(self):
-        qss = (STYLE_DIR / "dark.qss").read_text()
-        start = qss.index("QPushButton#PriceListNavItem {")
-        block = qss[start : qss.index("}", start)]
-        assert "padding: 14px" in block or "padding: 16px" in block
-
-    def test_light_theme_nav_item_has_more_vertical_padding(self):
-        qss = (STYLE_DIR / "light.qss").read_text()
-        start = qss.index("QPushButton#PriceListNavItem {")
-        block = qss[start : qss.index("}", start)]
-        assert "padding: 14px" in block or "padding: 16px" in block

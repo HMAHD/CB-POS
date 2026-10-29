@@ -89,7 +89,7 @@ def test_make_dialog_footer_translations():
 
 def test_no_qdialogbuttonbox_in_cbpos_ui():
     """Verify that QDialogButtonBox is completely eliminated from cbpos/ui codebase."""
-    ui_dir = Path(__file__).resolve().parent.parent.parent / "cbpos" / "ui"
+    ui_dir = Path(__file__).resolve().parents[3] / "cbpos" / "ui"
     assert ui_dir.is_dir()
 
     occurrences = []

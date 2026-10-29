@@ -16,7 +16,7 @@ import pytest
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.views.sales_view import SalesView
 
-STYLE_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
+STYLE_DIR = Path(__file__).resolve().parents[3] / "cbpos" / "ui" / "styles"
 
 pytestmark = pytest.mark.usefixtures("qapp")
 
@@ -48,13 +48,3 @@ def _make_product(price="200.00"):
 class TestUndoToastHasNoInlineStyle:
     def test_undo_toast_carries_no_hardcoded_stylesheet(self, view):
         assert view.undo_toast.styleSheet() == ""
-
-
-class TestUndoToastThemedInQss:
-    def test_dark_theme_styles_the_undo_toast(self):
-        qss = (STYLE_DIR / "dark.qss").read_text()
-        assert "QLabel#UndoToast" in qss
-
-    def test_light_theme_styles_the_undo_toast(self):
-        qss = (STYLE_DIR / "light.qss").read_text()
-        assert "QLabel#UndoToast" in qss

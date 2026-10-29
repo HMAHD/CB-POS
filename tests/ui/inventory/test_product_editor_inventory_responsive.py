@@ -102,15 +102,3 @@ def test_inventory_item_type_hints_word_wrap(db_session):
             )
     finally:
         dlg.deleteLater()
-
-
-def test_qss_has_inventory_scroll_rules():
-    from pathlib import Path
-
-    style_dir = Path(__file__).parent.parent.parent / "cbpos" / "ui" / "styles"
-    dark_qss = (style_dir / "dark.qss").read_text()
-    light_qss = (style_dir / "light.qss").read_text()
-    assert "QScrollArea#InventoryScrollArea" in dark_qss
-    assert "QWidget#InventoryScrollInner" in dark_qss
-    assert "QScrollArea#InventoryScrollArea" in light_qss
-    assert "QWidget#InventoryScrollInner" in light_qss

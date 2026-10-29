@@ -35,7 +35,7 @@ from cbpos.ui.views.stock_take_view import StockCountItemModel, StockCountReport
 
 pytestmark = pytest.mark.usefixtures("qapp")
 
-STYLE_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
+STYLE_DIR = Path(__file__).resolve().parents[3] / "cbpos" / "ui" / "styles"
 
 
 @pytest.fixture(autouse=True)

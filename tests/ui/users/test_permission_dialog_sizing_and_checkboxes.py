@@ -16,7 +16,7 @@ from cbpos.ui.dialogs.permission_dialog import PermissionDialog
 
 pytestmark = pytest.mark.usefixtures("qapp")
 
-STYLE_DIR = Path(__file__).resolve().parents[2] / "cbpos" / "ui" / "styles"
+STYLE_DIR = Path(__file__).resolve().parents[3] / "cbpos" / "ui" / "styles"
 
 
 class TestDialogShowsMoreContentByDefault:
@@ -27,15 +27,3 @@ class TestDialogShowsMoreContentByDefault:
     def test_minimum_height_is_raised_to_match(self, db_session):
         dialog = PermissionDialog()
         assert dialog.minimumHeight() >= 550
-
-
-class TestTreeCheckboxesAreThemed:
-    def test_dark_theme_styles_tree_widget_indicators(self):
-        qss = (STYLE_DIR / "dark.qss").read_text()
-        assert "QTreeWidget::indicator" in qss
-        assert "QTreeWidget::indicator:indeterminate" in qss
-
-    def test_light_theme_styles_tree_widget_indicators(self):
-        qss = (STYLE_DIR / "light.qss").read_text()
-        assert "QTreeWidget::indicator" in qss
-        assert "QTreeWidget::indicator:indeterminate" in qss

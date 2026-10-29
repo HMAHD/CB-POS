@@ -145,7 +145,7 @@ def test_stock_take_stats_bar_uses_the_currency_symbol(qapp, db_session, currenc
 
 def test_no_hardcoded_rupee_symbol_in_ui_code():
     """No '"Rs.' string literal in cbpos/ui Python (i18n JSON/receipt templates excluded)."""
-    ui_dir = Path(__file__).resolve().parents[2] / "cbpos" / "ui"
+    ui_dir = Path(__file__).resolve().parents[3] / "cbpos" / "ui"
     offenders = [
         f"{path.relative_to(ui_dir)}:{n}"
         for path in ui_dir.rglob("*.py")

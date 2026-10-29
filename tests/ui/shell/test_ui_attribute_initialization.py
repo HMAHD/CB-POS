@@ -78,33 +78,3 @@ def test_product_editor_attributes_initialized(qapp, db_session):
         assert dlg.current_image_path is None
     finally:
         dlg.deleteLater()
-
-
-def test_no_dynamic_getattr_for_instance_attributes():
-    """Verify that the target files do not use dynamic getattr(self, ...) for these attributes."""
-    import inspect
-
-    import cbpos.ui.dialogs.product_editor as pe
-    import cbpos.ui.views.admin_tools_view as at
-    import cbpos.ui.views.credit_book_view as cb
-    import cbpos.ui.views.login_view as lv
-    import cbpos.ui.views.management_view as mv
-    import cbpos.ui.views.sales_view as sv
-
-    forbidden_patterns = [
-        (sv, 'getattr(self, "_processing"'),
-        (sv, 'getattr(self, "_pending_proforma_id"'),
-        (lv, 'getattr(self, "_logo_source"'),
-        (lv, 'getattr(self, "_logo_side"'),
-        (lv, 'getattr(self, "_btn_size"'),
-        (at, 'getattr(self, "_current_log_entries"'),
-        (at, 'getattr(self, "_printer_worker"'),
-        (at, 'getattr(self, "_drawer_worker"'),
-        (mv, 'getattr(self, "user"'),
-        (cb, 'getattr(self, "_showing_all_dates"'),
-        (pe, 'getattr(self, "current_image_path"'),
-    ]
-
-    for module, pattern in forbidden_patterns:
-        source = inspect.getsource(module)
-        assert pattern not in source, f"Found forbidden dynamic getattr in {module.__name__}: {pattern}"

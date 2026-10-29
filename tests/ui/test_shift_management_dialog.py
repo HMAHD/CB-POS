@@ -198,7 +198,7 @@ def _fake_sales_view(emitted: list):
     from unittest.mock import MagicMock
 
     return SimpleNamespace(
-        side_menu=SimpleNamespace(isVisible=lambda: False),
+        side_menu=SimpleNamespace(isVisible=lambda: False, clear_active=lambda: None),
         toggle_side_menu=MagicMock(),
         barcode_input=MagicMock(),
         _focus_search=MagicMock(),

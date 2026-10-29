@@ -23,6 +23,7 @@ from cbpos.core.services.user_service import UserService
 from cbpos.core.utils.audit_format import format_audit_action, format_audit_details, format_log_time
 from cbpos.core.utils.display_labels import display_role_name, event_type_label
 from cbpos.i18n import _t, register_language_callback
+from cbpos.ui.components.activation import Activatable
 from cbpos.ui.dialogs.permission_dialog import PermissionDialog
 from cbpos.ui.dialogs.role_manager import RoleManagerDialog
 from cbpos.ui.dialogs.user_dialog import UserDialog
@@ -38,7 +39,7 @@ from cbpos.ui.widgets.table_helpers import (
 )
 
 
-class UserView(QWidget):
+class UserView(QWidget, Activatable):
     """User management screen with tabs for the user list and the activity log."""
 
     def __init__(self):
@@ -416,4 +417,8 @@ class UserView(QWidget):
 
         dialog = RoleManagerDialog(parent=self)
         dialog.exec()
+        self.load_users()
+
+    def on_activated(self) -> None:
+        """Reload when this view is shown again, so the user never sees stale data."""
         self.load_users()

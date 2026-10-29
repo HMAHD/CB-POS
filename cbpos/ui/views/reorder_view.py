@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.purchase_order_service import PurchaseOrderService
 from cbpos.core.services.stock_service import StockService
 from cbpos.i18n import _t, register_language_callback
+from cbpos.ui.components.activation import Activatable
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, status_color
 from cbpos.ui.widgets.table_helpers import (
@@ -30,7 +31,7 @@ from cbpos.ui.widgets.table_helpers import (
 )
 
 
-class ReorderView(QWidget):
+class ReorderView(QWidget, Activatable):
     """
     Reorder Report View - Shows products that need restocking.
     Displays items where stock_qty <= reorder_point.
@@ -249,3 +250,7 @@ class ReorderView(QWidget):
             _t("reorder.purchase_order"),
             _t("reorder.purchase_order_created", count=len(po_items), doc_number=order.document_number),
         )
+
+    def on_activated(self) -> None:
+        """Reload when this view is shown again, so the user never sees stale data."""
+        self.load_reorder_items()

@@ -227,5 +227,6 @@ Each item: read the linked audit rows, use the named components, and pass the UI
 
 - [ ] All UF and UM items merged and closed with closing comments (§0.10).
 - [ ] Guardrails green: colour tokens (QSS and Python), menus with icons, views implement `on_activated`.
+- [ ] Remove the strict-xfail markers for #950 and #956.
 - [ ] Screenshots of every migrated screen in both themes plus si/ta attached to its PR.
 - [ ] `UI_SYSTEM_AUDIT.md` updated: each finding marked fixed with its PR number.

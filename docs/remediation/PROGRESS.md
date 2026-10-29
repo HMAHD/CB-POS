@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 1 · Batch: 1.0 · Branch: — · Last session: —
+- Phase: 1 · Batch: 1.0 · Branch: fix/p1-b0-restore-ci · Last session: 2026-10-29
 
 ## Issues
 
@@ -33,7 +33,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #948 | CI runs no tests or lint: every job in ci.yml is commented out | high | 1.0 | todo | | found 2026-10-28 while planning |
+| #948 | CI runs no tests or lint: every job in ci.yml is commented out | high | 1.0 | pr-open | #977 | D21 quarantine applied; clean pass, failure injection tested |
 | #833 | "Is setup needed?" answers yes on any DB error, so "Load Demo Data" can wipe … | critical | 1.1 | todo | | |
 | #791 | First-run setup wizard never appears; admin PIN from wizard is never applied … | critical | 1.1 | todo | | |
 | #835 | A manager override permanently logs the manager in, so the cashier keeps all … | critical | 1.2 | todo | | |

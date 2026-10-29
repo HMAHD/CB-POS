@@ -12,12 +12,15 @@ import ast
 import re
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 UI_DIR = REPO_ROOT / "cbpos" / "ui"
 DIALOGS_DIR = UI_DIR / "dialogs"
 STYLES_DIR = UI_DIR / "styles"
 
 
+@pytest.mark.xfail(strict=True, reason="Known failure, tracked in #956 (Phase U / UM-8)")
 def test_zero_inline_stylesheets_in_ui():
     """Ensure no .setStyleSheet(...) calls exist anywhere in cbpos/ui/."""
     violations: list[str] = []

@@ -579,6 +579,8 @@
     "step1": "Step 1 of 3 - Shop Information",
     "step2": "Step 2 of 3 - Hardware Setup",
     "step3": "Step 3 of 3 - Security",
+    "step1_of_2": "Step 1 of 2 - Shop Information",
+    "step2_of_2": "Step 2 of 2 - Hardware Setup",
     "shop_name": "Shop Name *:",
     "address": "Address:",
     "phone": "Phone:",
@@ -2893,7 +2895,15 @@
     "demo_title": "Demo Data",
     "demo_desc": "Pre-loaded with 80+ products, customers, sample sales, and suppliers. Great for exploring the system.",
     "btn_demo": "Load Demo Data",
-    "loading": "Setting up database..."
+    "loading": "Setting up database...",
+    "unavailable_title": "Can't open the shop database",
+    "unavailable_body": "CB POS couldn't read your shop's data, so it has stopped to keep it safe. Nothing has been changed or deleted.\n\nIf this computer uses a Main PC, check that the Main PC is on and connected, then open CB POS again. If the problem continues, restore your latest backup from another computer or contact support.",
+    "create_failed": "Couldn't create the shop database: {error}. Nothing was saved. Close CB POS and try again."
+  },
+  "admin_pin": {
+    "title": "Choose the admin PIN",
+    "body": "This is a new shop database. Choose a 4–6 digit PIN for the admin account. You'll use it to manage users and settings.",
+    "btn_save": "Save PIN"
   },
   "errors": {
     "already_exists": "An item with that name already exists.",

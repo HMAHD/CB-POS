@@ -67,7 +67,11 @@ def run_main(monkeypatch, tmp_path):
         settings_file = tmp_path / "settings.json"
         settings_file.write_text("{}")
         monkeypatch.setattr(ConfigService, "SETTINGS_FILE", str(settings_file))
-        monkeypatch.setattr(ConfigService, "get", staticmethod(lambda key, *_a: settings.get(key)))
+        monkeypatch.setattr(
+            ConfigService,
+            "get",
+            staticmethod(lambda key, *_a: settings.get(key, True if key == "setup_completed" else None)),
+        )
         monkeypatch.setattr(ThemeService, "set_stylesheet_handler", staticmethod(lambda _h: None))
         monkeypatch.setattr(ThemeService, "apply_theme", staticmethod(lambda _t: None))
         monkeypatch.setattr("cbpos.core.reports.register_all_reports", lambda: None)

@@ -110,24 +110,14 @@ def _report_crash(exc_type, exc_value, exc_traceback) -> None:
 def run_migrations(status: Callable[[str], None] | None = None) -> str | None:
     """Apply pending Alembic migrations to bring the database schema up to date.
 
-    For databases created via ``Base.metadata.create_all()`` (first-run) that
-    were never stamped by Alembic, this stamps them at ``head`` so future
-    migrations apply cleanly.  For databases already tracked, it runs
-    ``alembic upgrade head`` to apply any new migrations.
-
-    Safe to call on every startup — if the DB is already at head, this is a
-    fast no-op.
-
-    Args:
-        status: Optional startup-splash hook (#722). Called with
-            ``startup.checking_data`` once there is a database to check, and
-            ``startup.updating_data`` only right before a real upgrade.
-
-    Returns:
-        None on success, or the error message if migration failed -- the
-        caller must not continue on an out-of-date schema (#630).
+    Delegates to ``SchemaMigrationService``, preserving the return contract
+    (None on success, error message or code on failure).
     """
     from cbpos.config import Config
+    from cbpos.core.services.schema_migration_service import (
+        MigrationError,
+        SchemaMigrationService,
+    )
 
     db_path = Config.DATA_DIR / "cbpos.db"
     if not db_path.exists():
@@ -137,47 +127,11 @@ def run_migrations(status: Callable[[str], None] | None = None) -> str | None:
         status("startup.checking_data")
 
     try:
-        from alembic.config import Config as AlembicConfig
-        from alembic.migration import MigrationContext
-        from alembic.script import ScriptDirectory
-        from sqlalchemy import create_engine, inspect
-
-        from alembic import command
-
-        alembic_cfg = AlembicConfig(str(Config.BASE_DIR / "alembic.ini"))
-        alembic_cfg.set_main_option("script_location", str(Config.BASE_DIR / "alembic"))
-        alembic_cfg.set_main_option("sqlalchemy.url", Config.DB_URI)
-        # Don't let env.py fileConfig() over our logging (logging.config isn't bundled, #630).
-        alembic_cfg.attributes["configure_logger"] = False
-
-        engine = create_engine(Config.DB_URI)
-
-        # Check if alembic_version table exists
-        inspector = inspect(engine)
-        has_version_table = "alembic_version" in inspector.get_table_names()
-
-        if not has_version_table:
-            # Database was created by create_all() without Alembic tracking.
-            # Stamp at head so future migrations apply correctly.
-            command.stamp(alembic_cfg, "head")
-            _early_log.append("Database stamped at current migration head.")
-        else:
-            # Check if there are pending migrations
-            with engine.connect() as conn:
-                context = MigrationContext.configure(conn)
-                current_rev = context.get_current_heads()
-
-            script = ScriptDirectory.from_config(alembic_cfg)
-            head_rev = script.get_current_head()
-
-            if not current_rev or head_rev not in current_rev:
-                if status is not None:
-                    status("startup.updating_data")
-                command.upgrade(alembic_cfg, "head")
-                _early_log.append("Database migrated to latest schema.")
-
-        engine.dispose()
-
+        SchemaMigrationService.migrate_to_head(Config.DB_URI, status=status)
+        _early_log.append("Database schema check / migration completed.")
+    except MigrationError as e:
+        _early_log.append(f"ERROR: Auto-migration failed: {e}")
+        return e.code
     except Exception as e:
         _early_log.append(f"ERROR: Auto-migration failed: {e}")
         return str(e)
@@ -411,10 +365,16 @@ def main():
         from cbpos.i18n import _t
 
         _close_splash()
+        if migration_error == "newer_version":
+            body = _t("startup.migration_newer_version")
+        elif migration_error == "unknown_schema":
+            body = _t("startup.migration_unknown_schema")
+        else:
+            body = _t("main_window.migration_failed_body", error=migration_error)
         QMessageBox.critical(
             None,
             _t("main_window.migration_failed_title"),
-            _t("main_window.migration_failed_body", error=migration_error),
+            body,
         )
         sys.exit(1)
 

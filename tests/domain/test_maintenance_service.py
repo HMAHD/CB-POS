@@ -82,3 +82,33 @@ class TestMaintenanceService:
                 MaintenanceService.vacuum_database()
 
         mock_conn.close.assert_called_once()
+
+    def test_issue_839_network_mode_vacuum_refused(self, monkeypatch):
+        """vacuum_database raises MaintenanceError('network_mode') when db_mode is network."""
+        from cbpos.core.services.config_service import ConfigService
+        from cbpos.core.services.maintenance_service import MaintenanceError
+
+        monkeypatch.setattr(ConfigService, "get", lambda key, default=None: "network" if key == "db_mode" else default)
+        with pytest.raises(MaintenanceError) as exc:
+            MaintenanceService.vacuum_database()
+        assert exc.value.code == "network_mode"
+
+    def test_issue_839_network_mode_integrity_check_refused(self, monkeypatch):
+        """integrity_check raises MaintenanceError('network_mode') when db_mode is network."""
+        from cbpos.core.services.config_service import ConfigService
+        from cbpos.core.services.maintenance_service import MaintenanceError
+
+        monkeypatch.setattr(ConfigService, "get", lambda key, default=None: "network" if key == "db_mode" else default)
+        with pytest.raises(MaintenanceError) as exc:
+            MaintenanceService.integrity_check()
+        assert exc.value.code == "network_mode"
+
+    def test_issue_839_network_mode_database_info_refused(self, monkeypatch):
+        """get_database_info raises MaintenanceError('network_mode') when db_mode is network."""
+        from cbpos.core.services.config_service import ConfigService
+        from cbpos.core.services.maintenance_service import MaintenanceError
+
+        monkeypatch.setattr(ConfigService, "get", lambda key, default=None: "network" if key == "db_mode" else default)
+        with pytest.raises(MaintenanceError) as exc:
+            MaintenanceService.get_database_info()
+        assert exc.value.code == "network_mode"

@@ -170,6 +170,32 @@ def peripherals():
 
 
 @pytest.fixture(autouse=True)
+def _prevent_real_process_spawn():
+    """Never allow tests to spawn a real detached child process (#873).
+
+    Calling restart_application in production launches `python main.py` as a detached
+    background process via QProcess.startDetached. In automated test runs (especially in
+    CI), an unmocked restart call would launch a detached GUI application that runs
+    forever, keeping standard streams open and hanging the CI runner.
+    """
+    from PyQt6.QtCore import QProcess
+
+    original_start_detached = QProcess.startDetached
+
+    def _safe_start_detached(*args, **kwargs):
+        raise RuntimeError(
+            f"Tests must not call QProcess.startDetached({args}, {kwargs}) directly. "
+            "Mock cbpos.ui.app_restart.restart_application or QProcess.startDetached."
+        )
+
+    QProcess.startDetached = staticmethod(_safe_start_detached)
+    try:
+        yield
+    finally:
+        QProcess.startDetached = original_start_detached
+
+
+@pytest.fixture(autouse=True)
 def _signed_out_after_each_test():
     """Sign out after every test so the logged-in user never leaks into the next one.
 

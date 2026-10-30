@@ -108,7 +108,9 @@
     "loading_screens": "Loading sales, stock and customers...",
     "preparing_counter": "Preparing the sales counter...",
     "starting_sync": "Starting sync for your terminals...",
-    "connecting_main_pc": "Connecting to the Main PC..."
+    "connecting_main_pc": "Connecting to the Main PC...",
+    "migration_newer_version": "This shop's data was saved by a newer version of CB POS. Install the latest CB POS to open it. Your data has not been changed.",
+    "migration_unknown_schema": "CB POS doesn't recognise this database's layout, so it has stopped to keep your data safe. Restore a backup or contact support."
   },
   "sync_status": {
     "tooltip": "Click for sync details",
@@ -1266,6 +1268,8 @@
     "restore_restoring": "Restoring backup...",
     "restore_complete_title": "Restore Complete",
     "restore_complete_msg": "Backup has been restored successfully.\n\nPlease restart the application for changes to take effect.",
+    "restore_done_restarting": "Restore complete. CB POS will now restart to load the restored data.",
+    "restore_restart_manual": "Restore complete. Please close CB POS and open it again before doing anything else.",
     "restore_failed_title": "Restore Failed",
     "restore_failed_msg": "Restore did not complete successfully.",
     "restore_failed_error_msg": "Could not restore backup:\n{error}",
@@ -1317,6 +1321,11 @@
     "error_snapshot_failed": "Couldn't save a safety snapshot of your current data, so nothing was restored. Check the backup folder has free space and can be written to.",
     "error_db_in_use": "The database is still in use, so nothing was restored. Close other CB POS windows or terminals and try again.",
     "error_not_found": "The backup file can't be found.",
+    "error_newer_version": "This backup was made by a newer version of CB POS. Update CB POS on this computer first, then restore it. Nothing was changed.",
+    "error_migration_failed": "The backup couldn't be updated to this version of CB POS, so your previous data was put back. Nothing was lost.",
+    "error_network_mode": "Backups and maintenance are turned off in network database mode. Back up on the database server instead.",
+    "network_mode_title": "Backups are made on the database server",
+    "network_mode_body": "This computer uses the shared shop database on {host}. Back up that database on the server itself (for example with pg_dump or your server's backup tool). Backing up here would only copy an old local file, so it's turned off.",
     "verify_running": "Checking backup...",
     "size_compressed_from": "{size} (compressed from {original})",
     "export_section": "What to export",
@@ -1536,6 +1545,11 @@
     "saved_title": "Saved",
     "saved_message": "Settings saved successfully.",
     "save_failed": "Couldn't save the settings, so nothing was changed. Please try again.",
+    "recovery_title": "Settings Recovery",
+    "recovered_from_backup": "Your settings file was damaged, so CB POS loaded the last good copy. Please check your shop details and printer in Settings.",
+    "reset_after_corruption": "Your settings file was damaged and no good copy was found. CB POS started with default settings. Please re-enter your shop details, printer and tax settings in Settings. The damaged file was kept as {filename}.",
+    "btn_open_settings": "Open Settings",
+    "secrets_reentry": "These saved passwords couldn't be read on this computer and need to be entered again: {names}. Open Settings to re-enter them.",
     "restart_prompt": {
       "title": "Restart CB POS?",
       "message": "Your changes are saved. Restart CB POS now to apply them, or they'll apply the next time you open it.",

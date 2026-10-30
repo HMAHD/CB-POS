@@ -56,3 +56,16 @@ def test_a_failing_backup_never_blocks_closing(parent, monkeypatch):
     monkeypatch.setattr("cbpos.core.services.backup_service.BackupService.run_auto_backup", boom)
 
     MainWindow._auto_backup_on_close(parent)  # must not raise
+
+
+def test_issue_839_auto_backup_on_close_skipped_in_network_mode(parent, monkeypatch):
+    run = MagicMock()
+    monkeypatch.setattr("cbpos.core.services.backup_service.BackupService.run_auto_backup", run)
+    monkeypatch.setattr("cbpos.core.services.backup_service.BackupService.is_supported", staticmethod(lambda: False))
+    warning = MagicMock()
+    monkeypatch.setattr(QMessageBox, "warning", staticmethod(warning))
+
+    MainWindow._auto_backup_on_close(parent)
+
+    run.assert_not_called()
+    warning.assert_not_called()

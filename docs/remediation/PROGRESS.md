@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 1 · Batch: 1.2 · Branch: fix/p1-b2-auth-session · Last session: 2026-10-30
+- Phase: 1 · Batch: 1.3 · Branch: fix/p1-b3-migration-backup-restore · PR: #980 · Last session: 2026-10-30
 
 ## Issues
 
@@ -36,17 +36,17 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #948 | CI runs no tests or lint: every job in ci.yml is commented out | high | 1.0 | done | #977 | 972c7a4 · restored CI workflow and quarantined 11 baseline failures under D21 |
 | #833 | "Is setup needed?" answers yes on any DB error, so "Load Demo Data" can wipe … | critical | 1.1 | done | #978 | 65e7356 · fail closed on DB errors and guard demo data against wiping live DB |
 | #791 | First-run setup wizard never appears; admin PIN from wizard is never applied … | critical | 1.1 | done | #978 | f2b43a8 · restore first-run setup wizard and apply admin PIN |
-| #835 | A manager override permanently logs the manager in, so the cashier keeps all … | critical | 1.2 | pr-open | #979 | 5f7613c · split login and authenticate_pin, preserve cashier session |
-| #857 | Duplicate PINs are accepted, so a user can log in as a different, higher-priv… | high | 1.2 | pr-open | #979 | 77586b4 · enforce unique active PINs and require new PIN on reactivation |
-| #856 | The login screen has no brute-force lockout; lockout code exists only in an u… | high | 1.2 | pr-open | #979 | a150ed7 · terminal-scoped lockout in login_throttle with countdown UI and dialog alerts |
-| #859 | The last active Admin can be deactivated or demoted, locking everyone out of … | high | 1.2 | pr-open | #979 | c0c8da2 · guard against deactivating or demoting last active admin in UserService and UserDialog |
-| #860 | Logout and session timeout do not log the user out of AuthService, do not clo… | high | 1.2 | pr-open | #979 | c6cd353, 92b18b5 · close modal dialogs, auto-hold cart, and end AuthService session with audit on logout/timeout |
-| #837 | A database without an `alembic_version` table is stamped at head and its migr… | high | 1.3 | todo | | |
-| #838 | A corrupt or empty settings.json silently becomes defaults and the next save … | high | 1.3 | todo | | |
-| #875 | Restoring on a replacement PC turns the encrypted SMTP password, sync secret … | medium | 1.3 | todo | | |
-| #874 | A backup from a newer app version is accepted, and the app then refuses to st… | medium | 1.3 | todo | | |
-| #839 | Backup, restore and maintenance work on the local SQLite file in network (Pos… | high | 1.3 | todo | | |
-| #873 | After a restore the app keeps running with stale in-memory settings that over… | medium | 1.3 | todo | | |
+| #835 | A manager override permanently logs the manager in, so the cashier keeps all … | critical | 1.2 | done | #979 | 5f7613c · split login and authenticate_pin, preserve cashier session |
+| #857 | Duplicate PINs are accepted, so a user can log in as a different, higher-priv… | high | 1.2 | done | #979 | 77586b4 · enforce unique active PINs and require new PIN on reactivation |
+| #856 | The login screen has no brute-force lockout; lockout code exists only in an u… | high | 1.2 | done | #979 | a150ed7 · terminal-scoped lockout in login_throttle with countdown UI and dialog alerts |
+| #859 | The last active Admin can be deactivated or demoted, locking everyone out of … | high | 1.2 | done | #979 | c0c8da2 · guard against deactivating or demoting last active admin in UserService and UserDialog |
+| #860 | Logout and session timeout do not log the user out of AuthService, do not clo… | high | 1.2 | done | #979 | c6cd353, 92b18b5 · close modal dialogs, auto-hold cart, and end AuthService session with audit on logout/timeout |
+| #837 | A database without an `alembic_version` table is stamped at head and its migr… | high | 1.3 | pr-open | #980 | 0772c71 · SchemaMigrationService fingerprinting for legacy unstamped databases |
+| #838 | A corrupt or empty settings.json silently becomes defaults and the next save … | high | 1.3 | pr-open | #980 | 884bace · quarantine corrupted settings to settings.json.corrupt-<timestamp> and atomic write |
+| #875 | Restoring on a replacement PC turns the encrypted SMTP password, sync secret … | medium | 1.3 | pr-open | #980 | 77586b4 · clear undecryptable ciphertext secrets and prompt for re-entry |
+| #874 | A backup from a newer app version is accepted, and the app then refuses to st… | medium | 1.3 | pr-open | #980 | 85f389f · reject backups from newer schema versions with newer_version |
+| #839 | Backup, restore and maintenance work on the local SQLite file in network (Pos… | high | 1.3 | pr-open | #980 | 55bedfe · disable local backup and maintenance in network mode with informative card |
+| #873 | After a restore the app keeps running with stale in-memory settings that over… | medium | 1.3 | pr-open | #980 | de0ab2d · reload settings, freeze writes, migrate restored DB, and force app restart |
 
 ### Phase 2 — [spec](phases/phase-02-network-multi-terminal.md)
 
@@ -305,4 +305,4 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Handoff
 
-Batch 1.1 (#833, #791) complete and open in PR #978. Both issues committed and pushed on `fix/p1-b1-setup-safety`. Full test suite passed cleanly (2819 passed, 11 quarantined baseline failures under D21). Next up once PR #978 is merged: Batch 1.2 (`fix/p1-b2-auth-session`) starting with #835.
+Batch 1.3 (#837, #838, #875, #874, #839, #873) complete and open in PR #980 on `fix/p1-b3-migration-backup-restore`. All 6 issues committed and pushed. Focused tests (18 safety, 41 backup domain, 750 fast loop) green and pre-commit clean. UI gate screenshots attached for network mode cards and restore restart dialogs. Next up once PR #980 is merged: verify all 6 issues closed on GitHub and start Phase 2 Batch 2.1 (#799, #904).

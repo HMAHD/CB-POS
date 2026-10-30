@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QDialog,
     QHBoxLayout,
     QMainWindow,
+    QMessageBox,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -186,6 +187,47 @@ class MainWindow(QMainWindow):
         if ShiftService().get_current_shift(user.id) is None:
             StartShiftDialog(user.id, parent=self).exec()
 
+        # Check for settings recovery notices (#838)
+        self._check_config_recovery_notices()
+
+    def _check_config_recovery_notices(self) -> None:
+        """Show one-time recovery notice after login if settings were damaged (#838, #875)."""
+        notice = ConfigService.recovery_notice()
+        if notice == "restored_from_backup":
+            QMessageBox.warning(
+                self,
+                _t("settings.recovery_title"),
+                _t("settings.recovered_from_backup"),
+            )
+        elif notice == "defaults_after_corruption":
+            corrupt_file = ConfigService.corrupt_filename() or "settings.json.corrupt"
+            QMessageBox.warning(
+                self,
+                _t("settings.recovery_title"),
+                _t("settings.reset_after_corruption", filename=corrupt_file),
+            )
+
+        if not getattr(self, "_secrets_notice_shown", False):
+            secrets = ConfigService.secrets_needing_reentry()
+            if secrets:
+                self._secrets_notice_shown = True
+                label_map = {
+                    "smtp_pass": _t("settings.shop_info.smtp_password").rstrip(": "),
+                    "network_db_password": _t("settings.network.password").rstrip(": "),
+                    "sync_shared_secret": _t("settings.network.sync_secret").rstrip(": "),
+                }
+                names = ", ".join(label_map.get(s, s) for s in secrets)
+                msg_box = QMessageBox(self)
+                msg_box.setIcon(QMessageBox.Icon.Warning)
+                msg_box.setWindowTitle(_t("settings.recovery_title"))
+                msg_box.setText(_t("settings.secrets_reentry", names=names))
+                open_btn = msg_box.addButton(_t("settings.btn_open_settings"), QMessageBox.ButtonRole.AcceptRole)
+                msg_box.addButton(QMessageBox.StandardButton.Ok)
+                msg_box.exec()
+                if msg_box.clickedButton() == open_btn:
+                    target_page = 0 if "smtp_pass" in secrets else 6
+                    self.open_settings(target_page)
+
     def _on_session_expired(self):
         """Handle session expiration signal from watchdog with TIMEOUT reason."""
         self.logout(reason="TIMEOUT")
@@ -260,10 +302,15 @@ class MainWindow(QMainWindow):
         # Hide side menu in sales view if open
         self.sales_view.side_menu.setVisible(False)
 
+    def open_settings(self, page_index: int = 0) -> None:
+        """Show Settings on a specific page index (#875)."""
+        self.switch_to_settings()
+        if hasattr(self, "settings_view") and hasattr(self.settings_view, "switch_page"):
+            self.settings_view.switch_page(page_index)
+
     def open_hardware_settings(self) -> None:
         """Show Settings on its Hardware page (from the Sales no-printer notice)."""
-        self.switch_to_settings()
-        self.settings_view.switch_page(SettingsView.HARDWARE_PAGE)
+        self.open_settings(SettingsView.HARDWARE_PAGE)
 
     def toggle_fullscreen(self):
         """Toggle between fullscreen and normal window state."""
@@ -365,6 +412,10 @@ class MainWindow(QMainWindow):
         """
         try:
             from cbpos.core.services.backup_service import BackupService
+
+            if not BackupService.is_supported():
+                logging.getLogger(__name__).info("Auto-backup on close skipped: network database mode")
+                return
 
             backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
             keep = int(ConfigService.get("backup_retention_count") or 5)

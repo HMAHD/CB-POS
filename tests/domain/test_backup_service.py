@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 import pyzipper
 
-from cbpos.core.services.backup_service import BackupService
+from cbpos.core.services.backup_service import BackupError, BackupService
 from cbpos.core.services.config_service import ConfigService
 from tests.helpers.backup_helpers import isolate_config_service, make_pos_db, read_marker
 
@@ -307,6 +307,77 @@ class TestBackupService:
         """Test restore of non-existent file raises FileNotFoundError."""
         with pytest.raises(FileNotFoundError):
             BackupService.restore_backup(str(tmp_path / "missing.zip"), "pwd")
+
+    def test_issue_839_network_mode_create_backup_refused(self, tmp_path, monkeypatch):
+        """create_backup raises BackupError('network_mode') and creates nothing when db_mode is network."""
+        db_file = tmp_path / "cbpos.db"
+        make_pos_db(db_file, marker="mock db")
+        backup_dir = tmp_path / "backups"
+
+        monkeypatch.setattr(ConfigService, "get", lambda key, default=None: "network" if key == "db_mode" else default)
+
+        with patch("cbpos.core.services.backup_service.Config") as mock_config:
+            mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
+            with pytest.raises(BackupError) as exc:
+                BackupService.create_backup(str(backup_dir), password="TestPass123")
+
+        assert exc.value.code == "network_mode"
+        assert not backup_dir.exists() or len(list(backup_dir.glob("*"))) == 0
+
+    def test_issue_839_network_mode_restore_refused(self, tmp_path, monkeypatch):
+        """restore_backup raises BackupError('network_mode') and live db bytes are unchanged."""
+        db_file = tmp_path / "cbpos.db"
+        make_pos_db(db_file, marker="local live db")
+        initial_bytes = db_file.read_bytes()
+
+        backup_file = tmp_path / "backup.zip"
+        backup_file.write_bytes(b"dummy")
+
+        monkeypatch.setattr(ConfigService, "get", lambda key, default=None: "network" if key == "db_mode" else default)
+
+        with patch("cbpos.core.services.backup_service.Config") as mock_config:
+            mock_config.BASE_DIR = tmp_path
+            mock_config.DATA_DIR = tmp_path
+            with pytest.raises(BackupError) as exc:
+                BackupService.restore_backup(str(backup_file), password="TestPass123")
+
+        assert exc.value.code == "network_mode"
+        assert db_file.read_bytes() == initial_bytes
+
+    def test_issue_839_network_mode_auto_backup_refused(self, tmp_path, monkeypatch):
+        """run_auto_backup raises BackupError('network_mode') when db_mode is network."""
+        backup_dir = tmp_path / "backups"
+        monkeypatch.setattr(ConfigService, "get", lambda key, default=None: "network" if key == "db_mode" else default)
+
+        with pytest.raises(BackupError) as exc:
+            BackupService.run_auto_backup(str(backup_dir), keep_count=5)
+
+        assert exc.value.code == "network_mode"
+
+    def test_issue_839_network_mode_verify_deep_refused(self, tmp_path, monkeypatch):
+        """verify_backup(deep=True) reports network_mode error when db_mode is network."""
+        backup_file = tmp_path / "backup.zip"
+        backup_file.write_bytes(b"dummy")
+        monkeypatch.setattr(ConfigService, "get", lambda key, default=None: "network" if key == "db_mode" else default)
+
+        result = BackupService.verify_backup(str(backup_file), password="pass", deep=True)
+        assert result["valid"] is False
+        assert result["error_code"] == "network_mode"
+
+    def test_issue_839_is_supported_and_network_host(self, monkeypatch):
+        """BackupService.is_supported() is False in network mode and network_host() returns configured host."""
+
+        def fake_get(key, default=None):
+            if key == "db_mode":
+                return "network"
+            if key == "network_db_host":
+                return "pgserver.local"
+            return default
+
+        monkeypatch.setattr(ConfigService, "get", fake_get)
+        assert BackupService.is_supported() is False
+        assert BackupService.network_host() == "pgserver.local"
 
 
 class TestCleanupOldBackupsRetainsPreRestoreSeparately:

@@ -56,7 +56,8 @@ class BackupError(ValueError):
     """A backup can't be used, with a stable ``code`` the UI can translate.
 
     Codes: ``no_password``, ``not_a_backup``, ``wrong_password``,
-    ``db_invalid``, ``snapshot_failed``, ``db_in_use``.
+    ``db_invalid``, ``snapshot_failed``, ``db_in_use``, ``newer_version``,
+    ``network_mode``, ``migration_failed``.
     """
 
     def __init__(self, code: str, detail: str = "") -> None:
@@ -67,6 +68,26 @@ class BackupError(ValueError):
 
 class BackupService:
     """Creates and restores AES-encrypted zip backups of the SQLite database and product images."""
+
+    @staticmethod
+    def is_supported() -> bool:
+        """Return True if backup/restore operations are supported (standalone SQLite mode)."""
+        from cbpos.core.services.config_service import ConfigService
+
+        return ConfigService.get("db_mode") != "network"
+
+    @staticmethod
+    def network_host() -> str:
+        """Return the host address of the network database server."""
+        from cbpos.core.services.config_service import ConfigService
+
+        return ConfigService.get("network_db_host") or "localhost"
+
+    @staticmethod
+    def _require_standalone() -> None:
+        """Raise BackupError if running in network mode."""
+        if not BackupService.is_supported():
+            raise BackupError("network_mode", "Backup and restore are not supported in network database mode")
 
     @staticmethod
     def create_backup(destination_dir: str, password: str | None, kind: str = KIND_MANUAL) -> str:
@@ -88,6 +109,8 @@ class BackupService:
             FileNotFoundError: If database file doesn't exist.
             OSError: If backup directory can't be created.
         """
+        BackupService._require_standalone()
+
         if not password:
             raise ValueError("A backup password is required")
         if kind not in _NAME_PATTERNS:
@@ -196,6 +219,8 @@ class BackupService:
             password is set -- an archive nobody can open looks like a
             backup but can't be restored, which is worse than none.
         """
+        BackupService._require_standalone()
+
         from cbpos.core.services.config_service import ConfigService
 
         password = ConfigService.get_backup_password()
@@ -238,6 +263,8 @@ class BackupService:
                 safety snapshot can't be written, or the database is in use.
                 Nothing has been changed when this is raised.
         """
+        BackupService._require_standalone()
+
         from cbpos.core.services.config_service import ConfigService
 
         backup_file = Path(backup_path)
@@ -245,6 +272,8 @@ class BackupService:
             raise FileNotFoundError(f"Backup file not found: {backup_path}")
 
         db_file = Config.DATA_DIR / "cbpos.db"
+        snapshot_path = None
+        snapshot_password = None
 
         # Extract to temp directory first and validate before touching anything
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -300,6 +329,45 @@ class BackupService:
                         shutil.copy2(str(img_file), str(dest_file))
 
             BackupService._restore_assets(tmp_path / _ASSETS_DIR, Config.DATA_DIR / _ASSETS_DIR)
+
+            # Reload settings into ConfigService and freeze writes until restart (#873)
+            ConfigService.reload()
+            ConfigService.freeze_writes()
+
+            # Run Alembic migrations on the restored database (#873)
+            from cbpos.core.services.schema_migration_service import SchemaMigrationService
+
+            db_uri = f"sqlite:///{db_file}"
+            try:
+                SchemaMigrationService.migrate_to_head(db_uri)
+            except Exception as e:
+                logger.error("Schema migration failed after restoring DB: %s", e)
+                if snapshot_path and snapshot_password:
+                    try:
+                        with tempfile.TemporaryDirectory() as rollback_dir:
+                            rb_path = Path(rollback_dir)
+                            BackupService._open_archive(Path(snapshot_path), snapshot_password, extract_to=rb_path)
+                            rb_db = rb_path / "cbpos.db"
+                            if rb_db.exists():
+                                BackupService._replace_database(rb_db, db_file)
+                            rb_settings = rb_path / "settings.json"
+                            if rb_settings.exists():
+                                shutil.copy2(str(rb_settings), str(settings_file))
+                            rb_images = rb_path / "products"
+                            if rb_images.exists():
+                                images_dir = Config.DATA_DIR / "product_images"
+                                images_dir.mkdir(parents=True, exist_ok=True)
+                                for img_file in rb_images.rglob("*"):
+                                    if img_file.is_file():
+                                        dest_file = images_dir / img_file.relative_to(rb_images)
+                                        dest_file.parent.mkdir(parents=True, exist_ok=True)
+                                        shutil.copy2(str(img_file), str(dest_file))
+                            BackupService._restore_assets(rb_path / _ASSETS_DIR, Config.DATA_DIR / _ASSETS_DIR)
+                    except Exception as rb_err:
+                        logger.critical("Failed to restore snapshot during migration rollback: %s", rb_err)
+                    finally:
+                        ConfigService.reload()
+                raise BackupError("migration_failed", str(e)) from e
 
         logger.info("Backup restored successfully from: %s", backup_path)
         return True
@@ -382,6 +450,9 @@ class BackupService:
             try:
                 rows = conn.execute("PRAGMA integrity_check").fetchall()
                 tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+                revisions = []
+                if "alembic_version" in tables:
+                    revisions = [r[0] for r in conn.execute("SELECT version_num FROM alembic_version").fetchall()]
             finally:
                 conn.close()
         except sqlite3.DatabaseError as e:
@@ -391,6 +462,13 @@ class BackupService:
         missing = _EXPECTED_TABLES - tables
         if missing:
             raise BackupError("not_a_backup", f"missing tables: {sorted(missing)}")
+        if revisions:
+            from cbpos.core.services.schema_migration_service import SchemaMigrationService
+
+            known = SchemaMigrationService.known_revisions()
+            for rev in revisions:
+                if rev not in known:
+                    raise BackupError("newer_version", rev)
 
     @staticmethod
     def _replace_database(new_db: Path, db_file: Path) -> None:
@@ -632,6 +710,8 @@ class BackupService:
         result["size"] = format_bytes(backup_file.stat().st_size)
 
         try:
+            if deep:
+                BackupService._require_standalone()
             result["files"] = BackupService._open_archive(backup_file, password)
             if deep:
                 with tempfile.TemporaryDirectory() as tmp_dir:

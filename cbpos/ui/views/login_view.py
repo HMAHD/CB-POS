@@ -372,7 +372,7 @@ class LoginView(QWidget):
         if not pin:
             return
 
-        user = AuthService.verify_pin(pin)
+        user = AuthService.login(pin)
         if user:
             self.lbl_error.setVisible(False)
             self.login_success.emit(user)

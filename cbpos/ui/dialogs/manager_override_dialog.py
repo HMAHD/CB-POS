@@ -60,7 +60,7 @@ class ManagerOverrideDialog(QDialog):
         if not pin:
             return
 
-        user = AuthService.verify_pin(pin)
+        user = AuthService.authenticate_pin(pin)
         if user:
             if PermissionService.user_has_permission(user, self.permission_required):
                 self.authorized_user = user

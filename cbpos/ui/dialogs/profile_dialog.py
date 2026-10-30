@@ -83,8 +83,7 @@ class ProfileDialog(QDialog):
             QMessageBox.warning(self, _t("common.error"), _t("profile.pin_required"))
             return
 
-        verified_user = AuthService.verify_pin(current_pin)
-        if not verified_user or verified_user.id != user.id:
+        if not AuthService.check_own_pin(user.id, current_pin):
             QMessageBox.critical(self, _t("common.error"), _t("profile.invalid_pin"))
             return
 

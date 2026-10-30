@@ -136,9 +136,61 @@ class AuthService:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def verify_pin(pin: str) -> User | None:
-        """Verify the provided PIN against the database.
+    def _match_active_user(session, pin: str) -> User | None:
+        """Find an active user matching the given PIN and handle hash migration.
 
+        Eagerly loads role and permissions, and expunges the user and its
+        role before returning so the detached object can be used safely
+        after the session closes.
+        """
+        users = (
+            session.query(User)
+            .options(joinedload(User.role).joinedload(Role.permissions))
+            .filter(User.is_active.is_(True))
+            .all()
+        )
+
+        matched_user = None
+        for user in users:
+            # Check database-backed lockout
+            if AuthService._is_locked_out_db(user):
+                continue
+
+            if AuthService._verify_against_hash(pin, user.pin_hash):
+                matched_user = user
+                break
+
+        if not matched_user:
+            logger.warning("Failed authentication attempt with PIN")
+            return None
+
+        # --- Successful match ---
+
+        # Migrate legacy SHA-256 hash to bcrypt transparently
+        if AuthService._is_legacy_hash(matched_user.pin_hash):
+            matched_user.pin_hash = AuthService.hash_pin(pin)
+            logger.info("Migrated PIN hash to bcrypt for user '%s'", matched_user.username)
+
+        # Reset brute-force counter
+        AuthService._reset_failed_attempts_db(session, matched_user)
+
+        # Detach user and role to keep available after session close
+        if matched_user.role:
+            _ = matched_user.role.name  # Force load
+            _ = list(matched_user.role.permissions)
+            for perm in matched_user.role.permissions:
+                _ = perm.code
+                session.expunge(perm)
+            session.expunge(matched_user.role)
+        session.expunge(matched_user)
+
+        return matched_user
+
+    @staticmethod
+    def login(pin: str) -> User | None:
+        """Verify the provided PIN against the database and log the user in.
+
+        Sets `_current_user`, writes a LOGIN audit log, and checks for concurrent sessions.
         Includes brute-force protection and automatic migration from
         legacy SHA-256 hashes to bcrypt on successful login.
 
@@ -150,48 +202,9 @@ class AuthService:
         """
         db = Database()
         with db.get_session() as session:
-            users = (
-                session.query(User)
-                .options(joinedload(User.role).joinedload(Role.permissions))
-                .filter(User.is_active.is_(True))
-                .all()
-            )
-
-            matched_user = None
-            for user in users:
-                # Check database-backed lockout
-                if AuthService._is_locked_out_db(user):
-                    continue
-
-                if AuthService._verify_against_hash(pin, user.pin_hash):
-                    matched_user = user
-                    break
-
-            if not matched_user:
-                # No match — log warning
-                logger.warning("Failed login attempt with PIN")
+            user = AuthService._match_active_user(session, pin)
+            if not user:
                 return None
-
-            user = matched_user
-            # --- Successful match ---
-
-            # Migrate legacy SHA-256 hash to bcrypt transparently
-            if AuthService._is_legacy_hash(user.pin_hash):
-                user.pin_hash = AuthService.hash_pin(pin)
-                logger.info("Migrated PIN hash to bcrypt for user '%s'", user.username)
-
-            # Reset brute-force counter
-            AuthService._reset_failed_attempts_db(session, user)
-
-            # Detach user and role to keep available after session close
-            if user.role:
-                _ = user.role.name  # Force load
-                _ = list(user.role.permissions)
-                for perm in user.role.permissions:
-                    _ = perm.code
-                    session.expunge(perm)
-                session.expunge(user.role)
-            session.expunge(user)
 
             AuthService._current_user = user
 
@@ -248,6 +261,74 @@ class AuthService:
                 logger.error("Failed to write login audit log: %s", e)
 
             return user
+
+    verify_pin = login  # Deprecated alias for login(); callers should use login() or authenticate_pin()
+
+    @staticmethod
+    def authenticate_pin(pin: str) -> User | None:
+        """Authenticate a user by PIN without altering the currently logged-in session.
+
+        Used for manager overrides. Writes an OVERRIDE_AUTH audit log on success,
+        recording which cashier's session was active at the time.
+
+        Args:
+            pin: The PIN entered by the authorizer.
+
+        Returns:
+            The User object if authentication is successful, else None.
+        """
+        db = Database()
+        with db.get_session() as session:
+            user = AuthService._match_active_user(session, pin)
+            if not user:
+                return None
+
+            try:
+                from cbpos.core.models import AuditLog
+                from cbpos.core.services.config_service import ConfigService
+
+                current_user = AuthService.get_current_user()
+                cashier_desc = f"for {current_user.username}" if current_user else "for <none>"
+                terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+
+                log = AuditLog(
+                    user_id=user.id,
+                    action="Manager Override Authenticated",
+                    event_type="OVERRIDE_AUTH",
+                    terminal_id=terminal_id,
+                    details=cashier_desc,
+                )
+                session.add(log)
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                logger.error("Failed to write override audit log: %s", e)
+
+            return user
+
+    @staticmethod
+    def check_own_pin(user_id: int, pin: str) -> bool:
+        """Verify the PIN for a specific user without altering the active session.
+
+        Used by ProfileDialog to confirm the user's current PIN.
+
+        Args:
+            user_id: ID of the user being verified.
+            pin: The plaintext PIN to check.
+
+        Returns:
+            True if PIN matches and user is active, else False.
+        """
+        db = Database()
+        with db.get_session() as session:
+            user = session.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
+            if not user:
+                return False
+
+            if AuthService._is_locked_out_db(user):
+                return False
+
+            return AuthService._verify_against_hash(pin, user.pin_hash)
 
     @staticmethod
     def verify_pin_for_user(username: str, pin: str) -> User | None:

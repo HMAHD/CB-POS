@@ -77,6 +77,8 @@
     "enter_pin_placeholder": "PIN போடுங்க",
     "forgot_pin_hint": "PIN மறந்துட்டீங்களா? அட்மினிட்ட பேசுங்க.",
     "invalid_pin": "PIN தப்பு. மறுபடியும் முயற்சி பண்ணுங்க.",
+    "locked": "தவறான PIN பலமுறை போடப்பட்டது. {seconds} வினாடிகளில் மீண்டும் முயற்சிக்கவும்.",
+    "attempts_left": "PIN தப்பு. இந்த டில் லாக் ஆகிறதுக்கு முன்னாடி இன்னும் {count} முறை முயற்சிக்கலாம்.",
     "logo_fallback": "CB POS",
     "version_footer": "வெர்ஷன் {version} | © 2026 Ceylon Byte",
     "enter_pin": "PIN போடுங்க"

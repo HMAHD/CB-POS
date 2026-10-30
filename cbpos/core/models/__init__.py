@@ -598,7 +598,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     action: Mapped[str] = mapped_column(String(100), nullable=False)
     event_type: Mapped[str] = mapped_column(String(50), nullable=False)  # LOGIN, LOGOUT, TIMEOUT
     terminal_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -606,7 +606,18 @@ class AuditLog(Base):
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
     synced: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
-    user: Mapped["User"] = relationship()
+    user: Mapped[Optional["User"]] = relationship()
+
+
+class LoginThrottle(Base):
+    """Tracks consecutive authentication failures and lockout time per terminal."""
+
+    __tablename__ = "login_throttle"
+
+    terminal_id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    consecutive_failures: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
 
 
 class InventoryLog(Base):

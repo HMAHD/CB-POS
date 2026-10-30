@@ -6,7 +6,7 @@ import bcrypt
 from sqlalchemy.orm import joinedload
 
 from cbpos.core.database import Database
-from cbpos.core.models import Role, User
+from cbpos.core.models import LoginThrottle, Role, User
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +39,9 @@ class AuthService:
     Security features:
 
     - bcrypt PIN hashing with automatic migration from legacy SHA-256
-    - Database-backed brute-force protection: configurable lockout
+    - Terminal-level brute-force protection: configurable lockout
       (default 5 min after 5 failed attempts), persists across restarts
-      and is shared across all terminals in network mode.
+      in the login_throttle table and is shared across all PIN authentication.
     """
 
     _current_user: User | None = None
@@ -81,37 +81,104 @@ class AuthService:
             return False
 
     # ------------------------------------------------------------------
-    # Database-backed brute-force protection
+    # Terminal-level brute-force protection
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _is_locked_out_db(user: User) -> bool:
-        """Check if a user is currently locked out based on DB columns."""
-        return bool(user.locked_until and user.locked_until > datetime.now())
+    def _get_terminal_throttle(session, terminal_id: str) -> LoginThrottle:
+        """Fetch or create the LoginThrottle row for a terminal."""
+        throttle = session.get(LoginThrottle, terminal_id)
+        if not throttle:
+            throttle = LoginThrottle(terminal_id=terminal_id, consecutive_failures=0, locked_until=None)
+            session.add(throttle)
+            session.flush()
+        return throttle
 
     @staticmethod
-    def _record_failed_attempt_db(session, user: User) -> None:
-        """Increment failed attempt counter and lock if threshold reached."""
-        user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+    def _is_terminal_locked(session, terminal_id: str) -> bool:
+        """Check if terminal is currently locked out, clearing expired lockouts."""
+        throttle = AuthService._get_terminal_throttle(session, terminal_id)
+        if throttle.locked_until:
+            now = datetime.now()
+            if throttle.locked_until > now:
+                return True
+            # Lockout expired
+            throttle.locked_until = None
+            throttle.consecutive_failures = 0
+            session.flush()
+        return False
+
+    @staticmethod
+    def _record_terminal_failure(session, terminal_id: str) -> None:
+        """Increment failed attempts on the terminal, locking and auditing if threshold reached."""
+        throttle = AuthService._get_terminal_throttle(session, terminal_id)
+        throttle.consecutive_failures += 1
         max_attempts = _get_max_attempts()
-        if user.failed_login_attempts >= max_attempts:
+        if throttle.consecutive_failures >= max_attempts:
             duration = _get_lockout_duration()
-            user.locked_until = datetime.now() + timedelta(seconds=duration)
+            now = datetime.now()
+            throttle.locked_until = now + timedelta(seconds=duration)
+            throttle.consecutive_failures = 0
             logger.warning(
-                "Account '%s' locked for %d seconds after %d failed attempts",
-                user.username,
+                "Terminal '%s' locked for %ds after %d failed attempts",
+                terminal_id,
                 duration,
                 max_attempts,
             )
+            try:
+                from cbpos.core.models import AuditLog
+
+                log = AuditLog(
+                    user_id=None,
+                    action="Terminal Locked Out",
+                    event_type="LOCKOUT",
+                    terminal_id=terminal_id,
+                    details=f"{max_attempts} wrong PINs",
+                )
+                session.add(log)
+            except Exception as e:
+                logger.error("Failed to write lockout audit log: %s", e)
         session.commit()
 
     @staticmethod
-    def _reset_failed_attempts_db(session, user: User) -> None:
-        """Reset the failed attempt counter on successful login."""
-        if user.failed_login_attempts or user.locked_until:
-            user.failed_login_attempts = 0
-            user.locked_until = None
+    def _record_terminal_success(session, terminal_id: str) -> None:
+        """Reset consecutive failures on successful authentication."""
+        throttle = AuthService._get_terminal_throttle(session, terminal_id)
+        if throttle.consecutive_failures or throttle.locked_until:
+            throttle.consecutive_failures = 0
+            throttle.locked_until = None
             session.flush()
+
+    @staticmethod
+    def get_terminal_lockout_seconds() -> int:
+        """Return the remaining lockout seconds for this terminal, or 0 if not locked."""
+        from cbpos.core.services.config_service import ConfigService
+
+        terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+        db = Database()
+        with db.get_session() as session:
+            throttle = session.get(LoginThrottle, terminal_id)
+            if not throttle or not throttle.locked_until:
+                return 0
+            now = datetime.now()
+            if throttle.locked_until <= now:
+                return 0
+            duration = _get_lockout_duration()
+            remaining = int((throttle.locked_until - now).total_seconds())
+            return max(0, min(remaining, duration))
+
+    @staticmethod
+    def get_terminal_failures_remaining() -> int:
+        """Return number of failed attempts remaining before terminal lockout."""
+        from cbpos.core.services.config_service import ConfigService
+
+        terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+        db = Database()
+        with db.get_session() as session:
+            throttle = session.get(LoginThrottle, terminal_id)
+            failures = throttle.consecutive_failures if throttle else 0
+            max_attempts = _get_max_attempts()
+            return max(0, max_attempts - failures)
 
     # ------------------------------------------------------------------
     # Core authentication
@@ -125,6 +192,14 @@ class AuthService:
         role before returning so the detached object can be used safely
         after the session closes.
         """
+        from cbpos.core.services.config_service import ConfigService
+
+        terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+
+        if AuthService._is_terminal_locked(session, terminal_id):
+            logger.warning("PIN attempt rejected: terminal '%s' is locked", terminal_id)
+            return None
+
         users = (
             session.query(User)
             .options(joinedload(User.role).joinedload(Role.permissions))
@@ -134,27 +209,22 @@ class AuthService:
 
         matched_user = None
         for user in users:
-            # Check database-backed lockout
-            if AuthService._is_locked_out_db(user):
-                continue
-
             if AuthService._verify_against_hash(pin, user.pin_hash):
                 matched_user = user
                 break
 
         if not matched_user:
             logger.warning("Failed authentication attempt with PIN")
+            AuthService._record_terminal_failure(session, terminal_id)
             return None
 
         # --- Successful match ---
+        AuthService._record_terminal_success(session, terminal_id)
 
         # Migrate legacy SHA-256 hash to bcrypt transparently
         if AuthService._is_legacy_hash(matched_user.pin_hash):
             matched_user.pin_hash = AuthService.hash_pin(pin)
             logger.info("Migrated PIN hash to bcrypt for user '%s'", matched_user.username)
-
-        # Reset brute-force counter
-        AuthService._reset_failed_attempts_db(session, matched_user)
 
         # Detach user and role to keep available after session close
         if matched_user.role:
@@ -301,16 +371,23 @@ class AuthService:
         Returns:
             True if PIN matches and user is active, else False.
         """
+        from cbpos.core.services.config_service import ConfigService
+
+        terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+
         db = Database()
         with db.get_session() as session:
+            if AuthService._is_terminal_locked(session, terminal_id):
+                return False
+
             user = session.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
-            if not user:
+            if not user or not AuthService._verify_against_hash(pin, user.pin_hash):
+                AuthService._record_terminal_failure(session, terminal_id)
                 return False
 
-            if AuthService._is_locked_out_db(user):
-                return False
-
-            return AuthService._verify_against_hash(pin, user.pin_hash)
+            AuthService._record_terminal_success(session, terminal_id)
+            session.commit()
+            return True
 
     @staticmethod
     def is_pin_in_use(pin: str, exclude_user_id: int | None = None) -> bool:

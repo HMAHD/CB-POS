@@ -77,6 +77,8 @@
     "enter_pin_placeholder": "PIN එක දාන්න",
     "forgot_pin_hint": "PIN එක අමතකද? ඇඩ්මින්ට කතා කරන්න.",
     "invalid_pin": "PIN එක වැරදියි. ආයෙත් ට්‍රයි කරන්න.",
+    "locked": "වැරදි PIN වැඩියි. තත්පර {seconds}කින් ආයෙත් ට්‍රයි කරන්න.",
+    "attempts_left": "PIN එක වැරදියි. මේ ටිල් එක ලොක් වෙන්න කලින් තව {count} වතාවක් ට්‍රයි කරන්න පුළුවන්.",
     "logo_fallback": "CB POS",
     "version_footer": "වර්ෂන් {version} | © 2026 Ceylon Byte",
     "enter_pin": "PIN එක දාන්න"

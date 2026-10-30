@@ -84,8 +84,17 @@ class ProfileDialog(QDialog):
             QMessageBox.warning(self, _t("common.error"), _t("profile.pin_required"))
             return
 
+        lockout_secs = AuthService.get_terminal_lockout_seconds()
+        if lockout_secs > 0:
+            QMessageBox.warning(self, _t("common.error"), _t("login.locked", seconds=lockout_secs))
+            return
+
         if not AuthService.check_own_pin(user.id, current_pin):
-            QMessageBox.critical(self, _t("common.error"), _t("profile.invalid_pin"))
+            lockout_secs = AuthService.get_terminal_lockout_seconds()
+            if lockout_secs > 0:
+                QMessageBox.warning(self, _t("common.error"), _t("login.locked", seconds=lockout_secs))
+            else:
+                QMessageBox.critical(self, _t("common.error"), _t("profile.invalid_pin"))
             return
 
         try:

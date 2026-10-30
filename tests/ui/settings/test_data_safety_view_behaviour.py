@@ -230,7 +230,10 @@ class TestRestoreTab:
         assert "1 MB" in view.restore_tab.lbl_verify_result.text()
         assert view.restore_tab.btn_restore.isEnabled() and view.restore_tab.btn_verify.isEnabled()
 
-    def test_restore_runs_after_confirmation(self, view, allowed, boxes, started):
+    def test_restore_runs_after_confirmation(self, view, allowed, boxes, started, monkeypatch):
+        restarted = []
+        monkeypatch.setattr("cbpos.ui.app_restart.restart_application", lambda win: restarted.append(win) or True)
+
         ConfigService.set_backup_password("shop-pass-1")
         view.restore_tab.input_restore_path.setText("/b/x.zip")
         view.restore_tab.input_restore_password.setText("typed")
@@ -243,6 +246,7 @@ class TestRestoreTab:
 
         assert view.restore_tab.btn_restore.isEnabled() is True
         assert len(boxes["information"]) == 1
+        assert len(restarted) == 1
 
     def test_password_set_while_restoring_shows_on_the_backup_tab(self, view, allowed, boxes, monkeypatch):
         boxes["answer"]["value"] = QMessageBox.StandardButton.No

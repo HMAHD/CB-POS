@@ -87,28 +87,4 @@ class SessionWatchdog(QObject):
     def on_timeout(self):
         """Handle session timeout."""
         self.stop_monitoring()
-
-        # Log Timeout
-        try:
-            from cbpos.core.database import Database
-            from cbpos.core.models import AuditLog
-            from cbpos.core.services.auth_service import AuthService
-
-            user = AuthService.get_current_user()
-            if user:
-                db = Database()
-                with db.get_session() as session:
-                    log = AuditLog(
-                        user_id=user.id,
-                        action="Session Timeout",
-                        event_type="TIMEOUT",
-                        terminal_id="TERM-01",
-                        details="Auto-logout due to inactivity",
-                    )
-                    session.add(log)
-        except Exception as e:
-            import logging
-
-            logging.getLogger(__name__).error("Failed to log session timeout: %s", e)
-
         self.session_expired.emit()

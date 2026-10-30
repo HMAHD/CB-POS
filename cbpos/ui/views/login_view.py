@@ -145,6 +145,16 @@ class LoginView(QWidget):
         pin_group.addWidget(self.pin_heading)
         pin_group.addSpacing(10)
 
+        # Info Label for auto-held bills on logout/timeout
+        self.lbl_info = QLabel("")
+        self.lbl_info.setObjectName("LoginInfoLabel")
+        self.lbl_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_info.setWordWrap(True)
+        self.lbl_info.setFixedWidth(_NUMPAD_W)
+        self.lbl_info.setVisible(False)
+        pin_group.addWidget(self.lbl_info, alignment=Qt.AlignmentFlag.AlignCenter)
+        pin_group.addSpacing(6)
+
         # PIN Display — width matches numpad
         self.pin_input = QLineEdit()
         self.pin_input.setObjectName("PinInput")
@@ -334,6 +344,19 @@ class LoginView(QWidget):
         self.pin_heading.setText(_t("login.enter_your_pin"))
         self.pin_input.setPlaceholderText(_t("login.enter_pin_placeholder"))
         self.help_hint.setText(_t("login.forgot_pin_hint"))
+        if getattr(self, "_held_bill_id", None):
+            self.lbl_info.setText(_t("login.bill_held", id=self._held_bill_id))
+
+    def show_held_bill_notice(self, held_id: int) -> None:
+        """Show a notice that an open cart was auto-held."""
+        self._held_bill_id = held_id
+        self.lbl_info.setText(_t("login.bill_held", id=held_id))
+        self.lbl_info.setVisible(True)
+
+    def clear_held_bill_notice(self) -> None:
+        """Clear the held bill notice."""
+        self._held_bill_id = None
+        self.lbl_info.setVisible(False)
 
     # ── Events ─────────────────────────────────────────────────────
 
@@ -412,6 +435,7 @@ class LoginView(QWidget):
 
         user = AuthService.login(pin)
         if user:
+            self.clear_held_bill_notice()
             self.lbl_error.setVisible(False)
             self.login_success.emit(user)
         else:

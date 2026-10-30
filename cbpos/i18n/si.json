@@ -79,6 +79,7 @@
     "invalid_pin": "PIN එක වැරදියි. ආයෙත් ට්‍රයි කරන්න.",
     "locked": "වැරදි PIN වැඩියි. තත්පර {seconds}කින් ආයෙත් ට්‍රයි කරන්න.",
     "attempts_left": "PIN එක වැරදියි. මේ ටිල් එක ලොක් වෙන්න කලින් තව {count} වතාවක් ට්‍රයි කරන්න පුළුවන්.",
+    "bill_held": "විවෘත බිල රඳවාගත් බිල්පත් #{id} ලෙස සුරකින ලදී. F7 මඟින් එය නැවත ලබාගන්න.",
     "logo_fallback": "CB POS",
     "version_footer": "වර්ෂන් {version} | © 2026 Ceylon Byte",
     "enter_pin": "PIN එක දාන්න"

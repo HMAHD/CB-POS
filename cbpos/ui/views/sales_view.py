@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.config import Config
+from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_service import CustomerService
@@ -1102,6 +1103,31 @@ class SalesView(QWidget):
         else:
             QMessageBox.critical(self, _t("common.error"), _t("orders.held_error"))
         self._focus_search()
+
+    def end_session(self, reason: str = "LOGOUT") -> int | None:
+        """End the current session, auto-holding any open cart before clearing."""
+        if not self.cart_service.items:
+            self.clear_customer()
+            self.update_cart_display()
+            return None
+
+        current_user = AuthService.get_current_user()
+        username = current_user.username if current_user else "unknown"
+        note = f"Auto-held at sign-out ({username})"
+        held_id = None
+        try:
+            held_id = SuspendedTransactionService.hold_bill(self.cart_service, note=note)
+        except Exception as e:
+            logger.error("Auto-holding cart on %s failed: %s", reason, e)
+
+        # Clear cart, customer and display regardless of hold success (security wins)
+        self.cart_service.clear()
+        self.clear_customer()
+        self.update_cart_display()
+        if hasattr(self, "order_bar"):
+            self.order_bar.refresh_tabs()
+
+        return held_id
 
     def recall_bill(self):
         """Recall the most recently held bill back into the cart (F7)."""

@@ -420,8 +420,8 @@ class AuthService:
         return AuthService._current_user
 
     @staticmethod
-    def logout():
-        """Clear the current user session."""
+    def logout(reason: str = "LOGOUT"):
+        """Clear the current user session and record audit log."""
         if AuthService._current_user:
             try:
                 db = Database()
@@ -430,14 +430,17 @@ class AuthService:
                     from cbpos.core.services.config_service import ConfigService
 
                     terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+                    action = "Session Timeout" if reason == "TIMEOUT" else "User Logout"
+                    details = "Auto-logout due to inactivity" if reason == "TIMEOUT" else "Manual logout"
                     log = AuditLog(
                         user_id=AuthService._current_user.id,
-                        action="User Logout",
-                        event_type="LOGOUT",
+                        action=action,
+                        event_type=reason,
                         terminal_id=terminal_id,
-                        details="Manual logout",
+                        details=details,
                     )
                     session.add(log)
+                    session.commit()
             except Exception as e:
                 logger.error("Failed to write logout audit log: %s", e)
 

@@ -382,6 +382,9 @@ class BackupService:
             try:
                 rows = conn.execute("PRAGMA integrity_check").fetchall()
                 tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+                revisions = []
+                if "alembic_version" in tables:
+                    revisions = [r[0] for r in conn.execute("SELECT version_num FROM alembic_version").fetchall()]
             finally:
                 conn.close()
         except sqlite3.DatabaseError as e:
@@ -391,6 +394,13 @@ class BackupService:
         missing = _EXPECTED_TABLES - tables
         if missing:
             raise BackupError("not_a_backup", f"missing tables: {sorted(missing)}")
+        if revisions:
+            from cbpos.core.services.schema_migration_service import SchemaMigrationService
+
+            known = SchemaMigrationService.known_revisions()
+            for rev in revisions:
+                if rev not in known:
+                    raise BackupError("newer_version", rev)
 
     @staticmethod
     def _replace_database(new_db: Path, db_file: Path) -> None:

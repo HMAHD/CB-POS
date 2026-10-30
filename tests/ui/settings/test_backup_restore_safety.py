@@ -179,6 +179,7 @@ class TestSafetySnapshot:
             "snapshot_failed",
             "db_in_use",
             "not_found",
+            "newer_version",
         ):
             for lang in ("en", "si", "ta"):
                 assert translate_in(lang, f"data_safety.error_{code}") != f"data_safety.error_{code}"
@@ -194,3 +195,48 @@ class TestSafetySnapshot:
 
         assert exc.value.code == "no_password"
         assert (env / "cbpos.db").read_bytes() == before
+
+    def test_issue_874_restore_refuses_unknown_revision(self, env):
+        """A backup whose database is stamped at an unknown Alembic revision is refused."""
+        import sqlite3
+
+        future_db = env / "future_cbpos.db"
+        make_pos_db(future_db, marker="future")
+        conn = sqlite3.connect(future_db)
+        conn.execute("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)")
+        conn.execute("INSERT INTO alembic_version (version_num) VALUES ('f9e8d7c6b5a4')")
+        conn.commit()
+        conn.close()
+
+        backup = _encrypted_zip(
+            env / "future_backup.zip",
+            {"cbpos.db": future_db.read_bytes(), "settings.json": b"{}"},
+        )
+        before = (env / "cbpos.db").read_bytes()
+
+        with data_dir(env), pytest.raises(BackupError) as exc:
+            BackupService.restore_backup(backup, SHOP_PASSWORD, snapshot_dir=str(env / "snaps"))
+
+        assert exc.value.code == "newer_version"
+        assert (env / "cbpos.db").read_bytes() == before
+
+    def test_issue_874_verify_backup_reports_newer_version(self, env):
+        """verify_backup(deep=True) reports newer_version for future revision."""
+        import sqlite3
+
+        future_db = env / "future_cbpos2.db"
+        make_pos_db(future_db, marker="future")
+        conn = sqlite3.connect(future_db)
+        conn.execute("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)")
+        conn.execute("INSERT INTO alembic_version (version_num) VALUES ('f9e8d7c6b5a4')")
+        conn.commit()
+        conn.close()
+
+        backup = _encrypted_zip(
+            env / "future_backup2.zip",
+            {"cbpos.db": future_db.read_bytes(), "settings.json": b"{}"},
+        )
+        result = BackupService.verify_backup(backup, SHOP_PASSWORD, deep=True)
+
+        assert result["valid"] is False
+        assert result["error_code"] == "newer_version"

@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 1 · Batch: 1.3 · Branch: fix/p1-b3-migration-backup-restore · PR: #980 · Last session: 2026-10-30
+- Phase: 2 · Batch: 2.1 · Branch: main · PR: none · Last session: 2026-10-31
 
 ## Issues
 
@@ -41,12 +41,12 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #856 | The login screen has no brute-force lockout; lockout code exists only in an u… | high | 1.2 | done | #979 | a150ed7 · terminal-scoped lockout in login_throttle with countdown UI and dialog alerts |
 | #859 | The last active Admin can be deactivated or demoted, locking everyone out of … | high | 1.2 | done | #979 | c0c8da2 · guard against deactivating or demoting last active admin in UserService and UserDialog |
 | #860 | Logout and session timeout do not log the user out of AuthService, do not clo… | high | 1.2 | done | #979 | c6cd353, 92b18b5 · close modal dialogs, auto-hold cart, and end AuthService session with audit on logout/timeout |
-| #837 | A database without an `alembic_version` table is stamped at head and its migr… | high | 1.3 | pr-open | #980 | 0772c71 · SchemaMigrationService fingerprinting for legacy unstamped databases |
-| #838 | A corrupt or empty settings.json silently becomes defaults and the next save … | high | 1.3 | pr-open | #980 | 884bace · quarantine corrupted settings to settings.json.corrupt-<timestamp> and atomic write |
-| #875 | Restoring on a replacement PC turns the encrypted SMTP password, sync secret … | medium | 1.3 | pr-open | #980 | 77586b4 · clear undecryptable ciphertext secrets and prompt for re-entry |
-| #874 | A backup from a newer app version is accepted, and the app then refuses to st… | medium | 1.3 | pr-open | #980 | 85f389f · reject backups from newer schema versions with newer_version |
-| #839 | Backup, restore and maintenance work on the local SQLite file in network (Pos… | high | 1.3 | pr-open | #980 | 55bedfe · disable local backup and maintenance in network mode with informative card |
-| #873 | After a restore the app keeps running with stale in-memory settings that over… | medium | 1.3 | pr-open | #980 | de0ab2d · reload settings, freeze writes, migrate restored DB, and force app restart |
+| #837 | A database without an `alembic_version` table is stamped at head and its migr… | high | 1.3 | done | #980 | 0772c71 · SchemaMigrationService fingerprinting for legacy unstamped databases |
+| #838 | A corrupt or empty settings.json silently becomes defaults and the next save … | high | 1.3 | done | #980 | 884bace · quarantine corrupted settings to settings.json.corrupt-<timestamp> and atomic write |
+| #875 | Restoring on a replacement PC turns the encrypted SMTP password, sync secret … | medium | 1.3 | done | #980 | 775b3a7 · clear undecryptable ciphertext secrets and prompt for re-entry |
+| #874 | A backup from a newer app version is accepted, and the app then refuses to st… | medium | 1.3 | done | #980 | 85f389f · reject backups from newer schema versions with newer_version |
+| #839 | Backup, restore and maintenance work on the local SQLite file in network (Pos… | high | 1.3 | done | #980 | 55bedfe · disable local backup and maintenance in network mode with informative card |
+| #873 | After a restore the app keeps running with stale in-memory settings that over… | medium | 1.3 | done | #980 | de0ab2d, 3cefa15 · reload settings, freeze writes, migrate restored DB, force restart, prevent test process leaks |
 
 ### Phase 2 — [spec](phases/phase-02-network-multi-terminal.md)
 
@@ -305,4 +305,4 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Handoff
 
-Batch 1.3 (#837, #838, #875, #874, #839, #873) complete and open in PR #980 on `fix/p1-b3-migration-backup-restore`. All 6 issues committed and pushed. Focused tests (18 safety, 41 backup domain, 750 fast loop) green and pre-commit clean. UI gate screenshots attached for network mode cards and restore restart dialogs. Next up once PR #980 is merged: verify all 6 issues closed on GitHub and start Phase 2 Batch 2.1 (#799, #904).
+Phase 1 is complete! All 4 batches (1.0, 1.1, 1.2, 1.3) are done, merged into `main` via PRs #977, #978, #979, and #980, and verified closed on GitHub. All 14 Phase 1 issues are closed. Full test suite is clean (2,885 passed, 0 failures, 0 hangs), pre-commit is passing, and CI is 100% green. Ready to begin Phase 2 Batch 2.1 (#799, #904) per `docs/remediation/phases/phase-02-network-multi-terminal.md`.

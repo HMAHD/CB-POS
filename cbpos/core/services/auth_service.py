@@ -113,24 +113,6 @@ class AuthService:
             user.locked_until = None
             session.flush()
 
-    @staticmethod
-    def get_remaining_lockout_seconds(username: str) -> int:
-        """Return the number of seconds remaining on a lockout, or 0 if not locked.
-
-        Args:
-            username: The username to check.
-
-        Returns:
-            Remaining lockout seconds (0 if not locked out).
-        """
-        db = Database()
-        with db.get_session() as session:
-            user = session.query(User).filter(User.username == username).first()
-            if not user or not user.locked_until:
-                return 0
-            remaining = (user.locked_until - datetime.now()).total_seconds()
-            return max(0, int(remaining))
-
     # ------------------------------------------------------------------
     # Core authentication
     # ------------------------------------------------------------------
@@ -348,67 +330,6 @@ class AuthService:
                 query = query.filter(User.id != exclude_user_id)
             users = query.all()
             return any(AuthService._verify_against_hash(pin, user.pin_hash) for user in users)
-
-    @staticmethod
-    def verify_pin_for_user(username: str, pin: str) -> User | None:
-        """Verify a PIN for a specific username (used where username is known).
-
-        Includes brute-force protection and automatic bcrypt migration.
-
-        Args:
-            username: The target username.
-            pin: The plaintext PIN.
-
-        Returns:
-            The User object on success, else None.
-        """
-        db = Database()
-        with db.get_session() as session:
-            user = (
-                session.query(User)
-                .options(joinedload(User.role).joinedload(Role.permissions))
-                .filter(User.username == username, User.is_active.is_(True))
-                .first()
-            )
-
-            if not user:
-                return None
-
-            # Check database-backed lockout
-            if AuthService._is_locked_out_db(user):
-                remaining = 0
-                if user.locked_until:
-                    remaining = max(0, int((user.locked_until - datetime.now()).total_seconds()))
-                logger.warning(
-                    "Login attempt for locked account '%s' (%ds remaining)",
-                    username,
-                    remaining,
-                )
-                return None
-
-            if not AuthService._verify_against_hash(pin, user.pin_hash):
-                AuthService._record_failed_attempt_db(session, user)
-                return None
-
-            # Migrate legacy hash
-            if AuthService._is_legacy_hash(user.pin_hash):
-                user.pin_hash = AuthService.hash_pin(pin)
-                logger.info("Migrated PIN hash to bcrypt for user '%s'", username)
-
-            AuthService._reset_failed_attempts_db(session, user)
-            session.commit()
-
-            if user.role:
-                _ = user.role.name
-                _ = list(user.role.permissions)
-                for perm in user.role.permissions:
-                    _ = perm.code
-                    session.expunge(perm)
-                session.expunge(user.role)
-            session.expunge(user)
-
-            AuthService._current_user = user
-            return user
 
     @staticmethod
     def get_current_user() -> User | None:

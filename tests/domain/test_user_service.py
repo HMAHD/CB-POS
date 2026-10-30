@@ -119,3 +119,90 @@ def test_issue_857_reactivation_requires_new_pin(db_session, user_roles):
     db_session.refresh(inactive_user)
     assert inactive_user.is_active is True
     assert AuthService._verify_against_hash("8888", inactive_user.pin_hash) is True
+
+
+def test_issue_859_sole_admin_cannot_be_deactivated(db_session):
+    """The only active Admin cannot be deactivated (ValueError('last_admin'))."""
+    from cbpos.core.constants.permissions import ADMIN_ROLE_NAME
+
+    admin_role = db_session.query(Role).filter_by(name=ADMIN_ROLE_NAME).first()
+    if not admin_role:
+        admin_role = Role(name=ADMIN_ROLE_NAME)
+        db_session.add(admin_role)
+        db_session.commit()
+
+    admin_user = User(
+        username="sole_admin",
+        pin_hash=AuthService.hash_pin("1111"),
+        role_id=admin_role.id,
+        is_active=True,
+    )
+    db_session.add(admin_user)
+    db_session.commit()
+
+    assert UserService.is_last_active_admin(admin_user.id) is True
+
+    with pytest.raises(ValueError, match="last_admin"):
+        UserService.update_user(admin_user.id, "sole_admin", None, admin_role.id, False)
+
+
+def test_issue_859_sole_admin_cannot_be_demoted(db_session, user_roles):
+    """The only active Admin cannot be changed to another role (ValueError('last_admin'))."""
+    from cbpos.core.constants.permissions import ADMIN_ROLE_NAME
+
+    admin_role = db_session.query(Role).filter_by(name=ADMIN_ROLE_NAME).first()
+    if not admin_role:
+        admin_role = Role(name=ADMIN_ROLE_NAME)
+        db_session.add(admin_role)
+        db_session.commit()
+
+    admin_user = User(
+        username="sole_admin_demote",
+        pin_hash=AuthService.hash_pin("2222"),
+        role_id=admin_role.id,
+        is_active=True,
+    )
+    db_session.add(admin_user)
+    db_session.commit()
+
+    assert UserService.is_last_active_admin(admin_user.id) is True
+
+    with pytest.raises(ValueError, match="last_admin"):
+        UserService.update_user(admin_user.id, "sole_admin_demote", None, user_roles.id, True)
+
+
+def test_issue_859_one_of_two_admins_can_be_deactivated(db_session, user_roles):
+    """When there are two active Admins, one can be deactivated or demoted."""
+    from cbpos.core.constants.permissions import ADMIN_ROLE_NAME
+
+    admin_role = db_session.query(Role).filter_by(name=ADMIN_ROLE_NAME).first()
+    if not admin_role:
+        admin_role = Role(name=ADMIN_ROLE_NAME)
+        db_session.add(admin_role)
+        db_session.commit()
+
+    admin1 = User(
+        username="admin1_859",
+        pin_hash=AuthService.hash_pin("3333"),
+        role_id=admin_role.id,
+        is_active=True,
+    )
+    admin2 = User(
+        username="admin2_859",
+        pin_hash=AuthService.hash_pin("4444"),
+        role_id=admin_role.id,
+        is_active=True,
+    )
+    db_session.add_all([admin1, admin2])
+    db_session.commit()
+
+    assert UserService.is_last_active_admin(admin1.id) is False
+    assert UserService.is_last_active_admin(admin2.id) is False
+
+    # Deactivating admin1 succeeds because admin2 remains active
+    assert UserService.update_user(admin1.id, "admin1_859", None, admin_role.id, False) is True
+
+    # Now admin2 is the sole active admin and cannot be deactivated
+    assert UserService.is_last_active_admin(admin2.id) is True
+    with pytest.raises(ValueError, match="last_admin"):
+        UserService.update_user(admin2.id, "admin2_859", None, admin_role.id, False)

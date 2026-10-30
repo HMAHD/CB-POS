@@ -39,7 +39,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #835 | A manager override permanently logs the manager in, so the cashier keeps all … | critical | 1.2 | in-progress | | 5f7613c · split login and authenticate_pin, preserve cashier session |
 | #857 | Duplicate PINs are accepted, so a user can log in as a different, higher-priv… | high | 1.2 | in-progress | | enforce unique active PINs and require new PIN on reactivation |
 | #856 | The login screen has no brute-force lockout; lockout code exists only in an u… | high | 1.2 | in-progress | | terminal-scoped lockout in login_throttle with countdown UI and dialog alerts |
-| #859 | The last active Admin can be deactivated or demoted, locking everyone out of … | high | 1.2 | todo | | |
+| #859 | The last active Admin can be deactivated or demoted, locking everyone out of … | high | 1.2 | in-progress | | guard against deactivating or demoting last active admin in UserService and UserDialog |
 | #860 | Logout and session timeout do not log the user out of AuthService, do not clo… | high | 1.2 | todo | | |
 | #837 | A database without an `alembic_version` table is stamped at head and its migr… | high | 1.3 | todo | | |
 | #838 | A corrupt or empty settings.json silently becomes defaults and the next save … | high | 1.3 | todo | | |

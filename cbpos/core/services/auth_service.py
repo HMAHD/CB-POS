@@ -155,17 +155,20 @@ class AuthService:
         from cbpos.core.services.config_service import ConfigService
 
         terminal_id = ConfigService.get("terminal_id") or "TERM-01"
-        db = Database()
-        with db.get_session() as session:
-            throttle = session.get(LoginThrottle, terminal_id)
-            if not throttle or not throttle.locked_until:
-                return 0
-            now = datetime.now()
-            if throttle.locked_until <= now:
-                return 0
-            duration = _get_lockout_duration()
-            remaining = int((throttle.locked_until - now).total_seconds())
-            return max(0, min(remaining, duration))
+        try:
+            db = Database()
+            with db.get_session() as session:
+                throttle = session.get(LoginThrottle, terminal_id)
+                if not throttle or not throttle.locked_until:
+                    return 0
+                now = datetime.now()
+                if throttle.locked_until <= now:
+                    return 0
+                duration = _get_lockout_duration()
+                remaining = int((throttle.locked_until - now).total_seconds())
+                return max(0, min(remaining, duration))
+        except Exception:
+            return 0
 
     @staticmethod
     def get_terminal_failures_remaining() -> int:
@@ -173,12 +176,15 @@ class AuthService:
         from cbpos.core.services.config_service import ConfigService
 
         terminal_id = ConfigService.get("terminal_id") or "TERM-01"
-        db = Database()
-        with db.get_session() as session:
-            throttle = session.get(LoginThrottle, terminal_id)
-            failures = throttle.consecutive_failures if throttle else 0
-            max_attempts = _get_max_attempts()
-            return max(0, max_attempts - failures)
+        max_attempts = _get_max_attempts()
+        try:
+            db = Database()
+            with db.get_session() as session:
+                throttle = session.get(LoginThrottle, terminal_id)
+                failures = throttle.consecutive_failures if throttle else 0
+                return max(0, max_attempts - failures)
+        except Exception:
+            return max_attempts
 
     # ------------------------------------------------------------------
     # Core authentication

@@ -36,11 +36,11 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #948 | CI runs no tests or lint: every job in ci.yml is commented out | high | 1.0 | done | #977 | 972c7a4 · restored CI workflow and quarantined 11 baseline failures under D21 |
 | #833 | "Is setup needed?" answers yes on any DB error, so "Load Demo Data" can wipe … | critical | 1.1 | done | #978 | 65e7356 · fail closed on DB errors and guard demo data against wiping live DB |
 | #791 | First-run setup wizard never appears; admin PIN from wizard is never applied … | critical | 1.1 | done | #978 | f2b43a8 · restore first-run setup wizard and apply admin PIN |
-| #835 | A manager override permanently logs the manager in, so the cashier keeps all … | critical | 1.2 | in-progress | | 5f7613c · split login and authenticate_pin, preserve cashier session |
-| #857 | Duplicate PINs are accepted, so a user can log in as a different, higher-priv… | high | 1.2 | in-progress | | enforce unique active PINs and require new PIN on reactivation |
-| #856 | The login screen has no brute-force lockout; lockout code exists only in an u… | high | 1.2 | in-progress | | terminal-scoped lockout in login_throttle with countdown UI and dialog alerts |
-| #859 | The last active Admin can be deactivated or demoted, locking everyone out of … | high | 1.2 | in-progress | | guard against deactivating or demoting last active admin in UserService and UserDialog |
-| #860 | Logout and session timeout do not log the user out of AuthService, do not clo… | high | 1.2 | in-progress | | close modal dialogs, auto-hold cart, and end AuthService session with audit on logout/timeout |
+| #835 | A manager override permanently logs the manager in, so the cashier keeps all … | critical | 1.2 | pr-open | #979 | 5f7613c · split login and authenticate_pin, preserve cashier session |
+| #857 | Duplicate PINs are accepted, so a user can log in as a different, higher-priv… | high | 1.2 | pr-open | #979 | 77586b4 · enforce unique active PINs and require new PIN on reactivation |
+| #856 | The login screen has no brute-force lockout; lockout code exists only in an u… | high | 1.2 | pr-open | #979 | a150ed7 · terminal-scoped lockout in login_throttle with countdown UI and dialog alerts |
+| #859 | The last active Admin can be deactivated or demoted, locking everyone out of … | high | 1.2 | pr-open | #979 | c0c8da2 · guard against deactivating or demoting last active admin in UserService and UserDialog |
+| #860 | Logout and session timeout do not log the user out of AuthService, do not clo… | high | 1.2 | pr-open | #979 | c6cd353, 92b18b5 · close modal dialogs, auto-hold cart, and end AuthService session with audit on logout/timeout |
 | #837 | A database without an `alembic_version` table is stamped at head and its migr… | high | 1.3 | todo | | |
 | #838 | A corrupt or empty settings.json silently becomes defaults and the next save … | high | 1.3 | todo | | |
 | #875 | Restoring on a replacement PC turns the encrypted SMTP password, sync secret … | medium | 1.3 | todo | | |

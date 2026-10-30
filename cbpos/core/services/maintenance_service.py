@@ -18,8 +18,24 @@ from cbpos.core.utils.formatters import format_bytes
 logger = logging.getLogger(__name__)
 
 
+class MaintenanceError(RuntimeError):
+    """Raised when a maintenance operation cannot be performed."""
+
+    def __init__(self, code: str, detail: str = "") -> None:
+        super().__init__(f"{code}: {detail}" if detail else code)
+        self.code = code
+        self.detail = detail
+
+
 class MaintenanceService:
     """Database maintenance operations: vacuum, integrity check, info."""
+
+    @staticmethod
+    def _require_standalone() -> None:
+        from cbpos.core.services.backup_service import BackupService
+
+        if not BackupService.is_supported():
+            raise MaintenanceError("network_mode", "Maintenance operations are not supported in network database mode")
 
     @staticmethod
     def vacuum_database() -> dict[str, str]:
@@ -31,6 +47,8 @@ class MaintenanceService:
         Returns:
             Dict with size_before, size_after, saved (human-readable).
         """
+        MaintenanceService._require_standalone()
+
         db_path = Config.DATA_DIR / "cbpos.db"
         size_before = db_path.stat().st_size if db_path.exists() else 0
 
@@ -59,6 +77,8 @@ class MaintenanceService:
         Returns:
             Dict with size, products, customers, sales counts.
         """
+        MaintenanceService._require_standalone()
+
         db_path = Config.DATA_DIR / "cbpos.db"
         size = db_path.stat().st_size if db_path.exists() else 0
 
@@ -103,6 +123,8 @@ class MaintenanceService:
             Dict with path, size, last_modified, sqlite_version,
             and tables (list of {name, rows}).
         """
+        MaintenanceService._require_standalone()
+
         db_path = Config.DATA_DIR / "cbpos.db"
         size = db_path.stat().st_size if db_path.exists() else 0
 
@@ -163,6 +185,8 @@ class MaintenanceService:
         Returns:
             Tuple of (is_ok: bool, message: str).
         """
+        MaintenanceService._require_standalone()
+
         db = Database()
         try:
             with db.get_session() as session:

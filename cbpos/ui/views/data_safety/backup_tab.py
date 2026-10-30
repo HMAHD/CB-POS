@@ -24,6 +24,7 @@ from cbpos.i18n import _t
 from cbpos.ui.dialogs.backup_password_dialog import BackupPasswordDialog, ensure_backup_password
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.utils.style_helpers import set_status_class
+from cbpos.ui.views.data_safety.network_notice import NetworkModeNoticeCard
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
@@ -73,6 +74,9 @@ class BackupTabWidget(QWidget):
 
     def refresh(self) -> None:
         """Re-read the password state and rescan the backup folder."""
+        self._apply_mode()
+        if not BackupService.is_supported():
+            return
         self.refresh_password_status()
         self._refresh_backup_list()
 
@@ -80,10 +84,23 @@ class BackupTabWidget(QWidget):
         self.refresh_password_status()
         self.password_changed.emit()
 
+    def _apply_mode(self) -> None:
+        supported = BackupService.is_supported()
+        self.standalone_container.setVisible(supported)
+        self.notice_card.setVisible(not supported)
+
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 16, 8, 8)
         layout.setSpacing(12)
+
+        self.notice_card = NetworkModeNoticeCard()
+        layout.addWidget(self.notice_card)
+
+        self.standalone_container = QWidget()
+        standalone_layout = QVBoxLayout(self.standalone_container)
+        standalone_layout.setContentsMargins(0, 0, 0, 0)
+        standalone_layout.setSpacing(12)
 
         # Backup directory display
         dir_layout = QHBoxLayout()
@@ -101,7 +118,7 @@ class BackupTabWidget(QWidget):
         self.btn_change_dir.setFixedWidth(100)
         self.btn_change_dir.clicked.connect(self._change_backup_dir)
         dir_layout.addWidget(self.btn_change_dir)
-        layout.addLayout(dir_layout)
+        standalone_layout.addLayout(dir_layout)
 
         # Shop backup password -- one password for every backup (#619)
         pwd_layout = QHBoxLayout()
@@ -115,14 +132,14 @@ class BackupTabWidget(QWidget):
         self.btn_backup_password = QPushButton()
         self.btn_backup_password.clicked.connect(self._change_backup_password)
         pwd_layout.addWidget(self.btn_backup_password)
-        layout.addLayout(pwd_layout)
+        standalone_layout.addLayout(pwd_layout)
 
         # Newest backup and whether the shop password opens it (#619)
         self.lbl_last_backup = QLabel()
         self.lbl_last_backup.setObjectName("LastBackupStatus")
         self.lbl_last_backup.setWordWrap(True)
         self._last_status: dict | None = None
-        layout.addWidget(self.lbl_last_backup)
+        standalone_layout.addWidget(self.lbl_last_backup)
 
         # Backup list table — QSS handles all table styling
         self.backup_table = QTableWidget()
@@ -149,7 +166,7 @@ class BackupTabWidget(QWidget):
         self.empty_table_state = attach_table_empty_state(self.backup_table, Icons.DOCUMENTS, "common.no_items")
         self.backup_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.backup_table.customContextMenuRequested.connect(self._show_backup_context_menu)
-        layout.addWidget(self.backup_table, 1)
+        standalone_layout.addWidget(self.backup_table, 1)
 
         # Action buttons — use class properties for theme-aware styling
         btn_layout = QHBoxLayout()
@@ -169,7 +186,11 @@ class BackupTabWidget(QWidget):
         btn_layout.addWidget(self.btn_backup_refresh)
 
         btn_layout.addStretch()
-        layout.addLayout(btn_layout)
+        standalone_layout.addLayout(btn_layout)
+
+        layout.addWidget(self.standalone_container, 1)
+        layout.addStretch(1)
+        self._apply_mode()
 
     def _refresh_backup_list(self) -> None:
         """Scan the backup directory in the background.
@@ -419,6 +440,7 @@ class BackupTabWidget(QWidget):
 
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
+        self.notice_card.retranslate_ui()
         self.lbl_dir_label.setText(_t("data_safety.backup_folder"))
         self.btn_change_dir.setText(_t("data_safety.btn_change"))
         self.backup_table.setHorizontalHeaderLabels(

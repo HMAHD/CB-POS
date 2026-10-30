@@ -4,9 +4,11 @@ import logging
 
 from PyQt6.QtWidgets import QFrame, QGroupBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
+from cbpos.core.services.backup_service import BackupService
 from cbpos.i18n import _t
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.utils.style_helpers import set_status_class
+from cbpos.ui.views.data_safety.network_notice import NetworkModeNoticeCard
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 
 logger = logging.getLogger(__name__)
@@ -158,11 +160,24 @@ class MaintenanceTabWidget(QWidget):
         self.lbl_maintenance_status.setWordWrap(True)
         actions_layout.addWidget(self.lbl_maintenance_status)
 
+        self.notice_card = NetworkModeNoticeCard()
+        layout.addWidget(self.notice_card)
+
         layout.addWidget(self.grp_actions)
         layout.addStretch()
+        self._apply_mode()
+
+    def _apply_mode(self) -> None:
+        supported = BackupService.is_supported()
+        self.grp_info.setVisible(supported)
+        self.grp_actions.setVisible(supported)
+        self.notice_card.setVisible(not supported)
 
     def refresh(self) -> None:
         """Reload the database size and record counts."""
+        self._apply_mode()
+        if not BackupService.is_supported():
+            return
         try:
             from cbpos.core.services.maintenance_service import MaintenanceService
 
@@ -238,6 +253,7 @@ class MaintenanceTabWidget(QWidget):
 
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
+        self.notice_card.retranslate_ui()
         self.grp_info.setTitle(_t("data_safety.maintenance_group_info"))
         self.lbl_db_size_label.setText(_t("data_safety.maintenance_db_size"))
         self.lbl_products_label.setText(_t("data_safety.maintenance_products"))

@@ -20,6 +20,7 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.i18n import _t
 from cbpos.ui.dialogs.backup_password_dialog import ensure_backup_password
 from cbpos.ui.utils.style_helpers import set_status_class
+from cbpos.ui.views.data_safety.network_notice import NetworkModeNoticeCard
 from cbpos.ui.widgets.loading_overlay import LoadingOverlay
 from cbpos.ui.workers import RestoreWorker, VerifyBackupWorker
 
@@ -57,21 +58,37 @@ class RestoreTabWidget(QWidget):
 
     def refresh_password_hint(self) -> None:
         """Say in the password box whether leaving it empty uses the shop password."""
+        self._apply_mode()
+        if not BackupService.is_supported():
+            return
         if ConfigService.has_backup_password():
             self.input_restore_password.setPlaceholderText(_t("data_safety.restore_pwd_placeholder_shop"))
         else:
             self.input_restore_password.setPlaceholderText(_t("data_safety.restore_pwd_placeholder"))
+
+    def _apply_mode(self) -> None:
+        supported = BackupService.is_supported()
+        self.standalone_container.setVisible(supported)
+        self.notice_card.setVisible(not supported)
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 16, 8, 8)
         layout.setSpacing(16)
 
+        self.notice_card = NetworkModeNoticeCard()
+        layout.addWidget(self.notice_card)
+
+        self.standalone_container = QWidget()
+        standalone_layout = QVBoxLayout(self.standalone_container)
+        standalone_layout.setContentsMargins(0, 0, 0, 0)
+        standalone_layout.setSpacing(16)
+
         # Warning banner — objectName for theme-specific warning styling
         self.lbl_restore_warning = QLabel()
         self.lbl_restore_warning.setObjectName("RestoreWarning")
         self.lbl_restore_warning.setWordWrap(True)
-        layout.addWidget(self.lbl_restore_warning)
+        standalone_layout.addWidget(self.lbl_restore_warning)
 
         # File selection
         self.grp_restore_file = QGroupBox()
@@ -99,14 +116,14 @@ class RestoreTabWidget(QWidget):
         pwd_row.addWidget(self.btn_toggle_restore_pwd)
         file_layout.addLayout(pwd_row)
 
-        layout.addWidget(self.grp_restore_file)
+        standalone_layout.addWidget(self.grp_restore_file)
 
         # Verification result
         self.lbl_verify_result = QLabel("")
         self.lbl_verify_result.setWordWrap(True)
-        layout.addWidget(self.lbl_verify_result)
+        standalone_layout.addWidget(self.lbl_verify_result)
 
-        layout.addStretch()
+        standalone_layout.addStretch()
 
         # Action buttons
         btn_layout = QHBoxLayout()
@@ -123,7 +140,11 @@ class RestoreTabWidget(QWidget):
         btn_layout.addWidget(self.btn_restore)
 
         btn_layout.addStretch()
-        layout.addLayout(btn_layout)
+        standalone_layout.addLayout(btn_layout)
+
+        layout.addWidget(self.standalone_container, 1)
+        layout.addStretch(1)
+        self._apply_mode()
 
     def _browse_restore_file(self) -> None:
         backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
@@ -283,6 +304,7 @@ class RestoreTabWidget(QWidget):
 
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
+        self.notice_card.retranslate_ui()
         self.lbl_restore_warning.setText(_t("data_safety.restore_warning_full"))
         self.grp_restore_file.setTitle(_t("data_safety.restore_file_group"))
         self.input_restore_path.setPlaceholderText(_t("data_safety.restore_file_placeholder"))

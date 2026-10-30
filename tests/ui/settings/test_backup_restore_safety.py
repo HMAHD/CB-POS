@@ -240,3 +240,60 @@ class TestSafetySnapshot:
 
         assert result["valid"] is False
         assert result["error_code"] == "newer_version"
+
+    def test_issue_839_data_safety_tabs_network_mode_notices(self, qapp, monkeypatch):
+        """Data Safety tabs show notice card instead of actions in network mode."""
+        from cbpos.ui.views.data_safety.backup_tab import BackupTabWidget
+        from cbpos.ui.views.data_safety.maintenance_tab import MaintenanceTabWidget
+        from cbpos.ui.views.data_safety.restore_tab import RestoreTabWidget
+        from cbpos.ui.widgets.loading_overlay import LoadingOverlay
+
+        # Network mode: is_supported = False
+        monkeypatch.setattr(BackupService, "is_supported", staticmethod(lambda: False))
+        monkeypatch.setattr(BackupService, "network_host", staticmethod(lambda: "pos-db.store.lan"))
+
+        from PyQt6.QtWidgets import QWidget
+
+        root = QWidget()
+        overlay = LoadingOverlay(root)
+
+        backup_tab = BackupTabWidget(overlay)
+        restore_tab = RestoreTabWidget(overlay)
+        maintenance_tab = MaintenanceTabWidget(overlay)
+
+        # Check visibility in network mode
+        assert backup_tab.standalone_container.isHidden()
+        assert not backup_tab.notice_card.isHidden()
+        assert "Backups are made on the database server" in backup_tab.notice_card.lbl_title.text()
+        assert "pos-db.store.lan" in backup_tab.notice_card.lbl_body.text()
+
+        assert restore_tab.standalone_container.isHidden()
+        assert not restore_tab.notice_card.isHidden()
+
+        assert maintenance_tab.grp_info.isHidden()
+        assert maintenance_tab.grp_actions.isHidden()
+        assert not maintenance_tab.notice_card.isHidden()
+
+        # Switch back to standalone mode: is_supported = True
+        monkeypatch.setattr(BackupService, "is_supported", staticmethod(lambda: True))
+        backup_tab.refresh()
+        restore_tab.refresh_password_hint()
+        maintenance_tab.refresh()
+
+        assert not backup_tab.standalone_container.isHidden()
+        assert backup_tab.notice_card.isHidden()
+
+        assert not restore_tab.standalone_container.isHidden()
+        assert restore_tab.notice_card.isHidden()
+
+        assert not maintenance_tab.grp_info.isHidden()
+        assert not maintenance_tab.grp_actions.isHidden()
+        assert maintenance_tab.notice_card.isHidden()
+
+        # Translations parity check
+        for lang in ("en", "si", "ta"):
+            for key in ("network_mode_title", "network_mode_body", "error_network_mode"):
+                text = translate_in(lang, f"data_safety.{key}")
+                assert text != f"data_safety.{key}"
+                if key == "network_mode_body":
+                    assert "{host}" in text

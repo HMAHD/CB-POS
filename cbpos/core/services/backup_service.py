@@ -56,7 +56,8 @@ class BackupError(ValueError):
     """A backup can't be used, with a stable ``code`` the UI can translate.
 
     Codes: ``no_password``, ``not_a_backup``, ``wrong_password``,
-    ``db_invalid``, ``snapshot_failed``, ``db_in_use``.
+    ``db_invalid``, ``snapshot_failed``, ``db_in_use``, ``newer_version``,
+    ``network_mode``.
     """
 
     def __init__(self, code: str, detail: str = "") -> None:
@@ -67,6 +68,26 @@ class BackupError(ValueError):
 
 class BackupService:
     """Creates and restores AES-encrypted zip backups of the SQLite database and product images."""
+
+    @staticmethod
+    def is_supported() -> bool:
+        """Return True if backup/restore operations are supported (standalone SQLite mode)."""
+        from cbpos.core.services.config_service import ConfigService
+
+        return ConfigService.get("db_mode") != "network"
+
+    @staticmethod
+    def network_host() -> str:
+        """Return the host address of the network database server."""
+        from cbpos.core.services.config_service import ConfigService
+
+        return ConfigService.get("network_db_host") or "localhost"
+
+    @staticmethod
+    def _require_standalone() -> None:
+        """Raise BackupError if running in network mode."""
+        if not BackupService.is_supported():
+            raise BackupError("network_mode", "Backup and restore are not supported in network database mode")
 
     @staticmethod
     def create_backup(destination_dir: str, password: str | None, kind: str = KIND_MANUAL) -> str:
@@ -88,6 +109,8 @@ class BackupService:
             FileNotFoundError: If database file doesn't exist.
             OSError: If backup directory can't be created.
         """
+        BackupService._require_standalone()
+
         if not password:
             raise ValueError("A backup password is required")
         if kind not in _NAME_PATTERNS:
@@ -196,6 +219,8 @@ class BackupService:
             password is set -- an archive nobody can open looks like a
             backup but can't be restored, which is worse than none.
         """
+        BackupService._require_standalone()
+
         from cbpos.core.services.config_service import ConfigService
 
         password = ConfigService.get_backup_password()
@@ -238,6 +263,8 @@ class BackupService:
                 safety snapshot can't be written, or the database is in use.
                 Nothing has been changed when this is raised.
         """
+        BackupService._require_standalone()
+
         from cbpos.core.services.config_service import ConfigService
 
         backup_file = Path(backup_path)
@@ -642,6 +669,8 @@ class BackupService:
         result["size"] = format_bytes(backup_file.stat().st_size)
 
         try:
+            if deep:
+                BackupService._require_standalone()
             result["files"] = BackupService._open_archive(backup_file, password)
             if deep:
                 with tempfile.TemporaryDirectory() as tmp_dir:

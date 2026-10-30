@@ -413,6 +413,10 @@ class MainWindow(QMainWindow):
         try:
             from cbpos.core.services.backup_service import BackupService
 
+            if not BackupService.is_supported():
+                logging.getLogger(__name__).info("Auto-backup on close skipped: network database mode")
+                return
+
             backup_dir = ConfigService.get("backup_dir") or BackupService.get_default_backup_dir()
             keep = int(ConfigService.get("backup_retention_count") or 5)
             if BackupService.run_auto_backup(backup_dir, keep) is None:

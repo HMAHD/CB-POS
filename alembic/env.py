@@ -27,9 +27,11 @@ from cbpos.core.models import Base  # noqa: E402
 
 target_metadata = Base.metadata
 
-# Override the sqlalchemy.url from alembic.ini with the runtime DATA_DIR path.
-# This ensures migrations always target the correct database location.
-config.set_main_option("sqlalchemy.url", Config.DB_URI)
+# Override the sqlalchemy.url from alembic.ini with the runtime DATA_DIR path
+# if not explicitly configured programmatically (e.g. CLI vs SchemaMigrationService).
+current_url = config.get_main_option("sqlalchemy.url")
+if not current_url or current_url == "sqlite:///cbpos.db":
+    config.set_main_option("sqlalchemy.url", Config.DB_URI)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

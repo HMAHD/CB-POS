@@ -108,7 +108,9 @@
     "loading_screens": "Loading sales, stock and customers...",
     "preparing_counter": "Preparing the sales counter...",
     "starting_sync": "Starting sync for your terminals...",
-    "connecting_main_pc": "Connecting to the Main PC..."
+    "connecting_main_pc": "Connecting to the Main PC...",
+    "migration_newer_version": "This shop's data was saved by a newer version of CB POS. Install the latest CB POS to open it. Your data has not been changed.",
+    "migration_unknown_schema": "CB POS doesn't recognise this database's layout, so it has stopped to keep your data safe. Restore a backup or contact support."
   },
   "sync_status": {
     "tooltip": "Click for sync details",

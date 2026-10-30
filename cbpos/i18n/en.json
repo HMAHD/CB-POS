@@ -1541,6 +1541,8 @@
     "recovery_title": "Settings Recovery",
     "recovered_from_backup": "Your settings file was damaged, so CB POS loaded the last good copy. Please check your shop details and printer in Settings.",
     "reset_after_corruption": "Your settings file was damaged and no good copy was found. CB POS started with default settings. Please re-enter your shop details, printer and tax settings in Settings. The damaged file was kept as {filename}.",
+    "btn_open_settings": "Open Settings",
+    "secrets_reentry": "These saved passwords couldn't be read on this computer and need to be entered again: {names}. Open Settings to re-enter them.",
     "restart_prompt": {
       "title": "Restart CB POS?",
       "message": "Your changes are saved. Restart CB POS now to apply them, or they'll apply the next time you open it.",

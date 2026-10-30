@@ -148,6 +148,7 @@ class ConfigService:
     _recovery_reason: str | None = None
     _corrupt_filename: str | None = None
     _rename_failed: bool = False
+    _undecryptable_keys: set[str] = set()
 
     # Keys that are per-terminal in network mode.  When ``db_mode`` is
     # ``"network"`` these are stored under a terminal-prefixed key
@@ -193,6 +194,11 @@ class ConfigService:
     def corrupt_filename(cls) -> str | None:
         """Return the quarantined corrupt filename, if any."""
         return cls._corrupt_filename
+
+    @classmethod
+    def secrets_needing_reentry(cls) -> list[str]:
+        """Return the list of sensitive keys that could not be decrypted (#875)."""
+        return sorted(cls._undecryptable_keys)
 
     @staticmethod
     def _write_restricted(path: str, content: str, encoding: str = "utf-8") -> None:
@@ -267,20 +273,35 @@ class ConfigService:
         return cls._get_fernet().encrypt(value.encode("utf-8")).decode("ascii")
 
     @classmethod
-    def _decode_sensitive(cls, value: str) -> str:
+    def _decode_sensitive(cls, value: str, key_name: str | None = None) -> str:
         """Decrypt a sensitive value from storage."""
         if not value:
             return ""
         try:
             return cls._get_fernet().decrypt(value.encode("ascii")).decode("utf-8")
         except InvalidToken:
-            # Try legacy base64 decode for migration
+            # Fernet tokens start with 'gAAAAA'. If decryption failed with InvalidToken,
+            # it was encrypted with another machine's key (e.g. restored backup, #875).
+            # Never return ciphertext as plaintext or it will be double-encrypted on save!
+            if value.startswith("gAAAAA"):
+                if key_name:
+                    cls._undecryptable_keys.add(key_name)
+                logger.warning(
+                    "Encrypted secret '%s' could not be decrypted with current key; resetting to empty.",
+                    key_name or "unknown",
+                )
+                return ""
+            # Try legacy base64 decode for old pre-Fernet plain settings
             try:
                 return base64.b64decode(value.encode("ascii")).decode("utf-8")
             except Exception:
-                return value
+                if key_name:
+                    cls._undecryptable_keys.add(key_name)
+                return ""
         except Exception as e:
-            logger.error("Failed to decrypt sensitive value: %s. Returning empty string for security.", e)
+            logger.error("Failed to decrypt sensitive value for '%s': %s", key_name or "unknown", e)
+            if key_name:
+                cls._undecryptable_keys.add(key_name)
             return ""
 
     @classmethod
@@ -333,6 +354,7 @@ class ConfigService:
     @classmethod
     def load(cls):
         """Load settings from file, or create with defaults if not exists."""
+        cls._undecryptable_keys.clear()
         if os.path.exists(cls.SETTINGS_FILE):
             try:
                 with open(cls.SETTINGS_FILE, encoding="utf-8") as f:
@@ -343,7 +365,7 @@ class ConfigService:
                 # Decode sensitive values after loading
                 for key in cls._SENSITIVE_KEYS:
                     if cls._settings.get(key):
-                        cls._settings[key] = cls._decode_sensitive(cls._settings[key])
+                        cls._settings[key] = cls._decode_sensitive(cls._settings[key], key_name=key)
                 changed = cls._migrate_receipt_printer(cls._settings)
                 changed = cls._clear_demo_bank_details(cls._settings) or changed
                 if "setup_completed" not in cls._settings:
@@ -374,7 +396,7 @@ class ConfigService:
                         cls._settings = json.loads(bak_content)
                         for key in cls._SENSITIVE_KEYS:
                             if cls._settings.get(key):
-                                cls._settings[key] = cls._decode_sensitive(cls._settings[key])
+                                cls._settings[key] = cls._decode_sensitive(cls._settings[key], key_name=key)
                         cls._migrate_receipt_printer(cls._settings)
                         cls._clear_demo_bank_details(cls._settings)
                         if "setup_completed" not in cls._settings:
@@ -545,6 +567,8 @@ class ConfigService:
                 tid = cls._settings.get("terminal_id", "TERM-01")
                 store_key = f"{tid}.{key}"
         cls._settings[store_key] = value
+        if key in cls._undecryptable_keys and value:
+            cls._undecryptable_keys.discard(key)
         cls.save()
 
     @classmethod
@@ -568,6 +592,9 @@ class ConfigService:
             cls.load()
         previous = cls._settings.copy()
         cls._settings.update(data)
+        for k, v in data.items():
+            if k in cls._undecryptable_keys and v:
+                cls._undecryptable_keys.discard(k)
         try:
             cls.save(raise_errors=raise_errors)
         except Exception:

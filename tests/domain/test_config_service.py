@@ -159,3 +159,132 @@ def test_issue_838_main_window_checks_recovery_notice(monkeypatch):
     assert len(warnings) == 2
     assert "Settings Recovery" in warnings[1][0]
     assert "settings.json.corrupt-20261030-120000" in warnings[1][1]
+
+
+def test_issue_875_foreign_key_secret_decodes_to_empty(isolated_config):
+    """Encrypted secrets from a replacement PC decode to empty and are marked for reentry."""
+    from cryptography.fernet import Fernet
+
+    foreign_key = Fernet.generate_key()
+    foreign_fernet = Fernet(foreign_key)
+    foreign_cipher = foreign_fernet.encrypt(b"secret_password_123").decode("ascii")
+
+    with open(isolated_config, "w", encoding="utf-8") as f:
+        json.dump({"shop_name": "New PC Shop", "smtp_pass": foreign_cipher}, f)
+
+    ConfigService._settings = {}
+    ConfigService.load()
+
+    assert ConfigService.get("smtp_pass") == ""
+    assert "smtp_pass" in ConfigService.secrets_needing_reentry()
+
+
+def test_issue_875_save_does_not_double_encrypt(isolated_config):
+    """Saving after undecryptable secret was loaded does not write double-encrypted ciphertext."""
+    from cryptography.fernet import Fernet
+
+    foreign_key = Fernet.generate_key()
+    foreign_fernet = Fernet(foreign_key)
+    foreign_cipher = foreign_fernet.encrypt(b"secret_password_123").decode("ascii")
+
+    with open(isolated_config, "w", encoding="utf-8") as f:
+        json.dump({"shop_name": "New PC Shop", "smtp_pass": foreign_cipher}, f)
+
+    ConfigService._settings = {}
+    ConfigService.load()
+    ConfigService.save()
+
+    with open(isolated_config, encoding="utf-8") as f:
+        saved_raw = json.load(f)
+
+    # smtp_pass was stored as empty, not double-encrypted
+    assert saved_raw.get("smtp_pass") == ""
+
+
+def test_issue_875_legacy_base64_value_still_decodes(isolated_config):
+    """Legacy base64-encoded secrets (not starting with gAAAAA) still decode properly."""
+    import base64
+
+    legacy_val = base64.b64encode(b"my_plain_secret").decode("ascii")
+    with open(isolated_config, "w", encoding="utf-8") as f:
+        json.dump({"shop_name": "Legacy Shop", "smtp_pass": legacy_val}, f)
+
+    ConfigService._settings = {}
+    ConfigService.load()
+
+    assert ConfigService.get("smtp_pass") == "my_plain_secret"
+    assert "smtp_pass" not in ConfigService.secrets_needing_reentry()
+
+
+def test_issue_875_saving_new_secret_clears_from_needing_reentry(isolated_config):
+    """Setting a new non-empty value clears the key from secrets_needing_reentry."""
+    from cryptography.fernet import Fernet
+
+    foreign_key = Fernet.generate_key()
+    foreign_cipher = Fernet(foreign_key).encrypt(b"old").decode("ascii")
+
+    with open(isolated_config, "w", encoding="utf-8") as f:
+        json.dump({"smtp_pass": foreign_cipher}, f)
+
+    ConfigService._settings = {}
+    ConfigService.load()
+    assert "smtp_pass" in ConfigService.secrets_needing_reentry()
+
+    ConfigService.set("smtp_pass", "new_real_secret")
+    assert "smtp_pass" not in ConfigService.secrets_needing_reentry()
+
+
+def test_issue_875_main_window_notifies_secrets_reentry(monkeypatch):
+    """MainWindow prompts the user about secrets needing reentry with an Open Settings option."""
+    from unittest.mock import MagicMock
+
+    from cbpos.ui.main_window import MainWindow
+
+    opened_pages = []
+    exec_calls = []
+
+    class FakeMessageBox:
+        Icon = MagicMock()
+        ButtonRole = MagicMock()
+        StandardButton = MagicMock()
+
+        def __init__(self, parent=None):
+            self.parent = parent
+            self._buttons = []
+            self._text = ""
+
+        def setIcon(self, icon):
+            pass
+
+        def setWindowTitle(self, title):
+            pass
+
+        def setText(self, text):
+            self._text = text
+
+        def addButton(self, btn, role=None):
+            self._buttons.append(btn)
+            return btn
+
+        def exec(self):
+            exec_calls.append(self._text)
+
+        def clickedButton(self):
+            return self._buttons[0] if self._buttons else None
+
+    monkeypatch.setattr("cbpos.ui.main_window.QMessageBox", FakeMessageBox)
+
+    win = MagicMock(spec=MainWindow)
+    win.open_settings = lambda page: opened_pages.append(page)
+    win._secrets_notice_shown = False
+
+    ConfigService._undecryptable_keys = {"smtp_pass"}
+    MainWindow._check_config_recovery_notices(win)
+
+    assert len(exec_calls) == 1
+    assert "SMTP Password" in exec_calls[0]
+    assert opened_pages == [0]  # ShopInfoPage for smtp_pass
+
+    # Notice is not re-shown in same session
+    MainWindow._check_config_recovery_notices(win)
+    assert len(exec_calls) == 1

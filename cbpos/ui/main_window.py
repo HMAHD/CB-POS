@@ -191,7 +191,7 @@ class MainWindow(QMainWindow):
         self._check_config_recovery_notices()
 
     def _check_config_recovery_notices(self) -> None:
-        """Show one-time recovery notice after login if settings were damaged (#838)."""
+        """Show one-time recovery notice after login if settings were damaged (#838, #875)."""
         notice = ConfigService.recovery_notice()
         if notice == "restored_from_backup":
             QMessageBox.warning(
@@ -206,6 +206,27 @@ class MainWindow(QMainWindow):
                 _t("settings.recovery_title"),
                 _t("settings.reset_after_corruption", filename=corrupt_file),
             )
+
+        if not getattr(self, "_secrets_notice_shown", False):
+            secrets = ConfigService.secrets_needing_reentry()
+            if secrets:
+                self._secrets_notice_shown = True
+                label_map = {
+                    "smtp_pass": _t("settings.shop_info.smtp_password").rstrip(": "),
+                    "network_db_password": _t("settings.network.password").rstrip(": "),
+                    "sync_shared_secret": _t("settings.network.sync_secret").rstrip(": "),
+                }
+                names = ", ".join(label_map.get(s, s) for s in secrets)
+                msg_box = QMessageBox(self)
+                msg_box.setIcon(QMessageBox.Icon.Warning)
+                msg_box.setWindowTitle(_t("settings.recovery_title"))
+                msg_box.setText(_t("settings.secrets_reentry", names=names))
+                open_btn = msg_box.addButton(_t("settings.btn_open_settings"), QMessageBox.ButtonRole.AcceptRole)
+                msg_box.addButton(QMessageBox.StandardButton.Ok)
+                msg_box.exec()
+                if msg_box.clickedButton() == open_btn:
+                    target_page = 0 if "smtp_pass" in secrets else 6
+                    self.open_settings(target_page)
 
     def _on_session_expired(self):
         """Handle session expiration signal from watchdog with TIMEOUT reason."""
@@ -281,10 +302,15 @@ class MainWindow(QMainWindow):
         # Hide side menu in sales view if open
         self.sales_view.side_menu.setVisible(False)
 
+    def open_settings(self, page_index: int = 0) -> None:
+        """Show Settings on a specific page index (#875)."""
+        self.switch_to_settings()
+        if hasattr(self, "settings_view") and hasattr(self.settings_view, "switch_page"):
+            self.settings_view.switch_page(page_index)
+
     def open_hardware_settings(self) -> None:
         """Show Settings on its Hardware page (from the Sales no-printer notice)."""
-        self.switch_to_settings()
-        self.settings_view.switch_page(SettingsView.HARDWARE_PAGE)
+        self.open_settings(SettingsView.HARDWARE_PAGE)
 
     def toggle_fullscreen(self):
         """Toggle between fullscreen and normal window state."""

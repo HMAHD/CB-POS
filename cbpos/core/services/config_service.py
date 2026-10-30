@@ -149,6 +149,7 @@ class ConfigService:
     _corrupt_filename: str | None = None
     _rename_failed: bool = False
     _undecryptable_keys: set[str] = set()
+    _frozen: bool = False
 
     # Keys that are per-terminal in network mode.  When ``db_mode`` is
     # ``"network"`` these are stored under a terminal-prefixed key
@@ -199,6 +200,29 @@ class ConfigService:
     def secrets_needing_reentry(cls) -> list[str]:
         """Return the list of sensitive keys that could not be decrypted (#875)."""
         return sorted(cls._undecryptable_keys)
+
+    @classmethod
+    def reload(cls) -> None:
+        """Reload settings from disk, resetting cached state and unfreezing writes (#873)."""
+        cls._settings = {}
+        cls._fernet = None
+        cls._loaded_from_defaults_after_failure = False
+        cls._rename_failed = False
+        cls._recovery_reason = None
+        cls._corrupt_filename = None
+        cls._undecryptable_keys.clear()
+        cls._frozen = False
+        cls.load()
+
+    @classmethod
+    def freeze_writes(cls) -> None:
+        """Freeze settings writes until application restarts or unfreeze_writes is called (#873)."""
+        cls._frozen = True
+
+    @classmethod
+    def unfreeze_writes(cls) -> None:
+        """Unfreeze settings writes (primarily for test teardowns, #873)."""
+        cls._frozen = False
 
     @staticmethod
     def _write_restricted(path: str, content: str, encoding: str = "utf-8") -> None:
@@ -499,6 +523,10 @@ class ConfigService:
         Args:
             raise_errors: Re-raise a failed write instead of only logging it.
         """
+        if cls._frozen:
+            logger.warning("ConfigService writes are frozen (pending application restart); save skipped")
+            return
+
         if cls._loaded_from_defaults_after_failure and cls._rename_failed:
             logger.warning(
                 "Skipping save because settings are in defaults-after-failure state and quarantine rename failed."

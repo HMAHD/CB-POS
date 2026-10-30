@@ -273,8 +273,21 @@ class RestoreTabWidget(QWidget):
             QMessageBox.information(
                 self,
                 _t("data_safety.restore_complete_title"),
-                _t("data_safety.restore_complete_msg"),
+                _t("data_safety.restore_done_restarting"),
+                QMessageBox.StandardButton.Ok,
             )
+            from cbpos.ui.app_restart import restart_application
+
+            win = self.window()
+            if not restart_application(win):
+                if win:
+                    win.setEnabled(False)
+                QMessageBox.critical(
+                    self,
+                    _t("data_safety.restore_complete_title"),
+                    _t("data_safety.restore_restart_manual"),
+                    QMessageBox.StandardButton.Ok,
+                )
         else:
             QMessageBox.critical(
                 self,

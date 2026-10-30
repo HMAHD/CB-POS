@@ -12,7 +12,7 @@ from unittest.mock import patch
 from cbpos.core.services.config_service import ConfigService
 
 
-def make_pos_db(path: Path, marker: str = "original") -> Path:
+def make_pos_db(path: Path, marker: str = "original", stamped: bool = True) -> Path:
     """Create a small, real SQLite DB with the tables a CB POS database has."""
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
@@ -21,7 +21,15 @@ def make_pos_db(path: Path, marker: str = "original") -> Path:
         conn.execute("CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT)")
         conn.execute("CREATE TABLE documents (id INTEGER PRIMARY KEY, document_number TEXT)")
         conn.execute("CREATE TABLE sales (id INTEGER PRIMARY KEY)")
+        conn.execute("CREATE TABLE audit_logs (id INTEGER PRIMARY KEY, user_id INTEGER)")
         conn.execute("INSERT INTO products (name) VALUES (?)", (marker,))
+        if stamped:
+            from cbpos.core.services.schema_migration_service import SchemaMigrationService
+
+            head = SchemaMigrationService.head_revision()
+            if head:
+                conn.execute("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)")
+                conn.execute("INSERT INTO alembic_version (version_num) VALUES (?)", (head,))
         conn.commit()
     finally:
         conn.close()
@@ -60,3 +68,4 @@ def isolate_config_service(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(ConfigService, "_BACKUP_PASSWORD_FILE", str(tmp_path / ".backup_password"), raising=False)
     monkeypatch.setattr(ConfigService, "_fernet", None)
     monkeypatch.setattr(ConfigService, "_settings", {})
+    monkeypatch.setattr(ConfigService, "_frozen", False, raising=False)

@@ -180,6 +180,7 @@ class TestSafetySnapshot:
             "db_in_use",
             "not_found",
             "newer_version",
+            "migration_failed",
         ):
             for lang in ("en", "si", "ta"):
                 assert translate_in(lang, f"data_safety.error_{code}") != f"data_safety.error_{code}"
@@ -201,7 +202,7 @@ class TestSafetySnapshot:
         import sqlite3
 
         future_db = env / "future_cbpos.db"
-        make_pos_db(future_db, marker="future")
+        make_pos_db(future_db, marker="future", stamped=False)
         conn = sqlite3.connect(future_db)
         conn.execute("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)")
         conn.execute("INSERT INTO alembic_version (version_num) VALUES ('f9e8d7c6b5a4')")
@@ -225,7 +226,7 @@ class TestSafetySnapshot:
         import sqlite3
 
         future_db = env / "future_cbpos2.db"
-        make_pos_db(future_db, marker="future")
+        make_pos_db(future_db, marker="future", stamped=False)
         conn = sqlite3.connect(future_db)
         conn.execute("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)")
         conn.execute("INSERT INTO alembic_version (version_num) VALUES ('f9e8d7c6b5a4')")
@@ -297,3 +298,168 @@ class TestSafetySnapshot:
                 assert text != f"data_safety.{key}"
                 if key == "network_mode_body":
                     assert "{host}" in text
+
+    def test_issue_873_settings_reloaded_after_restore(self, env):
+        """Restoring a backup reloads settings into ConfigService and freezes writes."""
+        import json
+
+        # Live settings have shop_name "LIVE SHOP"
+        ConfigService.set("shop_name", "LIVE SHOP")
+        assert ConfigService.get("shop_name") == "LIVE SHOP"
+
+        # Create backup with shop_name "RESTORED SHOP"
+        restored_db = env / "restored.db"
+        make_pos_db(restored_db, marker="restored data")
+        backup = _encrypted_zip(
+            env / "backup_shop.zip",
+            {
+                "cbpos.db": restored_db.read_bytes(),
+                "settings.json": json.dumps({"shop_name": "RESTORED SHOP"}).encode(),
+            },
+        )
+
+        try:
+            with data_dir(env):
+                BackupService.restore_backup(backup, SHOP_PASSWORD, snapshot_dir=str(env / "snaps"))
+
+            # ConfigService must have reloaded the restored settings
+            assert ConfigService.get("shop_name") == "RESTORED SHOP"
+            assert getattr(ConfigService, "_frozen", False) is True
+
+            # Subsequent set() calls must NOT overwrite settings.json because writes are frozen
+            ConfigService.set("sidebar_collapsed", True)
+            on_disk = json.loads((env / "settings.json").read_text(encoding="utf-8"))
+            assert on_disk.get("shop_name") == "RESTORED SHOP"
+            assert "sidebar_collapsed" not in on_disk
+        finally:
+            if hasattr(ConfigService, "unfreeze_writes"):
+                ConfigService.unfreeze_writes()
+
+    def test_issue_873_older_backup_migrated_to_head(self, env):
+        """Restoring an older-version backup migrates its schema to Alembic head."""
+        import sqlite3
+
+        from cbpos.core.services.schema_migration_service import SchemaMigrationService
+
+        older_db = env / "older.db"
+        make_pos_db(older_db, marker="older version", stamped=False)
+        conn = sqlite3.connect(older_db)
+        conn.execute("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)")
+        # Stamp at d2b635fce696 (immediate parent of 07efbe333f81_add_login_throttle)
+        conn.execute("INSERT INTO alembic_version (version_num) VALUES ('d2b635fce696')")
+        conn.commit()
+        conn.close()
+
+        backup = _encrypted_zip(
+            env / "older_backup.zip",
+            {"cbpos.db": older_db.read_bytes(), "settings.json": b"{}"},
+        )
+
+        try:
+            with data_dir(env):
+                BackupService.restore_backup(backup, SHOP_PASSWORD, snapshot_dir=str(env / "snaps"))
+
+            db_uri = f"sqlite:///{env / 'cbpos.db'}"
+            assert SchemaMigrationService.current_revision(db_uri) == SchemaMigrationService.head_revision()
+
+            # Verify that migration created the login_throttle table
+            check_conn = sqlite3.connect(env / "cbpos.db")
+            tables = {r[0] for r in check_conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            check_conn.close()
+            assert "login_throttle" in tables
+        finally:
+            if hasattr(ConfigService, "unfreeze_writes"):
+                ConfigService.unfreeze_writes()
+
+    def test_issue_873_migration_failure_rolls_back_to_snapshot(self, env, monkeypatch):
+        """If schema migration fails after database replacement, pre-restore snapshot is restored."""
+        import json
+
+        from cbpos.core.services.schema_migration_service import MigrationError, SchemaMigrationService
+
+        # Setup live state
+        ConfigService.set("shop_name", "LIVE SHOP BEFORE MIGRATION FAILURE")
+        assert read_marker(env / "cbpos.db") == "live data"
+
+        # Restore archive has different data
+        new_db = env / "new_db.db"
+        make_pos_db(new_db, marker="corrupt data")
+        backup = _encrypted_zip(
+            env / "new_backup.zip",
+            {
+                "cbpos.db": new_db.read_bytes(),
+                "settings.json": json.dumps({"shop_name": "CORRUPT SHOP"}).encode(),
+            },
+        )
+
+        def failing_migrate(db_uri, status=None):
+            raise MigrationError("corrupt_schema", "injected migration failure")
+
+        monkeypatch.setattr(SchemaMigrationService, "migrate_to_head", failing_migrate)
+
+        snaps = env / "snaps"
+        try:
+            with data_dir(env), pytest.raises(BackupError) as exc:
+                BackupService.restore_backup(backup, SHOP_PASSWORD, snapshot_dir=str(snaps))
+
+            assert exc.value.code == "migration_failed"
+            # Live database and settings must be restored from pre-restore snapshot
+            assert read_marker(env / "cbpos.db") == "live data"
+            assert ConfigService.get("shop_name") == "LIVE SHOP BEFORE MIGRATION FAILURE"
+            assert getattr(ConfigService, "_frozen", False) is False
+
+            # Pre-restore safety snapshot must remain on disk
+            snapshots = list(snaps.glob("*.pre_restore.zip"))
+            assert len(snapshots) == 1
+        finally:
+            if hasattr(ConfigService, "unfreeze_writes"):
+                ConfigService.unfreeze_writes()
+
+    def test_issue_873_restore_tab_forces_restart_or_disables_window(self, qapp, monkeypatch):
+        """RestoreTab forces an application restart on success or disables window if restart fails."""
+        from PyQt6.QtWidgets import QMessageBox, QWidget
+
+        from cbpos.ui import app_restart
+        from cbpos.ui.views.data_safety.restore_tab import RestoreTabWidget
+        from cbpos.ui.widgets.loading_overlay import LoadingOverlay
+
+        root = QWidget()
+        overlay = LoadingOverlay(root)
+        tab = RestoreTabWidget(overlay)
+
+        info_boxes = []
+        critical_boxes = []
+        restart_calls = []
+
+        monkeypatch.setattr(
+            QMessageBox,
+            "information",
+            lambda parent, title, text, *args, **kwargs: info_boxes.append((title, text)),
+        )
+        monkeypatch.setattr(
+            QMessageBox,
+            "critical",
+            lambda parent, title, text, *args, **kwargs: critical_boxes.append((title, text)),
+        )
+
+        # Case 1: restart succeeds
+        monkeypatch.setattr(app_restart, "restart_application", lambda win: restart_calls.append(win) or True)
+
+        tab._on_restore_finished(True)
+        assert len(info_boxes) == 1
+        assert "restart" in info_boxes[0][1].lower() or "නැවත ආරම්භ" in info_boxes[0][1]
+        assert len(restart_calls) == 1
+        assert restart_calls[0] == tab.window()
+        assert tab.window().isEnabled() is True
+
+        # Case 2: restart fails -> window disabled, critical dialog shown
+        info_boxes.clear()
+        critical_boxes.clear()
+        restart_calls.clear()
+        monkeypatch.setattr(app_restart, "restart_application", lambda win: restart_calls.append(win) or False)
+
+        tab._on_restore_finished(True)
+        assert len(info_boxes) == 1
+        assert len(critical_boxes) == 1
+        assert "close" in critical_boxes[0][1].lower() or "වසා" in critical_boxes[0][1]
+        assert tab.window().isEnabled() is False

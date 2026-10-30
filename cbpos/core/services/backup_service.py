@@ -57,7 +57,7 @@ class BackupError(ValueError):
 
     Codes: ``no_password``, ``not_a_backup``, ``wrong_password``,
     ``db_invalid``, ``snapshot_failed``, ``db_in_use``, ``newer_version``,
-    ``network_mode``.
+    ``network_mode``, ``migration_failed``.
     """
 
     def __init__(self, code: str, detail: str = "") -> None:
@@ -272,6 +272,8 @@ class BackupService:
             raise FileNotFoundError(f"Backup file not found: {backup_path}")
 
         db_file = Config.DATA_DIR / "cbpos.db"
+        snapshot_path = None
+        snapshot_password = None
 
         # Extract to temp directory first and validate before touching anything
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -327,6 +329,45 @@ class BackupService:
                         shutil.copy2(str(img_file), str(dest_file))
 
             BackupService._restore_assets(tmp_path / _ASSETS_DIR, Config.DATA_DIR / _ASSETS_DIR)
+
+            # Reload settings into ConfigService and freeze writes until restart (#873)
+            ConfigService.reload()
+            ConfigService.freeze_writes()
+
+            # Run Alembic migrations on the restored database (#873)
+            from cbpos.core.services.schema_migration_service import SchemaMigrationService
+
+            db_uri = f"sqlite:///{db_file}"
+            try:
+                SchemaMigrationService.migrate_to_head(db_uri)
+            except Exception as e:
+                logger.error("Schema migration failed after restoring DB: %s", e)
+                if snapshot_path and snapshot_password:
+                    try:
+                        with tempfile.TemporaryDirectory() as rollback_dir:
+                            rb_path = Path(rollback_dir)
+                            BackupService._open_archive(Path(snapshot_path), snapshot_password, extract_to=rb_path)
+                            rb_db = rb_path / "cbpos.db"
+                            if rb_db.exists():
+                                BackupService._replace_database(rb_db, db_file)
+                            rb_settings = rb_path / "settings.json"
+                            if rb_settings.exists():
+                                shutil.copy2(str(rb_settings), str(settings_file))
+                            rb_images = rb_path / "products"
+                            if rb_images.exists():
+                                images_dir = Config.DATA_DIR / "product_images"
+                                images_dir.mkdir(parents=True, exist_ok=True)
+                                for img_file in rb_images.rglob("*"):
+                                    if img_file.is_file():
+                                        dest_file = images_dir / img_file.relative_to(rb_images)
+                                        dest_file.parent.mkdir(parents=True, exist_ok=True)
+                                        shutil.copy2(str(img_file), str(dest_file))
+                            BackupService._restore_assets(rb_path / _ASSETS_DIR, Config.DATA_DIR / _ASSETS_DIR)
+                    except Exception as rb_err:
+                        logger.critical("Failed to restore snapshot during migration rollback: %s", rb_err)
+                    finally:
+                        ConfigService.reload()
+                raise BackupError("migration_failed", str(e)) from e
 
         logger.info("Backup restored successfully from: %s", backup_path)
         return True

@@ -33,6 +33,8 @@ class UserService:
                 if new_pin:
                     if len(new_pin) < 4 or not new_pin.isdigit():
                         raise ValueError("PIN must be at least 4 digits")
+                    if AuthService.is_pin_in_use(new_pin, exclude_user_id=user_id):
+                        raise ValueError("pin_in_use")
                     # Hash the new PIN
                     user.pin_hash = AuthService.hash_pin(new_pin)
 
@@ -50,6 +52,8 @@ class UserService:
                 session.add(log)
                 return True
 
+        except ValueError:
+            raise
         except Exception as e:
             logging.error("Profile Update Failed: %s", e)
             return False
@@ -143,6 +147,9 @@ class UserService:
                 if session.query(User).filter(User.username == username).first():
                     raise ValueError("Username already exists")
 
+                if AuthService.is_pin_in_use(pin):
+                    raise ValueError("pin_in_use")
+
                 pin_hash = AuthService.hash_pin(pin)
 
                 user = User(username=username, pin_hash=pin_hash, role_id=role_id, is_active=True)
@@ -161,6 +168,8 @@ class UserService:
                 )
                 session.add(log)
                 return True
+        except ValueError:
+            raise
         except Exception as e:
             logging.error("Create User Failed: %s", e)
             raise e
@@ -174,11 +183,17 @@ class UserService:
                 if not user:
                     return False
 
+                # Reactivation check: if user was inactive and is being activated, new PIN is required
+                if not user.is_active and is_active and not pin:
+                    raise ValueError("pin_required_on_reactivate")
+
                 user.username = username
                 user.role_id = role_id
                 user.is_active = is_active
 
                 if pin:
+                    if AuthService.is_pin_in_use(pin, exclude_user_id=user_id):
+                        raise ValueError("pin_in_use")
                     user.pin_hash = AuthService.hash_pin(pin)
 
                 # Log
@@ -193,6 +208,8 @@ class UserService:
                 )
                 session.add(log)
                 return True
+        except ValueError:
+            raise
         except Exception as e:
             logging.error("Update User Failed: %s", e)
             raise e

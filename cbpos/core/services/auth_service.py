@@ -331,6 +331,25 @@ class AuthService:
             return AuthService._verify_against_hash(pin, user.pin_hash)
 
     @staticmethod
+    def is_pin_in_use(pin: str, exclude_user_id: int | None = None) -> bool:
+        """Check whether a plaintext PIN is already in use by any active user.
+
+        Args:
+            pin: The plaintext PIN to check.
+            exclude_user_id: Optional user ID to exclude (e.g. current user during edit).
+
+        Returns:
+            True if another active user matches this PIN, else False.
+        """
+        db = Database()
+        with db.get_session() as session:
+            query = session.query(User).filter(User.is_active.is_(True))
+            if exclude_user_id is not None:
+                query = query.filter(User.id != exclude_user_id)
+            users = query.all()
+            return any(AuthService._verify_against_hash(pin, user.pin_hash) for user in users)
+
+    @staticmethod
     def verify_pin_for_user(username: str, pin: str) -> User | None:
         """Verify a PIN for a specific username (used where username is known).
 

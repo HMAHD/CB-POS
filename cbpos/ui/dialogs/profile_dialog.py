@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.user_service import UserService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.i18n import _t
 
 
@@ -87,7 +88,15 @@ class ProfileDialog(QDialog):
             QMessageBox.critical(self, _t("common.error"), _t("profile.invalid_pin"))
             return
 
-        success = UserService.update_user_profile(user.id, display_name, new_pin if new_pin else None)
+        try:
+            success = UserService.update_user_profile(user.id, display_name, new_pin if new_pin else None)
+        except ValueError as e:
+            err_code = str(e)
+            msg = _t("users.pin_in_use") if err_code == "pin_in_use" else translate_error(err_code)
+            QMessageBox.warning(self, _t("common.error"), msg)
+            self.input_new_pin.setFocus()
+            self.input_new_pin.selectAll()
+            return
 
         if success:
             QMessageBox.information(self, _t("common.success"), _t("profile.update_success"))

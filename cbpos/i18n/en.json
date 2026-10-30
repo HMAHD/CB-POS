@@ -2631,6 +2631,10 @@
   "denomination": {
     "grand_total": "Grand Total:"
   },
+  "users": {
+    "pin_in_use": "That PIN can't be used. Please choose a different PIN.",
+    "pin_required_on_reactivate": "Enter a new PIN to turn this user back on."
+  },
   "user": {
     "add_user": "Add User",
     "edit_user": "Edit User",
@@ -2641,6 +2645,8 @@
     "username_required": "Username is required.",
     "pin_required": "PIN is required for new users.",
     "pin_invalid": "PIN must be 4-6 digits.",
+    "pin_in_use": "That PIN can't be used. Please choose a different PIN.",
+    "pin_required_on_reactivate": "Enter a new PIN to turn this user back on.",
     "save_failed": "Failed to save user: {error}",
     "tab_users": "Users",
     "tab_activity_log": "Activity Log",

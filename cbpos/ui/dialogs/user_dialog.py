@@ -112,6 +112,17 @@ class UserDialog(QDialog):
             else:
                 UserService.create_user(username, pin, role_id)
             self.accept()
+        except ValueError as e:
+            err_code = str(e)
+            if err_code == "pin_in_use":
+                msg = _t("users.pin_in_use")
+            elif err_code == "pin_required_on_reactivate":
+                msg = _t("users.pin_required_on_reactivate")
+            else:
+                msg = translate_error(err_code)
+            QMessageBox.warning(self, _t("common.error"), msg)
+            self.txt_pin.setFocus()
+            self.txt_pin.selectAll()
         except Exception as e:
             logger.exception("Failed to save user: %s", e)
             QMessageBox.critical(

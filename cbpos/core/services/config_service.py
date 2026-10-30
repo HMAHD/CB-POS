@@ -7,6 +7,7 @@ import os
 import platform
 import stat
 import tempfile
+from datetime import datetime
 from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -143,6 +144,10 @@ class ConfigService:
     }
 
     _settings: dict[str, Any] = {}
+    _loaded_from_defaults_after_failure: bool = False
+    _recovery_reason: str | None = None
+    _corrupt_filename: str | None = None
+    _rename_failed: bool = False
 
     # Keys that are per-terminal in network mode.  When ``db_mode`` is
     # ``"network"`` these are stored under a terminal-prefixed key
@@ -177,14 +182,26 @@ class ConfigService:
     _BACKUP_PASSWORD_FILE = os.path.join(Config.DATA_DIR, ".backup_password")
     MIN_BACKUP_PASSWORD_LENGTH = 6
 
+    @classmethod
+    def recovery_notice(cls) -> str | None:
+        """Return 'restored_from_backup' or 'defaults_after_corruption' once, or None."""
+        notice = cls._recovery_reason
+        cls._recovery_reason = None
+        return notice
+
+    @classmethod
+    def corrupt_filename(cls) -> str | None:
+        """Return the quarantined corrupt filename, if any."""
+        return cls._corrupt_filename
+
     @staticmethod
     def _write_restricted(path: str, content: str, encoding: str = "utf-8") -> None:
         """Write *content* to *path* with owner-only permissions (0600), atomically.
 
-        Writes to a temp file in the same directory first, then renames it
-        onto *path* with ``os.replace()`` -- atomic on the same filesystem
-        on both POSIX and Windows, so a crash or power cut mid-write can
-        never leave *path* truncated or half-written.
+        Writes to a temp file in the same directory first, flushes and fsyncs,
+        then renames it onto *path* with ``os.replace()`` -- atomic on the same
+        filesystem on both POSIX and Windows, so a crash or power cut mid-write
+        can never leave *path* truncated or half-written.
 
         On Windows ``os.chmod`` sets the read-only attribute which is not
         equivalent to POSIX permissions, but it is the best we can do
@@ -199,11 +216,20 @@ class ConfigService:
         try:
             with os.fdopen(fd, "w", encoding=encoding) as f:
                 f.write(content)
+                f.flush()
+                os.fsync(f.fileno())
             # Belt-and-suspenders: chmod again in case the OS ignored the
             # mode in mkstemp (Windows does).
             with contextlib.suppress(OSError):
                 os.chmod(tmp_path, stat.S_IRUSR | stat.S_IWUSR)
             os.replace(tmp_path, path)
+            if os.name == "posix":
+                with contextlib.suppress(OSError):
+                    dir_fd = os.open(directory, os.O_RDONLY)
+                    try:
+                        os.fsync(dir_fd)
+                    finally:
+                        os.close(dir_fd)
         except BaseException:
             with contextlib.suppress(OSError):
                 os.remove(tmp_path)
@@ -310,7 +336,10 @@ class ConfigService:
         if os.path.exists(cls.SETTINGS_FILE):
             try:
                 with open(cls.SETTINGS_FILE, encoding="utf-8") as f:
-                    cls._settings = json.load(f)
+                    content = f.read()
+                if not content.strip():
+                    raise json.JSONDecodeError("Settings file is empty", "", 0)
+                cls._settings = json.loads(content)
                 # Decode sensitive values after loading
                 for key in cls._SENSITIVE_KEYS:
                     if cls._settings.get(key):
@@ -322,9 +351,45 @@ class ConfigService:
                     changed = True
                 if changed:
                     cls.save()
+                return
             except Exception as e:
-                logger.error("Error loading settings: %s. Using defaults.", e)
+                logger.error("Error loading settings: %s. Quarantining file.", e)
+                timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                corrupt_name = f"{os.path.basename(cls.SETTINGS_FILE)}.corrupt-{timestamp}"
+                corrupt_path = os.path.join(os.path.dirname(cls.SETTINGS_FILE) or ".", corrupt_name)
+                try:
+                    os.replace(cls.SETTINGS_FILE, corrupt_path)
+                    cls._corrupt_filename = corrupt_name
+                except OSError as rename_err:
+                    logger.error("Failed to quarantine corrupt settings file %s: %s", cls.SETTINGS_FILE, rename_err)
+                    cls._rename_failed = True
+
+                bak_file = f"{cls.SETTINGS_FILE}.bak"
+                if os.path.exists(bak_file):
+                    try:
+                        with open(bak_file, encoding="utf-8") as f_bak:
+                            bak_content = f_bak.read()
+                        if not bak_content.strip():
+                            raise json.JSONDecodeError("Backup file is empty", "", 0)
+                        cls._settings = json.loads(bak_content)
+                        for key in cls._SENSITIVE_KEYS:
+                            if cls._settings.get(key):
+                                cls._settings[key] = cls._decode_sensitive(cls._settings[key])
+                        cls._migrate_receipt_printer(cls._settings)
+                        cls._clear_demo_bank_details(cls._settings)
+                        if "setup_completed" not in cls._settings:
+                            cls._settings["setup_completed"] = True
+                        cls._recovery_reason = "restored_from_backup"
+                        logger.warning("Corrupt settings quarantined as %s. Restored from %s.", corrupt_name, bak_file)
+                        cls.save()
+                        return
+                    except Exception as bak_err:
+                        logger.error("Settings backup file %s was also invalid: %s", bak_file, bak_err)
+
                 cls._settings = cls.DEFAULTS.copy()
+                cls._loaded_from_defaults_after_failure = True
+                cls._recovery_reason = "defaults_after_corruption"
+                logger.warning("No valid backup found. Starting with default settings. Quarantine: %s", corrupt_name)
         else:
             cls._settings = cls.DEFAULTS.copy()
             cls.save()
@@ -412,16 +477,26 @@ class ConfigService:
         Args:
             raise_errors: Re-raise a failed write instead of only logging it.
         """
+        if cls._loaded_from_defaults_after_failure and cls._rename_failed:
+            logger.warning(
+                "Skipping save because settings are in defaults-after-failure state and quarantine rename failed."
+            )
+            return
+
         try:
             # Create a copy with sensitive values encoded
             save_data = cls._settings.copy()
             for key in cls._SENSITIVE_KEYS:
                 if save_data.get(key):
                     save_data[key] = cls._encode_sensitive(save_data[key])
+            encoded_content = json.dumps(save_data, indent=4, ensure_ascii=False)
             cls._write_restricted(
                 cls.SETTINGS_FILE,
-                json.dumps(save_data, indent=4, ensure_ascii=False),
+                encoded_content,
             )
+            # Last-good copy: only if not running with defaults after corruption failure
+            if not cls._loaded_from_defaults_after_failure:
+                cls._write_restricted(f"{cls.SETTINGS_FILE}.bak", encoded_content)
         except Exception as e:
             logger.error("Error saving settings: %s", e)
             if raise_errors:

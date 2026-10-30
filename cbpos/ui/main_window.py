@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import (
     QDialog,
     QHBoxLayout,
     QMainWindow,
+    QMessageBox,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -185,6 +186,26 @@ class MainWindow(QMainWindow):
         # mid-shift, the existing shift is reused instead of re-prompting).
         if ShiftService().get_current_shift(user.id) is None:
             StartShiftDialog(user.id, parent=self).exec()
+
+        # Check for settings recovery notices (#838)
+        self._check_config_recovery_notices()
+
+    def _check_config_recovery_notices(self) -> None:
+        """Show one-time recovery notice after login if settings were damaged (#838)."""
+        notice = ConfigService.recovery_notice()
+        if notice == "restored_from_backup":
+            QMessageBox.warning(
+                self,
+                _t("settings.recovery_title"),
+                _t("settings.recovered_from_backup"),
+            )
+        elif notice == "defaults_after_corruption":
+            corrupt_file = ConfigService.corrupt_filename() or "settings.json.corrupt"
+            QMessageBox.warning(
+                self,
+                _t("settings.recovery_title"),
+                _t("settings.reset_after_corruption", filename=corrupt_file),
+            )
 
     def _on_session_expired(self):
         """Handle session expiration signal from watchdog with TIMEOUT reason."""

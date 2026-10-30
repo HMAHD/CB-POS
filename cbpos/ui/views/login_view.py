@@ -1,4 +1,4 @@
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QIntValidator, QKeySequence, QPixmap, QShortcut
 from PyQt6.QtWidgets import (
     QGridLayout,
@@ -144,6 +144,16 @@ class LoginView(QWidget):
         self.pin_heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
         pin_group.addWidget(self.pin_heading)
         pin_group.addSpacing(10)
+
+        # Info Label for auto-held bills on logout/timeout
+        self.lbl_info = QLabel("")
+        self.lbl_info.setObjectName("LoginInfoLabel")
+        self.lbl_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_info.setWordWrap(True)
+        self.lbl_info.setFixedWidth(_NUMPAD_W)
+        self.lbl_info.setVisible(False)
+        pin_group.addWidget(self.lbl_info, alignment=Qt.AlignmentFlag.AlignCenter)
+        pin_group.addSpacing(6)
 
         # PIN Display — width matches numpad
         self.pin_input = QLineEdit()
@@ -334,13 +344,59 @@ class LoginView(QWidget):
         self.pin_heading.setText(_t("login.enter_your_pin"))
         self.pin_input.setPlaceholderText(_t("login.enter_pin_placeholder"))
         self.help_hint.setText(_t("login.forgot_pin_hint"))
+        if getattr(self, "_held_bill_id", None):
+            self.lbl_info.setText(_t("login.bill_held", id=self._held_bill_id))
+
+    def show_held_bill_notice(self, held_id: int) -> None:
+        """Show a notice that an open cart was auto-held."""
+        self._held_bill_id = held_id
+        self.lbl_info.setText(_t("login.bill_held", id=held_id))
+        self.lbl_info.setVisible(True)
+
+    def clear_held_bill_notice(self) -> None:
+        """Clear the held bill notice."""
+        self._held_bill_id = None
+        self.lbl_info.setVisible(False)
 
     # ── Events ─────────────────────────────────────────────────────
 
     def showEvent(self, event):
-        """Force focus on PIN input when view becomes visible."""
+        """Force focus on PIN input when view becomes visible, checking lockout."""
         super().showEvent(event)
-        self.pin_input.setFocus()
+        lockout_secs = AuthService.get_terminal_lockout_seconds()
+        if lockout_secs > 0:
+            self._set_locked_state(True, lockout_secs)
+        else:
+            self.pin_input.setFocus()
+
+    def _set_locked_state(self, locked: bool, seconds: int = 0) -> None:
+        """Enable or disable the PIN input and numpad buttons based on lockout state."""
+        self.pin_input.setEnabled(not locked)
+        for btn in self._numpad_buttons:
+            btn.setEnabled(not locked)
+
+        if locked:
+            self.lbl_error.setText(_t("login.locked", seconds=seconds))
+            self.lbl_error.setVisible(True)
+            if not hasattr(self, "_lockout_timer") or self._lockout_timer is None:
+                self._lockout_timer = QTimer(self)
+                self._lockout_timer.timeout.connect(self._on_lockout_tick)
+            if not self._lockout_timer.isActive():
+                self._lockout_timer.start(1000)
+        else:
+            if hasattr(self, "_lockout_timer") and self._lockout_timer is not None and self._lockout_timer.isActive():
+                self._lockout_timer.stop()
+            self.lbl_error.setVisible(False)
+            self.pin_input.clear()
+            self.pin_input.setFocus()
+
+    def _on_lockout_tick(self) -> None:
+        """Handle 1-second timer tick for lockout countdown."""
+        lockout_secs = AuthService.get_terminal_lockout_seconds()
+        if lockout_secs <= 0:
+            self._set_locked_state(False)
+        else:
+            self.lbl_error.setText(_t("login.locked", seconds=lockout_secs))
 
     def keyPressEvent(self, event):
         """Route physical numpad digits to PIN input."""
@@ -372,14 +428,29 @@ class LoginView(QWidget):
         if not pin:
             return
 
-        user = AuthService.verify_pin(pin)
+        lockout_secs = AuthService.get_terminal_lockout_seconds()
+        if lockout_secs > 0:
+            self._set_locked_state(True, lockout_secs)
+            return
+
+        user = AuthService.login(pin)
         if user:
+            self.clear_held_bill_notice()
             self.lbl_error.setVisible(False)
             self.login_success.emit(user)
         else:
             self.pin_input.clear()
-            self.lbl_error.setText(_t("login.invalid_pin"))
-            self.lbl_error.setVisible(True)
+            lockout_secs = AuthService.get_terminal_lockout_seconds()
+            if lockout_secs > 0:
+                self._set_locked_state(True, lockout_secs)
+            else:
+                remaining = AuthService.get_terminal_failures_remaining()
+                if remaining <= 2:
+                    self.lbl_error.setText(_t("login.attempts_left", count=remaining))
+                else:
+                    self.lbl_error.setText(_t("login.invalid_pin"))
+                self.lbl_error.setVisible(True)
+                self.pin_input.setFocus()
 
     def update_logo(self):
         """Update logo for login view (uses 02.png for both themes - navy background)."""

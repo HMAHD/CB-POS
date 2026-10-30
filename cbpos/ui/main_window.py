@@ -4,6 +4,7 @@ from PyQt6.QtCore import QEvent, Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
+    QDialog,
     QHBoxLayout,
     QMainWindow,
     QStackedWidget,
@@ -11,6 +12,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.shift_service import ShiftService
 from cbpos.i18n import _t, register_language_callback
@@ -48,7 +50,7 @@ class MainWindow(QMainWindow):
         # Session Watchdog (0 = disabled)
         timeout = int(ConfigService.get("session_timeout_minutes") or 0)
         self.watchdog = SessionWatchdog(timeout_minutes=max(timeout, 0), parent=self)
-        self.watchdog.session_expired.connect(self.logout)
+        self.watchdog.session_expired.connect(self._on_session_expired)
 
         # Central Widget
         central_widget = QWidget()
@@ -184,15 +186,52 @@ class MainWindow(QMainWindow):
         if ShiftService().get_current_shift(user.id) is None:
             StartShiftDialog(user.id, parent=self).exec()
 
-    def logout(self):
-        """Clear the current user, stop the watchdog, and return to the login screen."""
+    def _on_session_expired(self):
+        """Handle session expiration signal from watchdog with TIMEOUT reason."""
+        self.logout(reason="TIMEOUT")
+
+    def logout(self, reason: str = "LOGOUT"):
+        """Terminate the active session: close modal dialogs, auto-hold open cart, clear auth and return to login."""
+        # 1. Close open modal and top-level dialogs
+        iterations = 0
+        while (w := QApplication.activeModalWidget()) is not None and iterations < 10:
+            w.reject()
+            if w.isVisible():
+                w.close()
+            iterations += 1
+
+        for w in QApplication.topLevelWidgets():
+            if isinstance(w, QDialog) and w.isVisible():
+                w.reject()
+                if w.isVisible():
+                    w.close()
+
+        # 2. Protect the cart
+        held_id = None
+        if hasattr(self, "sales_view") and hasattr(self.sales_view, "end_session"):
+            held_id = self.sales_view.end_session(reason=reason)
+
+        if hasattr(self, "login_view"):
+            if held_id and hasattr(self.login_view, "show_held_bill_notice"):
+                self.login_view.show_held_bill_notice(held_id)
+            elif hasattr(self.login_view, "clear_held_bill_notice"):
+                self.login_view.clear_held_bill_notice()
+
+        # 3. End auth session
+        AuthService.logout(reason=reason)
+
+        # 4. Clear window state
         self.user = None
-        self.sales_view.side_menu.set_user(None)
-
-        # Stop Watchdog
-        self.watchdog.stop_monitoring()
-
-        self.stack.setCurrentWidget(self.login_view)
+        if (
+            hasattr(self, "sales_view")
+            and hasattr(self.sales_view, "side_menu")
+            and hasattr(self.sales_view.side_menu, "set_user")
+        ):
+            self.sales_view.side_menu.set_user(None)
+        if hasattr(self, "watchdog") and hasattr(self.watchdog, "stop_monitoring"):
+            self.watchdog.stop_monitoring()
+        if hasattr(self, "stack") and hasattr(self.stack, "setCurrentWidget") and hasattr(self, "login_view"):
+            self.stack.setCurrentWidget(self.login_view)
 
     def on_barcode_scanned(self, barcode):
         """Route a global scanner event to whichever view is currently active."""

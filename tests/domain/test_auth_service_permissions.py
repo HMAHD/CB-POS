@@ -1,6 +1,5 @@
-"""
-Tests that user.role.permissions is safe to access on the detached User
-returned by AuthService -- both verify_pin() and verify_pin_for_user()
+"""Tests that user.role.permissions is safe to access on the detached User
+returned by AuthService -- both login() and verify_pin()
 expunge the user (and its role) from their session, so any relationship
 not eager-loaded raises DetachedInstanceError the moment something reads
 it. PermissionService.user_has_permission() reads user.role.permissions
@@ -48,10 +47,10 @@ class TestVerifyPinPermissionsAreEagerLoaded:
         assert PermissionService.user_has_permission(user, "nonexistent.permission") is False
 
 
-class TestVerifyPinForUserPermissionsAreEagerLoaded:
+class TestLoginPermissionsAreEagerLoaded:
     def test_role_permissions_accessible_after_session_closes(self, db_session, cashier_role_with_permission):
-        expected_user, perm = cashier_role_with_permission
-        user = AuthService.verify_pin_for_user(expected_user.username, "0000")
+        _, perm = cashier_role_with_permission
+        user = AuthService.login("0000")
 
         assert user is not None
         assert PermissionService.user_has_permission(user, perm.code) is True

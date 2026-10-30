@@ -63,3 +63,6 @@ Format: `D<n> — <date> — #<issue> — <decision>`. New decisions go at the b
 
 **D21 — 2026-10-29 — #948 — Quarantining tracked pre-existing failures.** Pre-existing failures that are already tracked by an open issue may be quarantined with `xfail(strict=True)` and a reason naming the issue. `strict=True` makes CI fail when the bug is fixed, so the marker must be removed in the fixing PR. Any other use of xfail or skip is still forbidden (§0.3).
 
+**D22 — 2026-10-30 — #856 — Nullable audit_logs.user_id for terminal events.** Make audit_logs.user_id nullable via an Alembic migration so terminal-scoped security events like LOCKOUT can be recorded with user_id=None without attributing unknown attempts to the Admin user or polluting the audit trail.
+
+

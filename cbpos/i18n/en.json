@@ -77,6 +77,9 @@
     "enter_pin_placeholder": "Enter PIN",
     "forgot_pin_hint": "Forgot PIN? Contact your administrator.",
     "invalid_pin": "Invalid PIN. Please try again.",
+    "locked": "Too many wrong PINs. Try again in {seconds} seconds.",
+    "attempts_left": "Wrong PIN. {count} tries left before this till locks.",
+    "bill_held": "The open bill was saved as Held Bill #{id}. Recall it with F7.",
     "logo_fallback": "CB POS",
     "version_footer": "Version {version} | © 2026 Ceylon Byte",
     "enter_pin": "Enter PIN"
@@ -2631,6 +2634,11 @@
   "denomination": {
     "grand_total": "Grand Total:"
   },
+  "users": {
+    "pin_in_use": "That PIN can't be used. Please choose a different PIN.",
+    "pin_required_on_reactivate": "Enter a new PIN to turn this user back on.",
+    "last_admin": "This is the only active Admin. Make another user an Admin first, then you can change this one."
+  },
   "user": {
     "add_user": "Add User",
     "edit_user": "Edit User",
@@ -2641,6 +2649,9 @@
     "username_required": "Username is required.",
     "pin_required": "PIN is required for new users.",
     "pin_invalid": "PIN must be 4-6 digits.",
+    "pin_in_use": "That PIN can't be used. Please choose a different PIN.",
+    "pin_required_on_reactivate": "Enter a new PIN to turn this user back on.",
+    "last_admin": "This is the only active Admin. Make another user an Admin first, then you can change this one.",
     "save_failed": "Failed to save user: {error}",
     "tab_users": "Users",
     "tab_activity_log": "Activity Log",

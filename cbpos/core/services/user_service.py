@@ -1,11 +1,13 @@
 import logging
 from datetime import datetime
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 
 from cbpos.core.database import Database
-from cbpos.core.models import AuditLog, User
+from cbpos.core.models import AuditLog, Role, User
 from cbpos.core.services.auth_service import AuthService
+from cbpos.core.services.role_service import ADMIN_ROLE_NAME
 
 
 class UserService:
@@ -33,6 +35,8 @@ class UserService:
                 if new_pin:
                     if len(new_pin) < 4 or not new_pin.isdigit():
                         raise ValueError("PIN must be at least 4 digits")
+                    if AuthService.is_pin_in_use(new_pin, exclude_user_id=user_id):
+                        raise ValueError("pin_in_use")
                     # Hash the new PIN
                     user.pin_hash = AuthService.hash_pin(new_pin)
 
@@ -50,6 +54,8 @@ class UserService:
                 session.add(log)
                 return True
 
+        except ValueError:
+            raise
         except Exception as e:
             logging.error("Profile Update Failed: %s", e)
             return False
@@ -143,6 +149,9 @@ class UserService:
                 if session.query(User).filter(User.username == username).first():
                     raise ValueError("Username already exists")
 
+                if AuthService.is_pin_in_use(pin):
+                    raise ValueError("pin_in_use")
+
                 pin_hash = AuthService.hash_pin(pin)
 
                 user = User(username=username, pin_hash=pin_hash, role_id=role_id, is_active=True)
@@ -161,9 +170,38 @@ class UserService:
                 )
                 session.add(log)
                 return True
+        except ValueError:
+            raise
         except Exception as e:
             logging.error("Create User Failed: %s", e)
             raise e
+
+    @staticmethod
+    def is_last_active_admin(user_id: int) -> bool:
+        """Check if user_id is the only active Admin in the system."""
+        try:
+            with Database().get_session() as session:
+                admin_role = session.execute(select(Role).where(Role.name == ADMIN_ROLE_NAME)).scalar_one_or_none()
+                if not admin_role:
+                    return False
+
+                user = session.get(User, user_id)
+                if not user or not user.is_active or user.role_id != admin_role.id:
+                    return False
+
+                other_admins_count = (
+                    session.execute(
+                        select(func.count(User.id)).where(
+                            User.is_active == True,  # noqa: E712
+                            User.role_id == admin_role.id,
+                            User.id != user_id,
+                        )
+                    ).scalar()
+                    or 0
+                )
+                return other_admins_count == 0
+        except Exception:
+            return False
 
     @staticmethod
     def update_user(user_id: int, username: str, pin: str | None, role_id: int, is_active: bool) -> bool:
@@ -174,11 +212,35 @@ class UserService:
                 if not user:
                     return False
 
+                # Guard against demoting or deactivating the last active Admin
+                admin_role = session.execute(select(Role).where(Role.name == ADMIN_ROLE_NAME)).scalar_one_or_none()
+                if admin_role and user.is_active and user.role_id == admin_role.id:
+                    leaving_admin = (not is_active) or (role_id != admin_role.id)
+                    if leaving_admin:
+                        other_admins_count = (
+                            session.execute(
+                                select(func.count(User.id)).where(
+                                    User.is_active == True,  # noqa: E712
+                                    User.role_id == admin_role.id,
+                                    User.id != user_id,
+                                )
+                            ).scalar()
+                            or 0
+                        )
+                        if other_admins_count == 0:
+                            raise ValueError("last_admin")
+
+                # Reactivation check: if user was inactive and is being activated, new PIN is required
+                if not user.is_active and is_active and not pin:
+                    raise ValueError("pin_required_on_reactivate")
+
                 user.username = username
                 user.role_id = role_id
                 user.is_active = is_active
 
                 if pin:
+                    if AuthService.is_pin_in_use(pin, exclude_user_id=user_id):
+                        raise ValueError("pin_in_use")
                     user.pin_hash = AuthService.hash_pin(pin)
 
                 # Log
@@ -193,6 +255,8 @@ class UserService:
                 )
                 session.add(log)
                 return True
+        except ValueError:
+            raise
         except Exception as e:
             logging.error("Update User Failed: %s", e)
             raise e

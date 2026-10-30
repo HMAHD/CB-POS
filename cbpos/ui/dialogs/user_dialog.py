@@ -72,6 +72,13 @@ class UserDialog(QDialog):
             self.chk_active.setChecked(self.user.is_active)
         layout.addWidget(self.chk_active)
 
+        if self.user and UserService.is_last_active_admin(self.user.id):
+            last_admin_msg = _t("users.last_admin")
+            self.cmb_role.setEnabled(False)
+            self.cmb_role.setToolTip(last_admin_msg)
+            self.chk_active.setEnabled(False)
+            self.chk_active.setToolTip(last_admin_msg)
+
         # Buttons
         btn_layout = QHBoxLayout()
         btn_save = QPushButton(_t("common.save"))
@@ -112,6 +119,20 @@ class UserDialog(QDialog):
             else:
                 UserService.create_user(username, pin, role_id)
             self.accept()
+        except ValueError as e:
+            err_code = str(e)
+            if err_code == "pin_in_use":
+                msg = _t("users.pin_in_use")
+            elif err_code == "pin_required_on_reactivate":
+                msg = _t("users.pin_required_on_reactivate")
+            elif err_code == "last_admin":
+                msg = _t("users.last_admin")
+            else:
+                msg = translate_error(err_code)
+            QMessageBox.warning(self, _t("common.error"), msg)
+            if err_code != "last_admin":
+                self.txt_pin.setFocus()
+                self.txt_pin.selectAll()
         except Exception as e:
             logger.exception("Failed to save user: %s", e)
             QMessageBox.critical(

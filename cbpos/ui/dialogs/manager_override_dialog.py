@@ -60,7 +60,13 @@ class ManagerOverrideDialog(QDialog):
         if not pin:
             return
 
-        user = AuthService.verify_pin(pin)
+        lockout_secs = AuthService.get_terminal_lockout_seconds()
+        if lockout_secs > 0:
+            QMessageBox.warning(self, _t("common.error"), _t("login.locked", seconds=lockout_secs))
+            self.pin_input.clear()
+            return
+
+        user = AuthService.authenticate_pin(pin)
         if user:
             if PermissionService.user_has_permission(user, self.permission_required):
                 self.authorized_user = user
@@ -73,5 +79,9 @@ class ManagerOverrideDialog(QDialog):
                 )
                 self.pin_input.clear()
         else:
-            QMessageBox.warning(self, _t("manager_override.invalid_pin"), _t("manager_override.invalid_pin_msg"))
+            lockout_secs = AuthService.get_terminal_lockout_seconds()
+            if lockout_secs > 0:
+                QMessageBox.warning(self, _t("common.error"), _t("login.locked", seconds=lockout_secs))
+            else:
+                QMessageBox.warning(self, _t("manager_override.invalid_pin"), _t("manager_override.invalid_pin_msg"))
             self.pin_input.clear()

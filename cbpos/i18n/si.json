@@ -77,6 +77,9 @@
     "enter_pin_placeholder": "PIN එක දාන්න",
     "forgot_pin_hint": "PIN එක අමතකද? ඇඩ්මින්ට කතා කරන්න.",
     "invalid_pin": "PIN එක වැරදියි. ආයෙත් ට්‍රයි කරන්න.",
+    "locked": "වැරදි PIN වැඩියි. තත්පර {seconds}කින් ආයෙත් ට්‍රයි කරන්න.",
+    "attempts_left": "PIN එක වැරදියි. මේ ටිල් එක ලොක් වෙන්න කලින් තව {count} වතාවක් ට්‍රයි කරන්න පුළුවන්.",
+    "bill_held": "විවෘත බිල රඳවාගත් බිල්පත් #{id} ලෙස සුරකින ලදී. F7 මඟින් එය නැවත ලබාගන්න.",
     "logo_fallback": "CB POS",
     "version_footer": "වර්ෂන් {version} | © 2026 Ceylon Byte",
     "enter_pin": "PIN එක දාන්න"
@@ -2631,6 +2634,11 @@
   "denomination": {
     "grand_total": "මහා එකතුව"
   },
+  "users": {
+    "pin_in_use": "ඒ PIN එක පාවිච්චි කරන්න බෑ. වෙන PIN එකක් තෝරන්න.",
+    "pin_required_on_reactivate": "මේ පරිශීලකයා ආයෙත් සක්‍රිය කරන්න අලුත් PIN එකක් දාන්න.",
+    "last_admin": "මේ ඉන්නේ එකම ඇක්ටිව් Admin. වෙන කෙනෙක්ව Admin කරලා ඊටපස්සේ මේක වෙනස් කරන්න."
+  },
   "user": {
     "add_user": "පරිශීලකයෙක් එකතු කරන්න",
     "edit_user": "පරිශීලකයා සංස්කරණය",
@@ -2641,6 +2649,9 @@
     "username_required": "පරිශීලක නම දාන්න ඕන.",
     "pin_required": "අලුත් පරිශීලකයන්ට PIN එක අනිවාර්යයි.",
     "pin_invalid": "PIN එක ඉලක්කම් 4-6ක් වෙන්න ඕන.",
+    "pin_in_use": "ඒ PIN එක පාවිච්චි කරන්න බෑ. වෙන PIN එකක් තෝරන්න.",
+    "pin_required_on_reactivate": "මේ පරිශීලකයා ආයෙත් සක්‍රිය කරන්න අලුත් PIN එකක් දාන්න.",
+    "last_admin": "මේ ඉන්නේ එකම ඇක්ටිව් Admin. වෙන කෙනෙක්ව Admin කරලා ඊටපස්සේ මේක වෙනස් කරන්න.",
     "save_failed": "පරිශීලකයා සුරකින්න බැරි උනා: {error}",
     "tab_users": "පරිශීලකයෝ",
     "tab_activity_log": "ක්‍රියාකාරකම් ලොගය",

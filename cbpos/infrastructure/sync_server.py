@@ -404,7 +404,15 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
 
                 records = query.all()
                 if records:
-                    payload[table_name] = [model_to_dict(r) for r in records]
+                    if table_name == "roles":
+                        role_dicts = []
+                        for r in records:
+                            d = model_to_dict(r)
+                            d["permission_codes"] = [p.code for p in r.permissions]
+                            role_dicts.append(d)
+                        payload[table_name] = role_dicts
+                    else:
+                        payload[table_name] = [model_to_dict(r) for r in records]
                     total_records += len(records)
 
             if not requires_full_replace:

@@ -419,6 +419,40 @@ class AuthService:
         """Return the currently logged-in user."""
         return AuthService._current_user
 
+    @classmethod
+    def refresh_current_user(cls) -> User | None:
+        """Reload the currently logged-in user's role and permissions from the database.
+
+        Called when catalog sync updates roles or permissions on a till (#872).
+        """
+        if cls._current_user is None:
+            return None
+
+        user_id = cls._current_user.id
+        db = Database()
+        with db.get_session() as session:
+            user = (
+                session.query(User)
+                .options(joinedload(User.role).joinedload(Role.permissions))
+                .filter(User.id == user_id)
+                .first()
+            )
+            if not user or not user.is_active:
+                cls._current_user = None
+                return None
+
+            if user.role:
+                _ = user.role.name
+                _ = list(user.role.permissions)
+                for perm in user.role.permissions:
+                    _ = perm.code
+                    session.expunge(perm)
+                session.expunge(user.role)
+            session.expunge(user)
+            cls._current_user = user
+            logger.info("Refreshed permissions for current user '%s'", user.username)
+            return user
+
     @staticmethod
     def logout(reason: str = "LOGOUT"):
         """Clear the current user session and record audit log."""

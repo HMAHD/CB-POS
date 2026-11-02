@@ -44,8 +44,8 @@ EP_PUSH_AUDIT = "/sync/push-audit"
 # Order matters: tables without FKs first, then tables with dependencies.
 # ---------------------------------------------------------------------------
 CATALOG_TABLES = [
-    "roles",
     "permissions",
+    "roles",
     "users",
     "void_reasons",
     "units",

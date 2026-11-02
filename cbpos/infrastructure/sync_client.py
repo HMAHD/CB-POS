@@ -211,6 +211,7 @@ class SyncClient(QThread):
     sync_completed = pyqtSignal(int, int)  # pushed, pulled
     initial_sync_completed = pyqtSignal()
     catalog_reloaded = pyqtSignal(bool, str)
+    roles_changed = pyqtSignal()
     error_signal = pyqtSignal(str)
 
     # Connection states
@@ -857,6 +858,7 @@ class SyncClient(QThread):
         pulled_balances: list[tuple[_Balance, int, Any]] = []
         held_back = 0
         has_errors = False
+        roles_modified = False
         try:
             with db.get_session() as session:
                 session.info[SKIP_CHANGE_TRACKING] = True
@@ -946,11 +948,21 @@ class SyncClient(QThread):
                             # wait until the push renumbers it (#680).
                             held_back += 1
                             continue
+                        perm_codes = None
+                        if table_name == "roles":
+                            perm_codes = record_data.get("permission_codes")
                         if version_key:
                             record_data.pop(version_key, None)
                         try:
                             instance = dict_to_model(model_class, record_data)
                             merged = session.merge(instance)
+                            if table_name == "roles" and perm_codes is not None:
+                                session.flush()
+                                from cbpos.core.models import Permission
+
+                                target_perms = session.query(Permission).filter(Permission.code.in_(perm_codes)).all()
+                                merged.permissions = target_perms
+                                roles_modified = True
                             # The Main PC's figures don't include what this till
                             # hasn't pushed yet -- keep that on top (#678, #716).
                             for balance in _BALANCES.values():
@@ -985,6 +997,8 @@ class SyncClient(QThread):
                 logger.info("Held back %d pulled customer(s) until this till's new customers are pushed", held_back)
         else:
             self._last_catalog_sync = server_timestamp
+            if roles_modified:
+                self.roles_changed.emit()
         logger.info("Pulled %d catalog records", records_applied)
         return records_applied
 

@@ -24,6 +24,7 @@ from typing import Any
 
 from PyQt6.QtCore import QThread, pyqtSignal
 from sqlalchemy import func
+from sqlalchemy.orm import class_mapper
 
 from cbpos.core.database import Database
 from cbpos.core.models import (
@@ -836,6 +837,7 @@ class SyncClient(QThread):
         records_applied = 0
         pulled_balances: list[tuple[_Balance, int, Any]] = []
         held_back = 0
+        has_errors = False
         try:
             with db.get_session() as session:
                 unpushed_customers = _unpushed_customer_keys(session)
@@ -848,6 +850,9 @@ class SyncClient(QThread):
                     if model_class is None:
                         continue
 
+                    mapper = class_mapper(model_class)
+                    version_key = mapper.version_id_col.key if mapper.version_id_col is not None else None
+
                     for record_data in records:
                         if table_name == "customers" and _clashes(record_data, unpushed_customers):
                             # Would overwrite (or duplicate the phone of) a
@@ -855,6 +860,8 @@ class SyncClient(QThread):
                             # wait until the push renumbers it (#680).
                             held_back += 1
                             continue
+                        if version_key:
+                            record_data.pop(version_key, None)
                         try:
                             instance = dict_to_model(model_class, record_data)
                             merged = session.merge(instance)
@@ -866,6 +873,7 @@ class SyncClient(QThread):
                                     pulled_balances.append((balance, merged.id, main_value))
                             records_applied += 1
                         except Exception as e:
+                            has_errors = True
                             logger.error(
                                 "Error applying catalog record %s[%s]: %s",
                                 table_name,
@@ -878,11 +886,17 @@ class SyncClient(QThread):
 
         except Exception as e:
             logger.error("Error applying catalog update: %s", e)
+            self._error_code = "catalog_apply_failed"
+            self._set_state(self.STATE_ERROR)
             return -1
 
-        if held_back:
-            # Keep the watermark so the held-back customers come again.
-            logger.info("Held back %d pulled customer(s) until this till's new customers are pushed", held_back)
+        if held_back or has_errors:
+            if has_errors:
+                logger.warning("One or more catalog records failed to apply; watermark not advanced")
+                self._error_code = "catalog_apply_failed"
+                self._set_state(self.STATE_ERROR)
+            if held_back:
+                logger.info("Held back %d pulled customer(s) until this till's new customers are pushed", held_back)
         else:
             self._last_catalog_sync = server_timestamp
         logger.info("Pulled %d catalog records", records_applied)

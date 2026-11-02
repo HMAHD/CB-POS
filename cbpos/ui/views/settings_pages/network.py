@@ -38,6 +38,8 @@ class NetworkPage(SettingsPage):
     def __init__(self):
         """Reset the connection-tested flag, then build the page UI."""
         self.connection_tested = False
+        self._network_schema_owner = False
+        self._current_pg_url = None
         super().__init__()
 
     def init_ui(self):
@@ -210,6 +212,19 @@ class NetworkPage(SettingsPage):
         )
         grid_layout.addWidget(self.input_password, 4, 1)
 
+        self.lbl_sslmode = QLabel()
+        self.lbl_sslmode.setObjectName("FormLabel")
+        self.cmb_sslmode = QComboBox()
+        self.cmb_sslmode.setObjectName("InputNetwork")
+        self.cmb_sslmode.addItems(["prefer", "require", "verify-ca", "verify-full", "disable"])
+        grid_layout.addWidget(
+            self.lbl_sslmode,
+            5,
+            0,
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
+        )
+        grid_layout.addWidget(self.cmb_sslmode, 5, 1)
+
         config_layout.addLayout(grid_layout)
 
         test_btn_layout = QHBoxLayout()
@@ -223,6 +238,74 @@ class NetworkPage(SettingsPage):
         config_layout.addLayout(test_btn_layout)
 
         server_layout.addWidget(self.config_card)
+
+        # Step 2: Database Card
+        self.database_card = QFrame()
+        self.database_card.setObjectName("NetworkCard")
+        self.database_card.setFrameShape(QFrame.Shape.StyledPanel)
+        database_layout = QVBoxLayout(self.database_card)
+        database_layout.setContentsMargins(25, 25, 25, 25)
+        database_layout.setSpacing(14)
+
+        self.lbl_database_step_title = QLabel()
+        self.lbl_database_step_title.setObjectName("CardTitle")
+        database_layout.addWidget(self.lbl_database_step_title)
+
+        status_row = QHBoxLayout()
+        status_row.setSpacing(12)
+        self.lbl_db_state_icon = QLabel()
+        self.lbl_db_state_icon.setObjectName("StatusIcon")
+        self.lbl_db_state_desc = QLabel()
+        self.lbl_db_state_desc.setWordWrap(True)
+        status_row.addWidget(self.lbl_db_state_icon)
+        status_row.addWidget(self.lbl_db_state_desc, 1)
+        database_layout.addLayout(status_row)
+
+        actions_layout = QHBoxLayout()
+        actions_layout.setSpacing(10)
+        self.btn_copy_data = QPushButton()
+        self.btn_copy_data.clicked.connect(self._on_copy_data_clicked)
+        self.btn_copy_data.setVisible(False)
+
+        self.btn_start_empty = QPushButton()
+        self.btn_start_empty.clicked.connect(self._on_start_empty_clicked)
+        self.btn_start_empty.setVisible(False)
+
+        self.btn_make_main_update = QPushButton()
+        self.btn_make_main_update.clicked.connect(self._on_make_main_update_clicked)
+        self.btn_make_main_update.setVisible(False)
+
+        actions_layout.addWidget(self.btn_copy_data)
+        actions_layout.addWidget(self.btn_start_empty)
+        actions_layout.addWidget(self.btn_make_main_update)
+        actions_layout.addStretch()
+        database_layout.addLayout(actions_layout)
+
+        self.database_card.setEnabled(False)
+        server_layout.addWidget(self.database_card)
+
+        # Step 3: Confirm Card
+        self.confirm_card = QFrame()
+        self.confirm_card.setObjectName("NetworkCard")
+        self.confirm_card.setFrameShape(QFrame.Shape.StyledPanel)
+        confirm_layout = QVBoxLayout(self.confirm_card)
+        confirm_layout.setContentsMargins(25, 25, 25, 25)
+        confirm_layout.setSpacing(14)
+
+        self.lbl_confirm_step_title = QLabel()
+        self.lbl_confirm_step_title.setObjectName("CardTitle")
+        confirm_layout.addWidget(self.lbl_confirm_step_title)
+
+        self.lbl_confirm_summary = QLabel()
+        self.lbl_confirm_summary.setWordWrap(True)
+        confirm_layout.addWidget(self.lbl_confirm_summary)
+
+        self.btn_switch = QPushButton()
+        self.btn_switch.clicked.connect(self._on_switch_clicked)
+        confirm_layout.addWidget(self.btn_switch)
+
+        self.confirm_card.setEnabled(False)
+        server_layout.addWidget(self.confirm_card)
 
         self.tabs.addTab(tab_server, "")
 
@@ -492,8 +575,8 @@ class NetworkPage(SettingsPage):
 
         self.lbl_warning.setText(_t("settings.network.mode_change_warning"))
 
-        # Server tab
-        self.lbl_config_title.setText(_t("settings.network.server_config_title"))
+        # Server tab (3-step guided stepper)
+        self.lbl_config_title.setText(_t("network_setup.step_connect"))
         self.lbl_local_ip.setText(_t("settings.network.local_ip").format(ip=self._local_ip))
         self.lbl_host.setText(_t("settings.network.host_ip"))
         self.input_host.setPlaceholderText(_t("settings.network.host_placeholder"))
@@ -509,8 +592,17 @@ class NetworkPage(SettingsPage):
         self.lbl_password.setText(_t("settings.network.password"))
         self.input_password.setPlaceholderText(_t("settings.network.password_placeholder"))
         self.input_password.setToolTip(_t("settings.network.tooltip_password"))
+        self.lbl_sslmode.setText(_t("network_setup.sslmode"))
         self.btn_test.setText(_t("settings.network.btn_test_connection"))
         self.btn_test.setToolTip(_t("settings.network.tooltip_test_connection"))
+
+        self.lbl_database_step_title.setText(_t("network_setup.step_database"))
+        self.btn_copy_data.setText(_t("network_setup.copy_data"))
+        self.btn_start_empty.setText(_t("network_setup.start_empty"))
+        self.btn_make_main_update.setText(_t("network_setup.make_main_update"))
+
+        self.lbl_confirm_step_title.setText(_t("network_setup.step_confirm"))
+        self.btn_switch.setText(_t("network_setup.switch"))
 
         # Migration tab
         self.lbl_migration_title.setText(_t("settings.network.migration_title"))
@@ -577,6 +669,11 @@ class NetworkPage(SettingsPage):
         self.input_dbname.setText(settings.get("network_db_name", "cbpos"))
         self.input_user.setText(settings.get("network_db_user", "postgres"))
         self.input_password.setText(settings.get("network_db_password", ""))
+        self._network_schema_owner = bool(settings.get("network_schema_owner", False))
+        sslmode = settings.get("network_db_sslmode", "prefer")
+        ssl_idx = self.cmb_sslmode.findText(sslmode)
+        if ssl_idx >= 0:
+            self.cmb_sslmode.setCurrentIndex(ssl_idx)
         self._original_mode = self.cmb_db_mode.currentData()
         self._on_mode_changed(self.cmb_db_mode.currentData() or "Standalone")
 
@@ -602,6 +699,8 @@ class NetworkPage(SettingsPage):
             "network_db_name": self.input_dbname.text().strip(),
             "network_db_user": self.input_user.text().strip(),
             "network_db_password": self.input_password.text(),
+            "network_db_sslmode": self.cmb_sslmode.currentText(),
+            "network_schema_owner": self._network_schema_owner,
             # LAN Sync
             "terminal_mode": self.cmb_terminal_mode.currentData() or "standalone",
             "terminal_id": self.input_terminal_id.text().strip() or "TERM-01",
@@ -667,6 +766,7 @@ class NetworkPage(SettingsPage):
             self.connection_tested = True
             self.lbl_test_status.setText(_t("settings.network.connected"))
             self.btn_migrate.setEnabled(True)
+            self._on_connection_success(cfg)
             QMessageBox.information(
                 self,
                 _t("settings.network.connection_test_title"),
@@ -676,11 +776,211 @@ class NetworkPage(SettingsPage):
             self.connection_tested = False
             self.lbl_test_status.setText(_t("settings.network.failed"))
             self.btn_migrate.setEnabled(False)
+            self.database_card.setEnabled(False)
+            self.confirm_card.setEnabled(False)
             QMessageBox.critical(
                 self,
                 _t("settings.network.connection_test_title"),
                 message,
             )
+
+    def _on_connection_success(self, cfg: dict):
+        """Construct PostgreSQL URL and inspect server schema state."""
+        sslmode = self.cmb_sslmode.currentText()
+        query = {"sslmode": sslmode} if sslmode and sslmode != "disable" else {}
+        url_obj = URL.create(
+            drivername="postgresql+psycopg2",
+            username=cfg["user"],
+            password=cfg["password"],
+            host=cfg["host"],
+            port=cfg["port"],
+            database=cfg["dbname"],
+            query=query,
+        )
+        self._current_pg_url = str(url_obj)
+        self._inspect_and_update_database_step(self._current_pg_url)
+
+    def _inspect_and_update_database_step(self, pg_url: str):
+        """Inspect PostgreSQL database state and update Step 2 and Step 3 cards."""
+        from cbpos.core.services.schema_migration_service import SchemaMigrationService
+
+        try:
+            rev = SchemaMigrationService.current_revision(pg_url)
+            head = SchemaMigrationService.head_revision(pg_url)
+            known = SchemaMigrationService.known_revisions(pg_url)
+        except Exception as e:
+            self.database_card.setEnabled(False)
+            self.confirm_card.setEnabled(False)
+            self.lbl_db_state_desc.setText(f"Error checking database schema: {e}")
+            return
+
+        self.database_card.setEnabled(True)
+
+        if rev is None:
+            # Check if tables exist
+            from sqlalchemy import create_engine, inspect
+
+            eng = create_engine(pg_url)
+            try:
+                tables = set(inspect(eng).get_table_names()) - {"alembic_version", "sqlite_sequence"}
+            finally:
+                eng.dispose()
+
+            if not tables:
+                # State: empty
+                self.lbl_db_state_icon.setPixmap(Icons.get("fa5s.exclamation-triangle", "#ffc107").pixmap(24, 24))
+                self.lbl_db_state_desc.setText(_t("network_setup.state_empty"))
+                self.btn_copy_data.setVisible(True)
+                self.btn_copy_data.setEnabled(True)
+                self.btn_start_empty.setVisible(True)
+                self.btn_start_empty.setEnabled(True)
+                self.btn_make_main_update.setVisible(False)
+                self.confirm_card.setEnabled(False)
+                return
+
+        if rev == head:
+            # State: up to date
+            self.lbl_db_state_icon.setPixmap(Icons.get("fa5s.check-circle", "#28a745").pixmap(24, 24))
+            self.lbl_db_state_desc.setText(_t("network_setup.state_ok"))
+            self.btn_copy_data.setVisible(False)
+            self.btn_start_empty.setVisible(False)
+            self.btn_make_main_update.setVisible(False)
+            self.confirm_card.setEnabled(True)
+            self._update_confirm_summary()
+            return
+
+        if rev in known and rev != head:
+            # State: behind head
+            self.lbl_db_state_icon.setPixmap(Icons.get("fa5s.exclamation-triangle", "#ffc107").pixmap(24, 24))
+            self.lbl_db_state_desc.setText(_t("network_setup.state_behind"))
+            self.btn_copy_data.setVisible(False)
+            self.btn_start_empty.setVisible(False)
+            self.btn_make_main_update.setVisible(True)
+            self.btn_make_main_update.setEnabled(True)
+            self.confirm_card.setEnabled(False)
+            return
+
+        # State: newer than this application
+        self.lbl_db_state_icon.setPixmap(Icons.get("fa5s.times-circle", "#dc3545").pixmap(24, 24))
+        self.lbl_db_state_desc.setText(_t("network_setup.state_newer"))
+        self.btn_copy_data.setVisible(False)
+        self.btn_start_empty.setVisible(False)
+        self.btn_make_main_update.setVisible(False)
+        self.confirm_card.setEnabled(False)
+
+    def _on_copy_data_clicked(self):
+        """Execute migration of SQLite data to PostgreSQL and update Step 2."""
+        self._migrate_data()
+        if self._current_pg_url:
+            self._inspect_and_update_database_step(self._current_pg_url)
+
+    def _on_start_empty_clicked(self):
+        """Initialize empty database with default admin user on PostgreSQL."""
+        import socket
+
+        from sqlalchemy import create_engine
+
+        from cbpos.core.models import Base
+        from cbpos.core.services.auth_service import AuthService
+        from cbpos.core.services.database_setup_service import DatabaseSetupService
+        from cbpos.core.services.schema_migration_service import SchemaMigrationService
+        from cbpos.ui.dialogs.admin_pin_dialog import AdminPinDialog
+
+        pin_dialog = AdminPinDialog(parent=self)
+        if not pin_dialog.exec():
+            return
+        pin = pin_dialog.pin()
+        user, role = AuthService.authenticate_pin(pin)
+        if not user or not role or (role.access_level < 9 and role.name != "Admin"):
+            QMessageBox.warning(
+                self,
+                _t("common.error"),
+                _t("permission.admin_override_failed"),
+            )
+            return
+
+        try:
+            eng = create_engine(self._current_pg_url)
+            Base.metadata.create_all(eng)
+            eng.dispose()
+            DatabaseSetupService.stamp_alembic_head(self._current_pg_url)
+            self._network_schema_owner = True
+            SchemaMigrationService.set_schema_owner_host(self._current_pg_url, socket.gethostname())
+            QMessageBox.information(
+                self,
+                _t("network_setup.step_database"),
+                _t("network_setup.database_ready"),
+            )
+            self._inspect_and_update_database_step(self._current_pg_url)
+        except Exception as e:
+            QMessageBox.critical(self, _t("common.error"), str(e))
+
+    def _on_make_main_update_clicked(self):
+        """Designate this machine as Main PC and run schema upgrade."""
+        import socket
+
+        from cbpos.core.services.auth_service import AuthService
+        from cbpos.core.services.schema_migration_service import SchemaMigrationService
+        from cbpos.ui.dialogs.admin_pin_dialog import AdminPinDialog
+
+        pin_dialog = AdminPinDialog(parent=self)
+        if not pin_dialog.exec():
+            return
+        pin = pin_dialog.pin()
+        user, role = AuthService.authenticate_pin(pin)
+        if not user or not role or (role.access_level < 9 and role.name != "Admin"):
+            QMessageBox.warning(
+                self,
+                _t("common.error"),
+                _t("permission.admin_override_failed"),
+            )
+            return
+
+        try:
+            SchemaMigrationService.upgrade_with_lock(self._current_pg_url, user_id=user.id)
+            self._network_schema_owner = True
+            SchemaMigrationService.set_schema_owner_host(self._current_pg_url, socket.gethostname())
+            QMessageBox.information(
+                self,
+                _t("network_setup.step_database"),
+                _t("network_setup.state_ok"),
+            )
+            self._inspect_and_update_database_step(self._current_pg_url)
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                _t("common.error"),
+                _t("network_gate.update_failed", error=str(e)),
+            )
+
+    def _update_confirm_summary(self):
+        """Update summary text in Step 3 card."""
+        cfg = self._get_network_config()
+        summary = (
+            f"<b>{_t('network_setup.summary_host')}</b> {cfg['host']}:{cfg['port']}<br>"
+            f"<b>{_t('network_setup.summary_database')}</b> {cfg['dbname']}<br>"
+            f"<b>{_t('network_setup.summary_status')}</b> <span style='color:#28a745;'>{_t('network_setup.state_ok')}</span>"
+        )
+        self.lbl_confirm_summary.setText(summary)
+
+    def _on_switch_clicked(self):
+        """Save settings and restart application into network mode."""
+        from cbpos.core.services.config_service import ConfigService
+        from cbpos.ui.app_restart import restart_application
+
+        cfg = self._get_network_config()
+        ConfigService.set("db_mode", "network")
+        ConfigService.set("network_db_host", cfg["host"])
+        ConfigService.set("network_db_port", cfg["port"])
+        ConfigService.set("network_db_name", cfg["dbname"])
+        ConfigService.set("network_db_user", cfg["user"])
+        ConfigService.set("network_db_password", cfg["password"])
+        ConfigService.set("network_db_sslmode", self.cmb_sslmode.currentText())
+        ConfigService.set("network_schema_owner", self._network_schema_owner)
+        ConfigService.save_settings(self.save())
+
+        win = self.window()
+        restart_application(win)
 
     def _migrate_data(self):
         from cbpos.core.services.migration_service import MigrationService

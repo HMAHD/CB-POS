@@ -51,22 +51,21 @@ class DatabaseSetupService:
     """Handles first-run database initialization."""
 
     @staticmethod
-    def stamp_alembic_head() -> None:
+    def stamp_alembic_head(db_uri: str | None = None) -> None:
         """Stamp the database with the current Alembic head revision.
 
         Called after ``create_all()`` so that future Alembic migrations
         know the schema is already up to date and don't try to re-apply.
         """
         try:
-            from alembic.config import Config as AlembicConfig
+            from cbpos.core.database import Database
+            from cbpos.core.services.schema_migration_service import SchemaMigrationService
 
-            from alembic import command
-            from cbpos.config import Config
-
-            alembic_cfg = AlembicConfig(str(Config.BASE_DIR / "alembic.ini"))
-            alembic_cfg.set_main_option("script_location", str(Config.BASE_DIR / "alembic"))
-            alembic_cfg.set_main_option("sqlalchemy.url", Config.DB_URI)
-            command.stamp(alembic_cfg, "head")
+            target_uri = db_uri
+            if target_uri is None:
+                db = Database()
+                target_uri = str(db.engine.url)
+            SchemaMigrationService.stamp_head(target_uri)
         except Exception as e:
             logger.warning("Could not stamp alembic version: %s", e)
 

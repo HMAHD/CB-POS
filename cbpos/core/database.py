@@ -4,7 +4,6 @@ from contextlib import contextmanager
 
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import URL
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
@@ -12,9 +11,6 @@ from cbpos.config import Config
 from cbpos.core.services.config_service import ConfigService
 
 logger = logging.getLogger(__name__)
-
-# Maximum number of transparent retries on transient connection errors.
-_MAX_RETRIES = 2
 
 
 class Base(DeclarativeBase):
@@ -27,7 +23,6 @@ class Database:
     Supports both Standalone (SQLite) and Network (PostgreSQL) modes.
 
     Network mode includes:
-    - Connection retry with back-off for transient failures
     - Configurable transaction isolation level
     - Pool pre-ping to detect stale connections
     """
@@ -93,27 +88,7 @@ class Database:
 
     def _get_postgres_uri(self) -> str:
         """Generate PostgreSQL database URI from network settings."""
-        host = ConfigService.get("network_db_host") or "localhost"
-        port = ConfigService.get("network_db_port") or 5432
-        dbname = ConfigService.get("network_db_name") or "cbpos"
-        user = ConfigService.get("network_db_user") or "postgres"
-        password = ConfigService.get("network_db_password") or ""
-        sslmode = ConfigService.get("network_db_sslmode") or "prefer"
-
-        query = {}
-        if sslmode and sslmode != "disable":
-            query["sslmode"] = sslmode
-
-        url_obj = URL.create(
-            drivername="postgresql+psycopg2",
-            username=user,
-            password=password,
-            host=host,
-            port=port,
-            database=dbname,
-            query=query,
-        )
-        return url_obj
+        return ConfigService.get_postgres_uri()
 
     @staticmethod
     def test_connection(
@@ -173,8 +148,6 @@ class Database:
         """Context manager for database sessions.
 
         Ensures sessions are closed and transactions are handled.
-        For network mode, transient connection errors are retried
-        transparently up to ``_MAX_RETRIES`` times.
 
         Args:
             serializable: If True and running in network (PostgreSQL) mode,
@@ -183,41 +156,19 @@ class Database:
                           phantom reads (stock checks, credit updates,
                           document number generation).
         """
-        last_error: Exception | None = None
-        retries = _MAX_RETRIES if self._db_mode == "network" else 0
+        session = self.SessionLocal()
+        try:
+            # Set isolation level for PostgreSQL when requested
+            if serializable and self._db_mode == "network":
+                session.execute(text("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE"))
 
-        for attempt in range(1 + retries):
-            session = self.SessionLocal()
-            try:
-                # Set isolation level for PostgreSQL when requested
-                if serializable and self._db_mode == "network":
-                    session.execute(text("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE"))
-
-                yield session
-                session.commit()
-                return  # success
-            except OperationalError as e:
-                session.rollback()
-                last_error = e
-                # Only retry on transient connection errors in network mode
-                if self._db_mode == "network" and attempt < retries:
-                    logger.warning(
-                        "Database connection error (attempt %d/%d): %s",
-                        attempt + 1,
-                        1 + retries,
-                        e,
-                    )
-                    continue
-                raise
-            except Exception:
-                session.rollback()
-                raise
-            finally:
-                session.close()
-
-        # Should not reach here, but just in case
-        if last_error:
-            raise last_error
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
 
 
 def get_db_session():

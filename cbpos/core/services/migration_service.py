@@ -29,12 +29,14 @@ from cbpos.core.models import (
     SaleItem,
     SalePayment,
     Shift,
+    ShopMeta,
     StockMovement,
     Supplier,
     SuspendedTransaction,
     User,
     VoidReason,
 )
+from cbpos.core.services.schema_migration_service import SchemaMigrationService
 
 # Setup logger for this module
 logger = logging.getLogger(__name__)
@@ -85,6 +87,7 @@ class MigrationService:
         StockMovement,
         # System
         AuditLog,
+        ShopMeta,
         SuspendedTransaction,
         Shift,
         CashMovement,
@@ -139,8 +142,9 @@ class MigrationService:
                                     "Please use an empty database for migration.",
                                 )
 
-            # 4. Create schema in PostgreSQL
+            # 4. Create schema in PostgreSQL and stamp Alembic head (#799)
             Base.metadata.create_all(bind=target_engine)
+            SchemaMigrationService.stamp_head(postgres_url)
 
             # 5. Create sessions
             SourceSession = sessionmaker(bind=source_engine)

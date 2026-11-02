@@ -153,3 +153,59 @@ def test_issue_837_main_run_migrations_wrapper(tmp_path, monkeypatch):
 
     err = main.run_migrations()
     assert err == "unknown_schema"
+
+
+@pytest.mark.domain
+def test_issue_799_stamp_head_and_pending(tmp_path):
+    """Test stamp_head stamps current alembic head, and pending() checks correctly."""
+    db_file = tmp_path / "stamp_test.db"
+    db_uri = f"sqlite:///{db_file}"
+    engine = create_engine(db_uri)
+    Base.metadata.create_all(engine)
+    engine.dispose()
+
+    # Before stamp, current revision is None
+    assert SchemaMigrationService.current_revision(db_uri) is None
+
+    # Stamp head
+    SchemaMigrationService.stamp_head(db_uri)
+    head = SchemaMigrationService.head_revision(db_uri)
+    assert SchemaMigrationService.current_revision(db_uri) == head
+    assert SchemaMigrationService.pending(db_uri) is False
+
+
+@pytest.mark.domain
+def test_issue_799_shop_meta_owner_host(tmp_path):
+    """Test get_schema_owner_host and set_schema_owner_host on SQLite."""
+    db_file = tmp_path / "meta_test.db"
+    db_uri = f"sqlite:///{db_file}"
+    engine = create_engine(db_uri)
+    Base.metadata.create_all(engine)
+    engine.dispose()
+
+    # Initially empty
+    assert SchemaMigrationService.get_schema_owner_host(db_uri) is None
+
+    # Set host
+    SchemaMigrationService.set_schema_owner_host(db_uri, "pos-main-terminal")
+    assert SchemaMigrationService.get_schema_owner_host(db_uri) == "pos-main-terminal"
+
+    # Update host
+    SchemaMigrationService.set_schema_owner_host(db_uri, "pos-backup-terminal")
+    assert SchemaMigrationService.get_schema_owner_host(db_uri) == "pos-backup-terminal"
+
+
+@pytest.mark.domain
+def test_issue_799_upgrade_with_lock_sqlite(tmp_path):
+    """Test upgrade_with_lock succeeds on SQLite without crashing on advisory lock."""
+    db_file = tmp_path / "upgrade_lock_test.db"
+    db_uri = f"sqlite:///{db_file}"
+    engine = create_engine(db_uri)
+    Base.metadata.create_all(engine)
+    engine.dispose()
+
+    # Even if advisory locks are PG-specific, upgrade_with_lock gracefully handles sqlite
+    SchemaMigrationService.stamp_head(db_uri)
+    SchemaMigrationService.upgrade_with_lock(db_uri, user_id=1)
+    head = SchemaMigrationService.head_revision(db_uri)
+    assert SchemaMigrationService.current_revision(db_uri) == head

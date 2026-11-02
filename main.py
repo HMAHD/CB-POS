@@ -385,6 +385,14 @@ def main():
     register_all_reports()
     print("[BOOTSTRAP] Reports registered.")
 
+    # PostgreSQL Network Mode Schema Gate (#799)
+    from cbpos.ui.network_schema_gate import NetworkSchemaGate
+
+    if not NetworkSchemaGate.check_and_gate():
+        print("[BOOTSTRAP] Network schema gate blocked startup. Exiting.")
+        _close_splash()
+        sys.exit(0)
+
     # First-Run Setup & Database Check (#833, #791)
     from cbpos.core.services.database_setup_service import (
         DatabaseSetupService,

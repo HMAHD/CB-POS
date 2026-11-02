@@ -40,8 +40,8 @@ _SYNC_TERMINAL_MODES = ("main", "terminal")
 
 
 def _terminal_short(terminal_id: str) -> str:
-    """Return the short terminal suffix: "TERM-01" -> "01", "T3" -> "T3"."""
-    return terminal_id.split("-")[-1] if "-" in terminal_id else terminal_id
+    """Return the terminal prefix with non-alphanumerics removed: "TERM-01" -> "TERM01", "TILL-01" -> "TILL01" (#867)."""
+    return re.sub(r"[^A-Za-z0-9]", "", terminal_id).upper()
 
 
 def _render_static(pattern: str, now: datetime, terminal_id: str) -> str:

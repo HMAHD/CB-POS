@@ -52,6 +52,7 @@ from cbpos.core.services.sync_protocol import (
     EP_PUSH_TRANSACTIONS,
     EP_REGISTER,
     REJECTED_TABLE_ERROR,
+    SYNC_PROTOCOL_VERSION,
     dict_to_model,
     get_model_for_table,
     make_envelope,
@@ -353,6 +354,18 @@ class SyncClient(QThread):
                 raw = resp.read().decode("utf-8")
                 return sync_json_loads(raw)
 
+        except urllib.error.HTTPError as e:
+            try:
+                raw = e.read().decode("utf-8")
+                err_data = sync_json_loads(raw)
+                err_msg = err_data.get("error", str(e))
+            except Exception:
+                err_msg = str(e)
+            logger.error("Sync HTTP %d on %s %s: %s", e.code, method, endpoint, err_msg)
+            self._error_code = err_msg
+            self._set_state(self.STATE_ERROR)
+            self.error_signal.emit(err_msg)
+            return None
         except (urllib.error.URLError, ssl.SSLCertVerificationError) as e:
             if _is_cert_verify_error(e):
                 self._handle_cert_mismatch(e)
@@ -520,11 +533,16 @@ class SyncClient(QThread):
 
     def _try_register(self) -> bool:
         """Register with the Main PC."""
+        from cbpos.core.services.local_identity_service import LocalIdentityService
+
+        db_instance_id = LocalIdentityService.get()
         result = self._request(
             "POST",
             EP_REGISTER,
             {
                 "terminal_id": self._terminal_id,
+                "db_instance_id": db_instance_id,
+                "protocol_version": SYNC_PROTOCOL_VERSION,
             },
         )
         if result and result.get("status") == "registered":

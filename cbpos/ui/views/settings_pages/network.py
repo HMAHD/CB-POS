@@ -1,24 +1,29 @@
 """Network database configuration settings page for multi-terminal setup."""
 
 import logging
+import re
 import socket
 
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QFontDatabase
+from PyQt6.QtGui import QColor, QFontDatabase
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
     QFrame,
     QGridLayout,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
     QMessageBox,
     QProgressDialog,
     QPushButton,
     QSpinBox,
+    QTableWidget,
+    QTableWidgetItem,
     QToolTip,
     QVBoxLayout,
+    QWidget,
 )
 from sqlalchemy.engine import URL
 
@@ -546,6 +551,46 @@ class NetworkPage(SettingsPage):
 
         sync_card_layout.addWidget(self.terminal_pairing_card)
 
+        # Registered Terminals Card (Main PC mode, #866, #867)
+        self.registered_terminals_card = QFrame()
+        self.registered_terminals_card.setObjectName("RegisteredTerminalsBox")
+        self.registered_terminals_card.setStyleSheet(
+            "QFrame#RegisteredTerminalsBox { background-color: rgba(0, 0, 0, 0.08); border: 1px solid rgba(128, 128, 128, 0.25); border-radius: 8px; padding: 12px; }"
+        )
+        rt_layout = QVBoxLayout(self.registered_terminals_card)
+        rt_layout.setContentsMargins(14, 12, 14, 12)
+        rt_layout.setSpacing(8)
+
+        self.lbl_rt_title = QLabel()
+        self.lbl_rt_title.setStyleSheet("font-weight: bold; font-size: 13px;")
+        rt_layout.addWidget(self.lbl_rt_title)
+
+        self.lbl_rt_desc = QLabel()
+        self.lbl_rt_desc.setObjectName("MigrationInfo")
+        self.lbl_rt_desc.setWordWrap(True)
+        rt_layout.addWidget(self.lbl_rt_desc)
+
+        self.tbl_registered_terminals = QTableWidget()
+        self.tbl_registered_terminals.setColumnCount(6)
+        self.tbl_registered_terminals.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.tbl_registered_terminals.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.tbl_registered_terminals.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
+        self.tbl_registered_terminals.verticalHeader().setVisible(False)
+        self.tbl_registered_terminals.verticalHeader().setDefaultSectionSize(40)
+        self.tbl_registered_terminals.setMinimumHeight(160)
+        header = self.tbl_registered_terminals.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+        self.tbl_registered_terminals.setColumnWidth(5, 150)
+        rt_layout.addWidget(self.tbl_registered_terminals)
+
+        sync_card_layout.addWidget(self.registered_terminals_card)
+
         sync_layout.addWidget(self.sync_card)
 
         self.tabs.addTab(tab_sync, "")
@@ -739,6 +784,19 @@ class NetworkPage(SettingsPage):
         self.lbl_tp_title.setText(_t("sync_pairing.title"))
         self._update_terminal_pairing_card()
 
+        # Registered Terminals Card
+        self.lbl_rt_title.setText(_t("settings.network.registered_terminals_title"))
+        self.lbl_rt_desc.setText(_t("settings.network.registered_terminals_desc"))
+        headers = [
+            _t("settings.network.col_terminal_id"),
+            _t("settings.network.col_instance_id"),
+            _t("settings.network.col_last_seen"),
+            _t("settings.network.col_ip_address"),
+            _t("settings.network.col_status"),
+            _t("settings.network.col_action"),
+        ]
+        self.tbl_registered_terminals.setHorizontalHeaderLabels(headers)
+
         self.equalize_form_labels()
 
     def load(self, settings: dict):
@@ -766,11 +824,23 @@ class NetworkPage(SettingsPage):
         tm_idx = self.cmb_terminal_mode.findData(terminal_mode)
         if tm_idx >= 0:
             self.cmb_terminal_mode.setCurrentIndex(tm_idx)
-        self.input_terminal_id.setText(settings.get("terminal_id", "TERM-01"))
+        self.input_terminal_id.setText(settings.get("terminal_id", ""))
         self.spin_sync_port.setValue(int(settings.get("sync_server_port", 5555)))
         self.input_main_pc_addr.setText(settings.get("main_pc_address", ""))
         self.spin_sync_interval.setValue(int(settings.get("sync_interval_seconds", 3)))
         self.input_sync_secret.setText(settings.get("sync_shared_secret", ""))
+
+    def validate(self) -> None:
+        """Validate network settings before saving."""
+        terminal_mode = self.cmb_terminal_mode.currentData() or "standalone"
+        if terminal_mode in ("main", "terminal"):
+            tid = self.input_terminal_id.text().strip()
+            if not tid:
+                self.input_terminal_id.setFocus()
+                raise ValueError(_t("settings.network.terminal_id_required"))
+            if not re.match(r"^[A-Z0-9][A-Z0-9-]{1,15}$", tid.upper()):
+                self.input_terminal_id.setFocus()
+                raise ValueError(_t("settings.network.terminal_id_invalid"))
 
     def save(self) -> dict:
         """Return database mode, server connection and LAN sync fields as a settings dict."""
@@ -787,7 +857,7 @@ class NetworkPage(SettingsPage):
             "network_schema_owner": self._network_schema_owner,
             # LAN Sync
             "terminal_mode": self.cmb_terminal_mode.currentData() or "standalone",
-            "terminal_id": self.input_terminal_id.text().strip() or "TERM-01",
+            "terminal_id": self.input_terminal_id.text().strip().upper(),
             "sync_server_port": self.spin_sync_port.value(),
             "main_pc_address": self.input_main_pc_addr.text().strip(),
             "sync_interval_seconds": self.spin_sync_interval.value(),
@@ -1207,15 +1277,19 @@ class NetworkPage(SettingsPage):
 
             self.main_code_card.setVisible(True)
             self.terminal_pairing_card.setVisible(False)
+            self.registered_terminals_card.setVisible(True)
+            self._refresh_registered_terminals()
         elif is_terminal:
             self.lbl_server_address.setVisible(False)
             self.main_code_card.setVisible(False)
             self.terminal_pairing_card.setVisible(True)
+            self.registered_terminals_card.setVisible(False)
             self._update_terminal_pairing_card()
         else:
             self.lbl_server_address.setVisible(False)
             self.main_code_card.setVisible(False)
             self.terminal_pairing_card.setVisible(False)
+            self.registered_terminals_card.setVisible(False)
 
     def _update_terminal_pairing_card(self) -> None:
         """Update pairing status card on terminal."""
@@ -1389,6 +1463,116 @@ class NetworkPage(SettingsPage):
                 self,
                 _t("settings.network.btn_forget_main"),
                 _t("settings.network.sync_forget_main_done_message"),
+            )
+
+    def _refresh_registered_terminals(self) -> None:
+        """Fetch and display registered terminals in the table."""
+        from cbpos.core.services.sync_terminal_service import SyncTerminalService
+
+        terminals = SyncTerminalService.list_terminals()
+        self.tbl_registered_terminals.setRowCount(len(terminals))
+
+        for row_idx, term in enumerate(terminals):
+            self.tbl_registered_terminals.setRowHeight(row_idx, 46)
+            # Col 0: Terminal ID
+            item_id = QTableWidgetItem(term["terminal_id"])
+            item_id.setFlags(item_id.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.tbl_registered_terminals.setItem(row_idx, 0, item_id)
+
+            # Col 1: Instance UUID (shortened)
+            uuid_str = term["db_instance_id"]
+            short_uuid = (uuid_str[:8] + "…") if len(uuid_str) > 8 else uuid_str
+            item_uuid = QTableWidgetItem(short_uuid)
+            item_uuid.setToolTip(uuid_str)
+            item_uuid.setFlags(item_uuid.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.tbl_registered_terminals.setItem(row_idx, 1, item_uuid)
+
+            # Col 2: Last Seen
+            last_seen_dt = term["last_seen"]
+            last_seen_str = last_seen_dt.strftime("%Y-%m-%d %H:%M:%S") if last_seen_dt else "-"
+            item_seen = QTableWidgetItem(last_seen_str)
+            item_seen.setFlags(item_seen.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.tbl_registered_terminals.setItem(row_idx, 2, item_seen)
+
+            # Col 3: IP Address
+            item_ip = QTableWidgetItem(term["last_ip"] or "-")
+            item_ip.setFlags(item_ip.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.tbl_registered_terminals.setItem(row_idx, 3, item_ip)
+
+            # Col 4: Status
+            is_released = term["released"]
+            status_text = (
+                _t("settings.network.status_released") if is_released else _t("settings.network.status_active")
+            )
+            item_status = QTableWidgetItem(status_text)
+            if is_released:
+                item_status.setForeground(QColor("#9E9E9E"))
+            else:
+                item_status.setForeground(QColor("#4CAF50"))
+            item_status.setFlags(item_status.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.tbl_registered_terminals.setItem(row_idx, 4, item_status)
+
+            # Col 5: Action (Release ID... button)
+            if not is_released:
+                container = QWidget()
+                c_layout = QHBoxLayout(container)
+                c_layout.setContentsMargins(6, 2, 6, 2)
+                c_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                btn_release = QPushButton(_t("settings.network.btn_release_id"))
+                btn_release.setObjectName("BtnReleaseTerminal")
+                btn_release.setProperty("class", "secondary")
+                btn_release.setCursor(Qt.CursorShape.PointingHandCursor)
+                btn_release.ensurePolished()
+                tid = term["terminal_id"]
+                btn_release.clicked.connect(lambda checked=False, t_id=tid: self._release_terminal_id(t_id))
+                c_layout.addWidget(btn_release)
+                container.setMinimumWidth(container.sizeHint().width())
+                self.tbl_registered_terminals.setCellWidget(row_idx, 5, container)
+            else:
+                self.tbl_registered_terminals.setCellWidget(row_idx, 5, None)
+
+    def _release_terminal_id(self, terminal_id: str) -> None:
+        """Release terminal ID binding after admin PIN authentication."""
+        from cbpos.core.services.auth_service import AuthService
+        from cbpos.core.services.sync_terminal_service import SyncTerminalService
+        from cbpos.ui.dialogs.admin_pin_dialog import AdminPinDialog
+
+        pin_dialog = AdminPinDialog(parent=self)
+        if not pin_dialog.exec():
+            return
+        pin = pin_dialog.pin()
+        user, role = AuthService.authenticate_pin(pin)
+        if not user or not role or (role.access_level < 9 and role.name != "Admin"):
+            QMessageBox.warning(
+                self,
+                _t("common.error"),
+                _t("permission.admin_override_failed"),
+            )
+            return
+
+        reply = QMessageBox.question(
+            self,
+            _t("settings.network.release_confirm_title"),
+            _t("settings.network.release_confirm_msg", terminal_id=terminal_id),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        success = SyncTerminalService.release_terminal(terminal_id, user_id=user.id)
+        if success:
+            QMessageBox.information(
+                self,
+                _t("settings.network.release_confirm_title"),
+                _t("settings.network.release_success", terminal_id=terminal_id),
+            )
+            self._refresh_registered_terminals()
+        else:
+            QMessageBox.warning(
+                self,
+                _t("common.error"),
+                _t("common.not_found"),
             )
 
 

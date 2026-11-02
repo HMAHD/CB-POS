@@ -181,18 +181,22 @@ class SyncApplyService:
     the push is acknowledged, so a half-applied batch would lose rows).
     """
 
-    def __init__(self, session: Any, terminal_id: str) -> None:
+    def __init__(self, session: Any, terminal_id: str, db_instance_id: str = "legacy") -> None:
         """Bind to an open session and the pushing till's terminal id.
 
         Args:
             session: Open SQLAlchemy session (transaction owned by caller).
             terminal_id: The till that sent the batch (envelope terminal_id).
+            db_instance_id: The database instance UUID of the pushing till (#866).
         """
         if not terminal_id:
             raise PushApplyError("terminal_id required")
         self._session = session
         self._terminal_id = terminal_id
+        self._db_instance_id = db_instance_id or "legacy"
         self._id_cache: dict[tuple[str, int], int] = {}
+        # Track document ids restored idempotently (#866)
+        self._restored_documents: set[int] = set()
         # Owners (Main PC ids) whose figure this batch's ledger rows touched, per reply key.
         self._touched_balances: dict[str, set[int]] = {b.reply_key: set() for b in _LEDGER_BALANCES.values()}
         # Till ids of the customers this batch creates (#680).
@@ -333,6 +337,84 @@ class SyncApplyService:
         if table_name == "documents":
             # Only base columns -- the full row comes as sales/purchases.
             raise PushApplyError(f"documents[{local_id}]: no matching sales/purchases row in this push")
+
+        # Before inserting a document, check if (terminal_id, document_number) already exists (#866)
+        if space == DOCUMENT_ID_SPACE and values.get("document_number"):
+            number = values["document_number"]
+            existing_doc = self._session.query(Document).filter_by(document_number=number).one_or_none()
+            if existing_doc is not None:
+                owner = existing_doc.origin_terminal_id or existing_doc.terminal_id
+                if owner != self._terminal_id:
+                    raise PushApplyError("document_number_conflict")
+                if existing_doc.date != values.get("date"):
+                    raise PushApplyError("document_number_conflict")
+                if table_name == "sales":
+                    from cbpos.core.models import Sale
+
+                    existing_sale = self._session.get(Sale, existing_doc.id)
+                    if existing_sale and existing_sale.total_amount != values.get("total_amount"):
+                        raise PushApplyError("document_number_conflict")
+                # Idempotent re-send after restore
+                self._restored_documents.add(existing_doc.id)
+                self._remember(space, local_id, existing_doc.id)
+                return
+
+        # Handle child items belonging to an idempotently restored document (#866)
+        if table_name == "sale_items" and values.get("sale_id") in self._restored_documents:
+            from cbpos.core.models import SaleItem
+
+            existing_item = (
+                self._session.query(SaleItem)
+                .filter_by(sale_id=values["sale_id"], product_id=values.get("product_id"))
+                .first()
+            )
+            if existing_item is not None:
+                self._remember(space, local_id, existing_item.id)
+                return
+
+        if table_name == "sale_payments" and values.get("sale_id") in self._restored_documents:
+            from cbpos.core.models import SalePayment
+
+            existing_pmt = (
+                self._session.query(SalePayment)
+                .filter_by(sale_id=values["sale_id"], payment_method=values.get("payment_method"))
+                .first()
+            )
+            if existing_pmt is not None:
+                self._remember(space, local_id, existing_pmt.id)
+                return
+
+        if table_name == "stock_movements" and values.get("document_id") in self._restored_documents:
+            from cbpos.core.models import StockMovement
+
+            existing_sm = (
+                self._session.query(StockMovement)
+                .filter_by(
+                    document_id=values["document_id"],
+                    product_id=values.get("product_id"),
+                    type=values.get("type"),
+                )
+                .first()
+            )
+            if existing_sm is not None:
+                self._remember(space, local_id, existing_sm.id)
+                return
+
+        if table_name == "customer_ledger" and (
+            values.get("document_id") in self._restored_documents
+            or values.get("reference_id") in self._restored_documents
+        ):
+            from cbpos.core.models import CustomerLedgerEntry
+
+            ref_id = values.get("document_id") or values.get("reference_id")
+            existing_cle = (
+                self._session.query(CustomerLedgerEntry)
+                .filter_by(customer_id=values.get("customer_id"), reference_id=ref_id)
+                .first()
+            )
+            if existing_cle is not None:
+                self._remember(space, local_id, existing_cle.id)
+                return
 
         instance = model_class(**values)
         self._session.add(instance)
@@ -525,7 +607,12 @@ class SyncApplyService:
             return self._id_cache[key]
         server_id = (
             self._session.query(SyncIdMap.server_id)
-            .filter_by(origin_terminal_id=self._terminal_id, table_name=space, local_id=local_id)
+            .filter_by(
+                origin_terminal_id=self._terminal_id,
+                origin_db_instance_id=self._db_instance_id,
+                table_name=space,
+                local_id=local_id,
+            )
             .scalar()
         )
         if server_id is not None:
@@ -534,7 +621,13 @@ class SyncApplyService:
 
     def _remember(self, space: str, local_id: int, server_id: int) -> None:
         self._session.add(
-            SyncIdMap(origin_terminal_id=self._terminal_id, table_name=space, local_id=local_id, server_id=server_id)
+            SyncIdMap(
+                origin_terminal_id=self._terminal_id,
+                origin_db_instance_id=self._db_instance_id,
+                table_name=space,
+                local_id=local_id,
+                server_id=server_id,
+            )
         )
         self._session.flush()
         self._id_cache[(space, local_id)] = server_id
@@ -568,10 +661,12 @@ class SyncApplyService:
             if existing is None:
                 return None
             owner = existing.origin_terminal_id or existing.terminal_id
-            if owner != self._terminal_id or self._is_claimed(space, existing.id):
+            if owner != self._terminal_id:
                 raise PushApplyError(
                     f"{table_name}[{local_id}]: document number {number} already belongs to another document"
                 )
+            if self._is_claimed(space, existing.id):
+                return None
             if values.get("type") and existing.type != values["type"]:
                 raise PushApplyError(f"{table_name}[{local_id}]: document {number} is a {existing.type}")
             return existing
@@ -590,6 +685,12 @@ class SyncApplyService:
 
     def _update(self, row: Any, table_name: str, values: dict[str, Any]) -> None:
         """Re-send of a row the Main PC already has: refresh it in place."""
+        if table_name in _DOCUMENT_TABLES:
+            if values.get("document_number") and getattr(row, "document_number", None) != values["document_number"]:
+                raise PushApplyError("mapped_row_mismatch")
+            if values.get("date") and getattr(row, "date", None) != values["date"]:
+                raise PushApplyError("mapped_row_mismatch")
+
         if table_name == "stock_movements":
             # Stock was moved when this movement was first stored; a movement
             # never changes on the till afterwards, so leave it untouched.

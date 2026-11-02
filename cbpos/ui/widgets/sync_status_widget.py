@@ -119,6 +119,13 @@ class SyncStatusWidget(QWidget):
                 lines.append(f"<span style='color: #FFC107;'>{_t('sync_pairing.not_paired')}</span>")
             elif self._state == "error" and self._error_code == "cert_mismatch":
                 lines.append(f"<span style='color: #F44336;'>{_t('sync_pairing.changed')}</span>")
+            elif self._state == "error" and self._error_code == "terminal_id_is_main":
+                lines.append(f"<span style='color: #F44336;'>{_t('sync.error_terminal_id_is_main')}</span>")
+            elif self._state == "error" and self._error_code == "terminal_id_taken":
+                from cbpos.core.services.config_service import ConfigService
+
+                tid = ConfigService.get("terminal_id") or ""
+                lines.append(f"<span style='color: #F44336;'>{_t('sync.error_terminal_id_taken', id=tid)}</span>")
             else:
                 lines.append(
                     f"<b>{_t('sync_status.detail_pending')}:</b> "
@@ -173,8 +180,10 @@ class SyncStatusWidget(QWidget):
     @pyqtSlot(str)
     def on_sync_error(self, message: str) -> None:
         """Handle error signal from sync client."""
-        if message == _t("sync_pairing.changed"):
+        if message in (_t("sync_pairing.changed"), "cert_mismatch"):
             self._error_code = "cert_mismatch"
+        elif message in ("terminal_id_is_main", "terminal_id_taken", "protocol_too_old"):
+            self._error_code = message
         self._update_display()
 
     @pyqtSlot(str)

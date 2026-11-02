@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Sync Protocol Version — bump when envelope format changes.
 # Server and client must agree on the major version.
 # ---------------------------------------------------------------------------
-SYNC_PROTOCOL_VERSION = "1.0"
+SYNC_PROTOCOL_VERSION = "1.1"
 
 # ---------------------------------------------------------------------------
 # Default sync server port
@@ -266,6 +266,7 @@ def make_envelope(
     msg_type: str,
     payload: Any,
     sequence: int | None = None,
+    db_instance_id: str | None = None,
 ) -> dict[str, Any]:
     """Create a sync envelope for transmission.
 
@@ -274,13 +275,23 @@ def make_envelope(
         msg_type: Message type (e.g. "PUSH_TRANSACTIONS", "PULL_CATALOG").
         payload: The data payload (will be JSON-serialized).
         sequence: Optional sync sequence number for resumable sync.
+        db_instance_id: Optional database instance UUID (#866).
 
     Returns:
         Dict ready for JSON serialization.
     """
+    if db_instance_id is None:
+        try:
+            from cbpos.core.services.local_identity_service import LocalIdentityService
+
+            db_instance_id = LocalIdentityService.get()
+        except Exception:
+            db_instance_id = ""
+
     return {
         "protocol_version": SYNC_PROTOCOL_VERSION,
         "terminal_id": terminal_id,
+        "db_instance_id": db_instance_id,
         "timestamp": datetime.now().isoformat(),
         "sequence": sequence,
         "type": msg_type,
@@ -294,14 +305,24 @@ def validate_envelope(data: dict[str, Any]) -> tuple[bool, str]:
     Returns:
         Tuple of (is_valid, error_message).
     """
-    required = ("protocol_version", "terminal_id", "type", "payload")
+    required = ("protocol_version", "terminal_id", "db_instance_id", "type", "payload")
     for field in required:
         if field not in data:
             return False, f"Missing required field: {field}"
 
     version = data.get("protocol_version", "")
-    if not version.startswith("1."):
+    if not isinstance(version, str) or not version.startswith("1."):
         return False, f"Incompatible protocol version: {version}"
+
+    try:
+        parts = [int(p) for p in version.split(".")]
+        if parts < [1, 1]:
+            return False, "protocol_too_old"
+    except Exception:
+        return False, f"Invalid protocol version: {version}"
+
+    if not data.get("db_instance_id"):
+        return False, "Missing required field: db_instance_id"
 
     return True, ""
 

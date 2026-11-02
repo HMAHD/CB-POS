@@ -290,6 +290,22 @@ class TestEnvelope:
         ok, _err = validate_envelope(env)
         assert ok is True
 
+    def test_validate_protocol_too_old(self):
+        """Peers with version < 1.1 are refused with protocol_too_old (#866)."""
+        env = make_envelope("TERM-01", "TEST", {})
+        env["protocol_version"] = "1.0"
+        ok, err = validate_envelope(env)
+        assert ok is False
+        assert err == "protocol_too_old"
+
+    def test_validate_missing_db_instance_id(self):
+        """Missing db_instance_id fails envelope validation (#866)."""
+        env = make_envelope("TERM-01", "TEST", {})
+        del env["db_instance_id"]
+        ok, err = validate_envelope(env)
+        assert ok is False
+        assert "db_instance_id" in err
+
 
 # ---------------------------------------------------------------------------
 # Table Model Map Tests

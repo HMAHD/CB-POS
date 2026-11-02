@@ -271,7 +271,7 @@ def test_issue_866_mapped_resend_with_different_number_rejected(shop):
         assert "mapped_row_mismatch" in str(excinfo.value)
 
 
-def test_issue_869_till_sale_after_guard_pushes_fine(shop):
+def test_issue_869_till_sale_after_guard_pushes_fine(shop, tmp_path):
     """Catalog is read-only on till, but normal sales push and apply cleanly to Main PC."""
     from cbpos.core.services.inventory_service import InventoryService
     from cbpos.core.utils.terminal_guard import CatalogReadOnlyError
@@ -281,7 +281,7 @@ def test_issue_869_till_sale_after_guard_pushes_fine(shop):
     product_id = cat["product"]
 
     # 1. Mutating catalog on till is guarded
-    with shop.on(TILL_ID):
+    with isolated_settings(str(tmp_path), terminal_id=TILL_ID, terminal_mode="terminal"), shop.on(TILL_ID):
         with pytest.raises(CatalogReadOnlyError):
             InventoryService().create_product({"name_en": "Till Product", "price": Decimal("100")})
 

@@ -104,27 +104,13 @@ class Shop:
     @contextmanager
     def on(self, machine: str) -> Iterator[Database]:
         """Run the block "on" a machine: ``Database()`` is that machine's database."""
-        from cbpos.core.services.config_service import ConfigService
-
         db = self.main if machine == "main" else self.tills[machine][0]
         previous = Database._instance
         Database._instance = db
-        prev_mode = ConfigService.get("terminal_mode")
-        prev_id = ConfigService.get("terminal_id")
-        if machine == "main":
-            ConfigService.set("terminal_mode", "main")
-            ConfigService.set("terminal_id", "TERM-01")
-        else:
-            ConfigService.set("terminal_mode", "terminal")
-            ConfigService.set("terminal_id", machine)
         try:
             yield db
         finally:
             Database._instance = previous
-            if prev_mode is not None:
-                ConfigService.set("terminal_mode", prev_mode)
-            if prev_id is not None:
-                ConfigService.set("terminal_id", prev_id)
 
     @contextmanager
     def session(self, machine: str) -> Iterator[Session]:

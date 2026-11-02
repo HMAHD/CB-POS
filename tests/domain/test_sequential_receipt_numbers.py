@@ -81,7 +81,7 @@ class TestSaleNumbers:
 
         sale = _sell(user, product)
 
-        assert sale.document_number == f"S01-{YEAR}{datetime.now():%m}-0001"
+        assert sale.document_number == f"STERM01-{YEAR}{datetime.now():%m}-0001"
 
     def test_invalid_stored_format_falls_back_to_default(self, db_session, user, product, settings, caplog):
         settings["doc_format_sale"] = "INV-{seq}-{Y}"
@@ -134,12 +134,23 @@ class TestSaleNumbers:
         sequence would collide on the Main PC: the terminal goes in front."""
         settings.update(terminal_mode="terminal", terminal_id="TERM-02")
 
-        assert _sell(user, product).document_number == f"02-INV-{YEAR}-00001"
+        assert _sell(user, product).document_number == f"TERM02-INV-{YEAR}-00001"
 
     def test_format_that_already_has_the_terminal_is_left_alone(self, db_session, user, product, settings):
         settings.update(terminal_mode="main", terminal_id="TERM-01", doc_format_sale="INV-{T}-{Y}-{seq:05d}")
 
-        assert _sell(user, product).document_number == f"INV-01-{YEAR}-00001"
+        assert _sell(user, product).document_number == f"INV-TERM01-{YEAR}-00001"
+
+    def test_issue_867_prefixes_differ_for_term01_and_till01(self, db_session, user, product, settings):
+        """TERM-01 and TILL-01 must not collide to the same 01- prefix (#867)."""
+        settings.update(terminal_mode="terminal", terminal_id="TERM-01")
+        term_sale = _sell(user, product).document_number
+        settings.update(terminal_mode="terminal", terminal_id="TILL-01")
+        till_sale = _sell(user, product).document_number
+
+        assert term_sale.startswith(f"TERM01-INV-{YEAR}-")
+        assert till_sale.startswith(f"TILL01-INV-{YEAR}-")
+        assert term_sale[:6] != till_sale[:6]
 
 
 @pytest.mark.usefixtures("settings")
@@ -174,9 +185,12 @@ def test_search_finds_old_and_new_numbers(db_session, user, product):
 def test_preview_includes_terminal_for_sync_tills(db_session, monkeypatch):
     monkeypatch.setattr(ConfigService, "get", lambda key, default=None: {"terminal_mode": "terminal"}.get(key, default))
 
-    assert DocumentService.preview_number("INV-{Y}-{seq:05d}", "YEARLY", "TERM-02", "SALE") == f"02-INV-{YEAR}-00001"
     assert (
-        DocumentService.preview_number("GRN-{Y}-{seq:05d}", "YEARLY", "TERM-02", "PURCHASE") == f"02-GRN-{YEAR}-00001"
+        DocumentService.preview_number("INV-{Y}-{seq:05d}", "YEARLY", "TERM-02", "SALE") == f"TERM02-INV-{YEAR}-00001"
+    )
+    assert (
+        DocumentService.preview_number("GRN-{Y}-{seq:05d}", "YEARLY", "TERM-02", "PURCHASE")
+        == f"TERM02-GRN-{YEAR}-00001"
     )
     assert (
         DocumentService.preview_number("PO-{Y}-{seq:05d}", "YEARLY", "TERM-02", "PURCHASE_ORDER") == f"PO-{YEAR}-00001"
@@ -207,5 +221,5 @@ class TestPurchaseNumbers:
         settings.update(terminal_id="TERM-03")
         other_till = self._grn(db_session, user)
 
-        assert first == f"02-GRN-{YEAR}-00001"
-        assert other_till == f"03-GRN-{YEAR}-00001"
+        assert first == f"TERM02-GRN-{YEAR}-00001"
+        assert other_till == f"TERM03-GRN-{YEAR}-00001"

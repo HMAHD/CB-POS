@@ -28,6 +28,7 @@ from cbpos.core.services.price_list_service import PriceListService
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import NO_VALUE, format_date, format_number, money_header
+from cbpos.core.utils.terminal_guard import catalog_is_read_only
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.components.activation import Activatable
 from cbpos.ui.dialogs.bulk_price_adjust_dialog import BulkPriceAdjustDialog
@@ -36,6 +37,7 @@ from cbpos.ui.dialogs.set_item_price_dialog import SetItemPriceDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import INFO, NEUTRAL, SUCCESS, status_color
 from cbpos.ui.styles.style_helpers import refresh_style
+from cbpos.ui.widgets.read_only_banner import ReadOnlyBanner
 from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
     align_numeric_headers,
@@ -77,6 +79,9 @@ class PriceListView(QWidget, Activatable):
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
+
+        self.read_only_banner = ReadOnlyBanner()
+        root.addWidget(self.read_only_banner)
 
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -291,8 +296,31 @@ class PriceListView(QWidget, Activatable):
     # Retranslation
     # ------------------------------------------------------------------
 
+    def _update_read_only_state(self) -> None:
+        """Update action buttons and tooltip based on terminal catalog read-only state."""
+        is_ro = self.read_only_banner.refresh_visibility()
+        tip = _t("catalog.read_only_tooltip") if is_ro else ""
+        for btn in (
+            self.btn_add,
+            self.btn_edit,
+            self.btn_delete,
+            self.btn_bulk_adjust,
+            self.btn_set_item_price,
+        ):
+            btn.setEnabled(not is_ro)
+            btn.setToolTip(tip)
+
+        if is_ro:
+            self.btn_remove_override.setEnabled(False)
+            self.btn_remove_override.setToolTip(tip)
+        else:
+            self.btn_remove_override.setToolTip("")
+            self._on_table_selection_changed()
+
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
+        self.read_only_banner.retranslate_ui()
+        self._update_read_only_state()
         self.sidebar_title.setText(_t("pricelist.sidebar_title"))
         self.btn_add.setText(_t("pricelist.btn_add"))
         self.btn_edit.setText(_t("pricelist.btn_edit"))
@@ -490,6 +518,9 @@ class PriceListView(QWidget, Activatable):
 
     def add_price_list(self):
         """Open the create dialog and persist a new price list on accept."""
+        if catalog_is_read_only():
+            return
+
         dialog = PriceListDialog(self)
         if dialog.exec():
             name, start, end, is_active = dialog.get_data()
@@ -502,6 +533,9 @@ class PriceListView(QWidget, Activatable):
 
     def edit_price_list(self) -> None:
         """Rename the currently selected price list and/or edit its dates."""
+        if catalog_is_read_only():
+            return
+
         if not self.current_list:
             QMessageBox.information(
                 self,
@@ -535,6 +569,9 @@ class PriceListView(QWidget, Activatable):
 
     def delete_price_list(self) -> None:
         """Delete the currently selected price list after confirmation."""
+        if catalog_is_read_only():
+            return
+
         if not self.current_list:
             QMessageBox.information(
                 self,
@@ -563,26 +600,35 @@ class PriceListView(QWidget, Activatable):
 
     def edit_item_price(self, index):
         """Open the price editor for the double-clicked table row."""
+        if catalog_is_read_only():
+            return
         self._edit_item_price_row(index.row())
 
     def edit_selected_item_price(self) -> None:
         """Open the price editor for the currently selected row (button/Enter key)."""
+        if catalog_is_read_only():
+            return
         self._edit_item_price_row(self.table.currentRow())
 
     def remove_selected_item_override(self) -> None:
         """Remove the list price for the currently selected row via button."""
+        if catalog_is_read_only():
+            return
         row = self.table.currentRow()
         if row >= 0 and self._list_price(row) is not None:
             self._remove_item_override(row)
 
     def _on_table_selection_changed(self) -> None:
+        if catalog_is_read_only():
+            self.btn_remove_override.setEnabled(False)
+            return
         row = self.table.currentRow()
         has_override = (row >= 0) and (self._list_price(row) is not None)
         self.btn_remove_override.setEnabled(has_override)
 
     def open_bulk_adjust_dialog(self) -> None:
         """Open the bulk price adjust dialog for the current price list (#544)."""
-        if not self.current_list:
+        if catalog_is_read_only() or not self.current_list:
             return
 
         selected_product_ids = []
@@ -605,6 +651,9 @@ class PriceListView(QWidget, Activatable):
             self.load_items()
 
     def _show_item_context_menu(self, position) -> None:
+        if catalog_is_read_only():
+            return
+
         item = self.table.itemAt(position)
         if not item or not self.current_list:
             return
@@ -620,7 +669,7 @@ class PriceListView(QWidget, Activatable):
             self._remove_item_override(row)
 
     def _remove_item_override(self, row: int) -> None:
-        if not self.current_list:
+        if catalog_is_read_only() or not self.current_list:
             return
 
         product_id = int(self.table.item(row, 0).text())
@@ -648,7 +697,7 @@ class PriceListView(QWidget, Activatable):
         return self.table.item(row, 3).data(PRICE_ROLE)
 
     def _edit_item_price_row(self, row: int) -> None:
-        if not self.current_list or row < 0:
+        if catalog_is_read_only() or not self.current_list or row < 0:
             return
 
         product_id = int(self.table.item(row, 0).text())
@@ -669,4 +718,5 @@ class PriceListView(QWidget, Activatable):
 
     def on_activated(self) -> None:
         """Reload when this view is shown again, so the user never sees stale data."""
+        self._update_read_only_state()
         self.load_lists()

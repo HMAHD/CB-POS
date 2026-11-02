@@ -831,7 +831,10 @@ class TestSyncIdMapMigration:
         insp = inspect(engine)
         assert "sync_id_map" in insp.get_table_names()
         uniques = insp.get_unique_constraints("sync_id_map")
-        assert any(set(u["column_names"]) == {"origin_terminal_id", "table_name", "local_id"} for u in uniques), uniques
+        assert any(
+            set(u["column_names"]) == {"origin_terminal_id", "origin_db_instance_id", "table_name", "local_id"}
+            for u in uniques
+        ), uniques
         engine.dispose()
 
         with sqlite3.connect(db_path) as conn:

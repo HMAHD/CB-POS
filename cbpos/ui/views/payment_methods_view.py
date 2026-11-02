@@ -20,8 +20,10 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.payment_service import PaymentMethodInUseError, PaymentService, ShortcutConflictError
 from cbpos.core.utils.error_messages import translate_error
+from cbpos.core.utils.terminal_guard import catalog_is_read_only
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.dialogs.payment_method_dialog import PaymentMethodDialog
+from cbpos.ui.widgets.read_only_banner import ReadOnlyBanner
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +151,15 @@ class _MethodCard(QFrame):
             self.btn_delete.setSizePolicy(size_policy)
         btn_layout.addWidget(self.btn_delete)
 
+        if catalog_is_read_only():
+            tip = _t("catalog.read_only_tooltip")
+            btn_edit.setEnabled(False)
+            btn_edit.setToolTip(tip)
+            btn_toggle.setEnabled(False)
+            btn_toggle.setToolTip(tip)
+            self.btn_delete.setEnabled(False)
+            self.btn_delete.setToolTip(tip)
+
         layout.addLayout(btn_layout)
 
 
@@ -168,6 +179,9 @@ class PaymentMethodsView(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
+
+        self.read_only_banner = ReadOnlyBanner()
+        layout.addWidget(self.read_only_banner)
 
         # Header
         self._title = QLabel()
@@ -211,8 +225,17 @@ class PaymentMethodsView(QWidget):
         self._hint.setProperty("class", "muted")
         layout.addWidget(self._hint)
 
+    def _update_read_only_state(self) -> None:
+        """Update action buttons and tooltip based on terminal catalog read-only state."""
+        is_ro = self.read_only_banner.refresh_visibility()
+        self.btn_add.setEnabled(not is_ro)
+        tip = _t("catalog.read_only_tooltip") if is_ro else ""
+        self.btn_add.setToolTip(tip)
+
     def retranslate_ui(self) -> None:
         """Update all translatable strings."""
+        self.read_only_banner.retranslate_ui()
+        self._update_read_only_state()
         self._title.setText(_t("payment_methods.title"))
         self._subtitle.setText(_t("payment_methods.subtitle"))
         self.btn_add.setText("  " + _t("payment_methods.btn_add_method") + "  ")
@@ -221,6 +244,7 @@ class PaymentMethodsView(QWidget):
     def showEvent(self, event) -> None:
         """Reload the method list when the view becomes visible."""
         super().showEvent(event)
+        self._update_read_only_state()
         self._load_methods()
 
     def _load_methods(self) -> None:
@@ -240,6 +264,8 @@ class PaymentMethodsView(QWidget):
             self._list_layout.insertWidget(i, card)
 
     def _add_method(self) -> None:
+        if catalog_is_read_only():
+            return
         dialog = PaymentMethodDialog(parent=self)
         if dialog.exec():
             data = dialog.result_data
@@ -260,6 +286,8 @@ class PaymentMethodsView(QWidget):
                 )
 
     def _edit_method(self, method, has_history: bool = False) -> None:
+        if catalog_is_read_only():
+            return
         dialog = PaymentMethodDialog(method=method, parent=self, name_locked=has_history)
         if dialog.exec():
             data = dialog.result_data
@@ -289,6 +317,8 @@ class PaymentMethodsView(QWidget):
 
     def _toggle_method(self, method) -> None:
         """Toggle active/inactive state."""
+        if catalog_is_read_only():
+            return
         new_state = not method.is_active
         action = "activate" if new_state else "deactivate"
         try:
@@ -306,6 +336,8 @@ class PaymentMethodsView(QWidget):
             )
 
     def _delete_method(self, method) -> None:
+        if catalog_is_read_only():
+            return
         if method.is_cash:
             QMessageBox.warning(
                 self,

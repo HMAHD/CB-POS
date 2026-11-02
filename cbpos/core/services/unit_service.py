@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from cbpos.core.database import Database
 from cbpos.core.models import Unit
+from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ class UnitService:
     @staticmethod
     def create(name: str, abbreviation: str, decimal_places: int = 0) -> Unit:
         """Create a new unit."""
+        require_catalog_writable()
         db = Database()
         with db.get_session() as session:
             existing = session.query(Unit).filter(Unit.name == name).first()
@@ -60,6 +62,7 @@ class UnitService:
     @staticmethod
     def update(unit_id: int, name: str, abbreviation: str, decimal_places: int) -> Unit:
         """Update an existing unit."""
+        require_catalog_writable()
         db = Database()
         with db.get_session() as session:
             unit = session.get(Unit, unit_id)
@@ -81,6 +84,7 @@ class UnitService:
     @staticmethod
     def delete(unit_id: int) -> None:
         """Deactivate a unit (soft delete). Prevents deletion if products use it."""
+        require_catalog_writable()
         db = Database()
         with db.get_session() as session:
             unit = session.get(Unit, unit_id)

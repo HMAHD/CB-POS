@@ -5,6 +5,7 @@ from sqlalchemy import select
 from cbpos.core.database import Database
 from cbpos.core.models import Supplier
 from cbpos.core.utils.formatters import escape_like
+from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ class SupplierService:
                 collides with an existing supplier (#522 -- previously this
                 reached the DB's UNIQUE constraint uncaught and crashed the app).
         """
+        require_catalog_writable()
         company_name = (company_name or "").strip()
         if not company_name:
             raise ValueError("Company name is required.")
@@ -80,6 +82,7 @@ class SupplierService:
             ValueError: if company_name is provided but blank, or if the new
                 company_name/phone collides with a *different* supplier (#522).
         """
+        require_catalog_writable()
         db = Database()
         with db.get_session() as session:
             supplier = session.get(Supplier, supplier_id)

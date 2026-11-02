@@ -369,6 +369,14 @@ class BackupService:
                         ConfigService.reload()
                 raise BackupError("migration_failed", str(e)) from e
 
+            # Regenerate local database identity: a restored till represents a new database lifecycle (#866)
+            from cbpos.core.services.local_identity_service import LocalIdentityService
+
+            try:
+                LocalIdentityService.regenerate(db_uri=db_uri)
+            except Exception as e:
+                logger.warning("Could not regenerate database identity after restore: %s", e)
+
         logger.info("Backup restored successfully from: %s", backup_path)
         return True
 

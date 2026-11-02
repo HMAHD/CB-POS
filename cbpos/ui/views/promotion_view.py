@@ -20,11 +20,13 @@ from cbpos.core.services.category_service import CategoryService
 from cbpos.core.services.promotion_service import SUPPORTED_TYPES, PromotionService
 from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import format_datetime, format_discount, format_promotion_type
+from cbpos.core.utils.terminal_guard import catalog_is_read_only
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.components.activation import Activatable
 from cbpos.ui.dialogs.promotion_dialog import PromotionDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS
+from cbpos.ui.widgets.read_only_banner import ReadOnlyBanner
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
@@ -67,6 +69,9 @@ class PromotionView(QWidget, Activatable):
         """Build the header and promotions table layout."""
         layout = QVBoxLayout(self)
 
+        self.read_only_banner = ReadOnlyBanner()
+        layout.addWidget(self.read_only_banner)
+
         # Header
         header = QHBoxLayout()
         header.addStretch(1)
@@ -104,8 +109,17 @@ class PromotionView(QWidget, Activatable):
         self.table.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self.table)
 
+    def _update_read_only_state(self) -> None:
+        """Update action buttons and tooltip based on terminal catalog read-only state."""
+        is_ro = self.read_only_banner.refresh_visibility()
+        self.btn_add.setEnabled(not is_ro)
+        tip = _t("catalog.read_only_tooltip") if is_ro else ""
+        self.btn_add.setToolTip(tip)
+
     def retranslate_ui(self):
         """Update all translatable strings."""
+        self.read_only_banner.retranslate_ui()
+        self._update_read_only_state()
         self.btn_add.setText(_t("promotion.create_promotion"))
         self.table.setHorizontalHeaderLabels(
             [
@@ -186,7 +200,10 @@ class PromotionView(QWidget, Activatable):
                     set_item(row, 6, pill_setter(TableItem(), status_text, meaning))
 
                     on_off_item = TableItem()
-                    on_off_item.setFlags(item_flags)
+                    if catalog_is_read_only():
+                        on_off_item.setFlags(item_flags & ~Qt.ItemFlag.ItemIsEnabled)
+                    else:
+                        on_off_item.setFlags(item_flags)
                     on_off_item.setCheckState(checked_state if p.is_active else unchecked_state)
                     on_off_item.setTextAlignment(align_center)
                     set_item(row, 7, on_off_item)
@@ -195,6 +212,9 @@ class PromotionView(QWidget, Activatable):
 
     def add_promotion(self):
         """Open the create dialog and persist a new promotion on accept."""
+        if catalog_is_read_only():
+            return
+
         dialog = PromotionDialog(self)
         if dialog.exec():
             data = dialog.get_data()
@@ -206,6 +226,9 @@ class PromotionView(QWidget, Activatable):
                 QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
 
     def _show_context_menu(self, position) -> None:
+        if catalog_is_read_only():
+            return
+
         item = self.table.itemAt(position)
         if not item:
             return
@@ -228,12 +251,12 @@ class PromotionView(QWidget, Activatable):
 
     def edit_promotion(self, index) -> None:
         """Open the edit dialog for the double-clicked table row."""
-        if index.column() == 7:
+        if catalog_is_read_only() or index.column() == 7:
             return
         self._edit_promotion_row(index.row())
 
     def _on_table_item_changed(self, item: QTableWidgetItem) -> None:
-        if getattr(self, "_loading_promotions", False):
+        if getattr(self, "_loading_promotions", False) or catalog_is_read_only():
             return
         if item.column() == 7:
             row = item.row()
@@ -250,7 +273,7 @@ class PromotionView(QWidget, Activatable):
                         self.load_promotions()
 
     def _edit_promotion_row(self, row: int) -> None:
-        if row < 0 or row >= len(self.promotions):
+        if catalog_is_read_only() or row < 0 or row >= len(self.promotions):
             return
         promotion = self.promotions[row]
 
@@ -265,7 +288,7 @@ class PromotionView(QWidget, Activatable):
                 QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
 
     def _toggle_promotion_active(self, row: int) -> None:
-        if row < 0 or row >= len(self.promotions):
+        if catalog_is_read_only() or row < 0 or row >= len(self.promotions):
             return
         promotion = self.promotions[row]
 
@@ -277,7 +300,7 @@ class PromotionView(QWidget, Activatable):
             QMessageBox.critical(self, _t("common.error"), translate_error(str(e)))
 
     def _delete_promotion_row(self, row: int) -> None:
-        if row < 0 or row >= len(self.promotions):
+        if catalog_is_read_only() or row < 0 or row >= len(self.promotions):
             return
         promotion = self.promotions[row]
 
@@ -300,4 +323,5 @@ class PromotionView(QWidget, Activatable):
 
     def on_activated(self) -> None:
         """Reload when this view is shown again, so the user never sees stale data."""
+        self._update_read_only_state()
         self.load_promotions()

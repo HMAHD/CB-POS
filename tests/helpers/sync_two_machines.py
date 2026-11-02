@@ -24,6 +24,7 @@ from cbpos.core.services.sync_protocol import (
     EP_PULL_CATALOG,
     EP_PULL_STOCK,
     EP_PUSH_TRANSACTIONS,
+    EP_REGISTER,
     sync_json_dumps,
     sync_json_loads,
 )
@@ -45,6 +46,14 @@ def make_machine_db() -> Database:
 
     db.SessionLocal = sessionmaker(bind=db.engine, autocommit=False, autoflush=False, expire_on_commit=False)
     Base.metadata.create_all(bind=db.engine)
+
+    import uuid
+
+    from cbpos.core.models import LocalIdentity
+
+    with db.SessionLocal() as session:
+        session.add(LocalIdentity(db_instance_id=str(uuid.uuid4())))
+        session.commit()
     return db
 
 
@@ -54,6 +63,7 @@ class _Handler:
     def __init__(self, path: str, body: dict | None):
         self.path = path
         self._body = body
+        self.client_address = ("127.0.0.1", 12345)
         self.response: dict | None = None
         self.status: int | None = None
 
@@ -65,6 +75,7 @@ class _Handler:
         self.response = sync_json_loads(sync_json_dumps(data))
         self.status = status
 
+    _handle_register = SyncRequestHandler._handle_register
     _handle_push_transactions = SyncRequestHandler._handle_push_transactions
     _handle_pull_catalog = SyncRequestHandler._handle_pull_catalog
     _handle_pull_stock = SyncRequestHandler._handle_pull_stock
@@ -133,7 +144,9 @@ class Shop:
         till_db = Database._instance
         Database._instance = self.main
         try:
-            if method == "POST" and endpoint == EP_PUSH_TRANSACTIONS:
+            if method == "POST" and endpoint == EP_REGISTER:
+                handler._handle_register()
+            elif method == "POST" and endpoint == EP_PUSH_TRANSACTIONS:
                 handler._handle_push_transactions()
             elif method == "GET" and endpoint.startswith(EP_PULL_CATALOG):
                 handler._handle_pull_catalog()
@@ -143,6 +156,8 @@ class Shop:
                 raise AssertionError(f"unexpected request {method} {endpoint}")
         finally:
             Database._instance = till_db
+        self.last_status = handler.status
+        self.last_response = handler.response
         if self.drop_responses or handler.status != 200:
             return None
         return handler.response

@@ -895,17 +895,46 @@ class SyncIdMap(Base):
 
     __tablename__ = "sync_id_map"
     __table_args__ = (
-        UniqueConstraint("origin_terminal_id", "table_name", "local_id", name="uq_sync_id_map_origin_local"),
+        UniqueConstraint(
+            "origin_terminal_id",
+            "origin_db_instance_id",
+            "table_name",
+            "local_id",
+            name="uq_sync_id_map_origin_instance_local",
+        ),
         # "is this server row already some till's mapped row?" (legacy adoption check)
         Index("ix_sync_id_map_table_server", "table_name", "server_id"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     origin_terminal_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    origin_db_instance_id: Mapped[str] = mapped_column(String(36), nullable=False, default="legacy")
     table_name: Mapped[str] = mapped_column(String(50), nullable=False)
     local_id: Mapped[int] = mapped_column(Integer, nullable=False)
     server_id: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+
+class LocalIdentity(Base):
+    """Local database identity (#866). Single row with a UUID instance id."""
+
+    __tablename__ = "local_identity"
+
+    db_instance_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+
+class SyncTerminal(Base):
+    """Main PC registry of connected tills (#866, #867)."""
+
+    __tablename__ = "sync_terminals"
+
+    terminal_id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    db_instance_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    first_seen: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    last_seen: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+    last_ip: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    released: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class ShopMeta(Base):

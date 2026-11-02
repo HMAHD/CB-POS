@@ -742,6 +742,10 @@
     "refund_failed": "Failed to process refund. Check logs.",
     "refund_error": "Refund failed: {error}"
   },
+  "catalog": {
+    "read_only_banner": "This till uses the Main PC's product list. Add or change products, prices, suppliers and users on the Main PC; changes arrive here automatically.",
+    "read_only_tooltip": "Change this on the Main PC."
+  },
   "inventory": {
     "header_barcode": "Barcode",
     "header_name": "Name",
@@ -1955,7 +1959,23 @@
       "sync_failed_message": "Cannot reach Main PC at {address}\n\n{error}",
       "sync_error_title": "Connection Error",
       "sync_forget_main_confirm_message": "This Terminal will trust whichever Main PC answers at the configured address the next time it connects.\n\nOnly do this if you intentionally replaced the Main PC.",
-      "sync_forget_main_done_message": "Done. This Terminal will re-pin on next connection."
+      "sync_forget_main_done_message": "Done. This Terminal will re-pin on next connection.",
+      "terminal_id_required": "Give this computer a unique name, for example TILL-1.",
+      "terminal_id_invalid": "Use capital letters, numbers and dashes only (2–16 characters).",
+      "registered_terminals_title": "Registered Terminals",
+      "registered_terminals_desc": "Terminals connected to this Main PC. Releasing a terminal ID allows a replacement machine or reinstallation to claim it.",
+      "col_terminal_id": "Terminal ID",
+      "col_instance_id": "Instance UUID",
+      "col_last_seen": "Last Seen",
+      "col_ip_address": "IP Address",
+      "col_status": "Status",
+      "col_action": "Action",
+      "status_active": "Active",
+      "status_released": "Released",
+      "btn_release_id": "Release ID…",
+      "release_confirm_title": "Release Terminal ID",
+      "release_confirm_msg": "Are you sure you want to release terminal ID '{terminal_id}'? This will allow another machine or clean install to claim this ID.",
+      "release_success": "Terminal ID '{terminal_id}' has been released."
     },
     "loyalty": {
       "title": "Loyalty",
@@ -3073,6 +3093,10 @@
     "fetching": "Connecting to Main PC to retrieve sync code…",
     "fetch_failed": "Could not connect to Main PC: {error}",
     "pair_success": "Successfully paired with Main PC."
+  },
+  "sync": {
+    "error_terminal_id_is_main": "This till uses the same name as the Main PC. Give it a different name in Settings → Network.",
+    "error_terminal_id_taken": "Another till already uses the name {id}. Choose a different name, or ask the owner to release it on the Main PC."
   }
 }
 

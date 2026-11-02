@@ -577,7 +577,16 @@ QPushButton#BtnCancel:pressed, QPushButton#ReceiptBtnClose:pressed, QPushButton[
     background-color: {{BORDER_STRONG}};
 }
 
-QPushButton#BtnCancel:disabled, QPushButton#ReceiptBtnClose:disabled, QPushButton[class="secondary"]:disabled {
+QPushButton:disabled,
+QPushButton#BtnSave:disabled,
+QPushButton#PayBtn:disabled,
+QPushButton[class="primary"]:disabled,
+QPushButton#VoidBtn:disabled,
+QPushButton[class="danger"]:disabled,
+QPushButton[class="accent"]:disabled,
+QPushButton#BtnCancel:disabled,
+QPushButton#ReceiptBtnClose:disabled,
+QPushButton[class="secondary"]:disabled {
     background-color: {{SURFACE_0}};
     color: {{TEXT_DISABLED}};
     border: 1px solid {{SURFACE_2}};
@@ -1625,6 +1634,19 @@ QToolButton#PrinterNoticeCloseBtn {
 }
 QToolButton#PrinterNoticeCloseBtn:hover {
     color: {{TEXT}};
+}
+
+/* Read-only catalog banner on till terminals (#869) */
+QFrame#ReadOnlyCatalogBanner {
+    background-color: rgba(0, 188, 235, 0.08);
+    border: 1px solid rgba(0, 188, 235, 0.35);
+    border-radius: 6px;
+    margin-bottom: 4px;
+}
+QLabel#ReadOnlyCatalogBannerText {
+    color: {{TEXT}};
+    font-size: 13px;
+    background: transparent;
 }
 
 /* Total Widget (#536: distinct enclosed card panel) */
@@ -4509,6 +4531,13 @@ QPushButton#PriceListDeleteBtn {
 
 QPushButton#PriceListDeleteBtn:hover {
     background-color: {{DANGER}};
+}
+
+QPushButton#PriceListAddBtn:disabled,
+QPushButton#PriceListDeleteBtn:disabled {
+    background-color: {{SURFACE_0}};
+    color: {{TEXT_DISABLED}};
+    border: 1px solid {{SURFACE_2}};
 }
 
 QWidget#PriceListContentPanel {

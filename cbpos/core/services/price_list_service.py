@@ -16,6 +16,7 @@ from cbpos.core.constants.audit import PRICE_LIST_BULK_ADJUST, PRICING_EVENT
 from cbpos.core.database import Database
 from cbpos.core.models import PriceList, PriceListItem, Product
 from cbpos.core.services.logging_service import LoggingService, diff_changes, snapshot_changes
+from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 
 @dataclass(slots=True)
@@ -103,6 +104,7 @@ class PriceListService:
         is_active: bool = True,
     ) -> PriceList:
         """Create a new price list, optionally date-scoped; pass is_active=False to create it switched off."""
+        require_catalog_writable()
         with self.db.get_session() as session:
             price_list = PriceList(name=name, start_date=start_date, end_date=end_date, is_active=is_active)
             session.add(price_list)
@@ -138,6 +140,7 @@ class PriceListService:
             ValueError: If the price list isn't found, the name is empty,
                 or another price list already has that name.
         """
+        require_catalog_writable()
         with self.db.get_session() as session:
             price_list = session.get(PriceList, list_id)
             if not price_list:
@@ -211,6 +214,7 @@ class PriceListService:
 
     def set_item_price(self, list_id: int, product_id: int, price: Decimal) -> PriceListItem:
         """Create or update a product's price override on a price list (upsert)."""
+        require_catalog_writable()
         with self.db.get_session() as session:
             # Check if exists
             stmt = select(PriceListItem).where(
@@ -242,6 +246,7 @@ class PriceListService:
         Raises:
             ValueError: If no override exists for this product on this list.
         """
+        require_catalog_writable()
         with self.db.get_session() as session:
             stmt = select(PriceListItem).where(
                 PriceListItem.price_list_id == list_id,
@@ -263,6 +268,7 @@ class PriceListService:
         Raises:
             ValueError: If the price list does not exist.
         """
+        require_catalog_writable()
         with self.db.get_session() as session:
             price_list = session.get(PriceList, list_id)
             if not price_list:
@@ -427,6 +433,7 @@ class PriceListService:
         Raises:
             ValueError: If the price list is not found.
         """
+        require_catalog_writable()
         if not items:
             return 0
 

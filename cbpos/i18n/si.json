@@ -712,6 +712,10 @@
     "monthly_sales": "මාසික විකුණුම් — {year}",
     "periodic_reports_range": "කාලීන වාර්තා  ({start} – {end})"
   },
+  "catalog": {
+    "read_only_banner": "මෙම කවුන්ටරය Main PC එකෙහි භාණ්ඩ ලැයිස්තුව භාවිතා කරයි. භාණ්ඩ, මිල ගණන්, සැපයුම්කරුවන් සහ පරිශීලකයින් Main PC එකෙන් එක් කරන්න හෝ වෙනස් කරන්න; එම වෙනස්කම් මෙහි ස්වයංක්‍රීයව යාවත්කාලීන වේ.",
+    "read_only_tooltip": "මෙය Main PC එකෙන් වෙනස් කරන්න."
+  },
   "inventory": {
     "header_barcode": "බාර්කෝඩ්",
     "header_name": "නම",
@@ -1925,7 +1929,23 @@
       "sync_failed_message": "{address} එකේ මේන් පීසී එකට යන්න බැහැ\n\n{error}",
       "sync_error_title": "සම්බන්ධතා එරර් එකක්",
       "sync_forget_main_confirm_message": "ඊළඟ වතාවේ සම්බන්ධ වෙනකොට, සකසපු ලිපිනයේ පිළිතුරු දෙන ඕනම මේන් පීසී එකක් මේ ටර්මිනලය විශ්වාස කරනවා.\n\nඔයා හිතාමතාම මේන් පීසී එක මාරු කරලා නම් විතරක් මේක කරන්න.",
-      "sync_forget_main_done_message": "හරි. ඊළඟ සම්බන්ධතාවේදී මේ ටර්මිනලය ආයෙත් පින් වෙනවා."
+      "sync_forget_main_done_message": "හරි. ඊළඟ සම්බන්ධතාවේදී මේ ටර්මිනලය ආයෙත් පින් වෙනවා.",
+      "terminal_id_required": "මේ පරිගණකයට අනන්‍ය නමක් ලබා දෙන්න, උදාහරණයක් ලෙස TILL-1.",
+      "terminal_id_invalid": "කැපිටල් අකුරු, අංක සහ ඩෑෂ් (-) පමණක් භාවිතා කරන්න (අකුරු 2–16).",
+      "registered_terminals_title": "ලියාපදිංචි ටර්මිනල්ස්",
+      "registered_terminals_desc": "මේ ප්‍රධාන පරිගණකයට සම්බන්ධ ටර්මිනල්ස්. ටර්මිනල් ID එකක් නිදහස් කිරීමෙන් වෙනත් පරිගණකයකට හෝ අලුත් ස්ථාපනයකට එය ලබාගත හැක.",
+      "col_terminal_id": "ටර්මිනල් ID",
+      "col_instance_id": "ඉන්ස්ටන්ස් UUID",
+      "col_last_seen": "අවසන් වරට දුටුවේ",
+      "col_ip_address": "IP ලිපිනය",
+      "col_status": "තත්ත්වය",
+      "col_action": "ක්‍රියාව",
+      "status_active": "සක්‍රීයයි",
+      "status_released": "නිදහස් කර ඇත",
+      "btn_release_id": "ID නිදහස් කරන්න…",
+      "release_confirm_title": "ටර්මිනල් ID නිදහස් කිරීම",
+      "release_confirm_msg": "'{terminal_id}' ටර්මිනල් ID එක නිදහස් කිරීමට ඔබට විශ්වාසද? මෙයින් වෙනත් පරිගණකයකට හෝ නැවත ස්ථාපනයකට මෙම ID එක භාවිතා කළ හැක.",
+      "release_success": "'{terminal_id}' ටර්මිනල් ID එක නිදහස් කරන ලදි."
     },
     "loyalty": {
       "title": "ලොයල්ටි",
@@ -3073,6 +3093,10 @@
     "fetching": "Sync කේතය ලබා ගැනීමට Main PC එකට සම්බන්ධ වෙමින් පවතී…",
     "fetch_failed": "Main PC එකට සම්බන්ධ විය නොහැක: {error}",
     "pair_success": "Main PC එක සමඟ සාර්ථකව සම්බන්ධ විය."
+  },
+  "sync": {
+    "error_terminal_id_is_main": "මේ ටිල් එක මේන් පීසී එකේ නමම පාවිච්චි කරනවා. Settings → Network වෙත ගොස් වෙනත් නමක් ලබා දෙන්න.",
+    "error_terminal_id_taken": "වෙනත් ටිල් එකක් දැනටමත් {id} නම පාවිච්චි කරනවා. වෙනත් නමක් තෝරන්න, නැතහොත් මේන් පීසී එකෙන් එය නිදහස් කරන්නැයි අයිතිකරුට කියන්න."
   }
 }
 

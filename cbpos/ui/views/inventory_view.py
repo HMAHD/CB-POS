@@ -13,12 +13,14 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.import_service import ImportService
 from cbpos.core.services.inventory_service import InventoryService
+from cbpos.core.utils.terminal_guard import catalog_is_read_only
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.components.activation import Activatable
 from cbpos.ui.dialogs.product_editor import ProductEditor
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
 from cbpos.ui.widgets.pagination_widget import PaginationWidget
+from cbpos.ui.widgets.read_only_banner import ReadOnlyBanner
 from cbpos.ui.widgets.table_helpers import NUMERIC_ALIGNMENT, configure_table_columns
 
 
@@ -119,6 +121,9 @@ class InventoryView(QWidget, Activatable):
         """Build the toolbar, product table, empty-state placeholder, and pagination."""
         layout = QVBoxLayout(self)
 
+        self.read_only_banner = ReadOnlyBanner()
+        layout.addWidget(self.read_only_banner)
+
         # Top Bar
         top_bar = QHBoxLayout()
 
@@ -188,8 +193,23 @@ class InventoryView(QWidget, Activatable):
         self.pagination.page_changed.connect(self._on_page_changed)
         layout.addWidget(self.pagination)
 
+    def _update_read_only_state(self) -> None:
+        """Update action buttons and tooltip based on terminal catalog read-only state."""
+        is_ro = self.read_only_banner.refresh_visibility()
+        self.add_btn.setEnabled(not is_ro)
+        self.import_btn.setEnabled(not is_ro)
+        self.cat_btn.setEnabled(not is_ro)
+        self.unit_btn.setEnabled(not is_ro)
+        tip = _t("catalog.read_only_tooltip") if is_ro else ""
+        self.add_btn.setToolTip(tip)
+        self.import_btn.setToolTip(tip)
+        self.cat_btn.setToolTip(tip)
+        self.unit_btn.setToolTip(tip)
+
     def retranslate_ui(self) -> None:
         """Update all widget text from the translation system."""
+        self.read_only_banner.retranslate_ui()
+        self._update_read_only_state()
         self.search_input.setPlaceholderText(_t("inventory.search_placeholder"))
         self.add_btn.setText(_t("inventory.btn_add_product"))
         self.import_btn.setText(_t("inventory.btn_import_csv"))
@@ -245,6 +265,9 @@ class InventoryView(QWidget, Activatable):
 
     def open_add_dialog(self):
         """Open the product editor to create a new product, if permitted."""
+        if catalog_is_read_only():
+            return
+
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
@@ -257,6 +280,9 @@ class InventoryView(QWidget, Activatable):
 
     def open_edit_dialog(self, index):
         """Open the product editor for the double-clicked row, if permitted."""
+        if catalog_is_read_only():
+            return
+
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
@@ -270,6 +296,9 @@ class InventoryView(QWidget, Activatable):
 
     def open_category_dialog(self):
         """Open the category manager and reload products afterward."""
+        if catalog_is_read_only():
+            return
+
         from cbpos.ui.dialogs.category_manager import CategoryManagerDialog
 
         dialog = CategoryManagerDialog(parent=self)
@@ -278,6 +307,9 @@ class InventoryView(QWidget, Activatable):
 
     def open_unit_manager(self):
         """Open the unit manager dialog."""
+        if catalog_is_read_only():
+            return
+
         from cbpos.ui.dialogs.unit_manager import UnitManagerDialog
 
         dialog = UnitManagerDialog(parent=self)
@@ -312,6 +344,9 @@ class InventoryView(QWidget, Activatable):
 
     def import_csv(self) -> None:
         """Open the CSV import dialog and reload products afterward."""
+        if catalog_is_read_only():
+            return
+
         from cbpos.ui.dialogs.csv_import_dialog import CsvImportDialog
 
         dialog = CsvImportDialog(self.import_service, parent=self)
@@ -320,4 +355,5 @@ class InventoryView(QWidget, Activatable):
 
     def on_activated(self) -> None:
         """Reload when this view is shown again, so the user never sees stale data."""
+        self._update_read_only_state()
         self.load_data()

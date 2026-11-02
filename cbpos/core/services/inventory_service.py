@@ -10,6 +10,7 @@ from cbpos.core.database import Database
 from cbpos.core.models import AuditLog, CompositeItem, InventoryLog, Product
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.logging_service import LoggingService, diff_changes
+from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,7 @@ class InventoryService:
 
     def create_product(self, data: dict[str, Any]) -> Product:
         """Create a new product with optional composite items."""
+        require_catalog_writable()
         with self.db.get_session() as session:
             # Extract composite items data if present
             components_data = data.pop("components", [])
@@ -77,6 +79,7 @@ class InventoryService:
 
     def update_product(self, product_id: int, data: dict[str, Any]) -> Product | None:
         """Update an existing product; a selling price change goes to the Activity Log (#642)."""
+        require_catalog_writable()
         with self.db.get_session() as session:
             product = session.get(Product, product_id)
             if not product:
@@ -118,6 +121,7 @@ class InventoryService:
 
     def delete_product(self, product_id: int) -> bool:
         """Soft-delete a product by marking it inactive."""
+        require_catalog_writable()
         with self.db.get_session() as session:
             product = session.get(Product, product_id)
             if not product:

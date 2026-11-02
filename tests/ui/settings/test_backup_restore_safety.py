@@ -277,6 +277,7 @@ class TestSafetySnapshot:
 
         # Switch back to standalone mode: is_supported = True
         monkeypatch.setattr(BackupService, "is_supported", staticmethod(lambda: True))
+        monkeypatch.setattr(backup_tab, "_refresh_backup_list", lambda: None)
         backup_tab.refresh()
         restore_tab.refresh_password_hint()
         maintenance_tab.refresh()

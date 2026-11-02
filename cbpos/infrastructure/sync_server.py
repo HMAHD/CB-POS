@@ -281,7 +281,53 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "terminal_id required"}, 400)
             return
 
-        ip = self.client_address[0]
+        version = data.get("protocol_version", "1.0")
+        try:
+            parts = [int(p) for p in str(version).split(".")]
+            if parts < [1, 1]:
+                self._send_json({"error": "protocol_too_old"}, 400)
+                return
+        except Exception:
+            self._send_json({"error": "protocol_too_old"}, 400)
+            return
+
+        db_instance_id = data.get("db_instance_id")
+        if not db_instance_id:
+            self._send_json({"error": "db_instance_id required"}, 400)
+            return
+
+        terminal_mode = ConfigService.get("terminal_mode")
+        main_terminal_id = (ConfigService.get("terminal_id") or "TERM-01") if terminal_mode == "main" else "TERM-01"
+        if terminal_id == main_terminal_id:
+            self._send_json({"error": "terminal_id_is_main"}, 409)
+            return
+
+        ip = self.client_address[0] if hasattr(self, "client_address") and self.client_address else "127.0.0.1"
+        db = Database()
+        from cbpos.core.models import SyncTerminal
+
+        with db.get_session() as session:
+            existing = session.query(SyncTerminal).filter_by(terminal_id=terminal_id).first()
+            if existing and existing.db_instance_id != db_instance_id and not existing.released:
+                self._send_json({"error": "terminal_id_taken"}, 409)
+                return
+            if existing:
+                existing.db_instance_id = db_instance_id
+                existing.released = False
+                existing.last_seen = datetime.now()
+                existing.last_ip = ip
+            else:
+                new_terminal = SyncTerminal(
+                    terminal_id=terminal_id,
+                    db_instance_id=db_instance_id,
+                    first_seen=datetime.now(),
+                    last_seen=datetime.now(),
+                    last_ip=ip,
+                    released=False,
+                )
+                session.add(new_terminal)
+            session.commit()
+
         _registry.register(terminal_id, ip)
 
         # Emit signal for UI updates
@@ -405,8 +451,40 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             return
 
         terminal_id = data["terminal_id"]
+        db_instance_id = data.get("db_instance_id", "legacy")
         sequence = data.get("sequence", 0)
         payload = data.get("payload", {})
+
+        terminal_mode = ConfigService.get("terminal_mode")
+        main_terminal_id = (ConfigService.get("terminal_id") or "TERM-01") if terminal_mode == "main" else "TERM-01"
+        if terminal_id == main_terminal_id:
+            self._send_json({"error": "terminal_id_is_main"}, 409)
+            return
+
+        db = Database()
+        from cbpos.core.models import SyncTerminal
+
+        with db.get_session() as session:
+            existing = session.query(SyncTerminal).filter_by(terminal_id=terminal_id).first()
+            if existing and existing.db_instance_id != db_instance_id and not existing.released:
+                self._send_json({"error": "terminal_id_taken"}, 409)
+                return
+            if existing:
+                existing.last_seen = datetime.now()
+                if hasattr(self, "client_address") and self.client_address:
+                    existing.last_ip = self.client_address[0]
+                session.commit()
+            elif db_instance_id != "legacy":
+                new_terminal = SyncTerminal(
+                    terminal_id=terminal_id,
+                    db_instance_id=db_instance_id,
+                    first_seen=datetime.now(),
+                    last_seen=datetime.now(),
+                    last_ip=self.client_address[0] if hasattr(self, "client_address") and self.client_address else None,
+                    released=False,
+                )
+                session.add(new_terminal)
+                session.commit()
 
         # No "sequence already seen -> acknowledge without applying" shortcut:
         # a till's sequence restarts at 1 whenever the till app restarts, while
@@ -423,7 +501,6 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         # Product at nearly the same time can lose the optimistic-lock race
         # on Product's version_id column — expected under concurrency, so
         # retry with a fresh read rather than failing the whole batch.
-        db = Database()
         max_attempts = 3
         records_applied = 0
         errors: list[str] = []
@@ -433,7 +510,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         for attempt in range(1, max_attempts + 1):
             try:
                 with _push_apply_lock, db.get_session() as session:
-                    applier = SyncApplyService(session, terminal_id)
+                    applier = SyncApplyService(session, terminal_id, db_instance_id=db_instance_id)
                     records_applied, errors = applier.apply_batch(payload)
                     balances = applier.balances()
                     id_map = {"customers": applier.customer_id_map()}
@@ -495,6 +572,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             return
 
         terminal_id = data["terminal_id"]
+        db_instance_id = data.get("db_instance_id", "legacy")
         payload = data.get("payload", {})
         audit_records = payload.get("audit_logs", [])
 
@@ -506,7 +584,9 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
             # till too, and merging by them overwrote the Main PC's own
             # audit entries and other tills'.
             with _push_apply_lock, db.get_session() as session:
-                records_applied, _ = SyncApplyService(session, terminal_id).apply_batch({"audit_logs": audit_records})
+                records_applied, _ = SyncApplyService(session, terminal_id, db_instance_id=db_instance_id).apply_batch(
+                    {"audit_logs": audit_records}
+                )
 
         except Exception as e:
             logger.error("Audit push failed: %s", e)

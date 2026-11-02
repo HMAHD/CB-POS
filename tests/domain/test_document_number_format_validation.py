@@ -57,7 +57,7 @@ class TestValidateDocPattern:
 
 def test_render_pattern_fills_every_placeholder():
     now = datetime(2026, 3, 7)
-    assert render_pattern("GRN-{Y}{M}{D}-{T}-{seq:05d}", 42, now, "TERM-01") == "GRN-20260307-01-00042"
+    assert render_pattern("GRN-{Y}{M}{D}-{T}-{seq:05d}", 42, now, "TERM-01") == "GRN-20260307-TERM01-00042"
     assert render_pattern("X-{terminal}-{seq}", 7, now, "T3") == "X-T3-7"
 
 

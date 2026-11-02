@@ -172,6 +172,14 @@ class DatabaseSetupService:
             if session.query(User).count() > 0:
                 return
 
+            # 0. Local database identity (#866)
+            import uuid
+
+            from cbpos.core.models import LocalIdentity
+
+            if session.query(LocalIdentity).count() == 0:
+                session.add(LocalIdentity(db_instance_id=str(uuid.uuid4())))
+
             # 1. Permissions
             perm_map = {}
             groups = Permissions.get_groups()

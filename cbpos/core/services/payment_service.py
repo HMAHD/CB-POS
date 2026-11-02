@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from cbpos.core.database import Database
 from cbpos.core.models import CustomerPayment, PaymentMethod, Sale, SalePayment, SupplierPayment
+from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 logger = logging.getLogger(__name__)
 
@@ -225,6 +226,7 @@ class PaymentService:
             ValueError: If name is empty or already exists.
             ShortcutConflictError: If the shortcut is reserved or used by another active method.
         """
+        require_catalog_writable()
         shortcut = (shortcut or "").strip() or None
         if not name or not name.strip():
             raise ValueError("Payment method name cannot be empty")
@@ -279,6 +281,7 @@ class PaymentService:
             ShortcutConflictError: If the shortcut is reserved, or the method would
                 end up active sharing a key with another active method.
         """
+        require_catalog_writable()
         db = Database()
         with db.get_session() as session:
             method = session.get(PaymentMethod, method_id)
@@ -341,6 +344,7 @@ class PaymentService:
         Returns:
             True if deleted or deactivated, False if not found.
         """
+        require_catalog_writable()
         db = Database()
         with db.get_session() as session:
             method = session.get(PaymentMethod, method_id)

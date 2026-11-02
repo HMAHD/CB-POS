@@ -908,6 +908,19 @@ class SyncIdMap(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
 
 
+class ShopMeta(Base):
+    """Cluster-wide metadata for the shared shop database (#799).
+
+    Stores settings such as the designated schema owner host (schema_owner_host)
+    so tills and terminals know which machine is responsible for migrations.
+    """
+
+    __tablename__ = "shop_meta"
+
+    key: Mapped[str] = mapped_column(String(50), primary_key=True)
+    value: Mapped[str] = mapped_column(String(200), nullable=False)
+
+
 # Registers the session hook that re-sends a till row to the Main PC when it
 # changes after its first push (#677). Imported here so it is active wherever
 # the models are.

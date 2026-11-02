@@ -13,7 +13,8 @@ from alembic.autogenerate import compare_metadata
 from alembic.config import Config as AlembicConfig
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.orm import sessionmaker
 
 from alembic import command
 from cbpos.config import Config
@@ -188,3 +189,160 @@ class SchemaMigrationService:
         except Exception as e:
             logger.exception("Auto-migration failed: %s", e)
             raise MigrationError("migration_failed", str(e)) from e
+
+    @classmethod
+    def stamp_head(cls, db_uri: str) -> None:
+        """Stamp the database at db_uri with the latest Alembic head revision."""
+        alembic_cfg = cls._get_alembic_config(str(db_uri))
+        command.stamp(alembic_cfg, "head")
+        logger.info("Database %s stamped at head revision.", db_uri)
+
+    @classmethod
+    def pending(cls, db_uri: str) -> bool:
+        """Return True if the database at db_uri requires a schema migration."""
+        cur = cls.current_revision(str(db_uri))
+        head = cls.head_revision(str(db_uri))
+        if cur is None:
+            engine = create_engine(str(db_uri))
+            try:
+                tables = inspect(engine).get_table_names()
+                business_tables = set(tables) - {"alembic_version", "sqlite_sequence"}
+                return bool(business_tables)
+            finally:
+                engine.dispose()
+        return cur != head
+
+    @classmethod
+    def upgrade_with_lock(
+        cls,
+        db_uri: str,
+        user_id: int | None = None,
+        status: Callable[[str], None] | None = None,
+    ) -> None:
+        """Run schema migration to head holding an advisory lock on PostgreSQL (#799).
+
+        On PostgreSQL: acquires session-level pg_advisory_lock(727001) on a dedicated connection,
+        runs migrate_to_head, releases the lock, and logs to AuditLog.
+        On SQLite: runs migrate_to_head directly and logs to AuditLog.
+        """
+        engine = create_engine(str(db_uri))
+        is_pg = engine.dialect.name == "postgresql"
+
+        from_rev = cls.current_revision(str(db_uri))
+        head_rev = cls.head_revision(str(db_uri))
+
+        if from_rev == head_rev and from_rev is not None:
+            logger.info("Database at %s is already at head revision %s.", db_uri, head_rev)
+            engine.dispose()
+            return
+
+        if is_pg:
+            lock_conn = engine.connect()
+            try:
+                logger.info("Acquiring PostgreSQL advisory lock 727001 on %s...", db_uri)
+                lock_conn.execute(text("SELECT pg_advisory_lock(727001)"))
+                logger.info("Advisory lock 727001 acquired. Checking current revision under lock...")
+
+                cur_under_lock = cls.current_revision(str(db_uri))
+                if cur_under_lock == head_rev and cur_under_lock is not None:
+                    logger.info("Database was already upgraded by another process to %s.", head_rev)
+                    return
+
+                cls.migrate_to_head(str(db_uri), status=status)
+                to_rev = cls.current_revision(str(db_uri))
+                cls._record_upgrade_audit(str(db_uri), cur_under_lock, to_rev, user_id=user_id)
+            finally:
+                try:
+                    lock_conn.execute(text("SELECT pg_advisory_unlock(727001)"))
+                    logger.info("Released PostgreSQL advisory lock 727001.")
+                except Exception as e:
+                    logger.warning("Error releasing pg_advisory_lock 727001: %s", e)
+                lock_conn.close()
+                engine.dispose()
+        else:
+            try:
+                cls.migrate_to_head(str(db_uri), status=status)
+                to_rev = cls.current_revision(str(db_uri))
+                cls._record_upgrade_audit(str(db_uri), from_rev, to_rev, user_id=user_id)
+            finally:
+                engine.dispose()
+
+    @classmethod
+    def _record_upgrade_audit(
+        cls,
+        db_uri: str,
+        from_rev: str | None,
+        to_rev: str | None,
+        user_id: int | None = None,
+    ) -> None:
+        """Record an AuditLog entry for a schema upgrade."""
+        if from_rev == to_rev:
+            return
+        try:
+            from cbpos.core.models import AuditLog
+            from cbpos.core.services.config_service import ConfigService
+
+            engine = create_engine(str(db_uri))
+            SessionMaker = sessionmaker(bind=engine)
+            with SessionMaker() as session:
+                log = AuditLog(
+                    user_id=user_id,
+                    action="SCHEMA_UPGRADE",
+                    event_type="SCHEMA",
+                    terminal_id=ConfigService.get("terminal_id") or "TERM-01",
+                    details=f"Upgraded schema from {from_rev} to {to_rev}",
+                )
+                session.add(log)
+                session.commit()
+            engine.dispose()
+            logger.info("Recorded SCHEMA_UPGRADE audit log from %s to %s.", from_rev, to_rev)
+        except Exception as e:
+            logger.warning("Could not record SCHEMA_UPGRADE audit log: %s", e)
+
+    @classmethod
+    def get_schema_owner_host(cls, db_uri: str) -> str | None:
+        """Query shop_meta for the designated schema owner hostname."""
+        try:
+            from cbpos.core.models import ShopMeta
+
+            engine = create_engine(str(db_uri))
+            inspector = inspect(engine)
+            if "shop_meta" not in inspector.get_table_names():
+                engine.dispose()
+                return None
+            SessionMaker = sessionmaker(bind=engine)
+            with SessionMaker() as session:
+                meta = session.get(ShopMeta, "schema_owner_host")
+                host = meta.value if meta else None
+            engine.dispose()
+            return host
+        except Exception as e:
+            logger.warning("Could not query schema_owner_host from %s: %s", db_uri, e)
+            return None
+
+    @classmethod
+    def set_schema_owner_host(cls, db_uri: str, host: str) -> None:
+        """Persist the designated schema owner hostname to shop_meta."""
+        try:
+            from cbpos.core.models import ShopMeta
+
+            engine = create_engine(str(db_uri))
+            inspector = inspect(engine)
+            if "shop_meta" not in inspector.get_table_names():
+                from cbpos.core.models import Base
+
+                Base.metadata.create_all(engine)
+            SessionMaker = sessionmaker(bind=engine)
+            with SessionMaker() as session:
+                meta = session.get(ShopMeta, "schema_owner_host")
+                if meta:
+                    meta.value = host
+                else:
+                    meta = ShopMeta(key="schema_owner_host", value=host)
+                    session.add(meta)
+                session.commit()
+            engine.dispose()
+            logger.info("Updated schema_owner_host to '%s' in shop_meta.", host)
+        except Exception as e:
+            logger.error("Could not set schema_owner_host in %s: %s", db_uri, e)
+            raise

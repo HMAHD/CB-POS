@@ -3025,6 +3025,34 @@
     "last_7_days": "Last 7 Days",
     "last_30_days": "Last 30 Days",
     "custom": "Custom"
+  },
+  "network_setup": {
+    "step_connect": "1. Connect to the shop database",
+    "step_database": "2. Shop database",
+    "step_confirm": "3. Switch this computer",
+    "state_empty": "The database is empty.",
+    "state_ok": "The database is up to date.",
+    "state_behind": "The database needs updating for this version of CB POS.",
+    "state_newer": "The database belongs to a newer CB POS. Update this computer first.",
+    "make_main_update": "Make this the Main PC and update the database",
+    "copy_data": "Copy this computer's data to the server",
+    "start_empty": "Start with an empty database",
+    "switch": "Switch to network mode and restart",
+    "sslmode": "SSL Mode:",
+    "summary_host": "Host:",
+    "summary_database": "Database:",
+    "summary_status": "Status:",
+    "database_ready": "Database is ready for network mode."
+  },
+  "network_gate": {
+    "behind_title": "Shop database needs updating",
+    "behind_body": "Open CB POS on the Main PC ({host}) first. It will update the shop database. Then click Retry.",
+    "newer_body": "This computer has an older CB POS than the shop database. Install the latest CB POS here.",
+    "update_title": "Update the shop database",
+    "update_body": "CB POS will update the shared shop database. Close CB POS on all other computers first. This usually takes less than a minute.",
+    "updating": "Updating the shop database…",
+    "update_failed": "The update didn't finish: {error}. The database was not changed. Contact support before trying again."
   }
 }
+
 

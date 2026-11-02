@@ -147,4 +147,6 @@ markers = [
     "guardrails: codebase-wide static rules (fast, every commit)",
     "ui: pytest-qt flows: wiring, keyboard, enabled state, permission gating",
     "integration: two-machine sync, PostgreSQL, real threads, migrations (slow)",
+    "postgres: tests requiring a real PostgreSQL database (CBPOS_TEST_PG_URL)",
 ]
+

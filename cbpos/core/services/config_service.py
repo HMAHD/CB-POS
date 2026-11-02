@@ -629,3 +629,30 @@ class ConfigService:
             cls._settings.clear()
             cls._settings.update(previous)
             raise
+
+    @classmethod
+    def get_postgres_uri(cls) -> str:
+        """Construct PostgreSQL database URL from saved network configuration."""
+        from sqlalchemy.engine import URL
+
+        host = cls.get("network_db_host") or "localhost"
+        port = int(cls.get("network_db_port") or 5432)
+        dbname = cls.get("network_db_name") or "cbpos"
+        user = cls.get("network_db_user") or "postgres"
+        password = cls.get("network_db_password") or ""
+        sslmode = cls.get("network_db_sslmode") or "prefer"
+
+        query = {}
+        if sslmode and sslmode != "disable":
+            query["sslmode"] = sslmode
+
+        url_obj = URL.create(
+            drivername="postgresql+psycopg2",
+            username=user,
+            password=password,
+            host=host,
+            port=port,
+            database=dbname,
+            query=query,
+        )
+        return str(url_obj)

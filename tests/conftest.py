@@ -419,3 +419,23 @@ def _fresh_background_job_registry():
         if isinstance(worker, QThread) and not sip.isdeleted(worker):
             worker.wait(5000)
     workers._jobs = None
+
+
+@pytest.fixture
+def pg_engine():
+    """Fixture providing a connected PostgreSQL engine from CBPOS_TEST_PG_URL.
+
+    Skips the test if CBPOS_TEST_PG_URL is not set.
+    """
+    url = os.environ.get("CBPOS_TEST_PG_URL")
+    if not url:
+        pytest.skip("CBPOS_TEST_PG_URL not set; skipping PostgreSQL test")
+    from sqlalchemy import create_engine, text
+
+    engine = create_engine(url, pool_pre_ping=True)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        yield engine
+    finally:
+        engine.dispose()

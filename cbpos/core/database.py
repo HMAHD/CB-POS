@@ -88,27 +88,7 @@ class Database:
 
     def _get_postgres_uri(self) -> str:
         """Generate PostgreSQL database URI from network settings."""
-        host = ConfigService.get("network_db_host") or "localhost"
-        port = ConfigService.get("network_db_port") or 5432
-        dbname = ConfigService.get("network_db_name") or "cbpos"
-        user = ConfigService.get("network_db_user") or "postgres"
-        password = ConfigService.get("network_db_password") or ""
-        sslmode = ConfigService.get("network_db_sslmode") or "prefer"
-
-        query = {}
-        if sslmode and sslmode != "disable":
-            query["sslmode"] = sslmode
-
-        url_obj = URL.create(
-            drivername="postgresql+psycopg2",
-            username=user,
-            password=password,
-            host=host,
-            port=port,
-            database=dbname,
-            query=query,
-        )
-        return url_obj
+        return ConfigService.get_postgres_uri()
 
     @staticmethod
     def test_connection(

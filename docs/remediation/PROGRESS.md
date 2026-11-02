@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 2 · Batch: 2.4 · Branch: main · PR: none · Last session: 2026-11-02
+- Phase: 2 · Batch: 2.4 (complete) · Branch: main · PR: #986 · Last session: 2026-11-03
 
 ## Issues
 
@@ -59,10 +59,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #867 | Terminal IDs are not unique: the default `TERM-01` on a till makes it overwri… | high | 2.3 | done | #985 | dbea579 · alphanumeric terminal ID receipt prefixes (TERM01, TILL01), ID validation and release |
 | #868 | Any promotion with a daily time window breaks catalog sync for every till | high | 2.3 | done | #985 | 553a194 · support time serialization in sync protocol for daily promotion windows |
 | #869 | Catalog rows created on a till get ids that clash with Main PC ids, poisoning… | high | 2.3 | done | #985 | 984aab9, 4319eb8 · require_catalog_writable guard on 34 service methods, ReadOnlyBanner UI |
-| #836 | Product edits on the Main PC never reach a till, because the catalog merge fa… | critical | 2.4 | todo | | |
-| #871 | Deletions on the Main PC never reach the tills: removed promotions, price-lis… | high | 2.4 | todo | | |
-| #872 | Role permissions never sync, so revoking or granting a permission on the Main… | high | 2.4 | todo | | |
-| #903 | Till audit logs and inventory logs never reach the Main PC | medium | 2.4 | todo | | |
+| #836 | Product edits on the Main PC never reach a till, because the catalog merge fa… | critical | 2.4 | done | #986 | e7b37b9 · pop version_id before merge, hold watermark on error |
+| #871 | Deletions on the Main PC never reach the tills: removed promotions, price-lis… | high | 2.4 | done | #986 | e7b37b9 · sync_deletions table, reverse FK deletion order, soft-delete fallback, Admin Tools reload |
+| #872 | Role permissions never sync, so revoking or granting a permission on the Main… | high | 2.4 | done | #986 | e7b37b9 · permissions before roles, permission_codes sync, roles_changed signal refreshes current user |
+| #903 | Till audit logs and inventory logs never reach the Main PC | medium | 2.4 | done | #986 | e7b37b9 · synced column on inventory_logs, _FLAT_PUSH_TABLES, terminal_id filter in Activity Log UI |
 | #870 | One idle TCP connection stalls the whole Main PC sync server, before any auth… | high | 2.5 | todo | | |
 | #905 | The document sequence is found by string sort, so `{seq}` breaks at 10 and `{… | medium | 2.5 | todo | | |
 | #906 | A push that fails on every cycle is invisible: pending count is never set, se… | medium | 2.5 | todo | | |
@@ -304,5 +304,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|
 
 ## Handoff
-Phase 2 Batch 2.3 is complete! Issues #868, #867, #866, and #869 are done, merged into `main` via PR #985, and verified closed on GitHub. The full test suite passed (2,965 passed, 0 failures), pre-commit hooks passed, and all CI jobs (Code Quality & Linting, PostgreSQL Tests, and Unit Tests) are 100% green. Ready to begin Phase 2 Batch 2.4: Sync Engine Hardening (#836, #871, #872, #903) per `docs/remediation/phases/phase-02-network-multi-terminal.md`.
+Phase 2 Batch 2.4 is complete! Issues #836, #871, #872, and #903 are done, merged into `main` via PR #986 (merge commit `e7b37b9`), and verified closed on GitHub. Sync protocol bumped to 1.2. The full test suite passed (2,981 passed, 3 skipped, 11 xfailed, 0 failures), pre-commit hooks passed, and all CI checks are 100% green. Ready to begin Phase 2 Batch 2.5: Sync Resilience & Offline Mode (#870, #905, #906) per `docs/remediation/phases/phase-02-network-multi-terminal.md`.
 

@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 2 · Batch: 2.1 · Branch: main · PR: none · Last session: 2026-10-31
+- Phase: 2 · Batch: 2.2 · Branch: main · PR: none · Last session: 2026-11-02
 
 ## Issues
 
@@ -52,8 +52,8 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #799 | PostgreSQL Network mode has no schema-upgrade path after an app update | high | 2.1 | todo | | |
-| #904 | In network mode, `Database.get_session()` retries by yielding twice, so a dro… | medium | 2.1 | todo | | |
+| #799 | PostgreSQL Network mode has no schema-upgrade path after an app update | high | 2.1 | done | #981 | b408f6f · ShopMeta table, advisory lock 727001, guided stepper, startup gate |
+| #904 | In network mode, `Database.get_session()` retries by yielding twice, so a dro… | medium | 2.1 | done | #981 | f5d1588 · yield session once and map connection lost errors |
 | #800 | LAN Sync: no TLS certificate verification, so the shared secret is exposed to… | high | 2.2 | todo | | |
 | #866 | A till reinstalled, restored from a backup or re-created under the same termi… | high | 2.3 | todo | | |
 | #867 | Terminal IDs are not unique: the default `TERM-01` on a till makes it overwri… | high | 2.3 | todo | | |
@@ -305,4 +305,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Handoff
 
-Phase 1 is complete! All 4 batches (1.0, 1.1, 1.2, 1.3) are done, merged into `main` via PRs #977, #978, #979, and #980, and verified closed on GitHub. All 14 Phase 1 issues are closed. Full test suite is clean (2,885 passed, 0 failures, 0 hangs), pre-commit is passing, and CI is 100% green. Ready to begin Phase 2 Batch 2.1 (#799, #904) per `docs/remediation/phases/phase-02-network-multi-terminal.md`.
+Phase 2 Batch 2.1 is complete! Both issues #904 and #799 are done, merged into `main` via PR #981, and verified closed on GitHub. The full test suite passed (2,894 passed, 0 failures), pre-commit hooks passed, and all CI jobs (including Code Quality & Linting, PostgreSQL Tests, and Unit Tests) are 100% green. Ready to begin Phase 2 Batch 2.2 (#800 — LAN Sync TLS certificate verification) per `docs/remediation/phases/phase-02-network-multi-terminal.md`.
+

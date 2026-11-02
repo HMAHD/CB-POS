@@ -24,6 +24,7 @@ from typing import Any
 
 from PyQt6.QtCore import QThread, pyqtSignal
 from sqlalchemy import func
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import class_mapper
 
 from cbpos.core.database import Database
@@ -174,6 +175,13 @@ def _rejected_tables(errors: Any) -> set[str]:
 def _unpushed_customer_keys(session: Any) -> dict[str, set[Any]]:
     """Ids, phones and loyalty cards of the customers this till created and hasn't pushed."""
     keys: dict[str, set[Any]] = {"id": set(), "phone": set(), "loyalty_card_code": set()}
+    try:
+        bind = session.get_bind()
+        insp = sa_inspect(bind)
+        if "customers" not in insp.get_table_names():
+            return keys
+    except Exception:
+        return keys
     for customer in session.query(Customer).filter_by(synced=False):
         for column, values in keys.items():
             value = getattr(customer, column)
@@ -867,6 +875,9 @@ class SyncClient(QThread):
         try:
             with db.get_session() as session:
                 session.info[SKIP_CHANGE_TRACKING] = True
+                bind = session.get_bind()
+                insp = sa_inspect(bind)
+                existing_tables = set(insp.get_table_names())
 
                 # 1. Process deletions or full replace before upserts to avoid unique constraint collisions
                 if requires_full_replace:
@@ -875,6 +886,8 @@ class SyncClient(QThread):
                             continue
                         model_class = get_model_for_table(table_name)
                         if model_class is None:
+                            continue
+                        if getattr(model_class, "__tablename__", None) not in existing_tables:
                             continue
                         incoming_records = payload.get(table_name, [])
                         incoming_ids = {r["id"] for r in incoming_records if "id" in r}
@@ -910,6 +923,8 @@ class SyncClient(QThread):
                         model_class = get_model_for_table(table_name)
                         if model_class is None:
                             continue
+                        if getattr(model_class, "__tablename__", None) not in existing_tables:
+                            continue
                         row = session.get(model_class, row_id)
                         if row is None:
                             continue
@@ -933,7 +948,11 @@ class SyncClient(QThread):
                                     logger.error("Failed to soft-delete %s[%s]: %s", table_name, row_id, e2)
 
                 # 2. Process upserts
-                unpushed_customers = _unpushed_customer_keys(session)
+                unpushed_customers = (
+                    _unpushed_customer_keys(session)
+                    if "customers" in existing_tables
+                    else {"id": set(), "phone": set(), "loyalty_card_code": set()}
+                )
                 for table_name in CATALOG_TABLES:
                     records = payload.get(table_name, [])
                     if not records:
@@ -941,6 +960,8 @@ class SyncClient(QThread):
 
                     model_class = get_model_for_table(table_name)
                     if model_class is None:
+                        continue
+                    if getattr(model_class, "__tablename__", None) not in existing_tables:
                         continue
 
                     mapper = class_mapper(model_class)
@@ -971,7 +992,7 @@ class SyncClient(QThread):
                             # The Main PC's figures don't include what this till
                             # hasn't pushed yet -- keep that on top (#678, #716).
                             for balance in _BALANCES.values():
-                                if balance.owner_table == table_name:
+                                if balance.owner_table == table_name and balance.owner_table in existing_tables:
                                     main_value = getattr(merged, balance.balance_column)
                                     pulled_balances.append((balance, merged.id, main_value))
                             records_applied += 1
@@ -985,7 +1006,11 @@ class SyncClient(QThread):
                             )
 
                 for balance, owner_id, main_value in pulled_balances:
-                    _set_local_balance(session, balance, owner_id, main_value)
+                    if (
+                        balance.owner_table in existing_tables
+                        and getattr(balance.ledger, "__tablename__", None) in existing_tables
+                    ):
+                        _set_local_balance(session, balance, owner_id, main_value)
 
         except Exception as e:
             logger.error("Error applying catalog update: %s", e)

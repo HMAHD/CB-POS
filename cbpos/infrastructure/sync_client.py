@@ -13,6 +13,7 @@ Features:
 """
 
 import logging
+import ssl
 import urllib.error
 import urllib.request
 from collections.abc import Callable
@@ -78,6 +79,22 @@ _PUSHED_CHILDREN: dict[type, tuple[str, ...]] = {
     Sale: ("items", "payments"),
     Purchase: ("items",),
 }
+
+
+def _is_cert_verify_error(e: Exception) -> bool:
+    """Return True if exception indicates a TLS certificate verification failure."""
+    if isinstance(e, ssl.SSLCertVerificationError):
+        return True
+    if isinstance(e, urllib.error.URLError):
+        reason = getattr(e, "reason", None)
+        if isinstance(reason, ssl.SSLCertVerificationError):
+            return True
+        if reason and (
+            "CERTIFICATE_VERIFY_FAILED" in str(reason) or "certificate verify failed" in str(reason).lower()
+        ):
+            return True
+    err_str = str(e)
+    return "CERTIFICATE_VERIFY_FAILED" in err_str or "certificate verify failed" in err_str.lower()
 
 
 def _money(value: Any) -> Decimal:
@@ -196,6 +213,7 @@ class SyncClient(QThread):
     STATE_CONNECTED = "connected"
     STATE_SYNCING = "syncing"
     STATE_ERROR = "error"
+    STATE_UNPAIRED = "unpaired"
 
     def __init__(
         self,
@@ -225,6 +243,7 @@ class SyncClient(QThread):
         self._shared_secret = shared_secret
         self._running = False
         self._state = self.STATE_DISCONNECTED
+        self._error_code: str | None = None
         self._push_sequence = 0
         self._last_catalog_sync: datetime | None = None
         self._initial_sync_done = False
@@ -239,9 +258,39 @@ class SyncClient(QThread):
         elif not self._server_address.startswith("https://"):
             self._server_address = f"https://{self._server_address}"
 
+        self._ssl_context: ssl.SSLContext | None = None
+        self._loaded_pinned_pem: str = ""
+        self.reload_ssl_context()
+
+    @property
+    def error_code(self) -> str | None:
+        """Return the specific error code if state is STATE_ERROR."""
+        return self._error_code
+
+    def reload_ssl_context(self) -> bool:
+        """Reload client SSLContext using the currently pinned certificate PEM."""
         from cbpos.infrastructure.sync_tls import build_client_ssl_context
 
-        self._ssl_context = build_client_ssl_context()
+        pinned_pem = ConfigService.get("sync_pinned_cert_pem")
+        if not pinned_pem:
+            self._ssl_context = None
+            self._loaded_pinned_pem = ""
+            self._set_state(self.STATE_UNPAIRED)
+            return False
+
+        try:
+            self._ssl_context = build_client_ssl_context(pinned_pem)
+            self._loaded_pinned_pem = pinned_pem
+            if self._state in (self.STATE_UNPAIRED, self.STATE_ERROR):
+                self._set_state(self.STATE_DISCONNECTED)
+            self._error_code = None
+            return True
+        except Exception as e:
+            logger.warning("Could not build pinned SSL context: %s", e)
+            self._ssl_context = None
+            self._loaded_pinned_pem = ""
+            self._set_state(self.STATE_UNPAIRED)
+            return False
 
     @property
     def state(self) -> str:
@@ -286,6 +335,10 @@ class SyncClient(QThread):
 
         Returns the parsed JSON response or None on error.
         """
+        if self._ssl_context is None:
+            self._set_state(self.STATE_UNPAIRED)
+            return None
+
         url = f"{self._server_address}{endpoint}"
         try:
             headers = {"X-Sync-Token": self._shared_secret}
@@ -300,12 +353,72 @@ class SyncClient(QThread):
                 raw = resp.read().decode("utf-8")
                 return sync_json_loads(raw)
 
-        except urllib.error.URLError as e:
-            logger.debug("Sync request failed (%s %s): %s", method, endpoint, e)
+        except (urllib.error.URLError, ssl.SSLCertVerificationError) as e:
+            if _is_cert_verify_error(e):
+                self._handle_cert_mismatch(e)
+            else:
+                logger.debug("Sync request failed (%s %s): %s", method, endpoint, e)
             return None
         except Exception as e:
-            logger.error("Sync request error (%s %s): %s", method, endpoint, e)
+            if _is_cert_verify_error(e):
+                self._handle_cert_mismatch(e)
+            else:
+                logger.error("Sync request error (%s %s): %s", method, endpoint, e)
             return None
+
+    def _handle_cert_mismatch(self, error: Exception) -> None:
+        """Handle a TLS certificate verification failure (potential MITM or replaced cert)."""
+        already_mismatch = self._error_code == "cert_mismatch"
+        self._error_code = "cert_mismatch"
+        self._set_state(self.STATE_ERROR)
+
+        if already_mismatch:
+            return  # Avoid repeated audit logs on every retry
+
+        import json
+        from urllib.parse import urlsplit
+
+        from cbpos.core.services.logging_service import LoggingService
+        from cbpos.i18n import _t
+        from cbpos.infrastructure.sync_tls import cert_fingerprint, fetch_server_certificate
+
+        parsed = urlsplit(self._server_address)
+        host = parsed.hostname or "127.0.0.1"
+        port = parsed.port or 8443
+
+        bad_fp = "unknown"
+        try:
+            pem = fetch_server_certificate(host, port, timeout=5.0)
+            bad_fp = cert_fingerprint(pem)
+        except Exception as e:
+            logger.warning("Could not fetch presented certificate on mismatch: %s", e)
+
+        expected_fp = ConfigService.get("sync_pinned_cert_fp") or "unknown"
+        logger.error(
+            "Sync TLS certificate mismatch! Expected %s, server presented %s",
+            expected_fp,
+            bad_fp,
+        )
+
+        try:
+            details = json.dumps(
+                {
+                    "presented_fingerprint": bad_fp,
+                    "expected_fingerprint": expected_fp,
+                    "server_address": self._server_address,
+                    "error": str(error),
+                }
+            )
+            LoggingService.log_action(
+                user_id=None,
+                action="SYNC_CERT_MISMATCH",
+                event_type="SECURITY",
+                details=details,
+            )
+        except Exception as e:
+            logger.error("Failed to write SYNC_CERT_MISMATCH audit log: %s", e)
+
+        self.error_signal.emit(_t("sync_pairing.changed"))
 
     # --- Main Thread Loop ---
 
@@ -321,6 +434,24 @@ class SyncClient(QThread):
 
         while self._running:
             try:
+                # Step 0: Ensure client is paired and SSL context is loaded
+                if self._ssl_context is None or self._state == self.STATE_UNPAIRED:
+                    if not self.reload_ssl_context():
+                        self._set_state(self.STATE_UNPAIRED)
+                        self._sleep(self._sync_interval)
+                        continue
+
+                # Step 0.5: If certificate mismatch, wait until re-paired
+                if self._error_code == "cert_mismatch":
+                    current_pin = ConfigService.get("sync_pinned_cert_pem") or ""
+                    if current_pin != getattr(self, "_loaded_pinned_pem", ""):
+                        if not self.reload_ssl_context():
+                            self._sleep(self._sync_interval)
+                            continue
+                    else:
+                        self._sleep(self._sync_interval)
+                        continue
+
                 # Step 1: Ensure we're registered
                 if not self.is_connected:
                     if self._try_register():

@@ -40,6 +40,7 @@ class SyncStatusWidget(QWidget):
         "main": "#9C27B0",  # Purple
         "standalone": "#607D8B",  # Blue-grey
         "error": "#FF5722",  # Deep orange
+        "unpaired": "#FFC107",  # Amber
     }
 
     def __init__(self, parent=None):
@@ -50,6 +51,7 @@ class SyncStatusWidget(QWidget):
         super().__init__(parent)
         self._mode: str = "standalone"  # standalone, main, terminal
         self._state: str = "disconnected"
+        self._error_code: str | None = None
         self._pending: int = 0
         self._connected_terminals: int = 0
         self._server_address: str = ""
@@ -108,16 +110,22 @@ class SyncStatusWidget(QWidget):
                 "syncing": _t("sync_status.status_syncing"),
                 "error": _t("sync_status.status_error"),
                 "disconnected": _t("sync_status.status_disconnected"),
+                "unpaired": _t("sync_pairing.not_paired_short"),
             }
             lines.append(f"<b>{mode_label}:</b> {_t('sync_status.detail_mode_terminal')}")
             lines.append(f"<b>{_t('sync_status.detail_main_pc')}:</b> {self._server_address}")
             lines.append(f"<b>{_t('common.status')}:</b> {state_labels.get(self._state, _t('common.unknown'))}")
-            lines.append(
-                f"<b>{_t('sync_status.detail_pending')}:</b> "
-                f"{_t('sync_status.detail_pending_records', count=self._pending)}"
-            )
-            if self._last_sync:
-                lines.append(f"<b>{_t('sync_status.detail_last_sync')}:</b> {self._last_sync}")
+            if self._state == "unpaired":
+                lines.append(f"<span style='color: #FFC107;'>{_t('sync_pairing.not_paired')}</span>")
+            elif self._state == "error" and self._error_code == "cert_mismatch":
+                lines.append(f"<span style='color: #F44336;'>{_t('sync_pairing.changed')}</span>")
+            else:
+                lines.append(
+                    f"<b>{_t('sync_status.detail_pending')}:</b> "
+                    f"{_t('sync_status.detail_pending_records', count=self._pending)}"
+                )
+                if self._last_sync:
+                    lines.append(f"<b>{_t('sync_status.detail_last_sync')}:</b> {self._last_sync}")
         else:
             lines.append(f"<b>{mode_label}:</b> {_t('sync_status.detail_mode_standalone')}")
 
@@ -147,9 +155,26 @@ class SyncStatusWidget(QWidget):
         self._update_display()
 
     @pyqtSlot(str)
-    def set_state(self, state: str) -> None:
+    def set_state(self, state: str, error_code: str | None = None) -> None:
         """Update the connection state (for terminal mode)."""
         self._state = state
+        if error_code is not None:
+            self._error_code = error_code
+        elif state != "error":
+            self._error_code = None
+        self._update_display()
+
+    @pyqtSlot(str)
+    def set_error_code(self, code: str | None) -> None:
+        """Set the error code (e.g. 'cert_mismatch')."""
+        self._error_code = code
+        self._update_display()
+
+    @pyqtSlot(str)
+    def on_sync_error(self, message: str) -> None:
+        """Handle error signal from sync client."""
+        if message == _t("sync_pairing.changed"):
+            self._error_code = "cert_mismatch"
         self._update_display()
 
     @pyqtSlot(str)
@@ -201,7 +226,9 @@ class SyncStatusWidget(QWidget):
             text = _t("sync_status.main_label", count=self._connected_terminals)
         elif self._mode == "terminal":
             status = self._state if self._state in self.COLORS else "disconnected"
-            if self._state == "connected":
+            if self._state == "unpaired":
+                text = _t("sync_pairing.not_paired_short")
+            elif self._state == "connected":
                 if self._pending > 0:
                     text = _t("sync_status.synced_pending", pending=self._pending)
                 else:
@@ -209,7 +236,10 @@ class SyncStatusWidget(QWidget):
             elif self._state == "syncing":
                 text = _t("sync_status.syncing", pending=self._pending)
             elif self._state == "error":
-                text = _t("sync_status.error_label")
+                if self._error_code == "cert_mismatch":
+                    text = _t("sync_pairing.changed")
+                else:
+                    text = _t("sync_status.error_label")
             else:
                 text = _t("sync_status.disconnected")
         else:

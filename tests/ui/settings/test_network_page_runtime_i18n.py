@@ -25,7 +25,13 @@ pytestmark = pytest.mark.usefixtures("qapp")
 
 
 @pytest.fixture
-def page(qapp):
+def page(qapp, tmp_path, monkeypatch):
+    import os
+
+    import cbpos.infrastructure.sync_tls as sync_tls
+
+    monkeypatch.setattr(sync_tls, "CERT_FILE", os.path.join(tmp_path, "sync_tls_cert.pem"))
+    monkeypatch.setattr(sync_tls, "KEY_FILE", os.path.join(tmp_path, "sync_tls_key.pem"))
     p = NetworkPage()
     yield p
     p.deleteLater()
@@ -52,6 +58,18 @@ class TestServerAddressDisplayIsTranslated:
 
 
 class TestTestSyncConnectionIsTranslated:
+    @pytest.fixture(autouse=True)
+    def setup_paired(self, monkeypatch):
+        from cbpos.core.services.config_service import ConfigService
+
+        monkeypatch.setattr(
+            ConfigService,
+            "get",
+            lambda key, default=None: "dummy_pinned_pem" if key == "sync_pinned_cert_pem" else default,
+        )
+        with patch("cbpos.infrastructure.sync_tls.build_client_ssl_context", return_value=None):
+            yield
+
     def test_empty_address_shows_translated_validation_warning(self, page, fake_translate):
         page.input_main_pc_addr.setText("")
 
@@ -88,6 +106,24 @@ class TestTestSyncConnectionIsTranslated:
         mock_critical.assert_called_once()
         args, _ = mock_critical.call_args
         assert args[1] == "[[settings.network.sync_error_title]]"
+
+    def test_unpaired_status_shows_translated_dialog(self, page, fake_translate, monkeypatch):
+        from cbpos.core.services.config_service import ConfigService
+
+        monkeypatch.setattr(
+            ConfigService, "get", lambda key, default=None: "" if key == "sync_pinned_cert_pem" else default
+        )
+        page.input_main_pc_addr.setText("192.168.1.50:5555")
+
+        with patch("cbpos.infrastructure.sync_tls.fetch_server_certificate", return_value="dummy_cert"):
+            with patch("cbpos.infrastructure.sync_tls.cert_fingerprint", return_value="AA:BB"):
+                with patch("cbpos.ui.views.settings_pages.QMessageBox.information") as mock_info:
+                    page._test_sync_connection()
+
+        assert page.lbl_sync_test_status.text() == "[[sync_pairing.not_paired_short]]"
+        mock_info.assert_called_once()
+        args, _ = mock_info.call_args
+        assert args[1] == "[[sync_pairing.title]]"
 
 
 class TestForgetTrustedMainPcIsTranslated:

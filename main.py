@@ -568,6 +568,7 @@ def main():
             sync_interval = int(ConfigService.get("sync_interval_seconds") or 3)
             sync_client = SyncClient(terminal_id, main_pc_address, sync_interval, shared_secret)
             sync_client.status_changed.connect(window.sync_status.set_state)
+            sync_client.error_signal.connect(window.sync_status.on_sync_error)
             sync_client.sync_completed.connect(window.sync_status.on_client_sync_completed)
             sync_client.start()
             window._sync_client = sync_client

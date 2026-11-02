@@ -2938,7 +2938,8 @@
     "circular_reference": "A category cannot be its own parent.",
     "payment_amount_zero": "Payment amount must be greater than zero.",
     "customer_not_found": "Customer not found.",
-    "insufficient_stock": "Insufficient stock"
+    "insufficient_stock": "Insufficient stock",
+    "db_connection_lost": "Lost connection to the shop database. Check the network cable or Wi-Fi to the Main PC, then try again. Nothing was saved."
   },
   "backup_password": {
     "title_set": "Set Backup Password",

@@ -44,8 +44,10 @@ from cbpos.core.models import (
     SupplierPayment,
 )
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.sync_change_tracking import SKIP_CHANGE_TRACKING
 from cbpos.core.services.sync_customer_renumber import renumber_customers
 from cbpos.core.services.sync_protocol import (
+    CATALOG_DELETION_ORDER,
     CATALOG_TABLES,
     EP_PULL_CATALOG,
     EP_PULL_STOCK,
@@ -208,6 +210,7 @@ class SyncClient(QThread):
     status_changed = pyqtSignal(str)  # status string
     sync_completed = pyqtSignal(int, int)  # pushed, pulled
     initial_sync_completed = pyqtSignal()
+    catalog_reloaded = pyqtSignal(bool, str)
     error_signal = pyqtSignal(str)
 
     # Connection states
@@ -251,6 +254,7 @@ class SyncClient(QThread):
         self._initial_sync_done = False
         self._consecutive_failures = 0
         self._max_retries = 3
+        self._full_sync_requested = False
 
         # Sync is always over TLS — normalize to https:// regardless of
         # what was typed in (bare "host:port", or an old "http://" value
@@ -506,21 +510,32 @@ class SyncClient(QThread):
 
         logger.info("SyncClient stopped")
 
+    def request_full_catalog_sync(self) -> None:
+        """Schedule a full catalog replacement on the next sync cycle."""
+        self._full_sync_requested = True
+
     def _sync_cycle(self) -> tuple[int, int]:
         """Push local changes, then pull the catalog and stock.
 
         Returns:
             (records pushed, catalog records pulled); -1 for a failed step.
         """
+        full_sync = getattr(self, "_full_sync_requested", False)
+        self._full_sync_requested = False
         pushed = self._push_transactions()
-        pulled = self._pull_catalog()
+        pulled = self._pull_catalog(full_sync=full_sync)
         self._pull_stock()
+        if full_sync:
+            if pulled >= 0:
+                self.catalog_reloaded.emit(True, "")
+            else:
+                self.catalog_reloaded.emit(False, self._error_code or "catalog_apply_failed")
         return pushed, pulled
 
     def _sleep(self, seconds: int) -> None:
-        """Sleep that can be interrupted by stop()."""
+        """Sleep that can be interrupted by stop() or full sync request."""
         for _ in range(seconds * 10):  # Check every 100ms
-            if not self._running:
+            if not self._running or getattr(self, "_full_sync_requested", False):
                 return
             self.msleep(100)
 
@@ -817,7 +832,9 @@ class SyncClient(QThread):
             Number of records pulled, or -1 on error.
         """
         endpoint = EP_PULL_CATALOG + f"?terminal_id={self._terminal_id}"
-        if not full_sync and self._last_catalog_sync:
+        if full_sync:
+            endpoint += "&full_replace=1"
+        elif self._last_catalog_sync:
             endpoint += f"&since={self._last_catalog_sync.isoformat()}"
 
         result = self._request("GET", endpoint)
@@ -826,9 +843,11 @@ class SyncClient(QThread):
 
         payload = result.get("payload", {})
         total_records = result.get("total_records", 0)
+        deletions = result.get("deletions", [])
+        requires_full_replace = result.get("requires_full_replace", False) or full_sync
         server_timestamp = self._parse_server_timestamp(result)
 
-        if total_records == 0:
+        if total_records == 0 and not deletions and not requires_full_replace:
             self._last_catalog_sync = server_timestamp
             return 0
 
@@ -840,6 +859,73 @@ class SyncClient(QThread):
         has_errors = False
         try:
             with db.get_session() as session:
+                session.info[SKIP_CHANGE_TRACKING] = True
+
+                # 1. Process deletions or full replace before upserts to avoid unique constraint collisions
+                if requires_full_replace:
+                    for table_name in CATALOG_DELETION_ORDER:
+                        if table_name == "customers":
+                            continue
+                        model_class = get_model_for_table(table_name)
+                        if model_class is None:
+                            continue
+                        incoming_records = payload.get(table_name, [])
+                        incoming_ids = {r["id"] for r in incoming_records if "id" in r}
+                        local_rows = session.query(model_class).all()
+                        for row in local_rows:
+                            if row.id not in incoming_ids:
+                                try:
+                                    with session.begin_nested():
+                                        session.delete(row)
+                                        session.flush()
+                                except Exception as e:
+                                    logger.warning(
+                                        "Full replace: could not hard-delete %s[%s]: %s",
+                                        table_name,
+                                        row.id,
+                                        e,
+                                    )
+                                    if hasattr(row, "is_active"):
+                                        try:
+                                            row.is_active = False
+                                            session.flush()
+                                        except Exception as e2:
+                                            has_errors = True
+                                            logger.error("Failed to soft-delete %s[%s]: %s", table_name, row.id, e2)
+                elif deletions:
+                    order_map = {tbl: i for i, tbl in enumerate(CATALOG_DELETION_ORDER)}
+                    sorted_deletions = sorted(deletions, key=lambda d: order_map.get(d.get("table", ""), 999))
+                    for item in sorted_deletions:
+                        table_name = item.get("table")
+                        row_id = item.get("row_id")
+                        if table_name == "customers" or not table_name or not row_id:
+                            continue
+                        model_class = get_model_for_table(table_name)
+                        if model_class is None:
+                            continue
+                        row = session.get(model_class, row_id)
+                        if row is None:
+                            continue
+                        try:
+                            with session.begin_nested():
+                                session.delete(row)
+                                session.flush()
+                        except Exception as e:
+                            logger.warning(
+                                "Could not hard-delete %s[%s] (referenced by local sales): %s",
+                                table_name,
+                                row_id,
+                                e,
+                            )
+                            if hasattr(row, "is_active"):
+                                try:
+                                    row.is_active = False
+                                    session.flush()
+                                except Exception as e2:
+                                    has_errors = True
+                                    logger.error("Failed to soft-delete %s[%s]: %s", table_name, row_id, e2)
+
+                # 2. Process upserts
                 unpushed_customers = _unpushed_customer_keys(session)
                 for table_name in CATALOG_TABLES:
                     records = payload.get(table_name, [])

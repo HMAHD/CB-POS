@@ -60,6 +60,23 @@ CATALOG_TABLES = [
     "composite_items",
 ]
 
+# Reverse FK dependency order for catalog deletions (children deleted before parents)
+CATALOG_DELETION_ORDER = [
+    "composite_items",
+    "price_list_items",
+    "products",
+    "promotions",
+    "payment_methods",
+    "price_lists",
+    "suppliers",
+    "categories",
+    "units",
+    "void_reasons",
+    "users",
+    "roles",
+    "permissions",
+]
+
 # Push reply error for a table the Main PC doesn't take, followed by the
 # table name. Every Main PC version answers this way, so a till can tell
 # which of its rows an older Main PC turned away (and keep them to re-send).

@@ -115,3 +115,24 @@ def flag_changed_rows_for_resend(session: Session, flush_context: Any, instances
             logger.debug(
                 "Sync: deleted %s%s is not propagated to the Main PC", type(obj).__name__, sa_inspect(obj).identity
             )
+
+    # Record catalog deletion tombstones on Main PC or standalone (#871)
+    from datetime import datetime
+
+    from cbpos.core.models import SyncDeletion
+    from cbpos.core.services.config_service import ConfigService
+    from cbpos.core.services.sync_protocol import CATALOG_TABLES
+
+    if ConfigService.get("terminal_mode") != "terminal":
+        for obj in list(session.deleted):
+            tbl = getattr(obj, "__tablename__", None)
+            if tbl and tbl in CATALOG_TABLES and tbl != "customers":
+                row_id = getattr(obj, "id", None)
+                if row_id is not None:
+                    session.add(
+                        SyncDeletion(
+                            table_name=tbl,
+                            row_id=row_id,
+                            deleted_at=datetime.now(),
+                        )
+                    )

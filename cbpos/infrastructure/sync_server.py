@@ -13,7 +13,7 @@ import logging
 import secrets
 import socket
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Optional
 
@@ -23,6 +23,7 @@ from sqlalchemy.orm.exc import StaleDataError
 from cbpos.core.database import Database
 from cbpos.core.models import (
     Product,
+    SyncDeletion,
     SyncLog,
 )
 from cbpos.core.services.config_service import ConfigService
@@ -356,6 +357,7 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         params = parse_qs(parsed.query)
         since_str = params.get("since", [None])[0]
         terminal_id = params.get("terminal_id", [None])[0]
+        full_replace_req = params.get("full_replace", [None])[0] in ("1", "true", "True")
 
         since = None
         if since_str:
@@ -377,9 +379,18 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
         # wall-clock agreement between machines (see SyncClient._pull_catalog,
         # which trusts this timestamp rather than its own clock).
         now = datetime.now()
+        prune_horizon = now - timedelta(days=180)
+        requires_full_replace = full_replace_req or (since is not None and since < prune_horizon)
+        query_since = None if requires_full_replace else since
+
+        deletions_data: list[dict[str, Any]] = []
 
         db = Database()
         with db.get_session() as session:
+            # Prune deletion tombstones older than 180 days
+            session.query(SyncDeletion).filter(SyncDeletion.deleted_at < prune_horizon).delete()
+            session.commit()
+
             for table_name in CATALOG_TABLES:
                 model_class = get_model_for_table(table_name)
                 if model_class is None:
@@ -387,24 +398,40 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
 
                 query = session.query(model_class)
 
-                # Apply since filter if the model has last_modified
-                if since and hasattr(model_class, "last_modified"):
-                    query = query.filter(model_class.last_modified > since)
+                # Apply since filter if the model has last_modified and not full replace
+                if query_since and hasattr(model_class, "last_modified"):
+                    query = query.filter(model_class.last_modified > query_since)
 
                 records = query.all()
                 if records:
                     payload[table_name] = [model_to_dict(r) for r in records]
                     total_records += len(records)
 
+            if not requires_full_replace:
+                del_query = session.query(SyncDeletion)
+                if query_since:
+                    del_query = del_query.filter(SyncDeletion.deleted_at > query_since)
+                deletions = del_query.order_by(SyncDeletion.deleted_at.asc()).all()
+                deletions_data = [
+                    {
+                        "table": d.table_name,
+                        "row_id": d.row_id,
+                        "deleted_at": d.deleted_at.isoformat(),
+                    }
+                    for d in deletions
+                ]
+
         if terminal_id:
             _registry.update_catalog_sync(terminal_id)
 
         logger.info(
-            "Catalog pull for %s: %d records across %d tables (since=%s)",
+            "Catalog pull for %s: %d records, %d deletions across %d tables (since=%s, full_replace=%s)",
             terminal_id or "unknown",
             total_records,
+            len(deletions_data),
             len(payload),
             since_str or "full",
+            requires_full_replace,
         )
 
         self._send_json(
@@ -413,6 +440,8 @@ class SyncRequestHandler(BaseHTTPRequestHandler):
                 "timestamp": now.isoformat(),
                 "total_records": total_records,
                 "payload": payload,
+                "deletions": deletions_data,
+                "requires_full_replace": requires_full_replace,
             }
         )
 

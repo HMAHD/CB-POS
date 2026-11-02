@@ -5,11 +5,12 @@ Tests serialization roundtrips, envelope validation, and model mapping.
 """
 
 import json
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 
 from cbpos.core.models import (
     Product,
+    Promotion,
     Sale,
     SaleItem,
     SalePayment,
@@ -400,3 +401,35 @@ class TestFullRoundtrip:
         item = dict_to_model(SaleItem, items_data[0])
         assert item.qty == Decimal("3")
         assert item.unit_price == Decimal("500.00")
+
+    def test_issue_868_promotion_time_round_trip(self):
+        """Promotion with daily_start / daily_end times survives dict/json roundtrip (#868)."""
+        promo = Promotion(
+            id=10,
+            name="Happy Hour Discount",
+            start_time=datetime(2026, 1, 1, 0, 0, 0),
+            end_time=datetime(2026, 12, 31, 23, 59, 59),
+            type="PERCENTAGE",
+            value=Decimal("15.00"),
+            daily_start=time(14, 0, 0),
+            daily_end=time(18, 30, 0),
+            is_active=True,
+        )
+
+        # 1. model_to_dict
+        d = model_to_dict(promo)
+        assert d["daily_start"] == "14:00:00"
+        assert d["daily_end"] == "18:30:00"
+
+        # 2. sync_json_dumps -> sync_json_loads
+        raw_json = sync_json_dumps(d)
+        parsed = sync_json_loads(raw_json)
+        assert parsed["daily_start"] == "14:00:00"
+        assert parsed["daily_end"] == "18:30:00"
+
+        # 3. dict_to_model
+        restored = dict_to_model(Promotion, parsed)
+        assert isinstance(restored.daily_start, time)
+        assert isinstance(restored.daily_end, time)
+        assert restored.daily_start == time(14, 0, 0)
+        assert restored.daily_end == time(18, 30, 0)

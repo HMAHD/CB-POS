@@ -7,7 +7,7 @@ sync envelope format, and shared constants for the sync server/client.
 
 import json
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Any
 
@@ -101,15 +101,19 @@ class SyncEncoder(json.JSONEncoder):
     - ``Decimal`` → ``str`` (preserves precision, avoids float errors)
     - ``datetime`` → ISO 8601 string
     - ``date`` → ISO 8601 date string
+    - ``time`` → ISO 8601 time string
     """
 
     def default(self, obj: Any) -> Any:
-        """Convert Decimal/datetime/date to their JSON-safe representations; defer everything else."""
+        """Convert Decimal/datetime/date/time to their JSON-safe representations; defer everything else."""
         if isinstance(obj, Decimal):
             return str(obj)
         if isinstance(obj, datetime):
             return obj.isoformat()
         if isinstance(obj, date):
+            return obj.isoformat()
+        # datetime is a subclass of date, but not of time, so this branch is separate and safe
+        if isinstance(obj, time):
             return obj.isoformat()
         return super().default(obj)
 
@@ -153,7 +157,7 @@ def model_to_dict(instance: Base, include_relationships: bool = False) -> dict[s
         value = getattr(instance, key, None)
         if isinstance(value, Decimal):
             value = str(value)
-        elif isinstance(value, (datetime, date)):
+        elif isinstance(value, (datetime, date, time)):
             value = value.isoformat()
         result[key] = value
 
@@ -234,6 +238,11 @@ def coerce_columns(model_class: type[Base], data: dict[str, Any]) -> dict[str, A
         elif type_name in ("Date", "DATE"):
             if isinstance(value, str):
                 kwargs[key] = date.fromisoformat(value)
+            else:
+                kwargs[key] = value
+        elif type_name in ("Time", "TIME"):
+            if isinstance(value, str):
+                kwargs[key] = time.fromisoformat(value)
             else:
                 kwargs[key] = value
         elif type_name in ("Boolean", "BOOLEAN"):

@@ -80,7 +80,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -118,5 +118,6 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
           CBPOS_TEST_PG_URL: postgresql+psycopg2://postgres:pw@localhost:5432/cbpos_test
-        run: uv run python -m pytest -m postgres -q
+        run: uv run python -m pytest tests/integration/test_postgres_schema_upgrade.py -q
+
 

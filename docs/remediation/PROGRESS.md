@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 2 · Batch: 2.3 · Branch: main · PR: none · Last session: 2026-11-02
+- Phase: 2 · Batch: 2.4 · Branch: main · PR: none · Last session: 2026-11-02
 
 ## Issues
 
@@ -55,10 +55,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #799 | PostgreSQL Network mode has no schema-upgrade path after an app update | high | 2.1 | done | #981 | b408f6f · ShopMeta table, advisory lock 727001, guided stepper, startup gate |
 | #904 | In network mode, `Database.get_session()` retries by yielding twice, so a dro… | medium | 2.1 | done | #981 | f5d1588 · yield session once and map connection lost errors |
 | #800 | LAN Sync: no TLS certificate verification, so the shared secret is exposed to… | high | 2.2 | done | #984 | 57a79ce · TLS certificate pinning, zero-token fetch, pairing dialog, fingerprint verification |
-| #866 | A till reinstalled, restored from a backup or re-created under the same termi… | high | 2.3 | todo | | |
-| #867 | Terminal IDs are not unique: the default `TERM-01` on a till makes it overwri… | high | 2.3 | todo | | |
-| #868 | Any promotion with a daily time window breaks catalog sync for every till | high | 2.3 | todo | | |
-| #869 | Catalog rows created on a till get ids that clash with Main PC ids, poisoning… | high | 2.3 | todo | | |
+| #866 | A till reinstalled, restored from a backup or re-created under the same termi… | high | 2.3 | done | #985 | f185f3e, 4319eb8 · local identity UUID, sync_terminals, protocol 1.1, restore idempotency |
+| #867 | Terminal IDs are not unique: the default `TERM-01` on a till makes it overwri… | high | 2.3 | done | #985 | dbea579 · alphanumeric terminal ID receipt prefixes (TERM01, TILL01), ID validation and release |
+| #868 | Any promotion with a daily time window breaks catalog sync for every till | high | 2.3 | done | #985 | 553a194 · support time serialization in sync protocol for daily promotion windows |
+| #869 | Catalog rows created on a till get ids that clash with Main PC ids, poisoning… | high | 2.3 | done | #985 | 984aab9, 4319eb8 · require_catalog_writable guard on 34 service methods, ReadOnlyBanner UI |
 | #836 | Product edits on the Main PC never reach a till, because the catalog merge fa… | critical | 2.4 | todo | | |
 | #871 | Deletions on the Main PC never reach the tills: removed promotions, price-lis… | high | 2.4 | todo | | |
 | #872 | Role permissions never sync, so revoking or granting a permission on the Main… | high | 2.4 | todo | | |
@@ -304,5 +304,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|
 
 ## Handoff
-Phase 2 Batch 2.2 is complete! Issue #800 is done, merged into `main` via PR #984, and verified closed on GitHub. The full test suite passed (2,902 passed, 0 failures), pre-commit hooks passed, and all CI jobs (Code Quality & Linting, PostgreSQL Tests, and Unit Tests) are 100% green. Ready to begin Phase 2 Batch 2.3 (#868, #867, #866, #869) per `docs/remediation/phases/phase-02-network-multi-terminal.md`.
+Phase 2 Batch 2.3 is complete! Issues #868, #867, #866, and #869 are done, merged into `main` via PR #985, and verified closed on GitHub. The full test suite passed (2,965 passed, 0 failures), pre-commit hooks passed, and all CI jobs (Code Quality & Linting, PostgreSQL Tests, and Unit Tests) are 100% green. Ready to begin Phase 2 Batch 2.4: Sync Engine Hardening (#836, #871, #872, #903) per `docs/remediation/phases/phase-02-network-multi-terminal.md`.
 

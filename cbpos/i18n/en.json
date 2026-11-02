@@ -742,6 +742,10 @@
     "refund_failed": "Failed to process refund. Check logs.",
     "refund_error": "Refund failed: {error}"
   },
+  "catalog": {
+    "read_only_banner": "This till uses the Main PC's product list. Add or change products, prices, suppliers and users on the Main PC; changes arrive here automatically.",
+    "read_only_tooltip": "Change this on the Main PC."
+  },
   "inventory": {
     "header_barcode": "Barcode",
     "header_name": "Name",

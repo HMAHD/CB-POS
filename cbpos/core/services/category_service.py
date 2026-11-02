@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload
 
 from cbpos.core.database import Database
 from cbpos.core.models import Category
+from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 logger = logging.getLogger(__name__)
 
@@ -177,6 +178,7 @@ class CategoryService:
         Raises:
             ValueError: If category not found.
         """
+        require_catalog_writable()
         db = Database()
         with db.get_session() as session:
             category = session.get(Category, category_id)
@@ -220,6 +222,7 @@ class CategoryService:
         Raises:
             ValueError: If a category with the same name already exists.
         """
+        require_catalog_writable()
         db = Database()
         with db.get_session() as session:
             existing = session.query(Category).filter(Category.name == name).first()
@@ -257,6 +260,7 @@ class CategoryService:
         Raises:
             ValueError: If category not found or duplicate name.
         """
+        require_catalog_writable()
         db = Database()
         with db.get_session() as session:
             category = session.get(Category, category_id)
@@ -290,6 +294,7 @@ class CategoryService:
         Raises:
             ValueError: If category not found or has products assigned.
         """
+        require_catalog_writable()
         db = Database()
         with db.get_session() as session:
             category = session.get(Category, category_id)
@@ -318,6 +323,7 @@ class CategoryService:
         Raises:
             ValueError: If category or parent not found, or circular reference.
         """
+        require_catalog_writable()
         db = Database()
         with db.get_session() as session:
             category = session.get(Category, category_id)

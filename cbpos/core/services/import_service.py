@@ -5,6 +5,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 
 from cbpos.core.services.inventory_service import InventoryService
+from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,7 @@ class ImportService:
         file_path: str,
         progress_callback: Callable[[int], None] | None = None,
     ) -> dict[str, int]:
+        require_catalog_writable()
         results = {"success": 0, "failed": 0, "skipped": 0}
 
         try:

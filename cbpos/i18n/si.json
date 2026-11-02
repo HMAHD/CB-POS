@@ -712,6 +712,10 @@
     "monthly_sales": "මාසික විකුණුම් — {year}",
     "periodic_reports_range": "කාලීන වාර්තා  ({start} – {end})"
   },
+  "catalog": {
+    "read_only_banner": "මෙම කවුන්ටරය Main PC එකෙහි භාණ්ඩ ලැයිස්තුව භාවිතා කරයි. භාණ්ඩ, මිල ගණන්, සැපයුම්කරුවන් සහ පරිශීලකයින් Main PC එකෙන් එක් කරන්න හෝ වෙනස් කරන්න; එම වෙනස්කම් මෙහි ස්වයංක්‍රීයව යාවත්කාලීන වේ.",
+    "read_only_tooltip": "මෙය Main PC එකෙන් වෙනස් කරන්න."
+  },
   "inventory": {
     "header_barcode": "බාර්කෝඩ්",
     "header_name": "නම",

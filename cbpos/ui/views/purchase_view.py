@@ -43,6 +43,7 @@ from cbpos.core.utils.formatters import (
     format_quantity,
     format_relative_time,
 )
+from cbpos.core.utils.terminal_guard import catalog_is_read_only
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.components.activation import Activatable
 from cbpos.ui.constants import BAR_GROUP_SPACING, BAR_ITEM_SPACING, BAR_MARGIN_V
@@ -51,6 +52,7 @@ from cbpos.ui.dialogs.supplier_dialog import SupplierDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING, status_color
 from cbpos.ui.widgets.empty_state_widget import EmptyStateWidget
+from cbpos.ui.widgets.read_only_banner import ReadOnlyBanner
 from cbpos.ui.widgets.status_pill_delegate import STATUS_MEANING_ROLE, StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
@@ -268,6 +270,9 @@ class PurchaseView(QWidget, Activatable):
         """Build the Suppliers tab: toolbar and supplier table."""
         layout = QVBoxLayout(self.supplier_tab)
 
+        self.supplier_read_only_banner = ReadOnlyBanner()
+        layout.addWidget(self.supplier_read_only_banner)
+
         # Toolbar
         toolbar = QHBoxLayout()
         self.btn_add_supplier = QPushButton()
@@ -306,6 +311,19 @@ class PurchaseView(QWidget, Activatable):
 
         self.empty_supplier_label = EmptyStateWidget(Icons.CUSTOMERS, self.supplier_table.viewport())
         self.empty_supplier_label.setVisible(False)
+
+    def _update_supplier_read_only_state(self) -> None:
+        """Update supplier action buttons and tooltip based on terminal catalog read-only state."""
+        if not hasattr(self, "supplier_read_only_banner"):
+            return
+        is_ro = self.supplier_read_only_banner.refresh_visibility()
+        self.btn_add_supplier.setEnabled(not is_ro)
+        self.btn_edit_supplier.setEnabled(not is_ro)
+        self.btn_deactivate_supplier.setEnabled(not is_ro)
+        tip = _t("catalog.read_only_tooltip") if is_ro else ""
+        self.btn_add_supplier.setToolTip(tip)
+        self.btn_edit_supplier.setToolTip(tip)
+        self.btn_deactivate_supplier.setToolTip(tip)
 
     def setup_grn_tab(self):
         """Build the New GRN tab: header form, product search, line items grid, and commit footer."""
@@ -517,6 +535,9 @@ class PurchaseView(QWidget, Activatable):
         self.empty_grn_label.set_subtitle(_t("purchase.empty_grn_items_subtitle"))
 
         # Supplier tab
+        if hasattr(self, "supplier_read_only_banner"):
+            self.supplier_read_only_banner.retranslate_ui()
+        self._update_supplier_read_only_state()
         self.btn_add_supplier.setText(_t("purchase.btn_add_supplier"))
         self.btn_edit_supplier.setText(_t("purchase.btn_edit_supplier"))
         self.btn_deactivate_supplier.setText(_t("purchase.btn_deactivate_supplier"))
@@ -682,6 +703,8 @@ class PurchaseView(QWidget, Activatable):
 
     def add_supplier(self):
         """Open the Add Supplier dialog and persist the new supplier on accept."""
+        if catalog_is_read_only():
+            return
         dialog = SupplierDialog(self)
         if dialog.exec():
             data = dialog.get_data()
@@ -702,6 +725,8 @@ class PurchaseView(QWidget, Activatable):
 
     def edit_supplier(self):
         """Open the Edit Supplier dialog for the selected row and persist changes on accept (#523)."""
+        if catalog_is_read_only():
+            return
         supplier = self._selected_supplier()
         if not supplier:
             return
@@ -724,6 +749,8 @@ class PurchaseView(QWidget, Activatable):
         already use -- SupplierService.update_supplier already supports it,
         this was purely an unwired UI gap.
         """
+        if catalog_is_read_only():
+            return
         supplier = self._selected_supplier()
         if not supplier:
             return
@@ -1545,6 +1572,7 @@ class PurchaseView(QWidget, Activatable):
 
     def on_activated(self) -> None:
         """Reload the visible tab when Purchasing is shown or the user switches tabs."""
+        self._update_supplier_read_only_state()
         index = self.tabs.currentIndex()
         if index == 0:
             self.refresh_suppliers()

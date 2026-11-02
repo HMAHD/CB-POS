@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from cbpos.core.models import Sale, SaleItem, SyncIdMap
+from cbpos.core.models import Sale, SaleItem, StockMovement, SyncIdMap
 from cbpos.core.services.local_identity_service import LocalIdentityService
 from cbpos.core.services.sync_apply_service import PushApplyError, SyncApplyService
 from cbpos.core.services.sync_terminal_service import SyncTerminalService
@@ -269,3 +269,66 @@ def test_issue_866_mapped_resend_with_different_number_rejected(shop):
                 },
             )
         assert "mapped_row_mismatch" in str(excinfo.value)
+
+
+def test_issue_869_till_sale_after_guard_pushes_fine(shop):
+    """Catalog is read-only on till, but normal sales push and apply cleanly to Main PC."""
+    from cbpos.core.services.inventory_service import InventoryService
+    from cbpos.core.utils.terminal_guard import CatalogReadOnlyError
+
+    shop.add_till(TILL_ID)
+    cat = shop.seed_catalog()
+    product_id = cat["product"]
+
+    # 1. Mutating catalog on till is guarded
+    with shop.on(TILL_ID):
+        with pytest.raises(CatalogReadOnlyError):
+            InventoryService().create_product({"name_en": "Till Product", "price": Decimal("100")})
+
+    # 2. Making a sale on till using the synced catalog product works
+    sale_date = datetime(2026, 11, 2, 12, 0, 0)
+    with shop.session(TILL_ID) as s:
+        sale = Sale(
+            document_number="TILL01-INV-2026-00001",
+            date=sale_date,
+            user_id=cat["user"],
+            terminal_id=TILL_ID,
+            origin_terminal_id=TILL_ID,
+            total_amount=Decimal("150"),
+            net_revenue=Decimal("150"),
+            payment_method="CASH",
+        )
+        sale.items.append(
+            SaleItem(
+                product_id=product_id,
+                qty=Decimal("1.000"),
+                unit_price=Decimal("150"),
+                original_price=Decimal("150"),
+                subtotal=Decimal("150"),
+            )
+        )
+        s.add(sale)
+        mv = StockMovement(
+            product_id=product_id,
+            user_id=cat["user"],
+            type="SALE",
+            qty_change=Decimal("-1.000"),
+            balance_after=Decimal("9.000"),
+            terminal_id=TILL_ID,
+        )
+        s.add(mv)
+        s.commit()
+
+    # 3. Push sale to Main PC
+    assert shop.push(TILL_ID) > 0
+
+    # 4. Main PC verifies sale is recorded and stock updated
+    with shop.session("main") as s:
+        recorded_sale = s.query(Sale).filter_by(document_number="TILL01-INV-2026-00001").first()
+        assert recorded_sale is not None
+        assert recorded_sale.total_amount == Decimal("150")
+
+        # Verify stock movement recorded on Main PC
+        movements = s.query(StockMovement).filter_by(product_id=product_id).all()
+        assert len(movements) == 1
+        assert movements[0].qty_change == Decimal("-1.000")

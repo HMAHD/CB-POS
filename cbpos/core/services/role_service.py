@@ -12,6 +12,7 @@ import logging
 from cbpos.core.constants.permissions import ADMIN_ROLE_NAME
 from cbpos.core.database import Database
 from cbpos.core.models import Role, User
+from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ class RoleService:
         Raises:
             ValueError: If the name is empty or a role with that name already exists.
         """
+        require_catalog_writable()
         name = (name or "").strip()
         if not name:
             raise ValueError("Role name is required.")
@@ -64,6 +66,7 @@ class RoleService:
                 role is the built-in Admin role, or another role already
                 has that name.
         """
+        require_catalog_writable()
         name = (name or "").strip()
         if not name:
             raise ValueError("Role name is required.")
@@ -112,6 +115,7 @@ class RoleService:
             ValueError: If the role isn't found, is the built-in Admin
                 role, or is still assigned to at least one user.
         """
+        require_catalog_writable()
         db = Database()
         with db.get_session() as session:
             role = session.get(Role, role_id)

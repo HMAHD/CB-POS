@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
 from cbpos.core.services.user_service import UserService
 from cbpos.core.utils.audit_format import format_audit_action, format_audit_details, format_log_time
 from cbpos.core.utils.display_labels import display_role_name, event_type_label
+from cbpos.core.utils.terminal_guard import catalog_is_read_only
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.components.activation import Activatable
 from cbpos.ui.dialogs.permission_dialog import PermissionDialog
@@ -29,6 +30,7 @@ from cbpos.ui.dialogs.role_manager import RoleManagerDialog
 from cbpos.ui.dialogs.user_dialog import UserDialog
 from cbpos.ui.resources.icons import Icons
 from cbpos.ui.resources.status_colors import DANGER, INFO, SUCCESS, WARNING, is_light_theme, status_color
+from cbpos.ui.widgets.read_only_banner import ReadOnlyBanner
 from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
@@ -77,6 +79,9 @@ class UserView(QWidget, Activatable):
     def init_user_tab(self):
         """Build the user tab's toolbar (add/permissions/roles) and the user table."""
         layout = QVBoxLayout(self.user_tab)
+
+        self.read_only_banner = ReadOnlyBanner()
+        layout.addWidget(self.read_only_banner)
 
         # Toolbar
         toolbar = QHBoxLayout()
@@ -198,8 +203,21 @@ class UserView(QWidget, Activatable):
 
         layout.addWidget(self.log_table)
 
+    def _update_read_only_state(self) -> None:
+        """Update action buttons and tooltip based on terminal catalog read-only state."""
+        is_ro = self.read_only_banner.refresh_visibility()
+        self.btn_add.setEnabled(not is_ro)
+        self.btn_perms.setEnabled(not is_ro)
+        self.btn_roles.setEnabled(not is_ro)
+        tip = _t("catalog.read_only_tooltip") if is_ro else ""
+        self.btn_add.setToolTip(tip)
+        self.btn_perms.setToolTip(tip)
+        self.btn_roles.setToolTip(tip)
+
     def retranslate_ui(self):
         """Update all widget text, table headers, and event-type filter options from the translation system."""
+        self.read_only_banner.retranslate_ui()
+        self._update_read_only_state()
         self.tabs.setTabText(0, _t("user.tab_users"))
         self.tabs.setTabText(1, _t("user.tab_activity_log"))
         self.btn_add.setText(_t("user.add_user"))
@@ -369,6 +387,9 @@ class UserView(QWidget, Activatable):
 
     def add_user(self):
         """Check permission, then open the add-user dialog and refresh the table on save."""
+        if catalog_is_read_only():
+            return
+
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
@@ -381,6 +402,9 @@ class UserView(QWidget, Activatable):
 
     def edit_user(self):
         """Check permission, then open the edit dialog for the selected row and refresh the table on save."""
+        if catalog_is_read_only():
+            return
+
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
@@ -398,6 +422,9 @@ class UserView(QWidget, Activatable):
 
     def manage_permissions(self):
         """Check permission, then open the permission-management dialog."""
+        if catalog_is_read_only():
+            return
+
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
@@ -409,6 +436,9 @@ class UserView(QWidget, Activatable):
 
     def manage_roles(self):
         """Check permission, then open the role-manager dialog and refresh the user table afterward."""
+        if catalog_is_read_only():
+            return
+
         from cbpos.core.constants.permissions import Permissions
         from cbpos.core.utils.permission_helper import check_permission_with_override
 
@@ -421,4 +451,5 @@ class UserView(QWidget, Activatable):
 
     def on_activated(self) -> None:
         """Reload when this view is shown again, so the user never sees stale data."""
+        self._update_read_only_state()
         self.load_users()

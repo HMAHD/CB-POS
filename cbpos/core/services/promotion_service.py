@@ -15,6 +15,7 @@ from cbpos.core.constants.audit import PRICING_EVENT
 from cbpos.core.database import Database
 from cbpos.core.models import Category, Product, Promotion
 from cbpos.core.services.logging_service import LoggingService, diff_changes, snapshot_changes
+from cbpos.core.utils.terminal_guard import require_catalog_writable
 from cbpos.i18n import _t
 
 # Types pricing_service.calculate_price() actually applies. BOGO has no branch
@@ -162,6 +163,7 @@ class PromotionService:
             ValueError: If end_time is not after start_time, the type is unsupported
                 (e.g. BOGO), or the value/days break a rule in ``_check_rules``.
         """
+        require_catalog_writable()
         self._validate_time_range(start_time, end_time)
         if type not in SUPPORTED_TYPES:
             raise ValueError(_t("promotion.type_not_supported"))
@@ -230,6 +232,7 @@ class PromotionService:
                 the type is switched to an unsupported one, or a changed
                 type/value/days/scope/daily window breaks a rule in ``_check_rules``.
         """
+        require_catalog_writable()
         with self.db.get_session() as session:
             promotion = session.get(Promotion, promotion_id)
             if not promotion:
@@ -312,6 +315,7 @@ class PromotionService:
         Raises:
             ValueError: If the promotion isn't found.
         """
+        require_catalog_writable()
         with self.db.get_session() as session:
             promotion = session.get(Promotion, promotion_id)
             if not promotion:

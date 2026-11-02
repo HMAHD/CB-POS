@@ -8,6 +8,7 @@ from cbpos.core.database import Database
 from cbpos.core.models import AuditLog, Role, User
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.role_service import ADMIN_ROLE_NAME
+from cbpos.core.utils.terminal_guard import require_catalog_writable
 
 
 class UserService:
@@ -22,6 +23,7 @@ class UserService:
         Update the logged-in user's profile.
         Security: Only allows updating own display name and PIN.
         """
+        require_catalog_writable()
         try:
             with Database().get_session() as session:
                 user = session.get(User, user_id)
@@ -63,6 +65,7 @@ class UserService:
     @staticmethod
     def update_admin_pin(new_pin: str) -> bool:
         """Update the admin user's PIN during first-run setup."""
+        require_catalog_writable()
         try:
             with Database().get_session() as session:
                 admin = session.query(User).filter(User.username == "admin").first()
@@ -143,6 +146,7 @@ class UserService:
     @staticmethod
     def create_user(username: str, pin: str, role_id: int) -> bool:
         """Create a new user."""
+        require_catalog_writable()
         try:
             with Database().get_session() as session:
                 # Check if username exists
@@ -206,6 +210,7 @@ class UserService:
     @staticmethod
     def update_user(user_id: int, username: str, pin: str | None, role_id: int, is_active: bool) -> bool:
         """Update an existing user."""
+        require_catalog_writable()
         try:
             with Database().get_session() as session:
                 user = session.get(User, user_id)

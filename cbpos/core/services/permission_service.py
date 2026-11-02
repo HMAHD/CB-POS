@@ -88,6 +88,9 @@ class PermissionService:
 
         SAFETY: Prevents revoking critical permissions from Admin.
         """
+        from cbpos.core.utils.terminal_guard import require_catalog_writable
+
+        require_catalog_writable()
         from cbpos.core.database import Database
         from cbpos.core.models import AuditLog, Permission, Role
 

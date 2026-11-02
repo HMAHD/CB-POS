@@ -34,6 +34,7 @@ from cbpos.core.models import (
     CustomerLedgerEntry,
     CustomerPayment,
     Document,
+    InventoryLog,
     LoyaltyLedgerEntry,
     Product,
     Purchase,
@@ -51,7 +52,6 @@ from cbpos.core.services.sync_protocol import (
     CATALOG_TABLES,
     EP_PULL_CATALOG,
     EP_PULL_STOCK,
-    EP_PUSH_AUDIT,
     EP_PUSH_TRANSACTIONS,
     EP_REGISTER,
     REJECTED_TABLE_ERROR,
@@ -71,11 +71,13 @@ _FLAT_PUSH_TABLES: tuple[tuple[str, type], ...] = (
     ("stock_movements", StockMovement),
     ("shifts", Shift),
     ("cash_movements", CashMovement),
+    ("audit_logs", AuditLog),
     ("customer_payments", CustomerPayment),
     ("customer_ledger", CustomerLedgerEntry),
     ("loyalty_ledger", LoyaltyLedgerEntry),
     ("supplier_payments", SupplierPayment),
     ("supplier_ledger", SupplierLedgerEntry),
+    ("inventory_logs", InventoryLog),
 )
 
 # Children pushed with their document: relationship names per document type.
@@ -729,7 +731,10 @@ class SyncClient(QThread):
                 payload["purchase_items"] = p_items
 
             for table_name, model_class in _FLAT_PUSH_TABLES:
-                rows = session.query(model_class).filter_by(synced=False).all()
+                query = session.query(model_class).filter_by(synced=False)
+                if table_name == "audit_logs":
+                    query = query.limit(500)
+                rows = query.all()
                 if rows:
                     payload[table_name] = [model_to_dict(r) for r in rows]
                     for row in rows:
@@ -1058,50 +1063,3 @@ class SyncClient(QThread):
         if updated > 0:
             logger.debug("Updated stock for %d products", updated)
         return updated
-
-    # --- Push Audit Logs ---
-
-    def push_audit_logs(self) -> int:
-        """Push unsynced audit logs to the Main PC.
-
-        Called less frequently than transaction push (e.g., every 30 seconds).
-        Returns number of records pushed, or -1 on error.
-        """
-        db = Database()
-        try:
-            with db.get_session() as session:
-                unsynced = session.query(AuditLog).filter_by(synced=False).limit(100).all()  # Batch size
-                if not unsynced:
-                    return 0
-
-                audit_records = [model_to_dict(a) for a in unsynced]
-
-        except Exception as e:
-            logger.error("Error collecting audit logs: %s", e)
-            return -1
-
-        envelope = make_envelope(
-            self._terminal_id,
-            "PUSH_AUDIT",
-            {"audit_logs": audit_records},
-        )
-
-        result = self._request("POST", EP_PUSH_AUDIT, envelope)
-        if result is None:
-            return -1
-
-        if result.get("status") == "ok":
-            # Mark as synced
-            try:
-                with db.get_session() as session:
-                    for record in audit_records:
-                        record_id = record.get("id")
-                        if record_id:
-                            obj = session.get(AuditLog, record_id)
-                            if obj:
-                                obj.synced = True
-            except Exception as e:
-                logger.error("Error marking audit logs as synced: %s", e)
-
-            return len(audit_records)
-        return -1

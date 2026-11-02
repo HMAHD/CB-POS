@@ -84,3 +84,31 @@ class TestDateRangeFilter:
         logs = UserService.get_recent_activity(date_to=datetime.now() - timedelta(days=1))
 
         assert [log.id for log in logs] == [old.id]
+
+
+class TestTerminalFilter:
+    def test_filters_by_terminal_id_and_returns_distinct_terminals(self, db_session, test_user):
+        log1 = AuditLog(
+            user_id=test_user.id,
+            action="LOGIN",
+            event_type="LOGIN",
+            terminal_id="TERM-01",
+            timestamp=datetime.now(),
+        )
+        log2 = AuditLog(
+            user_id=test_user.id,
+            action="LOGIN",
+            event_type="LOGIN",
+            terminal_id="TERM-02",
+            timestamp=datetime.now(),
+        )
+        db_session.add_all([log1, log2])
+        db_session.flush()
+
+        terminals = UserService.get_distinct_terminals()
+        assert "TERM-01" in terminals
+        assert "TERM-02" in terminals
+
+        logs = UserService.get_recent_activity(terminal_id="TERM-02")
+        assert len(logs) == 1
+        assert logs[0].terminal_id == "TERM-02"

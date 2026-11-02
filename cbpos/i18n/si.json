@@ -84,6 +84,10 @@
     "version_footer": "වර්ෂන් {version} | © 2026 Ceylon Byte",
     "enter_pin": "PIN එක දාන්න"
   },
+  "activity": {
+    "terminal": "ටර්මිනල්",
+    "all_terminals": "සියලු ටර්මිනල්"
+  },
   "main_window": {
     "title": "CB POS",
     "migration_failed_title": "දත්ත ගබඩාව අප්ඩේට් කරන්න බැරි වුණා",

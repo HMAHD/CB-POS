@@ -84,10 +84,10 @@ class UserService:
         event_type: str | None = None,
         date_from: datetime | None = None,
         date_to: datetime | None = None,
+        terminal_id: str | None = None,
     ) -> list:
-        """
-        Retrieve recent audit logs, optionally narrowed by user, event type,
-        or a timestamp range.
+        """Retrieve recent audit logs, optionally narrowed by user, event type,
+        timestamp range, or terminal.
         """
         try:
             with Database().get_session() as session:
@@ -105,6 +105,9 @@ class UserService:
                 if date_to is not None:
                     query = query.filter(AuditLog.timestamp <= date_to)
 
+                if terminal_id is not None:
+                    query = query.filter(AuditLog.terminal_id == terminal_id)
+
                 logs = query.options(joinedload(AuditLog.user)).order_by(AuditLog.timestamp.desc()).limit(limit).all()
                 # Detach objects for UI use
                 for log in logs:
@@ -113,6 +116,23 @@ class UserService:
 
         except Exception as e:
             logging.error("Failed to fetch activity: %s", e)
+            return []
+
+    @staticmethod
+    def get_distinct_terminals() -> list[str]:
+        """Return a sorted list of all distinct terminal_ids in the audit logs."""
+        try:
+            with Database().get_session() as session:
+                rows = (
+                    session.query(AuditLog.terminal_id)
+                    .filter(AuditLog.terminal_id.isnot(None))
+                    .distinct()
+                    .order_by(AuditLog.terminal_id.asc())
+                    .all()
+                )
+                return [r[0] for r in rows if r[0]]
+        except Exception as e:
+            logging.error("Failed to fetch distinct terminals: %s", e)
             return []
 
     @staticmethod

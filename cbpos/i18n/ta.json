@@ -84,6 +84,10 @@
     "version_footer": "வெர்ஷன் {version} | © 2026 Ceylon Byte",
     "enter_pin": "PIN போடுங்க"
   },
+  "activity": {
+    "terminal": "டெர்மினல்",
+    "all_terminals": "அனைத்து டெர்மினல்கள்"
+  },
   "main_window": {
     "title": "CB POS",
     "migration_failed_title": "டேட்டாபேஸை அப்டேட் பண்ண முடியல",

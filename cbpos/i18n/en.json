@@ -84,6 +84,10 @@
     "version_footer": "Version {version} | © 2026 Ceylon Byte",
     "enter_pin": "Enter PIN"
   },
+  "activity": {
+    "terminal": "Till",
+    "all_terminals": "All tills"
+  },
   "main_window": {
     "title": "CB POS - Industrial Retail System",
     "migration_failed_title": "Database Update Failed",

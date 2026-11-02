@@ -654,10 +654,17 @@ class SyncTestWorker(QThread):
     def run(self) -> None:
         """Test the heartbeat endpoint of the sync server and emit result signals."""
         import json
+        import ssl
         import urllib.error
         import urllib.request
+        from urllib.parse import urlsplit
 
-        from cbpos.infrastructure.sync_tls import build_client_ssl_context
+        from cbpos.core.services.config_service import ConfigService
+        from cbpos.infrastructure.sync_tls import (
+            build_client_ssl_context,
+            cert_fingerprint,
+            fetch_server_certificate,
+        )
 
         address = self.address
         if address.startswith("http://"):
@@ -665,10 +672,30 @@ class SyncTestWorker(QThread):
         elif not address.startswith("https://"):
             address = f"https://{address}"
 
+        parsed = urlsplit(address)
+        host = parsed.hostname or "127.0.0.1"
+        port = parsed.port or 5555
+
+        pinned_pem = ConfigService.get("sync_pinned_cert_pem")
+        if not pinned_pem:
+            # Not paired yet: test connection by zero-token fetching server certificate
+            try:
+                pem = fetch_server_certificate(host, port, timeout=5.0)
+                fp = cert_fingerprint(pem)
+                self.finished_result.emit(
+                    True, "unpaired", {"fingerprint": fp, "address": address, "host": host, "port": port}
+                )
+                return
+            except Exception as e:
+                logger.debug("Sync test pre-fetch failed: %s", e)
+                self.finished_result.emit(False, "failed", {"error": str(e), "address": address})
+                return
+
         url = f"{address}/sync/heartbeat"
         try:
+            client_ctx = build_client_ssl_context(pinned_pem)
             req = urllib.request.Request(url, method="GET", headers={"X-Sync-Token": self.secret})
-            with urllib.request.urlopen(req, timeout=5, context=build_client_ssl_context()) as resp:
+            with urllib.request.urlopen(req, timeout=5, context=client_ctx) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
 
             if data.get("status") == "ok":
@@ -682,11 +709,25 @@ class SyncTestWorker(QThread):
                 self.finished_result.emit(False, "unauthorized", {})
             else:
                 self.finished_result.emit(False, "failed", {"error": str(e), "address": address})
-        except urllib.error.URLError as e:
-            self.finished_result.emit(False, "failed", {"error": str(e), "address": address})
+        except (urllib.error.URLError, ssl.SSLCertVerificationError) as e:
+            err_str = str(e)
+            if hasattr(e, "reason"):
+                err_str += f" {e.reason}"
+            if "CERTIFICATE_VERIFY_FAILED" in err_str or "certificate verify failed" in err_str.lower():
+                self.finished_result.emit(
+                    False, "cert_mismatch", {"error": err_str, "address": address, "host": host, "port": port}
+                )
+            else:
+                self.finished_result.emit(False, "failed", {"error": str(e), "address": address})
         except Exception as e:
-            logger.exception("Sync test error: %s", e)
-            self.finished_result.emit(False, "error", {"error": str(e)})
+            err_str = str(e)
+            if "CERTIFICATE_VERIFY_FAILED" in err_str or "certificate verify failed" in err_str.lower():
+                self.finished_result.emit(
+                    False, "cert_mismatch", {"error": err_str, "address": address, "host": host, "port": port}
+                )
+            else:
+                logger.exception("Sync test error: %s", e)
+                self.finished_result.emit(False, "error", {"error": str(e)})
 
 
 # Alias PrintWorker as ReceiptWorker for backwards/audit naming compatibility

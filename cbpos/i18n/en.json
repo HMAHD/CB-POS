@@ -3052,6 +3052,27 @@
     "update_body": "CB POS will update the shared shop database. Close CB POS on all other computers first. This usually takes less than a minute.",
     "updating": "Updating the shop database…",
     "update_failed": "The update didn't finish: {error}. The database was not changed. Contact support before trying again."
+  },
+  "sync_pairing": {
+    "title": "Pair with the Main PC",
+    "instruction": "Check that this code is exactly the same as the code on the Main PC (Settings → Network → This computer's sync code).",
+    "match": "They match — pair",
+    "paired": "Paired with the Main PC",
+    "not_paired": "This till isn't paired with the Main PC yet. Sales are kept here until it is.",
+    "not_paired_short": "Not Paired",
+    "changed": "The Main PC's security code changed. Sync is stopped to keep your data safe.",
+    "review": "Review…",
+    "previous": "Previously trusted",
+    "presented": "Now presented",
+    "admin_needed": "An admin must approve the new code.",
+    "main_help": "Tills check this code the first time they connect. Read it out or compare it on screen.",
+    "this_computer_code": "This computer's sync code",
+    "copy_code": "Copy Code",
+    "code_copied": "Copied to clipboard",
+    "change": "Change…",
+    "fetching": "Connecting to Main PC to retrieve sync code…",
+    "fetch_failed": "Could not connect to Main PC: {error}",
+    "pair_success": "Successfully paired with Main PC."
   }
 }
 

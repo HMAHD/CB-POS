@@ -124,3 +124,53 @@ class TestCatalogSyncWatermark:
         after = datetime.now()
 
         assert before <= client._last_catalog_sync <= after
+
+
+class TestTLSPinning:
+    def test_issue_800_unpaired_client_remains_unpaired_and_does_not_send_requests(self, client):
+        assert ConfigService.get("sync_pinned_cert_pem") == ""
+        assert client.state == SyncClient.STATE_UNPAIRED
+        # Calling _request when unpaired returns None immediately without network calls
+        assert client._request("GET", "/sync/heartbeat") is None
+
+    def test_issue_800_cert_mismatch_transitions_to_error_and_logs_audit(
+        self, client, db_session, tmp_path, monkeypatch
+    ):
+        import os
+
+        from cbpos.core.models import AuditLog
+        from cbpos.infrastructure import sync_tls
+
+        cert_path = os.path.join(tmp_path, "test_client_cert.pem")
+        key_path = os.path.join(tmp_path, "test_client_key.pem")
+        monkeypatch.setattr(sync_tls, "CERT_FILE", cert_path)
+        monkeypatch.setattr(sync_tls, "KEY_FILE", key_path)
+        sync_tls.get_or_create_certificate()
+        with open(cert_path, encoding="ascii") as f:
+            pem = f.read()
+
+        ConfigService.set("sync_pinned_cert_pem", pem)
+        ConfigService.set("sync_pinned_cert_fp", sync_tls.cert_fingerprint(pem))
+        assert client.reload_ssl_context() is True
+        assert client.state == SyncClient.STATE_DISCONNECTED
+
+        # Trigger cert mismatch
+        errors_emitted = []
+        client.error_signal.connect(errors_emitted.append)
+
+        client._handle_cert_mismatch(Exception("CERTIFICATE_VERIFY_FAILED: certificate verify failed"))
+
+        assert client.state == SyncClient.STATE_ERROR
+        assert client.error_code == "cert_mismatch"
+        assert len(errors_emitted) == 1
+
+        # Check AuditLog
+        logs = db_session.query(AuditLog).filter_by(action="SYNC_CERT_MISMATCH", event_type="SECURITY").all()
+        assert len(logs) == 1
+        assert "expected_fingerprint" in logs[0].details
+        assert "presented_fingerprint" in logs[0].details
+
+        # Calling again does not write duplicate audit logs on repeated retries
+        client._handle_cert_mismatch(Exception("CERTIFICATE_VERIFY_FAILED: certificate verify failed"))
+        logs_again = db_session.query(AuditLog).filter_by(action="SYNC_CERT_MISMATCH", event_type="SECURITY").all()
+        assert len(logs_again) == 1

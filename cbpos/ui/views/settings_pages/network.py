@@ -4,6 +4,7 @@ import logging
 import socket
 
 from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QFontDatabase
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -16,6 +17,7 @@ from PyQt6.QtWidgets import (
     QProgressDialog,
     QPushButton,
     QSpinBox,
+    QToolTip,
     QVBoxLayout,
 )
 from sqlalchemy.engine import URL
@@ -473,7 +475,79 @@ class NetworkPage(SettingsPage):
         self.lbl_server_address.setWordWrap(True)
         sync_card_layout.addWidget(self.lbl_server_address)
 
+        # Main PC Sync Code Card
+        self.main_code_card = QFrame()
+        self.main_code_card.setObjectName("SyncCodeBox")
+        self.main_code_card.setStyleSheet(
+            "QFrame#SyncCodeBox { background-color: rgba(0, 0, 0, 0.08); border: 1px solid rgba(128, 128, 128, 0.25); border-radius: 8px; padding: 12px; }"
+        )
+        main_code_layout = QVBoxLayout(self.main_code_card)
+        main_code_layout.setContentsMargins(14, 12, 14, 12)
+        main_code_layout.setSpacing(8)
+
+        self.lbl_main_code_title = QLabel()
+        self.lbl_main_code_title.setStyleSheet("font-weight: bold; font-size: 13px;")
+        main_code_layout.addWidget(self.lbl_main_code_title)
+
+        self.lbl_main_code_desc = QLabel()
+        self.lbl_main_code_desc.setObjectName("MigrationInfo")
+        self.lbl_main_code_desc.setWordWrap(True)
+        main_code_layout.addWidget(self.lbl_main_code_desc)
+
+        code_box = QFrame()
+        code_box.setStyleSheet(
+            "background-color: rgba(0, 0, 0, 0.12); border: 1px solid rgba(128, 128, 128, 0.2); border-radius: 6px; padding: 8px;"
+        )
+        code_box_layout = QHBoxLayout(code_box)
+        code_box_layout.setContentsMargins(10, 8, 10, 8)
+
+        mono_font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+        mono_font.setPointSize(10)
+
+        self.lbl_main_code_fp = QLabel()
+        self.lbl_main_code_fp.setFont(mono_font)
+        self.lbl_main_code_fp.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        code_box_layout.addWidget(self.lbl_main_code_fp, 1)
+
+        self.btn_copy_main_code = QPushButton()
+        self.btn_copy_main_code.setObjectName("BtnTestNetwork")
+        self.btn_copy_main_code.clicked.connect(self._copy_main_code)
+        code_box_layout.addWidget(self.btn_copy_main_code, 0, Qt.AlignmentFlag.AlignTop)
+
+        main_code_layout.addWidget(code_box)
+        sync_card_layout.addWidget(self.main_code_card)
+
+        # Terminal Pairing Card
+        self.terminal_pairing_card = QFrame()
+        self.terminal_pairing_card.setObjectName("SyncPairingBox")
+        self.terminal_pairing_card.setStyleSheet(
+            "QFrame#SyncPairingBox { background-color: rgba(0, 0, 0, 0.08); border: 1px solid rgba(128, 128, 128, 0.25); border-radius: 8px; padding: 12px; }"
+        )
+        tp_layout = QVBoxLayout(self.terminal_pairing_card)
+        tp_layout.setContentsMargins(14, 12, 14, 12)
+        tp_layout.setSpacing(8)
+
+        self.lbl_tp_title = QLabel()
+        self.lbl_tp_title.setStyleSheet("font-weight: bold; font-size: 13px;")
+        tp_layout.addWidget(self.lbl_tp_title)
+
+        self.lbl_tp_status = QLabel()
+        self.lbl_tp_status.setWordWrap(True)
+        self.lbl_tp_status.setObjectName("MigrationInfo")
+        tp_layout.addWidget(self.lbl_tp_status)
+
+        tp_btn_layout = QHBoxLayout()
+        self.btn_pair_action = QPushButton()
+        self.btn_pair_action.setObjectName("BtnTestNetwork")
+        self.btn_pair_action.clicked.connect(self._open_pairing_dialog)
+        tp_btn_layout.addWidget(self.btn_pair_action)
+        tp_btn_layout.addStretch()
+        tp_layout.addLayout(tp_btn_layout)
+
+        sync_card_layout.addWidget(self.terminal_pairing_card)
+
         sync_layout.addWidget(self.sync_card)
+
         self.tabs.addTab(tab_sync, "")
 
         self._on_mode_changed("Standalone")
@@ -655,6 +729,16 @@ class NetworkPage(SettingsPage):
 
         self.btn_forget_main.setText(_t("settings.network.btn_forget_main"))
         self.btn_forget_main.setToolTip(_t("settings.network.tooltip_forget_main"))
+
+        # Main PC Sync Code Card
+        self.lbl_main_code_title.setText(_t("sync_pairing.this_computer_code"))
+        self.lbl_main_code_desc.setText(_t("sync_pairing.main_help"))
+        self.btn_copy_main_code.setText(_t("sync_pairing.copy_code"))
+
+        # Terminal Pairing Card
+        self.lbl_tp_title.setText(_t("sync_pairing.title"))
+        self._update_terminal_pairing_card()
+
         self.equalize_form_labels()
 
     def load(self, settings: dict):
@@ -1092,7 +1176,7 @@ class NetworkPage(SettingsPage):
         self.lbl_sync_test_status.setVisible(is_terminal)
         self.btn_forget_main.setVisible(is_terminal)
 
-        # Server address display for Main PC
+        # Server address and sync code display for Main PC
         if is_main:
             try:
                 import socket
@@ -1107,8 +1191,100 @@ class NetworkPage(SettingsPage):
             port = self.spin_sync_port.value()
             self.lbl_server_address.setText(_t("settings.network.sync_server_address_display", ip=ip, port=port))
             self.lbl_server_address.setVisible(True)
+
+            try:
+                from cbpos.infrastructure import sync_tls
+
+                cert_path, _ = sync_tls.get_or_create_certificate()
+                with open(cert_path, encoding="ascii") as f:
+                    pem = f.read()
+                self._main_canonical_fp = sync_tls.cert_fingerprint(pem, multiline=False)
+                self.lbl_main_code_fp.setText(sync_tls.cert_fingerprint(pem, multiline=True))
+            except Exception as e:
+                logger.warning("Could not load Main PC sync certificate: %s", e)
+                self._main_canonical_fp = ""
+                self.lbl_main_code_fp.setText("")
+
+            self.main_code_card.setVisible(True)
+            self.terminal_pairing_card.setVisible(False)
+        elif is_terminal:
+            self.lbl_server_address.setVisible(False)
+            self.main_code_card.setVisible(False)
+            self.terminal_pairing_card.setVisible(True)
+            self._update_terminal_pairing_card()
         else:
             self.lbl_server_address.setVisible(False)
+            self.main_code_card.setVisible(False)
+            self.terminal_pairing_card.setVisible(False)
+
+    def _update_terminal_pairing_card(self) -> None:
+        """Update pairing status card on terminal."""
+        from cbpos.core.services.config_service import ConfigService
+
+        pinned_fp = ConfigService.get("sync_pinned_cert_fp") or ""
+
+        if getattr(self, "_cert_mismatch", False):
+            self.lbl_tp_status.setText(
+                f"<span style='color: #F44336; font-weight: bold;'>● {_t('sync_pairing.changed')}</span>"
+            )
+            self.btn_pair_action.setText(_t("sync_pairing.review"))
+            self.btn_pair_action.setEnabled(True)
+        elif not pinned_fp:
+            self.lbl_tp_status.setText(
+                f"<span style='color: #FF9800; font-weight: bold;'>● {_t('sync_pairing.not_paired')}</span>"
+            )
+            self.btn_pair_action.setText(_t("sync_pairing.title"))
+            self.btn_pair_action.setEnabled(True)
+        else:
+            truncated = pinned_fp[-23:] if len(pinned_fp) > 23 else pinned_fp
+            self.lbl_tp_status.setText(
+                f"<span style='color: #4CAF50; font-weight: bold;'>● {_t('sync_pairing.paired')}</span> (…{truncated})"
+            )
+            self.btn_pair_action.setText(_t("sync_pairing.change"))
+            self.btn_pair_action.setEnabled(True)
+
+    def _open_pairing_dialog(self) -> None:
+        """Open SyncPairingDialog for pairing or reviewing code change."""
+        address = self.input_main_pc_addr.text().strip()
+        if not address:
+            QMessageBox.warning(
+                self,
+                _t("settings.network.sync_validation_title"),
+                _t("settings.network.sync_validation_message"),
+            )
+            return
+
+        from urllib.parse import urlsplit
+
+        if address.startswith("http://"):
+            address = "https://" + address[len("http://") :]
+        elif not address.startswith("https://"):
+            address = f"https://{address}"
+
+        parsed = urlsplit(address)
+        host = parsed.hostname or "127.0.0.1"
+        port = parsed.port or 5555
+
+        from cbpos.ui.dialogs.sync_pairing_dialog import SyncPairingDialog
+
+        re_pair = getattr(self, "_cert_mismatch", False)
+        dlg = SyncPairingDialog(host=host, port=port, re_pair=re_pair, parent=self)
+        if dlg.exec():
+            self._cert_mismatch = False
+            self._update_terminal_pairing_card()
+            win = self.window()
+            if hasattr(win, "_sync_client") and win._sync_client:
+                win._sync_client.reload_ssl_context()
+
+    def _copy_main_code(self) -> None:
+        """Copy the Main PC's TLS certificate fingerprint to clipboard."""
+        if hasattr(self, "_main_canonical_fp") and self._main_canonical_fp:
+            QApplication.clipboard().setText(self._main_canonical_fp)
+            QToolTip.showText(
+                self.btn_copy_main_code.mapToGlobal(self.btn_copy_main_code.rect().center()),
+                _t("sync_pairing.code_copied"),
+                self.btn_copy_main_code,
+            )
 
     def _test_sync_connection(self) -> None:
         """Test the connection to the Main PC sync server."""
@@ -1144,6 +1320,23 @@ class NetworkPage(SettingsPage):
                 _t("settings.network.sync_success_title"),
                 _t("settings.network.sync_success_message", version=version, terminals=terminals),
             )
+        elif outcome == "unpaired":
+            self.lbl_sync_test_status.setText(_t("sync_pairing.not_paired_short"))
+            QMessageBox.information(
+                self,
+                _t("sync_pairing.title"),
+                _t("sync_pairing.not_paired"),
+            )
+            self._update_terminal_pairing_card()
+        elif outcome == "cert_mismatch":
+            self._cert_mismatch = True
+            self.lbl_sync_test_status.setText(_t("sync_pairing.changed"))
+            QMessageBox.critical(
+                self,
+                _t("common.error"),
+                _t("sync_pairing.changed"),
+            )
+            self._update_terminal_pairing_card()
         elif outcome == "unauthorized":
             self.lbl_sync_test_status.setText(_t("settings.network.sync_test_unauthorized"))
             QMessageBox.critical(
@@ -1188,6 +1381,10 @@ class NetworkPage(SettingsPage):
         )
         if reply == QMessageBox.StandardButton.Yes:
             ConfigService.set("sync_known_main_instance_id", "")
+            ConfigService.set("sync_pinned_cert_pem", "")
+            ConfigService.set("sync_pinned_cert_fp", "")
+            self._cert_mismatch = False
+            self._update_terminal_pairing_card()
             QMessageBox.information(
                 self,
                 _t("settings.network.btn_forget_main"),

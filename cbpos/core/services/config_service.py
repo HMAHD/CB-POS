@@ -123,6 +123,8 @@ class ConfigService:
         "main_pc_address": "",  # IP:port of Main PC (Terminal mode)
         "sync_interval_seconds": 3,  # How often terminals push/pull (seconds)
         "sync_shared_secret": "",  # Shared token — same value required on Main PC and every Terminal
+        "sync_pinned_cert_pem": "",  # Pinned Main PC TLS certificate (PEM) for LAN Sync (#800)
+        "sync_pinned_cert_fp": "",  # Canonical fingerprint of pinned certificate for display (#800)
         "main_pc_instance_id": "",  # This machine's Main PC identity — generated on first "Main PC" start
         "sync_known_main_instance_id": "",  # (Terminal mode) instance_id of the Main PC first synced with
         # Automation / Email
@@ -172,7 +174,7 @@ class ConfigService:
     )
 
     # Keys that should be encrypted in the settings file
-    _SENSITIVE_KEYS = {"network_db_password", "smtp_pass", "sync_shared_secret"}
+    _SENSITIVE_KEYS = {"network_db_password", "smtp_pass", "sync_shared_secret", "sync_pinned_cert_pem"}
     _fernet: Fernet | None = None
 
     _KEY_FILE = os.path.join(Config.DATA_DIR, ".encryption_key")

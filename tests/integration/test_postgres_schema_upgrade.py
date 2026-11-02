@@ -51,8 +51,9 @@ def test_issue_799_copy_flow_stamps_head(pg_engine, tmp_path):
     Base.metadata.create_all(sqlite_engine)
     sqlite_engine.dispose()
 
-    # Perform copy
-    MigrationService.copy_sqlite_to_postgres(sqlite_file, pg_url)
+    # Perform migration
+    success, msg = MigrationService.migrate_sqlite_to_postgres(sqlite_url, pg_url)
+    assert success is True, msg
 
     # Check stamped head
     head = SchemaMigrationService.head_revision(pg_url)

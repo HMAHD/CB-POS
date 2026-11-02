@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Sync Protocol Version — bump when envelope format changes.
 # Server and client must agree on the major version.
 # ---------------------------------------------------------------------------
-SYNC_PROTOCOL_VERSION = "1.1"
+SYNC_PROTOCOL_VERSION = "1.2"
 
 # ---------------------------------------------------------------------------
 # Default sync server port

@@ -172,15 +172,10 @@ def _rejected_tables(errors: Any) -> set[str]:
     return {e[len(REJECTED_TABLE_ERROR) :] for e in errors if isinstance(e, str) and e.startswith(REJECTED_TABLE_ERROR)}
 
 
-def _unpushed_customer_keys(session: Any) -> dict[str, set[Any]]:
+def _unpushed_customer_keys(session: Any, existing_tables: set[str] | None = None) -> dict[str, set[Any]]:
     """Ids, phones and loyalty cards of the customers this till created and hasn't pushed."""
     keys: dict[str, set[Any]] = {"id": set(), "phone": set(), "loyalty_card_code": set()}
-    try:
-        bind = session.get_bind()
-        insp = sa_inspect(bind)
-        if "customers" not in insp.get_table_names():
-            return keys
-    except Exception:
+    if existing_tables is not None and "customers" not in existing_tables:
         return keys
     for customer in session.query(Customer).filter_by(synced=False):
         for column, values in keys.items():
@@ -949,7 +944,7 @@ class SyncClient(QThread):
 
                 # 2. Process upserts
                 unpushed_customers = (
-                    _unpushed_customer_keys(session)
+                    _unpushed_customer_keys(session, existing_tables)
                     if "customers" in existing_tables
                     else {"id": set(), "phone": set(), "loyalty_card_code": set()}
                 )

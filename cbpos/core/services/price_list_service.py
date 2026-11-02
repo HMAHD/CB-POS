@@ -230,6 +230,10 @@ class PriceListService:
                 item = PriceListItem(price_list_id=list_id, product_id=product_id, price=price)
                 session.add(item)
 
+            price_list = session.get(PriceList, list_id)
+            if price_list:
+                price_list.last_modified = datetime.now()
+
             self._log_item_price(session, "PRICE_LIST_PRICE_SET", list_id, product_id, old_price, price)
             session.commit()
             session.refresh(item)
@@ -255,6 +259,9 @@ class PriceListService:
             item = session.scalar(stmt)
             if not item:
                 raise ValueError(f"No price override found for product {product_id} on this list.")
+            price_list = session.get(PriceList, list_id)
+            if price_list:
+                price_list.last_modified = datetime.now()
             self._log_item_price(session, "PRICE_LIST_PRICE_REMOVE", list_id, product_id, item.price, None)
             session.delete(item)
             session.commit()
@@ -273,8 +280,11 @@ class PriceListService:
             price_list = session.get(PriceList, list_id)
             if not price_list:
                 raise ValueError(f"Price list with ID {list_id} not found.")
-            # Delete associated items first
-            item_count = session.query(PriceListItem).filter(PriceListItem.price_list_id == list_id).delete()
+            # Delete associated items via session.delete so tombstones are recorded (#871)
+            items = session.query(PriceListItem).filter(PriceListItem.price_list_id == list_id).all()
+            item_count = len(items)
+            for item in items:
+                session.delete(item)
             gone = {k: v for k, v in _list_fields(price_list).items() if v is not None and k != "is_active"}
             gone["item_count"] = item_count
             LoggingService.add_change(

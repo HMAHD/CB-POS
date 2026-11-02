@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Sync Protocol Version — bump when envelope format changes.
 # Server and client must agree on the major version.
 # ---------------------------------------------------------------------------
-SYNC_PROTOCOL_VERSION = "1.1"
+SYNC_PROTOCOL_VERSION = "1.2"
 
 # ---------------------------------------------------------------------------
 # Default sync server port
@@ -44,8 +44,8 @@ EP_PUSH_AUDIT = "/sync/push-audit"
 # Order matters: tables without FKs first, then tables with dependencies.
 # ---------------------------------------------------------------------------
 CATALOG_TABLES = [
-    "roles",
     "permissions",
+    "roles",
     "users",
     "void_reasons",
     "units",
@@ -58,6 +58,23 @@ CATALOG_TABLES = [
     "promotions",
     "payment_methods",
     "composite_items",
+]
+
+# Reverse FK dependency order for catalog deletions (children deleted before parents)
+CATALOG_DELETION_ORDER = [
+    "composite_items",
+    "price_list_items",
+    "products",
+    "promotions",
+    "payment_methods",
+    "price_lists",
+    "suppliers",
+    "categories",
+    "units",
+    "void_reasons",
+    "users",
+    "roles",
+    "permissions",
 ]
 
 # Push reply error for a table the Main PC doesn't take, followed by the

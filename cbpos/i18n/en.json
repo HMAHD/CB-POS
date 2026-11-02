@@ -84,6 +84,10 @@
     "version_footer": "Version {version} | © 2026 Ceylon Byte",
     "enter_pin": "Enter PIN"
   },
+  "activity": {
+    "terminal": "Till",
+    "all_terminals": "All tills"
+  },
   "main_window": {
     "title": "CB POS - Industrial Retail System",
     "migration_failed_title": "Database Update Failed",
@@ -3096,7 +3100,11 @@
   },
   "sync": {
     "error_terminal_id_is_main": "This till uses the same name as the Main PC. Give it a different name in Settings → Network.",
-    "error_terminal_id_taken": "Another till already uses the name {id}. Choose a different name, or ask the owner to release it on the Main PC."
+    "error_terminal_id_taken": "Another till already uses the name {id}. Choose a different name, or ask the owner to release it on the Main PC.",
+    "reload_catalog_btn": "Reload catalog from Main PC",
+    "reload_catalog_title": "Reload catalog from Main PC",
+    "reload_catalog_confirm": "Replace this till's products, prices and settings with the Main PC's copy? Sales and customers on this till are kept.",
+    "reload_catalog_success": "Catalog reloaded successfully from the Main PC."
   }
 }
 

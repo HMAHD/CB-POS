@@ -562,6 +562,7 @@ def main():
         if main_pc_address:
             print(f"[BOOTSTRAP] Starting sync client (Terminal mode) -> {main_pc_address}")
             set_startup_status("startup.connecting_main_pc")
+            from cbpos.core.services.auth_service import AuthService
             from cbpos.infrastructure.sync_client import SyncClient
 
             terminal_id = ConfigService.get("terminal_id") or "TERM-01"
@@ -570,6 +571,7 @@ def main():
             sync_client.status_changed.connect(window.sync_status.set_state)
             sync_client.error_signal.connect(window.sync_status.on_sync_error)
             sync_client.sync_completed.connect(window.sync_status.on_client_sync_completed)
+            sync_client.roles_changed.connect(AuthService.refresh_current_user)
             sync_client.start()
             window._sync_client = sync_client
             window.sync_status.set_mode("terminal")

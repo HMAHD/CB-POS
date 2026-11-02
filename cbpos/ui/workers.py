@@ -730,6 +730,39 @@ class SyncTestWorker(QThread):
                 self.finished_result.emit(False, "error", {"error": str(e)})
 
 
+class ReloadCatalogWorker(QThread):
+    """Performs a full catalog pull/replacement from the Main PC in a background thread."""
+
+    finished_result = pyqtSignal(bool, str)
+
+    def __init__(self, terminal_id: str, server_address: str, shared_secret: str) -> None:
+        super().__init__()
+        self.finished.connect(self.deleteLater)
+        self.terminal_id = terminal_id
+        self.server_address = server_address
+        self.shared_secret = shared_secret
+
+    def run(self) -> None:
+        """Run full catalog reload in background."""
+        from cbpos.infrastructure.sync_client import SyncClient
+
+        try:
+            client = SyncClient(
+                terminal_id=self.terminal_id,
+                server_address=self.server_address,
+                shared_secret=self.shared_secret,
+            )
+            client.reload_ssl_context()
+            res = client._pull_catalog(full_sync=True)
+            if res >= 0:
+                self.finished_result.emit(True, "")
+            else:
+                self.finished_result.emit(False, client.error_code() or "catalog_apply_failed")
+        except Exception as e:
+            logger.error("ReloadCatalogWorker failed: %s", e)
+            self.finished_result.emit(False, str(e))
+
+
 # Alias PrintWorker as ReceiptWorker for backwards/audit naming compatibility
 def __getattr__(name: str):
     if name == "ReceiptWorker":

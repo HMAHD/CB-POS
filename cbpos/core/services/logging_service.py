@@ -82,9 +82,8 @@ class LoggingService:
     """
 
     @staticmethod
-    def log_action(user_id: int, action: str, event_type: str, details: str = None):
-        """
-        Log a critical action to the database.
+    def log_action(user_id: int, action: str, event_type: str, details: str = None, terminal_id: str = None):
+        """Log a critical action to the database.
 
         Args:
             user_id (int): ID of the user performing the action.
@@ -93,11 +92,22 @@ class LoggingService:
                 'SECURITY', 'TRANSACTION') -- required, since AuditLog.event_type
                 is a non-nullable column and omitting it raises IntegrityError.
             details (str): Additional details (optional).
+            terminal_id (str): Terminal ID (optional, defaults to configured terminal_id).
         """
+        if not terminal_id:
+            from cbpos.core.services.config_service import ConfigService
+
+            terminal_id = ConfigService.get("terminal_id") or "TERM-01"
         db = Database()
         try:
             with db.get_session() as session:
-                log = AuditLog(user_id=user_id, action=action, event_type=event_type, details=details)
+                log = AuditLog(
+                    user_id=user_id,
+                    action=action,
+                    event_type=event_type,
+                    terminal_id=terminal_id,
+                    details=details,
+                )
                 session.add(log)
         except Exception as e:
             logger.error("Failed to write audit log: %s", e)

@@ -24,6 +24,8 @@ from typing import Any
 
 from PyQt6.QtCore import QThread, pyqtSignal
 from sqlalchemy import func
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.orm import class_mapper
 
 from cbpos.core.database import Database
 from cbpos.core.models import (
@@ -33,6 +35,7 @@ from cbpos.core.models import (
     CustomerLedgerEntry,
     CustomerPayment,
     Document,
+    InventoryLog,
     LoyaltyLedgerEntry,
     Product,
     Purchase,
@@ -43,12 +46,13 @@ from cbpos.core.models import (
     SupplierPayment,
 )
 from cbpos.core.services.config_service import ConfigService
+from cbpos.core.services.sync_change_tracking import SKIP_CHANGE_TRACKING
 from cbpos.core.services.sync_customer_renumber import renumber_customers
 from cbpos.core.services.sync_protocol import (
+    CATALOG_DELETION_ORDER,
     CATALOG_TABLES,
     EP_PULL_CATALOG,
     EP_PULL_STOCK,
-    EP_PUSH_AUDIT,
     EP_PUSH_TRANSACTIONS,
     EP_REGISTER,
     REJECTED_TABLE_ERROR,
@@ -68,11 +72,13 @@ _FLAT_PUSH_TABLES: tuple[tuple[str, type], ...] = (
     ("stock_movements", StockMovement),
     ("shifts", Shift),
     ("cash_movements", CashMovement),
+    ("audit_logs", AuditLog),
     ("customer_payments", CustomerPayment),
     ("customer_ledger", CustomerLedgerEntry),
     ("loyalty_ledger", LoyaltyLedgerEntry),
     ("supplier_payments", SupplierPayment),
     ("supplier_ledger", SupplierLedgerEntry),
+    ("inventory_logs", InventoryLog),
 )
 
 # Children pushed with their document: relationship names per document type.
@@ -166,9 +172,11 @@ def _rejected_tables(errors: Any) -> set[str]:
     return {e[len(REJECTED_TABLE_ERROR) :] for e in errors if isinstance(e, str) and e.startswith(REJECTED_TABLE_ERROR)}
 
 
-def _unpushed_customer_keys(session: Any) -> dict[str, set[Any]]:
+def _unpushed_customer_keys(session: Any, existing_tables: set[str] | None = None) -> dict[str, set[Any]]:
     """Ids, phones and loyalty cards of the customers this till created and hasn't pushed."""
     keys: dict[str, set[Any]] = {"id": set(), "phone": set(), "loyalty_card_code": set()}
+    if existing_tables is not None and "customers" not in existing_tables:
+        return keys
     for customer in session.query(Customer).filter_by(synced=False):
         for column, values in keys.items():
             value = getattr(customer, column)
@@ -207,6 +215,8 @@ class SyncClient(QThread):
     status_changed = pyqtSignal(str)  # status string
     sync_completed = pyqtSignal(int, int)  # pushed, pulled
     initial_sync_completed = pyqtSignal()
+    catalog_reloaded = pyqtSignal(bool, str)
+    roles_changed = pyqtSignal()
     error_signal = pyqtSignal(str)
 
     # Connection states
@@ -250,6 +260,7 @@ class SyncClient(QThread):
         self._initial_sync_done = False
         self._consecutive_failures = 0
         self._max_retries = 3
+        self._full_sync_requested = False
 
         # Sync is always over TLS — normalize to https:// regardless of
         # what was typed in (bare "host:port", or an old "http://" value
@@ -505,21 +516,32 @@ class SyncClient(QThread):
 
         logger.info("SyncClient stopped")
 
+    def request_full_catalog_sync(self) -> None:
+        """Schedule a full catalog replacement on the next sync cycle."""
+        self._full_sync_requested = True
+
     def _sync_cycle(self) -> tuple[int, int]:
         """Push local changes, then pull the catalog and stock.
 
         Returns:
             (records pushed, catalog records pulled); -1 for a failed step.
         """
+        full_sync = getattr(self, "_full_sync_requested", False)
+        self._full_sync_requested = False
         pushed = self._push_transactions()
-        pulled = self._pull_catalog()
+        pulled = self._pull_catalog(full_sync=full_sync)
         self._pull_stock()
+        if full_sync:
+            if pulled >= 0:
+                self.catalog_reloaded.emit(True, "")
+            else:
+                self.catalog_reloaded.emit(False, self._error_code or "catalog_apply_failed")
         return pushed, pulled
 
     def _sleep(self, seconds: int) -> None:
-        """Sleep that can be interrupted by stop()."""
+        """Sleep that can be interrupted by stop() or full sync request."""
         for _ in range(seconds * 10):  # Check every 100ms
-            if not self._running:
+            if not self._running or getattr(self, "_full_sync_requested", False):
                 return
             self.msleep(100)
 
@@ -712,7 +734,10 @@ class SyncClient(QThread):
                 payload["purchase_items"] = p_items
 
             for table_name, model_class in _FLAT_PUSH_TABLES:
-                rows = session.query(model_class).filter_by(synced=False).all()
+                query = session.query(model_class).filter_by(synced=False)
+                if table_name == "audit_logs":
+                    query = query.limit(500)
+                rows = query.all()
                 if rows:
                     payload[table_name] = [model_to_dict(r) for r in rows]
                     for row in rows:
@@ -816,7 +841,9 @@ class SyncClient(QThread):
             Number of records pulled, or -1 on error.
         """
         endpoint = EP_PULL_CATALOG + f"?terminal_id={self._terminal_id}"
-        if not full_sync and self._last_catalog_sync:
+        if full_sync:
+            endpoint += "&full_replace=1"
+        elif self._last_catalog_sync:
             endpoint += f"&since={self._last_catalog_sync.isoformat()}"
 
         result = self._request("GET", endpoint)
@@ -825,9 +852,11 @@ class SyncClient(QThread):
 
         payload = result.get("payload", {})
         total_records = result.get("total_records", 0)
+        deletions = result.get("deletions", [])
+        requires_full_replace = result.get("requires_full_replace", False) or full_sync
         server_timestamp = self._parse_server_timestamp(result)
 
-        if total_records == 0:
+        if total_records == 0 and not deletions and not requires_full_replace:
             self._last_catalog_sync = server_timestamp
             return 0
 
@@ -836,9 +865,89 @@ class SyncClient(QThread):
         records_applied = 0
         pulled_balances: list[tuple[_Balance, int, Any]] = []
         held_back = 0
+        has_errors = False
+        roles_modified = False
         try:
             with db.get_session() as session:
-                unpushed_customers = _unpushed_customer_keys(session)
+                session.info[SKIP_CHANGE_TRACKING] = True
+                bind = session.get_bind()
+                insp = sa_inspect(bind)
+                existing_tables = set(insp.get_table_names())
+
+                # 1. Process deletions or full replace before upserts to avoid unique constraint collisions
+                if requires_full_replace:
+                    for table_name in CATALOG_DELETION_ORDER:
+                        if table_name == "customers":
+                            continue
+                        model_class = get_model_for_table(table_name)
+                        if model_class is None:
+                            continue
+                        if getattr(model_class, "__tablename__", None) not in existing_tables:
+                            continue
+                        incoming_records = payload.get(table_name, [])
+                        incoming_ids = {r["id"] for r in incoming_records if "id" in r}
+                        local_rows = session.query(model_class).all()
+                        for row in local_rows:
+                            if row.id not in incoming_ids:
+                                try:
+                                    with session.begin_nested():
+                                        session.delete(row)
+                                        session.flush()
+                                except Exception as e:
+                                    logger.warning(
+                                        "Full replace: could not hard-delete %s[%s]: %s",
+                                        table_name,
+                                        row.id,
+                                        e,
+                                    )
+                                    if hasattr(row, "is_active"):
+                                        try:
+                                            row.is_active = False
+                                            session.flush()
+                                        except Exception as e2:
+                                            has_errors = True
+                                            logger.error("Failed to soft-delete %s[%s]: %s", table_name, row.id, e2)
+                elif deletions:
+                    order_map = {tbl: i for i, tbl in enumerate(CATALOG_DELETION_ORDER)}
+                    sorted_deletions = sorted(deletions, key=lambda d: order_map.get(d.get("table", ""), 999))
+                    for item in sorted_deletions:
+                        table_name = item.get("table")
+                        row_id = item.get("row_id")
+                        if table_name == "customers" or not table_name or not row_id:
+                            continue
+                        model_class = get_model_for_table(table_name)
+                        if model_class is None:
+                            continue
+                        if getattr(model_class, "__tablename__", None) not in existing_tables:
+                            continue
+                        row = session.get(model_class, row_id)
+                        if row is None:
+                            continue
+                        try:
+                            with session.begin_nested():
+                                session.delete(row)
+                                session.flush()
+                        except Exception as e:
+                            logger.warning(
+                                "Could not hard-delete %s[%s] (referenced by local sales): %s",
+                                table_name,
+                                row_id,
+                                e,
+                            )
+                            if hasattr(row, "is_active"):
+                                try:
+                                    row.is_active = False
+                                    session.flush()
+                                except Exception as e2:
+                                    has_errors = True
+                                    logger.error("Failed to soft-delete %s[%s]: %s", table_name, row_id, e2)
+
+                # 2. Process upserts
+                unpushed_customers = (
+                    _unpushed_customer_keys(session, existing_tables)
+                    if "customers" in existing_tables
+                    else {"id": set(), "phone": set(), "loyalty_card_code": set()}
+                )
                 for table_name in CATALOG_TABLES:
                     records = payload.get(table_name, [])
                     if not records:
@@ -847,6 +956,11 @@ class SyncClient(QThread):
                     model_class = get_model_for_table(table_name)
                     if model_class is None:
                         continue
+                    if getattr(model_class, "__tablename__", None) not in existing_tables:
+                        continue
+
+                    mapper = class_mapper(model_class)
+                    version_key = mapper.version_id_col.key if mapper.version_id_col is not None else None
 
                     for record_data in records:
                         if table_name == "customers" and _clashes(record_data, unpushed_customers):
@@ -855,17 +969,30 @@ class SyncClient(QThread):
                             # wait until the push renumbers it (#680).
                             held_back += 1
                             continue
+                        perm_codes = None
+                        if table_name == "roles":
+                            perm_codes = record_data.get("permission_codes")
+                        if version_key:
+                            record_data.pop(version_key, None)
                         try:
                             instance = dict_to_model(model_class, record_data)
                             merged = session.merge(instance)
+                            if table_name == "roles" and perm_codes is not None:
+                                session.flush()
+                                from cbpos.core.models import Permission
+
+                                target_perms = session.query(Permission).filter(Permission.code.in_(perm_codes)).all()
+                                merged.permissions = target_perms
+                                roles_modified = True
                             # The Main PC's figures don't include what this till
                             # hasn't pushed yet -- keep that on top (#678, #716).
                             for balance in _BALANCES.values():
-                                if balance.owner_table == table_name:
+                                if balance.owner_table == table_name and balance.owner_table in existing_tables:
                                     main_value = getattr(merged, balance.balance_column)
                                     pulled_balances.append((balance, merged.id, main_value))
                             records_applied += 1
                         except Exception as e:
+                            has_errors = True
                             logger.error(
                                 "Error applying catalog record %s[%s]: %s",
                                 table_name,
@@ -874,17 +1001,29 @@ class SyncClient(QThread):
                             )
 
                 for balance, owner_id, main_value in pulled_balances:
-                    _set_local_balance(session, balance, owner_id, main_value)
+                    if (
+                        balance.owner_table in existing_tables
+                        and getattr(balance.ledger, "__tablename__", None) in existing_tables
+                    ):
+                        _set_local_balance(session, balance, owner_id, main_value)
 
         except Exception as e:
             logger.error("Error applying catalog update: %s", e)
+            self._error_code = "catalog_apply_failed"
+            self._set_state(self.STATE_ERROR)
             return -1
 
-        if held_back:
-            # Keep the watermark so the held-back customers come again.
-            logger.info("Held back %d pulled customer(s) until this till's new customers are pushed", held_back)
+        if held_back or has_errors:
+            if has_errors:
+                logger.warning("One or more catalog records failed to apply; watermark not advanced")
+                self._error_code = "catalog_apply_failed"
+                self._set_state(self.STATE_ERROR)
+            if held_back:
+                logger.info("Held back %d pulled customer(s) until this till's new customers are pushed", held_back)
         else:
             self._last_catalog_sync = server_timestamp
+            if roles_modified:
+                self.roles_changed.emit()
         logger.info("Pulled %d catalog records", records_applied)
         return records_applied
 
@@ -944,50 +1083,3 @@ class SyncClient(QThread):
         if updated > 0:
             logger.debug("Updated stock for %d products", updated)
         return updated
-
-    # --- Push Audit Logs ---
-
-    def push_audit_logs(self) -> int:
-        """Push unsynced audit logs to the Main PC.
-
-        Called less frequently than transaction push (e.g., every 30 seconds).
-        Returns number of records pushed, or -1 on error.
-        """
-        db = Database()
-        try:
-            with db.get_session() as session:
-                unsynced = session.query(AuditLog).filter_by(synced=False).limit(100).all()  # Batch size
-                if not unsynced:
-                    return 0
-
-                audit_records = [model_to_dict(a) for a in unsynced]
-
-        except Exception as e:
-            logger.error("Error collecting audit logs: %s", e)
-            return -1
-
-        envelope = make_envelope(
-            self._terminal_id,
-            "PUSH_AUDIT",
-            {"audit_logs": audit_records},
-        )
-
-        result = self._request("POST", EP_PUSH_AUDIT, envelope)
-        if result is None:
-            return -1
-
-        if result.get("status") == "ok":
-            # Mark as synced
-            try:
-                with db.get_session() as session:
-                    for record in audit_records:
-                        record_id = record.get("id")
-                        if record_id:
-                            obj = session.get(AuditLog, record_id)
-                            if obj:
-                                obj.synced = True
-            except Exception as e:
-                logger.error("Error marking audit logs as synced: %s", e)
-
-            return len(audit_records)
-        return -1

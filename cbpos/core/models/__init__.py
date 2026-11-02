@@ -22,6 +22,7 @@ from sqlalchemy import (
     Text,
     Time,
     UniqueConstraint,
+    false,
     true,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -632,6 +633,7 @@ class InventoryLog(Base):
     reason: Mapped[str] = mapped_column(String(200), nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    synced: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false(), index=True)
 
     product: Mapped["Product"] = relationship()
     user: Mapped["User"] = relationship()
@@ -935,6 +937,20 @@ class SyncTerminal(Base):
     last_seen: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
     last_ip: Mapped[str | None] = mapped_column(String(50), nullable=True)
     released: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class SyncDeletion(Base):
+    """Tracks deletions of catalog records on the Main PC so they propagate to tills (#871)."""
+
+    __tablename__ = "sync_deletions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    table_name: Mapped[str] = mapped_column(String(50), nullable=False)
+    row_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    deleted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, index=True, nullable=False)
+    natural_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+    __table_args__ = (Index("ix_sync_deletions_table_row", "table_name", "row_id"),)
 
 
 class ShopMeta(Base):

@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from datetime import datetime
 
 from cbpos.core.constants.permissions import (
     ADMIN_ROLE_NAME,
@@ -118,6 +119,7 @@ class PermissionService:
             # ----------------------------------------------
 
             role.permissions = new_perms
+            role.last_modified = datetime.now()
 
             current_user = AuthService.get_current_user()
             if current_user is not None:

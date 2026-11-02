@@ -151,6 +151,14 @@ class UserView(QWidget, Activatable):
         self.log_event_filter.setMinimumWidth(130)
         filter_layout.addWidget(self.log_event_filter)
 
+        self.lbl_log_terminal = QLabel()
+        self.lbl_log_terminal.setObjectName("DocFilterLabel")
+        filter_layout.addWidget(self.lbl_log_terminal)
+        self.log_terminal_filter = QComboBox()
+        self.log_terminal_filter.setObjectName("DocFilterCombo")
+        self.log_terminal_filter.setMinimumWidth(120)
+        filter_layout.addWidget(self.log_terminal_filter)
+
         self.lbl_log_from = QLabel()
         self.lbl_log_from.setObjectName("DocFilterLabel")
         filter_layout.addWidget(self.lbl_log_from)
@@ -244,6 +252,7 @@ class UserView(QWidget, Activatable):
         )
 
         self.lbl_log_event.setText(_t("user.filter_event_type"))
+        self.lbl_log_terminal.setText(_t("activity.terminal"))
         self.lbl_log_from.setText(_t("user.filter_from"))
         self.lbl_log_to.setText(_t("user.filter_to"))
         self.log_filter_btn.setText(_t("user.btn_filter"))
@@ -263,6 +272,14 @@ class UserView(QWidget, Activatable):
         self.log_event_filter.addItem(_t("user.event_pricing"), "PRICING")
         restored_index = self.log_event_filter.findData(current_event_type)
         self.log_event_filter.setCurrentIndex(restored_index if restored_index != -1 else 0)
+
+        current_terminal = self.log_terminal_filter.currentData()
+        self.log_terminal_filter.clear()
+        self.log_terminal_filter.addItem(_t("activity.all_terminals"), None)
+        for term in UserService.get_distinct_terminals():
+            self.log_terminal_filter.addItem(term, term)
+        term_index = self.log_terminal_filter.findData(current_terminal)
+        self.log_terminal_filter.setCurrentIndex(term_index if term_index != -1 else 0)
 
     def load_users(self):
         """Refresh the user table from UserService, highlighting inactive users in red."""
@@ -332,14 +349,29 @@ class UserView(QWidget, Activatable):
         self.load_logs()
 
     def clear_log_filter(self):
-        """Reset the event-type and date-range filters to their defaults and reload the log."""
+        """Reset the event-type, terminal, and date-range filters to their defaults and reload the log."""
         self.log_event_filter.setCurrentIndex(0)
+        self.log_terminal_filter.setCurrentIndex(0)
         self.log_date_from.setDate(QDate.currentDate().addMonths(-1))
         self.log_date_to.setDate(QDate.currentDate())
         self.load_logs()
 
     def load_logs(self):
         """Fetch activity log entries matching the current filters and populate the log table."""
+        # Refresh terminal choices if new terminals have logged activity
+        current_terminal = self.log_terminal_filter.currentData()
+        distinct_terminals = UserService.get_distinct_terminals()
+        existing_terminals = [self.log_terminal_filter.itemData(i) for i in range(1, self.log_terminal_filter.count())]
+        if distinct_terminals != existing_terminals:
+            self.log_terminal_filter.blockSignals(True)
+            self.log_terminal_filter.clear()
+            self.log_terminal_filter.addItem(_t("activity.all_terminals"), None)
+            for term in distinct_terminals:
+                self.log_terminal_filter.addItem(term, term)
+            idx = self.log_terminal_filter.findData(current_terminal)
+            self.log_terminal_filter.setCurrentIndex(idx if idx != -1 else 0)
+            self.log_terminal_filter.blockSignals(False)
+
         date_from = datetime.combine(self.log_date_from.date().toPyDate(), time.min)
         date_to = datetime.combine(self.log_date_to.date().toPyDate(), time.max)
 
@@ -347,6 +379,7 @@ class UserView(QWidget, Activatable):
             event_type=self.log_event_filter.currentData(),
             date_from=date_from,
             date_to=date_to,
+            terminal_id=self.log_terminal_filter.currentData(),
         )
         with batch_table_update(self.log_table):
             self.log_table.setRowCount(len(logs))

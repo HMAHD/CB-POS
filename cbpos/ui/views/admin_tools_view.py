@@ -39,6 +39,7 @@ from PyQt6.QtWidgets import (
 
 from cbpos.config import Config
 from cbpos.core.constants.hardware import DRAWER_PINS, PrinterType
+from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.error_log_service import ErrorLogService
 from cbpos.core.services.hardware_test_service import HardwareTestResult, HardwareTestService
 from cbpos.core.services.maintenance_service import MaintenanceService
@@ -238,6 +239,12 @@ class AdminToolsView(QWidget):
         self.btn_check_integrity.clicked.connect(self._check_integrity)
         btn_layout.addWidget(self.btn_check_integrity)
 
+        self.btn_reload_catalog = QPushButton()
+        self.btn_reload_catalog.setMinimumWidth(180)
+        self.btn_reload_catalog.clicked.connect(self._reload_catalog)
+        self.btn_reload_catalog.setVisible(ConfigService.get("terminal_mode") == "terminal")
+        btn_layout.addWidget(self.btn_reload_catalog)
+
         self.lbl_integrity_status = QLabel("")
         self.lbl_integrity_status.setWordWrap(True)
         btn_layout.addWidget(self.lbl_integrity_status, 1)
@@ -305,6 +312,67 @@ class AdminToolsView(QWidget):
                 self.lbl_integrity_status,
                 "debit",
                 _t("admin_tools.db_integrity_failed", message=message),
+            )
+
+    def _reload_catalog(self) -> None:
+        """Trigger a full catalog replacement from the Main PC (#871)."""
+        reply = QMessageBox.question(
+            self,
+            _t("sync.reload_catalog_title"),
+            _t("sync.reload_catalog_confirm"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        self.btn_reload_catalog.setEnabled(False)
+
+        win = self.window()
+        sync_client = getattr(win, "_sync_client", None)
+        if sync_client is None:
+            app_win = QApplication.activeWindow()
+            sync_client = getattr(app_win, "_sync_client", None)
+
+        if sync_client is not None and sync_client.isRunning():
+            self._pending_reload_client = sync_client
+            sync_client.catalog_reloaded.connect(self._on_catalog_reloaded)
+            sync_client.request_full_catalog_sync()
+        else:
+            self._start_reload_worker()
+
+    def _start_reload_worker(self) -> None:
+        from cbpos.ui.workers import ReloadCatalogWorker
+
+        terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+        server_address = ConfigService.get("main_pc_address") or ""
+        shared_secret = ConfigService.get("sync_shared_secret") or ""
+
+        self._reload_worker = ReloadCatalogWorker(terminal_id, server_address, shared_secret)
+        self._reload_worker.finished_result.connect(self._on_catalog_reloaded)
+        self._reload_worker.start()
+
+    def _on_catalog_reloaded(self, ok: bool, error: str) -> None:
+        self.btn_reload_catalog.setEnabled(True)
+        if hasattr(self, "_pending_reload_client") and self._pending_reload_client:
+            try:
+                self._pending_reload_client.catalog_reloaded.disconnect(self._on_catalog_reloaded)
+            except Exception:
+                pass
+            self._pending_reload_client = None
+
+        if ok:
+            QMessageBox.information(
+                self,
+                _t("sync.reload_catalog_title"),
+                _t("sync.reload_catalog_success"),
+            )
+            self._load_db_info()
+        else:
+            QMessageBox.warning(
+                self,
+                _t("sync.reload_catalog_title"),
+                f"Catalog reload failed ({error}).",
             )
 
     def _copy_db_path(self) -> None:
@@ -991,6 +1059,7 @@ class AdminToolsView(QWidget):
         self.lbl_db_modified_label.setText(_t("admin_tools.db_last_modified"))
         self.lbl_sqlite_version_label.setText(_t("admin_tools.db_sqlite_version"))
         self.btn_check_integrity.setText(_t("admin_tools.db_btn_check_integrity"))
+        self.btn_reload_catalog.setText(_t("sync.reload_catalog_btn"))
         self.grp_tables.setTitle(_t("admin_tools.db_group_table_counts"))
         self.table_counts.setHorizontalHeaderLabels(
             [_t("admin_tools.db_header_table"), _t("admin_tools.db_header_rows")]

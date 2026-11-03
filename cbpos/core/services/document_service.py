@@ -3,7 +3,6 @@ import re
 import time
 from datetime import datetime
 
-from sqlalchemy import desc
 from sqlalchemy.exc import IntegrityError
 
 from cbpos.core.database import Database
@@ -162,19 +161,19 @@ def _search_prefix(pattern: str, reset_period: str, now: datetime, terminal_id: 
 
 def _next_seq(session, search_prefix: str) -> int:
     """Return the sequence that follows the highest number under ``search_prefix``."""
-    last_doc = (
-        session.query(Document)
-        .filter(Document.document_number.like(f"{search_prefix}%"))
-        .order_by(desc(Document.document_number))
-        .first()
-    )
-    if last_doc:
-        # {seq} is always last (validate_doc_pattern), so the trailing
-        # digits are the sequence.
-        match = _TRAILING_DIGITS_RE.search(last_doc.document_number)
+    rows = session.query(Document.document_number).filter(Document.document_number.like(f"{search_prefix}%")).all()
+    regex = re.compile("^" + ".*".join(re.escape(p) for p in search_prefix.split("%")) + r"(\d+)$")
+    max_seq = 0
+    for (doc_num,) in rows:
+        if not doc_num:
+            continue
+        match = regex.fullmatch(doc_num)
         if match:
-            return int(match.group(1)) + 1
-    return 1
+            seq_val = int(match.group(1))
+            if seq_val > max_seq:
+                max_seq = seq_val
+
+    return max_seq + 1
 
 
 class DocumentService:
@@ -272,11 +271,16 @@ class DocumentService:
         # Retry loop for concurrency. Use serializable isolation in network
         # mode to prevent two terminals from reading the same max sequence.
         max_retries = 5
+        base_seq = None
         for attempt in range(max_retries):
             try:
                 db = Database()
                 with db.get_session(serializable=True) as session:
-                    final_number = render_pattern(pattern, _next_seq(session, search_prefix), now, terminal_id)
+                    current_max = _next_seq(session, search_prefix)
+                    if base_seq is None or current_max > base_seq:
+                        base_seq = current_max
+                    seq = base_seq + attempt
+                    final_number = render_pattern(pattern, seq, now, terminal_id)
 
                     # Verify uniqueness within the same serializable
                     # transaction — concurrent terminals will block here.

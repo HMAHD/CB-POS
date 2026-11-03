@@ -213,6 +213,8 @@ class SyncClient(QThread):
     """
 
     status_changed = pyqtSignal(str)  # status string
+    pending_changed = pyqtSignal(int)  # unsynced row count
+    sync_errors_updated = pyqtSignal(list)  # list of recent error messages
     sync_completed = pyqtSignal(int, int)  # pushed, pulled
     initial_sync_completed = pyqtSignal()
     catalog_reloaded = pyqtSignal(bool, str)
@@ -255,6 +257,9 @@ class SyncClient(QThread):
         self._running = False
         self._state = self.STATE_DISCONNECTED
         self._error_code: str | None = None
+        self._push_error: str | None = None
+        self._retry_requested = False
+        self._recent_errors: list[str] = []
         self._push_sequence = 0
         self._last_catalog_sync: datetime | None = None
         self._initial_sync_done = False
@@ -321,13 +326,26 @@ class SyncClient(QThread):
 
     @property
     def pending_count(self) -> int:
-        """Return number of unsynced transactions."""
+        """Return number of unsynced transactions and documents."""
         try:
             db = Database()
             with db.get_session() as session:
-                return session.query(Document).filter_by(synced=False).count()
+                docs = session.query(Document).filter_by(synced=False).count()
+                custs = session.query(Customer).filter_by(synced=False).count()
+                return docs + custs
         except Exception:
             return 0
+
+    def trigger_sync(self) -> None:
+        """Interrupt sleep to retry sync immediately."""
+        self._retry_requested = True
+
+    def _record_error(self, err: str) -> None:
+        """Record a sync error in the recent errors list (max 10)."""
+        if err and err not in self._recent_errors:
+            self._recent_errors.insert(0, err)
+            self._recent_errors = self._recent_errors[:10]
+            self.sync_errors_updated.emit(list(self._recent_errors))
 
     def _set_state(self, state: str) -> None:
         if state != self._state:
@@ -457,7 +475,11 @@ class SyncClient(QThread):
         )
 
         while self._running:
+            self._retry_requested = False
             try:
+                # Emit pending count at start of cycle
+                self.pending_changed.emit(self.pending_count)
+
                 # Step 0: Ensure client is paired and SSL context is loaded
                 if self._ssl_context is None or self._state == self.STATE_UNPAIRED:
                     if not self.reload_ssl_context():
@@ -480,7 +502,10 @@ class SyncClient(QThread):
                 if not self.is_connected:
                     if self._try_register():
                         self._consecutive_failures = 0
-                        self._set_state(self.STATE_CONNECTED)
+                        if not self._push_error:
+                            self._set_state(self.STATE_CONNECTED)
+                        else:
+                            self._set_state(self.STATE_ERROR)
 
                         # Do initial full sync on first connection
                         if not self._initial_sync_done:
@@ -494,16 +519,22 @@ class SyncClient(QThread):
                         continue
 
                 # Step 2: Run a sync cycle
-                self._set_state(self.STATE_SYNCING)
+                if not self._push_error:
+                    self._set_state(self.STATE_SYNCING)
                 pushed, pulled = self._sync_cycle()
 
-                if pushed >= 0 and pulled >= 0:
+                # Emit pending count after each cycle
+                self.pending_changed.emit(self.pending_count)
+
+                if pushed >= 0 and pulled >= 0 and not self._push_error:
                     self._consecutive_failures = 0
                     self._set_state(self.STATE_CONNECTED)
                     self.sync_completed.emit(max(pushed, 0), max(pulled, 0))
                 else:
                     self._consecutive_failures += 1
-                    if self._consecutive_failures >= self._max_retries:
+                    if self._push_error:
+                        self._set_state(self.STATE_ERROR)
+                    elif self._consecutive_failures >= self._max_retries:
                         self._set_state(self.STATE_DISCONNECTED)
 
             except Exception as e:
@@ -539,9 +570,13 @@ class SyncClient(QThread):
         return pushed, pulled
 
     def _sleep(self, seconds: int) -> None:
-        """Sleep that can be interrupted by stop() or full sync request."""
+        """Sleep that can be interrupted by stop(), full sync request, or retry request."""
         for _ in range(seconds * 10):  # Check every 100ms
-            if not self._running or getattr(self, "_full_sync_requested", False):
+            if (
+                not self._running
+                or getattr(self, "_full_sync_requested", False)
+                or getattr(self, "_retry_requested", False)
+            ):
                 return
             self.msleep(100)
 
@@ -635,6 +670,10 @@ class SyncClient(QThread):
             payload, fingerprints = self._collect_unsynced()
         except Exception as e:
             logger.error("Error collecting unsynced transactions: %s", e)
+            self._push_error = str(e)
+            self._set_state(self.STATE_ERROR)
+            self._record_error(str(e))
+            self.pending_changed.emit(self.pending_count)
             return -1
 
         if not payload:
@@ -651,10 +690,18 @@ class SyncClient(QThread):
 
         result = self._request("POST", EP_PUSH_TRANSACTIONS, envelope)
         if result is None:
+            self._push_error = self._error_code or "500"
+            self._set_state(self.STATE_ERROR)
+            self._record_error(self._push_error)
+            self.pending_changed.emit(self.pending_count)
             return -1
 
         status = result.get("status")
         if status in ("ok", "partial", "duplicate"):
+            self._push_error = None
+            server_errors = result.get("errors") or []
+            for err in server_errors:
+                self._record_error(err)
             # Mark local records as synced
             total_pushed = sum(len(v) for v in payload.values() if isinstance(v, list))
             rejected = _rejected_tables(result.get("errors"))
@@ -665,8 +712,13 @@ class SyncClient(QThread):
             self._adopt_customer_ids((result.get("id_map") or {}).get("customers") or {})
             self._apply_main_balances(result.get("balances") or {})
             logger.info("Pushed %d records (status=%s)", total_pushed, status)
+            self.pending_changed.emit(self.pending_count)
             return total_pushed
         else:
+            self._push_error = result.get("error") or "push_failed"
+            self._set_state(self.STATE_ERROR)
+            self._record_error(self._push_error)
+            self.pending_changed.emit(self.pending_count)
             logger.warning("Push failed: %s", result)
             return -1
 

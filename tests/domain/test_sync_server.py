@@ -9,6 +9,11 @@ no test previously asserted Product.stock_qty after a synced sale, that
 disallowed tables are rejected, or that the shared-secret gate works.
 """
 
+import json
+import os
+import socket
+import time
+import urllib.request
 from datetime import datetime
 from decimal import Decimal
 
@@ -17,7 +22,8 @@ import pytest
 from cbpos.core.models import Permission, Product, Role, StockMovement, User
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.sync_protocol import make_envelope, model_to_dict
-from cbpos.infrastructure.sync_server import SyncRequestHandler
+from cbpos.infrastructure import sync_tls
+from cbpos.infrastructure.sync_server import SyncRequestHandler, SyncServer
 
 _counter = 0
 
@@ -186,3 +192,56 @@ class TestStockPropagation:
         _push(retry_envelope)
         db_session.refresh(test_product)
         assert test_product.stock_qty == Decimal("8")
+
+
+class TestServerResilience:
+    """Server-level network concurrency and failure handling."""
+
+    def test_issue_870_idle_tcp_does_not_block_heartbeat(self, tmp_path, monkeypatch):
+        # 1. Isolate certs and config
+        cert_path = os.path.join(tmp_path, "cert.pem")
+        key_path = os.path.join(tmp_path, "key.pem")
+        monkeypatch.setattr(sync_tls, "CERT_FILE", cert_path)
+        monkeypatch.setattr(sync_tls, "KEY_FILE", key_path)
+        sync_tls.get_or_create_certificate()
+        with open(cert_path, encoding="ascii") as f:
+            cert_pem = f.read()
+
+        monkeypatch.setattr(ConfigService, "get", lambda key: "test-secret" if key == "sync_shared_secret" else None)
+
+        # 2. Pick a free port and start SyncServer
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("127.0.0.1", 0))
+            port = s.getsockname()[1]
+
+        server = SyncServer(port=port)
+        server.start()
+        try:
+            # Wait until server is listening
+            for _ in range(50):
+                if server._running and server._server is not None:
+                    break
+                time.sleep(0.05)
+            else:
+                pytest.fail("Server did not start in time")
+
+            # 3. Open raw TCP connection and send nothing (idle TCP connection)
+            idle_sock = socket.create_connection(("127.0.0.1", port), timeout=2.0)
+            try:
+                # 4. Make TLS request to /sync/heartbeat with 1s timeout
+                client_ctx = sync_tls.build_client_ssl_context(cert_pem)
+                req = urllib.request.Request(
+                    f"https://127.0.0.1:{port}/sync/heartbeat",
+                    headers={"X-Sync-Token": "test-secret"},
+                )
+                start_time = time.monotonic()
+                with urllib.request.urlopen(req, context=client_ctx, timeout=1.0) as resp:
+                    elapsed = time.monotonic() - start_time
+                    assert resp.status == 200
+                    data = json.loads(resp.read().decode("utf-8"))
+                    assert data["status"] == "ok"
+                    assert elapsed < 1.0
+            finally:
+                idle_sock.close()
+        finally:
+            server.stop()

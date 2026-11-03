@@ -552,6 +552,7 @@ def main():
         sync_server.started_signal.connect(window.sync_status.set_server_address)
         sync_server.terminal_connected.connect(window.sync_status.on_terminal_connected)
         sync_server.sync_completed.connect(window.sync_status.on_sync_completed)
+        sync_server.error_signal.connect(window.sync_status.on_server_error)
         sync_server.start()
         window._sync_server = sync_server
         window.sync_status.set_mode("main")
@@ -569,9 +570,12 @@ def main():
             sync_interval = int(ConfigService.get("sync_interval_seconds") or 3)
             sync_client = SyncClient(terminal_id, main_pc_address, sync_interval, shared_secret)
             sync_client.status_changed.connect(window.sync_status.set_state)
+            sync_client.pending_changed.connect(window.sync_status.set_pending_count)
             sync_client.error_signal.connect(window.sync_status.on_sync_error)
+            sync_client.sync_errors_updated.connect(window.sync_status.set_recent_errors)
             sync_client.sync_completed.connect(window.sync_status.on_client_sync_completed)
             sync_client.roles_changed.connect(AuthService.refresh_current_user)
+            window.sync_status.retry_requested.connect(sync_client.trigger_sync)
             sync_client.start()
             window._sync_client = sync_client
             window.sync_status.set_mode("terminal")

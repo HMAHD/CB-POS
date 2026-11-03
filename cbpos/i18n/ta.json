@@ -3087,7 +3087,23 @@
     "reload_catalog_btn": "Main PC-லிருந்து விவரங்களை மீண்டும் எடு",
     "reload_catalog_title": "Main PC-லிருந்து விவரங்களை மீண்டும் எடு",
     "reload_catalog_confirm": "இந்த டில்லின் பொருட்கள், விலைகள் மற்றும் அமைப்புகளை Main PC-யின் நகலால் மாற்றவா? இந்த டில்லில் உள்ள விற்பனைகளும் வாடிக்கையாளர்களும் பாதுகாக்கப்படும்.",
-    "reload_catalog_success": "Main PC-லிருந்து விவரங்கள் வெற்றிகரமாக மீண்டும் ஏற்றப்பட்டன."
+    "reload_catalog_success": "Main PC-லிருந்து விவரங்கள் வெற்றிகரமாக மீண்டும் ஏற்றப்பட்டன.",
+    "status_synced": "ஒத்திசைக்கப்பட்டது",
+    "sending": "{count} அனுப்புகிறது…",
+    "not_sending": "அனுப்பப்படவில்லை: {reason}",
+    "main_tills": "Main PC: {count} டில்கள்",
+    "main_error": "Main PC பிழை: {reason}",
+    "retry_now": "மீண்டும் முயற்சிக்கவும்",
+    "recent_errors": "சமீபத்திய sync பிழைகள்",
+    "no_errors": "பிழைகள் இல்லை",
+    "dialog_title": "Sync விவரங்கள்",
+    "reason_protocol_too_old": "இந்த டில்லில் CB POS ஐ புதுப்பிக்கவும்",
+    "reason_cert_mismatch": "Main PC பாதுகாப்பு குறியீடு மாறியுள்ளது",
+    "reason_terminal_id_is_main": "டில் ID, Main PC உடன் பொருந்துகிறது",
+    "reason_terminal_id_taken": "டில் ID ஏற்கனவே பயன்பாட்டில் உள்ளது",
+    "reason_server_error": "Main PC தரவை நிராகரித்தது",
+    "reason_connection_failed": "Main PC ஐ இணைக்க முடியவில்லை",
+    "reason_bind_failed": "Port ஏற்கனவே பயன்பாட்டில் உள்ளது"
   }
 }
 

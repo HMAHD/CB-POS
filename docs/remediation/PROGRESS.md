@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 2 · Batch: 2.4 (complete) · Branch: main · PR: #986 · Last session: 2026-11-03
+- Phase: 2 · Batch: 2.5 (pr-open) · Branch: fix/p2-b5-sync-server-resilience · PR: #987 · Last session: 2026-11-03
 
 ## Issues
 
@@ -63,9 +63,9 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #871 | Deletions on the Main PC never reach the tills: removed promotions, price-lis… | high | 2.4 | done | #986 | e7b37b9 · sync_deletions table, reverse FK deletion order, soft-delete fallback, Admin Tools reload |
 | #872 | Role permissions never sync, so revoking or granting a permission on the Main… | high | 2.4 | done | #986 | e7b37b9 · permissions before roles, permission_codes sync, roles_changed signal refreshes current user |
 | #903 | Till audit logs and inventory logs never reach the Main PC | medium | 2.4 | done | #986 | e7b37b9 · synced column on inventory_logs, _FLAT_PUSH_TABLES, terminal_id filter in Activity Log UI |
-| #870 | One idle TCP connection stalls the whole Main PC sync server, before any auth… | high | 2.5 | todo | | |
-| #905 | The document sequence is found by string sort, so `{seq}` breaks at 10 and `{… | medium | 2.5 | todo | | |
-| #906 | A push that fails on every cycle is invisible: pending count is never set, se… | medium | 2.5 | todo | | |
+| #870 | One idle TCP connection stalls the whole Main PC sync server, before any auth… | high | 2.5 | pr-open | #987 | 096bd82 · do_handshake_on_connect=False, per-thread handshake timeout, 16-worker throttle |
+| #905 | The document sequence is found by string sort, so `{seq}` breaks at 10 and `{… | medium | 2.5 | pr-open | #987 | 9c47c52 · numeric sequence extraction via regex scan; collision retry increments sequence |
+| #906 | A push that fails on every cycle is invisible: pending count is never set, se… | medium | 2.5 | pr-open | #987 | f806d61 · pending_changed signal, persistent push error state, distinct terminals count, sync details dialog with retry |
 | #884 | Same cashier on two terminals: both open shifts count each other's sales | medium | 2.6 | todo | | |
 | #886 | Dashboard charts fail in PostgreSQL mode (SQLite-only strftime) | medium | 2.6 | todo | | |
 | #914 | Network mode has no lock or unique index, so two tills can refund or void the… | low | 2.6 | todo | | |
@@ -304,5 +304,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|
 
 ## Handoff
-Phase 2 Batch 2.4 is complete! Issues #836, #871, #872, and #903 are done, merged into `main` via PR #986 (merge commit `e7b37b9`), and verified closed on GitHub. Sync protocol bumped to 1.2. The full test suite passed (2,981 passed, 3 skipped, 11 xfailed, 0 failures), pre-commit hooks passed, and all CI checks are 100% green. Ready to begin Phase 2 Batch 2.5: Sync Resilience & Offline Mode (#870, #905, #906) per `docs/remediation/phases/phase-02-network-multi-terminal.md`.
+Phase 2 Batch 2.5 (#870, #905, #906) is implemented and verified. Pull request #987 has been opened against `main` (`fix/p2-b5-sync-server-resilience`). Full test suite: 2,988 passed, 3 skipped, 11 xfailed, 0 failures. Pre-commit linters and translation validators clean. Waiting for human approval to merge PR #987 and close the issues, after which we proceed to Batch 2.6 (#886, #884, #914).
 

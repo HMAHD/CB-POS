@@ -112,3 +112,30 @@ class TestGenerateNumber:
 
         preview = DocumentService.preview_number(pattern, "YEARLY", "TERM-01")
         assert preview == DocumentService.generate_number("PURCHASE")
+
+    def test_issue_905_next_after_inv9_inv10_is_inv11(self, db_session, user, monkeypatch):
+        _settings(monkeypatch, doc_format_sale="INV-{seq}", doc_reset_period="NEVER")
+        _save(db_session, user, "INV-9")
+        _save(db_session, user, "INV-10")
+
+        next_num = DocumentService.generate_number("SALE", session=db_session)
+        assert next_num == "INV-11"
+
+    def test_issue_905_rollover_99999_to_100000_to_100001(self, db_session, user, monkeypatch):
+        _settings(monkeypatch, doc_format_sale="INV-{seq}", doc_reset_period="NEVER")
+        _save(db_session, user, "INV-99999")
+        _save(db_session, user, "INV-100000")
+
+        next_num = DocumentService.generate_number("SALE", session=db_session)
+        assert next_num == "INV-100001"
+
+    def test_issue_905_retry_increments_on_collision(self, db_session, user, monkeypatch):
+        from cbpos.core.services import document_service
+
+        _settings(monkeypatch, doc_format_sale="INV-{seq}", doc_reset_period="NEVER")
+        _save(db_session, user, "INV-5")
+
+        # Simulate _next_seq returning 5 initially (e.g., race where INV-5 was just inserted)
+        monkeypatch.setattr(document_service, "_next_seq", lambda session, prefix: 5)
+        next_num = DocumentService.generate_number("SALE")
+        assert next_num == "INV-6"

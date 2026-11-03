@@ -3104,7 +3104,23 @@
     "reload_catalog_btn": "Reload catalog from Main PC",
     "reload_catalog_title": "Reload catalog from Main PC",
     "reload_catalog_confirm": "Replace this till's products, prices and settings with the Main PC's copy? Sales and customers on this till are kept.",
-    "reload_catalog_success": "Catalog reloaded successfully from the Main PC."
+    "reload_catalog_success": "Catalog reloaded successfully from the Main PC.",
+    "status_synced": "Synced",
+    "sending": "Sending {count}…",
+    "not_sending": "Not sending: {reason}",
+    "main_tills": "Main PC: {count} tills",
+    "main_error": "Main PC error: {reason}",
+    "retry_now": "Retry now",
+    "recent_errors": "Recent sync errors",
+    "no_errors": "No errors",
+    "dialog_title": "Sync Details",
+    "reason_protocol_too_old": "update CB POS on this till",
+    "reason_cert_mismatch": "Main PC security code changed",
+    "reason_terminal_id_is_main": "till ID matches Main PC",
+    "reason_terminal_id_taken": "till ID already in use",
+    "reason_server_error": "Main PC rejected data",
+    "reason_connection_failed": "cannot reach Main PC",
+    "reason_bind_failed": "port already in use"
   }
 }
 

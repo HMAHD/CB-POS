@@ -3104,7 +3104,23 @@
     "reload_catalog_btn": "Main PC එකෙන් නාමාවලිය නැවත ගන්න",
     "reload_catalog_title": "Main PC එකෙන් නාමාවලිය නැවත ගන්න",
     "reload_catalog_confirm": "මේ ටිල් එකේ භාණ්ඩ, මිල ගණන් සහ සැකසුම් Main PC එකේ පිටපතෙන් මාරු කරන්නද? මේ ටිල් එකේ විකුණුම් සහ පාරිභෝගික තොරතුරු ඉතිරි වේ.",
-    "reload_catalog_success": "Main PC එකෙන් නාමාවලිය සාර්ථකව නැවත ගත්තා."
+    "reload_catalog_success": "Main PC එකෙන් නාමාවලිය සාර්ථකව නැවත ගත්තා.",
+    "status_synced": "සමමුහුර්තයි",
+    "sending": "{count}ක් යවමින්…",
+    "not_sending": "නොයවයි: {reason}",
+    "main_tills": "Main PC: ටිල් {count}ක්",
+    "main_error": "Main PC දෝෂයකි: {reason}",
+    "retry_now": "දැන් නැවත උත්සාහ කරන්න",
+    "recent_errors": "මෑත sync දෝෂ",
+    "no_errors": "දෝෂ නැත",
+    "dialog_title": "Sync විස්තර",
+    "reason_protocol_too_old": "මේ ටිල් එකේ CB POS අලුත් කරන්න",
+    "reason_cert_mismatch": "Main PC ආරක්ෂක කේතය වෙනස් වී ඇත",
+    "reason_terminal_id_is_main": "ටිල් ID එක Main PC එකට සමානයි",
+    "reason_terminal_id_taken": "ටිල් ID එක දැනටමත් භාවිතයේ පවතී",
+    "reason_server_error": "Main PC දත්ත ප්‍රතික්ෂේප කළා",
+    "reason_connection_failed": "Main PC සම්බන්ධ කරගත නොහැක",
+    "reason_bind_failed": "Port එක දැනටමත් භාවිතයේ පවතී"
   }
 }
 

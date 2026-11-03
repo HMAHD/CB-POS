@@ -12,6 +12,7 @@ import hmac
 import logging
 import secrets
 import socket
+import ssl
 import threading
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -186,6 +187,8 @@ _push_apply_lock = threading.Lock()
 # ---------------------------------------------------------------------------
 class SyncRequestHandler(BaseHTTPRequestHandler):
     """Handles incoming sync HTTP requests from terminals."""
+
+    timeout = 30
 
     # Suppress default logging to stderr
     def log_message(self, fmt, *args):
@@ -680,6 +683,38 @@ class _ThreadedHTTPServer(ThreadingHTTPServer):
     allow_reuse_address = True
     daemon_threads = True
 
+    def __init__(self, *args, max_concurrency: int = 16, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._semaphore = threading.Semaphore(max_concurrency)
+
+    def process_request(self, request, client_address):
+        """Throttle concurrent request threads using a semaphore."""
+        if not self._semaphore.acquire(blocking=False):
+            logger.warning(
+                "Rejecting sync connection from %s: max concurrent requests (16) reached",
+                client_address,
+            )
+            self.close_request(request)
+            return
+        super().process_request(request, client_address)
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._semaphore.release()
+
+    def finish_request(self, request, client_address):
+        """Perform TLS handshake inside the request thread with timeout."""
+        if hasattr(request, "do_handshake"):
+            request.settimeout(10)
+            try:
+                request.do_handshake()
+            except (ssl.SSLError, OSError) as e:
+                logger.debug("TLS handshake failed from %s: %s", client_address, e)
+                return
+        super().finish_request(request, client_address)
+
     def handle_error(self, request, client_address):
         """Log an unhandled request error instead of printing a traceback to stderr."""
         logger.error("SyncServer error from %s", client_address, exc_info=True)
@@ -752,7 +787,11 @@ class SyncServer(QThread):
             from cbpos.infrastructure.sync_tls import build_server_ssl_context
 
             ssl_context = build_server_ssl_context()
-            self._server.socket = ssl_context.wrap_socket(self._server.socket, server_side=True)
+            self._server.socket = ssl_context.wrap_socket(
+                self._server.socket,
+                server_side=True,
+                do_handshake_on_connect=False,
+            )
 
             self._running = True
 

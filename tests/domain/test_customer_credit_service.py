@@ -211,3 +211,51 @@ def test_get_ledger(db_session, test_user, test_customer):
     assert entries[1].entry_type == "PAYMENT"
     # Verify chronological order
     assert entries[0].timestamp <= entries[1].timestamp
+
+
+def test_issue_849_refund_of_overcredited_sale_reverses_at_most_total(db_session, test_user):
+    """Refunding an over-credited legacy sale reverses at most the sale's total amount."""
+    from cbpos.core.constants.status import PaymentMethodKind
+    from cbpos.core.models import Sale, SalePayment
+
+    customer = Customer(
+        name="Overcredit Customer",
+        credit_limit=Decimal("10000.00"),
+        current_debt=Decimal("2000.00"),
+    )
+    db_session.add(customer)
+    db_session.flush()
+
+    # Legacy sale directly inserted: total 1000.00, credit payment 1200.00
+    sale = Sale(
+        document_number="INV-LEGACY-001",
+        total_amount=Decimal("1000.00"),
+        payment_method="Credit",
+        customer_id=customer.id,
+        user_id=test_user.id,
+    )
+    db_session.add(sale)
+    db_session.flush()
+
+    payment = SalePayment(
+        sale_id=sale.id,
+        payment_method="Credit",
+        method_kind=PaymentMethodKind.CREDIT,
+        amount=Decimal("1200.00"),
+    )
+    db_session.add(payment)
+    db_session.commit()
+
+    entry = CustomerCreditService.reverse_credit_sale_in_session(
+        session=db_session,
+        sale=sale,
+        entry_type="REFUND",
+        user_id=test_user.id,
+        reference_doc="REF-LEGACY-001",
+    )
+    db_session.commit()
+
+    assert entry is not None
+    assert entry.amount == Decimal("-1000.00")
+    db_session.refresh(customer)
+    assert customer.current_debt == Decimal("1000.00")

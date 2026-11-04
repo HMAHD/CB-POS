@@ -215,6 +215,8 @@ class CustomerCreditService:
                 .scalar()
             )
         )
+        sale_total = Decimal(str(sale.total_amount or 0))
+        credit_portion = min(credit_portion, sale_total)
         if credit_portion <= 0:
             return zero
 

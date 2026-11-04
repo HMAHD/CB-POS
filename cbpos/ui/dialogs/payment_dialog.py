@@ -249,7 +249,17 @@ class PaymentDialog(QDialog):
         self.txt_amount.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.txt_amount.setValidator(QDoubleValidator(0.00, 999999.99, 2))
         self.txt_amount.returnPressed.connect(self.add_payment)
+        self.txt_amount.textEdited.connect(self._clear_amount_note)
         right_layout.addWidget(self.txt_amount)
+
+        # Inline amount note (e.g. non-cash clamped warning)
+        self.lbl_amount_note = QLabel("")
+        self.lbl_amount_note.setObjectName("PaymentAmountNote")
+        self.lbl_amount_note.setProperty("class", "warning-hint")
+        self.lbl_amount_note.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_amount_note.setWordWrap(True)
+        self.lbl_amount_note.setVisible(False)
+        right_layout.addWidget(self.lbl_amount_note)
 
         # Numpad Grid — wrapped in container to prevent stretching
         # Sized from the dialog's own height (computed from screen geometry
@@ -421,8 +431,15 @@ class PaymentDialog(QDialog):
         completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.cmb_customer.setCompleter(completer)
 
+    def _clear_amount_note(self):
+        """Clear inline amount note on text change or method change."""
+        if hasattr(self, "lbl_amount_note") and self.lbl_amount_note.isVisible():
+            self.lbl_amount_note.setText("")
+            self.lbl_amount_note.setVisible(False)
+
     def select_method(self, method, btn: QPushButton = None):
         """Set the active payment method, update tile styling, and auto-fill the remaining amount."""
+        self._clear_amount_note()
         self.current_method = method
         self.lbl_selected_method.setText(method.name)
 
@@ -599,7 +616,8 @@ class PaymentDialog(QDialog):
     def add_payment(self):
         """Validate the entered amount and append it as a payment for the current method, requiring a
         customer for CREDIT."""
-        from cbpos.core.constants.status import PaymentMethodType
+        from cbpos.core.constants.status import PaymentMethodKind, PaymentMethodType
+        from cbpos.core.services.payment_service import classify_method_name
 
         if not self.current_method:
             return
@@ -616,6 +634,20 @@ class PaymentDialog(QDialog):
 
         if amount <= 0:
             return
+
+        kind = getattr(self.current_method, "kind", None) or classify_method_name(self.current_method.name)
+        if kind != PaymentMethodKind.CASH:
+            remaining = self.get_remaining_amount()
+            if remaining <= Decimal("0.00"):
+                self.lbl_amount_note.setText(_t("payment.non_cash_capped", amount=format_currency(Decimal("0.00"))))
+                self.lbl_amount_note.setVisible(True)
+                refresh_style(self.lbl_amount_note)
+                return
+            elif amount > remaining:
+                amount = remaining
+                self.lbl_amount_note.setText(_t("payment.non_cash_capped", amount=format_currency(amount)))
+                self.lbl_amount_note.setVisible(True)
+                refresh_style(self.lbl_amount_note)
 
         if self.current_method.name.upper() == PaymentMethodType.CREDIT.upper():
             cust_name = self.cmb_customer.currentText().strip()
@@ -743,13 +775,31 @@ class PaymentDialog(QDialog):
             self.lbl_remaining.setText(f"{_t('payment.change')} {format_currency(change)}")
             self.lbl_remaining.setProperty("state", "change")
             refresh_style(self.lbl_remaining)
-            self.btn_finish.setEnabled(True)
-            self.btn_finish.setToolTip("")
-            self.btn_finish.setFocus()
+
+            from cbpos.core.constants.status import PaymentMethodKind
+            from cbpos.core.services.payment_service import classify_method_name
+
+            methods_by_name = {m.name: m for m in self.payment_methods}
+            effective_total = self.total_amount - self._loyalty_discount_value
+            non_cash_paid = sum(
+                p["amount"]
+                for p in self.payments
+                if (getattr(methods_by_name.get(p["method"]), "kind", None) or classify_method_name(p["method"]))
+                != PaymentMethodKind.CASH
+            )
+            can_finish = non_cash_paid <= effective_total
+
+            self.btn_finish.setEnabled(can_finish)
+            if can_finish:
+                self.btn_finish.setToolTip("")
+                self.btn_finish.setFocus()
+            else:
+                self.btn_finish.setToolTip(_t("payment.non_cash_capped", amount=format_currency(effective_total)))
 
     # ── Numpad Helpers ─────────────────────────────────────────
 
     def _on_numpad_digit(self, digit: str):
+        self._clear_amount_note()
         self.txt_amount.setFocus()
         current = self.txt_amount.text()
         # If text is selected (auto-filled), replace it
@@ -759,10 +809,12 @@ class PaymentDialog(QDialog):
         self.txt_amount.setText(current + digit)
 
     def _on_numpad_clear(self):
+        self._clear_amount_note()
         self.txt_amount.clear()
         self.txt_amount.setFocus()
 
     def _on_numpad_dot(self):
+        self._clear_amount_note()
         self.txt_amount.setFocus()
         current = self.txt_amount.text()
         if self.txt_amount.hasSelectedText():

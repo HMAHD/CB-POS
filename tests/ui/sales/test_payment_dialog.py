@@ -94,3 +94,28 @@ class TestRemovePaymentButton:
         assert dialog.payments == []
         assert not dialog.btn_finish.isEnabled()
         assert dialog.get_remaining_amount() == Decimal("600.00")
+
+
+def test_issue_851_non_cash_amount_clamped_to_remaining(qapp, cash_and_card_methods):
+    """Over-tender on non-cash method is clamped to remaining amount with an inline note."""
+    dlg = PaymentDialog(Decimal("200.00"))
+    dlg.show()
+    card_method, card_btn = next((m, b) for b, m in dlg._method_buttons if m.name == "Card")
+    dlg.select_method(card_method, card_btn)
+    dlg.txt_amount.setText("1000.00")
+    dlg.add_payment()
+
+    assert len(dlg.payments) == 1
+    assert dlg.payments[0]["method"] == "Card"
+    assert dlg.payments[0]["amount"] == Decimal("200.00")
+    assert dlg.get_remaining_amount() == Decimal("0.00")
+    assert dlg.btn_finish.isEnabled()
+    assert dlg.lbl_amount_note.isVisible()
+    assert "200.00" in dlg.lbl_amount_note.text()
+
+    # Cleared on the next input
+    dlg.txt_amount.textEdited.emit("50")
+    assert not dlg.lbl_amount_note.isVisible()
+    assert dlg.lbl_amount_note.text() == ""
+
+    dlg.deleteLater()

@@ -58,6 +58,9 @@ class Permissions:
     # Cash
     CASH_OPEN_DRAWER = "cash.open_drawer"
 
+    # Shift
+    SHIFT_FORCE_CLOSE = "shift.force_close"
+
     # Loyalty
     LOYALTY_ADJUST_POINTS = "loyalty.adjust_points"
 
@@ -124,6 +127,7 @@ class Permissions:
             ],
             "Cash": [
                 cls.CASH_OPEN_DRAWER,
+                cls.SHIFT_FORCE_CLOSE,
             ],
             "Loyalty": [
                 cls.LOYALTY_ADJUST_POINTS,

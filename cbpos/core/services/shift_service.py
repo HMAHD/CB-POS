@@ -2,11 +2,12 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 
+from cbpos.core.constants.permissions import Permissions
 from cbpos.core.constants.status import DocumentStatus, PaymentMethodType, ShiftStatus
 from cbpos.core.database import Database
-from cbpos.core.models import CashMovement, Sale, SalePayment, Shift
+from cbpos.core.models import AuditLog, CashMovement, Sale, SalePayment, Shift, User
 from cbpos.core.services.config_service import ConfigService
 
 
@@ -17,20 +18,20 @@ class ShiftService:
         """Bind this service instance to the database singleton."""
         self.db = Database()
 
-    def start_shift(self, user_id: int, float_amount: Decimal) -> Shift:
-        """Open a new shift for the user on the current terminal with the given starting cash float.
+    def start_shift(self, user_id: int, float_amount: Decimal, terminal_id: str | None = None) -> Shift:
+        """Open a new shift for the user on the current (or specified) terminal with the given starting cash float.
 
         Raises:
             ValueError: If the user already has an open shift on this terminal.
         """
         with self.db.get_session() as session:
-            terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+            terminal = terminal_id or ConfigService.get("terminal_id") or "TERM-01"
 
             # Check if user already has an open shift on this terminal
             existing_shift = session.scalars(
                 select(Shift).where(
                     Shift.user_id == user_id,
-                    Shift.terminal_id == terminal_id,
+                    Shift.terminal_id == terminal,
                     Shift.status == ShiftStatus.OPEN,
                 )
             ).first()
@@ -43,24 +44,50 @@ class ShiftService:
                 starting_cash=float_amount,
                 start_time=datetime.now(),
                 status=ShiftStatus.OPEN,
-                terminal_id=terminal_id,
+                terminal_id=terminal,
             )
             session.add(shift)
             session.commit()
             session.refresh(shift)
             return shift
 
-    def get_current_shift(self, user_id: int) -> Shift | None:
+    def get_open_shift(self, user_id: int, terminal_id: str | None = None) -> Shift | None:
         """Return the user's currently open shift on this terminal, or None if none is open."""
         with self.db.get_session() as session:
-            terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+            terminal = terminal_id or ConfigService.get("terminal_id") or "TERM-01"
             return session.scalars(
                 select(Shift).where(
                     Shift.user_id == user_id,
-                    Shift.terminal_id == terminal_id,
+                    Shift.terminal_id == terminal,
                     Shift.status == ShiftStatus.OPEN,
                 )
             ).first()
+
+    def get_current_shift(self, user_id: int, terminal_id: str | None = None) -> Shift | None:
+        """Return the user's currently open shift on this terminal (alias for get_open_shift)."""
+        return self.get_open_shift(user_id, terminal_id)
+
+    def get_open_shifts(self, terminal_id: str | None = None) -> list[Shift]:
+        """Return all currently open shifts, optionally filtered by terminal."""
+        with self.db.get_session() as session:
+            stmt = select(Shift).where(Shift.status == ShiftStatus.OPEN)
+            if terminal_id:
+                stmt = stmt.where(Shift.terminal_id == terminal_id)
+            return list(session.scalars(stmt).all())
+
+    def is_shift_stale(self, shift: Shift, current_terminal_id: str | None = None, max_age_hours: int = 24) -> bool:
+        """Check whether an open shift is stale (> 24 hours old or on another terminal)."""
+        if shift.status != ShiftStatus.OPEN:
+            return False
+        if shift.start_time and (datetime.now() - shift.start_time).total_seconds() > max_age_hours * 3600:
+            return True
+        return bool(current_terminal_id is not None and shift.terminal_id and shift.terminal_id != current_terminal_id)
+
+    def get_stale_shifts(self, current_terminal_id: str | None = None, max_age_hours: int = 24) -> list[Shift]:
+        """Return all open shifts that are stale."""
+        with self.db.get_session() as session:
+            shifts = session.scalars(select(Shift).where(Shift.status == ShiftStatus.OPEN)).all()
+            return [s for s in shifts if self.is_shift_stale(s, current_terminal_id, max_age_hours)]
 
     def record_cash_movement(
         self, shift_id: int, type: str, amount: Decimal, reason: str, user_id: int
@@ -103,6 +130,21 @@ class ShiftService:
             if not shift:
                 raise ValueError("Shift does not exist.")
 
+            # Define shift matching clause: stamped shift_id or legacy terminal-matched fallback
+            legacy_conditions = [
+                Sale.shift_id.is_(None),
+                Sale.user_id == shift.user_id,
+                Sale.terminal_id == shift.terminal_id,
+                Sale.date >= shift.start_time,
+            ]
+            if shift.end_time:
+                legacy_conditions.append(Sale.date <= shift.end_time)
+
+            shift_clause = or_(
+                Sale.shift_id == shift.id,
+                and_(*legacy_conditions),
+            )
+
             # 1. Sales Breakdown by Payment Method
             sales_stmt = (
                 select(
@@ -111,15 +153,11 @@ class ShiftService:
                 )
                 .join(Sale)
                 .where(
-                    Sale.user_id == shift.user_id,
-                    Sale.date >= shift.start_time,
+                    shift_clause,
                     Sale.status == DocumentStatus.COMPLETED,
                 )
+                .group_by(SalePayment.payment_method)
             )
-            if shift.end_time:
-                sales_stmt = sales_stmt.where(Sale.date <= shift.end_time)
-
-            sales_stmt = sales_stmt.group_by(SalePayment.payment_method)
             sales_results = session.execute(sales_stmt).all()
             sales_by_method = {row[0]: row[1] for row in sales_results}
 
@@ -146,22 +184,16 @@ class ShiftService:
 
             # 4. Audit Stats (Voids)
             void_stmt = select(func.count(Sale.id), func.sum(Sale.total_amount)).where(
-                Sale.user_id == shift.user_id,
-                Sale.date >= shift.start_time,
+                shift_clause,
                 Sale.status == DocumentStatus.VOID,
             )
-            if shift.end_time:
-                void_stmt = void_stmt.where(Sale.date <= shift.end_time)
             void_count, void_value = session.execute(void_stmt).first()
 
             # Transaction Count
             txn_stmt = select(func.count(Sale.id)).where(
-                Sale.user_id == shift.user_id,
-                Sale.date >= shift.start_time,
+                shift_clause,
                 Sale.status == DocumentStatus.COMPLETED,
             )
-            if shift.end_time:
-                txn_stmt = txn_stmt.where(Sale.date <= shift.end_time)
             txn_count = session.scalar(txn_stmt)
 
             # 5. Tax Totals for the shift
@@ -169,12 +201,9 @@ class ShiftService:
                 func.sum(Sale.tax_vat).label("total_vat"),
                 func.sum(Sale.tax_sscl).label("total_sscl"),
             ).where(
-                Sale.user_id == shift.user_id,
-                Sale.date >= shift.start_time,
+                shift_clause,
                 Sale.status == DocumentStatus.COMPLETED,
             )
-            if shift.end_time:
-                tax_stmt = tax_stmt.where(Sale.date <= shift.end_time)
             tax_row = session.execute(tax_stmt).first()
 
             return {
@@ -244,3 +273,49 @@ class ShiftService:
             summary["notes"] = notes
 
             return summary
+
+    def force_close_shift(
+        self,
+        shift_id: int,
+        counted_cash: Decimal | None,
+        reason: str,
+        closed_by_user_id: int,
+    ) -> Shift:
+        """Force-close a stale or orphaned shift (requires shift.force_close permission).
+
+        Records SHIFT_FORCE_CLOSED in the audit log.
+        """
+        with self.db.get_session() as session:
+            closed_by = session.get(User, closed_by_user_id)
+            has_permission = False
+            if closed_by and closed_by.role:
+                has_permission = any(p.code == Permissions.SHIFT_FORCE_CLOSE for p in closed_by.role.permissions)
+            if not has_permission:
+                raise ValueError(f"Permission denied: {Permissions.SHIFT_FORCE_CLOSE} required to force-close shifts.")
+
+            shift = session.get(Shift, shift_id)
+            if not shift or shift.status != ShiftStatus.OPEN:
+                raise ValueError("Shift is not open or does not exist.")
+
+            summary = self.get_shift_summary(shift_id)
+            expected_cash = summary["expected_cash"]
+
+            shift.end_time = datetime.now()
+            shift.expected_cash = expected_cash
+            shift.actual_cash = counted_cash
+            shift.status = ShiftStatus.CLOSED
+            reason_note = f"[Force-closed: {reason}]"
+            shift.notes = f"{shift.notes} {reason_note}".strip() if shift.notes else reason_note
+
+            audit = AuditLog(
+                user_id=closed_by_user_id,
+                action="Shift Force Closed",
+                event_type="SHIFT_FORCE_CLOSED",
+                terminal_id=ConfigService.get("terminal_id") or "TERM-01",
+                details=f"Shift #{shift.id} (terminal {shift.terminal_id}, cashier {shift.user_id}) force-closed: counted={counted_cash}, reason={reason}",
+                timestamp=datetime.now(),
+            )
+            session.add(audit)
+            session.commit()
+            session.refresh(shift)
+            return shift

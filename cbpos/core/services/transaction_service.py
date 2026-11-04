@@ -557,12 +557,17 @@ class TransactionService:
         db = Database()
         try:
             with db.get_session() as session:
-                sale = session.get(Sale, sale_id, options=[joinedload(Sale.items)])
+                sale = session.get(Sale, sale_id, with_for_update=True, options=[joinedload(Sale.items)])
                 if not sale:
                     return False
 
                 if sale.status == "VOID":
                     return False  # Already voided
+
+                # Cannot void a sale that has already been refunded (#914)
+                already_refunded = session.query(Sale.id).filter(Sale.refund_of_sale_id == sale_id).first() is not None
+                if already_refunded:
+                    return False
 
                 sale.status = "VOID"
                 if reason_id:
@@ -699,8 +704,10 @@ class TransactionService:
         db = Database()
         try:
             with db.get_session() as session:
-                # 1. Validate original sale
-                original_sale = session.get(Sale, original_sale_id, options=[joinedload(Sale.items)])
+                # 1. Validate original sale (locking row on PostgreSQL to prevent concurrent refund/void races, #914)
+                original_sale = session.get(
+                    Sale, original_sale_id, with_for_update=True, options=[joinedload(Sale.items)]
+                )
                 if not original_sale:
                     raise ValueError(f"Sale ID {original_sale_id} not found.")
 

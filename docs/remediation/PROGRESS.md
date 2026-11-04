@@ -66,9 +66,9 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #870 | One idle TCP connection stalls the whole Main PC sync server, before any auth… | high | 2.5 | done | #987 | 6b154a8 · do_handshake_on_connect=False, per-thread handshake timeout, 16-worker throttle |
 | #905 | The document sequence is found by string sort, so `{seq}` breaks at 10 and `{… | medium | 2.5 | done | #987 | 6b154a8 · numeric sequence extraction via regex scan; collision retry increments sequence |
 | #906 | A push that fails on every cycle is invisible: pending count is never set, se… | medium | 2.5 | done | #987 | 6b154a8 · pending_changed signal, persistent push error state, distinct terminals count, sync details dialog with retry |
-| #884 | Same cashier on two terminals: both open shifts count each other's sales | medium | 2.6 | in-progress | | |
+| #884 | Same cashier on two terminals: both open shifts count each other's sales | medium | 2.6 | in-progress | | 49fada0 · sales.shift_id, get_shift_summary isolated by shift_id, stale banner, force-close dialog |
 | #886 | Dashboard charts fail in PostgreSQL mode (SQLite-only strftime) | medium | 2.6 | in-progress | | fc72a6c · extract(month/hour) and half-open date range replacing strftime |
-| #914 | Network mode has no lock or unique index, so two tills can refund or void the… | low | 2.6 | blocked (Q1) | | |
+| #914 | Network mode has no lock or unique index, so two tills can refund or void the… | low | 2.6 | in-progress | | D23 · with_for_update=True on Sale in void/refund, refusing void on refunded sale |
 
 ### Phase 3A — [spec](phases/phase-03a-money-ledger-refunds.md)
 
@@ -277,7 +277,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | Q# | Issue | Question | Asked | Answer → D# |
 |---|---|---|---|---|
-| Q1 | #914 | D11's unique index on `refund_of_sale_id` would block partial refunds (D5). Replace it with row locks plus a CHECK on `sale_items.refunded_qty`? (Recommended: yes; record as the next free D-number) | 2026-10-28 (plan) | |
+| Q1 | #914 | D11's unique index on `refund_of_sale_id` would block partial refunds (D5). Replace it with row locks plus a CHECK on `sale_items.refunded_qty`? (Recommended: yes; record as the next free D-number) | 2026-10-28 (plan) | 2026-11-04 → D23 |
 | Q2 | #812 | Partial-refund VAT proportional to value now, switching to line-level once #797 stores the per-line taxable flag? (Recommended: yes) | 2026-10-28 (plan) | |
 | Q3 | #817 | D8 says GPLv3 (publish source) but product notes say free + closed code. Choose GPLv3 / PyQt6 commercial licence / PySide6 migration (lawyer review) | 2026-10-28 (plan) | |
 | Q4 | #831 | VAT-exempt items: SSCL on full MRP unless the category is also SSCL-exempt? (Recommended: yes, independent flags; accountant to confirm) | 2026-10-28 (plan) | |

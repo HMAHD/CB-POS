@@ -65,4 +65,7 @@ Format: `D<n> — <date> — #<issue> — <decision>`. New decisions go at the b
 
 **D22 — 2026-10-30 — #856 — Nullable audit_logs.user_id for terminal events.** Make audit_logs.user_id nullable via an Alembic migration so terminal-scoped security events like LOCKOUT can be recorded with user_id=None without attributing unknown attempts to the Admin user or polluting the audit trail.
 
+**D23 — 2026-11-04 — #914 — Concurrency locking via `FOR UPDATE` and `refunded_qty` CHECK (amending D11).** Replace D11's partial unique index on `sales.refund_of_sale_id` with row-level locking (`SELECT … FOR UPDATE` via `with_for_update=True`) on the original sale in `void_sale` and refund operations, paired with the database CHECK constraint on `sale_items.refunded_qty` (`ck_sale_items_refunded_qty`) from Phase 3A (D5, #812). This prevents concurrent over-refunds and race conditions in network mode while allowing legitimate multiple partial refunds of a single sale.
+
+
 

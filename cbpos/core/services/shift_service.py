@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -164,6 +165,7 @@ class ShiftService:
             kind_stmt = (
                 select(
                     SalePayment.method_kind,
+                    SalePayment.payment_method,
                     func.sum(SalePayment.amount).label("total"),
                 )
                 .join(Sale)
@@ -171,10 +173,19 @@ class ShiftService:
                     shift_clause,
                     Sale.status == DocumentStatus.COMPLETED,
                 )
-                .group_by(SalePayment.method_kind)
+                .group_by(SalePayment.method_kind, SalePayment.payment_method)
             )
             kind_results = session.execute(kind_stmt).all()
-            by_kind = {row[0]: row[1] for row in kind_results}
+            from cbpos.core.services.payment_service import classify_method_name
+
+            by_kind: dict[str, Decimal] = defaultdict(Decimal)
+            for row in kind_results:
+                k, name, total = row[0], row[1], row[2] or Decimal(0)
+                if (k == PaymentMethodKind.OTHER or not k) and name:
+                    inferred = classify_method_name(name)
+                    by_kind[inferred] += total
+                else:
+                    by_kind[k] += total
 
             total_cash_sales = by_kind.get(PaymentMethodKind.CASH, Decimal(0))
             total_card_sales = by_kind.get(PaymentMethodKind.CARD, Decimal(0))

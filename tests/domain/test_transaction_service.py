@@ -389,3 +389,29 @@ def test_walkin_sale_reaches_the_peripherals_without_a_customer(db_session, test
     (event,) = peripherals.events
     assert event.sale is result
     assert event.sale.customer is None
+
+
+def test_issue_854_quick_pay_counts_as_cash(db_session, test_user, test_product):
+    """Calling process_sale with the default cash method (as quick_pay does) counts in shift cash sales."""
+    from cbpos.core.services.payment_service import PaymentService
+    from cbpos.core.services.shift_service import ShiftService
+
+    db_session.commit()
+
+    shift_service = ShiftService()
+    shift = shift_service.start_shift(test_user.id, Decimal("500.00"))
+
+    cash_method = PaymentService.get_default_cash_method()
+    assert cash_method is not None
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart_service = CartService()
+        cart_service.add_item(test_product, qty=Decimal("2.0"))
+        payments = [{"method": cash_method.name, "amount": Decimal("200.00")}]
+
+        sale = TransactionService.process_sale(cart_service, payments)
+
+    assert sale is not None
+    summary = shift_service.get_shift_summary(shift.id)
+    assert summary["cash_sales"] == Decimal("200.00")
+    assert summary["expected_cash"] == Decimal("700.00")

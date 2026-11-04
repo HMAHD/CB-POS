@@ -536,6 +536,13 @@ class SalePayment(Base):
 
     sale: Mapped["Sale"] = relationship(back_populates="payments")
 
+    def __init__(self, *args, **kwargs):
+        if "method_kind" not in kwargs and "payment_method" in kwargs:
+            from cbpos.core.services.payment_service import classify_method_name
+
+            kwargs["method_kind"] = classify_method_name(kwargs.get("payment_method"))
+        super().__init__(*args, **kwargs)
+
 
 class PurchaseItem(Base):
     """One product line received in a `Purchase`, at the cost paid to the supplier."""

@@ -198,7 +198,9 @@ class LoyaltyService:
         return None
 
     @staticmethod
-    def reverse_sale_points(session: Session, sale: Sale, reason: str = "VOID") -> LoyaltyLedgerEntry | None:
+    def reverse_sale_points(
+        session: Session, sale: Sale, reason: str = "VOID", points: int | None = None
+    ) -> LoyaltyLedgerEntry | None:
         """Reverse points earned on a sale within the caller's session/transaction.
 
         Capped at the points the sale originally earned. Never reverses twice, and
@@ -208,6 +210,7 @@ class LoyaltyService:
             session: Active SQLAlchemy session.
             sale: The sale being voided or refunded.
             reason: "VOID" or "REFUND".
+            points: Optional explicit number of points to reverse (for partial refunds #812).
 
         Returns:
             The created LoyaltyLedgerEntry or None if no points were reversed.
@@ -217,28 +220,31 @@ class LoyaltyService:
 
         session.flush()
 
-        earned = (
-            session.query(func.coalesce(func.sum(LoyaltyLedgerEntry.points), 0))
-            .filter(
-                LoyaltyLedgerEntry.customer_id == sale.customer_id,
-                LoyaltyLedgerEntry.reference_id == sale.id,
-                LoyaltyLedgerEntry.entry_type == "EARN",
+        if points is not None:
+            points_to_reverse = max(0, int(points))
+        else:
+            earned = (
+                session.query(func.coalesce(func.sum(LoyaltyLedgerEntry.points), 0))
+                .filter(
+                    LoyaltyLedgerEntry.customer_id == sale.customer_id,
+                    LoyaltyLedgerEntry.reference_id == sale.id,
+                    LoyaltyLedgerEntry.entry_type == "EARN",
+                )
+                .scalar()
             )
-            .scalar()
-        )
 
-        already_reversed = -(
-            session.query(func.coalesce(func.sum(LoyaltyLedgerEntry.points), 0))
-            .filter(
-                LoyaltyLedgerEntry.customer_id == sale.customer_id,
-                LoyaltyLedgerEntry.reference_id == sale.id,
-                LoyaltyLedgerEntry.entry_type == "REVERSAL",
-                LoyaltyLedgerEntry.points < 0,
+            already_reversed = -(
+                session.query(func.coalesce(func.sum(LoyaltyLedgerEntry.points), 0))
+                .filter(
+                    LoyaltyLedgerEntry.customer_id == sale.customer_id,
+                    LoyaltyLedgerEntry.reference_id == sale.id,
+                    LoyaltyLedgerEntry.entry_type == "REVERSAL",
+                    LoyaltyLedgerEntry.points < 0,
+                )
+                .scalar()
             )
-            .scalar()
-        )
 
-        points_to_reverse = max(0, int(earned) - int(already_reversed))
+            points_to_reverse = max(0, int(earned) - int(already_reversed))
         if points_to_reverse <= 0:
             return None
 
@@ -310,7 +316,9 @@ class LoyaltyService:
         return entry
 
     @staticmethod
-    def return_redeemed_points(session: Session, sale: Sale, reason: str = "VOID") -> LoyaltyLedgerEntry | None:
+    def return_redeemed_points(
+        session: Session, sale: Sale, reason: str = "VOID", points: int | None = None
+    ) -> LoyaltyLedgerEntry | None:
         """Return redeemed points back to the customer upon void or refund.
 
         Capped at the points redeemed on the sale, and ensures points are returned
@@ -320,6 +328,7 @@ class LoyaltyService:
             session: Active SQLAlchemy session.
             sale: The sale being voided or refunded.
             reason: "VOID" or "REFUND".
+            points: Optional explicit number of points to return (for partial refunds #812).
 
         Returns:
             The created LoyaltyLedgerEntry or None if no points returned.
@@ -329,20 +338,23 @@ class LoyaltyService:
 
         session.flush()
 
-        redeemed = int(sale.loyalty_points_redeemed)
+        if points is not None:
+            points_to_return = max(0, int(points))
+        else:
+            redeemed = int(sale.loyalty_points_redeemed)
 
-        already_returned = (
-            session.query(func.coalesce(func.sum(LoyaltyLedgerEntry.points), 0))
-            .filter(
-                LoyaltyLedgerEntry.customer_id == sale.customer_id,
-                LoyaltyLedgerEntry.reference_id == sale.id,
-                LoyaltyLedgerEntry.entry_type == "REVERSAL",
-                LoyaltyLedgerEntry.points > 0,
+            already_returned = (
+                session.query(func.coalesce(func.sum(LoyaltyLedgerEntry.points), 0))
+                .filter(
+                    LoyaltyLedgerEntry.customer_id == sale.customer_id,
+                    LoyaltyLedgerEntry.reference_id == sale.id,
+                    LoyaltyLedgerEntry.entry_type == "REVERSAL",
+                    LoyaltyLedgerEntry.points > 0,
+                )
+                .scalar()
             )
-            .scalar()
-        )
 
-        points_to_return = max(0, redeemed - int(already_returned))
+            points_to_return = max(0, redeemed - int(already_returned))
         if points_to_return <= 0:
             return None
 

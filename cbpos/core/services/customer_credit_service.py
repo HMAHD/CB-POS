@@ -252,6 +252,7 @@ class CustomerCreditService:
         user_id: int,
         reference_doc: str,
         refund_amount: Decimal | None = None,
+        amount: Decimal | None = None,
     ) -> CustomerLedgerEntry | None:
         """Give back the credit a sale put on the customer's book (#715).
 
@@ -292,7 +293,10 @@ class CustomerCreditService:
         if entry_type not in CREDIT_REVERSAL_TYPES:
             raise ValueError(f"Unsupported credit reversal type: {entry_type}")
         session.flush()  # earlier reversals of this sale in the same session count too
-        reversal = CustomerCreditService.credit_to_reverse(session, sale, refund_amount)
+        if amount is not None:
+            reversal = Decimal(str(amount)).quantize(Precision.MONEY)
+        else:
+            reversal = CustomerCreditService.credit_to_reverse(session, sale, refund_amount)
         if reversal <= 0:
             return None
 

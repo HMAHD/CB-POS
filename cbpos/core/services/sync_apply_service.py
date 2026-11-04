@@ -309,6 +309,9 @@ class SyncApplyService:
                 values["loyalty_points_value"] = Decimal("0.00")
             if values.get("loyalty_points_earned") is None:
                 values["loyalty_points_earned"] = 0
+        if table_name == "sale_items":
+            if values.get("refunded_qty") is None:
+                values["refunded_qty"] = Decimal("0.000")
         if table_name == "sale_payments":
             if not values.get("method_kind"):
                 from cbpos.core.services.payment_service import classify_method_name

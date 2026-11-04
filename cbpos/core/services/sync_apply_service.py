@@ -97,7 +97,7 @@ assert set(APPLY_ORDER) == set(TRANSACTION_TABLES), "APPLY_ORDER must cover exac
 # are not listed and are kept as sent.
 TERMINAL_REFS: dict[str, dict[str, str]] = {
     "sales": {"refund_of_sale_id": DOCUMENT_ID_SPACE, "shift_id": "shifts"},
-    "sale_items": {"sale_id": DOCUMENT_ID_SPACE},
+    "sale_items": {"sale_id": DOCUMENT_ID_SPACE, "refund_of_item_id": "sale_items"},
     "sale_payments": {"sale_id": DOCUMENT_ID_SPACE},
     "purchase_items": {"purchase_id": DOCUMENT_ID_SPACE},
     "stock_movements": {"document_id": DOCUMENT_ID_SPACE},

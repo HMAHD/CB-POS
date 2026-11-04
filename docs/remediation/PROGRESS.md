@@ -74,11 +74,11 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
-| #834 | Every cash sale with change inflates the shift's expected cash by the change … | critical | 3A.1 | todo | | |
-| #850 | The shift's expected cash never subtracts cash handed back on refunds | high | 3A.1 | todo | | |
-| #854 | F12 Quick Pay records the payment as "CASH", so those sales are left out of t… | high | 3A.1 | todo | | |
-| #885 | Expected cash matches only a method named exactly "Cash"; ignores PaymentMeth… | medium | 3A.1 | todo | | |
-| #802 | Shift summary misses "Bank Transfer" sales (expects the name "Transfer") | medium | 3A.1 | todo | | |
+| #834 | Every cash sale with change inflates the shift's expected cash by the change … | critical | 3A.1 | done | pr-open | acaac07 · `_normalise_payments`, store applied amount, tendered_amount snapshot, SalesReceiptBuilder |
+| #850 | The shift's expected cash never subtracts cash handed back on refunds | high | 3A.1 | done | pr-open | a36d066 · strict xfail test added for cash refund reducing expected cash; resolved by 3A.3 |
+| #854 | F12 Quick Pay records the payment as "CASH", so those sales are left out of t… | high | 3A.1 | done | pr-open | fedf9d6 · `PaymentService.get_default_cash_method()` replaces hardcoded CASH |
+| #885 | Expected cash matches only a method named exactly "Cash"; ignores PaymentMeth… | medium | 3A.1 | done | pr-open | c43860c · ShiftService groups by `method_kind`, counting all CASH-kind methods |
+| #802 | Shift summary misses "Bank Transfer" sales (expects the name "Transfer") | medium | 3A.1 | done | pr-open | c43860c · ShiftService groups by `method_kind`, unifying Transfer and Bank Transfer |
 | #849 | Refunding a credit sale that was overpaid on credit wipes more debt than the … | high | 3A.2 | todo | | |
 | #851 | Over-tender is accepted on Credit (and other non-cash) payments; the customer… | high | 3A.2 | todo | | |
 | #852 | A Credit payment is charged to the first customer in the list, not the custom… | high | 3A.2 | todo | | |
@@ -304,5 +304,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|
 
 ## Handoff
-Phase 2 is completely finished! Batch 2.6 (#886, #884, #914) is merged into `main` via PR #988 (merge commit `6e192a8`) and verified closed on GitHub. Starting Phase 3A Batch 3A.1 (`fix/p3a-b1-shift-cash-payment-identity`) covering Payment Method Kind Foundation and issues #802, #885, #854, #834, #850.
+Batch 3A.1 is complete on branch `fix/p3a-b1-shift-cash-payment-identity` and ready for PR merge. Covers Payment Method Kind foundation (`36bd7f3`), #802 and #885 (`c43860c`), #854 (`fedf9d6`), #834 (`acaac07`), #850 (`a36d066`), and dialog/sync integration fixes (`524110c`). Next is Batch 3A.2 (`fix/p3a-b2-credit-ledger`) covering #851, #852, #887, #849, #888.
 

@@ -265,6 +265,8 @@
     "invalid_amount_message": "කරුණාකර වලංගු මුදලක් ඇතුළත් කරන්න.",
     "credit_no_customer": "ණය විකුණුමට පාරිභෝගිකයෙකු තෝරන්න.",
     "credit_customer_not_found": "'{name}' පාරිභෝගිකයා හම්බ වුනේ නැහැ.",
+    "credit_to": "ණයට දීම:",
+    "credit_pick_customer": "නම හෝ දුරකථන අංකය ඇතුළත් කරන්න…",
     "non_cash_capped": "කාඩ් සහ ණය ගෙවීම් බිල්පතට වඩා වැඩි විය නොහැක, එබැවින් {amount}ක් යොදන ලදී.",
     "loyalty_section": "ලෝයල්ටි ලකුණු අඩු කිරීම",
     "loyalty_points_available": "{points} ලකුණු (රු. {value})",

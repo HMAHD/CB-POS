@@ -119,3 +119,65 @@ def test_issue_851_non_cash_amount_clamped_to_remaining(qapp, cash_and_card_meth
     assert dlg.lbl_amount_note.text() == ""
 
     dlg.deleteLater()
+
+
+def test_issue_852_attached_customer_preselected_for_credit(qapp, db_session):
+    """With an attached customer, Credit pre-selects them and locks the combo read-only."""
+    from cbpos.core.constants.status import PaymentMethodKind
+    from cbpos.core.models import Customer
+
+    c1 = Customer(name="Aaron", phone="0771111111")
+    c2 = Customer(name="Zack", phone="0772222222")
+    credit = db_session.query(PaymentMethod).filter_by(name="Credit").first()
+    if not credit:
+        credit = PaymentMethod(name="Credit", kind=PaymentMethodKind.CREDIT, is_cash=False, is_active=True)
+        db_session.add(credit)
+    db_session.add_all([c1, c2])
+    db_session.commit()
+
+    dlg = PaymentDialog(Decimal("100.00"), customer=c2)
+    dlg.show()
+    credit_method, credit_btn = next((m, b) for b, m in dlg._method_buttons if m.name == "Credit")
+    dlg.select_method(credit_method, credit_btn)
+
+    assert dlg.cmb_customer.currentData() == c2.id
+    assert not dlg.cmb_customer.isEnabled()
+
+    dlg.txt_amount.setText("100.00")
+    dlg.add_payment()
+
+    _payments, customer_id = dlg.payment_data
+    assert customer_id == c2.id
+    dlg.deleteLater()
+
+
+def test_issue_852_same_name_customers_charged_by_id(qapp, db_session):
+    """Two customers with the exact same name are differentiated and selected by id."""
+    from cbpos.core.constants.status import PaymentMethodKind
+    from cbpos.core.models import Customer
+
+    c1 = Customer(name="Nimal SameName", phone="0771111111")
+    c2 = Customer(name="Nimal SameName", phone="0772222222")
+    credit = db_session.query(PaymentMethod).filter_by(name="Credit").first()
+    if not credit:
+        credit = PaymentMethod(name="Credit", kind=PaymentMethodKind.CREDIT, is_cash=False, is_active=True)
+        db_session.add(credit)
+    db_session.add_all([c1, c2])
+    db_session.commit()
+
+    dlg = PaymentDialog(Decimal("100.00"), customer=None)
+    dlg.show()
+    credit_method, credit_btn = next((m, b) for b, m in dlg._method_buttons if m.name == "Credit")
+    dlg.select_method(credit_method, credit_btn)
+
+    assert dlg.cmb_customer.isEnabled()
+    idx2 = dlg.cmb_customer.findData(c2.id)
+    assert idx2 >= 0
+    dlg.cmb_customer.setCurrentIndex(idx2)
+
+    dlg.txt_amount.setText("100.00")
+    dlg.add_payment()
+
+    _payments, customer_id = dlg.payment_data
+    assert customer_id == c2.id
+    dlg.deleteLater()

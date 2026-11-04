@@ -265,6 +265,8 @@
     "invalid_amount_message": "சரியான தொகையை உள்ளிடுக.",
     "credit_no_customer": "கடன் விற்பனைக்கு வாடிக்கையாளரைத் தேர்வு செய்யுங்கள்.",
     "credit_customer_not_found": "'{name}' வாடிக்கையாளர் கிடைக்கல.",
+    "credit_to": "கடனில் கொடுப்பது:",
+    "credit_pick_customer": "பெயர் அல்லது தொலைபேசி எண்ணை உள்ளிடுக…",
     "non_cash_capped": "கார்டு மற்றும் கடன் கொடுப்பனவுகள் பில்லை விட அதிகமாக இருக்க முடியாது, எனவே {amount} பயன்படுத்தப்பட்டது.",
     "loyalty_section": "விசுவாச புள்ளிகள் கழிவு",
     "loyalty_points_available": "{points} புள்ளிகள் (ரூ. {value})",

@@ -265,6 +265,8 @@
     "invalid_amount_message": "Please enter a valid amount.",
     "credit_no_customer": "Please select a customer for Credit sale.",
     "credit_customer_not_found": "Customer '{name}' not found.",
+    "credit_to": "Put on credit for:",
+    "credit_pick_customer": "Type a name or phone…",
     "non_cash_capped": "Card and credit payments can't be more than the bill, so {amount} was used.",
     "loyalty_section": "LOYALTY REDEMPTION",
     "loyalty_points_available": "{points} points (Rs. {value})",

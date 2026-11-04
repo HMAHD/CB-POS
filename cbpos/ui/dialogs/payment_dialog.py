@@ -417,16 +417,31 @@ class PaymentDialog(QDialog):
             sc.activated.connect(lambda m=method, b=btn: self.select_method(m, b))
 
     def load_customers(self):
-        """Populate the searchable customer combo used for CREDIT payments."""
+        """Populate the customer combo used for CREDIT payments.
+
+        Items store customer.id as userData. Text is formatted as '{name} — {phone}'
+        when a phone number is available, allowing distinct display for same-name
+        customers (#852).
+        """
+        self.cmb_customer.clear()
         customers = CustomerService().get_all_customers()
-        self.customers_map = {c.name: c.id for c in customers}
-        names = list(self.customers_map.keys())
-        self.cmb_customer.addItems(names)
+        display_texts = []
+        for c in customers:
+            text = f"{c.name} — {c.phone}" if c.phone else c.name
+            self.cmb_customer.addItem(text, userData=c.id)
+            display_texts.append(text)
+
+        if self.customer_id:
+            idx = self.cmb_customer.findData(self.customer_id)
+            if idx >= 0:
+                self.cmb_customer.setCurrentIndex(idx)
+
         # Make searchable — type to filter
         self.cmb_customer.setEditable(True)
         self.cmb_customer.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
-        self.cmb_customer.lineEdit().setPlaceholderText(_t("payment.search_customer_placeholder"))
-        completer = QCompleter(names, self)
+        if self.cmb_customer.lineEdit():
+            self.cmb_customer.lineEdit().setPlaceholderText(_t("payment.credit_pick_customer"))
+        completer = QCompleter(display_texts, self)
         completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.cmb_customer.setCompleter(completer)
@@ -454,11 +469,27 @@ class PaymentDialog(QDialog):
             self._active_btn = btn
 
         # Show customer combo for CREDIT only
-        from cbpos.core.constants.status import PaymentMethodType
+        from cbpos.core.constants.status import PaymentMethodKind, PaymentMethodType
+        from cbpos.core.services.payment_service import classify_method_name
 
-        is_credit = method.name.upper() == PaymentMethodType.CREDIT.upper()
+        kind = getattr(method, "kind", None) or classify_method_name(method.name)
+        is_credit = kind == PaymentMethodKind.CREDIT or method.name.upper() == PaymentMethodType.CREDIT.upper()
         self.lbl_customer.setVisible(is_credit)
         self.cmb_customer.setVisible(is_credit)
+
+        if is_credit:
+            if self.customer_id:
+                self.lbl_customer.setText(_t("payment.credit_to"))
+                idx = self.cmb_customer.findData(self.customer_id)
+                if idx >= 0:
+                    self.cmb_customer.setCurrentIndex(idx)
+                self.cmb_customer.setEnabled(False)
+            else:
+                self.lbl_customer.setText(_t("payment.customer_label"))
+                self.cmb_customer.setEnabled(True)
+                self.cmb_customer.setEditable(True)
+                if self.cmb_customer.lineEdit():
+                    self.cmb_customer.lineEdit().setPlaceholderText(_t("payment.credit_pick_customer"))
 
         # Auto-fill remaining amount for all methods
         remaining = self.get_remaining_amount()
@@ -467,8 +498,11 @@ class PaymentDialog(QDialog):
         else:
             self.txt_amount.clear()
 
-        self.txt_amount.setFocus()
-        self.txt_amount.selectAll()
+        if is_credit and not self.customer_id:
+            self.cmb_customer.setFocus()
+        else:
+            self.txt_amount.setFocus()
+            self.txt_amount.selectAll()
 
     def quick_pay_cash(self):
         """Find Cash method, auto-fill exact amount, and submit."""
@@ -649,20 +683,25 @@ class PaymentDialog(QDialog):
                 self.lbl_amount_note.setVisible(True)
                 refresh_style(self.lbl_amount_note)
 
-        if self.current_method.name.upper() == PaymentMethodType.CREDIT.upper():
-            cust_name = self.cmb_customer.currentText().strip()
-            if not cust_name:
-                QMessageBox.warning(self, _t("common.error"), _t("payment.credit_no_customer"))
-                return
-            cust_id = self.customers_map.get(cust_name)
-            if cust_id is None:
-                QMessageBox.warning(
-                    self,
-                    _t("common.error"),
-                    _t("payment.credit_customer_not_found", name=cust_name),
-                )
-                return
-            self.customer_id = cust_id
+        if kind == PaymentMethodKind.CREDIT or self.current_method.name.upper() == PaymentMethodType.CREDIT.upper():
+            if not self.customer_id:
+                cust_id = self.cmb_customer.currentData()
+                if cust_id is None:
+                    cust_name = self.cmb_customer.currentText().strip()
+                    if not cust_name:
+                        QMessageBox.warning(self, _t("common.error"), _t("payment.credit_no_customer"))
+                        return
+                    idx = self.cmb_customer.findText(cust_name, Qt.MatchFlag.MatchExactly)
+                    if idx >= 0:
+                        cust_id = self.cmb_customer.itemData(idx)
+                    if cust_id is None:
+                        QMessageBox.warning(
+                            self,
+                            _t("common.error"),
+                            _t("payment.credit_customer_not_found", name=cust_name),
+                        )
+                        return
+                self.customer_id = cust_id
 
         self.payments.append({"method": self.current_method.name, "amount": amount})
         self._add_payment_list_item(

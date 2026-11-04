@@ -67,5 +67,8 @@ Format: `D<n> — <date> — #<issue> — <decision>`. New decisions go at the b
 
 **D23 — 2026-11-04 — #914 — Concurrency locking via `FOR UPDATE` and `refunded_qty` CHECK (amending D11).** Replace D11's partial unique index on `sales.refund_of_sale_id` with row-level locking (`SELECT … FOR UPDATE` via `with_for_update=True`) on the original sale in `void_sale` and refund operations, paired with the database CHECK constraint on `sale_items.refunded_qty` (`ck_sale_items_refunded_qty`) from Phase 3A (D5, #812). This prevents concurrent over-refunds and race conditions in network mode while allowing legitimate multiple partial refunds of a single sale.
 
+**D24 — 2026-11-05 — #812 — Partial-refund VAT proportional to value.** A partial refund's VAT is proportional to value now (`round_money(sale.tax_vat * value / sale.total_amount)` with remainder reconciliation on final refund). Switch to line-level calculation once #797 stores the per-line taxable flag in Phase 6.1.
+
+
 
 

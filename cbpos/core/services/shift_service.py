@@ -5,7 +5,7 @@ from typing import Any
 from sqlalchemy import and_, func, or_, select
 
 from cbpos.core.constants.permissions import Permissions
-from cbpos.core.constants.status import DocumentStatus, PaymentMethodType, ShiftStatus
+from cbpos.core.constants.status import DocumentStatus, PaymentMethodKind, ShiftStatus
 from cbpos.core.database import Database
 from cbpos.core.models import AuditLog, CashMovement, Sale, SalePayment, Shift, User
 from cbpos.core.services.config_service import ConfigService
@@ -145,7 +145,7 @@ class ShiftService:
                 and_(*legacy_conditions),
             )
 
-            # 1. Sales Breakdown by Payment Method
+            # 1. Sales Breakdown by Payment Method (Display) and Kind (Reconciliation)
             sales_stmt = (
                 select(
                     SalePayment.payment_method,
@@ -161,12 +161,27 @@ class ShiftService:
             sales_results = session.execute(sales_stmt).all()
             sales_by_method = {row[0]: row[1] for row in sales_results}
 
-            total_cash_sales = sales_by_method.get(PaymentMethodType.CASH, Decimal(0))
-            total_card_sales = sales_by_method.get(PaymentMethodType.CARD, Decimal(0))
-            total_credit_sales = sales_by_method.get(PaymentMethodType.CREDIT, Decimal(0))
-            total_qr_mobile = sales_by_method.get(PaymentMethodType.QR_MOBILE, Decimal(0))
-            total_cheque = sales_by_method.get(PaymentMethodType.CHEQUE, Decimal(0))
-            total_transfer = sales_by_method.get(PaymentMethodType.BANK_TRANSFER, Decimal(0))
+            kind_stmt = (
+                select(
+                    SalePayment.method_kind,
+                    func.sum(SalePayment.amount).label("total"),
+                )
+                .join(Sale)
+                .where(
+                    shift_clause,
+                    Sale.status == DocumentStatus.COMPLETED,
+                )
+                .group_by(SalePayment.method_kind)
+            )
+            kind_results = session.execute(kind_stmt).all()
+            by_kind = {row[0]: row[1] for row in kind_results}
+
+            total_cash_sales = by_kind.get(PaymentMethodKind.CASH, Decimal(0))
+            total_card_sales = by_kind.get(PaymentMethodKind.CARD, Decimal(0))
+            total_credit_sales = by_kind.get(PaymentMethodKind.CREDIT, Decimal(0))
+            total_qr_mobile = by_kind.get(PaymentMethodKind.QR, Decimal(0))
+            total_cheque = by_kind.get(PaymentMethodKind.CHEQUE, Decimal(0))
+            total_transfer = by_kind.get(PaymentMethodKind.TRANSFER, Decimal(0))
             total_sales = sum(sales_by_method.values())
 
             # 2. Cash Movements

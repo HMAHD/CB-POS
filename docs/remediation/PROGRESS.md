@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 2 · Batch: 2.6 (pr-open) · Branch: fix/p2-b6-network-shifts-dashboards-locking · PR: #988 · Last session: 2026-11-04
+- Phase: 3A · Batch: 3A.1 · Branch: fix/p3a-b1-shift-cash-payment-identity · PR: none · Last session: 2026-11-04
 
 ## Issues
 
@@ -66,9 +66,9 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #870 | One idle TCP connection stalls the whole Main PC sync server, before any auth… | high | 2.5 | done | #987 | 6b154a8 · do_handshake_on_connect=False, per-thread handshake timeout, 16-worker throttle |
 | #905 | The document sequence is found by string sort, so `{seq}` breaks at 10 and `{… | medium | 2.5 | done | #987 | 6b154a8 · numeric sequence extraction via regex scan; collision retry increments sequence |
 | #906 | A push that fails on every cycle is invisible: pending count is never set, se… | medium | 2.5 | done | #987 | 6b154a8 · pending_changed signal, persistent push error state, distinct terminals count, sync details dialog with retry |
-| #884 | Same cashier on two terminals: both open shifts count each other's sales | medium | 2.6 | pr-open | #988 | 49fada0 · sales.shift_id, get_shift_summary isolated by shift_id, stale banner, force-close dialog |
-| #886 | Dashboard charts fail in PostgreSQL mode (SQLite-only strftime) | medium | 2.6 | pr-open | #988 | fc72a6c · extract(month/hour) and half-open date range replacing strftime |
-| #914 | Network mode has no lock or unique index, so two tills can refund or void the… | low | 2.6 | pr-open | #988 | 8b447fd · D23: with_for_update=True on Sale in void/refund, refusing void on refunded sale |
+| #884 | Same cashier on two terminals: both open shifts count each other's sales | medium | 2.6 | done | #988 | 49fada0, 6e192a8 · sales.shift_id, get_shift_summary isolated by shift_id, stale banner, force-close dialog |
+| #886 | Dashboard charts fail in PostgreSQL mode (SQLite-only strftime) | medium | 2.6 | done | #988 | fc72a6c, 6e192a8 · extract(month/hour) and half-open date range replacing strftime |
+| #914 | Network mode has no lock or unique index, so two tills can refund or void the… | low | 2.6 | done | #988 | 8b447fd, 6e192a8 · D23: with_for_update=True on Sale in void/refund, refusing void on refunded sale |
 
 ### Phase 3A — [spec](phases/phase-03a-money-ledger-refunds.md)
 
@@ -304,8 +304,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|
 
 ## Handoff
-Phase 2 Batch 2.6 (#886, #884, #914) is implemented and verified. Pull request #988 has been opened against `main` (`fix/p2-b6-network-shifts-dashboards-locking`).
-- Tests: Fast test loop (822 passed), Permission role labels (180 passed), Trilingual validation (0 errors), Full test suite (3,011 passed, 6 skipped, 11 xfailed).
-- Pull request: #988 (Fixes #886, Fixes #884, Fixes #914).
-- Ready for human review and approval to merge PR #988. This also marks the completion of Phase 2!
+Phase 2 is completely finished! Batch 2.6 (#886, #884, #914) is merged into `main` via PR #988 (merge commit `6e192a8`) and verified closed on GitHub. Starting Phase 3A Batch 3A.1 (`fix/p3a-b1-shift-cash-payment-identity`) covering Payment Method Kind Foundation and issues #802, #885, #854, #834, #850.
 

@@ -5,14 +5,20 @@ Partial / item-level refunds and returns, proportional tax & tender allocation,
 remainder rule over a series of partial refunds, permissions and audit trail.
 """
 
+import sqlite3
 from datetime import datetime
 from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
+from alembic.config import Config as AlembicConfig
+from sqlalchemy import create_engine, text
 
+from alembic import command
+from cbpos.config import Config
 from cbpos.core.constants.permissions import Permissions
 from cbpos.core.constants.status import DocumentStatus, PaymentMethodKind
+from cbpos.core.database import Base
 from cbpos.core.models import (
     AuditLog,
     Customer,
@@ -709,3 +715,100 @@ def test_refund_service_itemless_sale(db_session, refund_user):
     # Trying to refund again fails
     with pytest.raises(ValueError, match="qty_exceeds_remaining"):
         RefundService.refund(sale.id, [], "Customer refund again", refund_user.id)
+
+
+@pytest.mark.domain
+def test_migration_refund_lines(tmp_path, monkeypatch):
+    """Alembic upgrade adds refund columns, check constraints, backfills legacy rows, and downgrades cleanly."""
+    db_path = tmp_path / "cbpos.db"
+    uri = f"sqlite:///{db_path}"
+    engine = create_engine(uri)
+    Base.metadata.create_all(engine)
+    engine.dispose()
+    monkeypatch.setattr(Config, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(Config, "DB_URI", uri)
+
+    cfg = AlembicConfig(str(Config.BASE_DIR / "alembic.ini"))
+    cfg.set_main_option("script_location", str(Config.BASE_DIR / "alembic"))
+    cfg.attributes["configure_logger"] = False
+
+    # 1. Stamp head and downgrade to 4a5b6c7d8e9f
+    command.stamp(cfg, "head")
+    command.downgrade(cfg, "4a5b6c7d8e9f")
+
+    # 2. Insert older rows before the migration
+    with sqlite3.connect(db_path) as conn:
+        conn.execute("PRAGMA foreign_keys = OFF")
+        # Roles and admin user
+        conn.execute("INSERT OR IGNORE INTO roles (id, name) VALUES (1, 'Admin')")
+        conn.execute("INSERT OR IGNORE INTO roles (id, name) VALUES (2, 'Manager')")
+        conn.execute("INSERT OR IGNORE INTO users (id, username, role_id) VALUES (1, 'admin', 1)")
+
+        # Product
+        conn.execute(
+            "INSERT INTO products (id, name_en, barcode, price, cost, stock_qty, is_weighted, is_composite, is_service, price_change_allowed, is_age_restricted, reorder_point, preferred_qty, is_active, version_id, last_modified) "
+            "VALUES (1, 'Test Product', 'BAR-MIG-1', 100.0, 50.0, 10.0, 0, 0, 0, 1, 0, 0.0, 0.0, 1, 1, '2026-01-01 00:00:00')"
+        )
+
+        # Original sale & items (without refunded_qty / refund_of_item_id / refund_tender_override)
+        conn.execute(
+            "INSERT INTO documents (id, document_number, type, date, user_id, status, synced) "
+            "VALUES (101, 'INV-MIG-1', 'SALE', '2026-01-01 10:00:00', 1, 'COMPLETED', 0)"
+        )
+        conn.execute(
+            "INSERT INTO sales (id, total_amount, tax_vat, tax_sscl, net_revenue, "
+            "additional_discount_type, additional_discount_value, loyalty_points_redeemed, loyalty_points_value, loyalty_points_earned, payment_method) "
+            "VALUES (101, 200.0, 0.0, 0.0, 200.0, 'NONE', 0.0, 0, 0.0, 0, 'CASH')"
+        )
+        conn.execute(
+            "INSERT INTO sale_items (id, sale_id, product_id, qty, unit_price, original_price, discount_type, discount_value, is_manual_price, subtotal) "
+            "VALUES (201, 101, 1, 2.0, 100.0, 100.0, 'NONE', 0.0, 0, 200.0)"
+        )
+
+        # Legacy full refund sale referencing original sale 101
+        conn.execute(
+            "INSERT INTO documents (id, document_number, type, date, user_id, status, synced) "
+            "VALUES (102, 'RET-MIG-1', 'SALE', '2026-01-01 11:00:00', 1, 'COMPLETED', 0)"
+        )
+        conn.execute(
+            "INSERT INTO sales (id, total_amount, tax_vat, tax_sscl, net_revenue, "
+            "additional_discount_type, additional_discount_value, loyalty_points_redeemed, loyalty_points_value, loyalty_points_earned, payment_method, refund_of_sale_id) "
+            "VALUES (102, -200.0, 0.0, 0.0, -200.0, 'NONE', 0.0, 0, 0.0, 0, 'REFUND', 101)"
+        )
+        conn.commit()
+
+    # 3. Upgrade to head
+    command.upgrade(cfg, "head")
+
+    # 4. Verify columns, backfill, and permissions
+    engine = create_engine(uri)
+    with engine.connect() as conn:
+        # Check sales table has refund_tender_override
+        sales_cols = [c[1] for c in conn.execute(text("PRAGMA table_info(sales)")).fetchall()]
+        assert "refund_tender_override" in sales_cols
+
+        # Check sale_items table has refund columns
+        items_cols = [c[1] for c in conn.execute(text("PRAGMA table_info(sale_items)")).fetchall()]
+        assert "refund_of_item_id" in items_cols
+        assert "refund_reason" in items_cols
+        assert "refunded_qty" in items_cols
+
+        # Check backfill: original line 201 must have refunded_qty == 2.0
+        row = conn.execute(text("SELECT refunded_qty FROM sale_items WHERE id = 201")).fetchone()
+        assert row is not None and float(row[0]) == 2.0
+
+        # Check permission sales.refund_override_tender is seeded
+        perm = conn.execute(text("SELECT id FROM permissions WHERE code = 'sales.refund_override_tender'")).fetchone()
+        assert perm is not None
+
+    engine.dispose()
+
+    # 5. Verify downgrade cleans up columns without error
+    command.downgrade(cfg, "4a5b6c7d8e9f")
+    engine = create_engine(uri)
+    with engine.connect() as conn:
+        sales_cols = [c[1] for c in conn.execute(text("PRAGMA table_info(sales)")).fetchall()]
+        assert "refund_tender_override" not in sales_cols
+        items_cols = [c[1] for c in conn.execute(text("PRAGMA table_info(sale_items)")).fetchall()]
+        assert "refund_of_item_id" not in items_cols
+    engine.dispose()

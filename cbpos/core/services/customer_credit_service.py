@@ -180,6 +180,27 @@ class CustomerCreditService:
         session.add(entry)
 
     @staticmethod
+    def credit_already_reversed(sale_id: int) -> Decimal:
+        """Return the total credit already reversed on a sale (#849, #812)."""
+        db = Database()
+        with db.get_session() as session:
+            sale = session.get(Sale, sale_id)
+            if not sale or not sale.customer_id:
+                return Decimal("0.00")
+            rev = -Decimal(
+                str(
+                    session.query(func.coalesce(func.sum(CustomerLedgerEntry.amount), 0))
+                    .filter(
+                        CustomerLedgerEntry.customer_id == sale.customer_id,
+                        CustomerLedgerEntry.reference_id == sale.id,
+                        CustomerLedgerEntry.entry_type.in_(CREDIT_REVERSAL_TYPES),
+                    )
+                    .scalar()
+                )
+            )
+            return max(Decimal("0.00"), rev)
+
+    @staticmethod
     def credit_to_reverse(session: Session, sale: Sale, refund_amount: Decimal | None = None) -> Decimal:
         """How much credit a void/refund of ``sale`` gives back -- without writing anything.
 

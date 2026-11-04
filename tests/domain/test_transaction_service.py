@@ -631,3 +631,54 @@ def test_issue_847_reverse_sale_points_idempotent_after_redemption_return(db_ses
 
         db_session.refresh(customer)
         assert customer.loyalty_points == 300
+
+
+def test_issue_848_void_of_refund_document_refused(db_session, test_user, test_product):
+    """void_sale on a refund document raises ValueError('cannot_void_refund') and leaves stock/debt unchanged."""
+    from cbpos.core.models import Customer
+
+    customer = Customer(
+        name="Refund Void Cust",
+        credit_limit=Decimal("5000.00"),
+        current_debt=Decimal("0.00"),
+    )
+    db_session.add(customer)
+    test_product.stock_qty = 20.0
+    test_product.price = Decimal("500.00")
+    db_session.commit()
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart_service = CartService()
+        cart_service.add_item(test_product, qty=Decimal("2.0"))  # total 1000.00
+        payments = [{"method": "Credit", "amount": Decimal("1000.00")}]
+        sale = TransactionService.process_sale(cart_service, payments, customer_id=customer.id)
+        assert sale is not None
+
+        db_session.refresh(customer)
+        db_session.refresh(test_product)
+        assert customer.current_debt == Decimal("1000.00")
+        assert test_product.stock_qty == 18.0
+
+        ok = TransactionService.process_refund(
+            original_sale_id=sale.id,
+            refund_reason="Wrong purchase",
+            user_id=test_user.id,
+        )
+        assert ok is True
+
+        refund_sale = db_session.query(Sale).filter_by(refund_of_sale_id=sale.id).first()
+        assert refund_sale is not None
+
+        db_session.refresh(customer)
+        db_session.refresh(test_product)
+        assert customer.current_debt == Decimal("0.00")
+        assert test_product.stock_qty == 20.0
+
+        # Attempt to void the refund sale
+        with pytest.raises(ValueError, match="cannot_void_refund"):
+            TransactionService.void_sale(refund_sale.id, test_user.id, reason="Accidental refund")
+
+        db_session.refresh(customer)
+        db_session.refresh(test_product)
+        assert customer.current_debt == Decimal("0.00")
+        assert test_product.stock_qty == 20.0

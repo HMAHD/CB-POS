@@ -799,6 +799,12 @@ class DocumentBrowserView(QWidget, Activatable):
 
         self.convert_btn.setEnabled(doc_type == "proforma" and status == DocumentStatus.QUOTE)
 
+        is_refund_doc = doc_type == "sale" and (
+            bool(doc.get("refund_of_sale_id"))
+            or doc.get("payment_method") == "REFUND"
+            or doc.get("doc_number", "").startswith("CN-")
+        )
+
         self.void_btn.setEnabled(
             status
             not in (
@@ -806,6 +812,7 @@ class DocumentBrowserView(QWidget, Activatable):
                 DocumentStatus.CONVERTED,
                 DocumentStatus.EXPIRED,
             )
+            and not is_refund_doc
         )
 
         self.transfer_btn.setEnabled(doc_type == "sale" and status == DocumentStatus.COMPLETED)

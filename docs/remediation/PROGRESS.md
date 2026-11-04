@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 3A · Batch: 3A.2 · Branch: main · PR: #990 · Last session: 2026-11-04
+- Phase: 3A · Batch: 3A.3 · Branch: fix/p3a-b3-refund-void-state-machine · PR: none · Last session: 2026-11-04
 
 ## Issues
 
@@ -85,8 +85,8 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #887 | Two CREDIT lines on one sale raise the debt by both but write only one ledger… | medium | 3A.2 | done | #990 | 20dca8d · accumulate credit lines in `_charge_credit`, write single consolidated ledger row |
 | #888 | A balance adjustment clamps the debt at 0, which wipes store credit the shop … | medium | 3A.2 | done | #990 | 52ccceb, cf2d030 · remove 0-floor on adjustments, support store credit across UI & ledger |
 | #812 | Partial / item-level refunds and returns | medium | 3A.3 | todo | | |
-| #847 | You can void a sale that was already refunded, which returns its stock twice … | high | 3A.3 | todo | | |
-| #848 | You can void a refund (credit note), which takes the stock back out but leave… | high | 3A.3 | todo | | |
+| #847 | You can void a sale that was already refunded, which returns its stock twice … | high | 3A.3 | done | pr-open | 3462a50 · raise ValueError("sale_has_refund") in void_sale; points < 0 in already_reversed |
+| #848 | You can void a refund (credit note), which takes the stock back out but leave… | high | 3A.3 | done | pr-open | raise ValueError("cannot_void_refund") on refund docs; disable Void in Document Browser |
 | #915 | Refunded sales still show as "Completed" with an active Refund button; a retr… | low | 3A.3 | todo | | |
 
 ### Phase 3B — [spec](phases/phase-03b-cart-checkout-controls.md)

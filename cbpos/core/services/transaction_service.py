@@ -189,47 +189,62 @@ class TransactionService:
 
     @staticmethod
     def _charge_credit(
-        session: Session, payments: list[dict[str, Any]], customer_id: int | None
+        session: Session,
+        payments: list[dict[str, Any]],
+        customer_id: int | None,
+        kinds: dict[str, str] | None = None,
     ) -> tuple[Decimal, Decimal] | None:
-        """Put the CREDIT part of the payments on the customer's book (debt only, no ledger row yet).
+        """Apply CREDIT payments to the customer's balance, returning ``(total_credit, balance_after)``.
 
-        Locks the customer row and checks the credit limit before each charge.
+        Locks the customer row once and checks the credit limit against current debt plus
+        the accumulated credit payments. Accumulates all CREDIT lines (#887).
         The ledger row needs the sale's id, so it is written afterwards by
         ``_record_credit_charge``.
 
         Args:
             session: The open session the sale is being written in.
-            payments: ``[{"method", "amount"}, ...]`` as passed to ``process_sale``.
+            payments: Normalized ``[{"method", "amount", ...}, ...]`` as prepared by ``_normalise_payments``.
             customer_id: The sale's customer, if any.
+            kinds: Optional mapping of method name to PaymentMethodKind.
 
         Returns:
-            ``(amount, balance_after)`` of the (last) CREDIT payment, or None if
+            ``(total_credit, balance_after)`` of all CREDIT payments, or None if
             nothing was paid on credit.
 
         Raises:
             ValueError: If there is no customer, it doesn't exist, or the
-                charge would go over the credit limit.
+                total credit charge would go over the credit limit.
         """
-        from cbpos.core.constants.status import PaymentMethodType
+        from cbpos.core.constants.status import PaymentMethodKind, PaymentMethodType
+        from cbpos.core.services.payment_service import classify_method_name
 
-        charge = None
-        for p in payments:
-            if p["method"].upper() != PaymentMethodType.CREDIT.upper():
-                continue
+        def is_credit(p: dict[str, Any]) -> bool:
+            method_name = p.get("method") or ""
+            if kinds and method_name in kinds:
+                return kinds[method_name] == PaymentMethodKind.CREDIT
+            if p.get("method_kind") == PaymentMethodKind.CREDIT:
+                return True
+            return (
+                classify_method_name(method_name) == PaymentMethodKind.CREDIT
+                or method_name.upper() == PaymentMethodType.CREDIT.upper()
+            )
 
-            if not customer_id:
-                raise ValueError("Customer required for Credit sale.")
+        credit_total = sum(p["amount"] for p in payments if is_credit(p))
+        if credit_total <= Decimal("0.00"):
+            return None
 
-            customer = session.get(Customer, customer_id, with_for_update=True)
-            if not customer:
-                raise ValueError("Invalid Customer.")
+        if not customer_id:
+            raise ValueError("Customer required for Credit sale.")
 
-            if customer.current_debt + p["amount"] > customer.credit_limit:
-                raise ValueError(f"Credit limit exceeded for {customer.name}.")
+        customer = session.get(Customer, customer_id, with_for_update=True)
+        if not customer:
+            raise ValueError("Invalid Customer.")
 
-            customer.current_debt += p["amount"]
-            charge = (p["amount"], customer.current_debt)
-        return charge
+        if customer.current_debt + credit_total > customer.credit_limit:
+            raise ValueError(f"Credit limit exceeded for {customer.name}.")
+
+        customer.current_debt += credit_total
+        return (credit_total, customer.current_debt)
 
     @staticmethod
     def _record_credit_charge(session: Session, sale: Sale, charge: tuple[Decimal, Decimal] | None) -> None:
@@ -561,7 +576,7 @@ class TransactionService:
             cashier_id = current_user.id
 
             # 2. Charge credit (ledger row follows once the sale has an id)
-            credit_charge = TransactionService._charge_credit(session, payments, customer_id)
+            credit_charge = TransactionService._charge_credit(session, payments, customer_id, kinds=kinds)
 
             # Look up open shift for this cashier on this terminal (#884)
             terminal_id = ConfigService.get("terminal_id") or "TERM-01"

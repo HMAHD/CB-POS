@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 3A · Batch: 3A.1 · Branch: fix/p3a-b1-shift-cash-payment-identity · PR: none · Last session: 2026-11-04
+- Phase: 3A · Batch: 3A.2 · Branch: main · PR: #990 · Last session: 2026-11-04
 
 ## Issues
 
@@ -79,11 +79,11 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #854 | F12 Quick Pay records the payment as "CASH", so those sales are left out of t… | high | 3A.1 | done | #989 | fedf9d6 · `PaymentService.get_default_cash_method()` replaces hardcoded CASH |
 | #885 | Expected cash matches only a method named exactly "Cash"; ignores PaymentMeth… | medium | 3A.1 | done | #989 | c43860c · ShiftService groups by `method_kind`, counting all CASH-kind methods |
 | #802 | Shift summary misses "Bank Transfer" sales (expects the name "Transfer") | medium | 3A.1 | done | #989 | c43860c · ShiftService groups by `method_kind`, unifying Transfer and Bank Transfer |
-| #849 | Refunding a credit sale that was overpaid on credit wipes more debt than the … | high | 3A.2 | todo | | |
-| #851 | Over-tender is accepted on Credit (and other non-cash) payments; the customer… | high | 3A.2 | todo | | |
-| #852 | A Credit payment is charged to the first customer in the list, not the custom… | high | 3A.2 | todo | | |
-| #887 | Two CREDIT lines on one sale raise the debt by both but write only one ledger… | medium | 3A.2 | todo | | |
-| #888 | A balance adjustment clamps the debt at 0, which wipes store credit the shop … | medium | 3A.2 | todo | | |
+| #849 | Refunding a credit sale that was overpaid on credit wipes more debt than the … | high | 3A.2 | done | #990 | a6694ea · cap credit reversal at sale.total_amount |
+| #851 | Over-tender is accepted on Credit (and other non-cash) payments; the customer… | high | 3A.2 | done | #990 | d0fec1f · clamp non-cash over-tender in dialog, reject in service |
+| #852 | A Credit payment is charged to the first customer in the list, not the custom… | high | 3A.2 | done | #990 | 3ea1717 · lock to cart customer or require pick by id, propagate to SalesView |
+| #887 | Two CREDIT lines on one sale raise the debt by both but write only one ledger… | medium | 3A.2 | done | #990 | 20dca8d · accumulate credit lines in `_charge_credit`, write single consolidated ledger row |
+| #888 | A balance adjustment clamps the debt at 0, which wipes store credit the shop … | medium | 3A.2 | done | #990 | 52ccceb, cf2d030 · remove 0-floor on adjustments, support store credit across UI & ledger |
 | #812 | Partial / item-level refunds and returns | medium | 3A.3 | todo | | |
 | #847 | You can void a sale that was already refunded, which returns its stock twice … | high | 3A.3 | todo | | |
 | #848 | You can void a refund (credit note), which takes the stock back out but leave… | high | 3A.3 | todo | | |
@@ -304,5 +304,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|
 
 ## Handoff
-Batch 3A.1 merged in PR #989. Starting Batch 3A.2 on branch `fix/p3a-b2-credit-ledger` covering #851, #852, #887, #849, #888.
+Batch 3A.2 merged in PR #990 (issues #849, #851, #852, #887, #888 closed). Next is Batch 3A.3 (refund engine: #812, #847, #848, #915, completing #850).
 

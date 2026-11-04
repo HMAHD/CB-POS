@@ -234,8 +234,8 @@ class TestRecordAdjustment:
         db_session.refresh(customer)
         assert customer.current_debt == Decimal("300.00")
 
-    def test_adjustment_cannot_go_below_zero(self, db_session):
-        """Large negative adjustment caps debt at zero, not negative."""
+    def test_adjustment_can_go_negative_as_store_credit(self, db_session):
+        """Negative adjustment beyond current debt yields negative balance (store credit #888)."""
         user = _setup_user(db_session, "adj3")
         customer = _setup_customer(db_session, "Adj Cust Floor", current_debt=100)
         db_session.commit()
@@ -243,12 +243,12 @@ class TestRecordAdjustment:
         CustomerCreditService.record_adjustment(
             customer_id=customer.id,
             amount=Decimal("-500.00"),
-            note="Big write-off",
+            note="Big store credit / goodwill",
             user_id=user.id,
         )
 
         db_session.refresh(customer)
-        assert customer.current_debt == Decimal("0.00")
+        assert customer.current_debt == Decimal("-400.00")
 
     def test_adjustment_creates_ledger_entry(self, db_session):
         """Adjustment creates an ADJUSTMENT ledger entry."""

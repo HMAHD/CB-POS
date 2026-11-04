@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 2 · Batch: 2.5 (pr-open) · Branch: fix/p2-b5-sync-server-resilience · PR: #987 · Last session: 2026-11-03
+- Phase: 2 · Batch: 2.6 (in-progress) · Branch: fix/p2-b6-network-shifts-dashboards-locking · PR: — · Last session: 2026-11-04
 
 ## Issues
 
@@ -63,12 +63,12 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #871 | Deletions on the Main PC never reach the tills: removed promotions, price-lis… | high | 2.4 | done | #986 | e7b37b9 · sync_deletions table, reverse FK deletion order, soft-delete fallback, Admin Tools reload |
 | #872 | Role permissions never sync, so revoking or granting a permission on the Main… | high | 2.4 | done | #986 | e7b37b9 · permissions before roles, permission_codes sync, roles_changed signal refreshes current user |
 | #903 | Till audit logs and inventory logs never reach the Main PC | medium | 2.4 | done | #986 | e7b37b9 · synced column on inventory_logs, _FLAT_PUSH_TABLES, terminal_id filter in Activity Log UI |
-| #870 | One idle TCP connection stalls the whole Main PC sync server, before any auth… | high | 2.5 | pr-open | #987 | 096bd82 · do_handshake_on_connect=False, per-thread handshake timeout, 16-worker throttle |
-| #905 | The document sequence is found by string sort, so `{seq}` breaks at 10 and `{… | medium | 2.5 | pr-open | #987 | 9c47c52 · numeric sequence extraction via regex scan; collision retry increments sequence |
-| #906 | A push that fails on every cycle is invisible: pending count is never set, se… | medium | 2.5 | pr-open | #987 | f806d61 · pending_changed signal, persistent push error state, distinct terminals count, sync details dialog with retry |
-| #884 | Same cashier on two terminals: both open shifts count each other's sales | medium | 2.6 | todo | | |
-| #886 | Dashboard charts fail in PostgreSQL mode (SQLite-only strftime) | medium | 2.6 | todo | | |
-| #914 | Network mode has no lock or unique index, so two tills can refund or void the… | low | 2.6 | todo | | |
+| #870 | One idle TCP connection stalls the whole Main PC sync server, before any auth… | high | 2.5 | done | #987 | 6b154a8 · do_handshake_on_connect=False, per-thread handshake timeout, 16-worker throttle |
+| #905 | The document sequence is found by string sort, so `{seq}` breaks at 10 and `{… | medium | 2.5 | done | #987 | 6b154a8 · numeric sequence extraction via regex scan; collision retry increments sequence |
+| #906 | A push that fails on every cycle is invisible: pending count is never set, se… | medium | 2.5 | done | #987 | 6b154a8 · pending_changed signal, persistent push error state, distinct terminals count, sync details dialog with retry |
+| #884 | Same cashier on two terminals: both open shifts count each other's sales | medium | 2.6 | in-progress | | |
+| #886 | Dashboard charts fail in PostgreSQL mode (SQLite-only strftime) | medium | 2.6 | in-progress | | |
+| #914 | Network mode has no lock or unique index, so two tills can refund or void the… | low | 2.6 | blocked (Q1) | | |
 
 ### Phase 3A — [spec](phases/phase-03a-money-ledger-refunds.md)
 

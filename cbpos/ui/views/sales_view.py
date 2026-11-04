@@ -1053,6 +1053,10 @@ class SalesView(QWidget):
         if dialog.exec():
             payments, dialog_customer_id = dialog.payment_data
             customer_id = dialog_customer_id or (self.customer.id if self.customer else None)
+            if dialog_customer_id and (not self.customer or self.customer.id != dialog_customer_id):
+                chosen_customer = self.customer_service.get_customer_by_id(dialog_customer_id)
+                if chosen_customer:
+                    self.set_customer(chosen_customer)
             redeemed_points = dialog.loyalty_points_redeemed
 
             self._processing = True

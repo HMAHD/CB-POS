@@ -215,6 +215,8 @@ class CustomerCreditService:
                 .scalar()
             )
         )
+        sale_total = Decimal(str(sale.total_amount or 0))
+        credit_portion = min(credit_portion, sale_total)
         if credit_portion <= 0:
             return zero
 
@@ -364,8 +366,6 @@ class CustomerCreditService:
                 raise ValueError("Customer not found.")
 
             customer.current_debt += amount
-            if customer.current_debt < 0:
-                customer.current_debt = Decimal("0.00")
 
             entry = CustomerLedgerEntry(
                 customer_id=customer_id,

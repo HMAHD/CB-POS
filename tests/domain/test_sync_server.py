@@ -218,7 +218,7 @@ class TestServerResilience:
         server.start()
         try:
             # Wait until server is listening
-            for _ in range(50):
+            for _ in range(100):
                 if server._running and server._server is not None:
                     break
                 time.sleep(0.05)

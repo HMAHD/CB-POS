@@ -504,3 +504,30 @@ def test_issue_851_credit_overpay_rejected_by_service(db_session, test_user, tes
 
         with pytest.raises(ValueError, match="non_cash_overpay"):
             TransactionService.process_sale(cart_service, payments, customer_id=customer.id)
+
+
+def test_issue_887_two_credit_lines_one_ledger_row_equal_to_debt_change(db_session, test_user, test_product):
+    """Two CREDIT lines on one sale raise debt by both and write one ledger row for the total credit."""
+    from cbpos.core.models import Customer, CustomerLedgerEntry
+
+    customer = Customer(name="Multi Credit Customer", credit_limit=Decimal("5000.00"), current_debt=Decimal("0.00"))
+    db_session.add(customer)
+    db_session.commit()
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart_service = CartService()
+        cart_service.add_item(test_product, qty=Decimal("10.0"))  # price is 100.00 -> total 1000.00
+        payments = [
+            {"method": "Credit", "amount": Decimal("400.00")},
+            {"method": "Credit", "amount": Decimal("600.00")},
+        ]
+        sale = TransactionService.process_sale(cart_service, payments, customer_id=customer.id)
+
+    assert sale is not None
+    db_session.refresh(customer)
+    assert customer.current_debt == Decimal("1000.00")
+
+    ledger_entries = db_session.query(CustomerLedgerEntry).filter_by(reference_id=sale.id).all()
+    assert len(ledger_entries) == 1
+    assert ledger_entries[0].amount == Decimal("1000.00")
+    assert ledger_entries[0].balance_after == Decimal("1000.00")

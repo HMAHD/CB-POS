@@ -740,22 +740,26 @@ class CreditBookView(QWidget, Activatable):
                 set_item(row, 2, TableItem(customer.phone or ""))
 
                 # Debt with color coding
-                debt_item = TableItem(fmt_num(customer.current_debt, 2))
+                curr_d = customer.current_debt or Decimal("0.00")
+                if curr_d < 0:
+                    debt_item = TableItem(_t("credit.store_credit", amount=format_currency(abs(curr_d))))
+                    debt_item.setForeground(succ_color)
+                else:
+                    debt_item = TableItem(fmt_num(customer.current_debt, 2))
+                    if customer.credit_limit > 0:
+                        ratio = customer.current_debt / customer.credit_limit
+                        if ratio >= ratio_90:
+                            debt_item.setForeground(dang_color)
+                        elif ratio >= ratio_50:
+                            debt_item.setForeground(warn_color)
+                        elif customer.current_debt == 0:
+                            debt_item.setForeground(succ_color)
+                    elif customer.current_debt > 0:
+                        debt_item.setForeground(dang_color)
                 debt_item.setTextAlignment(align_right)
 
                 limit_item = TableItem(fmt_num(customer.credit_limit, 2))
                 limit_item.setTextAlignment(align_right)
-
-                if customer.credit_limit > 0:
-                    ratio = customer.current_debt / customer.credit_limit
-                    if ratio >= ratio_90:
-                        debt_item.setForeground(dang_color)
-                    elif ratio >= ratio_50:
-                        debt_item.setForeground(warn_color)
-                    elif customer.current_debt == 0:
-                        debt_item.setForeground(succ_color)
-                elif customer.current_debt > 0:
-                    debt_item.setForeground(dang_color)
 
                 points_item = TableItem(fmt_num(customer.loyalty_points or 0, 0))
                 points_item.setTextAlignment(align_right)
@@ -807,7 +811,11 @@ class CreditBookView(QWidget, Activatable):
 
         summary = CustomerCreditService.get_customer_summary(customer.id) if cid else None
         if summary:
-            self.lbl_debt.setText(format_currency(summary["current_debt"]))
+            curr_debt = summary["current_debt"]
+            if curr_debt < 0:
+                self.lbl_debt.setText(_t("credit.store_credit", amount=format_currency(abs(curr_debt))))
+            else:
+                self.lbl_debt.setText(format_currency(curr_debt))
             self.lbl_available.setText(format_currency(summary["available"]))
             self.lbl_limit.setText(format_currency(summary["credit_limit"]))
             if summary.get("last_payment_date"):
@@ -817,7 +825,10 @@ class CreditBookView(QWidget, Activatable):
         else:
             debt = getattr(customer, "current_debt", Decimal("0.00")) or Decimal("0.00")
             limit = getattr(customer, "credit_limit", Decimal("0.00")) or Decimal("0.00")
-            self.lbl_debt.setText(format_currency(debt))
+            if debt < 0:
+                self.lbl_debt.setText(_t("credit.store_credit", amount=format_currency(abs(debt))))
+            else:
+                self.lbl_debt.setText(format_currency(debt))
             self.lbl_limit.setText(format_currency(limit))
             self.lbl_available.setText(format_currency(max(Decimal("0.00"), limit - debt)))
             self.lbl_last_payment.setText(_t("credit_book.none"))

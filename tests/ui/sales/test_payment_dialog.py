@@ -94,3 +94,90 @@ class TestRemovePaymentButton:
         assert dialog.payments == []
         assert not dialog.btn_finish.isEnabled()
         assert dialog.get_remaining_amount() == Decimal("600.00")
+
+
+def test_issue_851_non_cash_amount_clamped_to_remaining(qapp, cash_and_card_methods):
+    """Over-tender on non-cash method is clamped to remaining amount with an inline note."""
+    dlg = PaymentDialog(Decimal("200.00"))
+    dlg.show()
+    card_method, card_btn = next((m, b) for b, m in dlg._method_buttons if m.name == "Card")
+    dlg.select_method(card_method, card_btn)
+    dlg.txt_amount.setText("1000.00")
+    dlg.add_payment()
+
+    assert len(dlg.payments) == 1
+    assert dlg.payments[0]["method"] == "Card"
+    assert dlg.payments[0]["amount"] == Decimal("200.00")
+    assert dlg.get_remaining_amount() == Decimal("0.00")
+    assert dlg.btn_finish.isEnabled()
+    assert dlg.lbl_amount_note.isVisible()
+    assert "200.00" in dlg.lbl_amount_note.text()
+
+    # Cleared on the next input
+    dlg.txt_amount.textEdited.emit("50")
+    assert not dlg.lbl_amount_note.isVisible()
+    assert dlg.lbl_amount_note.text() == ""
+
+    dlg.deleteLater()
+
+
+def test_issue_852_attached_customer_preselected_for_credit(qapp, db_session):
+    """With an attached customer, Credit pre-selects them and locks the combo read-only."""
+    from cbpos.core.constants.status import PaymentMethodKind
+    from cbpos.core.models import Customer
+
+    c1 = Customer(name="Aaron", phone="0771111111")
+    c2 = Customer(name="Zack", phone="0772222222")
+    credit = db_session.query(PaymentMethod).filter_by(name="Credit").first()
+    if not credit:
+        credit = PaymentMethod(name="Credit", kind=PaymentMethodKind.CREDIT, is_cash=False, is_active=True)
+        db_session.add(credit)
+    db_session.add_all([c1, c2])
+    db_session.commit()
+
+    dlg = PaymentDialog(Decimal("100.00"), customer=c2)
+    dlg.show()
+    credit_method, credit_btn = next((m, b) for b, m in dlg._method_buttons if m.name == "Credit")
+    dlg.select_method(credit_method, credit_btn)
+
+    assert dlg.cmb_customer.currentData() == c2.id
+    assert not dlg.cmb_customer.isEnabled()
+
+    dlg.txt_amount.setText("100.00")
+    dlg.add_payment()
+
+    _payments, customer_id = dlg.payment_data
+    assert customer_id == c2.id
+    dlg.deleteLater()
+
+
+def test_issue_852_same_name_customers_charged_by_id(qapp, db_session):
+    """Two customers with the exact same name are differentiated and selected by id."""
+    from cbpos.core.constants.status import PaymentMethodKind
+    from cbpos.core.models import Customer
+
+    c1 = Customer(name="Nimal SameName", phone="0771111111")
+    c2 = Customer(name="Nimal SameName", phone="0772222222")
+    credit = db_session.query(PaymentMethod).filter_by(name="Credit").first()
+    if not credit:
+        credit = PaymentMethod(name="Credit", kind=PaymentMethodKind.CREDIT, is_cash=False, is_active=True)
+        db_session.add(credit)
+    db_session.add_all([c1, c2])
+    db_session.commit()
+
+    dlg = PaymentDialog(Decimal("100.00"), customer=None)
+    dlg.show()
+    credit_method, credit_btn = next((m, b) for b, m in dlg._method_buttons if m.name == "Credit")
+    dlg.select_method(credit_method, credit_btn)
+
+    assert dlg.cmb_customer.isEnabled()
+    idx2 = dlg.cmb_customer.findData(c2.id)
+    assert idx2 >= 0
+    dlg.cmb_customer.setCurrentIndex(idx2)
+
+    dlg.txt_amount.setText("100.00")
+    dlg.add_payment()
+
+    _payments, customer_id = dlg.payment_data
+    assert customer_id == c2.id
+    dlg.deleteLater()

@@ -90,7 +90,11 @@ class AdjustBalanceDialog(QDialog):
         info_layout.addWidget(lbl_name)
 
         curr_debt = getattr(self.customer, "current_debt", Decimal("0.00")) or Decimal("0.00")
-        lbl_debt = QLabel(f"{_t('adjust_balance.current_debt')} {format_currency(curr_debt)}")
+        if curr_debt < 0:
+            debt_text = _t("credit.store_credit", amount=format_currency(abs(curr_debt)))
+        else:
+            debt_text = f"{_t('adjust_balance.current_debt')} {format_currency(curr_debt)}"
+        lbl_debt = QLabel(debt_text)
         lbl_debt.setObjectName("AdjustCustDebt")
         info_layout.addWidget(lbl_debt)
 
@@ -252,7 +256,10 @@ class AdjustBalanceDialog(QDialog):
             formula = f"= {format_currency(amt)}"
 
         self.lbl_formula.setText(f"Calculation: {formula}")
-        self.lbl_preview.setText(_t("adjust_balance.preview", value=format_currency(new_bal)))
+        if new_bal < 0:
+            self.lbl_preview.setText(_t("credit.store_credit", amount=format_currency(abs(new_bal))))
+        else:
+            self.lbl_preview.setText(_t("adjust_balance.preview", value=format_currency(new_bal)))
 
     def validate(self) -> bool:
         """Validate input values."""

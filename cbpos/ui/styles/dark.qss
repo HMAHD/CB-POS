@@ -656,6 +656,11 @@ QLabel[status="neutral"] {
     font-weight: bold;
 }
 
+QLabel[status="info"], QLabel[class="status-info"] {
+    color: {{ACCENT}};
+    font-weight: bold;
+}
+
 QLabel#PriceListStatusBadge {
     padding: 2px 8px;
     border-radius: 4px;

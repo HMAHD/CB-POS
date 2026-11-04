@@ -2714,7 +2714,12 @@
     "no_user_logged_in": "කවුරුවත් ලොග් වෙලා නැහැ.",
     "refund_success": "ආපසු ගෙවීම සාර්ථකයි.",
     "refund_failed": "ආපසු ගෙවීම අසාර්ථකයි. ලොග් බලන්න.",
-    "refund_error": "ආපසු ගෙවීම අසාර්ථකයි: {error}"
+    "refund_error": "ආපසු ගෙවීම අසාර්ථකයි: {error}",
+    "pill_refunded": "මුදල් ආපසු ගෙවන ලදී",
+    "pill_part_refunded": "කොටසක් ආපසු ගෙවන ලදී",
+    "refund_disabled_full": "මෙම විකිණීමේ සියල්ල ආපසු ගෙවා ඇත.",
+    "void_disabled_refunded": "මෙම විකිණීමට ආපසු ගෙවීමක් ඇති බැවින් අවලංගු කළ නොහැක.",
+    "void_disabled_is_refund": "ආපසු ගෙවීම් අවලංගු කළ නොහැක."
   },
   "denomination": {
     "grand_total": "මහා එකතුව"

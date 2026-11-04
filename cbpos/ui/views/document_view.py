@@ -31,6 +31,7 @@ from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.document_browser_service import DocumentBrowserService
 from cbpos.core.services.printer_service import PrinterService
 from cbpos.core.services.proforma_service import ProformaService
+from cbpos.core.services.refund_service import RefundService
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.tax_service import TaxService
 from cbpos.core.services.transaction_service import TransactionService
@@ -565,6 +566,9 @@ class DocumentBrowserView(QWidget, Activatable):
             meanings = self.STATUS_MEANINGS
             pill_setter = set_status_pill
 
+            sale_ids = [d["id"] for d in documents if d.get("type", "").upper() == "SALE"]
+            self._refund_states = RefundService.refund_states(sale_ids) if sale_ids else {}
+
             for row, doc in enumerate(documents):
                 insert_row(row)
 
@@ -587,7 +591,24 @@ class DocumentBrowserView(QWidget, Activatable):
 
                 status_item = TableItem()
                 status_item.setData(user_role, doc["status"])
-                pill_setter(status_item, fmt_status(doc["status"]), meanings.get(doc["status"]))
+                doc_type_upper = doc.get("type", "").upper()
+                rstate = self._refund_states.get(doc["id"], "NONE") if doc_type_upper == "SALE" else "NONE"
+                is_refund_doc = doc_type_upper == "SALE" and (
+                    bool(doc.get("refund_of_sale_id"))
+                    or doc.get("payment_method") == "REFUND"
+                    or doc.get("document_number", "").startswith("CN-")
+                )
+
+                if doc["status"] == DocumentStatus.VOID:
+                    pill_setter(status_item, fmt_status(doc["status"]), "danger")
+                elif is_refund_doc:
+                    pill_setter(status_item, fmt_status(doc["status"]), "warning")
+                elif rstate == "FULL":
+                    pill_setter(status_item, _t("history.pill_refunded"), "info")
+                elif rstate == "PARTIAL":
+                    pill_setter(status_item, _t("history.pill_part_refunded"), "info")
+                else:
+                    pill_setter(status_item, fmt_status(doc["status"]), meanings.get(doc["status"]))
                 set_item(row, 5, status_item)
 
                 set_item(row, 6, TableItem(doc.get("username", "")))
@@ -612,10 +633,22 @@ class DocumentBrowserView(QWidget, Activatable):
             self.update_action_buttons(details)
             self._show_detail()
 
-    def _status_badge_html(self, status: str) -> str:
-        """The status as a tinted, bold badge for the rich-text detail panel (#560, #582)."""
+    def _status_badge_html(self, status: str, doc: dict | None = None) -> str:
+        """The status as a tinted, bold badge for the rich-text detail panel (#560, #582, #915)."""
         meaning = self.STATUS_MEANINGS.get(status)
         display_text = format_document_status(status)
+
+        if doc and doc.get("type", "").upper() == "SALE":
+            rstate = getattr(self, "_refund_states", {}).get(doc.get("id"))
+            if rstate is None and doc.get("id"):
+                rstate = RefundService.refund_state(doc.get("id"))
+            if rstate == "FULL":
+                display_text = _t("history.pill_refunded")
+                meaning = INFO
+            elif rstate == "PARTIAL":
+                display_text = _t("history.pill_part_refunded")
+                meaning = INFO
+
         if not meaning:
             return display_text
         fg, fill = pill_colors(meaning)
@@ -644,7 +677,7 @@ class DocumentBrowserView(QWidget, Activatable):
 
         meta = [
             row(_t("document_browser.detail_date"), date_display),
-            row(_t("document_browser.detail_status"), self._status_badge_html(doc["status"])),
+            row(_t("document_browser.detail_status"), self._status_badge_html(doc["status"], doc)),
             row(_t("document_browser.detail_user"), html.escape(doc.get("username") or "")),
         ]
 
@@ -789,23 +822,36 @@ class DocumentBrowserView(QWidget, Activatable):
 
     def update_action_buttons(self, doc: dict) -> None:
         """Enable relevant action buttons based on document type and status."""
-        doc_type = doc.get("type", "")
+        doc_type = doc.get("type", "").lower()
         status = doc.get("status", "")
+        doc_id = doc.get("id")
 
-        self.reprint_btn.setEnabled(doc_type in ("sale", "purchase", "proforma") and status != DocumentStatus.VOID)
-
-        is_refundable = doc_type == "sale" and status == DocumentStatus.COMPLETED and not doc.get("refund_of_sale_id")
-        self.refund_btn.setEnabled(is_refundable)
-
-        self.convert_btn.setEnabled(doc_type == "proforma" and status == DocumentStatus.QUOTE)
+        rstate = getattr(self, "_refund_states", {}).get(doc_id) if doc_type == "sale" else "NONE"
+        if doc_type == "sale" and rstate is None and doc_id:
+            rstate = RefundService.refund_state(doc_id)
 
         is_refund_doc = doc_type == "sale" and (
             bool(doc.get("refund_of_sale_id"))
             or doc.get("payment_method") == "REFUND"
-            or doc.get("doc_number", "").startswith("CN-")
+            or doc.get("document_number", "").startswith("CN-")
         )
 
-        self.void_btn.setEnabled(
+        self.reprint_btn.setEnabled(doc_type in ("sale", "purchase", "proforma") and status != DocumentStatus.VOID)
+
+        is_refundable = (
+            doc_type == "sale" and status == DocumentStatus.COMPLETED and not is_refund_doc and rstate != "FULL"
+        )
+        self.refund_btn.setEnabled(is_refundable)
+        if doc_type == "sale" and rstate == "FULL":
+            self.refund_btn.setToolTip(_t("history.refund_disabled_full"))
+        elif is_refund_doc:
+            self.refund_btn.setToolTip(_t("history.void_disabled_is_refund"))
+        else:
+            self.refund_btn.setToolTip("")
+
+        self.convert_btn.setEnabled(doc_type == "proforma" and status == DocumentStatus.QUOTE)
+
+        can_void = (
             status
             not in (
                 DocumentStatus.VOID,
@@ -813,7 +859,15 @@ class DocumentBrowserView(QWidget, Activatable):
                 DocumentStatus.EXPIRED,
             )
             and not is_refund_doc
+            and rstate == "NONE"
         )
+        self.void_btn.setEnabled(can_void)
+        if is_refund_doc:
+            self.void_btn.setToolTip(_t("history.void_disabled_is_refund"))
+        elif doc_type == "sale" and rstate != "NONE":
+            self.void_btn.setToolTip(_t("history.void_disabled_refunded"))
+        else:
+            self.void_btn.setToolTip("")
 
         self.transfer_btn.setEnabled(doc_type == "sale" and status == DocumentStatus.COMPLETED)
         self._layout_action_buttons()
@@ -955,6 +1009,9 @@ class DocumentBrowserView(QWidget, Activatable):
                         _t("common.error"),
                         _t("document_browser.refund_failed"),
                     )
+            except ValueError as e:
+                logger.warning("Refund rejected: %s", e)
+                QMessageBox.warning(self, _t("common.warning"), translate_error(str(e)))
             except Exception as e:
                 logger.exception("Refund failed: %s", e)
                 QMessageBox.critical(

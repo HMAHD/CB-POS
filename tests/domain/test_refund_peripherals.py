@@ -83,7 +83,8 @@ def test_a_rejected_refund_prints_no_voucher(db_session, cashier, sale, peripher
     assert TransactionService.process_refund(sale.id, "Damaged", cashier.id) is True
     peripherals.events.clear()
 
-    assert TransactionService.process_refund(sale.id, "Again", cashier.id) is False
+    with pytest.raises(ValueError):
+        TransactionService.process_refund(sale.id, "Again", cashier.id)
 
     assert peripherals.events == []
 

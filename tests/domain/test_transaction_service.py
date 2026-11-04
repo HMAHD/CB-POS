@@ -291,9 +291,8 @@ def test_refund_voided_sale_fails(db_session, test_user):
     db_session.add(sale)
     db_session.commit()
 
-    result = TransactionService.process_refund(sale.id, "Should fail", test_user.id)
-
-    assert result is False
+    with pytest.raises(ValueError, match="Cannot refund a voided sale"):
+        TransactionService.process_refund(sale.id, "Should fail", test_user.id)
 
 
 # ── Test Case I: Cannot Double-Refund ────────────────────────────────────
@@ -316,9 +315,8 @@ def test_double_refund_fails(db_session, test_user, test_product, completed_sale
     db_session.add(existing_refund)
     db_session.commit()
 
-    result = TransactionService.process_refund(completed_sale.id, "Second refund attempt", test_user.id)
-
-    assert result is False
+    with pytest.raises(ValueError, match=r"already refunded|cannot refund"):
+        TransactionService.process_refund(completed_sale.id, "Second refund attempt", test_user.id)
 
 
 # ── Test Case J: Cannot Refund a Refund ──────────────────────────────────
@@ -339,18 +337,17 @@ def test_refund_of_refund_fails(db_session, test_user):
     db_session.add(refund_sale)
     db_session.commit()
 
-    result = TransactionService.process_refund(refund_sale.id, "Meta refund", test_user.id)
-
-    assert result is False
+    with pytest.raises(ValueError, match="refund transaction"):
+        TransactionService.process_refund(refund_sale.id, "Meta refund", test_user.id)
 
 
 # ── Test Case K: Refund Non-existent Sale ────────────────────────────────
 
 
 def test_refund_nonexistent_sale(db_session):
-    """Refunding a non-existent sale returns False."""
-    result = TransactionService.process_refund(999999, "Ghost sale", 1)
-    assert result is False
+    """Refunding a non-existent sale raises ValueError."""
+    with pytest.raises(ValueError, match="not found"):
+        TransactionService.process_refund(999999, "Ghost sale", 1)
 
 
 # ── Test Case L: B2B customers additionally get an A4 Tax Invoice ───────
@@ -682,3 +679,23 @@ def test_issue_848_void_of_refund_document_refused(db_session, test_user, test_p
         db_session.refresh(test_product)
         assert customer.current_debt == Decimal("0.00")
         assert test_product.stock_qty == 20.0
+
+
+def test_issue_915_process_refund_on_refunded_sale_raises(db_session, test_user, test_product):
+    """Calling process_refund on an already refunded sale propagates ValueError instead of returning False (#915)."""
+    test_product.stock_qty = 10.0
+    test_product.price = Decimal("100.00")
+    db_session.commit()
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart = CartService()
+        cart.add_item(test_product, qty=Decimal("1.0"))
+        sale = TransactionService.process_sale(cart, [{"method": "Cash", "amount": Decimal("100.00")}])
+        assert sale is not None
+
+        # First refund succeeds
+        assert TransactionService.process_refund(sale.id, "Return", test_user.id) is True
+
+        # Second refund must raise ValueError, not return False
+        with pytest.raises(ValueError):
+            TransactionService.process_refund(sale.id, "Return again", test_user.id)

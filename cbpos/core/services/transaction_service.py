@@ -837,9 +837,8 @@ class TransactionService:
                 peripherals=peripherals,
             )
             return True
-        except ValueError as e:
-            logger.warning("Refund rejected: %s", e)
-            return False
+        except ValueError:
+            raise
         except Exception as e:
             logger.error("Refund Failed: %s", e)
             return False

@@ -602,3 +602,81 @@ def test_issue_812_failure_midway_leaves_nothing(db_session, refund_user):
     # Item refunded_qty unchanged
     db_session.refresh(item)
     assert item.refunded_qty == Decimal("0.000")
+
+
+def test_issue_915_refund_states_batched(db_session, refund_user):
+    """RefundService.refund_states correctly classifies sales in a single batch query (#915)."""
+    p = _create_product(db_session, "BatchItem", price=100.0, stock=20.0)
+
+    # Sale 1: no refund
+    s1 = Sale(
+        document_number="INV-915-01",
+        date=datetime.now(),
+        total_amount=Decimal("200.00"),
+        status="COMPLETED",
+        payment_method="CASH",
+        user_id=refund_user.id,
+    )
+    db_session.add(s1)
+    db_session.flush()
+    i1 = _create_sale_item(s1.id, p.id, Decimal("2"), Decimal("100.00"), Decimal("200.00"))
+    pay1 = SalePayment(
+        sale_id=s1.id, payment_method="Cash", method_kind=PaymentMethodKind.CASH, amount=Decimal("200.00")
+    )
+    db_session.add_all([i1, pay1])
+
+    # Sale 2: partial refund
+    s2 = Sale(
+        document_number="INV-915-02",
+        date=datetime.now(),
+        total_amount=Decimal("200.00"),
+        status="COMPLETED",
+        payment_method="CASH",
+        user_id=refund_user.id,
+    )
+    db_session.add(s2)
+    db_session.flush()
+    i2 = _create_sale_item(s2.id, p.id, Decimal("2"), Decimal("100.00"), Decimal("200.00"))
+    pay2 = SalePayment(
+        sale_id=s2.id, payment_method="Cash", method_kind=PaymentMethodKind.CASH, amount=Decimal("200.00")
+    )
+    db_session.add_all([i2, pay2])
+
+    # Sale 3: full refund
+    s3 = Sale(
+        document_number="INV-915-03",
+        date=datetime.now(),
+        total_amount=Decimal("100.00"),
+        status="COMPLETED",
+        payment_method="CASH",
+        user_id=refund_user.id,
+    )
+    db_session.add(s3)
+    db_session.flush()
+    i3 = _create_sale_item(s3.id, p.id, Decimal("1"), Decimal("100.00"), Decimal("100.00"))
+    pay3 = SalePayment(
+        sale_id=s3.id, payment_method="Cash", method_kind=PaymentMethodKind.CASH, amount=Decimal("100.00")
+    )
+    db_session.add_all([i3, pay3])
+    db_session.commit()
+
+    # Refund 1 qty on s2 (partial)
+    RefundService.refund(
+        s2.id,
+        [RefundLineRequest(sale_item_id=i2.id, qty=Decimal("1"))],
+        reason="Partial return",
+        user_id=refund_user.id,
+    )
+
+    # Refund 1 qty on s3 (full)
+    RefundService.refund(
+        s3.id,
+        [RefundLineRequest(sale_item_id=i3.id, qty=Decimal("1"))],
+        reason="Full return",
+        user_id=refund_user.id,
+    )
+
+    states = RefundService.refund_states([s1.id, s2.id, s3.id])
+    assert states[s1.id] == "NONE"
+    assert states[s2.id] == "PARTIAL"
+    assert states[s3.id] == "FULL"

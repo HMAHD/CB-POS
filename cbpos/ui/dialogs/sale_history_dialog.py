@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
 )
 
 from cbpos.core.services.receipt_builder import ReceiptBuilder
+from cbpos.core.services.refund_service import RefundService
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.transaction_service import TransactionService
 from cbpos.core.utils.error_messages import translate_error
@@ -33,7 +34,7 @@ from cbpos.core.utils.formatters import format_currency, format_datetime, format
 from cbpos.i18n import _t
 from cbpos.ui.refund_messages import refund_confirm_text, refund_done_text
 from cbpos.ui.resources.icons import Icons
-from cbpos.ui.resources.status_colors import DANGER, NEUTRAL, SUCCESS, WARNING, status_color, status_hex
+from cbpos.ui.resources.status_colors import DANGER, INFO, NEUTRAL, SUCCESS, WARNING, status_color, status_hex
 from cbpos.ui.widgets.receipt_preview_widget import ReceiptPreviewWidget
 from cbpos.ui.widgets.table_helpers import (
     NUMERIC_ALIGNMENT,
@@ -486,6 +487,9 @@ class SaleHistoryDialog(QDialog):
 
             self.lbl_record_count.setText(_t("sale_history.sales_found", count=len(self._sales)))
 
+            sale_ids = [sale.id for sale in self._sales if getattr(sale, "id", None)]
+            self._refund_states = RefundService.refund_states(sale_ids) if sale_ids else {}
+
             TableItem = QTableWidgetItem
             RelTimeItem = RelativeTimeTableWidgetItem
             fmt_curr = format_currency
@@ -496,6 +500,7 @@ class SaleHistoryDialog(QDialog):
             succ_color = status_color(SUCCESS)
             dang_color = status_color(DANGER)
             warn_color = status_color(WARNING)
+            info_color = status_color(INFO)
             walk_in_text = _t("sale_history.walk_in")
             set_item = self.sales_table.setItem
             insert_row = self.sales_table.insertRow
@@ -521,21 +526,38 @@ class SaleHistoryDialog(QDialog):
                 total_item.setTextAlignment(num_align)
                 set_item(row, 3, total_item)
 
-                # Status (colored)
+                # Status (colored & derived refund state #915)
                 status = sale.status or "COMPLETED"
-                status_text = self._get_status_display(status)
-                status_item = TableItem(status_text)
+                rstate = self._refund_states.get(sale.id, "NONE")
+                is_refund_doc = sale.payment_method == "REFUND" or bool(getattr(sale, "refund_of_sale_id", None))
 
-                if status == "COMPLETED":
-                    status_item.setForeground(succ_color)
-                    set_pill(status_item, status_text, "success")
-                elif status == "VOID":
+                status_item = TableItem()
+                if status == "VOID":
+                    status_text = self._get_status_display(status)
                     status_item.setForeground(dang_color)
                     set_pill(status_item, status_text, "danger")
-                elif sale.payment_method == "REFUND":
+                elif is_refund_doc:
+                    status_text = (
+                        _t("sale_history.status_refunded")
+                        if _t("sale_history.status_refunded") != "sale_history.status_refunded"
+                        else "REFUND"
+                    )
                     status_item.setForeground(warn_color)
                     set_pill(status_item, status_text, "warning")
+                elif rstate == "FULL":
+                    status_text = _t("history.pill_refunded")
+                    status_item.setForeground(info_color)
+                    set_pill(status_item, status_text, "info")
+                elif rstate == "PARTIAL":
+                    status_text = _t("history.pill_part_refunded")
+                    status_item.setForeground(info_color)
+                    set_pill(status_item, status_text, "info")
+                elif status == "COMPLETED":
+                    status_text = self._get_status_display(status)
+                    status_item.setForeground(succ_color)
+                    set_pill(status_item, status_text, "success")
                 else:
+                    status_text = self._get_status_display(status)
                     set_pill(status_item, status_text, "neutral")
 
                 status_item.setTextAlignment(align_center)
@@ -546,7 +568,6 @@ class SaleHistoryDialog(QDialog):
         status_map = {
             "COMPLETED": _t("sale_history.status_completed"),
             "VOID": _t("sale_history.status_void"),
-            "REFUNDED": _t("sale_history.status_refunded"),
         }
         return status_map.get(status, status)
 
@@ -587,14 +608,29 @@ class SaleHistoryDialog(QDialog):
         self.lbl_info_receipt.setText(f"{_t('sale_history.detail_receipt')} {doc_num}")
 
         # Status indicator
-        status_text = self._get_status_display(status)
+        rstate = getattr(self, "_refund_states", {}).get(sale.id, "NONE")
+        is_refund_doc = sale.payment_method == "REFUND" or bool(getattr(sale, "refund_of_sale_id", None))
+
+        if status == "VOID":
+            status_text = self._get_status_display(status)
+            meaning = DANGER
+        elif is_refund_doc:
+            status_text = "REFUND"
+            meaning = WARNING
+        elif rstate == "FULL":
+            status_text = _t("history.pill_refunded")
+            meaning = INFO
+        elif rstate == "PARTIAL":
+            status_text = _t("history.pill_part_refunded")
+            meaning = INFO
+        elif status == "COMPLETED":
+            status_text = self._get_status_display(status)
+            meaning = SUCCESS
+        else:
+            status_text = self._get_status_display(status)
+            meaning = NEUTRAL
+
         self.lbl_info_status.setText(status_text)
-        status_meaning_map = {
-            "COMPLETED": SUCCESS,
-            "VOID": DANGER,
-            "REFUNDED": WARNING,
-        }
-        meaning = status_meaning_map.get(status, NEUTRAL)
         self.lbl_info_status.setStyleSheet(f"color: {status_hex(meaning)}; font-weight: bold;")
 
         # Date & relative time
@@ -674,9 +710,15 @@ class SaleHistoryDialog(QDialog):
             self.lbl_sum_tendered_val.setVisible(False)
             self.lbl_sum_change_val.setVisible(False)
 
-        # Enable/disable refund button
-        can_refund = status not in ("VOID", "REFUNDED") and sale.payment_method != "REFUND"
+        # Enable/disable refund button (#915)
+        can_refund = status == "COMPLETED" and not is_refund_doc and rstate != "FULL"
         self.btn_refund.setEnabled(can_refund)
+        if rstate == "FULL":
+            self.btn_refund.setToolTip(_t("history.refund_disabled_full"))
+        elif is_refund_doc:
+            self.btn_refund.setToolTip(_t("history.void_disabled_is_refund"))
+        else:
+            self.btn_refund.setToolTip("")
 
         # Retained compatibility
         self.btn_reprint.setEnabled(True)
@@ -773,11 +815,18 @@ class SaleHistoryDialog(QDialog):
 
         sale = self._selected_sale
         status = sale.status or "COMPLETED"
-        if status in ("VOID", "REFUNDED") or sale.payment_method == "REFUND":
+        rstate = getattr(self, "_refund_states", {}).get(sale.id, "NONE")
+        is_refund_doc = sale.payment_method == "REFUND" or bool(getattr(sale, "refund_of_sale_id", None))
+        if status == "VOID" or is_refund_doc or rstate == "FULL":
+            msg = (
+                _t("history.refund_disabled_full")
+                if rstate == "FULL"
+                else _t("sale_history.refund_not_eligible", status=status)
+            )
             QMessageBox.warning(
                 self,
                 _t("common.warning"),
-                _t("sale_history.refund_not_eligible", status=status),
+                msg,
             )
             return
 

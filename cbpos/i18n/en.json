@@ -779,7 +779,12 @@
     "no_user_logged_in": "No user logged in.",
     "refund_success": "Refund processed successfully.",
     "refund_failed": "Failed to process refund. Check logs.",
-    "refund_error": "Refund failed: {error}"
+    "refund_error": "Refund failed: {error}",
+    "pill_refunded": "Refunded",
+    "pill_part_refunded": "Part refunded",
+    "refund_disabled_full": "Everything on this sale has been refunded.",
+    "void_disabled_refunded": "This sale has a refund, so it can't be voided.",
+    "void_disabled_is_refund": "Refunds can't be voided."
   },
   "catalog": {
     "read_only_banner": "This till uses the Main PC's product list. Add or change products, prices, suppliers and users on the Main PC; changes arrive here automatically.",

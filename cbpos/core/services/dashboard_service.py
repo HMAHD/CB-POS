@@ -433,9 +433,10 @@ class DashboardService:
         with _session() as session:
             today = date.today()
 
+            # TODO(#844): use method_kind
             rows = (
                 session.query(
-                    SalePayment.payment_method,
+                    SalePayment.payment_method,  # TODO(#844): use method_kind
                     func.sum(SalePayment.amount).label("total"),
                 )
                 .join(Sale, SalePayment.sale_id == Sale.id)

@@ -3,6 +3,7 @@ import logging
 from sqlalchemy import func, select, union
 from sqlalchemy.orm import Session
 
+from cbpos.core.constants.status import PaymentMethodKind
 from cbpos.core.database import Database
 from cbpos.core.models import CustomerPayment, PaymentMethod, Sale, SalePayment, SupplierPayment
 from cbpos.core.utils.terminal_guard import require_catalog_writable
@@ -32,6 +33,52 @@ def normalize_shortcut(shortcut: str | None) -> str:
     parts = [p.strip().casefold() for p in shortcut.split("+")]
     parts = ["esc" if p == "escape" else p for p in parts if p and p != "num"]
     return "+".join(parts)
+
+
+BUILTIN_METHOD_NAMES = frozenset(
+    {
+        "cash",
+        "card",
+        "credit",
+        "qr/mobile",
+        "cheque",
+        "bank transfer",
+        "transfer",
+    }
+)
+
+
+def classify_method_name(name: str | None) -> str:
+    """Classify a raw payment method display name to a PaymentMethodKind.
+
+    Case-insensitive matching:
+    - 'cash' -> CASH
+    - 'card' -> CARD
+    - 'credit' -> CREDIT
+    - 'qr/mobile', 'qr', 'mobile' -> QR
+    - 'cheque', 'check' -> CHEQUE
+    - 'transfer', 'bank transfer' -> TRANSFER
+    - 'refund' -> REFUND_LEGACY
+    - otherwise -> OTHER
+    """
+    if not name:
+        return PaymentMethodKind.OTHER
+    cleaned = name.strip().lower()
+    if cleaned == "cash":
+        return PaymentMethodKind.CASH
+    if cleaned == "card":
+        return PaymentMethodKind.CARD
+    if cleaned == "credit":
+        return PaymentMethodKind.CREDIT
+    if cleaned in ("qr/mobile", "qr", "mobile"):
+        return PaymentMethodKind.QR
+    if cleaned in ("cheque", "check"):
+        return PaymentMethodKind.CHEQUE
+    if cleaned in ("transfer", "bank transfer"):
+        return PaymentMethodKind.TRANSFER
+    if cleaned == "refund":
+        return PaymentMethodKind.REFUND_LEGACY
+    return PaymentMethodKind.OTHER
 
 
 class ShortcutConflictError(ValueError):
@@ -205,19 +252,75 @@ class PaymentService:
             return results
 
     @staticmethod
+    def get_kind_for(method_name: str, session: Session | None = None) -> str:
+        """Resolve PaymentMethodKind for a method name.
+
+        Looks up the PaymentMethod in DB by name (case-insensitive);
+        if not found, classifies the name using classify_method_name.
+        """
+        if not method_name:
+            return PaymentMethodKind.OTHER
+
+        def _lookup(s: Session) -> str | None:
+            m = s.query(PaymentMethod).filter(func.lower(PaymentMethod.name) == method_name.strip().lower()).first()
+            return m.kind if m else None
+
+        if session is not None:
+            kind = _lookup(session)
+            if kind:
+                return kind
+        else:
+            db = Database()
+            with db.get_session() as s:
+                kind = _lookup(s)
+                if kind:
+                    return kind
+
+        return classify_method_name(method_name)
+
+    @staticmethod
+    def get_default_cash_method() -> PaymentMethod | None:
+        """Get the default active cash payment method (first active with kind CASH, ordered by id)."""
+        db = Database()
+        with db.get_session() as session:
+            method = (
+                session.query(PaymentMethod)
+                .filter(
+                    PaymentMethod.is_active.is_(True),
+                    PaymentMethod.kind == PaymentMethodKind.CASH,
+                )
+                .order_by(PaymentMethod.id.asc())
+                .first()
+            )
+            if method:
+                session.expunge(method)
+            return method
+
+    @staticmethod
+    def is_builtin_method(method: PaymentMethod | None) -> bool:
+        """Whether a payment method is a built-in method whose type cannot be changed."""
+        if not method:
+            return False
+        if method.name and method.name.strip().casefold() in BUILTIN_METHOD_NAMES:
+            return True
+        return bool(method.id and method.id <= 6)
+
+    @staticmethod
     def create_method(
         name: str,
         is_cash: bool = False,
         open_drawer: bool = False,
         shortcut: str | None = None,
+        kind: str | None = None,
     ) -> PaymentMethod:
         """Create a new payment method.
 
         Args:
             name: Display name (must be non-empty and unique among active methods).
-            is_cash: Whether this method represents cash.
+            is_cash: Whether this method represents cash (kept in sync with kind).
             open_drawer: Whether to kick the cash drawer on this method.
             shortcut: Optional keyboard shortcut key; empty means none.
+            kind: Optional stable PaymentMethodKind; defaults to CASH if is_cash else derived.
 
         Returns:
             The newly created PaymentMethod.
@@ -231,6 +334,10 @@ class PaymentService:
         if not name or not name.strip():
             raise ValueError("Payment method name cannot be empty")
 
+        if kind is None:
+            kind = PaymentMethodKind.CASH if is_cash else classify_method_name(name)
+        is_cash = kind == PaymentMethodKind.CASH
+
         db = Database()
         with db.get_session() as session:
             existing = session.query(PaymentMethod).filter(PaymentMethod.name == name.strip()).first()
@@ -240,6 +347,7 @@ class PaymentService:
 
             method = PaymentMethod(
                 name=name.strip(),
+                kind=kind,
                 is_cash=is_cash,
                 open_drawer=open_drawer,
                 shortcut=shortcut,
@@ -249,7 +357,7 @@ class PaymentService:
             session.commit()
             session.refresh(method)
             session.expunge(method)
-            logger.info("Created payment method: %s (id=%d)", method.name, method.id)
+            logger.info("Created payment method: %s (id=%d, kind=%s)", method.name, method.id, method.kind)
             return method
 
     @staticmethod
@@ -260,6 +368,7 @@ class PaymentService:
         open_drawer: bool | None = None,
         shortcut: str | None = None,
         is_active: bool | None = None,
+        kind: str | None = None,
     ) -> PaymentMethod | None:
         """Update an existing payment method.
 
@@ -306,8 +415,15 @@ class PaymentService:
                 if name != method.name and PaymentService._name_is_used(session, method.name):
                     raise PaymentMethodInUseError(method.name)
                 method.name = name
-            if is_cash is not None:
+            if kind is not None:
+                method.kind = kind
+                method.is_cash = kind == PaymentMethodKind.CASH
+            elif is_cash is not None:
                 method.is_cash = is_cash
+                if is_cash:
+                    method.kind = PaymentMethodKind.CASH
+                elif method.kind == PaymentMethodKind.CASH:
+                    method.kind = PaymentMethodKind.OTHER
             if open_drawer is not None:
                 method.open_drawer = open_drawer
             if shortcut is not None:

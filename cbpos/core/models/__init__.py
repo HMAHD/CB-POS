@@ -27,6 +27,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from cbpos.core.constants.status import PaymentMethodKind
 from cbpos.core.database import Base
 
 # --- Association Tables ---
@@ -214,6 +215,25 @@ class Sale(Document):
     payments: Mapped[list["SalePayment"]] = relationship(back_populates="sale", cascade="all, delete-orphan")
     refund_of_sale: Mapped["Sale"] = relationship("Sale", remote_side=[id], foreign_keys=[refund_of_sale_id])
     shift: Mapped["Shift | None"] = relationship("Shift")
+
+    @property
+    def tendered(self) -> Decimal | None:
+        """Total amount tendered across all payments, if any payment was overtendered."""
+        if not hasattr(self, "payments") or not self.payments:
+            return None
+        has_overtender = any(p.tendered_amount is not None for p in self.payments)
+        if not has_overtender:
+            return None
+        return sum((p.tendered_amount if p.tendered_amount is not None else p.amount) for p in self.payments)
+
+    @property
+    def change(self) -> Decimal | None:
+        """Total change given, if any payment was overtendered."""
+        tendered_val = self.tendered
+        if tendered_val is None:
+            return None
+        diff = tendered_val - (self.total_amount or Decimal("0.00"))
+        return diff if diff > 0 else Decimal("0.00")
 
     __mapper_args__ = {
         "polymorphic_identity": "sale",
@@ -522,10 +542,25 @@ class SalePayment(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     sale_id: Mapped[int] = mapped_column(ForeignKey("sales.id"), index=True)
-    payment_method: Mapped[str] = mapped_column(String(20), nullable=False)  # Cash, Card, Credit
+    payment_method: Mapped[str] = mapped_column(String(20), nullable=False)  # Display snapshot
+    method_kind: Mapped[str] = mapped_column(
+        String(20),
+        default=PaymentMethodKind.OTHER,
+        server_default=PaymentMethodKind.OTHER,
+        nullable=False,
+        index=True,
+    )
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    tendered_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
 
     sale: Mapped["Sale"] = relationship(back_populates="payments")
+
+    def __init__(self, *args, **kwargs):
+        if "method_kind" not in kwargs and "payment_method" in kwargs:
+            from cbpos.core.services.payment_service import classify_method_name
+
+            kwargs["method_kind"] = classify_method_name(kwargs.get("payment_method"))
+        super().__init__(*args, **kwargs)
 
 
 class PurchaseItem(Base):
@@ -838,6 +873,14 @@ class PaymentMethod(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    # kind is authoritative; is_cash is kept in sync on save (is_cash = kind == PaymentMethodKind.CASH)
+    kind: Mapped[str] = mapped_column(
+        String(20),
+        default=PaymentMethodKind.OTHER,
+        server_default=PaymentMethodKind.OTHER,
+        nullable=False,
+        index=True,
+    )
     is_cash: Mapped[bool] = mapped_column(Boolean, default=False)
     open_drawer: Mapped[bool] = mapped_column(Boolean, default=False)
     shortcut: Mapped[str | None] = mapped_column(String(10), nullable=True)

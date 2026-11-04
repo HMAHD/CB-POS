@@ -389,3 +389,118 @@ def test_walkin_sale_reaches_the_peripherals_without_a_customer(db_session, test
     (event,) = peripherals.events
     assert event.sale is result
     assert event.sale.customer is None
+
+
+def test_issue_854_quick_pay_counts_as_cash(db_session, test_user, test_product):
+    """Calling process_sale with the default cash method (as quick_pay does) counts in shift cash sales."""
+    from cbpos.core.services.payment_service import PaymentService
+    from cbpos.core.services.shift_service import ShiftService
+
+    db_session.commit()
+
+    shift_service = ShiftService()
+    shift = shift_service.start_shift(test_user.id, Decimal("500.00"))
+
+    cash_method = PaymentService.get_default_cash_method()
+    assert cash_method is not None
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart_service = CartService()
+        cart_service.add_item(test_product, qty=Decimal("2.0"))
+        payments = [{"method": cash_method.name, "amount": Decimal("200.00")}]
+
+        sale = TransactionService.process_sale(cart_service, payments)
+
+    assert sale is not None
+    summary = shift_service.get_shift_summary(shift.id)
+    assert summary["cash_sales"] == Decimal("200.00")
+    assert summary["expected_cash"] == Decimal("700.00")
+
+
+def test_issue_834_cash_overtender_stores_applied_amount(db_session, test_user, test_product):
+    """Cash overtender stores applied amount on amount, original on tendered_amount, and shift cash is uninflated."""
+    from cbpos.core.services.shift_service import ShiftService
+
+    db_session.commit()
+    shift_service = ShiftService()
+    shift = shift_service.start_shift(test_user.id, Decimal("500.00"))
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart_service = CartService()
+        cart_service.add_item(test_product, qty=Decimal("1.0"))  # price is 100.00
+        payments = [{"method": "Cash", "amount": Decimal("1000.00")}]
+
+        sale = TransactionService.process_sale(cart_service, payments)
+
+    assert sale is not None
+    assert len(sale.payments) == 1
+    payment = sale.payments[0]
+    assert payment.amount == Decimal("100.00")
+    assert payment.tendered_amount == Decimal("1000.00")
+
+    summary = shift_service.get_shift_summary(shift.id)
+    assert summary["cash_sales"] == Decimal("100.00")
+    assert summary["expected_cash"] == Decimal("600.00")  # starting 500 + 100 applied
+
+
+def test_issue_834_split_cash_and_card_overtender_reduces_cash(db_session, test_user, test_product):
+    """Split card and cash where cash overtenders reduces cash applied amount down to remaining due."""
+    db_session.commit()
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart_service = CartService()
+        cart_service.add_item(test_product, qty=Decimal("1.0"))  # price is 100.00
+        payments = [
+            {"method": "Card", "amount": Decimal("60.00")},
+            {"method": "Cash", "amount": Decimal("100.00")},
+        ]
+
+        sale = TransactionService.process_sale(cart_service, payments)
+
+    assert sale is not None
+    pmts = {p.payment_method: p for p in sale.payments}
+    assert pmts["Card"].amount == Decimal("60.00")
+    assert pmts["Card"].tendered_amount is None
+    assert pmts["Cash"].amount == Decimal("40.00")
+    assert pmts["Cash"].tendered_amount == Decimal("100.00")
+
+
+def test_issue_834_receipt_shows_tendered_and_change(db_session, test_user, test_product):
+    """Receipt commands include both tendered amount and change given."""
+    from cbpos.core.services.sales_receipt_builder import SalesReceiptBuilder
+
+    db_session.commit()
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart_service = CartService()
+        cart_service.add_item(test_product, qty=Decimal("1.0"))  # price is 100.00
+        payments = [{"method": "Cash", "amount": Decimal("1000.00")}]
+
+        sale = TransactionService.process_sale(cart_service, payments)
+
+    assert sale is not None
+    assert sale.payments[0].amount == Decimal("100.00")
+    assert sale.payments[0].tendered_amount == Decimal("1000.00")
+
+    commands = SalesReceiptBuilder.build_receipt(sale)
+    texts = [cmd.get("val", "") for cmd in commands if cmd.get("type") == "text"]
+    full_text = " ".join(texts)
+    assert "1,000.00" in full_text or "1000.00" in full_text
+    assert "900.00" in full_text
+
+
+def test_issue_851_credit_overpay_rejected_by_service(db_session, test_user, test_product):
+    """Service rejects non-cash overtender such as Credit > total due."""
+    from cbpos.core.models import Customer
+
+    customer = Customer(name="Credit Customer", credit_limit=Decimal("5000.00"))
+    db_session.add(customer)
+    db_session.commit()
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart_service = CartService()
+        cart_service.add_item(test_product, qty=Decimal("1.0"))  # price is 100.00
+        payments = [{"method": "Credit", "amount": Decimal("1000.00")}]
+
+        with pytest.raises(ValueError, match="non_cash_overpay"):
+            TransactionService.process_sale(cart_service, payments, customer_id=customer.id)

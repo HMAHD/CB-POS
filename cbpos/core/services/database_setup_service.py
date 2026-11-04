@@ -13,6 +13,7 @@ from pathlib import Path
 from sqlalchemy import inspect, text
 
 from cbpos.core.constants.permissions import Permissions
+from cbpos.core.constants.status import PaymentMethodKind
 from cbpos.core.database import Base, Database
 from cbpos.core.models import (
     PaymentMethod,
@@ -245,12 +246,12 @@ class DatabaseSetupService:
             # 5. Payment methods (no Cash key: the payment dialog's F12
             # already quick-pays cash, and a method on F12 disables it, #640)
             payment_methods = [
-                PaymentMethod(name="Cash", is_cash=True, open_drawer=True, is_active=True),
-                PaymentMethod(name="Card", is_active=True, shortcut="F11"),
-                PaymentMethod(name="Credit", is_active=True),
-                PaymentMethod(name="QR/Mobile", is_active=True),
-                PaymentMethod(name="Cheque", is_active=True),
-                PaymentMethod(name="Bank Transfer", is_active=True),
+                PaymentMethod(name="Cash", kind=PaymentMethodKind.CASH, is_cash=True, open_drawer=True, is_active=True),
+                PaymentMethod(name="Card", kind=PaymentMethodKind.CARD, is_active=True, shortcut="F11"),
+                PaymentMethod(name="Credit", kind=PaymentMethodKind.CREDIT, is_active=True),
+                PaymentMethod(name="QR/Mobile", kind=PaymentMethodKind.QR, is_active=True),
+                PaymentMethod(name="Cheque", kind=PaymentMethodKind.CHEQUE, is_active=True),
+                PaymentMethod(name="Bank Transfer", kind=PaymentMethodKind.TRANSFER, is_active=True),
             ]
             session.add_all(payment_methods)
 

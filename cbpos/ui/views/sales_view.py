@@ -31,6 +31,7 @@ from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.customer_service import CustomerService
 from cbpos.core.services.logging_service import LoggingService
+from cbpos.core.services.payment_service import PaymentService
 from cbpos.core.services.product_service import ProductService
 from cbpos.core.services.scale_service import ScaleService
 from cbpos.core.services.sound_service import SoundService
@@ -1662,7 +1663,13 @@ class SalesView(QWidget):
             self._focus_search()
             return
 
-        payments = [{"method": "CASH", "amount": totals["final_total"]}]
+        cash_method = PaymentService.get_default_cash_method()
+        if not cash_method:
+            QMessageBox.warning(self, _t("common.warning"), _t("pos.no_cash_method"))
+            self._focus_search()
+            return
+
+        payments = [{"method": cash_method.name, "amount": totals["final_total"]}]
         customer_id = self.customer.id if self.customer else None
 
         self._processing = True

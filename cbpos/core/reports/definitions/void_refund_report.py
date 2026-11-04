@@ -160,9 +160,10 @@ class PaymentMethodSummaryReport(BaseReport):
         end_date = date_range.get("end")
 
         with Database().get_session() as session:
+            # TODO(#844): use method_kind
             stmt = (
                 select(
-                    SalePayment.payment_method,
+                    SalePayment.payment_method,  # TODO(#844): use method_kind
                     func.count(SalePayment.id).label("count"),
                     func.sum(SalePayment.amount).label("total"),
                 )

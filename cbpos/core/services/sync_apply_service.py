@@ -309,6 +309,20 @@ class SyncApplyService:
                 values["loyalty_points_value"] = Decimal("0.00")
             if values.get("loyalty_points_earned") is None:
                 values["loyalty_points_earned"] = 0
+        if table_name == "sale_payments":
+            if not values.get("method_kind"):
+                from cbpos.core.services.payment_service import classify_method_name
+
+                values["method_kind"] = classify_method_name(values.get("payment_method"))
+        if table_name == "payment_methods":
+            if not values.get("kind"):
+                from cbpos.core.constants.status import PaymentMethodKind
+                from cbpos.core.services.payment_service import classify_method_name
+
+                if values.get("is_cash"):
+                    values["kind"] = PaymentMethodKind.CASH
+                else:
+                    values["kind"] = classify_method_name(values.get("name"))
 
         space = id_space(table_name)
         server_id = self._lookup(space, local_id)

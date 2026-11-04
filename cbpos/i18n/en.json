@@ -170,6 +170,9 @@
     },
     "a4_invoice_failed": "The tax invoice for {document} didn't print: {error}"
   },
+  "pos": {
+    "no_cash_method": "There's no active cash payment type. Turn one on in Settings → Payment Methods."
+  },
   "sales": {
     "search_placeholder_all": "Scan or type product... (Enter)",
     "search_placeholder_barcode": "Scan barcode...",
@@ -1350,9 +1353,19 @@
     "dialog_edit_title": "Edit Payment Method",
     "dialog_add_title": "Add Payment Method",
     "form_name": "Name:",
+    "form_kind": "Type:",
     "form_shortcut": "Shortcut Key:",
     "form_is_cash": "Is Cash:",
     "form_open_drawer": "Open Drawer:",
+    "kind_cash": "Cash",
+    "kind_card": "Card",
+    "kind_credit": "Customer credit",
+    "kind_qr": "QR / mobile pay",
+    "kind_cheque": "Cheque",
+    "kind_transfer": "Bank transfer",
+    "kind_other": "Other",
+    "kind_locked": "This is a built-in payment type. You can rename it, but its type can't change.",
+    "kind_help": "The type tells CB POS how to count this payment in the cash drawer and the credit book.",
     "chk_is_cash": "This is a cash-type method",
     "chk_open_drawer": "Open cash drawer on payment",
     "form_hint": "Set a keyboard shortcut and drawer-open behavior for faster checkout -- available for any payment method, not just Cash.",
@@ -2043,6 +2056,7 @@
     "total_amount": "TOTAL AMOUNT:",
     "paid_label": "PAID {method}:",
     "change_label": "CHANGE:",
+    "tendered_label": "TENDERED:",
     "net_total": "NET TOTAL:",
     "taxable": "Taxable:",
     "tax_exempt": "Tax Exempt:",

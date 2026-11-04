@@ -211,9 +211,12 @@ class SalesReceiptBuilder(BaseReceiptBuilder):
             for pmt in sale.payments:
                 label = cls._rt("paid_label", method=pmt.payment_method.upper())
                 commands.append(cls._split_row(label, format_currency(pmt.amount), line_chars))
-            total_paid = sum(p.amount for p in sale.payments)
-            if total_paid > sale.total_amount:
-                change = total_paid - sale.total_amount
+            total_tendered = sum(
+                (p.tendered_amount if p.tendered_amount is not None else p.amount) for p in sale.payments
+            )
+            if total_tendered > sale.total_amount:
+                change = total_tendered - sale.total_amount
+                commands.append(cls._split_row(cls._rt("tendered_label"), format_currency(total_tendered), line_chars))
                 commands.append(cls._split_row(cls._rt("change_label"), format_currency(change), line_chars, bold=True))
 
         commands.append(_sep())

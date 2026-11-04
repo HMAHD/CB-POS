@@ -330,6 +330,23 @@ def db_session(test_engine):
     # Bind session to the connection
     session = Session(bind=connection)
 
+    from cbpos.core.constants.status import PaymentMethodKind
+    from cbpos.core.models import PaymentMethod
+
+    existing_pms = {row[0] for row in session.query(PaymentMethod.name).all()}
+    if not existing_pms:
+        session.add_all(
+            [
+                PaymentMethod(name="Cash", kind=PaymentMethodKind.CASH, is_cash=True, open_drawer=True, is_active=True),
+                PaymentMethod(name="Card", kind=PaymentMethodKind.CARD, is_active=True, shortcut="F11"),
+                PaymentMethod(name="Credit", kind=PaymentMethodKind.CREDIT, is_active=True),
+                PaymentMethod(name="QR/Mobile", kind=PaymentMethodKind.QR, is_active=True),
+                PaymentMethod(name="Cheque", kind=PaymentMethodKind.CHEQUE, is_active=True),
+                PaymentMethod(name="Bank Transfer", kind=PaymentMethodKind.TRANSFER, is_active=True),
+            ]
+        )
+        session.flush()
+
     # Patch Database.SessionLocal to return our test session
     # Services call db.SessionLocal(), so we mock it to return our session
     db = Database()

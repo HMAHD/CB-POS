@@ -20,6 +20,7 @@ sys.path.append(str(project_root))
 
 import cbpos.core.models  # noqa: E402,F401
 from cbpos.core.constants.permissions import Permissions  # noqa: E402
+from cbpos.core.constants.status import PaymentMethodKind  # noqa: E402
 from cbpos.core.database import Base, Database  # noqa: E402
 from cbpos.core.models import (  # noqa: E402
     AuditLog,
@@ -1681,12 +1682,12 @@ def seed_data():
         # =============================================================
         print("Seeding Payment Methods...")
         payment_methods = [
-            PaymentMethod(name="Cash", is_cash=True, open_drawer=True),
-            PaymentMethod(name="Card", is_cash=False, open_drawer=False, shortcut="F11"),
-            PaymentMethod(name="Credit", is_cash=False, open_drawer=False),
-            PaymentMethod(name="QR/Mobile", is_cash=False, open_drawer=False),
-            PaymentMethod(name="Cheque", is_cash=False, open_drawer=False),
-            PaymentMethod(name="Transfer", is_cash=False, open_drawer=False),
+            PaymentMethod(name="Cash", kind=PaymentMethodKind.CASH, is_cash=True, open_drawer=True),
+            PaymentMethod(name="Card", kind=PaymentMethodKind.CARD, is_cash=False, open_drawer=False, shortcut="F11"),
+            PaymentMethod(name="Credit", kind=PaymentMethodKind.CREDIT, is_cash=False, open_drawer=False),
+            PaymentMethod(name="QR/Mobile", kind=PaymentMethodKind.QR, is_cash=False, open_drawer=False),
+            PaymentMethod(name="Cheque", kind=PaymentMethodKind.CHEQUE, is_cash=False, open_drawer=False),
+            PaymentMethod(name="Bank Transfer", kind=PaymentMethodKind.TRANSFER, is_cash=False, open_drawer=False),
         ]
         session.add_all(payment_methods)
         session.flush()

@@ -3,10 +3,10 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from cbpos.core.constants.status import PaymentMethodType, Precision
+from cbpos.core.constants.status import PaymentMethodKind, PaymentMethodType, Precision
 from cbpos.core.database import Database
 from cbpos.core.models import AuditLog, Customer, CustomerLedgerEntry, CustomerPayment, Sale, SalePayment, User
 
@@ -207,7 +207,10 @@ class CustomerCreditService:
                 session.query(func.coalesce(func.sum(SalePayment.amount), 0))
                 .filter(
                     SalePayment.sale_id == sale.id,
-                    func.upper(SalePayment.payment_method) == PaymentMethodType.CREDIT.upper(),
+                    or_(
+                        SalePayment.method_kind == PaymentMethodKind.CREDIT,
+                        func.upper(SalePayment.payment_method) == PaymentMethodType.CREDIT.upper(),
+                    ),
                 )
                 .scalar()
             )

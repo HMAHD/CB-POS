@@ -17,8 +17,9 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from cbpos.core.constants.status import PaymentMethodKind
 from cbpos.core.database import Base, Database
-from cbpos.core.models import Permission, Product, Role, User
+from cbpos.core.models import PaymentMethod, Permission, Product, Role, User
 from cbpos.core.services.config_service import ConfigService
 from cbpos.core.services.sync_protocol import (
     EP_PULL_CATALOG,
@@ -171,7 +172,13 @@ class Shop:
             role = Role(name="TwoMachineRole", permissions=[permission])
             user = User(username="two_machine_user", pin_hash="x", role=role)
             product = Product(name_en="Two Machine Item", price=Decimal("100"), stock_qty=Decimal("50"), barcode="TM1")
-            s.add_all([permission, role, user, product])
+            payment_methods = [
+                PaymentMethod(name="Cash", kind=PaymentMethodKind.CASH, is_cash=True, open_drawer=True, is_active=True),
+                PaymentMethod(name="Card", kind=PaymentMethodKind.CARD, is_active=True),
+                PaymentMethod(name="Credit", kind=PaymentMethodKind.CREDIT, is_active=True),
+                PaymentMethod(name="Bank Transfer", kind=PaymentMethodKind.TRANSFER, is_active=True),
+            ]
+            s.add_all([permission, role, user, product, *payment_methods])
             s.flush()
             ids = {"user": user.id, "product": product.id}
         for terminal_id in self.tills:

@@ -18,6 +18,7 @@ from cbpos.core.constants.status import PaymentMethodKind
 from cbpos.core.services.payment_service import PaymentService, ShortcutConflictError
 from cbpos.i18n import _t, register_language_callback
 from cbpos.ui.widgets.dialog_footer import make_dialog_footer
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 _PORTABLE = QKeySequence.SequenceFormat.PortableText
 
@@ -48,6 +49,7 @@ class PaymentMethodDialog(QDialog):
         self._syncing_kind = False
         self.setMinimumWidth(400)
         self.setObjectName("PaymentMethodDialog")
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
         self._init_ui()
         self.retranslate_ui()
         register_language_callback(self.retranslate_ui, owner=self)

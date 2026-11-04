@@ -283,6 +283,9 @@
     "loyalty_err_min_redeem": "குறைந்தபட்சம் {min} புள்ளிகளைப் பயன்படுத்த வேண்டும்.",
     "loyalty_err_exceeds_bill": "புள்ளிகளின் மதிப்பு (ரூ. {value}) பில் தொகையைவிட (ரூ. {total}) அதிகமாக இருக்க முடியாது."
   },
+  "credit": {
+    "store_credit": "ஸ்டோர் கிரெடிட்: {amount}"
+  },
   "discount": {
     "title": "தள்ளுபடி",
     "type_percentage": "சதவீதம் (%)",

@@ -366,8 +366,6 @@ class CustomerCreditService:
                 raise ValueError("Customer not found.")
 
             customer.current_debt += amount
-            if customer.current_debt < 0:
-                customer.current_debt = Decimal("0.00")
 
             entry = CustomerLedgerEntry(
                 customer_id=customer_id,

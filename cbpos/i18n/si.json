@@ -283,6 +283,9 @@
     "loyalty_err_min_redeem": "අවම ලකුණු {min} ක් භාවිතා කළ යුතුය.",
     "loyalty_err_exceeds_bill": "ලකුණුවල වටිනාකම (රු. {value}) බිල්පතේ මුදලට (රු. {total}) වඩා වැඩි විය නොහැක."
   },
+  "credit": {
+    "store_credit": "වෙළඳසැල් ණය: {amount}"
+  },
   "discount": {
     "title": "වට්ටම යොදන්න",
     "type_percentage": "ප්‍රතිශතය (%)",

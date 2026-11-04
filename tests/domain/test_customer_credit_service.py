@@ -169,8 +169,7 @@ def test_record_adjustment_positive(db_session, test_user, test_customer):
 
 
 def test_record_adjustment_negative(db_session, test_user, test_customer):
-    """Negative adjustment decreases debt, floored at zero."""
-    # Adjust by more than current debt — should floor at 0
+    """Negative adjustment decreases debt without floor, creating valid store credit (#888)."""
     result = CustomerCreditService.record_adjustment(
         customer_id=test_customer.id,
         amount=Decimal("-9999.00"),
@@ -181,7 +180,7 @@ def test_record_adjustment_negative(db_session, test_user, test_customer):
     assert result is True
 
     db_session.refresh(test_customer)
-    assert test_customer.current_debt == Decimal("0.00")
+    assert test_customer.current_debt == Decimal("-4999.00")
 
 
 # ── Test: get_ledger ─────────────────────────────────────────────────────
@@ -259,3 +258,29 @@ def test_issue_849_refund_of_overcredited_sale_reverses_at_most_total(db_session
     assert entry.amount == Decimal("-1000.00")
     db_session.refresh(customer)
     assert customer.current_debt == Decimal("1000.00")
+
+
+def test_issue_888_adjustment_keeps_negative_balance(db_session, test_user):
+    """Balance adjustment preserves negative debt (store credit) without clamping to 0 (#888)."""
+    customer = Customer(
+        name="Store Credit Customer",
+        credit_limit=Decimal("5000.00"),
+        current_debt=Decimal("-1000.00"),
+    )
+    db_session.add(customer)
+    db_session.commit()
+
+    CustomerCreditService.record_adjustment(
+        customer_id=customer.id,
+        amount=Decimal("50.00"),
+        note="Late fee",
+        user_id=test_user.id,
+    )
+
+    db_session.refresh(customer)
+    assert customer.current_debt == Decimal("-950.00")
+
+    entries = CustomerCreditService.get_ledger(customer.id)
+    assert len(entries) == 1
+    assert entries[0].amount == Decimal("50.00")
+    assert entries[0].balance_after == Decimal("-950.00")

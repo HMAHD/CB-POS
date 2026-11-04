@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from PyQt6.QtWidgets import QLabel
 
 from cbpos.core.models import Customer
 from cbpos.ui.dialogs.adjust_balance_dialog import AdjustBalanceDialog
@@ -106,5 +107,31 @@ def test_adjust_points_dialog_prevents_negative_points(db_session):
         dlg.points_spin.setValue(30)  # 50 - 30 = 20
         dlg.reason_edit.setText("Bonus Correction")
         assert dlg.validate()
+    finally:
+        dlg.deleteLater()
+
+
+def test_issue_888_adjust_balance_dialog_negative_debt_store_credit(db_session):
+    """AdjustBalanceDialog displays negative balance as store credit (#888)."""
+    cust = Customer(
+        name="Store Credit Customer",
+        current_debt=Decimal("-1000.00"),
+        credit_limit=Decimal("10000.00"),
+    )
+    db_session.add(cust)
+    db_session.flush()
+
+    dlg = AdjustBalanceDialog(cust)
+    try:
+        debt_label = dlg.findChild(QLabel, "AdjustCustDebt")
+        assert debt_label is not None
+        assert "Store credit" in debt_label.text()
+        assert "1,000.00" in debt_label.text()
+
+        # Preview of reducing debt further results in store credit preview
+        dlg.set_mode("reduce")
+        dlg.amount_spin.setValue(100)
+        assert dlg.calculate_new_balance() == Decimal("-1100.00")
+        assert "Store credit" in dlg.lbl_preview.text()
     finally:
         dlg.deleteLater()

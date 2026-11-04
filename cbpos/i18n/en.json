@@ -283,6 +283,9 @@
     "loyalty_err_min_redeem": "Minimum redemption is {min} points.",
     "loyalty_err_exceeds_bill": "Redemption value (Rs. {value}) exceeds the bill total (Rs. {total})."
   },
+  "credit": {
+    "store_credit": "Store credit: {amount}"
+  },
   "discount": {
     "title": "Apply Discount",
     "type_percentage": "Percentage (%)",

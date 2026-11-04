@@ -9,7 +9,9 @@ import pytest
 
 from cbpos.core.constants.status import ShiftStatus
 from cbpos.core.models import Permission, Role, Shift, User
+from cbpos.core.services.cart_service import CartService
 from cbpos.core.services.shift_service import ShiftService
+from cbpos.core.services.transaction_service import TransactionService
 
 # ── Shared Fixtures ──────────────────────────────────────────────────────
 
@@ -233,3 +235,26 @@ def test_issue_885_renamed_and_second_cash_methods_count(mock_config, db_session
     summary = shift_service.get_shift_summary(shift.id)
     assert summary["cash_sales"] == Decimal("400.00")
     assert summary["expected_cash"] == Decimal("1000.00") + Decimal("400.00")
+
+
+@pytest.mark.xfail(reason="fixed by 3A.3 refund engine (#812)", strict=True)
+def test_issue_850_cash_refund_reduces_expected_cash(db_session, test_user, test_product):
+    """Refunding a cash sale in the same shift reduces expected cash back to the starting float."""
+    shift_service = ShiftService()
+    shift = shift_service.start_shift(test_user.id, Decimal("0.00"))
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart = CartService()
+        cart.add_item(test_product, qty=Decimal("20.000"))  # 20 * 100 = 2000.00
+        sale = TransactionService.process_sale(cart, [{"method": "Cash", "amount": Decimal("2000.00")}])
+        assert sale is not None
+
+        summary_before = shift_service.get_shift_summary(shift.id)
+        assert summary_before["expected_cash"] == Decimal("2000.00")
+
+        refund_success = TransactionService.process_refund(sale.id, "Customer return", test_user.id)
+        assert refund_success is True
+
+    summary_after = shift_service.get_shift_summary(shift.id)
+    assert summary_after["cash_sales"] == Decimal("0.00")
+    assert summary_after["expected_cash"] == Decimal("0.00")

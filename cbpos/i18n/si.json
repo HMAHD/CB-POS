@@ -2026,6 +2026,7 @@
     "total_amount": "මුළු මුදල:",
     "paid_label": "ගෙවූ {method}:",
     "change_label": "ඉතිරි:",
+    "tendered_label": "ගෙවූ මුදල:",
     "net_total": "ශුද්ධ එකතුව:",
     "taxable": "බදු අය කළ හැකි:",
     "tax_exempt": "බදු නිදහස්:",

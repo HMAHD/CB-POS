@@ -2025,6 +2025,7 @@
     "total_amount": "மொத்த தொகை:",
     "paid_label": "செலுத்தியது {method}:",
     "change_label": "மீதி:",
+    "tendered_label": "செலுத்திய தொகை:",
     "net_total": "நிகர மொத்தம்:",
     "taxable": "வரிக்குட்பட்ட:",
     "tax_exempt": "வரி விலக்கு:",

@@ -438,6 +438,73 @@ class TransactionService:
             _ = item.product
 
     @staticmethod
+    def _normalise_payments(
+        payments: list[dict[str, Any]],
+        due: Decimal,
+        kinds: dict[str, str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Normalise payments against total due.
+
+        - Rejects underpayment (ValueError("underpaid")).
+        - Rejects overtender on non-CASH methods (ValueError("non_cash_overpay")).
+        - Deducts excess from CASH payments (last to first) down to 0, recording
+          tendered_amount on any CASH row whose applied amount was reduced.
+        - Preserves Invariant 1: sum(p["amount"]) == due.
+        """
+        from cbpos.core.constants.status import PaymentMethodKind
+        from cbpos.core.services.payment_service import classify_method_name
+
+        due_dec = Decimal(str(due))
+        if not payments:
+            if due_dec == Decimal("0"):
+                return []
+            raise ValueError(f"underpaid: Insufficient payment. Paid: 0, Due: {due_dec}")
+
+        normalized = [
+            {
+                **p,
+                "amount": Decimal(str(p["amount"])),
+                "tendered_amount": (
+                    Decimal(str(p["tendered_amount"])) if p.get("tendered_amount") is not None else None
+                ),
+            }
+            for p in payments
+        ]
+
+        def get_kind(item: dict[str, Any]) -> str:
+            if kinds and item.get("method") in kinds:
+                return kinds[item["method"]]
+            return classify_method_name(item.get("method"))
+
+        total_paid = sum(p["amount"] for p in normalized)
+        if total_paid < due_dec:
+            raise ValueError(f"underpaid: Insufficient payment. Paid: {total_paid}, Due: {due_dec}")
+
+        non_cash_total = sum(p["amount"] for p in normalized if get_kind(p) != PaymentMethodKind.CASH)
+        if non_cash_total > due_dec:
+            raise ValueError("non_cash_overpay")
+
+        excess = total_paid - due_dec
+        if excess > Decimal("0"):
+            for p in reversed(normalized):
+                if excess <= Decimal("0"):
+                    break
+                if get_kind(p) == PaymentMethodKind.CASH:
+                    orig_amount = p["amount"]
+                    deduction = min(orig_amount, excess)
+                    p["amount"] = orig_amount - deduction
+                    p["tendered_amount"] = orig_amount
+                    excess -= deduction
+
+            if excess > Decimal("0"):
+                raise ValueError("non_cash_overpay")
+
+        applied_total = sum(p["amount"] for p in normalized)
+        assert applied_total == due_dec, f"Invariant 1 violated: sum(applied) {applied_total} != due {due_dec}"
+
+        return normalized
+
+    @staticmethod
     def _execute_sale(
         cart_service: CartService,
         payments: list,
@@ -467,9 +534,6 @@ class TransactionService:
             # 1. Validate payment, stock and cashier
             totals = cart_service.get_totals()
             total_amount = totals["final_total"]
-            total_paid = sum(p["amount"] for p in payments)
-            if total_paid < total_amount:
-                raise ValueError(f"Insufficient payment. Paid: {total_paid}, Due: {total_amount}")
 
             # Resolve payment method kinds and validate payment methods exist
             existing_methods = {m.name.casefold(): m for m in session.query(PaymentMethod).all()}
@@ -480,6 +544,9 @@ class TransactionService:
                 if not m_obj:
                     raise ValueError(f"unknown_payment_method: '{p.get('method')}'")
                 resolved_methods[p["method"]] = m_obj
+
+            kinds = {p["method"]: resolved_methods[p["method"]].kind for p in payments}
+            payments = TransactionService._normalise_payments(payments, total_amount, kinds)
 
             # Pre-fetch composite items for all cart products (avoids N+1 queries later)
             cart_items = cart_service.items

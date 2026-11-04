@@ -216,6 +216,25 @@ class Sale(Document):
     refund_of_sale: Mapped["Sale"] = relationship("Sale", remote_side=[id], foreign_keys=[refund_of_sale_id])
     shift: Mapped["Shift | None"] = relationship("Shift")
 
+    @property
+    def tendered(self) -> Decimal | None:
+        """Total amount tendered across all payments, if any payment was overtendered."""
+        if not hasattr(self, "payments") or not self.payments:
+            return None
+        has_overtender = any(p.tendered_amount is not None for p in self.payments)
+        if not has_overtender:
+            return None
+        return sum((p.tendered_amount if p.tendered_amount is not None else p.amount) for p in self.payments)
+
+    @property
+    def change(self) -> Decimal | None:
+        """Total change given, if any payment was overtendered."""
+        tendered_val = self.tendered
+        if tendered_val is None:
+            return None
+        diff = tendered_val - (self.total_amount or Decimal("0.00"))
+        return diff if diff > 0 else Decimal("0.00")
+
     __mapper_args__ = {
         "polymorphic_identity": "sale",
     }

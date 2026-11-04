@@ -2056,6 +2056,7 @@
     "total_amount": "TOTAL AMOUNT:",
     "paid_label": "PAID {method}:",
     "change_label": "CHANGE:",
+    "tendered_label": "TENDERED:",
     "net_total": "NET TOTAL:",
     "taxable": "Taxable:",
     "tax_exempt": "Tax Exempt:",

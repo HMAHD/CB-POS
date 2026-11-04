@@ -207,11 +207,13 @@ class Sale(Document):
     loyalty_points_balance: Mapped[int | None] = mapped_column(Integer, nullable=True)
     payment_method: Mapped[str] = mapped_column(String(20), nullable=False)  # Primary method
     refund_of_sale_id: Mapped[int | None] = mapped_column(ForeignKey("sales.id"), nullable=True)
+    shift_id: Mapped[int | None] = mapped_column(ForeignKey("shifts.id"), nullable=True, index=True)
 
     customer: Mapped["Customer"] = relationship(back_populates="sales")
     items: Mapped[list["SaleItem"]] = relationship(back_populates="sale", cascade="all, delete-orphan")
     payments: Mapped[list["SalePayment"]] = relationship(back_populates="sale", cascade="all, delete-orphan")
     refund_of_sale: Mapped["Sale"] = relationship("Sale", remote_side=[id], foreign_keys=[refund_of_sale_id])
+    shift: Mapped["Shift | None"] = relationship("Shift")
 
     __mapper_args__ = {
         "polymorphic_identity": "sale",

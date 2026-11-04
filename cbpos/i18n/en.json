@@ -2370,6 +2370,7 @@
       "stock_take.create": "Start stock takes",
       "stock_take.approve": "Approve stock takes",
       "cash.open_drawer": "Open the cash drawer",
+      "shift.force_close": "Force close shifts",
       "admin.manage_users": "Manage users",
       "admin.manage_roles": "Manage roles and permissions",
       "admin.settings": "Change settings",
@@ -2989,7 +2990,36 @@
     "movement_failed": "Couldn't record that: {error}",
     "print_x_read": "Print X-Read",
     "x_read_printed": "X-Read printed.",
-    "x_read_failed": "The X-Read didn't print.\n\n{error}"
+    "x_read_failed": "The X-Read didn't print.\n\n{error}",
+    "stale_tag": "Stale Shift",
+    "stale_time_warning": "Open for more than 24 hours",
+    "stale_terminal_warning": "Opened on terminal {terminal}",
+    "btn_force_close": "Force Close…",
+    "btn_view_stale": "View {count} other stale shift(s)"
+  },
+  "shift_force_close": {
+    "title": "Force Close Shift",
+    "prompt": "Force close open shift #{id} on terminal {terminal}",
+    "counted_cash": "Counted cash in drawer",
+    "dont_know": "Don't know / unknown",
+    "reason": "Reason for force closing (required)",
+    "reason_placeholder": "e.g. Cashier forgot to close, terminal unreachable",
+    "invalid_amount": "Please enter a valid non-negative amount or check 'Don't know'.",
+    "reason_required": "A reason is required to force close this shift.",
+    "submit": "Force Close",
+    "success": "Shift #{id} was force-closed.",
+    "error": "Could not force close shift: {error}"
+  },
+  "stale_shifts": {
+    "title": "Stale Open Shifts",
+    "heading": "Open shifts older than 24 hours or on other terminals",
+    "col_id": "Shift",
+    "col_terminal": "Terminal",
+    "col_cashier": "Cashier",
+    "col_started": "Started",
+    "col_expected": "Expected Cash",
+    "action_force_close": "Force Close…",
+    "empty": "No stale open shifts found."
   },
   "invoice": {
     "title_tax": "TAX INVOICE",

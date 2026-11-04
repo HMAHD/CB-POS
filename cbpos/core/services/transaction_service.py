@@ -3,10 +3,11 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from cbpos.core.constants.status import DocumentStatus, PaymentMethodType, Precision
+from cbpos.core.constants.status import DocumentStatus, PaymentMethodType, Precision, ShiftStatus
 from cbpos.core.database import Database
 from cbpos.core.interfaces.transaction_peripherals import (
     NullPeripherals,
@@ -22,6 +23,7 @@ from cbpos.core.models import (
     Sale,
     SaleItem,
     SalePayment,
+    Shift,
     User,
     VoidReason,
 )
@@ -347,7 +349,11 @@ class TransactionService:
 
     @staticmethod
     def _new_sale(
-        totals: dict[str, Any], payments: list[dict[str, Any]], cashier_id: int, customer_id: int | None
+        totals: dict[str, Any],
+        payments: list[dict[str, Any]],
+        cashier_id: int,
+        customer_id: int | None,
+        shift_id: int | None = None,
     ) -> Sale:
         """Build the (not yet added) sale header from the cart totals.
 
@@ -360,6 +366,7 @@ class TransactionService:
             payments: ``[{"method", "amount"}, ...]`` -- one method is shown as is, several as "SPLIT".
             cashier_id: The signed-in cashier.
             customer_id: The sale's customer, if any.
+            shift_id: The cashier's current open shift on this terminal (#884).
 
         Returns:
             Sale: The new header, without a document number.
@@ -377,6 +384,7 @@ class TransactionService:
             customer_id=customer_id,
             terminal_id=ConfigService.get("terminal_id") or "TERM-01",
             origin_terminal_id=ConfigService.get("terminal_id") or "TERM-01",
+            shift_id=shift_id,
         )
         sale._exempt_amount = totals.get("exempt_amount", Decimal("0"))
         return sale
@@ -477,8 +485,18 @@ class TransactionService:
             # 2. Charge credit (ledger row follows once the sale has an id)
             credit_charge = TransactionService._charge_credit(session, payments, customer_id)
 
+            # Look up open shift for this cashier on this terminal (#884)
+            terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+            open_shift = session.scalars(
+                select(Shift.id).where(
+                    Shift.user_id == cashier_id,
+                    Shift.terminal_id == terminal_id,
+                    Shift.status == ShiftStatus.OPEN,
+                )
+            ).first()
+
             # 3. Write the numbered sale header, then its credit ledger row
-            sale = TransactionService._new_sale(totals, payments, cashier_id, customer_id)
+            sale = TransactionService._new_sale(totals, payments, cashier_id, customer_id, shift_id=open_shift)
             TransactionService._insert_numbered(session, sale, "SALE")
             TransactionService._record_credit_charge(session, sale, credit_charge)
 
@@ -539,12 +557,17 @@ class TransactionService:
         db = Database()
         try:
             with db.get_session() as session:
-                sale = session.get(Sale, sale_id, options=[joinedload(Sale.items)])
+                sale = session.get(Sale, sale_id, with_for_update=True, options=[joinedload(Sale.items)])
                 if not sale:
                     return False
 
                 if sale.status == "VOID":
                     return False  # Already voided
+
+                # Cannot void a sale that has already been refunded (#914)
+                already_refunded = session.query(Sale.id).filter(Sale.refund_of_sale_id == sale_id).first() is not None
+                if already_refunded:
+                    return False
 
                 sale.status = "VOID"
                 if reason_id:
@@ -681,8 +704,10 @@ class TransactionService:
         db = Database()
         try:
             with db.get_session() as session:
-                # 1. Validate original sale
-                original_sale = session.get(Sale, original_sale_id, options=[joinedload(Sale.items)])
+                # 1. Validate original sale (locking row on PostgreSQL to prevent concurrent refund/void races, #914)
+                original_sale = session.get(
+                    Sale, original_sale_id, with_for_update=True, options=[joinedload(Sale.items)]
+                )
                 if not original_sale:
                     raise ValueError(f"Sale ID {original_sale_id} not found.")
 
@@ -710,6 +735,15 @@ class TransactionService:
                 refund_sscl = -(original_sale.tax_sscl or Decimal("0"))
                 refund_net = -(original_sale.net_revenue or Decimal("0"))
 
+                terminal_id = ConfigService.get("terminal_id") or "TERM-01"
+                open_shift = session.scalars(
+                    select(Shift.id).where(
+                        Shift.user_id == user_id,
+                        Shift.terminal_id == terminal_id,
+                        Shift.status == ShiftStatus.OPEN,
+                    )
+                ).first()
+
                 refund_sale = Sale(
                     date=datetime.now(),
                     total_amount=refund_amount,
@@ -721,8 +755,9 @@ class TransactionService:
                     user_id=user_id,
                     customer_id=original_sale.customer_id,
                     refund_of_sale_id=original_sale_id,
-                    terminal_id=ConfigService.get("terminal_id") or "TERM-01",
-                    origin_terminal_id=ConfigService.get("terminal_id") or "TERM-01",
+                    terminal_id=terminal_id,
+                    origin_terminal_id=terminal_id,
+                    shift_id=open_shift,
                 )
                 TransactionService._insert_numbered(session, refund_sale, "RETURN")
                 refund_receipt_no = refund_sale.document_number

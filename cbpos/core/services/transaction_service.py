@@ -827,7 +827,13 @@ class TransactionService:
                         raise ValueError("Cannot refund a voided sale.")
                     if sale.payment_method == "REFUND" or sale.refund_of_sale_id is not None:
                         raise ValueError("Cannot refund a refund transaction.")
-                    raise ValueError("Sale already refunded")
+                    if sale.items:
+                        raise ValueError("Sale already refunded")
+                    already_refunded = (
+                        session.query(Sale.id).filter(Sale.refund_of_sale_id == original_sale_id).first() is not None
+                    )
+                    if already_refunded:
+                        raise ValueError("Sale already refunded")
 
             RefundService.refund(
                 original_sale_id,

@@ -55,6 +55,7 @@ from cbpos.ui.widgets.table_helpers import (
     batch_table_update,
     configure_table_columns,
 )
+from cbpos.ui.widgets.wheel_guard import install_wheel_guard
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +147,7 @@ class RefundDialog(QDialog):
         self._tender_override: str | None = None
         self._override_reason: str | None = None
 
+        install_wheel_guard(self)  # hover + wheel scrolls, never changes a field (#598)
         self._init_ui()
         if sale:
             self.load_sale(sale)

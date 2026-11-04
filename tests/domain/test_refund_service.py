@@ -12,7 +12,7 @@ from unittest.mock import patch
 import pytest
 
 from cbpos.core.constants.permissions import Permissions
-from cbpos.core.constants.status import PaymentMethodKind
+from cbpos.core.constants.status import DocumentStatus, PaymentMethodKind
 from cbpos.core.models import (
     AuditLog,
     Customer,
@@ -680,3 +680,32 @@ def test_issue_915_refund_states_batched(db_session, refund_user):
     assert states[s1.id] == "NONE"
     assert states[s2.id] == "PARTIAL"
     assert states[s3.id] == "FULL"
+
+
+def test_refund_service_itemless_sale(db_session, refund_user):
+    """Itemless sales (e.g. synthetic sync test sales or legacy entries) can be refunded fully."""
+    sale = Sale(
+        document_number="TEST-ITEMLESS-001",
+        date=datetime.now(),
+        user_id=refund_user.id,
+        terminal_id="TERM-01",
+        origin_terminal_id="TERM-01",
+        total_amount=Decimal("300.00"),
+        net_revenue=Decimal("300.00"),
+        payment_method="CASH",
+        status=DocumentStatus.COMPLETED,
+    )
+    db_session.add(sale)
+    db_session.commit()
+
+    preview = RefundService.preview(sale.id, [])
+    assert preview.total_refund_amount == Decimal("300.00")
+    assert preview.is_full_refund is True
+
+    res = RefundService.refund(sale.id, [], "Customer refund", refund_user.id)
+    assert res.total_refund_amount == Decimal("300.00")
+    assert res.refund_sale.refund_of_sale_id == sale.id
+
+    # Trying to refund again fails
+    with pytest.raises(ValueError, match="qty_exceeds_remaining"):
+        RefundService.refund(sale.id, [], "Customer refund again", refund_user.id)

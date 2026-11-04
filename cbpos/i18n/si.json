@@ -2361,6 +2361,7 @@
       "sales.discount": "වට්ටම් දීම",
       "sales.change_price": "බිල් කරනකොට මිල වෙනස් කිරීම",
       "sales.refund": "මුදල් ආපසු ගෙවීම",
+      "sales.refund_override_tender": "ආපසු ගෙවීමේ ක්‍රමය වෙනස් කිරීම",
       "inventory.view": "අයිතම සහ තොග බැලීම",
       "inventory.edit": "අයිතම එකතු කිරීම සහ වෙනස් කිරීම",
       "inventory.delete": "අයිතම මැකීම",

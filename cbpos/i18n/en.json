@@ -2396,6 +2396,7 @@
       "sales.discount": "Give discounts",
       "sales.change_price": "Change prices at checkout",
       "sales.refund": "Process refunds",
+      "sales.refund_override_tender": "Override refund payment method",
       "inventory.view": "View products and stock",
       "inventory.edit": "Add and edit products",
       "inventory.delete": "Delete products",

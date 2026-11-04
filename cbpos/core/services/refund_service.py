@@ -238,6 +238,22 @@ class RefundService:
         if sale.payment_method == "REFUND" or sale.refund_of_sale_id is not None:
             raise ValueError("is_refund_document")
         if not lines:
+            if not sale.items:
+                prev_refunds = session.query(Sale).filter(Sale.refund_of_sale_id == sale.id).all()
+                if prev_refunds:
+                    raise ValueError("qty_exceeds_remaining")
+                total_val = sale.total_amount
+                tenders = RefundService._allocate_tenders(sale, total_val, tender_override, override_reason)
+                return RefundPreview(
+                    lines=[],
+                    total_refund_amount=total_val,
+                    refund_vat=sale.tax_vat or Decimal("0.00"),
+                    refund_sscl=sale.tax_sscl or Decimal("0.00"),
+                    refund_net=sale.net_revenue
+                    or (total_val - (sale.tax_vat or Decimal("0.00")) - (sale.tax_sscl or Decimal("0.00"))),
+                    tenders=tenders,
+                    is_full_refund=True,
+                )
             raise ValueError("no_lines")
 
         # Previous refunds of this sale

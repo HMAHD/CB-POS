@@ -2370,6 +2370,7 @@
       "stock_take.create": "Start stock takes",
       "stock_take.approve": "Approve stock takes",
       "cash.open_drawer": "Open the cash drawer",
+      "shift.force_close": "Force close shifts",
       "admin.manage_users": "Manage users",
       "admin.manage_roles": "Manage roles and permissions",
       "admin.settings": "Change settings",

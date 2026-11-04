@@ -2340,6 +2340,7 @@
       "stock_take.create": "තොග ගණන් කිරීමක් පටන් ගැනීම",
       "stock_take.approve": "තොග ගණන් කිරීම් අනුමත කිරීම",
       "cash.open_drawer": "මුදල් ලාච්චුව ඇරීම",
+      "shift.force_close": "මුර බලහත්කාරයෙන් අවසන් කිරීම",
       "admin.manage_users": "පරිශීලකයෝ කළමනාකරණය",
       "admin.manage_roles": "භූමිකා සහ අවසර කළමනාකරණය",
       "admin.settings": "සැකසුම් වෙනස් කිරීම",

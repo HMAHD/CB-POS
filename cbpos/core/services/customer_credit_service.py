@@ -180,6 +180,27 @@ class CustomerCreditService:
         session.add(entry)
 
     @staticmethod
+    def credit_already_reversed(sale_id: int) -> Decimal:
+        """Return the total credit already reversed on a sale (#849, #812)."""
+        db = Database()
+        with db.get_session() as session:
+            sale = session.get(Sale, sale_id)
+            if not sale or not sale.customer_id:
+                return Decimal("0.00")
+            rev = -Decimal(
+                str(
+                    session.query(func.coalesce(func.sum(CustomerLedgerEntry.amount), 0))
+                    .filter(
+                        CustomerLedgerEntry.customer_id == sale.customer_id,
+                        CustomerLedgerEntry.reference_id == sale.id,
+                        CustomerLedgerEntry.entry_type.in_(CREDIT_REVERSAL_TYPES),
+                    )
+                    .scalar()
+                )
+            )
+            return max(Decimal("0.00"), rev)
+
+    @staticmethod
     def credit_to_reverse(session: Session, sale: Sale, refund_amount: Decimal | None = None) -> Decimal:
         """How much credit a void/refund of ``sale`` gives back -- without writing anything.
 
@@ -252,6 +273,7 @@ class CustomerCreditService:
         user_id: int,
         reference_doc: str,
         refund_amount: Decimal | None = None,
+        amount: Decimal | None = None,
     ) -> CustomerLedgerEntry | None:
         """Give back the credit a sale put on the customer's book (#715).
 
@@ -292,7 +314,10 @@ class CustomerCreditService:
         if entry_type not in CREDIT_REVERSAL_TYPES:
             raise ValueError(f"Unsupported credit reversal type: {entry_type}")
         session.flush()  # earlier reversals of this sale in the same session count too
-        reversal = CustomerCreditService.credit_to_reverse(session, sale, refund_amount)
+        if amount is not None:
+            reversal = Decimal(str(amount)).quantize(Precision.MONEY)
+        else:
+            reversal = CustomerCreditService.credit_to_reverse(session, sale, refund_amount)
         if reversal <= 0:
             return None
 

@@ -16,6 +16,7 @@ class Permissions:
     SALES_DISCOUNT = "sales.discount"
     SALES_CHANGE_PRICE = "sales.change_price"
     SALES_REFUND = "sales.refund"
+    SALES_REFUND_OVERRIDE_TENDER = "sales.refund_override_tender"
 
     # Inventory Group
     INVENTORY_VIEW = "inventory.view"
@@ -90,6 +91,7 @@ class Permissions:
                 cls.SALES_DISCOUNT,
                 cls.SALES_CHANGE_PRICE,
                 cls.SALES_REFUND,
+                cls.SALES_REFUND_OVERRIDE_TENDER,
             ],
             "Inventory": [
                 cls.INVENTORY_VIEW,

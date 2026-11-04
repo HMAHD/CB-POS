@@ -230,9 +230,9 @@ def test_refund_then_void_never_reverses_twice(db_session, test_user, customer, 
         db_session.refresh(customer)
         assert customer.loyalty_points == 0
 
-        # 2. Void attempt afterwards must not reverse again
-        # Even if void_sale is called, it should not write a second REVERSAL
-        TransactionService.void_sale(sale.id, test_user.id, "Void after refund")
+        # 2. Void attempt afterwards must be refused and not reverse again
+        with pytest.raises(ValueError, match="sale_has_refund"):
+            TransactionService.void_sale(sale.id, test_user.id, "Void after refund")
 
         db_session.refresh(customer)
         assert customer.loyalty_points == 0

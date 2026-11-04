@@ -156,6 +156,18 @@ class TestVoidButtonHandler:
         db_session.expire_all()
         assert db_session.get(Sale, sale.id).status == "COMPLETED"
 
+    def test_issue_848_document_browser_disables_void_for_refund_document(self, view):
+        """Document browser disables Void button for refund/credit note documents."""
+        refund_doc = {
+            "type": "sale",
+            "status": "COMPLETED",
+            "doc_number": "CN-2026-0001",
+            "payment_method": "REFUND",
+            "refund_of_sale_id": 42,
+        }
+        view.update_action_buttons(refund_doc)
+        assert view.void_btn.isEnabled() is False
+
 
 class TestVoidReasonDialog:
     REASONS = [{"id": 1, "code": "MISTAKE", "description": "Cashier Mistake"}]

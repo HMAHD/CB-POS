@@ -156,7 +156,8 @@ class TestRefundCreditSale:
         sale = _sell(db_session, user, product, customer, [("Credit", "200.00")])
         TransactionService.process_refund(sale.id, "Returned", user.id)
 
-        TransactionService.void_sale(sale.id, user.id, "Oops")
+        with pytest.raises(ValueError, match="sale_has_refund"):
+            TransactionService.void_sale(sale.id, user.id, "Oops")
 
         assert _debt(db_session, customer) == Decimal("50.00")
         assert len(_reversals(db_session, customer)) == 1

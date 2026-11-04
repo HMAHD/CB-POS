@@ -25,7 +25,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 
 ## Current position
 
-- Phase: 3A · Batch: 3A.2 · Branch: main · PR: #990 · Last session: 2026-11-04
+- Phase: 3A · Batch: 3A.3 · Branch: fix/p3a-b3-refund-void-state-machine · PR: none · Last session: 2026-11-04
 
 ## Issues
 
@@ -75,7 +75,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | # | Title | Sev | Batch | Status | PR | Notes |
 |---|---|---|---|---|---|---|
 | #834 | Every cash sale with change inflates the shift's expected cash by the change … | critical | 3A.1 | done | #989 | acaac07 · `_normalise_payments`, store applied amount, tendered_amount snapshot, SalesReceiptBuilder |
-| #850 | The shift's expected cash never subtracts cash handed back on refunds | high | 3A.1 | open | #989 | a36d066 · strict xfail test in #989; full fix lands with 3A.3 refund engine |
+| #850 | The shift's expected cash never subtracts cash handed back on refunds | high | 3A.1 | done | pr-open | a36d066, ca5f632 · xfail removed; expected cash reflects cash refunds |
 | #854 | F12 Quick Pay records the payment as "CASH", so those sales are left out of t… | high | 3A.1 | done | #989 | fedf9d6 · `PaymentService.get_default_cash_method()` replaces hardcoded CASH |
 | #885 | Expected cash matches only a method named exactly "Cash"; ignores PaymentMeth… | medium | 3A.1 | done | #989 | c43860c · ShiftService groups by `method_kind`, counting all CASH-kind methods |
 | #802 | Shift summary misses "Bank Transfer" sales (expects the name "Transfer") | medium | 3A.1 | done | #989 | c43860c · ShiftService groups by `method_kind`, unifying Transfer and Bank Transfer |
@@ -84,10 +84,10 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | #852 | A Credit payment is charged to the first customer in the list, not the custom… | high | 3A.2 | done | #990 | 3ea1717 · lock to cart customer or require pick by id, propagate to SalesView |
 | #887 | Two CREDIT lines on one sale raise the debt by both but write only one ledger… | medium | 3A.2 | done | #990 | 20dca8d · accumulate credit lines in `_charge_credit`, write single consolidated ledger row |
 | #888 | A balance adjustment clamps the debt at 0, which wipes store credit the shop … | medium | 3A.2 | done | #990 | 52ccceb, cf2d030 · remove 0-floor on adjustments, support store credit across UI & ledger |
-| #812 | Partial / item-level refunds and returns | medium | 3A.3 | todo | | |
-| #847 | You can void a sale that was already refunded, which returns its stock twice … | high | 3A.3 | todo | | |
-| #848 | You can void a refund (credit note), which takes the stock back out but leave… | high | 3A.3 | todo | | |
-| #915 | Refunded sales still show as "Completed" with an active Refund button; a retr… | low | 3A.3 | todo | | |
+| #812 | Partial / item-level refunds and returns | medium | 3A.3 | done | pr-open | d423766 · RefundService, migration refund_lines, manager override, RefundDialog UI |
+| #847 | You can void a sale that was already refunded, which returns its stock twice … | high | 3A.3 | done | pr-open | 3462a50 · raise ValueError("sale_has_refund") in void_sale; points < 0 in already_reversed |
+| #848 | You can void a refund (credit note), which takes the stock back out but leave… | high | 3A.3 | done | pr-open | e98a0ae · raise ValueError("cannot_void_refund") on refund docs; disable Void in Document Browser |
+| #915 | Refunded sales still show as "Completed" with an active Refund button; a retr… | low | 3A.3 | done | pr-open | cd78fb7 · derived refund states in SaleHistory, History, DocumentBrowser; guard buttons |
 
 ### Phase 3B — [spec](phases/phase-03b-cart-checkout-controls.md)
 
@@ -278,7 +278,7 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 | Q# | Issue | Question | Asked | Answer → D# |
 |---|---|---|---|---|
 | Q1 | #914 | D11's unique index on `refund_of_sale_id` would block partial refunds (D5). Replace it with row locks plus a CHECK on `sale_items.refunded_qty`? (Recommended: yes; record as the next free D-number) | 2026-10-28 (plan) | 2026-11-04 → D23 |
-| Q2 | #812 | Partial-refund VAT proportional to value now, switching to line-level once #797 stores the per-line taxable flag? (Recommended: yes) | 2026-10-28 (plan) | |
+| Q2 | #812 | Partial-refund VAT proportional to value now, switching to line-level once #797 stores the per-line taxable flag? (Recommended: yes) | 2026-10-28 (plan) | 2026-11-05 → D24 |
 | Q3 | #817 | D8 says GPLv3 (publish source) but product notes say free + closed code. Choose GPLv3 / PyQt6 commercial licence / PySide6 migration (lawyer review) | 2026-10-28 (plan) | |
 | Q4 | #831 | VAT-exempt items: SSCL on full MRP unless the category is also SSCL-exempt? (Recommended: yes, independent flags; accountant to confirm) | 2026-10-28 (plan) | |
 
@@ -304,5 +304,5 @@ Statuses: `todo` · `in-progress` · `blocked (Q#)` · `pr-open` · `done` (merg
 |---|---|---|
 
 ## Handoff
-Batch 3A.2 merged in PR #990 (issues #849, #851, #852, #887, #888 closed). Next is Batch 3A.3 (refund engine: #812, #847, #848, #915, completing #850).
+Batch 3A.3 completed in PR (issues #812, #847, #848, #915, completing #850). Note for LAN sync: `refund_of_item_id` and LAN-sync serialization mapping across terminals (see #869 / Phase 2.4). Next is Phase Exit Gate for Phase 3A or Batch 3B.1.
 

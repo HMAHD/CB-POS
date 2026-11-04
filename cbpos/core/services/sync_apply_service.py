@@ -97,7 +97,7 @@ assert set(APPLY_ORDER) == set(TRANSACTION_TABLES), "APPLY_ORDER must cover exac
 # are not listed and are kept as sent.
 TERMINAL_REFS: dict[str, dict[str, str]] = {
     "sales": {"refund_of_sale_id": DOCUMENT_ID_SPACE, "shift_id": "shifts"},
-    "sale_items": {"sale_id": DOCUMENT_ID_SPACE},
+    "sale_items": {"sale_id": DOCUMENT_ID_SPACE, "refund_of_item_id": "sale_items"},
     "sale_payments": {"sale_id": DOCUMENT_ID_SPACE},
     "purchase_items": {"purchase_id": DOCUMENT_ID_SPACE},
     "stock_movements": {"document_id": DOCUMENT_ID_SPACE},
@@ -309,6 +309,9 @@ class SyncApplyService:
                 values["loyalty_points_value"] = Decimal("0.00")
             if values.get("loyalty_points_earned") is None:
                 values["loyalty_points_earned"] = 0
+        if table_name == "sale_items":
+            if values.get("refunded_qty") is None:
+                values["refunded_qty"] = Decimal("0.000")
         if table_name == "sale_payments":
             if not values.get("method_kind"):
                 from cbpos.core.services.payment_service import classify_method_name

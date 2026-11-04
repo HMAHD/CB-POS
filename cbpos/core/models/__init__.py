@@ -10,6 +10,7 @@ from typing import Optional
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Column,
     Date,
     DateTime,
@@ -208,6 +209,7 @@ class Sale(Document):
     loyalty_points_balance: Mapped[int | None] = mapped_column(Integer, nullable=True)
     payment_method: Mapped[str] = mapped_column(String(20), nullable=False)  # Primary method
     refund_of_sale_id: Mapped[int | None] = mapped_column(ForeignKey("sales.id"), nullable=True)
+    refund_tender_override: Mapped[str | None] = mapped_column(String(20), nullable=True)
     shift_id: Mapped[int | None] = mapped_column(ForeignKey("shifts.id"), nullable=True, index=True)
 
     customer: Mapped["Customer"] = relationship(back_populates="sales")
@@ -530,9 +532,24 @@ class SaleItem(Base):
     is_manual_price: Mapped[bool] = mapped_column(Boolean, default=False)
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     notes: Mapped[str | None] = mapped_column(String(500), nullable=True)  # internal-only, never printed
+    refund_of_item_id: Mapped[int | None] = mapped_column(ForeignKey("sale_items.id"), nullable=True, index=True)
+    refund_reason: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    refunded_qty: Mapped[Decimal] = mapped_column(
+        Numeric(10, 3), nullable=False, default=Decimal("0.000"), server_default="0.000"
+    )
 
     sale: Mapped["Sale"] = relationship(back_populates="items")
     product: Mapped["Product"] = relationship("Product")
+    refund_of_item: Mapped["SaleItem | None"] = relationship(
+        "SaleItem", remote_side=[id], foreign_keys=[refund_of_item_id]
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "refunded_qty >= 0 AND (qty < 0 OR refunded_qty <= qty)",
+            name="ck_sale_items_refunded_qty",
+        ),
+    )
 
 
 class SalePayment(Base):

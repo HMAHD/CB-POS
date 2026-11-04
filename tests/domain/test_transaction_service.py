@@ -291,9 +291,8 @@ def test_refund_voided_sale_fails(db_session, test_user):
     db_session.add(sale)
     db_session.commit()
 
-    result = TransactionService.process_refund(sale.id, "Should fail", test_user.id)
-
-    assert result is False
+    with pytest.raises(ValueError, match="Cannot refund a voided sale"):
+        TransactionService.process_refund(sale.id, "Should fail", test_user.id)
 
 
 # ── Test Case I: Cannot Double-Refund ────────────────────────────────────
@@ -316,9 +315,8 @@ def test_double_refund_fails(db_session, test_user, test_product, completed_sale
     db_session.add(existing_refund)
     db_session.commit()
 
-    result = TransactionService.process_refund(completed_sale.id, "Second refund attempt", test_user.id)
-
-    assert result is False
+    with pytest.raises(ValueError, match=r"already refunded|cannot refund"):
+        TransactionService.process_refund(completed_sale.id, "Second refund attempt", test_user.id)
 
 
 # ── Test Case J: Cannot Refund a Refund ──────────────────────────────────
@@ -339,18 +337,17 @@ def test_refund_of_refund_fails(db_session, test_user):
     db_session.add(refund_sale)
     db_session.commit()
 
-    result = TransactionService.process_refund(refund_sale.id, "Meta refund", test_user.id)
-
-    assert result is False
+    with pytest.raises(ValueError, match="refund transaction"):
+        TransactionService.process_refund(refund_sale.id, "Meta refund", test_user.id)
 
 
 # ── Test Case K: Refund Non-existent Sale ────────────────────────────────
 
 
 def test_refund_nonexistent_sale(db_session):
-    """Refunding a non-existent sale returns False."""
-    result = TransactionService.process_refund(999999, "Ghost sale", 1)
-    assert result is False
+    """Refunding a non-existent sale raises ValueError."""
+    with pytest.raises(ValueError, match="not found"):
+        TransactionService.process_refund(999999, "Ghost sale", 1)
 
 
 # ── Test Case L: B2B customers additionally get an A4 Tax Invoice ───────
@@ -531,3 +528,174 @@ def test_issue_887_two_credit_lines_one_ledger_row_equal_to_debt_change(db_sessi
     assert len(ledger_entries) == 1
     assert ledger_entries[0].amount == Decimal("1000.00")
     assert ledger_entries[0].balance_after == Decimal("1000.00")
+
+
+def test_issue_847_void_after_refund_refused(db_session, test_user, test_product):
+    """Void on a refunded sale raises ValueError('sale_has_refund') and leaves state unchanged."""
+    from cbpos.core.models import Customer
+    from cbpos.core.services.config_service import ConfigService
+
+    ConfigService.set("enable_loyalty", True)
+    ConfigService.set("loyalty_points_ratio", 100)
+    ConfigService.set("loyalty_point_value", "1.00")
+    ConfigService.set("loyalty_minimum_redeem", 50)
+
+    customer = Customer(
+        name="Loyalty Void Test Cust",
+        phone="0771234567",
+        loyalty_points=300,
+        current_debt=Decimal("0.00"),
+    )
+    db_session.add(customer)
+    test_product.stock_qty = 50.0
+    test_product.price = Decimal("1000.00")
+    db_session.commit()
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart_service = CartService()
+        cart_service.add_item(test_product, qty=Decimal("1.0"))
+        payments = [{"method": "Cash", "amount": Decimal("900.00")}]
+        sale = TransactionService.process_sale(
+            cart_service, payments, customer_id=customer.id, loyalty_points_redeemed=100
+        )
+        assert sale is not None
+
+        db_session.refresh(customer)
+        db_session.refresh(test_product)
+        assert customer.loyalty_points == 209
+        assert test_product.stock_qty == 49.0
+
+        refund_sale = TransactionService.process_refund(
+            original_sale_id=sale.id,
+            refund_reason="Damaged item",
+            user_id=test_user.id,
+        )
+        assert refund_sale is not None
+
+        db_session.refresh(customer)
+        db_session.refresh(test_product)
+        assert customer.loyalty_points == 300
+        assert test_product.stock_qty == 50.0
+
+        with pytest.raises(ValueError, match="sale_has_refund"):
+            TransactionService.void_sale(sale.id, test_user.id, reason="Customer cancelled")
+
+        db_session.refresh(customer)
+        db_session.refresh(test_product)
+        assert customer.loyalty_points == 300
+        assert test_product.stock_qty == 50.0
+
+
+def test_issue_847_reverse_sale_points_idempotent_after_redemption_return(db_session, test_user, test_product):
+    """reverse_sale_points called after redemption return does not deduct positive redemption points."""
+    from cbpos.core.models import Customer
+    from cbpos.core.services.config_service import ConfigService
+    from cbpos.core.services.loyalty_service import LoyaltyService
+
+    ConfigService.set("enable_loyalty", True)
+    ConfigService.set("loyalty_points_ratio", 100)
+    ConfigService.set("loyalty_point_value", "1.00")
+    ConfigService.set("loyalty_minimum_redeem", 50)
+
+    customer = Customer(name="Idempotent Loyalty Cust", phone="0779998888", loyalty_points=300)
+    db_session.add(customer)
+    test_product.stock_qty = 50.0
+    test_product.price = Decimal("1000.00")
+    db_session.commit()
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart_service = CartService()
+        cart_service.add_item(test_product, qty=Decimal("1.0"))
+        payments = [{"method": "Cash", "amount": Decimal("900.00")}]
+        sale = TransactionService.process_sale(
+            cart_service, payments, customer_id=customer.id, loyalty_points_redeemed=100
+        )
+        assert sale is not None
+
+        refund_sale = TransactionService.process_refund(
+            original_sale_id=sale.id,
+            refund_reason="Return item",
+            user_id=test_user.id,
+        )
+        assert refund_sale is not None
+
+        db_session.refresh(customer)
+        assert customer.loyalty_points == 300
+
+        # Second reversal attempt should be a no-op (return None)
+        entry = LoyaltyService.reverse_sale_points(db_session, sale, reason="REFUND")
+        assert entry is None
+
+        db_session.refresh(customer)
+        assert customer.loyalty_points == 300
+
+
+def test_issue_848_void_of_refund_document_refused(db_session, test_user, test_product):
+    """void_sale on a refund document raises ValueError('cannot_void_refund') and leaves stock/debt unchanged."""
+    from cbpos.core.models import Customer
+
+    customer = Customer(
+        name="Refund Void Cust",
+        credit_limit=Decimal("5000.00"),
+        current_debt=Decimal("0.00"),
+    )
+    db_session.add(customer)
+    test_product.stock_qty = 20.0
+    test_product.price = Decimal("500.00")
+    db_session.commit()
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart_service = CartService()
+        cart_service.add_item(test_product, qty=Decimal("2.0"))  # total 1000.00
+        payments = [{"method": "Credit", "amount": Decimal("1000.00")}]
+        sale = TransactionService.process_sale(cart_service, payments, customer_id=customer.id)
+        assert sale is not None
+
+        db_session.refresh(customer)
+        db_session.refresh(test_product)
+        assert customer.current_debt == Decimal("1000.00")
+        assert test_product.stock_qty == 18.0
+
+        ok = TransactionService.process_refund(
+            original_sale_id=sale.id,
+            refund_reason="Wrong purchase",
+            user_id=test_user.id,
+        )
+        assert ok is True
+
+        refund_sale = db_session.query(Sale).filter_by(refund_of_sale_id=sale.id).first()
+        assert refund_sale is not None
+
+        db_session.refresh(customer)
+        db_session.refresh(test_product)
+        assert customer.current_debt == Decimal("0.00")
+        assert test_product.stock_qty == 20.0
+
+        # Attempt to void the refund sale
+        with pytest.raises(ValueError, match="cannot_void_refund"):
+            TransactionService.void_sale(refund_sale.id, test_user.id, reason="Accidental refund")
+
+        db_session.refresh(customer)
+        db_session.refresh(test_product)
+        assert customer.current_debt == Decimal("0.00")
+        assert test_product.stock_qty == 20.0
+
+
+def test_issue_915_process_refund_on_refunded_sale_raises(db_session, test_user, test_product):
+    """Calling process_refund on an already refunded sale propagates ValueError instead of returning False (#915)."""
+    test_product.stock_qty = 10.0
+    test_product.price = Decimal("100.00")
+    db_session.commit()
+
+    with patch("cbpos.core.services.auth_service.AuthService.get_current_user", return_value=test_user):
+        cart = CartService()
+        cart.add_item(test_product, qty=Decimal("1.0"))
+        sale = TransactionService.process_sale(cart, [{"method": "Cash", "amount": Decimal("100.00")}])
+        assert sale is not None
+
+        # First refund succeeds
+        assert TransactionService.process_refund(sale.id, "Return", test_user.id) is True
+
+        # Second refund must raise ValueError, not return False
+        with pytest.raises(ValueError):
+            TransactionService.process_refund(sale.id, "Return again", test_user.id)

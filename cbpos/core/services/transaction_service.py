@@ -11,7 +11,6 @@ from cbpos.core.constants.status import DocumentStatus, PaymentMethodType, Preci
 from cbpos.core.database import Database
 from cbpos.core.interfaces.transaction_peripherals import (
     NullPeripherals,
-    RefundCompleted,
     SaleCompleted,
     TransactionPeripherals,
 )
@@ -666,10 +665,14 @@ class TransactionService:
                 if sale.status == "VOID":
                     return False  # Already voided
 
-                # Cannot void a sale that has already been refunded (#914)
+                # Cannot void a refund document (#848)
+                if sale.payment_method == "REFUND" or sale.refund_of_sale_id is not None:
+                    raise ValueError("cannot_void_refund")
+
+                # Cannot void a sale that has already been refunded (#847, #914)
                 already_refunded = session.query(Sale.id).filter(Sale.refund_of_sale_id == sale_id).first() is not None
                 if already_refunded:
-                    return False
+                    raise ValueError("sale_has_refund")
 
                 sale.status = "VOID"
                 if reason_id:
@@ -706,6 +709,8 @@ class TransactionService:
                 )
                 session.add(log)
             return True
+        except ValueError:
+            raise
         except Exception as e:
             logger.error("Void Sale Failed: %s", e)
             return False
@@ -803,144 +808,46 @@ class TransactionService:
         Returns:
             bool: True if the refund was committed (whatever the printer does).
         """
-        db = Database()
+        from cbpos.core.services.refund_service import RefundLineRequest, RefundService
+
         try:
-            with db.get_session() as session:
-                # 1. Validate original sale (locking row on PostgreSQL to prevent concurrent refund/void races, #914)
-                original_sale = session.get(
-                    Sale, original_sale_id, with_for_update=True, options=[joinedload(Sale.items)]
-                )
-                if not original_sale:
-                    raise ValueError(f"Sale ID {original_sale_id} not found.")
-
-                if original_sale.status == "VOID":
-                    raise ValueError("Cannot refund a voided sale.")
-
-                if original_sale.payment_method == "REFUND":
-                    raise ValueError("Cannot refund a refund transaction.")
-
-                # Check if already refunded
-                existing_refund = session.query(Sale).filter(Sale.refund_of_sale_id == original_sale_id).first()
-                if existing_refund:
-                    raise ValueError(f"Sale already refunded (Refund: {existing_refund.document_number})")
-
-                # Pre-fetch composite items for all products in sale
-                product_ids = [item.product_id for item in original_sale.items]
-                composite_map = TransactionService._fetch_composite_map(session, product_ids)
-
-                # 2. Create refund transaction (negative values)
-                # Mirror original sale's tax values (negated) to preserve
-                # correct tax breakdown, especially for sales with exempt items.
-                # Recalculating from the total would lose exempt-item granularity.
-                refund_amount = -original_sale.total_amount
-                refund_vat = -(original_sale.tax_vat or Decimal("0"))
-                refund_sscl = -(original_sale.tax_sscl or Decimal("0"))
-                refund_net = -(original_sale.net_revenue or Decimal("0"))
-
-                terminal_id = ConfigService.get("terminal_id") or "TERM-01"
-                open_shift = session.scalars(
-                    select(Shift.id).where(
-                        Shift.user_id == user_id,
-                        Shift.terminal_id == terminal_id,
-                        Shift.status == ShiftStatus.OPEN,
+            refundable = RefundService.refundable_lines(original_sale_id)
+            requests = [
+                RefundLineRequest(sale_item_id=line.sale_item_id, qty=line.remaining_qty, reason=refund_reason)
+                for line in refundable
+                if line.remaining_qty > Decimal("0.000")
+            ]
+            if not requests:
+                db = Database()
+                with db.get_session() as session:
+                    sale = session.get(Sale, original_sale_id)
+                    if not sale:
+                        raise ValueError(f"Sale ID {original_sale_id} not found.")
+                    if sale.status == DocumentStatus.VOID:
+                        raise ValueError("Cannot refund a voided sale.")
+                    if sale.payment_method == "REFUND" or sale.refund_of_sale_id is not None:
+                        raise ValueError("Cannot refund a refund transaction.")
+                    if sale.items:
+                        raise ValueError("Sale already refunded")
+                    already_refunded = (
+                        session.query(Sale.id).filter(Sale.refund_of_sale_id == original_sale_id).first() is not None
                     )
-                ).first()
+                    if already_refunded:
+                        raise ValueError("Sale already refunded")
 
-                refund_sale = Sale(
-                    date=datetime.now(),
-                    total_amount=refund_amount,
-                    tax_vat=refund_vat,
-                    tax_sscl=refund_sscl,
-                    net_revenue=refund_net,
-                    payment_method="REFUND",
-                    status="COMPLETED",
-                    user_id=user_id,
-                    customer_id=original_sale.customer_id,
-                    refund_of_sale_id=original_sale_id,
-                    terminal_id=terminal_id,
-                    origin_terminal_id=terminal_id,
-                    shift_id=open_shift,
-                )
-                TransactionService._insert_numbered(session, refund_sale, "RETURN")
-                refund_receipt_no = refund_sale.document_number
-
-                # 3. Create refund line items (negative quantities)
-                for original_item in original_sale.items:
-                    refund_item = SaleItem(
-                        sale_id=refund_sale.id,
-                        product_id=original_item.product_id,
-                        qty=-original_item.qty,
-                        unit_price=original_item.unit_price,
-                        original_price=original_item.original_price or original_item.unit_price,
-                        subtotal=-original_item.subtotal,
-                    )
-                    session.add(refund_item)
-
-                    # 4. RESTORE stock via StockService (proper audit trail)
-                    TransactionService._move_stock(
-                        session,
-                        composite_map,
-                        original_item.product_id,
-                        original_item.qty,
-                        "RETURN",
-                        refund_sale.id,
-                        user_id,
-                    )
-
-                # 5. Give back any credit the original sale put on the
-                # customer's book, in this same transaction (#715).
-                credit_entry = CustomerCreditService.reverse_credit_sale_in_session(
-                    session, original_sale, "REFUND", user_id, reference_doc=refund_receipt_no
-                )
-                credit_reversed = -credit_entry.amount if credit_entry else Decimal("0.00")
-
-                # 5b. Give back any loyalty points earned on the original sale (#747)
-                LoyaltyService.reverse_sale_points(session, original_sale, reason="REFUND")
-                # 5c. Return any loyalty points redeemed on the original sale (#755)
-                LoyaltyService.return_redeemed_points(session, original_sale, reason="REFUND")
-
-                # 6. Create refund payment record
-                refund_payment = SalePayment(
-                    sale_id=refund_sale.id,
-                    payment_method="REFUND",
-                    amount=refund_amount,
-                )
-                session.add(refund_payment)
-
-                logger.info(
-                    "REFUND: %s -> %s by User %s: %s",
-                    original_sale.document_number,
-                    refund_receipt_no,
-                    user_id,
-                    refund_reason,
-                )
-
-                log = AuditLog(
-                    user_id=user_id,
-                    action="REFUND",
-                    event_type="TRANSACTION",
-                    details=(
-                        f"Refunded sale {original_sale.document_number} as {refund_receipt_no}. Reason: {refund_reason}"
-                    ),
-                )
-                session.add(log)
-
-                # 7. Build the refund voucher while items/products are loaded;
-                # the event reaches the hardware only after the commit below.
-                voucher = TransactionService._build_refund_receipt(session, original_sale, refund_sale, credit_reversed)
-                completed = RefundCompleted(refund_sale, voucher)
-
+            RefundService.refund(
+                original_sale_id,
+                requests,
+                refund_reason,
+                user_id,
+                peripherals=peripherals,
+            )
+            return True
+        except ValueError:
+            raise
         except Exception as e:
             logger.error("Refund Failed: %s", e)
             return False
-
-        # 8. Hardware -- only once the context manager has committed. The
-        # refund is saved whatever the printer does, so an error is only logged.
-        try:
-            (peripherals or TransactionService._peripherals).refund_completed(completed)
-        except Exception as e:
-            logger.error("Refund voucher for %s failed: %s", refund_receipt_no, e)
-        return True
 
     @staticmethod
     def lock_order(sale_id: int) -> bool:

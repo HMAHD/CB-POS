@@ -20,14 +20,16 @@ from PyQt6.QtWidgets import (
 
 from cbpos.core.services.auth_service import AuthService
 from cbpos.core.services.printer_service import PrinterService
+from cbpos.core.services.refund_service import RefundService
 from cbpos.core.services.sale_query_service import SaleQueryService
 from cbpos.core.services.transaction_service import TransactionService
+from cbpos.core.utils.error_messages import translate_error
 from cbpos.core.utils.formatters import format_currency, format_datetime, format_relative_time
 from cbpos.i18n import _t, register_language_callback
 from cbpos.infrastructure.hardware.escpos_driver import PrintWorker
 from cbpos.ui.refund_messages import refund_confirm_html, refund_done_text
 from cbpos.ui.resources.icons import Icons
-from cbpos.ui.resources.status_colors import DANGER, WARNING, status_color
+from cbpos.ui.widgets.status_pill_delegate import StatusPillDelegate, set_status_pill
 from cbpos.ui.widgets.table_helpers import (
     RelativeTimeTableWidgetItem,
     align_numeric_headers,
@@ -113,6 +115,7 @@ class HistoryView(QWidget):
             },
         )
         align_numeric_headers(self.transaction_table, [3])
+        self.transaction_table.setItemDelegateForColumn(5, StatusPillDelegate(self.transaction_table))
         self.transaction_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.transaction_table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.transaction_table.itemSelectionChanged.connect(self.on_selection_changed)
@@ -244,6 +247,9 @@ class HistoryView(QWidget):
 
     def populate_table(self, sales):
         """Populate transaction table with sales data"""
+        sale_ids = [sale.id for sale in sales if getattr(sale, "id", None)]
+        self._refund_states = RefundService.refund_states(sale_ids) if sale_ids else {}
+
         with batch_table_update(self.transaction_table):
             self.transaction_table.setRowCount(0)
 
@@ -255,8 +261,6 @@ class HistoryView(QWidget):
             user_role = Qt.ItemDataRole.UserRole
             align_right_vc = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
             fmt_curr = format_currency
-            status_danger = status_color(DANGER)
-            status_warning = status_color(WARNING)
             unknown_str = _t("history.unknown")
             refund_str = _t("history.status_refund")
 
@@ -283,13 +287,23 @@ class HistoryView(QWidget):
                 # Method
                 set_item(row, 4, TableItem(sale.payment_method))
 
-                # Status
-                status_item = TableItem(sale.status)
+                # Status (pill & derived refund state #915)
+                rstate = self._refund_states.get(sale.id, "NONE")
+                is_refund_doc = sale.payment_method == "REFUND" or bool(getattr(sale, "refund_of_sale_id", None))
+
+                status_item = TableItem()
                 if sale.status == "VOID":
-                    status_item.setForeground(status_danger)
-                elif sale.payment_method == "REFUND":
-                    status_item.setForeground(status_warning)
-                    status_item.setText(refund_str)
+                    set_status_pill(status_item, sale.status, "danger")
+                elif is_refund_doc:
+                    set_status_pill(status_item, refund_str, "warning")
+                elif rstate == "FULL":
+                    set_status_pill(status_item, _t("history.pill_refunded"), "info")
+                elif rstate == "PARTIAL":
+                    set_status_pill(status_item, _t("history.pill_part_refunded"), "info")
+                elif sale.status == "COMPLETED":
+                    set_status_pill(status_item, sale.status, "success")
+                else:
+                    set_status_pill(status_item, sale.status, "neutral")
                 set_item(row, 5, status_item)
 
     def on_selection_changed(self):
@@ -310,14 +324,43 @@ class HistoryView(QWidget):
             self.current_sale = sale
             self.display_details(sale)
             self.reprint_btn.setEnabled(True)
-            # Enable refund only for completed non-refund sales
-            self.refund_btn.setEnabled(sale.status == "COMPLETED" and sale.payment_method != "REFUND")
+
+            rstate = getattr(self, "_refund_states", {}).get(sale.id)
+            if rstate is None:
+                rstate = RefundService.refund_state(sale.id)
+            is_refund_doc = sale.payment_method == "REFUND" or bool(getattr(sale, "refund_of_sale_id", None))
+
+            # Enable refund only for completed non-refund sales with remaining quantities (#915)
+            can_refund = sale.status == "COMPLETED" and not is_refund_doc and rstate != "FULL"
+            self.refund_btn.setEnabled(can_refund)
+            if rstate == "FULL":
+                self.refund_btn.setToolTip(_t("history.refund_disabled_full"))
+            elif is_refund_doc:
+                self.refund_btn.setToolTip(_t("history.void_disabled_is_refund"))
+            else:
+                self.refund_btn.setToolTip("")
 
     def display_details(self, sale):
         """Display sale details in details panel"""
         cashier = sale.user.username if sale.user else _t("history.unknown")
         exact_date = format_datetime(sale.date)
         rel_date = format_relative_time(sale.date)
+
+        rstate = getattr(self, "_refund_states", {}).get(sale.id)
+        if rstate is None:
+            rstate = RefundService.refund_state(sale.id)
+        is_refund_doc = sale.payment_method == "REFUND" or bool(getattr(sale, "refund_of_sale_id", None))
+
+        if sale.status == "VOID":
+            status_display = sale.status
+        elif is_refund_doc:
+            status_display = _t("history.status_refund")
+        elif rstate == "FULL":
+            status_display = _t("history.pill_refunded")
+        elif rstate == "PARTIAL":
+            status_display = _t("history.pill_part_refunded")
+        else:
+            status_display = sale.status
         details_text = f"""
         <b>{_t("history.detail_receipt")}:</b> {sale.document_number}<br>
         <b>{_t("common.date")}:</b> {rel_date} ({exact_date})<br>
@@ -325,7 +368,7 @@ class HistoryView(QWidget):
 
         <b>{_t("common.total")}:</b> {format_currency(sale.total_amount)}<br>
         <b>{_t("history.detail_payment")}:</b> {sale.payment_method}<br>
-        <b>{_t("common.status")}:</b> {sale.status}
+        <b>{_t("common.status")}:</b> {status_display}
         """
 
         if sale.refund_of_sale_id:
@@ -458,5 +501,11 @@ class HistoryView(QWidget):
                     self.apply_filter()  # Refresh list
                 else:
                     QMessageBox.critical(self, _t("common.error"), _t("history.refund_failed"))
+            except ValueError as e:
+                logger.warning("Refund rejected: %s", e)
+                QMessageBox.warning(self, _t("common.warning"), translate_error(str(e)))
             except Exception as e:
-                QMessageBox.critical(self, _t("common.error"), _t("history.refund_error", error=e))
+                logger.exception("Refund failed: %s", e)
+                QMessageBox.critical(
+                    self, _t("common.error"), _t("history.refund_error", error=translate_error(str(e)))
+                )

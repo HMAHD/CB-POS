@@ -118,8 +118,8 @@ def test_issue_914_void_sale_refuses_refunded_sale(db_session, test_sale):
         mock_db.return_value.__enter__.return_value = db_session
         mock_db.return_value.__exit__.return_value = False
 
-        success = TransactionService.void_sale(test_sale.id, user_id=test_sale.user_id, reason="Cannot void")
-        assert success is False
+        with pytest.raises(ValueError, match="sale_has_refund"):
+            TransactionService.void_sale(test_sale.id, user_id=test_sale.user_id, reason="Cannot void")
 
     db_session.refresh(test_sale)
     assert test_sale.status != "VOID"
@@ -134,8 +134,8 @@ def test_issue_914_refund_refuses_voided_sale(db_session, test_sale):
         mock_db.return_value.__enter__.return_value = db_session
         mock_db.return_value.__exit__.return_value = False
 
-        res = TransactionService.process_refund(test_sale.id, "Return voided", user_id=test_sale.user_id)
-        assert res is False
+        with pytest.raises(ValueError):
+            TransactionService.process_refund(test_sale.id, "Return voided", user_id=test_sale.user_id)
 
 
 def test_issue_914_refund_refuses_already_refunded_sale(db_session, test_sale):
@@ -148,7 +148,8 @@ def test_issue_914_refund_refuses_already_refunded_sale(db_session, test_sale):
         assert TransactionService.process_refund(test_sale.id, "Return 1", user_id=test_sale.user_id) is True
 
         # Second refund fails
-        assert TransactionService.process_refund(test_sale.id, "Return 2", user_id=test_sale.user_id) is False
+        with pytest.raises(ValueError):
+            TransactionService.process_refund(test_sale.id, "Return 2", user_id=test_sale.user_id)
 
 
 @pytest.mark.postgres
